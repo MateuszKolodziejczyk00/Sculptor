@@ -1,3 +1,5 @@
+include "Source/SculptorBuildCommon"
+
 workspace "Sculptor"
     
 	configurations

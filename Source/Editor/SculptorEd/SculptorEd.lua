@@ -1,7 +1,7 @@
+SculptorEd = Project:CreateProject("SculptorEd", ETargetType.Application, EProjectType.Editor)
 
-project "SculptorEd"
-	kind "ConsoleApp"
-	language "C++"
+function SculptorEd:SetupConfiguration(configuration, platform)
+	self:AddPublicDependency("SculptorLib")
+end
 
-	targetdir ("Binaries/" .. OutputDirectory .. "/%{prj.name}")
-	objdir ("Intermediate/" .. OutputDirectory .. "/%{prj.name}")
+SculptorEd:SetupProject()

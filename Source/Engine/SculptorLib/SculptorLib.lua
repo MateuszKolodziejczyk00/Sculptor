@@ -1,7 +1,4 @@
 
-project "SculptorLub"
-	kind "SharedLib"
-	language "C++"
+SculptorLib = Project:CreateProject("SculptorLib", ETargetType.SharedLibrary, EProjectType.Engine)
 
-	targetdir ("Binaries/" .. OutputDirectory .. "/%{prj.name}")
-	objdir ("Intermediate/" .. OutputDirectory .. "/%{prj.name}")
+SculptorLib:SetupProject()
