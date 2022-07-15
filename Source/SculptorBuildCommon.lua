@@ -80,7 +80,6 @@ end
 
 function Project:SetupProject()
     project (self.name)
-    location (self.projectLocation)
     kind (self.targetType)
     language "C++"
     staticruntime "off"
@@ -92,8 +91,9 @@ function Project:SetupProject()
 
 	files
 	{
-		"%{prj.name}/Source/**.h",
-		"%{prj.name}/Source/**.cpp"
+		"**.h",
+		"**.cpp",
+		"**.inl"
 	}
 
     projectToPublicDependencies[self.name] = {}
@@ -131,6 +131,8 @@ function Project:BuildConfiguration(configuration, platform)
     do
         self:AddDependencyInternal(dependency)
     end
+
+    self:AddCommonDefines(configuration, platform)
 end
 
 function Project:AddDefine(define)
@@ -159,4 +161,38 @@ function Project:GetPublicDependencies(configuration)
     end
 
     return allPublicDependencies
+end
+
+function Project:AddCommonDefines(configuration, platform)
+    if self.targetType == ETargetType.SharedLibrary then
+        self:AddDefine(string.upper(self.name) .. "BUILD_DLL")
+    end
+
+    if configuration == EConfiguration.Debug then
+        self:AddDebugDefines()
+    elseif configuration == EConfiguration.Development then
+        self:AddWindowsDefines()
+    elseif configuration == EConfiguration.Release then
+        self:AddReleaseDefines()
+    end
+
+    if platform == EPlatform.Windows then
+        self:AddWindowsDefines()
+    end
+end
+
+function Project:AddWindowsDefines()
+    self:AddDefine("SPT_PLATFORM_WINDOWS")
+end
+
+function Project:AddDebugDefines()
+    self:AddDefine("SPT_DEBUG")
+end
+
+function Project:AddDevelopmentDefines()
+    self:AddDefine("SPT_DEVELOPMENT")
+end
+
+function Project:AddReleaseDefines()
+    self:AddDefine("SPT_RELEASE")
 end

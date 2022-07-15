@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 *.sln
 **.vcxproj
+
+*Intermediate
+*Binaries
