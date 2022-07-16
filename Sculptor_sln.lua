@@ -13,8 +13,6 @@ workspace "Sculptor"
 	{
 		"x86"
 	}
-
-	OutputDirectory = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 	
 	exceptionhandling "Off"
     rtti "Off"

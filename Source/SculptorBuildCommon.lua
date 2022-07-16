@@ -24,7 +24,15 @@ EPlatform =
 ETargetType = 
 {
     Application         = "ConsoleApp",
-    SharedLibrary       = "SharedLib"
+    SharedLibrary       = "SharedLib",
+    StaticLibrary       = "StaticLib",
+    None                = "None"
+}
+
+ELanguage = 
+{
+    cpp                 = "C++",
+    C                   = "C"
 }
 
 EProjectType =
@@ -45,15 +53,17 @@ projectToIncludePaths = {}
 projectToPublicDependencies = {}
 
 
-function Project:CreateProject(name, targetType, projectType)
-    inProjectLocation = "Source/" .. projectType .. "/" .. name
+function Project:CreateProject(name, targetType, projectType, language)
+    inProjectLocation = projectType .. "/" .. name
 
     newProject =
     {
         ["name"] = name,
         ["targetType"] = targetType,
         ["projectType"] = projectType,
-        projectLocation = inProjectLocation,
+        ["language"] = language or ELanguage.CPP,
+        -- reference path from other projects to this project
+        referenceProjectLocation = "../../" .. inProjectLocation,
         configurations =
         {
             [EConfiguration.Debug] = {
@@ -81,13 +91,13 @@ end
 function Project:SetupProject()
     project (self.name)
     kind (self.targetType)
-    language "C++"
+    language (self.language)
     staticruntime "off"
 
-	targetdir ("Binaries/" .. OutputDirectory .. "/%{prj.name}")
-	objdir ("Intermediate/" .. OutputDirectory .. "/%{prj.name}")
+	targetdir ("../../../Binaries/" .. OutputDirectory)
+	objdir ("../../../Intermediate/" .. OutputDirectory)
 
-    projectToIncludePaths[self.name] = self:GetIncludePaths()
+    projectToIncludePaths[self.name] = self:GetIncludePathsToThisProject()
 
 	files
 	{
@@ -95,6 +105,10 @@ function Project:SetupProject()
 		"**.cpp",
 		"**.inl"
 	}
+
+    includedirs ("")
+
+    includedirs (self:GetPrivateIncludePaths())
 
     projectToPublicDependencies[self.name] = {}
 
@@ -113,8 +127,12 @@ function Project:SetupConfiguration(configuration, platform)
     
 end
 
-function Project:GetIncludePaths()
-    return { self.projectLocation }
+function Project:GetIncludePathsToThisProject()
+    return { self.referenceProjectLocation }
+end
+
+function Project:GetPrivateIncludePaths()
+    return {}
 end
 
 function Project:BuildConfiguration(configuration, platform)
@@ -165,7 +183,7 @@ end
 
 function Project:AddCommonDefines(configuration, platform)
     if self.targetType == ETargetType.SharedLibrary then
-        self:AddDefine(string.upper(self.name) .. "BUILD_DLL")
+        self:AddDefine(string.upper(self.name) .. "_BUILD_DLL")
     end
 
     if configuration == EConfiguration.Debug then
