@@ -1,11 +1,11 @@
-[submodule "Source/ThirdParty/ImGui"]
+[submodule "Source/ThirdParty/ImGui/ImGui"]
 	path = Source/ThirdParty/ImGui
 	url = https://github.com/ocornut/imgui
 	branch = docking
-[submodule "Source/ThirdParty/GLFW"]
-	path = Source/ThirdParty/GLFW
+[submodule "Source/ThirdParty/GLFW/GLFW"]
+	path = Source/ThirdParty/GLFW/GLFW
 	url = https://github.com/glfw/glfw
-[submodule "Source/ThirdParty/Eigen"]
-	path = Source/ThirdParty/Eigen
+[submodule "Source/ThirdParty/Eigen/Eigen"]
+	path = Source/ThirdParty/Eigen/Eigen
 	url = https://gitlab.com/libeigen/eigen
 	branch = 3.4

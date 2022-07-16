@@ -56,6 +56,10 @@ projectToPublicDependencies = {}
 function Project:CreateProject(name, targetType, projectType, language)
     inProjectLocation = projectType .. "/" .. name
 
+    if projectType == EProjectType.ThirdParty then
+        inProjectLocation = inProjectLocation .. "/" .. name
+    end
+
     newProject =
     {
         ["name"] = name,
@@ -93,6 +97,10 @@ function Project:SetupProject()
     kind (self.targetType)
     language (self.language)
     staticruntime "off"
+
+    if self.projectType == EProjectType.ThirdParty then
+        location (self.name)
+    end
 
 	targetdir ("../../../Binaries/" .. OutputDirectory)
 	objdir ("../../../Intermediate/" .. OutputDirectory)
