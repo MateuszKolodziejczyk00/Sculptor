@@ -1,3 +1,5 @@
 include "ThirdParty/Eigen/Eigen"
 include "ThirdParty/GLFW/GLFW"
 include "ThirdParty/Spdlog/Spdlog"
+include "ThirdParty/Volk/Volk"
+include "ThirdParty/VMA/VMA"

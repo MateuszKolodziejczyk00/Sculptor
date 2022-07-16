@@ -11,7 +11,7 @@ workspace "Sculptor"
     
 	platforms
 	{
-		"x86"
+		"x64"
 	}
 	
 	exceptionhandling "Off"

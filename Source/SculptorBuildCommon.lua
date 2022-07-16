@@ -123,6 +123,8 @@ function Project:SetupProject()
 
 	libdirs ("../../../Binaries/" .. OutputDirectory)
 
+    libdirs (self:GetAdditionalLibPaths())
+
     projectToPublicDependencies[self.name] = {}
     projectToPublicDefines[self.name] = {}
 
@@ -161,6 +163,10 @@ function Project:GetProjectFiles(configuration, platform)
 		"**.inl",
         "**.c"
     }
+end
+
+function Project:GetAdditionalLibPaths()
+
 end
 
 function Project:BuildConfiguration(configuration, platform)
@@ -259,7 +265,13 @@ function Project:GetPrivateDependenciesPublicDefines(configuration)
     local allPublicDefines = self.configurations[configuration].publicDefines
     for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
     do
-        AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
+        local projectDefines = projectToPublicDefines[dependency]
+        if projectDefines ~= nil then
+            local definesForConfiguration = projectDefines[configuration]
+            if definesForConfiguration ~= nil then
+                AppendTable(allPublicDefines, definesForConfiguration)
+            end
+        end
     end
 
     return allPublicDefines
