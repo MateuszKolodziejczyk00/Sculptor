@@ -5,3 +5,6 @@
 [submodule "Source/ThirdParty/GLFW/GLFW"]
 	path = Source/ThirdParty/GLFW/GLFW
 	url = https://github.com/glfw/glfw
+[submodule "Source/ThirdParty/Spdlog/Spdlog"]
+	path = Source/ThirdParty/Spdlog/Spdlog
+	url = https://github.com/gabime/spdlog

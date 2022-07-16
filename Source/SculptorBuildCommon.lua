@@ -52,6 +52,8 @@ projectToIncludePaths = {}
 
 projectToPublicDependencies = {}
 
+projectToPublicDefines = {}
+
 
 function Project:CreateProject(name, targetType, projectType, language)
     inProjectLocation = projectType .. "/" .. name
@@ -72,17 +74,20 @@ function Project:CreateProject(name, targetType, projectType, language)
         {
             [EConfiguration.Debug] = {
                 publicDependencies = {},
-                privateDependencies = {}
+                privateDependencies = {},
+                publicDefines = {}
             },
             [EConfiguration.Development] = 
             {
                 publicDependencies = {},
-                privateDependencies = {}
+                privateDependencies = {},
+                publicDefines = {}
             },
             [EConfiguration.Release] = 
             {
                 publicDependencies = {},
-                privateDependencies = {}
+                privateDependencies = {},
+                publicDefines = {}
             }
         }
     }
@@ -107,11 +112,19 @@ function Project:SetupProject()
 
     projectToIncludePaths[self.name] = self:GetIncludePathsToThisProject()
 
-    includedirs ("" .. self:GetIncludesRelativeLocation())
+    if self.projectType == EProjectType.ThirdParty then
+        includedirs (self.name .. "/" .. self:GetIncludesRelativeLocation())
+        includedirs (self.name)
+    else
+        includedirs ("" .. self:GetIncludesRelativeLocation())
+    end
 
     includedirs (self:GetPrivateIncludePaths())
 
+	libdirs ("../../../Binaries/" .. OutputDirectory)
+
     projectToPublicDependencies[self.name] = {}
+    projectToPublicDefines[self.name] = {}
 
     filter "configurations:Debug"
     self:BuildConfiguration(EConfiguration.Debug, EPlatform.Windows)
@@ -167,10 +180,35 @@ function Project:BuildConfiguration(configuration, platform)
 
     self:AddCommonDefines(configuration, platform)
 
+    projectToPublicDefines[self.name][configuration] = self:GetThisProjectPublicDefines(configuration)
+    for define, _ in pairs(projectToPublicDefines[self.name][configuration])
+    do
+        self:AddDefineInternal(define)
+    end
+
+    privateDependenciesPublicDefines = self:GetPrivateDependenciesPublicDefines(configuration)
+    for define, _ in pairs(privateDependenciesPublicDefines)
+    do
+        self:AddDefineInternal(define)
+    end
+
 	files (self:GetProjectFiles(configuration, platform))
+
+    if self:AreWarningsDisabled(configuration) then
+        disablewarnings { "warning" }
+    end
 end
 
-function Project:AddDefine(define)
+function Project:AddPublicDefine(define)
+    -- public defines are added later in BuildConfiguration
+    self.configurations[self.currentConfiguration].publicDefines[define] = true
+end
+
+function Project:AddPrivateDefine(define)
+    self:AddDefineInternal(define)
+end
+
+function Project:AddDefineInternal(define)
     defines { define }
 end
 
@@ -181,6 +219,15 @@ end
 function Project:AddPrivateDependency(dependency)
     self.configurations[self.currentConfiguration].privateDependencies[dependency] = true
     self:AddDependencyInternal(dependency)
+end
+
+function Project:DisableWarnings()
+    self.configurations[self.currentConfiguration].disableWarnings = true
+end
+
+function Project:AreWarningsDisabled(configuration)
+    disable = self.configurations[configuration]["disableWarnings"]
+    return disable and disable == true
 end
 
 function Project:AddDependencyInternal(dependency)
@@ -198,9 +245,29 @@ function Project:GetPublicDependencies(configuration)
     return allPublicDependencies
 end
 
+function Project:GetThisProjectPublicDefines(configuration)
+    local allPublicDefines = self.configurations[configuration].publicDefines
+    for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
+    do
+        AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
+    end
+
+    return allPublicDefines
+end
+
+function Project:GetPrivateDependenciesPublicDefines(configuration)
+    local allPublicDefines = self.configurations[configuration].publicDefines
+    for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
+    do
+        AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
+    end
+
+    return allPublicDefines
+end
+
 function Project:AddCommonDefines(configuration, platform)
     if self.targetType == ETargetType.SharedLibrary then
-        self:AddDefine(string.upper(self.name) .. "_BUILD_DLL")
+        self:AddDefineInternal(string.upper(self.name) .. "_BUILD_DLL")
     end
 
     if configuration == EConfiguration.Debug then
@@ -217,17 +284,17 @@ function Project:AddCommonDefines(configuration, platform)
 end
 
 function Project:AddWindowsDefines()
-    self:AddDefine("SPT_PLATFORM_WINDOWS")
+    self:AddDefineInternal("SPT_PLATFORM_WINDOWS")
 end
 
 function Project:AddDebugDefines()
-    self:AddDefine("SPT_DEBUG")
+    self:AddDefineInternal("SPT_DEBUG")
 end
 
 function Project:AddDevelopmentDefines()
-    self:AddDefine("SPT_DEVELOPMENT")
+    self:AddDefineInternal("SPT_DEVELOPMENT")
 end
 
 function Project:AddReleaseDefines()
-    self:AddDefine("SPT_RELEASE")
+    self:AddDefineInternal("SPT_RELEASE")
 end
