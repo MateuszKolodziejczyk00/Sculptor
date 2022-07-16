@@ -8,3 +8,9 @@
 [submodule "Source/ThirdParty/Spdlog/Spdlog"]
 	path = Source/ThirdParty/Spdlog/Spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "Source/ThirdParty/Volk/Volk"]
+	path = Source/ThirdParty/Volk/Volk
+	url = https://github.com/zeux/volk
+[submodule "Source/ThirdParty/VMA/VMA"]
+	path = Source/ThirdParty/VMA/VMA
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
