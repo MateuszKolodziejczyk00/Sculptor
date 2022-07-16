@@ -107,14 +107,7 @@ function Project:SetupProject()
 
     projectToIncludePaths[self.name] = self:GetIncludePathsToThisProject()
 
-	files
-	{
-		"**.h",
-		"**.cpp",
-		"**.inl"
-	}
-
-    includedirs ("" .. self:GetSourceFilesRelativeLocation())
+    includedirs ("" .. self:GetIncludesRelativeLocation())
 
     includedirs (self:GetPrivateIncludePaths())
 
@@ -136,15 +129,25 @@ function Project:SetupConfiguration(configuration, platform)
 end
 
 function Project:GetIncludePathsToThisProject()
-    return { self.referenceProjectLocation .. self:GetSourceFilesRelativeLocation() }
+    return { self.referenceProjectLocation .. self:GetIncludesRelativeLocation() }
 end
 
 function Project:GetPrivateIncludePaths()
     return {}
 end
 
-function Project:GetSourceFilesRelativeLocation()
+function Project:GetIncludesRelativeLocation()
     return  ""
+end
+
+function Project:GetProjectFiles(configuration, platform)
+    return
+    {
+		"**.h",
+		"**.cpp",
+		"**.inl",
+        "**.c"
+    }
 end
 
 function Project:BuildConfiguration(configuration, platform)
@@ -163,6 +166,8 @@ function Project:BuildConfiguration(configuration, platform)
     end
 
     self:AddCommonDefines(configuration, platform)
+
+	files (self:GetProjectFiles(configuration, platform))
 end
 
 function Project:AddDefine(define)

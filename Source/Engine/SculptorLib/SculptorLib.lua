@@ -5,6 +5,8 @@ function SculptorLib:SetupConfiguration(configuration, platform)
 
     if platform == EPlatform.Windows then
         self:AddPrivateDependency("GLFW")
+
+        self:AddDefine("USE_GLFW")
     end
 end
 
