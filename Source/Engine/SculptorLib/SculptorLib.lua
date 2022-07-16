@@ -1,10 +1,7 @@
 SculptorLib = Project:CreateProject("SculptorLib", ETargetType.SharedLibrary, EProjectType.Engine)
 
-function SculptorLib:GetPrivateIncludePaths()
-    return
-    {
-        "Source/ThirdParty/Eigen"
-    }
+function SculptorLib:SetupConfiguration(configuration, platform)
+    self:AddPublicDependency("Math")
 end
 
 SculptorLib:SetupProject()

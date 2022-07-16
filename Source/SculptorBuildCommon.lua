@@ -3,7 +3,7 @@
 function AppendTable(t1, t2)
     for k, v in pairs(t2)
     do
-        t1.insert(k, v)
+        t1[k] = v
     end
 end
 

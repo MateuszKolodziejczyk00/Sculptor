@@ -2,6 +2,7 @@
 
 #include "SculptorLib.h"
 
+
 namespace spt::lib
 {
 
@@ -18,7 +19,8 @@ public:
 
 	void Shutdown();
 
-private:
+protected:
+	
 
 };
 

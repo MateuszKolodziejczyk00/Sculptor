@@ -6,7 +6,7 @@
 namespace spt::ed
 {
 
-class SculptorEdApplication : public spt::lib::Application
+class SculptorEdApplication : public lib::Application
 {
 public:
 
