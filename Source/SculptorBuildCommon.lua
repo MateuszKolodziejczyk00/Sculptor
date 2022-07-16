@@ -114,7 +114,7 @@ function Project:SetupProject()
 		"**.inl"
 	}
 
-    includedirs ("")
+    includedirs ("" .. self:GetSourceFilesRelativeLocation())
 
     includedirs (self:GetPrivateIncludePaths())
 
@@ -136,11 +136,15 @@ function Project:SetupConfiguration(configuration, platform)
 end
 
 function Project:GetIncludePathsToThisProject()
-    return { self.referenceProjectLocation }
+    return { self.referenceProjectLocation .. self:GetSourceFilesRelativeLocation() }
 end
 
 function Project:GetPrivateIncludePaths()
     return {}
+end
+
+function Project:GetSourceFilesRelativeLocation()
+    return  ""
 end
 
 function Project:BuildConfiguration(configuration, platform)

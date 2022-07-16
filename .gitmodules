@@ -2,3 +2,6 @@
 	path = Source/ThirdParty/Eigen/Eigen
 	url = https://gitlab.com/libeigen/eigen
 	branch = 3.4
+[submodule "Source/ThirdParty/GLFW/GLFW"]
+	path = Source/ThirdParty/GLFW/GLFW
+	url = https://github.com/glfw/glfw
