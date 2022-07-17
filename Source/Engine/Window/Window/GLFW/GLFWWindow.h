@@ -2,6 +2,7 @@
 
 #include "WindowMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Delegates/MulticastDelegate.h"
 
 
 #if USE_GLFW
@@ -22,6 +23,12 @@ public:
 	void Update(float deltaTime);
 
 	bool ShouldClose();
+
+	using OnWindowResized = lib::MulticastDelegate<uint32 /*newWidth*/, uint32 /*newHeight*/>;
+	OnWindowResized& OnResized();
+
+	using OnWindowClosed = lib::MulticastDelegate<>;
+	OnWindowClosed& OnClosed();
 
 private:
 

@@ -7,6 +7,8 @@ function SculptorLib:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Profiler")
 
     self:AddPublicDefine("WITH_LOGGER=1")
+
+    self:AddPublicDefine("DO_CHECKS=1")
 end
 
 SculptorLib:SetupProject()
