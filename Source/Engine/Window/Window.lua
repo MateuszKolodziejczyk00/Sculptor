@@ -1,0 +1,14 @@
+Window = Project:CreateProject("Window", ETargetType.SharedLibrary)
+
+function Window:SetupConfiguration(configuration, platform)
+
+    self:AddPublicDependency("RHI")
+
+    if platform == EPlatform.Windows then
+        self:AddPrivateDependency("GLFW")
+
+        self:AddPublicDefine("USE_GLFW")
+    end
+end
+
+Window:SetupProject()

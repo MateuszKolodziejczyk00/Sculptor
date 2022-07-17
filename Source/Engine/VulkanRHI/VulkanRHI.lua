@@ -9,7 +9,7 @@ function VulkanRHI:SetupConfiguration(configuration, platform)
 
     self:AddPublicDefine("VULKAN_RHI")
 
-    self:AddPublicAbsoluteIncludePath("%{VULKAN_SDK}/Include")
+    self:AddPublicAbsoluteIncludePath("$(VULKAN_SDK)/Include")
 end
 
 VulkanRHI:SetupProject()
