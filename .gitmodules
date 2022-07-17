@@ -14,3 +14,6 @@
 [submodule "Source/ThirdParty/VMA/VMA"]
 	path = Source/ThirdParty/VMA/VMA
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "Source/ThirdParty/Optick/Optick"]
+	path = Source/ThirdParty/Optick/Optick
+	url = https://github.com/bombomby/optick
