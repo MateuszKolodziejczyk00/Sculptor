@@ -1,6 +1,7 @@
 #include "SculptorEdApplication.h"
 #include "Window/WindowImpl.h"
 #include "Profiler.h"
+#include "Timer/TickingTimer.h"
 
 
 namespace spt::ed
@@ -21,10 +22,15 @@ void SculptorEdApplication::OnRun()
 {
 	Super::OnRun();
 
+	lib::TickingTimer timer;
+
 	while (!m_window->ShouldClose())
 	{
-		SPT_PROFILE_FRAME("Frame");
-		m_window->Update(0.1f);
+		SPT_PROFILE_FRAME("EditorFrame");
+
+		const float deltaTime = timer.Tick();
+
+		m_window->Update(deltaTime);
 	}
 }
 
