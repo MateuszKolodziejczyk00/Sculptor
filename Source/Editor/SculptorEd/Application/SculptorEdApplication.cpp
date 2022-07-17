@@ -1,5 +1,6 @@
 #include "SculptorEdApplication.h"
 #include "Window/WindowImpl.h"
+#include "Profiler.h"
 
 
 namespace spt::ed
@@ -22,6 +23,7 @@ void SculptorEdApplication::OnRun()
 
 	while (!m_window->ShouldClose())
 	{
+		SPT_PROFILE_FRAME("Frame");
 		m_window->Update(0.1f);
 	}
 }
