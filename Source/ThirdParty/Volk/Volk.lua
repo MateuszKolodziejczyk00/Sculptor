@@ -1,4 +1,4 @@
-Volk = Project:CreateProject("Volk", ETargetType.None, EProjectType.ThirdParty, ELanguage.C)
+Volk = Project:CreateProject("Volk", ETargetType.None, ELanguage.C)
 
 function Volk:GetProjectFiles(configuration, platform)
     return

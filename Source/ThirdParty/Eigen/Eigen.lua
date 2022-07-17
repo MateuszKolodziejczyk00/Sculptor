@@ -1,3 +1,3 @@
-Eigen = Project:CreateProject("Eigen", ETargetType.None, EProjectType.ThirdParty)
+Eigen = Project:CreateProject("Eigen", ETargetType.None)
 
 Eigen:SetupProject()

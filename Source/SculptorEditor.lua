@@ -1,1 +1,3 @@
-include "Editor/SculptorEd/SculptorEd"
+StartProjectsType(EProjectType.Editor)
+
+IncludeProject("SculptorEd")

@@ -54,9 +54,11 @@ projectToPublicDependencies = {}
 
 projectToPublicDefines = {}
 
+currentProjectsType = nil
 
-function Project:CreateProject(name, targetType, projectType, language)
-    inProjectLocation = projectType .. "/" .. name
+function Project:CreateProject(name, targetType, language)
+    local projectType = currentProjectsType
+    local inProjectLocation = projectType .. "/" .. name
 
     if projectType == EProjectType.ThirdParty then
         inProjectLocation = inProjectLocation .. "/" .. name
@@ -155,6 +157,14 @@ function Project:GetIncludesRelativeLocation()
     return  ""
 end
 
+function Project:AddPublicIncludePath(paths)
+
+end
+
+function Project:AddPrivateIncludePath(path)
+    
+end
+
 function Project:GetProjectFiles(configuration, platform)
     return
     {
@@ -192,7 +202,7 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDefineInternal(define)
     end
 
-    privateDependenciesPublicDefines = self:GetPrivateDependenciesPublicDefines(configuration)
+    local privateDependenciesPublicDefines = self:GetPrivateDependenciesPublicDefines(configuration)
     for define, _ in pairs(privateDependenciesPublicDefines)
     do
         self:AddDefineInternal(define)
@@ -309,4 +319,14 @@ end
 
 function Project:AddReleaseDefines()
     self:AddDefineInternal("SPT_RELEASE")
+end
+
+
+function StartProjectsType(projectsType)
+    currentProjectsType = projectsType
+end
+
+
+function IncludeProject(name)
+    include (currentProjectsType .. "/" .. name .. "/" .. name)
 end

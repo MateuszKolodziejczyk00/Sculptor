@@ -1,4 +1,4 @@
-GLFW = Project:CreateProject("GLFW", ETargetType.StaticLibrary, EProjectType.ThirdParty, ELanguage.C)
+GLFW = Project:CreateProject("GLFW", ETargetType.StaticLibrary, ELanguage.C)
 
 function GLFW:GetIncludesRelativeLocation()
     return "/include"

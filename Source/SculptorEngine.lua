@@ -1,4 +1,6 @@
-include "Engine/Math/Math"
-include "Engine/SculptorLib/SculptorLib"
-include "Engine/VulkanRHI/VulkanRHI"
-include "Engine/RHI/RHI"
+StartProjectsType(EProjectType.Engine)
+
+IncludeProject("Math")
+IncludeProject("SculptorLib")
+IncludeProject("VulkanRHI")
+IncludeProject("RHI")

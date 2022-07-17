@@ -1,4 +1,4 @@
-VMA = Project:CreateProject("VMA", ETargetType.None, EProjectType.ThirdParty, ELanguage.C)
+VMA = Project:CreateProject("VMA", ETargetType.None, ELanguage.C)
 
 function VMA:GetProjectFiles(configuration, platform)
     return

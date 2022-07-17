@@ -1,4 +1,4 @@
-Spdlog = Project:CreateProject("Spdlog", ETargetType.StaticLibrary, EProjectType.ThirdParty)
+Spdlog = Project:CreateProject("Spdlog", ETargetType.StaticLibrary)
 
 function Spdlog:SetupConfiguration(configuration, platform)
     self:AddPublicDefine("SPDLOG_COMPILED_LIB")

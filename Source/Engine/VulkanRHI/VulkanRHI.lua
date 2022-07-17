@@ -1,4 +1,4 @@
-VulkanRHI = Project:CreateProject("VulkanRHI", ETargetType.SharedLibrary, EProjectType.Engine)
+VulkanRHI = Project:CreateProject("VulkanRHI", ETargetType.SharedLibrary)
 
 function VulkanRHI:SetupConfiguration(configuration, platform)
 

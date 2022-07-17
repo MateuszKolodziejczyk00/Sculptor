@@ -1,4 +1,4 @@
-SculptorEd = Project:CreateProject("SculptorEd", ETargetType.Application, EProjectType.Editor)
+SculptorEd = Project:CreateProject("SculptorEd", ETargetType.Application)
 
 function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("SculptorLib")
