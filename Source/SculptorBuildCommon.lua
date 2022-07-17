@@ -1,4 +1,4 @@
--- Utility functions ==================================================================================
+-- Utility functions ======================================================================================
 
 function AppendTable(t1, t2)
     for k, v in pairs(t2)
@@ -7,7 +7,7 @@ function AppendTable(t1, t2)
     end
 end
 
--- Project Generation =================================================================================
+-- Project Generation =====================================================================================
 
 EConfiguration =
 {
@@ -48,7 +48,7 @@ Project =
 
 OutputDirectory = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 
-projectToIncludePaths = {}
+projectToPublicIncludePaths = {}
 
 projectToPublicDependencies = {}
 
@@ -77,19 +77,22 @@ function Project:CreateProject(name, targetType, language)
             [EConfiguration.Debug] = {
                 publicDependencies = {},
                 privateDependencies = {},
-                publicDefines = {}
+                publicDefines = {},
+                publicIncludePaths = {}
             },
             [EConfiguration.Development] = 
             {
                 publicDependencies = {},
                 privateDependencies = {},
-                publicDefines = {}
+                publicDefines = {},
+                publicIncludePaths = {}
             },
             [EConfiguration.Release] = 
             {
                 publicDependencies = {},
                 privateDependencies = {},
-                publicDefines = {}
+                publicDefines = {},
+                publicIncludePaths = {}
             }
         }
     }
@@ -112,23 +115,13 @@ function Project:SetupProject()
 	targetdir ("../../../Binaries/" .. OutputDirectory)
 	objdir ("../../../Intermediate/" .. OutputDirectory)
 
-    projectToIncludePaths[self.name] = self:GetIncludePathsToThisProject()
-
-    if self.projectType == EProjectType.ThirdParty then
-        includedirs (self.name .. "/" .. self:GetIncludesRelativeLocation())
-        includedirs (self.name)
-    else
-        includedirs ("" .. self:GetIncludesRelativeLocation())
-    end
-
-    includedirs (self:GetPrivateIncludePaths())
-
 	libdirs ("../../../Binaries/" .. OutputDirectory)
 
     libdirs (self:GetAdditionalLibPaths())
 
     projectToPublicDependencies[self.name] = {}
     projectToPublicDefines[self.name] = {}
+    projectToPublicIncludePaths[self.name] = {}
 
     filter "configurations:Debug"
     self:BuildConfiguration(EConfiguration.Debug, EPlatform.Windows)
@@ -142,26 +135,6 @@ function Project:SetupProject()
 end
 
 function Project:SetupConfiguration(configuration, platform)
-    
-end
-
-function Project:GetIncludePathsToThisProject()
-    return { self.referenceProjectLocation .. self:GetIncludesRelativeLocation() }
-end
-
-function Project:GetPrivateIncludePaths()
-    return {}
-end
-
-function Project:GetIncludesRelativeLocation()
-    return  ""
-end
-
-function Project:AddPublicIncludePath(paths)
-
-end
-
-function Project:AddPrivateIncludePath(path)
     
 end
 
@@ -181,7 +154,11 @@ end
 
 function Project:BuildConfiguration(configuration, platform)
     self.currentConfiguration = configuration
+    
+    -- setup function
     self:SetupConfiguration(configuration, platform)
+    
+    -- dependencies
     projectToPublicDependencies[self.name][configuration] = self:GetPublicDependencies(configuration)
 
     for dependency, _ in pairs(projectToPublicDependencies[self.name][configuration])
@@ -194,6 +171,7 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDependencyInternal(dependency)
     end
 
+    -- defines
     self:AddCommonDefines(configuration, platform)
 
     projectToPublicDefines[self.name][configuration] = self:GetThisProjectPublicDefines(configuration)
@@ -208,8 +186,28 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDefineInternal(define)
     end
 
+    -- include paths
+    self:AddPublicReferenceIncludePath(self.referenceProjectLocation)
+    self:AddPrivateRelativeIncludePath("")
+
+    local publicDependenciesPublicIncludePaths = self:GetPublicInlcudePathsOfPublicDependencies(configuration)
+    for includePath, _ in pairs(publicDependenciesPublicIncludePaths)
+    do
+        self:AddIncludePathInternal(includePath)
+    end
+
+    projectToPublicIncludePaths[self.name][configuration] = self:GetThisProjectPublicIncludePaths(configuration)
+
+    local privateDependenciesPublicIncludePath = self:GetPublicIncludePathsOfPrivateDependencies(configuration)
+    for includePath, _ in pairs(privateDependenciesPublicIncludePath)
+    do
+        self:AddIncludePathInternal(includePath)
+    end
+
+    -- files
 	files (self:GetProjectFiles(configuration, platform))
 
+    -- warnings
     if self:AreWarningsDisabled(configuration) then
         disablewarnings { "warning" }
     end
@@ -224,10 +222,6 @@ function Project:AddPrivateDefine(define)
     self:AddDefineInternal(define)
 end
 
-function Project:AddDefineInternal(define)
-    defines { define }
-end
-
 function Project:AddPublicDependency(dependency)
     self.configurations[self.currentConfiguration].publicDependencies[dependency] = true
 end
@@ -235,6 +229,37 @@ end
 function Project:AddPrivateDependency(dependency)
     self.configurations[self.currentConfiguration].privateDependencies[dependency] = true
     self:AddDependencyInternal(dependency)
+end
+
+function Project:AddPublicRelativeIncludePath(path)
+    self.configurations[self.currentConfiguration].publicIncludePaths[self.referenceProjectLocation .. path] = true
+    self:AddPrivateRelativeIncludePath(path)
+end
+
+function Project:AddPublicAbsoluteIncludePath(path)
+    self.configurations[self.currentConfiguration].publicIncludePaths[path] = true
+    self:AddPrivateAbsoluteIncludePath(path)
+end
+
+-- adds this path only to referencing projects
+function Project:AddPublicReferenceIncludePath(path)
+    self.configurations[self.currentConfiguration].publicIncludePaths[path] = true
+end
+
+function Project:AddPrivateRelativeIncludePath(path)
+    if self.projectType == EProjectType.ThirdParty then
+        self:AddIncludePathInternal(self.name .. "/" .. path)
+    else
+        self:AddIncludePathInternal(path)
+    end
+end
+
+function Project:AddPrivateAbsoluteIncludePath(path)
+    self:AddIncludePathInternal(path)
+end
+
+function Project:GetProjectReferencePath()
+    return self.referenceProjectLocation
 end
 
 function Project:DisableWarnings()
@@ -246,9 +271,16 @@ function Project:AreWarningsDisabled(configuration)
     return disable and disable == true
 end
 
+function Project:AddDefineInternal(define)
+    defines { define }
+end
+
 function Project:AddDependencyInternal(dependency)
     links { dependency }
-    includedirs (projectToIncludePaths[dependency])
+end
+
+function Project:AddIncludePathInternal(path)
+    includedirs { path }
 end
 
 function Project:GetPublicDependencies(configuration)
@@ -272,7 +304,7 @@ function Project:GetThisProjectPublicDefines(configuration)
 end
 
 function Project:GetPrivateDependenciesPublicDefines(configuration)
-    local allPublicDefines = self.configurations[configuration].publicDefines
+    local allPublicDefines = {}
     for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
     do
         local projectDefines = projectToPublicDefines[dependency]
@@ -321,6 +353,47 @@ function Project:AddReleaseDefines()
     self:AddDefineInternal("SPT_RELEASE")
 end
 
+function Project:GetThisProjectPublicIncludePaths(configuration)
+    local allPublicIncludePaths = self.configurations[configuration].publicIncludePaths
+    AppendTable(allPublicIncludePaths, self:GetPublicInlcudePathsOfPublicDependencies(configuration))
+    return allPublicIncludePaths
+end
+
+function Project:GetPublicInlcudePathsOfPublicDependencies(configuration)
+    local allPublicIncludePaths = {}
+
+    for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
+    do
+        dependencyIncludePaths = projectToPublicIncludePaths[dependency]
+        if dependencyIncludePaths ~= nil then
+            includePathsForConfiguration = dependencyIncludePaths[configuration]
+            if includePathsForConfiguration ~= nil then
+                AppendTable(allPublicIncludePaths, includePathsForConfiguration)
+            end
+        end
+    end
+
+    return allPublicIncludePaths
+end
+
+function Project:GetPublicIncludePathsOfPrivateDependencies(configuration)
+    local allIncludePaths = {}
+
+    for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
+    do
+        dependencyIncludePaths = projectToPublicIncludePaths[dependency]
+        if dependencyIncludePaths ~= nil then
+            includePathsForConfiguration = dependencyIncludePaths[configuration]
+            if includePathsForConfiguration ~= nil then
+                AppendTable(allIncludePaths, includePathsForConfiguration)
+            end
+        end
+    end
+
+    return allIncludePaths
+end
+
+-- Including projects =====================================================================================
 
 function StartProjectsType(projectsType)
     currentProjectsType = projectsType

@@ -3,10 +3,8 @@ Spdlog = Project:CreateProject("Spdlog", ETargetType.StaticLibrary)
 function Spdlog:SetupConfiguration(configuration, platform)
     self:AddPublicDefine("SPDLOG_COMPILED_LIB")
     self:AddPublicDefine("SPDLOG_NO_EXCEPTIONS")
-end
 
-function Spdlog:GetIncludesRelativeLocation()
-    return "/include"
+    self:AddPublicRelativeIncludePath("/include")
 end
 
 function Spdlog:GetProjectFiles()

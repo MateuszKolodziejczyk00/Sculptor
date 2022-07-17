@@ -1,15 +1,13 @@
 GLFW = Project:CreateProject("GLFW", ETargetType.StaticLibrary, ELanguage.C)
 
-function GLFW:GetIncludesRelativeLocation()
-    return "/include"
-end
-
 function GLFW:SetupConfiguration(configuration, platform)
     if platform == EPlatform.Windows then
         self:AddPrivateDefine("_GLFW_WIN32")
         self:AddPrivateDefine("_CRT_SECURE_NO_WARNINGS")
 
         self:AddPrivateDependency("Dwmapi.lib")
+
+        self:AddPublicRelativeIncludePath("/include")
     end
 end
 
