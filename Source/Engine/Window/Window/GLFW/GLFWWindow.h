@@ -6,10 +6,10 @@
 
 #if USE_GLFW
 
-namespace spt::lib
+namespace spt::window
 {
 
-struct WINDOW_API GLFWWindowData;
+struct GLFWWindowData;
 
 
 class WINDOW_API GLFWWindow
@@ -27,7 +27,7 @@ private:
 
 	void InitializeWindow(std::string_view name, math::Vector2i resolution);
 
-	std::unique_ptr<GLFWWindowData> m_WindowData;
+	std::unique_ptr<GLFWWindowData> m_windowData;
 };
 
 }

@@ -3,10 +3,9 @@
 
 #if USE_GLFW
 
-#include "GLFWWindow.h"
-
-namespace spt::lib
+namespace spt::window
 {
+class GLFWWindow;
 
 using Window = GLFWWindow;
 

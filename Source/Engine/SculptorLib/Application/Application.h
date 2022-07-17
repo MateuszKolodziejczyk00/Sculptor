@@ -20,8 +20,12 @@ public:
 	void Shutdown();
 
 protected:
-	
 
+	virtual void OnInit();
+
+	virtual void OnRun();
+
+	virtual void OnShutdown();
 };
 
 }

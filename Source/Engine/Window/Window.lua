@@ -7,7 +7,7 @@ function Window:SetupConfiguration(configuration, platform)
     if platform == EPlatform.Windows then
         self:AddPrivateDependency("GLFW")
 
-        self:AddPublicDefine("USE_GLFW")
+        self:AddPublicDefine("USE_GLFW=1")
     end
 end
 
