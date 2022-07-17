@@ -1,4 +1,5 @@
 #include "GLFWWindow.h"
+#include "Logging/Log.h"
 
 #if USE_GLFW
 
@@ -7,6 +8,8 @@
 
 namespace spt::window
 {
+
+IMPLEMENT_LOG_CATEGORY(GLFW, true)
 
 struct GLFWWindowData
 {

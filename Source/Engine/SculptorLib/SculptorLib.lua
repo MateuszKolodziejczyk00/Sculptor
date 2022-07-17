@@ -4,6 +4,8 @@ function SculptorLib:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorCore")
     self:AddPublicDependency("Math")
     self:AddPublicDependency("Spdlog")
+
+    self:AddPublicDefine("WITH_LOGGER=1")
 end
 
 SculptorLib:SetupProject()
