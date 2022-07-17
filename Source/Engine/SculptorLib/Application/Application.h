@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SculptorLib.h"
+#include "SculptorLibMacros.h"
 
 
 namespace spt::lib

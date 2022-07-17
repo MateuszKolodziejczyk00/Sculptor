@@ -78,8 +78,8 @@ public:
 
 private:
 
-	std::vector<DelegateInfo> m_Delegates;
-	DelegateIDType m_HandleCounter;
+	std::vector<DelegateInfo> m_delegates;
+	DelegateIDType m_handleCounter;
 };
 
 
@@ -87,8 +87,8 @@ template<typename... Args>
 template<typename ObjectType, typename FuncType>
 DelegateHandle MulticastDelegate<Args...>::AddMember(ObjectType* user, FuncType function)
 {
-	const DelegateHandle handle = m_HandleCounter++;
-	m_Delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindMember(user, function);
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindMember(user, function);
 	return handle;
 }
 
@@ -96,8 +96,8 @@ template<typename... Args>
 template<typename FuncType>
 DelegateHandle MulticastDelegate<Args...>::AddRaw(FuncType* function)
 {
-	const DelegateHandle handle = m_HandleCounter++;
-	m_Delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindRaw(function);
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindRaw(function);
 	return handle;
 }
 
@@ -105,21 +105,21 @@ template<typename... Args>
 template<typename Lambda>
 DelegateHandle MulticastDelegate<Args...>::AddLambda(const Lambda& functor)
 {
-	const DelegateHandle handle = m_HandleCounter++;
-	m_Delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(functor);
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(functor);
 	return handle;
 }
 
 template<typename... Args>
 void MulticastDelegate<Args...>::Unbind(DelegateHandle handle)
 {
-	std::erase(std::remove_if(m_Delegates.begin(), m_Delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
+	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
 }
 
 template<typename... Args>
 void MulticastDelegate<Args...>::Broadcast(const Args&... arguments)
 {
-	for (const MulticastDelegate<Args...>::DelegateInfo& delegateInfo : m_Delegates)
+	for (const MulticastDelegate<Args...>::DelegateInfo& delegateInfo : m_delegates)
 	{
 		delegateInfo.m_Delegate.ExecuteIfBound(arguments...);
 	}

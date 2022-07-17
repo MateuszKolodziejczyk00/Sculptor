@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VulkanRHI.h"
+#include "VulkanRHIMacros.h"
 
 
 namespace spt::vulkan

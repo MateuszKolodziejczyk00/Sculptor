@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Window.h"
+#include "WindowMacros.h"
 #include "SculptorCoreTypes.h"
 
 
