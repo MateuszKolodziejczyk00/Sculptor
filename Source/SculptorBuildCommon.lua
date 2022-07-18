@@ -144,7 +144,8 @@ function Project:GetProjectFiles(configuration, platform)
 		"**.h",
 		"**.cpp",
 		"**.inl",
-        "**.c"
+        "**.c",
+        self.name .. ".lua"
     }
 end
 
