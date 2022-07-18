@@ -1,4 +1,6 @@
 #include "VulkanRHI.h"
+#include "Debug/DebugMessenger.h"
+
 #include "Logging/Log.h"
 
 
@@ -15,15 +17,23 @@ void InitializeVolk()
     volkInitialize();
 }
 
+void VolkLoadInstance(VkInstance instance)
+{
+    volkLoadInstance(instance);
+}
+
 class VulkanInstanceData
 {
 public:
 
     VulkanInstanceData()
         : m_instance(VK_NULL_HANDLE)
+        , m_debugMessenger(VK_NULL_HANDLE)
     { }
 
     VkInstance m_instance;
+    
+    VkDebugUtilsMessengerEXT m_debugMessenger;
 };
 
 VulkanInstanceData g_vulkanInstance;
@@ -58,6 +68,12 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     {
         extensionNames.push_back(initInfo.m_extensions[i]);
     }
+
+#if VULKAN_VALIDATION
+
+    extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+#endif // VULKAN_VALIDATION
     
     instanceInfo.enabledExtensionCount = static_cast<uint32>(extensionNames.size());
     instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
@@ -71,11 +87,28 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     instanceInfo.enabledLayerCount = SPT_ARRAY_SIZE(enabledLayers);
     instanceInfo.ppEnabledLayerNames = enabledLayers;
 
+#if VULKAN_VALIDATION
+
+    const VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
+    instanceInfo.pNext = &debugMessengerInfo;
+
+#endif // VULKAN_VALIDATION
+
     SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_vulkanInstance.m_instance));
+
+    priv::VolkLoadInstance(priv::g_vulkanInstance.m_instance);
+
+    priv::g_vulkanInstance.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
 }
 
 void VulkanRHI::Uninitialize()
 {
+    if (priv::g_vulkanInstance.m_debugMessenger)
+    {
+        DebugMessenger::DestroyDebugMessenger(priv::g_vulkanInstance.m_debugMessenger, priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
+        priv::g_vulkanInstance.m_debugMessenger = VK_NULL_HANDLE;
+    }
+
     if (priv::g_vulkanInstance.m_instance)
     {
         vkDestroyInstance(priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
@@ -83,7 +116,7 @@ void VulkanRHI::Uninitialize()
     }
 }
 
-VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
+const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
 {
     return nullptr;
 }

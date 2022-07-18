@@ -18,7 +18,7 @@ public:
 
 private:
 
-	static VkAllocationCallbacks* GetAllocationCallbacks();
+	static const VkAllocationCallbacks* GetAllocationCallbacks();
 };
 
 }
