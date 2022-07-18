@@ -4,7 +4,7 @@
 /**
  * Implements new log category. This must be added in .cpp file, and this category will be usable only in this .cpp file
  */
-#define IMPLEMENT_LOG_CATEGORY(Category, Enabled)							\
+#define SPT_IMPLEMENT_LOG_CATEGORY(Category, Enabled)							\
 class LogCategory_##Category##												\
 {																			\
 public:																		\
@@ -31,7 +31,7 @@ LogCategory_##Category##* LogCategory_##Category##::s_instance = nullptr;
  * Declares new log category that can be used in multiple source files
  * This category must be also implemented using IMPLEMENT_LOG_CATEGORY in.cpp file
  */
-#define DECLARE_LOG_CATEGORY(Category)			\
+#define SPT_DECLARE_LOG_CATEGORY(Category)			\
 class spdlog::m_logger;									\
 class LogCategory_##Category##							\
 {														\
@@ -47,7 +47,7 @@ public:													\
 /**
  * Defines previously declared log category
  */
-#define DEFINE_LOG_CATEGORY(Category, Enabled)								\
+#define SPT_DEFINE_LOG_CATEGORY(Category, Enabled)								\
 LogCategory_##Category##* LogCategory_##Category##::s_instance = nullptr;	\
 LogCategory_##Category##* LogCategory_##Category##::s_enabled = Enabled;	\
 LogCategory_##Category##& LogCategory_##Category##::Get()					\
@@ -62,26 +62,26 @@ LogCategory_##Category##& LogCategory_##Category##::Get()					\
 }
 
 
-#define GET_LOGGER(Category)			LogCategory_##Category##::Get()
+#define SPT_GET_LOGGER(Category)			LogCategory_##Category##::Get()
 
-#define LOG_IMPL(Category, Type, ...)	if(GET_LOGGER(Category).s_enabled) GET_LOGGER(Category).m_logger->Type(__VA_ARGS__)
+#define SPT_LOG_IMPL(Category, Type, ...)	if(SPT_GET_LOGGER(Category).s_enabled) SPT_GET_LOGGER(Category).m_logger->Type(__VA_ARGS__)
 
-#define LOG_TRACE(Category, ...)		LOG_IMPL(Category, trace, __VA_ARGS__)
-#define LOG_INFO(Category, ...)			LOG_IMPL(Category, info, __VA_ARGS__)
-#define LOG_WARN(Category, ...)			LOG_IMPL(Category, warn, __VA_ARGS__)
-#define LOG_ERROR(Category, ...)		LOG_IMPL(Category, error, __VA_ARGS__)
-#define LOG_FATAL(Category, ...)		LOG_IMPL(Category, fatal, __VA_ARGS__)
+#define SPT_LOG_TRACE(Category, ...)		SPT_LOG_IMPL(Category, trace, __VA_ARGS__)
+#define SPT_LOG_INFO(Category, ...)			SPT_LOG_IMPL(Category, info, __VA_ARGS__)
+#define SPT_LOG_WARN(Category, ...)			SPT_LOG_IMPL(Category, warn, __VA_ARGS__)
+#define SPT_LOG_ERROR(Category, ...)		SPT_LOG_IMPL(Category, error, __VA_ARGS__)
+#define SPT_LOG_FATAL(Category, ...)		SPT_LOG_IMPL(Category, fatal, __VA_ARGS__)
 
 #else // WITH_LOGGER
 
-#define IMPLEMENT_LOG_CATEGORY(Category, Enabled)
-#define DECLARE_LOG_CATEGORY(Category)
-#define DEFINE_LOG_CATEGORY(Category, Enabled)
+#define SPT_IMPLEMENT_LOG_CATEGORY(Category, Enabled)
+#define SPT_DECLARE_LOG_CATEGORY(Category)
+#define SPT_DEFINE_LOG_CATEGORY(Category, Enabled)
 
-#define LOG_TRACE(Category, ...)
-#define LOG_INFO(Category, ...)
-#define LOG_WARN(Category, ...)
-#define LOG_ERROR(Category, ...)
-#define LOG_FATAL(Category, ...)
+#define SPT_LOG_TRACE(Category, ...)
+#define SPT_LOG_INFO(Category, ...)
+#define SPT_LOG_WARN(Category, ...)
+#define SPT_LOG_ERROR(Category, ...)
+#define SPT_LOG_FATAL(Category, ...)
 
 #endif // WITH_LOGGER

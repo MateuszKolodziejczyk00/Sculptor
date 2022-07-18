@@ -1,7 +1,9 @@
 #include "GLFWWindow.h"
-#include "Logging/Log.h"
 
 #if USE_GLFW
+
+#include "Logging/Log.h"
+#include "RHIImpl.h"
 
 #include <GLFW/glfw3.h>
 
@@ -9,7 +11,7 @@
 namespace spt::window
 {
 
-IMPLEMENT_LOG_CATEGORY(GLFW, true)
+SPT_IMPLEMENT_LOG_CATEGORY(GLFW, true)
 
 
 struct GLFWWindowData
@@ -20,23 +22,25 @@ struct GLFWWindowData
 
 	GLFWwindow* m_windowHandle;
 
-	GLFWWindow::OnWindowResized m_onResized;
-	GLFWWindow::OnWindowClosed m_onClosed;
+	GLFWWindow::OnWindowResizedDelegate m_onResized;
+	GLFWWindow::OnWindowClosedDelegate m_onClosed;
 };
 
 
-namespace internal
+namespace priv
 {
 
 static void OnErrorCallback(int errorCode, const char* description)
 {
-	LOG_ERROR(GLFW, description);
+	SPT_LOG_ERROR(GLFW, description);
 }
 
 static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 {
+	SPT_PROFILE_FUNCTION();
+
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
-	CHECK(!!windowData);
+	SPT_CHECK(!!windowData);
 
 	windowData->m_onResized.Broadcast(static_cast<uint32>(newWidth), static_cast<uint32>(newHeight));
 }
@@ -44,7 +48,7 @@ static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 static void OnWindowClosed(GLFWwindow* window)
 {
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
-	CHECK(!!windowData);
+	SPT_CHECK(!!windowData);
 
 	windowData->m_onClosed.Broadcast();
 }
@@ -64,7 +68,20 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 
 }
 
-} // internal
+#if VULKAN_RHI
+
+static void GetRequiredExtensions(rhicore::RHIInitializationInfo& initializationInfo)
+{
+	initializationInfo.m_extensions = glfwGetRequiredInstanceExtensions(&initializationInfo.m_extensionsNum);
+}
+
+#else
+
+#error Only Vulkan is supported
+
+#endif // VULKAN_RHI
+
+} // priv
 
 
 GLFWWindow::GLFWWindow(std::string_view name, math::Vector2i resolution)
@@ -90,38 +107,50 @@ bool GLFWWindow::ShouldClose()
 	return static_cast<bool>(glfwWindowShouldClose(m_windowData->m_windowHandle));
 }
 
-GLFWWindow::OnWindowResized& GLFWWindow::OnResized()
+GLFWWindow::OnWindowResizedDelegate& GLFWWindow::GetOnResizedCallback()
 {
 	return m_windowData->m_onResized;
 }
 
-GLFWWindow::OnWindowClosed& GLFWWindow::OnClosed()
+GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 {
 	return m_windowData->m_onClosed;
 }
 
 void GLFWWindow::InitializeWindow(std::string_view name, math::Vector2i resolution)
 {
-	glfwSetErrorCallback(&internal::OnErrorCallback);
+	glfwSetErrorCallback(&priv::OnErrorCallback);
 
 	if (!glfwInit())
 	{
-		LOG_ERROR(GLFW, "GLFW Initialization failed");
+		SPT_LOG_ERROR(GLFW, "GLFW Initialization failed");
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
 
+	rhicore::RHIInitializationInfo initializationInfo;
+	priv::GetRequiredExtensions(initializationInfo);
+
+	rhi::RHI::Initialize(initializationInfo);
+
 	m_windowData->m_windowHandle = windowHandle;
 
 	glfwSetWindowUserPointer(windowHandle, m_windowData.get());
 
-	glfwSetWindowSizeCallback(windowHandle, &internal::OnWindowResized);
-	glfwSetWindowCloseCallback(windowHandle, &internal::OnWindowClosed);
-	glfwSetKeyCallback(windowHandle, &internal::OnKeyAction);
-	glfwSetCursorPosCallback(windowHandle, &internal::OnMouseMoved);
-	glfwSetMouseButtonCallback(windowHandle, &internal::OnMouseButtonAction);
+	glfwSetWindowSizeCallback(windowHandle, &priv::OnWindowResized);
+	glfwSetWindowCloseCallback(windowHandle, &priv::OnWindowClosed);
+	glfwSetKeyCallback(windowHandle, &priv::OnKeyAction);
+	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
+	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
+
+	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnWindowClosed);
+}
+
+void GLFWWindow::OnWindowClosed()
+{
+	rhi::RHI::Uninitialize();
 }
 
 }

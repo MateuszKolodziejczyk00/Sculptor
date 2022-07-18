@@ -2,7 +2,6 @@
 #include "Window/WindowImpl.h"
 #include "Profiler.h"
 #include "Timer/TickingTimer.h"
-#include "RHIImpl.h"
 
 
 namespace spt::ed
@@ -22,8 +21,6 @@ void SculptorEdApplication::OnInit()
 void SculptorEdApplication::OnRun()
 {
 	Super::OnRun();
-
-	rhi::RHI::Initialize();
 
 	lib::TickingTimer timer;
 

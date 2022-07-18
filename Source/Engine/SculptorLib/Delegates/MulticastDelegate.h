@@ -78,7 +78,7 @@ public:
 
 private:
 
-	std::vector<DelegateInfo> m_delegates;
+	lib::DynamicArray<DelegateInfo> m_delegates;
 	DelegateIDType m_handleCounter;
 };
 

@@ -24,13 +24,15 @@ public:
 
 	bool ShouldClose();
 
-	using OnWindowResized = lib::MulticastDelegate<uint32 /*newWidth*/, uint32 /*newHeight*/>;
-	OnWindowResized& OnResized();
+	using OnWindowResizedDelegate = lib::MulticastDelegate<uint32 /*newWidth*/, uint32 /*newHeight*/>;
+	OnWindowResizedDelegate& GetOnResizedCallback();
 
-	using OnWindowClosed = lib::MulticastDelegate<>;
-	OnWindowClosed& OnClosed();
+	using OnWindowClosedDelegate = lib::MulticastDelegate<>;
+	OnWindowClosedDelegate& GetOnClosedCallback();
 
 private:
+
+	void OnWindowClosed();
 
 	void InitializeWindow(std::string_view name, math::Vector2i resolution);
 

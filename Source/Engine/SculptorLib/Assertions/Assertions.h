@@ -3,12 +3,12 @@
 
 #if DO_CHECKS
 
-#define CHECK(Expression) assert(Expression)
-#define CHECK_NO_ENTRY() CHECK(false)
+#define SPT_CHECK(Expression) assert(Expression)
+#define SPT_CHECK_NO_ENTRY() CHECK(false)
 
 #else
 
-#define CHECK(Expression)
-#define CHECK_NO_ENTRY()
+#define SPT_CHECK(Expression)
+#define SPT_CHECK_NO_ENTRY()
 
 #endif // DO_CHECKS
