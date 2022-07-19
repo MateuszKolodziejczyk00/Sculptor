@@ -1,4 +1,5 @@
 #include "VulkanRHI.h"
+#include "Device/PhysicalDevice.h"
 #include "Debug/DebugMessenger.h"
 
 #include "Logging/Log.h"
@@ -21,6 +22,7 @@ public:
     VulkanInstanceData()
         : m_instance(VK_NULL_HANDLE)
         , m_physicalDevice(VK_NULL_HANDLE)
+        , m_device(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_debugMessenger(VK_NULL_HANDLE)
     { }
@@ -28,6 +30,7 @@ public:
     VkInstance m_instance;
 
     VkPhysicalDevice m_physicalDevice;
+    VkDevice m_device;
 
     VkSurfaceKHR m_surface;
     
@@ -46,101 +49,6 @@ void InitializeVolk()
 void VolkLoadInstance(VkInstance instance)
 {
     volkLoadInstance(instance);
-}
-
-// Utils =========================================================================================
-
-lib::DynamicArray<const char*> GetRequiredDeviceExtensions()
-{
-    return lib::DynamicArray<const char*>{
-#if VULKAN_VALIDATION
-        VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
-#endif // VULKAN_VALIDATION
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
-    };
-}
-
-// Physical Device ===============================================================================
-
-Bool IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFlags requiredQueues, VkSurfaceKHR surface)
-{
-   	Uint32 queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-	lib::DynamicArray<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    VkQueueFlags remainingRequiredQueues = requiredQueues;
-
-    // if surface is null, set it to true, otherwise find queue that supports presenting on this surface
-    Bool hasValidSurfaceSupport = surface == VK_NULL_HANDLE;
-
-    for (SizeType idx = 0; idx < queueFamilies.size(); ++idx)
-    {
-        const VkQueueFamilyProperties& familyProps = queueFamilies[idx];
-
-        if (!hasValidSurfaceSupport)
-        {
-            VkBool32 supportsPresentation = VK_FALSE;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, static_cast<Uint32>(idx), surface, &supportsPresentation);
-            hasValidSurfaceSupport |= static_cast<Bool>(supportsPresentation);
-        }
-
-        remainingRequiredQueues &= ~familyProps.queueFlags;
-    }
-
-    return remainingRequiredQueues == 0 && hasValidSurfaceSupport;
-}
-
-Bool IsDeviceSupportingExtensions(VkPhysicalDevice device, const lib::DynamicArray<const char*>& extensions)
-{
-   	Uint32 supportedExtensionsCount = 0;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &supportedExtensionsCount, nullptr);
-	lib::DynamicArray<VkExtensionProperties> supportedExtensions(supportedExtensionsCount);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &supportedExtensionsCount, supportedExtensions.data());
-
-   	const auto isExtensionSupported = [&supportedExtensions](const char* extension)
-	{
-		return std::find_if(supportedExtensions.cbegin(), supportedExtensions.cend(),
-			[extension](const VkExtensionProperties& SupportedExtension)
-            {
-                return std::strcmp(extension, SupportedExtension.extensionName);
-            }) != supportedExtensions.cend();
-	};
-
-    return std::all_of(extensions.cbegin(), extensions.cend(), isExtensionSupported);
-}
-
-Bool IsDeviceSuitable(VkPhysicalDevice device)
-{
-    VkPhysicalDeviceProperties2 deviceProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    vkGetPhysicalDeviceProperties2(device, &deviceProps);
-
-    VkPhysicalDeviceFeatures2 deviceFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
-    vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
-
-    return deviceProps.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-        && deviceFeatures.features.geometryShader
-        && deviceFeatures.features.samplerAnisotropy
-        && deviceFeatures.features.fillModeNonSolid
-        && IsDeviceSupportingQueues(device, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, g_vulkanInstance.m_surface)
-        && IsDeviceSupportingExtensions(device, GetRequiredDeviceExtensions());
-}
-
-VkPhysicalDevice PickPhysicalDevice(VkInstance instance)
-{
-    Uint32 devicesNum = 0;
-    vkEnumeratePhysicalDevices(instance, &devicesNum, nullptr);
-    SPT_CHECK(devicesNum > 0);
-
-    lib::DynamicArray<VkPhysicalDevice> devices(static_cast<SizeType>(devicesNum));
-    vkEnumeratePhysicalDevices(instance, &devicesNum, devices.data());
-
-    const auto selecedDevice = std::find_if(devices.cbegin(), devices.cend(), [](VkPhysicalDevice device) { return IsDeviceSuitable(device); });
-    SPT_CHECK(selecedDevice != devices.cend());
-
-    return *selecedDevice;
 }
 
 } // priv
@@ -213,17 +121,15 @@ void VulkanRHI::SelectAndInitializeGPU()
     SPT_CHECK(!!priv::g_vulkanInstance.m_instance);
     SPT_CHECK(!!priv::g_vulkanInstance.m_surface);
 
-    priv::g_vulkanInstance.m_physicalDevice = priv::PickPhysicalDevice(priv::g_vulkanInstance.m_instance);
+    priv::g_vulkanInstance.m_physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_vulkanInstance.m_instance, priv::g_vulkanInstance.m_surface);
 
     if (SPT_IS_LOG_CATEGORY_ENABLED(VulkanRHI))
     {
-        VkPhysicalDeviceProperties deviceProps{};
-        vkGetPhysicalDeviceProperties(priv::g_vulkanInstance.m_physicalDevice, &deviceProps);
-        SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.deviceName);
+        const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_vulkanInstance.m_physicalDevice);
+        SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
     }
 
 }
-
 
 void VulkanRHI::Uninitialize()
 {
@@ -237,6 +143,12 @@ void VulkanRHI::Uninitialize()
     {
         vkDestroySurfaceKHR(priv::g_vulkanInstance.m_instance, priv::g_vulkanInstance.m_surface, GetAllocationCallbacks());
         priv::g_vulkanInstance.m_surface = VK_NULL_HANDLE;
+    }
+
+    if (priv::g_vulkanInstance.m_device)
+    {
+        vkDestroyDevice(priv::g_vulkanInstance.m_device, GetAllocationCallbacks());
+        priv::g_vulkanInstance.m_device = VK_NULL_HANDLE;
     }
 
     if (priv::g_vulkanInstance.m_instance)
