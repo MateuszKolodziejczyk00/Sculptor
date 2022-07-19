@@ -21,7 +21,7 @@ public:																		\
 	std::shared_ptr<spdlog::logger> m_logger;								\
 	static LogCategory_##Category##* s_instance;							\
 																			\
-	static const bool s_enabled = Enabled;											\
+	static const Bool s_enabled = Enabled;											\
 };																			\
 LogCategory_##Category##* LogCategory_##Category##::s_instance = nullptr;
 
@@ -40,7 +40,7 @@ public:													\
 	std::shared_ptr<spdlog::logger> m_logger;			\
 	static LogCategory_##Category##* s_instance;		\
 														\
-	static const bool s_enabled;						\
+	static const Bool s_enabled;						\
 };
 
 
@@ -64,7 +64,9 @@ LogCategory_##Category##& LogCategory_##Category##::Get()					\
 
 #define SPT_GET_LOGGER(Category)			LogCategory_##Category##::Get()
 
-#define SPT_LOG_IMPL(Category, Type, ...)	if(SPT_GET_LOGGER(Category).s_enabled) SPT_GET_LOGGER(Category).m_logger->Type(__VA_ARGS__)
+#define SPT_IS_LOG_CATEGORY_ENABLED(Category) (SPT_GET_LOGGER(Category).s_enabled)
+
+#define SPT_LOG_IMPL(Category, Type, ...)	if(SPT_IS_LOG_CATEGORY_ENABLED(Category)) SPT_GET_LOGGER(Category).m_logger->Type(__VA_ARGS__)
 
 #define SPT_LOG_TRACE(Category, ...)		SPT_LOG_IMPL(Category, trace, __VA_ARGS__)
 #define SPT_LOG_INFO(Category, ...)			SPT_LOG_IMPL(Category, info, __VA_ARGS__)
@@ -77,6 +79,8 @@ LogCategory_##Category##& LogCategory_##Category##::Get()					\
 #define SPT_IMPLEMENT_LOG_CATEGORY(Category, Enabled)
 #define SPT_DECLARE_LOG_CATEGORY(Category)
 #define SPT_DEFINE_LOG_CATEGORY(Category, Enabled)
+
+#define SPT_IS_LOG_CATEGORY_ENABLED(Category) false
 
 #define SPT_LOG_TRACE(Category, ...)
 #define SPT_LOG_INFO(Category, ...)

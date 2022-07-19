@@ -9,7 +9,7 @@
 namespace spt::lib
 {
 
-using DelegateIDType = int32;
+using DelegateIDType = Int32;
 
 
 struct DelegateHandle
@@ -20,16 +20,16 @@ public:
 		: m_Id(-1)
 	{ }
 
-	DelegateHandle(int32 id)
+	DelegateHandle(Int32 id)
 		: m_Id(id)
 	{ }
 
-	bool IsValid() const
+	Bool IsValid() const
 	{
 		return m_Id != -1;
 	}
 
-	bool operator==(const DelegateHandle& rhs) const
+	Bool operator==(const DelegateHandle& rhs) const
 	{
 		return m_Id == rhs.m_Id;
 	}

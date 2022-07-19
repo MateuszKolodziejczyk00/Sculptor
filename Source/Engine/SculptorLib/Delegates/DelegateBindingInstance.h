@@ -11,7 +11,7 @@ public:
 
 	virtual ~DelegateBindingInterface() = default;
 
-	virtual bool IsValid() const = 0;
+	virtual Bool IsValid() const = 0;
 
 	virtual void Execute(const Args&... arguments) const = 0;
 };
@@ -27,7 +27,7 @@ public:
 	{
 	}
 
-	virtual bool IsValid() const override
+	virtual Bool IsValid() const override
 	{
 		return m_function != nullptr;
 	}
@@ -54,7 +54,7 @@ public:
 	{
 	}
 
-	virtual bool IsValid() const override
+	virtual Bool IsValid() const override
 	{
 		return m_user != nullptr && m_function != nullptr;
 	}
@@ -81,7 +81,7 @@ public:
 	{
 	}
 
-	virtual bool IsValid() const override
+	virtual Bool IsValid() const override
 	{
 		return true;
 	}

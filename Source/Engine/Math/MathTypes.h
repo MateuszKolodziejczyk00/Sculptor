@@ -1,12 +1,17 @@
 #pragma once
 
-using int32 = int32_t;
-using uint32 = uint32_t;
+using Int32 = int32_t;
+using Uint32 = uint32_t;
 
-using int8 = int8_t;
-using uint8 = uint8_t;
+using Int8 = int8_t;
+using Uint8 = uint8_t;
 
-using int64 = int64_t;
-using uint64 = uint64_t;
+using Int64 = int64_t;
+using Uint64 = uint64_t;
 
-using Real = float;
+using SizeType = size_t;
+
+using Bool = bool;
+
+using Real32 = float;
+using Real64 = double;

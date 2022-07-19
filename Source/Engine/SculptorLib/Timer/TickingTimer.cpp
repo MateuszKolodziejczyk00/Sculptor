@@ -9,10 +9,10 @@ TickingTimer::TickingTimer()
 	m_lastTimestamp = GenerateNewTimestamp();
 }
 
-float TickingTimer::Tick()
+Real32 TickingTimer::Tick()
 {
 	const std::chrono::steady_clock::time_point newTimestamp = GenerateNewTimestamp();
-	const float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(m_lastTimestamp - newTimestamp).count();
+	const Real32 deltaTime = std::chrono::duration<Real32, std::chrono::seconds::period>(m_lastTimestamp - newTimestamp).count();
 	m_lastTimestamp = newTimestamp;
 
 	return deltaTime;

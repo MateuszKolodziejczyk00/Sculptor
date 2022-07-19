@@ -13,7 +13,7 @@ struct RHIInitializationInfo
 	{ }
 
 	const char* const* m_extensions;
-	uint32 m_extensionsNum;
+	Uint32 m_extensionsNum;
 };
 
 }

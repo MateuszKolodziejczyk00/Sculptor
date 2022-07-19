@@ -42,7 +42,7 @@ static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
 
-	windowData->m_onResized.Broadcast(static_cast<uint32>(newWidth), static_cast<uint32>(newHeight));
+	windowData->m_onResized.Broadcast(static_cast<Uint32>(newWidth), static_cast<Uint32>(newHeight));
 }
 
 static void OnWindowClosed(GLFWwindow* window)
@@ -75,11 +75,32 @@ static void GetRequiredExtensions(rhicore::RHIInitializationInfo& initialization
 	initializationInfo.m_extensions = glfwGetRequiredInstanceExtensions(&initializationInfo.m_extensionsNum);
 }
 
+static void PostInitializeRHIInstance(GLFWwindow* windowHandle)
+{
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
+	glfwCreateWindowSurface(rhi::RHI::GetVulkanInstance(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
+	SPT_CHECK(!!surface);
+
+	rhi::RHI::SetVulkanSurface(surface);
+}
+
 #else
 
 #error Only Vulkan is supported
 
 #endif // VULKAN_RHI
+
+static void InitializeRHI(GLFWwindow* windowHandle)
+{
+	rhicore::RHIInitializationInfo initializationInfo;
+	priv::GetRequiredExtensions(initializationInfo);
+
+	rhi::RHI::Initialize(initializationInfo);
+	
+	PostInitializeRHIInstance(windowHandle);
+
+	rhi::RHI::SelectAndInitializeGPU();
+}
 
 } // priv
 
@@ -97,14 +118,14 @@ GLFWWindow::~GLFWWindow()
 	glfwTerminate();
 }
 
-void GLFWWindow::Update(float deltaTime)
+void GLFWWindow::Update(Real32 deltaTime)
 {
 	glfwPollEvents();
 }
 
-bool GLFWWindow::ShouldClose()
+Bool GLFWWindow::ShouldClose()
 {
-	return static_cast<bool>(glfwWindowShouldClose(m_windowData->m_windowHandle));
+	return static_cast<Bool>(glfwWindowShouldClose(m_windowData->m_windowHandle));
 }
 
 GLFWWindow::OnWindowResizedDelegate& GLFWWindow::GetOnResizedCallback()
@@ -130,10 +151,7 @@ void GLFWWindow::InitializeWindow(std::string_view name, math::Vector2i resoluti
 
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
 
-	rhicore::RHIInitializationInfo initializationInfo;
-	priv::GetRequiredExtensions(initializationInfo);
-
-	rhi::RHI::Initialize(initializationInfo);
+	priv::InitializeRHI(windowHandle);
 
 	m_windowData->m_windowHandle = windowHandle;
 

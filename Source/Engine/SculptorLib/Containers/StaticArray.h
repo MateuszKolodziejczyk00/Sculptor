@@ -6,7 +6,7 @@
 namespace spt::lib
 {
 
-template <class Type, size_t Size>
+template <class Type, SizeType Size>
 class StaticArray : public std::array<Type, Size>
 {
 protected:

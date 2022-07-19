@@ -20,11 +20,11 @@ public:
 	GLFWWindow(std::string_view name, math::Vector2i resolution);
 	~GLFWWindow();
 
-	void Update(float deltaTime);
+	void Update(Real32 deltaTime);
 
-	bool ShouldClose();
+	Bool ShouldClose();
 
-	using OnWindowResizedDelegate = lib::MulticastDelegate<uint32 /*newWidth*/, uint32 /*newHeight*/>;
+	using OnWindowResizedDelegate = lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
 	OnWindowResizedDelegate& GetOnResizedCallback();
 
 	using OnWindowClosedDelegate = lib::MulticastDelegate<>;

@@ -38,7 +38,7 @@ public:
 	void Unbind();
 
 	/** returns true, if currently any object is bound, and it's valid */
-	bool IsBound() const;
+	Bool IsBound() const;
 
 	/** Invokes currently bound function if it's valid */
 	void ExecuteIfBound(const Args&... arguments) const;
@@ -85,7 +85,7 @@ void Delegate<Args...>::Unbind()
 }
 
 template<typename... Args>
-bool Delegate<Args...>::IsBound() const
+Bool Delegate<Args...>::IsBound() const
 {
 	return m_binding.get() && m_binding->IsValid();
 }

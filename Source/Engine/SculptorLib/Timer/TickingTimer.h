@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorLibMacros.h"
+#include "SculptorCoreTypes.h"
 #include <chrono>
 
 
@@ -13,7 +14,7 @@ public:
 
 	TickingTimer();
 
-	float Tick();
+	Real32 Tick();
 
 private:
 
