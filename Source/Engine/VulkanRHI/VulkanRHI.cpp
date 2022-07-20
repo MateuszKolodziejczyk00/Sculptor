@@ -115,7 +115,7 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
 
 #if VULKAN_VALIDATION_STRICT
 
-    SPT_CHECK(VULKAN_VALIDATION);
+    static_assert(VULKAN_VALIDATION);
 
     lib::DynamicArray<VkValidationFeatureEnableEXT> enabledValidationFeatures;
 
@@ -129,7 +129,7 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
 #endif // VULKAN_VALIDATION_STRICT_BEST_PRACTICES
 
 #if VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
-    SPT_CHECK(!VULKAN_VALIDATION_STRICT_GPU_ASSISTED);
+    static_assert(!VULKAN_VALIDATION_STRICT_GPU_ASSISTED);
     enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
 #endif // VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
 

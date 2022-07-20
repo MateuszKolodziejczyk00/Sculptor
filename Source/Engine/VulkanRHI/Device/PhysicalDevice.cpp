@@ -7,11 +7,11 @@ namespace spt::vulkan
 VkPhysicalDevice PhysicalDevice::SelectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
 {
     Uint32 devicesNum = 0;
-    vkEnumeratePhysicalDevices(instance, &devicesNum, nullptr);
+    SPT_VK_CHECK(vkEnumeratePhysicalDevices(instance, &devicesNum, nullptr));
     SPT_CHECK(devicesNum > 0);
 
     lib::DynamicArray<VkPhysicalDevice> devices(static_cast<SizeType>(devicesNum));
-    vkEnumeratePhysicalDevices(instance, &devicesNum, devices.data());
+    SPT_VK_CHECK(vkEnumeratePhysicalDevices(instance, &devicesNum, devices.data()));
 
     const auto selecedDevice = std::find_if(devices.cbegin(), devices.cend(), [surface](VkPhysicalDevice device) { return IsDeviceSuitable(device, surface); });
     SPT_CHECK(selecedDevice != devices.cend());
@@ -21,6 +21,8 @@ VkPhysicalDevice PhysicalDevice::SelectPhysicalDevice(VkInstance instance, VkSur
 
 VkPhysicalDeviceProperties2 PhysicalDevice::GetDeviceProperties(VkPhysicalDevice device)
 {
+    SPT_PROFILE_FUNCTION();
+
     VkPhysicalDeviceProperties2 deviceProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
     vkGetPhysicalDeviceProperties2(device, &deviceProps);
     return deviceProps;
@@ -28,6 +30,8 @@ VkPhysicalDeviceProperties2 PhysicalDevice::GetDeviceProperties(VkPhysicalDevice
 
 VkPhysicalDeviceFeatures2 PhysicalDevice::GetDeviceFeatures(VkPhysicalDevice device)
 {
+    SPT_PROFILE_FUNCTION();
+
     VkPhysicalDeviceFeatures2 deviceFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
     vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
     return deviceFeatures;
@@ -69,9 +73,9 @@ Bool PhysicalDevice::IsDeviceSupportingExtensions(VkPhysicalDevice device, const
 Bool PhysicalDevice::IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFlags requiredQueues, VkSurfaceKHR surface)
 {
    	Uint32 queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-	lib::DynamicArray<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, nullptr);
+    lib::DynamicArray<VkQueueFamilyProperties2> queueFamilies(queueFamilyCount, VkQueueFamilyProperties2{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, queueFamilies.data());
 
     VkQueueFlags remainingRequiredQueues = requiredQueues;
 
@@ -80,7 +84,7 @@ Bool PhysicalDevice::IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFl
 
     for (SizeType idx = 0; idx < queueFamilies.size(); ++idx)
     {
-        const VkQueueFamilyProperties& familyProps = queueFamilies[idx];
+        const VkQueueFamilyProperties2& familyProps = queueFamilies[idx];
 
         if (!hasValidSurfaceSupport)
         {
@@ -89,7 +93,7 @@ Bool PhysicalDevice::IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFl
             hasValidSurfaceSupport |= static_cast<Bool>(supportsPresentation);
         }
 
-        remainingRequiredQueues &= ~familyProps.queueFlags;
+        remainingRequiredQueues &= ~familyProps.queueFamilyProperties.queueFlags;
     }
 
     return remainingRequiredQueues == 0 && hasValidSurfaceSupport;
