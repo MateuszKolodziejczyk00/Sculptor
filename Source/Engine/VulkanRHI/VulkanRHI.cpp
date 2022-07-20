@@ -1,6 +1,7 @@
 #include "VulkanRHI.h"
 #include "Device/PhysicalDevice.h"
 #include "Debug/DebugMessenger.h"
+#include "VulkanUtils.h"
 
 #include "Logging/Log.h"
 
@@ -93,7 +94,8 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     instanceInfo.enabledExtensionCount = static_cast<Uint32>(extensionNames.size());
     instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
 
-    const char* enabledLayers[] = {
+    const char* enabledLayers[] =
+    {
 #if VULKAN_VALIDATION
         VULKAN_VALIDATION_LAYER_NAME
 #endif // VULKAN_VALIDATION
@@ -102,12 +104,46 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     instanceInfo.enabledLayerCount = SPT_ARRAY_SIZE(enabledLayers);
     instanceInfo.ppEnabledLayerNames = enabledLayers;
 
+    VulkanStructsLinkedList instanceInfoLinkedList(instanceInfo);
+
 #if VULKAN_VALIDATION
 
-    const VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
-    instanceInfo.pNext = &debugMessengerInfo;
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
+    instanceInfoLinkedList.Append(debugMessengerInfo);
 
 #endif // VULKAN_VALIDATION
+
+#if VULKAN_VALIDATION_STRICT
+
+    SPT_CHECK(VULKAN_VALIDATION);
+
+    lib::DynamicArray<VkValidationFeatureEnableEXT> enabledValidationFeatures;
+
+#if VULKAN_VALIDATION_STRICT_GPU_ASSISTED
+    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
+#endif // VULKAN_VALIDATION_STRICT_GPU_ASSISTED
+
+#if VULKAN_VALIDATION_STRICT_BEST_PRACTICES
+    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+#endif // VULKAN_VALIDATION_STRICT_BEST_PRACTICES
+
+#if VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
+    SPT_CHECK(!VULKAN_VALIDATION_STRICT_GPU_ASSISTED);
+    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
+#endif // VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
+
+#if VULKAN_VALIDATION_STRICT_SYNCHRONIZATION
+    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+#endif // VULKAN_VALIDATION_STRICT_SYNCHRONIZATION
+
+    VkValidationFeaturesEXT validationFeatures{ VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT };
+    validationFeatures.enabledValidationFeatureCount = static_cast<Uint32>(enabledValidationFeatures.size());
+    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
+
+    instanceInfoLinkedList.Append(validationFeatures);
+
+#endif // VULKAN_VALIDATION_STRICT
 
     SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_vulkanInstance.m_instance));
 
@@ -128,7 +164,6 @@ void VulkanRHI::SelectAndInitializeGPU()
         const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_vulkanInstance.m_physicalDevice);
         SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
     }
-
 }
 
 void VulkanRHI::Uninitialize()
