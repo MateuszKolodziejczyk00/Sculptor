@@ -12,3 +12,7 @@
 #include "Containers/DynamicArray.h"
 #include "Containers/StaticArray.h"
 #include "Containers/HashMap.h"
+
+// Utility
+#include "Utility/String.h"
+#include "Utility/HashedString.h"
