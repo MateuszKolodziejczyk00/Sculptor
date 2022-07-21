@@ -1,5 +1,8 @@
 #pragma once
 
+namespace spt
+{
+
 using Int32 = int32_t;
 using Uint32 = uint32_t;
 
@@ -15,3 +18,8 @@ using Bool = bool;
 
 using Real32 = float;
 using Real64 = double;
+
+template<typename TType>
+static constexpr TType idxNone = static_cast<TType>(-1);
+
+}

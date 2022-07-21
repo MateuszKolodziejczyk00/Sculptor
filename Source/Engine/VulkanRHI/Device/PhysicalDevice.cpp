@@ -37,6 +37,18 @@ VkPhysicalDeviceFeatures2 PhysicalDevice::GetDeviceFeatures(VkPhysicalDevice dev
     return deviceFeatures;
 }
 
+spt::lib::DynamicArray<VkQueueFamilyProperties2> PhysicalDevice::GetDeviceQueueFamilies(VkPhysicalDevice device)
+{
+    SPT_PROFILE_FUNCTION();
+
+   	Uint32 queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, nullptr);
+    lib::DynamicArray<VkQueueFamilyProperties2> queueFamilies(queueFamilyCount, VkQueueFamilyProperties2{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, queueFamilies.data());
+
+    return queueFamilies;
+}
+
 Bool PhysicalDevice::IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     const VkPhysicalDeviceProperties2 deviceProps = GetDeviceProperties(device);
@@ -55,7 +67,7 @@ Bool PhysicalDevice::IsDeviceSupportingExtensions(VkPhysicalDevice device, const
 {
    	Uint32 supportedExtensionsCount = 0;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &supportedExtensionsCount, nullptr);
-	lib::DynamicArray<VkExtensionProperties> supportedExtensions(supportedExtensionsCount);
+    lib::DynamicArray<VkExtensionProperties> supportedExtensions = lib::DynamicArray<VkExtensionProperties>(supportedExtensionsCount);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &supportedExtensionsCount, supportedExtensions.data());
 
    	const auto isExtensionSupported = [&supportedExtensions](const char* extension)
@@ -72,10 +84,7 @@ Bool PhysicalDevice::IsDeviceSupportingExtensions(VkPhysicalDevice device, const
 
 Bool PhysicalDevice::IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFlags requiredQueues, VkSurfaceKHR surface)
 {
-   	Uint32 queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, nullptr);
-    lib::DynamicArray<VkQueueFamilyProperties2> queueFamilies(queueFamilyCount, VkQueueFamilyProperties2{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
-	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, queueFamilies.data());
+    const lib::DynamicArray<VkQueueFamilyProperties2> queueFamilies = GetDeviceQueueFamilies(device);
 
     VkQueueFlags remainingRequiredQueues = requiredQueues;
 

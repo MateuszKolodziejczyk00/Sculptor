@@ -4,5 +4,7 @@
 
 namespace spt::math
 {
+
 using namespace Eigen;
+
 }

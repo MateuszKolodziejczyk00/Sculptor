@@ -4,6 +4,7 @@
 #include "VulkanUtils.h"
 
 #include "Logging/Log.h"
+#include "Device/LogicalDevice.h"
 
 
 namespace spt::vulkan
@@ -23,7 +24,6 @@ public:
     VulkanInstanceData()
         : m_instance(VK_NULL_HANDLE)
         , m_physicalDevice(VK_NULL_HANDLE)
-        , m_device(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_debugMessenger(VK_NULL_HANDLE)
     { }
@@ -31,7 +31,7 @@ public:
     VkInstance m_instance;
 
     VkPhysicalDevice m_physicalDevice;
-    VkDevice m_device;
+    LogicalDevice m_device;
 
     VkSurfaceKHR m_surface;
     
@@ -88,6 +88,7 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
 #if VULKAN_VALIDATION
 
     extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    extensionNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
 #endif // VULKAN_VALIDATION
     
@@ -164,6 +165,8 @@ void VulkanRHI::SelectAndInitializeGPU()
         const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_vulkanInstance.m_physicalDevice);
         SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
     }
+
+    priv::g_vulkanInstance.m_device.CreateDevice(priv::g_vulkanInstance.m_physicalDevice, GetAllocationCallbacks());
 }
 
 void VulkanRHI::Uninitialize()
@@ -180,10 +183,14 @@ void VulkanRHI::Uninitialize()
         priv::g_vulkanInstance.m_surface = VK_NULL_HANDLE;
     }
 
-    if (priv::g_vulkanInstance.m_device)
+    if (priv::g_vulkanInstance.m_device.IsValid())
     {
-        vkDestroyDevice(priv::g_vulkanInstance.m_device, GetAllocationCallbacks());
-        priv::g_vulkanInstance.m_device = VK_NULL_HANDLE;
+        priv::g_vulkanInstance.m_device.Destroy(GetAllocationCallbacks());
+    }
+
+    if (priv::g_vulkanInstance.m_device.IsValid())
+    {
+        priv::g_vulkanInstance.m_device.Destroy(GetAllocationCallbacks());
     }
 
     if (priv::g_vulkanInstance.m_instance)

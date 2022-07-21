@@ -17,6 +17,8 @@ public:
 
 	static VkPhysicalDeviceFeatures2 GetDeviceFeatures(VkPhysicalDevice device);
 
+	static lib::DynamicArray<VkQueueFamilyProperties2> GetDeviceQueueFamilies(VkPhysicalDevice device);
+
 private:
 
 	static Bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
