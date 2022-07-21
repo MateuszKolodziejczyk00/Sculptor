@@ -38,7 +38,7 @@ public:
     VkDebugUtilsMessengerEXT m_debugMessenger;
 };
 
-VulkanInstanceData g_vulkanInstance;
+VulkanInstanceData g_data;
 
 // Volk ==========================================================================================
 
@@ -146,68 +146,68 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
 
 #endif // VULKAN_VALIDATION_STRICT
 
-    SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_vulkanInstance.m_instance));
+    SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_data.m_instance));
 
-    priv::VolkLoadInstance(priv::g_vulkanInstance.m_instance);
+    priv::VolkLoadInstance(priv::g_data.m_instance);
 
-    priv::g_vulkanInstance.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
+    priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
 }
 
 void VulkanRHI::SelectAndInitializeGPU()
 {
-    SPT_CHECK(!!priv::g_vulkanInstance.m_instance);
-    SPT_CHECK(!!priv::g_vulkanInstance.m_surface);
+    SPT_CHECK(!!priv::g_data.m_instance);
+    SPT_CHECK(!!priv::g_data.m_surface);
 
-    priv::g_vulkanInstance.m_physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_vulkanInstance.m_instance, priv::g_vulkanInstance.m_surface);
+    priv::g_data.m_physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.m_instance, priv::g_data.m_surface);
 
     if (SPT_IS_LOG_CATEGORY_ENABLED(VulkanRHI))
     {
-        const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_vulkanInstance.m_physicalDevice);
+        const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_data.m_physicalDevice);
         SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
     }
 
-    priv::g_vulkanInstance.m_device.CreateDevice(priv::g_vulkanInstance.m_physicalDevice, GetAllocationCallbacks());
+    priv::g_data.m_device.CreateDevice(priv::g_data.m_physicalDevice, GetAllocationCallbacks());
 }
 
 void VulkanRHI::Uninitialize()
 {
-    if (priv::g_vulkanInstance.m_debugMessenger)
+    if (priv::g_data.m_debugMessenger)
     {
-        DebugMessenger::DestroyDebugMessenger(priv::g_vulkanInstance.m_debugMessenger, priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
-        priv::g_vulkanInstance.m_debugMessenger = VK_NULL_HANDLE;
+        DebugMessenger::DestroyDebugMessenger(priv::g_data.m_debugMessenger, priv::g_data.m_instance, GetAllocationCallbacks());
+        priv::g_data.m_debugMessenger = VK_NULL_HANDLE;
     }
 
-    if (priv::g_vulkanInstance.m_surface)
+    if (priv::g_data.m_surface)
     {
-        vkDestroySurfaceKHR(priv::g_vulkanInstance.m_instance, priv::g_vulkanInstance.m_surface, GetAllocationCallbacks());
-        priv::g_vulkanInstance.m_surface = VK_NULL_HANDLE;
+        vkDestroySurfaceKHR(priv::g_data.m_instance, priv::g_data.m_surface, GetAllocationCallbacks());
+        priv::g_data.m_surface = VK_NULL_HANDLE;
     }
 
-    if (priv::g_vulkanInstance.m_device.IsValid())
+    if (priv::g_data.m_device.IsValid())
     {
-        priv::g_vulkanInstance.m_device.Destroy(GetAllocationCallbacks());
+        priv::g_data.m_device.Destroy(GetAllocationCallbacks());
     }
 
-    if (priv::g_vulkanInstance.m_device.IsValid())
+    if (priv::g_data.m_device.IsValid())
     {
-        priv::g_vulkanInstance.m_device.Destroy(GetAllocationCallbacks());
+        priv::g_data.m_device.Destroy(GetAllocationCallbacks());
     }
 
-    if (priv::g_vulkanInstance.m_instance)
+    if (priv::g_data.m_instance)
     {
-        vkDestroyInstance(priv::g_vulkanInstance.m_instance, GetAllocationCallbacks());
-        priv::g_vulkanInstance.m_instance = VK_NULL_HANDLE;
+        vkDestroyInstance(priv::g_data.m_instance, GetAllocationCallbacks());
+        priv::g_data.m_instance = VK_NULL_HANDLE;
     }
 }
 
 VkInstance VulkanRHI::GetVulkanInstance()
 {
-    return priv::g_vulkanInstance.m_instance;
+    return priv::g_data.m_instance;
 }
 
 void VulkanRHI::SetVulkanSurface(VkSurfaceKHR surface)
 {
-    priv::g_vulkanInstance.m_surface = surface;
+    priv::g_data.m_surface = surface;
 }
 
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
