@@ -12,6 +12,9 @@ LogicalDevice::LogicalDevice()
 	, m_gfxFamilyIdx(idxNone<Uint32>)
 	, m_asyncComputeFamilyIdx(idxNone<Uint32>)
 	, m_transferFamilyIdx(idxNone<Uint32>)
+	, m_gfxQueueHandle(VK_NULL_HANDLE)
+	, m_asyncComputeQueueHandle(VK_NULL_HANDLE)
+	, m_transferQueueHandle(VK_NULL_HANDLE)
 { }
 
 void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* allocator)
@@ -38,6 +41,10 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(features);
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
+
+	vkGetDeviceQueue(m_deviceHandle, m_gfxFamilyIdx, 0, &m_gfxQueueHandle);
+	vkGetDeviceQueue(m_deviceHandle, m_asyncComputeFamilyIdx, 0, &m_asyncComputeQueueHandle);
+	vkGetDeviceQueue(m_deviceHandle, m_transferFamilyIdx, 0, &m_transferQueueHandle);
 }
 
 void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)
@@ -105,6 +112,10 @@ lib::DynamicArray<VkDeviceQueueCreateInfo> LogicalDevice::CreateQueueInfos(VkPhy
 		}
 	}
 
+	SPT_CHECK(m_gfxFamilyIdx != idxNone<Uint32>);
+	SPT_CHECK(m_asyncComputeFamilyIdx != idxNone<Uint32>);
+	SPT_CHECK(m_transferFamilyIdx != idxNone<Uint32>);
+
 	const auto createQueueInfo = [](Uint32 familyIdx) -> VkDeviceQueueCreateInfo
 	{
 		static const float s_queuePriority = 1.f;
@@ -130,6 +141,21 @@ lib::DynamicArray<VkDeviceQueueCreateInfo> LogicalDevice::CreateQueueInfos(VkPhy
 	}
 
 	return queuesInfo;
+}
+
+VkQueue LogicalDevice::GetGfxQueueHandle() const
+{
+	return m_gfxQueueHandle;
+}
+
+VkQueue LogicalDevice::GetAsyncComputeQueueHandle() const
+{
+	return m_asyncComputeQueueHandle;
+}
+
+VkQueue LogicalDevice::GetTransferQueueHandle() const
+{
+	return m_transferQueueHandle;
 }
 
 }

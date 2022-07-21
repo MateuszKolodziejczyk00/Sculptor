@@ -20,6 +20,10 @@ public:
 
 	VkDevice GetHandle();
 
+	VkQueue GetGfxQueueHandle() const;
+	VkQueue GetAsyncComputeQueueHandle() const;
+	VkQueue GetTransferQueueHandle() const;
+
 private:
 
 	lib::DynamicArray<VkDeviceQueueCreateInfo> CreateQueueInfos(VkPhysicalDevice physicalDevice);
@@ -29,6 +33,10 @@ private:
 	Uint32 m_gfxFamilyIdx;
 	Uint32 m_asyncComputeFamilyIdx;
 	Uint32 m_transferFamilyIdx;
+
+	VkQueue m_gfxQueueHandle;
+	VkQueue m_asyncComputeQueueHandle;
+	VkQueue m_transferQueueHandle;
 };
 
 }
