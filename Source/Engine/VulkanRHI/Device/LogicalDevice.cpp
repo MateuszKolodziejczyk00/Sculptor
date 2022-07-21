@@ -45,6 +45,8 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vkGetDeviceQueue(m_deviceHandle, m_gfxFamilyIdx, 0, &m_gfxQueueHandle);
 	vkGetDeviceQueue(m_deviceHandle, m_asyncComputeFamilyIdx, 0, &m_asyncComputeQueueHandle);
 	vkGetDeviceQueue(m_deviceHandle, m_transferFamilyIdx, 0, &m_transferQueueHandle);
+
+	volkLoadDevice(m_deviceHandle);
 }
 
 void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)

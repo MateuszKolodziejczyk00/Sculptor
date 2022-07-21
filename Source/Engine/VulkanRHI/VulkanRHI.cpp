@@ -5,6 +5,7 @@
 
 #include "Logging/Log.h"
 #include "Device/LogicalDevice.h"
+#include "Utility/HashedString.h"
 
 
 namespace spt::vulkan
@@ -28,14 +29,14 @@ public:
         , m_debugMessenger(VK_NULL_HANDLE)
     { }
 
-    VkInstance m_instance;
+    VkInstance                  m_instance;
 
-    VkPhysicalDevice m_physicalDevice;
-    LogicalDevice m_device;
+    VkPhysicalDevice            m_physicalDevice;
+    LogicalDevice               m_device;
 
-    VkSurfaceKHR m_surface;
+    VkSurfaceKHR                m_surface;
     
-    VkDebugUtilsMessengerEXT m_debugMessenger;
+    VkDebugUtilsMessengerEXT    m_debugMessenger;
 };
 
 VulkanInstanceData g_data;

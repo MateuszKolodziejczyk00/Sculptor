@@ -23,11 +23,11 @@ public:
 
 	// Vulkan Getters ==================================================================
 
-	static VkInstance GetVulkanInstance();
+	static VkInstance						GetVulkanInstance();
 
-	static void SetVulkanSurface(VkSurfaceKHR surface);
+	static void								SetVulkanSurface(VkSurfaceKHR surface);
 
-	static const VkAllocationCallbacks* GetAllocationCallbacks();
+	static const VkAllocationCallbacks*		GetAllocationCallbacks();
 };
 
 }

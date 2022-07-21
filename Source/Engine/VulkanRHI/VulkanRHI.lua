@@ -7,7 +7,7 @@ function VulkanRHI:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("Volk")
 
-    self:AddPrivateDependency("VMA")
+    self:AddPublicDependency("VMA")
 
     self:AddPublicAbsoluteIncludePath("$(VULKAN_SDK)/Include")
 
