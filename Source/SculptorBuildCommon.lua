@@ -56,6 +56,8 @@ projectToPublicDefines = {}
 
 currentProjectsType = nil
 
+currentProjectsSubgroup = ""
+
 function Project:CreateProject(name, targetType, language)
     local projectType = currentProjectsType
     local inProjectLocation = projectType .. "/" .. name
@@ -132,6 +134,7 @@ function Project:SetupProject()
     filter "configurations:Release"
     self:BuildConfiguration(EConfiguration.Release, EPlatform.Windows)
 
+    project(self.name).group = project(self.name).group .. currentProjectsSubgroup
 end
 
 function Project:SetupConfiguration(configuration, platform)
@@ -396,11 +399,19 @@ end
 
 -- Including projects =====================================================================================
 
-function StartProjectsType(projectsType)
-    currentProjectsType = projectsType
-end
-
-
 function IncludeProject(name)
     include (currentProjectsType .. "/" .. name .. "/" .. name)
+end
+
+function SetProjectsSubgroupName(name)
+    currentProjectsSubgroup = "/" .. name
+end
+
+function ResetProjectsSubgroupName(name)
+    currentProjectsSubgroup = ""
+end
+
+function StartProjectsType(projectsType)
+    currentProjectsType = projectsType
+    ResetProjectsSubgroupName()
 end
