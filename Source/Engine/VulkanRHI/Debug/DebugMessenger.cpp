@@ -36,42 +36,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverit
 	return VK_FALSE;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugReportCallback( VkDebugReportFlagsEXT          flags,
-													VkDebugReportObjectTypeEXT     objectType,
-													uint64_t                       object,
-													size_t                         location,
-													int32_t                        messageCode,
-													const char*                    pLayerPrefix,
-													const char*                    pMessage,
-													void*                          pUserData)
-{
-	SPT_PROFILE_FUNCTION();
-
-	if (flags == VK_DEBUG_REPORT_ERROR_BIT_EXT)
-	{
-		SPT_LOG_ERROR(VulkanValidation, pMessage);
-		SPT_CHECK_NO_ENTRY();
-	}
-	else if (flags == VK_DEBUG_REPORT_WARNING_BIT_EXT)
-	{
-		SPT_LOG_WARN(VulkanValidation, pMessage);
-	}
-	else if (flags == VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
-	{
-		SPT_LOG_WARN(VulkanValidation, pMessage);
-	}
-	else if (flags == VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
-	{
-		SPT_LOG_INFO(VulkanValidation, pMessage);
-	}
-	else if (flags == VK_DEBUG_REPORT_DEBUG_BIT_EXT)
-	{
-		SPT_LOG_INFO(VulkanValidation, pMessage);
-	}
-	
-	return VK_FALSE;
-}
-
 }
 
 VkDebugUtilsMessengerCreateInfoEXT DebugMessenger::CreateDebugMessengerInfo()
@@ -107,27 +71,6 @@ VkDebugUtilsMessengerEXT DebugMessenger::CreateDebugMessenger(VkInstance instanc
 void DebugMessenger::DestroyDebugMessenger(VkDebugUtilsMessengerEXT messenger, VkInstance instance, const VkAllocationCallbacks* allocator)
 {
 	vkDestroyDebugUtilsMessengerEXT(instance, messenger, allocator);
-}
-
-VkDebugReportCallbackEXT DebugMessenger::CreateDebugReportCallback(VkInstance instance, const VkAllocationCallbacks* allocator)
-{
-	VkDebugReportCallbackCreateInfoEXT debugReportCallbackInfo{ VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
-	debugReportCallbackInfo.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT
-                                 && VK_DEBUG_REPORT_WARNING_BIT_EXT
-                                 && VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT 
-                                 && VK_DEBUG_REPORT_ERROR_BIT_EXT
-                                 && VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-    debugReportCallbackInfo.pfnCallback = &priv::DebugReportCallback;
-
-	VkDebugReportCallbackEXT callbackHandle = VK_NULL_HANDLE;
-	vkCreateDebugReportCallbackEXT(instance, &debugReportCallbackInfo, allocator, &callbackHandle);
-
-	return callbackHandle;
-}
-
-void DebugMessenger::DestroyDebugReportCallback(VkInstance instance, VkDebugReportCallbackEXT debugCallback, const VkAllocationCallbacks* allocator)
-{
-	vkDestroyDebugReportCallbackEXT(instance, debugCallback, allocator);
 }
 
 }

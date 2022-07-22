@@ -29,11 +29,11 @@ VmaVulkanFunctions BuildVulkanFunctionsPtrsTable()
 	functionsTable.vkCreateImage = vkCreateImage;
 	functionsTable.vkDestroyImage = vkDestroyImage;
 	functionsTable.vkCmdCopyBuffer = vkCmdCopyBuffer;
-	functionsTable.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR;
-	functionsTable.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR;
-	functionsTable.vkBindBufferMemory2KHR = vkBindBufferMemory2KHR;
-	functionsTable.vkBindImageMemory2KHR = vkBindImageMemory2KHR;
-	functionsTable.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+	functionsTable.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2;
+	functionsTable.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2;
+	functionsTable.vkBindBufferMemory2KHR = vkBindBufferMemory2;
+	functionsTable.vkBindImageMemory2KHR = vkBindImageMemory2;
+	functionsTable.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
 	functionsTable.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
 	functionsTable.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 

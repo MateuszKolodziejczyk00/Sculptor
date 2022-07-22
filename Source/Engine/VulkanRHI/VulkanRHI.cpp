@@ -29,7 +29,6 @@ public:
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_debugMessenger(VK_NULL_HANDLE)
-        , m_debugReportCallback(VK_NULL_HANDLE)
     { }
 
     VkInstance                  m_instance;
@@ -42,7 +41,6 @@ public:
     VkSurfaceKHR                m_surface;
     
     VkDebugUtilsMessengerEXT    m_debugMessenger;
-    VkDebugReportCallbackEXT    m_debugReportCallback;
 };
 
 VulkanInstanceData g_data;
@@ -91,15 +89,13 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     {
         extensionNames.push_back(initInfo.m_extensions[i]);
     }
-
+    
 #if VULKAN_VALIDATION
 
     extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    extensionNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-    extensionNames.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
 #endif // VULKAN_VALIDATION
-    
+
     instanceInfo.enabledExtensionCount = static_cast<Uint32>(extensionNames.size());
     instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
 
@@ -159,8 +155,6 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     priv::VolkLoadInstance(priv::g_data.m_instance);
 
     priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
-
-    priv::g_data.m_debugReportCallback = DebugMessenger::CreateDebugReportCallback(priv::g_data.m_instance, GetAllocationCallbacks());
 }
 
 void VulkanRHI::SelectAndInitializeGPU()
@@ -197,12 +191,6 @@ void VulkanRHI::Uninitialize()
     if (priv::g_data.m_device.IsValid())
     {
         priv::g_data.m_device.Destroy(GetAllocationCallbacks());
-    }
-
-    if (priv::g_data.m_debugReportCallback)
-    {
-        DebugMessenger::DestroyDebugReportCallback(priv::g_data.m_instance, priv::g_data.m_debugReportCallback, GetAllocationCallbacks());
-        priv::g_data.m_debugReportCallback = VK_NULL_HANDLE;
     }
 
     if (priv::g_data.m_debugMessenger)
