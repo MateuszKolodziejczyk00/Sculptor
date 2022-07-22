@@ -3,8 +3,9 @@
 #include "Device/LogicalDevice.h"
 #include "Debug/DebugMessenger.h"
 #include "Memory/MemoryManager.h"
-
 #include "VulkanUtils.h"
+
+#include "RHIInitialization.h"
 
 #include "Logging/Log.h"
 #include "Utility/HashedString.h"
@@ -206,12 +207,17 @@ void VulkanRHI::Uninitialize()
     }
 }
 
-VkInstance VulkanRHI::GetVulkanInstance()
+VkInstance VulkanRHI::GetInstanceHandle()
 {
     return priv::g_data.m_instance;
 }
 
-void VulkanRHI::SetVulkanSurface(VkSurfaceKHR surface)
+VkDevice VulkanRHI::GetDeviceHandle()
+{
+    return priv::g_data.m_device.GetHandle();
+}
+
+void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
 {
     priv::g_data.m_surface = surface;
 }

@@ -18,4 +18,21 @@ public:
 #endif // VULKAN_VALIDATION
 };
 
+
+class DebugName
+{
+public:
+
+	DebugName();
+
+	void						Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType);
+	const lib::HashedString&	Get() const;
+
+private:
+
+#if VULKAN_VALIDATION
+	lib::HashedString m_name;
+#endif // VULKAN_VALIDATION
+};
+
 }

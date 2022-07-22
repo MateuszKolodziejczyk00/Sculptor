@@ -2,7 +2,12 @@
 
 #include "VulkanRHIMacros.h"
 #include "Vulkan.h"
-#include "RHIInitialization.h"
+
+
+namespace spt::rhicore
+{
+struct RHIInitializationInfo;
+}
 
 
 namespace spt::vulkan
@@ -23,9 +28,10 @@ public:
 
 	// Vulkan Getters ==================================================================
 
-	static VkInstance						GetVulkanInstance();
+	static VkInstance						GetInstanceHandle();
+	static VkDevice							GetDeviceHandle();
 
-	static void								SetVulkanSurface(VkSurfaceKHR surface);
+	static void								SetSurfaceHandle(VkSurfaceKHR surface);
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
 };

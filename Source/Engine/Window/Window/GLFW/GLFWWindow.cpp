@@ -4,6 +4,7 @@
 
 #include "Logging/Log.h"
 #include "RHIImpl.h"
+#include "RHIInitialization.h"
 
 #include <GLFW/glfw3.h>
 
@@ -78,10 +79,10 @@ static void GetRequiredExtensions(rhicore::RHIInitializationInfo& initialization
 static void PostInitializeRHIInstance(GLFWwindow* windowHandle)
 {
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
-	glfwCreateWindowSurface(rhi::RHI::GetVulkanInstance(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
+	glfwCreateWindowSurface(rhi::RHI::GetInstanceHandle(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
 	SPT_CHECK(!!surface);
 
-	rhi::RHI::SetVulkanSurface(surface);
+	rhi::RHI::SetSurfaceHandle(surface);
 }
 
 #else

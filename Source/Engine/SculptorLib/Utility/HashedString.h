@@ -44,6 +44,7 @@ public:
 	{
 		key = rhs.key;
 		stringView = rhs.stringView;
+		return *this;
 	}
 
 	ThisType& operator=(StringView rhs)

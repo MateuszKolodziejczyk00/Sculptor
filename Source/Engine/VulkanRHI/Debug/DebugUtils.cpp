@@ -1,4 +1,5 @@
 #include "DebugUtils.h"
+#include "VulkanRHI.h"
 
 namespace spt::vulkan
 {
@@ -16,5 +17,33 @@ void DebugUtils::SetObjectName(VkDevice device, Uint64 object, VkObjectType obje
 }
 
 #endif // VULKAN_VALIDATION
+
+DebugName::DebugName()
+{ }
+
+void DebugName::Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType)
+{
+#if VULKAN_VALIDATION
+
+    m_name = name;
+    DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, name.GetData());
+
+#endif // VULKAN_VALIDATION
+}
+
+const spt::lib::HashedString& DebugName::Get() const
+{
+#if VULKAN_VALIDATION
+
+    return m_name;
+
+#else
+
+    static lib::HashedString dummyName;
+    return dummyName;
+
+#endif // VULKAN_VALIDATION
+
+}
 
 }
