@@ -29,6 +29,7 @@ public:
         , m_physicalDevice(VK_NULL_HANDLE)
         , m_surface(VK_NULL_HANDLE)
         , m_debugMessenger(VK_NULL_HANDLE)
+        , m_debugReportCallback(VK_NULL_HANDLE)
     { }
 
     VkInstance                  m_instance;
@@ -41,6 +42,7 @@ public:
     VkSurfaceKHR                m_surface;
     
     VkDebugUtilsMessengerEXT    m_debugMessenger;
+    VkDebugReportCallbackEXT    m_debugReportCallback;
 };
 
 VulkanInstanceData g_data;
@@ -157,6 +159,8 @@ void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
     priv::VolkLoadInstance(priv::g_data.m_instance);
 
     priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
+
+    priv::g_data.m_debugReportCallback = DebugMessenger::CreateDebugReportCallback(priv::g_data.m_instance, GetAllocationCallbacks());
 }
 
 void VulkanRHI::SelectAndInitializeGPU()
@@ -179,12 +183,6 @@ void VulkanRHI::SelectAndInitializeGPU()
 
 void VulkanRHI::Uninitialize()
 {
-    if (priv::g_data.m_debugMessenger)
-    {
-        DebugMessenger::DestroyDebugMessenger(priv::g_data.m_debugMessenger, priv::g_data.m_instance, GetAllocationCallbacks());
-        priv::g_data.m_debugMessenger = VK_NULL_HANDLE;
-    }
-
     if (priv::g_data.m_surface)
     {
         vkDestroySurfaceKHR(priv::g_data.m_instance, priv::g_data.m_surface, GetAllocationCallbacks());
@@ -199,6 +197,18 @@ void VulkanRHI::Uninitialize()
     if (priv::g_data.m_device.IsValid())
     {
         priv::g_data.m_device.Destroy(GetAllocationCallbacks());
+    }
+
+    if (priv::g_data.m_debugReportCallback)
+    {
+        DebugMessenger::DestroyDebugReportCallback(priv::g_data.m_instance, priv::g_data.m_debugReportCallback, GetAllocationCallbacks());
+        priv::g_data.m_debugReportCallback = VK_NULL_HANDLE;
+    }
+
+    if (priv::g_data.m_debugMessenger)
+    {
+        DebugMessenger::DestroyDebugMessenger(priv::g_data.m_debugMessenger, priv::g_data.m_instance, GetAllocationCallbacks());
+        priv::g_data.m_debugMessenger = VK_NULL_HANDLE;
     }
 
     if (priv::g_data.m_instance)

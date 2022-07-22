@@ -18,7 +18,7 @@ public:
 
 	Bool			IsValid() const;
 
-	VmaAllocator	GetAllocatorHandle() const;;
+	VmaAllocator	GetAllocatorHandle() const;
 
 private:
 
