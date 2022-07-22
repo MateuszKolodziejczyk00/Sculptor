@@ -36,7 +36,7 @@ private:
 
 	void InitializeWindow(std::string_view name, math::Vector2i resolution);
 
-	std::unique_ptr<GLFWWindowData> m_windowData;
+	lib::UniquePtr<GLFWWindowData> m_windowData;
 };
 
 }

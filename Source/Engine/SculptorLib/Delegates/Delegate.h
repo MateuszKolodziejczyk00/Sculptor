@@ -45,7 +45,7 @@ public:
 
 private:
 
-	std::unique_ptr<internal::DelegateBindingInterface<Args...>> m_binding;
+	UniquePtr<internal::DelegateBindingInterface<Args...>> m_binding;
 };
 
 template<typename... Args>

@@ -17,3 +17,4 @@
 #include "Utility/String.h"
 #include "Utility/HashedString.h"
 #include "Utility/UtilityMacros.h"
+#include "Utility/Memory.h"
