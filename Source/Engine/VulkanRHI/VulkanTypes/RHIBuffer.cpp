@@ -1,5 +1,6 @@
 #include "RHIBuffer.h"
 #include "VulkanRHI.h"
+#include "Memory/MemoryManager.h"
 
 namespace spt::vulkan
 {
@@ -59,21 +60,67 @@ VkBufferUsageFlags GetVulkanBufferUsage(Flags32 bufferUsage)
 
 }
 
-RHIBuffer::RHIBuffer(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo)
+RHIBuffer::RHIBuffer()
 	: m_bufferHandle(VK_NULL_HANDLE)
 	, m_allocation(VK_NULL_HANDLE)
 	, m_bufferSize(0)
 	, m_usageFlags(0)
 	, m_mappingStrategy(EMappingStrategy::CannotBeMapped)
 	, m_mappedPointer(nullptr)
-{
-	InitializeRHI(size, bufferUsage, allocationInfo);
-}
+{ }
 
 RHIBuffer::~RHIBuffer()
 {
-	// TODO schedule remove
-	SPT_CHECK_NO_ENTRY();
+	SPT_CHECK(!IsValid());
+}
+
+void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhicore::RHIAllocationInfo& allocationInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_bufferSize = size;
+	m_usageFlags = bufferUsage;
+
+	const VmaAllocationCreateInfo vmaAllocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocationInfo);
+
+	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(bufferUsage);
+
+	VkBufferCreateInfo bufferInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.flags = 0;
+    bufferInfo.size = size;
+    bufferInfo.usage = vulkanUsage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	SPT_VK_CHECK(vmaCreateBuffer(VulkanRHI::GetAllocatorHandle(), &bufferInfo, &vmaAllocationInfo, &m_bufferHandle, &m_allocation, nullptr));
+
+	InitializeMappingStrategy(vmaAllocationInfo);
+}
+
+void RHIBuffer::ReleaseRHI()
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
+	{
+		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
+	}
+
+	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
+
+	m_bufferHandle = VK_NULL_HANDLE;
+	m_allocation = VK_NULL_HANDLE;
+	m_bufferSize = 0;
+	m_usageFlags = 0;
+	m_name.Reset();
+	m_mappingStrategy = EMappingStrategy::CannotBeMapped;
+	m_mappedPointer = nullptr;
+}
+
+Bool RHIBuffer::IsValid() const
+{
+	return m_bufferHandle != VK_NULL_HANDLE;
 }
 
 Uint64 RHIBuffer::GetSize() const
@@ -123,7 +170,7 @@ DeviceAddress RHIBuffer::GetDeviceAddress() const
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
 }
 
-bool RHIBuffer::CanSetData() const
+Bool RHIBuffer::CanSetData() const
 {
 	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
 }
@@ -151,26 +198,6 @@ VkBuffer RHIBuffer::GetBufferHandle() const
 VmaAllocation RHIBuffer::GetAllocation() const
 {
 	return m_allocation;
-}
-
-void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo)
-{
-	SPT_PROFILE_FUNCTION();
-
-	m_bufferSize = size;
-	m_usageFlags = bufferUsage;
-
-	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(bufferUsage);
-
-	VkBufferCreateInfo bufferInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bufferInfo.flags = 0;
-    bufferInfo.size = size;
-    bufferInfo.usage = vulkanUsage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	SPT_VK_CHECK(vmaCreateBuffer(VulkanRHI::GetAllocatorHandle(), &bufferInfo, &allocationInfo, &m_bufferHandle, &m_allocation, nullptr));
-
-	InitializeMappingStrategy(allocationInfo);
 }
 
 void RHIBuffer::InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo)

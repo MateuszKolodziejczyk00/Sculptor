@@ -217,6 +217,11 @@ VkDevice VulkanRHI::GetDeviceHandle()
     return priv::g_data.m_device.GetHandle();
 }
 
+MemoryManager& VulkanRHI::GetMemoryManager()
+{
+    return priv::g_data.m_memoryManager;
+}
+
 VmaAllocator VulkanRHI::GetAllocatorHandle()
 {
     return priv::g_data.m_memoryManager.GetAllocatorHandle();

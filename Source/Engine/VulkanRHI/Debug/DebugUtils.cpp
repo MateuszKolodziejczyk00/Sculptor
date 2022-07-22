@@ -46,4 +46,13 @@ const spt::lib::HashedString& DebugName::Get() const
 
 }
 
+void DebugName::Reset()
+{
+#if VULKAN_VALIDATION
+
+    m_name.Reset();
+
+#endif // VULKAN_VALIDATION
+}
+
 }

@@ -1,20 +1,34 @@
 #pragma once
 
-#include "SculptorCoreTypes.h"
+#include "VulkanRHIMacros.h"
 #include "Vulkan.h"
-#include "RHIBufferTypes.h"
 #include "Debug/DebugUtils.h"
+
+#include "SculptorCoreTypes.h"
+#include "RHIBufferTypes.h"
+
+
+namespace spt::rhicore
+{
+struct RHIAllocationInfo;
+}
 
 
 namespace spt::vulkan
 {
 
-class RHIBuffer
+class VULKANRHI_API RHIBuffer
 {
 public:
 
-	RHIBuffer(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo);
+	RHIBuffer();
 	~RHIBuffer();
+
+	// TODO Allocation info
+	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhicore::RHIAllocationInfo& allocationInfo);
+	void						ReleaseRHI();
+
+	Bool						IsValid() const;
 
 	Uint64						GetSize() const;
 	Flags32						GetUsage() const;
@@ -24,7 +38,7 @@ public:
 
 	DeviceAddress				GetDeviceAddress() const;
 
-	bool						CanSetData() const;
+	Bool						CanSetData() const;
 
 	void						SetData(const void* data, Uint64 dataSize);
 
@@ -44,8 +58,6 @@ private:
 		MappedWhenNecessary,
 		CannotBeMapped
 	};
-
-	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo);
 
 	void						InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo);
 	EMappingStrategy			SelectMappingStrategy(const VmaAllocationCreateInfo& allocationInfo) const;

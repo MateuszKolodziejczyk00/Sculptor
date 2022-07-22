@@ -28,6 +28,8 @@ public:
 	void						Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType);
 	const lib::HashedString&	Get() const;
 
+	void						Reset();
+
 private:
 
 #if VULKAN_VALIDATION

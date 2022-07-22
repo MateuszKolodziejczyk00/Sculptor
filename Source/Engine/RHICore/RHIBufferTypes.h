@@ -24,13 +24,4 @@ enum Flags : Flags32
 
 }
 
-enum class EBufferMemoryUsage
-{
-	GPUOnly,
-	CPUOnly,
-	CPUToGPU,
-	GPUToCpu,
-	CPUCopy
-};
-
 }

@@ -13,6 +13,9 @@ struct RHIInitializationInfo;
 namespace spt::vulkan
 {
 
+class MemoryManager;
+
+
 class VULKANRHI_API VulkanRHI
 {
 public:
@@ -30,6 +33,8 @@ public:
 
 	static VkInstance						GetInstanceHandle();
 	static VkDevice							GetDeviceHandle();
+
+	static MemoryManager&					GetMemoryManager();
 
 	static VmaAllocator						GetAllocatorHandle();
 
