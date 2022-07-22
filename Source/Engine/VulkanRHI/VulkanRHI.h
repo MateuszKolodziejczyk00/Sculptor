@@ -31,6 +31,8 @@ public:
 	static VkInstance						GetInstanceHandle();
 	static VkDevice							GetDeviceHandle();
 
+	static VmaAllocator						GetAllocatorHandle();
+
 	static void								SetSurfaceHandle(VkSurfaceKHR surface);
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();

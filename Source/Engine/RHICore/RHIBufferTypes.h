@@ -18,7 +18,8 @@ enum Flags : Flags32
 	Index					= BIT(6),
 	Vertex					= BIT(7),
 	Indirect				= BIT(8),
-	DeviceAddress			= BIT(9)
+	DeviceAddress			= BIT(9),
+	LAST
 };
 
 }

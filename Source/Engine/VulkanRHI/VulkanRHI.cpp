@@ -217,6 +217,11 @@ VkDevice VulkanRHI::GetDeviceHandle()
     return priv::g_data.m_device.GetHandle();
 }
 
+VmaAllocator VulkanRHI::GetAllocatorHandle()
+{
+    return priv::g_data.m_memoryManager.GetAllocatorHandle();
+}
+
 void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
 {
     priv::g_data.m_surface = surface;

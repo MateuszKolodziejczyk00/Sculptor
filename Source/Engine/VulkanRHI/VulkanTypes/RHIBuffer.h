@@ -13,14 +13,18 @@ class RHIBuffer
 {
 public:
 
-	RHIBuffer(VmaAllocator allocator, Uint64 size, Flags32 bufferUsage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags allocationFlags, VmaPool pool);
+	RHIBuffer(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo);
 	~RHIBuffer();
 
 	Uint64						GetSize() const;
 	Flags32						GetUsage() const;
-	void*						GetMappedDataPtr() const;
+
+	void*						MapBufferMemory() const;
+	void						UnmapBufferMemory() const;
 
 	DeviceAddress				GetDeviceAddress() const;
+
+	bool						CanSetData() const;
 
 	void						SetData(const void* data, Uint64 dataSize);
 
@@ -34,6 +38,18 @@ public:
 
 private:
 
+	enum class EMappingStrategy
+	{
+		PersistentlyMapped,
+		MappedWhenNecessary,
+		CannotBeMapped
+	};
+
+	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const VmaAllocationCreateInfo& allocationInfo);
+
+	void						InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo);
+	EMappingStrategy			SelectMappingStrategy(const VmaAllocationCreateInfo& allocationInfo) const;
+
 	VkBuffer					m_bufferHandle;
 
 	VmaAllocation				m_allocation;
@@ -43,6 +59,9 @@ private:
 	Flags32						m_usageFlags;
 
 	DebugName					m_name;
+
+	EMappingStrategy			m_mappingStrategy;
+	void*						m_mappedPointer;
 };
 
 }
