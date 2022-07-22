@@ -8,7 +8,7 @@ namespace priv
 
 VmaVulkanFunctions BuildVulkanFunctionsPtrsTable()
 {
-	VmaVulkanFunctions functionsTable;
+	VmaVulkanFunctions functionsTable{};
 	functionsTable.vkAllocateMemory = vkAllocateMemory;
 	functionsTable.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 	functionsTable.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
@@ -34,6 +34,8 @@ VmaVulkanFunctions BuildVulkanFunctionsPtrsTable()
 	functionsTable.vkBindBufferMemory2KHR = vkBindBufferMemory2KHR;
 	functionsTable.vkBindImageMemory2KHR = vkBindImageMemory2KHR;
 	functionsTable.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+	functionsTable.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
+	functionsTable.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 
 	return functionsTable;
 }
