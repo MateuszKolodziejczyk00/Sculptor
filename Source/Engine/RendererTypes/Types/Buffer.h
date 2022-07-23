@@ -1,3 +1,4 @@
+#pragma once
 
 #include "RendererTypesMacros.h"
 #include "RHIBufferImpl.h"

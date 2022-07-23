@@ -8,6 +8,8 @@ namespace spt::vulkan
 
 class VulkanRHI;
 class RHIBuffer;
+class RHITexture;
+class RHITextureView;
 
 }
 

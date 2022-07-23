@@ -19,6 +19,8 @@ Buffer::Buffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsag
 
 Buffer::~Buffer()
 {
+	SPT_PROFILE_FUNCTION();
+
 	SPT_CHECK(m_rhiBuffer.IsValid());
 
 	CurrentFrameContext::SubmitDeferredRelease(
