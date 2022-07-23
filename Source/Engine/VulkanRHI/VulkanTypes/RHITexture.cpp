@@ -248,17 +248,15 @@ RHITextureView::RHITextureView()
     , m_texture(nullptr)
 { }
 
-void RHITextureView::InitializeRHI(const RHITexture* texture, const rhi::TextureViewDefinition& viewDefinition)
+void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition)
 {
     SPT_PROFILE_FUNCTION();
 
-    SPT_CHECK(!!texture);
-
-    const rhi::TextureDefinition& textureDef = texture->GetDefinition();
+    const rhi::TextureDefinition& textureDef = texture.GetDefinition();
 
     VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     viewInfo.flags = 0;
-    viewInfo.image = texture->GetHandle();
+    viewInfo.image = texture.GetHandle();
     viewInfo.viewType = priv::GetVulkanViewType(viewDefinition.m_viewType, viewDefinition.m_subresourceRange, textureDef);
     viewInfo.format = priv::SelectVulkanFormat(textureDef.m_format);
 
@@ -275,7 +273,7 @@ void RHITextureView::InitializeRHI(const RHITexture* texture, const rhi::Texture
 
     SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
 
-    m_texture = texture;
+    m_texture = &texture;
 }
 
 void RHITextureView::ReleaseRHI()

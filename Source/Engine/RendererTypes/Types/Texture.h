@@ -17,7 +17,10 @@ struct TextureViewDefinition;
 namespace spt::renderer
 {
 
-class RENDERER_TYPES_API Texture
+class TextureView;
+
+
+class RENDERER_TYPES_API Texture : public lib::SharedFromThis<Texture>
 {
 public:
 
@@ -27,9 +30,31 @@ public:
 	rhi::RHITexture&				GetRHI();
 	const rhi::RHITexture&			GetRHI() const;
 
+	lib::SharedPtr<TextureView>		CreateView(const rhi::TextureViewDefinition& viewDefinition) const;
+
 private:
 
 	rhi::RHITexture					m_rhiTexture;
+};
+
+
+class RENDERER_TYPES_API TextureView
+{
+public:
+
+	TextureView(const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
+	~TextureView();
+
+	rhi::RHITextureView&			GetRHI();
+	const rhi::RHITextureView&		GetRHI() const;
+
+	lib::SharedPtr<const Texture>	GetTexture() const;
+
+private:
+
+	lib::WeakPtr<const Texture>		m_texture;
+
+	rhi::RHITextureView				m_rhiView;
 };
 
 }

@@ -52,7 +52,7 @@ public:
 
 	RHITextureView();
 
-	void							InitializeRHI(const RHITexture* texture, const rhi::TextureViewDefinition& viewDefinition);
+	void							InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition);
 	void							ReleaseRHI();
 
 	Bool							IsValid() const;

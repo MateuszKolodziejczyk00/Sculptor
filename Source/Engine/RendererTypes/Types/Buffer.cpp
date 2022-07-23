@@ -42,6 +42,8 @@ const rhi::RHIBuffer& Buffer::GetRHI() const
 
 lib::SharedPtr<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 {
+	SPT_PROFILE_FUNCTION();
+
 	return std::make_shared<BufferView>(shared_from_this(), offset, size);
 }
 
