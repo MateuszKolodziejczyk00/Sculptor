@@ -3,10 +3,10 @@
 #include "SculptorCore.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
-	#ifdef VULKANRHI_BUILD_DLL
-		#define VULKAN_RHI_API __declspec(dllexport)
+	#ifdef RENDERERTYPES_BUILD_DLL
+		#define RENDERER_TYPES_API __declspec(dllexport)
 	#else
-		#define VULKAN_RHI_API __declspec(dllimport)
+		#define RENDERER_TYPES_API __declspec(dllimport)
 	#endif
 #else
 	#error Sculptor only supports Windows

@@ -7,6 +7,7 @@ namespace spt::vulkan
 {
 
 class VulkanRHI;
+class RHIBuffer;
 
 }
 
@@ -14,6 +15,8 @@ namespace spt::rhi
 {
 
 using RHI = vulkan::VulkanRHI;
+
+using namespace spt::vulkan;
 
 }
 

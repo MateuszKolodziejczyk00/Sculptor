@@ -12,7 +12,7 @@ IncludeProject("VulkanRHI")
 IncludeProject("RHI")
 
 SetProjectsSubgroupName("Graphics/Rendering")
-IncludeProject("Renderer")
+IncludeProject("RendererTypes")
 
 SetProjectsSubgroupName("Graphics")
 IncludeProject("Window")

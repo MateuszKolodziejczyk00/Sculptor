@@ -71,7 +71,7 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 
 #if VULKAN_RHI
 
-static void GetRequiredExtensions(rhicore::RHIInitializationInfo& initializationInfo)
+static void GetRequiredExtensions(rhi::RHIInitializationInfo& initializationInfo)
 {
 	initializationInfo.m_extensions = glfwGetRequiredInstanceExtensions(&initializationInfo.m_extensionsNum);
 }
@@ -93,7 +93,7 @@ static void PostInitializeRHIInstance(GLFWwindow* windowHandle)
 
 static void InitializeRHI(GLFWwindow* windowHandle)
 {
-	rhicore::RHIInitializationInfo initializationInfo;
+	rhi::RHIInitializationInfo initializationInfo;
 	priv::GetRequiredExtensions(initializationInfo);
 
 	rhi::RHI::Initialize(initializationInfo);

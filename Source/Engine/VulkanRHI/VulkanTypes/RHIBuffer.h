@@ -8,7 +8,7 @@
 #include "RHIBufferTypes.h"
 
 
-namespace spt::rhicore
+namespace spt::rhi
 {
 struct RHIAllocationInfo;
 }
@@ -17,15 +17,14 @@ struct RHIAllocationInfo;
 namespace spt::vulkan
 {
 
-class VULKANRHI_API RHIBuffer
+class VULKAN_RHI_API RHIBuffer
 {
 public:
 
 	RHIBuffer();
 	~RHIBuffer();
 
-	// TODO Allocation info
-	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhicore::RHIAllocationInfo& allocationInfo);
+	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;
@@ -74,6 +73,23 @@ private:
 
 	EMappingStrategy			m_mappingStrategy;
 	void*						m_mappedPointer;
+};
+
+
+class VULKAN_RHI_API RHIBufferView
+{
+public:
+
+
+
+private:
+
+
+	RHIBuffer*			m_buffer;
+
+	Uint64				m_offset;
+	Uint64				m_size;
+
 };
 
 }

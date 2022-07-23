@@ -62,7 +62,7 @@ void VolkLoadInstance(VkInstance instance)
 
 // Vulkan RHI ====================================================================================
 
-void VulkanRHI::Initialize(const rhicore::RHIInitializationInfo& initInfo)
+void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 {
     priv::InitializeVolk();
 

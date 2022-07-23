@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Vulkan.h"
 
-namespace spt::rhicore
+namespace spt::rhi
 {
 struct RHIAllocationInfo;
 }
@@ -25,7 +25,7 @@ public:
 
 	VmaAllocator				GetAllocatorHandle() const;
 
-	VmaAllocationCreateInfo		CreateAllocationInfo(const rhicore::RHIAllocationInfo& rhiAllocationInfo) const;
+	VmaAllocationCreateInfo		CreateAllocationInfo(const rhi::RHIAllocationInfo& rhiAllocationInfo) const;
 
 private:
 

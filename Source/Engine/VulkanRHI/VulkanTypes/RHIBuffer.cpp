@@ -12,48 +12,48 @@ VkBufferUsageFlags GetVulkanBufferUsage(Flags32 bufferUsage)
 {
 	VkBufferUsageFlags vulkanFlags{};
 
-	if ((bufferUsage & rhicore::EBufferUsage::TransferSrc) != 0)
+	if ((bufferUsage & rhi::EBufferUsage::TransferSrc) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::TransferDst) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::TransferDst) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::UniformTexel) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::UniformTexel) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::StorageTexel) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::StorageTexel) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::Uniform) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::Uniform) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::Storage) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::Storage) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::Index) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::Index) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::Vertex) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::Vertex) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::Indirect) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::Indirect) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 	}
-	if((bufferUsage & rhicore::EBufferUsage::DeviceAddress) != 0 )
+	if((bufferUsage & rhi::EBufferUsage::DeviceAddress) != 0 )
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 	}
 
-	SPT_CHECK(bufferUsage < (rhicore::EBufferUsage::LAST - 1) << 1);
+	SPT_CHECK(bufferUsage < (rhi::EBufferUsage::LAST - 1) << 1);
 
 	return vulkanFlags;
 }
@@ -74,7 +74,7 @@ RHIBuffer::~RHIBuffer()
 	SPT_CHECK(!IsValid());
 }
 
-void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhicore::RHIAllocationInfo& allocationInfo)
+void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILE_FUNCTION();
 

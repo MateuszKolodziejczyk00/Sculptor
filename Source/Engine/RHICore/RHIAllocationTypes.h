@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace spt::rhicore
+namespace spt::rhi
 {
 
 enum class EMemoryUsage

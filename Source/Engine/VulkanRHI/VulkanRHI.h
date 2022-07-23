@@ -4,7 +4,7 @@
 #include "Vulkan.h"
 
 
-namespace spt::rhicore
+namespace spt::rhi
 {
 struct RHIInitializationInfo;
 }
@@ -16,13 +16,13 @@ namespace spt::vulkan
 class MemoryManager;
 
 
-class VULKANRHI_API VulkanRHI
+class VULKAN_RHI_API VulkanRHI
 {
 public:
 
 	// RHI Interface ===================================================================
 
-	static void Initialize(const rhicore::RHIInitializationInfo& InitInfo);
+	static void Initialize(const rhi::RHIInitializationInfo& InitInfo);
 
 	static void SelectAndInitializeGPU();
 

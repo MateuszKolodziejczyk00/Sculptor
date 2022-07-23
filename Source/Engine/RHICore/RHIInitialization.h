@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 
-namespace spt::rhicore
+namespace spt::rhi
 {
 
 struct RHIInitializationInfo

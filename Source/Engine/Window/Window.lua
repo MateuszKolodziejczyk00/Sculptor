@@ -2,7 +2,7 @@ Window = Project:CreateProject("Window", ETargetType.SharedLibrary)
 
 function Window:SetupConfiguration(configuration, platform)
 
-    self:AddPublicDependency("RHI")
+    self:AddPublicDependency("RendererTypes")
 
     if platform == EPlatform.Windows then
         self:AddPrivateDependency("GLFW")
