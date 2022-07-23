@@ -12,7 +12,7 @@ namespace spt::vulkan
 namespace priv
 {
 
-VkImageType SelectImageType(const rhi::TextureDefinition& definition)
+VkImageType SelectVulkanImageType(const rhi::TextureDefinition& definition)
 {
     if (definition.m_resolution.z() > 1)
     {
@@ -28,9 +28,9 @@ VkImageType SelectImageType(const rhi::TextureDefinition& definition)
     }
 }
 
-VkFormat SelectFormat(const rhi::TextureDefinition& definition)
+VkFormat SelectVulkanFormat(rhi::EFragmentFormat format)
 {
-    switch (definition.m_format)
+    switch (format)
     {
     case rhi::EFragmentFormat::RGBA8_UN_Float:      return VK_FORMAT_R8G8B8A8_UNORM;
     case rhi::EFragmentFormat::RGBA32_S_Float:      return VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -106,6 +106,65 @@ VkSampleCountFlagBits GetVulkanSampleCountFlag(Uint32 samples)
     return VK_SAMPLE_COUNT_1_BIT;
 }
 
+VkImageViewType GetVulkanViewType(rhi::ETextureViewType viewType, const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
+{
+    if (viewType == rhi::ETextureViewType::Default)
+    {
+        if (textureDef.m_resolution.z() > 1)
+        {
+            return VK_IMAGE_VIEW_TYPE_3D;
+        }
+        else if (textureDef.m_resolution.y() > 1)
+        {
+            return range.m_arrayLayersNum > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+        }
+        else
+        {
+            return range.m_arrayLayersNum > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+        }
+    }
+    else
+    {
+        return (range.m_arrayLayersNum / 6) > 1 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+    }
+}
+
+VkComponentSwizzle GetVulkanComponentMapping(rhi::ETextureComponentMapping mapping)
+{
+    switch (mapping)
+    {
+    case rhi::ETextureComponentMapping::R:            return VK_COMPONENT_SWIZZLE_R;
+    case rhi::ETextureComponentMapping::G:            return VK_COMPONENT_SWIZZLE_G;
+    case rhi::ETextureComponentMapping::B:            return VK_COMPONENT_SWIZZLE_B;
+    case rhi::ETextureComponentMapping::A:            return VK_COMPONENT_SWIZZLE_A;
+    case rhi::ETextureComponentMapping::Zero:         return VK_COMPONENT_SWIZZLE_ZERO;
+    case rhi::ETextureComponentMapping::One:          return VK_COMPONENT_SWIZZLE_ONE;
+    }
+
+    SPT_CHECK_NO_ENTRY();
+    return VK_COMPONENT_SWIZZLE_ZERO;
+}
+
+VkImageAspectFlags GetVulkanAspect(Flags32 aspect)
+{
+    VkImageAspectFlags vulkanAspect = 0;
+
+    if ((aspect & rhi::ETextureAspect::Color) != 0)
+    {
+        vulkanAspect |= VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+	if ((aspect & rhi::ETextureAspect::Depth) != 0)
+    {
+        vulkanAspect |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+	if ((aspect & rhi::ETextureAspect::Stencil) != 0)
+    {
+        vulkanAspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    return vulkanAspect;
+}
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,12 +179,10 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 {
 	SPT_PROFILE_FUNCTION();
 
-    m_definition = definition;
-
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
     imageInfo.flags = 0;
-    imageInfo.imageType = priv::SelectImageType(definition);
-    imageInfo.format = priv::SelectFormat(definition);
+    imageInfo.imageType = priv::SelectVulkanImageType(definition);
+    imageInfo.format = priv::SelectVulkanFormat(definition.m_format);
     imageInfo.extent = { definition.m_resolution.x(), definition.m_resolution.y(), definition.m_resolution.z() };
     imageInfo.mipLevels = definition.m_mipLevels;
     imageInfo.arrayLayers = definition.m_arrayLayers;
@@ -138,6 +195,8 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	const VmaAllocationCreateInfo allocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocation);
 
 	SPT_VK_CHECK(vmaCreateImage(VulkanRHI::GetAllocatorHandle(), &imageInfo, &allocationInfo, &m_imageHandle, &m_allocation, nullptr));
+
+    m_definition = definition;
 }
 
 void RHITexture::ReleaseRHI()
@@ -146,7 +205,10 @@ void RHITexture::ReleaseRHI()
 
     SPT_CHECK(!!IsValid());
 
-    vmaDestroyImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, m_allocation);
+    if (m_allocation)
+    {
+        vmaDestroyImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, m_allocation);
+    }
 
     m_imageHandle = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
@@ -176,6 +238,71 @@ void RHITexture::SetName(const lib::HashedString& name)
 const lib::HashedString& RHITexture::GetName() const
 {
     return m_name.Get();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHITextureView ================================================================================
+
+RHITextureView::RHITextureView()
+    : m_viewHandle(VK_NULL_HANDLE)
+    , m_texture(nullptr)
+{ }
+
+void RHITextureView::InitializeRHI(const RHITexture* texture, const rhi::TextureViewDefinition& viewDefinition)
+{
+    SPT_PROFILE_FUNCTION();
+
+    SPT_CHECK(!!texture);
+
+    const rhi::TextureDefinition& textureDef = texture->GetDefinition();
+
+    VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    viewInfo.flags = 0;
+    viewInfo.image = texture->GetHandle();
+    viewInfo.viewType = priv::GetVulkanViewType(viewDefinition.m_viewType, viewDefinition.m_subresourceRange, textureDef);
+    viewInfo.format = priv::SelectVulkanFormat(textureDef.m_format);
+
+    viewInfo.components.r = priv::GetVulkanComponentMapping(viewDefinition.m_componentMappings.r);
+    viewInfo.components.g = priv::GetVulkanComponentMapping(viewDefinition.m_componentMappings.g);
+    viewInfo.components.b = priv::GetVulkanComponentMapping(viewDefinition.m_componentMappings.b);
+    viewInfo.components.a = priv::GetVulkanComponentMapping(viewDefinition.m_componentMappings.a);
+
+    viewInfo.subresourceRange.aspectMask = priv::GetVulkanAspect(viewDefinition.m_subresourceRange.m_aspect);
+    viewInfo.subresourceRange.baseMipLevel = viewDefinition.m_subresourceRange.m_baseMipLevel;
+    viewInfo.subresourceRange.levelCount = viewDefinition.m_subresourceRange.m_mipLevelsNum;
+    viewInfo.subresourceRange.baseArrayLayer = viewDefinition.m_subresourceRange.m_baseArrayLayer;
+    viewInfo.subresourceRange.layerCount = viewDefinition.m_subresourceRange.m_arrayLayersNum;
+
+    SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
+
+    m_texture = texture;
+}
+
+void RHITextureView::ReleaseRHI()
+{
+    SPT_PROFILE_FUNCTION();
+
+    SPT_CHECK(!!m_viewHandle);
+
+    vkDestroyImageView(VulkanRHI::GetDeviceHandle(), m_viewHandle, VulkanRHI::GetAllocationCallbacks());
+
+    m_viewHandle = VK_NULL_HANDLE;
+    m_texture = nullptr;
+}
+
+Bool RHITextureView::IsValid() const
+{
+    return !!m_viewHandle;
+}
+
+VkImageView RHITextureView::GetHandle() const
+{
+    return m_viewHandle;
+}
+
+const RHITexture* RHITextureView::GetTexture() const
+{
+    return m_texture;
 }
 
 }

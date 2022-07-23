@@ -45,4 +45,27 @@ private:
 	DebugName						m_name;
 };
 
+
+class VULKAN_RHI_API RHITextureView
+{
+public:
+
+	RHITextureView();
+
+	void							InitializeRHI(const RHITexture* texture, const rhi::TextureViewDefinition& viewDefinition);
+	void							ReleaseRHI();
+
+	Bool							IsValid() const;
+	
+	VkImageView						GetHandle() const;
+
+	const RHITexture*				GetTexture() const;
+
+private:
+
+	VkImageView						m_viewHandle;
+
+	const RHITexture*				m_texture;
+};
+
 }

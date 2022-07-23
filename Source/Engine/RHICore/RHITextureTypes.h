@@ -58,4 +58,89 @@ struct TextureDefinition
 	Uint8				m_arrayLayers;
 };
 
+
+enum class ETextureViewType
+{
+	Default,
+	Cube
+};
+
+
+enum class ETextureComponentMapping
+{
+	R,
+	G,
+	B,
+	A,
+	Zero,
+	One
+};
+
+
+struct TextureComponentMappings
+{
+	TextureComponentMappings(ETextureComponentMapping inR = ETextureComponentMapping::R,
+							 ETextureComponentMapping inG = ETextureComponentMapping::G,
+							 ETextureComponentMapping inB = ETextureComponentMapping::B,
+							 ETextureComponentMapping inA = ETextureComponentMapping::A)
+		: r(inR)
+		, g(inG)
+		, b(inB)
+		, a(inA)
+	{ }
+
+	ETextureComponentMapping r;
+	ETextureComponentMapping g;
+	ETextureComponentMapping b;
+	ETextureComponentMapping a;
+
+};
+
+
+namespace ETextureAspect
+{
+
+enum Flags : Flags32
+{
+	Color			= BIT(0),
+	Depth			= BIT(1),
+	Stencil			= BIT(2)
+};
+
+}
+
+
+struct TextureSubresourceRange
+{
+	static constexpr Uint32 s_allRemainingMips			= idxNone<Uint32>;
+	static constexpr Uint32 s_allRemainingArrayLayers	= idxNone<Uint32>;
+
+	TextureSubresourceRange(Flags32 aspect = 0, Uint32 baseMip = 0, Uint32 mipLevelsNum = s_allRemainingMips, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = s_allRemainingArrayLayers)
+		: m_aspect(aspect)
+		, m_baseMipLevel(baseMip)
+		, m_mipLevelsNum(mipLevelsNum)
+		, m_baseArrayLayer(baseArrayLayer)
+		, m_arrayLayersNum(arrayLayersNum)
+	{ }
+
+	Flags32				m_aspect;
+	Uint32				m_baseMipLevel;
+	Uint32				m_mipLevelsNum;
+	Uint32				m_baseArrayLayer;
+	Uint32				m_arrayLayersNum;
+};
+
+
+struct TextureViewDefinition
+{
+	TextureViewDefinition(	ETextureViewType viewType = ETextureViewType::Default,
+							const TextureComponentMappings& componentMappings = TextureComponentMappings(),
+							const TextureSubresourceRange& subresourceRange = TextureSubresourceRange())
+	{ }
+
+	ETextureViewType			m_viewType;
+	TextureComponentMappings	m_componentMappings;
+	TextureSubresourceRange		m_subresourceRange;
+};
+
 }
