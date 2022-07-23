@@ -15,4 +15,7 @@ using SharedPtr = std::shared_ptr<TType>;
 template<typename TType>
 using WeakPtr = std::weak_ptr<TType>;
 
+template<typename TType>
+using SharedFromThis = std::enable_shared_from_this<TType>;
+
 }
