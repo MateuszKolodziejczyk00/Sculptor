@@ -42,9 +42,20 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
-	vkGetDeviceQueue(m_deviceHandle, m_gfxFamilyIdx, 0, &m_gfxQueueHandle);
-	vkGetDeviceQueue(m_deviceHandle, m_asyncComputeFamilyIdx, 0, &m_asyncComputeQueueHandle);
-	vkGetDeviceQueue(m_deviceHandle, m_transferFamilyIdx, 0, &m_transferQueueHandle);
+	VkDeviceQueueInfo2 gfxQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
+    gfxQueueInfo.queueFamilyIndex = m_gfxFamilyIdx;
+    gfxQueueInfo.queueIndex = 0;
+	vkGetDeviceQueue2(m_deviceHandle, &gfxQueueInfo, &m_gfxQueueHandle);
+
+	VkDeviceQueueInfo2 asyncComputeQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
+    asyncComputeQueueInfo.queueFamilyIndex = m_asyncComputeFamilyIdx;
+    asyncComputeQueueInfo.queueIndex = 0;
+	vkGetDeviceQueue2(m_deviceHandle, &asyncComputeQueueInfo, &m_asyncComputeQueueHandle);
+
+	VkDeviceQueueInfo2 transferQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
+    transferQueueInfo.queueFamilyIndex = m_transferFamilyIdx;
+    transferQueueInfo.queueIndex = 0;
+	vkGetDeviceQueue2(m_deviceHandle, &transferQueueInfo, &m_transferQueueHandle);
 
 	volkLoadDevice(m_deviceHandle);
 }
