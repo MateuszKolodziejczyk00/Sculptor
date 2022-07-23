@@ -1,5 +1,6 @@
 #include "Buffer.h"
 #include "CurrentFrameContext.h"
+#include "RendererUtils.h"
 
 
 namespace spt::renderer
@@ -8,13 +9,18 @@ namespace spt::renderer
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer ========================================================================================
 
-Buffer::Buffer(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+Buffer::Buffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
+	SPT_PROFILE_FUNCTION();
+
 	m_rhiBuffer.InitializeRHI(size, bufferUsage, allocationInfo);
+	m_rhiBuffer.SetName(name.Get());
 }
 
 Buffer::~Buffer()
 {
+	SPT_CHECK(m_rhiBuffer.IsValid());
+
 	CurrentFrameContext::SubmitDeferredRelease(
 		[resource = m_rhiBuffer]() mutable
 		{

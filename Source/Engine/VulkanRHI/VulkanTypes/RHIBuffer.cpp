@@ -170,16 +170,6 @@ DeviceAddress RHIBuffer::GetDeviceAddress() const
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
 }
 
-Bool RHIBuffer::CanSetData() const
-{
-	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
-}
-
-void RHIBuffer::SetData(const void* data, Uint64 dataSize)
-{
-	SPT_CHECK_NO_ENTRY();
-}
-
 void RHIBuffer::SetName(const lib::HashedString& name)
 {
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);

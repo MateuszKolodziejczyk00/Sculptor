@@ -13,13 +13,14 @@ namespace spt::renderer
 {
 
 class BufferView;
+struct RendererResourceName;
 
 
 class RENDERER_TYPES_API Buffer : public lib::SharedFromThis<Buffer>
 {
 public:
 
-	Buffer(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	Buffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	~Buffer();
 
 	rhi::RHIBuffer&					GetRHI();

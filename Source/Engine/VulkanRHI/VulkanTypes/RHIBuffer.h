@@ -37,10 +37,6 @@ public:
 
 	DeviceAddress				GetDeviceAddress() const;
 
-	Bool						CanSetData() const;
-
-	void						SetData(const void* data, Uint64 dataSize);
-
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 
@@ -73,23 +69,6 @@ private:
 
 	EMappingStrategy			m_mappingStrategy;
 	void*						m_mappedPointer;
-};
-
-
-class VULKAN_RHI_API RHIBufferView
-{
-public:
-
-
-
-private:
-
-
-	RHIBuffer*			m_buffer;
-
-	Uint64				m_offset;
-	Uint64				m_size;
-
 };
 
 }

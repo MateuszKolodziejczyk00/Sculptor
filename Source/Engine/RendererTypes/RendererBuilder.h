@@ -2,6 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RendererUtils.h"
 #include "RHIFwd.h"
 
 
@@ -21,7 +22,7 @@ class RENDERER_TYPES_API RendererBuilder
 {
 public:
 
-	static lib::SharedPtr<Buffer>				CreateBuffer(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	static lib::SharedPtr<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 };
 
 }
