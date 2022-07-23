@@ -69,11 +69,6 @@ RHIBuffer::RHIBuffer()
 	, m_mappedPointer(nullptr)
 { }
 
-RHIBuffer::~RHIBuffer()
-{
-	SPT_CHECK(!IsValid());
-}
-
 void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILE_FUNCTION();

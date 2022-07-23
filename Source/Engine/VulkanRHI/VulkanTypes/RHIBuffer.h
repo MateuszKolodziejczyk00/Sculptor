@@ -22,7 +22,6 @@ class VULKAN_RHI_API RHIBuffer
 public:
 
 	RHIBuffer();
-	~RHIBuffer();
 
 	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	void						ReleaseRHI();
