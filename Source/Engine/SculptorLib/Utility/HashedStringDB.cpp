@@ -101,7 +101,7 @@ void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 
 	const std::unique_lock<std::shared_mutex> addRecordLock(priv::recordsMutex);
 
-	priv::records.emplace(key, newRecord);
+	priv::records.emplace(key, std::forward<String>(newRecord));
 }
 
 }
