@@ -35,7 +35,11 @@ public:
 
 private:
 
+#if RENDERER_VALIDATION
+
 	lib::HashedString m_name;
+
+#endif // RENDERER_VALIDATION
 };
 
 #if RENDERER_VALIDATION

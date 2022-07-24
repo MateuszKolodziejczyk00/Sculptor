@@ -59,16 +59,25 @@ currentProjectsType = nil
 currentProjectsSubgroup = ""
 
 function Project:CreateProject(name, targetType, language)
+    return Project:CreateProjectImpl(name, name, targetType, language)
+end
+
+function Project:CreateProjectInDirectory(directory, projectName, targetType, language)
+    return Project:CreateProjectImpl(directory, projectName, targetType, language)
+end
+
+function Project:CreateProjectImpl(directory, name, targetType, language)
     local projectType = currentProjectsType
-    local inProjectLocation = projectType .. "/" .. name
+    local inProjectLocation = projectType .. "/" .. directory
 
     if projectType == EProjectType.ThirdParty then
-        inProjectLocation = inProjectLocation .. "/" .. name
+        inProjectLocation = inProjectLocation .. "/" .. directory
     end
-
+    
     newProject =
     {
         ["name"] = name,
+        ["directory"] = directory,
         ["targetType"] = targetType,
         ["projectType"] = projectType,
         ["language"] = language or ELanguage.CPP,
@@ -111,7 +120,7 @@ function Project:SetupProject()
     staticruntime "off"
 
     if self.projectType == EProjectType.ThirdParty then
-        location (self.name)
+        location (self.directory)
     end
 
 	targetdir ("../../../Binaries/" .. OutputDirectory)
@@ -401,6 +410,10 @@ end
 
 function IncludeProject(name)
     include (currentProjectsType .. "/" .. name .. "/" .. name)
+end
+
+function IncludeProjectFromDirectory(directory, projectName)
+    include (currentProjectsType .. "/" .. directory .. "/" .. projectName)
 end
 
 function SetProjectsSubgroupName(name)

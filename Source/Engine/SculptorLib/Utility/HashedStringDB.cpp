@@ -82,6 +82,8 @@ HashedStringDB::KeyType HashedStringDB::HashString(StringView string)
 
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
+	SPT_PROFILE_FUNCTION();
+
 	const std::shared_lock<std::shared_mutex> readRecordsLock(priv::recordsMutex);
 
 	const auto foundRecord = priv::records.find(key);
