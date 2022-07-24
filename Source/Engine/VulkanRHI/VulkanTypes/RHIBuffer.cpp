@@ -16,39 +16,39 @@ VkBufferUsageFlags GetVulkanBufferUsage(Flags32 bufferUsage)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::TransferDst) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::TransferDst) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::UniformTexel) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::UniformTexel) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::StorageTexel) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::StorageTexel) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::Uniform) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::Uniform) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::Storage) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::Storage) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::Index) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::Index) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::Vertex) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::Vertex) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::Indirect) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::Indirect) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 	}
-	if((bufferUsage & rhi::EBufferUsage::DeviceAddress) != 0 )
+	if ((bufferUsage & rhi::EBufferUsage::DeviceAddress) != 0)
 	{
 		vulkanFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 	}
@@ -134,6 +134,7 @@ void* RHIBuffer::MapBufferMemory() const
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
+		SPT_CHECK(!!m_mappedPointer);
 		return m_mappedPointer;
 	}
 	else if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
@@ -160,6 +161,8 @@ void RHIBuffer::UnmapBufferMemory() const
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const
 {
+	SPT_PROFILE_FUNCTION();
+
 	VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
 	addressInfo.buffer = m_bufferHandle;
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
@@ -199,7 +202,7 @@ RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const VmaAllocation
 {
 	const VmaMemoryUsage memoryUsage = allocationInfo.usage;
 
-	// if allocation was created mapped, use persitently mapped strategy
+	// if allocation was created mapped, use persistently mapped strategy
 	if(allocationInfo.flags &  VMA_ALLOCATION_CREATE_MAPPED_BIT)
 	{
 		return EMappingStrategy::PersistentlyMapped;

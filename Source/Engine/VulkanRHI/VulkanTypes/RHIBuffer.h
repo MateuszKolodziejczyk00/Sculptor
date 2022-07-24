@@ -1,11 +1,10 @@
 #pragma once
 
 #include "VulkanRHIMacros.h"
-#include "Vulkan.h"
-#include "Debug/DebugUtils.h"
-
 #include "SculptorCoreTypes.h"
+#include "Vulkan.h"
 #include "RHIBufferTypes.h"
+#include "Debug/DebugUtils.h"
 
 
 namespace spt::rhi
