@@ -16,4 +16,4 @@ IncludeProject("PlatformWindow")
 
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererTypes")
-
+IncludeProject("RendererCore")

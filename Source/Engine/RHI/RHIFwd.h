@@ -10,6 +10,7 @@ class VulkanRHI;
 class RHIBuffer;
 class RHITexture;
 class RHITextureView;
+class RHIWindow;
 
 }
 

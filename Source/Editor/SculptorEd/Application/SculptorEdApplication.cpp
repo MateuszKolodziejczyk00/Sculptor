@@ -1,5 +1,6 @@
 #include "SculptorEdApplication.h"
-#include "Window/PlatformWindowImpl.h"
+#include "Renderer.h"
+#include "RendererBuilder.h"
 #include "Profiler.h"
 #include "Timer/TickingTimer.h"
 
@@ -15,7 +16,9 @@ void SculptorEdApplication::OnInit()
 {
 	Super::OnInit();
 
-	m_window = std::make_shared<platform::PlatformWindow>("SculptorEd", math::Vector2i(1920, 1080));
+	renderer::Renderer::Initialize();
+
+	m_window = renderer::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
 }
 
 void SculptorEdApplication::OnRun()
@@ -39,6 +42,8 @@ void SculptorEdApplication::OnShutdown()
 	Super::OnShutdown();
 
 	m_window.reset();
+
+	renderer::Renderer::Shutdown();
 }
 
 }

@@ -27,9 +27,11 @@ struct GLFWWindowData
 	GLFWWindow::OnWindowClosedDelegate m_onClosed;
 };
 
-
 namespace priv
 {
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks =====================================================================================
 
 static void OnErrorCallback(int errorCode, const char* description)
 {
@@ -69,14 +71,20 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers =======================================================================================
+
 #if VULKAN_RHI
 
-static void GetRequiredExtensions(rhi::RHIInitializationInfo& initializationInfo)
+static RequiredExtensionsInfo GetRequiredExtensions()
 {
-	initializationInfo.m_extensions = glfwGetRequiredInstanceExtensions(&initializationInfo.m_extensionsNum);
+	glfwInit();
+	RequiredExtensionsInfo extensionsInfo;
+	extensionsInfo.m_extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.m_extensionsNum);
+	return extensionsInfo;
 }
 
-static void PostInitializeRHIInstance(GLFWwindow* windowHandle)
+static void InitializeRHIWindow(GLFWwindow* windowHandle)
 {
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	glfwCreateWindowSurface(rhi::RHI::GetInstanceHandle(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
@@ -93,27 +101,32 @@ static void PostInitializeRHIInstance(GLFWwindow* windowHandle)
 
 static void InitializeRHI(GLFWwindow* windowHandle)
 {
-	rhi::RHIInitializationInfo initializationInfo;
-	priv::GetRequiredExtensions(initializationInfo);
-
-	rhi::RHI::Initialize(initializationInfo);
-	
-	PostInitializeRHIInstance(windowHandle);
-
-	rhi::RHIWindowInitializationInfo windowInitInfo;
-
-	int width = idxNone<int>;
-	int height = idxNone<int>;
-	glfwGetFramebufferSize(windowHandle, &width, &height);
-	windowInitInfo.m_framebufferSize = math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
-
-	rhi::RHI::InitializeWindow(windowInitInfo);
+	InitializeRHIWindow(windowHandle);
 }
 
 } // priv
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// GLFWWindow ====================================================================================
 
-GLFWWindow::GLFWWindow(std::string_view name, math::Vector2i resolution)
+void GLFWWindow::Initialize()
+{
+	glfwSetErrorCallback(&priv::OnErrorCallback);
+
+	if (!glfwInit())
+	{
+		SPT_LOG_ERROR(GLFW, "GLFW Initialization failed");
+	}
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+}
+
+RequiredExtensionsInfo GLFWWindow::GetRequiredRHIExtensionNames()
+{
+	return priv::GetRequiredExtensions();
+}
+
+GLFWWindow::GLFWWindow(lib::StringView name, math::Vector2u resolution)
 {
 	m_windowData = std::make_unique<GLFWWindowData>();
 
@@ -124,6 +137,14 @@ GLFWWindow::~GLFWWindow()
 {
 	glfwDestroyWindow(m_windowData->m_windowHandle);
 	glfwTerminate();
+}
+
+math::Vector2u GLFWWindow::GetFramebufferSize() const
+{
+	int width = idxNone<int>;
+	int height = idxNone<int>;
+	glfwGetFramebufferSize(m_windowData->m_windowHandle, &width, &height);
+	return math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
 }
 
 void GLFWWindow::Update(Real32 deltaTime)
@@ -146,17 +167,8 @@ GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 	return m_windowData->m_onClosed;
 }
 
-void GLFWWindow::InitializeWindow(std::string_view name, math::Vector2i resolution)
+void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolution)
 {
-	glfwSetErrorCallback(&priv::OnErrorCallback);
-
-	if (!glfwInit())
-	{
-		SPT_LOG_ERROR(GLFW, "GLFW Initialization failed");
-	}
-
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
 
 	priv::InitializeRHI(windowHandle);
@@ -170,15 +182,7 @@ void GLFWWindow::InitializeWindow(std::string_view name, math::Vector2i resoluti
 	glfwSetKeyCallback(windowHandle, &priv::OnKeyAction);
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
-
-	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnWindowClosed);
 }
-
-void GLFWWindow::OnWindowClosed()
-{
-	rhi::RHI::Uninitialize();
-}
-
 }
 
 #endif // USE_GLFW

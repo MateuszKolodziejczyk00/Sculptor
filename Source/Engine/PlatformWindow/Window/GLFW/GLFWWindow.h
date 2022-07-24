@@ -13,30 +13,47 @@ namespace spt::platform
 struct GLFWWindowData;
 
 
+struct RequiredExtensionsInfo
+{
+	RequiredExtensionsInfo()
+		: m_extensions(nullptr)
+		, m_extensionsNum(0)
+	{ }
+
+	const char* const*					m_extensions;
+	Uint32								m_extensionsNum;
+
+};
+
+
 class PLATFORM_WINDOW_API GLFWWindow
 {
 public:
 
-	GLFWWindow(std::string_view name, math::Vector2i resolution);
+	static void							Initialize();
+
+	static RequiredExtensionsInfo		GetRequiredRHIExtensionNames();
+
+	GLFWWindow(lib::StringView name, math::Vector2u resolution);
 	~GLFWWindow();
 
-	void Update(Real32 deltaTime);
+	math::Vector2u						GetFramebufferSize() const;
 
-	Bool ShouldClose();
+	void								Update(Real32 deltaTime);
 
-	using OnWindowResizedDelegate = lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
-	OnWindowResizedDelegate& GetOnResizedCallback();
+	Bool								ShouldClose();
 
-	using OnWindowClosedDelegate = lib::MulticastDelegate<>;
-	OnWindowClosedDelegate& GetOnClosedCallback();
+	using OnWindowResizedDelegate		= lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
+	OnWindowResizedDelegate&			GetOnResizedCallback();
+
+	using OnWindowClosedDelegate		= lib::MulticastDelegate<>;
+	OnWindowClosedDelegate&				GetOnClosedCallback();
 
 private:
 
-	void OnWindowClosed();
+	void								InitializeWindow(lib::StringView name, math::Vector2u resolution);
 
-	void InitializeWindow(std::string_view name, math::Vector2i resolution);
-
-	lib::UniquePtr<GLFWWindowData> m_windowData;
+	lib::UniquePtr<GLFWWindowData>		m_windowData;
 };
 
 }

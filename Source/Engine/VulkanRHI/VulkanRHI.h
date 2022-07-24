@@ -26,7 +26,7 @@ public:
 
 	static void Initialize(const rhi::RHIInitializationInfo& initInfo);
 
-	static void InitializeWindow(const rhi::RHIWindowInitializationInfo& initInfo);
+	static void InitializeGPUForWindow();
 
 	static void Uninitialize();
 
