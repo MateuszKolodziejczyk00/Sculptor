@@ -10,7 +10,35 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers =======================================================================================
+
 SPT_IMPLEMENT_LOG_CATEGORY(VulkanRHIWindow, true);
+
+namespace priv
+{
+
+PFN_vkVoidFunction LoadVulkanFunction(const char* functionName, void* userData)
+{
+	const VkDevice deviceHandle = static_cast<VkDevice>(userData);
+
+	PFN_vkVoidFunction func = nullptr;
+	func = vkGetDeviceProcAddr(VulkanRHI::GetDeviceHandle(), functionName);
+
+	if (!func)
+	{
+		func = vkGetInstanceProcAddr(VulkanRHI::GetInstanceHandle(), functionName);
+	}
+
+	SPT_CHECK(!!func);
+
+	return func;
+}
+	
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIWindow =====================================================================================
 
 RHIWindow::RHIWindow()
 	: m_swapchain(VK_NULL_HANDLE)
@@ -22,12 +50,25 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	m_minImagesNum = windowInfo.m_minImageCount;
 
-	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
-	const VkPhysicalDevice physicalDeviceHandle = VulkanRHI::GetPhysicalDeviceHandle();
-	const VkSurfaceKHR surfaceHandle = VulkanRHI::GetSurfaceHandle();
-	const VkInstance instanceHandle = VulkanRHI::GetInstanceHandle();
+	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();
+	const VkDevice deviceHandle						= device.GetHandle();
+	const VkPhysicalDevice physicalDeviceHandle		= VulkanRHI::GetPhysicalDeviceHandle();
+	const VkSurfaceKHR surfaceHandle				= VulkanRHI::GetSurfaceHandle();
+	const VkInstance instanceHandle					= VulkanRHI::GetInstanceHandle();
+
+	const Bool success = ImGui_ImplVulkan_LoadFunctions(&priv::LoadVulkanFunction, nullptr);
+	SPT_CHECK(success);
 
 	m_surface = surfaceHandle;
+
+	VkSurfaceCapabilitiesKHR surfaceCapabilities{ VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT };
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDeviceHandle, m_surface, &surfaceCapabilities);
+
+	const Uint32 framebufferWidth	= windowInfo.m_framebufferSize.x();
+	const Uint32 framebufferHeight	= windowInfo.m_framebufferSize.y();
+
+	SPT_CHECK(framebufferWidth >= surfaceCapabilities.minImageExtent.width && framebufferWidth <= surfaceCapabilities.maxImageExtent.width);
+	SPT_CHECK(framebufferHeight >= surfaceCapabilities.minImageExtent.height && framebufferHeight <= surfaceCapabilities.maxImageExtent.height);
 
 	VkBool32 isSurfaceSupportedByPhysicalDevice = VK_FALSE;
 	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDeviceHandle, device.GetGfxQueueIdx(), m_surface, &isSurfaceSupportedByPhysicalDevice);

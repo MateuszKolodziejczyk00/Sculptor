@@ -3,6 +3,7 @@
 #include "PlatformWindowMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
+#include "Window/PlatformWindowCommon.h"
 
 
 #if USE_GLFW
@@ -11,19 +12,6 @@ namespace spt::platform
 {
 
 struct GLFWWindowData;
-
-
-struct RequiredExtensionsInfo
-{
-	RequiredExtensionsInfo()
-		: m_extensions(nullptr)
-		, m_extensionsNum(0)
-	{ }
-
-	const char* const*					m_extensions;
-	Uint32								m_extensionsNum;
-
-};
 
 
 class PLATFORM_WINDOW_API GLFWWindow
