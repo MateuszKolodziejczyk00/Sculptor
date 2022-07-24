@@ -64,17 +64,19 @@ public:
 	~MulticastDelegate() = default;
 
 	template<typename ObjectType, typename FuncType>
-	DelegateHandle AddMember(ObjectType* user, FuncType function);
+	DelegateHandle		AddMember(ObjectType* user, FuncType function);
 
 	template<typename FuncType>
-	DelegateHandle AddRaw(FuncType* function);
+	DelegateHandle		AddRaw(FuncType* function);
 
 	template<typename Lambda>
-	DelegateHandle AddLambda(const Lambda& functor);
+	DelegateHandle		AddLambda(const Lambda& functor);
 
-	void Unbind(DelegateHandle handle);
+	void				Unbind(DelegateHandle handle);
 
-	void Broadcast(const Args&... arguments);
+	void				Reset();
+
+	void				Broadcast(const Args&... arguments);
 
 private:
 
@@ -114,6 +116,12 @@ template<typename... Args>
 void MulticastDelegate<Args...>::Unbind(DelegateHandle handle)
 {
 	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
+}
+
+template<typename... Args>
+void MulticastDelegate<Args...>::Reset()
+{
+	m_delegates.clear();
 }
 
 template<typename... Args>

@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "Window/PlatformWindowImpl.h"
 #include "CurrentFrameContext.h"
+#include "RendererUtils.h"
 #include "RHIInitialization.h"
 #include "RHIImpl.h"
 
@@ -15,7 +16,7 @@ Window::Window(lib::StringView name, math::Vector2u resolution)
 
 	rhi::RHIWindowInitializationInfo initInfo;
 	initInfo.m_framebufferSize = m_platformWindow->GetFramebufferSize();
-	initInfo.m_minImageCount = 3;
+	initInfo.m_minImageCount = RendererUtils::GetFramesInFlightNum();
 
 	m_rhiWindow.InitializeRHI(initInfo);
 }

@@ -13,7 +13,7 @@ public:
 
 	virtual Bool IsValid() const = 0;
 
-	virtual void Execute(const Args&... arguments) const = 0;
+	virtual void Execute(const Args&... arguments) = 0;
 };
 
 
@@ -32,7 +32,7 @@ public:
 		return m_function != nullptr;
 	}
 
-	virtual void Execute(const Args&... arguments) const override
+	virtual void Execute(const Args&... arguments) override
 	{
 		(*m_function)(arguments...);
 	}
@@ -59,7 +59,7 @@ public:
 		return m_user != nullptr && m_function != nullptr;
 	}
 
-	virtual void Execute(const Args&... arguments) const override
+	virtual void Execute(const Args&... arguments) override
 	{
 		(m_user->*m_function)(arguments...);
 	}
@@ -86,7 +86,7 @@ public:
 		return true;
 	}
 
-	virtual void Execute(const Args&... arguments) const override
+	virtual void Execute(const Args&... arguments) override
 	{
 		m_functor(arguments...);
 	}

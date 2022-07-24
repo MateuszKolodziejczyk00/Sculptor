@@ -78,7 +78,6 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 
 static RequiredExtensionsInfo GetRequiredExtensions()
 {
-	glfwInit();
 	RequiredExtensionsInfo extensionsInfo;
 	extensionsInfo.m_extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.m_extensionsNum);
 	return extensionsInfo;
@@ -183,6 +182,7 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
 }
+
 }
 
 #endif // USE_GLFW

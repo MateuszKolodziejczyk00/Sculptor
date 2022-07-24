@@ -1,4 +1,6 @@
 #include "Renderer.h"
+#include "RendererUtils.h"
+#include "CurrentFrameContext.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHIInitialization.h"
 #include "RHIImpl.h"
@@ -11,6 +13,8 @@ void Renderer::Initialize()
 {
 	platform::PlatformWindow::Initialize();
 
+	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
+
 	const platform::RequiredExtensionsInfo requiredExtensions = platform::PlatformWindow::GetRequiredRHIExtensionNames();
 
 	rhi::RHIInitializationInfo initializationInfo;
@@ -22,7 +26,19 @@ void Renderer::Initialize()
 
 void Renderer::Shutdown()
 {
+	CurrentFrameContext::Shutdown();
+
 	rhi::RHI::Uninitialize();
+}
+
+void Renderer::BeginFrame()
+{
+	CurrentFrameContext::BeginFrame();
+}
+
+void Renderer::EndFrame()
+{
+	CurrentFrameContext::EndFrame();
 }
 
 }

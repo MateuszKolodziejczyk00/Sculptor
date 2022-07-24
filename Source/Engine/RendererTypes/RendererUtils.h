@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
 
 
@@ -51,5 +52,13 @@ private:
 #define RENDERER_RESOURCE_NAME(Name) RendererResourceName()
 
 #endif // RENDERER_VALIDATION
+
+
+class RENDERER_TYPES_API RendererUtils
+{
+public:
+
+	static Uint32			GetFramesInFlightNum();
+};
 
 }
