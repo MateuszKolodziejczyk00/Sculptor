@@ -7,6 +7,12 @@
 	#else
 		#define IMGUI_API __declspec(dllimport)
 	#endif
+
+	#ifdef IMGUI_BACKEND_BUILD_DLL
+		#define IMGUI_IMPL_API __declspec(dllexport)
+	#else
+		#define IMGUI_IMPL_API __declspec(dllimport)
+	#endif
 #else
 	#error Sculptor only supports Windows
 #endif // IMGUI_PLATFORM_WINDOWS

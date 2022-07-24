@@ -4,10 +4,10 @@ function VulkanRHI:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("SculptorLib")
     self:AddPublicDependency("RHICore")
-
     self:AddPublicDependency("Volk")
-
     self:AddPublicDependency("VMA")
+
+    self:AddPrivateDependency("ImGuiVulkanBackend")
 
     self:AddPublicAbsoluteIncludePath("$(VULKAN_SDK)/Include")
 

@@ -1,4 +1,4 @@
-ImGui = Project:CreateProject("ImGui", ETargetType.StaticLibrary)
+ImGui = Project:CreateProject("ImGui", ETargetType.SharedLibrary)
 
 function ImGui:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Eigen")
@@ -10,7 +10,7 @@ function ImGui:SetupConfiguration(configuration, platform)
     self:AddPrivateDefine("IMGUI_BUILD_DLL=1");
 
     if platform == EPlatform.Windows then
-        self:AddPrivateDefine("IMGUI_PLATFORM_WINDOWS")
+        self:AddPublicDefine("IMGUI_PLATFORM_WINDOWS")
     end
 end
 

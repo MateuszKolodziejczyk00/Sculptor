@@ -4,6 +4,8 @@ function Window:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("RendererTypes")
 
+    self:AddPrivateDependency("ImGuiGLFWBackend")
+
     if platform == EPlatform.Windows then
         self:AddPrivateDependency("GLFW")
 
