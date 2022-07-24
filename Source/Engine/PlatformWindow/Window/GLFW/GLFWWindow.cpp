@@ -7,6 +7,7 @@
 #include "RHIInitialization.h"
 
 #include <GLFW/glfw3.h>
+#include "backends/imgui_impl_glfw.h"
 
 
 namespace spt::platform
@@ -98,7 +99,7 @@ static void InitializeRHIWindow(GLFWwindow* windowHandle)
 
 #endif // VULKAN_RHI
 
-static void InitializeRHI(GLFWwindow* windowHandle)
+static void InitializeRHISurface(GLFWwindow* windowHandle)
 {
 	InitializeRHIWindow(windowHandle);
 }
@@ -146,8 +147,17 @@ math::Vector2u GLFWWindow::GetFramebufferSize() const
 	return math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
 }
 
+void GLFWWindow::BeginFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+	ImGui_ImplGlfw_NewFrame();
+}
+
 void GLFWWindow::Update(Real32 deltaTime)
 {
+	SPT_PROFILE_FUNCTION();
+
 	glfwPollEvents();
 }
 
@@ -166,11 +176,21 @@ GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 	return m_windowData->m_onClosed;
 }
 
+void GLFWWindow::OnThisWindowClosed()
+{
+	ImGui_ImplGlfw_Shutdown();
+
+	ImGui::DestroyContext();
+}
+
 void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolution)
 {
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
 
-	priv::InitializeRHI(windowHandle);
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+
+	priv::InitializeRHISurface(windowHandle);
 
 	m_windowData->m_windowHandle = windowHandle;
 
@@ -181,6 +201,10 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	glfwSetKeyCallback(windowHandle, &priv::OnKeyAction);
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
+
+	ImGui_ImplGlfw_InitForVulkan(windowHandle, true);
+
+	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnThisWindowClosed);
 }
 
 }

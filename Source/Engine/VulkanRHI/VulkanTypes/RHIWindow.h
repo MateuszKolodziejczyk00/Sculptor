@@ -23,6 +23,8 @@ public:
 	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo);
 	void						ReleaseRHI();
 
+	void						BeginFrame();
+
 private:
 
 	VkSwapchainKHR				CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);

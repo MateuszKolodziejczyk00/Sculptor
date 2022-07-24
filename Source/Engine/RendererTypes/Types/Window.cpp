@@ -30,9 +30,26 @@ Window::~Window()
 		});
 }
 
+rhi::RHIWindow& Window::GetRHI()
+{
+	return m_rhiWindow;
+}
+
+const rhi::RHIWindow& Window::GetRHI() const
+{
+	return m_rhiWindow;
+}
+
 Bool Window::ShouldClose() const
 {
 	return m_platformWindow->ShouldClose();
+}
+
+void Window::BeginFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_platformWindow->BeginFrame();
 }
 
 void Window::Update(Real32 deltaTime)

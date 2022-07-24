@@ -16,9 +16,13 @@ public:
 	Window(lib::StringView name, math::Vector2u resolution);
 	~Window();
 
-	Bool ShouldClose() const;
+	rhi::RHIWindow&									GetRHI();
+	const rhi::RHIWindow&							GetRHI() const;
 
-	void Update(Real32 deltaTime);
+	Bool											ShouldClose() const;
+
+	void											BeginFrame();
+	void											Update(Real32 deltaTime);
 
 private:
 

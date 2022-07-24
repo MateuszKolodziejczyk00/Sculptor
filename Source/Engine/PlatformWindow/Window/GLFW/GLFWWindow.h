@@ -27,6 +27,7 @@ public:
 
 	math::Vector2u						GetFramebufferSize() const;
 
+	void								BeginFrame();
 	void								Update(Real32 deltaTime);
 
 	Bool								ShouldClose();
@@ -38,6 +39,8 @@ public:
 	OnWindowClosedDelegate&				GetOnClosedCallback();
 
 private:
+
+	void								OnThisWindowClosed();
 
 	void								InitializeWindow(lib::StringView name, math::Vector2u resolution);
 

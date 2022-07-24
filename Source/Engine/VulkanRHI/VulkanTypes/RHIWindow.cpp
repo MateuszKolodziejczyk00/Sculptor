@@ -104,6 +104,12 @@ void RHIWindow::ReleaseRHI()
 	}
 }
 
+void RHIWindow::BeginFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+}
+
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)
 {
 	SPT_PROFILE_FUNCTION();
