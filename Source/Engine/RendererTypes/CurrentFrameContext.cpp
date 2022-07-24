@@ -26,7 +26,9 @@ void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 
 void CurrentFrameContext::BeginFrame()
 {
-	++priv::currentFrameIdx;
+	SPT_PROFILE_FUNCTION();
+
+	priv::currentFrameIdx = priv::currentFrameIdx % static_cast<Uint32>(priv::cleanupDelegates.size());
 	FlushCurrentFrameReleases();
 }
 
@@ -42,12 +44,16 @@ void CurrentFrameContext::Shutdown()
 
 void CurrentFrameContext::FlushCurrentFrameReleases()
 {
+	SPT_PROFILE_FUNCTION();
+
 	priv::cleanupDelegates[priv::currentFrameIdx].Broadcast();
 	priv::cleanupDelegates[priv::currentFrameIdx].Reset();
 }
 
 void CurrentFrameContext::FlushAllFramesReleases()
 {
+	SPT_PROFILE_FUNCTION();
+
 	for (CleanupDelegate& delegate : priv::cleanupDelegates)
 	{
 		delegate.Broadcast();

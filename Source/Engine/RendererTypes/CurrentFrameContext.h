@@ -24,6 +24,8 @@ public:
 	template<typename TReleaseFunctor>
 	static void						SubmitDeferredRelease(TReleaseFunctor func)
 	{
+		SPT_PROFILE_FUNCTION();
+
 		const std::lock_guard<std::mutex> submittionLock(GetSubmittionMutex());
 		GetCurrentFrameCleanupDelegate().AddLambda(func);
 	}

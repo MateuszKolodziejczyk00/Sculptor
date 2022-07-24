@@ -33,11 +33,15 @@ void Renderer::Shutdown()
 
 void Renderer::BeginFrame()
 {
+	SPT_PROFILE_FUNCTION();
+
 	CurrentFrameContext::BeginFrame();
 }
 
 void Renderer::EndFrame()
 {
+	SPT_PROFILE_FUNCTION();
+
 	CurrentFrameContext::EndFrame();
 }
 
