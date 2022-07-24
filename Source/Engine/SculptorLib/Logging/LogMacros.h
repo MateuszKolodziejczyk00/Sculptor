@@ -72,7 +72,7 @@ LogCategory_##Category##& LogCategory_##Category##::Get()					\
 #define SPT_LOG_INFO(Category, ...)			SPT_LOG_IMPL(Category, info, __VA_ARGS__)
 #define SPT_LOG_WARN(Category, ...)			SPT_LOG_IMPL(Category, warn, __VA_ARGS__)
 #define SPT_LOG_ERROR(Category, ...)		SPT_LOG_IMPL(Category, error, __VA_ARGS__)
-#define SPT_LOG_FATAL(Category, ...)		SPT_LOG_IMPL(Category, fatal, __VA_ARGS__)
+#define SPT_LOG_FATAL(Category, ...)		SPT_LOG_IMPL(Category, critical, __VA_ARGS__)
 
 #else // WITH_LOGGER
 

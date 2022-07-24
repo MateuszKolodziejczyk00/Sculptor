@@ -69,7 +69,7 @@ void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)
 	m_deviceHandle = VK_NULL_HANDLE;
 }
 
-VkDevice LogicalDevice::GetHandle()
+VkDevice LogicalDevice::GetHandle() const
 {
 	return m_deviceHandle;
 }
@@ -169,6 +169,21 @@ VkQueue LogicalDevice::GetAsyncComputeQueueHandle() const
 VkQueue LogicalDevice::GetTransferQueueHandle() const
 {
 	return m_transferQueueHandle;
+}
+
+Uint32 LogicalDevice::GetGfxQueueIdx() const
+{
+	return m_gfxFamilyIdx;
+}
+
+Uint32 LogicalDevice::GetAsyncComputeQueueIdx() const
+{
+	return m_asyncComputeFamilyIdx;
+}
+
+Uint32 LogicalDevice::GetTransferQueueIdx() const
+{
+	return m_transferFamilyIdx;
 }
 
 }

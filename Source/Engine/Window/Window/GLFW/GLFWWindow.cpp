@@ -100,7 +100,14 @@ static void InitializeRHI(GLFWwindow* windowHandle)
 	
 	PostInitializeRHIInstance(windowHandle);
 
-	rhi::RHI::SelectAndInitializeGPU();
+	rhi::RHIWindowInitializationInfo windowInitInfo;
+
+	int width = idxNone<int>;
+	int height = idxNone<int>;
+	glfwGetFramebufferSize(windowHandle, &width, &height);
+	windowInitInfo.m_framebufferSize = math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
+
+	rhi::RHI::InitializeWindow(windowInitInfo);
 }
 
 } // priv

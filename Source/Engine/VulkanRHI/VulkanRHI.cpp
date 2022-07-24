@@ -158,10 +158,12 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
 }
 
-void VulkanRHI::SelectAndInitializeGPU()
+void VulkanRHI::InitializeWindow(const rhi::RHIWindowInitializationInfo& initInfo)
 {
     SPT_CHECK(!!priv::g_data.m_instance);
     SPT_CHECK(!!priv::g_data.m_surface);
+
+    SPT_CHECK(initInfo.m_framebufferSize.x() != idxNone<Uint32> && initInfo.m_framebufferSize.y() != idxNone<Uint32>);
 
     priv::g_data.m_physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.m_instance, priv::g_data.m_surface);
 
@@ -217,6 +219,21 @@ VkDevice VulkanRHI::GetDeviceHandle()
     return priv::g_data.m_device.GetHandle();
 }
 
+VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
+{
+    return priv::g_data.m_physicalDevice;
+}
+
+VkSurfaceKHR VulkanRHI::GetSurfaceHandle()
+{
+    return priv::g_data.m_surface;
+}
+
+const LogicalDevice& VulkanRHI::GetLogicalDevice()
+{
+    return priv::g_data.m_device;
+}
+
 MemoryManager& VulkanRHI::GetMemoryManager()
 {
     return priv::g_data.m_memoryManager;
@@ -236,5 +253,4 @@ const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
 {
     return nullptr;
 }
-
 }

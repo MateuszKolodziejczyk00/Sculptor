@@ -18,11 +18,15 @@ public:
 
 	bool		IsValid() const;
 
-	VkDevice	GetHandle();
+	VkDevice	GetHandle() const;
 
 	VkQueue		GetGfxQueueHandle() const;
 	VkQueue		GetAsyncComputeQueueHandle() const;
 	VkQueue		GetTransferQueueHandle() const;
+
+	Uint32		GetGfxQueueIdx() const;
+	Uint32		GetAsyncComputeQueueIdx() const;
+	Uint32		GetTransferQueueIdx() const;
 
 private:
 
