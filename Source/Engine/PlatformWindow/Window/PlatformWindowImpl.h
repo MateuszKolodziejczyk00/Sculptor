@@ -6,4 +6,4 @@
 
 #endif // USE_GLFW
 
-#include "WindowFwd.h"
+#include "PlatformWindowFwd.h"

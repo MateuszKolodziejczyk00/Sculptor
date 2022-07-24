@@ -1,19 +1,19 @@
 #pragma once
 
-#include "WindowMacros.h"
+#include "PlatformWindowMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
 
 
 #if USE_GLFW
 
-namespace spt::window
+namespace spt::platform
 {
 
 struct GLFWWindowData;
 
 
-class WINDOW_API GLFWWindow
+class PLATFORM_WINDOW_API GLFWWindow
 {
 public:
 

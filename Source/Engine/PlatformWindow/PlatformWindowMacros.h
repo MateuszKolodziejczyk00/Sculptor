@@ -3,10 +3,10 @@
 #include "SculptorCore.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
-	#ifdef WINDOW_BUILD_DLL
-		#define WINDOW_API __declspec(dllexport)
+	#ifdef PLATFORMWINDOW_BUILD_DLL
+		#define PLATFORM_WINDOW_API __declspec(dllexport)
 	#else
-		#define WINDOW_API __declspec(dllimport)
+		#define PLATFORM_WINDOW_API __declspec(dllimport)
 	#endif
 #else
 	#error Sculptor only supports Windows

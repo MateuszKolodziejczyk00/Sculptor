@@ -1,5 +1,5 @@
 #include "SculptorEdApplication.h"
-#include "Window/WindowImpl.h"
+#include "Window/PlatformWindowImpl.h"
 #include "Profiler.h"
 #include "Timer/TickingTimer.h"
 
@@ -15,7 +15,7 @@ void SculptorEdApplication::OnInit()
 {
 	Super::OnInit();
 
-	m_window = std::make_shared<window::GLFWWindow>("SculptorEd", math::Vector2i(1920, 1080));
+	m_window = std::make_shared<platform::PlatformWindow>("SculptorEd", math::Vector2i(1920, 1080));
 }
 
 void SculptorEdApplication::OnRun()

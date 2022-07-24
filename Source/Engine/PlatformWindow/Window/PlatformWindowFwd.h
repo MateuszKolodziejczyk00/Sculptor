@@ -3,11 +3,11 @@
 
 #if USE_GLFW
 
-namespace spt::window
+namespace spt::platform
 {
 class GLFWWindow;
 
-using Window = GLFWWindow;
+using PlatformWindow = GLFWWindow;
 
 }
 

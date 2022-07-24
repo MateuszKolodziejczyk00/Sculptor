@@ -2,7 +2,7 @@
 
 #include "Application/Application.h"
 #include "SculptorCoreTypes.h"
-#include "Window/WindowFwd.h"
+#include "Window/PlatformWindowFwd.h"
 
 namespace spt::ed
 {
@@ -27,7 +27,7 @@ protected:
 
 private:
 
-	std::shared_ptr<window::Window> m_window;
+	std::shared_ptr<platform::PlatformWindow> m_window;
 };
 
 }

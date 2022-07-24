@@ -9,7 +9,7 @@
 #include <GLFW/glfw3.h>
 
 
-namespace spt::window
+namespace spt::platform
 {
 
 SPT_IMPLEMENT_LOG_CATEGORY(GLFW, true)

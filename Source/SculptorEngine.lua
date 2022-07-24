@@ -11,9 +11,9 @@ IncludeProject("RHICore")
 IncludeProject("VulkanRHI")
 IncludeProject("RHI")
 
+SetProjectsSubgroupName("Graphics/Platform")
+IncludeProject("PlatformWindow")
+
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererTypes")
-
-SetProjectsSubgroupName("Graphics")
-IncludeProject("Window")
 

@@ -119,6 +119,8 @@ function Project:SetupProject()
     language (self.language)
     staticruntime "off"
 
+    print("Setup " .. self.name)
+
     if self.projectType == EProjectType.ThirdParty then
         location (self.directory)
     end
