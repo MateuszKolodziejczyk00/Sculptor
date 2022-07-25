@@ -18,3 +18,4 @@
 #include "Utility/HashedString.h"
 #include "Utility/UtilityMacros.h"
 #include "Utility/Memory.h"
+#include "Utility/Mutex.h"

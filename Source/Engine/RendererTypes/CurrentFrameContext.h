@@ -3,7 +3,6 @@
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
-#include <mutex>
 
 
 namespace spt::renderer

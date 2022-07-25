@@ -1,7 +1,7 @@
 #include "HashedStringDB.h"
 #include "Containers/HashMap.h"
 #include "Profiler.h"
-#include <shared_mutex>
+#include "Mutex.h"
 
 
 namespace spt::lib
@@ -9,7 +9,7 @@ namespace spt::lib
 
 namespace priv
 {
-std::shared_mutex recordsMutex;
+ReadWriteLock recordsMutex;
 
 HashMap<HashedStringDB::KeyType, String> records;
 }
@@ -84,7 +84,7 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
 	SPT_PROFILE_FUNCTION();
 
-	const std::shared_lock<std::shared_mutex> readRecordsLock(priv::recordsMutex);
+	const ReadLockGuard readRecordsLock(priv::recordsMutex);
 
 	const auto foundRecord = priv::records.find(key);
 	if (foundRecord != priv::records.cend())
@@ -101,7 +101,7 @@ void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
 	SPT_PROFILE_FUNCTION();
 
-	const std::unique_lock<std::shared_mutex> addRecordLock(priv::recordsMutex);
+	const WriteLockGuard addRecordLock(priv::recordsMutex);
 
 	priv::records.emplace(key, std::forward<String>(newRecord));
 }
