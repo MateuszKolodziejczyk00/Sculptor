@@ -76,8 +76,8 @@ class LambdaBinding : public DelegateBindingInterface<Args...>
 {
 public:
 
-	LambdaBinding(const Lambda& functor)
-		: m_functor(functor)
+	LambdaBinding(Lambda&& functor)
+		: m_functor(std::forward<Lambda>(functor))
 	{
 	}
 

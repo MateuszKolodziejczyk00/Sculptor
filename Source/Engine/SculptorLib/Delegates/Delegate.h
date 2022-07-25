@@ -33,7 +33,7 @@ public:
 	void BindRaw(FuncType* function);
 
 	template<typename Lambda>
-	void BindLambda(const Lambda& functor);
+	void BindLambda(Lambda&& functor);
 
 	void Unbind();
 
@@ -64,9 +64,9 @@ void Delegate<Args...>::BindRaw(FuncType* function)
 
 template<typename... Args>
 template<typename Lambda>
-void Delegate<Args...>::BindLambda(const Lambda& functor)
+void Delegate<Args...>::BindLambda(Lambda&& functor)
 {
-	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, Args...>(functor);
+	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, Args...>(std::forward<Lambda>(functor));
 }
 
 template<typename... Args>

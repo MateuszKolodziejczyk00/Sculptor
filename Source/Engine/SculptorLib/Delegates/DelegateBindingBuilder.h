@@ -20,7 +20,7 @@ public:
 	static UniquePtr<DelegateBindingInterface<Args...>> CreateMemberBinding(UserObject* user, FuncType function);
 
 	template<typename Lambda, typename...Args>
-	static UniquePtr<DelegateBindingInterface<Args...>> CreateLambda(const Lambda& functor);
+	static UniquePtr<DelegateBindingInterface<Args...>> CreateLambda(Lambda&& functor);
 };
 
 
@@ -37,9 +37,9 @@ static UniquePtr<DelegateBindingInterface<Args...>> DelegateBindingBuilder::Crea
 }
 
 template<typename Lambda, typename...Args>
-static UniquePtr<DelegateBindingInterface<Args...>> DelegateBindingBuilder::CreateLambda(const Lambda& functor)
+static UniquePtr<DelegateBindingInterface<Args...>> DelegateBindingBuilder::CreateLambda(Lambda&& functor)
 {
-	return UniquePtr<DelegateBindingInterface<Args...>>(new LambdaBinding<Lambda, Args...>(functor));
+	return UniquePtr<DelegateBindingInterface<Args...>>(new LambdaBinding<Lambda, Args...>(std::forward<Lambda>(functor)));
 }
 
 }

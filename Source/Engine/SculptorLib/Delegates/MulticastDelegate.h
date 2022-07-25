@@ -70,7 +70,7 @@ public:
 	DelegateHandle		AddRaw(FuncType* function);
 
 	template<typename Lambda>
-	DelegateHandle		AddLambda(const Lambda& functor);
+	DelegateHandle		AddLambda(Lambda&& functor);
 
 	void				Unbind(DelegateHandle handle);
 
@@ -105,10 +105,10 @@ DelegateHandle MulticastDelegate<Args...>::AddRaw(FuncType* function)
 
 template<typename... Args>
 template<typename Lambda>
-DelegateHandle MulticastDelegate<Args...>::AddLambda(const Lambda& functor)
+DelegateHandle MulticastDelegate<Args...>::AddLambda(Lambda&& functor)
 {
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(functor);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(std::forward<Lambda>(functor));
 	return handle;
 }
 
