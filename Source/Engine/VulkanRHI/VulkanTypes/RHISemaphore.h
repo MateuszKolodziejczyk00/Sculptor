@@ -22,9 +22,9 @@ public:
 	Bool						IsValid() const;
 
 	Uint64						GetValue() const;
-	void						Signal(Uint64 value);
-
 	Bool						Wait(Uint64 value, Uint64 timeout = maxValue<Uint64>) const;
+
+	void						Signal(Uint64 value);
 
 	VkSemaphore					GetHandle() const;
 	rhi::ESemaphoreType			GetType() const;

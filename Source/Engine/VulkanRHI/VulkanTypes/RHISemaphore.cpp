@@ -55,6 +55,7 @@ void RHISemaphore::ReleaseRHI()
 	{
 		vkDestroySemaphore(VulkanRHI::GetDeviceHandle(), m_semaphore, VulkanRHI::GetAllocationCallbacks());
 		m_semaphore = VK_NULL_HANDLE;
+		m_name.Reset();
 	}
 }
 
@@ -75,20 +76,6 @@ Uint64 RHISemaphore::GetValue() const
 	return result;
 }
 
-void RHISemaphore::Signal(Uint64 value)
-{
-	SPT_PROFILE_FUNCTION();
-	SPT_CHECK(IsValid());
-
-	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
-
-	VkSemaphoreSignalInfo signalInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO };
-    signalInfo.semaphore = m_semaphore;
-    signalInfo.value = value;
-
-	vkSignalSemaphore(VulkanRHI::GetDeviceHandle(), &signalInfo);
-}
-
 Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) const
 {
 	SPT_PROFILE_FUNCTION();
@@ -104,6 +91,20 @@ Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) con
 	const VkResult result = vkWaitSemaphores(VulkanRHI::GetDeviceHandle(), &waitInfo, timeout);
 
 	return result == VK_SUCCESS;
+}
+
+void RHISemaphore::Signal(Uint64 value)
+{
+	SPT_PROFILE_FUNCTION();
+	SPT_CHECK(IsValid());
+
+	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
+
+	VkSemaphoreSignalInfo signalInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO };
+    signalInfo.semaphore = m_semaphore;
+    signalInfo.value = value;
+
+	vkSignalSemaphore(VulkanRHI::GetDeviceHandle(), &signalInfo);
 }
 
 VkSemaphore RHISemaphore::GetHandle() const

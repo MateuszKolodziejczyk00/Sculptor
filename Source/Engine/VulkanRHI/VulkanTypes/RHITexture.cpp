@@ -250,9 +250,9 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
 {
     SPT_CHECK(!IsValid());
 
-    m_imageHandle = imageHandle;
-    m_allocation = VK_NULL_HANDLE;
-    m_definition = definition;
+    m_imageHandle   = imageHandle;
+    m_allocation    = VK_NULL_HANDLE;
+    m_definition    = definition;
 }
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation)
@@ -388,6 +388,7 @@ void RHITextureView::ReleaseRHI()
 
     m_viewHandle = VK_NULL_HANDLE;
     m_texture = nullptr;
+    m_name.Reset();
 }
 
 Bool RHITextureView::IsValid() const
@@ -403,6 +404,16 @@ VkImageView RHITextureView::GetHandle() const
 const RHITexture* RHITextureView::GetTexture() const
 {
     return m_texture;
+}
+
+void RHITextureView::SetName(const lib::HashedString& name)
+{
+    m_name.Set(name, reinterpret_cast<Uint64>(m_viewHandle), VK_OBJECT_TYPE_IMAGE_VIEW);
+}
+
+const lib::HashedString& RHITextureView::GetName() const
+{
+    return m_name.Get();
 }
 
 }

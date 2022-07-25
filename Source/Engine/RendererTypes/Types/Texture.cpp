@@ -47,17 +47,17 @@ const rhi::RHITexture& Texture::GetRHI() const
 	return m_rhiTexture;
 }
 
-lib::SharedPtr<TextureView> Texture::CreateView(const rhi::TextureViewDefinition& viewDefinition) const
+lib::SharedPtr<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const
 {
 	SPT_PROFILE_FUNCTION();
 
-	return std::make_shared<TextureView>(shared_from_this(), viewDefinition);
+	return std::make_shared<TextureView>(name, shared_from_this(), viewDefinition);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture =======================================================================================
 
-TextureView::TextureView(const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition)
+TextureView::TextureView(const RendererResourceName& name, const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition)
 	: m_texture(texture)
 {
 	SPT_PROFILE_FUNCTION();
@@ -67,6 +67,7 @@ TextureView::TextureView(const lib::SharedPtr<const Texture>& texture, const rhi
 	const rhi::RHITexture& rhiTexture = texture->GetRHI();
 
 	m_rhiView.InitializeRHI(rhiTexture, viewDefinition);
+	m_rhiView.SetName(name.Get());
 }
 
 TextureView::~TextureView()

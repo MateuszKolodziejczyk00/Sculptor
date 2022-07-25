@@ -31,7 +31,7 @@ public:
 	rhi::RHITexture&				GetRHI();
 	const rhi::RHITexture&			GetRHI() const;
 
-	lib::SharedPtr<TextureView>		CreateView(const rhi::TextureViewDefinition& viewDefinition) const;
+	lib::SharedPtr<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const;
 
 private:
 
@@ -43,7 +43,7 @@ class RENDERER_TYPES_API TextureView
 {
 public:
 
-	TextureView(const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
+	TextureView(const RendererResourceName& name, const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
 	~TextureView();
 
 	rhi::RHITextureView&			GetRHI();

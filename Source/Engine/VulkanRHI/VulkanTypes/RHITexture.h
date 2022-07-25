@@ -22,7 +22,7 @@ public:
 
 	RHITexture();
 
-	void							InitializeRHI(const rhi::TextureDefinition& definition,VkImage imageHandle);
+	void							InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle);
 	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation);
 	void							ReleaseRHI();
 
@@ -70,11 +70,16 @@ public:
 
 	const RHITexture*				GetTexture() const;
 
+	void							SetName(const lib::HashedString& name);
+	const lib::HashedString&		GetName() const;
+
 private:
 
 	VkImageView						m_viewHandle;
 
 	const RHITexture*				m_texture;
+
+	DebugName						m_name;
 };
 
 }
