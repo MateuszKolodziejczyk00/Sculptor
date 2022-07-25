@@ -4,6 +4,8 @@
 #include "RendererUtils.h"
 #include "RHIInitialization.h"
 #include "RHIImpl.h"
+#include "Semaphore.h"
+#include "Texture.h"
 
 namespace spt::renderer
 {
@@ -23,8 +25,10 @@ Window::Window(lib::StringView name, math::Vector2u resolution)
 
 Window::~Window()
 {
+	SPT_PROFILE_FUNCTION();
+
 	CurrentFrameContext::SubmitDeferredRelease(
-		[resource = m_rhiWindow]() mutable
+		[resource = std::move(m_rhiWindow)]() mutable
 		{
 			resource.ReleaseRHI();
 		});
@@ -57,6 +61,20 @@ void Window::Update(Real32 deltaTime)
 	SPT_PROFILE_FUNCTION();
 
 	m_platformWindow->Update(deltaTime);
+}
+
+lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout /*= maxValue<Uint64>*/)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
+
+	const Uint32 acquiredTextureIdx = m_rhiWindow.AcquireSwapchainImage(rhiSemaphore, timeout);
+	const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(acquiredTextureIdx);
+
+	const lib::SharedPtr<Texture> acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
+
+	return acquiredTexture;
 }
 
 }

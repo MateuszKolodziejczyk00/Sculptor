@@ -26,6 +26,11 @@ enum Flags : Flags32
 enum class EFragmentFormat : Uint32
 {
 	RGBA8_UN_Float,
+	BGRA8_UN_Float,
+
+	RGB8_UN_Float,
+	BGR8_UN_Float,
+
 	RGBA32_S_Float,
 	D32_S_Float,
 };

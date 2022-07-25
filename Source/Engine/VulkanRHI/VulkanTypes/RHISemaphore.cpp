@@ -68,6 +68,8 @@ Uint64 RHISemaphore::GetValue() const
 	SPT_PROFILE_FUNCTION();
 	SPT_CHECK(IsValid());
 
+	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
+
 	Uint64 result = 0;
 	vkGetSemaphoreCounterValue(VulkanRHI::GetDeviceHandle(), m_semaphore, &result);
 	return result;
@@ -78,7 +80,7 @@ void RHISemaphore::Signal(Uint64 value)
 	SPT_PROFILE_FUNCTION();
 	SPT_CHECK(IsValid());
 
-	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline || value <= 1);
+	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
 	VkSemaphoreSignalInfo signalInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO };
     signalInfo.semaphore = m_semaphore;
@@ -92,7 +94,7 @@ Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) con
 	SPT_PROFILE_FUNCTION();
 	SPT_CHECK(IsValid());
 
-	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline || value <= 1);
+	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
 	VkSemaphoreWaitInfo waitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
     waitInfo.semaphoreCount = 1;

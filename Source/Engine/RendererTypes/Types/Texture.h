@@ -25,6 +25,7 @@ class RENDERER_TYPES_API Texture : public lib::SharedFromThis<Texture>
 public:
 
 	Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
+	Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture);
 	~Texture();
 
 	rhi::RHITexture&				GetRHI();

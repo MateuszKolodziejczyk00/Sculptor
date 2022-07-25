@@ -9,6 +9,10 @@
 namespace spt::renderer
 {
 
+class Semaphore;
+class Texture;
+
+
 class RENDERER_TYPES_API Window
 {
 public:
@@ -23,6 +27,8 @@ public:
 
 	void											BeginFrame();
 	void											Update(Real32 deltaTime);
+
+	lib::SharedPtr<Texture>							AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout = maxValue<Uint64>);
 
 private:
 

@@ -16,6 +16,14 @@ Texture::Texture(const RendererResourceName& name, const rhi::TextureDefinition&
 	m_rhiTexture.SetName(name.Get());
 }
 
+Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture)
+{
+	SPT_CHECK(rhiTexture.IsValid());
+
+	m_rhiTexture = rhiTexture;
+	m_rhiTexture.SetName(name.Get());
+}
+
 Texture::~Texture()
 {
 	SPT_PROFILE_FUNCTION();

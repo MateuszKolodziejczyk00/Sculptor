@@ -22,6 +22,7 @@ public:
 
 	RHITexture();
 
+	void							InitializeRHI(const rhi::TextureDefinition& definition,VkImage imageHandle);
 	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation);
 	void							ReleaseRHI();
 
@@ -33,6 +34,14 @@ public:
 
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
+
+	// Vulkan Helpers ======================================================================================
+
+	static VkImageUsageFlags		GetVulkanTextureUsageFlags(Flags32 usageFlags);
+	static VkFormat					GetVulkanFormat(rhi::EFragmentFormat format);
+
+	static Flags32					GetRHITextureUsageFlags(VkImageUsageFlags usageFlags);
+	static rhi::EFragmentFormat		GetRHIFormat(VkFormat format);
 
 private:
 
