@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "Delegate.h"
 #include <vector>
+#include <mutex>
 
 
 namespace spt::lib
@@ -38,8 +39,8 @@ public:
 };
 
 
-template<typename... Args>
-class MulticastDelegate
+template<Bool isThreadsafe, typename... Args>
+class MulticastDelegateBase
 {
 	struct DelegateInfo
 	{
@@ -53,15 +54,17 @@ class MulticastDelegate
 
 public:
 
-	MulticastDelegate() = default;
+	using ThisType = MulticastDelegateBase<isThreadsafe, Args...>;
 
-	MulticastDelegate(const MulticastDelegate<Args...>& rhs) = delete;
-	MulticastDelegate<Args...>& operator=(const MulticastDelegate<Args...>& rhs) = delete;
+	MulticastDelegateBase() = default;
 
-	MulticastDelegate(MulticastDelegate<Args...>&& rhs) = default;
-	MulticastDelegate<Args...>& operator=(MulticastDelegate<Args...>&& rhs) = default;
+	MulticastDelegateBase(const ThisType& rhs) = delete;
+	ThisType& operator=(const ThisType& rhs) = delete;
 
-	~MulticastDelegate() = default;
+	MulticastDelegateBase(ThisType&& rhs) = default;
+	ThisType& operator=(ThisType&& rhs) = default;
+
+	~MulticastDelegateBase() = default;
 
 	template<typename ObjectType, typename FuncType>
 	DelegateHandle		AddMember(ObjectType* user, FuncType function);
@@ -80,57 +83,119 @@ public:
 
 private:
 
-	lib::DynamicArray<DelegateInfo> m_delegates;
-	DelegateIDType m_handleCounter;
+	using MutexOrBool					= std::conditional_t<isThreadsafe, std::mutex, Bool>;
+
+	lib::DynamicArray<DelegateInfo>		m_delegates;
+	DelegateIDType						m_handleCounter;
+	MutexOrBool							m_lock;
 };
 
 
-template<typename... Args>
+template<Bool isThreadsafe, typename... Args>
 template<typename ObjectType, typename FuncType>
-DelegateHandle MulticastDelegate<Args...>::AddMember(ObjectType* user, FuncType function)
+DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddMember(ObjectType* user, FuncType function)
 {
+	if constexpr (isThreadsafe)
+	{
+		m_lock.lock();
+	}
+
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindMember(user, function);
+
+	if constexpr (isThreadsafe)
+	{
+		m_lock.unlock();
+	}
+
 	return handle;
 }
 
-template<typename... Args>
+template<Bool isThreadsafe, typename... Args>
 template<typename FuncType>
-DelegateHandle MulticastDelegate<Args...>::AddRaw(FuncType* function)
+DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddRaw(FuncType* function)
 {
+	if constexpr (isThreadsafe)
+	{
+		m_lock.lock();
+	}
+
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindRaw(function);
+	
+	if constexpr (isThreadsafe)
+	{
+		m_lock.unlock();
+	}
+
 	return handle;
 }
 
-template<typename... Args>
+template<Bool isThreadsafe, typename... Args>
 template<typename Lambda>
-DelegateHandle MulticastDelegate<Args...>::AddLambda(Lambda&& functor)
+DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddLambda(Lambda&& functor)
 {
+	if constexpr (isThreadsafe)
+	{
+		m_lock.lock();
+	}
+
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(std::forward<Lambda>(functor));
+
+	if constexpr (isThreadsafe)
+	{
+		m_lock.unlock();
+	}
+
 	return handle;
 }
 
-template<typename... Args>
-void MulticastDelegate<Args...>::Unbind(DelegateHandle handle)
+template<Bool isThreadsafe, typename... Args>
+void MulticastDelegateBase<isThreadsafe, Args...>::Unbind(DelegateHandle handle)
 {
+	if constexpr (isThreadsafe)
+	{
+		m_lock.lock();
+	}
+
 	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
+
+	if constexpr (isThreadsafe)
+	{
+		m_lock.unlock();
+	}
 }
 
-template<typename... Args>
-void MulticastDelegate<Args...>::Reset()
+template<Bool isThreadsafe, typename... Args>
+void MulticastDelegateBase<isThreadsafe, Args...>::Reset()
 {
 	m_delegates.clear();
 }
 
-template<typename... Args>
-void MulticastDelegate<Args...>::Broadcast(const Args&... arguments)
+template<Bool isThreadsafe, typename... Args>
+void MulticastDelegateBase<isThreadsafe, Args...>::Broadcast(const Args&... arguments)
 {
-	for (const MulticastDelegate<Args...>::DelegateInfo& delegateInfo : m_delegates)
+	if constexpr (isThreadsafe)
+	{
+		m_lock.lock();
+	}
+
+	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
 	{
 		delegateInfo.m_Delegate.ExecuteIfBound(arguments...);
 	}
+
+	if constexpr (isThreadsafe)
+	{
+		m_lock.unlock();
+	}
 }
+
+template<typename... Args>
+using MulticastDelegate = MulticastDelegateBase<false, Args...>;
+
+template<typename... Args>
+using ThreadsafeMulticastDelegate = MulticastDelegateBase<true, Args...>;
 
 }

@@ -184,10 +184,6 @@ Bool RHIWindow::PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, 
 
 	VkResult result = VK_SUCCESS;
 
-	VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO };
-    timelineSemaphoreSubmitInfo.waitSemaphoreValueCount = static_cast<Uint32>(waitSemaphores.GetValues().size());
-    timelineSemaphoreSubmitInfo.pWaitSemaphoreValues = waitSemaphores.GetValues().data();
-
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphores.GetSemaphores().size());
     presentInfo.pWaitSemaphores = waitSemaphores.GetSemaphores().data();
@@ -195,7 +191,6 @@ Bool RHIWindow::PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, 
 	presentInfo.pSwapchains = &m_swapchain;
     presentInfo.pImageIndices = &imageIdx;
     presentInfo.pResults = &result;
-	presentInfo.pNext = &timelineSemaphoreSubmitInfo;
 
 	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueueHandle(), &presentInfo);
 	

@@ -30,7 +30,7 @@ Texture::~Texture()
 
 	SPT_CHECK(m_rhiTexture.IsValid());
 
-	CurrentFrameContext::SubmitDeferredRelease(
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 		[resource = m_rhiTexture]() mutable
 		{
 			resource.ReleaseRHI();
@@ -78,7 +78,7 @@ TextureView::~TextureView()
 
 	SPT_CHECK(m_rhiView.IsValid());
 
-	CurrentFrameContext::SubmitDeferredRelease(
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 		[resource = m_rhiView]() mutable
 		{
 			resource.ReleaseRHI();

@@ -27,7 +27,7 @@ Window::~Window()
 {
 	SPT_PROFILE_FUNCTION();
 
-	CurrentFrameContext::SubmitDeferredRelease(
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 		[resource = std::move(m_rhiWindow)]() mutable
 		{
 			resource.ReleaseRHI();

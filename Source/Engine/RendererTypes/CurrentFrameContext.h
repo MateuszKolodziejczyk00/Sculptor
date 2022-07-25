@@ -21,24 +21,13 @@ public:
 
 	static void						Shutdown();
 
-	template<typename TReleaseFunctor>
-	static void						SubmitDeferredRelease(TReleaseFunctor func)
-	{
-		SPT_PROFILE_FUNCTION();
-
-		const std::lock_guard<std::mutex> submittionLock(GetSubmittionMutex());
-		GetCurrentFrameCleanupDelegate().AddLambda(func);
-	}
-
-	using CleanupDelegate			= lib::MulticastDelegate<>;
+	using CleanupDelegate			= lib::ThreadsafeMulticastDelegate<>;
+	static CleanupDelegate&			GetCurrentFrameCleanupDelegate();
 
 private:
 
 	static void						FlushCurrentFrameReleases();
 	static void						FlushAllFramesReleases();
-
-	static std::mutex&		GetSubmittionMutex();
-	static CleanupDelegate&			GetCurrentFrameCleanupDelegate();
 };
 
 }

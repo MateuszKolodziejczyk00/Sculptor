@@ -3,6 +3,8 @@
 #include "RendererBuilder.h"
 #include "Profiler.h"
 #include "Timer/TickingTimer.h"
+#include "Types/Semaphore.h"
+#include "Types/Texture.h"
 
 
 namespace spt::ed
@@ -36,6 +38,16 @@ void SculptorEdApplication::OnRun()
 		renderer::Renderer::BeginFrame();
 
 		m_window->BeginFrame();
+
+		rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+		const lib::SharedPtr<renderer::Semaphore> acquireSemaphore = renderer::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+
+		const lib::SharedPtr<renderer::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
+
+		renderer::SemaphoresArray waitSemaphores;
+		waitSemaphores.AddBinarySemaphore(acquireSemaphore);
+
+		m_window->PresentTexture(waitSemaphores);
 
 		m_window->Update(deltaTime);
 

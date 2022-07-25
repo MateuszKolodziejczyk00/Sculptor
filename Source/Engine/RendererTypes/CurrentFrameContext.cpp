@@ -9,11 +9,10 @@ namespace spt::renderer
 
 namespace priv
 {
-lib::DynamicArray<CurrentFrameContext::CleanupDelegate> cleanupDelegates;
+CurrentFrameContext::CleanupDelegate*					cleanupDelegates;
 
+Uint32													framesInFlightNum = 0;
 Uint32													currentFrameIdx = 0;
-
-std::mutex												submittionMutex;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,14 +20,15 @@ std::mutex												submittionMutex;
 
 void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 {
-	priv::cleanupDelegates.resize(static_cast<SizeType>(framesInFlightNum));
+	priv::framesInFlightNum = framesInFlightNum;
+	priv::cleanupDelegates = new CleanupDelegate[framesInFlightNum];
 }
 
 void CurrentFrameContext::BeginFrame()
 {
 	SPT_PROFILE_FUNCTION();
 
-	priv::currentFrameIdx = priv::currentFrameIdx % static_cast<Uint32>(priv::cleanupDelegates.size());
+	priv::currentFrameIdx = (priv::currentFrameIdx + 1) % priv::framesInFlightNum;
 	FlushCurrentFrameReleases();
 }
 
@@ -40,6 +40,8 @@ void CurrentFrameContext::EndFrame()
 void CurrentFrameContext::Shutdown()
 {
 	FlushAllFramesReleases();
+
+	delete[] priv::cleanupDelegates;
 }
 
 void CurrentFrameContext::FlushCurrentFrameReleases()
@@ -54,15 +56,10 @@ void CurrentFrameContext::FlushAllFramesReleases()
 {
 	SPT_PROFILE_FUNCTION();
 
-	for (CleanupDelegate& delegate : priv::cleanupDelegates)
+	for(Uint32 i = 0; i < priv::framesInFlightNum; ++i)
 	{
-		delegate.Broadcast();
+		priv::cleanupDelegates[i].Broadcast();
 	}
-}
-
-std::mutex& CurrentFrameContext::GetSubmittionMutex()
-{
-	return priv::submittionMutex;
 }
 
 CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanupDelegate()

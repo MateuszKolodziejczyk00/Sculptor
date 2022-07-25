@@ -17,7 +17,7 @@ Semaphore::~Semaphore()
 {
 	SPT_PROFILE_FUNCTION();
 
-	CurrentFrameContext::SubmitDeferredRelease(
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 		[resource = m_rhiSemaphore]() mutable
 		{
 			resource.ReleaseRHI();

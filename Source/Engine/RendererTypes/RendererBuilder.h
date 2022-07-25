@@ -3,6 +3,7 @@
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIFwd.h"
+#include "RendererUtils.h"
 
 
 namespace spt::rhi
@@ -16,7 +17,6 @@ struct SemaphoreDefinition;
 namespace spt::renderer
 {
 
-struct RendererResourceName;
 class Buffer;
 class Texture;
 class Window;

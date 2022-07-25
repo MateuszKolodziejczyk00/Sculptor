@@ -13,6 +13,11 @@ enum class ESemaphoreType
 
 struct SemaphoreDefinition
 {
+	SemaphoreDefinition()
+		: m_type(ESemaphoreType::Binary)
+		, m_initialValue(0)
+	{ }
+
 	SemaphoreDefinition(ESemaphoreType type, Uint64 initialValue = 0)
 		: m_type(type)
 		, m_initialValue(initialValue)

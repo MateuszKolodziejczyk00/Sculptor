@@ -13,7 +13,7 @@ class Semaphore;
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererResourceName ==========================================================================
 
-struct RendererResourceName
+struct RENDERER_TYPES_API RendererResourceName
 {
 public:
 
@@ -51,11 +51,11 @@ private:
 
 #if RENDERER_VALIDATION
 
-#define RENDERER_RESOURCE_NAME(Name) RendererResourceName(Name)
+#define RENDERER_RESOURCE_NAME(Name) spt::renderer::RendererResourceName(Name)
 
 #else
 
-#define RENDERER_RESOURCE_NAME(Name) RendererResourceName()
+#define RENDERER_RESOURCE_NAME(Name) spt::renderer::RendererResourceName()
 
 #endif // RENDERER_VALIDATION
 

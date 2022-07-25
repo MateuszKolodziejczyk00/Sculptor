@@ -23,7 +23,7 @@ Buffer::~Buffer()
 
 	SPT_CHECK(m_rhiBuffer.IsValid());
 
-	CurrentFrameContext::SubmitDeferredRelease(
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 		[resource = m_rhiBuffer]() mutable
 		{
 			resource.ReleaseRHI();
