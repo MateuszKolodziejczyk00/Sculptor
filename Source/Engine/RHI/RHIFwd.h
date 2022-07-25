@@ -12,6 +12,7 @@ class RHITexture;
 class RHITextureView;
 class RHIWindow;
 class RHISemaphore;
+class RHISemaphoresArray;
 
 }
 

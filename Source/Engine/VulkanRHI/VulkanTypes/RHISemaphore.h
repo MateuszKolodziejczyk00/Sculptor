@@ -41,4 +41,27 @@ private:
 	DebugName					m_name;
 };
 
+
+class VULKAN_RHI_API RHISemaphoresArray
+{
+public:
+
+	RHISemaphoresArray();
+
+	void									AddBinarySemaphore(const RHISemaphore& semaphore);
+	void									AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value);
+
+	const lib::DynamicArray<VkSemaphore>&	GetSemaphores() const;
+
+	const lib::DynamicArray<Uint64>&		GetValues() const;
+
+private:
+
+	lib::DynamicArray<VkSemaphore>			m_semaphores;
+
+	// wait values for timeline semaphores
+	lib::DynamicArray<Uint64>				m_values;
+
+};
+
 }

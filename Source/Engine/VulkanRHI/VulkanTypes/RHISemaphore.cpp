@@ -126,4 +126,40 @@ const lib::HashedString& RHISemaphore::GetName() const
 	return m_name.Get();
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHISemaphore ==================================================================================
+
+RHISemaphoresArray::RHISemaphoresArray()
+{ }
+
+void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Binary);
+
+	m_semaphores.push_back(semaphore.GetHandle());
+	m_values.push_back(0);
+}
+
+void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Timeline);
+
+	m_semaphores.push_back(semaphore.GetHandle());
+	m_values.push_back(value);
+}
+
+const lib::DynamicArray<VkSemaphore>& RHISemaphoresArray::GetSemaphores() const
+{
+	return m_semaphores;
+}
+
+const lib::DynamicArray<Uint64>& RHISemaphoresArray::GetValues() const
+{
+	return m_values;
+}
+
 }

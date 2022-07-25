@@ -43,30 +43,35 @@ PFN_vkVoidFunction LoadVulkanFunction(const char* functionName, void* userData)
 
 RHIWindow::RHIWindow()
 	: m_swapchain(VK_NULL_HANDLE)
+	, m_surface(VK_NULL_HANDLE)
+	, m_minImagesNum(idxNone<Uint32>)
+	, m_swapchainOutOfDate(false)
 { }
 
 RHIWindow::RHIWindow(RHIWindow&& rhs)
 {
-	m_swapchain = rhs.m_swapchain;
-	m_swapchainImages = std::move(rhs.m_swapchainImages);
-	m_swapchainTextureDef = rhs.m_swapchainTextureDef;
-	m_surface = rhs.m_surface;
-	m_presentMode = rhs.m_presentMode;
-	m_surfaceFormat = rhs.m_surfaceFormat;
-	m_minImagesNum = rhs.m_minImagesNum;
+	m_swapchain				= rhs.m_swapchain;
+	m_swapchainImages		= std::move(rhs.m_swapchainImages);
+	m_swapchainTextureDef	= rhs.m_swapchainTextureDef;
+	m_surface				= rhs.m_surface;
+	m_presentMode			= rhs.m_presentMode;
+	m_surfaceFormat			= rhs.m_surfaceFormat;
+	m_minImagesNum			= rhs.m_minImagesNum;
+	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
 
 	rhs.m_swapchain = VK_NULL_HANDLE;
 }
 
 RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 {
-	m_swapchain = rhs.m_swapchain;
-	m_swapchainImages = std::move(rhs.m_swapchainImages);
-	m_swapchainTextureDef = rhs.m_swapchainTextureDef;
-	m_surface = rhs.m_surface;
-	m_presentMode = rhs.m_presentMode;
-	m_surfaceFormat = rhs.m_surfaceFormat;
-	m_minImagesNum = rhs.m_minImagesNum;
+	m_swapchain				= rhs.m_swapchain;
+	m_swapchainImages		= std::move(rhs.m_swapchainImages);
+	m_swapchainTextureDef	= rhs.m_swapchainTextureDef;
+	m_surface				= rhs.m_surface;
+	m_presentMode			= rhs.m_presentMode;
+	m_surfaceFormat			= rhs.m_surfaceFormat;
+	m_minImagesNum			= rhs.m_minImagesNum;
+	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
 
 	rhs.m_swapchain = VK_NULL_HANDLE;
 
@@ -76,6 +81,8 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo)
 {
 	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(!IsValid());
 
 	m_minImagesNum = windowInfo.m_minImageCount;
 
@@ -121,9 +128,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	m_presentMode = ImGui_ImplVulkanH_SelectPresentMode(physicalDeviceHandle, surfaceHandle, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
-	m_swapchain = CreateSwapchain(windowInfo.m_framebufferSize, m_swapchain);
-
-	CacheSwapchainImages(m_swapchain);
+	RebuildSwapchain(windowInfo.m_framebufferSize);
 }
 
 void RHIWindow::ReleaseRHI()
@@ -135,18 +140,31 @@ void RHIWindow::ReleaseRHI()
 	}
 }
 
+Bool RHIWindow::IsValid() const
+{
+	return m_swapchain != VK_NULL_HANDLE;
+}
+
 void RHIWindow::BeginFrame()
 {
 	SPT_PROFILE_FUNCTION();
 
 }
 
-Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout /*= idxNone<Uint64>*/) const
+Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout /*= idxNone<Uint64>*/)
 {
 	SPT_PROFILE_FUNCTION();
 
+	SPT_CHECK(!m_swapchainOutOfDate);
+
 	Uint32 imageIdx = idxNone<Uint32>;
 	VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
+
+	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		m_swapchainOutOfDate = true;
+	}
+
 	return imageIdx;
 }
 
@@ -158,6 +176,48 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 	texture.InitializeRHI(m_swapchainTextureDef, m_swapchainImages[imageIdx]);
 
 	return texture;
+}
+
+Bool RHIWindow::PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, Uint32 imageIdx)
+{
+	SPT_PROFILE_FUNCTION();
+
+	VkResult result = VK_SUCCESS;
+
+	VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo{ VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO };
+    timelineSemaphoreSubmitInfo.waitSemaphoreValueCount = static_cast<Uint32>(waitSemaphores.GetValues().size());
+    timelineSemaphoreSubmitInfo.pWaitSemaphoreValues = waitSemaphores.GetValues().data();
+
+	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphores.GetSemaphores().size());
+    presentInfo.pWaitSemaphores = waitSemaphores.GetSemaphores().data();
+    presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &m_swapchain;
+    presentInfo.pImageIndices = &imageIdx;
+    presentInfo.pResults = &result;
+	presentInfo.pNext = &timelineSemaphoreSubmitInfo;
+
+	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueueHandle(), &presentInfo);
+	
+	SPT_CHECK(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR);
+
+	return result == VK_SUCCESS;
+}
+
+Bool RHIWindow::IsSwapchainOutOfDate() const
+{
+	return m_swapchainOutOfDate;
+}
+
+void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize)
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_swapchain = CreateSwapchain(framebufferSize, m_swapchain);
+
+	CacheSwapchainImages(m_swapchain);
+	 
+	m_swapchainOutOfDate = false;
 }
 
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)

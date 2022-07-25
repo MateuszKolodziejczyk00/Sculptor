@@ -16,6 +16,7 @@ namespace spt::vulkan
 {
 
 class RHISemaphore;
+class RHISemaphoresArray;
 
 
 class VULKAN_RHI_API RHIWindow
@@ -33,11 +34,17 @@ public:
 	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo);
 	void						ReleaseRHI();
 
+	Bool						IsValid() const;
+
 	void						BeginFrame();
 
-	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>) const;
-
+	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>);
 	RHITexture					GetSwapchinImage(Uint32 imageIdx) const;
+
+	Bool						PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, Uint32 imageIdx);
+
+	Bool						IsSwapchainOutOfDate() const;
+	void						RebuildSwapchain(math::Vector2u framebufferSize);
 
 private:
 
@@ -57,6 +64,8 @@ private:
 	VkSurfaceFormatKHR			m_surfaceFormat;
 
 	Uint32						m_minImagesNum;
+
+	Bool						m_swapchainOutOfDate;
 };
 
 }

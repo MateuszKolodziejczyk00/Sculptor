@@ -69,12 +69,19 @@ lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr
 
 	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
 
-	const Uint32 acquiredTextureIdx = m_rhiWindow.AcquireSwapchainImage(rhiSemaphore, timeout);
-	const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(acquiredTextureIdx);
+	m_acquiredImageIdx = m_rhiWindow.AcquireSwapchainImage(rhiSemaphore, timeout);
+	const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(m_acquiredImageIdx);
 
 	const lib::SharedPtr<Texture> acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
 
 	return acquiredTexture;
+}
+
+void Window::PresentTexture(const SemaphoresArray& waitSemaphores)
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_rhiWindow.PresentSwapchainImage(waitSemaphores.GetRHISemaphores(), m_acquiredImageIdx);
 }
 
 }

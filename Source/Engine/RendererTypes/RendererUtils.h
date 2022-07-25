@@ -2,10 +2,16 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RHISemaphoreImpl.h"
 
 
 namespace spt::renderer
 {
+
+class Semaphore;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RendererResourceName ==========================================================================
 
 struct RendererResourceName
 {
@@ -53,6 +59,28 @@ private:
 
 #endif // RENDERER_VALIDATION
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// SemaphoresArray ===============================================================================
+
+class RENDERER_TYPES_API SemaphoresArray
+{
+public:
+
+	SemaphoresArray();
+
+	void								AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binarySemaphore);
+	void								AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value);
+
+	const rhi::RHISemaphoresArray&		GetRHISemaphores() const;
+
+private:
+
+	rhi::RHISemaphoresArray				m_rhiSemaphores;
+
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RendererUtils =================================================================================
 
 class RENDERER_TYPES_API RendererUtils
 {
