@@ -11,6 +11,7 @@ class RHIBuffer;
 class RHITexture;
 class RHITextureView;
 class RHIWindow;
+class RHISemaphore;
 
 }
 

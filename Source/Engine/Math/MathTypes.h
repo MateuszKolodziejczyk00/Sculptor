@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 namespace spt
 {
 
@@ -24,5 +26,11 @@ using Real64 = double;
 
 template<typename TType>
 static constexpr TType idxNone = static_cast<TType>(-1);
+
+template<typename TType>
+static constexpr TType minValue = std::numeric_limits<TType>::min();
+
+template<typename TType>
+static constexpr TType maxValue = std::numeric_limits<TType>::max();
 
 }

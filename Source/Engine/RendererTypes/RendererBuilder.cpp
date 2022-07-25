@@ -2,6 +2,7 @@
 #include "Types/Buffer.h"
 #include "Types/Texture.h"
 #include "Types/Window.h"
+#include "Types/Semaphore.h"
 
 
 namespace spt::renderer
@@ -20,6 +21,11 @@ lib::SharedPtr<Buffer> RendererBuilder::CreateBuffer(const RendererResourceName&
 lib::SharedPtr<Texture> RendererBuilder::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	return std::make_shared<Texture>(name, textureDefinition, allocationInfo);
+}
+
+lib::SharedPtr<Semaphore> RendererBuilder::CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
+{
+	return std::make_shared<Semaphore>(name, definition);
 }
 
 }
