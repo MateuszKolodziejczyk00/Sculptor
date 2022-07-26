@@ -133,11 +133,12 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 void RHIWindow::ReleaseRHI()
 {
-	if (m_swapchain)
-	{
-		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
-		m_swapchain = VK_NULL_HANDLE;
-	}
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(!!IsValid());
+
+	vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
+	m_swapchain = VK_NULL_HANDLE;
 }
 
 Bool RHIWindow::IsValid() const
