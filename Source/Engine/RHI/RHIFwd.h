@@ -13,6 +13,7 @@ class RHITextureView;
 class RHIWindow;
 class RHISemaphore;
 class RHISemaphoresArray;
+class RHICommandBuffer;
 
 }
 
