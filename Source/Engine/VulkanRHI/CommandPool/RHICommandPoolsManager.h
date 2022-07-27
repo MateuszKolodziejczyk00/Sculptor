@@ -2,23 +2,51 @@
 
 #include "RHICommandPool.h"
 #include "SculptorCoreTypes.h"
+#include "RHICommandBufferTypes.h"
 
 
 namespace spt::vulkan
 {
 
-class QueueCommandPoolsManager
+struct CommandBufferAcquireInfo
+{
+	CommandBufferAcquireInfo()
+		: m_commandPoolId(0)
+		, m_poolsSetHash(0)
+	{ }
+
+	SizeType					m_commandPoolId;
+	Uint32						m_poolsSetHash;
+};
+
+
+struct CommandPoolsSet
 {
 public:
 
+	CommandPoolsSet();
+
+	void												Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level);
+
+	VkCommandBuffer										AcquireCommandBuffer(CommandBufferAcquireInfo& outAcquireInfo);
+
+	void												ReleasePool(const CommandBufferAcquireInfo& acquireInfo);
+
+	void												ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer cmdBuffer);
 	
-
 private:
+	RHICommandPool&										SafeGetCommandPool(SizeType commandPoolId);
 
-	lib::DynamicArray<RHICommandPool>		m_commandPools;
+	SizeType											TryFindAndLockAvailablePool();
 
-	lib::DynamicArray<SizeType>				m_freeCommandPools;
-	lib::DynamicArray<SizeType>				m_lockedCommandPools;
+	SizeType											CreateNewPool();
+
+	lib::DynamicArray<lib::UniquePtr<RHICommandPool>>	m_commandPools;
+	lib::ReadWriteLock									m_lock;
+
+	Uint32												m_queueFamily;
+	VkCommandPoolCreateFlags							m_flags;
+	VkCommandBufferLevel								m_buffersLevel;
 };
 
 
@@ -28,8 +56,27 @@ public:
 
 	RHICommandPoolsManager();
 
+	VkCommandBuffer										AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo);
+
+	void												ReleasePool(const CommandBufferAcquireInfo& acquireInfo);
+
+	void												ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer);
+
 private:
 
+	CommandPoolsSet&									GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash);
+	CommandPoolsSet&									CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash);
+
+	CommandPoolsSet&									SafeGetPoolsSetByHash(Uint32 poolHash);
+
+	Uint32												HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const;
+
+	Uint32												GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const;
+
+	using CommandPoolsSetsMap							= lib::HashMap<Uint32, lib::UniquePtr<CommandPoolsSet>>;
+	CommandPoolsSetsMap									m_poolSets;
+
+	lib::ReadWriteLock									m_lock;
 };
 
 }

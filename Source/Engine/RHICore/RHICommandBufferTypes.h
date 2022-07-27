@@ -21,12 +21,19 @@ enum class ECommandBufferQueueType
 };
 
 
-enum class ECommandBufferComplexityClass
+namespace ECommandBufferComplexityClass
+{
+
+enum Type : Uint32
 {
 	Low,
 	Default,
-	High
+	High,
+
+	NUM
 };
+
+}
 
 
 struct CommandBufferDefinition
@@ -36,15 +43,15 @@ struct CommandBufferDefinition
 		, m_cmdBufferType(ECommandBufferType::Primary)
 	{ }
 
-	CommandBufferDefinition(ECommandBufferQueueType queueType, ECommandBufferType cmdBufferType, ECommandBufferComplexityClass complexityClass = ECommandBufferComplexityClass::Default)
+	CommandBufferDefinition(ECommandBufferQueueType queueType, ECommandBufferType cmdBufferType, ECommandBufferComplexityClass::Type complexityClass = ECommandBufferComplexityClass::Default)
 		: m_queueType(queueType)
 		, m_cmdBufferType(cmdBufferType)
 		, m_complexityClass(complexityClass)
 	{ }
 
-	ECommandBufferQueueType			m_queueType;
-	ECommandBufferType				m_cmdBufferType;
-	ECommandBufferComplexityClass	m_complexityClass;
+	ECommandBufferQueueType					m_queueType;
+	ECommandBufferType						m_cmdBufferType;
+	ECommandBufferComplexityClass::Type		m_complexityClass;
 };
 
 
