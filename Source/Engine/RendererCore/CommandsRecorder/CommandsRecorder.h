@@ -3,6 +3,7 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICommandBufferTypes.h"
+#include "RendererUtils.h"
 
 
 namespace spt::renderer
@@ -13,9 +14,19 @@ class CommandBuffer;
 
 struct CommandsRecordingInfo
 {
-	lib::HashedString					m_commandsBufferName;
+	RendererResourceName				m_commandsBufferName;
 	rhi::CommandBufferDefinition		m_commandBufferDef;
-	rhi::CommandBufferUsageDefinition	m_commandBufferUsage;
+};
+
+
+enum class ECommandsRecorderState
+{
+	/** Recording didn't started */
+	Invalid,
+	/** Currently recording */
+	Recording,
+	/** Finished recording */
+	Pending
 };
 
 
@@ -26,13 +37,18 @@ public:
 	CommandsRecorder(const CommandsRecordingInfo& recordingInfo);
 	~CommandsRecorder();
 
-	Bool								IsRecording() const;
+	Bool									IsRecording() const;
 
-	void								FinishRecording();
+	void									StartRecording(const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+	void									FinishRecording();
+
+	const lib::SharedPtr<CommandBuffer>&	GetCommandsBuffer() const;
 
 private:
 
-	lib::SharedPtr<CommandBuffer>		m_commandsBuffer;
+	lib::SharedPtr<CommandBuffer>			m_commandsBuffer;
+
+	ECommandsRecorderState					m_state;
 };
 
 }

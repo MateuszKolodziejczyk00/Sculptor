@@ -2,12 +2,14 @@
 
 #include "VulkanRHIMacros.h"
 #include "Vulkan.h"
+#include "SculptorCoreTypes.h"
 
 
 namespace spt::rhi
 {
 struct RHIInitializationInfo;
 struct RHIWindowInitializationInfo;
+struct SubmitBatchData;
 }
 
 
@@ -30,6 +32,8 @@ public:
 	static void InitializeGPUForWindow();
 
 	static void Uninitialize();
+
+	static void SubmitCommands(const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
 
 	// Vulkan Getters ==================================================================
 

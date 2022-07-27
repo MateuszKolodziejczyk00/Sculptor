@@ -54,6 +54,7 @@ void RHICommandBuffer::ReleaseRHI()
 	VulkanRHI::GetCommandPoolsManager().ReleaseCommandBuffer(m_acquireInfo, m_cmdBufferHandle);
 
 	m_cmdBufferHandle = VK_NULL_HANDLE;
+	m_acquireInfo.Reset();
 	m_name.Reset();
 }
 
@@ -80,6 +81,8 @@ void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& u
 void RHICommandBuffer::StopRecording()
 {
 	vkEndCommandBuffer(m_cmdBufferHandle);
+
+	VulkanRHI::GetCommandPoolsManager().ReleasePool(m_acquireInfo);
 }
 
 void RHICommandBuffer::SetName(const lib::HashedString& name)

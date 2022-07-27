@@ -13,6 +13,12 @@ struct CommandBufferAcquireInfo
 		, m_poolsSetHash(0)
 	{ }
 
+	void						Reset()
+	{
+		m_commandPoolId = idxNone<SizeType>;
+		m_poolsSetHash	= 0;
+	}
+
 	SizeType					m_commandPoolId;
 	Uint32						m_poolsSetHash;
 };

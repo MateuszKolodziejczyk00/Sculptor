@@ -210,6 +210,13 @@ void VulkanRHI::Uninitialize()
     }
 }
 
+void VulkanRHI::SubmitCommands(const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
+{
+    SPT_PROFILE_FUNCTION();
+
+    SPT_CHECK_NO_ENTRY();
+}
+
 VkInstance VulkanRHI::GetInstanceHandle()
 {
     return priv::g_data.m_instance;
