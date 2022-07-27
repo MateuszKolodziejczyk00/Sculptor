@@ -33,7 +33,6 @@ VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& 
 		poolIdx = CreateNewPool();
 	}
 
-	poolIdx = CreateNewPool();
 	SPT_CHECK(m_commandPools[poolIdx]->IsLocked());
 
 	return m_commandPools[poolIdx]->AcquireCommandBuffer();
@@ -116,7 +115,10 @@ VkCommandBuffer RHICommandPoolsManager::AcquireCommandBuffer(const rhi::CommandB
 
 	CommandPoolsSet& poolsSet = GetPoolsSet(bufferDefinition, poolSettingsHash);
 
-	return poolsSet.AcquireCommandBuffer(outAcquireInfo);
+	const VkCommandBuffer cmdBufferHandle = poolsSet.AcquireCommandBuffer(outAcquireInfo);
+	SPT_CHECK(cmdBufferHandle != VK_NULL_HANDLE && outAcquireInfo.m_commandPoolId != idxNone<Uint32>);
+
+	return cmdBufferHandle;
 }
 
 void RHICommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
@@ -137,6 +139,8 @@ void RHICommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo
 
 CommandPoolsSet& RHICommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
 {
+	SPT_PROFILE_FUNCTION();
+
 	{
 		const lib::ReadLockGuard lockGuard(m_lock);
 

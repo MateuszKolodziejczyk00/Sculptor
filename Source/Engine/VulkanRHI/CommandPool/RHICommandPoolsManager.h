@@ -11,7 +11,7 @@ namespace spt::vulkan
 struct CommandBufferAcquireInfo
 {
 	CommandBufferAcquireInfo()
-		: m_commandPoolId(0)
+		: m_commandPoolId(idxNone<SizeType>)
 		, m_poolsSetHash(0)
 	{ }
 
