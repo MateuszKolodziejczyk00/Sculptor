@@ -3,22 +3,11 @@
 #include "RHICommandPool.h"
 #include "SculptorCoreTypes.h"
 #include "RHICommandBufferTypes.h"
+#include "RHICommandPoolsTypes.h"
 
 
 namespace spt::vulkan
 {
-
-struct CommandBufferAcquireInfo
-{
-	CommandBufferAcquireInfo()
-		: m_commandPoolId(idxNone<SizeType>)
-		, m_poolsSetHash(0)
-	{ }
-
-	SizeType					m_commandPoolId;
-	Uint32						m_poolsSetHash;
-};
-
 
 struct CommandPoolsSet
 {

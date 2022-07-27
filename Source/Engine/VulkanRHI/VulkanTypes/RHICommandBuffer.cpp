@@ -1,4 +1,6 @@
 #include "RHICommandBuffer.h"
+#include "VulkanRHI.h"
+#include "CommandPool/RHICommandPoolsManager.h"
 
 namespace spt::vulkan
 {
@@ -13,10 +15,7 @@ void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferD
 
 	SPT_CHECK(!IsValid());
 
-	m_queueType = bufferDefinition.m_queueType;
-	m_cmdBufferType = bufferDefinition.m_cmdBufferType;
-
-
+	m_cmdBufferHandle = VulkanRHI::GetCommandPoolsManager().AcquireCommandBuffer(bufferDefinition, m_acquireInfo);
 }
 
 void RHICommandBuffer::ReleaseRHI()
@@ -25,9 +24,7 @@ void RHICommandBuffer::ReleaseRHI()
 
 	SPT_CHECK(!!IsValid());
 
-	VkCommandBufferResetFlags resetFlags = VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT;
-
-	vkResetCommandBuffer(m_cmdBufferHandle, resetFlags);
+	VulkanRHI::GetCommandPoolsManager().ReleaseCommandBuffer(m_acquireInfo, m_cmdBufferHandle);
 
 	m_cmdBufferHandle = VK_NULL_HANDLE;
 	m_name.Reset();

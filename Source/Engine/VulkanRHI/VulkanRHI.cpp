@@ -3,12 +3,13 @@
 #include "Device/LogicalDevice.h"
 #include "Debug/DebugMessenger.h"
 #include "Memory/MemoryManager.h"
+#include "CommandPool/RHICommandPoolsManager.h"
 #include "VulkanUtils.h"
 
 #include "RHIInitialization.h"
 
-#include "Logging/Log.h"
 #include "Utility/HashedString.h"
+#include "Logging/Log.h"
 
 
 namespace spt::vulkan
@@ -42,6 +43,8 @@ public:
     VkSurfaceKHR                m_surface;
     
     VkDebugUtilsMessengerEXT    m_debugMessenger;
+
+    RHICommandPoolsManager      m_commandPoolsManager;
 };
 
 VulkanInstanceData g_data;
@@ -222,6 +225,11 @@ VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
     return priv::g_data.m_physicalDevice;
 }
 
+RHICommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
+{
+    return priv::g_data.m_commandPoolsManager;
+}
+
 VkSurfaceKHR VulkanRHI::GetSurfaceHandle()
 {
     return priv::g_data.m_surface;
@@ -251,4 +259,5 @@ const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
 {
     return nullptr;
 }
+
 }

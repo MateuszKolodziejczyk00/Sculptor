@@ -16,6 +16,7 @@ namespace spt::vulkan
 
 class MemoryManager;
 class LogicalDevice;
+class RHICommandPoolsManager;
 
 
 class VULKAN_RHI_API VulkanRHI
@@ -35,6 +36,8 @@ public:
 	static VkInstance						GetInstanceHandle();
 	static VkDevice							GetDeviceHandle();
 	static VkPhysicalDevice					GetPhysicalDeviceHandle();
+
+	static RHICommandPoolsManager&			GetCommandPoolsManager();
 
 	static VkSurfaceKHR						GetSurfaceHandle();
 

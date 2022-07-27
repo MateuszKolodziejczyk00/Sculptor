@@ -86,6 +86,11 @@ Bool RHICommandPool::HasAvailableCommandBuffers() const
 
 void RHICommandPool::ReleaseCommandBuffer(VkCommandBuffer cmdBuffer)
 {
+	SPT_PROFILE_FUNCTION();
+
+	const VkCommandBufferResetFlags resetFlags = VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT;
+	vkResetCommandBuffer(cmdBuffer, resetFlags);
+
 	m_availableCommandBuffers.push_back(cmdBuffer);
 }
 

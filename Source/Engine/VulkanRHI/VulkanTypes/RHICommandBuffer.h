@@ -3,6 +3,7 @@
 #include "VulkanRHIMacros.h"
 #include "Vulkan.h"
 #include "RHICommandBufferTypes.h"
+#include "CommandPool/RHICommandPoolsTypes.h"
 #include "Debug/DebugUtils.h"
 
 
@@ -31,6 +32,8 @@ private:
 
 	rhi::ECommandBufferQueueType	m_queueType;
 	rhi::ECommandBufferType			m_cmdBufferType;
+
+	CommandBufferAcquireInfo		m_acquireInfo;
 
 	DebugName						m_name;
 };
