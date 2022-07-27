@@ -8,6 +8,7 @@
 namespace spt::rhi
 {
 struct CommandBufferDefinition;
+struct CommandBufferUsageDefinition;
 }
 
 
@@ -26,6 +27,9 @@ public:
 
 	rhi::RHICommandBuffer&			GetRHI();
 	const rhi::RHICommandBuffer&	GetRHI() const;
+
+	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
+	void							FinishRecording();
 
 private:
 

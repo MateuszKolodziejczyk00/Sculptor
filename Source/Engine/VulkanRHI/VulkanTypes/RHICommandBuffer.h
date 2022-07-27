@@ -23,6 +23,9 @@ public:
 
 	VkCommandBuffer					GetHandle() const;
 
+	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
+	void							StopRecording();
+
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
 

@@ -5,6 +5,33 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers =======================================================================================
+
+namespace priv
+{
+
+VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(Flags32 rhiFlags)
+{
+	VkCommandBufferUsageFlags usage = 0;
+
+	if ((rhiFlags & rhi::ECommandBufferBeginFlags::OneTimeSubmit) != 0)
+	{
+		usage |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	}
+	if ((rhiFlags & rhi::ECommandBufferBeginFlags::ContinueRendering) != 0)
+	{
+		usage |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	}
+
+	return usage;
+}
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHICommandBuffer ==============================================================================
+
 RHICommandBuffer::RHICommandBuffer()
 	: m_cmdBufferHandle(VK_NULL_HANDLE)
 { }
@@ -38,6 +65,21 @@ Bool RHICommandBuffer::IsValid() const
 VkCommandBuffer RHICommandBuffer::GetHandle() const
 {
 	return m_cmdBufferHandle;
+}
+
+void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition)
+{
+	SPT_CHECK(IsValid());
+
+	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	beginInfo.flags = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.m_beginFlags);
+
+	vkBeginCommandBuffer(m_cmdBufferHandle, &beginInfo);
+}
+
+void RHICommandBuffer::StopRecording()
+{
+	vkEndCommandBuffer(m_cmdBufferHandle);
 }
 
 void RHICommandBuffer::SetName(const lib::HashedString& name)

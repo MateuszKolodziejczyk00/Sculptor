@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "RendererUtils.h"
+#include "CommandsRecorder/CommandsRecorder.h"
 #include "CurrentFrameContext.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHIInitialization.h"
@@ -43,6 +44,16 @@ void Renderer::EndFrame()
 	SPT_PROFILE_FUNCTION();
 
 	CurrentFrameContext::EndFrame();
+}
+
+lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const CommandsRecordingInfo& recordingInfo)
+{
+	return std::make_unique<CommandsRecorder>(recordingInfo);
+}
+
+void Renderer::SubmitCommands(const CommandsSubmitBatch& submitBatch)
+{
+	SPT_CHECK_NO_ENTRY();
 }
 
 }

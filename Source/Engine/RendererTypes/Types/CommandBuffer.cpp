@@ -34,4 +34,14 @@ const rhi::RHICommandBuffer& CommandBuffer::GetRHI() const
 	return m_cmdBuffer;
 }
 
+void CommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition)
+{
+	m_cmdBuffer.StartRecording(usageDefinition);
+}
+
+void CommandBuffer::FinishRecording()
+{
+	m_cmdBuffer.StopRecording();
+}
+
 }
