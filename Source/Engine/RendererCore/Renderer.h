@@ -3,6 +3,7 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RendererUtils.h"
+#include "RHICommandBufferTypes.h"
 
 
 namespace spt::renderer
@@ -14,6 +15,8 @@ class CommandsRecorder;
 
 struct CommandsSubmitBatch
 {
+public:
+
 	lib::DynamicArray<lib::UniquePtr<CommandsRecorder>>		m_recordedCommands;
 	SemaphoresArray											m_waitSemaphores;
 	SemaphoresArray											m_signalSemaphores;
@@ -32,7 +35,7 @@ public:
 
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands(const CommandsRecordingInfo& recordingInfo);
 
-	static void									SubmitCommands(const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
+	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
 };
 
 }

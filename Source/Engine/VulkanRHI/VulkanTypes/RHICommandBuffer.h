@@ -23,6 +23,8 @@ public:
 
 	VkCommandBuffer					GetHandle() const;
 
+	rhi::ECommandBufferQueueType	GetQueueType() const;
+
 	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
 	void							StopRecording();
 

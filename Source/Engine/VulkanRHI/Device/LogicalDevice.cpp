@@ -171,6 +171,19 @@ VkQueue LogicalDevice::GetTransferQueueHandle() const
 	return m_transferQueueHandle;
 }
 
+VkQueue LogicalDevice::GetQueueHandle(rhi::ECommandBufferQueueType queueType) const
+{
+	switch (queueType)
+	{
+	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueHandle();
+	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueHandle();
+	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueHandle();
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_NULL_HANDLE;
+}
+
 Uint32 LogicalDevice::GetGfxQueueIdx() const
 {
 	return m_gfxFamilyIdx;
@@ -179,6 +192,19 @@ Uint32 LogicalDevice::GetGfxQueueIdx() const
 Uint32 LogicalDevice::GetAsyncComputeQueueIdx() const
 {
 	return m_asyncComputeFamilyIdx;
+}
+
+Uint32 LogicalDevice::GetQueueIdx(rhi::ECommandBufferQueueType queueType) const
+{
+	switch (queueType)
+	{
+	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueIdx();
+	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueIdx();
+	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueIdx();
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return 0;
 }
 
 Uint32 LogicalDevice::GetTransferQueueIdx() const

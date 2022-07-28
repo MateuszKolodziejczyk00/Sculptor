@@ -26,11 +26,14 @@ public:
 
 	void						Signal(Uint64 value);
 
-	VkSemaphore					GetHandle() const;
 	rhi::ESemaphoreType			GetType() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
+
+	// Vulkan =====================================================================
+
+	VkSemaphore					GetHandle() const;
 
 private:
 
@@ -48,19 +51,20 @@ public:
 
 	RHISemaphoresArray();
 
-	void									AddBinarySemaphore(const RHISemaphore& semaphore);
-	void									AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value);
+	void												AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage);
+	void												AddTimelineSemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value);
 
-	const lib::DynamicArray<VkSemaphore>&	GetSemaphores() const;
+	SizeType											GetSemaphoresNum() const;
 
-	const lib::DynamicArray<Uint64>&		GetValues() const;
+	// Vulkan =====================================================================
+
+	const lib::DynamicArray<VkSemaphoreSubmitInfo>&		GetSubmitInfos() const;
 
 private:
 
-	lib::DynamicArray<VkSemaphore>			m_semaphores;
+	void												AddSemaphoreInfo(VkSemaphore semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value);
 
-	// wait values for timeline semaphores
-	lib::DynamicArray<Uint64>				m_values;
+	lib::DynamicArray<VkSemaphoreSubmitInfo>			m_submitInfos;
 
 };
 

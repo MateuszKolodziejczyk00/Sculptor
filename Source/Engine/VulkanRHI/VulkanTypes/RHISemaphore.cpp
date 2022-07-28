@@ -1,5 +1,6 @@
 #include "RHISemaphore.h"
 #include "VulkanRHI.h"
+#include "RHIToVulkanCommon.h"
 
 namespace spt::vulkan
 {
@@ -107,11 +108,6 @@ void RHISemaphore::Signal(Uint64 value)
 	vkSignalSemaphore(VulkanRHI::GetDeviceHandle(), &signalInfo);
 }
 
-VkSemaphore RHISemaphore::GetHandle() const
-{
-	return m_semaphore;
-}
-
 rhi::ESemaphoreType RHISemaphore::GetType() const
 {
 	return m_type;
@@ -127,40 +123,54 @@ const lib::HashedString& RHISemaphore::GetName() const
 	return m_name.Get();
 }
 
+VkSemaphore RHISemaphore::GetHandle() const
+{
+	return m_semaphore;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHISemaphore ==================================================================================
 
 RHISemaphoresArray::RHISemaphoresArray()
 { }
 
-void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore)
+void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage)
 {
 	SPT_PROFILE_FUNCTION();
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Binary);
 
-	m_semaphores.push_back(semaphore.GetHandle());
-	m_values.push_back(0);
+	AddSemaphoreInfo(semaphore.GetHandle(), submitStage, 0);
 }
 
-void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value)
+void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value)
 {
 	SPT_PROFILE_FUNCTION();
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Timeline);
 
-	m_semaphores.push_back(semaphore.GetHandle());
-	m_values.push_back(value);
+	AddSemaphoreInfo(semaphore.GetHandle(), submitStage, value);
 }
 
-const lib::DynamicArray<VkSemaphore>& RHISemaphoresArray::GetSemaphores() const
+const lib::DynamicArray<VkSemaphoreSubmitInfo>& RHISemaphoresArray::GetSubmitInfos() const
 {
-	return m_semaphores;
+	return m_submitInfos;
 }
 
-const lib::DynamicArray<Uint64>& RHISemaphoresArray::GetValues() const
+SizeType RHISemaphoresArray::GetSemaphoresNum() const
 {
-	return m_values;
+	return m_submitInfos.size();
+}
+
+void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value)
+{
+	VkSemaphoreSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+    submitInfo.semaphore = semaphore;
+    submitInfo.value = value;
+    submitInfo.stageMask = RHIToVulkan::GetStageFlags(submitStage);
+    submitInfo.deviceIndex = 0;
+
+	m_submitInfos.push_back(submitInfo);
 }
 
 }

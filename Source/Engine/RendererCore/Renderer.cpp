@@ -58,7 +58,7 @@ lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const Commands
 	return std::make_unique<CommandsRecorder>(recordingInfo);
 }
 
-void Renderer::SubmitCommands(const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
+void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -82,7 +82,7 @@ void Renderer::SubmitCommands(const lib::DynamicArray<CommandsSubmitBatch>& subm
 						});
 	}
 
-	rhi::RHI::SubmitCommands(rhiSubmitBatches);
+	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }
 
 }

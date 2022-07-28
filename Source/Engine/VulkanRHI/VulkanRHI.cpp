@@ -4,9 +4,12 @@
 #include "Debug/DebugMessenger.h"
 #include "Memory/MemoryManager.h"
 #include "CommandPool/RHICommandPoolsManager.h"
+#include "VulkanTypes/RHISemaphore.h"
+#include "VulkanTypes/RHICommandBuffer.h"
 #include "VulkanUtils.h"
 
 #include "RHIInitialization.h"
+#include "RHISubmitTypes.h"
 
 #include "Utility/HashedString.h"
 #include "Logging/Log.h"
@@ -210,11 +213,51 @@ void VulkanRHI::Uninitialize()
     }
 }
 
-void VulkanRHI::SubmitCommands(const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
+void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
 {
     SPT_PROFILE_FUNCTION();
 
-    SPT_CHECK_NO_ENTRY();
+    SPT_CHECK(!submitBatches.empty());
+
+    lib::DynamicArray<VkSubmitInfo2> submitInfos;
+    submitInfos.resize(submitBatches.size());
+
+    lib::DynamicArray<lib::DynamicArray<VkCommandBufferSubmitInfo>> commandBuffersBatches;
+    commandBuffersBatches.resize(submitBatches.size());
+
+    for (SizeType idx = 0; idx < submitBatches.size(); ++idx)
+    {
+        const RHISemaphoresArray* waitSemaphores                    = submitBatches[idx].m_waitSemaphores;
+        const RHISemaphoresArray* signalSemaphores                  = submitBatches[idx].m_signalSemaphores;
+        const lib::DynamicArray<const RHICommandBuffer*> cmdBuffers = submitBatches[idx].m_commandBuffers;
+
+        SPT_CHECK(!cmdBuffers.empty());
+
+        lib::DynamicArray<VkCommandBufferSubmitInfo>& cmdBuffersSubmitBatch = commandBuffersBatches[idx];
+        cmdBuffersSubmitBatch.resize(cmdBuffers.size());
+
+        for (SizeType idx = 0; idx < cmdBuffers.size(); ++idx)
+        {
+            SPT_CHECK(cmdBuffers[idx]->GetQueueType() == queueType);
+
+            VkCommandBufferSubmitInfo& cmdBufferSubmit  = cmdBuffersSubmitBatch[idx];
+            cmdBufferSubmit.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            cmdBufferSubmit.commandBuffer               = cmdBuffers[idx]->GetHandle();
+            cmdBufferSubmit.deviceMask                  = 0;
+        }
+
+        VkSubmitInfo2& submitInfo = submitInfos[idx];
+        submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo.flags                    = 0;
+        submitInfo.waitSemaphoreInfoCount   = waitSemaphores ? static_cast<Uint32>(waitSemaphores->GetSemaphoresNum()) : 0;
+        submitInfo.pWaitSemaphoreInfos      = waitSemaphores ? waitSemaphores->GetSubmitInfos().data() : nullptr;
+        submitInfo.commandBufferInfoCount   = static_cast<Uint32>(cmdBuffersSubmitBatch.size());
+        submitInfo.pCommandBufferInfos      = cmdBuffersSubmitBatch.data();
+        submitInfo.signalSemaphoreInfoCount = signalSemaphores ? static_cast<Uint32>(signalSemaphores->GetSemaphoresNum()) : 0;;
+        submitInfo.pSignalSemaphoreInfos    = signalSemaphores ? signalSemaphores->GetSubmitInfos().data() : nullptr;
+    }
+
+    SPT_VK_CHECK(vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE));
 }
 
 VkInstance VulkanRHI::GetInstanceHandle()

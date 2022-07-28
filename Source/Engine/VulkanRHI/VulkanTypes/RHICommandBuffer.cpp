@@ -68,6 +68,11 @@ VkCommandBuffer RHICommandBuffer::GetHandle() const
 	return m_cmdBufferHandle;
 }
 
+rhi::ECommandBufferQueueType RHICommandBuffer::GetQueueType() const
+{
+	return m_queueType;
+}
+
 void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition)
 {
 	SPT_CHECK(IsValid());

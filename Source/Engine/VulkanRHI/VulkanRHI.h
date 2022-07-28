@@ -3,6 +3,7 @@
 #include "VulkanRHIMacros.h"
 #include "Vulkan.h"
 #include "SculptorCoreTypes.h"
+#include "RHICommandBufferTypes.h"
 
 
 namespace spt::rhi
@@ -33,7 +34,7 @@ public:
 
 	static void Uninitialize();
 
-	static void SubmitCommands(const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
+	static void SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
 
 	// Vulkan Getters ==================================================================
 

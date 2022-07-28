@@ -201,15 +201,7 @@ Uint32 RHICommandPoolsManager::GetQueueFamilyIdx(rhi::ECommandBufferQueueType qu
 {
 	const LogicalDevice& logicalDevice = VulkanRHI::GetLogicalDevice();
 
-	switch (queueType)
-	{
-	case rhi::ECommandBufferQueueType::Graphics:			return logicalDevice.GetGfxQueueIdx();
-	case rhi::ECommandBufferQueueType::AsyncCompute:		return logicalDevice.GetAsyncComputeQueueIdx();
-	case rhi::ECommandBufferQueueType::Transfer:			return logicalDevice.GetTransferQueueIdx();
-	}
-
-	SPT_CHECK_NO_ENTRY();
-	return 0;
+	return logicalDevice.GetQueueIdx(queueType);
 }
 
 }

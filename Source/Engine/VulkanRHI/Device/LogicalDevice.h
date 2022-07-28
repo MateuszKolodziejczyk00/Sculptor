@@ -2,6 +2,7 @@
 
 #include "Vulkan.h"
 #include "SculptorCoreTypes.h"
+#include "RHICommandBufferTypes.h"
 
 
 namespace spt::vulkan
@@ -24,9 +25,13 @@ public:
 	VkQueue		GetAsyncComputeQueueHandle() const;
 	VkQueue		GetTransferQueueHandle() const;
 
+	VkQueue		GetQueueHandle(rhi::ECommandBufferQueueType queueType) const;
+
 	Uint32		GetGfxQueueIdx() const;
 	Uint32		GetAsyncComputeQueueIdx() const;
 	Uint32		GetTransferQueueIdx() const;
+
+	Uint32		GetQueueIdx(rhi::ECommandBufferQueueType queueType) const;
 
 private:
 

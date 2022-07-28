@@ -30,7 +30,7 @@ struct SemaphoreDefinition
 };
 
 
-namespace PipelineStage
+namespace EPipelineStage
 {
 
 enum Flags : Flags64
