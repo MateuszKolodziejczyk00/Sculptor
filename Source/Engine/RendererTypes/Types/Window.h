@@ -31,7 +31,7 @@ public:
 
 	lib::SharedPtr<Texture>							AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout = maxValue<Uint64>);
 
-	void											PresentTexture(const SemaphoresArray& waitSemaphores);
+	void											PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 private:
 

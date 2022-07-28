@@ -77,11 +77,17 @@ lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr
 	return acquiredTexture;
 }
 
-void Window::PresentTexture(const SemaphoresArray& waitSemaphores)
+void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILE_FUNCTION();
 
-	m_rhiWindow.PresentSwapchainImage(waitSemaphores.GetRHISemaphores(), m_acquiredImageIdx);
+	lib::DynamicArray<rhi::RHISemaphore> rhiWaitSemaphores(waitSemaphores.size());
+	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
+	{
+		rhiWaitSemaphores[idx] = waitSemaphores[idx]->GetRHI();
+	}
+
+	m_rhiWindow.PresentSwapchainImage(rhiWaitSemaphores, m_acquiredImageIdx);
 }
 
 }

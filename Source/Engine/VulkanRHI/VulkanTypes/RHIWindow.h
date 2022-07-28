@@ -41,7 +41,7 @@ public:
 	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>);
 	RHITexture					GetSwapchinImage(Uint32 imageIdx) const;
 
-	Bool						PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, Uint32 imageIdx);
+	Bool						PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);
 
 	Bool						IsSwapchainOutOfDate() const;
 	void						RebuildSwapchain(math::Vector2u framebufferSize);

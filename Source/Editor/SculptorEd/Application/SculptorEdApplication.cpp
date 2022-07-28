@@ -44,10 +44,7 @@ void SculptorEdApplication::OnRun()
 
 		const lib::SharedPtr<renderer::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
 
-		renderer::SemaphoresArray waitSemaphores;
-		waitSemaphores.AddBinarySemaphore(acquireSemaphore);
-
-		m_window->PresentTexture(waitSemaphores);
+		m_window->PresentTexture({ acquireSemaphore });
 
 		m_window->Update(deltaTime);
 

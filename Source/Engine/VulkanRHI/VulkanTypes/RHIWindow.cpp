@@ -179,15 +179,21 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 	return texture;
 }
 
-Bool RHIWindow::PresentSwapchainImage(const RHISemaphoresArray& waitSemaphores, Uint32 imageIdx)
+Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
 {
 	SPT_PROFILE_FUNCTION();
+
+	lib::DynamicArray<VkSemaphore> waitSemaphoreHandles(waitSemaphores.size());
+	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
+	{
+		waitSemaphoreHandles[idx] = waitSemaphores[idx].GetHandle();
+	}
 
 	VkResult result = VK_SUCCESS;
 
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-    presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphores.GetSemaphores().size());
-    presentInfo.pWaitSemaphores = waitSemaphores.GetSemaphores().data();
+    presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphoreHandles.size());
+    presentInfo.pWaitSemaphores = waitSemaphoreHandles.data();
     presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_swapchain;
     presentInfo.pImageIndices = &imageIdx;
