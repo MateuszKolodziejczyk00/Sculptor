@@ -11,8 +11,6 @@ function VulkanRHI:SetupConfiguration(configuration, platform)
 
     self:AddPublicAbsoluteIncludePath("$(VULKAN_SDK)/Include")
 
-    self:AddPublicDefine("VULKAN_RHI=1")
-
     -- Validation
     self:AddPublicDefine("VULKAN_VALIDATION=1")
     self:AddPrivateDefine("VULKAN_VALIDATION_STRICT=1")

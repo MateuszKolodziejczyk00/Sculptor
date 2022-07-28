@@ -14,9 +14,9 @@ struct SubmitBatchData
 		, m_signalSemaphores(nullptr)
 	{ }
 
-	lib::DynamicArray<const rhi::RHICommandBuffer*>		m_commandBuffers;
-	const rhi::RHISemaphoresArray*						m_waitSemaphores;
-	const rhi::RHISemaphoresArray*						m_signalSemaphores;
+	lib::DynamicArray<const RHICommandBuffer*>		m_commandBuffers;
+	const RHISemaphoresArray*						m_waitSemaphores;
+	const RHISemaphoresArray*						m_signalSemaphores;
 };
 
 }
