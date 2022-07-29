@@ -23,6 +23,32 @@ enum Flags : Flags32
 
 }
 
+
+enum class ETextureLayout : Uint32
+{
+	Undefined,
+	General,
+
+	ColorRTOptimal,
+	DepthRTOptimal,
+	DepthStencilRTOptimal,
+	DepthRTStencilReadOptimal,
+	DepthReadOnlyStencilRTOptimal,
+
+	TransferSrcOptimal,
+	TransferDstOptimal,
+
+	DepthReadOnlyOptimal,
+	DepthStencilReadOnlyOptimal,
+	ColorReadOnlyOptimal,
+
+	PresentSrc,
+
+	ReadOnlyOptimal,
+	RenderTargetOptimal,
+};
+
+
 enum class EFragmentFormat : Uint32
 {
 	RGBA8_UN_Float,
@@ -33,14 +59,6 @@ enum class EFragmentFormat : Uint32
 
 	RGBA32_S_Float,
 	D32_S_Float,
-};
-
-
-enum class ETextureLayout : Uint32
-{
-	Invalid,
-	Preinitialized,
-	General
 };
 
 
