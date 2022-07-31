@@ -183,12 +183,134 @@ void CommandBufferLayoutsManager::AcquireTexture(const TextureLayoutData& textur
 	
 }
 
+const CommandBufferLayoutsManager::TexturesLayoutData& CommandBufferLayoutsManager::GetAcquiredTexturesLayouts() const
+{
+	return m_imageLayouts;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // LayoutsManager ================================================================================
 
 LayoutsManager::LayoutsManager()
 {
 
+}
+
+void LayoutsManager::RegisterTexture(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::WriteLockGuard textureLayoutsWriteLock(m_imageLayoutsLock);
+
+	m_imageLayouts.emplace(image, TextureLayoutData(image, mipsNum, arrayLayersNum));
+}
+
+void LayoutsManager::UnregisterTexture(VkImage image)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::WriteLockGuard textureLayoutsWriteLock(m_imageLayoutsLock);
+
+	m_imageLayouts.erase(image);
+}
+
+VkImageLayout LayoutsManager::GetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image) const
+{
+	SPT_CHECK_NO_ENTRY();
+	return VK_IMAGE_LAYOUT_UNDEFINED;
+}
+
+VkImageLayout LayoutsManager::GetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer) const
+{
+	SPT_CHECK_NO_ENTRY();
+	return VK_IMAGE_LAYOUT_UNDEFINED;
+}
+
+VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range) const
+{
+	SPT_CHECK_NO_ENTRY();
+	return VK_IMAGE_LAYOUT_UNDEFINED;
+}
+
+void LayoutsManager::SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout)
+{
+
+}
+
+void LayoutsManager::SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
+{
+
+}
+
+void LayoutsManager::SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range, VkImageLayout layout)
+{
+
+}
+
+void LayoutsManager::RegisterCommandBuffer(VkCommandBuffer cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::WriteLockGuard cmdBuifferLayoutsManagersWriteGuard(m_cmdBuffersLayoutManagersLock);
+
+	m_cmdBuffersLayoutManagers.emplace(cmdBuffer, std::make_unique<CommandBufferLayoutsManager>());
+}
+
+void LayoutsManager::UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	ReleaseCommandBufferResources(cmdBuffer);
+
+	const lib::WriteLockGuard cmdBuifferLayoutsManagersWriteGuard(m_cmdBuffersLayoutManagersLock);
+
+	m_cmdBuffersLayoutManagers.erase(cmdBuffer);
+}
+
+void LayoutsManager::AcquireImage(VkCommandBuffer cmdBuffer, VkImage image)
+{
+	SPT_PROFILE_FUNCTION();
+
+	CommandBufferLayoutsManager& cmdBufferLayouts = GetLayoutsManagerForCommandBuffer(cmdBuffer);
+
+	TextureLayoutData textureLayoutData;
+
+	{
+		const lib::ReadLockGuard imageLayoutsReadGuard(m_imageLayoutsLock);
+
+		textureLayoutData = m_imageLayouts[image];
+	}
+
+	cmdBufferLayouts.AcquireTexture(textureLayoutData);
+}
+
+void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const CommandBufferLayoutsManager& cmdBufferLayouts = GetLayoutsManagerForCommandBuffer(cmdBuffer);
+
+	const CommandBufferLayoutsManager::TexturesLayoutData& textures = cmdBufferLayouts.GetAcquiredTexturesLayouts();
+
+	for (const auto& textureLayout : textures)
+	{
+		const VkImage texture = textureLayout.first;
+		const TextureLayoutCommandBufferData& layoutData = textureLayout.second;
+
+		SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
+
+		SetFullImageLayout(cmdBuffer, texture, layoutData.GetFullImageLayout());
+	}
+}
+
+CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
+
+	CommandBufferLayoutsManager& cmdBufferLayouts = *m_cmdBuffersLayoutManagers[cmdBuffer].get();
+	return cmdBufferLayouts;
 }
 
 }
