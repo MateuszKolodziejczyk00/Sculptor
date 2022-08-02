@@ -1,6 +1,7 @@
 #include "RHICommandBuffer.h"
 #include "VulkanRHI.h"
 #include "CommandPool/RHICommandPoolsManager.h"
+#include "LayoutsManager.h"
 
 namespace spt::vulkan
 {
@@ -81,10 +82,14 @@ void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& u
 	beginInfo.flags = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.m_beginFlags);
 
 	vkBeginCommandBuffer(m_cmdBufferHandle, &beginInfo);
+
+	VulkanRHI::GetLayoutsManager().RegisterRecordingCommandBuffer(m_cmdBufferHandle);
 }
 
 void RHICommandBuffer::StopRecording()
 {
+	VulkanRHI::GetLayoutsManager().UnregisterRecordingCommnadBuffer(m_cmdBufferHandle);
+
 	vkEndCommandBuffer(m_cmdBufferHandle);
 
 	VulkanRHI::GetCommandPoolsManager().ReleasePool(m_acquireInfo);

@@ -23,11 +23,11 @@ struct ImageSubresourceRange
 };
 
 
-class ImageLayoutCommandBufferData
+class ImageSubresourcesLayoutsData
 {
 public:
 
-	ImageLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout);
+	ImageSubresourcesLayoutsData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout);
 
 	Bool								AreAllSubresourcesInSameLayout() const;
 
@@ -84,20 +84,20 @@ class CommandBufferLayoutsManager
 {
 public:
 
-	using ImagesLayoutData					= lib::HashMap<VkImage, ImageLayoutCommandBufferData>;
+	using ImagesLayoutData					= lib::HashMap<VkImage, ImageSubresourcesLayoutsData>;
 
 	CommandBufferLayoutsManager();
 
-	ImageLayoutCommandBufferData*				AcquireImage(VkImage image, const ImageLayoutData& layoutInfo);
+	ImageSubresourcesLayoutsData*				AcquireImage(VkImage image, const ImageLayoutData& layoutInfo);
 
 	const ImagesLayoutData&						GetAcquiredImagesLayouts() const;
 
-	ImageLayoutCommandBufferData*				GetImageLayoutInfo(VkImage image);
-	const ImageLayoutCommandBufferData*			GetImageLayoutInfo(VkImage image) const;
+	ImageSubresourcesLayoutsData*				GetImageLayoutInfo(VkImage image);
+	const ImageSubresourcesLayoutsData*			GetImageLayoutInfo(VkImage image) const;
 
 private:
 
-	using ImagesLayoutData						= lib::HashMap<VkImage, ImageLayoutCommandBufferData>;
+	using ImagesLayoutData						= lib::HashMap<VkImage, ImageSubresourcesLayoutsData>;
 	ImagesLayoutData							m_imageLayouts;
 };
 
@@ -119,15 +119,15 @@ public:
 	void										SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);
 	void										SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range, VkImageLayout layout);
 
-	void										RegisterCommandBuffer(VkCommandBuffer cmdBuffer);
-	void										UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer);
+	void										RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer);
+	void										UnregisterRecordingCommnadBuffer(VkCommandBuffer cmdBuffer);
 
 private:
 
-	ImageLayoutCommandBufferData&				GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image);
-	const ImageLayoutCommandBufferData*			GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const;
+	ImageSubresourcesLayoutsData&				GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image);
+	const ImageSubresourcesLayoutsData*			GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const;
 
-	ImageLayoutCommandBufferData*				AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image);
+	ImageSubresourcesLayoutsData*				AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image);
 	void										ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer);
 
 	CommandBufferLayoutsManager&				GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer);

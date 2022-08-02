@@ -4,32 +4,32 @@ namespace spt::vulkan
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// ImageLayoutCommandBufferData ================================================================
+// ImageSubresourcesLayoutsData ==================================================================
 
-ImageLayoutCommandBufferData::ImageLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout)
+ImageSubresourcesLayoutsData::ImageSubresourcesLayoutsData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout)
 	: m_mipsNum(mipsNum)
 	, m_arrayLayersNum(arrayLayers)
 	, m_fullImageLayout(layout)
 { }
 
-Bool ImageLayoutCommandBufferData::AreAllSubresourcesInSameLayout() const
+Bool ImageSubresourcesLayoutsData::AreAllSubresourcesInSameLayout() const
 {
 	return m_subresourceLayouts.empty();
 }
 
-VkImageLayout ImageLayoutCommandBufferData::GetFullImageLayout() const
+VkImageLayout ImageSubresourcesLayoutsData::GetFullImageLayout() const
 {
 	SPT_CHECK(AreAllSubresourcesInSameLayout());
 
 	return m_fullImageLayout;
 }
 
-VkImageLayout ImageLayoutCommandBufferData::GetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer) const
+VkImageLayout ImageSubresourcesLayoutsData::GetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer) const
 {
 	return AreAllSubresourcesInSameLayout() ? GetFullImageLayout() : m_subresourceLayouts[GetSubresourceIdx(mipLevel, arrayLayer)];
 }
 
-VkImageLayout ImageLayoutCommandBufferData::GetSubresourcesSharedLayout(const ImageSubresourceRange& range) const
+VkImageLayout ImageSubresourcesLayoutsData::GetSubresourcesSharedLayout(const ImageSubresourceRange& range) const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -56,13 +56,13 @@ VkImageLayout ImageLayoutCommandBufferData::GetSubresourcesSharedLayout(const Im
 	return layout;
 }
 
-void ImageLayoutCommandBufferData::SetFullImageLayout(VkImageLayout layout)
+void ImageSubresourcesLayoutsData::SetFullImageLayout(VkImageLayout layout)
 {
 	m_fullImageLayout = layout;
 	m_subresourceLayouts.clear();
 }
 
-void ImageLayoutCommandBufferData::SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
+void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
 {
 	SPT_CHECK(mipLevel < m_mipsNum && arrayLayer < m_arrayLayersNum);
 
@@ -84,7 +84,7 @@ void ImageLayoutCommandBufferData::SetSubresourceLayout(Uint32 mipLevel, Uint32 
 	}
 }
 
-void ImageLayoutCommandBufferData::SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout)
+void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -114,12 +114,12 @@ void ImageLayoutCommandBufferData::SetSubresourcesLayout(const ImageSubresourceR
 	}
 }
 
-SizeType ImageLayoutCommandBufferData::GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const
+SizeType ImageSubresourcesLayoutsData::GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const
 {
 	return static_cast<SizeType>(arrayLayer + mipLevel * m_arrayLayersNum);
 }
 
-void ImageLayoutCommandBufferData::TransitionToPerSubresourceLayout()
+void ImageSubresourcesLayoutsData::TransitionToPerSubresourceLayout()
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -138,7 +138,7 @@ void ImageLayoutCommandBufferData::TransitionToPerSubresourceLayout()
 	}
 }
 
-Bool ImageLayoutCommandBufferData::TransitionToFullImageLayoutIfPossible()
+Bool ImageSubresourcesLayoutsData::TransitionToFullImageLayoutIfPossible()
 {
 	if (m_subresourceLayouts.empty())
 	{
@@ -155,7 +155,7 @@ Bool ImageLayoutCommandBufferData::TransitionToFullImageLayoutIfPossible()
 	return false;
 }
 
-Bool ImageLayoutCommandBufferData::AreAllSubresourcesInSameLayoutImpl() const
+Bool ImageSubresourcesLayoutsData::AreAllSubresourcesInSameLayoutImpl() const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -178,9 +178,9 @@ Bool ImageLayoutCommandBufferData::AreAllSubresourcesInSameLayoutImpl() const
 CommandBufferLayoutsManager::CommandBufferLayoutsManager()
 { }
 
-ImageLayoutCommandBufferData* CommandBufferLayoutsManager::AcquireImage(VkImage image, const ImageLayoutData& layoutInfo)
+ImageSubresourcesLayoutsData* CommandBufferLayoutsManager::AcquireImage(VkImage image, const ImageLayoutData& layoutInfo)
 {
-	const ImageLayoutCommandBufferData acquiredImageLayoutData(layoutInfo.m_mipsNum, layoutInfo.m_arrayLayersNum, layoutInfo.m_fullImageLayout);
+	const ImageSubresourcesLayoutsData acquiredImageLayoutData(layoutInfo.m_mipsNum, layoutInfo.m_arrayLayersNum, layoutInfo.m_fullImageLayout);
 
 	auto emplaceResult = m_imageLayouts.emplace(image, acquiredImageLayoutData);
 	return &(emplaceResult.first->second);
@@ -191,13 +191,13 @@ const CommandBufferLayoutsManager::ImagesLayoutData& CommandBufferLayoutsManager
 	return m_imageLayouts;
 }
 
-ImageLayoutCommandBufferData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image)
+ImageSubresourcesLayoutsData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image)
 {
 	auto foundLayout = m_imageLayouts.find(image);
 	return foundLayout != m_imageLayouts.cend() ? &(foundLayout->second) : nullptr;
 }
 
-const ImageLayoutCommandBufferData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image) const
+const ImageSubresourcesLayoutsData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image) const
 {
 	const auto foundLayout = m_imageLayouts.find(image);
 	return foundLayout != m_imageLayouts.cend() ? &(foundLayout->second) : nullptr;
@@ -231,7 +231,7 @@ VkImageLayout LayoutsManager::GetFullImageLayout(VkCommandBuffer cmdBuffer, VkIm
 {
 	SPT_PROFILE_FUNCTION();
 
-	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -251,7 +251,7 @@ VkImageLayout LayoutsManager::GetSubresourceLayout(VkCommandBuffer cmdBuffer, Vk
 {
 	SPT_PROFILE_FUNCTION();
 
-	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -271,7 +271,7 @@ VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuf
 {
 	SPT_PROFILE_FUNCTION();
 
-	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -289,23 +289,23 @@ VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuf
 
 void LayoutsManager::SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout)
 {
-	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
 	layoutData.SetFullImageLayout(layout);
 }
 
 void LayoutsManager::SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
 {
-	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
 	layoutData.SetSubresourceLayout(mipLevel, arrayLayer, layout);
 }
 
 void LayoutsManager::SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range, VkImageLayout layout)
 {
-	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
 	layoutData.SetSubresourcesLayout(range, layout);
 }
 
-void LayoutsManager::RegisterCommandBuffer(VkCommandBuffer cmdBuffer)
+void LayoutsManager::RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -314,7 +314,7 @@ void LayoutsManager::RegisterCommandBuffer(VkCommandBuffer cmdBuffer)
 	m_cmdBuffersLayoutManagers.emplace(cmdBuffer, std::make_unique<CommandBufferLayoutsManager>());
 }
 
-void LayoutsManager::UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer)
+void LayoutsManager::UnregisterRecordingCommnadBuffer(VkCommandBuffer cmdBuffer)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -325,11 +325,11 @@ void LayoutsManager::UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer)
 	m_cmdBuffersLayoutManagers.erase(cmdBuffer);
 }
 
-ImageLayoutCommandBufferData& LayoutsManager::GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image)
+ImageSubresourcesLayoutsData& LayoutsManager::GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image)
 {
 	CommandBufferLayoutsManager& cmdBufferLayoutsManager = GetLayoutsManagerForCommandBuffer(cmdBuffer);
 
-	ImageLayoutCommandBufferData* layoutData = cmdBufferLayoutsManager.GetImageLayoutInfo(image);
+	ImageSubresourcesLayoutsData* layoutData = cmdBufferLayoutsManager.GetImageLayoutInfo(image);
 	if (!layoutData)
 	{
 		layoutData = AcquireImage(cmdBufferLayoutsManager, image);
@@ -339,14 +339,14 @@ ImageLayoutCommandBufferData& LayoutsManager::GetAcquiredImageLayoutData(VkComma
 	return *layoutData;
 }
 
-const ImageLayoutCommandBufferData* LayoutsManager::GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const
+const ImageSubresourcesLayoutsData* LayoutsManager::GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const
 {
 	const CommandBufferLayoutsManager& cmdBufferLayoutsManager = GetLayoutsManagerForCommandBuffer(cmdBuffer);
 
 	return cmdBufferLayoutsManager.GetImageLayoutInfo(image);
 }
 
-ImageLayoutCommandBufferData* LayoutsManager::AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image)
+ImageSubresourcesLayoutsData* LayoutsManager::AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -372,7 +372,7 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 	for (const auto& imageLayout : images)
 	{
 		const VkImage image = imageLayout.first;
-		const ImageLayoutCommandBufferData& layoutData = imageLayout.second;
+		const ImageSubresourcesLayoutsData& layoutData = imageLayout.second;
 
 		SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
 

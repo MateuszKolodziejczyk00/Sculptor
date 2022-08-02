@@ -13,6 +13,7 @@
 
 #include "Utility/HashedString.h"
 #include "Logging/Log.h"
+#include "LayoutsManager.h"
 
 
 namespace spt::vulkan
@@ -48,6 +49,8 @@ public:
     VkDebugUtilsMessengerEXT    m_debugMessenger;
 
     RHICommandPoolsManager      m_commandPoolsManager;
+
+    LayoutsManager              m_layoutsManager;
 };
 
 VulkanInstanceData g_data;
@@ -278,6 +281,11 @@ VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
 RHICommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
     return priv::g_data.m_commandPoolsManager;
+}
+
+LayoutsManager& VulkanRHI::GetLayoutsManager()
+{
+    return priv::g_data.m_layoutsManager;
 }
 
 VkSurfaceKHR VulkanRHI::GetSurfaceHandle()
