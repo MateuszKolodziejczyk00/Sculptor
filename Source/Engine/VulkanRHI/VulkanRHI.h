@@ -19,7 +19,7 @@ namespace spt::vulkan
 
 class MemoryManager;
 class LogicalDevice;
-class RHICommandPoolsManager;
+class CommandPoolsManager;
 class LayoutsManager;
 
 
@@ -43,7 +43,7 @@ public:
 	static VkDevice							GetDeviceHandle();
 	static VkPhysicalDevice					GetPhysicalDeviceHandle();
 
-	static RHICommandPoolsManager&			GetCommandPoolsManager();
+	static CommandPoolsManager&			GetCommandPoolsManager();
 
 	static LayoutsManager&					GetLayoutsManager();
 

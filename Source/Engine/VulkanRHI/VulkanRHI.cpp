@@ -48,7 +48,7 @@ public:
     
     VkDebugUtilsMessengerEXT    m_debugMessenger;
 
-    RHICommandPoolsManager      m_commandPoolsManager;
+    CommandPoolsManager      m_commandPoolsManager;
 
     LayoutsManager              m_layoutsManager;
 };
@@ -278,7 +278,7 @@ VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
     return priv::g_data.m_physicalDevice;
 }
 
-RHICommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
+CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
     return priv::g_data.m_commandPoolsManager;
 }

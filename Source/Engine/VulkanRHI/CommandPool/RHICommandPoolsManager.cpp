@@ -100,12 +100,12 @@ SizeType CommandPoolsSet::CreateNewPool()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// RHICommandPoolsManager ========================================================================
+// CommandPoolsManager ===========================================================================
 
-RHICommandPoolsManager::RHICommandPoolsManager()
+CommandPoolsManager::CommandPoolsManager()
 { }
 
-VkCommandBuffer RHICommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo)
+VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -121,7 +121,7 @@ VkCommandBuffer RHICommandPoolsManager::AcquireCommandBuffer(const rhi::CommandB
 	return cmdBufferHandle;
 }
 
-void RHICommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
+void CommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -129,7 +129,7 @@ void RHICommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquire
 	poolsSet.ReleasePool(acquireInfo);
 }
 
-void RHICommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer)
+void CommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -137,7 +137,7 @@ void RHICommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo
 	poolsSet.ReleaseCommandBuffer(acquireInfo, commandBuffer);
 }
 
-CommandPoolsSet& RHICommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
+CommandPoolsSet& CommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -155,7 +155,7 @@ CommandPoolsSet& RHICommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDef
 	return CreatePoolSet(bufferDefinition, poolHash);
 }
 
-CommandPoolsSet& RHICommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
+CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -178,7 +178,7 @@ CommandPoolsSet& RHICommandPoolsManager::CreatePoolSet(const rhi::CommandBufferD
 	return *addedSet;
 }
 
-CommandPoolsSet& RHICommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
+CommandPoolsSet& CommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -187,7 +187,7 @@ CommandPoolsSet& RHICommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
 	return *m_poolSets[poolHash];
 }
 
-Uint32 RHICommandPoolsManager::HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const
+Uint32 CommandPoolsManager::HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const
 {
 	Uint32 result = 0;
 	result += static_cast<Uint32>(bufferDefinition.m_queueType) << 5;
@@ -197,7 +197,7 @@ Uint32 RHICommandPoolsManager::HashCommandBufferDefinition(const rhi::CommandBuf
 	return result;
 }
 
-Uint32 RHICommandPoolsManager::GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const
+Uint32 CommandPoolsManager::GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const
 {
 	const LogicalDevice& logicalDevice = VulkanRHI::GetLogicalDevice();
 

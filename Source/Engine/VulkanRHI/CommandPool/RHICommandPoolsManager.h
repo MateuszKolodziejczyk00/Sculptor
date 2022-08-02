@@ -39,11 +39,11 @@ private:
 };
 
 
-class RHICommandPoolsManager
+class CommandPoolsManager
 {
 public:
 
-	RHICommandPoolsManager();
+	CommandPoolsManager();
 
 	VkCommandBuffer										AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo);
 
