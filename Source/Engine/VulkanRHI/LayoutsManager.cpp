@@ -4,32 +4,32 @@ namespace spt::vulkan
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// TextureLayoutCommandBufferData ================================================================
+// ImageLayoutCommandBufferData ================================================================
 
-TextureLayoutCommandBufferData::TextureLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout)
+ImageLayoutCommandBufferData::ImageLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout)
 	: m_mipsNum(mipsNum)
 	, m_arrayLayersNum(arrayLayers)
 	, m_fullImageLayout(layout)
 { }
 
-Bool TextureLayoutCommandBufferData::AreAllSubresourcesInSameLayout() const
+Bool ImageLayoutCommandBufferData::AreAllSubresourcesInSameLayout() const
 {
 	return m_subresourceLayouts.empty();
 }
 
-VkImageLayout TextureLayoutCommandBufferData::GetFullImageLayout() const
+VkImageLayout ImageLayoutCommandBufferData::GetFullImageLayout() const
 {
 	SPT_CHECK(AreAllSubresourcesInSameLayout());
 
 	return m_fullImageLayout;
 }
 
-VkImageLayout TextureLayoutCommandBufferData::GetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer) const
+VkImageLayout ImageLayoutCommandBufferData::GetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer) const
 {
 	return AreAllSubresourcesInSameLayout() ? GetFullImageLayout() : m_subresourceLayouts[GetSubresourceIdx(mipLevel, arrayLayer)];
 }
 
-VkImageLayout TextureLayoutCommandBufferData::GetSubresourcesSharedLayout(const TextureSubresourceRange& range) const
+VkImageLayout ImageLayoutCommandBufferData::GetSubresourcesSharedLayout(const ImageSubresourceRange& range) const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -56,13 +56,13 @@ VkImageLayout TextureLayoutCommandBufferData::GetSubresourcesSharedLayout(const 
 	return layout;
 }
 
-void TextureLayoutCommandBufferData::SetFullImageLayout(VkImageLayout layout)
+void ImageLayoutCommandBufferData::SetFullImageLayout(VkImageLayout layout)
 {
 	m_fullImageLayout = layout;
 	m_subresourceLayouts.clear();
 }
 
-void TextureLayoutCommandBufferData::SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
+void ImageLayoutCommandBufferData::SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
 {
 	SPT_CHECK(mipLevel < m_mipsNum && arrayLayer < m_arrayLayersNum);
 
@@ -84,7 +84,7 @@ void TextureLayoutCommandBufferData::SetSubresourceLayout(Uint32 mipLevel, Uint3
 	}
 }
 
-void TextureLayoutCommandBufferData::SetSubresourcesLayout(const TextureSubresourceRange& range, VkImageLayout layout)
+void ImageLayoutCommandBufferData::SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -114,12 +114,12 @@ void TextureLayoutCommandBufferData::SetSubresourcesLayout(const TextureSubresou
 	}
 }
 
-SizeType TextureLayoutCommandBufferData::GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const
+SizeType ImageLayoutCommandBufferData::GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const
 {
 	return static_cast<SizeType>(arrayLayer + mipLevel * m_arrayLayersNum);
 }
 
-void TextureLayoutCommandBufferData::TransitionToPerSubresourceLayout()
+void ImageLayoutCommandBufferData::TransitionToPerSubresourceLayout()
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -138,7 +138,7 @@ void TextureLayoutCommandBufferData::TransitionToPerSubresourceLayout()
 	}
 }
 
-Bool TextureLayoutCommandBufferData::TransitionToFullImageLayoutIfPossible()
+Bool ImageLayoutCommandBufferData::TransitionToFullImageLayoutIfPossible()
 {
 	if (m_subresourceLayouts.empty())
 	{
@@ -155,7 +155,7 @@ Bool TextureLayoutCommandBufferData::TransitionToFullImageLayoutIfPossible()
 	return false;
 }
 
-Bool TextureLayoutCommandBufferData::AreAllSubresourcesInSameLayoutImpl() const
+Bool ImageLayoutCommandBufferData::AreAllSubresourcesInSameLayoutImpl() const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -178,73 +178,131 @@ Bool TextureLayoutCommandBufferData::AreAllSubresourcesInSameLayoutImpl() const
 CommandBufferLayoutsManager::CommandBufferLayoutsManager()
 { }
 
-void CommandBufferLayoutsManager::AcquireTexture(const TextureLayoutData& texture)
+ImageLayoutCommandBufferData* CommandBufferLayoutsManager::AcquireImage(VkImage image, const ImageLayoutData& layoutInfo)
 {
-	
+	const ImageLayoutCommandBufferData acquiredImageLayoutData(layoutInfo.m_mipsNum, layoutInfo.m_arrayLayersNum, layoutInfo.m_fullImageLayout);
+
+	auto emplaceResult = m_imageLayouts.emplace(image, acquiredImageLayoutData);
+	return &(emplaceResult.first->second);
 }
 
-const CommandBufferLayoutsManager::TexturesLayoutData& CommandBufferLayoutsManager::GetAcquiredTexturesLayouts() const
+const CommandBufferLayoutsManager::ImagesLayoutData& CommandBufferLayoutsManager::GetAcquiredImagesLayouts() const
 {
 	return m_imageLayouts;
+}
+
+ImageLayoutCommandBufferData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image)
+{
+	auto foundLayout = m_imageLayouts.find(image);
+	return foundLayout != m_imageLayouts.cend() ? &(foundLayout->second) : nullptr;
+}
+
+const ImageLayoutCommandBufferData* CommandBufferLayoutsManager::GetImageLayoutInfo(VkImage image) const
+{
+	const auto foundLayout = m_imageLayouts.find(image);
+	return foundLayout != m_imageLayouts.cend() ? &(foundLayout->second) : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // LayoutsManager ================================================================================
 
 LayoutsManager::LayoutsManager()
-{
+{ }
 
-}
-
-void LayoutsManager::RegisterTexture(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum)
+void LayoutsManager::RegisterImage(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum)
 {
 	SPT_PROFILE_FUNCTION();
 
-	const lib::WriteLockGuard textureLayoutsWriteLock(m_imageLayoutsLock);
+	const lib::WriteLockGuard imageLayoutsWriteLock(m_imageLayoutsLock);
 
-	m_imageLayouts.emplace(image, TextureLayoutData(image, mipsNum, arrayLayersNum));
+	m_imageLayouts.emplace(image, ImageLayoutData(mipsNum, arrayLayersNum));
 }
 
-void LayoutsManager::UnregisterTexture(VkImage image)
+void LayoutsManager::UnregisterImage(VkImage image)
 {
 	SPT_PROFILE_FUNCTION();
 
-	const lib::WriteLockGuard textureLayoutsWriteLock(m_imageLayoutsLock);
+	const lib::WriteLockGuard imageLayoutsWriteLock(m_imageLayoutsLock);
 
 	m_imageLayouts.erase(image);
 }
 
 VkImageLayout LayoutsManager::GetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image) const
 {
-	SPT_CHECK_NO_ENTRY();
-	return VK_IMAGE_LAYOUT_UNDEFINED;
+	SPT_PROFILE_FUNCTION();
+
+	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+
+	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	if (layoutData)
+	{
+		result = layoutData->GetFullImageLayout();
+	}
+	else
+	{
+		result = GetGlobalFullImageLayout(image);
+	}
+
+	return result;
 }
 
 VkImageLayout LayoutsManager::GetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer) const
 {
-	SPT_CHECK_NO_ENTRY();
-	return VK_IMAGE_LAYOUT_UNDEFINED;
+	SPT_PROFILE_FUNCTION();
+
+	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+
+	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	if (layoutData)
+	{
+		result = layoutData->GetSubresourceLayout(mipLevel, arrayLayer);
+	}
+	else
+	{
+		result = GetGlobalFullImageLayout(image);
+	}
+
+	return result;
 }
 
-VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range) const
+VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range) const
 {
-	SPT_CHECK_NO_ENTRY();
-	return VK_IMAGE_LAYOUT_UNDEFINED;
+	SPT_PROFILE_FUNCTION();
+
+	const ImageLayoutCommandBufferData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
+
+	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	if (layoutData)
+	{
+		result = layoutData->GetSubresourcesSharedLayout(range);
+	}
+	else
+	{
+		result = GetGlobalFullImageLayout(image);
+	}
+
+	return result;
 }
 
 void LayoutsManager::SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout)
 {
-
+	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	layoutData.SetFullImageLayout(layout);
 }
 
 void LayoutsManager::SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
 {
-
+	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	layoutData.SetSubresourceLayout(mipLevel, arrayLayer, layout);
 }
 
-void LayoutsManager::SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range, VkImageLayout layout)
+void LayoutsManager::SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range, VkImageLayout layout)
 {
-
+	ImageLayoutCommandBufferData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	layoutData.SetSubresourcesLayout(range, layout);
 }
 
 void LayoutsManager::RegisterCommandBuffer(VkCommandBuffer cmdBuffer)
@@ -267,21 +325,40 @@ void LayoutsManager::UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer)
 	m_cmdBuffersLayoutManagers.erase(cmdBuffer);
 }
 
-void LayoutsManager::AcquireImage(VkCommandBuffer cmdBuffer, VkImage image)
+ImageLayoutCommandBufferData& LayoutsManager::GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image)
+{
+	CommandBufferLayoutsManager& cmdBufferLayoutsManager = GetLayoutsManagerForCommandBuffer(cmdBuffer);
+
+	ImageLayoutCommandBufferData* layoutData = cmdBufferLayoutsManager.GetImageLayoutInfo(image);
+	if (!layoutData)
+	{
+		layoutData = AcquireImage(cmdBufferLayoutsManager, image);
+	}
+	SPT_CHECK(!!layoutData);
+	
+	return *layoutData;
+}
+
+const ImageLayoutCommandBufferData* LayoutsManager::GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const
+{
+	const CommandBufferLayoutsManager& cmdBufferLayoutsManager = GetLayoutsManagerForCommandBuffer(cmdBuffer);
+
+	return cmdBufferLayoutsManager.GetImageLayoutInfo(image);
+}
+
+ImageLayoutCommandBufferData* LayoutsManager::AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image)
 {
 	SPT_PROFILE_FUNCTION();
 
-	CommandBufferLayoutsManager& cmdBufferLayouts = GetLayoutsManagerForCommandBuffer(cmdBuffer);
-
-	TextureLayoutData textureLayoutData;
+	ImageLayoutData imageLayoutData;
 
 	{
 		const lib::ReadLockGuard imageLayoutsReadGuard(m_imageLayoutsLock);
 
-		textureLayoutData = m_imageLayouts[image];
+		imageLayoutData = m_imageLayouts[image];
 	}
 
-	cmdBufferLayouts.AcquireTexture(textureLayoutData);
+	return cmdBufferLayoutsManager.AcquireImage(image, imageLayoutData);
 }
 
 void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
@@ -290,16 +367,16 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 
 	const CommandBufferLayoutsManager& cmdBufferLayouts = GetLayoutsManagerForCommandBuffer(cmdBuffer);
 
-	const CommandBufferLayoutsManager::TexturesLayoutData& textures = cmdBufferLayouts.GetAcquiredTexturesLayouts();
+	const CommandBufferLayoutsManager::ImagesLayoutData& images = cmdBufferLayouts.GetAcquiredImagesLayouts();
 
-	for (const auto& textureLayout : textures)
+	for (const auto& imageLayout : images)
 	{
-		const VkImage texture = textureLayout.first;
-		const TextureLayoutCommandBufferData& layoutData = textureLayout.second;
+		const VkImage image = imageLayout.first;
+		const ImageLayoutCommandBufferData& layoutData = imageLayout.second;
 
 		SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
 
-		SetFullImageLayout(cmdBuffer, texture, layoutData.GetFullImageLayout());
+		SetFullImageLayout(cmdBuffer, image, layoutData.GetFullImageLayout());
 	}
 }
 
@@ -311,6 +388,29 @@ CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(V
 
 	CommandBufferLayoutsManager& cmdBufferLayouts = *m_cmdBuffersLayoutManagers[cmdBuffer].get();
 	return cmdBufferLayouts;
+}
+
+const CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer) const
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
+
+	const auto& cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
+	SPT_CHECK(cmdBufferLayoutManager != m_cmdBuffersLayoutManagers.cend());
+
+	const CommandBufferLayoutsManager& cmdBufferLayouts = *cmdBufferLayoutManager->second;
+	return cmdBufferLayouts;
+}
+
+VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::ReadLockGuard imageLayoutsReadLock(m_imageLayoutsLock);
+
+	const auto foundLayout = m_imageLayouts.find(image);
+	return foundLayout->second.m_fullImageLayout;
 }
 
 }

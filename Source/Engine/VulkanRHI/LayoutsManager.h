@@ -7,9 +7,9 @@
 namespace spt::vulkan
 {
 
-struct TextureSubresourceRange
+struct ImageSubresourceRange
 {
-	TextureSubresourceRange(Uint32 baseMipLevel = 0, Uint32 mipLevelsNum = 1, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = 1)
+	ImageSubresourceRange(Uint32 baseMipLevel = 0, Uint32 mipLevelsNum = 1, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = 1)
 		: m_baseMipLevel(baseMipLevel)
 		, m_mipLevelsNum(mipLevelsNum)
 		, m_baseArrayLayer(baseArrayLayer)
@@ -23,21 +23,21 @@ struct TextureSubresourceRange
 };
 
 
-class TextureLayoutCommandBufferData
+class ImageLayoutCommandBufferData
 {
 public:
 
-	TextureLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout);
+	ImageLayoutCommandBufferData(Uint32 mipsNum, Uint32 arrayLayers, VkImageLayout layout);
 
 	Bool								AreAllSubresourcesInSameLayout() const;
 
 	VkImageLayout						GetFullImageLayout() const;
 	VkImageLayout						GetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer) const;
-	VkImageLayout						GetSubresourcesSharedLayout(const TextureSubresourceRange& range) const;
+	VkImageLayout						GetSubresourcesSharedLayout(const ImageSubresourceRange& range) const;
 
 	void								SetFullImageLayout(VkImageLayout layout);
 	void								SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);
-	void								SetSubresourcesLayout(const TextureSubresourceRange& range, VkImageLayout layout);
+	void								SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout);
 
 private:
 
@@ -57,25 +57,21 @@ private:
 };
 
 
-class TextureLayoutData
+class ImageLayoutData
 {
 public:
 
-	TextureLayoutData()
-		: m_imageHandle(VK_NULL_HANDLE)
-		, m_mipsNum(0)
+	ImageLayoutData()
+		: m_mipsNum(0)
 		, m_arrayLayersNum(0)
 		, m_fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{ }
 
-	TextureLayoutData(VkImage imageHandle, Uint32 mipsNum, Uint32 arrayLayersNum)
-		: m_imageHandle(imageHandle)
-		, m_mipsNum(mipsNum)
+	ImageLayoutData(Uint32 mipsNum, Uint32 arrayLayersNum)
+		: m_mipsNum(mipsNum)
 		, m_arrayLayersNum(arrayLayersNum)
 		, m_fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{ }
-
-	VkImage								m_imageHandle;
 
 	Uint32								m_mipsNum;
 	Uint32								m_arrayLayersNum;
@@ -88,19 +84,21 @@ class CommandBufferLayoutsManager
 {
 public:
 
-	using TexturesLayoutData					= lib::HashMap<VkImage, TextureLayoutCommandBufferData>;
+	using ImagesLayoutData					= lib::HashMap<VkImage, ImageLayoutCommandBufferData>;
 
 	CommandBufferLayoutsManager();
 
-	void										AcquireTexture(const TextureLayoutData& texture);
+	ImageLayoutCommandBufferData*				AcquireImage(VkImage image, const ImageLayoutData& layoutInfo);
 
-	const TexturesLayoutData&					GetAcquiredTexturesLayouts() const;
+	const ImagesLayoutData&						GetAcquiredImagesLayouts() const;
 
+	ImageLayoutCommandBufferData*				GetImageLayoutInfo(VkImage image);
+	const ImageLayoutCommandBufferData*			GetImageLayoutInfo(VkImage image) const;
 
 private:
 
-	using TexturesLayoutData					= lib::HashMap<VkImage, TextureLayoutCommandBufferData>;
-	TexturesLayoutData							m_imageLayouts;
+	using ImagesLayoutData						= lib::HashMap<VkImage, ImageLayoutCommandBufferData>;
+	ImagesLayoutData							m_imageLayouts;
 };
 
 
@@ -110,34 +108,39 @@ public:
 
 	LayoutsManager();
 
-	void										RegisterTexture(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum);
-	void										UnregisterTexture(VkImage image);
+	void										RegisterImage(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum);
+	void										UnregisterImage(VkImage image);
 
 	VkImageLayout								GetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image) const;
 	VkImageLayout								GetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer) const;
-	VkImageLayout								GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range) const;
+	VkImageLayout								GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range) const;
 
 	void										SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout);
 	void										SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);
-	void										SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const TextureSubresourceRange& range, VkImageLayout layout);
+	void										SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range, VkImageLayout layout);
 
 	void										RegisterCommandBuffer(VkCommandBuffer cmdBuffer);
 	void										UnregisterCommnadBuffer(VkCommandBuffer cmdBuffer);
 
 private:
 
-	void										AcquireImage(VkCommandBuffer cmdBuffer, VkImage image);
+	ImageLayoutCommandBufferData&				GetAcquiredImageLayoutData(VkCommandBuffer cmdBuffer, VkImage image);
+	const ImageLayoutCommandBufferData*			GetImageLayoutDataIfAcquired(VkCommandBuffer cmdBuffer, VkImage image) const;
 
+	ImageLayoutCommandBufferData*				AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image);
 	void										ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer);
 
 	CommandBufferLayoutsManager&				GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer);
+	const CommandBufferLayoutsManager&			GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer) const;
 
-	lib::HashMap<VkImage, TextureLayoutData>	m_imageLayouts;
-	lib::ReadWriteLock							m_imageLayoutsLock;
+	VkImageLayout								GetGlobalFullImageLayout(VkImage image) const;
+
+	lib::HashMap<VkImage, ImageLayoutData>		m_imageLayouts;
+	mutable lib::ReadWriteLock					m_imageLayoutsLock;
 
 	using CmdBufferToLayoutManager				= lib::HashMap<VkCommandBuffer, lib::UniquePtr<CommandBufferLayoutsManager>>;
 	CmdBufferToLayoutManager					m_cmdBuffersLayoutManagers;
-	lib::ReadWriteLock							m_cmdBuffersLayoutManagersLock;
+	mutable lib::ReadWriteLock					m_cmdBuffersLayoutManagersLock;
 };
 
 }
