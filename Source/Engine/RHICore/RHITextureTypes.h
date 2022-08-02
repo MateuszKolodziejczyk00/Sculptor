@@ -27,7 +27,8 @@ enum Flags : Flags32
 enum class ETextureLayout : Uint32
 {
 	Undefined,
-	General,
+	ComputeGeneral,
+	FragmentGeneral,
 
 	ColorRTOptimal,
 	DepthRTOptimal,
