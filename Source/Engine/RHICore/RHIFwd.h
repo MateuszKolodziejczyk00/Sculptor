@@ -14,6 +14,7 @@ class RHIWindow;
 class RHISemaphore;
 class RHISemaphoresArray;
 class RHICommandBuffer;
+class RHIBarrier;
 
 }
 

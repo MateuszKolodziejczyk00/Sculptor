@@ -34,4 +34,9 @@ lib::SharedPtr<CommandBuffer> RendererBuilder::CreateCommandBuffer(const Rendere
 	return std::make_shared<CommandBuffer>(name, definition);
 }
 
+Barrier RendererBuilder::CreateBarrier()
+{
+	return Barrier();
+}
+
 }

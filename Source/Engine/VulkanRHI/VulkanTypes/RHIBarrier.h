@@ -1,5 +1,6 @@
 #pragma once
 
+#include "VulkanRHIMacros.h"
 #include "Vulkan.h"
 #include "SculptorCoreTypes.h"
 #include "RHITextureTypes.h"
@@ -12,7 +13,7 @@ class RHITexture;
 class RHICommandBuffer;
 
 
-class RHIBarrier
+class VULKAN_RHI_API RHIBarrier
 {
 public:
 

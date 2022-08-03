@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIFwd.h"
 #include "RendererUtils.h"
+#include "Types/Barrier.h"
 
 
 namespace spt::rhi
@@ -37,6 +38,8 @@ public:
 	static lib::SharedPtr<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 
 	static lib::SharedPtr<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
+
+	static Barrier								CreateBarrier();
 };
 
 }
