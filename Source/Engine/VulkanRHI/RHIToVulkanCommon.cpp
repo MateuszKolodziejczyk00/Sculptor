@@ -3,7 +3,7 @@
 namespace spt::vulkan
 {
 
-VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage::Flags flags)
+VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(Flags32 flags)
 {
 	VkPipelineStageFlags2 vulkanFlags = 0;
 

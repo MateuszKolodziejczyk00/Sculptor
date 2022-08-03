@@ -13,7 +13,7 @@ class RHIToVulkan
 {
 public:
 
-	static VkPipelineStageFlags2		GetStageFlags(rhi::EPipelineStage::Flags flags);
+	static VkPipelineStageFlags2		GetStageFlags(Flags32 flags);
 
 	static VkImageLayout				GetImageLayout(rhi::ETextureLayout layout);
 

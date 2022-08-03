@@ -27,6 +27,7 @@ public:
 private:
 
 	void										PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer& cmdBuffer);
+	void										WriteNewLayoutsToLayoutsManager(const RHICommandBuffer& cmdBuffer);
 
 	lib::DynamicArray<VkImageMemoryBarrier2>	m_textureBarriers;
 	lib::DynamicArray<VkBufferMemoryBarrier2>	m_bufferBarriers;

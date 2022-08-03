@@ -16,6 +16,13 @@ struct ImageSubresourceRange
 		, m_arrayLayersNum(arrayLayersNum)
 	{ }
 
+	ImageSubresourceRange(const VkImageSubresourceRange& subresourceRange)
+		: m_baseMipLevel(subresourceRange.baseMipLevel)
+		, m_mipLevelsNum(subresourceRange.levelCount)
+		, m_baseArrayLayer(subresourceRange.baseArrayLayer)
+		, m_arrayLayersNum(subresourceRange.layerCount)
+	{ }
+
 	Uint32		m_baseMipLevel;
 	Uint32		m_mipLevelsNum;
 	Uint32		m_baseArrayLayer;
