@@ -3,6 +3,7 @@
 #include "Vulkan.h"
 #include "RHISemaphoreTypes.h"
 #include "RHITextureTypes.h"
+#include "RHIPipelineTypes.h"
 
 
 namespace spt::vulkan

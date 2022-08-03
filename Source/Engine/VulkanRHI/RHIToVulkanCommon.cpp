@@ -84,8 +84,7 @@ VkImageLayout RHIToVulkan::GetImageLayout(rhi::ETextureLayout layout)
 	switch (layout)
 	{
 	case rhi::ETextureLayout::Undefined:						return VK_IMAGE_LAYOUT_UNDEFINED;
-	case rhi::ETextureLayout::ComputeGeneral:					return VK_IMAGE_LAYOUT_GENERAL;
-	case rhi::ETextureLayout::FragmentGeneral:					return VK_IMAGE_LAYOUT_GENERAL;
+	case rhi::ETextureLayout::General:							return VK_IMAGE_LAYOUT_GENERAL;
 	case rhi::ETextureLayout::ColorRTOptimal:					return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	case rhi::ETextureLayout::DepthRTOptimal:					return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 	case rhi::ETextureLayout::DepthStencilRTOptimal:			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

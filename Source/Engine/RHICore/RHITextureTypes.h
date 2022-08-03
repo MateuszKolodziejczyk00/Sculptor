@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RHIPipelineTypes.h"
+
 
 namespace spt::rhi
 {
@@ -9,6 +11,7 @@ namespace ETextureUsage
 
 enum Flags : Flags32
 {
+	None						= 0,
 	TransferSource				= BIT(0),
 	TransferDest				= BIT(1),
 	SampledTexture				= BIT(2),
@@ -27,8 +30,7 @@ enum Flags : Flags32
 enum class ETextureLayout : Uint32
 {
 	Undefined,
-	ComputeGeneral,
-	FragmentGeneral,
+	General,
 
 	ColorRTOptimal,
 	DepthRTOptimal,
@@ -166,5 +168,51 @@ struct TextureViewDefinition
 	TextureComponentMappings	m_componentMappings;
 	TextureSubresourceRange		m_subresourceRange;
 };
+
+
+namespace EAccessType
+{
+
+enum Flags : Flags32
+{
+	None		= 0,
+	Read		= BIT(0),
+	Write		= BIT(1)
+};
+
+}
+
+
+struct BarrierTextureTransitionTarget
+{
+	constexpr BarrierTextureTransitionTarget()
+		: m_accessType(EAccessType::None)
+		, m_layout(ETextureLayout::Undefined)
+		, m_stage(EPipelineStage::None)
+	{ }
+
+	constexpr BarrierTextureTransitionTarget(Flags32 accessType, ETextureLayout layout, Flags32 stage)
+		: m_accessType(accessType)
+		, m_layout(layout)
+		, m_stage(stage)
+	{ }
+
+	Flags32						m_accessType;
+	ETextureLayout				m_layout;
+	Flags32						m_stage;
+};
+
+
+namespace TextureTransition
+{
+
+	static constexpr BarrierTextureTransitionTarget Undefined			= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::Undefined, EPipelineStage::TopOfPipe);
+
+	static constexpr BarrierTextureTransitionTarget ComputeGeneral		= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::ComputeShader);
+	static constexpr BarrierTextureTransitionTarget FragmentGeneeral	= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::FragmentShader);
+	
+	static constexpr BarrierTextureTransitionTarget PresentSource		= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::General, EPipelineStage::FragmentShader);
+
+}
 
 }
