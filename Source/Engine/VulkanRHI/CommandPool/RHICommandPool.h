@@ -24,6 +24,7 @@ public:
 
 	Bool									IsLocked() const;
 
+	void									ForceLock();
 	Bool									TryLock();
 	void									Unlock();
 

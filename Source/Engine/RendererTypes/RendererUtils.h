@@ -23,11 +23,10 @@ public:
 		: m_name(name)
 	{ }
 
-#else
+#endif // RENDERER_VALIDATION
 
 	RendererResourceName() {}
 
-#endif // RENDERER_VALIDATION
 
 	const lib::HashedString& Get() const
 	{

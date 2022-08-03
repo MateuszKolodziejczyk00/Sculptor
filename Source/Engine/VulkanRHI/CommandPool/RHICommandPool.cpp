@@ -49,6 +49,12 @@ Bool RHICommandPool::IsLocked() const
 	return m_isLocked;
 }
 
+void RHICommandPool::ForceLock()
+{
+	const Bool prev = m_isLocked.exchange(true);
+	SPT_CHECK(prev == false);
+}
+
 Bool RHICommandPool::TryLock()
 {
 	Bool success = false;
@@ -56,7 +62,7 @@ Bool RHICommandPool::TryLock()
 	if (HasAvailableCommandBuffers())
 	{
 		const Bool prev = m_isLocked.exchange(true);
-		success = prev == false;
+		success = (prev == false);
 	}
 
 	return success;

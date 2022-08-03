@@ -1,6 +1,7 @@
 #include "CommandsRecorder.h"
 #include "Types/CommandBuffer.h"
 #include "RendererBuilder.h"
+#include "Types/Barrier.h"
 
 namespace spt::renderer
 {
@@ -36,6 +37,11 @@ void CommandsRecorder::FinishRecording()
 const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandsBuffer() const
 {
 	return m_commandsBuffer;
+}
+
+void CommandsRecorder::ExecuteBarrier(Barrier& barrier)
+{
+	barrier.GetRHI().Execute(m_commandsBuffer->GetRHI());
 }
 
 }

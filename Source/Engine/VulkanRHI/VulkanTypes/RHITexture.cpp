@@ -1,6 +1,7 @@
 #include "RHITexture.h"
 #include "VulkanRHI.h"
 #include "Memory/MemoryManager.h"
+#include "LayoutsManager.h"
 
 
 namespace spt::vulkan
@@ -253,6 +254,8 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
     m_imageHandle   = imageHandle;
     m_allocation    = VK_NULL_HANDLE;
     m_definition    = definition;
+    
+    PostImageInitialized();
 }
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation)
@@ -279,6 +282,8 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	SPT_VK_CHECK(vmaCreateImage(VulkanRHI::GetAllocatorHandle(), &imageInfo, &allocationInfo, &m_imageHandle, &m_allocation, nullptr));
 
     m_definition = definition;
+
+    PostImageInitialized();
 }
 
 void RHITexture::ReleaseRHI()
@@ -291,6 +296,8 @@ void RHITexture::ReleaseRHI()
     {
         vmaDestroyImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, m_allocation);
     }
+
+    PreImageReleased();
 
     m_imageHandle   = VK_NULL_HANDLE;
     m_allocation    = VK_NULL_HANDLE;
@@ -340,6 +347,17 @@ Flags32 RHITexture::GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
 rhi::EFragmentFormat RHITexture::GetRHIFormat(VkFormat format)
 {
     return priv::GetRHIFormat(format);
+}
+
+void RHITexture::PostImageInitialized()
+{
+    VulkanRHI::GetLayoutsManager().RegisterImage(m_imageHandle, m_definition.m_mipLevels, m_definition.m_arrayLayers);
+}
+
+void RHITexture::PreImageReleased()
+{
+
+    VulkanRHI::GetLayoutsManager().UnregisterImage(m_imageHandle);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

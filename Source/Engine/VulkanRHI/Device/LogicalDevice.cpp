@@ -40,6 +40,11 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(features);
 
+	VkPhysicalDeviceSynchronization2Features synchronizationFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES };
+	synchronizationFeatures.synchronization2 = VK_TRUE;
+
+	deviceInfoLinkedData.Append(synchronizationFeatures);
+
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
 	VkDeviceQueueInfo2 gfxQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };

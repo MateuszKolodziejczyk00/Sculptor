@@ -1,4 +1,5 @@
 #include "LayoutsManager.h"
+#include "RHITextureTypes.h"
 
 namespace spt::vulkan
 {
@@ -88,7 +89,13 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 {
 	SPT_PROFILE_FUNCTION();
 
-	if (range.m_mipLevelsNum == 1 && range.m_arrayLayersNum == 1)
+	if (	range.m_baseMipLevel == 0 && range.m_baseArrayLayer == 0
+		&& (range.m_mipLevelsNum == m_mipsNum || range.m_mipLevelsNum == rhi::TextureSubresourceRange::s_allRemainingMips)
+		&& (range.m_arrayLayersNum == m_arrayLayersNum || range.m_arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers))
+	{
+		SetFullImageLayout(layout);
+	}
+	else if (range.m_mipLevelsNum == 1 && range.m_arrayLayersNum == 1)
 	{
 		SetSubresourceLayout(range.m_baseMipLevel, range.m_baseArrayLayer, layout);
 	}
@@ -410,6 +417,8 @@ VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const
 	const lib::ReadLockGuard imageLayoutsReadLock(m_imageLayoutsLock);
 
 	const auto foundLayout = m_imageLayouts.find(image);
+	SPT_CHECK(foundLayout != m_imageLayouts.cend());
+
 	return foundLayout->second.m_fullImageLayout;
 }
 

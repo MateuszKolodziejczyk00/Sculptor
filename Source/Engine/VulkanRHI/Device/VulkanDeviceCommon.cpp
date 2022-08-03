@@ -8,7 +8,8 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 {
     return lib::DynamicArray<const char*>
     {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
     };
 }
 

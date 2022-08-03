@@ -150,7 +150,7 @@ RHIBarrier::RHIBarrier()
 
 SizeType RHIBarrier::AddTextureBarrier(const RHITexture& texture, rhi::TextureSubresourceRange& subresourceRange)
 {
-	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
 	barrier.image								= texture.GetHandle();
 	barrier.subresourceRange.aspectMask			= RHIToVulkan::GetAspectFlags(subresourceRange.m_aspect);
 	barrier.subresourceRange.baseMipLevel		= subresourceRange.m_baseMipLevel;

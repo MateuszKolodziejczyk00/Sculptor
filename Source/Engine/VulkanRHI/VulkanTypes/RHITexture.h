@@ -45,6 +45,9 @@ public:
 
 private:
 
+	void							PostImageInitialized();
+	void							PreImageReleased();
+
 	rhi::TextureDefinition			m_definition;
 
 	VkImage							m_imageHandle;

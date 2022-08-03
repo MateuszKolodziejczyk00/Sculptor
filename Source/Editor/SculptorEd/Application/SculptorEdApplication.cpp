@@ -5,6 +5,7 @@
 #include "Timer/TickingTimer.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
+#include "CommandsRecorder/CommandsRecorder.h"
 
 
 namespace spt::ed
@@ -44,7 +45,32 @@ void SculptorEdApplication::OnRun()
 
 		const lib::SharedPtr<renderer::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
 
-		m_window->PresentTexture({ acquireSemaphore });
+		renderer::CommandsRecordingInfo recordingInfo;
+		recordingInfo.m_commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
+		recordingInfo.m_commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
+
+		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
+		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+
+		recorder->ExecuteBarrier(barrier);
+
+		recorder->FinishRecording();
+
+		lib::SharedPtr<renderer::Semaphore> finishCommandsSemaphore = renderer::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+
+		lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
+		renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
+		submitBatch.m_recordedCommands.emplace_back(std::move(recorder));
+		submitBatch.m_waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
+		submitBatch.m_signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
+
+		renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+
+		m_window->PresentTexture({ finishCommandsSemaphore });
 
 		m_window->Update(deltaTime);
 

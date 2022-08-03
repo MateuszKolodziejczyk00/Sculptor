@@ -10,6 +10,7 @@ namespace spt::renderer
 {
 
 class CommandBuffer;
+class Barrier;
 
 
 struct CommandsRecordingInfo
@@ -43,6 +44,8 @@ public:
 	void									FinishRecording();
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandsBuffer() const;
+
+	void									ExecuteBarrier(Barrier& barrier);
 
 private:
 

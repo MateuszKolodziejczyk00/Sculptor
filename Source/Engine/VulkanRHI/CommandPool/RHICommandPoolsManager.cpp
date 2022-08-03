@@ -35,6 +35,8 @@ VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& 
 
 	SPT_CHECK(m_commandPools[poolIdx]->IsLocked());
 
+	outAcquireInfo.m_commandPoolId = poolIdx;
+
 	return m_commandPools[poolIdx]->AcquireCommandBuffer();
 }
 
@@ -53,7 +55,7 @@ void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acqui
 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
-	m_commandPools[acquireInfo.m_commandPoolId]->ReleaseCommandBuffer(cmdBuffer);
+	SafeGetCommandPool(acquireInfo.m_commandPoolId).ReleaseCommandBuffer(cmdBuffer);
 }
 
 RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
@@ -89,8 +91,7 @@ SizeType CommandPoolsSet::CreateNewPool()
 		pool = m_commandPools.emplace_back(std::make_unique<RHICommandPool>()).get();
 		newPoolIdx = m_commandPools.size() - 1;
 
-		const Bool success = pool->TryLock();
-		SPT_CHECK(success);
+		pool->ForceLock();
 	}
 
 	SPT_CHECK(!!pool);
