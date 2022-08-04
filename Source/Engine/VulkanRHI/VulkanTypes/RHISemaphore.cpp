@@ -140,16 +140,16 @@ void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Binary);
 
-	AddSemaphoreInfo(semaphore.GetHandle(), submitStage, 0);
+	AddSemaphoreInfo(semaphore.GetHandle(), 0, submitStage);
 }
 
-void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value)
+void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage)
 {
 	SPT_PROFILE_FUNCTION();
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Timeline);
 
-	AddSemaphoreInfo(semaphore.GetHandle(), submitStage, value);
+	AddSemaphoreInfo(semaphore.GetHandle(), value, submitStage);
 }
 
 const lib::DynamicArray<VkSemaphoreSubmitInfo>& RHISemaphoresArray::GetSubmitInfos() const
@@ -162,7 +162,7 @@ SizeType RHISemaphoresArray::GetSemaphoresNum() const
 	return m_submitInfos.size();
 }
 
-void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value)
+void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage)
 {
 	VkSemaphoreSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
     submitInfo.semaphore = semaphore;

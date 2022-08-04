@@ -22,6 +22,8 @@ void SculptorEdApplication::OnInit()
 	renderer::Renderer::Initialize();
 
 	m_window = renderer::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
+
+	renderer::Renderer::PostCreatedWindow();
 }
 
 void SculptorEdApplication::OnRun()
@@ -67,6 +69,7 @@ void SculptorEdApplication::OnRun()
 		submitBatch.m_recordedCommands.emplace_back(std::move(recorder));
 		submitBatch.m_waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
 		submitBatch.m_signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
+		submitBatch.m_signalSemaphores.AddTimelineSemaphore(renderer::Renderer::GetReleaseFrameSemaphore(), renderer::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
 
 		renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 

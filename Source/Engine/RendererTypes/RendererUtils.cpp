@@ -17,11 +17,11 @@ void SemaphoresArray::AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binary
 	m_rhiSemaphores.AddBinarySemaphore(binarySemaphore->GetRHI(), submitStage);
 }
 
-void SemaphoresArray::AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value)
+void SemaphoresArray::AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage)
 {
 	SPT_CHECK(timelineSemaphore);
 
-	m_rhiSemaphores.AddTimelineSemaphore(timelineSemaphore->GetRHI(), submitStage, value);
+	m_rhiSemaphores.AddTimelineSemaphore(timelineSemaphore->GetRHI(), value, submitStage);
 }
 
 const rhi::RHISemaphoresArray& SemaphoresArray::GetRHISemaphores() const

@@ -28,6 +28,8 @@ class RENDERER_CORE_API Renderer
 public:
 
 	static void									Initialize();
+	static void									PostCreatedWindow();
+
 	static void									Shutdown();
 
 	static void									BeginFrame();
@@ -36,6 +38,10 @@ public:
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands(const CommandsRecordingInfo& recordingInfo);
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
+
+	static Uint64								GetCurrentFrameIdx();
+	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
+
 };
 
 }

@@ -19,8 +19,6 @@ void Renderer::Initialize()
 {
 	platform::PlatformWindow::Initialize();
 
-	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
-
 	const platform::RequiredExtensionsInfo requiredExtensions = platform::PlatformWindow::GetRequiredRHIExtensionNames();
 
 	rhi::RHIInitializationInfo initializationInfo;
@@ -28,6 +26,11 @@ void Renderer::Initialize()
 	initializationInfo.m_extensionsNum = requiredExtensions.m_extensionsNum;
 
 	rhi::RHI::Initialize(initializationInfo);
+}
+
+void Renderer::PostCreatedWindow()
+{
+	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
 }
 
 void Renderer::Shutdown()
@@ -83,6 +86,16 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 	}
 
 	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
+}
+
+Uint64 Renderer::GetCurrentFrameIdx()
+{
+	return CurrentFrameContext::GetCurrentFrameIdx();
+}
+
+const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
+{
+	return CurrentFrameContext::GetReleaseFrameSemaphore();
 }
 
 }

@@ -53,7 +53,7 @@ public:
 	RHISemaphoresArray();
 
 	void												AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage);
-	void												AddTimelineSemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value);
+	void												AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage);
 
 	SizeType											GetSemaphoresNum() const;
 
@@ -63,7 +63,7 @@ public:
 
 private:
 
-	void												AddSemaphoreInfo(VkSemaphore semaphore, rhi::EPipelineStage::Flags submitStage, Uint64 value);
+	void												AddSemaphoreInfo(VkSemaphore semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage);
 
 	lib::DynamicArray<VkSemaphoreSubmitInfo>			m_submitInfos;
 

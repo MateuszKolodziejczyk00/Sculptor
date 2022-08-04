@@ -1,4 +1,6 @@
 #include "CurrentFrameContext.h"
+#include "RendererBuilder.h"
+#include "Types/Semaphore.h"
 
 
 namespace spt::renderer
@@ -12,7 +14,12 @@ namespace priv
 CurrentFrameContext::CleanupDelegate*					cleanupDelegates;
 
 Uint32													framesInFlightNum = 0;
-Uint32													currentFrameIdx = 0;
+Uint32													currentCleanupDelegateIdx = 0;
+
+Uint64													currentFrameIdx = 0;
+
+lib::SharedPtr<Semaphore>								releaseFrameSemaphore;
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,19 +29,9 @@ void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 {
 	priv::framesInFlightNum = framesInFlightNum;
 	priv::cleanupDelegates = new CleanupDelegate[framesInFlightNum];
-}
 
-void CurrentFrameContext::BeginFrame()
-{
-	SPT_PROFILE_FUNCTION();
-
-	priv::currentFrameIdx = (priv::currentFrameIdx + 1) % priv::framesInFlightNum;
-	FlushCurrentFrameReleases();
-}
-
-void CurrentFrameContext::EndFrame()
-{
-
+	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Timeline);
+	priv::releaseFrameSemaphore = RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("ReleaseFrameSemaphore"), semaphoreDef);
 }
 
 void CurrentFrameContext::Shutdown()
@@ -44,27 +41,60 @@ void CurrentFrameContext::Shutdown()
 	delete[] priv::cleanupDelegates;
 }
 
+void CurrentFrameContext::BeginFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+	if (priv::currentFrameIdx >= priv::framesInFlightNum)
+	{
+		// We need to add 1 to this, because index of first frame is actually 1.
+		// Thats because releaseSemaphore has initial value of 0, and if frame idx would start from 0, semaphore for first frame would be always signaled
+		const Uint64 releasedFrameIdx = priv::currentFrameIdx - static_cast<Uint64>(priv::framesInFlightNum) + 1;
+		priv::releaseFrameSemaphore->GetRHI().Wait(releasedFrameIdx);
+	}
+
+	++priv::currentFrameIdx;
+
+	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
+	FlushCurrentFrameReleases();
+}
+
+void CurrentFrameContext::EndFrame()
+{
+
+}
+
+CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanupDelegate()
+{
+	return priv::cleanupDelegates[priv::currentCleanupDelegateIdx];
+}
+
+Uint64 CurrentFrameContext::GetCurrentFrameIdx()
+{
+	return priv::currentFrameIdx;
+}
+
+const lib::SharedPtr<Semaphore>& CurrentFrameContext::GetReleaseFrameSemaphore()
+{
+	return priv::releaseFrameSemaphore;
+}
+
 void CurrentFrameContext::FlushCurrentFrameReleases()
 {
 	SPT_PROFILE_FUNCTION();
 
-	priv::cleanupDelegates[priv::currentFrameIdx].Broadcast();
-	priv::cleanupDelegates[priv::currentFrameIdx].Reset();
+	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Broadcast();
+	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Reset();
 }
 
 void CurrentFrameContext::FlushAllFramesReleases()
 {
 	SPT_PROFILE_FUNCTION();
 
-	for(Uint32 i = 0; i < priv::framesInFlightNum; ++i)
+	for (Uint32 i = 0; i < priv::framesInFlightNum; ++i)
 	{
 		priv::cleanupDelegates[i].Broadcast();
 	}
-}
-
-CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanupDelegate()
-{
-	return priv::cleanupDelegates[priv::currentFrameIdx];
 }
 
 }

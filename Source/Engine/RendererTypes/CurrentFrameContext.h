@@ -8,25 +8,30 @@
 namespace spt::renderer
 {
 
+class Semaphore;
+
+
 class RENDERER_TYPES_API CurrentFrameContext
 {
 public:
 
-	static void						Initialize(Uint32 framesInFlightNum);
+	static void									Initialize(Uint32 framesInFlightNum);
+	static void									Shutdown();
 
-	static void						BeginFrame();
+	static void									BeginFrame();
+	static void									EndFrame();
 
-	static void						EndFrame();
+	using CleanupDelegate						= lib::ThreadsafeMulticastDelegate<>;
+	static CleanupDelegate&						GetCurrentFrameCleanupDelegate();
 
-	static void						Shutdown();
+	static Uint64								GetCurrentFrameIdx();
 
-	using CleanupDelegate			= lib::ThreadsafeMulticastDelegate<>;
-	static CleanupDelegate&			GetCurrentFrameCleanupDelegate();
+	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
 private:
 
-	static void						FlushCurrentFrameReleases();
-	static void						FlushAllFramesReleases();
+	static void									FlushCurrentFrameReleases();
+	static void									FlushAllFramesReleases();
 };
 
 }
