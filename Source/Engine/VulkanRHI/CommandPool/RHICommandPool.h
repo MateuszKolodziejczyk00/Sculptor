@@ -37,12 +37,16 @@ private:
 
 	Bool									HasAvailableCommandBuffers() const;
 
+	void									ResetCommandPool();
+
 	VkCommandPool							m_poolHandle;
 
 	/** Pool must be locked for the time when any thread is recording commands to buffer allocated from this pool */
 	std::atomic<Bool>						m_isLocked;
 
-	lib::DynamicArray<VkCommandBuffer>		m_availableCommandBuffers;
+	lib::DynamicArray<VkCommandBuffer>		m_commandBuffers;
+	SizeType								m_acquiredBuffersNum;
+	SizeType								m_releasedBuffersNum;
 };
 
 }

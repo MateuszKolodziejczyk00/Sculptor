@@ -180,7 +180,7 @@ CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefi
 {
 	SPT_PROFILE_FUNCTION();
 
-	VkCommandPoolCreateFlags poolFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	VkCommandPoolCreateFlags poolFlags = 0;
 	if (bufferDefinition.m_complexityClass == rhi::ECommandBufferComplexityClass::Low)
 	{
 		poolFlags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
