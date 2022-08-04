@@ -187,6 +187,8 @@ void VulkanRHI::InitializeGPUForWindow()
 
 void VulkanRHI::Uninitialize()
 {
+    priv::g_data.m_commandPoolsManager.DestroyResources();
+
     if (priv::g_data.m_surface)
     {
         vkDestroySurfaceKHR(priv::g_data.m_instance, priv::g_data.m_surface, GetAllocationCallbacks());

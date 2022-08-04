@@ -14,6 +14,7 @@ struct CommandPoolsSet
 public:
 
 	CommandPoolsSet();
+	~CommandPoolsSet();
 
 	void												Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level);
 
@@ -45,6 +46,8 @@ class CommandPoolsManager
 public:
 
 	CommandPoolsManager();
+
+	void												DestroyResources();
 
 	VkCommandBuffer										AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo);
 

@@ -32,13 +32,18 @@ void SculptorEdApplication::OnRun()
 
 	lib::TickingTimer timer;
 
-	while (!m_window->ShouldClose())
+	while (true)
 	{
 		SPT_PROFILE_FRAME("EditorFrame");
 
 		const Real32 deltaTime = timer.Tick();
 
 		m_window->Update(deltaTime);
+
+		if (m_window->ShouldClose())
+		{
+			break;
+		}
 
 		renderer::Renderer::BeginFrame();
 
@@ -54,6 +59,8 @@ void SculptorEdApplication::OnShutdown()
 {
 	Super::OnShutdown();
 
+	renderer::Renderer::WaitIdle();
+
 	m_window.reset();
 
 	renderer::Renderer::Shutdown();
@@ -61,7 +68,7 @@ void SculptorEdApplication::OnShutdown()
 
 void SculptorEdApplication::RenderFrame()
 {
-	rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 	const lib::SharedPtr<renderer::Semaphore> acquireSemaphore = renderer::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 
 	const lib::SharedPtr<renderer::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);

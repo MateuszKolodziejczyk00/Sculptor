@@ -36,6 +36,8 @@ void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 
 void CurrentFrameContext::Shutdown()
 {
+	priv::releaseFrameSemaphore.reset();
+
 	ReleaseAllResources();
 
 	delete[] priv::cleanupDelegates;

@@ -13,6 +13,16 @@ CommandPoolsSet::CommandPoolsSet()
 	, m_flags(0)
 { }
 
+CommandPoolsSet::~CommandPoolsSet()
+{
+	for (auto& cmdPool : m_commandPools)
+	{
+		cmdPool->ReleaseRHI();
+	}
+
+	m_commandPools.clear();
+}
+
 void CommandPoolsSet::Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level)
 {
 	// Initialization must happen before any pool is created
@@ -110,6 +120,11 @@ SizeType CommandPoolsSet::CreateNewPool()
 
 CommandPoolsManager::CommandPoolsManager()
 { }
+
+void CommandPoolsManager::DestroyResources()
+{
+	m_poolSets.clear();
+}
 
 VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo)
 {
