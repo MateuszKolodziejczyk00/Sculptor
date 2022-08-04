@@ -88,6 +88,15 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }
 
+void Renderer::WaitIdle()
+{
+	SPT_PROFILE_FUNCTION();
+
+	rhi::RHI::WaitIdle();
+
+	CurrentFrameContext::ReleaseAllResources();
+}
+
 Uint64 Renderer::GetCurrentFrameIdx()
 {
 	return CurrentFrameContext::GetCurrentFrameIdx();
@@ -96,6 +105,14 @@ Uint64 Renderer::GetCurrentFrameIdx()
 const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
 {
 	return CurrentFrameContext::GetReleaseFrameSemaphore();
+}
+
+void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
+	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
 }
 
 }

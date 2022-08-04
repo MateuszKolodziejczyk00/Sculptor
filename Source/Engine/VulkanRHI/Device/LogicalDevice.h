@@ -21,6 +21,8 @@ public:
 
 	VkDevice	GetHandle() const;
 
+	void		WaitIdle() const;
+
 	VkQueue		GetGfxQueueHandle() const;
 	VkQueue		GetAsyncComputeQueueHandle() const;
 	VkQueue		GetTransferQueueHandle() const;

@@ -24,6 +24,8 @@ public:
 	using CleanupDelegate						= lib::ThreadsafeMulticastDelegate<>;
 	static CleanupDelegate&						GetCurrentFrameCleanupDelegate();
 
+	static void									ReleaseAllResources();
+
 	static Uint64								GetCurrentFrameIdx();
 
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
@@ -31,7 +33,6 @@ public:
 private:
 
 	static void									FlushCurrentFrameReleases();
-	static void									FlushAllFramesReleases();
 };
 
 }

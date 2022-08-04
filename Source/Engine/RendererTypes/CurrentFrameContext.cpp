@@ -36,7 +36,7 @@ void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 
 void CurrentFrameContext::Shutdown()
 {
-	FlushAllFramesReleases();
+	ReleaseAllResources();
 
 	delete[] priv::cleanupDelegates;
 }
@@ -69,6 +69,17 @@ CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanu
 	return priv::cleanupDelegates[priv::currentCleanupDelegateIdx];
 }
 
+void CurrentFrameContext::ReleaseAllResources()
+{
+	SPT_PROFILE_FUNCTION();
+
+	for (Uint32 i = 0; i < priv::framesInFlightNum; ++i)
+	{
+		priv::cleanupDelegates[i].Broadcast();
+		priv::cleanupDelegates[i].Reset();
+	}
+}
+
 Uint64 CurrentFrameContext::GetCurrentFrameIdx()
 {
 	return priv::currentFrameIdx;
@@ -85,16 +96,6 @@ void CurrentFrameContext::FlushCurrentFrameReleases()
 
 	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Broadcast();
 	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Reset();
-}
-
-void CurrentFrameContext::FlushAllFramesReleases()
-{
-	SPT_PROFILE_FUNCTION();
-
-	for (Uint32 i = 0; i < priv::framesInFlightNum; ++i)
-	{
-		priv::cleanupDelegates[i].Broadcast();
-	}
 }
 
 }

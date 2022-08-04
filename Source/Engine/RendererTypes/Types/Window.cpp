@@ -70,9 +70,15 @@ lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr
 	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
 
 	m_acquiredImageIdx = m_rhiWindow.AcquireSwapchainImage(rhiSemaphore, timeout);
-	const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(m_acquiredImageIdx);
 
-	const lib::SharedPtr<Texture> acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
+	lib::SharedPtr<Texture> acquiredTexture;
+
+	if (!m_rhiWindow.IsSwapchainOutOfDate())
+	{
+		const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(m_acquiredImageIdx);
+
+		acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
+	}
 
 	return acquiredTexture;
 }
@@ -88,6 +94,22 @@ void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& 
 	}
 
 	m_rhiWindow.PresentSwapchainImage(rhiWaitSemaphores, m_acquiredImageIdx);
+}
+
+Bool Window::IsSwapchainOutOfDate() const
+{
+	return m_rhiWindow.IsSwapchainOutOfDate();
+}
+
+void Window::RebuildSwapchain()
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsSwapchainOutOfDate());
+
+	const math::Vector2u framebufferSize = m_platformWindow->GetFramebufferSize();
+
+	m_rhiWindow.RebuildSwapchain(framebufferSize);
 }
 
 }

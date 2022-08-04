@@ -33,6 +33,9 @@ public:
 
 	void											PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
+	Bool											IsSwapchainOutOfDate() const;
+	void											RebuildSwapchain();
+
 private:
 
 	lib::UniquePtr<platform::PlatformWindow>		m_platformWindow;

@@ -84,6 +84,11 @@ VkDevice LogicalDevice::GetHandle() const
 	return m_deviceHandle;
 }
 
+void LogicalDevice::WaitIdle() const
+{
+	vkDeviceWaitIdle(m_deviceHandle);
+}
+
 bool LogicalDevice::IsValid() const
 {
 	return m_deviceHandle != VK_NULL_HANDLE;

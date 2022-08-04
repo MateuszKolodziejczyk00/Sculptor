@@ -52,6 +52,8 @@ private:
 
 	void						CacheSwapchainImages(VkSwapchainKHR m_swapchain);
 
+	void						SetSwapchainOutOfDate();
+
 	VkSwapchainKHR				m_swapchain;
 
 	lib::DynamicArray<VkImage>	m_swapchainImages;

@@ -263,6 +263,11 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
     SPT_VK_CHECK(vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE));
 }
 
+void VulkanRHI::WaitIdle()
+{
+    priv::g_data.m_device.WaitIdle();
+}
+
 VkInstance VulkanRHI::GetInstanceHandle()
 {
     return priv::g_data.m_instance;

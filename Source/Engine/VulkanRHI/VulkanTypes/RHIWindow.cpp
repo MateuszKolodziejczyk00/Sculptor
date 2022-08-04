@@ -156,14 +156,14 @@ Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Ui
 {
 	SPT_PROFILE_FUNCTION();
 
-	SPT_CHECK(!m_swapchainOutOfDate);
+	SPT_CHECK(!IsSwapchainOutOfDate());
 
 	Uint32 imageIdx = idxNone<Uint32>;
 	VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
 
 	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		m_swapchainOutOfDate = true;
+		SetSwapchainOutOfDate();
 	}
 
 	return imageIdx;
@@ -182,6 +182,8 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
 {
 	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(!IsSwapchainOutOfDate());
 
 	lib::DynamicArray<VkSemaphore> waitSemaphoreHandles(waitSemaphores.size());
 	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
@@ -202,6 +204,11 @@ Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& wai
 	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueueHandle(), &presentInfo);
 	
 	SPT_CHECK(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	{
+		SetSwapchainOutOfDate();
+	}
 
 	return result == VK_SUCCESS;
 }
@@ -274,6 +281,11 @@ void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, nullptr));
 	m_swapchainImages.resize(static_cast<SizeType>(imagesNum));
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, m_swapchainImages.data()));
+}
+
+void RHIWindow::SetSwapchainOutOfDate()
+{
+	m_swapchainOutOfDate = true;;
 }
 
 }

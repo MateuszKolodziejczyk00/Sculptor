@@ -37,13 +37,15 @@ public:
 
 	static void SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
 
+	static void WaitIdle();
+
 	// Vulkan Getters ==================================================================
 
 	static VkInstance						GetInstanceHandle();
 	static VkDevice							GetDeviceHandle();
 	static VkPhysicalDevice					GetPhysicalDeviceHandle();
 
-	static CommandPoolsManager&			GetCommandPoolsManager();
+	static CommandPoolsManager&				GetCommandPoolsManager();
 
 	static LayoutsManager&					GetLayoutsManager();
 

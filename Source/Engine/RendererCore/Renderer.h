@@ -39,9 +39,12 @@ public:
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
 
+	static void									WaitIdle();
+
 	static Uint64								GetCurrentFrameIdx();
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
+	static void									IncrementReleaseSemaphoreToCurrentFrame();
 };
 
 }
