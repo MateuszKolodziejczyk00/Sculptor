@@ -43,7 +43,9 @@ void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferD
 
 	SPT_CHECK(!IsValid());
 
-	m_cmdBufferHandle = VulkanRHI::GetCommandPoolsManager().AcquireCommandBuffer(bufferDefinition, m_acquireInfo);
+	m_cmdBufferHandle	= VulkanRHI::GetCommandPoolsManager().AcquireCommandBuffer(bufferDefinition, m_acquireInfo);
+	m_queueType			= bufferDefinition.m_queueType;
+	m_cmdBufferType		= bufferDefinition.m_cmdBufferType;
 }
 
 void RHICommandBuffer::ReleaseRHI()

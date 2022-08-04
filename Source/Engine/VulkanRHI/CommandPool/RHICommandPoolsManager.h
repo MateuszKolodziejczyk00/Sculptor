@@ -25,6 +25,7 @@ public:
 	
 private:
 	RHICommandPool&										SafeGetCommandPool(SizeType commandPoolId);
+	RHICommandPool&										GetCommandPool_AssumesLocked(SizeType commandPoolId);
 
 	SizeType											TryFindAndLockAvailablePool();
 

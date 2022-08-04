@@ -211,7 +211,7 @@ namespace TextureTransition
 	static constexpr BarrierTextureTransitionTarget ComputeGeneral		= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::ComputeShader);
 	static constexpr BarrierTextureTransitionTarget FragmentGeneeral	= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::FragmentShader);
 	
-	static constexpr BarrierTextureTransitionTarget PresentSource		= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::General, EPipelineStage::FragmentShader);
+	static constexpr BarrierTextureTransitionTarget PresentSource		= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::PresentSrc, EPipelineStage::TopOfPipe);
 
 }
 

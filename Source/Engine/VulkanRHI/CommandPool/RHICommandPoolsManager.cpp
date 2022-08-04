@@ -55,7 +55,7 @@ void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acqui
 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
-	SafeGetCommandPool(acquireInfo.m_commandPoolId).ReleaseCommandBuffer(cmdBuffer);
+	GetCommandPool_AssumesLocked(acquireInfo.m_commandPoolId).ReleaseCommandBuffer(cmdBuffer);
 }
 
 RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
@@ -64,6 +64,11 @@ RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
 
 	const lib::ReadLockGuard lockGuard(m_lock);
 
+	return *m_commandPools[commandPoolId];
+}
+
+RHICommandPool& CommandPoolsSet::GetCommandPool_AssumesLocked(SizeType commandPoolId)
+{
 	return *m_commandPools[commandPoolId];
 }
 
