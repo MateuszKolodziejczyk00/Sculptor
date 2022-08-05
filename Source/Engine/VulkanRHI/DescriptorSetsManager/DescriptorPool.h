@@ -18,6 +18,10 @@ class DescriptorPool
 
 	VkDescriptorPool		GetHandle() const;
 
+	Bool					AllocateDescriptorSets(const lib::DynamicArray<VkDescriptorSetLayout>& layouts, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets);
+
+	void					ResetPool();
+
 private:
 
 	VkDescriptorPool		m_poolHandle;

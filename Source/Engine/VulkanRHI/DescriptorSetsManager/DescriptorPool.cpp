@@ -28,6 +28,8 @@ void DescriptorPool::Release()
 	SPT_CHECK(IsValid());
 
 	vkDestroyDescriptorPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, VulkanRHI::GetAllocationCallbacks());
+
+	m_poolHandle = VK_NULL_HANDLE;
 }
 
 Bool DescriptorPool::IsValid() const
@@ -38,6 +40,32 @@ Bool DescriptorPool::IsValid() const
 VkDescriptorPool DescriptorPool::GetHandle() const
 {
 	return m_poolHandle;
+}
+
+Bool DescriptorPool::AllocateDescriptorSets(const lib::DynamicArray<VkDescriptorSetLayout>& layouts, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(!layouts.empty() && layouts.size() == outDescriptorSets.size());
+
+	VkDescriptorSetAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    allocateInfo.descriptorPool = m_poolHandle;
+    allocateInfo.descriptorSetCount = static_cast<Uint32>(layouts.size());
+    allocateInfo.pSetLayouts = layouts.data();
+
+	const VkResult allocateResult = vkAllocateDescriptorSets(VulkanRHI::GetDeviceHandle(), &allocateInfo, outDescriptorSets.data());
+
+	return allocateResult == VK_SUCCESS;
+}
+
+void DescriptorPool::ResetPool()
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	vkResetDescriptorPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, 0);
 }
 
 }
