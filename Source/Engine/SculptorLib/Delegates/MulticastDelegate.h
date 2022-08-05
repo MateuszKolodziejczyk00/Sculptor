@@ -38,38 +38,8 @@ public:
 };
 
 
-template<Bool isThreadsafe>
-class MulticastDelegateConditionalData
-{
-protected:
-	
-	using LockType = Bool;
-
-	LockType LockIfNecessary()
-	{
-		return LockType();
-	}
-};
-
-
-template<>
-class MulticastDelegateConditionalData<true>
-{
-protected:
-
-	using LockType = lib::LockGuard<lib::Lock>;
-
-	LockType LockIfNecessary()
-	{
-		return LockType(m_lock);
-	}
-
-	lib::Lock m_lock;
-};
-
-
-template<Bool isThreadsafe, typename... Args>
-class MulticastDelegateBase : private MulticastDelegateConditionalData<isThreadsafe>
+template<Bool isThreadSafe, typename... Args>
+class MulticastDelegateBase : private DelegateConditionalData<isThreadSafe>
 {
 	struct DelegateInfo
 	{
@@ -83,7 +53,7 @@ class MulticastDelegateBase : private MulticastDelegateConditionalData<isThreads
 
 public:
 
-	using ThisType = MulticastDelegateBase<isThreadsafe, Args...>;
+	using ThisType = MulticastDelegateBase<isThreadSafe, Args...>;
 
 	MulticastDelegateBase() = default;
 
@@ -117,9 +87,9 @@ private:
 };
 
 
-template<Bool isThreadsafe, typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename ObjectType, typename FuncType>
-DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddMember(ObjectType* user, FuncType function)
+DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddMember(ObjectType* user, FuncType function)
 {
 	const LockType lock = LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
@@ -127,9 +97,9 @@ DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddMember(ObjectTyp
 	return handle;
 }
 
-template<Bool isThreadsafe, typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename FuncType>
-DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddRaw(FuncType* function)
+DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddRaw(FuncType* function)
 {
 	const LockType lock = LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
@@ -137,9 +107,9 @@ DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddRaw(FuncType* fu
 	return handle;
 }
 
-template<Bool isThreadsafe, typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename Lambda>
-DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddLambda(Lambda&& functor)
+DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddLambda(Lambda&& functor)
 {
 	const LockType lock = LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
@@ -147,21 +117,21 @@ DelegateHandle MulticastDelegateBase<isThreadsafe, Args...>::AddLambda(Lambda&& 
 	return handle;
 }
 
-template<Bool isThreadsafe, typename... Args>
-void MulticastDelegateBase<isThreadsafe, Args...>::Unbind(DelegateHandle handle)
+template<Bool isThreadSafe, typename... Args>
+void MulticastDelegateBase<isThreadSafe, Args...>::Unbind(DelegateHandle handle)
 {
 	const LockType lock = LockIfNecessary();
 	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
 }
 
-template<Bool isThreadsafe, typename... Args>
-void MulticastDelegateBase<isThreadsafe, Args...>::Reset()
+template<Bool isThreadSafe, typename... Args>
+void MulticastDelegateBase<isThreadSafe, Args...>::Reset()
 {
 	m_delegates.clear();
 }
 
-template<Bool isThreadsafe, typename... Args>
-void MulticastDelegateBase<isThreadsafe, Args...>::Broadcast(const Args&... arguments)
+template<Bool isThreadSafe, typename... Args>
+void MulticastDelegateBase<isThreadSafe, Args...>::Broadcast(const Args&... arguments)
 {
 	const LockType lock = LockIfNecessary();
 	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
@@ -174,6 +144,6 @@ template<typename... Args>
 using MulticastDelegate = MulticastDelegateBase<false, Args...>;
 
 template<typename... Args>
-using ThreadsafeMulticastDelegate = MulticastDelegateBase<true, Args...>;
+using ThreadSafeMulticastDelegate = MulticastDelegateBase<true, Args...>;
 
 }

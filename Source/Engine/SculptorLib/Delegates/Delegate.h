@@ -8,23 +8,56 @@
 namespace spt::lib
 {
 
+template<Bool isThreadSafe>
+class DelegateConditionalData
+{
+protected:
+	
+	using LockType = Bool;
+
+	LockType LockIfNecessary() const
+	{
+		return LockType();
+	}
+};
+
+
+template<>
+class DelegateConditionalData<true>
+{
+protected:
+
+	using LockType = lib::LockGuard<lib::Lock>;
+
+	LockType LockIfNecessary() const
+	{
+		return LockType(m_lock);
+	}
+
+private:
+
+	mutable lib::Lock m_lock;
+};
+
 /**
- * Basic delegate, that can be used for m_binding and executing callables
+ * Basic Delegate, that can be used for m_binding and executing callables
  */
-template<typename... Args>
-class Delegate
+template<Bool isThreadSafe, typename... Args>
+class DelegateBase : private DelegateConditionalData<isThreadSafe>
 {
 public:
 
-	Delegate() = default;
+	using ThisType = DelegateBase<isThreadSafe, Args...>;
 
-	Delegate(const Delegate<Args...>& rhs) = delete;
-	Delegate<Args...>& operator=(const Delegate<Args...>& rhs) = delete;
+	DelegateBase() = default;
 
-	Delegate(Delegate<Args...>&& rhs) = default;
-	Delegate<Args...>& operator=(Delegate<Args...>&& rhs) = default;
+	DelegateBase(const ThisType& rhs) = delete;
+	DelegateBase<isThreadSafe, Args...>& operator=(const ThisType& rhs) = delete;
 
-	~Delegate() = default;
+	DelegateBase(ThisType&& rhs) = default;
+	DelegateBase<isThreadSafe, Args...>& operator=(ThisType&& rhs) = default;
+
+	~DelegateBase() = default;
 
 	template<typename ObjectType, typename FuncType>
 	void BindMember(ObjectType* user, FuncType function);
@@ -48,46 +81,58 @@ private:
 	UniquePtr<internal::DelegateBindingInterface<Args...>> m_binding;
 };
 
-template<typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename ObjectType, typename FuncType>
-void Delegate<Args...>::BindMember(ObjectType* user, FuncType function)
+void DelegateBase<isThreadSafe, Args...>::BindMember(ObjectType* user, FuncType function)
 {
+	const LockType lock = LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateMemberBinding<ObjectType, FuncType, Args...>(user, function);
 }
 
-template<typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename FuncType>
-void Delegate<Args...>::BindRaw(FuncType* function)
+void DelegateBase<isThreadSafe, Args...>::BindRaw(FuncType* function)
 {
+	const LockType lock = LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateBinding<FuncType, Args...>(function);
 }
 
-template<typename... Args>
+template<Bool isThreadSafe, typename... Args>
 template<typename Lambda>
-void Delegate<Args...>::BindLambda(Lambda&& functor)
+void DelegateBase<isThreadSafe, Args...>::BindLambda(Lambda&& functor)
 {
+	const LockType lock = LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, Args...>(std::forward<Lambda>(functor));
 }
 
-template<typename... Args>
-void Delegate<Args...>::ExecuteIfBound(const Args&... arguments) const
+template<Bool isThreadSafe, typename... Args>
+void DelegateBase<isThreadSafe, Args...>::ExecuteIfBound(const Args&... arguments) const
 {
+	const LockType lock = LockIfNecessary();
 	if (m_binding.get() && m_binding->IsValid())
 	{
 		m_binding->Execute(arguments...);
 	}
 }
 
-template<typename... Args>
-void Delegate<Args...>::Unbind()
+template<Bool isThreadSafe, typename... Args>
+void DelegateBase<isThreadSafe, Args...>::Unbind()
 {
+	const LockType lock = LockIfNecessary();
 	m_binding.reset();
 }
 
-template<typename... Args>
-Bool Delegate<Args...>::IsBound() const
+template<Bool isThreadSafe, typename... Args>
+Bool DelegateBase<isThreadSafe, Args...>::IsBound() const
 {
 	return m_binding.get() && m_binding->IsValid();
 }
+
+template<typename... Args>
+using Delegate = DelegateBase<false, Args...>;
+
+template<typename... Args>
+using ThreadSafeDelegate = DelegateBase<true, Args...>;
+
 
 }
