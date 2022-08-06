@@ -7,6 +7,8 @@ function VulkanRHI:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Volk")
     self:AddPublicDependency("VMA")
 
+    self:AddPublicDependency("UICore")
+
     self:AddPrivateDependency("ImGuiVulkanBackend")
 
     self:AddPublicAbsoluteIncludePath("$(VULKAN_SDK)/Include")

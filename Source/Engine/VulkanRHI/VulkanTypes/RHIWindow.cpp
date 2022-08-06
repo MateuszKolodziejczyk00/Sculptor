@@ -179,6 +179,13 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 	return texture;
 }
 
+Uint32 RHIWindow::GetSwapchainImagesNum() const
+{
+	SPT_CHECK(IsValid());
+
+	return static_cast<Uint32>(m_swapchainImages.size());
+}
+
 Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
 {
 	SPT_PROFILE_FUNCTION();
@@ -227,6 +234,11 @@ void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize)
 	CacheSwapchainImages(m_swapchain);
 	 
 	m_swapchainOutOfDate = false;
+}
+
+VkFormat RHIWindow::GetSurfaceFormat() const
+{
+	return m_surfaceFormat.format;
 }
 
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)

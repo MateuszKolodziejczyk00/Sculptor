@@ -41,10 +41,16 @@ public:
 	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>);
 	RHITexture					GetSwapchinImage(Uint32 imageIdx) const;
 
+	Uint32						GetSwapchainImagesNum() const;
+
 	Bool						PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);
 
 	Bool						IsSwapchainOutOfDate() const;
 	void						RebuildSwapchain(math::Vector2u framebufferSize);
+
+	// Vulkan Specific ============================================
+
+	VkFormat					GetSurfaceFormat() const;
 
 private:
 

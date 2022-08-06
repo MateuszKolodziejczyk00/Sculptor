@@ -5,6 +5,7 @@ IncludeProject("SculptorCore")
 IncludeProject("Math")
 IncludeProject("Profiler")
 IncludeProject("SculptorLib")
+IncludeProject("UICore")
 
 SetProjectsSubgroupName("Graphics/RHI")
 IncludeProject("RHICore")

@@ -9,6 +9,8 @@ namespace spt::vulkan
 
 class DescriptorPool
 {
+public:
+
 	DescriptorPool();
 
 	void					Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const lib::DynamicArray<VkDescriptorPoolSize>& poolSizes);
