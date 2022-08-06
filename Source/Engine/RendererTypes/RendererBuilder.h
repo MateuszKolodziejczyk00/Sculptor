@@ -5,6 +5,7 @@
 #include "RHIFwd.h"
 #include "RendererUtils.h"
 #include "Types/Barrier.h"
+#include "UITypes.h"
 
 
 namespace spt::rhi
@@ -19,9 +20,10 @@ struct CommandBufferDefinition;
 namespace spt::renderer
 {
 
+class Window;
+class UIBackend;
 class Buffer;
 class Texture;
-class Window;
 class Semaphore;
 class CommandBuffer;
 
@@ -32,6 +34,8 @@ public:
 
 	static lib::SharedPtr<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
 
+	static lib::SharedPtr<UIBackend>			CreateUIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window);
+	
 	static lib::SharedPtr<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	static lib::SharedPtr<Texture>				CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 
