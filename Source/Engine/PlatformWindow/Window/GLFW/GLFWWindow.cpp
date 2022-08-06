@@ -176,19 +176,45 @@ GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 	return m_windowData->m_onClosed;
 }
 
-void GLFWWindow::OnThisWindowClosed()
+void GLFWWindow::InitializeUI()
 {
+	IMGUI_CHECKVERSION();
+
+	m_uiContext = ImGui::CreateContext();
+
+#if VULKAN_RHI
+
+	ImGui_ImplGlfw_InitForVulkan(m_windowData->m_windowHandle, true);
+
+#endif // VULKANRHI
+}
+
+void GLFWWindow::UninitializeUI()
+{
+	SPT_CHECK(GetUIContext().IsValid());
+
 	ImGui_ImplGlfw_Shutdown();
 
-	ImGui::DestroyContext();
+	ImGui::DestroyContext(GetUIContext().GetHandle());
+	m_uiContext.Reset();
+}
+
+ui::UIContext GLFWWindow::GetUIContext() const
+{
+	return m_uiContext;
+}
+
+void GLFWWindow::OnThisWindowClosed()
+{
+	if (GetUIContext().IsValid())
+	{
+		UninitializeUI();
+	}
 }
 
 void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolution)
 {
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
-
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
 
 	priv::InitializeRHISurface(windowHandle);
 
@@ -201,8 +227,6 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	glfwSetKeyCallback(windowHandle, &priv::OnKeyAction);
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
-
-	ImGui_ImplGlfw_InitForVulkan(windowHandle, true);
 
 	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnThisWindowClosed);
 }

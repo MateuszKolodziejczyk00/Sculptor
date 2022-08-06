@@ -14,6 +14,8 @@ Window::Window(lib::StringView name, math::Vector2u resolution)
 {
 	m_platformWindow = std::make_unique<platform::PlatformWindow>(name, resolution);
 
+	m_platformWindow->InitializeUI();
+
 	rhi::RHI::InitializeGPUForWindow();
 
 	rhi::RHIWindowInitializationInfo initInfo;
@@ -110,6 +112,11 @@ void Window::RebuildSwapchain()
 	const math::Vector2u framebufferSize = m_platformWindow->GetFramebufferSize();
 
 	m_rhiWindow.RebuildSwapchain(framebufferSize);
+}
+
+ui::UIContext Window::GetUIContext() const
+{
+	return m_platformWindow->GetUIContext();
 }
 
 }

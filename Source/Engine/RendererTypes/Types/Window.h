@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIWindowImpl.h"
 #include "Window/PlatformWindowFwd.h"
+#include "UITypes.h"
 
 
 namespace spt::renderer
@@ -35,6 +36,8 @@ public:
 
 	Bool											IsSwapchainOutOfDate() const;
 	void											RebuildSwapchain();
+
+	ui::UIContext									GetUIContext() const;
 
 private:
 

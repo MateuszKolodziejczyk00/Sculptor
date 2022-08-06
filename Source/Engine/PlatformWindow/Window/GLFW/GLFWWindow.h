@@ -4,9 +4,11 @@
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
 #include "Window/PlatformWindowCommon.h"
+#include "UITypes.h"
 
 
 #if USE_GLFW
+
 
 namespace spt::platform
 {
@@ -32,11 +34,17 @@ public:
 
 	Bool								ShouldClose();
 
+
 	using OnWindowResizedDelegate		= lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
 	OnWindowResizedDelegate&			GetOnResizedCallback();
 
 	using OnWindowClosedDelegate		= lib::MulticastDelegate<>;
 	OnWindowClosedDelegate&				GetOnClosedCallback();
+
+	void								InitializeUI();
+	void								UninitializeUI();
+
+	ui::UIContext						GetUIContext() const;
 
 private:
 
@@ -45,6 +53,8 @@ private:
 	void								InitializeWindow(lib::StringView name, math::Vector2u resolution);
 
 	lib::UniquePtr<GLFWWindowData>		m_windowData;
+
+	ui::UIContext						m_uiContext;
 };
 
 }

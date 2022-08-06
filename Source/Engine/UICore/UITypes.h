@@ -2,10 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 
-namespace ImGui
-{
 struct ImGuiContext;
-}
 
 
 namespace spt::ui
@@ -19,7 +16,7 @@ public:
 		: m_context(nullptr)
 	{ }
 
-	UIContext(ImGui::ImGuiContext* context)
+	UIContext(ImGuiContext* context)
 		: m_context(context)
 	{ }
 
@@ -28,15 +25,19 @@ public:
 		return m_context != nullptr;
 	}
 
-	ImGui::ImGuiContext*	GetHandle() const
+	ImGuiContext*			GetHandle() const
 	{
 		return m_context;
 	}
 
+	void					Reset()
+	{
+		m_context = nullptr;
+	}
 
 private:
 
-	ImGui::ImGuiContext*	m_context;
+	ImGuiContext*			m_context;
 };
 
 }
