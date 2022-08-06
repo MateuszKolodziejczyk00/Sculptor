@@ -159,7 +159,7 @@ Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Ui
 	SPT_CHECK(!IsSwapchainOutOfDate());
 
 	Uint32 imageIdx = idxNone<Uint32>;
-	VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
+	const VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
 
 	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
@@ -285,7 +285,7 @@ void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
 
 void RHIWindow::SetSwapchainOutOfDate()
 {
-	m_swapchainOutOfDate = true;;
+	m_swapchainOutOfDate = true;
 }
 
 }
