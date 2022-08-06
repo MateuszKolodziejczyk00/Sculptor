@@ -17,7 +17,3 @@
 [submodule "Source/ThirdParty/Optick/Optick"]
 	path = Source/ThirdParty/Optick/Optick
 	url = https://github.com/bombomby/optick
-[submodule "Source/ThirdParty/ImGui/ImGui"]
-	path = Source/ThirdParty/ImGui/ImGui
-	url = https://github.com/ocornut/imgui
-	branch = docking
