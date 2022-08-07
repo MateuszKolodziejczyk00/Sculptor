@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RendererTypesMacros.h"
-#include "RHIBufferImpl.h"
+#include "RHIBridge/RHIBufferImpl.h"
 
 
 namespace spt::rhi

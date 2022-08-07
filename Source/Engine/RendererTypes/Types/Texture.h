@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RendererTypesMacros.h"
-#include "RHITextureImpl.h"
+#include "RHIBridge/RHITextureImpl.h"
 #include "RendererUtils.h"
 
 

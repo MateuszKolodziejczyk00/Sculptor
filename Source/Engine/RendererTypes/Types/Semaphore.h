@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RendererTypesMacros.h"
-#include "RHISemaphoreImpl.h"
+#include "RHIBridge/RHISemaphoreImpl.h"
 
 
 namespace spt::rhi

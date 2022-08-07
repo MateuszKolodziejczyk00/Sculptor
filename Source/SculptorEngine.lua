@@ -8,8 +8,6 @@ IncludeProject("SculptorLib")
 IncludeProject("UICore")
 
 SetProjectsSubgroupName("Graphics/RHI")
-IncludeProject("RHICore")
-IncludeProject("VulkanRHI")
 IncludeProject("RHI")
 
 SetProjectsSubgroupName("Graphics/Platform")

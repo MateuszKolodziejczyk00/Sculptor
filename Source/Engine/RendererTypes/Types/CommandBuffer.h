@@ -2,7 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHICommandBufferImpl.h"
+#include "RHIBridge/RHICommandBufferImpl.h"
 
 
 namespace spt::rhi

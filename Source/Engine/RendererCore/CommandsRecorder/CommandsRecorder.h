@@ -2,7 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHICommandBufferTypes.h"
+#include "RHICore/RHICommandBufferTypes.h"
 #include "RendererUtils.h"
 
 

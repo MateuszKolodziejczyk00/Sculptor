@@ -1,7 +1,27 @@
-RHI = Project:CreateProject("RHI", ETargetType.None)
+RHI = Project:CreateProject("RHI", ETargetType.SharedLibrary)
+
+include "Vulkan/Vulkan"
 
 function RHI:SetupConfiguration(configuration, platform)
-    self:AddPublicDependency("VulkanRHI")
+    self:SetupRHIConfiguration(configuration, platform)
+
+    self:AddPublicRelativeIncludePath("/Vulkan")
+    self:AddPublicRelativeIncludePath("/RHICore")
+    self:AddPublicRelativeIncludePath("/RHIBridge")
+end
+
+function RHI:GetProjectFiles(configuration, platform)
+    return
+    {
+        "RHIBidge/**.h",
+        "RHIBidge/**.cpp",
+        "RHICore/**.h",
+        "RHICore/**.cpp",
+        self:GetRHIDirectoryName() .. "/**.h",
+        self:GetRHIDirectoryName() .. "/**.cpp",
+        self:GetRHIDirectoryName() .. "/" .. self:GetRHIDirectoryName() .. ".lua",
+        "RHI.lua"
+    }
 end
 
 RHI:SetupProject()

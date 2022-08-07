@@ -3,8 +3,8 @@
 #if USE_GLFW
 
 #include "Logging/Log.h"
-#include "RHIImpl.h"
-#include "RHIInitialization.h"
+#include "RHIBridge/RHIImpl.h"
+#include "RHICore/RHIInitialization.h"
 
 #include <GLFW/glfw3.h>
 #include "backends/imgui_impl_glfw.h"

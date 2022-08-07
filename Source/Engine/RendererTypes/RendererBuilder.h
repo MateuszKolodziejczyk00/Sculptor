@@ -2,7 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHIFwd.h"
+#include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
 #include "Types/Barrier.h"
 #include "UITypes.h"

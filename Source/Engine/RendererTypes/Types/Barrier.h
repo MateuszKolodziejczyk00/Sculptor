@@ -2,7 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHIBarrierImpl.h"
+#include "RHIBridge/RHIBarrierImpl.h"
 
 
 namespace spt::renderer

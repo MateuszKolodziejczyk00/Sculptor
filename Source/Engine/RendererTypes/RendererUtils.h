@@ -2,7 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHISemaphoreImpl.h"
+#include "RHIBridge/RHISemaphoreImpl.h"
 
 
 namespace spt::renderer

@@ -2,7 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHIWindowImpl.h"
+#include "RHIBridge/RHIWindowImpl.h"
 #include "Window/PlatformWindowFwd.h"
 #include "UITypes.h"
 

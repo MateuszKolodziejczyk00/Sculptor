@@ -2,7 +2,7 @@
 #include "Window/PlatformWindowImpl.h"
 #include "CurrentFrameContext.h"
 #include "RendererUtils.h"
-#include "RHIInitialization.h"
+#include "RHICore/RHIInitialization.h"
 #include "RHIImpl.h"
 #include "Semaphore.h"
 #include "Texture.h"
