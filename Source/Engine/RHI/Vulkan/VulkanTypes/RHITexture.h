@@ -63,25 +63,29 @@ public:
 
 	RHITextureView();
 
-	void							InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition);
-	void							ReleaseRHI();
+	void								InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition);
+	void								ReleaseRHI();
 
-	Bool							IsValid() const;
+	Bool								IsValid() const;
 	
-	VkImageView						GetHandle() const;
+	VkImageView							GetHandle() const;
 
-	const RHITexture*				GetTexture() const;
+	const RHITexture*					GetTexture() const;
 
-	void							SetName(const lib::HashedString& name);
-	const lib::HashedString&		GetName() const;
+	const rhi::TextureSubresourceRange&	GetSubresourceRange() const;
+
+	void								SetName(const lib::HashedString& name);
+	const lib::HashedString&			GetName() const;
 
 private:
 
-	VkImageView						m_viewHandle;
+	VkImageView							m_viewHandle;
 
-	const RHITexture*				m_texture;
+	rhi::TextureSubresourceRange		m_subresourceRange;
 
-	DebugName						m_name;
+	const RHITexture*					m_texture;
+
+	DebugName							m_name;
 };
 
 }

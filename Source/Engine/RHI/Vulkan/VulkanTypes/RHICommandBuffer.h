@@ -1,10 +1,16 @@
 #pragma once
 
 #include "RHIMacros.h"
-#include "RHICore/RHICommandBufferTypes.h"
 #include "Vulkan/VulkanCore.h"
 #include "Vulkan/CommandPool/RHICommandPoolsTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
+
+#include "RHICore/RHICommandBufferTypes.h"
+
+namespace spt::rhi
+{
+struct RenderingDefinition;
+}
 
 
 namespace spt::vulkan
@@ -30,6 +36,9 @@ public:
 
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
+
+	void							BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
+	void							EndRendering();
 
 private:
 

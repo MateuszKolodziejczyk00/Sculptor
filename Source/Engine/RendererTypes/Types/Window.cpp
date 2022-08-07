@@ -3,7 +3,7 @@
 #include "CurrentFrameContext.h"
 #include "RendererUtils.h"
 #include "RHICore/RHIInitialization.h"
-#include "RHIImpl.h"
+#include "RHIBridge/RHIImpl.h"
 #include "Semaphore.h"
 #include "Texture.h"
 

@@ -124,4 +124,59 @@ VkImageAspectFlags RHIToVulkan::GetAspectFlags(Flags32 flags)
 	return vulkanAspect;
 }
 
+VkRenderingFlags RHIToVulkan::GetRenderingFlags(Flags32 flags)
+{
+	VkRenderingFlags vulkanFlags = 0;
+
+	if ((flags & rhi::ERenderingFlags::ContentsSecondaryCmdBuffers) != 0)
+	{
+		vulkanFlags |= VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT;
+	}
+	if ((flags & rhi::ERenderingFlags::Resuming) != 0)
+	{
+		vulkanFlags |= VK_RENDERING_RESUMING_BIT;
+	}
+
+	return vulkanFlags;
+}
+
+VkAttachmentLoadOp RHIToVulkan::GetLoadOp(rhi::ERTLoadOperation loadOp)
+{
+	switch (loadOp)
+	{
+	case rhi::ERTLoadOperation::Load:			return VK_ATTACHMENT_LOAD_OP_LOAD;
+	case rhi::ERTLoadOperation::Clear:			return VK_ATTACHMENT_LOAD_OP_CLEAR;
+	case rhi::ERTLoadOperation::DontCare:		return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+}
+
+VkAttachmentStoreOp RHIToVulkan::GetStoreOp(rhi::ERTStoreOperation storeOp)
+{
+	switch (storeOp)
+	{
+	case rhi::ERTStoreOperation::Store:			return VK_ATTACHMENT_STORE_OP_STORE;
+	case rhi::ERTStoreOperation::DontCare:		return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+}
+
+VkResolveModeFlagBits RHIToVulkan::GetResolveMode(rhi::ERTResolveMode resolveMode)
+{
+	switch (resolveMode)
+	{
+	case rhi::ERTResolveMode::Average:			return VK_RESOLVE_MODE_AVERAGE_BIT;
+	case rhi::ERTResolveMode::Min:				return VK_RESOLVE_MODE_MIN_BIT;
+	case rhi::ERTResolveMode::Max:				return VK_RESOLVE_MODE_MAX_BIT;
+	case rhi::ERTResolveMode::SampleZero:		return VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_RESOLVE_MODE_AVERAGE_BIT;
+}
+
 }

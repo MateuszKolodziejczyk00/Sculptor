@@ -3,7 +3,7 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RendererUtils.h"
-#include "RHICommandBufferTypes.h"
+#include "RHICore/RHICommandBufferTypes.h"
 
 
 namespace spt::renderer

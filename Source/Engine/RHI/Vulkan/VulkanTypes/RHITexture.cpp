@@ -394,6 +394,7 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
     SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
 
     m_texture = &texture;
+    m_subresourceRange = viewDefinition.m_subresourceRange;
 }
 
 void RHITextureView::ReleaseRHI()
@@ -422,6 +423,11 @@ VkImageView RHITextureView::GetHandle() const
 const RHITexture* RHITextureView::GetTexture() const
 {
     return m_texture;
+}
+
+const rhi::TextureSubresourceRange& RHITextureView::GetSubresourceRange() const
+{
+    return m_subresourceRange;
 }
 
 void RHITextureView::SetName(const lib::HashedString& name)

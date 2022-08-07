@@ -5,11 +5,11 @@
 #include "Types/CommandBuffer.h"
 #include "CurrentFrameContext.h"
 #include "Window/PlatformWindowImpl.h"
-#include "RHIInitialization.h"
-#include "RHIImpl.h"
-#include "RHISemaphoreImpl.h"
-#include "RHICommandBufferImpl.h"
-#include "RHISubmitTypes.h"
+#include "RHICore/RHIInitialization.h"
+#include "RHICore/RHISubmitTypes.h"
+#include "RHIBridge/RHIImpl.h"
+#include "RHIBridge/RHISemaphoreImpl.h"
+#include "RHIBridge/RHICommandBufferImpl.h"
 
 
 namespace spt::renderer

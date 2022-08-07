@@ -3,6 +3,11 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 
+namespace spt::rhi
+{
+struct TextureSubresourceRange;
+}
+
 
 namespace spt::vulkan
 {
@@ -121,6 +126,7 @@ public:
 	VkImageLayout								GetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image) const;
 	VkImageLayout								GetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer) const;
 	VkImageLayout								GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range) const;
+	VkImageLayout								GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const rhi::TextureSubresourceRange& range) const;
 
 	void										SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout);
 	void										SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);

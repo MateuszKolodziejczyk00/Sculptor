@@ -294,6 +294,17 @@ VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuf
 	return result;
 }
 
+VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const rhi::TextureSubresourceRange& range) const
+{
+	ImageSubresourceRange imageRange;
+	imageRange.m_baseMipLevel	= range.m_baseMipLevel;
+	imageRange.m_mipLevelsNum	= range.m_mipLevelsNum;
+	imageRange.m_baseArrayLayer	= range.m_baseArrayLayer;
+	imageRange.m_arrayLayersNum	= range.m_arrayLayersNum;
+
+	return GetSubresourcesSharedLayout(cmdBuffer, image, imageRange);
+}
+
 void LayoutsManager::SetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout layout)
 {
 	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);

@@ -4,10 +4,6 @@ include "Vulkan/Vulkan"
 
 function RHI:SetupConfiguration(configuration, platform)
     self:SetupRHIConfiguration(configuration, platform)
-
-    self:AddPublicRelativeIncludePath("/Vulkan")
-    self:AddPublicRelativeIncludePath("/RHICore")
-    self:AddPublicRelativeIncludePath("/RHIBridge")
 end
 
 function RHI:GetProjectFiles(configuration, platform)
