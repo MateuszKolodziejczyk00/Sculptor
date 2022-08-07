@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 
 namespace spt::rhi
 {

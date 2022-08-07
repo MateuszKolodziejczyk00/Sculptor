@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
 

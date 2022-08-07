@@ -2,7 +2,7 @@
 
 #include "RHIMacros.h"
 #include "RHICore/RHICommandBufferTypes.h"
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "Vulkan/CommandPool/RHICommandPoolsTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
 

@@ -3,7 +3,7 @@
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIBufferTypes.h"
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "Vulkan/Debug/DebugUtils.h"
 
 

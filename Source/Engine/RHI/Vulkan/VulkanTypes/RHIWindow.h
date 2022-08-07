@@ -2,7 +2,7 @@
 
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "RHITexture.h"
 
 

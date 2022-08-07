@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "RHICore/RHISemaphoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIPipelineTypes.h"

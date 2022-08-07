@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHIMacros.h"
-#include "Vulkan/Vulkan123.h"
+#include "Vulkan/VulkanCore.h"
 #include "UITypes.h"
 #include "SculptorCoreTypes.h"
 #include "Vulkan/DescriptorSetsManager/DescriptorPool.h"
