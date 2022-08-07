@@ -45,6 +45,8 @@ public:
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
 	static void									IncrementReleaseSemaphoreToCurrentFrame();
+
+	static void									EnableValidationWarnings(Bool enable);
 };
 
 }

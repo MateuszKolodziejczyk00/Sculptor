@@ -48,7 +48,7 @@ public:
     
     VkDebugUtilsMessengerEXT    m_debugMessenger;
 
-    CommandPoolsManager      m_commandPoolsManager;
+    CommandPoolsManager         m_commandPoolsManager;
 
     LayoutsManager              m_layoutsManager;
 };
@@ -268,6 +268,11 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
 void VulkanRHI::WaitIdle()
 {
     priv::g_data.m_device.WaitIdle();
+}
+
+void VulkanRHI::EnableValidationWarnings(Bool enable)
+{
+    DebugMessenger::EnableWarnings(enable);
 }
 
 VkInstance VulkanRHI::GetInstanceHandle()

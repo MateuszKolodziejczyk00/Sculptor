@@ -11,9 +11,16 @@ SPT_IMPLEMENT_LOG_CATEGORY(VulkanValidation, true)
 namespace priv
 {
 
+std::atomic<Int32>		g_disableWaningsLockNum = 0;
+
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	SPT_PROFILE_FUNCTION();
+
+	if (g_disableWaningsLockNum > 0 && messageType != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	{
+		return VK_FALSE;
+	}
 
 	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 	{
@@ -54,7 +61,6 @@ VkDebugUtilsMessengerCreateInfoEXT DebugMessenger::CreateDebugMessengerInfo()
 	messengerInfo.pfnUserCallback = priv::DebugMessengerCallback;
 	messengerInfo.pUserData = nullptr;
 
-
 	return messengerInfo;
 }
 
@@ -71,6 +77,11 @@ VkDebugUtilsMessengerEXT DebugMessenger::CreateDebugMessenger(VkInstance instanc
 void DebugMessenger::DestroyDebugMessenger(VkDebugUtilsMessengerEXT messenger, VkInstance instance, const VkAllocationCallbacks* allocator)
 {
 	vkDestroyDebugUtilsMessengerEXT(instance, messenger, allocator);
+}
+
+void DebugMessenger::EnableWarnings(Bool enable)
+{
+	priv::g_disableWaningsLockNum += (enable ? -1 : 1);
 }
 
 }

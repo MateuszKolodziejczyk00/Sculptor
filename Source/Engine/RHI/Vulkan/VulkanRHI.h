@@ -39,6 +39,8 @@ public:
 
 	static void WaitIdle();
 
+	static void EnableValidationWarnings(Bool enable);
+
 	// Vulkan Getters ==================================================================
 
 	static VkInstance						GetInstanceHandle();

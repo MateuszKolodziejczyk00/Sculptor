@@ -105,8 +105,11 @@ void SculptorEdApplication::OnRun()
 		
 		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
+			// Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
+			renderer::Renderer::EnableValidationWarnings(false);
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
+			renderer::Renderer::EnableValidationWarnings(true);
 		}
 
 		RenderFrame();

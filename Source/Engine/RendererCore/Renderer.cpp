@@ -115,4 +115,9 @@ void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
 	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
 }
 
+void Renderer::EnableValidationWarnings(Bool enable)
+{
+	rhi::RHI::EnableValidationWarnings(enable);
+}
+
 }

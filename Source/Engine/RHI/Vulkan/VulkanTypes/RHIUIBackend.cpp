@@ -69,7 +69,10 @@ void RHIUIBackend::InitializeFonts(const RHICommandBuffer& cmdBuffer)
 
 	SPT_CHECK(IsValid());
 
+	// Disable small allocations performance warnings
+	VulkanRHI::EnableValidationWarnings(false);
 	ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.GetHandle());
+	VulkanRHI::EnableValidationWarnings(true);
 }
 
 void RHIUIBackend::DestroyFontsTemporaryObjects()
@@ -98,7 +101,10 @@ void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 
 	ImDrawData* drawData = ImGui::GetDrawData();
 
+	// Disable small allocations performance warnings
+	VulkanRHI::EnableValidationWarnings(false);
 	ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer.GetHandle());
+	VulkanRHI::EnableValidationWarnings(true);
 }
 
 void RHIUIBackend::InitializeDescriptorPool()
