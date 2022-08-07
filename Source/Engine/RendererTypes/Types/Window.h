@@ -37,7 +37,7 @@ public:
 	Bool											IsSwapchainOutOfDate() const;
 	void											RebuildSwapchain();
 
-	void											InitializeUI();
+	void											InitializeUI(ui::UIContext context);
 	void											UninitializeUI();
 
 	ui::UIContext									GetUIContext() const;

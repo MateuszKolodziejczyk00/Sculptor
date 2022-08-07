@@ -41,7 +41,7 @@ public:
 	using OnWindowClosedDelegate		= lib::MulticastDelegate<>;
 	OnWindowClosedDelegate&				GetOnClosedCallback();
 
-	void								InitializeUI();
+	void								InitializeUI(ui::UIContext context);
 	void								UninitializeUI();
 
 	Bool								HasValidUIContext() const;

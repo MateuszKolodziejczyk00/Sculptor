@@ -179,11 +179,11 @@ GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 	return m_windowData->m_onClosed;
 }
 
-void GLFWWindow::InitializeUI()
+void GLFWWindow::InitializeUI(ui::UIContext context)
 {
-	IMGUI_CHECKVERSION();
+	m_uiContext = context;
 
-	m_uiContext = ImGui::CreateContext();
+	ImGui::SetCurrentContext(context.GetHandle());
 
 #if VULKAN_RHI
 

@@ -33,9 +33,15 @@ void SculptorEdApplication::OnRun()
 {
 	Super::OnRun();
 
-	m_window->InitializeUI();
+	IMGUI_CHECKVERSION();
+	const ui::UIContext context = ImGui::CreateContext();
 
-	const ui::UIContext context = m_window->GetUIContext();
+	ImGuiIO& imGuiIO = ImGui::GetIO();
+	imGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+	m_window->InitializeUI(context);
+
 	ui::UIContextManager::SetGlobalContext(context);
 
 	uiBackend = renderer::RendererBuilder::CreateUIBackend(context, m_window);
@@ -64,7 +70,6 @@ void SculptorEdApplication::OnRun()
 
 		uiBackend->DestroyFontsTemporaryObjects();
 	}
-
 
 	lib::TickingTimer timer;
 
@@ -97,6 +102,12 @@ void SculptorEdApplication::OnRun()
 		ImGui::End();
 
 		ImGui::Render();
+		
+		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
 
 		RenderFrame();
 

@@ -112,9 +112,9 @@ void Window::RebuildSwapchain()
 	m_rhiWindow.RebuildSwapchain(framebufferSize);
 }
 
-void Window::InitializeUI()
+void Window::InitializeUI(ui::UIContext context)
 {
-	m_platformWindow->InitializeUI();
+	m_platformWindow->InitializeUI(context);
 }
 
 void Window::UninitializeUI()
