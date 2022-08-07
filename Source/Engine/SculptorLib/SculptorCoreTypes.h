@@ -20,3 +20,4 @@
 #include "Utility/UtilityMacros.h"
 #include "Utility/Memory.h"
 #include "Utility/Mutex.h"
+#include "Utility/Color.h"
