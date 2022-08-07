@@ -32,16 +32,17 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	VulkanStructsLinkedList deviceInfoLinkedData(deviceInfo);
 
 	VkPhysicalDeviceFeatures2 features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
-	features.features.multiViewport = VK_TRUE;
+	features.features.multiViewport		= VK_TRUE;
 	features.features.samplerAnisotropy = VK_TRUE;
 	features.features.sampleRateShading = VK_TRUE;
-	features.features.independentBlend = VK_TRUE;
-	features.features.fillModeNonSolid = VK_TRUE;
+	features.features.independentBlend	= VK_TRUE;
+	features.features.fillModeNonSolid	= VK_TRUE;
 
 	deviceInfoLinkedData.Append(features);
 
 	VkPhysicalDeviceVulkan13Features vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 	vulkan13Features.synchronization2 = VK_TRUE;
+	vulkan13Features.dynamicRendering = VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan13Features);
 

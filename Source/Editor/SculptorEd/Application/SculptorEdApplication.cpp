@@ -30,6 +30,9 @@ void SculptorEdApplication::OnRun()
 {
 	Super::OnRun();
 
+	m_window->InitializeUI();
+	lib::SharedPtr<renderer::UIBackend> uiBackend = renderer::RendererBuilder::CreateUIBackend(m_window->GetUIContext(), m_window);;
+
 	lib::TickingTimer timer;
 
 	while (true)
@@ -60,6 +63,8 @@ void SculptorEdApplication::OnShutdown()
 	Super::OnShutdown();
 
 	renderer::Renderer::WaitIdle();
+
+	m_window->UninitializeUI();
 
 	m_window.reset();
 

@@ -40,6 +40,8 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 
 	const bool success = ImGui_ImplVulkan_Init(&initInfo);
 	SPT_CHECK(success);
+
+	m_context = context;
 }
 
 void RHIUIBackend::ReleaseRHI()
@@ -50,12 +52,12 @@ void RHIUIBackend::ReleaseRHI()
 
 	ImGui_ImplVulkan_Shutdown();
 	m_uiDescriptorPool.Release();
+	m_context.Reset();
 }
 
 Bool RHIUIBackend::IsValid() const
 {
-	SPT_CHECK_NO_ENTRY();
-	return false;
+	return m_context.IsValid();
 }
 
 void RHIUIBackend::InitializeDescriptorPool()

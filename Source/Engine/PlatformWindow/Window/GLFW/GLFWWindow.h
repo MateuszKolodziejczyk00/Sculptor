@@ -44,6 +44,7 @@ public:
 	void								InitializeUI();
 	void								UninitializeUI();
 
+	Bool								HasValidUIContext() const;
 	ui::UIContext						GetUIContext() const;
 
 private:

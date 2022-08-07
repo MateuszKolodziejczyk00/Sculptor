@@ -151,7 +151,10 @@ void GLFWWindow::BeginFrame()
 {
 	SPT_PROFILE_FUNCTION();
 
-	ImGui_ImplGlfw_NewFrame();
+	if (HasValidUIContext())
+	{
+		ImGui_ImplGlfw_NewFrame();
+	}
 }
 
 void GLFWWindow::Update(Real32 deltaTime)
@@ -191,12 +194,17 @@ void GLFWWindow::InitializeUI()
 
 void GLFWWindow::UninitializeUI()
 {
-	SPT_CHECK(GetUIContext().IsValid());
+	SPT_CHECK(HasValidUIContext());
 
 	ImGui_ImplGlfw_Shutdown();
 
 	ImGui::DestroyContext(GetUIContext().GetHandle());
 	m_uiContext.Reset();
+}
+
+Bool GLFWWindow::HasValidUIContext() const
+{
+	return GetUIContext().IsValid();
 }
 
 ui::UIContext GLFWWindow::GetUIContext() const
@@ -206,10 +214,7 @@ ui::UIContext GLFWWindow::GetUIContext() const
 
 void GLFWWindow::OnThisWindowClosed()
 {
-	if (GetUIContext().IsValid())
-	{
-		UninitializeUI();
-	}
+
 }
 
 void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolution)
