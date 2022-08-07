@@ -6,6 +6,9 @@
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
 #include "CommandsRecorder/CommandsRecorder.h"
+#include "CommandsRecorder/RenderingDefinition.h"
+#include "UIContextManager.h"
+#include "imgui.h"
 
 
 namespace spt::ed
@@ -31,7 +34,37 @@ void SculptorEdApplication::OnRun()
 	Super::OnRun();
 
 	m_window->InitializeUI();
-	lib::SharedPtr<renderer::UIBackend> uiBackend = renderer::RendererBuilder::CreateUIBackend(m_window->GetUIContext(), m_window);;
+
+	const ui::UIContext context = m_window->GetUIContext();
+	ui::UIContextManager::SetGlobalContext(context);
+
+	uiBackend = renderer::RendererBuilder::CreateUIBackend(context, m_window);
+
+	ImGui::SetCurrentContext(context.GetHandle());
+
+	{
+		renderer::CommandsRecordingInfo recordingInfo;
+		recordingInfo.m_commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
+		recordingInfo.m_commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
+
+		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		recorder->InitializeUIFonts(uiBackend);
+
+		recorder->FinishRecording();
+		
+		lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
+		renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
+		submitBatch.m_recordedCommands.emplace_back(std::move(recorder));
+
+		renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+
+		renderer::Renderer::WaitIdle();
+
+		uiBackend->DestroyFontsTemporaryObjects();
+	}
+
 
 	lib::TickingTimer timer;
 
@@ -52,6 +85,19 @@ void SculptorEdApplication::OnRun()
 
 		m_window->BeginFrame();
 
+		uiBackend->BeginFrame();
+
+		ImGui::NewFrame();
+
+		ImGui::Begin("Test");
+		ImGui::Text("TESTSDasd");
+		ImGui::End();
+		ImGui::Begin("ASD");
+		ImGui::Text("TESTSDasd");
+		ImGui::End();
+
+		ImGui::Render();
+
 		RenderFrame();
 
 		renderer::Renderer::EndFrame();
@@ -62,8 +108,10 @@ void SculptorEdApplication::OnShutdown()
 {
 	Super::OnShutdown();
 
-	renderer::Renderer::WaitIdle();
+	uiBackend.reset();
 
+	renderer::Renderer::WaitIdle();
+	
 	m_window->UninitializeUI();
 
 	m_window.reset();
@@ -93,11 +141,43 @@ void SculptorEdApplication::RenderFrame()
 
 	recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-	renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
-	const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-	barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+	{
+		renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
+		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
 
-	recorder->ExecuteBarrier(barrier);
+		recorder->ExecuteBarrier(barrier);
+	}
+
+	rhi::TextureViewDefinition viewDefinition;
+	viewDefinition.m_subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+	const lib::SharedPtr<renderer::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
+
+	renderer::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetFramebufferSize());
+	renderer::RTDefinition renderTarget;
+	renderTarget.m_textureView = swapchainTextureView;
+	renderTarget.m_loadOperation = rhi::ERTLoadOperation::Clear;
+	renderTarget.m_storeOperation = rhi::ERTStoreOperation::Store;
+	renderTarget.m_clearColor.m_float[0] = 0.f;
+	renderTarget.m_clearColor.m_float[1] = 0.f;
+	renderTarget.m_clearColor.m_float[2] = 0.f;
+	renderTarget.m_clearColor.m_float[3] = 1.f;
+
+	renderingDef.AddColorRenderTarget(renderTarget);
+
+	recorder->BeginRendering(renderingDef);
+
+	recorder->RenderUI(uiBackend);
+
+	recorder->EndRendering();
+
+	{
+		renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
+		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+
+		recorder->ExecuteBarrier(barrier);
+	}
 
 	recorder->FinishRecording();
 

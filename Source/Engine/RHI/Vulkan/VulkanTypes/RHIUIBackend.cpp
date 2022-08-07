@@ -1,8 +1,9 @@
 #include "RHIUIBackend.h"
 #include "imgui_impl_vulkan.h"
-#include "Vulkan/VulkanRHI.h"
 #include "RHIWindow.h"
+#include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Device/LogicalDevice.h"
+#include "RHICommandBuffer.h"
 
 namespace spt::vulkan
 {
@@ -38,6 +39,8 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
     initInfo.Allocator = VulkanRHI::GetAllocationCallbacks();
     initInfo.CheckVkResultFn = nullptr;
 
+	ImGui::SetCurrentContext(context.GetHandle());
+
 	const bool success = ImGui_ImplVulkan_Init(&initInfo);
 	SPT_CHECK(success);
 
@@ -58,6 +61,44 @@ void RHIUIBackend::ReleaseRHI()
 Bool RHIUIBackend::IsValid() const
 {
 	return m_context.IsValid();
+}
+
+void RHIUIBackend::InitializeFonts(const RHICommandBuffer& cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.GetHandle());
+}
+
+void RHIUIBackend::DestroyFontsTemporaryObjects()
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
+}
+
+void RHIUIBackend::BeginFrame()
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	ImGui_ImplVulkan_NewFrame();
+}
+
+void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
+{
+	SPT_PROFILE_FUNCTION();
+
+	ImGui::SetCurrentContext(m_context.GetHandle());
+
+	ImDrawData* drawData = ImGui::GetDrawData();
+
+	ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer.GetHandle());
 }
 
 void RHIUIBackend::InitializeDescriptorPool()

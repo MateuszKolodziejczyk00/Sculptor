@@ -127,4 +127,9 @@ ui::UIContext Window::GetUIContext() const
 	return m_platformWindow->GetUIContext();
 }
 
+math::Vector2u Window::GetFramebufferSize() const
+{
+	return m_platformWindow->GetFramebufferSize();
+}
+
 }

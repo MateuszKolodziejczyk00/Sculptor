@@ -42,6 +42,8 @@ public:
 
 	ui::UIContext									GetUIContext() const;
 
+	math::Vector2u									GetFramebufferSize() const;
+
 private:
 
 	lib::UniquePtr<platform::PlatformWindow>		m_platformWindow;

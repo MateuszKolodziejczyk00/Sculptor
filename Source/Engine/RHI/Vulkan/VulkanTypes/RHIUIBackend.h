@@ -11,6 +11,7 @@ namespace spt::vulkan
 {
 
 class RHIWindow;
+class RHICommandBuffer;
 
 
 class RHI_API RHIUIBackend
@@ -23,6 +24,14 @@ public:
 	void				ReleaseRHI();
 
 	Bool				IsValid() const;
+
+	void				InitializeFonts(const RHICommandBuffer& cmdBuffer);
+
+	void				DestroyFontsTemporaryObjects();
+
+	void				BeginFrame();
+
+	void				Render(const RHICommandBuffer& cmdBuffer);
 
 private:
 

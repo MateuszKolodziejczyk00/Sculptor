@@ -3,6 +3,7 @@
 #include "Application/Application.h"
 #include "SculptorCoreTypes.h"
 #include "Types/Window.h"
+#include "Types/UIBackend.h"
 
 namespace spt::ed
 {
@@ -30,6 +31,7 @@ private:
 	void RenderFrame();
 
 	lib::SharedPtr<renderer::Window> m_window;
+	lib::SharedPtr<renderer::UIBackend> uiBackend;
 };
 
 }

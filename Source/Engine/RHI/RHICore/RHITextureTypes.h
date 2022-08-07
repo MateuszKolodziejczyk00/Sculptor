@@ -160,13 +160,16 @@ struct TextureSubresourceRange
 struct TextureViewDefinition
 {
 	TextureViewDefinition(	ETextureViewType viewType = ETextureViewType::Default,
-							const TextureComponentMappings& componentMappings = TextureComponentMappings(),
-							const TextureSubresourceRange& subresourceRange = TextureSubresourceRange())
+							const TextureSubresourceRange& subresourceRange = TextureSubresourceRange(),
+							const TextureComponentMappings& componentMappings = TextureComponentMappings())
+		: m_viewType(viewType)
+		, m_subresourceRange(subresourceRange)
+		, m_componentMappings(componentMappings)
 	{ }
 
 	ETextureViewType			m_viewType;
-	TextureComponentMappings	m_componentMappings;
 	TextureSubresourceRange		m_subresourceRange;
+	TextureComponentMappings	m_componentMappings;
 };
 
 
@@ -212,6 +215,8 @@ namespace TextureTransition
 	static constexpr BarrierTextureTransitionTarget FragmentGeneeral	= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::FragmentShader);
 	
 	static constexpr BarrierTextureTransitionTarget PresentSource		= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::PresentSrc, EPipelineStage::TopOfPipe);
+	
+	static constexpr BarrierTextureTransitionTarget ColorRenderTarget	= BarrierTextureTransitionTarget(EAccessType::Write, ETextureLayout::ColorRTOptimal, EPipelineStage::ColorRTOutput);
 
 }
 

@@ -12,7 +12,7 @@ namespace spt::renderer
 class Window;
 
 
-class UIBackend
+class RENDERER_TYPES_API UIBackend
 {
 public:
 
@@ -21,6 +21,10 @@ public:
 
 	rhi::RHIUIBackend&			GetRHI();
 	const rhi::RHIUIBackend&	GetRHI() const;
+
+	void						BeginFrame();
+
+	void						DestroyFontsTemporaryObjects();
 
 private:
 

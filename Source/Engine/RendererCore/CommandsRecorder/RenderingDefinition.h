@@ -46,9 +46,16 @@ private:
 
 	rhi::RHIRenderTargetDefinition				GetRTDefRHI(const RTDefinition& renderTarget) const
 	{
+		SPT_CHECK(!!renderTarget.m_textureView);
+
 		rhi::RHIRenderTargetDefinition rhiDef;
 		rhiDef.m_textureView			= renderTarget.m_textureView->GetRHI();
-		rhiDef.m_resolveTextureView		= renderTarget.m_resolveTextureView->GetRHI();
+
+		if (renderTarget.m_resolveTextureView)
+		{
+			rhiDef.m_resolveTextureView = renderTarget.m_resolveTextureView->GetRHI();
+		}
+
 		rhiDef.m_loadOperation			= renderTarget.m_loadOperation;
 		rhiDef.m_storeOperation			= renderTarget.m_storeOperation;
 		rhiDef.m_resolveMode			= renderTarget.m_resolveMode;

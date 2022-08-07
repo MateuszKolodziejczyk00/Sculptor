@@ -1,4 +1,4 @@
-ImGuiGLFWBackend = Project:CreateProjectInDirectory("ImGui", "ImGuiGLFWBackend", ETargetType.SharedLibrary)
+ImGuiGLFWBackend = Project:CreateProjectInDirectory("ImGui", "ImGuiGLFWBackend", ETargetType.StaticLibrary)
 
 function ImGuiGLFWBackend:SetupConfiguration(configuration, platform)
     self:AddPublicRelativeIncludePath("backends")    
@@ -6,7 +6,7 @@ function ImGuiGLFWBackend:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("ImGui")
     self:AddPublicDependency("GLFW")
 
-    self:AddPrivateDefine("IMGUI_BACKEND_BUILD_DLL")
+    self:AddPublicDefine("IMGUI_BACKEND_BUILD_NO_DLL")
 
     if platform == EPlatform.Windows then
         self:AddPrivateDefine("IMGUI_PLATFORM_WINDOWS")

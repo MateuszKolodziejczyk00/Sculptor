@@ -12,6 +12,8 @@ namespace spt::renderer
 class CommandBuffer;
 class Barrier;
 class RenderingDefinition;
+class UIBackend;
+
 
 struct CommandsRecordingInfo
 {
@@ -49,6 +51,10 @@ public:
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
+
+	void									InitializeUIFonts(const lib::SharedPtr<renderer::UIBackend>& uiBackend);
+
+	void									RenderUI(const lib::SharedPtr<renderer::UIBackend>& uiBackend);
 
 private:
 

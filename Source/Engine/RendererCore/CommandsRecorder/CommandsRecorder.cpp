@@ -1,8 +1,9 @@
 #include "CommandsRecorder.h"
-#include "Types/CommandBuffer.h"
-#include "RendererBuilder.h"
-#include "Types/Barrier.h"
 #include "RenderingDefinition.h"
+#include "RendererBuilder.h"
+#include "Types/CommandBuffer.h"
+#include "Types/Barrier.h"
+#include "Types/UIBackend.h"
 
 namespace spt::renderer
 {
@@ -65,6 +66,26 @@ void CommandsRecorder::EndRendering()
 	SPT_CHECK(IsRecording());
 
 	m_commandsBuffer->GetRHI().EndRendering();
+}
+
+void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<renderer::UIBackend>& uiBackend)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsRecording());
+	SPT_CHECK(!!uiBackend);
+
+	uiBackend->GetRHI().InitializeFonts(m_commandsBuffer->GetRHI());
+}
+
+void CommandsRecorder::RenderUI(const lib::SharedPtr<renderer::UIBackend>& uiBackend)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(IsRecording());
+	SPT_CHECK(!!uiBackend);
+
+	uiBackend->GetRHI().Render(m_commandsBuffer->GetRHI());
 }
 
 }

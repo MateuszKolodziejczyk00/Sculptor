@@ -33,4 +33,14 @@ const spt::rhi::RHIUIBackend& UIBackend::GetRHI() const
 	return m_rhiBackend;
 }
 
+void UIBackend::BeginFrame()
+{
+	m_rhiBackend.BeginFrame();
+}
+
+void UIBackend::DestroyFontsTemporaryObjects()
+{
+	m_rhiBackend.DestroyFontsTemporaryObjects();
+}
+
 }
