@@ -96,7 +96,7 @@ public:
 		stringView = {};
 	}
 
-	StringView GetString() const
+	StringView GetView() const
 	{
 		return stringView;
 	}
