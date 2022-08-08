@@ -281,6 +281,10 @@ function Project:DisableWarnings()
     self.configurations[self.currentConfiguration].disableWarnings = true
 end
 
+function Project:AddLinkOption(option)
+    linkoptions { option }
+end
+
 function Project:AreWarningsDisabled(configuration)
     disable = self.configurations[configuration]["disableWarnings"]
     return disable and disable == true
