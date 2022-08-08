@@ -4,6 +4,9 @@ include "Vulkan/Vulkan"
 
 function RHI:SetupConfiguration(configuration, platform)
     self:SetupRHIConfiguration(configuration, platform)
+
+    self:AddPublicDependency("SculptorLib")
+    self:AddPublicDependency("UICore")
 end
 
 function RHI:GetProjectFiles(configuration, platform)

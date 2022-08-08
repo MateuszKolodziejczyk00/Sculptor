@@ -13,6 +13,9 @@ IncludeProject("RHI")
 SetProjectsSubgroupName("Graphics/Platform")
 IncludeProject("PlatformWindow")
 
+SetProjectsSubgroupName("Graphics/Shaders")
+IncludeProject("ShaderCompiler")
+
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererTypes")
 IncludeProject("RendererCore")

@@ -3,6 +3,7 @@ PlatformWindow = Project:CreateProject("PlatformWindow", ETargetType.SharedLibra
 function PlatformWindow:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("RHI")
+    self:AddPublicDependency("UICore")
 
     self:AddPrivateDependency("ImGuiGLFWBackend")
 

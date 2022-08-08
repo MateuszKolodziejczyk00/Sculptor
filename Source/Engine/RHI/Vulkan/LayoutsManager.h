@@ -96,7 +96,7 @@ class CommandBufferLayoutsManager
 {
 public:
 
-	using ImagesLayoutData					= lib::HashMap<VkImage, ImageSubresourcesLayoutsData>;
+	using ImagesLayoutData						= lib::HashMap<VkImage, ImageSubresourcesLayoutsData>;
 
 	CommandBufferLayoutsManager();
 
