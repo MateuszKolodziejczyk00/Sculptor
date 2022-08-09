@@ -53,7 +53,7 @@ public:
     LayoutsManager              m_layoutsManager;
 };
 
-VulkanInstanceData g_data;
+static VulkanInstanceData g_data;
 
 // Volk ==========================================================================================
 

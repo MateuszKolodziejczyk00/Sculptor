@@ -11,14 +11,13 @@ namespace spt::renderer
 
 namespace priv
 {
-CurrentFrameContext::CleanupDelegate*					cleanupDelegates;
+static CurrentFrameContext::CleanupDelegate*					cleanupDelegates;
 
-Uint32													framesInFlightNum = 0;
-Uint32													currentCleanupDelegateIdx = 0;
+static Uint32													framesInFlightNum = 0;
+static Uint32													currentCleanupDelegateIdx = 0;
+static Uint64													currentFrameIdx = 0;
 
-Uint64													currentFrameIdx = 0;
-
-lib::SharedPtr<Semaphore>								releaseFrameSemaphore;
+static lib::SharedPtr<Semaphore>								releaseFrameSemaphore;
 
 }
 

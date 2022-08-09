@@ -5,7 +5,9 @@ namespace spt::ui
 
 namespace priv
 {
-UIContext	g_globalContext;
+
+static UIContext	g_globalContext;
+
 }
 
 void UIContextManager::SetGlobalContext(UIContext context)

@@ -11,7 +11,7 @@ SPT_IMPLEMENT_LOG_CATEGORY(VulkanValidation, true)
 namespace priv
 {
 
-std::atomic<Int32>		g_disableWaningsLockNum = 0;
+static std::atomic<Int32>		g_disableWaningsLockNum = 0;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {

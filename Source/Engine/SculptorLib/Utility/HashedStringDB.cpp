@@ -9,9 +9,11 @@ namespace spt::lib
 
 namespace priv
 {
-ReadWriteLock recordsMutex;
 
-HashMap<HashedStringDB::KeyType, String> records;
+static ReadWriteLock recordsMutex;
+
+static HashMap<HashedStringDB::KeyType, String> records;
+
 }
 
 HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView& outView)
