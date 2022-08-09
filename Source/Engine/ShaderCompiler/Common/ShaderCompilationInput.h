@@ -14,13 +14,21 @@ public:
 
 	ShaderSourceCode();
 	
+	void						SetName(lib::HashedString name);
 	void						SetSourceCode(lib::String&& code);
+	void						SetShaderType(ECompiledShaderType type);
 
+	lib::HashedString			GetName() const;
 	const lib::String&			GetSourceCode() const;
+	ECompiledShaderType			GetType() const;
 
 private:
 
+	lib::HashedString			m_name;
+
 	lib::String					m_code;
+
+	ECompiledShaderType			m_type;
 };
 
 
@@ -30,17 +38,13 @@ public:
 
 	ShaderCompilationSettings();
 
-	void SetShaderType(ECompiledShaderType type);
-	void AddMacroDefinition(MacroDefinition macro);
+	void										AddMacroDefinition(MacroDefinition macro);
 
 	const lib::DynamicArray<MacroDefinition>&	GetMacros() const;
-	ECompiledShaderType							GetType() const;
 
 private:
 
-	lib::DynamicArray<MacroDefinition>		m_macros;
-
-	ECompiledShaderType						m_type;
+	lib::DynamicArray<MacroDefinition>			m_macros;
 };
 
 }

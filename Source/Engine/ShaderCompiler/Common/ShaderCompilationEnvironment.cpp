@@ -6,20 +6,33 @@ namespace spt::sc
 namespace priv
 {
 
-lib::HashedString		g_shadersPath;
-lib::HashedString		g_shadersCachePath;
+static CompilationEnvironmentDef	g_environmentDef;
 
 }
 
 void ShaderCompilationEnvironment::Initialize(const CompilationEnvironmentDef& environmentDef)
 {
-	priv::g_shadersPath = environmentDef.m_shadersPath;
-	priv::g_shadersCachePath = environmentDef.m_shadersCachePath;
+	priv::g_environmentDef = environmentDef;
 }
 
-lib::HashedString ShaderCompilationEnvironment::GetShadersPath() const
+Bool ShaderCompilationEnvironment::CanCompile()
 {
-	return priv::g_shadersPath;
+	return priv::g_environmentDef.m_targetEnvironment != ETargetEnvironment::None;
+}
+
+Bool ShaderCompilationEnvironment::ShouldGenerateDebugInfo()
+{
+	return priv::g_environmentDef.m_generateDebugInfo;
+}
+
+ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
+{
+	return priv::g_environmentDef.m_targetEnvironment;
+}
+
+lib::HashedString ShaderCompilationEnvironment::GetShadersPath()
+{
+	return priv::g_environmentDef.m_shadersPath;
 }
 
 }
