@@ -154,8 +154,7 @@ Bool ImageSubresourcesLayoutsData::TransitionToFullImageLayoutIfPossible()
 	
 	if (AreAllSubresourcesInSameLayoutImpl())
 	{
-		m_fullImageLayout = m_subresourceLayouts[0];
-		m_subresourceLayouts.clear();
+		SetFullImageLayout(m_subresourceLayouts[0]);
 		return true;
 	}
 
@@ -404,7 +403,10 @@ CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(V
 
 	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
 
-	CommandBufferLayoutsManager& cmdBufferLayouts = *m_cmdBuffersLayoutManagers[cmdBuffer].get();
+	auto& cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
+	SPT_CHECK(cmdBufferLayoutManager != m_cmdBuffersLayoutManagers.cend());
+
+	CommandBufferLayoutsManager& cmdBufferLayouts = *cmdBufferLayoutManager->second;
 	return cmdBufferLayouts;
 }
 

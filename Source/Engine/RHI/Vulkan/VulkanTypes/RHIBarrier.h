@@ -19,7 +19,7 @@ public:
 
 	RHIBarrier();
 
-	SizeType									AddTextureBarrier(const RHITexture& texture, rhi::TextureSubresourceRange& subresourceRange);
+	SizeType									AddTextureBarrier(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange);
 
 	void										SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionTarget);
 

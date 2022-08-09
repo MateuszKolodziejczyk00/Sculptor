@@ -148,7 +148,7 @@ VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& t
 RHIBarrier::RHIBarrier()
 { }
 
-SizeType RHIBarrier::AddTextureBarrier(const RHITexture& texture, rhi::TextureSubresourceRange& subresourceRange)
+SizeType RHIBarrier::AddTextureBarrier(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange)
 {
 	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
 	barrier.image								= texture.GetHandle();
