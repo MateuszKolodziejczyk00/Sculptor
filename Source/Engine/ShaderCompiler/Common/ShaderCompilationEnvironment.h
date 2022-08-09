@@ -15,9 +15,11 @@ struct CompilationEnvironmentDef
 
 	Bool					m_generateDebugInfo;
 
-	lib::HashedString		m_shadersPath;
+	lib::String				m_shadersPath;
 
-	lib::HashedString		m_shadersCachePath;
+	lib::String				m_shadersCachePath;
+
+	lib::String				m_errorLogsPath;
 };
 
 
@@ -33,7 +35,11 @@ public:
 
 	static ETargetEnvironment		GetTargetEnvironment();
 
-	static lib::HashedString		GetShadersPath();
+	static const lib::String&		GetShadersPath();
+
+	static const lib::String&		GetShadersCachePath();
+
+	static const lib::String&		GetErrorLogsPath();
 	
 };
 

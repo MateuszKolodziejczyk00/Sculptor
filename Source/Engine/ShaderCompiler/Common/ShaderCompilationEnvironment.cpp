@@ -30,9 +30,19 @@ ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
 	return priv::g_environmentDef.m_targetEnvironment;
 }
 
-lib::HashedString ShaderCompilationEnvironment::GetShadersPath()
+const lib::String& ShaderCompilationEnvironment::GetShadersPath()
 {
 	return priv::g_environmentDef.m_shadersPath;
+}
+
+const spt::lib::String& ShaderCompilationEnvironment::GetShadersCachePath()
+{
+	return priv::g_environmentDef.m_shadersCachePath;
+}
+
+const spt::lib::String& ShaderCompilationEnvironment::GetErrorLogsPath()
+{
+	return priv::g_environmentDef.m_errorLogsPath;
 }
 
 }

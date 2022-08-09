@@ -12,15 +12,17 @@ class SHADER_COMPILER_API ShaderSourceCode
 {
 public:
 
-	ShaderSourceCode();
+	ShaderSourceCode(lib::HashedString name);
 	
-	void						SetName(lib::HashedString name);
 	void						SetSourceCode(lib::String&& code);
 	void						SetShaderType(ECompiledShaderType type);
 
 	lib::HashedString			GetName() const;
 	const lib::String&			GetSourceCode() const;
 	ECompiledShaderType			GetType() const;
+
+	const char*					GetSourcePtr() const;
+	SizeType					GetSourceLength() const;
 
 private:
 

@@ -12,13 +12,28 @@ class ShaderSourceCode;
 class ShaderCompilationSettings;
 
 
+struct ShaderCompilationResult
+{
+public:
+
+	ShaderCompilationResult() = default;
+
+	Bool IsSuccess() const
+	{
+		return !m_binary.empty();
+	}
+
+	lib::DynamicArray<Uint32>		m_binary;
+};
+
+
 class SHADER_COMPILER_API ShaderCompiler
 {
 public:
 
 	ShaderCompiler();
 
-	void					CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	ShaderCompilationResult				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
 
 private:
 

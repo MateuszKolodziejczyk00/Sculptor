@@ -5,13 +5,11 @@ namespace spt::sc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderSourceCode ==============================================================================
 
-ShaderSourceCode::ShaderSourceCode()
-	: m_type(ECompiledShaderType::None)
-{ }
-
-void ShaderSourceCode::SetName(lib::HashedString name)
+ShaderSourceCode::ShaderSourceCode(lib::HashedString name)
+	: m_name(name)
+	, m_type(ECompiledShaderType::None)
 {
-	m_name = name;
+	SPT_CHECK(m_name.IsValid());
 }
 
 void ShaderSourceCode::SetSourceCode(lib::String&& code)
@@ -37,6 +35,16 @@ const lib::String& ShaderSourceCode::GetSourceCode() const
 ECompiledShaderType ShaderSourceCode::GetType() const
 {
 	return m_type;
+}
+
+const char* ShaderSourceCode::GetSourcePtr() const
+{
+	return m_code.data();
+}
+
+SizeType ShaderSourceCode::GetSourceLength() const
+{
+	return m_code.size();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
