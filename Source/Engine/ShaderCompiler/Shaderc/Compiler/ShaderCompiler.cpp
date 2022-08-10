@@ -193,10 +193,11 @@ ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sour
 
 	shaderc::CompileOptions options = CreateCompileOptions(sourceCode, compilationSettings);
 
-	shaderc::PreprocessedSourceCompilationResult preprocessResult = PreprocessShader(sourceCode, options);
+	const shaderc::PreprocessedSourceCompilationResult preprocessResult = PreprocessShader(sourceCode, options);
 
 	if (preprocessResult.GetCompilationStatus() != shaderc_compilation_status_success)
 	{
+		CompilationErrorsLogger::OutputShaderPreprocessingErrors(sourceCode, preprocessResult.GetErrorMessage());
 		return output;
 	}
 
@@ -204,11 +205,12 @@ ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sour
 	preprocessedShaderSource.SetShaderType(sourceCode.GetType());
 	preprocessedShaderSource.SetSourceCode(lib::String(preprocessResult.cbegin(), preprocessResult.cend()));
 
-	shaderc::CompilationResult compilationResult = CompileToSpirv(preprocessedShaderSource, options);
+	const shaderc::CompilationResult compilationResult = CompileToSpirv(preprocessedShaderSource, options);
 
-	if (preprocessResult.GetCompilationStatus() != shaderc_compilation_status_success)
+	if (compilationResult.GetCompilationStatus() != shaderc_compilation_status_success)
 	{
-		CompilationErrorsLogger::OutputShaderPreprocessedCodeCode(preprocessedShaderSource);
+		CompilationErrorsLogger::OutputShaderPreprocessedCode(preprocessedShaderSource);
+		CompilationErrorsLogger::OutputShaderCompilationErrors(preprocessedShaderSource, compilationResult.GetErrorMessage());
 		return output;
 	}
 
