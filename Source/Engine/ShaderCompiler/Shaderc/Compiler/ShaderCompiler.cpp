@@ -44,10 +44,11 @@ shaderc_shader_kind GetShaderKind(ECompiledShaderType type)
 	case spt::sc::ECompiledShaderType::Vertex:			return shaderc_vertex_shader;
 	case spt::sc::ECompiledShaderType::Fragment:		return shaderc_fragment_shader;
 	case spt::sc::ECompiledShaderType::Compute:			return shaderc_compute_shader;
-	}
+	default:
 
-	SPT_CHECK_NO_ENTRY();
-	return shaderc_vertex_shader;
+		SPT_CHECK_NO_ENTRY();
+		return shaderc_vertex_shader;
+	}
 }
 
 }

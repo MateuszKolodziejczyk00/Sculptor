@@ -108,8 +108,7 @@ public:
 	const ImageSubresourcesLayoutsData*			GetImageLayoutInfo(VkImage image) const;
 
 private:
-
-	using ImagesLayoutData						= lib::HashMap<VkImage, ImageSubresourcesLayoutsData>;
+	
 	ImagesLayoutData							m_imageLayouts;
 };
 

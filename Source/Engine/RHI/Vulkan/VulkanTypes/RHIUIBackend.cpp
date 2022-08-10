@@ -34,7 +34,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 	initInfo.DescriptorPool = m_uiDescriptorPool.GetHandle();
     initInfo.MinImageCount = imagesNum;
     initInfo.ImageCount = imagesNum;
-	initInfo.MSAASamples; VK_SAMPLE_COUNT_1_BIT;
+	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	initInfo.ColorAttachmentFormat = window.GetSurfaceFormat();
     initInfo.Allocator = VulkanRHI::GetAllocationCallbacks();
     initInfo.CheckVkResultFn = nullptr;

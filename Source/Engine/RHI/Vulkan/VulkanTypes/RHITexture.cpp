@@ -59,15 +59,17 @@ rhi::EFragmentFormat GetRHIFormat(VkFormat format)
                                                            
     case VK_FORMAT_R32G32B32A32_SFLOAT:             return rhi::EFragmentFormat::RGBA32_S_Float;
     case VK_FORMAT_D32_SFLOAT:                      return rhi::EFragmentFormat::D32_S_Float;
-    }
 
-    SPT_CHECK_NO_ENTRY();
-    return rhi::EFragmentFormat::RGBA8_UN_Float;
+    default:
+
+        SPT_CHECK_NO_ENTRY();
+        return rhi::EFragmentFormat::RGBA8_UN_Float;
+    }
 }
 
 VkImageUsageFlags GetVulkanTextureUsageFlags(Flags32 usageFlags)
 {
-    VkImageUsageFlags vulkanFlags;
+    VkImageUsageFlags vulkanFlags = 0;
 
     if ((usageFlags & rhi::ETextureUsage::TransferSource) != 0)
     {

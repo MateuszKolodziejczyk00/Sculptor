@@ -25,7 +25,8 @@ public:
 			*m_next = &structure;
 		}
 
-		m_next = &static_cast<const void*>(structure.pNext);
+
+		m_next = (const void**)&structure.pNext;
 	}
 
 private:

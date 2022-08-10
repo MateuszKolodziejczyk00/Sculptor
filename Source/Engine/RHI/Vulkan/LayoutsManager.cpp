@@ -81,7 +81,7 @@ void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 
 	else
 	{
 		// fallback if image has 1 mip level and 1 array layer
-		m_fullImageLayout = m_fullImageLayout;
+		m_fullImageLayout = layout;
 	}
 }
 
@@ -403,7 +403,7 @@ CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(V
 
 	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
 
-	auto& cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
+	const auto cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
 	SPT_CHECK(cmdBufferLayoutManager != m_cmdBuffersLayoutManagers.cend());
 
 	CommandBufferLayoutsManager& cmdBufferLayouts = *cmdBufferLayoutManager->second;
@@ -416,7 +416,7 @@ const CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBu
 
 	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
 
-	const auto& cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
+	const auto cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
 	SPT_CHECK(cmdBufferLayoutManager != m_cmdBuffersLayoutManagers.cend());
 
 	const CommandBufferLayoutsManager& cmdBufferLayouts = *cmdBufferLayoutManager->second;
