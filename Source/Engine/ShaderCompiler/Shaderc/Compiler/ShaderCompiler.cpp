@@ -1,6 +1,7 @@
 #include "Common/Compiler/ShaderCompiler.h"
 #include "Common/ShaderCompilationInput.h"
 #include "Common/ShaderCompilationEnvironment.h"
+#include "Common/CompilationErrorsLogger.h"
 
 #include <fstream>
 
@@ -186,6 +187,8 @@ ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sour
 {
 	SPT_PROFILE_FUNCTION();
 
+	SPT_CHECK(m_compiler.IsValid());
+
 	ShaderCompilationResult output;
 
 	shaderc::CompileOptions options = CreateCompileOptions(sourceCode, compilationSettings);
@@ -205,6 +208,7 @@ ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sour
 
 	if (preprocessResult.GetCompilationStatus() != shaderc_compilation_status_success)
 	{
+		CompilationErrorsLogger::OutputShaderPreprocessedCodeCode(preprocessedShaderSource);
 		return output;
 	}
 

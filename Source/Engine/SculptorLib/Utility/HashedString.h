@@ -101,6 +101,11 @@ public:
 		return stringView;
 	}
 
+	lib::String ToString() const
+	{
+		return lib::String(GetView());
+	}
+
 	const char* GetData() const
 	{
 		return stringView.data();
