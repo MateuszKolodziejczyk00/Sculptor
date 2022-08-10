@@ -15,7 +15,6 @@ VmaVulkanFunctions BuildVulkanFunctionsPtrsTable()
 	functionsTable.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 	functionsTable.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
 	functionsTable.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
-	functionsTable.vkAllocateMemory = vkAllocateMemory;
 	functionsTable.vkFreeMemory = vkFreeMemory;
 	functionsTable.vkMapMemory = vkMapMemory;
 	functionsTable.vkUnmapMemory = vkUnmapMemory;

@@ -13,7 +13,7 @@ public:
 	{ }
 
 	template<typename TStruct>
-	VulkanStructsLinkedList(TStruct& structure)
+	explicit VulkanStructsLinkedList(TStruct& structure)
 		: m_next(&structure.pNext)
 	{ }
 

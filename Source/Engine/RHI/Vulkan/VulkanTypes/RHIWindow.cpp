@@ -21,8 +21,6 @@ namespace priv
 
 PFN_vkVoidFunction LoadVulkanFunction(const char* functionName, void* userData)
 {
-	const VkDevice deviceHandle = static_cast<VkDevice>(userData);
-
 	PFN_vkVoidFunction func = nullptr;
 	func = vkGetDeviceProcAddr(VulkanRHI::GetDeviceHandle(), functionName);
 
@@ -87,10 +85,8 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 	m_minImagesNum = windowInfo.m_minImageCount;
 
 	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();
-	const VkDevice deviceHandle						= device.GetHandle();
 	const VkPhysicalDevice physicalDeviceHandle		= VulkanRHI::GetPhysicalDeviceHandle();
 	const VkSurfaceKHR surfaceHandle				= VulkanRHI::GetSurfaceHandle();
-	const VkInstance instanceHandle					= VulkanRHI::GetInstanceHandle();
 
 	const Bool success = ImGui_ImplVulkan_LoadFunctions(&priv::LoadVulkanFunction, nullptr);
 	SPT_CHECK(success);

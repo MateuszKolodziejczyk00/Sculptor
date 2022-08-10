@@ -30,7 +30,7 @@ class LoggerStreamGuard
 {
 public:
 	
-	LoggerStreamGuard(const lib::String& filePath)
+	explicit LoggerStreamGuard(const lib::String& filePath)
 	{
 		m_stream.open(filePath, std::ios::trunc);
 	}

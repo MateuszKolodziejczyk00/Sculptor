@@ -10,9 +10,8 @@ namespace spt::renderer
 
 CommandsRecorder::CommandsRecorder(const CommandsRecordingInfo& recordingInfo)
 	: m_state(ECommandsRecorderState::Invalid)
-{
-	m_commandsBuffer = RendererBuilder::CreateCommandBuffer(recordingInfo.m_commandsBufferName, recordingInfo.m_commandBufferDef);
-}
+	, m_commandsBuffer(RendererBuilder::CreateCommandBuffer(recordingInfo.m_commandsBufferName, recordingInfo.m_commandBufferDef))
+{ }
 
 CommandsRecorder::~CommandsRecorder()
 {

@@ -127,8 +127,8 @@ RequiredExtensionsInfo GLFWWindow::GetRequiredRHIExtensionNames()
 }
 
 GLFWWindow::GLFWWindow(lib::StringView name, math::Vector2u resolution)
+	: m_windowData(std::make_unique<GLFWWindowData>())
 {
-	m_windowData = std::make_unique<GLFWWindowData>();
 
 	InitializeWindow(name, resolution);
 }

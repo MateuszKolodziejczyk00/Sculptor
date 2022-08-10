@@ -37,7 +37,7 @@ class RENDERER_CORE_API CommandsRecorder
 {
 public:
 
-	CommandsRecorder(const CommandsRecordingInfo& recordingInfo);
+	explicit CommandsRecorder(const CommandsRecordingInfo& recordingInfo);
 	~CommandsRecorder();
 
 	Bool									IsRecording() const;

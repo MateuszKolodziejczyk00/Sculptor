@@ -241,13 +241,13 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
         lib::DynamicArray<VkCommandBufferSubmitInfo>& cmdBuffersSubmitBatch = commandBuffersBatches[idx];
         cmdBuffersSubmitBatch.resize(cmdBuffers.size());
 
-        for (SizeType idx = 0; idx < cmdBuffers.size(); ++idx)
+        for (SizeType batchIdx = 0; batchIdx < cmdBuffers.size(); ++batchIdx)
         {
-            SPT_CHECK(cmdBuffers[idx]->GetQueueType() == queueType);
+            SPT_CHECK(cmdBuffers[batchIdx]->GetQueueType() == queueType);
 
-            VkCommandBufferSubmitInfo& cmdBufferSubmit  = cmdBuffersSubmitBatch[idx];
+            VkCommandBufferSubmitInfo& cmdBufferSubmit  = cmdBuffersSubmitBatch[batchIdx];
             cmdBufferSubmit.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            cmdBufferSubmit.commandBuffer               = cmdBuffers[idx]->GetHandle();
+            cmdBufferSubmit.commandBuffer               = cmdBuffers[batchIdx]->GetHandle();
             cmdBufferSubmit.deviceMask                  = 0;
         }
 
