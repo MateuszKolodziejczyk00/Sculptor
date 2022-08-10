@@ -11,9 +11,17 @@ namespace spt::sc
 
 struct CompilationEnvironmentDef
 {
+	CompilationEnvironmentDef()
+		: m_targetEnvironment(ETargetEnvironment::None)
+		, m_generateDebugInfo(false)
+		, m_useCompiledShadersCode(true)
+	{ }
+
 	ETargetEnvironment		m_targetEnvironment;
 
 	Bool					m_generateDebugInfo;
+
+	Bool					m_useCompiledShadersCode;
 
 	lib::String				m_shadersPath;
 
@@ -32,6 +40,8 @@ public:
 	static Bool						CanCompile();
 
 	static Bool						ShouldGenerateDebugInfo();
+
+	static Bool						ShouldUseCompiledShadersCache();
 
 	static ETargetEnvironment		GetTargetEnvironment();
 

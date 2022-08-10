@@ -25,6 +25,11 @@ Bool ShaderCompilationEnvironment::ShouldGenerateDebugInfo()
 	return priv::g_environmentDef.m_generateDebugInfo;
 }
 
+Bool ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
+{
+	return priv::g_environmentDef.m_useCompiledShadersCode;
+}
+
 ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
 {
 	return priv::g_environmentDef.m_targetEnvironment;
