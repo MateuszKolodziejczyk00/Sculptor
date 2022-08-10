@@ -1,5 +1,6 @@
 StartProjectsType(EProjectType.ThirdParty)
 
+IncludeProject("VulkanSDK")
 IncludeProject("Eigen")
 IncludeProject("GLFW")
 IncludeProject("Spdlog")
