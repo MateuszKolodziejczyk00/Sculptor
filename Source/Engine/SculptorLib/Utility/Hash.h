@@ -27,7 +27,7 @@ public:
 
 	enum
 	{
-		value = sizeof(IsHashableImpl<TType>(0)) == sizeof(Uint64);
+		value = sizeof(IsHashableImpl<TType>(0)) == sizeof(Uint64)
 	};
 };
 
