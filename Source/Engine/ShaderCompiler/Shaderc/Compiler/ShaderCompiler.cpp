@@ -2,6 +2,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Common/CompilationErrorsLogger.h"
+#include "Common/CompiledShadersCache.h"
 
 #include <fstream>
 
@@ -165,7 +166,7 @@ public:
 
 	CompilerImpl();
 
-	ShaderCompilationResult		CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
 
 protected:
 
@@ -184,13 +185,13 @@ private:
 CompilerImpl::CompilerImpl()
 { }
 
-ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 
 	SPT_CHECK(m_compiler.IsValid());
 
-	ShaderCompilationResult output;
+	CompiledShader output;
 
 	shaderc::CompileOptions options = CreateCompileOptions(sourceCode, compilationSettings);
 
@@ -215,7 +216,7 @@ ShaderCompilationResult CompilerImpl::CompileShader(const ShaderSourceCode& sour
 		return output;
 	}
 
-	output.m_binary = lib::DynamicArray<Uint32>(compilationResult.cbegin(), compilationResult.cend());
+	output.SetBinary(lib::DynamicArray<Uint32>(compilationResult.cbegin(), compilationResult.cend()));
 
 	return output;
 }
@@ -286,9 +287,30 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 ShaderCompiler::ShaderCompiler()
 { }
 
-ShaderCompilationResult ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
 {
-	return m_impl->CompileShader(sourceCode, compilationSettings);
+	SPT_PROFILE_FUNCTION();
+
+	const Bool shouldUseShadersCache = ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
+	
+	CompiledShader shader;
+
+	if (shouldUseShadersCache)
+	{
+		shader = CompiledShadersCache::TryGetCachedShader(sourceCode, compilationSettings);
+	}
+
+	if (!shader.IsValid())
+	{
+		shader = m_impl->CompileShader(sourceCode, compilationSettings);
+
+		if (shouldUseShadersCache)
+		{
+			CompiledShadersCache::CacheShader(sourceCode, compilationSettings, shader);
+		}
+	}
+
+	return shader;
 }
 
 }
