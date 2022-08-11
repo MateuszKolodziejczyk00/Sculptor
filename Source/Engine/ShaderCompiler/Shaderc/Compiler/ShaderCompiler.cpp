@@ -226,13 +226,11 @@ shaderc::CompileOptions CompilerImpl::CreateCompileOptions(const ShaderSourceCod
 
 	shaderc::CompileOptions options;
 
-	const lib::DynamicArray<MacroDefinition>& macros = compilationSettings.GetMacros();
+	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
-	lib::String macroAsString;
-	for (const MacroDefinition& macroDef : macros)
+	for (const lib::HashedString& macro: macros)
 	{
-		macroAsString = macroDef.m_macro.GetView();
-		options.AddMacroDefinition(macroAsString);
+		options.AddMacroDefinition(macro.ToString());
 	}
 
 	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();

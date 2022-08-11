@@ -18,7 +18,7 @@ public:
 
 private:
 
-	using HashType		= Uint64;
+	using HashType		= SizeType;
 
 	static Bool			CanUseShadersCache();
 

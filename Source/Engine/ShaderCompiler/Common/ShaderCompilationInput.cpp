@@ -47,6 +47,13 @@ SizeType ShaderSourceCode::GetSourceLength() const
 	return m_code.size();
 }
 
+SizeType ShaderSourceCode::Hash() const
+{
+	SPT_PROFILE_FUNCTION();
+
+	return m_name.GetKey() ^ static_cast<SizeType>(m_type);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderCompilationSettings =====================================================================
 
@@ -57,12 +64,22 @@ void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 {
 	SPT_PROFILE_FUNCTION();
 
-	m_macros.push_back(macro);
+	if (macro.IsValid())
+	{
+		m_macros.push_back(macro.m_macro);
+	}
 }
 
-const lib::DynamicArray<MacroDefinition>& ShaderCompilationSettings::GetMacros() const
+const lib::DynamicArray<lib::HashedString>& ShaderCompilationSettings::GetMacros() const
 {
 	return m_macros;
+}
+
+SizeType ShaderCompilationSettings::Hash() const
+{
+	SPT_PROFILE_FUNCTION();
+
+	return lib::HashRange(m_macros.cbegin(), m_macros.cend());
 }
 
 }

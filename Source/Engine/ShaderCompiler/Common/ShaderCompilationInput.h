@@ -24,6 +24,8 @@ public:
 	const char*					GetSourcePtr() const;
 	SizeType					GetSourceLength() const;
 
+	SizeType					Hash() const;
+
 private:
 
 	lib::HashedString			m_name;
@@ -42,11 +44,13 @@ public:
 
 	void										AddMacroDefinition(MacroDefinition macro);
 
-	const lib::DynamicArray<MacroDefinition>&	GetMacros() const;
+	const lib::DynamicArray<lib::HashedString>&	GetMacros() const;
+
+	SizeType									Hash() const;
 
 private:
 
-	lib::DynamicArray<MacroDefinition>			m_macros;
+	lib::DynamicArray<lib::HashedString>		m_macros;
 };
 
 }

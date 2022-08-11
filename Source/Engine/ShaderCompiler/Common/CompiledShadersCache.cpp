@@ -1,5 +1,6 @@
 #include "CompiledShadersCache.h"
 #include "ShaderCompilationEnvironment.h"
+#include "ShaderCompilationInput.h"
 
 #include <fstream>
 #include <filesystem>
@@ -28,7 +29,7 @@ CompiledShadersCache::HashType CompiledShadersCache::HashShader(const ShaderSour
 	
 	SPT_CHECK(CanUseShadersCache());
 
-	return 0;
+	return sourceCode.Hash() ^ compilationSettings.Hash();
 }
 
 lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
