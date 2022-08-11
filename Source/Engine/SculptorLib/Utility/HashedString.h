@@ -126,3 +126,21 @@ private:
 using HashedString = HashedStringBase<HashedStringDB>;
 
 }
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::lib::HashedString>
+{
+
+	size_t operator()(spt::lib::HashedString string) const
+	{
+		static_assert(std::is_convertible_v<spt::lib::HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
+		return static_cast<size_t>(string.GetKey());
+	}
+
+};
+
+}

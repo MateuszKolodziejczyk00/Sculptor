@@ -21,3 +21,4 @@
 #include "Utility/Memory.h"
 #include "Utility/Mutex.h"
 #include "Utility/Color.h"
+#include "Utility/Hash.h"
