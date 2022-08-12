@@ -19,6 +19,6 @@
 #include "Utility/HashedString.h"
 #include "Utility/UtilityMacros.h"
 #include "Utility/Memory.h"
-#include "Utility/Mutex.h"
+#include "Utility/Lock.h"
 #include "Utility/Color.h"
 #include "Utility/Hash.h"
