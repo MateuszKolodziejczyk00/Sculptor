@@ -1,7 +1,7 @@
 #include "HashedStringDB.h"
 #include "Containers/HashMap.h"
 #include "Profiler.h"
-#include "Mutex.h"
+#include "Lock.h"
 
 
 namespace spt::lib
