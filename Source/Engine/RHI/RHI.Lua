@@ -12,8 +12,8 @@ end
 function RHI:GetProjectFiles(configuration, platform)
     return
     {
-        "RHIBidge/**.h",
-        "RHIBidge/**.cpp",
+        "RHIBridge/**.h",
+        "RHIBridge/**.cpp",
         "RHICore/**.h",
         "RHICore/**.cpp",
         self:GetRHIDirectoryName() .. "/**.h",
