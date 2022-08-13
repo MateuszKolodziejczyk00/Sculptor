@@ -21,3 +21,6 @@
 	path = Source/ThirdParty/ImGui/ImGui
 	url = https://github.com/MateuszKolodziejczyk00/imgui
 	branch = docking
+[submodule "Source/ThirdParty/YAML/YAML"]
+	path = Source/ThirdParty/YAML/YAML
+	url = https://github.com/jbeder/yaml-cpp

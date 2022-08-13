@@ -7,6 +7,7 @@ IncludeProject("Spdlog")
 IncludeProject("Volk")
 IncludeProject("VMA")
 IncludeProject("Optick")
+IncludeProject("YAML")
 
 SetProjectsSubgroupName("ImGui")
 IncludeProject("ImGui")

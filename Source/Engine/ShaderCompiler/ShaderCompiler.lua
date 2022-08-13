@@ -6,6 +6,7 @@ function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")
 
     self:AddPrivateDependency("Tokenizer")
+    self:AddPrivateDependency("YAML")
 
     self:SetupPlatformConfiguration(configuration, platform)
 end

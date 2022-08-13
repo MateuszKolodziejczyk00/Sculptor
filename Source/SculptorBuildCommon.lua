@@ -224,7 +224,7 @@ function Project:BuildConfiguration(configuration, platform)
 
     -- warnings
     if self:AreWarningsDisabled(configuration) then
-        disablewarnings { "warning" }
+        warnings "Off"
     end
 end
 
