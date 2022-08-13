@@ -134,7 +134,7 @@ VkSemaphore RHISemaphore::GetHandle() const
 RHISemaphoresArray::RHISemaphoresArray()
 { }
 
-void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage::Flags submitStage)
+void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, Flags32 submitStage)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -143,7 +143,7 @@ void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::
 	AddSemaphoreInfo(semaphore.GetHandle(), 0, submitStage);
 }
 
-void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage)
+void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, Flags32 submitStage)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -162,7 +162,7 @@ SizeType RHISemaphoresArray::GetSemaphoresNum() const
 	return m_submitInfos.size();
 }
 
-void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage)
+void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, Uint64 value, Flags32 submitStage)
 {
 	VkSemaphoreSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
     submitInfo.semaphore = semaphore;

@@ -20,6 +20,7 @@ workspace "Sculptor"
 	cppdialect "C++17"
 	
 	flags { "FatalWarnings", "MultiProcessorCompile" }
+	warnings "Extra"
 	
 	filter { "platforms:x64"}
         architecture "x86_64"

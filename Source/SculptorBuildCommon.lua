@@ -223,8 +223,13 @@ function Project:BuildConfiguration(configuration, platform)
 	files (self:GetProjectFiles(configuration, platform))
 
     -- warnings
+    -- by default use normal warnings level for third party projects, and highest level for sculptor projects
     if self:AreWarningsDisabled(configuration) then
         warnings "Off"
+    elseif ( self.projectType == EProjectType.ThirdParty) then
+        warnings "Default"
+    else
+        warnings "Extra"
     end
 end
 

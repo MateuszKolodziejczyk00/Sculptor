@@ -67,8 +67,8 @@ public:
 
 	SemaphoresArray();
 
-	void								AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binarySemaphore, rhi::EPipelineStage::Flags submitStage);
-	void								AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value, rhi::EPipelineStage::Flags submitStage);
+	void								AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binarySemaphore, Flags32 submitStage);
+	void								AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value, Flags32 submitStage);
 
 	const rhi::RHISemaphoresArray&		GetRHISemaphores() const;
 

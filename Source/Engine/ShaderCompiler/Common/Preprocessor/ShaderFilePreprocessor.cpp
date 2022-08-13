@@ -15,7 +15,7 @@ enum Type : Uint32
 	NUM
 };
 
-}
+} // EToken
 
 static const lib::StaticArray<tkn::Token, EToken::NUM> tokens
 {
@@ -46,7 +46,7 @@ static ECompiledShaderType StringToShaderType(lib::StringView typeName)
 	return ECompiledShaderType::None;
 }
 
-}
+} // internal
 
 
 ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSourceCode(const lib::String& sourceCode)
@@ -57,7 +57,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 	const tkn::Tokenizer tokenizer(sourceCode, tokens);
 
-	const tkn::TokensArray tokens = tokenizer.BuildTokensArray();
+	const tkn::TokensArray tokensArray = tokenizer.BuildTokensArray();
 
 	lib::StringView currentGroupName;
 	
@@ -91,10 +91,10 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 			processor.VisitTokens(shadersVisitor, tokenInfo, nextGroupToken);
 		});
 
-	tkn::TokensProcessor tokensProcessor(tokens);
+	tkn::TokensProcessor tokensProcessor(tokensArray);
 	tokensProcessor.VisitAllTokens(groupsVisitor);
 
 	return result;
 }
 
-}
+} // spt::sc
