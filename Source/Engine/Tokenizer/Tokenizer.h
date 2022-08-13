@@ -45,7 +45,7 @@ struct TokenInfo
 };
 
 
-using TokensQueue = lib::DynamicArray<TokenInfo>;
+using TokensArray = lib::DynamicArray<TokenInfo>;
 
 
 namespace EDivideByTokensFlags
@@ -68,11 +68,14 @@ public:
 
 	Tokenizer(lib::StringView string, const TTokenizerDictionary& dictionary);
 
-	TokensQueue							BuildTokens() const;
+	TokensArray							BuildTokensArray() const;
 
-	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensQueue& tokens, Flags32 flags) const;
+	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, Flags32 flags) const;
 
-	lib::StringView						GetBetweenTokens(const TokenInfo& first, const TokenInfo& second) const;
+	lib::StringView						GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const;
+
+	lib::StringView						GetStringBeforeToken(const TokenInfo& token) const;
+	lib::StringView						GetStringAfterToken(const TokenInfo& token) const;
 
 private:
 
@@ -90,6 +93,7 @@ private:
 	const TTokenizerDictionary&			m_dictionary;
 };
 
+
 template<typename TTokenizerDictionary>
 Tokenizer<TTokenizerDictionary>::Tokenizer(lib::StringView string, const TTokenizerDictionary& dictionary)
 	: m_string(string)
@@ -97,11 +101,11 @@ Tokenizer<TTokenizerDictionary>::Tokenizer(lib::StringView string, const TTokeni
 { }
 
 template<typename TTokenizerDictionary>
-TokensQueue Tokenizer<TTokenizerDictionary>::BuildTokens() const
+TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
 {
 	SPT_PROFILE_FUNCTION();
 
-	TokensQueue tokens;
+	TokensArray tokens;
 
 	// It's kinda slow implementation but hopefully for now it will be enough
 	for (SizeType tokenTypeIdx = 0; tokenTypeIdx < m_dictionary.size(); ++tokenTypeIdx)
@@ -122,7 +126,7 @@ TokensQueue Tokenizer<TTokenizerDictionary>::BuildTokens() const
 			}
 
 			const TokenInfo token(tokenTypeIdx, currentPosition);
-			const auto emplaceLocation = std::lower_bound(std::begin(tokens), std::end(tokens), token);
+			const auto emplaceLocation = std::lower_bound(std::cbegin(tokens), std::cend(tokens), token);
 
 			tokens.emplace(emplaceLocation, token);
 		}
@@ -132,7 +136,7 @@ TokensQueue Tokenizer<TTokenizerDictionary>::BuildTokens() const
 }
 
 template<typename TTokenizerDictionary>
-lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByTokens(const TokensQueue& tokens, Flags32 flags) const
+lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByTokens(const TokensArray& tokens, Flags32 flags) const
 {
 	lib::DynamicArray<lib::StringView> strings;
 	strings.reserve(tokens.size() + 1);
@@ -143,26 +147,30 @@ lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByToke
 		return strings;
 	}
 
-	const Bool includeStringBeforeFirstToken = tokens[0].m_tokenPosition != 0 && (flags & EDivideByTokensFlags::IncludeStringBeforeFirstToken);
+	const Bool includeStringBeforeFirstToken = tokens[0].m_tokenPosition != 0 && ;
 
-	if (includeStringBeforeFirstToken)
+	if ((flags & EDivideByTokensFlags::IncludeStringBeforeFirstToken) != 0)
 	{
-		strings.emplace_back(lib::StringView(std::begin(m_string), std::begin(m_string) + tokens[0].m_tokenPosition));
+		const lib::StringView stringBeforeToken = GetStringAfterToken(tokens[0]);
+
+		if(!stringBeforeToken.empty())
+		{
+			strings.emplace_back(stringBeforeToken);
+		}
 	}
 
 	for (SizeType idx = 1; idx < tokens.size(); ++idx)
 	{
-		strings.emplace_back(GetBetweenTokens(tokens[idx - 1], tokens[idx]));
+		strings.emplace_back(GetStringBetweenTokens(tokens[idx - 1], tokens[idx]));
 	}
 
 	if ((flags & EDivideByTokensFlags::IncludeStringAfterLastToken) != 0)
 	{
-		const TokenInfo lastToken = tokens[tokens.size() - 1];
-		const SizeType lastTokenEndPosition = GetTokenEndPosition(lastToken);
+		const lib::StringView stringAfterToken = GetStringAfterToken(tokens[tokens.size() - 1]);
 
-		if(lastTokenEndPosition < m_string.size())
+		if(!stringAfterToken.empty())
 		{
-			strings.emplace_back(lib::StringView(std::begin(m_string) + lastTokenEndPosition, std::begin(m_string) + m_string.size()));
+			strings.emplace_back(stringAfterToken);
 		}
 	}
 
@@ -170,7 +178,7 @@ lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByToke
 }
 
 template<typename TTokenizerDictionary>
-lib::StringView Tokenizer<TTokenizerDictionary>::GetBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
+lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
 {
 	SPT_CHECK(first.IsValid() && second.IsValid() && first < second);
 
@@ -179,7 +187,25 @@ lib::StringView Tokenizer<TTokenizerDictionary>::GetBetweenTokens(const TokenInf
 	const SizeType beginPosition	= first.m_tokenPosition + firstTokenLength;
 	const SizeType endPosition		= second.m_tokenPosition;
 
-	return lib::StringView(std::begin(m_string) + beginPosition, std::begin(m_string) + endPosition);
+	return lib::StringView(std::cbegin(m_string) + beginPosition, std::cbegin(m_string) + endPosition);
+}
+
+template<typename TTokenizerDictionary>
+lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBeforeToken(const TokenInfo& token) const
+{
+	SPT_CHECK(token.IsValid());
+
+	return lib::StringView(std::cbegin(m_string), std::cbegin(m_string) + token.m_tokenPosition);
+}
+
+template<typename TTokenizerDictionary>
+lib::StringView Tokenizer<TTokenizerDictionary>::GetStringAfterToken(const TokenInfo& token) const
+{
+	SPT_CHECK(token.IsValid());
+
+	const SizeType tokenEndPosition = GetTokenEndPosition(token);
+
+	return lib::StringView(std::cbegin(m_string) + tokenEndPosition, std::cend(m_string));
 }
 
 }
