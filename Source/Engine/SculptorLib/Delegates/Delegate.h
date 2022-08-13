@@ -9,7 +9,7 @@ namespace spt::lib
 {
 
 template<Bool isThreadSafe>
-class DelegateConditionalData
+class DelegateConditionalThreadSafeData
 {
 protected:
 	
@@ -23,7 +23,7 @@ protected:
 
 
 template<>
-class DelegateConditionalData<true>
+class DelegateConditionalThreadSafeData<true>
 {
 protected:
 
@@ -43,7 +43,7 @@ private:
  * Basic Delegate, that can be used for m_binding and executing callables
  */
 template<Bool isThreadSafe, typename... Args>
-class DelegateBase : private DelegateConditionalData<isThreadSafe>
+class DelegateBase : private DelegateConditionalThreadSafeData<isThreadSafe>
 {
 public:
 
@@ -78,6 +78,8 @@ public:
 
 private:
 
+	using ThreadSafeUtils = DelegateConditionalThreadSafeData<isThreadSafe>;
+
 	UniquePtr<internal::DelegateBindingInterface<Args...>> m_binding;
 };
 
@@ -85,7 +87,7 @@ template<Bool isThreadSafe, typename... Args>
 template<typename ObjectType, typename FuncType>
 void DelegateBase<isThreadSafe, Args...>::BindMember(ObjectType* user, FuncType function)
 {
-	const LockType lock = LockIfNecessary();
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateMemberBinding<ObjectType, FuncType, Args...>(user, function);
 }
 
@@ -93,7 +95,7 @@ template<Bool isThreadSafe, typename... Args>
 template<typename FuncType>
 void DelegateBase<isThreadSafe, Args...>::BindRaw(FuncType* function)
 {
-	const LockType lock = LockIfNecessary();
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateBinding<FuncType, Args...>(function);
 }
 
@@ -101,14 +103,14 @@ template<Bool isThreadSafe, typename... Args>
 template<typename Lambda>
 void DelegateBase<isThreadSafe, Args...>::BindLambda(Lambda&& functor)
 {
-	const LockType lock = LockIfNecessary();
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, Args...>(std::forward<Lambda>(functor));
 }
 
 template<Bool isThreadSafe, typename... Args>
 void DelegateBase<isThreadSafe, Args...>::ExecuteIfBound(const Args&... arguments) const
 {
-	const LockType lock = LockIfNecessary();
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	if (m_binding.get() && m_binding->IsValid())
 	{
 		m_binding->Execute(arguments...);
@@ -118,7 +120,7 @@ void DelegateBase<isThreadSafe, Args...>::ExecuteIfBound(const Args&... argument
 template<Bool isThreadSafe, typename... Args>
 void DelegateBase<isThreadSafe, Args...>::Unbind()
 {
-	const LockType lock = LockIfNecessary();
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	m_binding.reset();
 }
 
