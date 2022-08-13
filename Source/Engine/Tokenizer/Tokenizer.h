@@ -1,9 +1,13 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "Delegates/Delegate.h"
 
 namespace spt::tkn
 {
+
+class TokensProcessor;
+
 
 using Token		= lib::String;
 using TokenView = lib::String;
@@ -18,11 +22,13 @@ struct TokenInfo
 	TokenInfo()
 		: m_tokenTypeIdx(idxNone<SizeType>)
 		, m_tokenPosition(idxNone<SizeType>)
+		, m_idx(idxNone<SizeType>)
 	{ }
 
 	TokenInfo(SizeType tokenTypeIdx, SizeType tokenPosition)
 		: m_tokenTypeIdx(tokenTypeIdx)
 		, m_tokenPosition(tokenPosition)
+		, m_idx(idxNone<SizeType>)
 	{ }
 
 	Bool IsValid() const
@@ -42,6 +48,7 @@ struct TokenInfo
 
 	SizeType			m_tokenTypeIdx;
 	SizeType			m_tokenPosition;
+	SizeType			m_idx;
 };
 
 
@@ -110,7 +117,7 @@ TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
 	// It's kinda slow implementation but hopefully for now it will be enough
 	for (SizeType tokenTypeIdx = 0; tokenTypeIdx < m_dictionary.size(); ++tokenTypeIdx)
 	{
-		const Token& token 
+		const Token& token = m_dictionary[tokenTypeIdx];
 
 		SizeType currentPosition = 0;
 
@@ -125,12 +132,19 @@ TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
 				break;
 			}
 
-			const TokenInfo token(tokenTypeIdx, currentPosition);
-			const auto emplaceLocation = std::lower_bound(std::cbegin(tokens), std::cend(tokens), token);
+			const TokenInfo tokenInfo(tokenTypeIdx, currentPosition);
+			const auto emplaceLocation = std::lower_bound(std::cbegin(tokens), std::cend(tokens), tokenInfo);
 
-			tokens.emplace(emplaceLocation, token);
+			tokens.emplace(emplaceLocation, tokenInfo);
 		}
 	}
+
+	auto idxBuilder = [currentIdx = 0](TokenInfo& token) mutable
+	{
+		token.m_idx = currentIdx++;
+	};
+
+	std::for_each(std::begin(tokens), std::end(tokens), idxBuilder);
 
 	return tokens;
 }
@@ -206,6 +220,108 @@ lib::StringView Tokenizer<TTokenizerDictionary>::GetStringAfterToken(const Token
 	const SizeType tokenEndPosition = GetTokenEndPosition(token);
 
 	return lib::StringView(std::cbegin(m_string) + tokenEndPosition, std::cend(m_string));
+}
+
+
+class TokensVisitor
+{
+	friend TokensProcessor;
+
+public:
+
+	using TokenVisitorDelegate = lib::Delegate<TokenInfo/* tokenInfo*/, const TokensProcessor& /*processor*/>;
+
+	TokenVisitorDelegate& BindToToken(SizeType tokenTypeIdx)
+	{
+		return m_visitors[tokenTypeIdx];
+	}
+
+private:
+
+	void ExecuteOnToken(const TokenInfo& token, const TokensProcessor& processor) const
+	{
+		const auto foundVisitor = m_visitors.find(token.m_tokenTypeIdx);
+		if (foundVisitor != std::cend(m_visitors))
+		{
+			foundVisitor->second.ExecuteIfBound(token, processor);
+		}
+	}
+
+	lib::HashMap<SizeType, TokenVisitorDelegate> m_visitors;
+};
+
+
+class TokensProcessor
+{
+public:
+
+	TokensProcessor(const TokensArray& tokens)
+		: m_tokens(tokens)
+	{ }
+
+	const TokensArray&		GetTokens() const;
+
+	TokenInfo				FindNextToken(const TokenInfo& currentToken) const;
+	TokenInfo				FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const;
+
+	void					VisitAllTokens(const TokensVisitor& visitor) const;
+
+	void					VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const;
+
+private:
+
+	void					VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const;
+
+	const TokensArray&		m_tokens;
+};
+
+const TokensArray& TokensProcessor::GetTokens() const
+{
+	return m_tokens;
+}
+
+TokenInfo TokensProcessor::FindNextToken(const TokenInfo& currentToken) const
+{
+	const bool nextTokenExists = currentToken.IsValid() && currentToken.m_idx < m_tokens.size() - 1;
+	return nextTokenExists ? m_tokens[currentToken.m_idx + 1] : TokenInfo();
+}
+
+TokenInfo TokensProcessor::FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const
+{
+	if (currentToken.IsValid() && currentToken.m_idx != m_tokens.size() - 1)
+	{
+		const auto foundToken = std::find_if(std::cbegin(m_tokens) + currentToken.m_idx + 1, std::cend(m_tokens),
+			[tokenTypeIdx](const TokenInfo& token)
+			{
+				return token.m_tokenTypeIdx == tokenTypeIdx;
+			});
+
+		return foundToken != std::cend(m_tokens) ? *foundToken : TokenInfo();
+	}
+
+	return TokenInfo();
+}
+
+void TokensProcessor::VisitAllTokens(const TokensVisitor& visitor) const
+{
+	VisitImpl(visitor, 0, m_tokens.size());
+}
+
+void TokensProcessor::VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const
+{
+	const SizeType beginIdx = begin.IsValid() ? begin.m_idx : 0;
+	const SizeType endIdx = end.IsValid() ? end.m_idx : m_tokens.size();
+
+	VisitImpl(visitor, beginIdx, endIdx);
+}
+
+void TokensProcessor::VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const
+{
+	std::for_each(std::cbegin(m_tokens) + begin, std::cend(m_tokens) + end,
+		[&visitor, this](const TokenInfo& token)
+		{
+			visitor.ExecuteOnToken(token, *this);
+		});
 }
 
 }
