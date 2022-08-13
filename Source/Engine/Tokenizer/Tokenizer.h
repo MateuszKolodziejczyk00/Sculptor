@@ -62,7 +62,8 @@ enum Flags : Flags32
 {
 	None							= 0,
 	IncludeStringBeforeFirstToken	= BIT(1),
-	IncludeStringAfterLastToken		= BIT(2) 
+	IncludeStringAfterLastToken		= BIT(2),
+	IncludeBeginTokens				= BIT(3)
 };
 
 }
@@ -83,8 +84,6 @@ public:
 
 	lib::StringView						GetStringBeforeToken(const TokenInfo& token) const;
 	lib::StringView						GetStringAfterToken(const TokenInfo& token) const;
-
-private:
 
 	SizeType							GetTokenLength(SizeType tokenTypeIdx) const
 	{
@@ -194,14 +193,14 @@ lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByToke
 template<typename TTokenizerDictionary>
 lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
 {
-	SPT_CHECK(first.IsValid() && second.IsValid() && first < second);
+	SPT_CHECK(first < second);
 
-	const SizeType firstTokenLength = GetTokenLength(first.m_tokenTypeIdx);
+	const SizeType beginPosition	= first.IsValid() ? first.m_tokenPosition : 0;
+	const SizeType endPosition		= second.IsValid() ? second.m_tokenPosition : m_string.size();
 
-	const SizeType beginPosition	= first.m_tokenPosition + firstTokenLength;
-	const SizeType endPosition		= second.m_tokenPosition;
+	const SizeType length = endPosition - beginPosition;
 
-	return lib::StringView(std::cbegin(m_string) + beginPosition, std::cbegin(m_string) + endPosition);
+	return lib::StringView(m_string.data() + beginPosition, length);
 }
 
 template<typename TTokenizerDictionary>
@@ -209,7 +208,7 @@ lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBeforeToken(const Toke
 {
 	SPT_CHECK(token.IsValid());
 
-	return lib::StringView(std::cbegin(m_string), std::cbegin(m_string) + token.m_tokenPosition);
+	return lib::StringView(m_string.data(), token.m_tokenPosition);
 }
 
 template<typename TTokenizerDictionary>
@@ -217,9 +216,9 @@ lib::StringView Tokenizer<TTokenizerDictionary>::GetStringAfterToken(const Token
 {
 	SPT_CHECK(token.IsValid());
 
-	const SizeType tokenEndPosition = GetTokenEndPosition(token);
+	const SizeType length = m_string.size() - token.m_tokenPosition;
 
-	return lib::StringView(std::cbegin(m_string) + tokenEndPosition, std::cend(m_string));
+	return lib::StringView(m_string.data() + token.m_tokenPosition, length);
 }
 
 
@@ -323,5 +322,26 @@ void TokensProcessor::VisitImpl(const TokensVisitor& visitor, const SizeType beg
 			visitor.ExecuteOnToken(token, *this);
 		});
 }
+
+
+class TokenizerUtils
+{
+public:
+
+	static lib::StringView		GetNearestStringBetween(lib::StringView string, char startCharacter, char endCharacter)
+	{
+		const SizeType startPosition	= string.find(startCharacter, 0);
+		const SizeType endPosition		= string.find(endCharacter, startPosition + 1);
+
+		return startPosition != lib::StringView::npos && endPosition != lib::StringView::npos
+			? lib::StringView(string.data() + startPosition + 1, endPosition - startPosition)
+			: lib::StringView();
+	}
+
+	static lib::StringView		GetStringInNearestBracket(lib::StringView string)
+	{
+		return GetNearestStringBetween(string, '(', ')');
+	}
+};
 
 }
