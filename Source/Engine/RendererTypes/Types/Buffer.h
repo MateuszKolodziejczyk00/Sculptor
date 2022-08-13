@@ -2,6 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "RHIBridge/RHIBufferImpl.h"
+#include "RendererResource.h"
 
 
 namespace spt::rhi
@@ -17,21 +18,17 @@ class BufferView;
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API Buffer : public lib::SharedFromThis<Buffer>
+class RENDERER_TYPES_API Buffer : public RendererResource<rhi::RHIBuffer>, public lib::SharedFromThis<Buffer>
 {
+protected:
+
+	using ResourceType = RendererResource<rhi::RHIBuffer>;
+
 public:
 
 	Buffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
-	~Buffer();
-
-	rhi::RHIBuffer&					GetRHI();
-	const rhi::RHIBuffer&			GetRHI() const;
 
 	lib::SharedPtr<BufferView>		CreateView(Uint64 offset, Uint64 size) const;
-
-private:
-
-	rhi::RHIBuffer					m_rhiBuffer;
 };
 
 

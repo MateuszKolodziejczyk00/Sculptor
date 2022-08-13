@@ -1,5 +1,4 @@
 #include "Buffer.h"
-#include "CurrentFrameContext.h"
 #include "RendererUtils.h"
 
 
@@ -11,33 +10,8 @@ namespace spt::renderer
 
 Buffer::Buffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	SPT_PROFILE_FUNCTION();
-
-	m_rhiBuffer.InitializeRHI(size, bufferUsage, allocationInfo);
-	m_rhiBuffer.SetName(name.Get());
-}
-
-Buffer::~Buffer()
-{
-	SPT_PROFILE_FUNCTION();
-
-	SPT_CHECK(m_rhiBuffer.IsValid());
-
-	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
-		[resource = m_rhiBuffer]() mutable
-		{
-			resource.ReleaseRHI();
-		});
-}
-
-rhi::RHIBuffer& Buffer::GetRHI()
-{
-	return m_rhiBuffer;
-}
-
-const rhi::RHIBuffer& Buffer::GetRHI() const
-{
-	return m_rhiBuffer;
+	GetRHI().InitializeRHI(size, bufferUsage, allocationInfo);
+	GetRHI().SetName(name.Get());
 }
 
 lib::SharedPtr<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
