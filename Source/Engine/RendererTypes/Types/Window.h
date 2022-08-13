@@ -1,9 +1,10 @@
 #pragma once
 
 #include "RendererTypesMacros.h"
-#include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIWindowImpl.h"
-#include "Window/PlatformWindowFwd.h"
+#include "SculptorCoreTypes.h"
+#include "RendererResource.h"
+#include "Window/PlatformWindowImpl.h"
 #include "UITypes.h"
 
 
@@ -15,15 +16,15 @@ class Texture;
 class SemaphoresArray;
 
 
-class RENDERER_TYPES_API Window
+class RENDERER_TYPES_API Window : public RendererResource<rhi::RHIWindow>
 {
+protected:
+
+	using ResourceType = RendererResource<rhi::RHIWindow>;
+
 public:
 
 	Window(lib::StringView name, math::Vector2u resolution);
-	~Window();
-
-	rhi::RHIWindow&									GetRHI();
-	const rhi::RHIWindow&							GetRHI() const;
 
 	Bool											ShouldClose() const;
 

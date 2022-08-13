@@ -2,6 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "RHIBridge/RHISemaphoreImpl.h"
+#include "RendererResource.h"
 
 
 namespace spt::rhi
@@ -16,19 +17,15 @@ namespace spt::renderer
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API Semaphore
+class RENDERER_TYPES_API Semaphore : public RendererResource<rhi::RHISemaphore>
 {
+protected:
+
+	using ResourceType = RendererResource<rhi::RHISemaphore>;
+
 public:
 
 	Semaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
-	~Semaphore();
-
-	rhi::RHISemaphore&				GetRHI();
-	const rhi::RHISemaphore&		GetRHI() const;
-
-private:
-	
-	rhi::RHISemaphore				m_rhiSemaphore;
 };
 
 }

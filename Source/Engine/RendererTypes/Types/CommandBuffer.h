@@ -1,8 +1,9 @@
 #pragma once
 
 #include "RendererTypesMacros.h"
-#include "SculptorCoreTypes.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
+#include "RendererResource.h"
+#include "SculptorCoreTypes.h"
 
 
 namespace spt::rhi
@@ -18,22 +19,18 @@ namespace spt::renderer
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API CommandBuffer
+class RENDERER_TYPES_API CommandBuffer : public RendererResource<rhi::RHICommandBuffer>
 {
+protected:
+
+	using ResourceType = RendererResource<rhi::RHICommandBuffer>;
+
 public:
 
 	CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
-	~CommandBuffer();
-
-	rhi::RHICommandBuffer&			GetRHI();
-	const rhi::RHICommandBuffer&	GetRHI() const;
 
 	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
 	void							FinishRecording();
-
-private:
-
-	rhi::RHICommandBuffer			m_cmdBuffer;
 };
 
 }

@@ -1,6 +1,4 @@
 #include "Window.h"
-#include "Window/PlatformWindowImpl.h"
-#include "CurrentFrameContext.h"
 #include "RendererUtils.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHIBridge/RHIImpl.h"
@@ -19,28 +17,7 @@ Window::Window(lib::StringView name, math::Vector2u resolution)
 	initInfo.m_framebufferSize = m_platformWindow->GetFramebufferSize();
 	initInfo.m_minImageCount = RendererUtils::GetFramesInFlightNum();
 
-	m_rhiWindow.InitializeRHI(initInfo);
-}
-
-Window::~Window()
-{
-	SPT_PROFILE_FUNCTION();
-
-	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
-		[resource = std::move(m_rhiWindow)]() mutable
-		{
-			resource.ReleaseRHI();
-		});
-}
-
-rhi::RHIWindow& Window::GetRHI()
-{
-	return m_rhiWindow;
-}
-
-const rhi::RHIWindow& Window::GetRHI() const
-{
-	return m_rhiWindow;
+	GetRHI().InitializeRHI(initInfo);
 }
 
 Bool Window::ShouldClose() const
@@ -68,13 +45,13 @@ lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr
 
 	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
 
-	m_acquiredImageIdx = m_rhiWindow.AcquireSwapchainImage(rhiSemaphore, timeout);
+	m_acquiredImageIdx = GetRHI().AcquireSwapchainImage(rhiSemaphore, timeout);
 
 	lib::SharedPtr<Texture> acquiredTexture;
 
-	if (!m_rhiWindow.IsSwapchainOutOfDate())
+	if (!GetRHI().IsSwapchainOutOfDate())
 	{
-		const rhi::RHITexture acquiredRHITexture = m_rhiWindow.GetSwapchinImage(m_acquiredImageIdx);
+		const rhi::RHITexture acquiredRHITexture = GetRHI().GetSwapchinImage(m_acquiredImageIdx);
 
 		acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
 	}
@@ -92,12 +69,12 @@ void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& 
 		rhiWaitSemaphores[idx] = waitSemaphores[idx]->GetRHI();
 	}
 
-	m_rhiWindow.PresentSwapchainImage(rhiWaitSemaphores, m_acquiredImageIdx);
+	GetRHI().PresentSwapchainImage(rhiWaitSemaphores, m_acquiredImageIdx);
 }
 
 Bool Window::IsSwapchainOutOfDate() const
 {
-	return m_rhiWindow.IsSwapchainOutOfDate();
+	return GetRHI().IsSwapchainOutOfDate();
 }
 
 void Window::RebuildSwapchain()
@@ -108,7 +85,7 @@ void Window::RebuildSwapchain()
 
 	const math::Vector2u framebufferSize = m_platformWindow->GetFramebufferSize();
 
-	m_rhiWindow.RebuildSwapchain(framebufferSize);
+	GetRHI().RebuildSwapchain(framebufferSize);
 }
 
 void Window::InitializeUI(ui::UIContext context)

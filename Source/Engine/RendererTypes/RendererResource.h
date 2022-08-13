@@ -47,10 +47,12 @@ RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
 {
 	SPT_PROFILE_FUNCTION();
 
+	SPT_CHECK(m_rhiResource.IsValid());
+
 	if constexpr (deferredReleaseRHI)
 	{
 		CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
-		[resource = m_rhiResource]() mutable
+		[resource = std::move(m_rhiResource)]() mutable
 		{
 			resource.ReleaseRHI();
 		});
