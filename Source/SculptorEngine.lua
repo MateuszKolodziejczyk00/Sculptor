@@ -6,6 +6,7 @@ IncludeProject("Math")
 IncludeProject("Profiler")
 IncludeProject("SculptorLib")
 IncludeProject("UICore")
+IncludeProject("Tokenizer")
 
 SetProjectsSubgroupName("Graphics/RHI")
 IncludeProject("RHI")
