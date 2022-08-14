@@ -186,6 +186,12 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDependencyInternal(dependency)
     end
 
+    local privateDependenciesPublicDependencies = self:GetPrivateDependenciesPublicDependencies(configuration)
+    for dependency, _ in pairs(privateDependenciesPublicDependencies)
+    do
+        self:AddDependencyInternal(dependency)
+    end
+
     -- defines
     self:AddCommonDefines(configuration, platform)
 
@@ -312,6 +318,22 @@ function Project:GetPublicDependencies(configuration)
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
         AppendTable(allPublicDependencies, projectToPublicDependencies[dependency][configuration])
+    end
+
+    return allPublicDependencies
+end
+
+function Project:GetPrivateDependenciesPublicDependencies(configuration)
+    local allPublicDependencies = {}
+    for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
+    do
+        local projectDependencies = projectToPublicDependencies[dependency]
+        if projectDependencies ~= nil then
+            local dependenciesForConfiguration = projectDependencies[configuration]
+            if dependenciesForConfiguration ~= nil then
+                AppendTable(allPublicDependencies, dependenciesForConfiguration)
+            end
+        end
     end
 
     return allPublicDependencies
