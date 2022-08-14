@@ -28,7 +28,7 @@ enum Type : Uint32
 namespace EBindingFlags
 {
 
-enum Falgs : Flags32
+enum Flags : Flags32
 {
 	None			= 0,
 	Invalid			= BIT(0),
@@ -88,7 +88,7 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 
 struct UniformBufferBindingData : public CommonBindingData
 {
-	UniformBufferBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags, Uint16 size)
+	UniformBufferBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags, Uint16 size = 0)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(size)
 	{ }
@@ -101,7 +101,7 @@ struct StorageBufferBindingData : public CommonBindingData
 {
 	StorageBufferBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
-		: m_size(0) // invalid
+		, m_size(0) // invalid
 	{ }
 
 	void SetSize(Uint16 size)
@@ -143,7 +143,7 @@ private:
 	{
 		Uint16			m_size;
 		Uint16			m_stride;
-	}
+	};
 };
 
 
@@ -214,7 +214,7 @@ public:
 	{
 		const SizeType newBindingIdx = static_cast<SizeType>(bindingIdx);
 
-		if (m_bindings.size() - 1 < newBindingIdx)
+		if (bindingIdx >= m_bindings.size())
 		{
 			m_bindings.resize(newBindingIdx + 1);
 		}
@@ -263,7 +263,7 @@ struct ShaderDataParamEntry : public ShaderParamEntryCommon
 {
 	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
-		: m_offset(offset)
+		, m_offset(offset)
 		, m_size(size)
 	{ }
 
@@ -289,6 +289,13 @@ public:
 	const TEntryDataType& As() const
 	{
 		return m_data.get<TEntryDataType>();
+	}
+
+	template<typename TEntryDataType>
+	TEntryDataType GetOrDefault() const
+	{
+		const TEntryDataType* foundData = m_data.get_if<TEntryDataType>();
+		return foundData != nullptr ? *foundData : TEntryDataType();
 	}
 
 private:

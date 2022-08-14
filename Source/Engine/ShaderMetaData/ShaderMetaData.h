@@ -1,11 +1,109 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "ShaderMetaDataTypes.h"
 
 
 namespace spt::smd
 {
 
+class ShaderMetaData
+{
+public:
 
+	using DescriptorSetArray = lib::DynamicArray<ShaderDescriptorSet>;
+
+	ShaderMetaData() = default;
+
+	template<typename TShaderParamEntryType>
+	void						AddShaderParamEntry(lib::HashedString paramName, TShaderParamEntryType paramEntry);
+
+	template<typename TShaderBindingDataType>
+	void						AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData);
+
+	template<typename TShaderParamEntryType>
+	TShaderParamEntryType		FindParamEntry(lib::HashedString paramName) const;
+
+	GenericShaderBinding		GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const;
+
+	Uint8						GetDescriptorSetsNum() const;
+
+	const DescriptorSetArray&	GetDescriptorSets() const;
+
+	const ShaderDescriptorSet&	GetDescriptorSet(Uint8 setIdx) const;
+	
+private:
+
+	using ShaderParameterMap	= lib::HashMap<lib::HashedString, GenericShaderParamEntry>;
+
+	DescriptorSetArray	   		m_descriptorSets;
+
+	ShaderParameterMap	   		m_parameterMap;
+};
+
+
+template<typename TShaderParamEntryType>
+void ShaderMetaData::AddShaderParamEntry(lib::HashedString paramName, TShaderParamEntryType paramEntry)
+{
+	m_parameterMap.emplace(paramName, paramEntry);
+}
+
+template<typename TShaderBindingDataType>
+void ShaderMetaData::AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData)
+{
+	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
+
+	if (properSetIdx >= m_descriptorSets.size())
+	{
+		m_descriptorSets.resize(properSetIdx + 1);
+	}
+	
+	m_descriptorSets[properSetIdx].AddBinding(bindingIdx, bindingData);
+}
+
+template<typename TShaderParamEntryType>
+TShaderParamEntryType ShaderMetaData::FindParamEntry(lib::HashedString paramName) const
+{
+	const auto foundParam = m_parameterMap.find(paramName);
+	if (foundParam)
+	{
+		return foundParam->second.GetOrDefault<TShaderParamEntryType>();
+	}
+
+	return TShaderParamEntryType();
+}
+
+GenericShaderBinding ShaderMetaData::GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const
+{
+	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
+
+	if (m_descriptorSets.size() > properSetIdx)
+	{
+		const SizeType properBindingIdx = static_cast<SizeType>(bindingIdx);
+		
+		if (m_descriptorSets[properSetIdx].GetBindings().size() > properBindingIdx)
+		{
+			return m_descriptorSets[properSetIdx].GetBindings()[properBindingIdx];
+		}
+	}
+	
+	return GenericShaderBinding();
+}
+
+Uint8 ShaderMetaData::GetDescriptorSetsNum() const
+{
+	return static_cast<Uint8>(m_descriptorSets.size());
+}
+
+const ShaderMetaData::DescriptorSetArray& ShaderMetaData::GetDescriptorSets() const
+{
+	return m_descriptorSets;
+}
+
+const ShaderDescriptorSet& ShaderMetaData::GetDescriptorSet(Uint8 setIdx) const
+{
+	const SizeType idx = static_cast<SizeType>(setIdx);
+	return m_descriptorSets[idx];
+}
 
 } // spt::smd
