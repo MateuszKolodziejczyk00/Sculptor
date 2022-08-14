@@ -4,6 +4,7 @@ include "Shaderc/Shaderc"
 
 function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")
+    self:AddPublicDependency("ShaderMetaData")
 
     self:AddPrivateDependency("Tokenizer")
     self:AddPrivateDependency("Serialization")

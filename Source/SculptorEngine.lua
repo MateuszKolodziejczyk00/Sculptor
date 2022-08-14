@@ -16,6 +16,7 @@ SetProjectsSubgroupName("Graphics/Platform")
 IncludeProject("PlatformWindow")
 
 SetProjectsSubgroupName("Graphics/Shaders")
+IncludeProject("ShaderMetaData")
 IncludeProject("ShaderCompiler")
 
 SetProjectsSubgroupName("Graphics/Rendering")
