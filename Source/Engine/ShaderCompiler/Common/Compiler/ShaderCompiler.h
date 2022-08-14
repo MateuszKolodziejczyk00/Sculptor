@@ -18,8 +18,9 @@ class SHADER_COMPILER_API ShaderCompiler
 public:
 
 	ShaderCompiler();
+	~ShaderCompiler();
 
-	CompiledShader					CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	CompiledShader					CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
 
 private:
 

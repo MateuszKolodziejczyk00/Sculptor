@@ -12,6 +12,12 @@ ShaderSourceCode::ShaderSourceCode(lib::HashedString name)
 	SPT_CHECK(m_name.IsValid());
 }
 
+Bool ShaderSourceCode::IsValid() const
+{
+	return m_type != ECompiledShaderType::None
+		&& !m_code.empty();
+}
+
 void ShaderSourceCode::SetSourceCode(lib::String&& code)
 {
 	m_code = std::move(code);

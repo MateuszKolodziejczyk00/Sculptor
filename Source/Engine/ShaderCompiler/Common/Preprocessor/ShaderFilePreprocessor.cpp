@@ -4,6 +4,9 @@
 namespace spt::sc
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Token =========================================================================================
+
 namespace EToken
 {
 
@@ -23,6 +26,8 @@ static const lib::StaticArray<tkn::Token, EToken::NUM> tokens
 	tkn::Token("#type(")
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// internal ======================================================================================
 
 namespace internal
 {
@@ -48,6 +53,30 @@ static ECompiledShaderType StringToShaderType(lib::StringView typeName)
 
 } // internal
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// PreprocessedShadersGroup ======================================================================
+
+PreprocessedShadersGroup::PreprocessedShadersGroup(lib::HashedString groupName)
+	: m_groupName(groupName)
+{
+	SPT_CHECK(m_groupName.IsValid());
+}
+
+Bool PreprocessedShadersGroup::IsValid() const
+{
+	return std::all_of(std::cbegin(m_shaders), std::cend(m_shaders), [](const ShaderSourceCode& shaderCode) { return shaderCode.IsValid(); });
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ShaderFilePreprocessingResult =================================================================
+
+Bool ShaderFilePreprocessingResult::IsValid() const
+{
+	return std::all_of(std::cbegin(m_shadersGroups), std::cend(m_shadersGroups), [](const PreprocessedShadersGroup& group) { return group.IsValid(); });
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ShaderFilePreprocessor ========================================================================
 
 ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSourceCode(const lib::String& sourceCode)
 {
@@ -58,22 +87,24 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 	const tkn::Tokenizer tokenizer(sourceCode, tokens);
 
 	const tkn::TokensArray tokensArray = tokenizer.BuildTokensArray();
-
-	lib::StringView currentGroupName;
 	
 	tkn::TokensVisitor shadersVisitor;
 	shadersVisitor.BindToToken(EToken::beginShader).BindLambda(
 		[&](tkn::TokenInfo tokenInfo, const tkn::TokensProcessor& processor)
 		{
+			SPT_CHECK(!result.m_shadersGroups.empty());
+
+			PreprocessedShadersGroup& currentShadersGroup = result.m_shadersGroups.back();
+
 			const lib::StringView shaderCode = tokenizer.GetStringBetweenTokens(tokenInfo, processor.FindNextToken(tokenInfo));
 
 			const lib::StringView shaderTypeName = tkn::TokenizerUtils::GetStringInNearestBracket(shaderCode);
 
-			ShaderSourceCode sourceCode(currentGroupName);
+			ShaderSourceCode sourceCode(currentShadersGroup.m_groupName);
 			sourceCode.SetSourceCode(lib::String(shaderCode));
 			sourceCode.SetShaderType(internal::StringToShaderType(shaderTypeName));
 
-			result.m_shadersGroups.back().m_shaders.emplace_back(sourceCode);
+			currentShadersGroup.m_shaders.emplace_back(sourceCode);
 		});
 
 	tkn::TokensVisitor groupsVisitor;
@@ -84,9 +115,9 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 			const lib::StringView groupCode = tokenizer.GetStringBetweenTokens(tokenInfo, nextGroupToken);
 
-			currentGroupName = tkn::TokenizerUtils::GetStringInNearestBracket(groupCode);
+			const lib::HashedString currentGroupName = tkn::TokenizerUtils::GetStringInNearestBracket(groupCode);
 
-			result.m_shadersGroups.emplace_back(PreprocessedShadersGroup());
+			result.m_shadersGroups.emplace_back(PreprocessedShadersGroup(currentGroupName));
 
 			processor.VisitTokens(shadersVisitor, tokenInfo, nextGroupToken);
 		});

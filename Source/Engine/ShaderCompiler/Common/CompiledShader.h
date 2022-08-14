@@ -34,6 +34,10 @@ struct CompiledShadersGroup
 {
 public:
 
+	CompiledShadersGroup();
+
+	Bool								IsValid() const;
+
 	lib::HashedString					m_groupName;
 	lib::DynamicArray<CompiledShader>	m_shaders;
 };
@@ -42,6 +46,10 @@ public:
 struct CompiledShaderFile
 {
 public:
+
+	CompiledShaderFile();
+
+	Bool									IsValid() const;
 
 	lib::DynamicArray<CompiledShadersGroup> m_groups;
 };

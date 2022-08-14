@@ -13,6 +13,8 @@ class SHADER_COMPILER_API ShaderSourceCode
 public:
 
 	explicit ShaderSourceCode(lib::HashedString name);
+
+	Bool						IsValid() const;
 	
 	void						SetSourceCode(lib::String&& code);
 	void						SetShaderType(ECompiledShaderType type);

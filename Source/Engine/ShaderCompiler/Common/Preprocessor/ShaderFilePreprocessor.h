@@ -9,12 +9,21 @@ namespace spt::sc
 
 struct PreprocessedShadersGroup
 {
+	PreprocessedShadersGroup(lib::HashedString groupName);
+
+	Bool									IsValid() const;
+
+	lib::HashedString						m_groupName;
 	lib::DynamicArray<ShaderSourceCode>		m_shaders;
 };
 
 
 struct ShaderFilePreprocessingResult
 {
+	ShaderFilePreprocessingResult() = default;
+
+	Bool											IsValid() const;
+
 	lib::DynamicArray<PreprocessedShadersGroup>		m_shadersGroups;
 };
 

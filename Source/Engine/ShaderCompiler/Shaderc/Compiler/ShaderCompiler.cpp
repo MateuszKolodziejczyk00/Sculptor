@@ -166,7 +166,7 @@ public:
 
 	CompilerImpl();
 
-	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
 
 protected:
 
@@ -185,7 +185,7 @@ private:
 CompilerImpl::CompilerImpl()
 { }
 
-CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -285,32 +285,19 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 // ShaderCompiler ================================================================================
 
 ShaderCompiler::ShaderCompiler()
-{ }
-
-CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 
-	const Bool shouldUseShadersCache = ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
-	
-	CompiledShader shader;
-
-	if (shouldUseShadersCache)
-	{
-		shader = CompiledShadersCache::TryGetCachedShader(sourceCode, compilationSettings);
-	}
-
-	if (!shader.IsValid())
-	{
-		shader = m_impl->CompileShader(sourceCode, compilationSettings);
-
-		if (shouldUseShadersCache)
-		{
-			CompiledShadersCache::CacheShader(sourceCode, compilationSettings, shader);
-		}
-	}
-
-	return shader;
+	m_impl = std::make_unique<CompilerImpl>();
 }
 
+ShaderCompiler::~ShaderCompiler() = default;
+
+CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+{
+	SPT_PROFILE_FUNCTION();
+
+	return m_impl->CompileShader(sourceCode, compilationSettings);
 }
+
+} // spt::sc
