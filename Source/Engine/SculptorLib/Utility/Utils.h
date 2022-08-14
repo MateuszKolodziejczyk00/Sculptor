@@ -9,26 +9,22 @@
 namespace spt::lib
 {
 
-template<typename FlagsType>
-Bool HasFlag(FlagsType flags, FlagsType queriedFlag)
+template<typename FlagsType, typename FlagType>
+std::enable_if_t<std::is_enum_v<FlagType>, Bool> HasFlag(FlagsType flags, FlagType queriedFlag)
 {
-	static_assert(std::is_integral_v<FlagsType>, "FlagsType must be integral");
-
-	return (flags & queriedFlag) != 0;
+	return (flags & static_cast<FlagsType>(queriedFlag)) != 0;
 }
 
-template<typename FlagsType>
-void AddFlag(FlagsType& flags, FlagsType flagToAdd)
+template<typename FlagsType, typename FlagType>
+std::enable_if_t<std::is_enum_v<FlagType>, void> AddFlag(FlagsType& flags, FlagType flagToAdd)
 {
-	static_assert(std::is_integral_v<FlagsType>, "FlagsType must be integral");
-	flags |= flagToAdd;
+	flags |= static_cast<FlagsType>(flagToAdd);
 }
 
-template<typename FlagsType>
-void RemoveFlag(FlagsType& flags, FlagsType flagToAdd)
+template<typename FlagsType, typename FlagType>
+std::enable_if_t<std::is_enum_v<FlagType>, void> RemoveFlag(FlagsType& flags, FlagType flagToAdd)
 {
-	static_assert(std::is_integral_v<FlagsType>, "FlagsType must be integral");
-	flags &= ~flagToAdd;
+	flags &= ~static_cast<FlagsType>(flagToAdd);
 }
 
 } // spt::lib
