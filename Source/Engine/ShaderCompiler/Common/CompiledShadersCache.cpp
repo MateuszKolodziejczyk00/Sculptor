@@ -2,13 +2,15 @@
 #include "ShaderCompilationEnvironment.h"
 #include "ShaderCompilationInput.h"
 
+#include "SculptorYAML.h"
+
 #include <fstream>
 #include <filesystem>
 
 namespace spt::sc
 {
 
-Bool CompiledShadersCache::HasCachedShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -17,60 +19,110 @@ Bool CompiledShadersCache::HasCachedShader(const ShaderSourceCode& sourceCode, c
 		return false;
 	}
 
-	const lib::String filePath = CreateShaderFilePath(sourceCode, compilationSettings);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 	return std::filesystem::exists(filePath);
 }
 
-CompiledShader CompiledShadersCache::TryGetCachedShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 	
 	SPT_CHECK(CanUseShadersCache());
 
-	CompiledShader compiledShader;
+	CompiledShaderFile compiledShaderFile;
 
-	const lib::String filePath = CreateShaderFilePath(sourceCode, compilationSettings);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 
-	std::ifstream stream(filePath, std::ios::binary | std::ios::ate); // place custom at the end of file, so that we can read how long the file is
+	std::ifstream stream(filePath);
 	if (!stream.fail())
 	{
-		const SizeType binarySize = static_cast<SizeType>(stream.tellg());
-		stream.seekg(0, std::ios::beg);
+		std::stringstream stringStream;
+		stringStream << stream.rdbuf();
 
-		lib::DynamicArray<Uint32> binary(binarySize / 4);
+		const YAML::Node serializedShadersFile = YAML::Load(stringStream.str());
 
-		if (stream.read(reinterpret_cast<char*>(binary.data()), binarySize))
+		for (const YAML::Node serializedShadersGroup : serializedShadersFile)
 		{
-			compiledShader.SetBinary(std::move(binary));
+			const lib::HashedString groupName = serializedShadersGroup["GroupName"].as<lib::HashedString>();
+
+			const YAML::Node serializedShaders = serializedShadersGroup["Shaders"];
+
+			CompiledShadersGroup& shadersGroup = compiledShaderFile.m_groups.emplace_back(CompiledShadersGroup());
+
+			for (const YAML::Node serializedShader : serializedShaders)
+			{
+				const ECompiledShaderType shaderType = static_cast<ECompiledShaderType>(serializedShader["Type"].as<Uint32>());
+				
+				YAML::Binary deserializedBinary = serializedShader["Binary"].as<YAML::Binary>();
+				lib::DynamicArray<unsigned char> binaryBytes;
+				deserializedBinary.swap(binaryBytes);
+				const SizeType binarySize = binaryBytes.size();
+				SPT_CHECK(binarySize % sizeof(Uint32) == 0);
+
+				lib::DynamicArray<Uint32> binary(binarySize / sizeof(Uint32));
+				memcpy_s(binary.data(), binarySize, binaryBytes.data(), binarySize);
+
+				CompiledShader& shader = shadersGroup.m_shaders.emplace_back(CompiledShader());
+				shader.SetType(shaderType);
+				shader.SetBinary(std::move(binary));
+			}
 		}
 
 		stream.close();
 	}
 
-	return compiledShader;
+	return compiledShaderFile;
 }
 
-CompiledShader CompiledShadersCache::GetCachedShaderChecked(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShaderFile CompiledShadersCache::GetCachedShaderChecked(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_CHECK(HasCachedShader(sourceCode, compilationSettings));
+	SPT_CHECK(HasCachedShader(shaderRelativePath, compilationSettings));
 
-	return TryGetCachedShader(sourceCode, compilationSettings);
+	return TryGetCachedShader(shaderRelativePath, compilationSettings);
 }
 
-void CompiledShadersCache::CacheShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, const CompiledShader& shader)
+void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile)
 {
 	SPT_PROFILE_FUNCTION();
 	
 	SPT_CHECK(CanUseShadersCache());
-	SPT_CHECK(shader.IsValid());
 
-	const CompiledShader::Binary& binary = shader.GetBinary();
+	YAML::Emitter out;
+	out << YAML::BeginSeq; // groups sequence
 
-	const SizeType binarySizeInBytes = binary.size() * sizeof(CompiledShader::Binary::value_type);
+	for (const CompiledShadersGroup& shadersGroup : shaderFile.m_groups)
+	{
+		out << YAML::BeginMap; // group elements map
 
-	const lib::String filePath = CreateShaderFilePath(sourceCode, compilationSettings);
+		out << YAML::Key << "GroupName" << YAML::Value << shadersGroup.m_groupName;
+
+		out << YAML::Key << "Shaders" << YAML::Value;
+		out << YAML::BeginSeq; // shaders sequence
+
+		for (const CompiledShader& shader : shadersGroup.m_shaders)
+		{
+			const CompiledShader::Binary& shaderCompiledBinary = shader.GetBinary();
+
+			const YAML::Binary binary(reinterpret_cast<const unsigned char*>(shaderCompiledBinary.data()), shaderCompiledBinary.size() * sizeof(Uint32));
+
+			out << YAML::BeginMap; // shader elements map
+
+			out << YAML::Key << "Type" << YAML::Value << static_cast<Uint32>(shader.GetType());
+			out << YAML::Key << "Binary" << YAML::Value << binary;
+
+			out << YAML::EndMap; // shader elements map
+		}
+
+		out << YAML::EndSeq; // shaders sequence
+
+		out << YAML::EndMap; // group elements map
+	}
+	
+	out << YAML::EndSeq; // groups sequence
+
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 	std::ofstream stream(filePath, std::ios::trunc);
-	stream.write(reinterpret_cast<const char*>(binary.data()), binarySizeInBytes);
+	stream << out.c_str();
 
 	stream.close();
 }
@@ -81,11 +133,11 @@ Bool CompiledShadersCache::CanUseShadersCache()
 		&& std::filesystem::is_directory(ShaderCompilationEnvironment::GetShadersCachePath());
 }
 
-CompiledShadersCache::HashType CompiledShadersCache::HashShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 
-	return sourceCode.Hash() ^ compilationSettings.Hash();
+	return shaderRelativePath.GetKey() ^ compilationSettings.Hash();
 }
 
 lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
@@ -104,11 +156,11 @@ lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)
 	return ShaderCompilationEnvironment::GetShadersCachePath() + "/" + shaderName;
 }
 
-lib::String CompiledShadersCache::CreateShaderFilePath(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings)
+lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILE_FUNCTION();
 	
-	const HashType hash = HashShader(sourceCode, compilationSettings);
+	const HashType hash = HashShader(shaderRelativePath, compilationSettings);
 	return CreateShaderFilePath(hash);
 }
 

@@ -15,26 +15,26 @@ class CompiledShadersCache
 {
 public:
 
-	static Bool				HasCachedShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	static Bool					HasCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
 
-	static CompiledShader	TryGetCachedShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	static CompiledShaderFile	TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& settings);
 
-	static CompiledShader	GetCachedShaderChecked(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	static CompiledShaderFile	GetCachedShaderChecked(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& settings);
 
-	static void				CacheShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, const CompiledShader& shader);
+	static void					CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile);
 
 private:
 
-	using HashType			= SizeType;
+	using HashType				= SizeType;
 
-	static Bool				CanUseShadersCache();
+	static Bool					CanUseShadersCache();
 
-	static HashType			HashShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	static HashType				HashShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
 
-	static lib::String		CreateShaderFileName(HashType hash);
+	static lib::String			CreateShaderFileName(HashType hash);
 
-	static lib::String		CreateShaderFilePath(HashType hash);
-	static lib::String		CreateShaderFilePath(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings);
+	static lib::String			CreateShaderFilePath(HashType hash);
+	static lib::String			CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
 };
 
 }
