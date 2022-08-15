@@ -82,12 +82,15 @@ inline EBindingFlags::Flags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 	return EBindingFlags::None;
 }
 
-}
+} // priv
+
+static constexpr Uint32 maxSetIdx		= 255;
+static constexpr Uint32 maxBindingIdx	= 255;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BindingData ===================================================================================
 
-struct CommonBindingData
+struct CommonBindingData abstract
 {
 	CommonBindingData(Uint32 elementsNum, Flags32 flags)
 		: m_elementsNum(elementsNum)
@@ -214,21 +217,27 @@ struct GenericShaderBinding
 	{ }
 
 	template<typename TBindingDataType>
-	void Set(TextureBindingData data)
+	void Set(TBindingDataType data)
 	{
 		m_data = data;
 	}
 
 	template<typename TBindingDataType>
-	TextureBindingData& As()
+	TBindingDataType& As()
 	{
-		return m_data.get<TextureBindingData>();
+		return std::get<TBindingDataType>(m_data);
 	}
 
 	template<typename TBindingDataType>
-	const TextureBindingData& As() const
+	const TBindingDataType& As() const
 	{
-		return m_data.get<TextureBindingData>();
+		return std::get<TBindingDataType>(m_data);
+	}
+
+	template<typename TBindingDataType>
+	Bool Contains() const
+	{
+		return std::holds_alternative<TBindingDataType>(m_data);
 	}
 
 	Bool IsValid() const
@@ -269,7 +278,7 @@ public:
 	ShaderDescriptorSet() = default;
 
 	template<typename TBindingDataType>
-	void AddBinding(Uint8 bindingIdx, TextureBindingData bindingData)
+	void AddBinding(Uint8 bindingIdx, TBindingDataType bindingData)
 	{
 		const SizeType newBindingIdx = static_cast<SizeType>(bindingIdx);
 
@@ -278,12 +287,19 @@ public:
 			m_bindings.resize(newBindingIdx + 1);
 		}
 
-		SPT_CHECK(!m_bindings[newBindingIdx].IsValid());
+		if (!(m_bindings[newBindingIdx].IsValid()))
+		{
+			// make sure that this binding will be marked as valid
+			bindingData.MakeValid();
 
-		// make sure that this binding will be marked as valid
-		bindingData.MakeValid();
+			m_bindings[newBindingIdx].Set(bindingData);
+		}
+		else
+		{
+			SPT_CHECK(m_bindings[newBindingIdx].Contains<TBindingDataType>());
+			SPT_CHECK(memcmp(&m_bindings[newBindingIdx].As<TBindingDataType>(), &bindingData, sizeof(TBindingDataType)));
+		}
 
-		m_bindings[newBindingIdx].Set(bindingData);
 	}
 
 	lib::DynamicArray<GenericShaderBinding>& GetBindings()
@@ -326,6 +342,16 @@ struct ShaderTextureParamEntry : public ShaderParamEntryCommon
 };
 
 
+struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
+{
+	ShaderCombinedTextureSamplerParamEntry(Uint8 setIdx, Uint8 bindingIdx)
+		: ShaderParamEntryCommon(setIdx, bindingIdx)
+	{ }
+
+	// No additional data for now
+};
+
+
 struct ShaderDataParamEntry : public ShaderParamEntryCommon
 {
 	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size)
@@ -339,8 +365,20 @@ struct ShaderDataParamEntry : public ShaderParamEntryCommon
 };
 
 
+struct ShaderBufferParamEntry : public ShaderParamEntryCommon
+{
+	ShaderBufferParamEntry(Uint8 setIdx, Uint8 bindingIdx)
+		: ShaderParamEntryCommon(setIdx, bindingIdx)
+	{ }
+
+	// No additional data for now
+};
+
+
 using ShaderParamEntryVariant = std::variant<ShaderTextureParamEntry,
-											 ShaderDataParamEntry>;
+											 ShaderCombinedTextureSamplerParamEntry,
+											 ShaderDataParamEntry,
+											 ShaderBufferParamEntry>;
 
 
 struct GenericShaderParamEntry
@@ -355,14 +393,24 @@ public:
 	template<typename TEntryDataType>
 	const TEntryDataType& As() const
 	{
-		return m_data.get<TEntryDataType>();
+		return std::get<TEntryDataType>(m_data);
 	}
 
 	template<typename TEntryDataType>
 	TEntryDataType GetOrDefault() const
 	{
-		const TEntryDataType* foundData = m_data.get_if<TEntryDataType>();
+		const TEntryDataType* foundData = std::get_if<TEntryDataType>(m_data);
 		return foundData != nullptr ? *foundData : TEntryDataType();
+	}
+
+	ShaderParamEntryCommon GetCommonData() const
+	{
+		return std::visit(
+			[](const auto data) -> ShaderParamEntryCommon
+			{
+				return ShaderParamEntryCommon(data.m_setIdx, data.m_bindingIdx);
+			},
+			m_data);
 	}
 
 private:
