@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHI/RHICore/RHIShaderTypes.h"
 
 #include <variant>
 
@@ -34,14 +35,52 @@ enum Flags : Flags32
 	Invalid			= BIT(0),
 
 	Unbound			= BIT(1),
+
+	// Shader stages
+	VertexShader	= BIT(21),
+	FragmentShader	= BIT(22),
+	ComputeShader	= BIT(23),
 };
 
-}
+} // EBindingFlags
+
 
 namespace priv
 {
 
 constexpr Flags32 defaultBindingFlags = EBindingFlags::Invalid;
+
+inline Flags32 BindingFlagsToShaderStageFlags(Flags32 bindingFlags)
+{
+	Flags32 shaderStageFlags = 0;
+
+	if (lib::HasFlag(bindingFlags, EBindingFlags::VertexShader))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Vertex);
+	}
+	if (lib::HasFlag(bindingFlags, EBindingFlags::FragmentShader))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Fragment);
+	}
+	if (lib::HasFlag(bindingFlags, EBindingFlags::ComputeShader))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Compute);
+	}
+
+	return shaderStageFlags;
+}
+
+inline EBindingFlags::Flags ShaderStageToBindingFlag(rhi::EShaderStage stage)
+{
+	switch (stage)
+	{
+	case rhi::EShaderStage::Vertex:		return EBindingFlags::VertexShader;
+	case rhi::EShaderStage::Fragment:	return EBindingFlags::FragmentShader;
+	case rhi::EShaderStage::Compute:	return EBindingFlags::ComputeShader;
+	}
+
+	return EBindingFlags::None;
+}
 
 }
 
@@ -63,6 +102,16 @@ struct CommonBindingData
 	Bool IsValid() const
 	{
 		return !lib::HasFlag(m_flags, EBindingFlags::Invalid);
+	}
+
+	void AddShaderStage(rhi::EShaderStage stage)
+	{
+		lib::AddFlag(m_flags, priv::ShaderStageToBindingFlag(stage));
+	}
+
+	Flags32 GetShaderStages() const
+	{
+		return priv::BindingFlagsToShaderStageFlags(m_flags);
 	}
 
 	Uint32			m_elementsNum;
@@ -197,6 +246,16 @@ struct GenericShaderBinding
 		return static_cast<EBindingType::Type>(m_data.index());
 	}
 
+	void AddShaderStage(rhi::EShaderStage stage)
+	{
+		return std::visit(
+			[stage](auto& data)
+			{
+				return data.AddShaderStage(stage);
+			},
+			m_data);
+	}
+
 private:
 
 	BindingDataVariant			m_data;
@@ -221,7 +280,15 @@ public:
 
 		SPT_CHECK(!m_bindings[newBindingIdx].IsValid());
 
+		// make sure that this binding will be marked as valid
+		bindingData.MakeValid();
+
 		m_bindings[newBindingIdx].Set(bindingData);
+	}
+
+	lib::DynamicArray<GenericShaderBinding>& GetBindings()
+	{
+		return m_bindings;
 	}
 
 	const lib::DynamicArray<GenericShaderBinding>& GetBindings() const

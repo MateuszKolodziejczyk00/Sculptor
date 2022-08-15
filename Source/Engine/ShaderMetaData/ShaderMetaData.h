@@ -21,10 +21,15 @@ public:
 	template<typename TShaderBindingDataType>
 	void						AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData);
 
+	void						AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage);
+
 	template<typename TShaderParamEntryType>
 	TShaderParamEntryType		FindParamEntry(lib::HashedString paramName) const;
 
+	
 	GenericShaderBinding		GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const;
+
+	Bool						ContainsBinding(Uint8 setIdx, Uint8 bindingIdx) const;
 
 	Uint8						GetDescriptorSetsNum() const;
 
@@ -33,6 +38,8 @@ public:
 	const ShaderDescriptorSet&	GetDescriptorSet(Uint8 setIdx) const;
 	
 private:
+
+	GenericShaderBinding&		GetBindingDataRef(Uint8 setIdx, Uint8 bindingIdx);
 
 	using ShaderParameterMap	= lib::HashMap<lib::HashedString, GenericShaderParamEntry>;
 
@@ -59,6 +66,11 @@ void ShaderMetaData::AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShade
 	}
 	
 	m_descriptorSets[properSetIdx].AddBinding(bindingIdx, bindingData);
+}
+
+void ShaderMetaData::AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage)
+{
+	GetBindingDataRef(setIdx, bindingIdx).AddShaderStage(stage);
 }
 
 template<typename TShaderParamEntryType>
@@ -90,6 +102,11 @@ GenericShaderBinding ShaderMetaData::GetBindingData(Uint8 setIdx, Uint8 bindingI
 	return GenericShaderBinding();
 }
 
+Bool ShaderMetaData::ContainsBinding(Uint8 setIdx, Uint8 bindingIdx) const
+{
+	return GetBindingData(setIdx, bindingIdx).IsValid();
+}
+
 Uint8 ShaderMetaData::GetDescriptorSetsNum() const
 {
 	return static_cast<Uint8>(m_descriptorSets.size());
@@ -104,6 +121,17 @@ const ShaderDescriptorSet& ShaderMetaData::GetDescriptorSet(Uint8 setIdx) const
 {
 	const SizeType idx = static_cast<SizeType>(setIdx);
 	return m_descriptorSets[idx];
+}
+
+GenericShaderBinding& ShaderMetaData::GetBindingDataRef(Uint8 setIdx, Uint8 bindingIdx)
+{
+	const SizeType properSetIdx		= static_cast<SizeType>(setIdx);
+	const SizeType properBindingIdx = static_cast<SizeType>(bindingIdx);
+
+	SPT_CHECK(m_descriptorSets.size() > properSetIdx);
+	SPT_CHECK(m_descriptorSets[properSetIdx].GetBindings().size() > properBindingIdx);
+
+	return m_descriptorSets[properSetIdx].GetBindings()[properBindingIdx];
 }
 
 } // spt::smd
