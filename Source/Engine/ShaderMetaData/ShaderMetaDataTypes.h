@@ -140,10 +140,12 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 
 struct UniformBufferBindingData : public CommonBindingData
 {
-	UniformBufferBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags, Uint16 size = 0)
+	UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(size)
-	{ }
+	{
+		SPT_CHECK(size > 0);
+	}
 
 	Uint16			m_size;
 };
@@ -158,18 +160,13 @@ struct StorageBufferBindingData : public CommonBindingData
 
 	void SetSize(Uint16 size)
 	{
-		SPT_CHECK(IsValid());
-
 		lib::RemoveFlag(m_flags, EBindingFlags::Unbound);
 		m_size = size;
 	}
 
-	void SetStride(Uint16 stride)
+	void SetUnbound()
 	{
-		SPT_CHECK(IsValid());
-
 		lib::AddFlag(m_flags, EBindingFlags::Unbound);
-		m_stride = stride;
 	}
 
 	Bool IsUnbound() const
@@ -183,19 +180,9 @@ struct StorageBufferBindingData : public CommonBindingData
 		return m_size;
 	}
 
-	Uint16 GetStride() const
-	{
-		SPT_CHECK(IsUnbound());
-		return m_stride;
-	}
-
 private:
 
-	union
-	{
-		Uint16			m_size;
-		Uint16			m_stride;
-	};
+	Uint16			m_size;
 };
 
 
@@ -354,14 +341,16 @@ struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 
 struct ShaderDataParamEntry : public ShaderParamEntryCommon
 {
-	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size)
+	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size, Uint16 stride)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
 		, m_offset(offset)
 		, m_size(size)
+		, m_stride(stride)
 	{ }
 
 	Uint16		m_offset;
 	Uint16		m_size;
+	Uint16		m_stride;
 };
 
 
