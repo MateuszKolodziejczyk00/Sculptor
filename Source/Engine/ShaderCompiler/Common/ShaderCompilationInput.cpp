@@ -7,14 +7,14 @@ namespace spt::sc
 
 ShaderSourceCode::ShaderSourceCode(lib::HashedString name)
 	: m_name(name)
-	, m_type(ECompiledShaderType::None)
+	, m_stage(rhi::EShaderStage::None)
 {
 	SPT_CHECK(m_name.IsValid());
 }
 
 Bool ShaderSourceCode::IsValid() const
 {
-	return m_type != ECompiledShaderType::None
+	return m_stage != rhi::EShaderStage::None
 		&& !m_code.empty();
 }
 
@@ -23,9 +23,9 @@ void ShaderSourceCode::SetSourceCode(lib::String&& code)
 	m_code = std::move(code);
 }
 
-void ShaderSourceCode::SetShaderType(ECompiledShaderType type)
+void ShaderSourceCode::SetShaderStage(rhi::EShaderStage stage)
 {
-	m_type = type;
+	m_stage = stage;
 }
 
 lib::HashedString ShaderSourceCode::GetName() const
@@ -33,14 +33,14 @@ lib::HashedString ShaderSourceCode::GetName() const
 	return m_name;
 }
 
-const lib::String& ShaderSourceCode::GetSourceCode() const
+const lib::String& ShaderSourceCode::GetSourceStage() const
 {
 	return m_code;
 }
 
-ECompiledShaderType ShaderSourceCode::GetType() const
+rhi::EShaderStage ShaderSourceCode::GetShaderStage() const
 {
-	return m_type;
+	return m_stage;
 }
 
 const char* ShaderSourceCode::GetSourcePtr() const
@@ -57,7 +57,7 @@ SizeType ShaderSourceCode::Hash() const
 {
 	SPT_PROFILE_FUNCTION();
 
-	return m_name.GetKey() ^ static_cast<SizeType>(m_type);
+	return m_name.GetKey() ^ static_cast<SizeType>(m_stage);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

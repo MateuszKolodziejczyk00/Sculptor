@@ -38,13 +38,14 @@ Bool GetTargetEnvironment(ETargetEnvironment target, shaderc_target_env& outTarg
 	return success;
 }
 
-shaderc_shader_kind GetShaderKind(ECompiledShaderType type)
+shaderc_shader_kind GetShaderKind(rhi::EShaderStage stage)
 {
-	switch (type)
+	switch (stage)
 	{
-	case spt::sc::ECompiledShaderType::Vertex:			return shaderc_vertex_shader;
-	case spt::sc::ECompiledShaderType::Fragment:		return shaderc_fragment_shader;
-	case spt::sc::ECompiledShaderType::Compute:			return shaderc_compute_shader;
+	case rhi::EShaderStage::Vertex:			return shaderc_vertex_shader;
+	case rhi::EShaderStage::Fragment:		return shaderc_fragment_shader;
+	case rhi::EShaderStage::Compute:		return shaderc_compute_shader;
+
 	default:
 
 		SPT_CHECK_NO_ENTRY();
@@ -204,7 +205,7 @@ CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, c
 	}
 
 	ShaderSourceCode preprocessedShaderSource(sourceCode.GetName());
-	preprocessedShaderSource.SetShaderType(sourceCode.GetType());
+	preprocessedShaderSource.SetShaderStage(sourceCode.GetShaderStage());
 	preprocessedShaderSource.SetSourceCode(lib::String(preprocessResult.cbegin(), preprocessResult.cend()));
 
 	const shaderc::CompilationResult compilationResult = CompileToSpirv(preprocessedShaderSource, options);
@@ -259,7 +260,7 @@ shaderc::PreprocessedSourceCompilationResult CompilerImpl::PreprocessShader(cons
 {
 	SPT_PROFILE_FUNCTION();
 
-	const shaderc_shader_kind shaderKind = priv::GetShaderKind(sourceCode.GetType());
+	const shaderc_shader_kind shaderKind = priv::GetShaderKind(sourceCode.GetShaderStage());
 
 	shaderc::PreprocessedSourceCompilationResult presprocessResult = m_compiler.PreprocessGlsl(	sourceCode.GetSourcePtr(),
 																								sourceCode.GetSourceLength(),
@@ -274,9 +275,9 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 {
 	SPT_PROFILE_FUNCTION();
 
-	const shaderc_shader_kind shaderKind = priv::GetShaderKind(preprocessedSourceCode.GetType());
+	const shaderc_shader_kind shaderKind = priv::GetShaderKind(preprocessedSourceCode.GetShaderStage());
 
-	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceCode(), shaderKind, preprocessedSourceCode.GetName().GetData());
+	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceStage(), shaderKind, preprocessedSourceCode.GetName().GetData());
 
 	return result;
 }

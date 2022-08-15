@@ -24,6 +24,7 @@ enum Flags : Flags32
 // Must be in the same order as EShaderStageFlags
 enum class EShaderStage : Flags32
 {
+	None,
 	Vertex,
 	Fragment,
 	Compute
@@ -32,7 +33,7 @@ enum class EShaderStage : Flags32
 
 inline Flags32 GetStageFlag(EShaderStage stage)
 {
-	return 1 << static_cast<Flags32>(stage);
+	return 1 << (static_cast<Flags32>(stage) - 1);
 }
 
 

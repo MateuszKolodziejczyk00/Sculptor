@@ -18,15 +18,15 @@ public:
 	Bool					IsValid() const;
 
 	void					SetBinary(Binary binary);
-	void					SetType(ECompiledShaderType type);
+	void					SetStage(rhi::EShaderStage stage);
 	
 	const Binary&			GetBinary() const;
-	ECompiledShaderType		GetType() const;
+	rhi::EShaderStage		GetStage() const;
 
 private:
 
 	Binary					m_binary;
-	ECompiledShaderType		m_type;
+	rhi::EShaderStage		m_stage;
 };
 
 

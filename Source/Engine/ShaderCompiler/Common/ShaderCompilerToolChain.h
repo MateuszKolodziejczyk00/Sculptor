@@ -12,6 +12,7 @@ namespace spt::sc
 struct ShaderFilePreprocessingResult;
 class ShaderCompiler;
 
+
 class SHADER_COMPILER_API ShaderCompilerToolChain
 {
 public:

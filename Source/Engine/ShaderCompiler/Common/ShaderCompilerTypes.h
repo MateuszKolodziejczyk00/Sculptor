@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHI/RHICore/RHIShaderTypes.h"
 
 namespace spt::sc
 {
@@ -41,14 +42,6 @@ enum class ETargetEnvironment
 {
 	None,
 	Vulkan_1_3
-};
-
-enum class ECompiledShaderType
-{
-	None,
-	Vertex,
-	Fragment,
-	Compute
 };
 
 }

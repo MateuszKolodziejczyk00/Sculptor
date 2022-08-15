@@ -17,11 +17,11 @@ public:
 	Bool						IsValid() const;
 	
 	void						SetSourceCode(lib::String&& code);
-	void						SetShaderType(ECompiledShaderType type);
+	void						SetShaderStage(rhi::EShaderStage stage);
 
 	lib::HashedString			GetName() const;
-	const lib::String&			GetSourceCode() const;
-	ECompiledShaderType			GetType() const;
+	const lib::String&			GetSourceStage() const;
+	rhi::EShaderStage			GetShaderStage() const;
 
 	const char*					GetSourcePtr() const;
 	SizeType					GetSourceLength() const;
@@ -34,7 +34,7 @@ private:
 
 	lib::String					m_code;
 
-	ECompiledShaderType			m_type;
+	rhi::EShaderStage			m_stage;
 };
 
 

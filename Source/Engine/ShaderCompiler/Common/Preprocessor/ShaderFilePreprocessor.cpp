@@ -32,23 +32,23 @@ static const lib::StaticArray<tkn::Token, EToken::NUM> tokens
 namespace internal
 {
 
-static ECompiledShaderType StringToShaderType(lib::StringView typeName)
+static rhi::EShaderStage StringToShaderType(lib::StringView stageName)
 {
-	if (typeName == "vertex")
+	if (stageName == "vertex")
 	{
-		return ECompiledShaderType::Vertex;
+		return rhi::EShaderStage::Vertex;
 	}
-	else if(typeName == "fragment")
+	else if(stageName == "fragment")
 	{
-		return ECompiledShaderType::Fragment;
+		return rhi::EShaderStage::Fragment;
 	}
-	else if(typeName == "compute")
+	else if(stageName == "compute")
 	{
-		return ECompiledShaderType::Compute;
+		return rhi::EShaderStage::Compute;
 	}
 
 	SPT_CHECK_NO_ENTRY();
-	return ECompiledShaderType::None;
+	return rhi::EShaderStage::None;
 }
 
 } // internal
@@ -102,7 +102,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 			ShaderSourceCode sourceCode(currentShadersGroup.m_groupName);
 			sourceCode.SetSourceCode(lib::String(shaderCode));
-			sourceCode.SetShaderType(internal::StringToShaderType(shaderTypeName));
+			sourceCode.SetShaderStage(internal::StringToShaderType(shaderTypeName));
 
 			currentShadersGroup.m_shaders.emplace_back(sourceCode);
 		});

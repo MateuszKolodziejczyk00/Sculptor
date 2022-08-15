@@ -7,12 +7,12 @@ namespace spt::sc
 // CompiledShader ================================================================================
 
 CompiledShader::CompiledShader()
-	: m_type(ECompiledShaderType::None)
+	: m_stage(rhi::EShaderStage::None)
 { }
 
 Bool CompiledShader::IsValid() const
 {
-	return m_type != ECompiledShaderType::None && !m_binary.empty();
+	return m_stage != rhi::EShaderStage::None && !m_binary.empty();
 }
 
 void CompiledShader::SetBinary(Binary binary)
@@ -20,9 +20,9 @@ void CompiledShader::SetBinary(Binary binary)
 	m_binary = std::move(binary);
 }
 
-void CompiledShader::SetType(ECompiledShaderType type)
+void CompiledShader::SetStage(rhi::EShaderStage stage)
 {
-	m_type = type;
+	m_stage = stage;
 }
 
 const CompiledShader::Binary& CompiledShader::GetBinary() const
@@ -30,9 +30,9 @@ const CompiledShader::Binary& CompiledShader::GetBinary() const
 	return m_binary;
 }
 
-ECompiledShaderType CompiledShader::GetType() const
+rhi::EShaderStage CompiledShader::GetStage() const
 {
-	return m_type;
+	return m_stage;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

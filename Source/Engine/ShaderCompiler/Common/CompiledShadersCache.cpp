@@ -51,7 +51,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 
 			for (const YAML::Node serializedShader : serializedShaders)
 			{
-				const ECompiledShaderType shaderType = static_cast<ECompiledShaderType>(serializedShader["Type"].as<Uint32>());
+				const rhi::EShaderStage shaderStage = static_cast<rhi::EShaderStage>(serializedShader["Type"].as<Uint32>());
 				
 				YAML::Binary deserializedBinary = serializedShader["Binary"].as<YAML::Binary>();
 				lib::DynamicArray<unsigned char> binaryBytes;
@@ -63,7 +63,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 				memcpy_s(binary.data(), binarySize, binaryBytes.data(), binarySize);
 
 				CompiledShader& shader = shadersGroup.m_shaders.emplace_back(CompiledShader());
-				shader.SetType(shaderType);
+				shader.SetStage(shaderStage);
 				shader.SetBinary(std::move(binary));
 			}
 		}
@@ -107,7 +107,7 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 
 			out << YAML::BeginMap; // shader elements map
 
-			out << YAML::Key << "Type" << YAML::Value << static_cast<Uint32>(shader.GetType());
+			out << YAML::Key << "Type" << YAML::Value << static_cast<Uint32>(shader.GetStage());
 			out << YAML::Key << "Binary" << YAML::Value << binary;
 
 			out << YAML::EndMap; // shader elements map

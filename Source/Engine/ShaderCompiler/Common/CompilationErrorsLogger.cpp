@@ -11,14 +11,14 @@ namespace spt::sc
 namespace priv
 {
 
-lib::String getShaderTypeName(ECompiledShaderType type)
+lib::String getShaderStageName(rhi::EShaderStage stage)
 {
-	switch (type)
+	switch (stage)
 	{
-	case spt::sc::ECompiledShaderType::None:		return "None";
-	case spt::sc::ECompiledShaderType::Vertex:		return "Vertex";
-	case spt::sc::ECompiledShaderType::Fragment:	return "Fragment";
-	case spt::sc::ECompiledShaderType::Compute:		return "Compute";
+	case rhi::EShaderStage::None:		return "None";
+	case rhi::EShaderStage::Vertex:		return "Vertex";
+	case rhi::EShaderStage::Fragment:	return "Fragment";
+	case rhi::EShaderStage::Compute:	return "Compute";
 	}
 
 	SPT_CHECK_NO_ENTRY(); // Invalid shader type
@@ -61,7 +61,7 @@ void CompilationErrorsLogger::OutputShaderPreprocessedCode(const ShaderSourceCod
 
 	std::ofstream& stream = streamGuard.getStream();
 
-	stream << sourceCode.GetSourceCode();
+	stream << sourceCode.GetSourceStage();
 }
 
 void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const ShaderSourceCode& sourceCode, const lib::String& errors)
@@ -93,7 +93,7 @@ lib::String CompilationErrorsLogger::GetShaderLogsPath(const ShaderSourceCode& s
 	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath();
 	SPT_CHECK(std::filesystem::is_directory(logsPath));
 
-	return logsPath + "/" + sourceCode.GetName().ToString() + "/" + priv::getShaderTypeName(sourceCode.GetType());
+	return logsPath + "/" + sourceCode.GetName().ToString() + "/" + priv::getShaderStageName(sourceCode.GetShaderStage());
 }
 
 lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const ShaderSourceCode& sourceCode)
