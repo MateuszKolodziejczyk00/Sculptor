@@ -225,6 +225,15 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddIncludePathInternal(includePath)
     end
 
+    -- add additional includes in case if for example we want to include only headers from some project, without linking it's dll
+    if self.projectType == EProjectType.Editor or self.projectType == EProjectType.Engine then
+        self:AddIncludePathInternal("../../Engine")
+    end
+
+    if self.projectType == EProjectType.Editor then
+        self:AddIncludePathInternal("../../Editor")
+    end
+
     -- files
 	files (self:GetProjectFiles(configuration, platform))
 
