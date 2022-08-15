@@ -169,9 +169,36 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, storageBufferResource);
 
+	const spirv_cross::SPIRType& bufferType = compiler.get_type(storageBufferResource.base_type_id);
+	const SizeType storageSize = compiler.get_declared_struct_size(bufferType);
+
 	const smd::StorageBufferBindingData storageBufferBinding;
+
+	SPT_CHECK_NO_ENTRY(); // Check if it's properly working with unbound buffers
+	if (storageSize == 0)
+	{
+		storageBufferBinding.SetUnbound();
+	}
+	else
+	{
+		storageBufferBinding.SetSize(static_cast<Uint16>(storageSize));
+	}
+
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
 
+	const Bool isBufferParam = parametersMetaData.HasMeta(paramName, meta::buffer);
+	
+	if (isBufferParam)
+	{
+		const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
+		outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
+	}
+
+	if (!isBufferParam || parametersMetaData.HasMeta(paramName, meta::exposeInner))
+	{
+		const helper::SpirvExposedParametersBuilder exposedParamsBuilder(setIdx, bindingIdx, compiler, shaderStage, parametersMetaData, outShaderMetaData);
+		exposedParamsBuilder.AddMembersParameters(bufferType);
+	}
 }
 
 static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& combinedTextureSamplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
