@@ -54,15 +54,15 @@ inline Flags32 BindingFlagsToShaderStageFlags(Flags32 bindingFlags)
 {
 	Flags32 shaderStageFlags = 0;
 
-	if (lib::HasFlag(bindingFlags, EBindingFlags::VertexShader))
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::VertexShader))
 	{
 		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Vertex);
 	}
-	if (lib::HasFlag(bindingFlags, EBindingFlags::FragmentShader))
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::FragmentShader))
 	{
 		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Fragment);
 	}
-	if (lib::HasFlag(bindingFlags, EBindingFlags::ComputeShader))
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::ComputeShader))
 	{
 		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Compute);
 	}
@@ -104,7 +104,7 @@ struct CommonBindingData abstract
 
 	Bool IsValid() const
 	{
-		return !lib::HasFlag(m_flags, EBindingFlags::Invalid);
+		return !lib::HasAnyFlag(m_flags, EBindingFlags::Invalid);
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)
@@ -171,7 +171,7 @@ struct StorageBufferBindingData : public CommonBindingData
 
 	Bool IsUnbound() const
 	{
-		return lib::HasFlag(m_flags, EBindingFlags::Unbound);
+		return lib::HasAnyFlag(m_flags, EBindingFlags::Unbound);
 	}
 
 	Uint16 GetSize() const

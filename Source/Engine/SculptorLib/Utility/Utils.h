@@ -10,9 +10,16 @@ namespace spt::lib
 {
 
 template<typename FlagsType, typename FlagType>
-std::enable_if_t<std::is_enum_v<FlagType>, Bool> HasFlag(FlagsType flags, FlagType queriedFlag)
+std::enable_if_t<std::is_enum_v<FlagType>, Bool> HasAnyFlag(FlagsType flags, FlagType queriedFlag)
 {
 	return (flags & static_cast<FlagsType>(queriedFlag)) != 0;
+}
+
+template<typename FlagsType, typename FlagType>
+std::enable_if_t<std::is_enum_v<FlagType>, Bool> HasAllFlags(FlagsType flags, FlagType queriedFlag)
+{
+	const FlagsType allFlags = static_cast<FlagsType>(queriedFlag);
+	return (flags & allFlags) == allFlags;
 }
 
 template<typename FlagsType, typename FlagType>

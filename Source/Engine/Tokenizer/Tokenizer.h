@@ -62,8 +62,7 @@ enum Flags : Flags32
 {
 	None							= 0,
 	IncludeStringBeforeFirstToken	= BIT(1),
-	IncludeStringAfterLastToken		= BIT(2),
-	IncludeBeginTokens				= BIT(3)
+	IncludeStringAfterLastToken		= BIT(2)
 };
 
 }
@@ -79,7 +78,7 @@ public:
 		, m_dictionary(dictionary)
 	{ }
 
-	TokensArray							BuildTokensArray() const
+	TokensArray BuildTokensArray() const
 	{
 		SPT_PROFILE_FUNCTION();
 	
@@ -120,7 +119,7 @@ public:
 		return tokens;
 	}
 
-	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, Flags32 flags) const
+	lib::DynamicArray<lib::StringView> DivideByTokens(const TokensArray& tokens, Flags32 flags) const
 	{
 		lib::DynamicArray<lib::StringView> strings;
 		strings.reserve(tokens.size() + 1);
@@ -131,11 +130,9 @@ public:
 			return strings;
 		}
 	
-		const Bool includeStringBeforeFirstToken = tokens[0].m_tokenPosition != 0 && ;
-	
-		if ((flags & EDivideByTokensFlags::IncludeStringBeforeFirstToken) != 0)
+		if (lib::HasAnyFlag(flags, EDivideByTokensFlags::IncludeStringBeforeFirstToken))
 		{
-			const lib::StringView stringBeforeToken = GetStringAfterToken(tokens[0]);
+			const lib::StringView stringBeforeToken = GetStringBeforeToken(tokens[0]);
 	
 			if(!stringBeforeToken.empty())
 			{
@@ -148,7 +145,7 @@ public:
 			strings.emplace_back(GetStringBetweenTokens(tokens[idx - 1], tokens[idx]));
 		}
 	
-		if ((flags & EDivideByTokensFlags::IncludeStringAfterLastToken) != 0)
+		if (lib::HasAnyFlag(flags, EDivideByTokensFlags::IncludeStringAfterLastToken))
 		{
 			const lib::StringView stringAfterToken = GetStringAfterToken(tokens[tokens.size() - 1]);
 	
@@ -161,7 +158,7 @@ public:
 		return strings;
 	}
 
-	lib::StringView						GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
+	lib::StringView GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
 	{
 		SPT_CHECK(first < second);
 	
@@ -173,14 +170,14 @@ public:
 		return lib::StringView(m_string.data() + beginPosition, length);
 	}
 
-	lib::StringView						GetStringBeforeToken(const TokenInfo& token) const
+	lib::StringView GetStringBeforeToken(const TokenInfo& token) const
 	{
 		SPT_CHECK(token.IsValid());
 	
 		return lib::StringView(m_string.data(), token.m_tokenPosition);
 	}
 
-	lib::StringView						GetStringAfterToken(const TokenInfo& token) const
+	lib::StringView GetStringAfterToken(const TokenInfo& token) const
 	{
 		SPT_CHECK(token.IsValid());
 	
@@ -189,12 +186,12 @@ public:
 		return lib::StringView(m_string.data() + token.m_tokenPosition, length);
 	}
 
-	SizeType							GetTokenLength(SizeType tokenTypeIdx) const
+	SizeType GetTokenLength(SizeType tokenTypeIdx) const
 	{
 		return m_dictionary[tokenTypeIdx].length();
 	}
 
-	SizeType							GetTokenEndPosition(TokenInfo token) const
+	SizeType GetTokenEndPosition(TokenInfo token) const
 	{
 		return token.m_tokenPosition + GetTokenLength(token.m_tokenTypeIdx):
 	}
@@ -240,18 +237,18 @@ public:
 		: m_tokens(tokens)
 	{ }
 
-	const TokensArray&		GetTokens() const
+	const TokensArray& GetTokens() const
 	{
 		return m_tokens;
 	}
 
-	TokenInfo				FindNextToken(const TokenInfo& currentToken) const
+	TokenInfo FindNextToken(const TokenInfo& currentToken) const
 	{
 		const bool nextTokenExists = currentToken.IsValid() && currentToken.m_idx < m_tokens.size() - 1;
 		return nextTokenExists ? m_tokens[currentToken.m_idx + 1] : TokenInfo();
 	}
 
-	TokenInfo				FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const
+	TokenInfo FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const
 	{
 		if (currentToken.IsValid() && currentToken.m_idx != m_tokens.size() - 1)
 		{
@@ -267,12 +264,12 @@ public:
 		return TokenInfo();
 	}
 
-	void					VisitAllTokens(const TokensVisitor& visitor) const
+	void VisitAllTokens(const TokensVisitor& visitor) const
 	{
 		VisitImpl(visitor, 0, m_tokens.size());
 	}
 
-	void					VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const
+	void VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const
 	{
 		const SizeType beginIdx = begin.IsValid() ? begin.m_idx : 0;
 		const SizeType endIdx = end.IsValid() ? end.m_idx : m_tokens.size();
@@ -282,7 +279,7 @@ public:
 
 private:
 
-	void					VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const
+	void VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const
 	{
 		std::for_each(std::cbegin(m_tokens) + begin, std::cend(m_tokens) + end,
 			[&visitor, this](const TokenInfo& token)
@@ -291,7 +288,7 @@ private:
 			});
 	}
 
-	const TokensArray&		m_tokens;
+	const TokensArray& m_tokens;
 };
 
 
@@ -299,7 +296,7 @@ class TokenizerUtils
 {
 public:
 
-	static lib::StringView		GetNearestStringBetween(lib::StringView string, char startCharacter, char endCharacter)
+	static lib::StringView GetNearestStringBetween(lib::StringView string, char startCharacter, char endCharacter)
 	{
 		const SizeType startPosition	= string.find(startCharacter, 0);
 		const SizeType endPosition		= string.find(endCharacter, startPosition + 1);
@@ -309,12 +306,12 @@ public:
 			: lib::StringView();
 	}
 
-	static lib::StringView		GetStringInNearestBracket(lib::StringView string)
+	static lib::StringView GetStringInNearestBracket(lib::StringView string)
 	{
 		return GetNearestStringBetween(string, '(', ')');
 	}
 
-	static lib::StringView		GetStringInNearestBracket(lib::StringView string, SizeType offset)
+	static lib::StringView GetStringInNearestBracket(lib::StringView string, SizeType offset)
 	{
 		SPT_CHECK(offset < string.size());
 		const SizeType substringLength = string.size() - offset;
