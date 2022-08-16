@@ -74,16 +74,120 @@ class Tokenizer
 {
 public:
 
-	Tokenizer(lib::StringView string, const TTokenizerDictionary& dictionary);
+	Tokenizer(lib::StringView string, const TTokenizerDictionary& dictionary)
+		: m_string(string)
+		, m_dictionary(dictionary)
+	{ }
 
-	TokensArray							BuildTokensArray() const;
+	TokensArray							BuildTokensArray() const
+	{
+		SPT_PROFILE_FUNCTION();
+	
+		TokensArray tokens;
+	
+		// It's kinda slow implementation but hopefully for now it will be enough
+		for (SizeType tokenTypeIdx = 0; tokenTypeIdx < m_dictionary.size(); ++tokenTypeIdx)
+		{
+			const Token& token = m_dictionary[tokenTypeIdx];
+	
+			SizeType currentPosition = 0;
+	
+			Bool bContinue = true;
+			while (true)
+			{
+				currentPosition = m_string.find(token, currentPosition);
+	
+				if (currentPosition == lib::String::npos)
+				{
+					bContinue = false;
+					break;
+				}
+	
+				const TokenInfo tokenInfo(tokenTypeIdx, currentPosition);
+				const auto emplaceLocation = std::lower_bound(std::cbegin(tokens), std::cend(tokens), tokenInfo);
+	
+				tokens.emplace(emplaceLocation, tokenInfo);
+			}
+		}
+	
+		auto idxBuilder = [currentIdx = 0](TokenInfo& token) mutable
+		{
+			token.m_idx = currentIdx++;
+		};
+	
+		std::for_each(std::begin(tokens), std::end(tokens), idxBuilder);
+	
+		return tokens;
+	}
 
-	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, Flags32 flags) const;
+	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, Flags32 flags) const
+	{
+		lib::DynamicArray<lib::StringView> strings;
+		strings.reserve(tokens.size() + 1);
+	
+		if (tokens.empty())
+		{
+			strings.emplace_back(m_string);
+			return strings;
+		}
+	
+		const Bool includeStringBeforeFirstToken = tokens[0].m_tokenPosition != 0 && ;
+	
+		if ((flags & EDivideByTokensFlags::IncludeStringBeforeFirstToken) != 0)
+		{
+			const lib::StringView stringBeforeToken = GetStringAfterToken(tokens[0]);
+	
+			if(!stringBeforeToken.empty())
+			{
+				strings.emplace_back(stringBeforeToken);
+			}
+		}
+	
+		for (SizeType idx = 1; idx < tokens.size(); ++idx)
+		{
+			strings.emplace_back(GetStringBetweenTokens(tokens[idx - 1], tokens[idx]));
+		}
+	
+		if ((flags & EDivideByTokensFlags::IncludeStringAfterLastToken) != 0)
+		{
+			const lib::StringView stringAfterToken = GetStringAfterToken(tokens[tokens.size() - 1]);
+	
+			if(!stringAfterToken.empty())
+			{
+				strings.emplace_back(stringAfterToken);
+			}
+		}
+	
+		return strings;
+	}
 
-	lib::StringView						GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const;
+	lib::StringView						GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
+	{
+		SPT_CHECK(first < second);
+	
+		const SizeType beginPosition	= first.IsValid() ? first.m_tokenPosition : 0;
+		const SizeType endPosition		= second.IsValid() ? second.m_tokenPosition : m_string.size();
+	
+		const SizeType length = endPosition - beginPosition;
+	
+		return lib::StringView(m_string.data() + beginPosition, length);
+	}
 
-	lib::StringView						GetStringBeforeToken(const TokenInfo& token) const;
-	lib::StringView						GetStringAfterToken(const TokenInfo& token) const;
+	lib::StringView						GetStringBeforeToken(const TokenInfo& token) const
+	{
+		SPT_CHECK(token.IsValid());
+	
+		return lib::StringView(m_string.data(), token.m_tokenPosition);
+	}
+
+	lib::StringView						GetStringAfterToken(const TokenInfo& token) const
+	{
+		SPT_CHECK(token.IsValid());
+	
+		const SizeType length = m_string.size() - token.m_tokenPosition;
+	
+		return lib::StringView(m_string.data() + token.m_tokenPosition, length);
+	}
 
 	SizeType							GetTokenLength(SizeType tokenTypeIdx) const
 	{
@@ -98,128 +202,6 @@ public:
 	lib::StringView						m_string;
 	const TTokenizerDictionary&			m_dictionary;
 };
-
-
-template<typename TTokenizerDictionary>
-Tokenizer<TTokenizerDictionary>::Tokenizer(lib::StringView string, const TTokenizerDictionary& dictionary)
-	: m_string(string)
-	, m_dictionary(dictionary)
-{ }
-
-template<typename TTokenizerDictionary>
-TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
-{
-	SPT_PROFILE_FUNCTION();
-
-	TokensArray tokens;
-
-	// It's kinda slow implementation but hopefully for now it will be enough
-	for (SizeType tokenTypeIdx = 0; tokenTypeIdx < m_dictionary.size(); ++tokenTypeIdx)
-	{
-		const Token& token = m_dictionary[tokenTypeIdx];
-
-		SizeType currentPosition = 0;
-
-		Bool bContinue = true;
-		while (true)
-		{
-			currentPosition = m_string.find(token, currentPosition);
-
-			if (currentPosition == lib::String::npos)
-			{
-				bContinue = false;
-				break;
-			}
-
-			const TokenInfo tokenInfo(tokenTypeIdx, currentPosition);
-			const auto emplaceLocation = std::lower_bound(std::cbegin(tokens), std::cend(tokens), tokenInfo);
-
-			tokens.emplace(emplaceLocation, tokenInfo);
-		}
-	}
-
-	auto idxBuilder = [currentIdx = 0](TokenInfo& token) mutable
-	{
-		token.m_idx = currentIdx++;
-	};
-
-	std::for_each(std::begin(tokens), std::end(tokens), idxBuilder);
-
-	return tokens;
-}
-
-template<typename TTokenizerDictionary>
-lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByTokens(const TokensArray& tokens, Flags32 flags) const
-{
-	lib::DynamicArray<lib::StringView> strings;
-	strings.reserve(tokens.size() + 1);
-
-	if (tokens.empty())
-	{
-		strings.emplace_back(m_string);
-		return strings;
-	}
-
-	const Bool includeStringBeforeFirstToken = tokens[0].m_tokenPosition != 0 && ;
-
-	if ((flags & EDivideByTokensFlags::IncludeStringBeforeFirstToken) != 0)
-	{
-		const lib::StringView stringBeforeToken = GetStringAfterToken(tokens[0]);
-
-		if(!stringBeforeToken.empty())
-		{
-			strings.emplace_back(stringBeforeToken);
-		}
-	}
-
-	for (SizeType idx = 1; idx < tokens.size(); ++idx)
-	{
-		strings.emplace_back(GetStringBetweenTokens(tokens[idx - 1], tokens[idx]));
-	}
-
-	if ((flags & EDivideByTokensFlags::IncludeStringAfterLastToken) != 0)
-	{
-		const lib::StringView stringAfterToken = GetStringAfterToken(tokens[tokens.size() - 1]);
-
-		if(!stringAfterToken.empty())
-		{
-			strings.emplace_back(stringAfterToken);
-		}
-	}
-
-	return strings;
-}
-
-template<typename TTokenizerDictionary>
-lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const
-{
-	SPT_CHECK(first < second);
-
-	const SizeType beginPosition	= first.IsValid() ? first.m_tokenPosition : 0;
-	const SizeType endPosition		= second.IsValid() ? second.m_tokenPosition : m_string.size();
-
-	const SizeType length = endPosition - beginPosition;
-
-	return lib::StringView(m_string.data() + beginPosition, length);
-}
-
-template<typename TTokenizerDictionary>
-lib::StringView Tokenizer<TTokenizerDictionary>::GetStringBeforeToken(const TokenInfo& token) const
-{
-	SPT_CHECK(token.IsValid());
-
-	return lib::StringView(m_string.data(), token.m_tokenPosition);
-}
-
-template<typename TTokenizerDictionary>
-lib::StringView Tokenizer<TTokenizerDictionary>::GetStringAfterToken(const TokenInfo& token) const
-{
-	SPT_CHECK(token.IsValid());
-
-	const SizeType length = m_string.size() - token.m_tokenPosition;
-
-	return lib::StringView(m_string.data() + token.m_tokenPosition, length);
-}
 
 
 class TokensVisitor
@@ -258,70 +240,59 @@ public:
 		: m_tokens(tokens)
 	{ }
 
-	const TokensArray&		GetTokens() const;
+	const TokensArray&		GetTokens() const
+	{
+		return m_tokens;
+	}
 
-	TokenInfo				FindNextToken(const TokenInfo& currentToken) const;
-	TokenInfo				FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const;
+	TokenInfo				FindNextToken(const TokenInfo& currentToken) const
+	{
+		const bool nextTokenExists = currentToken.IsValid() && currentToken.m_idx < m_tokens.size() - 1;
+		return nextTokenExists ? m_tokens[currentToken.m_idx + 1] : TokenInfo();
+	}
 
-	void					VisitAllTokens(const TokensVisitor& visitor) const;
+	TokenInfo				FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const
+	{
+		if (currentToken.IsValid() && currentToken.m_idx != m_tokens.size() - 1)
+		{
+			const auto foundToken = std::find_if(std::cbegin(m_tokens) + currentToken.m_idx + 1, std::cend(m_tokens),
+				[tokenTypeIdx](const TokenInfo& token)
+				{
+					return token.m_tokenTypeIdx == tokenTypeIdx;
+				});
+	
+			return foundToken != std::cend(m_tokens) ? *foundToken : TokenInfo();
+		}
+	
+		return TokenInfo();
+	}
 
-	void					VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const;
+	void					VisitAllTokens(const TokensVisitor& visitor) const
+	{
+		VisitImpl(visitor, 0, m_tokens.size());
+	}
+
+	void					VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const
+	{
+		const SizeType beginIdx = begin.IsValid() ? begin.m_idx : 0;
+		const SizeType endIdx = end.IsValid() ? end.m_idx : m_tokens.size();
+	
+		VisitImpl(visitor, beginIdx, endIdx);
+	}
 
 private:
 
-	void					VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const;
+	void					VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const
+	{
+		std::for_each(std::cbegin(m_tokens) + begin, std::cend(m_tokens) + end,
+			[&visitor, this](const TokenInfo& token)
+			{
+				visitor.ExecuteOnToken(token, *this);
+			});
+	}
 
 	const TokensArray&		m_tokens;
 };
-
-const TokensArray& TokensProcessor::GetTokens() const
-{
-	return m_tokens;
-}
-
-TokenInfo TokensProcessor::FindNextToken(const TokenInfo& currentToken) const
-{
-	const bool nextTokenExists = currentToken.IsValid() && currentToken.m_idx < m_tokens.size() - 1;
-	return nextTokenExists ? m_tokens[currentToken.m_idx + 1] : TokenInfo();
-}
-
-TokenInfo TokensProcessor::FindNextTokenOfType(const TokenInfo& currentToken, SizeType tokenTypeIdx) const
-{
-	if (currentToken.IsValid() && currentToken.m_idx != m_tokens.size() - 1)
-	{
-		const auto foundToken = std::find_if(std::cbegin(m_tokens) + currentToken.m_idx + 1, std::cend(m_tokens),
-			[tokenTypeIdx](const TokenInfo& token)
-			{
-				return token.m_tokenTypeIdx == tokenTypeIdx;
-			});
-
-		return foundToken != std::cend(m_tokens) ? *foundToken : TokenInfo();
-	}
-
-	return TokenInfo();
-}
-
-void TokensProcessor::VisitAllTokens(const TokensVisitor& visitor) const
-{
-	VisitImpl(visitor, 0, m_tokens.size());
-}
-
-void TokensProcessor::VisitTokens(const TokensVisitor& visitor, const TokenInfo& begin, const TokenInfo end) const
-{
-	const SizeType beginIdx = begin.IsValid() ? begin.m_idx : 0;
-	const SizeType endIdx = end.IsValid() ? end.m_idx : m_tokens.size();
-
-	VisitImpl(visitor, beginIdx, endIdx);
-}
-
-void TokensProcessor::VisitImpl(const TokensVisitor& visitor, const SizeType begin, const SizeType end) const
-{
-	std::for_each(std::cbegin(m_tokens) + begin, std::cend(m_tokens) + end,
-		[&visitor, this](const TokenInfo& token)
-		{
-			visitor.ExecuteOnToken(token, *this);
-		});
-}
 
 
 class TokenizerUtils
@@ -341,6 +312,15 @@ public:
 	static lib::StringView		GetStringInNearestBracket(lib::StringView string)
 	{
 		return GetNearestStringBetween(string, '(', ')');
+	}
+
+	static lib::StringView		GetStringInNearestBracket(lib::StringView string, SizeType offset)
+	{
+		SPT_CHECK(offset < string.size());
+		const SizeType substringLength = string.size() - offset;
+		const lib::StringView substring(string.data() + offset, substringLength);
+
+		return GetNearestStringBetween(substring, '(', ')');
 	}
 };
 
