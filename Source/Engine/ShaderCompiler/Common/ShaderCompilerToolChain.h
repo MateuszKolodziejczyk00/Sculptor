@@ -17,7 +17,7 @@ class SHADER_COMPILER_API ShaderCompilerToolChain
 {
 public:
 
-	static Bool CompileShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders); 
+	static Bool CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders); 
 
 private:
 

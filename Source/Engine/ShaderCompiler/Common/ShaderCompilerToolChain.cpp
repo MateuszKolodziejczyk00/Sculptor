@@ -4,11 +4,13 @@
 #include "ShaderFileReader.h"
 #include "Preprocessor/ShaderFilePreprocessor.h"
 #include "Compiler/ShaderCompiler.h"
+#include "MetaData/ShaderMetaDataBuilderTypes.h"
+#include "MetaData/ShaderMetaDataBuilder.h"
 
 namespace spt::sc
 {
 
-Bool ShaderCompilerToolChain::CompileShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders)
+Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -23,7 +25,7 @@ Bool ShaderCompilerToolChain::CompileShader(lib::HashedString shaderRelativePath
 
 	if(!outCompiledShaders.IsValid())
 	{
-		const lib::String shaderCode = ShaderFileReader::ReadShaderFile(shaderRelativePath);
+		const lib::String shaderCode = ShaderFileReader::ReadShaderFileRelative(shaderRelativePath);
 
 		const ShaderFilePreprocessingResult preprocessingResult = ShaderFilePreprocessor::PreprocessShaderFileSourceCode(shaderCode);
 
@@ -59,13 +61,15 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreproc
 
 		for (const ShaderSourceCode& shaderCode : preprocessedGroup.m_shaders)
 		{
-			CompiledShader compiledShader = compiler.CompileShader(shaderCode, settings);
+			ShaderParametersMetaData paramsMetaData;
+			CompiledShader compiledShader = compiler.CompileShader(shaderCode, settings, paramsMetaData);
 
 			success |= compiledShader.IsValid();
 
 			if (compiledShader.IsValid())
 			{
 				compiledShadersGroup.m_shaders.emplace_back(compiledShader);
+				ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShadersGroup.m_metaData);
 			}
 		}
 	}

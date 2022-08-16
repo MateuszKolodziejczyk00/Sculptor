@@ -10,7 +10,9 @@ class ShaderFileReader
 {
 public:
 
-	static lib::String			ReadShaderFile(const lib::HashedString& shaderRelativePath);
+	static lib::String			ReadShaderFileRelative(const lib::String& shaderRelativePath);
+
+	static lib::String			ReadShaderFileAbsolute(const lib::String& shaderAbsolutePath);
 };
 
 }

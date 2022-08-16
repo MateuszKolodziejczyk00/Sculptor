@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderCompilerTypes.h"
+#include "ShaderMetaData.h"
 
 
 namespace spt::sc
@@ -40,6 +41,7 @@ public:
 
 	lib::HashedString					m_groupName;
 	lib::DynamicArray<CompiledShader>	m_shaders;
+	smd::ShaderMetaData					m_metaData;
 };
 
 

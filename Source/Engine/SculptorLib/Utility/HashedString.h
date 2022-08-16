@@ -30,6 +30,11 @@ public:
 		key = DataBaseType::GetRecord(rhs, stringView);
 	}
 
+	HashedStringBase(const String& rhs)
+	{
+		key = DataBaseType::GetRecord(lib::StringView(rhs), stringView);
+	}
+
 	HashedStringBase(String&& rhs)
 	{
 		key = DataBaseType::GetRecord(std::forward<String>(rhs), stringView);
@@ -50,6 +55,12 @@ public:
 	ThisType& operator=(StringView rhs)
 	{
 		key = DataBaseType::GetRecord(rhs, stringView);
+		return *this;
+	}
+
+	ThisType& operator=(const String& rhs)
+	{
+		key = DataBaseType::GetRecord(StringView(rhs), stringView);
 		return *this;
 	}
 

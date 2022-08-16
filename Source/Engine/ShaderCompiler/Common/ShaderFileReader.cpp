@@ -7,15 +7,20 @@
 namespace spt::sc
 {
 
-lib::String ShaderFileReader::ReadShaderFile(const lib::HashedString& shaderRelativePath)
+lib::String ShaderFileReader::ReadShaderFileRelative(const lib::String& shaderRelativePath)
 {
 	SPT_PROFILE_FUNCTION();
-
-	lib::String code;
 	
-	const lib::String shaderPath = ShaderCompilationEnvironment::GetShadersPath() + "/" + shaderRelativePath.ToString();
+	const lib::String shaderPath = ShaderCompilationEnvironment::GetShadersPath() + "/" + shaderRelativePath;
 
-	std::ifstream stream(shaderPath);
+	return ReadShaderFileAbsolute(shaderPath);
+}
+
+spt::lib::String ShaderFileReader::ReadShaderFileAbsolute(const lib::String& shaderAbsolutePath)
+{
+	lib::String code;
+
+	std::ifstream stream(shaderAbsolutePath);
 	if (stream)
 	{
 		std::ostringstream stringStream;

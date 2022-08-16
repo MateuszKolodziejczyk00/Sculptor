@@ -3,8 +3,8 @@
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Common/CompilationErrorsLogger.h"
 #include "Common/CompiledShadersCache.h"
-
-#include <fstream>
+#include "Common/MetaData/ShaderMetaDataPreprocessor.h"
+#include "Common/ShaderFileReader.h"
 
 #include "shaderc/shaderc.hpp"
 
@@ -139,10 +139,7 @@ lib::String Includer::ReadShaderCode(const lib::String& path) const
 {
 	SPT_PROFILE_FUNCTION();
 
-	std::ifstream file(path.c_str());
-
-	lib::String code((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-	return code;
+	return ShaderFileReader::ReadShaderFileAbsolute(path.c_str());
 }
 
 Includer::IncludeData* Includer::CreateIncludeData(lib::String name, lib::String code)
@@ -167,7 +164,7 @@ public:
 
 	CompilerImpl();
 
-	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
+	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
 
 protected:
 
@@ -186,7 +183,7 @@ private:
 CompilerImpl::CompilerImpl()
 { }
 
-CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -207,6 +204,8 @@ CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, c
 	ShaderSourceCode preprocessedShaderSource(sourceCode.GetName());
 	preprocessedShaderSource.SetShaderStage(sourceCode.GetShaderStage());
 	preprocessedShaderSource.SetSourceCode(lib::String(preprocessResult.cbegin(), preprocessResult.cend()));
+
+	ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(preprocessedShaderSource);
 
 	const shaderc::CompilationResult compilationResult = CompileToSpirv(preprocessedShaderSource, options);
 
@@ -294,11 +293,11 @@ ShaderCompiler::ShaderCompiler()
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILE_FUNCTION();
 
-	return m_impl->CompileShader(sourceCode, compilationSettings);
+	return m_impl->CompileShader(sourceCode, compilationSettings, outParamsMetaData);
 }
 
 } // spt::sc
