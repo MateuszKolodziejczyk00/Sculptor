@@ -98,7 +98,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 			const lib::StringView shaderCode = tokenizer.GetStringBetweenTokens(tokenInfo, processor.FindNextToken(tokenInfo));
 
-			const lib::StringView shaderTypeName = tkn::TokenizerUtils::GetStringInNearestBracket(shaderCode);
+			const lib::StringView shaderTypeName = tkn::TokenizerUtils::GetStringInNearestBracket(shaderCode, 0);
 
 			ShaderSourceCode sourceCode(currentShadersGroup.m_groupName);
 			sourceCode.SetSourceCode(lib::String(shaderCode));
@@ -115,7 +115,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 			const lib::StringView groupCode = tokenizer.GetStringBetweenTokens(tokenInfo, nextGroupToken);
 
-			const lib::HashedString currentGroupName = tkn::TokenizerUtils::GetStringInNearestBracket(groupCode);
+			const lib::HashedString currentGroupName = tkn::TokenizerUtils::GetStringInNearestBracket(groupCode, 0);
 
 			result.m_shadersGroups.emplace_back(PreprocessedShadersGroup(currentGroupName));
 
