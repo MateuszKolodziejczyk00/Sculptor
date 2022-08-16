@@ -21,7 +21,7 @@ public:
 
 private:
 
-	static Bool CompilePreprocessedShaders(const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders);
+	static Bool CompilePreprocessedShaders(const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders);
 };
 
 } // spt::sc

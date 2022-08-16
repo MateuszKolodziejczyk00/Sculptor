@@ -9,7 +9,7 @@ namespace spt::sc
 
 struct PreprocessedShadersGroup
 {
-	PreprocessedShadersGroup(lib::HashedString groupName);
+	explicit PreprocessedShadersGroup(lib::HashedString groupName);
 
 	Bool									IsValid() const;
 

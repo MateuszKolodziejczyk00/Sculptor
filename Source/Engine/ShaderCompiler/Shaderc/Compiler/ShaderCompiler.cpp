@@ -277,7 +277,7 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 
 	const shaderc_shader_kind shaderKind = priv::GetShaderKind(preprocessedSourceCode.GetShaderStage());
 
-	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceStage(), shaderKind, preprocessedSourceCode.GetName().GetData());
+	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceCode(), shaderKind, preprocessedSourceCode.GetName().GetData());
 
 	return result;
 }

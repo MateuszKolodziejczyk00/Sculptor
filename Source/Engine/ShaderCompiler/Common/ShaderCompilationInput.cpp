@@ -33,7 +33,7 @@ lib::HashedString ShaderSourceCode::GetName() const
 	return m_name;
 }
 
-const lib::String& ShaderSourceCode::GetSourceStage() const
+const lib::String& ShaderSourceCode::GetSourceCode() const
 {
 	return m_code;
 }
@@ -51,6 +51,11 @@ const char* ShaderSourceCode::GetSourcePtr() const
 SizeType ShaderSourceCode::GetSourceLength() const
 {
 	return m_code.size();
+}
+
+lib::String& ShaderSourceCode::GetSourceCodeMutable()
+{
+	return m_code;
 }
 
 SizeType ShaderSourceCode::Hash() const

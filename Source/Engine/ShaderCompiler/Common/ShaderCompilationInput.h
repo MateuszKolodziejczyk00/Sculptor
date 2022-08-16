@@ -20,11 +20,13 @@ public:
 	void						SetShaderStage(rhi::EShaderStage stage);
 
 	lib::HashedString			GetName() const;
-	const lib::String&			GetSourceStage() const;
+	const lib::String&			GetSourceCode() const;
 	rhi::EShaderStage			GetShaderStage() const;
 
 	const char*					GetSourcePtr() const;
 	SizeType					GetSourceLength() const;
+
+	lib::String&				GetSourceCodeMutable();
 
 	SizeType					Hash() const;
 

@@ -172,7 +172,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const spirv_cross::SPIRType& bufferType = compiler.get_type(storageBufferResource.base_type_id);
 	const SizeType storageSize = compiler.get_declared_struct_size(bufferType);
 
-	const smd::StorageBufferBindingData storageBufferBinding;
+	smd::StorageBufferBindingData storageBufferBinding;
 
 	SPT_CHECK_NO_ENTRY(); // Check if it's properly working with unbound buffers
 	if (storageSize == 0)

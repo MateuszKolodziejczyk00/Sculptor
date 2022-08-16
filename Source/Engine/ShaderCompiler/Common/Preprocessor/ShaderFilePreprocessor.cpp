@@ -122,7 +122,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 			processor.VisitTokens(shadersVisitor, tokenInfo, nextGroupToken);
 		});
 
-	tkn::TokensProcessor tokensProcessor(tokensArray);
+	const tkn::TokensProcessor tokensProcessor(tokensArray);
 	tokensProcessor.VisitAllTokens(groupsVisitor);
 
 	return result;

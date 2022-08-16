@@ -61,7 +61,7 @@ void CompilationErrorsLogger::OutputShaderPreprocessedCode(const ShaderSourceCod
 
 	std::ofstream& stream = streamGuard.getStream();
 
-	stream << sourceCode.GetSourceStage();
+	stream << sourceCode.GetSourceCode();
 }
 
 void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const ShaderSourceCode& sourceCode, const lib::String& errors)

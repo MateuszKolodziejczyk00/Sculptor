@@ -47,7 +47,7 @@ Bool ShaderCompilerToolChain::CompileShader(lib::HashedString shaderRelativePath
 	return compilationResult;
 }
 
-Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
+Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
 {
 	SPT_PROFILE_FUNCTION();
 
