@@ -21,7 +21,7 @@ lib::SharedPtr<UIBackend> RendererBuilder::CreateUIBackend(ui::UIContext context
 	return std::make_shared<UIBackend>(context, window);
 }
 
-lib::SharedPtr<Buffer> RendererBuilder::CreateBuffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedPtr<Buffer> RendererBuilder::CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	return std::make_shared<Buffer>(name, size, bufferUsage, allocationInfo);
 }

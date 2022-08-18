@@ -4,11 +4,9 @@
 namespace spt::rhi
 {
 
-namespace EBufferUsage
+enum class EBufferUsage : Flags32
 {
-
-enum Flags : Flags32
-{
+	None					= 0,
 	TransferSrc				= BIT(0),
 	TransferDst				= BIT(1),
 	UniformTexel			= BIT(2),
@@ -21,7 +19,5 @@ enum Flags : Flags32
 	DeviceAddress			= BIT(9),
 	LAST
 };
-
-}
 
 }

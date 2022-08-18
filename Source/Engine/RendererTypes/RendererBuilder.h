@@ -2,6 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RHICore/RHIBufferTypes.h"
 #include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
 #include "Types/Barrier.h"
@@ -38,7 +39,7 @@ public:
 
 	static lib::SharedPtr<UIBackend>			CreateUIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window);
 	
-	static lib::SharedPtr<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	static lib::SharedPtr<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	static lib::SharedPtr<Texture>				CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 
 	static lib::SharedPtr<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);

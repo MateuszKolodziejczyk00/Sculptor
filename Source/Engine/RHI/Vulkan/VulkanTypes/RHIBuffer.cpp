@@ -8,52 +8,52 @@ namespace spt::vulkan
 namespace priv
 {
 
-VkBufferUsageFlags GetVulkanBufferUsage(Flags32 bufferUsage)
+VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 {
 	VkBufferUsageFlags vulkanFlags{};
 
-	if ((bufferUsage & rhi::EBufferUsage::TransferSrc) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::TransferSrc))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::TransferDst) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::TransferDst))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::UniformTexel) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::UniformTexel))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::StorageTexel) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::StorageTexel))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::Uniform) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Uniform))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::Storage) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Storage))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::Index) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Index))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::Vertex) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Vertex))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::Indirect) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Indirect))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
 	}
-	if ((bufferUsage & rhi::EBufferUsage::DeviceAddress) != 0)
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::DeviceAddress))
 	{
-		vulkanFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	}
 
-	SPT_CHECK(bufferUsage < (rhi::EBufferUsage::LAST - 1) << 1);
+	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
 
 	return vulkanFlags;
 }
@@ -64,12 +64,12 @@ RHIBuffer::RHIBuffer()
 	: m_bufferHandle(VK_NULL_HANDLE)
 	, m_allocation(VK_NULL_HANDLE)
 	, m_bufferSize(0)
-	, m_usageFlags(0)
+	, m_usageFlags(rhi::EBufferUsage::None)
 	, m_mappingStrategy(EMappingStrategy::CannotBeMapped)
 	, m_mappedPointer(nullptr)
 { }
 
-void RHIBuffer::InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+void RHIBuffer::InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -107,7 +107,7 @@ void RHIBuffer::ReleaseRHI()
 	m_bufferHandle = VK_NULL_HANDLE;
 	m_allocation = VK_NULL_HANDLE;
 	m_bufferSize = 0;
-	m_usageFlags = 0;
+	m_usageFlags = rhi::EBufferUsage::None;
 	m_name.Reset();
 	m_mappingStrategy = EMappingStrategy::CannotBeMapped;
 	m_mappedPointer = nullptr;
@@ -123,7 +123,7 @@ Uint64 RHIBuffer::GetSize() const
 	return m_bufferSize;
 }
 
-Flags32 RHIBuffer::GetUsage() const
+rhi::EBufferUsage RHIBuffer::GetUsage() const
 {
 	return m_usageFlags;
 }

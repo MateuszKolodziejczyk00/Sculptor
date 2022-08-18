@@ -10,10 +10,7 @@ namespace spt::smd
 {
 
 // should be in the same order as BindingDataVariant
-namespace EBindingType
-{
-
-enum Type : Uint32
+enum class EBindingType : Uint32
 {
 	Texture,
 	CombinedTextureSampler,
@@ -23,13 +20,8 @@ enum Type : Uint32
 	NUM
 };
 
-} // EBindingType
 
-
-namespace EBindingFlags
-{
-
-enum Flags : Flags32
+enum class EBindingFlags : Flags32
 {
 	None			= 0,
 	Invalid			= BIT(0),
@@ -42,15 +34,13 @@ enum Flags : Flags32
 	ComputeShader	= BIT(23),
 };
 
-} // EBindingFlags
-
 
 namespace priv
 {
 
-constexpr Flags32 defaultBindingFlags = EBindingFlags::Invalid;
+constexpr EBindingFlags defaultBindingFlags = EBindingFlags::Invalid;
 
-inline Flags32 BindingFlagsToShaderStageFlags(Flags32 bindingFlags)
+inline Flags32 BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
 {
 	Flags32 shaderStageFlags = 0;
 
@@ -70,7 +60,7 @@ inline Flags32 BindingFlagsToShaderStageFlags(Flags32 bindingFlags)
 	return shaderStageFlags;
 }
 
-inline EBindingFlags::Flags ShaderStageToBindingFlag(rhi::EShaderStage stage)
+inline EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
@@ -92,7 +82,7 @@ static constexpr Uint32 maxBindingIdx	= 255;
 
 struct CommonBindingData abstract
 {
-	CommonBindingData(Uint32 elementsNum, Flags32 flags)
+	CommonBindingData(Uint32 elementsNum, EBindingFlags flags)
 		: m_elementsNum(elementsNum)
 		, m_flags(flags)
 	{ }
@@ -118,13 +108,13 @@ struct CommonBindingData abstract
 	}
 
 	Uint32			m_elementsNum;
-	Uint32			m_flags;
+	EBindingFlags	m_flags;
 };
 
 
 struct TextureBindingData : public CommonBindingData
 {
-	TextureBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
+	TextureBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 	{ }
 };
@@ -132,7 +122,7 @@ struct TextureBindingData : public CommonBindingData
 
 struct CombinedTextureSamplerBindingData : public CommonBindingData
 {
-	CombinedTextureSamplerBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
+	CombinedTextureSamplerBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 	{ }
 };
@@ -140,7 +130,7 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 
 struct UniformBufferBindingData : public CommonBindingData
 {
-	UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
+	UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(size)
 	{
@@ -153,7 +143,7 @@ struct UniformBufferBindingData : public CommonBindingData
 
 struct StorageBufferBindingData : public CommonBindingData
 {
-	StorageBufferBindingData(Uint32 elementsNum = 1, Flags32 flags = priv::defaultBindingFlags)
+	StorageBufferBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(0) // invalid
 	{ }
@@ -237,9 +227,9 @@ struct GenericShaderBinding
 			m_data);
 	}
 
-	EBindingType::Type GetBindingType() const
+	EBindingType GetBindingType() const
 	{
-		return static_cast<EBindingType::Type>(m_data.index());
+		return static_cast<EBindingType>(m_data.index());
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)

@@ -22,13 +22,13 @@ public:
 
 	RHIBuffer();
 
-	void						InitializeRHI(Uint64 size, Flags32 bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	void						InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;
 
 	Uint64						GetSize() const;
-	Flags32						GetUsage() const;
+	rhi::EBufferUsage			GetUsage() const;
 
 	void*						MapBufferMemory() const;
 	void						UnmapBufferMemory() const;
@@ -61,7 +61,7 @@ private:
 
 	Uint64						m_bufferSize;
 
-	Flags32						m_usageFlags;
+	rhi::EBufferUsage			m_usageFlags;
 
 	DebugName					m_name;
 
