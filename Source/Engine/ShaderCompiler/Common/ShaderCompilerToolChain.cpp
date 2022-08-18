@@ -1,6 +1,6 @@
 #include "ShaderCompilerToolChain.h"
 #include "ShaderCompilationEnvironment.h"
-#include "CompiledShadersCache.h"
+#include "ShadersCache/CompiledShadersCache.h"
 #include "ShaderFileReader.h"
 #include "Preprocessor/ShaderFilePreprocessor.h"
 #include "Compiler/ShaderCompiler.h"

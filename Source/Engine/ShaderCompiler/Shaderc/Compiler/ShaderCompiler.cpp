@@ -2,7 +2,6 @@
 #include "Common/ShaderCompilationInput.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Common/CompilationErrorsLogger.h"
-#include "Common/CompiledShadersCache.h"
 #include "Common/MetaData/ShaderMetaDataPreprocessor.h"
 #include "Common/ShaderFileReader.h"
 

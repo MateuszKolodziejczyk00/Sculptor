@@ -1,6 +1,6 @@
 #include "CompiledShadersCache.h"
-#include "ShaderCompilationEnvironment.h"
-#include "ShaderCompilationInput.h"
+#include "Common/ShaderCompilationEnvironment.h"
+#include "Common/ShaderCompilationInput.h"
 
 #include "SculptorYAML.h"
 
@@ -48,6 +48,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 			const YAML::Node serializedShaders = serializedShadersGroup["Shaders"];
 
 			CompiledShadersGroup& shadersGroup = compiledShaderFile.m_groups.emplace_back(CompiledShadersGroup());
+			shadersGroup.m_groupName = groupName;
 
 			for (const YAML::Node serializedShader : serializedShaders)
 			{

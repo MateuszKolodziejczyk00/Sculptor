@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "CompiledShader.h"
+#include "Common/CompiledShader.h"
 
 
 namespace spt::sc
