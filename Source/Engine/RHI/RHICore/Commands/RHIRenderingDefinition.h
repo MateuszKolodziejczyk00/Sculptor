@@ -73,17 +73,12 @@ public:
 using RHIRenderTargetDefinition = RTGenericDefinition<>;
 
 
-namespace ERenderingFlags
-{
-
-enum Flags : Flags32
+enum class ERenderingFlags : Flags32
 {
 	None							= 0,
 	ContentsSecondaryCmdBuffers		= BIT(0),
 	Resuming						= BIT(1),
 };
-
-}
 
 
 struct RenderingDefinition
@@ -93,12 +88,12 @@ public:
 	RenderingDefinition()
 	{ }
 
-	Flags32								m_renderingFlags;
-	math::Vector2i						m_renderAreaOffset;
-	math::Vector2u						m_renderAreaExtent;
+	ERenderingFlags									m_renderingFlags;
+	math::Vector2i									m_renderAreaOffset;
+	math::Vector2u									m_renderAreaExtent;
 	lib::DynamicArray<RHIRenderTargetDefinition>	m_colorRTs;
-	RHIRenderTargetDefinition					m_depthRT;
-	RHIRenderTargetDefinition					m_stencilRT;
+	RHIRenderTargetDefinition						m_depthRT;
+	RHIRenderTargetDefinition						m_stencilRT;
 };
 
 }

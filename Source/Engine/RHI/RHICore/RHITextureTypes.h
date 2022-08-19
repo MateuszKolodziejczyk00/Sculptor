@@ -123,17 +123,13 @@ struct TextureComponentMappings
 };
 
 
-namespace ETextureAspect
+enum class ETextureAspect : Flags32
 {
-
-enum Flags : Flags32
-{
+	None			= 0,
 	Color			= BIT(0),
 	Depth			= BIT(1),
 	Stencil			= BIT(2)
 };
-
-}
 
 
 struct TextureSubresourceRange
@@ -141,7 +137,7 @@ struct TextureSubresourceRange
 	static constexpr Uint32 s_allRemainingMips			= idxNone<Uint32>;
 	static constexpr Uint32 s_allRemainingArrayLayers	= idxNone<Uint32>;
 
-	TextureSubresourceRange(Flags32 aspect = 0, Uint32 baseMip = 0, Uint32 mipLevelsNum = s_allRemainingMips, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = s_allRemainingArrayLayers)
+	TextureSubresourceRange(ETextureAspect aspect = ETextureAspect::None, Uint32 baseMip = 0, Uint32 mipLevelsNum = s_allRemainingMips, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = s_allRemainingArrayLayers)
 		: m_aspect(aspect)
 		, m_baseMipLevel(baseMip)
 		, m_mipLevelsNum(mipLevelsNum)
@@ -149,7 +145,7 @@ struct TextureSubresourceRange
 		, m_arrayLayersNum(arrayLayersNum)
 	{ }
 
-	Flags32				m_aspect;
+	ETextureAspect		m_aspect;
 	Uint32				m_baseMipLevel;
 	Uint32				m_mipLevelsNum;
 	Uint32				m_baseArrayLayer;
@@ -173,17 +169,12 @@ struct TextureViewDefinition
 };
 
 
-namespace EAccessType
-{
-
-enum Flags : Flags32
+enum class EAccessType : Flags32
 {
 	None		= 0,
 	Read		= BIT(0),
 	Write		= BIT(1)
 };
-
-}
 
 
 struct BarrierTextureTransitionTarget
@@ -194,15 +185,15 @@ struct BarrierTextureTransitionTarget
 		, m_stage(EPipelineStage::None)
 	{ }
 
-	constexpr BarrierTextureTransitionTarget(Flags32 accessType, ETextureLayout layout, Flags32 stage)
+	constexpr BarrierTextureTransitionTarget(EAccessType accessType, ETextureLayout layout, EPipelineStage stage)
 		: m_accessType(accessType)
 		, m_layout(layout)
 		, m_stage(stage)
 	{ }
 
-	Flags32						m_accessType;
+	EAccessType					m_accessType;
 	ETextureLayout				m_layout;
-	Flags32						m_stage;
+	EPipelineStage			m_stage;
 };
 
 
@@ -211,8 +202,8 @@ namespace TextureTransition
 
 	static constexpr BarrierTextureTransitionTarget Undefined			= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::Undefined, EPipelineStage::TopOfPipe);
 
-	static constexpr BarrierTextureTransitionTarget ComputeGeneral		= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::ComputeShader);
-	static constexpr BarrierTextureTransitionTarget FragmentGeneeral	= BarrierTextureTransitionTarget(EAccessType::Read | EAccessType::Write, ETextureLayout::General, EPipelineStage::FragmentShader);
+	static constexpr BarrierTextureTransitionTarget ComputeGeneral		= BarrierTextureTransitionTarget(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::ComputeShader);
+	static constexpr BarrierTextureTransitionTarget FragmentGeneeral	= BarrierTextureTransitionTarget(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::FragmentShader);
 	
 	static constexpr BarrierTextureTransitionTarget PresentSource		= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::PresentSrc, EPipelineStage::TopOfPipe);
 	

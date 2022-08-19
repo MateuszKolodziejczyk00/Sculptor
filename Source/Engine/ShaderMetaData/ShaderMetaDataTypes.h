@@ -40,9 +40,9 @@ namespace priv
 
 constexpr EBindingFlags defaultBindingFlags = EBindingFlags::Invalid;
 
-inline Flags32 BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
+inline rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
 {
-	Flags32 shaderStageFlags = 0;
+	rhi::EShaderStageFlags shaderStageFlags = rhi::EShaderStageFlags::None;
 
 	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::VertexShader))
 	{
@@ -102,7 +102,7 @@ struct CommonBindingData abstract
 		lib::AddFlag(m_flags, priv::ShaderStageToBindingFlag(stage));
 	}
 
-	Flags32 GetShaderStages() const
+	rhi::EShaderStageFlags GetShaderStages() const
 	{
 		return priv::BindingFlagsToShaderStageFlags(m_flags);
 	}

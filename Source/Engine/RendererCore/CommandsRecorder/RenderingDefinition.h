@@ -15,11 +15,11 @@ class RenderingDefinition
 {
 public:
 
-	RenderingDefinition(Flags32 renderingFlags, math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent)
+	RenderingDefinition(rhi::ERenderingFlags renderingFlags, math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent)
 	{
-		m_rhiDefinition.m_renderingFlags = renderingFlags;
-		m_rhiDefinition.m_renderAreaOffset = renderAreaOffset;
-		m_rhiDefinition.m_renderAreaExtent = renderAreaExtent;
+		m_rhiDefinition.m_renderingFlags	= renderingFlags;
+		m_rhiDefinition.m_renderAreaOffset	= renderAreaOffset;
+		m_rhiDefinition.m_renderAreaExtent	= renderAreaExtent;
 	}
 
 	void							AddColorRenderTarget(const RTDefinition& renderTarget)

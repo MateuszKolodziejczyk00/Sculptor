@@ -6,19 +6,14 @@
 namespace spt::rhi
 {
 
-namespace EShaderStageFlags
-{
-
 // Must be in the same order as EShaderStage
-enum Flags : Flags32
+enum class EShaderStageFlags : Flags32
 {
 	None			= 0,
 	Vertex			= BIT(0),
 	Fragment		= BIT(1),
 	Compute			= BIT(2)
 };
-
-}
 
 
 // Must be in the same order as EShaderStageFlags

@@ -219,21 +219,21 @@ VkComponentSwizzle GetVulkanComponentMapping(rhi::ETextureComponentMapping mappi
     return VK_COMPONENT_SWIZZLE_ZERO;
 }
 
-VkImageAspectFlags GetVulkanAspect(Flags32 aspect)
+VkImageAspectFlags GetVulkanAspect(rhi::ETextureAspect aspect)
 {
     VkImageAspectFlags vulkanAspect = 0;
 
-    if ((aspect & rhi::ETextureAspect::Color) != 0)
+    if (lib::HasAnyFlag(aspect, rhi::ETextureAspect::Color))
     {
-        vulkanAspect |= VK_IMAGE_ASPECT_COLOR_BIT;
+        lib::AddFlag(vulkanAspect, VK_IMAGE_ASPECT_COLOR_BIT);
     }
-	if ((aspect & rhi::ETextureAspect::Depth) != 0)
+	if (lib::HasAnyFlag(aspect, rhi::ETextureAspect::Depth))
     {
-        vulkanAspect |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        lib::AddFlag(vulkanAspect, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
-	if ((aspect & rhi::ETextureAspect::Stencil) != 0)
+	if (lib::HasAnyFlag(aspect, rhi::ETextureAspect::Stencil))
     {
-        vulkanAspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        lib::AddFlag(vulkanAspect, VK_IMAGE_ASPECT_STENCIL_BIT);
     }
 
     return vulkanAspect;

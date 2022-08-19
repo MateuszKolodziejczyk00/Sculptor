@@ -10,14 +10,14 @@ namespace spt::renderer
 SemaphoresArray::SemaphoresArray()
 { }
 
-void SemaphoresArray::AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binarySemaphore, Flags32 submitStage)
+void SemaphoresArray::AddBinarySemaphore(const lib::SharedPtr<Semaphore>& binarySemaphore, rhi::EPipelineStage submitStage)
 {
 	SPT_CHECK(binarySemaphore);
 
 	m_rhiSemaphores.AddBinarySemaphore(binarySemaphore->GetRHI(), submitStage);
 }
 
-void SemaphoresArray::AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value, Flags32 submitStage)
+void SemaphoresArray::AddTimelineSemaphore(const lib::SharedPtr<Semaphore>& timelineSemaphore, Uint64 value, rhi::EPipelineStage submitStage)
 {
 	SPT_CHECK(timelineSemaphore);
 

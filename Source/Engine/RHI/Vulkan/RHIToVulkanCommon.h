@@ -14,13 +14,13 @@ class RHIToVulkan
 {
 public:
 
-	static VkPipelineStageFlags2		GetStageFlags(Flags32 flags);
+	static VkPipelineStageFlags2		GetStageFlags(rhi::EPipelineStage flags);
 
 	static VkImageLayout				GetImageLayout(rhi::ETextureLayout layout);
 
-	static VkImageAspectFlags			GetAspectFlags(Flags32 flags);
+	static VkImageAspectFlags			GetAspectFlags(rhi::ETextureAspect flags);
 
-	static VkRenderingFlags				GetRenderingFlags(Flags32 flags);
+	static VkRenderingFlags				GetRenderingFlags(rhi::ERenderingFlags flags);
 
 	static VkAttachmentLoadOp			GetLoadOp(rhi::ERTLoadOperation loadOp);
 	static VkAttachmentStoreOp			GetStoreOp(rhi::ERTStoreOperation storeOp);

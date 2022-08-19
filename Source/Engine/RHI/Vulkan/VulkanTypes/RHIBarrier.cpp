@@ -70,7 +70,7 @@ void FillImageLayoutTransitionFlags(VkImageLayout layout, VkPipelineStageFlags2&
 
 VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& transitionTarget)
 {
-	const Flags32 rhiFlags = transitionTarget.m_accessType;
+	const rhi::EAccessType rhiFlags = transitionTarget.m_accessType;
 
 	VkAccessFlags2 flags = 0;
 
@@ -85,25 +85,25 @@ VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& t
 	case rhi::ETextureLayout::PresentSrc:
 	case rhi::ETextureLayout::ReadOnlyOptimal:
 	case rhi::ETextureLayout::RenderTargetOptimal:
-		if ((rhiFlags & rhi::EAccessType::Read) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Read))
 		{
-			flags |= VK_ACCESS_2_SHADER_READ_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_SHADER_READ_BIT);
 		}
-		if ((rhiFlags & rhi::EAccessType::Write) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Write))
 		{
-			flags |= VK_ACCESS_2_SHADER_WRITE_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_SHADER_WRITE_BIT);
 		}
 
 		break;
 
 	case rhi::ETextureLayout::ColorRTOptimal:
-		if ((rhiFlags & rhi::EAccessType::Read) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Read))
 		{
-			flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT);
 		}
-		if ((rhiFlags & rhi::EAccessType::Write) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Write))
 		{
-			flags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
 		}
 
 		break;
@@ -111,26 +111,26 @@ VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& t
 	case rhi::ETextureLayout::DepthRTOptimal:
 	case rhi::ETextureLayout::DepthStencilRTOptimal:
 	case rhi::ETextureLayout::DepthRTStencilReadOptimal:
-		if ((rhiFlags & rhi::EAccessType::Read) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Read))
 		{
-			flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
 		}
-		if ((rhiFlags & rhi::EAccessType::Write) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Write))
 		{
-			flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 		}
 
 		break;
 
 	case rhi::ETextureLayout::TransferSrcOptimal:
 	case rhi::ETextureLayout::TransferDstOptimal:
-		if ((rhiFlags & rhi::EAccessType::Read) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Read))
 		{
-			flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_TRANSFER_READ_BIT);
 		}
-		if ((rhiFlags & rhi::EAccessType::Write) != 0)
+		if (lib::HasAnyFlag(rhiFlags, rhi::EAccessType::Write))
 		{
-			flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			lib::AddFlag(flags, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 		}
 
 		break;

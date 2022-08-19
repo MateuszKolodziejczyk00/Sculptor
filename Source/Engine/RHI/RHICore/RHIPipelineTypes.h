@@ -5,10 +5,7 @@
 namespace spt::rhi
 {
 
-namespace EPipelineStage
-{
-
-enum Flags : Flags64
+enum class EPipelineStage : Flags64
 {
 	None							= 0,
 	TopOfPipe						= BIT64(0),
@@ -30,7 +27,5 @@ enum Flags : Flags64
 	ALL_TRANSFER					= BIT64(51),
 	ALL_COMMANDS					= BIT64(52)
 };
-
-}
 
 }
