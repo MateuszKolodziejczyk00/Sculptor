@@ -55,17 +55,17 @@ VmaMemoryUsage GetVMAMemoryUsage(rhi::EMemoryUsage memoryUsage)
 	return VMA_MEMORY_USAGE_AUTO;
 }
 
-VmaAllocationCreateFlags GetVMAAllocationFlags(Flags32 flags)
+VmaAllocationCreateFlags GetVMAAllocationFlags(rhi::EAllocationFlags flags)
 {
 	VmaAllocationCreateFlags vmaFlags{};
 
-	if ((flags & rhi::EAllocationFlags::CreateDedicatedAllocation) != 0)
+	if (lib::HasAnyFlag(flags, rhi::EAllocationFlags::CreateDedicatedAllocation))
 	{
-		vmaFlags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+		lib::AddFlag(vmaFlags, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	}
-	if ((flags & rhi::EAllocationFlags::CreateMapped) != 0)
+	if (lib::HasAnyFlag(flags, rhi::EAllocationFlags::CreateMapped))
 	{
-		vmaFlags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+		lib::AddFlag(vmaFlags, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 	}
 
 	return vmaFlags;

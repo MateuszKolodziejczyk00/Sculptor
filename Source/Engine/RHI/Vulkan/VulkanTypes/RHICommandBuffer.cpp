@@ -15,17 +15,17 @@ namespace spt::vulkan
 namespace priv
 {
 
-VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(Flags32 rhiFlags)
+VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(rhi::ECommandBufferBeginFlags rhiFlags)
 {
 	VkCommandBufferUsageFlags usage = 0;
 
-	if ((rhiFlags & rhi::ECommandBufferBeginFlags::OneTimeSubmit) != 0)
+	if (lib::HasAnyFlag(rhiFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit))
 	{
-		usage |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		lib::AddFlag(usage, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	}
-	if ((rhiFlags & rhi::ECommandBufferBeginFlags::ContinueRendering) != 0)
+	if (lib::HasAnyFlag(rhiFlags, rhi::ECommandBufferBeginFlags::ContinueRendering))
 	{
-		usage |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		lib::AddFlag(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 	}
 
 	return usage;

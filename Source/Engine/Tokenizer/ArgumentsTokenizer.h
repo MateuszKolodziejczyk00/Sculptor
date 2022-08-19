@@ -35,7 +35,7 @@ public:
 
 		if (!tokensArray.empty())
 		{
-			const Flags32 divideFlags = EDivideByTokensFlags::IncludeStringBeforeFirstToken | EDivideByTokensFlags::IncludeStringAfterLastToken;
+			const EDivideByTokensFlags divideFlags = lib::Flags(EDivideByTokensFlags::IncludeStringBeforeFirstToken, EDivideByTokensFlags::IncludeStringAfterLastToken);
 			arguments = tokenizer.DivideByTokens(tokensArray, divideFlags);
 
 			// At this point arguments contains commas and whitespaces, so remove them

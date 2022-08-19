@@ -22,17 +22,12 @@ enum class EDescriptorType
 };
 
 
-namespace EDescriptorSetBindingFlags
-{
-
-enum Flags : Flags32
+enum class EDescriptorSetBindingFlags : Flags32
 {
 	None					= 0,
 	UpdateAfterBind			= BIT(0),
 	PartiallyBound			= BIT(1)
 };
-
-}
 
 
 struct ShaderBindingDefinition
@@ -41,38 +36,33 @@ struct ShaderBindingDefinition
 		: m_bindingIdx(idxNone<Uint32>)
 		, m_descriptorType(EDescriptorType::UniformBuffer)
 		, m_descriptorCount(1)
-		, m_shaderStagesMask(0)
-		, m_bindingFlags(0)
+		, m_shaderStagesMask(EShaderStageFlags::None)
+		, m_bindingFlags(EDescriptorSetBindingFlags::None)
 	{ }
 
-	Uint32				m_bindingIdx;
-	EDescriptorType		m_descriptorType;
-	Uint32				m_descriptorCount;
-	Flags32				m_shaderStagesMask;
-	Flags32				m_bindingFlags;
+	Uint32							m_bindingIdx;
+	EDescriptorType					m_descriptorType;
+	Uint32							m_descriptorCount;
+	EShaderStageFlags				m_shaderStagesMask;
+	EDescriptorSetBindingFlags		m_bindingFlags;
 };
 
 
-namespace EBindingsLayoutFlags
-{
-
-enum Flags : Flags32
+enum class EBindingsLayoutFlags : Flags32
 {
 	None					= 0,
 	UpdateAfterBindPool		= BIT(1)
 };
 
-}
-
 
 struct ShaderBindingsSetDefinition
 {
 	ShaderBindingsSetDefinition()
-		: m_flags(0)
+		: m_flags(EBindingsLayoutFlags::None)
 	{ }
 
 	lib::DynamicArray<ShaderBindingDefinition>		m_bindingDefinitions;
-	Flags32											m_flags;
+	EBindingsLayoutFlags							m_flags;
 };
 
-}
+} // spt::rhi

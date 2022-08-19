@@ -55,29 +55,25 @@ struct CommandBufferDefinition
 };
 
 
-namespace ECommandBufferBeginFlags
+enum class ECommandBufferBeginFlags : Flags32
 {
-
-enum : Flags32
-{
+	None							= 0,
 	OneTimeSubmit					= BIT(0),
 	ContinueRendering				= BIT(1)
 };
-
-}
 
 
 struct CommandBufferUsageDefinition
 {
 	CommandBufferUsageDefinition()
-		: m_beginFlags(0)
+		: m_beginFlags(ECommandBufferBeginFlags::None)
 	{ }
 
-	CommandBufferUsageDefinition(Flags32 beginFlags)
+	CommandBufferUsageDefinition(ECommandBufferBeginFlags beginFlags)
 		: m_beginFlags(beginFlags)
 	{ }
 
-	Flags32							m_beginFlags;
+	ECommandBufferBeginFlags m_beginFlags;
 };
 
-}
+} // spt::rhi

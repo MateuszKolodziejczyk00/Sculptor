@@ -13,26 +13,24 @@ enum class EMemoryUsage
 	CPUCopy
 };
 
-namespace EAllocationFlags
-{
 
-enum Flags : Flags32
+enum class EAllocationFlags : Flags32
 {
+	None							= 0,
 	CreateDedicatedAllocation		= BIT(0),
 	CreateMapped					= BIT(1)
 };
 
-}
 
 struct RHIAllocationInfo
 {
 	RHIAllocationInfo()
 		: m_memoryUsage(EMemoryUsage::GPUOnly)
-		, m_allocationFlags(0)
+		, m_allocationFlags(EAllocationFlags::None)
 	{ }
 
 	EMemoryUsage				m_memoryUsage;
-	Flags32						m_allocationFlags;
+	EAllocationFlags			m_allocationFlags;
 };
 
-}
+} // spt::rhi

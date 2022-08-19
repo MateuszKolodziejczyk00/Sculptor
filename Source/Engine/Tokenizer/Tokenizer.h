@@ -55,17 +55,12 @@ struct TokenInfo
 using TokensArray = lib::DynamicArray<TokenInfo>;
 
 
-namespace EDivideByTokensFlags
-{
-
-enum Flags : Flags32
+enum class EDivideByTokensFlags : Flags32
 {
 	None							= 0,
 	IncludeStringBeforeFirstToken	= BIT(1),
 	IncludeStringAfterLastToken		= BIT(2)
 };
-
-}
 
 
 template<typename TTokenizerDictionary>
@@ -77,7 +72,7 @@ public:
 
 	TokensArray							BuildTokensArray() const;
 
-	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, Flags32 flags) const;
+	lib::DynamicArray<lib::StringView>	DivideByTokens(const TokensArray& tokens, EDivideByTokensFlags flags) const;
 
 	lib::StringView						GetStringBetweenTokens(const TokenInfo& first, const TokenInfo& second) const;
 
@@ -148,7 +143,7 @@ inline TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
 }
 
 template<typename TTokenizerDictionary>
-inline lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByTokens(const TokensArray& tokens, Flags32 flags) const
+inline lib::DynamicArray<lib::StringView> Tokenizer<TTokenizerDictionary>::DivideByTokens(const TokensArray& tokens, EDivideByTokensFlags flags) const
 {
 	lib::DynamicArray<lib::StringView> strings;
 	strings.reserve(tokens.size() + 1);
