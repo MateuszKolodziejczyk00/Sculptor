@@ -245,7 +245,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	const VkImageUsageFlags swapchainTextureUsage	= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	const rhi::EFragmentFormat rhiSwapchainTextureFormat	= RHITexture::GetRHIFormat(swapchainTextureFormat);
-	const Flags32 rhiSwapchainTextureUsage					= RHITexture::GetRHITextureUsageFlags(swapchainTextureUsage);
+	const rhi::ETextureUsage rhiSwapchainTextureUsage		= RHITexture::GetRHITextureUsageFlags(swapchainTextureUsage);
 
 	VkSwapchainCreateInfoKHR swapchainInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 	swapchainInfo.surface					= m_surface;

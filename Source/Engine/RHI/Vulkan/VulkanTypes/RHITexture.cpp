@@ -67,97 +67,97 @@ rhi::EFragmentFormat GetRHIFormat(VkFormat format)
     }
 }
 
-VkImageUsageFlags GetVulkanTextureUsageFlags(Flags32 usageFlags)
+VkImageUsageFlags GetVulkanTextureUsageFlags(rhi::ETextureUsage usageFlags)
 {
     VkImageUsageFlags vulkanFlags = 0;
 
-    if ((usageFlags & rhi::ETextureUsage::TransferSource) != 0)
+    if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::TransferSource))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
     }
-    if ((usageFlags & rhi::ETextureUsage::TransferDest) != 0)
+    if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::TransferDest))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::SampledTexture) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::SampledTexture))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_SAMPLED_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::StorageTexture) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::StorageTexture))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_STORAGE_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::ColorRT) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::ColorRT))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::DepthSetncilRT) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::DepthSetncilRT))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::TransientRT) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::TransientRT))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::InputRT) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::InputRT))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     }
-	if ((usageFlags & rhi::ETextureUsage::ShadingRateTexture) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::ShadingRateTexture))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV);
     }
-	if ((usageFlags & rhi::ETextureUsage::FragmentDensityMap) != 0)
+	if (lib::HasAnyFlag(usageFlags, rhi::ETextureUsage::FragmentDensityMap))
     {
-        vulkanFlags |= VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT;
+        lib::AddFlag(vulkanFlags, VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT);
     }
 
     return vulkanFlags;
 }
 
-Flags32 GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
+rhi::ETextureUsage GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
 {
-    Flags32 rhiFlags = 0;
+    rhi::ETextureUsage rhiFlags = rhi::ETextureUsage::None;
 
-    if ((usageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0)
+    if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::TransferSource;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::TransferSource);
     }
-    if ((usageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0)
+    if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::TransferDest;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::TransferDest);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_SAMPLED_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::SampledTexture;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::SampledTexture);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_STORAGE_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_STORAGE_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::StorageTexture;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::StorageTexture);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::ColorRT;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::ColorRT);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::DepthSetncilRT;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::DepthSetncilRT);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::TransientRT;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::TransientRT);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
     {
-        rhiFlags |= rhi::ETextureUsage::InputRT;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::InputRT);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV))
     {
-        rhiFlags |= rhi::ETextureUsage::ShadingRateTexture;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::ShadingRateTexture);
     }
-	if ((usageFlags & VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT) != 0)
+	if (lib::HasAnyFlag(usageFlags, VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT))
     {
-        rhiFlags |= rhi::ETextureUsage::FragmentDensityMap;
+        lib::AddFlag(rhiFlags, rhi::ETextureUsage::FragmentDensityMap);
     }
 
     return rhiFlags;
@@ -331,7 +331,7 @@ const lib::HashedString& RHITexture::GetName() const
     return m_name.Get();
 }
 
-VkImageUsageFlags RHITexture::GetVulkanTextureUsageFlags(Flags32 usageFlags)
+VkImageUsageFlags RHITexture::GetVulkanTextureUsageFlags(rhi::ETextureUsage usageFlags)
 {
     return priv::GetVulkanTextureUsageFlags(usageFlags);
 }
@@ -341,7 +341,7 @@ VkFormat RHITexture::GetVulkanFormat(rhi::EFragmentFormat format)
     return priv::GetVulkanFormat(format);
 }
 
-Flags32 RHITexture::GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
+rhi::ETextureUsage RHITexture::GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
 {
     return priv::GetRHITextureUsageFlags(usageFlags);
 }

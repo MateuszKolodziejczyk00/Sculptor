@@ -36,10 +36,10 @@ public:
 
 	// Vulkan Helpers ======================================================================================
 
-	static VkImageUsageFlags		GetVulkanTextureUsageFlags(Flags32 usageFlags);
+	static VkImageUsageFlags		GetVulkanTextureUsageFlags(rhi::ETextureUsage usageFlags);
 	static VkFormat					GetVulkanFormat(rhi::EFragmentFormat format);
 
-	static Flags32					GetRHITextureUsageFlags(VkImageUsageFlags usageFlags);
+	static rhi::ETextureUsage		GetRHITextureUsageFlags(VkImageUsageFlags usageFlags);
 	static rhi::EFragmentFormat		GetRHIFormat(VkFormat format);
 
 private:

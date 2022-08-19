@@ -6,10 +6,7 @@
 namespace spt::rhi
 {
 
-namespace ETextureUsage
-{
-
-enum Flags : Flags32
+enum class ETextureUsage : Flags32
 {
 	None						= 0,
 	TransferSource				= BIT(0),
@@ -23,8 +20,6 @@ enum Flags : Flags32
 	ShadingRateTexture			= BIT(8),
 	FragmentDensityMap			= BIT(9),
 };
-
-}
 
 
 enum class ETextureLayout : Uint32
@@ -69,7 +64,7 @@ struct TextureDefinition
 {
 	TextureDefinition()
 		: m_resolution{}
-		, m_usage(0)
+		, m_usage(ETextureUsage::None)
 		, m_format(EFragmentFormat::RGBA8_UN_Float)
 		, m_samples(1)
 		, m_mipLevels(1)
@@ -77,7 +72,7 @@ struct TextureDefinition
 	{ }
 
 	math::Vector3u		m_resolution;
-	Flags32				m_usage;
+	ETextureUsage		m_usage;
 	EFragmentFormat		m_format;
 	Uint8				m_samples;
 	Uint8				m_mipLevels;
