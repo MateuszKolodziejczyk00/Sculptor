@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "YAML.h"
+#include "ContainersYAMLSerialization.h"
 
 namespace YAML
 {

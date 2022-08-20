@@ -82,7 +82,7 @@ static constexpr Uint32 maxBindingIdx	= 255;
 
 struct CommonBindingData abstract
 {
-	CommonBindingData(Uint32 elementsNum, EBindingFlags flags)
+	explicit CommonBindingData(Uint32 elementsNum, EBindingFlags flags)
 		: m_elementsNum(elementsNum)
 		, m_flags(flags)
 	{ }
@@ -114,7 +114,7 @@ struct CommonBindingData abstract
 
 struct TextureBindingData : public CommonBindingData
 {
-	TextureBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
+	explicit TextureBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 	{ }
 };
@@ -122,7 +122,7 @@ struct TextureBindingData : public CommonBindingData
 
 struct CombinedTextureSamplerBindingData : public CommonBindingData
 {
-	CombinedTextureSamplerBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
+	explicit CombinedTextureSamplerBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 	{ }
 };
@@ -130,7 +130,7 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 
 struct UniformBufferBindingData : public CommonBindingData
 {
-	UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
+	explicit UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(size)
 	{
@@ -143,7 +143,7 @@ struct UniformBufferBindingData : public CommonBindingData
 
 struct StorageBufferBindingData : public CommonBindingData
 {
-	StorageBufferBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
+	explicit StorageBufferBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
 		: CommonBindingData(elementsNum, flags)
 		, m_size(0) // invalid
 	{ }
@@ -185,11 +185,10 @@ using BindingDataVariant = std::variant<TextureBindingData,
 
 struct GenericShaderBinding
 {
-	GenericShaderBinding()
-	{ }
+	GenericShaderBinding() = default;
 
 	template<typename TBindingDataType>
-	GenericShaderBinding(TBindingDataType bindingData)
+	explicit GenericShaderBinding(TBindingDataType bindingData)
 		: m_data(bindingData)
 	{ }
 
@@ -299,6 +298,8 @@ private:
 
 struct ShaderParamEntryCommon
 {
+	ShaderParamEntryCommon() = default;
+
 	ShaderParamEntryCommon(Uint8 setIdx, Uint8 bindingIdx)
 		: m_setIdx(setIdx)
 		, m_bindingIdx(bindingIdx)
@@ -311,6 +312,8 @@ struct ShaderParamEntryCommon
 
 struct ShaderTextureParamEntry : public ShaderParamEntryCommon
 {
+	ShaderTextureParamEntry() = default;
+
 	ShaderTextureParamEntry(Uint8 setIdx, Uint8 bindingIdx)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
 	{ }
@@ -321,6 +324,8 @@ struct ShaderTextureParamEntry : public ShaderParamEntryCommon
 
 struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 {
+	ShaderCombinedTextureSamplerParamEntry() = default;
+
 	ShaderCombinedTextureSamplerParamEntry(Uint8 setIdx, Uint8 bindingIdx)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
 	{ }
@@ -331,6 +336,8 @@ struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 
 struct ShaderDataParamEntry : public ShaderParamEntryCommon
 {
+	ShaderDataParamEntry() = default;
+
 	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size, Uint16 stride)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
 		, m_offset(offset)
@@ -346,7 +353,9 @@ struct ShaderDataParamEntry : public ShaderParamEntryCommon
 
 struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 {
-	ShaderBufferParamEntry(Uint8 setIdx, Uint8 bindingIdx)
+	ShaderBufferParamEntry() = default;
+
+	explicit ShaderBufferParamEntry(Uint8 setIdx, Uint8 bindingIdx)
 		: ShaderParamEntryCommon(setIdx, bindingIdx)
 	{ }
 
@@ -364,15 +373,36 @@ struct GenericShaderParamEntry
 {
 public:
 
+	GenericShaderParamEntry() = default;
+
 	template<typename TEntryDataType>
-	GenericShaderParamEntry(TEntryDataType entry)
+	explicit GenericShaderParamEntry(TEntryDataType entry)
 		: m_data(entry)
 	{ }
+
+	GenericShaderParamEntry& operator=(const GenericShaderParamEntry& rhs)
+	{
+		m_data = rhs.m_data;
+
+		return *this;
+	}
+
+	template<typename TEntryDataType>
+	void Set(TEntryDataType entry)
+	{
+		m_data = entry;
+	}
 
 	template<typename TEntryDataType>
 	const TEntryDataType& As() const
 	{
 		return std::get<TEntryDataType>(m_data);
+	}
+
+	template<typename TEntryDataType>
+	Bool Contains() const
+	{
+		return std::holds_alternative<TEntryDataType>(m_data);
 	}
 
 	template<typename TEntryDataType>
@@ -394,7 +424,7 @@ public:
 
 private:
 
-	const ShaderParamEntryVariant		m_data;
+	ShaderParamEntryVariant		m_data;
 };
 
 } // spt::smd

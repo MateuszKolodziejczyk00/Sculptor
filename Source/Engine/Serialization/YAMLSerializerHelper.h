@@ -7,6 +7,15 @@
 namespace spt::srl
 {
 
+using Binary = YAML::Binary;
+
+enum class ESerializationFlags : Flags32
+{
+	None			= 0,
+	Flow			= BIT(1)
+};
+
+
 class YAMLWriter
 {
 public:
@@ -21,13 +30,13 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(const TDataType& data) const
+	void Serialize(const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
 	{
 		m_node.push_back(data);
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, const TDataType& data) const
+	void Serialize(lib::StringView key, const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
 	{
 		m_node[key.data()] = data;
 	}
@@ -53,13 +62,13 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(TDataType& data)
+	void Serialize(TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
 		data = m_node[m_currentIdx++].as<TDataType>();
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, TDataType& data)
+	void Serialize(lib::StringView key, TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
 		data = m_node[key.data()].as<TDataType>();
 	}
@@ -86,10 +95,15 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(const TDataType& data)
+	void Serialize(const TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
 		if (!m_emittingSequence)
 		{
+			if (lib::HasAnyFlag(flags, ESerializationFlags::Flow))
+			{
+				m_emitter << YAML::Flow;
+			}
+
 			m_emitter << YAML::BeginSeq;
 			m_emittingSequence = true;
 		}
@@ -98,7 +112,7 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, const TDataType& data)
+	void Serialize(lib::StringView key, const TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
 		if (m_emittingSequence)
 		{
@@ -135,9 +149,15 @@ public:
 	{ }
 
 	template<typename TDataType>
-	void Serialize(const TDataType& data)
+	std::enable_if_t<!lib::isPair<TDataType>, void> Serialize(const TDataType& data)
 	{
 		m_serializer.Serialize(data);
+	}
+
+	template<typename TDataType>
+	std::enable_if_t<lib::isPair<TDataType>, void> Serialize(const TDataType& data)
+	{
+		m_serializer.Serialize(data.first, data.second);
 	}
 
 	template<typename TDataType>
@@ -147,15 +167,45 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(TDataType& data)
+	std::enable_if_t<!lib::isPair<TDataType>, void> Serialize(TDataType& data)
 	{
 		m_serializer.Serialize(data);
+	}
+
+	template<typename TDataType>
+	std::enable_if_t<lib::isPair<TDataType>, void> Serialize(TDataType& data)
+	{
+		m_serializer.Serialize(data.first, data.second);
 	}
 
 	template<typename TDataType>
 	void Serialize(lib::StringView key, TDataType& data)
 	{
 		m_serializer.Serialize(key, data);
+	}
+
+	template<typename TEnumType>
+	void SerializeEnum(lib::StringView key, TEnumType& data)
+	{
+		static_assert(std::is_enum_v<TEnumType>, "Type must be an enum");
+
+		using UnderlyingType = std::underlying_type_t<TEnumType>;
+		
+		UnderlyingType asUnderlying = idxNone<UnderlyingType>;
+		m_serializer.Serialize(key, asUnderlying);
+
+		data = static_cast<TEnumType>(asUnderlying);
+	}
+
+	template<typename TEnumType>
+	void SerializeEnum(lib::StringView key, const TEnumType& data)
+	{
+		static_assert(std::is_enum_v<TEnumType>, "Type must be an enum");
+
+		using UnderlyingType = std::underlying_type_t<TEnumType>;
+		
+		const UnderlyingType asUnderlying = static_cast<UnderlyingType>(data);
+		m_serializer.Serialize(key, asUnderlying);
 	}
 
 	TSerializer& Get()
@@ -183,7 +233,7 @@ public:
 	}
 
 	template<typename Type>
-	static bool Load(const YAML::Node& node, Type& data)
+	static Bool Load(const YAML::Node& node, Type& data)
 	{
 		SerializerWrapper<YAMLLoader> serializer(node);
 		TypeSerializer<Type>::Serialize(serializer, data);
@@ -215,14 +265,7 @@ struct TypeSerializer
 template<typename SerializedType, typename Serializer, typename Param>
 void SerializeType(SerializerWrapper<Serializer>& serializer, Param& data)
 {
-	if constexpr (std::is_const_v<Param>)
-	{
-		TypeSerializer<const SerializedType>::Serialize(serializer, data);
-	}
-	else
-	{
-		TypeSerializer<std::remove_const_t<SerializedType>>::Serialize(serializer, data);
-	}
+	TypeSerializer<SerializedType>::Serialize(serializer, data);
 }
 
 } // spt::srl

@@ -3,6 +3,11 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderMetaDataTypes.h"
 
+namespace spt::srl
+{
+template<typename TType>
+struct TypeSerializer;
+}
 
 namespace spt::smd
 {
@@ -46,6 +51,8 @@ private:
 	DescriptorSetArray	   		m_descriptorSets;
 
 	ShaderParameterMap	   		m_parameterMap;
+
+	friend srl::TypeSerializer<ShaderMetaData>;
 };
 
 

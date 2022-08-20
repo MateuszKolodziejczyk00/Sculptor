@@ -8,6 +8,8 @@ namespace spt
 using Int8 = int8_t;
 using Uint8 = uint8_t;
 
+using Byte = Uint8;
+
 using Int16 = int16_t;
 using Uint16 = uint16_t;
 

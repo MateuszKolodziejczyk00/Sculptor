@@ -3,9 +3,82 @@
 #include "Common/ShaderCompilationInput.h"
 
 #include "SculptorYAML.h"
+#include "ShaderMetaDataTypesSerialization.h"
 
 #include <fstream>
 #include <filesystem>
+
+namespace spt::srl
+{
+
+// spt::sc::CompiledShader ==============================================================
+
+template<>
+struct TypeSerializer<sc::CompiledShader>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		using ShaderBinary			= typename Param::Binary;
+		using ShaderBinaryElement	= typename ShaderBinary::value_type;
+
+		if constexpr (Serializer::IsWriting())
+		{
+			const srl::Binary binary(reinterpret_cast<const unsigned char*>(data.GetBinary().data()), data.GetBinary().size() * sizeof(ShaderBinaryElement));
+			serializer.Serialize("Binary", binary);
+
+			serializer.SerializeEnum("Stage", data.GetStage());
+		}
+		else
+		{
+			srl::Binary binary;
+			serializer.Serialize("Binary", binary);
+
+			SPT_CHECK(binary.size() % sizeof(ShaderBinaryElement) == 0);
+
+			ShaderBinary shaderBinary(binary.size() / sizeof(ShaderBinaryElement));
+			memcpy_s(shaderBinary.data(), binary.size(), binary.data(), binary.size());
+
+			data.SetBinary(shaderBinary);
+
+			rhi::EShaderStage stage = rhi::EShaderStage::None;
+			serializer.SerializeEnum("Stage", stage);
+			data.SetStage(stage);
+		}
+	}
+};
+
+// spt::sc::CompiledShadersGroup ========================================================
+
+template<>
+struct TypeSerializer<sc::CompiledShadersGroup>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("GroupName", data.m_groupName);
+		serializer.Serialize("Shaders", data.m_shaders);
+		serializer.Serialize("MetaData", data.m_metaData);
+	}
+};
+
+// spt::sc::CompiledShaderFile ==========================================================
+
+template<>
+struct TypeSerializer<sc::CompiledShaderFile>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("ShaderGroups", data.m_groups);
+	}
+};
+
+}
+
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShader)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShadersGroup)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShaderFile)
 
 namespace spt::sc
 {
@@ -41,33 +114,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 
 		const YAML::Node serializedShadersFile = YAML::Load(stringStream.str());
 
-		for (const YAML::Node serializedShadersGroup : serializedShadersFile)
-		{
-			const lib::HashedString groupName = serializedShadersGroup["GroupName"].as<lib::HashedString>();
-
-			const YAML::Node serializedShaders = serializedShadersGroup["Shaders"];
-
-			CompiledShadersGroup& shadersGroup = compiledShaderFile.m_groups.emplace_back(CompiledShadersGroup());
-			shadersGroup.m_groupName = groupName;
-
-			for (const YAML::Node serializedShader : serializedShaders)
-			{
-				const rhi::EShaderStage shaderStage = static_cast<rhi::EShaderStage>(serializedShader["Type"].as<Uint32>());
-				
-				YAML::Binary deserializedBinary = serializedShader["Binary"].as<YAML::Binary>();
-				lib::DynamicArray<unsigned char> binaryBytes;
-				deserializedBinary.swap(binaryBytes);
-				const SizeType binarySize = binaryBytes.size();
-				SPT_CHECK(binarySize % sizeof(Uint32) == 0);
-
-				lib::DynamicArray<Uint32> binary(binarySize / sizeof(Uint32));
-				memcpy_s(binary.data(), binarySize, binaryBytes.data(), binarySize);
-
-				CompiledShader& shader = shadersGroup.m_shaders.emplace_back(CompiledShader());
-				shader.SetStage(shaderStage);
-				shader.SetBinary(std::move(binary));
-			}
-		}
+		compiledShaderFile = serializedShadersFile["CompiledShaderFile"].as<CompiledShaderFile>();
 
 		stream.close();
 	}
@@ -89,37 +136,11 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 	SPT_CHECK(CanUseShadersCache());
 
 	YAML::Emitter out;
-	out << YAML::BeginSeq; // groups sequence
+	out << YAML::BeginMap;
 
-	for (const CompiledShadersGroup& shadersGroup : shaderFile.m_groups)
-	{
-		out << YAML::BeginMap; // group elements map
-
-		out << YAML::Key << "GroupName" << YAML::Value << shadersGroup.m_groupName;
-
-		out << YAML::Key << "Shaders" << YAML::Value;
-		out << YAML::BeginSeq; // shaders sequence
-
-		for (const CompiledShader& shader : shadersGroup.m_shaders)
-		{
-			const CompiledShader::Binary& shaderCompiledBinary = shader.GetBinary();
-
-			const YAML::Binary binary(reinterpret_cast<const unsigned char*>(shaderCompiledBinary.data()), shaderCompiledBinary.size() * sizeof(Uint32));
-
-			out << YAML::BeginMap; // shader elements map
-
-			out << YAML::Key << "Type" << YAML::Value << static_cast<Uint32>(shader.GetStage());
-			out << YAML::Key << "Binary" << YAML::Value << binary;
-
-			out << YAML::EndMap; // shader elements map
-		}
-
-		out << YAML::EndSeq; // shaders sequence
-
-		out << YAML::EndMap; // group elements map
-	}
+	out << YAML::Key << "CompiledShaderFile" << YAML::Value << shaderFile;
 	
-	out << YAML::EndSeq; // groups sequence
+	out << YAML::BeginMap;
 
 	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 	std::ofstream stream(filePath, std::ios::trunc);

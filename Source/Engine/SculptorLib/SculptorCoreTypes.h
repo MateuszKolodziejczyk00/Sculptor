@@ -22,3 +22,4 @@
 #include "Utility/Color.h"
 #include "Utility/Hash.h"
 #include "Utility/Utils.h"
+#include "Utility/TypeTraits.h"
