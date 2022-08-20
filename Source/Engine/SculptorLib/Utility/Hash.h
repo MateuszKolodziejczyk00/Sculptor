@@ -60,4 +60,12 @@ constexpr SizeType HashRange(const Iterator begin, const Iterator end)
 	return std::accumulate(begin, end, length, elementHash);
 }
 
+// Source: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+template<typename THash>
+inline void HashCombine(THash& seed, THash hash)
+{
+	constexpr THash magicNumber = 0x9e3889b9;
+	seed ^= hash + magicNumber + (seed << 6) + (seed >> 2);
+}
+
 }

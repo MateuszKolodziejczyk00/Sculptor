@@ -8,6 +8,7 @@
 #include "VulkanTypes/RHICommandBuffer.h"
 #include "VulkanUtils.h"
 #include "LayoutsManager.h"
+#include "PipelineLayout/PipelineLayoutsManager.h"
 
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
@@ -51,6 +52,8 @@ public:
     CommandPoolsManager         m_commandPoolsManager;
 
     LayoutsManager              m_layoutsManager;
+
+    PipelineLayoutsManager      m_pipelineLayoutsManager;
 };
 
 static VulkanInstanceData g_data;
@@ -165,6 +168,8 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     priv::VolkLoadInstance(priv::g_data.m_instance);
 
     priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
+
+    priv::g_data.m_pipelineLayoutsManager.InitializeRHI();
 }
 
 void VulkanRHI::InitializeGPUForWindow()
@@ -188,6 +193,8 @@ void VulkanRHI::InitializeGPUForWindow()
 void VulkanRHI::Uninitialize()
 {
     priv::g_data.m_commandPoolsManager.DestroyResources();
+
+    priv::g_data.m_pipelineLayoutsManager.ReleaseRHI();
 
     if (priv::g_data.m_surface)
     {
@@ -298,6 +305,11 @@ CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 LayoutsManager& VulkanRHI::GetLayoutsManager()
 {
     return priv::g_data.m_layoutsManager;
+}
+
+PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()
+{
+    return priv::g_data.m_pipelineLayoutsManager;
 }
 
 VkSurfaceKHR VulkanRHI::GetSurfaceHandle()

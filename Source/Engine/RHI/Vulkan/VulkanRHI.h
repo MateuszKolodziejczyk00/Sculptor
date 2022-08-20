@@ -21,6 +21,7 @@ class MemoryManager;
 class LogicalDevice;
 class CommandPoolsManager;
 class LayoutsManager;
+class PipelineLayoutsManager;
 
 
 class RHI_API VulkanRHI
@@ -50,6 +51,8 @@ public:
 	static CommandPoolsManager&				GetCommandPoolsManager();
 
 	static LayoutsManager&					GetLayoutsManager();
+
+	static PipelineLayoutsManager&			GetPipelineLayoutsManager();
 
 	static VkSurfaceKHR						GetSurfaceHandle();
 

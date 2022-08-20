@@ -28,4 +28,109 @@ enum class EPipelineStage : Flags64
 	ALL_COMMANDS					= BIT64(52)
 };
 
-}
+
+enum class EDescriptorType
+{
+	None,
+	Texture,
+	CombinedTextureSampler,
+	StorageBuffer,
+	StorageBufferDynamicOffset
+};
+
+
+enum class EBindingFlags
+{
+	None							= 0
+};
+
+
+struct DescriptorSetBindingDefinition
+{
+	DescriptorSetBindingDefinition()
+		: m_bindingIdx(idxNone<Uint32>)
+		, m_descriptorType(EDescriptorType::None)
+		, m_descriptorCount(0)
+		, m_pipelineStages(EPipelineStage::None)
+		, m_flags(EBindingFlags::None)
+	{ }
+
+	Uint32				m_bindingIdx;
+	EDescriptorType		m_descriptorType;
+	Uint32				m_descriptorCount;
+	EPipelineStage		m_pipelineStages;
+	EBindingFlags		m_flags;
+};
+
+
+enum class EDescriptorSetFlags
+{
+	None						= 0
+};
+
+
+struct DescriptorSetDefinition
+{
+	DescriptorSetDefinition()
+		: m_flags(EDescriptorSetFlags::None)
+	{ }
+
+	lib::DynamicArray<DescriptorSetBindingDefinition>	m_bindings;
+	EDescriptorSetFlags									m_flags;
+};
+
+
+struct PipelineLayoutDefinition
+{
+	PipelineLayoutDefinition() = default;
+
+	lib::DynamicArray<DescriptorSetDefinition>		m_descriptorSets;
+};
+
+} // spt::rhi
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::rhi::DescriptorSetBindingDefinition>
+{
+    size_t operator()(const spt::rhi::DescriptorSetBindingDefinition& binidngDef) const
+    {
+		size_t seed = 0;
+		spt::lib::HashCombine(seed, static_cast<size_t>(binidngDef.m_bindingIdx));
+		spt::lib::HashCombine(seed, static_cast<size_t>(binidngDef.m_descriptorType));
+		spt::lib::HashCombine(seed, static_cast<size_t>(binidngDef.m_descriptorCount));
+		spt::lib::HashCombine(seed, static_cast<size_t>(binidngDef.m_pipelineStages));
+		spt::lib::HashCombine(seed, static_cast<size_t>(binidngDef.m_flags));
+		return seed;
+    }
+};
+
+
+template<>
+struct hash<spt::rhi::DescriptorSetDefinition>
+{
+    size_t operator()(const spt::rhi::DescriptorSetDefinition& dsDef) const
+    {
+		size_t seed = 0;
+		seed = spt::lib::HashRange(std::cbegin(dsDef.m_bindings), std::cend(dsDef.m_bindings));
+		spt::lib::HashCombine(seed, static_cast<size_t>(dsDef.m_flags));
+		return seed;
+    }
+};
+
+
+template<>
+struct hash<spt::rhi::PipelineLayoutDefinition>
+{
+    size_t operator()(const spt::rhi::PipelineLayoutDefinition& pipelineLayoutDefinition) const
+    {
+		size_t seed = 0;
+		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.m_descriptorSets), std::cend(pipelineLayoutDefinition.m_descriptorSets));
+		return seed;
+    }
+};
+
+} // std
