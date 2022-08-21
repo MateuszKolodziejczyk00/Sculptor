@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RHICore/RHIPipelineTypes.h"
+#include "RHICore/RHIPipelineLayoutTypes.h"
 #include "Vulkan/VulkanCore.h"
 
 
@@ -14,10 +14,10 @@ public:
 
 	PipelineLayoutsManager() = default;
 
-	void InitializeRHI();
-	void ReleaseRHI();
+	void				InitializeRHI();
+	void				ReleaseRHI();
 
-	VkPipelineLayout GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
+	VkPipelineLayout	GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
 
 private:
 

@@ -18,6 +18,8 @@ void PipelineLayout::InitializeRHI(const rhi::PipelineLayoutDefinition& definiti
 
 void PipelineLayout::ReleaseRHI()
 {
+	SPT_CHECK(IsValid());
+
 	// We don't destroy layout, as its managed by PipelineLayoutsManager (and destroyed there)
 	m_layoutHnadle = VK_NULL_HANDLE;
 }

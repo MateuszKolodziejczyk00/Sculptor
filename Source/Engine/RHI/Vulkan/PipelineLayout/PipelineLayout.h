@@ -2,7 +2,7 @@
 
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHICore/RHIPipelineTypes.h"
+#include "RHICore/RHIPipelineLayoutTypes.h"
 #include "Vulkan/VulkanCore.h"
 
 

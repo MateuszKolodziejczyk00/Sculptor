@@ -77,7 +77,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 		bindingInfo.binding				= bindingDef.m_bindingIdx;
 		bindingInfo.descriptorType		= RHIToVulkan::GetDescriptorType(bindingDef.m_descriptorType);
 		bindingInfo.descriptorCount		= bindingDef.m_descriptorCount;
-		bindingInfo.stageFlags			= RHIToVulkan::GetStageFlagsLegacy(bindingDef.m_pipelineStages);
+		bindingInfo.stageFlags			= RHIToVulkan::GetStageFlagsLegacy(bindingDef.m_shaderStages);
 		bindingInfo.pImmutableSamplers	= nullptr; // Currently not supported
 
 		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.m_flags);

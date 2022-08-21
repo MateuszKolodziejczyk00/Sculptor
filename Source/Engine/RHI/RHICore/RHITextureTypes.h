@@ -49,6 +49,7 @@ enum class ETextureLayout : Uint32
 
 enum class EFragmentFormat : Uint32
 {
+	None,
 	RGBA8_UN_Float,
 	BGRA8_UN_Float,
 

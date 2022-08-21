@@ -155,6 +155,26 @@ VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EPipelineStage flags)
 	return vulkanFlags;
 }
 
+VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EShaderStageFlags flags)
+{
+	VkPipelineStageFlags vulkanFlags = 0;
+
+	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Vertex))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+	}
+	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Fragment))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+	}
+	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Compute))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	}
+
+	return vulkanFlags;
+}
+
 VkImageLayout RHIToVulkan::GetImageLayout(rhi::ETextureLayout layout)
 {
 	switch (layout)
@@ -259,10 +279,17 @@ VkDescriptorType RHIToVulkan::GetDescriptorType(rhi::EDescriptorType descriptorT
 {
 	switch (descriptorType)
 	{
-	case spt::rhi::EDescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	case spt::rhi::EDescriptorType::CombinedTextureSampler:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	case spt::rhi::EDescriptorType::StorageBuffer:				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case spt::rhi::EDescriptorType::StorageBufferDynamicOffset:	return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+	case spt::rhi::EDescriptorType::Sampler:						return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case spt::rhi::EDescriptorType::CombinedTextureSampler:			return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	case spt::rhi::EDescriptorType::SampledTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	case spt::rhi::EDescriptorType::StorageTexture:					return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	case spt::rhi::EDescriptorType::UniformTexelBuffer:				return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+	case spt::rhi::EDescriptorType::StorageTexelBuffer:				return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+	case spt::rhi::EDescriptorType::UniformBuffer:					return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	case spt::rhi::EDescriptorType::StorageBuffer:					return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case spt::rhi::EDescriptorType::UniformBufferDynamicOffset:		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	case spt::rhi::EDescriptorType::StorageBufferDynamicOffset:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+	case spt::rhi::EDescriptorType::AccelerationStructure:			return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 
 	default:
 
@@ -271,10 +298,18 @@ VkDescriptorType RHIToVulkan::GetDescriptorType(rhi::EDescriptorType descriptorT
 	}
 }
 
-VkDescriptorBindingFlags RHIToVulkan::GetBindingFlags(rhi::EBindingFlags bindingFlags)
+VkDescriptorBindingFlags RHIToVulkan::GetBindingFlags(rhi::EDescriptorSetBindingFlags bindingFlags)
 {
 	VkDescriptorBindingFlags vulkanFlags = 0;
 
+	if (lib::HasAnyFlag(bindingFlags, rhi::EDescriptorSetBindingFlags::UpdateAfterBind))
+	{
+		lib::AddFlag(vulkanFlags, VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
+	}
+	if (lib::HasAnyFlag(bindingFlags, rhi::EDescriptorSetBindingFlags::PartiallyBound))
+	{
+		lib::AddFlag(vulkanFlags, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+	}
 
 	return vulkanFlags;
 }
