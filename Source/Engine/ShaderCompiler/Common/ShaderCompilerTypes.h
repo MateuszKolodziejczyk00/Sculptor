@@ -19,23 +19,23 @@ public:
 	MacroDefinition()
 	{ }
 
-	MacroDefinition(lib::HashedString macro)
-		: m_macro(macro)
+	MacroDefinition(lib::HashedString inMacro)
+		: macro(inMacro)
 	{ }
 
 	MacroDefinition(lib::HashedString name, lib::HashedString value)
 	{
 		SPT_PROFILE_FUNCTION();
 	
-		m_macro = lib::String(name.GetView()) + " " + lib::String(value.GetView());
+		macro = lib::String(name.GetView()) + " " + lib::String(value.GetView());
 	}
 
 	Bool IsValid() const
 	{
-		return m_macro.IsValid();
+		return macro.IsValid();
 	}
 	
-	lib::HashedString		m_macro;
+	lib::HashedString		macro;
 };
 
 enum class ETargetEnvironment

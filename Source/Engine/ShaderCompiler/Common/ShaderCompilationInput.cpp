@@ -77,7 +77,7 @@ void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 
 	if (macro.IsValid())
 	{
-		m_macros.push_back(macro.m_macro);
+		m_macros.push_back(macro.macro);
 	}
 }
 

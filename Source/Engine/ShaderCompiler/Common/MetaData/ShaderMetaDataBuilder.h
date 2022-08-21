@@ -12,7 +12,7 @@ class ShaderMetaData;
 namespace spt::sc
 {
 
-struct CompiledShader;
+class CompiledShader;
 struct ShaderParametersMetaData;
 
 class ShaderMetaDataBuilder

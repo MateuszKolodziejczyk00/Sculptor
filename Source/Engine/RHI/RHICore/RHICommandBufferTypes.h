@@ -39,19 +39,19 @@ enum Type : Uint32
 struct CommandBufferDefinition
 {
 	CommandBufferDefinition()
-		: m_queueType(ECommandBufferQueueType::Graphics)
-		, m_cmdBufferType(ECommandBufferType::Primary)
+		: queueType(ECommandBufferQueueType::Graphics)
+		, cmdBufferType(ECommandBufferType::Primary)
 	{ }
 
-	CommandBufferDefinition(ECommandBufferQueueType queueType, ECommandBufferType cmdBufferType, ECommandBufferComplexityClass::Type complexityClass = ECommandBufferComplexityClass::Default)
-		: m_queueType(queueType)
-		, m_cmdBufferType(cmdBufferType)
-		, m_complexityClass(complexityClass)
+	CommandBufferDefinition(ECommandBufferQueueType inQueueType, ECommandBufferType inCmdBufferType, ECommandBufferComplexityClass::Type inComplexityClass = ECommandBufferComplexityClass::Default)
+		: queueType(inQueueType)
+		, cmdBufferType(inCmdBufferType)
+		, complexityClass(inComplexityClass)
 	{ }
 
-	ECommandBufferQueueType					m_queueType;
-	ECommandBufferType						m_cmdBufferType;
-	ECommandBufferComplexityClass::Type		m_complexityClass;
+	ECommandBufferQueueType					queueType;
+	ECommandBufferType						cmdBufferType;
+	ECommandBufferComplexityClass::Type		complexityClass;
 };
 
 
@@ -66,14 +66,14 @@ enum class ECommandBufferBeginFlags : Flags32
 struct CommandBufferUsageDefinition
 {
 	CommandBufferUsageDefinition()
-		: m_beginFlags(ECommandBufferBeginFlags::None)
+		: beginFlags(ECommandBufferBeginFlags::None)
 	{ }
 
-	CommandBufferUsageDefinition(ECommandBufferBeginFlags beginFlags)
-		: m_beginFlags(beginFlags)
+	CommandBufferUsageDefinition(ECommandBufferBeginFlags inBeginFlags)
+		: beginFlags(inBeginFlags)
 	{ }
 
-	ECommandBufferBeginFlags m_beginFlags;
+	ECommandBufferBeginFlags beginFlags;
 };
 
 } // spt::rhi

@@ -10,7 +10,7 @@ struct PipelineLayoutDefinition
 {
 	PipelineLayoutDefinition() = default;
 
-	lib::DynamicArray<DescriptorSetDefinition>		m_descriptorSets;
+	lib::DynamicArray<DescriptorSetDefinition>		descriptorSets;
 };
 
 
@@ -25,7 +25,7 @@ struct hash<spt::rhi::PipelineLayoutDefinition>
     size_t operator()(const spt::rhi::PipelineLayoutDefinition& pipelineLayoutDefinition) const
     {
 		size_t seed = 0;
-		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.m_descriptorSets), std::cend(pipelineLayoutDefinition.m_descriptorSets));
+		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.descriptorSets), std::cend(pipelineLayoutDefinition.descriptorSets));
 		return seed;
     }
 };

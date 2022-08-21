@@ -14,8 +14,8 @@ Window::Window(lib::StringView name, math::Vector2u resolution)
 	rhi::RHI::InitializeGPUForWindow();
 
 	rhi::RHIWindowInitializationInfo initInfo;
-	initInfo.m_framebufferSize = m_platformWindow->GetFramebufferSize();
-	initInfo.m_minImageCount = RendererUtils::GetFramesInFlightNum();
+	initInfo.framebufferSize = m_platformWindow->GetFramebufferSize();
+	initInfo.minImageCount = RendererUtils::GetFramesInFlightNum();
 
 	GetRHI().InitializeRHI(initInfo);
 }

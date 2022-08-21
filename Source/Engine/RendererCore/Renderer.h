@@ -17,9 +17,9 @@ struct CommandsSubmitBatch
 {
 public:
 
-	lib::DynamicArray<lib::UniquePtr<CommandsRecorder>>		m_recordedCommands;
-	SemaphoresArray											m_waitSemaphores;
-	SemaphoresArray											m_signalSemaphores;
+	lib::DynamicArray<lib::UniquePtr<CommandsRecorder>>		recordedCommands;
+	SemaphoresArray											waitSemaphores;
+	SemaphoresArray											signalSemaphores;
 };
 
 

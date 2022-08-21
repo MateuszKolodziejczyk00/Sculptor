@@ -17,8 +17,8 @@ class UIBackend;
 
 struct CommandsRecordingInfo
 {
-	RendererResourceName				m_commandsBufferName;
-	rhi::CommandBufferDefinition		m_commandBufferDef;
+	RendererResourceName				commandsBufferName;
+	rhi::CommandBufferDefinition		commandBufferDef;
 };
 
 

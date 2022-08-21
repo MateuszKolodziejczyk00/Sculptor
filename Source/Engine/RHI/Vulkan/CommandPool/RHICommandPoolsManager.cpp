@@ -45,7 +45,7 @@ VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& 
 
 	SPT_CHECK(m_commandPools[poolIdx]->IsLocked());
 
-	outAcquireInfo.m_commandPoolId = poolIdx;
+	outAcquireInfo.commandPoolId = poolIdx;
 
 	return m_commandPools[poolIdx]->AcquireCommandBuffer();
 }
@@ -54,7 +54,7 @@ void CommandPoolsSet::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
-	RHICommandPool& commandPool = SafeGetCommandPool(acquireInfo.m_commandPoolId);
+	RHICommandPool& commandPool = SafeGetCommandPool(acquireInfo.commandPoolId);
 
 	commandPool.Unlock();
 }
@@ -65,7 +65,7 @@ void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acqui
 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
-	GetCommandPool_AssumesLocked(acquireInfo.m_commandPoolId).ReleaseCommandBuffer(cmdBuffer);
+	GetCommandPool_AssumesLocked(acquireInfo.commandPoolId).ReleaseCommandBuffer(cmdBuffer);
 }
 
 RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
@@ -132,12 +132,12 @@ VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBuff
 
 	const Uint32 poolSettingsHash = HashCommandBufferDefinition(bufferDefinition);
 	
-	outAcquireInfo.m_poolsSetHash = poolSettingsHash;
+	outAcquireInfo.poolsSetHash = poolSettingsHash;
 
 	CommandPoolsSet& poolsSet = GetPoolsSet(bufferDefinition, poolSettingsHash);
 
 	const VkCommandBuffer cmdBufferHandle = poolsSet.AcquireCommandBuffer(outAcquireInfo);
-	SPT_CHECK(cmdBufferHandle != VK_NULL_HANDLE && outAcquireInfo.m_commandPoolId != idxNone<Uint32>);
+	SPT_CHECK(cmdBufferHandle != VK_NULL_HANDLE && outAcquireInfo.commandPoolId != idxNone<Uint32>);
 
 	return cmdBufferHandle;
 }
@@ -146,7 +146,7 @@ void CommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInf
 {
 	SPT_PROFILE_FUNCTION();
 
-	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.m_poolsSetHash);
+	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
 	poolsSet.ReleasePool(acquireInfo);
 }
 
@@ -154,7 +154,7 @@ void CommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& a
 {
 	SPT_PROFILE_FUNCTION();
 
-	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.m_poolsSetHash);
+	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
 	poolsSet.ReleaseCommandBuffer(acquireInfo, commandBuffer);
 }
 
@@ -181,17 +181,17 @@ CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefi
 	SPT_PROFILE_FUNCTION();
 
 	VkCommandPoolCreateFlags poolFlags = 0;
-	if (bufferDefinition.m_complexityClass == rhi::ECommandBufferComplexityClass::Low)
+	if (bufferDefinition.complexityClass == rhi::ECommandBufferComplexityClass::Low)
 	{
 		poolFlags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 	}
 
-	const VkCommandBufferLevel level = (bufferDefinition.m_cmdBufferType == rhi::ECommandBufferType::Primary)
+	const VkCommandBufferLevel level = (bufferDefinition.cmdBufferType == rhi::ECommandBufferType::Primary)
 									 ? VK_COMMAND_BUFFER_LEVEL_PRIMARY
 									 : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 
 	lib::UniquePtr<CommandPoolsSet> commandPoolsSet = std::make_unique<CommandPoolsSet>();
-	commandPoolsSet->Initialize(GetQueueFamilyIdx(bufferDefinition.m_queueType), poolFlags, level);
+	commandPoolsSet->Initialize(GetQueueFamilyIdx(bufferDefinition.queueType), poolFlags, level);
 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
@@ -211,9 +211,9 @@ CommandPoolsSet& CommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
 Uint32 CommandPoolsManager::HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const
 {
 	Uint32 result = 0;
-	result += static_cast<Uint32>(bufferDefinition.m_queueType) << 5;
-	result += static_cast<Uint32>(bufferDefinition.m_cmdBufferType) << 12;
-	result += static_cast<Uint32>(bufferDefinition.m_complexityClass) << 23;
+	result += static_cast<Uint32>(bufferDefinition.queueType) << 5;
+	result += static_cast<Uint32>(bufferDefinition.cmdBufferType) << 12;
+	result += static_cast<Uint32>(bufferDefinition.complexityClass) << 23;
 
 	return result;
 }

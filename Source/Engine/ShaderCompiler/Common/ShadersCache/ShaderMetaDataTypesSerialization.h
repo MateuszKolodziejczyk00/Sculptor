@@ -19,8 +19,8 @@ struct TypeSerializer<smd::CommonBindingData>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("ElementsNum", data.m_elementsNum);
-		serializer.SerializeEnum("Flags", data.m_flags);
+		serializer.Serialize("ElementsNum", data.elementsNum);
+		serializer.SerializeEnum("Flags", data.flags);
 	}
 };
 
@@ -162,8 +162,8 @@ struct TypeSerializer<smd::ShaderParamEntryCommon>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("SetIdx", data.m_setIdx);
-		serializer.Serialize("BindingIdx", data.m_bindingIdx);
+		serializer.Serialize("SetIdx", data.setIdx);
+		serializer.Serialize("BindingIdx", data.bindingIdx);
 	}
 };
 
@@ -200,9 +200,9 @@ struct TypeSerializer<smd::ShaderDataParamEntry>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
 		SerializeType<smd::ShaderParamEntryCommon>(serializer, data);
-		serializer.Serialize("Offset", data.m_offset);
-		serializer.Serialize("Size", data.m_size);
-		serializer.Serialize("Stride", data.m_stride);
+		serializer.Serialize("Offset", data.offset);
+		serializer.Serialize("Size", data.size);
+		serializer.Serialize("Stride", data.stride);
 	}
 };
 

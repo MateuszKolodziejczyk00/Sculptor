@@ -8,23 +8,23 @@ namespace spt::rhi
 struct RHIInitializationInfo
 {
 	RHIInitializationInfo()
-		: m_extensions(nullptr)
-		, m_extensionsNum(0)
+		: extensions(nullptr)
+		, extensionsNum(0)
 	{ }
 
-	const char* const*		m_extensions;
-	Uint32					m_extensionsNum;
+	const char* const*		extensions;
+	Uint32					extensionsNum;
 };
 
 struct RHIWindowInitializationInfo
 {
 	RHIWindowInitializationInfo()
-		: m_framebufferSize(idxNone<Uint32>, idxNone<Uint32>)
-		, m_minImageCount(2)
+		: framebufferSize(idxNone<Uint32>, idxNone<Uint32>)
+		, minImageCount(2)
 	{ }
 
-	math::Vector2u			m_framebufferSize;
-	Uint32					m_minImageCount;
+	math::Vector2u			framebufferSize;
+	Uint32					minImageCount;
 };
 
 }

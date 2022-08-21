@@ -16,17 +16,17 @@ enum class ESemaphoreType
 struct SemaphoreDefinition
 {
 	SemaphoreDefinition()
-		: m_type(ESemaphoreType::Binary)
-		, m_initialValue(0)
+		: type(ESemaphoreType::Binary)
+		, initialValue(0)
 	{ }
 
-	SemaphoreDefinition(ESemaphoreType type, Uint64 initialValue = 0)
-		: m_type(type)
-		, m_initialValue(initialValue)
+	SemaphoreDefinition(ESemaphoreType inType, Uint64 inInitialValue = 0)
+		: type(inType)
+		, initialValue(inInitialValue)
 	{ }
 
-	ESemaphoreType			m_type;
-	Uint64					m_initialValue;
+	ESemaphoreType			type;
+	Uint64					initialValue;
 };
 
 }

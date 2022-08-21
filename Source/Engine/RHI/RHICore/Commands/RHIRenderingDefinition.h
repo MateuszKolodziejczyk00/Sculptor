@@ -33,8 +33,8 @@ enum class ERTResolveMode
 
 struct ClearDepthStencil
 {
-	float		m_depth;
-	Uint32		m_stencil;
+	float		depth;
+	Uint32		stencil;
 };
 
 
@@ -42,10 +42,10 @@ struct ClearColor
 {
 	union
 	{
-		Real32				m_float[4];
-		Uint32				m_uint[4];
-		Int32				m_int[4];
-		ClearDepthStencil	m_depthStencil;
+		Real32				asFloat[4];
+		Uint32				asUint[4];
+		Int32				asInt[4];
+		ClearDepthStencil	asDepthStencil;
 	};
 };
 
@@ -56,17 +56,17 @@ struct RTGenericDefinition
 public:
 
 	RTGenericDefinition()
-		: m_loadOperation(ERTLoadOperation::DontCare)
-		, m_storeOperation(ERTStoreOperation::DontCare)
-		, m_resolveMode(ERTResolveMode::Average)
+		: loadOperation(ERTLoadOperation::DontCare)
+		, storeOperation(ERTStoreOperation::DontCare)
+		, resolveMode(ERTResolveMode::Average)
 	{ }
 
-	TextureType				m_textureView;
-	TextureType				m_resolveTextureView;
-	ERTLoadOperation		m_loadOperation;
-	ERTStoreOperation		m_storeOperation;
-	ERTResolveMode			m_resolveMode;
-	ClearColor				m_clearColor;
+	TextureType				textureView;
+	TextureType				resolveTextureView;
+	ERTLoadOperation		loadOperation;
+	ERTStoreOperation		storeOperation;
+	ERTResolveMode			resolveMode;
+	ClearColor				clearColor;
 };
 
 
@@ -88,12 +88,12 @@ public:
 	RenderingDefinition()
 	{ }
 
-	ERenderingFlags									m_renderingFlags;
-	math::Vector2i									m_renderAreaOffset;
-	math::Vector2u									m_renderAreaExtent;
-	lib::DynamicArray<RHIRenderTargetDefinition>	m_colorRTs;
-	RHIRenderTargetDefinition						m_depthRT;
-	RHIRenderTargetDefinition						m_stencilRT;
+	ERenderingFlags									renderingFlags;
+	math::Vector2i									renderAreaOffset;
+	math::Vector2u									renderAreaExtent;
+	lib::DynamicArray<RHIRenderTargetDefinition>	colorRTs;
+	RHIRenderTargetDefinition						depthRT;
+	RHIRenderTargetDefinition						stencilRT;
 };
 
 }

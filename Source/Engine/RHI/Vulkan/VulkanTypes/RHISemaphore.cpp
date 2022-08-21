@@ -37,15 +37,15 @@ void RHISemaphore::InitializeRHI(const rhi::SemaphoreDefinition& definition)
 	SPT_PROFILE_FUNCTION();
 
 	VkSemaphoreTypeCreateInfo semaphoreTypeInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
-    semaphoreTypeInfo.semaphoreType = priv::GetVulkanSemaphoreType(definition.m_type);
-    semaphoreTypeInfo.initialValue = definition.m_initialValue;
+    semaphoreTypeInfo.semaphoreType = priv::GetVulkanSemaphoreType(definition.type);
+    semaphoreTypeInfo.initialValue = definition.initialValue;
 
 	VkSemaphoreCreateInfo semaphoreInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	semaphoreInfo.pNext = &semaphoreTypeInfo;
 
 	SPT_VK_CHECK(vkCreateSemaphore(VulkanRHI::GetDeviceHandle(), &semaphoreInfo, VulkanRHI::GetAllocationCallbacks(), &m_semaphore));
 
-	m_type = definition.m_type;
+	m_type = definition.type;
 }
 
 void RHISemaphore::ReleaseRHI()

@@ -56,9 +56,9 @@ struct TypeSerializer<sc::CompiledShadersGroup>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("GroupName", data.m_groupName);
-		serializer.Serialize("Shaders", data.m_shaders);
-		serializer.Serialize("MetaData", data.m_metaData);
+		serializer.Serialize("GroupName", data.groupName);
+		serializer.Serialize("Shaders", data.shaders);
+		serializer.Serialize("MetaData", data.metaData);
 	}
 };
 
@@ -70,7 +70,7 @@ struct TypeSerializer<sc::CompiledShaderFile>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("ShaderGroups", data.m_groups);
+		serializer.Serialize("ShaderGroups", data.groups);
 	}
 };
 

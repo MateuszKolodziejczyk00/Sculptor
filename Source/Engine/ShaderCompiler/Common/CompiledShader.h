@@ -8,7 +8,7 @@
 namespace spt::sc
 {
 
-struct CompiledShader
+class CompiledShader
 {
 public:
 
@@ -39,9 +39,9 @@ public:
 
 	Bool								IsValid() const;
 
-	lib::HashedString					m_groupName;
-	lib::DynamicArray<CompiledShader>	m_shaders;
-	smd::ShaderMetaData					m_metaData;
+	lib::HashedString					groupName;
+	lib::DynamicArray<CompiledShader>	shaders;
+	smd::ShaderMetaData					metaData;
 };
 
 
@@ -53,7 +53,7 @@ public:
 
 	Bool									IsValid() const;
 
-	lib::DynamicArray<CompiledShadersGroup> m_groups;
+	lib::DynamicArray<CompiledShadersGroup> groups;
 };
 
 } // spt::sc

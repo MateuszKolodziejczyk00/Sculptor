@@ -14,8 +14,8 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
 	SPT_PROFILE_FUNCTION();
 
 	VkShaderModuleCreateInfo moduleInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    moduleInfo.codeSize = static_cast<Uint32>(definition.m_binary.size() * sizeof(Uint32));
-    moduleInfo.pCode = definition.m_binary.data();
+    moduleInfo.codeSize = static_cast<Uint32>(definition.binary.size() * sizeof(Uint32));
+    moduleInfo.pCode = definition.binary.data();
 
 	SPT_VK_CHECK(vkCreateShaderModule(VulkanRHI::GetDeviceHandle(), &moduleInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle))
 }

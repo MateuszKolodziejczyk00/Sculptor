@@ -17,37 +17,37 @@ void ShaderCompilationEnvironment::Initialize(const CompilationEnvironmentDef& e
 
 Bool ShaderCompilationEnvironment::CanCompile()
 {
-	return priv::g_environmentDef.m_targetEnvironment != ETargetEnvironment::None;
+	return priv::g_environmentDef.targetEnvironment != ETargetEnvironment::None;
 }
 
 Bool ShaderCompilationEnvironment::ShouldGenerateDebugInfo()
 {
-	return priv::g_environmentDef.m_generateDebugInfo;
+	return priv::g_environmentDef.generateDebugInfo;
 }
 
 Bool ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
 {
-	return priv::g_environmentDef.m_useCompiledShadersCode;
+	return priv::g_environmentDef.useCompiledShadersCode;
 }
 
 ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
 {
-	return priv::g_environmentDef.m_targetEnvironment;
+	return priv::g_environmentDef.targetEnvironment;
 }
 
 const lib::String& ShaderCompilationEnvironment::GetShadersPath()
 {
-	return priv::g_environmentDef.m_shadersPath;
+	return priv::g_environmentDef.shadersPath;
 }
 
 const spt::lib::String& ShaderCompilationEnvironment::GetShadersCachePath()
 {
-	return priv::g_environmentDef.m_shadersCachePath;
+	return priv::g_environmentDef.shadersCachePath;
 }
 
 const spt::lib::String& ShaderCompilationEnvironment::GetErrorLogsPath()
 {
-	return priv::g_environmentDef.m_errorLogsPath;
+	return priv::g_environmentDef.errorLogsPath;
 }
 
 }

@@ -36,8 +36,8 @@ static lib::HashedString ExtractParameterName(tkn::TokenInfo beginMetaParameters
 {
 	SPT_CHECK_NO_ENTRY();
 
-	const SizeType semicolonPosition	= code.find(';', beginMetaParametersToken.m_tokenPosition);
-	const SizeType openBracketPosition	= code.find('{', beginMetaParametersToken.m_tokenPosition);
+	const SizeType semicolonPosition	= code.find(';', beginMetaParametersToken.tokenPosition);
+	const SizeType openBracketPosition	= code.find('{', beginMetaParametersToken.tokenPosition);
 	SPT_CHECK(semicolonPosition != lib::String::npos && openBracketPosition != lib::String::npos);
 
 	const Bool isBufferBlock = openBracketPosition < semicolonPosition;
@@ -47,7 +47,7 @@ static lib::HashedString ExtractParameterName(tkn::TokenInfo beginMetaParameters
 	if (isBufferBlock)
 	{
 		const SizeType reverseFindBeginOffset		= code.size() - openBracketPosition;
-		const SizeType reverseFindEndOffset			= code.size() - beginMetaParametersToken.m_tokenPosition;
+		const SizeType reverseFindEndOffset			= code.size() - beginMetaParametersToken.tokenPosition;
 		const auto nameLastCharacterIt				= std::find_if_not(std::crbegin(code) + reverseFindBeginOffset,
 																	   std::crbegin(code) + reverseFindEndOffset,
 																	   &std::isspace);
@@ -78,7 +78,7 @@ static lib::StringView ExtractMetaParametersString(tkn::TokenInfo beginMetaParam
 {
 	SPT_CHECK(beginMetaParametersToken.IsValid());
 
-	const lib::StringView metaParametersString = tkn::TokenizerUtils::GetStringInNearestBracket(code, beginMetaParametersToken.m_tokenPosition);
+	const lib::StringView metaParametersString = tkn::TokenizerUtils::GetStringInNearestBracket(code, beginMetaParametersToken.tokenPosition);
 
 	// add 1 and the end because we need to also add closing bracket (it's not included in metaParametersString)
 	metaDataEndPosition = std::distance(code.data(), metaParametersString.data()) + metaParametersString.size() + 1;
@@ -129,7 +129,7 @@ ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShaderParametersM
 			helper::BuildParameterMetaData(paramName, metaParametersString, metaData);
 
 			// fill whole meta data with strings, so it won't be compiled
-			std::fill(std::begin(code) + tokenInfo.m_tokenPosition, std::begin(code) + metaDataEndPosition, ' ');
+			std::fill(std::begin(code) + tokenInfo.tokenPosition, std::begin(code) + metaDataEndPosition, ' ');
 		});
 
 	const tkn::TokensProcessor tokensProcessor(tokensArray);

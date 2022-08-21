@@ -47,8 +47,8 @@ void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferD
 	SPT_CHECK(!IsValid());
 
 	m_cmdBufferHandle	= VulkanRHI::GetCommandPoolsManager().AcquireCommandBuffer(bufferDefinition, m_acquireInfo);
-	m_queueType			= bufferDefinition.m_queueType;
-	m_cmdBufferType		= bufferDefinition.m_cmdBufferType;
+	m_queueType			= bufferDefinition.queueType;
+	m_cmdBufferType		= bufferDefinition.cmdBufferType;
 }
 
 void RHICommandBuffer::ReleaseRHI()
@@ -84,7 +84,7 @@ void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& u
 	SPT_CHECK(IsValid());
 
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	beginInfo.flags = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.m_beginFlags);
+	beginInfo.flags = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.beginFlags);
 
 	vkBeginCommandBuffer(m_cmdBufferHandle, &beginInfo);
 
@@ -122,38 +122,38 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 
 		VkRenderingAttachmentInfo attachmentInfo{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
-		const RHITextureView& textureView = renderTarget.m_textureView;
+		const RHITextureView& textureView = renderTarget.textureView;
 		SPT_CHECK(textureView.IsValid() && textureView.GetTexture());
 		const RHITexture& texture = *textureView.GetTexture();
 
-		attachmentInfo.imageView = textureView.GetHandle();
-		attachmentInfo.imageLayout = layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle,
+		attachmentInfo.imageView	= textureView.GetHandle();
+		attachmentInfo.imageLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle,
 																				texture.GetHandle(),
 																				textureView.GetSubresourceRange());
 
-		if (renderTarget.m_resolveTextureView.IsValid())
+		if (renderTarget.resolveTextureView.IsValid())
 		{
-			const RHITextureView& resolveTextureView = renderTarget.m_resolveTextureView;
+			const RHITextureView& resolveTextureView = renderTarget.resolveTextureView;
 			SPT_CHECK(!!resolveTextureView.GetTexture());
 			const RHITexture& resolveTexture = *resolveTextureView.GetTexture();
 
-			attachmentInfo.resolveMode = RHIToVulkan::GetResolveMode(renderTarget.m_resolveMode);
-			attachmentInfo.resolveImageView = resolveTextureView.GetHandle();
-			attachmentInfo.resolveImageLayout = layoutsManager.GetSubresourcesSharedLayout(	m_cmdBufferHandle,
-																							resolveTexture.GetHandle(),
-																							resolveTextureView.GetSubresourceRange());
+			attachmentInfo.resolveMode			= RHIToVulkan::GetResolveMode(renderTarget.resolveMode);
+			attachmentInfo.resolveImageView		= resolveTextureView.GetHandle();
+			attachmentInfo.resolveImageLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle,
+																							 resolveTexture.GetHandle(),
+																							 resolveTextureView.GetSubresourceRange());
 		}
 
-		attachmentInfo.loadOp = RHIToVulkan::GetLoadOp(renderTarget.m_loadOperation);
-		attachmentInfo.storeOp = RHIToVulkan::GetStoreOp(renderTarget.m_storeOperation);
+		attachmentInfo.loadOp	= RHIToVulkan::GetLoadOp(renderTarget.loadOperation);
+		attachmentInfo.storeOp	= RHIToVulkan::GetStoreOp(renderTarget.storeOperation);
 		if (isColor)
 		{
-			memcpy(&attachmentInfo.clearValue, &renderTarget.m_clearColor, sizeof(VkClearValue));
+			memcpy(&attachmentInfo.clearValue, &renderTarget.clearColor, sizeof(VkClearValue));
 		}
 		else
 		{
-			attachmentInfo.clearValue.depthStencil.depth	= renderTarget.m_clearColor.m_depthStencil.m_depth;
-			attachmentInfo.clearValue.depthStencil.stencil	= renderTarget.m_clearColor.m_depthStencil.m_stencil;
+			attachmentInfo.clearValue.depthStencil.depth	= renderTarget.clearColor.asDepthStencil.depth;
+			attachmentInfo.clearValue.depthStencil.stencil	= renderTarget.clearColor.asDepthStencil.stencil;
 		}
 
 		return attachmentInfo;
@@ -170,31 +170,31 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 	};
 
 	lib::DynamicArray<VkRenderingAttachmentInfo> colorAttachments;
-	colorAttachments.reserve(renderingDefinition.m_colorRTs.size());
+	colorAttachments.reserve(renderingDefinition.colorRTs.size());
 
-	std::transform(	renderingDefinition.m_colorRTs.cbegin(), renderingDefinition.m_colorRTs.end(),
+	std::transform(	renderingDefinition.colorRTs.cbegin(), renderingDefinition.colorRTs.end(),
 					std::back_inserter(colorAttachments),
 					CreateColorAttachmentInfo);
 
-	const Bool hasDepthAttachment = renderingDefinition.m_depthRT.m_textureView.IsValid();
+	const Bool hasDepthAttachment = renderingDefinition.depthRT.textureView.IsValid();
 	VkRenderingAttachmentInfo depthAttachmentInfo{};
 	if (hasDepthAttachment)
 	{
-		depthAttachmentInfo = CreateDepthStencilAttachmentInfo(renderingDefinition.m_depthRT);
+		depthAttachmentInfo = CreateDepthStencilAttachmentInfo(renderingDefinition.depthRT);
 	}
 
-	const Bool hasStencilAttachment = renderingDefinition.m_stencilRT.m_textureView.IsValid();
+	const Bool hasStencilAttachment = renderingDefinition.stencilRT.textureView.IsValid();
 	VkRenderingAttachmentInfo stencilAttachmentInfo{};
 	if (hasStencilAttachment)
 	{
-		stencilAttachmentInfo = CreateDepthStencilAttachmentInfo(renderingDefinition.m_stencilRT);
+		stencilAttachmentInfo = CreateDepthStencilAttachmentInfo(renderingDefinition.stencilRT);
 	}
 
-	const math::Vector2i areaOffset = renderingDefinition.m_renderAreaOffset;
-	const math::Vector2u areaExtent = renderingDefinition.m_renderAreaExtent;
+	const math::Vector2i areaOffset = renderingDefinition.renderAreaOffset;
+	const math::Vector2u areaExtent = renderingDefinition.renderAreaExtent;
 
 	VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.flags					= RHIToVulkan::GetRenderingFlags(renderingDefinition.m_renderingFlags);
+    renderingInfo.flags					= RHIToVulkan::GetRenderingFlags(renderingDefinition.renderingFlags);
     renderingInfo.renderArea.offset		= VkOffset2D{ areaOffset.x(), areaOffset.y() };
     renderingInfo.renderArea.extent		= VkExtent2D{ areaExtent.x(), areaExtent.y() };
     renderingInfo.layerCount			= 1;

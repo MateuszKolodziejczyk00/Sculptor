@@ -17,24 +17,24 @@ struct DelegateHandle
 public:
 
 	DelegateHandle()
-		: m_Id(-1)
+		: id(-1)
 	{ }
 
-	DelegateHandle(Int32 id)
-		: m_Id(id)
+	DelegateHandle(Int32 inId)
+		: id(inId)
 	{ }
 
 	Bool IsValid() const
 	{
-		return m_Id != -1;
+		return id != -1;
 	}
 
 	Bool operator==(const DelegateHandle& rhs) const
 	{
-		return m_Id == rhs.m_Id;
+		return id == rhs.id;
 	}
 
-	DelegateIDType m_Id;
+	DelegateIDType id;
 };
 
 
@@ -43,12 +43,12 @@ class MulticastDelegateBase : private DelegateConditionalThreadSafeData<isThread
 {
 	struct DelegateInfo
 	{
-		explicit DelegateInfo(DelegateHandle handle)
-			: m_Handle(handle)
+		explicit DelegateInfo(DelegateHandle inHandle)
+			: handle(inHandle)
 		{}
 
-		Delegate<Args...> m_Delegate;
-		DelegateHandle m_Handle;
+		Delegate<Args...>	delegate;
+		DelegateHandle		handle;
 	};
 
 public:
@@ -96,7 +96,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddMember(ObjectTyp
 	[[maybe_unused]]
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindMember(user, function);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindMember(user, function);
 	return handle;
 }
 
@@ -107,7 +107,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddRaw(FuncType* fu
 	[[maybe_unused]]
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindRaw(function);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRaw(function);
 	return handle;
 }
 
@@ -118,7 +118,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddLambda(Lambda&& 
 	[[maybe_unused]]
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).m_Delegate.BindLambda(std::forward<Lambda>(functor));
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindLambda(std::forward<Lambda>(functor));
 	return handle;
 }
 
@@ -127,7 +127,7 @@ void MulticastDelegateBase<isThreadSafe, Args...>::Unbind(DelegateHandle handle)
 {
 	[[maybe_unused]]
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.m_Handle == handle; }));
+	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.Handle == handle; }));
 }
 
 template<Bool isThreadSafe, typename... Args>
@@ -143,7 +143,7 @@ void MulticastDelegateBase<isThreadSafe, Args...>::Broadcast(const Args&... argu
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
 	{
-		delegateInfo.m_Delegate.ExecuteIfBound(arguments...);
+		delegateInfo.delegate.ExecuteIfBound(arguments...);
 	}
 }
 

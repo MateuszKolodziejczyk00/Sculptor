@@ -10,13 +10,13 @@ namespace spt::rhi
 struct SubmitBatchData
 {
 	SubmitBatchData()
-		: m_waitSemaphores(nullptr)
-		, m_signalSemaphores(nullptr)
+		: waitSemaphores(nullptr)
+		, signalSemaphores(nullptr)
 	{ }
 
-	lib::DynamicArray<const RHICommandBuffer*>		m_commandBuffers;
-	const RHISemaphoresArray*						m_waitSemaphores;
-	const RHISemaphoresArray*						m_signalSemaphores;
+	lib::DynamicArray<const RHICommandBuffer*>		commandBuffers;
+	const RHISemaphoresArray*						waitSemaphores;
+	const RHISemaphoresArray*						signalSemaphores;
 };
 
 }

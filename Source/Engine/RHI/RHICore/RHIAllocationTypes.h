@@ -25,12 +25,12 @@ enum class EAllocationFlags : Flags32
 struct RHIAllocationInfo
 {
 	RHIAllocationInfo()
-		: m_memoryUsage(EMemoryUsage::GPUOnly)
-		, m_allocationFlags(EAllocationFlags::None)
+		: memoryUsage(EMemoryUsage::GPUOnly)
+		, allocationFlags(EAllocationFlags::None)
 	{ }
 
-	EMemoryUsage				m_memoryUsage;
-	EAllocationFlags			m_allocationFlags;
+	EMemoryUsage				memoryUsage;
+	EAllocationFlags			allocationFlags;
 };
 
 } // spt::rhi

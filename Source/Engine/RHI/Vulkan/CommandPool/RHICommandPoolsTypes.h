@@ -9,18 +9,18 @@ namespace spt::vulkan
 struct CommandBufferAcquireInfo
 {
 	CommandBufferAcquireInfo()
-		: m_commandPoolId(idxNone<SizeType>)
-		, m_poolsSetHash(0)
+		: commandPoolId(idxNone<SizeType>)
+		, poolsSetHash(0)
 	{ }
 
-	void						Reset()
+	void Reset()
 	{
-		m_commandPoolId = idxNone<SizeType>;
-		m_poolsSetHash	= 0;
+		commandPoolId = idxNone<SizeType>;
+		poolsSetHash	= 0;
 	}
 
-	SizeType					m_commandPoolId;
-	Uint32						m_poolsSetHash;
+	SizeType					commandPoolId;
+	Uint32						poolsSetHash;
 };
 
-}
+} // spt::vulkan

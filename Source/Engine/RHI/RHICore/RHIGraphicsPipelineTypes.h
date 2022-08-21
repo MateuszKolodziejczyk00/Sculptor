@@ -47,23 +47,23 @@ enum class ECullMode
 
 struct PipelineRasterizationDefinition
 {
-	explicit PipelineRasterizationDefinition(EPolygonMode polygonMode = EPolygonMode::Fill, ECullMode cullMode = ECullMode::Back)
-		: m_polygonMode(polygonMode)
-		, m_cullMode(cullMode)
+	explicit PipelineRasterizationDefinition(EPolygonMode inPolygonMode = EPolygonMode::Fill, ECullMode inCullMode = ECullMode::Back)
+		: polygonMode(inPolygonMode)
+		, cullMode(inCullMode)
 	{ }
 
-	EPolygonMode		m_polygonMode;
-	ECullMode			m_cullMode;
+	EPolygonMode		polygonMode;
+	ECullMode			cullMode;
 };
 
 
 struct MultisamplingDefinition
 {
-	explicit MultisamplingDefinition(Uint32 samplesNum = 1)
-		: m_samplesNum(samplesNum)
+	explicit MultisamplingDefinition(Uint32 inSamplesNum = 1)
+		: samplesNum(inSamplesNum)
 	{ }
 
-	Uint32	m_samplesNum;
+	Uint32	samplesNum;
 };
 
 
@@ -91,27 +91,36 @@ enum class EColorBlendType
 struct ColorRenderTargetDefinition
 {
 	explicit ColorRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EColorBlendType inBlendType = EColorBlendType::Copy)
-		: m_format(inFormat)
-		, m_blendMode(inBlendType)
+		: format(inFormat)
+		, blendMode(inBlendType)
 	{ }
 
-	EFragmentFormat			m_format;
-	EColorBlendType			m_blendMode;
+	EFragmentFormat			format;
+	EColorBlendType			blendMode;
 };
 
 
 struct DepthRenderTargetDefinition
 {
+	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EDepthCompareOperation inDepthCompareOp = EDepthCompareOperation::Less, Bool inEnableDepthWrite = true)
+		: format(inFormat)
+		, depthCompareOp(inDepthCompareOp)
+		, enableDepthWrite(inEnableDepthWrite)
+	{ }
 
-	EFragmentFormat			m_format;
-	EDepthCompareOperation	m_depthCompareOp;
-	Bool					m_enableDepthWrite;
+	EFragmentFormat			format;
+	EDepthCompareOperation	depthCompareOp;
+	Bool					enableDepthWrite;
 };
 
 
 struct StencilRenderTargetDefinition
 {
-	EFragmentFormat		m_format;
+	explicit StencilRenderTargetDefinition(EFragmentFormat inFormat)
+		: format(inFormat)
+	{ }
+	
+	EFragmentFormat		format;
 };
 
 
@@ -120,22 +129,22 @@ struct PipelineRenderTargetsDefinition
 	PipelineRenderTargetsDefinition()
 	{ }
 
-	lib::DynamicArray<ColorRenderTargetDefinition>	m_colorRTsFormat;
-	DepthRenderTargetDefinition						m_depthRTFormat;
-	StencilRenderTargetDefinition					m_stencilRTFormat;
+	lib::DynamicArray<ColorRenderTargetDefinition>	colorRTsFormat;
+	DepthRenderTargetDefinition						depthRTFormat;
+	StencilRenderTargetDefinition					stencilRTFormat;
 };
 
 struct GraphicsPipelineDefinition
 {
 	GraphicsPipelineDefinition()
-		: m_primitiveTopology(EPrimitiveTopology::TriangleList)
+		: primitiveTopology(EPrimitiveTopology::TriangleList)
 	{ }
 
-	PipelineShaderStagesDefinition		m_shaderStagesDefinition;
-	EPrimitiveTopology					m_primitiveTopology;
-	PipelineRasterizationDefinition		m_RasterizationDefinition;
-	MultisamplingDefinition				m_MultisamplingDefinition;
-	PipelineRenderTargetsDefinition		m_renderTargetsDefinition;
+	PipelineShaderStagesDefinition		shaderStagesDefinition;
+	EPrimitiveTopology					primitiveTopology;
+	PipelineRasterizationDefinition		RasterizationDefinition;
+	MultisamplingDefinition				MultisamplingDefinition;
+	PipelineRenderTargetsDefinition		renderTargetsDefinition;
 };
 
 } //spt::rhi

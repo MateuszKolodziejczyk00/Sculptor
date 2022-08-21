@@ -114,8 +114,8 @@ VmaAllocator MemoryManager::GetAllocatorHandle() const
 VmaAllocationCreateInfo MemoryManager::CreateAllocationInfo(const rhi::RHIAllocationInfo& rhiAllocationInfo) const
 {
 	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.flags = priv::GetVMAAllocationFlags(rhiAllocationInfo.m_allocationFlags);
-	allocationInfo.usage = priv::GetVMAMemoryUsage(rhiAllocationInfo.m_memoryUsage);
+	allocationInfo.flags = priv::GetVMAAllocationFlags(rhiAllocationInfo.allocationFlags);
+	allocationInfo.usage = priv::GetVMAMemoryUsage(rhiAllocationInfo.memoryUsage);
 
 	return allocationInfo;
 }

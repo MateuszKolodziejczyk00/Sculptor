@@ -82,86 +82,86 @@ static constexpr Uint32 maxBindingIdx	= 255;
 
 struct CommonBindingData abstract
 {
-	explicit CommonBindingData(Uint32 elementsNum, EBindingFlags flags)
-		: m_elementsNum(elementsNum)
-		, m_flags(flags)
+	explicit CommonBindingData(Uint32 inElementsNum, EBindingFlags inFlags)
+		: elementsNum(inElementsNum)
+		, flags(inFlags)
 	{ }
 
 	void MakeValid()
 	{
-		lib::RemoveFlag(m_flags, EBindingFlags::Invalid);
+		lib::RemoveFlag(flags, EBindingFlags::Invalid);
 	}
 
 	Bool IsValid() const
 	{
-		return !lib::HasAnyFlag(m_flags, EBindingFlags::Invalid);
+		return !lib::HasAnyFlag(flags, EBindingFlags::Invalid);
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)
 	{
-		lib::AddFlag(m_flags, priv::ShaderStageToBindingFlag(stage));
+		lib::AddFlag(flags, priv::ShaderStageToBindingFlag(stage));
 	}
 
 	rhi::EShaderStageFlags GetShaderStages() const
 	{
-		return priv::BindingFlagsToShaderStageFlags(m_flags);
+		return priv::BindingFlagsToShaderStageFlags(flags);
 	}
 
-	Uint32			m_elementsNum;
-	EBindingFlags	m_flags;
+	Uint32			elementsNum;
+	EBindingFlags	flags;
 };
 
 
 struct TextureBindingData : public CommonBindingData
 {
-	explicit TextureBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
-		: CommonBindingData(elementsNum, flags)
+	explicit TextureBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
 	{ }
 };
 
 
 struct CombinedTextureSamplerBindingData : public CommonBindingData
 {
-	explicit CombinedTextureSamplerBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
-		: CommonBindingData(elementsNum, flags)
+	explicit CombinedTextureSamplerBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
 	{ }
 };
 
 
 struct UniformBufferBindingData : public CommonBindingData
 {
-	explicit UniformBufferBindingData(Uint16 size = 0, Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
-		: CommonBindingData(elementsNum, flags)
-		, m_size(size)
+	explicit UniformBufferBindingData(Uint16 inSize = 0, Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
+		, size(inSize)
 	{
 		SPT_CHECK(size > 0);
 	}
 
-	Uint16			m_size;
+	Uint16			size;
 };
 
 
 struct StorageBufferBindingData : public CommonBindingData
 {
-	explicit StorageBufferBindingData(Uint32 elementsNum = 1, EBindingFlags flags = priv::defaultBindingFlags)
-		: CommonBindingData(elementsNum, flags)
+	explicit StorageBufferBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
 		, m_size(0) // invalid
 	{ }
 
 	void SetSize(Uint16 size)
 	{
-		lib::RemoveFlag(m_flags, EBindingFlags::Unbound);
+		lib::RemoveFlag(flags, EBindingFlags::Unbound);
 		m_size = size;
 	}
 
 	void SetUnbound()
 	{
-		lib::AddFlag(m_flags, EBindingFlags::Unbound);
+		lib::AddFlag(flags, EBindingFlags::Unbound);
 	}
 
 	Bool IsUnbound() const
 	{
-		return lib::HasAnyFlag(m_flags, EBindingFlags::Unbound);
+		return lib::HasAnyFlag(flags, EBindingFlags::Unbound);
 	}
 
 	Uint16 GetSize() const
@@ -300,13 +300,13 @@ struct ShaderParamEntryCommon
 {
 	ShaderParamEntryCommon() = default;
 
-	ShaderParamEntryCommon(Uint8 setIdx, Uint8 bindingIdx)
-		: m_setIdx(setIdx)
-		, m_bindingIdx(bindingIdx)
+	ShaderParamEntryCommon(Uint8 inSetIdx, Uint8 inBindingIdx)
+		: setIdx(inSetIdx)
+		, bindingIdx(inBindingIdx)
 	{ }
 
-	Uint8		m_setIdx;
-	Uint8		m_bindingIdx;
+	Uint8		setIdx;
+	Uint8		bindingIdx;
 };
 
 
@@ -314,8 +314,8 @@ struct ShaderTextureParamEntry : public ShaderParamEntryCommon
 {
 	ShaderTextureParamEntry() = default;
 
-	ShaderTextureParamEntry(Uint8 setIdx, Uint8 bindingIdx)
-		: ShaderParamEntryCommon(setIdx, bindingIdx)
+	ShaderTextureParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
 	// No additional data for now
@@ -326,8 +326,8 @@ struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 {
 	ShaderCombinedTextureSamplerParamEntry() = default;
 
-	ShaderCombinedTextureSamplerParamEntry(Uint8 setIdx, Uint8 bindingIdx)
-		: ShaderParamEntryCommon(setIdx, bindingIdx)
+	ShaderCombinedTextureSamplerParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
 	// No additional data for now
@@ -338,16 +338,16 @@ struct ShaderDataParamEntry : public ShaderParamEntryCommon
 {
 	ShaderDataParamEntry() = default;
 
-	ShaderDataParamEntry(Uint8 setIdx, Uint8 bindingIdx, Uint16 offset, Uint16 size, Uint16 stride)
-		: ShaderParamEntryCommon(setIdx, bindingIdx)
-		, m_offset(offset)
-		, m_size(size)
-		, m_stride(stride)
+	ShaderDataParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx, Uint16 inOffset, Uint16 inSize, Uint16 inStride)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
+		, offset(inOffset)
+		, size(inSize)
+		, stride(inStride)
 	{ }
 
-	Uint16		m_offset;
-	Uint16		m_size;
-	Uint16		m_stride;
+	Uint16		offset;
+	Uint16		size;
+	Uint16		stride;
 };
 
 
@@ -355,8 +355,8 @@ struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 {
 	ShaderBufferParamEntry() = default;
 
-	explicit ShaderBufferParamEntry(Uint8 setIdx, Uint8 bindingIdx)
-		: ShaderParamEntryCommon(setIdx, bindingIdx)
+	explicit ShaderBufferParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
 	// No additional data for now
@@ -417,7 +417,7 @@ public:
 		return std::visit(
 			[](const auto data) -> ShaderParamEntryCommon
 			{
-				return ShaderParamEntryCommon(data.m_setIdx, data.m_bindingIdx);
+				return ShaderParamEntryCommon(data.setIdx, data.bindingIdx);
 			},
 			m_data);
 	}

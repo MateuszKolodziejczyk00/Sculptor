@@ -35,18 +35,18 @@ inline Flags32 GetStageFlag(EShaderStage stage)
 struct ShaderModuleDefinition
 {
 	ShaderModuleDefinition()
-		: m_stage(EShaderStage::Vertex)
+		: stage(EShaderStage::Vertex)
 	{ }
 
-	ShaderModuleDefinition(lib::DynamicArray<Uint32> binary, EShaderStage stage)
-		: m_binary(std::move(binary))
-		, m_stage(EShaderStage::Vertex)
+	ShaderModuleDefinition(lib::DynamicArray<Uint32> inBinary, EShaderStage inStage)
+		: binary(std::move(inBinary))
+		, stage(inStage)
 	{
-		SPT_CHECK(!m_binary.empty());
+		SPT_CHECK(!binary.empty());
 	}
 
-	lib::DynamicArray<Uint32>		m_binary;
-	EShaderStage					m_stage;
+	lib::DynamicArray<Uint32>		binary;
+	EShaderStage					stage;
 };
 
 }

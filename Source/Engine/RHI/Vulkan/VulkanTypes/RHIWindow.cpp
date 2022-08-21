@@ -82,7 +82,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	SPT_CHECK(!IsValid());
 
-	m_minImagesNum = windowInfo.m_minImageCount;
+	m_minImagesNum = windowInfo.minImageCount;
 
 	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();
 	const VkPhysicalDevice physicalDeviceHandle		= VulkanRHI::GetPhysicalDeviceHandle();
@@ -96,8 +96,8 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{ VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT };
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDeviceHandle, m_surface, &surfaceCapabilities);
 
-	const Uint32 framebufferWidth	= windowInfo.m_framebufferSize.x();
-	const Uint32 framebufferHeight	= windowInfo.m_framebufferSize.y();
+	const Uint32 framebufferWidth	= windowInfo.framebufferSize.x();
+	const Uint32 framebufferHeight	= windowInfo.framebufferSize.y();
 
 	SPT_CHECK(framebufferWidth >= surfaceCapabilities.minImageExtent.width && framebufferWidth <= surfaceCapabilities.maxImageExtent.width);
 	SPT_CHECK(framebufferHeight >= surfaceCapabilities.minImageExtent.height && framebufferHeight <= surfaceCapabilities.maxImageExtent.height);
@@ -124,7 +124,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	m_presentMode = ImGui_ImplVulkanH_SelectPresentMode(physicalDeviceHandle, surfaceHandle, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
-	RebuildSwapchain(windowInfo.m_framebufferSize);
+	RebuildSwapchain(windowInfo.framebufferSize);
 }
 
 void RHIWindow::ReleaseRHI()
@@ -263,12 +263,12 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	swapchainInfo.clipped					= VK_TRUE;
 	swapchainInfo.oldSwapchain				= oldSwapchain;
 
-	m_swapchainTextureDef.m_resolution		= math::Vector3u(framebufferSize.x(), framebufferSize.y(), 1);
-	m_swapchainTextureDef.m_usage			= rhiSwapchainTextureUsage;
-	m_swapchainTextureDef.m_format			= rhiSwapchainTextureFormat;
-	m_swapchainTextureDef.m_samples			= 1;
-	m_swapchainTextureDef.m_mipLevels		= 1;
-	m_swapchainTextureDef.m_arrayLayers		= 1;
+	m_swapchainTextureDef.resolution	= math::Vector3u(framebufferSize.x(), framebufferSize.y(), 1);
+	m_swapchainTextureDef.usage			= rhiSwapchainTextureUsage;
+	m_swapchainTextureDef.format		= rhiSwapchainTextureFormat;
+	m_swapchainTextureDef.samples		= 1;
+	m_swapchainTextureDef.mipLevels		= 1;
+	m_swapchainTextureDef.arrayLayers	= 1;
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	SPT_VK_CHECK(vkCreateSwapchainKHR(VulkanRHI::GetDeviceHandle(), &swapchainInfo, VulkanRHI::GetAllocationCallbacks(), &swapchain));

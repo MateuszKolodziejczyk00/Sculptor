@@ -39,15 +39,15 @@ VkImageLayout ImageSubresourcesLayoutsData::GetSubresourcesSharedLayout(const Im
 		return GetFullImageLayout();
 	}
 
-	const Uint32 endMipLevel = range.m_baseMipLevel + range.m_mipLevelsNum;
-	const Uint32 endArrayLayer = range.m_baseArrayLayer + range.m_arrayLayersNum;
+	const Uint32 endMipLevel = range.baseMipLevel + range.mipLevelsNum;
+	const Uint32 endArrayLayer = range.baseArrayLayer + range.arrayLayersNum;
 
-	const VkImageLayout layout = m_subresourceLayouts[GetSubresourceIdx(range.m_baseMipLevel, range.m_baseArrayLayer)];
+	const VkImageLayout layout = m_subresourceLayouts[GetSubresourceIdx(range.baseMipLevel, range.baseArrayLayer)];
 
 #if DO_CHECKS
-	for (Uint32 mipLevel = range.m_baseMipLevel; mipLevel < endMipLevel; ++mipLevel)
+	for (Uint32 mipLevel = range.baseMipLevel; mipLevel < endMipLevel; ++mipLevel)
 	{
-		for (Uint32 arrayLayer = range.m_baseArrayLayer; arrayLayer < endArrayLayer; ++arrayLayer)
+		for (Uint32 arrayLayer = range.baseArrayLayer; arrayLayer < endArrayLayer; ++arrayLayer)
 		{
 			SPT_CHECK(m_subresourceLayouts[GetSubresourceIdx(mipLevel, arrayLayer)] == layout);
 		}
@@ -89,15 +89,15 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 {
 	SPT_PROFILE_FUNCTION();
 
-	if (	range.m_baseMipLevel == 0 && range.m_baseArrayLayer == 0
-		&& (range.m_mipLevelsNum == m_mipsNum || range.m_mipLevelsNum == rhi::TextureSubresourceRange::s_allRemainingMips)
-		&& (range.m_arrayLayersNum == m_arrayLayersNum || range.m_arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers))
+	if (	range.baseMipLevel == 0 && range.baseArrayLayer == 0
+		&& (range.mipLevelsNum == m_mipsNum || range.mipLevelsNum == rhi::TextureSubresourceRange::s_allRemainingMips)
+		&& (range.arrayLayersNum == m_arrayLayersNum || range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers))
 	{
 		SetFullImageLayout(layout);
 	}
-	else if (range.m_mipLevelsNum == 1 && range.m_arrayLayersNum == 1)
+	else if (range.mipLevelsNum == 1 && range.arrayLayersNum == 1)
 	{
-		SetSubresourceLayout(range.m_baseMipLevel, range.m_baseArrayLayer, layout);
+		SetSubresourceLayout(range.baseMipLevel, range.baseArrayLayer, layout);
 	}
 	else
 	{
@@ -106,12 +106,12 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 			TransitionToPerSubresourceLayout();
 		}
 
-		const Uint32 endMipLevel = range.m_baseMipLevel + range.m_mipLevelsNum;
-		const Uint32 endArrayLayer = range.m_baseArrayLayer + range.m_arrayLayersNum;
+		const Uint32 endMipLevel = range.baseMipLevel + range.mipLevelsNum;
+		const Uint32 endArrayLayer = range.baseArrayLayer + range.arrayLayersNum;
 
-		for (Uint32 mipLevel = range.m_baseMipLevel; mipLevel < endMipLevel; ++mipLevel)
+		for (Uint32 mipLevel = range.baseMipLevel; mipLevel < endMipLevel; ++mipLevel)
 		{
-			for (Uint32 arrayLayer = range.m_baseArrayLayer; arrayLayer < endArrayLayer; ++arrayLayer)
+			for (Uint32 arrayLayer = range.baseArrayLayer; arrayLayer < endArrayLayer; ++arrayLayer)
 			{
 				m_subresourceLayouts[GetSubresourceIdx(mipLevel, arrayLayer)] = layout;
 			}
@@ -186,7 +186,7 @@ CommandBufferLayoutsManager::CommandBufferLayoutsManager()
 
 ImageSubresourcesLayoutsData* CommandBufferLayoutsManager::AcquireImage(VkImage image, const ImageLayoutData& layoutInfo)
 {
-	const ImageSubresourcesLayoutsData acquiredImageLayoutData(layoutInfo.m_mipsNum, layoutInfo.m_arrayLayersNum, layoutInfo.m_fullImageLayout);
+	const ImageSubresourcesLayoutsData acquiredImageLayoutData(layoutInfo.mipsNum, layoutInfo.arrayLayersNum, layoutInfo.fullImageLayout);
 
 	auto emplaceResult = m_imageLayouts.emplace(image, acquiredImageLayoutData);
 	return &(emplaceResult.first->second);
@@ -296,10 +296,10 @@ VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuf
 VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const rhi::TextureSubresourceRange& range) const
 {
 	ImageSubresourceRange imageRange;
-	imageRange.m_baseMipLevel	= range.m_baseMipLevel;
-	imageRange.m_mipLevelsNum	= range.m_mipLevelsNum;
-	imageRange.m_baseArrayLayer	= range.m_baseArrayLayer;
-	imageRange.m_arrayLayersNum	= range.m_arrayLayersNum;
+	imageRange.baseMipLevel		= range.baseMipLevel;
+	imageRange.mipLevelsNum		= range.mipLevelsNum;
+	imageRange.baseArrayLayer	= range.baseArrayLayer;
+	imageRange.arrayLayersNum	= range.arrayLayersNum;
 
 	return GetSubresourcesSharedLayout(cmdBuffer, image, imageRange);
 }
@@ -432,7 +432,7 @@ VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const
 	const auto foundLayout = m_imageLayouts.find(image);
 	SPT_CHECK(foundLayout != m_imageLayouts.cend());
 
-	return foundLayout->second.m_fullImageLayout;
+	return foundLayout->second.fullImageLayout;
 }
 
 }

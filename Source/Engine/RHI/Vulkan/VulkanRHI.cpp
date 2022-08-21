@@ -32,28 +32,28 @@ class VulkanInstanceData
 public:
 
     VulkanInstanceData()
-        : m_instance(VK_NULL_HANDLE)
-        , m_physicalDevice(VK_NULL_HANDLE)
-        , m_surface(VK_NULL_HANDLE)
-        , m_debugMessenger(VK_NULL_HANDLE)
+        : instance(VK_NULL_HANDLE)
+        , physicalDevice(VK_NULL_HANDLE)
+        , surface(VK_NULL_HANDLE)
+        , debugMessenger(VK_NULL_HANDLE)
     { }
 
-    VkInstance                  m_instance;
+    VkInstance                  instance;
 
-    VkPhysicalDevice            m_physicalDevice;
-    LogicalDevice               m_device;
+    VkPhysicalDevice            physicalDevice;
+    LogicalDevice               device;
 
-    MemoryManager               m_memoryManager;
+    MemoryManager               memoryManager;
 
-    VkSurfaceKHR                m_surface;
+    VkSurfaceKHR                surface;
     
-    VkDebugUtilsMessengerEXT    m_debugMessenger;
+    VkDebugUtilsMessengerEXT    debugMessenger;
 
-    CommandPoolsManager         m_commandPoolsManager;
+    CommandPoolsManager         commandPoolsManager;
 
-    LayoutsManager              m_layoutsManager;
+    LayoutsManager              layoutsManager;
 
-    PipelineLayoutsManager      m_pipelineLayoutsManager;
+    PipelineLayoutsManager      pipelineLayoutsManager;
 };
 
 static VulkanInstanceData g_data;
@@ -96,11 +96,11 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     };
 
     lib::DynamicArray<const char*> extensionNames;
-    extensionNames.reserve(initInfo.m_extensionsNum);
+    extensionNames.reserve(initInfo.extensionsNum);
     
-    for (Uint32 i = 0; i < initInfo.m_extensionsNum; ++i)
+    for (Uint32 i = 0; i < initInfo.extensionsNum; ++i)
     {
-        extensionNames.push_back(initInfo.m_extensions[i]);
+        extensionNames.push_back(initInfo.extensions[i]);
     }
     
 #if VULKAN_VALIDATION
@@ -163,65 +163,65 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
 #endif // VULKAN_VALIDATION_STRICT
 
-    SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_data.m_instance));
+    SPT_VK_CHECK(vkCreateInstance(&instanceInfo, GetAllocationCallbacks(), &priv::g_data.instance));
 
-    priv::VolkLoadInstance(priv::g_data.m_instance);
+    priv::VolkLoadInstance(priv::g_data.instance);
 
-    priv::g_data.m_debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.m_instance, GetAllocationCallbacks());
+    priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
 
-    priv::g_data.m_pipelineLayoutsManager.InitializeRHI();
+    priv::g_data.pipelineLayoutsManager.InitializeRHI();
 }
 
 void VulkanRHI::InitializeGPUForWindow()
 {
-    SPT_CHECK(!!priv::g_data.m_instance);
-    SPT_CHECK(!!priv::g_data.m_surface);
+    SPT_CHECK(!!priv::g_data.instance);
+    SPT_CHECK(!!priv::g_data.surface);
 
-    priv::g_data.m_physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.m_instance, priv::g_data.m_surface);
+    priv::g_data.physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.instance, priv::g_data.surface);
 
     if (SPT_IS_LOG_CATEGORY_ENABLED(VulkanRHI))
     {
-        const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_data.m_physicalDevice);
+        const VkPhysicalDeviceProperties2 deviceProps = PhysicalDevice::GetDeviceProperties(priv::g_data.physicalDevice);
         SPT_LOG_TRACE(VulkanRHI, "Selected Device: {0}", deviceProps.properties.deviceName);
     }
 
-    priv::g_data.m_device.CreateDevice(priv::g_data.m_physicalDevice, GetAllocationCallbacks());
+    priv::g_data.device.CreateDevice(priv::g_data.physicalDevice, GetAllocationCallbacks());
 
-    priv::g_data.m_memoryManager.Initialize(priv::g_data.m_instance, priv::g_data.m_device.GetHandle(), priv::g_data.m_physicalDevice, GetAllocationCallbacks());
+    priv::g_data.memoryManager.Initialize(priv::g_data.instance, priv::g_data.device.GetHandle(), priv::g_data.physicalDevice, GetAllocationCallbacks());
 }
 
 void VulkanRHI::Uninitialize()
 {
-    priv::g_data.m_commandPoolsManager.DestroyResources();
+    priv::g_data.commandPoolsManager.DestroyResources();
 
-    priv::g_data.m_pipelineLayoutsManager.ReleaseRHI();
+    priv::g_data.pipelineLayoutsManager.ReleaseRHI();
 
-    if (priv::g_data.m_surface)
+    if (priv::g_data.surface)
     {
-        vkDestroySurfaceKHR(priv::g_data.m_instance, priv::g_data.m_surface, GetAllocationCallbacks());
-        priv::g_data.m_surface = VK_NULL_HANDLE;
+        vkDestroySurfaceKHR(priv::g_data.instance, priv::g_data.surface, GetAllocationCallbacks());
+        priv::g_data.surface = VK_NULL_HANDLE;
     }
 
-    if (priv::g_data.m_memoryManager.IsValid())
+    if (priv::g_data.memoryManager.IsValid())
     {
-        priv::g_data.m_memoryManager.Destroy();
+        priv::g_data.memoryManager.Destroy();
     }
 
-    if (priv::g_data.m_device.IsValid())
+    if (priv::g_data.device.IsValid())
     {
-        priv::g_data.m_device.Destroy(GetAllocationCallbacks());
+        priv::g_data.device.Destroy(GetAllocationCallbacks());
     }
 
-    if (priv::g_data.m_debugMessenger)
+    if (priv::g_data.debugMessenger)
     {
-        DebugMessenger::DestroyDebugMessenger(priv::g_data.m_debugMessenger, priv::g_data.m_instance, GetAllocationCallbacks());
-        priv::g_data.m_debugMessenger = VK_NULL_HANDLE;
+        DebugMessenger::DestroyDebugMessenger(priv::g_data.debugMessenger, priv::g_data.instance, GetAllocationCallbacks());
+        priv::g_data.debugMessenger = VK_NULL_HANDLE;
     }
 
-    if (priv::g_data.m_instance)
+    if (priv::g_data.instance)
     {
-        vkDestroyInstance(priv::g_data.m_instance, GetAllocationCallbacks());
-        priv::g_data.m_instance = VK_NULL_HANDLE;
+        vkDestroyInstance(priv::g_data.instance, GetAllocationCallbacks());
+        priv::g_data.instance = VK_NULL_HANDLE;
     }
 }
 
@@ -239,9 +239,9 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
 
     for (SizeType idx = 0; idx < submitBatches.size(); ++idx)
     {
-        const RHISemaphoresArray* waitSemaphores                    = submitBatches[idx].m_waitSemaphores;
-        const RHISemaphoresArray* signalSemaphores                  = submitBatches[idx].m_signalSemaphores;
-        const lib::DynamicArray<const RHICommandBuffer*> cmdBuffers = submitBatches[idx].m_commandBuffers;
+        const RHISemaphoresArray* waitSemaphores                    = submitBatches[idx].waitSemaphores;
+        const RHISemaphoresArray* signalSemaphores                  = submitBatches[idx].signalSemaphores;
+        const lib::DynamicArray<const RHICommandBuffer*> cmdBuffers = submitBatches[idx].commandBuffers;
 
         SPT_CHECK(!cmdBuffers.empty());
 
@@ -274,7 +274,7 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
 
 void VulkanRHI::WaitIdle()
 {
-    priv::g_data.m_device.WaitIdle();
+    priv::g_data.device.WaitIdle();
 }
 
 void VulkanRHI::EnableValidationWarnings(Bool enable)
@@ -284,57 +284,57 @@ void VulkanRHI::EnableValidationWarnings(Bool enable)
 
 VkInstance VulkanRHI::GetInstanceHandle()
 {
-    return priv::g_data.m_instance;
+    return priv::g_data.instance;
 }
 
 VkDevice VulkanRHI::GetDeviceHandle()
 {
-    return priv::g_data.m_device.GetHandle();
+    return priv::g_data.device.GetHandle();
 }
 
 VkPhysicalDevice VulkanRHI::GetPhysicalDeviceHandle()
 {
-    return priv::g_data.m_physicalDevice;
+    return priv::g_data.physicalDevice;
 }
 
 CommandPoolsManager& VulkanRHI::GetCommandPoolsManager()
 {
-    return priv::g_data.m_commandPoolsManager;
+    return priv::g_data.commandPoolsManager;
 }
 
 LayoutsManager& VulkanRHI::GetLayoutsManager()
 {
-    return priv::g_data.m_layoutsManager;
+    return priv::g_data.layoutsManager;
 }
 
 PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()
 {
-    return priv::g_data.m_pipelineLayoutsManager;
+    return priv::g_data.pipelineLayoutsManager;
 }
 
 VkSurfaceKHR VulkanRHI::GetSurfaceHandle()
 {
-    return priv::g_data.m_surface;
+    return priv::g_data.surface;
 }
 
 const LogicalDevice& VulkanRHI::GetLogicalDevice()
 {
-    return priv::g_data.m_device;
+    return priv::g_data.device;
 }
 
 MemoryManager& VulkanRHI::GetMemoryManager()
 {
-    return priv::g_data.m_memoryManager;
+    return priv::g_data.memoryManager;
 }
 
 VmaAllocator VulkanRHI::GetAllocatorHandle()
 {
-    return priv::g_data.m_memoryManager.GetAllocatorHandle();
+    return priv::g_data.memoryManager.GetAllocatorHandle();
 }
 
 void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
 {
-    priv::g_data.m_surface = surface;
+    priv::g_data.surface = surface;
 }
 
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()

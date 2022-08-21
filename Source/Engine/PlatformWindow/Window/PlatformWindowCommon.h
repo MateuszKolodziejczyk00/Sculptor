@@ -9,12 +9,12 @@ namespace spt::platform
 struct RequiredExtensionsInfo
 {
 	RequiredExtensionsInfo()
-		: m_extensions(nullptr)
-		, m_extensionsNum(0)
+		: extensions(nullptr)
+		, extensionsNum(0)
 	{ }
 
-	const char* const*					m_extensions;
-	Uint32								m_extensionsNum;
+	const char* const*					extensions;
+	Uint32								extensionsNum;
 
 };
 

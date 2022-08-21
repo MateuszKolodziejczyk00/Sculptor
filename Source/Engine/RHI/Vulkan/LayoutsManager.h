@@ -14,24 +14,24 @@ namespace spt::vulkan
 
 struct ImageSubresourceRange
 {
-	ImageSubresourceRange(Uint32 baseMipLevel = 0, Uint32 mipLevelsNum = 1, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = 1)
-		: m_baseMipLevel(baseMipLevel)
-		, m_mipLevelsNum(mipLevelsNum)
-		, m_baseArrayLayer(baseArrayLayer)
-		, m_arrayLayersNum(arrayLayersNum)
+	ImageSubresourceRange(Uint32 inBaseMipLevel = 0, Uint32 inMipLevelsNum = 1, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = 1)
+		: baseMipLevel(inBaseMipLevel)
+		, mipLevelsNum(inMipLevelsNum)
+		, baseArrayLayer(inBaseArrayLayer)
+		, arrayLayersNum(inArrayLayersNum)
 	{ }
 
 	ImageSubresourceRange(const VkImageSubresourceRange& subresourceRange)
-		: m_baseMipLevel(subresourceRange.baseMipLevel)
-		, m_mipLevelsNum(subresourceRange.levelCount)
-		, m_baseArrayLayer(subresourceRange.baseArrayLayer)
-		, m_arrayLayersNum(subresourceRange.layerCount)
+		: baseMipLevel(subresourceRange.baseMipLevel)
+		, mipLevelsNum(subresourceRange.levelCount)
+		, baseArrayLayer(subresourceRange.baseArrayLayer)
+		, arrayLayersNum(subresourceRange.layerCount)
 	{ }
 
-	Uint32		m_baseMipLevel;
-	Uint32		m_mipLevelsNum;
-	Uint32		m_baseArrayLayer;
-	Uint32		m_arrayLayersNum;
+	Uint32		baseMipLevel;
+	Uint32		mipLevelsNum;
+	Uint32		baseArrayLayer;
+	Uint32		arrayLayersNum;
 };
 
 
@@ -69,26 +69,26 @@ private:
 };
 
 
-class ImageLayoutData
+struct ImageLayoutData
 {
 public:
 
 	ImageLayoutData()
-		: m_mipsNum(0)
-		, m_arrayLayersNum(0)
-		, m_fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+		: mipsNum(0)
+		, arrayLayersNum(0)
+		, fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{ }
 
-	ImageLayoutData(Uint32 mipsNum, Uint32 arrayLayersNum)
-		: m_mipsNum(mipsNum)
-		, m_arrayLayersNum(arrayLayersNum)
-		, m_fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+	ImageLayoutData(Uint32 inMipsNum, Uint32 inArrayLayersNum)
+		: mipsNum(inMipsNum)
+		, arrayLayersNum(inArrayLayersNum)
+		, fullImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{ }
 
-	Uint32								m_mipsNum;
-	Uint32								m_arrayLayersNum;
+	Uint32								mipsNum;
+	Uint32								arrayLayersNum;
 
-	VkImageLayout						m_fullImageLayout;
+	VkImageLayout						fullImageLayout;
 };
 
 

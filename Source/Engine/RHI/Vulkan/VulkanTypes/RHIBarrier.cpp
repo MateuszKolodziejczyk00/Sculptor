@@ -70,11 +70,11 @@ void FillImageLayoutTransitionFlags(VkImageLayout layout, VkPipelineStageFlags2&
 
 VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& transitionTarget)
 {
-	const rhi::EAccessType rhiFlags = transitionTarget.m_accessType;
+	const rhi::EAccessType rhiFlags = transitionTarget.accessType;
 
 	VkAccessFlags2 flags = 0;
 
-	switch (transitionTarget.m_layout)
+	switch (transitionTarget.layout)
 	{
 	case rhi::ETextureLayout::Undefined:
 	case rhi::ETextureLayout::General:
@@ -152,11 +152,11 @@ SizeType RHIBarrier::AddTextureBarrier(const RHITexture& texture, const rhi::Tex
 {
 	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
 	barrier.image								= texture.GetHandle();
-	barrier.subresourceRange.aspectMask			= RHIToVulkan::GetAspectFlags(subresourceRange.m_aspect);
-	barrier.subresourceRange.baseMipLevel		= subresourceRange.m_baseMipLevel;
-	barrier.subresourceRange.levelCount			= subresourceRange.m_mipLevelsNum;
-	barrier.subresourceRange.baseArrayLayer		= subresourceRange.m_baseArrayLayer;
-	barrier.subresourceRange.layerCount			= subresourceRange.m_arrayLayersNum;
+	barrier.subresourceRange.aspectMask			= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
+	barrier.subresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
+	barrier.subresourceRange.levelCount			= subresourceRange.mipLevelsNum;
+	barrier.subresourceRange.baseArrayLayer		= subresourceRange.baseArrayLayer;
+	barrier.subresourceRange.layerCount			= subresourceRange.arrayLayersNum;
     barrier.srcStageMask						= VK_PIPELINE_STAGE_2_NONE;
     barrier.srcAccessMask						= VK_ACCESS_2_NONE;
     barrier.dstStageMask						= VK_PIPELINE_STAGE_2_NONE;
@@ -176,9 +176,9 @@ void RHIBarrier::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierText
 	SPT_CHECK(barrierIdx < m_textureBarriers.size());
 
 	VkImageMemoryBarrier2& barrier = m_textureBarriers[barrierIdx];
-    barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.m_stage);
+    barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.stage);
     barrier.dstAccessMask	= priv::GetVulkanAccessFlags(transitionTarget);
-    barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.m_layout);
+    barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);
 }
 
 void RHIBarrier::Execute(const RHICommandBuffer& cmdBuffer)

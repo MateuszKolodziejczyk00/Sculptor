@@ -22,8 +22,8 @@ void Renderer::Initialize()
 	const platform::RequiredExtensionsInfo requiredExtensions = platform::PlatformWindow::GetRequiredRHIExtensionNames();
 
 	rhi::RHIInitializationInfo initializationInfo;
-	initializationInfo.m_extensions = requiredExtensions.m_extensions;
-	initializationInfo.m_extensionsNum = requiredExtensions.m_extensionsNum;
+	initializationInfo.extensions		= requiredExtensions.extensions;
+	initializationInfo.extensionsNum	= requiredExtensions.extensionsNum;
 
 	rhi::RHI::Initialize(initializationInfo);
 }
@@ -75,10 +75,10 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 
 		rhi::SubmitBatchData& rhiSubmitBatch = rhiSubmitBatches[idx];
 
-		rhiSubmitBatch.m_waitSemaphores = &submitBatch.m_waitSemaphores.GetRHISemaphores();
-		rhiSubmitBatch.m_signalSemaphores = &submitBatch.m_signalSemaphores.GetRHISemaphores();
-		std::transform(	submitBatch.m_recordedCommands.cbegin(), submitBatch.m_recordedCommands.cend(),
-						std::back_inserter(rhiSubmitBatch.m_commandBuffers),
+		rhiSubmitBatch.waitSemaphores = &submitBatch.waitSemaphores.GetRHISemaphores();
+		rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
+		std::transform(	submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
+						std::back_inserter(rhiSubmitBatch.commandBuffers),
 						[](const lib::UniquePtr<CommandsRecorder>& recorder) -> const rhi::RHICommandBuffer*
 						{
 							return &recorder->GetCommandsBuffer()->GetRHI();

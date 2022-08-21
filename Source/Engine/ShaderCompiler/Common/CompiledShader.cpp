@@ -43,9 +43,9 @@ CompiledShadersGroup::CompiledShadersGroup()
 
 Bool CompiledShadersGroup::IsValid() const
 {
-	return m_groupName.IsValid()
-		&& !m_shaders.empty()
-		&& std::all_of(std::cbegin(m_shaders), std::cend(m_shaders), [](const CompiledShader& shader) { return shader.IsValid(); });
+	return groupName.IsValid()
+		&& !shaders.empty()
+		&& std::all_of(std::cbegin(shaders), std::cend(shaders), [](const CompiledShader& shader) { return shader.IsValid(); });
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,8 +56,8 @@ CompiledShaderFile::CompiledShaderFile()
 
 Bool CompiledShaderFile::IsValid() const
 {
-	return !m_groups.empty()
-		&& std::all_of(std::cbegin(m_groups), std::cend(m_groups), [](const CompiledShadersGroup& group) { return group.IsValid(); });
+	return !groups.empty()
+		&& std::all_of(std::cbegin(groups), std::cend(groups), [](const CompiledShadersGroup& group) { return group.IsValid(); });
 }
 
 }

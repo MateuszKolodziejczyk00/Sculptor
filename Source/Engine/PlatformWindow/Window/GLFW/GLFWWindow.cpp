@@ -19,13 +19,13 @@ SPT_IMPLEMENT_LOG_CATEGORY(GLFW, true)
 struct GLFWWindowData
 {
 	GLFWWindowData()
-		: m_windowHandle(nullptr)
+		: windowHandle(nullptr)
 	{ }
 
-	GLFWwindow* m_windowHandle;
+	GLFWwindow* windowHandle;
 
-	GLFWWindow::OnWindowResizedDelegate m_onResized;
-	GLFWWindow::OnWindowClosedDelegate m_onClosed;
+	GLFWWindow::OnWindowResizedDelegate onResized;
+	GLFWWindow::OnWindowClosedDelegate onClosed;
 };
 
 namespace priv
@@ -46,7 +46,7 @@ static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
 
-	windowData->m_onResized.Broadcast(static_cast<Uint32>(newWidth), static_cast<Uint32>(newHeight));
+	windowData->onResized.Broadcast(static_cast<Uint32>(newWidth), static_cast<Uint32>(newHeight));
 }
 
 static void OnWindowClosed(GLFWwindow* window)
@@ -54,7 +54,7 @@ static void OnWindowClosed(GLFWwindow* window)
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
 
-	windowData->m_onClosed.Broadcast();
+	windowData->onClosed.Broadcast();
 }
 
 static void OnKeyAction(GLFWwindow* window, int key, int scanCode, int action, int mods)
@@ -80,7 +80,7 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 static RequiredExtensionsInfo GetRequiredExtensions()
 {
 	RequiredExtensionsInfo extensionsInfo;
-	extensionsInfo.m_extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.m_extensionsNum);
+	extensionsInfo.extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.extensionsNum);
 	return extensionsInfo;
 }
 
@@ -135,7 +135,7 @@ GLFWWindow::GLFWWindow(lib::StringView name, math::Vector2u resolution)
 
 GLFWWindow::~GLFWWindow()
 {
-	glfwDestroyWindow(m_windowData->m_windowHandle);
+	glfwDestroyWindow(m_windowData->windowHandle);
 	glfwTerminate();
 }
 
@@ -143,7 +143,7 @@ math::Vector2u GLFWWindow::GetFramebufferSize() const
 {
 	int width = idxNone<int>;
 	int height = idxNone<int>;
-	glfwGetFramebufferSize(m_windowData->m_windowHandle, &width, &height);
+	glfwGetFramebufferSize(m_windowData->windowHandle, &width, &height);
 	return math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
 }
 
@@ -166,17 +166,17 @@ void GLFWWindow::Update(Real32 deltaTime)
 
 Bool GLFWWindow::ShouldClose()
 {
-	return static_cast<Bool>(glfwWindowShouldClose(m_windowData->m_windowHandle));
+	return static_cast<Bool>(glfwWindowShouldClose(m_windowData->windowHandle));
 }
 
 GLFWWindow::OnWindowResizedDelegate& GLFWWindow::GetOnResizedCallback()
 {
-	return m_windowData->m_onResized;
+	return m_windowData->onResized;
 }
 
 GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 {
-	return m_windowData->m_onClosed;
+	return m_windowData->onClosed;
 }
 
 void GLFWWindow::InitializeUI(ui::UIContext context)
@@ -187,7 +187,7 @@ void GLFWWindow::InitializeUI(ui::UIContext context)
 
 #if VULKAN_RHI
 
-	ImGui_ImplGlfw_InitForVulkan(m_windowData->m_windowHandle, true);
+	ImGui_ImplGlfw_InitForVulkan(m_windowData->windowHandle, true);
 
 #endif // VULKANRHI
 }
@@ -223,7 +223,7 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 
 	priv::InitializeRHISurface(windowHandle);
 
-	m_windowData->m_windowHandle = windowHandle;
+	m_windowData->windowHandle = windowHandle;
 
 	glfwSetWindowUserPointer(windowHandle, m_windowData.get());
 

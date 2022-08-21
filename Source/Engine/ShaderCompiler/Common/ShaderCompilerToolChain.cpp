@@ -55,11 +55,11 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreproc
 
 	Bool success = true;
 
-	for (const PreprocessedShadersGroup& preprocessedGroup : preprocessingResult.m_shadersGroups)
+	for (const PreprocessedShadersGroup& preprocessedGroup : preprocessingResult.shadersGroups)
 	{
-		CompiledShadersGroup& compiledShadersGroup = outCompiledShaders.m_groups.emplace_back(CompiledShadersGroup());
+		CompiledShadersGroup& compiledShadersGroup = outCompiledShaders.groups.emplace_back(CompiledShadersGroup());
 
-		for (const ShaderSourceCode& shaderCode : preprocessedGroup.m_shaders)
+		for (const ShaderSourceCode& shaderCode : preprocessedGroup.shaders)
 		{
 			ShaderParametersMetaData paramsMetaData;
 			CompiledShader compiledShader = compiler.CompileShader(shaderCode, settings, paramsMetaData);
@@ -68,8 +68,8 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreproc
 
 			if (compiledShader.IsValid())
 			{
-				compiledShadersGroup.m_shaders.emplace_back(compiledShader);
-				ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShadersGroup.m_metaData);
+				compiledShadersGroup.shaders.emplace_back(compiledShader);
+				ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShadersGroup.metaData);
 			}
 		}
 	}

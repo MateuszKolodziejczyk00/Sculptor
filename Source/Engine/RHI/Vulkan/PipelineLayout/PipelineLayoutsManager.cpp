@@ -68,19 +68,19 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 
 	lib::DynamicArray<VkDescriptorSetLayoutBinding> bindingsInfos;
 	lib::DynamicArray<VkDescriptorBindingFlags> bindingsFlags;
-	bindingsInfos.reserve(dsDef.m_bindings.size());
-	bindingsFlags.reserve(dsDef.m_bindings.size());
+	bindingsInfos.reserve(dsDef.bindings.size());
+	bindingsFlags.reserve(dsDef.bindings.size());
 
-	for (const rhi::DescriptorSetBindingDefinition& bindingDef : dsDef.m_bindings)
+	for (const rhi::DescriptorSetBindingDefinition& bindingDef : dsDef.bindings)
 	{
 		VkDescriptorSetLayoutBinding bindingInfo{};
-		bindingInfo.binding				= bindingDef.m_bindingIdx;
-		bindingInfo.descriptorType		= RHIToVulkan::GetDescriptorType(bindingDef.m_descriptorType);
-		bindingInfo.descriptorCount		= bindingDef.m_descriptorCount;
-		bindingInfo.stageFlags			= RHIToVulkan::GetStageFlagsLegacy(bindingDef.m_shaderStages);
+		bindingInfo.binding				= bindingDef.bindingIdx;
+		bindingInfo.descriptorType		= RHIToVulkan::GetDescriptorType(bindingDef.descriptorType);
+		bindingInfo.descriptorCount		= bindingDef.descriptorCount;
+		bindingInfo.stageFlags			= RHIToVulkan::GetStageFlagsLegacy(bindingDef.shaderStages);
 		bindingInfo.pImmutableSamplers	= nullptr; // Currently not supported
 
-		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.m_flags);
+		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
 
 		bindingsInfos.emplace_back(bindingInfo);
 		bindingsFlags.emplace_back(bindingFlags);
@@ -92,8 +92,8 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     layoutInfo.pNext		= &bindingFlagsInfo;
-	layoutInfo.flags		= RHIToVulkan::GetDescriptorSetFlags(dsDef.m_flags);
-    layoutInfo.bindingCount	= static_cast<Uint32>(dsDef.m_bindings.size());
+	layoutInfo.flags		= RHIToVulkan::GetDescriptorSetFlags(dsDef.flags);
+    layoutInfo.bindingCount	= static_cast<Uint32>(dsDef.bindings.size());
     layoutInfo.pBindings	= bindingsInfos.data();
 
 	VkDescriptorSetLayout layoutHandle = VK_NULL_HANDLE;
@@ -108,9 +108,9 @@ VkPipelineLayout PipelineLayoutsManager::CreatePipelineLayout(const rhi::Pipelin
 	SPT_PROFILE_FUNCTION();
 
 	lib::DynamicArray<VkDescriptorSetLayout> layoutHandles;
-	layoutHandles.reserve(definition.m_descriptorSets.size());
+	layoutHandles.reserve(definition.descriptorSets.size());
 
-	std::transform(std::cbegin(definition.m_descriptorSets), std::cend(definition.m_descriptorSets),
+	std::transform(std::cbegin(definition.descriptorSets), std::cend(definition.descriptorSets),
 		std::back_inserter(layoutHandles),
 		[this](const rhi::DescriptorSetDefinition& dsDef) -> VkDescriptorSetLayout
 		{

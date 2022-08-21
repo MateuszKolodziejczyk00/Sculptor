@@ -50,8 +50,8 @@ void SculptorEdApplication::OnRun()
 
 	{
 		renderer::CommandsRecordingInfo recordingInfo;
-		recordingInfo.m_commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
-		recordingInfo.m_commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 		lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
 
 		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
@@ -62,7 +62,7 @@ void SculptorEdApplication::OnRun()
 		
 		lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
 		renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
-		submitBatch.m_recordedCommands.emplace_back(std::move(recorder));
+		submitBatch.recordedCommands.emplace_back(std::move(recorder));
 
 		renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
@@ -149,8 +149,8 @@ void SculptorEdApplication::RenderFrame()
 	}
 
 	renderer::CommandsRecordingInfo recordingInfo;
-	recordingInfo.m_commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
-	recordingInfo.m_commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
 
 	recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
@@ -164,18 +164,18 @@ void SculptorEdApplication::RenderFrame()
 	}
 
 	rhi::TextureViewDefinition viewDefinition;
-	viewDefinition.m_subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
 	const lib::SharedPtr<renderer::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
 	renderer::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetFramebufferSize());
 	renderer::RTDefinition renderTarget;
-	renderTarget.m_textureView = swapchainTextureView;
-	renderTarget.m_loadOperation = rhi::ERTLoadOperation::Clear;
-	renderTarget.m_storeOperation = rhi::ERTStoreOperation::Store;
-	renderTarget.m_clearColor.m_float[0] = 0.f;
-	renderTarget.m_clearColor.m_float[1] = 0.f;
-	renderTarget.m_clearColor.m_float[2] = 0.f;
-	renderTarget.m_clearColor.m_float[3] = 1.f;
+	renderTarget.textureView			= swapchainTextureView;
+	renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;
+	renderTarget.storeOperation			= rhi::ERTStoreOperation::Store;
+	renderTarget.clearColor.asFloat[0]	= 0.f;
+	renderTarget.clearColor.asFloat[1]	= 0.f;
+	renderTarget.clearColor.asFloat[2]	= 0.f;
+	renderTarget.clearColor.asFloat[3]	= 1.f;
 
 	renderingDef.AddColorRenderTarget(renderTarget);
 
@@ -199,10 +199,10 @@ void SculptorEdApplication::RenderFrame()
 
 	lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
 	renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
-	submitBatch.m_recordedCommands.emplace_back(std::move(recorder));
-	submitBatch.m_waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
-	submitBatch.m_signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
-	submitBatch.m_signalSemaphores.AddTimelineSemaphore(renderer::Renderer::GetReleaseFrameSemaphore(), renderer::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
+	submitBatch.recordedCommands.emplace_back(std::move(recorder));
+	submitBatch.waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
+	submitBatch.signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
+	submitBatch.signalSemaphores.AddTimelineSemaphore(renderer::Renderer::GetReleaseFrameSemaphore(), renderer::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
 
 	renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 

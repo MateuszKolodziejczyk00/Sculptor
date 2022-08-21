@@ -64,20 +64,20 @@ enum class EFragmentFormat : Uint32
 struct TextureDefinition
 {
 	TextureDefinition()
-		: m_resolution{}
-		, m_usage(ETextureUsage::None)
-		, m_format(EFragmentFormat::RGBA8_UN_Float)
-		, m_samples(1)
-		, m_mipLevels(1)
-		, m_arrayLayers(1)
+		: resolution{}
+		, usage(ETextureUsage::None)
+		, format(EFragmentFormat::RGBA8_UN_Float)
+		, samples(1)
+		, mipLevels(1)
+		, arrayLayers(1)
 	{ }
 
-	math::Vector3u		m_resolution;
-	ETextureUsage		m_usage;
-	EFragmentFormat		m_format;
-	Uint8				m_samples;
-	Uint8				m_mipLevels;
-	Uint8				m_arrayLayers;
+	math::Vector3u		resolution;
+	ETextureUsage		usage;
+	EFragmentFormat		format;
+	Uint8				samples;
+	Uint8				mipLevels;
+	Uint8				arrayLayers;
 };
 
 
@@ -133,35 +133,35 @@ struct TextureSubresourceRange
 	static constexpr Uint32 s_allRemainingMips			= idxNone<Uint32>;
 	static constexpr Uint32 s_allRemainingArrayLayers	= idxNone<Uint32>;
 
-	TextureSubresourceRange(ETextureAspect aspect = ETextureAspect::None, Uint32 baseMip = 0, Uint32 mipLevelsNum = s_allRemainingMips, Uint32 baseArrayLayer = 0, Uint32 arrayLayersNum = s_allRemainingArrayLayers)
-		: m_aspect(aspect)
-		, m_baseMipLevel(baseMip)
-		, m_mipLevelsNum(mipLevelsNum)
-		, m_baseArrayLayer(baseArrayLayer)
-		, m_arrayLayersNum(arrayLayersNum)
+	TextureSubresourceRange(ETextureAspect inAspect = ETextureAspect::None, Uint32 inBaseMip = 0, Uint32 inMipLevelsNum = s_allRemainingMips, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = s_allRemainingArrayLayers)
+		: aspect(inAspect)
+		, baseMipLevel(inBaseMip)
+		, mipLevelsNum(inMipLevelsNum)
+		, baseArrayLayer(inBaseArrayLayer)
+		, arrayLayersNum(inArrayLayersNum)
 	{ }
 
-	ETextureAspect		m_aspect;
-	Uint32				m_baseMipLevel;
-	Uint32				m_mipLevelsNum;
-	Uint32				m_baseArrayLayer;
-	Uint32				m_arrayLayersNum;
+	ETextureAspect		aspect;
+	Uint32				baseMipLevel;
+	Uint32				mipLevelsNum;
+	Uint32				baseArrayLayer;
+	Uint32				arrayLayersNum;
 };
 
 
 struct TextureViewDefinition
 {
-	TextureViewDefinition(	ETextureViewType viewType = ETextureViewType::Default,
-							const TextureSubresourceRange& subresourceRange = TextureSubresourceRange(),
-							const TextureComponentMappings& componentMappings = TextureComponentMappings())
-		: m_viewType(viewType)
-		, m_subresourceRange(subresourceRange)
-		, m_componentMappings(componentMappings)
+	TextureViewDefinition(	ETextureViewType inViewType = ETextureViewType::Default,
+							const TextureSubresourceRange& inSubresourceRange = TextureSubresourceRange(),
+							const TextureComponentMappings& inComponentMappings = TextureComponentMappings())
+		: viewType(inViewType)
+		, subresourceRange(inSubresourceRange)
+		, componentMappings(inComponentMappings)
 	{ }
 
-	ETextureViewType			m_viewType;
-	TextureSubresourceRange		m_subresourceRange;
-	TextureComponentMappings	m_componentMappings;
+	ETextureViewType			viewType;
+	TextureSubresourceRange		subresourceRange;
+	TextureComponentMappings	componentMappings;
 };
 
 
@@ -176,20 +176,20 @@ enum class EAccessType : Flags32
 struct BarrierTextureTransitionTarget
 {
 	constexpr BarrierTextureTransitionTarget()
-		: m_accessType(EAccessType::None)
-		, m_layout(ETextureLayout::Undefined)
-		, m_stage(EPipelineStage::None)
+		: accessType(EAccessType::None)
+		, layout(ETextureLayout::Undefined)
+		, stage(EPipelineStage::None)
 	{ }
 
-	constexpr BarrierTextureTransitionTarget(EAccessType accessType, ETextureLayout layout, EPipelineStage stage)
-		: m_accessType(accessType)
-		, m_layout(layout)
-		, m_stage(stage)
+	constexpr BarrierTextureTransitionTarget(EAccessType inAccessType, ETextureLayout inLayout, EPipelineStage inStage)
+		: accessType(inAccessType)
+		, layout(inLayout)
+		, stage(inStage)
 	{ }
 
-	EAccessType					m_accessType;
-	ETextureLayout				m_layout;
-	EPipelineStage			m_stage;
+	EAccessType				accessType;
+	ETextureLayout			layout;
+	EPipelineStage			stage;
 };
 
 
