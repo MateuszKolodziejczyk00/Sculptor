@@ -31,29 +31,16 @@ private:
 };
 
 
-struct CompiledShadersGroup
-{
-public:
-
-	CompiledShadersGroup();
-
-	Bool								IsValid() const;
-
-	lib::HashedString					groupName;
-	lib::DynamicArray<CompiledShader>	shaders;
-	smd::ShaderMetaData					metaData;
-};
-
-
 struct CompiledShaderFile
 {
 public:
 
 	CompiledShaderFile();
 
-	Bool									IsValid() const;
+	Bool								IsValid() const;
 
-	lib::DynamicArray<CompiledShadersGroup> groups;
+	lib::DynamicArray<CompiledShader>	shaders;
+	smd::ShaderMetaData					metaData;
 };
 
 } // spt::sc

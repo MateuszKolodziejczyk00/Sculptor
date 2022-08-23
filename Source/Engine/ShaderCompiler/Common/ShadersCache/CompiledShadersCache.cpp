@@ -48,20 +48,6 @@ struct TypeSerializer<sc::CompiledShader>
 	}
 };
 
-// spt::sc::CompiledShadersGroup ========================================================
-
-template<>
-struct TypeSerializer<sc::CompiledShadersGroup>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("GroupName", data.groupName);
-		serializer.Serialize("Shaders", data.shaders);
-		serializer.Serialize("MetaData", data.metaData);
-	}
-};
-
 // spt::sc::CompiledShaderFile ==========================================================
 
 template<>
@@ -70,14 +56,14 @@ struct TypeSerializer<sc::CompiledShaderFile>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("ShaderGroups", data.groups);
+		serializer.Serialize("Shaders", data.shaders);
+		serializer.Serialize("MetaData", data.metaData);
 	}
 };
 
 }
 
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShader)
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShadersGroup)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShaderFile)
 
 namespace spt::sc

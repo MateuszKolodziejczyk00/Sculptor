@@ -33,7 +33,7 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 		{
 			ShaderCompiler compiler;
 
-			compilationResult = CompilePreprocessedShaders(preprocessingResult, settings, compiler, outCompiledShaders);
+			compilationResult = CompilePreprocessedShaders(shaderRelativePath, preprocessingResult, settings, compiler, outCompiledShaders);
 
 			if (compilationResult && shouldUseShadersCache)
 			{
@@ -49,28 +49,23 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 	return compilationResult;
 }
 
-Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
+Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
 {
 	SPT_PROFILE_FUNCTION();
 
 	Bool success = true;
 
-	for (const PreprocessedShadersGroup& preprocessedGroup : preprocessingResult.shadersGroups)
+	for (const ShaderSourceCode& shaderCode : preprocessingResult.shaders)
 	{
-		CompiledShadersGroup& compiledShadersGroup = outCompiledShaders.groups.emplace_back(CompiledShadersGroup());
+		ShaderParametersMetaData paramsMetaData;
+		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, settings, paramsMetaData);
 
-		for (const ShaderSourceCode& shaderCode : preprocessedGroup.shaders)
+		success |= compiledShader.IsValid();
+
+		if (compiledShader.IsValid())
 		{
-			ShaderParametersMetaData paramsMetaData;
-			CompiledShader compiledShader = compiler.CompileShader(shaderCode, settings, paramsMetaData);
-
-			success |= compiledShader.IsValid();
-
-			if (compiledShader.IsValid())
-			{
-				compiledShadersGroup.shaders.emplace_back(compiledShader);
-				ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShadersGroup.metaData);
-			}
+			outCompiledShaders.shaders.emplace_back(compiledShader);
+			ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, outCompiledShaders.metaData);
 		}
 	}
 

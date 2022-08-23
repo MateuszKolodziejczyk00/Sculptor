@@ -21,7 +21,7 @@ public:
 	ShaderCompiler();
 	~ShaderCompiler();
 
-	CompiledShader					CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
+	CompiledShader					CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
 
 private:
 

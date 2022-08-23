@@ -12,14 +12,13 @@ class SHADER_COMPILER_API ShaderSourceCode
 {
 public:
 
-	explicit ShaderSourceCode(lib::HashedString name);
+	ShaderSourceCode();
 
 	Bool						IsValid() const;
 	
 	void						SetSourceCode(lib::String&& code);
 	void						SetShaderStage(rhi::EShaderStage stage);
 
-	lib::HashedString			GetName() const;
 	const lib::String&			GetSourceCode() const;
 	rhi::EShaderStage			GetShaderStage() const;
 
@@ -31,8 +30,6 @@ public:
 	SizeType					Hash() const;
 
 private:
-
-	lib::HashedString			m_name;
 
 	lib::String					m_code;
 

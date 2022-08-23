@@ -116,7 +116,7 @@ struct DepthRenderTargetDefinition
 
 struct StencilRenderTargetDefinition
 {
-	explicit StencilRenderTargetDefinition(EFragmentFormat inFormat)
+	explicit StencilRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None)
 		: format(inFormat)
 	{ }
 	
@@ -133,6 +133,7 @@ struct PipelineRenderTargetsDefinition
 	DepthRenderTargetDefinition						depthRTFormat;
 	StencilRenderTargetDefinition					stencilRTFormat;
 };
+
 
 struct GraphicsPipelineDefinition
 {

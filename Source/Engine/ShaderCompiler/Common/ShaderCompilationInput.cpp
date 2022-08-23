@@ -5,12 +5,9 @@ namespace spt::sc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderSourceCode ==============================================================================
 
-ShaderSourceCode::ShaderSourceCode(lib::HashedString name)
-	: m_name(name)
-	, m_stage(rhi::EShaderStage::None)
-{
-	SPT_CHECK(m_name.IsValid());
-}
+ShaderSourceCode::ShaderSourceCode()
+	: m_stage(rhi::EShaderStage::None)
+{ }
 
 Bool ShaderSourceCode::IsValid() const
 {
@@ -26,11 +23,6 @@ void ShaderSourceCode::SetSourceCode(lib::String&& code)
 void ShaderSourceCode::SetShaderStage(rhi::EShaderStage stage)
 {
 	m_stage = stage;
-}
-
-lib::HashedString ShaderSourceCode::GetName() const
-{
-	return m_name;
 }
 
 const lib::String& ShaderSourceCode::GetSourceCode() const
@@ -62,7 +54,7 @@ SizeType ShaderSourceCode::Hash() const
 {
 	SPT_PROFILE_FUNCTION();
 
-	return m_name.GetKey() ^ static_cast<SizeType>(m_stage);
+	return static_cast<SizeType>(m_stage);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

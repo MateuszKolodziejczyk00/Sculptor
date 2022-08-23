@@ -36,19 +36,6 @@ rhi::EShaderStage CompiledShader::GetStage() const
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// CompiledShadersGroup ==========================================================================
-
-CompiledShadersGroup::CompiledShadersGroup()
-{ }
-
-Bool CompiledShadersGroup::IsValid() const
-{
-	return groupName.IsValid()
-		&& !shaders.empty()
-		&& std::all_of(std::cbegin(shaders), std::cend(shaders), [](const CompiledShader& shader) { return shader.IsValid(); });
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // CompiledShaderFile ============================================================================
 
 CompiledShaderFile::CompiledShaderFile()
@@ -56,8 +43,8 @@ CompiledShaderFile::CompiledShaderFile()
 
 Bool CompiledShaderFile::IsValid() const
 {
-	return !groups.empty()
-		&& std::all_of(std::cbegin(groups), std::cend(groups), [](const CompiledShadersGroup& group) { return group.IsValid(); });
+	return !shaders.empty()
+		&& std::all_of(std::cbegin(shaders), std::cend(shaders), [](const CompiledShader& shader) { return shader.IsValid(); });
 }
 
-}
+} // spt::sc

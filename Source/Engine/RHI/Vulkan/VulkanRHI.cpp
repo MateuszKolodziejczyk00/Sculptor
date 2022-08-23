@@ -8,7 +8,7 @@
 #include "VulkanTypes/RHICommandBuffer.h"
 #include "VulkanUtils.h"
 #include "LayoutsManager.h"
-#include "PipelineLayout/PipelineLayoutsManager.h"
+#include "Pipeline/PipelineLayoutsManager.h"
 
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"

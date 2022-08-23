@@ -1,30 +1,10 @@
 #include "ShaderFilePreprocessor.h"
-#include "Tokenizer.h"
+#include "RHI/RHICore/RHIShaderTypes.h"
+
+#include <regex>
 
 namespace spt::sc
 {
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Token =========================================================================================
-
-namespace EToken
-{
-
-enum Type : Uint32
-{
-	BeginShadersGroup,
-	beginShader,
-
-	NUM
-};
-
-} // EToken
-
-static const lib::StaticArray<tkn::Token, EToken::NUM> tokens
-{
-	tkn::Token("#begin("),
-	tkn::Token("#type(")
-};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // internal ======================================================================================
@@ -54,25 +34,11 @@ static rhi::EShaderStage StringToShaderType(lib::StringView stageName)
 } // internal
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// PreprocessedShadersGroup ======================================================================
-
-PreprocessedShadersGroup::PreprocessedShadersGroup(lib::HashedString inGroupName)
-	: groupName(inGroupName)
-{
-	SPT_CHECK(groupName.IsValid());
-}
-
-Bool PreprocessedShadersGroup::IsValid() const
-{
-	return std::all_of(std::cbegin(shaders), std::cend(shaders), [](const ShaderSourceCode& shaderCode) { return shaderCode.IsValid(); });
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderFilePreprocessingResult =================================================================
 
 Bool ShaderFilePreprocessingResult::IsValid() const
 {
-	return std::all_of(std::cbegin(shadersGroups), std::cend(shadersGroups), [](const PreprocessedShadersGroup& group) { return group.IsValid(); });
+	return !shaders.empty() && std::all_of(std::cbegin(shaders), std::cend(shaders), [](const ShaderSourceCode& shaderCode) { return shaderCode.IsValid(); });
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,47 +49,45 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 	SPT_PROFILE_FUNCTION();
 
 	ShaderFilePreprocessingResult result;
-
-	const tkn::Tokenizer tokenizer(sourceCode, tokens);
-
-	const tkn::TokensArray tokensArray = tokenizer.BuildTokensArray();
 	
-	tkn::TokensVisitor shadersVisitor;
-	shadersVisitor.BindToToken(EToken::beginShader).BindLambda(
-		[&](tkn::TokenInfo tokenInfo, const tkn::TokensProcessor& processor)
+	const std::regex shaderTypeRegex("#type\\(\\s*\\w\\s*\\)");
+	const std::regex shaderTypeNameRegex("(?=\\(\\s*)\\w");
+
+	auto shadersBeginMacros = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderTypeRegex);
+
+	SPT_CHECK(shadersBeginMacros != std::sregex_iterator());
+
+	while (shadersBeginMacros != std::sregex_iterator())
+	{
+		auto nextShaderBegin = shadersBeginMacros;
+		nextShaderBegin++;
+
+		const std::smatch typeMacroMatch = *shadersBeginMacros;
+		const lib::String typeMacroMatchString = typeMacroMatch.str();
+
+		std::smatch typeNameMatch;
+		const Bool found = std::regex_search(typeMacroMatchString, typeNameMatch, shaderTypeNameRegex);
+		SPT_CHECK(found);
+
+		const lib::String shaderTypeName = typeNameMatch.str();
+		const rhi::EShaderStage shaderStage = internal::StringToShaderType(shaderTypeName);
+
+		lib::String shaderSourceCodeString;
+		if (nextShaderBegin != std::sregex_iterator())
 		{
-			SPT_CHECK(!result.shadersGroups.empty());
-
-			PreprocessedShadersGroup& currentShadersGroup = result.shadersGroups.back();
-
-			const lib::StringView shaderCode = tokenizer.GetStringBetweenTokens(tokenInfo, processor.FindNextToken(tokenInfo));
-
-			const lib::StringView shaderTypeName = tkn::TokenizerUtils::GetStringInNearestBracket(shaderCode, 0);
-
-			ShaderSourceCode sourceCode(currentShadersGroup.groupName);
-			sourceCode.SetSourceCode(lib::String(shaderCode));
-			sourceCode.SetShaderStage(internal::StringToShaderType(shaderTypeName));
-
-			currentShadersGroup.shaders.emplace_back(sourceCode);
-		});
-
-	tkn::TokensVisitor groupsVisitor;
-	groupsVisitor.BindToToken(EToken::BeginShadersGroup).BindLambda(
-		[&](tkn::TokenInfo tokenInfo, const tkn::TokensProcessor& processor)
+			shaderSourceCodeString = lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + nextShaderBegin->prefix().length());
+		}
+		else
 		{
-			const tkn::TokenInfo nextGroupToken = processor.FindNextTokenOfType(tokenInfo, EToken::BeginShadersGroup);
+			shaderSourceCodeString = lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + sourceCode.size());
+		}
 
-			const lib::StringView groupCode = tokenizer.GetStringBetweenTokens(tokenInfo, nextGroupToken);
+		ShaderSourceCode shaderSourceCode;
+		shaderSourceCode.SetSourceCode(std::move(shaderSourceCodeString));
+		shaderSourceCode.SetShaderStage(shaderStage);
 
-			const lib::HashedString currentGroupName = tkn::TokenizerUtils::GetStringInNearestBracket(groupCode, 0);
-
-			result.shadersGroups.emplace_back(PreprocessedShadersGroup(currentGroupName));
-
-			processor.VisitTokens(shadersVisitor, tokenInfo, nextGroupToken);
-		});
-
-	const tkn::TokensProcessor tokensProcessor(tokensArray);
-	tokensProcessor.VisitAllTokens(groupsVisitor);
+		shadersBeginMacros = nextShaderBegin;
+	}
 
 	return result;
 }

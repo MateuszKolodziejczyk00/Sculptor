@@ -3,7 +3,8 @@
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIPipelineTypes.h"
-#include "Vulkan/PipelineLayout/PipelineLayout.h"
+#include "RHICore/RHIGraphicsPipelineTypes.h"
+#include "Vulkan/Pipeline/PipelineLayout.h"
 #include "Vulkan/Debug/DebugUtils.h"
 
 
@@ -16,7 +17,7 @@ public:
 
 	RHIGraphicsPipeline();
 
-	void						InitializeRHI(const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void						InitializeRHI(const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;

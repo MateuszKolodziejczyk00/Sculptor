@@ -8,7 +8,7 @@ RHIGraphicsPipeline::RHIGraphicsPipeline()
 	: m_pipelineHandle(VK_NULL_HANDLE)
 { }
 
-void RHIGraphicsPipeline::InitializeRHI(const rhi::PipelineLayoutDefinition& layoutDefinition)
+void RHIGraphicsPipeline::InitializeRHI(const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition)
 {
 	SPT_PROFILE_FUNCTION();
 

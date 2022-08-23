@@ -163,7 +163,7 @@ public:
 
 	CompilerImpl();
 
-	CompiledShader				CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
+	CompiledShader				CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
 
 protected:
 
@@ -182,7 +182,7 @@ private:
 CompilerImpl::CompilerImpl()
 { }
 
-CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -196,11 +196,11 @@ CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, c
 
 	if (preprocessResult.GetCompilationStatus() != shaderc_compilation_status_success)
 	{
-		CompilationErrorsLogger::OutputShaderPreprocessingErrors(sourceCode, preprocessResult.GetErrorMessage());
+		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, preprocessResult.GetErrorMessage());
 		return output;
 	}
 
-	ShaderSourceCode preprocessedShaderSource(sourceCode.GetName());
+	ShaderSourceCode preprocessedShaderSource;
 	preprocessedShaderSource.SetShaderStage(sourceCode.GetShaderStage());
 	preprocessedShaderSource.SetSourceCode(lib::String(preprocessResult.cbegin(), preprocessResult.cend()));
 
@@ -210,8 +210,8 @@ CompiledShader CompilerImpl::CompileShader(const ShaderSourceCode& sourceCode, c
 
 	if (compilationResult.GetCompilationStatus() != shaderc_compilation_status_success)
 	{
-		CompilationErrorsLogger::OutputShaderPreprocessedCode(preprocessedShaderSource);
-		CompilationErrorsLogger::OutputShaderCompilationErrors(preprocessedShaderSource, compilationResult.GetErrorMessage());
+		CompilationErrorsLogger::OutputShaderPreprocessedCode(shaderPath, preprocessedShaderSource);
+		CompilationErrorsLogger::OutputShaderCompilationErrors(shaderPath, preprocessedShaderSource, compilationResult.GetErrorMessage());
 		return output;
 	}
 
@@ -263,7 +263,7 @@ shaderc::PreprocessedSourceCompilationResult CompilerImpl::PreprocessShader(cons
 	shaderc::PreprocessedSourceCompilationResult presprocessResult = m_compiler.PreprocessGlsl(	sourceCode.GetSourcePtr(),
 																								sourceCode.GetSourceLength(),
 																								shaderKind,
-																								sourceCode.GetName().GetData(),
+																								"Shader",
 																								options);
 
 	return presprocessResult;
@@ -275,7 +275,7 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 
 	const shaderc_shader_kind shaderKind = priv::GetShaderKind(preprocessedSourceCode.GetShaderStage());
 
-	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceCode(), shaderKind, preprocessedSourceCode.GetName().GetData());
+	shaderc::SpvCompilationResult result = m_compiler.CompileGlslToSpv(preprocessedSourceCode.GetSourceCode(), shaderKind, "Shader");
 
 	return result;
 }
@@ -292,11 +292,11 @@ ShaderCompiler::ShaderCompiler()
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-CompiledShader ShaderCompiler::CompileShader(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILE_FUNCTION();
 
-	return m_impl->CompileShader(sourceCode, compilationSettings, outParamsMetaData);
+	return m_impl->CompileShader(shaderPath, sourceCode, compilationSettings, outParamsMetaData);
 }
 
 } // spt::sc
