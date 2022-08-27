@@ -3,10 +3,8 @@
 #include "Common/ShaderCompilationInput.h"
 
 #include "SculptorYAML.h"
+#include "SerializationHelper.h"
 #include "ShaderMetaDataTypesSerialization.h"
-
-#include <fstream>
-#include <filesystem>
 
 namespace spt::srl
 {
@@ -91,19 +89,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 	CompiledShaderFile compiledShaderFile;
 
 	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-
-	std::ifstream stream(filePath);
-	if (!stream.fail())
-	{
-		std::stringstream stringStream;
-		stringStream << stream.rdbuf();
-
-		const YAML::Node serializedShadersFile = YAML::Load(stringStream.str());
-
-		compiledShaderFile = serializedShadersFile["CompiledShaderFile"].as<CompiledShaderFile>();
-
-		stream.close();
-	}
+	srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, filePath);
 
 	return compiledShaderFile;
 }
@@ -121,18 +107,8 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 	
 	SPT_CHECK(CanUseShadersCache());
 
-	YAML::Emitter out;
-	out << YAML::BeginMap;
-
-	out << YAML::Key << "CompiledShaderFile" << YAML::Value << shaderFile;
-	
-	out << YAML::BeginMap;
-
 	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-	std::ofstream stream(filePath, std::ios::trunc);
-	stream << out.c_str();
-
-	stream.close();
+	srl::SerializationHelper::SaveTextStructToFile(shaderFile, filePath);
 }
 
 Bool CompiledShadersCache::CanUseShadersCache()
