@@ -68,4 +68,11 @@ inline void HashCombine(THash& seed, THash hash)
 	seed ^= hash + magicNumber + (seed << 6) + (seed >> 2);
 }
 
+template<typename TType>
+inline SizeType GetHash(const TType& value)
+{
+	std::hash<TType> hasher;
+	return hasher(value);
+}
+
 }

@@ -14,6 +14,8 @@ public:
 
 	ShaderSourceCode();
 
+	ShaderSourceCode(lib::String code, rhi::EShaderStage stage);
+
 	Bool						IsValid() const;
 	
 	void						SetSourceCode(lib::String&& code);

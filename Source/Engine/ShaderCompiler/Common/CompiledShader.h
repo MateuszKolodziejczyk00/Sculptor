@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ShaderCompilerMacros.h"
 #include "SculptorCoreTypes.h"
 #include "ShaderCompilerTypes.h"
 #include "ShaderMetaData.h"
@@ -8,7 +9,7 @@
 namespace spt::sc
 {
 
-class CompiledShader
+class SHADER_COMPILER_API CompiledShader
 {
 public:
 
@@ -31,13 +32,13 @@ private:
 };
 
 
-struct CompiledShaderFile
+struct SHADER_COMPILER_API CompiledShaderFile
 {
 public:
 
 	CompiledShaderFile();
 
-	Bool								IsValid() const;
+	Bool IsValid() const;
 
 	lib::DynamicArray<CompiledShader>	shaders;
 	smd::ShaderMetaData					metaData;

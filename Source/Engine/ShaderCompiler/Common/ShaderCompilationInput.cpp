@@ -9,6 +9,11 @@ ShaderSourceCode::ShaderSourceCode()
 	: m_stage(rhi::EShaderStage::None)
 { }
 
+ShaderSourceCode::ShaderSourceCode(lib::String code, rhi::EShaderStage stage)
+	: m_code(std::move(code))
+	, m_stage(stage)
+{ }
+
 Bool ShaderSourceCode::IsValid() const
 {
 	return m_stage != rhi::EShaderStage::None

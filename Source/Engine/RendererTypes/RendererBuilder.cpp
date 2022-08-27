@@ -3,7 +3,6 @@
 #include "Types/Texture.h"
 #include "Types/Window.h"
 #include "Types/Semaphore.h"
-#include "Types/ShaderModule.h"
 #include "Types/CommandBuffer.h"
 #include "Types/UIBackend.h"
 
@@ -34,11 +33,6 @@ lib::SharedPtr<Texture> RendererBuilder::CreateTexture(const RendererResourceNam
 lib::SharedPtr<Semaphore> RendererBuilder::CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
 {
 	return std::make_shared<Semaphore>(name, definition);
-}
-
-lib::SharedPtr<ShaderModule> RendererBuilder::CreateShaderModule(const RendererResourceName& name, const rhi::ShaderModuleDefinition& definition)
-{
-	return std::make_shared<ShaderModule>(name, definition);
 }
 
 lib::SharedPtr<CommandBuffer> RendererBuilder::CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)

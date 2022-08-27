@@ -26,9 +26,34 @@ enum class EShaderStage : Flags32
 };
 
 
-inline Flags32 GetStageFlag(EShaderStage stage)
+inline EShaderStageFlags GetStageFlag(EShaderStage stage)
 {
-	return 1 << (static_cast<Flags32>(stage) - 1);
+	return static_cast<EShaderStageFlags>(1 << (static_cast<Flags32>(stage) - 1));
+}
+
+
+enum class EPipelineType : Flags32
+{
+	None,
+	Graphics,
+	Compute
+};
+
+
+inline EPipelineType GetPipelineTypeForShaderStage(EShaderStage stage)
+{
+	switch (stage)
+	{
+	case EShaderStage::None:		return EPipelineType::None;
+	case EShaderStage::Vertex:		return EPipelineType::Graphics;
+	case EShaderStage::Fragment:	return EPipelineType::Graphics;
+	case EShaderStage::Compute:		return EPipelineType::Compute;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return EPipelineType::None;
+	}
 }
 
 

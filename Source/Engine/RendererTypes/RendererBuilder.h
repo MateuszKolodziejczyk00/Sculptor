@@ -27,7 +27,6 @@ class UIBackend;
 class Buffer;
 class Texture;
 class Semaphore;
-class ShaderModule;
 class CommandBuffer;
 
 
@@ -43,8 +42,6 @@ public:
 	static lib::SharedPtr<Texture>				CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 
 	static lib::SharedPtr<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
-
-	static lib::SharedPtr<ShaderModule>			CreateShaderModule(const RendererResourceName& name, const rhi::ShaderModuleDefinition& definition);
 
 	static lib::SharedPtr<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
 

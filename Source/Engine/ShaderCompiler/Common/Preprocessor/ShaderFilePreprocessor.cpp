@@ -72,19 +72,11 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 		const lib::String shaderTypeName = typeNameMatch.str();
 		const rhi::EShaderStage shaderStage = internal::StringToShaderType(shaderTypeName);
 
-		lib::String shaderSourceCodeString;
-		if (nextShaderBegin != std::sregex_iterator())
-		{
-			shaderSourceCodeString = lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + nextShaderBegin->prefix().length());
-		}
-		else
-		{
-			shaderSourceCodeString = lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + sourceCode.size());
-		}
+		const lib::String shaderSourceCodeString = nextShaderBegin != std::sregex_iterator()
+			? lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + nextShaderBegin->prefix().length())
+			: lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + sourceCode.size());
 
-		ShaderSourceCode shaderSourceCode;
-		shaderSourceCode.SetSourceCode(std::move(shaderSourceCodeString));
-		shaderSourceCode.SetShaderStage(shaderStage);
+		result.shaders.emplace_back(std::move(shaderSourceCodeString), shaderStage);
 
 		shadersBeginMacros = nextShaderBegin;
 	}
