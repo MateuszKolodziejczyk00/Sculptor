@@ -167,10 +167,9 @@ public:
 
 protected:
 
-	shaderc::CompileOptions		CreateCompileOptions(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
+	void CreateCompileOptions(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, shaderc::CompileOptions& outCompileOptions) const;
 
 	shaderc::PreprocessedSourceCompilationResult	PreprocessShader(const ShaderSourceCode& sourceCode, const shaderc::CompileOptions& options) const;
-
 	shaderc::SpvCompilationResult					CompileToSpirv(const ShaderSourceCode& preprocessedSourceCode, const shaderc::CompileOptions& options) const;
 
 private:
@@ -190,7 +189,8 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 	CompiledShader output;
 
-	shaderc::CompileOptions options = CreateCompileOptions(sourceCode, compilationSettings);
+	shaderc::CompileOptions options;
+	CreateCompileOptions(sourceCode, compilationSettings, options);
 
 	const shaderc::PreprocessedSourceCompilationResult preprocessResult = PreprocessShader(sourceCode, options);
 
@@ -220,17 +220,15 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	return output;
 }
 
-shaderc::CompileOptions CompilerImpl::CreateCompileOptions(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+void CompilerImpl::CreateCompileOptions(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, shaderc::CompileOptions& outCompileOptions) const
 {
 	SPT_PROFILE_FUNCTION();
-
-	shaderc::CompileOptions options;
 
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
 	for (const lib::HashedString& macro: macros)
 	{
-		options.AddMacroDefinition(macro.ToString());
+		outCompileOptions.AddMacroDefinition(macro.ToString());
 	}
 
 	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();
@@ -242,16 +240,14 @@ shaderc::CompileOptions CompilerImpl::CreateCompileOptions(const ShaderSourceCod
 	const Bool success = priv::GetTargetEnvironment(targetEnv, shadercTargetEnv, shadercVersion);
 	SPT_CHECK(success);
 
-	options.SetTargetEnvironment(shadercTargetEnv, shadercVersion);
+	outCompileOptions.SetTargetEnvironment(shadercTargetEnv, shadercVersion);
 	
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{
-		options.SetGenerateDebugInfo();
+		outCompileOptions.SetGenerateDebugInfo();
 	}
 
-	options.SetIncluder(std::make_unique<Includer>());
-
-	return options;
+	outCompileOptions.SetIncluder(std::make_unique<Includer>());
 }
 
 shaderc::PreprocessedSourceCompilationResult CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode, const shaderc::CompileOptions& options) const

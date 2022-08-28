@@ -50,8 +50,8 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 
 	ShaderFilePreprocessingResult result;
 	
-	const std::regex shaderTypeRegex("#type\\(\\s*\\w\\s*\\)");
-	const std::regex shaderTypeNameRegex("(?=\\(\\s*)\\w");
+	const std::regex shaderTypeRegex(R"~(#type\(\s*\w+\s*\))~");
+	const std::regex shaderTypeNameRegex(R"~(\w+(?=\s*\)))~");
 
 	auto shadersBeginMacros = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderTypeRegex);
 

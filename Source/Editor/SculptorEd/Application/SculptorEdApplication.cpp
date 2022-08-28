@@ -11,6 +11,8 @@
 #include "Engine.h"
 #include "imgui.h"
 
+#include "Shaders/ShadersManager.h"
+
 
 namespace spt::ed
 {
@@ -33,6 +35,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	m_window = renderer::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
 
 	renderer::Renderer::PostCreatedWindow();
+
+	renderer::Renderer::GetShadersManager().GetShader("Test.glsl", sc::ShaderCompilationSettings());
 }
 
 void SculptorEdApplication::OnRun()

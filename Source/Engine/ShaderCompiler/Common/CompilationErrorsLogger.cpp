@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include "FileSystem/File.h"
 
 namespace spt::sc
 {
@@ -32,7 +33,7 @@ public:
 	
 	explicit LoggerStreamGuard(const lib::String& filePath)
 	{
-		m_stream.open(filePath, std::ios::trunc);
+		m_stream = lib::File::OpenOutputStream(filePath, lib::Flags(lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::ForceCreate));
 	}
 
 	~LoggerStreamGuard()
@@ -91,9 +92,8 @@ void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& s
 lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
 {
 	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath();
-	SPT_CHECK(std::filesystem::is_directory(logsPath));
 
-	return logsPath + "/" + shaderPath + "/" + priv::getShaderStageName(sourceCode.GetShaderStage());
+	return logsPath + "/" + lib::File::DiscardExtension(shaderPath) + "/" + priv::getShaderStageName(sourceCode.GetShaderStage());
 }
 
 lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)

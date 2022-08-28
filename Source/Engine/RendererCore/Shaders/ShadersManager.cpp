@@ -120,7 +120,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
 	auto shaderIt = m_cachedShaders.find(shaderHash);
-	if (shaderIt != std::cend(m_cachedShaders))
+	if (shaderIt == std::cend(m_cachedShaders))
 	{
 		const lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, settings, flags);
 		if (shader)

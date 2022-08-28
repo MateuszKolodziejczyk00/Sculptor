@@ -25,6 +25,8 @@ public:
 	static std::ofstream	OpenOutputStream(const lib::String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
 	static Bool				Exists(const lib::String& path);
+
+	static lib::String		DiscardExtension(const lib::String& file);
 };
 
 } // spt::lib

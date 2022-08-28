@@ -48,7 +48,7 @@ std::ofstream File::OpenOutputStream(const lib::String& path, EFileOpenFlags ope
 		if (directoryPathEnd != lib::String::npos)
 		{
 			const lib::String directoryPath(std::cbegin(path), std::cbegin(path) + directoryPathEnd);
-			std::filesystem::create_directory(directoryPath);
+			std::filesystem::create_directories(directoryPath);
 			outputStream.open(path);
 		}
 	}
@@ -59,6 +59,14 @@ std::ofstream File::OpenOutputStream(const lib::String& path, EFileOpenFlags ope
 Bool File::Exists(const lib::String& path)
 {
 	return std::filesystem::exists(path);
+}
+
+lib::String File::DiscardExtension(const lib::String& file)
+{
+	const SizeType extensionBeginPosition = file.find_last_of('.');
+	return extensionBeginPosition != lib::String::npos
+		? lib::String(std::cbegin(file), std::cbegin(file) + extensionBeginPosition)
+		: file;
 }
 
 } // spt::lib
