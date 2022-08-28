@@ -173,7 +173,7 @@ void SculptorEdApplication::RenderFrame()
 	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
 	const lib::SharedPtr<renderer::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
-	renderer::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetFramebufferSize());
+	renderer::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
 	renderer::RTDefinition renderTarget;
 	renderTarget.textureView			= swapchainTextureView;
 	renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;

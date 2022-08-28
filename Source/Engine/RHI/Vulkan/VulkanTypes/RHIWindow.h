@@ -48,6 +48,8 @@ public:
 	Bool						IsSwapchainOutOfDate() const;
 	void						RebuildSwapchain(math::Vector2u framebufferSize);
 
+	math::Vector2u				GetSwapchainSize() const;
+
 	// Vulkan Specific ============================================
 
 	VkFormat					GetSurfaceFormat() const;
@@ -74,6 +76,8 @@ private:
 	Uint32						m_minImagesNum;
 
 	Bool						m_swapchainOutOfDate;
+
+	math::Vector2u				m_swapchainSize;
 };
 
 }

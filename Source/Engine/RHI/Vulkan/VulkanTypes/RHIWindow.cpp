@@ -44,6 +44,7 @@ RHIWindow::RHIWindow()
 	, m_surface(VK_NULL_HANDLE)
 	, m_minImagesNum(idxNone<Uint32>)
 	, m_swapchainOutOfDate(false)
+	, m_swapchainSize(0, 0)
 { }
 
 RHIWindow::RHIWindow(RHIWindow&& rhs)
@@ -56,6 +57,7 @@ RHIWindow::RHIWindow(RHIWindow&& rhs)
 	m_surfaceFormat			= rhs.m_surfaceFormat;
 	m_minImagesNum			= rhs.m_minImagesNum;
 	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
+	m_swapchainSize			= rhs.m_swapchainSize;
 
 	rhs.m_swapchain = VK_NULL_HANDLE;
 }
@@ -70,6 +72,7 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 	m_surfaceFormat			= rhs.m_surfaceFormat;
 	m_minImagesNum			= rhs.m_minImagesNum;
 	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
+	m_swapchainSize			= rhs.m_swapchainSize;
 
 	rhs.m_swapchain = VK_NULL_HANDLE;
 
@@ -156,6 +159,8 @@ Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Ui
 
 	Uint32 imageIdx = idxNone<Uint32>;
 	const VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
+	
+	SPT_CHECK(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR);
 
 	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
@@ -232,6 +237,11 @@ void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize)
 	m_swapchainOutOfDate = false;
 }
 
+math::Vector2u RHIWindow::GetSwapchainSize() const
+{
+	return m_swapchainSize;
+}
+
 VkFormat RHIWindow::GetSurfaceFormat() const
 {
 	return m_surfaceFormat.format;
@@ -277,6 +287,8 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	{
 		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), oldSwapchain, VulkanRHI::GetAllocationCallbacks());
 	}
+
+	m_swapchainSize = framebufferSize;
 
 	return swapchain;
 }

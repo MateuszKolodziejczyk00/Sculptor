@@ -103,9 +103,9 @@ ui::UIContext Window::GetUIContext() const
 	return m_platformWindow->GetUIContext();
 }
 
-math::Vector2u Window::GetFramebufferSize() const
+math::Vector2u Window::GetSwapchainSize() const
 {
-	return m_platformWindow->GetFramebufferSize();
+	return GetRHI().GetSwapchainSize();
 }
 
 }

@@ -43,12 +43,11 @@ public:
 
 	ui::UIContext									GetUIContext() const;
 
-	math::Vector2u									GetFramebufferSize() const;
+	math::Vector2u									GetSwapchainSize() const;
 
 private:
 
 	lib::UniquePtr<platform::PlatformWindow>		m_platformWindow;
-	rhi::RHIWindow									m_rhiWindow;
 
 	Uint32											m_acquiredImageIdx;
 };
