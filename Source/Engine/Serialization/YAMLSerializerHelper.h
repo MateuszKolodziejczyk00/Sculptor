@@ -243,9 +243,11 @@ public:
 	template<typename Type>
 	static void Emit(YAML::Emitter& emitter, const Type& data)
 	{
+		emitter << YAML::BeginMap;
 		SerializerWrapper<YAMLEmitter> serializer(emitter);
 		TypeSerializer<Type>::Serialize(serializer, data);
 		serializer.Get().EndEmitting();
+		emitter << YAML::EndMap;
 	}
 };
 

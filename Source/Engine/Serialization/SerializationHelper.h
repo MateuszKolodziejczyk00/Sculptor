@@ -27,11 +27,8 @@ void SerializationHelper::SaveTextStructToFile(const TStructType& data, const li
 	SPT_PROFILE_FUNCTION();
 
 	YAML::Emitter out;
-	out << YAML::BeginMap;
 
-	out << YAML::Key << "Data" << YAML::Value << data;
-	
-	out << YAML::BeginMap;
+	out << data;
 
 	std::ofstream stream(filePath, std::ios::trunc);
 	stream << out.c_str();
@@ -52,7 +49,7 @@ Bool SerializationHelper::LoadTextStructFromFile(TStructType& data, const lib::S
 
 		const YAML::Node serializedShadersFile = YAML::Load(stringStream.str());
 
-		data = serializedShadersFile["Data"].as<TStructType>();
+		data = serializedShadersFile.as<TStructType>();
 
 		stream.close();
 

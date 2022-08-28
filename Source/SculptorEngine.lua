@@ -9,6 +9,9 @@ IncludeProject("UICore")
 IncludeProject("Tokenizer")
 IncludeProject("Serialization")
 
+SetProjectsSubgroupName("Engine")
+IncludeProject("EngineCore")
+
 SetProjectsSubgroupName("Graphics/RHI")
 IncludeProject("RHI")
 

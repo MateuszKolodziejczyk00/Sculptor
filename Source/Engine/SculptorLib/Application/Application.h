@@ -13,7 +13,7 @@ public:
 	Application();
 	virtual ~Application() = default;
 
-	void Init();
+	void Init(int argc, char** argv);
 
 	void Run();
 
@@ -21,7 +21,7 @@ public:
 
 protected:
 
-	virtual void OnInit();
+	virtual void OnInit(int argc, char** argv);
 
 	virtual void OnRun();
 

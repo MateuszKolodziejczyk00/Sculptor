@@ -9,9 +9,9 @@ Application::Application()
 
 }
 
-void Application::Init()
+void Application::Init(int argc, char** argv)
 {
-	OnInit();
+	OnInit(argc, argv);
 }
 
 void Application::Run()
@@ -24,7 +24,7 @@ void Application::Shutdown()
 	OnShutdown();
 }
 
-void Application::OnInit()
+void Application::OnInit(int argc, char** argv)
 {
 
 }

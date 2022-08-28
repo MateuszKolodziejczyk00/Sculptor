@@ -8,6 +8,7 @@
 #include "CommandsRecorder/CommandsRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "UIContextManager.h"
+#include "Engine.h"
 #include "imgui.h"
 
 
@@ -18,9 +19,14 @@ SculptorEdApplication::SculptorEdApplication()
 {
 }
 
-void SculptorEdApplication::OnInit()
+void SculptorEdApplication::OnInit(int argc, char** argv)
 {
-	Super::OnInit();
+	Super::OnInit(argc, argv);
+
+	engn::EngineInitializationParams engineInitializationParams;
+	engineInitializationParams.cmdLineArgsNum = argc;
+	engineInitializationParams.cmdLineArgs = argv;
+	engn::Engine::Initialize(engineInitializationParams);
 
 	renderer::Renderer::Initialize();
 
@@ -130,7 +136,7 @@ void SculptorEdApplication::OnShutdown()
 
 	m_window.reset();
 
-	renderer::Renderer::Shutdown();
+	renderer::Renderer::Uninitialize();
 }
 
 void SculptorEdApplication::RenderFrame()

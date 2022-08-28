@@ -21,7 +21,7 @@ public:
 protected:
 
 	// Begin lib::Application overrides
-	virtual void OnInit() override;
+	virtual void OnInit(int argc, char** argv) override;
 	virtual void OnRun() override;
 	virtual void OnShutdown() override;
 	// End lib::Application overrides

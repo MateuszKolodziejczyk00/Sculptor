@@ -20,7 +20,7 @@ extern spt::lib::Application* CreateApplication();
 int main(int argc, char** argv)
 {
 	spt::lib::Application* app = CreateApplication();
-	app->Init();
+	app->Init(argc, argv);
 	app->Run();
 	app->Shutdown();
 	delete app;
