@@ -1,0 +1,25 @@
+#define Point2 vec2
+#define Point3 vec3
+#define Point4 vec4
+
+#define Vector2 vec2
+#define Vector3 vec3
+#define Vector4 vec4
+
+#define Float2 vec2
+#define Float3 vec3
+#define Float4 vec4
+
+#define Matrix2 mat2
+#define Matrix3 mat3
+#define Matrix4 mat4
+
+#define Int1 int
+#define Int2 ivec2
+#define Int3 ivec3
+#define Int4 ivec4
+
+#define Uint1 uint
+#define Uint2 uvec2
+#define Uint3 uvec3
+#define Uint4 uvec4

@@ -55,6 +55,9 @@ workspace "Sculptor"
 	group "ThirdParty"
 		include "Source/SculptorThirdParty"
 	
+	group "Shaders"
+		include "Shaders/SculptorShaders"
+	
 	group "Engine"
 		include "Source/SculptorEngine"
 	

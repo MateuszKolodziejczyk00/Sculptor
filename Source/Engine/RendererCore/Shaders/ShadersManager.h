@@ -20,7 +20,12 @@ public:
 
 	ShadersManager() = default;
 
+	void					Initialize();
+	void					Uninitialize();
+
 	lib::SharedPtr<Shader>	GetShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+
+	void					ClearCachedShaders();
 
 private:
 
@@ -34,7 +39,7 @@ private:
 
 	lib::HashMap<ShaderHashType, lib::SharedPtr<Shader>> m_cachedShaders;
 
-	mutable lib::Lock m_lock;
+	mutable lib::ReadWriteLock m_lock;
 };
 
 } // spt::renderer

@@ -4,6 +4,7 @@
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
 #include "CurrentFrameContext.h"
+#include "Shaders/ShadersManager.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
@@ -14,6 +15,20 @@
 
 namespace spt::renderer
 {
+
+namespace priv
+{
+
+struct RendererData
+{
+
+ShadersManager shadersManager;
+
+};
+
+static RendererData g_data;
+
+} // priv
 
 void Renderer::Initialize()
 {
@@ -26,6 +41,8 @@ void Renderer::Initialize()
 	initializationInfo.extensionsNum	= requiredExtensions.extensionsNum;
 
 	rhi::RHI::Initialize(initializationInfo);
+
+	priv::g_data.shadersManager.Initialize();
 }
 
 void Renderer::PostCreatedWindow()
@@ -33,8 +50,10 @@ void Renderer::PostCreatedWindow()
 	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
 }
 
-void Renderer::Shutdown()
+void Renderer::Uninitialize()
 {
+	priv::g_data.shadersManager.Uninitialize();
+
 	CurrentFrameContext::Shutdown();
 
 	rhi::RHI::Uninitialize();
@@ -52,6 +71,11 @@ void Renderer::EndFrame()
 	SPT_PROFILE_FUNCTION();
 
 	CurrentFrameContext::EndFrame();
+}
+
+ShadersManager& Renderer::GetShadersManager()
+{
+	return priv::g_data.shadersManager;
 }
 
 lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const CommandsRecordingInfo& recordingInfo)

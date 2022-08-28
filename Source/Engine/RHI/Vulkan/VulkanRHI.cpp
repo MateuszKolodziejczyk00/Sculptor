@@ -225,6 +225,11 @@ void VulkanRHI::Uninitialize()
     }
 }
 
+rhi::ERHIType VulkanRHI::GetRHIType()
+{
+    return rhi::ERHIType::Vulkan_1_3;
+}
+
 void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
 {
     SPT_PROFILE_FUNCTION();

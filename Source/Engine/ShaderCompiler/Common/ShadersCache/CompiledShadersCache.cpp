@@ -1,6 +1,7 @@
 #include "CompiledShadersCache.h"
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Common/ShaderCompilationInput.h"
+#include "FileSystem/File.h"
 
 #include "SculptorYAML.h"
 #include "SerializationHelper.h"
@@ -77,7 +78,7 @@ Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath,
 	}
 
 	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-	return std::filesystem::exists(filePath);
+	return lib::File::Exists(filePath);
 }
 
 CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
@@ -113,8 +114,7 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 
 Bool CompiledShadersCache::CanUseShadersCache()
 {
-	return ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
-		&& std::filesystem::is_directory(ShaderCompilationEnvironment::GetShadersCachePath());
+	return ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
 }
 
 CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)

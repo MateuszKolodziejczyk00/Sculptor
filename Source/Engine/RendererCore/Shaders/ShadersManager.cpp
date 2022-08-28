@@ -2,9 +2,76 @@
 #include "Common/ShaderCompilerToolChain.h"
 #include "Types/Shader.h"
 #include "RendererUtils.h"
+#include "RHIBridge/RHIImpl.h"
+#include "Engine.h"
+#include "Common/ShaderCompilationEnvironment.h"
+
+#include "YAMLSerializerHelper.h"
+
+namespace spt::srl
+{
+
+// spt::sc::CompilationEnvironmentDef ===================================================
+
+template<>
+struct TypeSerializer<sc::CompilationEnvironmentDef>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.SerializeEnum("Environment", data.targetEnvironment);
+		serializer.Serialize("GenerateDebugInfo", data.generateDebugInfo);
+		serializer.Serialize("UseCompiledShadersCache", data.useCompiledShadersCache);
+		serializer.Serialize("ShadersPath", data.shadersPath);
+		serializer.Serialize("ShadersCachePath", data.shadersCachePath);
+		serializer.Serialize("ErrorLogsPath", data.errorLogsPath);
+	}
+};
+
+} // spt::srl
+
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompilationEnvironmentDef)
+
 
 namespace spt::renderer
 {
+
+namespace priv
+{
+
+static sc::ETargetEnvironment SelectCompilationTargetEnvironment()
+{
+	const rhi::ERHIType rhiType = rhi::RHI::GetRHIType();
+
+	switch (rhiType)
+	{
+	case rhi::ERHIType::Vulkan_1_3:		return sc::ETargetEnvironment::Vulkan_1_3;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return sc::ETargetEnvironment::None;
+	}
+}
+
+} // priv
+
+void ShadersManager::Initialize()
+{
+	SPT_PROFILE_FUNCTION();
+	
+	sc::CompilationEnvironmentDef compilationEnvironmentDef;
+	const Bool loaded = engn::Engine::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.yaml");
+	SPT_CHECK(loaded);
+	compilationEnvironmentDef.targetEnvironment = priv::SelectCompilationTargetEnvironment(); // always override loaded target environment basing on current RHI
+
+	sc::ShaderCompilationEnvironment::Initialize(compilationEnvironmentDef);
+}
+
+void ShadersManager::Uninitialize()
+{
+	ClearCachedShaders();
+}
 
 lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
 {
@@ -12,15 +79,28 @@ lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelati
 
 	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, settings);
 
-	const auto foundShader = m_cachedShaders.find(shaderHash);
-	if (foundShader != std::cend(m_cachedShaders))
 	{
-		return foundShader->second;
+		[[maybe_unused]]
+		const lib::ReadLockGuard lockGuard(m_lock);
+
+		const auto foundShader = m_cachedShaders.find(shaderHash);
+		if (foundShader != std::cend(m_cachedShaders))
+		{
+			return foundShader->second;
+		}
 	}
-	else
-	{
-		return CompileAndCacheShader(shaderRelativePath, settings, flags, shaderHash);
-	}
+
+	return CompileAndCacheShader(shaderRelativePath, settings, flags, shaderHash);
+}
+
+void ShadersManager::ClearCachedShaders()
+{
+	SPT_PROFILE_FUNCTION();
+
+	[[maybe_unused]]
+	const lib::WriteLockGuard lockGuard(m_lock);
+	
+	m_cachedShaders.clear();
 }
 
 ShadersManager::ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
@@ -34,15 +114,19 @@ ShadersManager::ShaderHashType ShadersManager::HashCompilationParams(const lib::
 
 lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
 {
+	SPT_PROFILE_FUNCTION();
+
 	[[maybe_unused]]
-	const lib::LockGuard<lib::Lock> lockGuard(m_lock);
+	const lib::WriteLockGuard lockGuard(m_lock);
 
 	auto shaderIt = m_cachedShaders.find(shaderHash);
 	if (shaderIt != std::cend(m_cachedShaders))
 	{
 		const lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, settings, flags);
-
-		shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
+		if (shader)
+		{
+			shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
+		}
 	}
 
 	return shaderIt->second;
@@ -70,7 +154,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 
 			});
 
-		shader = std::make_shared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinitions, compiledShader.metaData);
+		shader = std::make_shared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinitions, std::make_shared<smd::ShaderMetaData>(compiledShader.metaData));
 	}
 	
 	return shader;

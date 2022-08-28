@@ -1,11 +1,9 @@
 #pragma
 
 #include "SculptorCoreTypes.h"
+#include "FileSystem/File.h"
 
 #include "YAMLSerializerHelper.h"
-
-#include <fstream>
-#include <filesystem>
 
 namespace spt::srl
 {
@@ -30,7 +28,8 @@ void SerializationHelper::SaveTextStructToFile(const TStructType& data, const li
 
 	out << data;
 
-	std::ofstream stream(filePath, std::ios::trunc);
+	std::ofstream stream = lib::File::OpenOutputStream(filePath, lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent));
+	SPT_CHECK(stream.is_open());
 	stream << out.c_str();
 
 	stream.close();
@@ -41,7 +40,7 @@ Bool SerializationHelper::LoadTextStructFromFile(TStructType& data, const lib::S
 {
 	SPT_PROFILE_FUNCTION();
 
-	std::ifstream stream(filePath);
+	std::ifstream stream = lib::File::OpenInputStream(filePath);
 	if (!stream.fail())
 	{
 		std::stringstream stringStream;

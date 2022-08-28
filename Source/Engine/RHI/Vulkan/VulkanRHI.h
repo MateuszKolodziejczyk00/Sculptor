@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
+#include "RHICore/RHITypes.h"
 
 
 namespace spt::rhi
@@ -30,17 +31,19 @@ public:
 
 	// RHI Interface ===================================================================
 
-	static void Initialize(const rhi::RHIInitializationInfo& initInfo);
+	static void				Initialize(const rhi::RHIInitializationInfo& initInfo);
 
-	static void InitializeGPUForWindow();
+	static void				InitializeGPUForWindow();
 
-	static void Uninitialize();
+	static void				Uninitialize();
 
-	static void SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
+	static rhi::ERHIType	GetRHIType();
 
-	static void WaitIdle();
+	static void				SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
 
-	static void EnableValidationWarnings(Bool enable);
+	static void				WaitIdle();
+
+	static void				EnableValidationWarnings(Bool enable);
 
 	// Vulkan Getters ==================================================================
 

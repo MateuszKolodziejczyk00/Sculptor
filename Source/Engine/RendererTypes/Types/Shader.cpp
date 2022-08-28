@@ -4,7 +4,7 @@
 namespace spt::renderer
 {
 
-Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const smd::ShaderMetaData& metaData)
+Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -45,12 +45,12 @@ Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::Sh
 	m_pipelineType = SelectPipelineType(moduleDefinitions);
 }
 
-const spt::lib::DynamicArray<spt::rhi::RHIShaderModule>& Shader::GetShaderModules() const
+const lib::DynamicArray<rhi::RHIShaderModule>& Shader::GetShaderModules() const
 {
 	return m_shaderModules;
 }
 
-const spt::smd::ShaderMetaData& Shader::GetMetaData() const
+const lib::SharedPtr<smd::ShaderMetaData>& Shader::GetMetaData() const
 {
 	return m_metaData;
 }

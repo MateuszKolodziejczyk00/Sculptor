@@ -19,6 +19,6 @@ using ReadWriteLock = std::shared_mutex;
 
 using ReadLockGuard = std::shared_lock<ReadWriteLock>;
 
-using WriteLockGuard = std::unique_lock<ReadWriteLock>;
+using WriteLockGuard = std::lock_guard<ReadWriteLock>;
 
 }

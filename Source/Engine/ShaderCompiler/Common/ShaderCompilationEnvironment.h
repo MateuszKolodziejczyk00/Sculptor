@@ -14,14 +14,14 @@ struct CompilationEnvironmentDef
 	CompilationEnvironmentDef()
 		: targetEnvironment(ETargetEnvironment::None)
 		, generateDebugInfo(false)
-		, useCompiledShadersCode(true)
+		, useCompiledShadersCache(true)
 	{ }
 
 	ETargetEnvironment		targetEnvironment;
 
 	Bool					generateDebugInfo;
 
-	Bool					useCompiledShadersCode;
+	Bool					useCompiledShadersCache;
 
 	lib::String				shadersPath;
 
@@ -53,4 +53,4 @@ public:
 	
 };
 
-}
+} // spt::sc

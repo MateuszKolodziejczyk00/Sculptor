@@ -11,6 +11,7 @@ namespace spt::renderer
 
 struct CommandsRecordingInfo;
 class CommandsRecorder;
+class ShadersManager;
 
 
 struct CommandsSubmitBatch
@@ -30,10 +31,12 @@ public:
 	static void									Initialize();
 	static void									PostCreatedWindow();
 
-	static void									Shutdown();
+	static void									Uninitialize();
 
 	static void									BeginFrame();
 	static void									EndFrame();
+
+	static ShadersManager&						GetShadersManager();
 
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands(const CommandsRecordingInfo& recordingInfo);
 

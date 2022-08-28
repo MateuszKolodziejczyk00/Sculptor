@@ -1,4 +1,5 @@
 #include "ShaderCompilationEnvironment.h"
+#include "EngineCore/Engine.h"
 
 namespace spt::sc
 {
@@ -8,11 +9,17 @@ namespace priv
 
 static CompilationEnvironmentDef	g_environmentDef;
 
-}
+} // priv
 
 void ShaderCompilationEnvironment::Initialize(const CompilationEnvironmentDef& environmentDef)
 {
 	priv::g_environmentDef = environmentDef;
+
+	// add relative path to engine as prefix (path in definition is relative to the engine directory)
+	const lib::String& relativePathToEngine = engn::Engine::GetRelPathToEngine();
+	priv::g_environmentDef.shadersPath		= relativePathToEngine + priv::g_environmentDef.shadersPath;
+	priv::g_environmentDef.shadersCachePath	= relativePathToEngine + priv::g_environmentDef.shadersCachePath;
+	priv::g_environmentDef.errorLogsPath	= relativePathToEngine + priv::g_environmentDef.errorLogsPath;
 }
 
 Bool ShaderCompilationEnvironment::CanCompile()
@@ -27,7 +34,7 @@ Bool ShaderCompilationEnvironment::ShouldGenerateDebugInfo()
 
 Bool ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
 {
-	return priv::g_environmentDef.useCompiledShadersCode;
+	return priv::g_environmentDef.useCompiledShadersCache;
 }
 
 ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
@@ -40,14 +47,14 @@ const lib::String& ShaderCompilationEnvironment::GetShadersPath()
 	return priv::g_environmentDef.shadersPath;
 }
 
-const spt::lib::String& ShaderCompilationEnvironment::GetShadersCachePath()
+const lib::String& ShaderCompilationEnvironment::GetShadersCachePath()
 {
 	return priv::g_environmentDef.shadersCachePath;
 }
 
-const spt::lib::String& ShaderCompilationEnvironment::GetErrorLogsPath()
+const lib::String& ShaderCompilationEnvironment::GetErrorLogsPath()
 {
 	return priv::g_environmentDef.errorLogsPath;
 }
 
-}
+} // spt::sc
