@@ -161,12 +161,6 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, const TDataType& data)
-	{
-		m_serializer.Serialize(key, data);
-	}
-
-	template<typename TDataType>
 	std::enable_if_t<!lib::isPair<TDataType>, void> Serialize(TDataType& data)
 	{
 		m_serializer.Serialize(data);
@@ -179,9 +173,32 @@ public:
 	}
 
 	template<typename TDataType>
+	void Serialize(lib::StringView key, const TDataType& data)
+	{
+		m_serializer.Serialize(key, data);
+	}
+
+	template<typename TDataType>
 	void Serialize(lib::StringView key, TDataType& data)
 	{
 		m_serializer.Serialize(key, data);
+	}
+
+	// Fix bugged chars serialization
+	template<>
+	void Serialize<Uint8>(lib::StringView key, Uint8& data)
+	{
+		Uint32 val = 0;
+		m_serializer.Serialize(key, val);
+		data = static_cast<Uint8>(val);
+	}
+
+	// Fix bugged chars serialization
+	template<>
+	void Serialize<Uint8>(lib::StringView key, const Uint8& data)
+	{
+		Uint32 val = static_cast<Uint32>(data);
+		m_serializer.Serialize(key, val);
 	}
 
 	template<typename TEnumType>

@@ -16,6 +16,7 @@ class RENDERER_TYPES_API Shader
 public:
 
 	Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData);
+	~Shader();
 
 	const lib::DynamicArray<rhi::RHIShaderModule>&	GetShaderModules() const;
 	const lib::SharedPtr<smd::ShaderMetaData>&		GetMetaData() const;

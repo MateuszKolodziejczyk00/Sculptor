@@ -1,5 +1,6 @@
 #include "Shader.h"
 #include "RendererUtils.h"
+#include "CurrentFrameContext.h"
 
 namespace spt::renderer
 {
@@ -43,6 +44,15 @@ Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::Sh
 	m_metaData = metaData;
 	
 	m_pipelineType = SelectPipelineType(moduleDefinitions);
+}
+
+Shader::~Shader()
+{
+	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
+	[resources = std::move(m_shaderModules)]() mutable
+	{
+		std::for_each(std::begin(resources), std::end(resources), std::mem_fn(&rhi::RHIShaderModule::ReleaseRHI));
+	});
 }
 
 const lib::DynamicArray<rhi::RHIShaderModule>& Shader::GetShaderModules() const

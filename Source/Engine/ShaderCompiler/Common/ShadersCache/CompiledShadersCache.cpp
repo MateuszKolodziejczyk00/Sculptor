@@ -129,7 +129,13 @@ lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
 	constexpr Uint32 fileNameLength = sizeof(HashType);
 
 	lib::String result(fileNameLength, '\0');
+
 	memcpy_s(result.data(), fileNameLength, &hash, fileNameLength);
+	for (char& character : result)
+	{
+		character %= ('Z' - 'A');
+		character += 'A';
+	}
 
 	return result;
 }

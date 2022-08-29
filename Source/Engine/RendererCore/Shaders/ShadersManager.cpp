@@ -129,7 +129,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& 
 		}
 	}
 
-	return shaderIt->second;
+	return shaderIt != std::cend(m_cachedShaders) ? shaderIt->second : lib::SharedPtr<Shader>{};
 }
 
 lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags)

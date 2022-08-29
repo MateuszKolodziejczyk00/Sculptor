@@ -60,7 +60,7 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shad
 		ShaderParametersMetaData paramsMetaData;
 		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, settings, paramsMetaData);
 
-		success |= compiledShader.IsValid();
+		success &= compiledShader.IsValid();
 
 		if (compiledShader.IsValid())
 		{

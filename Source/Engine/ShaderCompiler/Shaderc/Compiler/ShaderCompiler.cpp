@@ -98,7 +98,7 @@ shaderc_include_result* Includer::GetInclude(const char* requested_source, shade
 {
 	SPT_PROFILE_FUNCTION();
 
-	lib::String fileName = requesting_source;
+	lib::String fileName = requested_source;
 
 	const lib::String filePath = GetIncludedFilePath(fileName, type);
 
@@ -126,11 +126,12 @@ lib::String Includer::GetIncludedFilePath(const lib::String& name, shaderc_inclu
 {
 	if (includeType == shaderc_include_type_relative)
 	{
-		return m_path + "/" + name;
+		return ShaderCompilationEnvironment::GetShadersPath() + "/" + name;
 	}
 	else
 	{
-		return ShaderCompilationEnvironment::GetShadersPath() + "/" + name;
+		SPT_CHECK_NO_ENTRY(); // implement including structs from code
+		return lib::String("");
 	}
 }
 
@@ -216,6 +217,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	}
 
 	output.SetBinary(lib::DynamicArray<Uint32>(compilationResult.cbegin(), compilationResult.cend()));
+	output.SetStage(sourceCode.GetShaderStage());
 
 	return output;
 }

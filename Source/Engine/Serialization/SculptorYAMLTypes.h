@@ -28,7 +28,7 @@ struct convert<spt::lib::HashedString>
 
 	static bool decode(const Node& node, spt::lib::HashedString& hashedString)
 	{
-		const spt::lib::String asString = node[0].as<spt::lib::String>();
+		const spt::lib::String asString = node.as<spt::lib::String>();
 		hashedString = asString;
 		return true;
 	}
