@@ -145,7 +145,9 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const spirv_cross::SPIRType& bufferType = compiler.get_type(uniformBufferResource.base_type_id);
 	const SizeType uniformSize = compiler.get_declared_struct_size(bufferType);
 
-	const smd::UniformBufferBindingData uniformBufferBinding(static_cast<Uint16>(uniformSize));
+	smd::BufferBindingData uniformBufferBinding;
+	uniformBufferBinding.SetSize(static_cast<Uint16>(uniformSize));
+
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, uniformBufferBinding);
 
 	const Bool isBufferParam = parametersMetaData.HasMeta(paramName, meta::buffer);
@@ -172,7 +174,8 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const spirv_cross::SPIRType& bufferType = compiler.get_type(storageBufferResource.base_type_id);
 	const SizeType storageSize = compiler.get_declared_struct_size(bufferType);
 
-	smd::StorageBufferBindingData storageBufferBinding;
+	smd::BufferBindingData storageBufferBinding;
+	storageBufferBinding.AddFlag(smd::EBindingFlags::Storage);
 
 	SPT_CHECK_NO_ENTRY(); // Check if it's properly working with unbound buffers
 	if (storageSize == 0)

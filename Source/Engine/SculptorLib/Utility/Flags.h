@@ -113,6 +113,14 @@ void AddFlag(TEnumType& flags, TEnumType flagToAdd)
 }
 
 
+template<typename TEnumType, typename... TEnums,
+		 typename isEnum = std::enable_if_t<std::is_enum_v<TEnumType>, void>>
+void AddFlags(TEnumType& flags, TEnumType flagToAdd, TEnums... otherFlagsToAdd)
+{
+	flags = Union(flags, flagToAdd, otherFlagsToAdd...);
+}
+
+
 template<typename TEnumType,
 		 typename = std::enable_if_t<std::is_enum_v<TEnumType>, void>>
 void RemoveFlag(TEnumType& flags, TEnumType flagToRemove)

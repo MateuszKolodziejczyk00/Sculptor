@@ -14,8 +14,7 @@ enum class EBindingType : Uint32
 {
 	Texture,
 	CombinedTextureSampler,
-	UniformBuffer,
-	StorageBuffer,
+	Buffer,
 
 	NUM
 };
@@ -27,6 +26,9 @@ enum class EBindingFlags : Flags32
 	Invalid			= BIT(0),
 
 	Unbound			= BIT(1),
+	DynamicOffset	= BIT(2),
+	TexelBuffer		= BIT(3),
+	Storage			= BIT(4),
 
 	// Shader stages
 	VertexShader	= BIT(21),
@@ -97,6 +99,11 @@ struct CommonBindingData abstract
 		return !lib::HasAnyFlag(flags, EBindingFlags::Invalid);
 	}
 
+	void AddFlag(EBindingFlags flag)
+	{
+		lib::AddFlag(flags, flag);
+	}
+
 	void AddShaderStage(rhi::EShaderStage stage)
 	{
 		lib::AddFlag(flags, priv::ShaderStageToBindingFlag(stage));
@@ -128,22 +135,9 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 };
 
 
-struct UniformBufferBindingData : public CommonBindingData
+struct BufferBindingData : public CommonBindingData
 {
-	explicit UniformBufferBindingData(Uint16 inSize = 0, Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
-		: CommonBindingData(inElementsNum, inFlags)
-		, size(inSize)
-	{
-		SPT_CHECK(size > 0);
-	}
-
-	Uint16			size;
-};
-
-
-struct StorageBufferBindingData : public CommonBindingData
-{
-	explicit StorageBufferBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+	explicit BufferBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
 		: CommonBindingData(inElementsNum, inFlags)
 		, m_size(0) // invalid
 	{ }
@@ -179,8 +173,7 @@ private:
 // should be in the same order as EBindingType
 using BindingDataVariant = std::variant<TextureBindingData,
 										CombinedTextureSamplerBindingData,
-										UniformBufferBindingData,
-										StorageBufferBindingData>;
+										BufferBindingData>;
 
 
 struct GenericShaderBinding
@@ -239,6 +232,11 @@ struct GenericShaderBinding
 				return data.AddShaderStage(stage);
 			},
 			m_data);
+	}
+
+	const BindingDataVariant& GetBindingData() const
+	{
+		return m_data;
 	}
 
 private:

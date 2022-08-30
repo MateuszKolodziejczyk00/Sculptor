@@ -141,7 +141,6 @@ struct GraphicsPipelineDefinition
 		: primitiveTopology(EPrimitiveTopology::TriangleList)
 	{ }
 
-	PipelineShaderStagesDefinition		shaderStagesDefinition;
 	EPrimitiveTopology					primitiveTopology;
 	PipelineRasterizationDefinition		RasterizationDefinition;
 	MultisamplingDefinition				MultisamplingDefinition;

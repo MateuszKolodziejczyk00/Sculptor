@@ -23,4 +23,4 @@
 #include "Utility/Hash.h"
 #include "Utility/UtilityMacros.h"
 #include "Utility/Flags.h"
-#include "Utility/TypeTraits.h"
+#include "Utility/Templates/TypeTraits.h"

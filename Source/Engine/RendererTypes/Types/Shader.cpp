@@ -9,6 +9,8 @@ Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::Sh
 {
 	SPT_PROFILE_FUNCTION();
 
+	SPT_CHECK(!!metaData);
+
 	m_shaderModules.reserve(moduleDefinitions.size());
 
 	std::transform(std::cbegin(moduleDefinitions), std::cend(moduleDefinitions), std::back_inserter(m_shaderModules),
