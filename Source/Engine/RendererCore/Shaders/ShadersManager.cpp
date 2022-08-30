@@ -80,7 +80,7 @@ lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelati
 	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, settings);
 
 	{
-		[[maybe_unused]]
+		SPT_MAYBE_UNUSED
 		const lib::ReadLockGuard lockGuard(m_lock);
 
 		const auto foundShader = m_cachedShaders.find(shaderHash);
@@ -97,7 +97,7 @@ void ShadersManager::ClearCachedShaders()
 {
 	SPT_PROFILE_FUNCTION();
 
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
 	
 	m_cachedShaders.clear();
@@ -116,7 +116,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& 
 {
 	SPT_PROFILE_FUNCTION();
 
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
 
 	auto shaderIt = m_cachedShaders.find(shaderHash);

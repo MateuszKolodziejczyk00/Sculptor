@@ -93,7 +93,7 @@ template<Bool isThreadSafe, typename... Args>
 template<typename ObjectType, typename FuncType>
 DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddMember(ObjectType* user, FuncType function)
 {
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindMember(user, function);
@@ -104,7 +104,7 @@ template<Bool isThreadSafe, typename... Args>
 template<typename FuncType>
 DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddRaw(FuncType* function)
 {
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRaw(function);
@@ -115,7 +115,7 @@ template<Bool isThreadSafe, typename... Args>
 template<typename Lambda>
 DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddLambda(Lambda&& functor)
 {
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
 	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindLambda(std::forward<Lambda>(functor));
@@ -125,7 +125,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, Args...>::AddLambda(Lambda&& 
 template<Bool isThreadSafe, typename... Args>
 void MulticastDelegateBase<isThreadSafe, Args...>::Unbind(DelegateHandle handle)
 {
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.Handle == handle; }));
 }
@@ -139,7 +139,7 @@ void MulticastDelegateBase<isThreadSafe, Args...>::Reset()
 template<Bool isThreadSafe, typename... Args>
 void MulticastDelegateBase<isThreadSafe, Args...>::Broadcast(const Args&... arguments)
 {
-	[[maybe_unused]]
+	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
 	{

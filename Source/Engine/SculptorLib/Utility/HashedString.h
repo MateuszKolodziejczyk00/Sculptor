@@ -2,6 +2,7 @@
 
 #include "SculptorLibMacros.h"
 #include "HashedStringDB.h"
+#include "UtilityMacros.h"
 
 
 namespace spt::lib
@@ -96,7 +97,7 @@ public:
 		return !(*this == rhs);
 	}
 
-	Bool IsValid() const
+	SPT_NODISCARD Bool IsValid() const
 	{
 		return key != DataBaseType::keyNone;
 	}
@@ -107,22 +108,22 @@ public:
 		stringView = {};
 	}
 
-	StringView GetView() const
+	SPT_NODISCARD StringView GetView() const
 	{
 		return stringView;
 	}
 
-	lib::String ToString() const
+	SPT_NODISCARD lib::String ToString() const
 	{
 		return lib::String(GetView());
 	}
 
-	const char* GetData() const
+	SPT_NODISCARD const char* GetData() const
 	{
 		return stringView.data();
 	}
 
-	KeyType GetKey() const
+	SPT_NODISCARD KeyType GetKey() const
 	{
 		return key;
 	}

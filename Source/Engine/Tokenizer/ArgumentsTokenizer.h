@@ -24,7 +24,7 @@ public:
 			argument = properArgument;
 		};
 
-		[[maybe_unused]]
+		SPT_MAYBE_UNUSED
 		constexpr SizeType commaTokenIdx = 0;
 		const lib::StaticArray<Token, 1> tokens{ "," };
 

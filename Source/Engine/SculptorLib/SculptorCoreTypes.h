@@ -21,5 +21,6 @@
 #include "Utility/Lock.h"
 #include "Utility/Color.h"
 #include "Utility/Hash.h"
-#include "Utility/Utils.h"
+#include "Utility/UtilityMacros.h"
+#include "Utility/Flags.h"
 #include "Utility/TypeTraits.h"
