@@ -1,0 +1,23 @@
+#pragma once
+
+#include "Pipeline.h"
+#include "RendererResource.h"
+#include "RHIBridge/RHIPipelineImpl.h"
+#include "RendererUtils.h"
+
+
+namespace spt::renderer
+{
+
+class RENDERER_TYPES_API ComputePipeline : public Pipeline, public RendererResource<rhi::RHIPipeline>
+{
+protected:
+
+	using ResourceType = RendererResource<rhi::RHIPipeline>;
+
+public:
+
+	ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader);
+};
+
+} // spt::renderer

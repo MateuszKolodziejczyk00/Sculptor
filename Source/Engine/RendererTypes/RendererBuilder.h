@@ -34,18 +34,17 @@ class RENDERER_TYPES_API RendererBuilder
 {
 public:
 
-	static lib::SharedPtr<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
+	static SPT_NODISCARD lib::SharedPtr<Window>			CreateWindow(lib::StringView name, math::Vector2u resolution);
 
-	static lib::SharedPtr<UIBackend>			CreateUIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window);
+	static SPT_NODISCARD lib::SharedPtr<UIBackend>		CreateUIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window);
 	
-	static lib::SharedPtr<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
-	static lib::SharedPtr<Texture>				CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
+	static SPT_NODISCARD lib::SharedPtr<Buffer>			CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	static SPT_NODISCARD lib::SharedPtr<Texture>		CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 
-	static lib::SharedPtr<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
+	static SPT_NODISCARD lib::SharedPtr<Semaphore>		CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 
-	static lib::SharedPtr<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
-
-	static Barrier								CreateBarrier();
+	static SPT_NODISCARD lib::SharedPtr<CommandBuffer>	CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition); 
+	static SPT_NODISCARD Barrier						CreateBarrier();
 };
 
 }

@@ -94,6 +94,11 @@ Pipeline::Pipeline(const lib::SharedPtr<Shader>& shader)
 	m_metaData = shader->GetMetaData();
 }
 
+const lib::SharedPtr<smd::ShaderMetaData>& Pipeline::GetMetaData() const
+{
+	return m_metaData;
+}
+
 rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const
 {
 	SPT_PROFILE_FUNCTION();

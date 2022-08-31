@@ -355,3 +355,6 @@ FodyWeavers.xsd
 **imgui.ini
 .visuallint
 **.vlconfig
+
+# command line arguments vs extension
+**.args.json

@@ -17,7 +17,7 @@ class RHICommandBuffer;
 class RHIBarrier;
 class RHIUIBackend;
 class RHIShaderModule;
-class RHIGraphicsPipeline;
+class RHIPipeline;
 
 }
 

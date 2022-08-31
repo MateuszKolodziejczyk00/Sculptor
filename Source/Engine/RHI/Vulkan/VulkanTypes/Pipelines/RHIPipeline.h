@@ -11,13 +11,13 @@
 namespace spt::vulkan
 {
 
-class RHI_API RHIGraphicsPipeline
+class RHI_API RHIPipeline
 {
 public:
 
-	RHIGraphicsPipeline();
+	RHIPipeline();
 
-	void						InitializeRHI(const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void						InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;
