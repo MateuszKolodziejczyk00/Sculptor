@@ -32,9 +32,9 @@ static RendererData g_data;
 
 void Renderer::Initialize()
 {
-	platform::PlatformWindow::Initialize();
+	platf::PlatformWindow::Initialize();
 
-	const platform::RequiredExtensionsInfo requiredExtensions = platform::PlatformWindow::GetRequiredRHIExtensionNames();
+	const platf::RequiredExtensionsInfo requiredExtensions = platf::PlatformWindow::GetRequiredRHIExtensionNames();
 
 	rhi::RHIInitializationInfo initializationInfo;
 	initializationInfo.extensions		= requiredExtensions.extensions;

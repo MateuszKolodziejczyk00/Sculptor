@@ -9,7 +9,7 @@ namespace spt::renderer
 {
 
 Window::Window(lib::StringView name, math::Vector2u resolution)
-	: m_platformWindow(std::make_unique<platform::PlatformWindow>(name, resolution))
+	: m_platformWindow(std::make_unique<platf::PlatformWindow>(name, resolution))
 {
 	rhi::RHI::InitializeGPUForWindow();
 

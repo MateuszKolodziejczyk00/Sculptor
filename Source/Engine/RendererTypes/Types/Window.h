@@ -47,7 +47,7 @@ public:
 
 private:
 
-	lib::UniquePtr<platform::PlatformWindow>		m_platformWindow;
+	lib::UniquePtr<platf::PlatformWindow>		m_platformWindow;
 
 	Uint32											m_acquiredImageIdx;
 };

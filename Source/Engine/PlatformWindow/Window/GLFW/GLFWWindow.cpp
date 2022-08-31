@@ -10,7 +10,7 @@
 #include "backends/imgui_impl_glfw.h"
 
 
-namespace spt::platform
+namespace spt::platf
 {
 
 SPT_IMPLEMENT_LOG_CATEGORY(GLFW, true)
@@ -236,6 +236,6 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnThisWindowClosed);
 }
 
-}
+} // spt::plat
 
 #endif // USE_GLFW

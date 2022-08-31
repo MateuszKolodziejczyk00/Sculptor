@@ -19,7 +19,7 @@ public:
 
 private:
 
-	rhi::PipelineLayoutDefinition CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const;
+	SPT_NODISCARD rhi::PipelineLayoutDefinition CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const;
 
 	lib::SharedPtr<smd::ShaderMetaData> m_metaData;
 };

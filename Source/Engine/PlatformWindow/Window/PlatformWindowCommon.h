@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 
 
-namespace spt::platform
+namespace spt::platf
 {
 
 struct RequiredExtensionsInfo

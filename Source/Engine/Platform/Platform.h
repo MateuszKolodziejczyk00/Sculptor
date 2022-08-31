@@ -4,7 +4,7 @@
 #include "MathCore.h"
 
 
-namespace spt::plat
+namespace spt::platf
 {
 
 class PLATFORM_API Platform

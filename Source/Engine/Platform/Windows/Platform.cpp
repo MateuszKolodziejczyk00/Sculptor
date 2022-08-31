@@ -2,7 +2,7 @@
 
 #include <windows.h>
 
-namespace spt::plat
+namespace spt::platf
 {
 
 Bool Platform::SwitchToThread()

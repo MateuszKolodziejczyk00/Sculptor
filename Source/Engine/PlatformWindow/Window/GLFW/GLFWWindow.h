@@ -10,7 +10,7 @@
 #if USE_GLFW
 
 
-namespace spt::platform
+namespace spt::platf
 {
 
 struct GLFWWindowData;
@@ -58,6 +58,6 @@ private:
 	ui::UIContext						m_uiContext;
 };
 
-}
+} // spt::plat
 
 #endif // USE_GLFW

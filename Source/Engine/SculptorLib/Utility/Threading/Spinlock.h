@@ -40,7 +40,7 @@ public:
 
 			while (m_locked.load(std::memory_order_acquire) == false)
 			{
-				plat::Platform::SwitchToThread();
+				platf::Platform::SwitchToThread();
 			}
 		}
 	}
