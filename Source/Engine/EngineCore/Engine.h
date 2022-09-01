@@ -3,6 +3,7 @@
 #include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "SerializationHelper.h"
+#include "Paths.h"
 #include "Utils/CommandLineArguments.h"
 
 
@@ -25,9 +26,7 @@ class ENGINE_CORE_API Engine
 {
 public:
 
-	static void					Initialize(const EngineInitializationParams& initializationParams);
-
-	static const lib::String&	GetRelPathToEngine();
+	static void Initialize(const EngineInitializationParams& initializationParams);
 
 	// Config helpers ===============================================
 
@@ -46,23 +45,20 @@ private:
 	EngineInitializationParams	m_initParams;
 
 	CommandLineArguments		m_cmdLineArgs;
-
-	// Cached from cmd line args for faster access
-	lib::String					m_relPathToEngineDirectory;
 };
 
 
 template<typename TDataType>
 void Engine::SaveConfigData(const TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = GetRelPathToEngine() + "Config/" + configFileName;
+	const lib::String finalPath = Paths::Combine(Paths::GetConfigPath(), configFileName);
 	srl::SerializationHelper::SaveTextStructToFile(data, finalPath);
 }
 
 template<typename TDataType>
 Bool Engine::LoadConfigData(TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = GetRelPathToEngine() + "Config/" + configFileName;
+	const lib::String finalPath = Paths::Combine(Paths::GetConfigPath(), configFileName);
 	return srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
 }
 

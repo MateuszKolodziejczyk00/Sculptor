@@ -16,10 +16,10 @@ void ShaderCompilationEnvironment::Initialize(const CompilationEnvironmentDef& e
 	priv::g_environmentDef = environmentDef;
 
 	// add relative path to engine as prefix (path in definition is relative to the engine directory)
-	const lib::String& relativePathToEngine = engn::Engine::GetRelPathToEngine();
-	priv::g_environmentDef.shadersPath		= relativePathToEngine + priv::g_environmentDef.shadersPath;
-	priv::g_environmentDef.shadersCachePath	= relativePathToEngine + priv::g_environmentDef.shadersCachePath;
-	priv::g_environmentDef.errorLogsPath	= relativePathToEngine + priv::g_environmentDef.errorLogsPath;
+	const lib::String& relativePathToEngine = engn::Paths::GetEnginePath();
+	priv::g_environmentDef.shadersPath		= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef.shadersPath);
+	priv::g_environmentDef.shadersCachePath	= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef.shadersCachePath);
+	priv::g_environmentDef.errorLogsPath	= engn::Paths::Combine(relativePathToEngine, priv::g_environmentDef.errorLogsPath);
 }
 
 Bool ShaderCompilationEnvironment::CanCompile()

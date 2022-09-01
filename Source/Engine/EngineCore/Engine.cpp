@@ -11,12 +11,7 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 	
 	engineInstance.m_cmdLineArgs.Parse(initializationParams.cmdLineArgsNum, initializationParams.cmdLineArgs);
 
-	engineInstance.m_relPathToEngineDirectory = engineInstance.m_cmdLineArgs.GetValue("EngineRelativePath").ToString();
-}
-
-const lib::String& Engine::GetRelPathToEngine()
-{
-	return GetInstance().m_relPathToEngineDirectory;
+	Paths::Initialize(engineInstance.m_cmdLineArgs);
 }
 
 Engine& Engine::GetInstance()
