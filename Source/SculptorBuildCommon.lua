@@ -305,6 +305,10 @@ function Project:AddLinkOption(option)
     linkoptions { option }
 end
 
+function Project:AddDebugArgument(arg)
+    debugargs { arg }
+end
+
 function Project:AreWarningsDisabled(configuration)
     disable = self.configurations[configuration]["disableWarnings"]
     return disable and disable == true
