@@ -35,6 +35,8 @@ public:
 	static VkDescriptorBindingFlags			GetBindingFlags(rhi::EDescriptorSetBindingFlags bindingFlags);
 
 	static VkDescriptorSetLayoutCreateFlags	GetDescriptorSetFlags(rhi::EDescriptorSetFlags dsFlags);
+
+	static VkShaderStageFlagBits			GetShaderStage(rhi::EShaderStage stage);
 };
 
 }

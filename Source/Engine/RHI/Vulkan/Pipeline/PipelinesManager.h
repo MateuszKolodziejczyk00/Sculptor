@@ -9,6 +9,22 @@
 namespace spt::vulkan
 {
 
+struct PipelineBuildDefinition
+{
+	PipelineBuildDefinition(const rhi::PipelineShaderStagesDefinition&	inShaderStagesDef,
+							const rhi::GraphicsPipelineDefinition&		inPipelineDefinition,
+							PipelineLayout								inLayout)
+		: shaderStagesDef(inShaderStagesDef)
+		, pipelineDefinition(inPipelineDefinition)
+		, layout(inLayout)
+	{ }
+	
+	const rhi::PipelineShaderStagesDefinition&	shaderStagesDef;
+	const rhi::GraphicsPipelineDefinition&		pipelineDefinition;
+	PipelineLayout								layout;
+};
+
+
 struct PipelineBuildData
 {
 	PipelineBuildData()
@@ -16,6 +32,14 @@ struct PipelineBuildData
 	{ }
 
 	PipelineID id;
+	lib::DynamicArray<VkPipelineShaderStageCreateInfo>	shaderStages;
+    VkPipelineInputAssemblyStateCreateInfo				inputAssemblyState;
+    VkPipelineRasterizationStateCreateInfo				rasterizationState;
+    VkPipelineMultisampleStateCreateInfo				multisampleState;
+    VkPipelineDepthStencilStateCreateInfo				depthStencilState;
+    VkPipelineColorBlendStateCreateInfo					colorBlendState;
+    lib::DynamicArray<VkDynamicState>					dynamicStates;
+    VkPipelineLayout									pipelineLayout;
 };
 
 
@@ -26,16 +50,16 @@ public:
 
 	static constexpr SizeType pipelinesBuildBatchMaxSize = 32;
 
-	using PipelineBuildDataRef = std::tuple<VkGraphicsPipelineCreateInfo&, PipelineBuildData&>;
+	using BatchedPipelineBuildRef = std::tuple<VkGraphicsPipelineCreateInfo&, PipelineBuildData&>;
 
 	PipelinesBuildsBatch();
 
-	SPT_NODISCARD Bool					HasPendingBuilds() const;
+	SPT_NODISCARD Bool	HasPendingBuilds() const;
 
-	SPT_NODISCARD Int32					AcquireNewBuildIdx();
+	SPT_NODISCARD Int32	AcquireNewBuildIdx();
 
-	SPT_NODISCARD PipelineBuildDataRef	GetPiplineCreateData(Int32 buildIdx);
-	SPT_NODISCARD PipelineID			GetPipelineID(Int32 buildIdx) const;
+	SPT_NODISCARD BatchedPipelineBuildRef	GetPiplineCreateData(Int32 buildIdx);
+	SPT_NODISCARD PipelineID				GetPipelineID(Int32 buildIdx) const;
 
 	void GetPipelineCreateInfos(const VkGraphicsPipelineCreateInfo*& outPipelineInfos, Uint32& outPipelinesNum) const;
 
@@ -60,7 +84,7 @@ public:
 	void InitializeRHI();
 	void ReleaseRHI();
 
-	SPT_NODISCARD PipelineID BuildPipelineDeferred(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, PipelineLayout layout);
+	SPT_NODISCARD PipelineID BuildPipelineDeferred(const PipelineBuildDefinition& pipelineBuildDef);
 
 	SPT_NODISCARD VkPipeline GetPipelineHandle(PipelineID id) const;
 

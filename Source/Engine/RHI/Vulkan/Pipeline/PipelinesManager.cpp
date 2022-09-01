@@ -1,8 +1,34 @@
 #include "PipelinesManager.h"
 #include "Vulkan/VulkanRHI.h"
+#include "Vulkan/RHIToVulkanCommon.h"
 
 namespace spt::vulkan
 {
+
+namespace priv
+{
+
+static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const lib::DynamicArray<RHIShaderModule>& shaderModules = pipelineBuildDef.shaderStagesDef.shaderModules;
+	std::transform(	std::cbegin(shaderModules), std::cend(shaderModules),
+					std::back_inserter(outShaderStageInfos),
+					[](const rhi::RHIShaderModule& shaderModule) -> VkPipelineShaderStageCreateInfo
+					{
+						SPT_CHECK(shaderModule.IsValid());
+
+						VkPipelineShaderStageCreateInfo stageInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+						stageInfo.stage = RHIToVulkan::GetShaderStage(shaderModule.GetStage());
+						stageInfo.module = shaderModule.GetHandle();
+						stageInfo.pName = "main";
+
+						return stageInfo;
+					});
+}
+
+} // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PipelinesBuildsBatch ==========================================================================
@@ -24,7 +50,7 @@ Int32 PipelinesBuildsBatch::AcquireNewBuildIdx()
 	return buildIdx < static_cast<Int32>(pipelinesBuildBatchMaxSize) ? buildIdx : idxNone<Int32>;
 }
 
-PipelinesBuildsBatch::PipelineBuildDataRef PipelinesBuildsBatch::GetPiplineCreateData(Int32 buildIdx)
+PipelinesBuildsBatch::BatchedPipelineBuildRef PipelinesBuildsBatch::GetPiplineCreateData(Int32 buildIdx)
 {
 	SPT_CHECK(buildIdx != idxNone<Int32>);
 
@@ -73,11 +99,22 @@ void PipelinesManager::ReleaseRHI()
 	m_cachedPipelines.clear();
 }
 
-PipelineID PipelinesManager::BuildPipelineDeferred(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, PipelineLayout layout)
+PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition& pipelineBuildDef)
 {
 	SPT_PROFILE_FUNCTION();
 
-	SPT_CHECK_NO_ENTRY();
+	const Int32 buildIdx = m_currentBuildsBatch.AcquireNewBuildIdx();
+	if (buildIdx == idxNone<Int32>)
+	{
+		// flush
+	}
+
+	PipelinesBuildsBatch::BatchedPipelineBuildRef batchedBuildRef	= m_currentBuildsBatch.GetPiplineCreateData(buildIdx);
+	PipelineBuildData& buildData									= std::get<PipelineBuildData&>(batchedBuildRef);
+	//VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
+
+	priv::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
+
 	return 0;
 }
 

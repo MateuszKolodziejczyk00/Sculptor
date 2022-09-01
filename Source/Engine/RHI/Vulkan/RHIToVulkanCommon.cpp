@@ -322,4 +322,20 @@ VkDescriptorSetLayoutCreateFlags RHIToVulkan::GetDescriptorSetFlags(rhi::EDescri
 	return vulkanFlags;
 }
 
+VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
+{
+	switch (stage)
+	{
+	case spt::rhi::EShaderStage::None:		return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	case spt::rhi::EShaderStage::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
+	case spt::rhi::EShaderStage::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
+	case spt::rhi::EShaderStage::Compute:	return VK_SHADER_STAGE_COMPUTE_BIT;
+		
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
 }
