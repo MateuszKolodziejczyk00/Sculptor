@@ -200,6 +200,26 @@ VkImageLayout RHIToVulkan::GetImageLayout(rhi::ETextureLayout layout)
 	return VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
+VkFormat RHIToVulkan::GetVulkanFormat(rhi::EFragmentFormat format)
+{
+    switch (format)
+    {
+    case rhi::EFragmentFormat::RGBA8_UN_Float:      return VK_FORMAT_R8G8B8A8_UNORM;
+    case rhi::EFragmentFormat::BGRA8_UN_Float:      return VK_FORMAT_B8G8R8A8_UNORM;
+
+    case rhi::EFragmentFormat::RGB8_UN_Float:       return VK_FORMAT_R8G8B8_UNORM;
+    case rhi::EFragmentFormat::BGR8_UN_Float:       return VK_FORMAT_B8G8R8_UNORM;
+
+    case rhi::EFragmentFormat::RGBA32_S_Float:      return VK_FORMAT_R32G32B32A32_SFLOAT;
+    case rhi::EFragmentFormat::D32_S_Float:         return VK_FORMAT_D32_SFLOAT;
+
+    default:
+
+        SPT_CHECK_NO_ENTRY();
+        return VK_FORMAT_UNDEFINED;
+    }
+}
+
 VkImageAspectFlags RHIToVulkan::GetAspectFlags(rhi::ETextureAspect flags)
 {
 	VkImageAspectFlags vulkanAspect = 0;

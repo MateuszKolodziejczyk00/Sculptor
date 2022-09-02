@@ -22,6 +22,8 @@ public:
 
 	static VkImageLayout					GetImageLayout(rhi::ETextureLayout layout);
 
+	static VkFormat							GetVulkanFormat(rhi::EFragmentFormat format);
+
 	static VkImageAspectFlags				GetAspectFlags(rhi::ETextureAspect flags);
 
 	static VkRenderingFlags					GetRenderingFlags(rhi::ERenderingFlags flags);

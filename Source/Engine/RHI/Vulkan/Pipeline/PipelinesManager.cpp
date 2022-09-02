@@ -1,6 +1,7 @@
 #include "PipelinesManager.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanUtils.h"
 
 namespace spt::vulkan
 {
@@ -31,57 +32,57 @@ static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, li
 					});
 }
 
-static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& inputAssemblyStateInfo)
+static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& outInputAssemblyStateInfo)
 {
 	SPT_PROFILE_FUNCTION();
 	
-	inputAssemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    inputAssemblyStateInfo.topology					= RHIToVulkan::GetPrimitiveTopology(pipelineBuildDef.pipelineDefinition.primitiveTopology);
-    inputAssemblyStateInfo.primitiveRestartEnable	= VK_FALSE;
+	outInputAssemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    outInputAssemblyStateInfo.topology					= RHIToVulkan::GetPrimitiveTopology(pipelineBuildDef.pipelineDefinition.primitiveTopology);
+    outInputAssemblyStateInfo.primitiveRestartEnable	= VK_FALSE;
 }
 
-static void BuildRasterizationStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& rasterizationState)
+static void BuildRasterizationStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& outRasterizationState)
 {
 	SPT_PROFILE_FUNCTION();
 
 	const rhi::PipelineRasterizationDefinition& rasterizationDefinition = pipelineBuildDef.pipelineDefinition.rasterizationDefinition;
 
-	rasterizationState = VkPipelineRasterizationStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rasterizationState.depthClampEnable			= VK_FALSE;
-    rasterizationState.rasterizerDiscardEnable	= VK_FALSE;
-	rasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
-	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
-    rasterizationState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
-    rasterizationState.lineWidth				= 1.f;
+	outRasterizationState = VkPipelineRasterizationStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    outRasterizationState.depthClampEnable			= VK_FALSE;
+    outRasterizationState.rasterizerDiscardEnable	= VK_FALSE;
+	outRasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
+	outRasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
+    outRasterizationState.frontFace					= VK_FRONT_FACE_CLOCKWISE;
+    outRasterizationState.lineWidth					= 1.f;
 }
 
-static void BuildMultisampleStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& multisampleState)
+static void BuildMultisampleStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& outMultisampleState)
 {
 	SPT_PROFILE_FUNCTION();
 
 	const rhi::MultisamplingDefinition& multisampleStateDefinition = pipelineBuildDef.pipelineDefinition.multisamplingDefinition;
 
-	multisampleState = VkPipelineMultisampleStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    multisampleState.rasterizationSamples = RHIToVulkan::GetSampleCount(multisampleStateDefinition.samplesNum);
+	outMultisampleState = VkPipelineMultisampleStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    outMultisampleState.rasterizationSamples = RHIToVulkan::GetSampleCount(multisampleStateDefinition.samplesNum);
 }
 
-static void BuildDepthStencilStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineDepthStencilStateCreateInfo& depthStencilState)
+static void BuildDepthStencilStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineDepthStencilStateCreateInfo& outDepthStencilState)
 {
 	SPT_CHECK_NO_ENTRY();
 
 	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
 	const rhi::DepthRenderTargetDefinition& depthRTDef = renderTargetsDefinition.depthRTDefinition;
 
-	depthStencilState = VkPipelineDepthStencilStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    depthStencilState.depthTestEnable = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
+	outDepthStencilState = VkPipelineDepthStencilStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    outDepthStencilState.depthTestEnable = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
 	if (depthRTDef.enableDepthWrite)
 	{
-		depthStencilState.depthWriteEnable	= VK_TRUE;
-		depthStencilState.depthCompareOp	= RHIToVulkan::GetCompareOp(depthRTDef.depthCompareOp);
+		outDepthStencilState.depthWriteEnable	= VK_TRUE;
+		outDepthStencilState.depthCompareOp		= RHIToVulkan::GetCompareOp(depthRTDef.depthCompareOp);
 	}
 	else
 	{
-		depthStencilState.depthWriteEnable = VK_FALSE;
+		outDepthStencilState.depthWriteEnable = VK_FALSE;
 	}
 }
 
@@ -108,17 +109,17 @@ static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFac
 	}
 }
 
-static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& blendAttachmentStates, VkPipelineColorBlendStateCreateInfo& colorBlendState)
+static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& outBlendAttachmentStates, VkPipelineColorBlendStateCreateInfo& outColorBlendState)
 {
-	SPT_CHECK_NO_ENTRY();
+	SPT_PROFILE_FUNCTION();
 
-	blendAttachmentStates.clear();
+	outBlendAttachmentStates.clear();
 
 	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
 	const lib::DynamicArray<rhi::ColorRenderTargetDefinition>& colorRTsDefinition = renderTargetsDefinition.colorRTsDefinition;
 
 	std::transform(std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
-		std::back_inserter(blendAttachmentStates),
+		std::back_inserter(outBlendAttachmentStates),
 		[](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
 		{
 			VkPipelineColorBlendAttachmentState attachmentBlendState{};
@@ -130,14 +131,81 @@ static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuil
 			return attachmentBlendState;
 		});
 
-	colorBlendState = VkPipelineColorBlendStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    colorBlendState.logicOpEnable		= VK_FALSE;
-    colorBlendState.attachmentCount		= static_cast<Uint32>(blendAttachmentStates.size());
-    colorBlendState.pAttachments		= blendAttachmentStates.data();
-	colorBlendState.blendConstants[0]	= 0.f;
-	colorBlendState.blendConstants[1]	= 0.f;
-	colorBlendState.blendConstants[2]	= 0.f;
-	colorBlendState.blendConstants[3]	= 0.f;
+	outColorBlendState = VkPipelineColorBlendStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    outColorBlendState.logicOpEnable		= VK_FALSE;
+    outColorBlendState.attachmentCount		= static_cast<Uint32>(outBlendAttachmentStates.size());
+    outColorBlendState.pAttachments			= outBlendAttachmentStates.data();
+	outColorBlendState.blendConstants[0]	= 0.f;
+	outColorBlendState.blendConstants[1]	= 0.f;
+	outColorBlendState.blendConstants[2]	= 0.f;
+	outColorBlendState.blendConstants[3]	= 0.f;
+}
+
+static void BuildDynamicStatesInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkDynamicState>& outDynamicStates, VkPipelineDynamicStateCreateInfo& outDynamicStateInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outDynamicStates.clear();
+
+	outDynamicStates.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
+	outDynamicStates.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	outDynamicStateInfo = VkPipelineDynamicStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    outDynamicStateInfo.dynamicStateCount	= static_cast<Uint32>(outDynamicStates.size());
+    outDynamicStateInfo.pDynamicStates		= outDynamicStates.data();
+}
+
+static void BuildPipelineRenderingInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkFormat>& outColorRTFormats, VkPipelineRenderingCreateInfo& outPipelineRenderingInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outColorRTFormats.clear();
+
+	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
+	const lib::DynamicArray<rhi::ColorRenderTargetDefinition>& colorRTsDefinition = renderTargetsDefinition.colorRTsDefinition;
+
+	std::transform(	std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
+					std::back_inserter(outColorRTFormats),
+					[](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
+					{
+						return RHIToVulkan::GetVulkanFormat(colorRTDefinition.format);
+					});
+
+	const VkFormat depthRTFormat	= RHIToVulkan::GetVulkanFormat(renderTargetsDefinition.depthRTDefinition.format);
+	const VkFormat stencilRTFormat	= RHIToVulkan::GetVulkanFormat(renderTargetsDefinition.stencilRTDefinition.format);
+
+	outPipelineRenderingInfo = VkPipelineRenderingCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    outPipelineRenderingInfo.colorAttachmentCount		= static_cast<Uint32>(outColorRTFormats.size());
+    outPipelineRenderingInfo.pColorAttachmentFormats	= outColorRTFormats.data();
+    outPipelineRenderingInfo.depthAttachmentFormat		= depthRTFormat;
+    outPipelineRenderingInfo.stencilAttachmentFormat	= stencilRTFormat;
+}
+
+static void BuildGraphicsPipelineInfo(const PipelineBuildData& buildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outPipelineInfo = VkGraphicsPipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    outPipelineInfo.flags				= 0;
+    outPipelineInfo.stageCount			= static_cast<Uint32>(buildData.shaderStages.size());
+    outPipelineInfo.pStages				= buildData.shaderStages.data();
+    outPipelineInfo.pVertexInputState	= nullptr; // don't use standard vertex input
+    outPipelineInfo.pInputAssemblyState	= &buildData.inputAssemblyStateInfo;
+    outPipelineInfo.pTessellationState	= nullptr;
+    outPipelineInfo.pViewportState		= nullptr; // we use dynamic viewports
+    outPipelineInfo.pRasterizationState	= &buildData.rasterizationStateInfo;
+    outPipelineInfo.pMultisampleState	= &buildData.multisampleStateInfo;
+    outPipelineInfo.pDepthStencilState	= &buildData.depthStencilStateInfo;
+    outPipelineInfo.pColorBlendState	= &buildData.colorBlendStateInfo;
+    outPipelineInfo.pDynamicState		= &buildData.dynamicStateInfo;
+    outPipelineInfo.layout				= buildData.pipelineLayout;
+    outPipelineInfo.renderPass			= VK_NULL_HANDLE; // we use dynamic rendering, so render pass doesn't have to be specified
+	outPipelineInfo.subpass				= 0;
+    outPipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
+    outPipelineInfo.basePipelineIndex	= 0;
+
+	VulkanStructsLinkedList piplineInfoLinkedList(outPipelineInfo);
+	piplineInfoLinkedList.Append(buildData.pipelineRenderingInfo);
 }
 
 } // helpers
@@ -223,14 +291,22 @@ PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition
 
 	PipelinesBuildsBatch::BatchedPipelineBuildRef batchedBuildRef	= m_currentBuildsBatch.GetPiplineCreateData(buildIdx);
 	PipelineBuildData& buildData									= std::get<PipelineBuildData&>(batchedBuildRef);
-	//VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
+	VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
 
+	PipelineID pipelineID = 0; // TODO
+
+	buildData.id = pipelineID;
 	helpers::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
-	helpers::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyState);
-	helpers::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationState);
-	helpers::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleState);
-	helpers::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilState);
-	helpers::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendState);
+	helpers::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyStateInfo);
+	helpers::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationStateInfo);
+	helpers::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleStateInfo);
+	helpers::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilStateInfo);
+	helpers::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendStateInfo);
+	helpers::BuildDynamicStatesInfo(pipelineBuildDef, buildData.dynamicStates, buildData.dynamicStateInfo);
+	helpers::BuildPipelineRenderingInfo(pipelineBuildDef, buildData.colorRTFormats, buildData.pipelineRenderingInfo);
+	buildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
+
+	helpers::BuildGraphicsPipelineInfo(buildData, pipelineInfo);
 
 	return 0;
 }

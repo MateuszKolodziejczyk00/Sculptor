@@ -2,6 +2,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Memory/MemoryManager.h"
 #include "Vulkan/LayoutsManager.h"
+#include "Vulkan/RHIToVulkanCommon.h"
 
 
 namespace spt::vulkan
@@ -26,26 +27,6 @@ VkImageType SelectVulkanImageType(const rhi::TextureDefinition& definition)
     else
     {
         return VK_IMAGE_TYPE_1D;
-    }
-}
-
-VkFormat GetVulkanFormat(rhi::EFragmentFormat format)
-{
-    switch (format)
-    {
-    case rhi::EFragmentFormat::RGBA8_UN_Float:      return VK_FORMAT_R8G8B8A8_UNORM;
-    case rhi::EFragmentFormat::BGRA8_UN_Float:      return VK_FORMAT_B8G8R8A8_UNORM;
-
-    case rhi::EFragmentFormat::RGB8_UN_Float:       return VK_FORMAT_R8G8B8_UNORM;
-    case rhi::EFragmentFormat::BGR8_UN_Float:       return VK_FORMAT_B8G8R8_UNORM;
-
-    case rhi::EFragmentFormat::RGBA32_S_Float:      return VK_FORMAT_R32G32B32A32_SFLOAT;
-    case rhi::EFragmentFormat::D32_S_Float:         return VK_FORMAT_D32_SFLOAT;
-
-    default:
-
-        SPT_CHECK_NO_ENTRY();
-        return VK_FORMAT_UNDEFINED;
     }
 }
 
@@ -271,7 +252,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
     imageInfo.flags             = 0;
     imageInfo.imageType         = priv::SelectVulkanImageType(definition);
-    imageInfo.format            = priv::GetVulkanFormat(definition.format);
+    imageInfo.format            = RHIToVulkan::GetVulkanFormat(definition.format);
     imageInfo.extent            = { definition.resolution.x(), definition.resolution.y(), definition.resolution.z() };
     imageInfo.mipLevels         = definition.mipLevels;
     imageInfo.arrayLayers       = definition.arrayLayers;
@@ -340,7 +321,7 @@ VkImageUsageFlags RHITexture::GetVulkanTextureUsageFlags(rhi::ETextureUsage usag
 
 VkFormat RHITexture::GetVulkanFormat(rhi::EFragmentFormat format)
 {
-    return priv::GetVulkanFormat(format);
+    return RHIToVulkan::GetVulkanFormat(format);
 }
 
 rhi::ETextureUsage RHITexture::GetRHITextureUsageFlags(VkImageUsageFlags usageFlags)
@@ -382,7 +363,7 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
     viewInfo.flags      = 0;
     viewInfo.image      = texture.GetHandle();
     viewInfo.viewType   = priv::GetVulkanViewType(viewDefinition.viewType, viewDefinition.subresourceRange, textureDef);
-    viewInfo.format     = priv::GetVulkanFormat(textureDef.format);
+    viewInfo.format     = RHIToVulkan::GetVulkanFormat(textureDef.format);
 
     viewInfo.components.r = priv::GetVulkanComponentMapping(viewDefinition.componentMappings.r);
     viewInfo.components.g = priv::GetVulkanComponentMapping(viewDefinition.componentMappings.g);
