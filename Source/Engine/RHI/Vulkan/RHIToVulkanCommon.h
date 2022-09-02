@@ -6,6 +6,7 @@
 #include "RHICore/RHIPipelineTypes.h"
 #include "RHICore/RHIPipelineLayoutTypes.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
+#include "RHICore/RHIGraphicsPipelineTypes.h"
 
 
 namespace spt::vulkan
@@ -37,6 +38,18 @@ public:
 	static VkDescriptorSetLayoutCreateFlags	GetDescriptorSetFlags(rhi::EDescriptorSetFlags dsFlags);
 
 	static VkShaderStageFlagBits			GetShaderStage(rhi::EShaderStage stage);
+
+	static VkPrimitiveTopology				GetPrimitiveTopology(rhi::EPrimitiveTopology topology);
+
+	static VkCullModeFlags					GetCullMode(rhi::ECullMode cullMode);
+
+	static VkPolygonMode					GetPolygonMode(rhi::EPolygonMode polygonMode);
+
+	static VkSampleCountFlagBits			GetSampleCount(Uint32 samplesNum);
+
+	static VkCompareOp						GetCompareOp(rhi::EDepthCompareOperation compareOperation);
+
+	static VkColorComponentFlags			GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
 };
 
-}
+} // rhi::vulkan

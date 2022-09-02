@@ -20,8 +20,8 @@ struct PipelineShaderStagesDefinition
 
 enum class EPrimitiveTopology
 {
-	Point,
-	Line,
+	PointList,
+	LineList,
 	LineStrip,
 	TriangleList,
 	TriangleStrip,
@@ -41,7 +41,7 @@ enum class ECullMode
 	Back,
 	Front,
 	BackAndFront,
-	None,
+	None
 };
 
 
@@ -81,22 +81,38 @@ enum class EDepthCompareOperation
 };
 
 
-enum class EColorBlendType
+enum class ERenderTargetBlendType
 {
 	Copy,
 	Add
 };
 
 
+enum class ERenderTargetComponentFlags
+{
+	R = BIT(0),
+	G = BIT(1),
+	B = BIT(2),
+	A = BIT(3),
+
+	None	= 0,
+	All		= R | G | B | A
+};
+
+
 struct ColorRenderTargetDefinition
 {
-	explicit ColorRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EColorBlendType inBlendType = EColorBlendType::Copy)
+	explicit ColorRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, ERenderTargetBlendType inBlendType = ERenderTargetBlendType::Copy, ERenderTargetComponentFlags inWriteMask = ERenderTargetComponentFlags::All)
 		: format(inFormat)
-		, blendMode(inBlendType)
+		, colorBlendType(inBlendType)
+		, alphaBlendType(inBlendType)
+		, colorWriteMask(inWriteMask)
 	{ }
 
-	EFragmentFormat			format;
-	EColorBlendType			blendMode;
+	EFragmentFormat				format;
+	ERenderTargetBlendType		colorBlendType;
+	ERenderTargetBlendType		alphaBlendType;
+	ERenderTargetComponentFlags	colorWriteMask;
 };
 
 
@@ -129,9 +145,9 @@ struct PipelineRenderTargetsDefinition
 	PipelineRenderTargetsDefinition()
 	{ }
 
-	lib::DynamicArray<ColorRenderTargetDefinition>	colorRTsFormat;
-	DepthRenderTargetDefinition						depthRTFormat;
-	StencilRenderTargetDefinition					stencilRTFormat;
+	lib::DynamicArray<ColorRenderTargetDefinition>	colorRTsDefinition;
+	DepthRenderTargetDefinition						depthRTDefinition;
+	StencilRenderTargetDefinition					stencilRTDefinition;
 };
 
 
@@ -142,8 +158,8 @@ struct GraphicsPipelineDefinition
 	{ }
 
 	EPrimitiveTopology					primitiveTopology;
-	PipelineRasterizationDefinition		RasterizationDefinition;
-	MultisamplingDefinition				MultisamplingDefinition;
+	PipelineRasterizationDefinition		rasterizationDefinition;
+	MultisamplingDefinition				multisamplingDefinition;
 	PipelineRenderTargetsDefinition		renderTargetsDefinition;
 };
 

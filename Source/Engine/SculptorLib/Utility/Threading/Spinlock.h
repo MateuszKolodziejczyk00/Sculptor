@@ -52,7 +52,7 @@ public:
 
 	SPT_NODISCARD Bool TryLock()
 	{
-		const Bool wasLocked = m_locked.exchange(true, std::memory_order_acq_rel);
+		const Bool wasLocked = m_locked.exchange(true, std::memory_order_acquire);
 		return !wasLocked;
 	}
 

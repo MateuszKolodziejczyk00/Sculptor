@@ -32,14 +32,15 @@ struct PipelineBuildData
 	{ }
 
 	PipelineID id;
-	lib::DynamicArray<VkPipelineShaderStageCreateInfo>	shaderStages;
-    VkPipelineInputAssemblyStateCreateInfo				inputAssemblyState;
-    VkPipelineRasterizationStateCreateInfo				rasterizationState;
-    VkPipelineMultisampleStateCreateInfo				multisampleState;
-    VkPipelineDepthStencilStateCreateInfo				depthStencilState;
-    VkPipelineColorBlendStateCreateInfo					colorBlendState;
-    lib::DynamicArray<VkDynamicState>					dynamicStates;
-    VkPipelineLayout									pipelineLayout;
+	lib::DynamicArray<VkPipelineShaderStageCreateInfo>		shaderStages;
+    VkPipelineInputAssemblyStateCreateInfo					inputAssemblyState;
+    VkPipelineRasterizationStateCreateInfo					rasterizationState;
+    VkPipelineMultisampleStateCreateInfo					multisampleState;
+    VkPipelineDepthStencilStateCreateInfo					depthStencilState;
+	lib::DynamicArray<VkPipelineColorBlendAttachmentState>	blendAttachmentStates;
+    VkPipelineColorBlendStateCreateInfo						colorBlendState;
+    lib::DynamicArray<VkDynamicState>						dynamicStates;
+    VkPipelineLayout										pipelineLayout;
 };
 
 

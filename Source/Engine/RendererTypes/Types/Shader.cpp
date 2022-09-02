@@ -53,7 +53,7 @@ Shader::~Shader()
 	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
 	[resources = std::move(m_shaderModules)]() mutable
 	{
-		std::for_each(std::begin(resources), std::end(resources), std::mem_fn(&rhi::RHIShaderModule::ReleaseRHI));
+		std::for_each(std::begin(resources), std::end(resources), [](rhi::RHIShaderModule& shaderModule) { shaderModule.ReleaseRHI(); });
 	});
 }
 

@@ -338,4 +338,115 @@ VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
 	}
 }
 
+VkPrimitiveTopology RHIToVulkan::GetPrimitiveTopology(rhi::EPrimitiveTopology topology)
+{
+	switch (topology)
+	{
+	case rhi::EPrimitiveTopology::PointList:		return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	case rhi::EPrimitiveTopology::LineList:			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	case rhi::EPrimitiveTopology::LineStrip:		return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+	case rhi::EPrimitiveTopology::TriangleList:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	case rhi::EPrimitiveTopology::TriangleStrip:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	case rhi::EPrimitiveTopology::TriangleFan:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+	}
 }
+
+VkCullModeFlags RHIToVulkan::GetCullMode(rhi::ECullMode cullMode)
+{
+	switch (cullMode)
+	{
+	case rhi::ECullMode::Back:			return VK_CULL_MODE_BACK_BIT;
+	case rhi::ECullMode::Front:			return VK_CULL_MODE_FRONT_BIT;
+	case rhi::ECullMode::BackAndFront:	return VK_CULL_MODE_FRONT_AND_BACK;
+	case rhi::ECullMode::None:			return VK_CULL_MODE_NONE;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+VkPolygonMode RHIToVulkan::GetPolygonMode(rhi::EPolygonMode polygonMode)
+{
+	switch (polygonMode)
+	{
+	case rhi::EPolygonMode::Fill:			return VK_POLYGON_MODE_FILL;
+	case rhi::EPolygonMode::Wireframe:		return VK_POLYGON_MODE_LINE;
+		
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_POLYGON_MODE_MAX_ENUM;
+	}
+}
+
+VkSampleCountFlagBits RHIToVulkan::GetSampleCount(Uint32 samplesNum)
+{
+	switch (samplesNum)
+	{
+	case 1:		return VK_SAMPLE_COUNT_1_BIT;
+	case 2:		return VK_SAMPLE_COUNT_2_BIT;
+	case 4:		return VK_SAMPLE_COUNT_4_BIT;
+	case 8:		return VK_SAMPLE_COUNT_8_BIT;
+	case 16:	return VK_SAMPLE_COUNT_16_BIT;
+	case 32:	return VK_SAMPLE_COUNT_32_BIT;
+	case 64:	return VK_SAMPLE_COUNT_64_BIT;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+	}
+}
+
+VkCompareOp RHIToVulkan::GetCompareOp(rhi::EDepthCompareOperation compareOperation)
+{
+	switch (compareOperation)
+	{
+	case rhi::EDepthCompareOperation::Less:					return VK_COMPARE_OP_LESS;
+	case rhi::EDepthCompareOperation::LessOrEqual:			return VK_COMPARE_OP_LESS_OR_EQUAL;
+	case rhi::EDepthCompareOperation::Greater:				return VK_COMPARE_OP_GREATER;
+	case rhi::EDepthCompareOperation::GreaterOrEqual:		return VK_COMPARE_OP_GREATER_OR_EQUAL;
+	case rhi::EDepthCompareOperation::Equal:				return VK_COMPARE_OP_EQUAL;
+	case rhi::EDepthCompareOperation::NotEqual:				return VK_COMPARE_OP_NOT_EQUAL;
+	case rhi::EDepthCompareOperation::Always:				return VK_COMPARE_OP_ALWAYS;
+	case rhi::EDepthCompareOperation::Never:				return VK_COMPARE_OP_NEVER;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_COMPARE_OP_MAX_ENUM;
+	}
+}
+
+VkColorComponentFlags RHIToVulkan::GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags)
+{
+	VkColorComponentFlags flags = 0;
+
+	if (lib::HasAnyFlag(componentFlags, rhi::ERenderTargetComponentFlags::R))
+	{
+		lib::AddFlag(flags, VK_COLOR_COMPONENT_R_BIT);
+	}
+	if (lib::HasAnyFlag(componentFlags, rhi::ERenderTargetComponentFlags::G))
+	{
+		lib::AddFlag(flags, VK_COLOR_COMPONENT_G_BIT);
+	}
+	if (lib::HasAnyFlag(componentFlags, rhi::ERenderTargetComponentFlags::B))
+	{
+		lib::AddFlag(flags, VK_COLOR_COMPONENT_B_BIT);
+	}
+	if (lib::HasAnyFlag(componentFlags, rhi::ERenderTargetComponentFlags::A))
+	{
+		lib::AddFlag(flags, VK_COLOR_COMPONENT_A_BIT);
+	}
+
+	return flags;
+}
+
+} // rhi::vulkan

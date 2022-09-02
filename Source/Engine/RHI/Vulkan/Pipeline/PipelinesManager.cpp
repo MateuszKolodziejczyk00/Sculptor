@@ -5,14 +5,17 @@
 namespace spt::vulkan
 {
 
-namespace priv
+namespace helpers
 {
 
 static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
 {
 	SPT_PROFILE_FUNCTION();
 
+	outShaderStageInfos.clear();
+
 	const lib::DynamicArray<RHIShaderModule>& shaderModules = pipelineBuildDef.shaderStagesDef.shaderModules;
+
 	std::transform(	std::cbegin(shaderModules), std::cend(shaderModules),
 					std::back_inserter(outShaderStageInfos),
 					[](const rhi::RHIShaderModule& shaderModule) -> VkPipelineShaderStageCreateInfo
@@ -28,7 +31,116 @@ static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, li
 					});
 }
 
-} // priv
+static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& inputAssemblyStateInfo)
+{
+	SPT_PROFILE_FUNCTION();
+	
+	inputAssemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    inputAssemblyStateInfo.topology					= RHIToVulkan::GetPrimitiveTopology(pipelineBuildDef.pipelineDefinition.primitiveTopology);
+    inputAssemblyStateInfo.primitiveRestartEnable	= VK_FALSE;
+}
+
+static void BuildRasterizationStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& rasterizationState)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const rhi::PipelineRasterizationDefinition& rasterizationDefinition = pipelineBuildDef.pipelineDefinition.rasterizationDefinition;
+
+	rasterizationState = VkPipelineRasterizationStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rasterizationState.depthClampEnable			= VK_FALSE;
+    rasterizationState.rasterizerDiscardEnable	= VK_FALSE;
+	rasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
+	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
+    rasterizationState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+    rasterizationState.lineWidth				= 1.f;
+}
+
+static void BuildMultisampleStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& multisampleState)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const rhi::MultisamplingDefinition& multisampleStateDefinition = pipelineBuildDef.pipelineDefinition.multisamplingDefinition;
+
+	multisampleState = VkPipelineMultisampleStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    multisampleState.rasterizationSamples = RHIToVulkan::GetSampleCount(multisampleStateDefinition.samplesNum);
+}
+
+static void BuildDepthStencilStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineDepthStencilStateCreateInfo& depthStencilState)
+{
+	SPT_CHECK_NO_ENTRY();
+
+	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
+	const rhi::DepthRenderTargetDefinition& depthRTDef = renderTargetsDefinition.depthRTDefinition;
+
+	depthStencilState = VkPipelineDepthStencilStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    depthStencilState.depthTestEnable = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
+	if (depthRTDef.enableDepthWrite)
+	{
+		depthStencilState.depthWriteEnable	= VK_TRUE;
+		depthStencilState.depthCompareOp	= RHIToVulkan::GetCompareOp(depthRTDef.depthCompareOp);
+	}
+	else
+	{
+		depthStencilState.depthWriteEnable = VK_FALSE;
+	}
+}
+
+static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFactor& outSrcBlendFactor, VkBlendFactor& outDstBlendFactor, VkBlendOp& outBlendOp)
+{
+	switch (blendType)
+	{
+	case rhi::ERenderTargetBlendType::Copy:
+		outSrcBlendFactor = VK_BLEND_FACTOR_ONE;
+		outDstBlendFactor = VK_BLEND_FACTOR_ZERO;
+		outBlendOp = VK_BLEND_OP_ADD;
+		break;
+	
+	case rhi::ERenderTargetBlendType::Add:
+		outSrcBlendFactor = VK_BLEND_FACTOR_ONE;
+		outDstBlendFactor = VK_BLEND_FACTOR_ONE;
+		outBlendOp = VK_BLEND_OP_ADD;
+		break;
+	
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		break;
+	}
+}
+
+static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& blendAttachmentStates, VkPipelineColorBlendStateCreateInfo& colorBlendState)
+{
+	SPT_CHECK_NO_ENTRY();
+
+	blendAttachmentStates.clear();
+
+	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
+	const lib::DynamicArray<rhi::ColorRenderTargetDefinition>& colorRTsDefinition = renderTargetsDefinition.colorRTsDefinition;
+
+	std::transform(std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
+		std::back_inserter(blendAttachmentStates),
+		[](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
+		{
+			VkPipelineColorBlendAttachmentState attachmentBlendState{};
+			attachmentBlendState.blendEnable = VK_TRUE;
+			SetVulkanBlendType(colorRTDefinition.colorBlendType, attachmentBlendState.srcColorBlendFactor, attachmentBlendState.dstColorBlendFactor, attachmentBlendState.colorBlendOp);
+			SetVulkanBlendType(colorRTDefinition.alphaBlendType, attachmentBlendState.srcAlphaBlendFactor, attachmentBlendState.dstAlphaBlendFactor, attachmentBlendState.alphaBlendOp);
+			attachmentBlendState.colorWriteMask = RHIToVulkan::GetColorComponentFlags(colorRTDefinition.colorWriteMask);;
+
+			return attachmentBlendState;
+		});
+
+	colorBlendState = VkPipelineColorBlendStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    colorBlendState.logicOpEnable		= VK_FALSE;
+    colorBlendState.attachmentCount		= static_cast<Uint32>(blendAttachmentStates.size());
+    colorBlendState.pAttachments		= blendAttachmentStates.data();
+	colorBlendState.blendConstants[0]	= 0.f;
+	colorBlendState.blendConstants[1]	= 0.f;
+	colorBlendState.blendConstants[2]	= 0.f;
+	colorBlendState.blendConstants[3]	= 0.f;
+}
+
+} // helpers
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PipelinesBuildsBatch ==========================================================================
@@ -113,7 +225,12 @@ PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition
 	PipelineBuildData& buildData									= std::get<PipelineBuildData&>(batchedBuildRef);
 	//VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
 
-	priv::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
+	helpers::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
+	helpers::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyState);
+	helpers::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationState);
+	helpers::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleState);
+	helpers::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilState);
+	helpers::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendState);
 
 	return 0;
 }
