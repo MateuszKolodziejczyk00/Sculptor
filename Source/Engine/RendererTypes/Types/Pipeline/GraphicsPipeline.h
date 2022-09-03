@@ -4,7 +4,7 @@
 #include "RendererResource.h"
 #include "RHIBridge/RHIPipelineImpl.h"
 #include "RendererUtils.h"
-#include "RHICore/RHIGraphicsPipelineTypes.h"
+#include "RHICore/RHIPipelineDefinitionTypes.h"
 
 
 namespace spt::renderer

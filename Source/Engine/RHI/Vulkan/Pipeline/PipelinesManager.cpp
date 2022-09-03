@@ -9,6 +9,21 @@ namespace spt::vulkan
 namespace helpers
 {
 
+static VkPipelineShaderStageCreateInfo BuildPipelineShaderStageInfo(const rhi::RHIShaderModule& shaderModule)
+{
+	SPT_CHECK(shaderModule.IsValid());
+
+	VkPipelineShaderStageCreateInfo stageInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+	stageInfo.stage = RHIToVulkan::GetShaderStage(shaderModule.GetStage());
+	stageInfo.module = shaderModule.GetHandle();
+	stageInfo.pName = "main";
+
+	return stageInfo;
+}
+
+namespace gfx
+{
+
 static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
 {
 	SPT_PROFILE_FUNCTION();
@@ -19,17 +34,7 @@ static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, li
 
 	std::transform(	std::cbegin(shaderModules), std::cend(shaderModules),
 					std::back_inserter(outShaderStageInfos),
-					[](const rhi::RHIShaderModule& shaderModule) -> VkPipelineShaderStageCreateInfo
-					{
-						SPT_CHECK(shaderModule.IsValid());
-
-						VkPipelineShaderStageCreateInfo stageInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-						stageInfo.stage = RHIToVulkan::GetShaderStage(shaderModule.GetStage());
-						stageInfo.module = shaderModule.GetHandle();
-						stageInfo.pName = "main";
-
-						return stageInfo;
-					});
+					&BuildPipelineShaderStageInfo);
 }
 
 static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& outInputAssemblyStateInfo)
@@ -181,7 +186,7 @@ static void BuildPipelineRenderingInfo(const PipelineBuildDefinition& pipelineBu
     outPipelineRenderingInfo.stencilAttachmentFormat	= stencilRTFormat;
 }
 
-static void BuildGraphicsPipelineInfo(const PipelineBuildData& buildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
+static void BuildGraphicsPipelineInfo(const GraphicsPipelineBuildData& buildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -207,6 +212,26 @@ static void BuildGraphicsPipelineInfo(const PipelineBuildData& buildData, VkGrap
 	VulkanStructsLinkedList piplineInfoLinkedList(outPipelineInfo);
 	piplineInfoLinkedList.Append(buildData.pipelineRenderingInfo);
 }
+
+} // gfx
+
+namespace compute
+{
+
+/*
+static void BuildComputePipelineInfo(const ComputePipelineBuildData& buildData, VkComputePipelineCreateInfo& outPipelineInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outPipelineInfo = VkComputePipelineCreateInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    //outPipelineInfo.stage				= &buildData.shaderStageInfo;
+    outPipelineInfo.layout				= buildData.pipelineLayout;
+    outPipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
+    outPipelineInfo.basePipelineIndex	= 0;
+}
+*/
+
+} // compute
 
 } // helpers
 
@@ -241,7 +266,7 @@ PipelineID PipelinesBuildsBatch::GetPipelineID(Int32 buildIdx) const
 {
 	SPT_CHECK(buildIdx != idxNone<Int32>);
 
-	return m_pipelineBuildDatas[buildIdx].id;
+	return m_pipelineBuildDatas[buildIdx].pipelineID;
 }
 
 Bool PipelinesBuildsBatch::ShouldFlushPipelineBuilds(Int32 buildIdx) const
@@ -355,21 +380,21 @@ void PipelinesManager::BuildPipelineCreateData(const PipelineBuildDefinition& pi
 	SPT_PROFILE_FUNCTION();
 
 	PipelinesBuildsBatch::BatchedPipelineBuildRef batchedBuildRef	= m_currentBuildsBatch.GetPiplineCreateData(buildIdx);
-	PipelineBuildData& buildData									= std::get<PipelineBuildData&>(batchedBuildRef);
+	GraphicsPipelineBuildData& buildData									= std::get<GraphicsPipelineBuildData&>(batchedBuildRef);
 	VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
 
-	buildData.id = pipelineID;
-	helpers::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
-	helpers::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyStateInfo);
-	helpers::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationStateInfo);
-	helpers::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleStateInfo);
-	helpers::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilStateInfo);
-	helpers::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendStateInfo);
-	helpers::BuildDynamicStatesInfo(pipelineBuildDef, buildData.dynamicStates, buildData.dynamicStateInfo);
-	helpers::BuildPipelineRenderingInfo(pipelineBuildDef, buildData.colorRTFormats, buildData.pipelineRenderingInfo);
+	buildData.pipelineID = pipelineID;
+	helpers::gfx::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
+	helpers::gfx::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyStateInfo);
+	helpers::gfx::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationStateInfo);
+	helpers::gfx::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleStateInfo);
+	helpers::gfx::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilStateInfo);
+	helpers::gfx::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendStateInfo);
+	helpers::gfx::BuildDynamicStatesInfo(pipelineBuildDef, buildData.dynamicStates, buildData.dynamicStateInfo);
+	helpers::gfx::BuildPipelineRenderingInfo(pipelineBuildDef, buildData.colorRTFormats, buildData.pipelineRenderingInfo);
 	buildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
 
-	helpers::BuildGraphicsPipelineInfo(buildData, pipelineInfo);
+	helpers::gfx::BuildGraphicsPipelineInfo(buildData, pipelineInfo);
 }
 
 Bool PipelinesManager::ShouldFlushPipelineBuilds(Int32 buildIdx) const

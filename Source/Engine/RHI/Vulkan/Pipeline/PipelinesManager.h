@@ -3,7 +3,7 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "PipelineLayout.h"
-#include "RHICore/RHIGraphicsPipelineTypes.h"
+#include "RHICore/RHIPipelineDefinitionTypes.h"
 
 
 namespace spt::vulkan
@@ -25,13 +25,13 @@ struct PipelineBuildDefinition
 };
 
 
-struct PipelineBuildData
+struct GraphicsPipelineBuildData
 {
-	PipelineBuildData()
-		: id(idxNone<PipelineID>)
+	GraphicsPipelineBuildData()
+		: pipelineID(idxNone<PipelineID>)
 	{ }
 
-	PipelineID id;
+	PipelineID												pipelineID;
 	
 	lib::DynamicArray<VkPipelineShaderStageCreateInfo>		shaderStages;
     
@@ -56,6 +56,18 @@ struct PipelineBuildData
 };
 
 
+struct ComputePipelineBuildData
+{
+	ComputePipelineBuildData()
+		: pipelineID(idxNone<PipelineID>)
+	{ }
+
+	PipelineID							pipelineID;
+    
+	VkPipelineLayout					pipelineLayout;
+};
+
+
 struct PipelinesBuildsBatch
 {
 
@@ -63,7 +75,7 @@ public:
 
 	static constexpr SizeType pipelinesBuildBatchMaxSize = 32;
 
-	using BatchedPipelineBuildRef = std::tuple<VkGraphicsPipelineCreateInfo&, PipelineBuildData&>;
+	using BatchedPipelineBuildRef = std::tuple<VkGraphicsPipelineCreateInfo&, GraphicsPipelineBuildData&>;
 
 	PipelinesBuildsBatch();
 
@@ -82,7 +94,7 @@ public:
 private:
 
 	using PipelineCreateInfos	= lib::StaticArray<VkGraphicsPipelineCreateInfo, pipelinesBuildBatchMaxSize>;
-	using PipelineBuildDatas	= lib::StaticArray<PipelineBuildData, pipelinesBuildBatchMaxSize>;
+	using PipelineBuildDatas	= lib::StaticArray<GraphicsPipelineBuildData, pipelinesBuildBatchMaxSize>;
 	
 	PipelineCreateInfos	m_pipelineCreateInfos;
 	PipelineBuildDatas	m_pipelineBuildDatas;

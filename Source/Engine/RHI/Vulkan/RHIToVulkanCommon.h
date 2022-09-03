@@ -6,7 +6,7 @@
 #include "RHICore/RHIPipelineTypes.h"
 #include "RHICore/RHIPipelineLayoutTypes.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
-#include "RHICore/RHIGraphicsPipelineTypes.h"
+#include "RHICore/RHIPipelineDefinitionTypes.h"
 
 
 namespace spt::vulkan

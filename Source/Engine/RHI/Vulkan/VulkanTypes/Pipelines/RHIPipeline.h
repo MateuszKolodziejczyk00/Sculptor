@@ -3,7 +3,7 @@
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIPipelineTypes.h"
-#include "RHICore/RHIGraphicsPipelineTypes.h"
+#include "RHICore/RHIPipelineDefinitionTypes.h"
 #include "Vulkan/Pipeline/PipelineLayout.h"
 #include "Vulkan/Debug/DebugUtils.h"
 
