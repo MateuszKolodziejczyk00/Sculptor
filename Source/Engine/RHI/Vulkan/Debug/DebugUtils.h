@@ -26,7 +26,13 @@ public:
 	DebugName();
 
 	void						Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType);
+
+	void						SetWithoutObject(const lib::HashedString& name);
+	void						SetToObject(Uint64 object, VkObjectType objectType) const;
+
 	const lib::HashedString&	Get() const;
+
+	Bool						HasName() const;
 
 	void						Reset();
 

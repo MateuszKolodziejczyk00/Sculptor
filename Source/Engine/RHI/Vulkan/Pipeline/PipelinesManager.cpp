@@ -21,6 +21,15 @@ static VkPipelineShaderStageCreateInfo BuildPipelineShaderStageInfo(const rhi::R
 	return stageInfo;
 }
 
+static SPT_INLINE void ReleasePipelineResource(VkPipeline pipelineHandle)
+{
+	SPT_PROFILE_FUNCTION();
+
+	SPT_CHECK(pipelineHandle != VK_NULL_HANDLE);
+
+	vkDestroyPipeline(VulkanRHI::GetDeviceHandle(), pipelineHandle, VulkanRHI::GetAllocationCallbacks());
+}
+
 namespace gfx
 {
 
@@ -312,7 +321,7 @@ void PipelinesManager::ReleaseRHI()
 		{
 			const VkPipeline pipeline = idToPipeline.second;
 			SPT_CHECK(pipeline != VK_NULL_HANDLE);
-			vkDestroyPipeline(VulkanRHI::GetDeviceHandle(), pipeline, VulkanRHI::GetAllocationCallbacks());
+			helpers::ReleasePipelineResource(pipeline);
 		});
 
 	m_cachedPipelines.clear();
@@ -376,6 +385,17 @@ void PipelinesManager::FlushPendingComputePipelines()
 	SPT_PROFILE_FUNCTION();
 
 	m_computePipelineBuildsBatcher.BuildPipelines(&helpers::compute::BuildComputePipelines);
+}
+
+void PipelinesManager::ReleasePipeline(PipelineID pipelineID)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const auto foundPipeline = m_cachedPipelines.find(pipelineID);
+	if (foundPipeline != std::cend(m_cachedPipelines))
+	{
+		helpers::ReleasePipelineResource(foundPipeline->second);
+	}
 }
 
 VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const

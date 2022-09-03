@@ -248,6 +248,8 @@ public:
 	SPT_NODISCARD PipelineID	BuildComputePipelineDeferred(const ComputePipelineBuildDefinition& pipelineBuildDef);
 	void						FlushPendingComputePipelines();
 
+	void						ReleasePipeline(PipelineID pipelineID);
+
 	SPT_NODISCARD VkPipeline	GetPipelineHandle(PipelineID pipelineID) const;
 
 private:

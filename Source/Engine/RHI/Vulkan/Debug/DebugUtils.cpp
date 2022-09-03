@@ -28,7 +28,25 @@ void DebugName::Set(const lib::HashedString& name, Uint64 object, VkObjectType o
 #if VULKAN_VALIDATION
 
     m_name = name;
-    DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, name.GetData());
+    SetToObject(object, objectType);
+
+#endif // VULKAN_VALIDATION
+}
+
+void DebugName::SetWithoutObject(const lib::HashedString& name)
+{
+#if VULKAN_VALIDATION
+
+    m_name = name;
+
+#endif // VULKAN_VALIDATION
+}
+
+void DebugName::SetToObject(Uint64 object, VkObjectType objectType) const
+{
+#if VULKAN_VALIDATION
+
+    DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, m_name.GetData());
 
 #endif // VULKAN_VALIDATION
 }
@@ -41,11 +59,23 @@ const spt::lib::HashedString& DebugName::Get() const
 
 #else
 
-    static lib::HashedString dummyName;
+    static const lib::HashedString dummyName{};
     return dummyName;
 
 #endif // VULKAN_VALIDATION
+}
 
+Bool DebugName::HasName() const
+{
+#if VULKAN_VALIDATION
+
+    return m_name.IsValid();
+
+#else
+
+    return false;
+
+#endif // VULKAN_VALIDATION
 }
 
 void DebugName::Reset()

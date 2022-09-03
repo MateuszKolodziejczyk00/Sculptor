@@ -17,25 +17,40 @@ public:
 
 	RHIPipeline();
 
+	/** Initialize graphics pipeline */
 	void						InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
+
+	/** Initialize compute pipeline */
+	void						InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition);
+
 	void						ReleaseRHI();
 
-	Bool						IsValid() const;
+	SPT_NODISCARD Bool			IsValid() const;
+
+	rhi::EPipelineType			GetPipelineType() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 
 	// Vulkan ====================================================
 
-	VkPipeline					GetHandle() const;
+	SPT_NODISCARD VkPipeline	GetHandle() const;
 
 private:
 
-	VkPipeline		m_pipelineHandle;
+	void InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout);
+	void InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout);
 
-	PipelineLayout	m_layout;
+	void CachePipelineHandle(VkPipeline pipelineHandle) const;
 
-	DebugName		m_debugName;
+	PipelineID			m_pipelineID;
+	mutable VkPipeline	m_cachedPipelineHandle;
+
+	PipelineLayout		m_layout;
+
+	rhi::EPipelineType	m_pipelineType;
+
+	DebugName			m_debugName;
 };
 
 } // spt::vulkan
