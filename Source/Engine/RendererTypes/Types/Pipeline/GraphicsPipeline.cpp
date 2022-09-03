@@ -18,5 +18,5 @@ GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const lib::
 	GetRHI().SetName(name.Get());
 }
 
-} // spt::renderer
+} // spt::rdr
 

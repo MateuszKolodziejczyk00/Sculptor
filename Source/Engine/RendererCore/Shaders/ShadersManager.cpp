@@ -160,4 +160,4 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 	return shader;
 }
 
-} // spt::renderer
+} // spt::rdr

@@ -92,5 +92,5 @@ rhi::EPipelineType Shader::SelectPipelineType(const lib::DynamicArray<rhi::Shade
 	return pipelineType;
 }
 
-} // spt::renderer
+} // spt::rdr
 

@@ -28,4 +28,4 @@ private:
 	lib::SharedPtr<smd::ShaderMetaData> m_metaData;
 };
 
-} // spt::renderer
+} // spt::rdr

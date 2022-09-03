@@ -126,4 +126,4 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition(const smd::Shader
 	return layoutDefinition;
 }
 
-} // spt::renderer
+} // spt::rdr

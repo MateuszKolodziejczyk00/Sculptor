@@ -42,4 +42,4 @@ private:
 	mutable lib::ReadWriteLock m_lock;
 };
 
-} // spt::renderer
+} // spt::rdr

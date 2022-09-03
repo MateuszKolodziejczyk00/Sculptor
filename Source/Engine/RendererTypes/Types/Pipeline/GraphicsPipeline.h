@@ -21,4 +21,4 @@ public:
 	GraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef);
 };
 
-} // spt::renderer
+} // spt::rdr

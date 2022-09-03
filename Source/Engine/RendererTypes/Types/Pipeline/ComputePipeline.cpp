@@ -10,7 +10,7 @@ ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::Sh
 	SPT_PROFILE_FUNCTION();
 
 	const lib::DynamicArray<rhi::RHIShaderModule>& shaderModules = shader->GetShaderModules();
-	SPT_CHECK(shaderModules.size() == 1); //  compute shader must have only one module (compute)
+	SPT_CHECK(shaderModules.size() == 1); // compute shader must have only one module (compute)
 
 	const rhi::RHIShaderModule& computeShaderModule = shaderModules[0];
 	SPT_CHECK(computeShaderModule.GetStage() == rhi::EShaderStage::Compute);
@@ -21,4 +21,4 @@ ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::Sh
 	GetRHI().SetName(name.Get());
 }
 
-} // spt::renderer
+} // spt::rdr

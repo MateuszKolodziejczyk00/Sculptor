@@ -20,4 +20,4 @@ public:
 	ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader);
 };
 
-} // spt::renderer
+} // spt::rdr

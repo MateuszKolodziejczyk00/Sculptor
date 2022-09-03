@@ -31,4 +31,4 @@ private:
 	rhi::EPipelineType						m_pipelineType;
 };
 
-} // spt::renderer
+} // spt::rdr
