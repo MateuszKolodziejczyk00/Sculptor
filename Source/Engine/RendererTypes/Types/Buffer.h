@@ -11,7 +11,7 @@ struct RHIAllocationInfo;
 }
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class BufferView;

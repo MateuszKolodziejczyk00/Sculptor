@@ -33,7 +33,7 @@ struct TypeSerializer<sc::CompilationEnvironmentDef>
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompilationEnvironmentDef)
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 namespace priv

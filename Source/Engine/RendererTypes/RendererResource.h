@@ -5,7 +5,7 @@
 #include "CurrentFrameContext.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 template<typename TRHIType, Bool deferredReleaseRHI = true>

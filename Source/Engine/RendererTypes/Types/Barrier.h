@@ -5,7 +5,7 @@
 #include "RHIBridge/RHIBarrierImpl.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class RENDERER_TYPES_API Barrier

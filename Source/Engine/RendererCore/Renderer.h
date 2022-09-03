@@ -6,7 +6,7 @@
 #include "RHICore/RHICommandBufferTypes.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 struct CommandsRecordingInfo;

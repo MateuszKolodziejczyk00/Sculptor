@@ -1,7 +1,7 @@
 #include "CommandBuffer.h"
 #include "RendererUtils.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 CommandBuffer::CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)

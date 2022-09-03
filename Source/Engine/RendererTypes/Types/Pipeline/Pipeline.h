@@ -5,7 +5,7 @@
 #include "RHICore/RHIPipelineLayoutTypes.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Shader;

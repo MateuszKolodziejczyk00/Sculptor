@@ -6,7 +6,7 @@
 #include "ShaderMetaData.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 struct RendererResourceName;

@@ -5,7 +5,7 @@
 #include "Types/Barrier.h"
 #include "Types/UIBackend.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 CommandsRecorder::CommandsRecorder(const CommandsRecordingInfo& recordingInfo)
@@ -67,7 +67,7 @@ void CommandsRecorder::EndRendering()
 	m_commandsBuffer->GetRHI().EndRendering();
 }
 
-void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<renderer::UIBackend>& uiBackend)
+void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -77,7 +77,7 @@ void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<renderer::UIBacken
 	uiBackend->GetRHI().InitializeFonts(m_commandsBuffer->GetRHI());
 }
 
-void CommandsRecorder::RenderUI(const lib::SharedPtr<renderer::UIBackend>& uiBackend)
+void CommandsRecorder::RenderUI(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
 {
 	SPT_PROFILE_FUNCTION();
 

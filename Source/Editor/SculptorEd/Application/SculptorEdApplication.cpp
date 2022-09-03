@@ -30,13 +30,13 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	engineInitializationParams.cmdLineArgs = argv;
 	engn::Engine::Initialize(engineInitializationParams);
 
-	renderer::Renderer::Initialize();
+	rdr::Renderer::Initialize();
 
-	m_window = renderer::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
+	m_window = rdr::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
 
-	renderer::Renderer::PostCreatedWindow();
+	rdr::Renderer::PostCreatedWindow();
 
-	renderer::Renderer::GetShadersManager().GetShader("Test.glsl", sc::ShaderCompilationSettings());
+	rdr::Renderer::GetShadersManager().GetShader("Test.glsl", sc::ShaderCompilationSettings());
 }
 
 void SculptorEdApplication::OnRun()
@@ -54,15 +54,15 @@ void SculptorEdApplication::OnRun()
 
 	ui::UIContextManager::SetGlobalContext(context);
 
-	uiBackend = renderer::RendererBuilder::CreateUIBackend(context, m_window);
+	uiBackend = rdr::RendererBuilder::CreateUIBackend(context, m_window);
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
 	{
-		renderer::CommandsRecordingInfo recordingInfo;
+		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
 		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
+		lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(recordingInfo);
 
 		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
@@ -70,13 +70,13 @@ void SculptorEdApplication::OnRun()
 
 		recorder->FinishRecording();
 		
-		lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
-		renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
+		lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
+		rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
 		submitBatch.recordedCommands.emplace_back(std::move(recorder));
 
-		renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
-		renderer::Renderer::WaitIdle();
+		rdr::Renderer::WaitIdle();
 
 		uiBackend->DestroyFontsTemporaryObjects();
 	}
@@ -96,7 +96,7 @@ void SculptorEdApplication::OnRun()
 			break;
 		}
 
-		renderer::Renderer::BeginFrame();
+		rdr::Renderer::BeginFrame();
 
 		m_window->BeginFrame();
 
@@ -116,15 +116,15 @@ void SculptorEdApplication::OnRun()
 		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			// Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-			renderer::Renderer::EnableValidationWarnings(false);
+			rdr::Renderer::EnableValidationWarnings(false);
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
-			renderer::Renderer::EnableValidationWarnings(true);
+			rdr::Renderer::EnableValidationWarnings(true);
 		}
 
 		RenderFrame();
 
-		renderer::Renderer::EndFrame();
+		rdr::Renderer::EndFrame();
 	}
 }
 
@@ -134,39 +134,39 @@ void SculptorEdApplication::OnShutdown()
 
 	uiBackend.reset();
 
-	renderer::Renderer::WaitIdle();
+	rdr::Renderer::WaitIdle();
 	
 	m_window->UninitializeUI();
 
 	m_window.reset();
 
-	renderer::Renderer::Uninitialize();
+	rdr::Renderer::Uninitialize();
 }
 
 void SculptorEdApplication::RenderFrame()
 {
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedPtr<renderer::Semaphore> acquireSemaphore = renderer::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+	const lib::SharedPtr<rdr::Semaphore> acquireSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 
-	const lib::SharedPtr<renderer::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
+	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
 
 	if (m_window->IsSwapchainOutOfDate())
 	{
-		renderer::Renderer::WaitIdle();
+		rdr::Renderer::WaitIdle();
 		m_window->RebuildSwapchain();
-		renderer::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
+		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
 		return;
 	}
 
-	renderer::CommandsRecordingInfo recordingInfo;
+	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	lib::UniquePtr<renderer::CommandsRecorder> recorder = renderer::Renderer::StartRecordingCommands(recordingInfo);
+	lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(recordingInfo);
 
 	recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
 	{
-		renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
+		rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
 		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
 
@@ -175,10 +175,10 @@ void SculptorEdApplication::RenderFrame()
 
 	rhi::TextureViewDefinition viewDefinition;
 	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	const lib::SharedPtr<renderer::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
+	const lib::SharedPtr<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
-	renderer::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
-	renderer::RTDefinition renderTarget;
+	rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
+	rdr::RTDefinition renderTarget;
 	renderTarget.textureView			= swapchainTextureView;
 	renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;
 	renderTarget.storeOperation			= rhi::ERTStoreOperation::Store;
@@ -196,7 +196,7 @@ void SculptorEdApplication::RenderFrame()
 	recorder->EndRendering();
 
 	{
-		renderer::Barrier barrier = renderer::RendererBuilder::CreateBarrier();
+		rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
 		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
 
@@ -205,22 +205,22 @@ void SculptorEdApplication::RenderFrame()
 
 	recorder->FinishRecording();
 
-	lib::SharedPtr<renderer::Semaphore> finishCommandsSemaphore = renderer::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+	lib::SharedPtr<rdr::Semaphore> finishCommandsSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 
-	lib::DynamicArray<renderer::CommandsSubmitBatch> submitBatches;
-	renderer::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(renderer::CommandsSubmitBatch());
+	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
+	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
 	submitBatch.recordedCommands.emplace_back(std::move(recorder));
 	submitBatch.waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
 	submitBatch.signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
-	submitBatch.signalSemaphores.AddTimelineSemaphore(renderer::Renderer::GetReleaseFrameSemaphore(), renderer::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
+	submitBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
 
-	renderer::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
 	m_window->PresentTexture({ finishCommandsSemaphore });
 
 	if (m_window->IsSwapchainOutOfDate())
 	{
-		renderer::Renderer::WaitIdle();
+		rdr::Renderer::WaitIdle();
 		m_window->RebuildSwapchain();
 	}
 }

@@ -13,7 +13,7 @@
 #include "RHIBridge/RHICommandBufferImpl.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 namespace priv

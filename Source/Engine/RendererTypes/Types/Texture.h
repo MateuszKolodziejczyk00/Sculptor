@@ -15,7 +15,7 @@ struct TextureViewDefinition;
 }
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class TextureView;

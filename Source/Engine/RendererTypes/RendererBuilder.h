@@ -19,7 +19,7 @@ struct ShaderModuleDefinition;
 }
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Window;

@@ -6,7 +6,7 @@
 #include "RendererUtils.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class CommandBuffer;
@@ -52,9 +52,9 @@ public:
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
 
-	void									InitializeUIFonts(const lib::SharedPtr<renderer::UIBackend>& uiBackend);
+	void									InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& uiBackend);
 
-	void									RenderUI(const lib::SharedPtr<renderer::UIBackend>& uiBackend);
+	void									RenderUI(const lib::SharedPtr<rdr::UIBackend>& uiBackend);
 
 private:
 

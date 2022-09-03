@@ -5,7 +5,7 @@
 #include "RHIBridge/RHISemaphoreImpl.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Semaphore;
@@ -50,11 +50,11 @@ private:
 
 #if RENDERER_VALIDATION
 
-#define RENDERER_RESOURCE_NAME(Name) spt::renderer::RendererResourceName(Name)
+#define RENDERER_RESOURCE_NAME(Name) spt::rdr::RendererResourceName(Name)
 
 #else
 
-#define RENDERER_RESOURCE_NAME(Name) spt::renderer::RendererResourceName()
+#define RENDERER_RESOURCE_NAME(Name) spt::rdr::RendererResourceName()
 
 #endif // RENDERER_VALIDATION
 
@@ -88,4 +88,4 @@ public:
 	static Uint32			GetFramesInFlightNum();
 };
 
-}
+} // spt::rdr

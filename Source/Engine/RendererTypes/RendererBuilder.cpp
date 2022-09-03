@@ -7,7 +7,7 @@
 #include "Types/UIBackend.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 lib::SharedPtr<Window> RendererBuilder::CreateWindow(lib::StringView name, math::Vector2u resolution)

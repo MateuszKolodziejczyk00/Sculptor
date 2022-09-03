@@ -7,7 +7,7 @@
 #include "RHICore/RHIPipelineDefinitionTypes.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class RENDERER_TYPES_API GraphicsPipeline : public Pipeline, public RendererResource<rhi::RHIPipeline>

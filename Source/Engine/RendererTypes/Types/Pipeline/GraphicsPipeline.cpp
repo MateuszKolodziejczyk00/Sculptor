@@ -1,7 +1,7 @@
 #include "GraphicsPipeline.h"
 #include "Types/Shader.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef)

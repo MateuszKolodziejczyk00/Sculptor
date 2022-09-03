@@ -2,7 +2,7 @@
 #include "RendererUtils.h"
 #include "CurrentFrameContext.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData)

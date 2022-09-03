@@ -1,7 +1,7 @@
 #include "Semaphore.h"
 #include "RendererUtils.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 Semaphore::Semaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)

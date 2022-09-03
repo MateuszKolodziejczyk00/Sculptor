@@ -5,7 +5,7 @@
 #include "Semaphore.h"
 #include "Texture.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 Window::Window(lib::StringView name, math::Vector2u resolution)

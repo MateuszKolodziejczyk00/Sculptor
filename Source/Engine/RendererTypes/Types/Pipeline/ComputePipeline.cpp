@@ -1,6 +1,6 @@
 #include "ComputePipeline.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader)

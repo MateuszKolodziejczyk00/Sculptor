@@ -5,7 +5,7 @@
 #include "Delegates/MulticastDelegate.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Semaphore;

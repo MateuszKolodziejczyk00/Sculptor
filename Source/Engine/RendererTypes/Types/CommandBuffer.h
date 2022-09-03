@@ -13,7 +13,7 @@ struct CommandBufferUsageDefinition;
 }
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 struct RendererResourceName;

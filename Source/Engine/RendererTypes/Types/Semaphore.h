@@ -11,7 +11,7 @@ struct SemaphoreDefinition;
 }
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 struct RendererResourceName;

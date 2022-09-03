@@ -5,7 +5,7 @@
 #include "Types/Texture.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 using RTDefinition = rhi::RTGenericDefinition<lib::SharedPtr<TextureView>>;

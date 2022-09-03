@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "Common/ShaderCompilationInput.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Shader;

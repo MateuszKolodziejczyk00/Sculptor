@@ -6,7 +6,7 @@
 #include "RendererUtils.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class RENDERER_TYPES_API ComputePipeline : public Pipeline, public RendererResource<rhi::RHIPipeline>

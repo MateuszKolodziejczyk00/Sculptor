@@ -7,7 +7,7 @@
 #include "UITypes.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 class Window;

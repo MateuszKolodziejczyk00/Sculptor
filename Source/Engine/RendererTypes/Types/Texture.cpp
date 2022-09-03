@@ -1,7 +1,7 @@
 #include "Texture.h"
 
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,4 +51,4 @@ lib::SharedPtr<const Texture> TextureView::GetTexture() const
 	return m_texture.lock();
 }
 
-}
+} // spt::rdr

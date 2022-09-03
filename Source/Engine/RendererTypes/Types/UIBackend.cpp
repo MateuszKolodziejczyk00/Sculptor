@@ -1,7 +1,7 @@
 #include "UIBackend.h"
 #include "Window.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 UIBackend::UIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window)

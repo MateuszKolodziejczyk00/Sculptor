@@ -1,6 +1,6 @@
 #include "Barrier.h"
 
-namespace spt::renderer
+namespace spt::rdr
 {
 
 Barrier::Barrier()
