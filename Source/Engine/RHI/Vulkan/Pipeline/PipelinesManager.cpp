@@ -24,7 +24,7 @@ static VkPipelineShaderStageCreateInfo BuildPipelineShaderStageInfo(const rhi::R
 namespace gfx
 {
 
-static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
+static void BuildShaderInfos(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -37,7 +37,7 @@ static void BuildShaderInfos(const PipelineBuildDefinition& pipelineBuildDef, li
 					&BuildPipelineShaderStageInfo);
 }
 
-static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& outInputAssemblyStateInfo)
+static void BuildInputAssemblyInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& outInputAssemblyStateInfo)
 {
 	SPT_PROFILE_FUNCTION();
 	
@@ -46,7 +46,7 @@ static void BuildInputAssemblyInfo(const PipelineBuildDefinition& pipelineBuildD
     outInputAssemblyStateInfo.primitiveRestartEnable	= VK_FALSE;
 }
 
-static void BuildRasterizationStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& outRasterizationState)
+static void BuildRasterizationStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& outRasterizationState)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -61,7 +61,7 @@ static void BuildRasterizationStateInfo(const PipelineBuildDefinition& pipelineB
     outRasterizationState.lineWidth					= 1.f;
 }
 
-static void BuildMultisampleStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& outMultisampleState)
+static void BuildMultisampleStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& outMultisampleState)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -71,7 +71,7 @@ static void BuildMultisampleStateInfo(const PipelineBuildDefinition& pipelineBui
     outMultisampleState.rasterizationSamples = RHIToVulkan::GetSampleCount(multisampleStateDefinition.samplesNum);
 }
 
-static void BuildDepthStencilStateInfo(const PipelineBuildDefinition& pipelineBuildDef, VkPipelineDepthStencilStateCreateInfo& outDepthStencilState)
+static void BuildDepthStencilStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineDepthStencilStateCreateInfo& outDepthStencilState)
 {
 	SPT_CHECK_NO_ENTRY();
 
@@ -114,7 +114,7 @@ static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFac
 	}
 }
 
-static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& outBlendAttachmentStates, VkPipelineColorBlendStateCreateInfo& outColorBlendState)
+static void BuildColorBlendStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& outBlendAttachmentStates, VkPipelineColorBlendStateCreateInfo& outColorBlendState)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -146,7 +146,7 @@ static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuil
 	outColorBlendState.blendConstants[3]	= 0.f;
 }
 
-static void BuildDynamicStatesInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkDynamicState>& outDynamicStates, VkPipelineDynamicStateCreateInfo& outDynamicStateInfo)
+static void BuildDynamicStatesInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkDynamicState>& outDynamicStates, VkPipelineDynamicStateCreateInfo& outDynamicStateInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -160,7 +160,7 @@ static void BuildDynamicStatesInfo(const PipelineBuildDefinition& pipelineBuildD
     outDynamicStateInfo.pDynamicStates		= outDynamicStates.data();
 }
 
-static void BuildPipelineRenderingInfo(const PipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkFormat>& outColorRTFormats, VkPipelineRenderingCreateInfo& outPipelineRenderingInfo)
+static void BuildPipelineRenderingInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkFormat>& outColorRTFormats, VkPipelineRenderingCreateInfo& outPipelineRenderingInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -213,80 +213,83 @@ static void BuildGraphicsPipelineInfo(const GraphicsPipelineBuildData& buildData
 	piplineInfoLinkedList.Append(buildData.pipelineRenderingInfo);
 }
 
+static void BuildGraphicsPipelineCreateData(const GraphicsPipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, GraphicsPipelineBuildData& outBuildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outBuildData.pipelineID = pipelineID;
+	outBuildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
+	BuildShaderInfos(pipelineBuildDef, outBuildData.shaderStages);
+	BuildInputAssemblyInfo(pipelineBuildDef, outBuildData.inputAssemblyStateInfo);
+	BuildRasterizationStateInfo(pipelineBuildDef, outBuildData.rasterizationStateInfo);
+	BuildMultisampleStateInfo(pipelineBuildDef, outBuildData.multisampleStateInfo);
+	BuildDepthStencilStateInfo(pipelineBuildDef, outBuildData.depthStencilStateInfo);
+	BuildColorBlendStateInfo(pipelineBuildDef, outBuildData.blendAttachmentStates, outBuildData.colorBlendStateInfo);
+	BuildDynamicStatesInfo(pipelineBuildDef, outBuildData.dynamicStates, outBuildData.dynamicStateInfo);
+	BuildPipelineRenderingInfo(pipelineBuildDef, outBuildData.colorRTFormats, outBuildData.pipelineRenderingInfo);
+
+	BuildGraphicsPipelineInfo(outBuildData, outPipelineInfo);
+}
+
+// out pipelines are guaranteed to be big-enough
+static void BuildGraphicsPipelines(const VkGraphicsPipelineCreateInfo* pipelineInfos, Uint32 pipelinesNum, VkPipeline* outPipelines)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+
+	SPT_VK_CHECK(vkCreateGraphicsPipelines(	VulkanRHI::GetDeviceHandle(),
+											pipelineCache,
+											pipelinesNum,
+											pipelineInfos,
+											VulkanRHI::GetAllocationCallbacks(),
+											outPipelines));
+}
+
 } // gfx
 
 namespace compute
 {
 
-/*
-static void BuildComputePipelineInfo(const ComputePipelineBuildData& buildData, VkComputePipelineCreateInfo& outPipelineInfo)
+static void BuildComputePipelineInfo(const ComputePipelineBuildDefinition& computePipelineDef, const ComputePipelineBuildData& buildData, VkComputePipelineCreateInfo& outPipelineInfo)
 {
 	SPT_PROFILE_FUNCTION();
 
 	outPipelineInfo = VkComputePipelineCreateInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    //outPipelineInfo.stage				= &buildData.shaderStageInfo;
+	outPipelineInfo.stage				= BuildPipelineShaderStageInfo(computePipelineDef.computeShaderModule);
     outPipelineInfo.layout				= buildData.pipelineLayout;
     outPipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
     outPipelineInfo.basePipelineIndex	= 0;
 }
-*/
+
+static void BuildComputePipelineCreateData(const ComputePipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, ComputePipelineBuildData& outBuildData, VkComputePipelineCreateInfo& outPipelineInfo)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outBuildData.pipelineID = pipelineID;
+	outBuildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
+
+	BuildComputePipelineInfo(pipelineBuildDef, outBuildData, outPipelineInfo);
+}
+
+// out pipelines are guaranteed to be big-enough
+static void BuildComputePipelines(const VkComputePipelineCreateInfo* pipelineInfos, Uint32 pipelinesNum, VkPipeline* outPipelines)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+
+	SPT_VK_CHECK(vkCreateComputePipelines(	VulkanRHI::GetDeviceHandle(),
+											pipelineCache,
+											pipelinesNum,
+											pipelineInfos,
+											VulkanRHI::GetAllocationCallbacks(),
+											outPipelines));
+}
 
 } // compute
 
 } // helpers
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// PipelinesBuildsBatch ==========================================================================
-
-PipelinesBuildsBatch::PipelinesBuildsBatch()
-	: m_currentBuildIdx(0)
-{ }
-
-Bool PipelinesBuildsBatch::HasPendingBuilds() const
-{
-	return m_currentBuildIdx.load(std::memory_order_acquire) > 0;
-}
-
-Int32 PipelinesBuildsBatch::AcquireNewBuildIdx()
-{
-	const Int32 buildIdx = m_currentBuildIdx.fetch_add(1, std::memory_order_acq_rel);
-
-	// check if acquired idx is in valid range
-	return buildIdx < static_cast<Int32>(pipelinesBuildBatchMaxSize) ? buildIdx : idxNone<Int32>;
-}
-
-PipelinesBuildsBatch::BatchedPipelineBuildRef PipelinesBuildsBatch::GetPiplineCreateData(Int32 buildIdx)
-{
-	SPT_CHECK(buildIdx != idxNone<Int32>);
-
-	return std::tie(m_pipelineCreateInfos[buildIdx], m_pipelineBuildDatas[buildIdx]);
-}
-
-PipelineID PipelinesBuildsBatch::GetPipelineID(Int32 buildIdx) const
-{
-	SPT_CHECK(buildIdx != idxNone<Int32>);
-
-	return m_pipelineBuildDatas[buildIdx].pipelineID;
-}
-
-Bool PipelinesBuildsBatch::ShouldFlushPipelineBuilds(Int32 buildIdx) const
-{
-	return buildIdx == pipelinesBuildBatchMaxSize - 1;
-}
-
-void PipelinesBuildsBatch::GetPipelineCreateInfos(const VkGraphicsPipelineCreateInfo*& outPipelineInfos, Uint32& outPipelinesNum) const
-{
-	const Uint32 pipelinesNum = std::min(	static_cast<Uint32>(m_currentBuildIdx.load(std::memory_order_acquire)),
-											static_cast<Uint32>(pipelinesBuildBatchMaxSize));
-	
-	outPipelineInfos = pipelinesNum > 0 ? m_pipelineCreateInfos.data() : nullptr;
-	outPipelinesNum = pipelinesNum;
-}
-
-void PipelinesBuildsBatch::ResetPipelineBuildDatas()
-{
-	m_currentBuildIdx.store(0, std::memory_order_release);
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PipelinesManager ==============================================================================
@@ -315,27 +318,64 @@ void PipelinesManager::ReleaseRHI()
 	m_cachedPipelines.clear();
 }
 
-PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition& pipelineBuildDef)
+PipelineID PipelinesManager::BuildGraphicsPipelineDeferred(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
 {
 	SPT_PROFILE_FUNCTION();
 
 	const PipelineID pipelineID = m_piplineIDCounter.fetch_add(1, std::memory_order_relaxed);
 
-	Int32 buildIdx = idxNone<Int32>;
+	Bool shouldFlushPipelineBuilds = false;
 
+	m_graphicsPipelineBuildsBatcher.BuildPipelineCreateData(
+		[&pipelineBuildDef, pipelineID](GraphicsPipelineBuildData& outBuildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
+		{
+			helpers::gfx::BuildGraphicsPipelineCreateData(pipelineBuildDef, pipelineID, outBuildData, outPipelineInfo);
+		},
+		shouldFlushPipelineBuilds);
+
+	if (shouldFlushPipelineBuilds)
 	{
-		lib::SharedLockGuard pipelineBuildsLockGuard(m_pipelineBuildsLock);
-		m_flushingPipelineBuilsCV.wait(pipelineBuildsLockGuard, [&, this]() { return TryBuildPipelineCreateData_AssumesLockedShared(pipelineBuildDef, pipelineID, buildIdx); });
-	}
-
-	SPT_CHECK(buildIdx != idxNone<Int32>);
-
-	if (ShouldFlushPipelineBuilds(buildIdx))
-	{
-		BuildBatchedPipelines_AssumesLocked();
+		FlushPendingGraphicsPipelines();
 	}
 
 	return pipelineID;
+}
+
+void PipelinesManager::FlushPendingGraphicsPipelines()
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_graphicsPipelineBuildsBatcher.BuildPipelines(&helpers::gfx::BuildGraphicsPipelines);
+}
+
+PipelineID PipelinesManager::BuildComputePipelineDeferred(const ComputePipelineBuildDefinition& pipelineBuildDef)
+{
+	SPT_PROFILE_FUNCTION();
+
+	const PipelineID pipelineID = m_piplineIDCounter.fetch_add(1, std::memory_order_relaxed);
+
+	Bool shouldFlushPipelineBuilds = false;
+
+	m_computePipelineBuildsBatcher.BuildPipelineCreateData(
+		[&pipelineBuildDef, pipelineID](ComputePipelineBuildData& outBuildData, VkComputePipelineCreateInfo& outPipelineInfo)
+		{
+			helpers::compute::BuildComputePipelineCreateData(pipelineBuildDef, pipelineID, outBuildData, outPipelineInfo);
+		},
+		shouldFlushPipelineBuilds);
+
+	if (shouldFlushPipelineBuilds)
+	{
+		FlushPendingComputePipelines();
+	}
+
+	return pipelineID;
+}
+
+void PipelinesManager::FlushPendingComputePipelines()
+{
+	SPT_PROFILE_FUNCTION();
+
+	m_computePipelineBuildsBatcher.BuildPipelines(&helpers::compute::BuildComputePipelines);
 }
 
 VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
@@ -347,95 +387,12 @@ VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
 		return VK_NULL_HANDLE;
 	}
 
-	SPT_CHECK(!m_currentBuildsBatch.HasPendingBuilds());
+	// not sure if we should flush pending build on get, maybe flush should be earlies, so that all pipelines are built before commands are processed
+	// that's why have this check for now
+	SPT_CHECK(!m_graphicsPipelineBuildsBatcher.HasPendingBuilds() && !m_computePipelineBuildsBatcher.HasPendingBuilds());
 
 	const auto pipelineHandle = m_cachedPipelines.find(pipelineID);
 	return pipelineHandle != std::cend(m_cachedPipelines) ? pipelineHandle->second : VK_NULL_HANDLE;
-}
-
-Bool PipelinesManager::TryBuildPipelineCreateData_AssumesLockedShared(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32& outBuildIdx)
-{
-	SPT_PROFILE_FUNCTION();
-
-	outBuildIdx = AcquireNewBuildIdx_AssumesLockedShared();
-	const Bool success = (outBuildIdx != idxNone<Int32>);
-
-	if (success)
-	{
-		BuildPipelineCreateData(pipelineBuildDef, pipelineID, outBuildIdx);
-	}
-
-	return success;
-}
-
-Int32 PipelinesManager::AcquireNewBuildIdx_AssumesLockedShared()
-{
-	// this must be called when locked, so that it won't increment pipelines num before build
-	const Int32 buildIdx = m_currentBuildsBatch.AcquireNewBuildIdx();
-	return buildIdx;
-}
-
-void PipelinesManager::BuildPipelineCreateData(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32 buildIdx)
-{
-	SPT_PROFILE_FUNCTION();
-
-	PipelinesBuildsBatch::BatchedPipelineBuildRef batchedBuildRef	= m_currentBuildsBatch.GetPiplineCreateData(buildIdx);
-	GraphicsPipelineBuildData& buildData									= std::get<GraphicsPipelineBuildData&>(batchedBuildRef);
-	VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
-
-	buildData.pipelineID = pipelineID;
-	helpers::gfx::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
-	helpers::gfx::BuildInputAssemblyInfo(pipelineBuildDef, buildData.inputAssemblyStateInfo);
-	helpers::gfx::BuildRasterizationStateInfo(pipelineBuildDef, buildData.rasterizationStateInfo);
-	helpers::gfx::BuildMultisampleStateInfo(pipelineBuildDef, buildData.multisampleStateInfo);
-	helpers::gfx::BuildDepthStencilStateInfo(pipelineBuildDef, buildData.depthStencilStateInfo);
-	helpers::gfx::BuildColorBlendStateInfo(pipelineBuildDef, buildData.blendAttachmentStates, buildData.colorBlendStateInfo);
-	helpers::gfx::BuildDynamicStatesInfo(pipelineBuildDef, buildData.dynamicStates, buildData.dynamicStateInfo);
-	helpers::gfx::BuildPipelineRenderingInfo(pipelineBuildDef, buildData.colorRTFormats, buildData.pipelineRenderingInfo);
-	buildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
-
-	helpers::gfx::BuildGraphicsPipelineInfo(buildData, pipelineInfo);
-}
-
-Bool PipelinesManager::ShouldFlushPipelineBuilds(Int32 buildIdx) const
-{
-	return m_currentBuildsBatch.ShouldFlushPipelineBuilds(buildIdx);
-}
-
-void PipelinesManager::BuildBatchedPipelines_AssumesLocked()
-{
-	SPT_PROFILE_FUNCTION();
-
-	const lib::UniqueLockGuard pipelineBuildsLockGuard(m_pipelineBuildsLock);
-
-	const VkGraphicsPipelineCreateInfo* pipelineInfos = nullptr;
-	Uint32 pipelinesNum = 0;
-	m_currentBuildsBatch.GetPipelineCreateInfos(pipelineInfos, pipelinesNum);
-
-	if (pipelineInfos != nullptr && pipelinesNum > 0)
-	{
-		const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
-
-		lib::StaticArray<VkPipeline, PipelinesBuildsBatch::pipelinesBuildBatchMaxSize> pipelines;
-		SPT_VK_CHECK(vkCreateGraphicsPipelines(	VulkanRHI::GetDeviceHandle(),
-												pipelineCache,
-												pipelinesNum,
-												pipelineInfos,
-												VulkanRHI::GetAllocationCallbacks(),
-												pipelines.data()));
-
-		for (Uint32 idx = 0; idx < pipelinesNum; ++idx)
-		{
-			const PipelineID pipelineID = m_currentBuildsBatch.GetPipelineID(static_cast<Int32>(idx));
-			const VkPipeline pipelineHandle = pipelines[idx];
-
-			m_cachedPipelines.emplace(pipelineID, pipelineHandle);
-		}
-
-		m_currentBuildsBatch.ResetPipelineBuildDatas();
-	}
-
-	m_flushingPipelineBuilsCV.notify_all();
 }
 
 } // spt::vulkan
