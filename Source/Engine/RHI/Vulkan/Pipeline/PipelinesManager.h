@@ -74,7 +74,10 @@ public:
 	SPT_NODISCARD BatchedPipelineBuildRef	GetPiplineCreateData(Int32 buildIdx);
 	SPT_NODISCARD PipelineID				GetPipelineID(Int32 buildIdx) const;
 
+	Bool ShouldFlushPipelineBuilds(Int32 buildIdx) const;
+
 	void GetPipelineCreateInfos(const VkGraphicsPipelineCreateInfo*& outPipelineInfos, Uint32& outPipelinesNum) const;
+	void ResetPipelineBuildDatas();
 
 private:
 
@@ -99,15 +102,25 @@ public:
 
 	SPT_NODISCARD PipelineID BuildPipelineDeferred(const PipelineBuildDefinition& pipelineBuildDef);
 
-	SPT_NODISCARD VkPipeline GetPipelineHandle(PipelineID id) const;
+	SPT_NODISCARD VkPipeline GetPipelineHandle(PipelineID pipelineID) const;
 
 private:
+
+	Bool TryBuildPipelineCreateData_AssumesLockedShared(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32& outBuildIdx);
+	Int32 AcquireNewBuildIdx_AssumesLockedShared();
+	void BuildPipelineCreateData(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32 buildIdx);
+
+	Bool ShouldFlushPipelineBuilds(Int32 buildIdx) const;
 
 	void BuildBatchedPipelines_AssumesLocked();
 
 	lib::HashMap<PipelineID, VkPipeline> m_cachedPipelines;
 
-	PipelinesBuildsBatch m_currentBuildsBatch;
+	PipelinesBuildsBatch			m_currentBuildsBatch;
+	lib::SharedLock					m_pipelineBuildsLock;
+	std::condition_variable_any		m_flushingPipelineBuilsCV;
+
+	std::atomic<PipelineID>	m_piplineIDCounter;
 };
 
 } // spt::vulkan

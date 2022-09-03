@@ -118,18 +118,18 @@ static void BuildColorBlendStateInfo(const PipelineBuildDefinition& pipelineBuil
 	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
 	const lib::DynamicArray<rhi::ColorRenderTargetDefinition>& colorRTsDefinition = renderTargetsDefinition.colorRTsDefinition;
 
-	std::transform(std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
-		std::back_inserter(outBlendAttachmentStates),
-		[](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
-		{
-			VkPipelineColorBlendAttachmentState attachmentBlendState{};
-			attachmentBlendState.blendEnable = VK_TRUE;
-			SetVulkanBlendType(colorRTDefinition.colorBlendType, attachmentBlendState.srcColorBlendFactor, attachmentBlendState.dstColorBlendFactor, attachmentBlendState.colorBlendOp);
-			SetVulkanBlendType(colorRTDefinition.alphaBlendType, attachmentBlendState.srcAlphaBlendFactor, attachmentBlendState.dstAlphaBlendFactor, attachmentBlendState.alphaBlendOp);
-			attachmentBlendState.colorWriteMask = RHIToVulkan::GetColorComponentFlags(colorRTDefinition.colorWriteMask);;
+	std::transform(	std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
+					std::back_inserter(outBlendAttachmentStates),
+					[](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
+					{
+						VkPipelineColorBlendAttachmentState attachmentBlendState{};
+						attachmentBlendState.blendEnable = VK_TRUE;
+						SetVulkanBlendType(colorRTDefinition.colorBlendType, attachmentBlendState.srcColorBlendFactor, attachmentBlendState.dstColorBlendFactor, attachmentBlendState.colorBlendOp);
+						SetVulkanBlendType(colorRTDefinition.alphaBlendType, attachmentBlendState.srcAlphaBlendFactor, attachmentBlendState.dstAlphaBlendFactor, attachmentBlendState.alphaBlendOp);
+						attachmentBlendState.colorWriteMask = RHIToVulkan::GetColorComponentFlags(colorRTDefinition.colorWriteMask);;
 
-			return attachmentBlendState;
-		});
+						return attachmentBlendState;
+					});
 
 	outColorBlendState = VkPipelineColorBlendStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     outColorBlendState.logicOpEnable		= VK_FALSE;
@@ -224,7 +224,7 @@ Bool PipelinesBuildsBatch::HasPendingBuilds() const
 
 Int32 PipelinesBuildsBatch::AcquireNewBuildIdx()
 {
-	const Int32 buildIdx = m_currentBuildIdx.fetch_add(1, std::memory_order_release);
+	const Int32 buildIdx = m_currentBuildIdx.fetch_add(1, std::memory_order_acq_rel);
 
 	// check if acquired idx is in valid range
 	return buildIdx < static_cast<Int32>(pipelinesBuildBatchMaxSize) ? buildIdx : idxNone<Int32>;
@@ -244,19 +244,30 @@ PipelineID PipelinesBuildsBatch::GetPipelineID(Int32 buildIdx) const
 	return m_pipelineBuildDatas[buildIdx].id;
 }
 
+Bool PipelinesBuildsBatch::ShouldFlushPipelineBuilds(Int32 buildIdx) const
+{
+	return buildIdx == pipelinesBuildBatchMaxSize - 1;
+}
+
 void PipelinesBuildsBatch::GetPipelineCreateInfos(const VkGraphicsPipelineCreateInfo*& outPipelineInfos, Uint32& outPipelinesNum) const
 {
 	const Uint32 pipelinesNum = std::min(	static_cast<Uint32>(m_currentBuildIdx.load(std::memory_order_acquire)),
 											static_cast<Uint32>(pipelinesBuildBatchMaxSize));
 	
 	outPipelineInfos = pipelinesNum > 0 ? m_pipelineCreateInfos.data() : nullptr;
+	outPipelinesNum = pipelinesNum;
+}
 
+void PipelinesBuildsBatch::ResetPipelineBuildDatas()
+{
+	m_currentBuildIdx.store(0, std::memory_order_release);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // PipelinesManager ==============================================================================
 
 PipelinesManager::PipelinesManager()
+	: m_piplineIDCounter(0)
 { }
 
 void PipelinesManager::InitializeRHI()
@@ -283,17 +294,69 @@ PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition
 {
 	SPT_PROFILE_FUNCTION();
 
-	const Int32 buildIdx = m_currentBuildsBatch.AcquireNewBuildIdx();
-	if (buildIdx == idxNone<Int32>)
+	const PipelineID pipelineID = m_piplineIDCounter.fetch_add(1, std::memory_order_relaxed);
+
+	Int32 buildIdx = idxNone<Int32>;
+
 	{
-		// flush
+		lib::SharedLockGuard pipelineBuildsLockGuard(m_pipelineBuildsLock);
+		m_flushingPipelineBuilsCV.wait(pipelineBuildsLockGuard, [&, this]() { return TryBuildPipelineCreateData_AssumesLockedShared(pipelineBuildDef, pipelineID, buildIdx); });
 	}
+
+	SPT_CHECK(buildIdx != idxNone<Int32>);
+
+	if (ShouldFlushPipelineBuilds(buildIdx))
+	{
+		BuildBatchedPipelines_AssumesLocked();
+	}
+
+	return pipelineID;
+}
+
+VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
+{
+	SPT_PROFILE_FUNCTION();
+
+	if (pipelineID == idxNone<PipelineID>)
+	{
+		return VK_NULL_HANDLE;
+	}
+
+	SPT_CHECK(!m_currentBuildsBatch.HasPendingBuilds());
+
+	const auto pipelineHandle = m_cachedPipelines.find(pipelineID);
+	return pipelineHandle != std::cend(m_cachedPipelines) ? pipelineHandle->second : VK_NULL_HANDLE;
+}
+
+Bool PipelinesManager::TryBuildPipelineCreateData_AssumesLockedShared(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32& outBuildIdx)
+{
+	SPT_PROFILE_FUNCTION();
+
+	outBuildIdx = AcquireNewBuildIdx_AssumesLockedShared();
+	const Bool success = (outBuildIdx != idxNone<Int32>);
+
+	if (success)
+	{
+		BuildPipelineCreateData(pipelineBuildDef, pipelineID, outBuildIdx);
+	}
+
+	return success;
+}
+
+Int32 PipelinesManager::AcquireNewBuildIdx_AssumesLockedShared()
+{
+	// this must be called when locked, so that it won't increment pipelines num before build
+	const Int32 buildIdx = m_currentBuildsBatch.AcquireNewBuildIdx();
+	return buildIdx;
+}
+
+void PipelinesManager::BuildPipelineCreateData(const PipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, Int32 buildIdx)
+{
+	SPT_PROFILE_FUNCTION();
 
 	PipelinesBuildsBatch::BatchedPipelineBuildRef batchedBuildRef	= m_currentBuildsBatch.GetPiplineCreateData(buildIdx);
 	PipelineBuildData& buildData									= std::get<PipelineBuildData&>(batchedBuildRef);
 	VkGraphicsPipelineCreateInfo& pipelineInfo						= std::get<VkGraphicsPipelineCreateInfo&>(batchedBuildRef);
-
-	PipelineID pipelineID = 0; // TODO
 
 	buildData.id = pipelineID;
 	helpers::BuildShaderInfos(pipelineBuildDef, buildData.shaderStages);
@@ -307,28 +370,18 @@ PipelineID PipelinesManager::BuildPipelineDeferred(const PipelineBuildDefinition
 	buildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
 
 	helpers::BuildGraphicsPipelineInfo(buildData, pipelineInfo);
-
-	return 0;
 }
 
-VkPipeline PipelinesManager::GetPipelineHandle(PipelineID id) const
+Bool PipelinesManager::ShouldFlushPipelineBuilds(Int32 buildIdx) const
 {
-	SPT_PROFILE_FUNCTION();
-
-	if (id == idxNone<PipelineID>)
-	{
-		return VK_NULL_HANDLE;
-	}
-
-	SPT_CHECK(!m_currentBuildsBatch.HasPendingBuilds());
-
-	const auto pipelineHandle = m_cachedPipelines.find(id);
-	return pipelineHandle != std::cend(m_cachedPipelines) ? pipelineHandle->second : VK_NULL_HANDLE;
+	return m_currentBuildsBatch.ShouldFlushPipelineBuilds(buildIdx);
 }
 
 void PipelinesManager::BuildBatchedPipelines_AssumesLocked()
 {
 	SPT_PROFILE_FUNCTION();
+
+	const lib::UniqueLockGuard pipelineBuildsLockGuard(m_pipelineBuildsLock);
 
 	const VkGraphicsPipelineCreateInfo* pipelineInfos = nullptr;
 	Uint32 pipelinesNum = 0;
@@ -348,12 +401,16 @@ void PipelinesManager::BuildBatchedPipelines_AssumesLocked()
 
 		for (Uint32 idx = 0; idx < pipelinesNum; ++idx)
 		{
-			const PipelineID id = m_currentBuildsBatch.GetPipelineID(static_cast<Int32>(idx));
+			const PipelineID pipelineID = m_currentBuildsBatch.GetPipelineID(static_cast<Int32>(idx));
 			const VkPipeline pipelineHandle = pipelines[idx];
 
-			m_cachedPipelines.emplace(id, pipelineHandle);
+			m_cachedPipelines.emplace(pipelineID, pipelineHandle);
 		}
+
+		m_currentBuildsBatch.ResetPipelineBuildDatas();
 	}
+
+	m_flushingPipelineBuilsCV.notify_all();
 }
 
 } // spt::vulkan
