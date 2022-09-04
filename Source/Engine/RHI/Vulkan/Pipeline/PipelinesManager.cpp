@@ -335,7 +335,7 @@ PipelineID PipelinesManager::BuildGraphicsPipelineDeferred(const GraphicsPipelin
 
 	Bool shouldFlushPipelineBuilds = false;
 
-	m_graphicsPipelineBuildsBatcher.BuildPipelineCreateData(
+	m_graphicsPipelinesBatchBuilder.AppendPipelineCreateData(
 		[&pipelineBuildDef, pipelineID](GraphicsPipelineBuildData& outBuildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
 		{
 			helpers::gfx::BuildGraphicsPipelineCreateData(pipelineBuildDef, pipelineID, outBuildData, outPipelineInfo);
@@ -354,7 +354,8 @@ void PipelinesManager::FlushPendingGraphicsPipelines()
 {
 	SPT_PROFILE_FUNCTION();
 
-	m_graphicsPipelineBuildsBatcher.BuildPipelines(&helpers::gfx::BuildGraphicsPipelines);
+	const lib::DynamicArray<std::pair<PipelineID, VkPipeline>> createdPipelines = m_graphicsPipelinesBatchBuilder.BuildPendingPipelines(&helpers::gfx::BuildGraphicsPipelines);
+	CacheCreatedPipelines(createdPipelines);
 }
 
 PipelineID PipelinesManager::BuildComputePipelineDeferred(const ComputePipelineBuildDefinition& pipelineBuildDef)
@@ -365,7 +366,7 @@ PipelineID PipelinesManager::BuildComputePipelineDeferred(const ComputePipelineB
 
 	Bool shouldFlushPipelineBuilds = false;
 
-	m_computePipelineBuildsBatcher.BuildPipelineCreateData(
+	m_computePipelinesBatchBuilder.AppendPipelineCreateData(
 		[&pipelineBuildDef, pipelineID](ComputePipelineBuildData& outBuildData, VkComputePipelineCreateInfo& outPipelineInfo)
 		{
 			helpers::compute::BuildComputePipelineCreateData(pipelineBuildDef, pipelineID, outBuildData, outPipelineInfo);
@@ -384,7 +385,8 @@ void PipelinesManager::FlushPendingComputePipelines()
 {
 	SPT_PROFILE_FUNCTION();
 
-	m_computePipelineBuildsBatcher.BuildPipelines(&helpers::compute::BuildComputePipelines);
+	const lib::DynamicArray<std::pair<PipelineID, VkPipeline>> createdPipelines = m_computePipelinesBatchBuilder.BuildPendingPipelines(&helpers::compute::BuildComputePipelines);
+	CacheCreatedPipelines(createdPipelines);
 }
 
 void PipelinesManager::ReleasePipeline(PipelineID pipelineID)
@@ -409,10 +411,17 @@ VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
 
 	// not sure if we should flush pending build on get, maybe flush should be earlies, so that all pipelines are built before commands are processed
 	// that's why have this check for now
-	SPT_CHECK(!m_graphicsPipelineBuildsBatcher.HasPendingBuilds() && !m_computePipelineBuildsBatcher.HasPendingBuilds());
+	SPT_CHECK(!m_graphicsPipelinesBatchBuilder.HasPendingBuilds() && !m_computePipelinesBatchBuilder.HasPendingBuilds());
 
 	const auto pipelineHandle = m_cachedPipelines.find(pipelineID);
 	return pipelineHandle != std::cend(m_cachedPipelines) ? pipelineHandle->second : VK_NULL_HANDLE;
+}
+
+void PipelinesManager::CacheCreatedPipelines(const lib::DynamicArray<std::pair<PipelineID, VkPipeline>>& createdPipelines)
+{
+	SPT_PROFILE_FUNCTION();
+
+	std::copy(std::cbegin(createdPipelines), std::cend(createdPipelines), std::inserter(m_cachedPipelines, std::end(m_cachedPipelines)));
 }
 
 } // spt::vulkan
