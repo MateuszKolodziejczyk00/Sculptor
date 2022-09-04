@@ -50,6 +50,11 @@ public:
 	static void									IncrementReleaseSemaphoreToCurrentFrame();
 
 	static void									EnableValidationWarnings(Bool enable);
+
+private:
+
+	// block creating instance
+	Renderer() = default;
 };
 
-}
+} // spt::rdr

@@ -18,7 +18,7 @@ protected:
 
 public:
 
-	GraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef);
+	GraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition& pipelineDef);
 };
 
 } // spt::rdr

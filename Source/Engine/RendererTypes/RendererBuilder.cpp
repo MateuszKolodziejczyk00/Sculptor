@@ -5,6 +5,9 @@
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
 #include "Types/UIBackend.h"
+#include "Types/Shader.h"
+#include "Types/Pipeline/GraphicsPipeline.h"
+#include "Types/Pipeline/ComputePipeline.h"
 
 
 namespace spt::rdr
@@ -45,4 +48,19 @@ Barrier RendererBuilder::CreateBarrier()
 	return Barrier();
 }
 
+lib::SharedPtr<Shader> RendererBuilder::CreateShader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData)
+{
+	return std::make_shared<Shader>(name, moduleDefinitions, metaData);
 }
+
+lib::SharedPtr<GraphicsPipeline> RendererBuilder::CreateGraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef)
+{
+	return std::make_shared<GraphicsPipeline>(name, shader, pipelineDef);
+}
+
+lib::SharedPtr<ComputePipeline> RendererBuilder::CreateComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader)
+{
+	return std::make_shared<ComputePipeline>(name, shader);
+}
+
+} // spt::rdr
