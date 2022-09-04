@@ -20,7 +20,7 @@ class PipelineLayout
 {
 public:
 
-	PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef);
+	explicit PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef);
 	~PipelineLayout();
 
 	VkPipelineLayout	GetHandle() const;

@@ -48,17 +48,16 @@ RHIWindow::RHIWindow()
 { }
 
 RHIWindow::RHIWindow(RHIWindow&& rhs)
+	: m_swapchain(rhs.m_swapchain)
+	, m_swapchainImages(std::move(rhs.m_swapchainImages))
+	, m_swapchainTextureDef(rhs.m_swapchainTextureDef)
+	, m_surface(rhs.m_surface)
+	, m_presentMode(rhs.m_presentMode)
+	, m_surfaceFormat(rhs.m_surfaceFormat)
+	, m_minImagesNum(rhs.m_minImagesNum)
+	, m_swapchainOutOfDate(rhs.m_swapchainOutOfDate)
+	, m_swapchainSize(rhs.m_swapchainSize)
 {
-	m_swapchain				= rhs.m_swapchain;
-	m_swapchainImages		= std::move(rhs.m_swapchainImages);
-	m_swapchainTextureDef	= rhs.m_swapchainTextureDef;
-	m_surface				= rhs.m_surface;
-	m_presentMode			= rhs.m_presentMode;
-	m_surfaceFormat			= rhs.m_surfaceFormat;
-	m_minImagesNum			= rhs.m_minImagesNum;
-	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
-	m_swapchainSize			= rhs.m_swapchainSize;
-
 	rhs.m_swapchain = VK_NULL_HANDLE;
 }
 

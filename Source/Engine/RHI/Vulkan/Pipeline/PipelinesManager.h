@@ -146,6 +146,8 @@ public:
 			}
 		}
 
+		ResetPipelineBuildDatas();
+
 		m_flushingPipelineBuilsCV.notify_all();
 
 		return createdPipelines;
