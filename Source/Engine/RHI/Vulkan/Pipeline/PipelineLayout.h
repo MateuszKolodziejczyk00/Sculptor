@@ -27,4 +27,4 @@ private:
 	VkPipelineLayout	m_layoutHnadle;
 };
 
-}
+} // spt::vulkan

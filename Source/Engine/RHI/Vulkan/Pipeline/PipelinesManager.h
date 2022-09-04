@@ -13,7 +13,7 @@ struct GraphicsPipelineBuildDefinition
 {
 	GraphicsPipelineBuildDefinition(const rhi::PipelineShaderStagesDefinition&	inShaderStagesDef,
 									const rhi::GraphicsPipelineDefinition&		inPipelineDefinition,
-									PipelineLayout								inLayout)
+									const PipelineLayout&						inLayout)
 		: shaderStagesDef(inShaderStagesDef)
 		, pipelineDefinition(inPipelineDefinition)
 		, layout(inLayout)
@@ -21,7 +21,7 @@ struct GraphicsPipelineBuildDefinition
 	
 	const rhi::PipelineShaderStagesDefinition&	shaderStagesDef;
 	const rhi::GraphicsPipelineDefinition&		pipelineDefinition;
-	PipelineLayout								layout;
+	const PipelineLayout&						layout;
 };
 
 
@@ -59,13 +59,13 @@ struct GraphicsPipelineBuildData
 
 struct ComputePipelineBuildDefinition
 {
-	ComputePipelineBuildDefinition(const RHIShaderModule& inComputeShaderModule, PipelineLayout inPipelineLayout)
+	ComputePipelineBuildDefinition(const RHIShaderModule& inComputeShaderModule, const PipelineLayout& inPipelineLayout)
 		: computeShaderModule(inComputeShaderModule)
 		, layout(inPipelineLayout)
 	{ }
 
-	RHIShaderModule		computeShaderModule;
-	PipelineLayout		layout;
+	const RHIShaderModule&		computeShaderModule;
+	const PipelineLayout&		layout;
 };
 
 

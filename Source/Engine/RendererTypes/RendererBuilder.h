@@ -24,7 +24,7 @@ struct ShaderModuleDefinition;
 namespace spt::smd
 {
 class ShaderMetaData;
-}
+} // spt::smd
 
 
 namespace spt::rdr
