@@ -1,8 +1,8 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RHICore/RHIPipelineLayoutTypes.h"
 #include "Vulkan/VulkanCore.h"
+#include "PipelineLayout.h"
 
 
 namespace spt::vulkan
@@ -14,20 +14,20 @@ public:
 
 	PipelineLayoutsManager() = default;
 
-	void				InitializeRHI();
-	void				ReleaseRHI();
+	void							InitializeRHI();
+	void							ReleaseRHI();
 
-	VkPipelineLayout	GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
+	lib::SharedPtr<PipelineLayout>	GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
 
 private:
 
-	VkDescriptorSetLayout	GetOrCreateDSLayout(const rhi::DescriptorSetDefinition& dsDef);
-	VkDescriptorSetLayout	CreateDSLayout(const rhi::DescriptorSetDefinition& dsDef) const;
+	VkDescriptorSetLayout			GetOrCreateDSLayout(const rhi::DescriptorSetDefinition& dsDef);
+	VkDescriptorSetLayout			CreateDSLayout(const rhi::DescriptorSetDefinition& dsDef) const;
 
-	VkPipelineLayout		CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
+	lib::SharedPtr<PipelineLayout>	CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
 
-	lib::HashMap<SizeType, VkPipelineLayout>		m_cachedPipelineLayouts;
-	lib::HashMap<SizeType, VkDescriptorSetLayout>	m_cachedDSLayouts;
+	lib::HashMap<SizeType, lib::SharedPtr<PipelineLayout>>	m_cachedPipelineLayouts;
+	lib::HashMap<SizeType, VkDescriptorSetLayout>			m_cachedDSLayouts;
 };
 
 } // spt::vulkan

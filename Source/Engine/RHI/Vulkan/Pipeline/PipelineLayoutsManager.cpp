@@ -14,23 +14,18 @@ void PipelineLayoutsManager::ReleaseRHI()
 {
 	SPT_PROFILE_FUNCTION();
 
+	m_cachedPipelineLayouts.clear();
+
 	for (const auto& keyToLayout : m_cachedDSLayouts)
 	{
 		const VkDescriptorSetLayout handle = keyToLayout.second;
 		vkDestroyDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), handle, VulkanRHI::GetAllocationCallbacks());
 	}
 
-	for (const auto& keyToLayout : m_cachedPipelineLayouts)
-	{
-		const VkPipelineLayout handle = keyToLayout.second;
-		vkDestroyPipelineLayout(VulkanRHI::GetDeviceHandle(), handle, VulkanRHI::GetAllocationCallbacks());
-	}
-
 	m_cachedDSLayouts.clear();
-	m_cachedPipelineLayouts.clear();
 }
 
-VkPipelineLayout PipelineLayoutsManager::GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
+lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -103,7 +98,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 	return layoutHandle;
 }
 
-VkPipelineLayout PipelineLayoutsManager::CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
+lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
 {
 	SPT_PROFILE_FUNCTION();
 
@@ -117,17 +112,10 @@ VkPipelineLayout PipelineLayoutsManager::CreatePipelineLayout(const rhi::Pipelin
 			return GetOrCreateDSLayout(dsDef);
 		});
 
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutInfo.setLayoutCount			= static_cast<Uint32>(layoutHandles.size());
-    pipelineLayoutInfo.pSetLayouts				= layoutHandles.data();
-    pipelineLayoutInfo.pushConstantRangeCount	= 0;
-	pipelineLayoutInfo.pPushConstantRanges		= nullptr;
+	VulkanPipelineLayoutDefinition layoutDef;
+	layoutDef.descriptorSetLayouts = std::move(layoutHandles);
 
-	VkPipelineLayout pipelineLayoutHandle = VK_NULL_HANDLE;
-	SPT_VK_CHECK(vkCreatePipelineLayout(VulkanRHI::GetDeviceHandle(), &pipelineLayoutInfo, VulkanRHI::GetAllocationCallbacks(), &pipelineLayoutHandle));
-
-	SPT_CHECK(pipelineLayoutHandle != VK_NULL_HANDLE);
-	return pipelineLayoutHandle;
+	return std::make_shared<PipelineLayout>(layoutDef);
 }
 
 } // spt::vulkan

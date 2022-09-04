@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIPipelineLayoutTypes.h"
 #include "Vulkan/VulkanCore.h"
@@ -9,22 +8,32 @@
 namespace spt::vulkan
 {
 
+struct VulkanPipelineLayoutDefinition
+{
+	VulkanPipelineLayoutDefinition() = default;
+
+	lib::DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
+};
+
+
 class PipelineLayout
 {
 public:
 
-	PipelineLayout();
-
-	void				InitializeRHI(const rhi::PipelineLayoutDefinition& definition);
-	void				ReleaseRHI();
-
-	Bool				IsValid() const;
+	PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef);
+	~PipelineLayout();
 
 	VkPipelineLayout	GetHandle() const;
 
+	SPT_NODISCARD VkDescriptorSetLayout	GetDescriptorSetLayout(Uint32 descriptorSetIdx) const;
+	SPT_NODISCARD Uint32				GetDescriptorSetsNum() const;
+
+	SPT_NODISCARD const lib::DynamicArray<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const;
+
 private:
 
-	VkPipelineLayout	m_layoutHnadle;
+	VkPipelineLayout							m_layoutHandle;
+	lib::DynamicArray<VkDescriptorSetLayout>	m_descriptorSetLayouts;
 };
 
 } // spt::vulkan

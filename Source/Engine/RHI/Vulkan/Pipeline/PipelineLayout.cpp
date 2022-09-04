@@ -1,38 +1,52 @@
 #include "PipelineLayout.h"
 #include "Vulkan/VulkanRHI.h"
-#include "PipelineLayoutsManager.h"
 
 namespace spt::vulkan
 {
 
-PipelineLayout::PipelineLayout()
-	: m_layoutHnadle(VK_NULL_HANDLE)
-{ }
-
-void PipelineLayout::InitializeRHI(const rhi::PipelineLayoutDefinition& definition)
+PipelineLayout::PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef)
+	: m_layoutHandle(VK_NULL_HANDLE)
 {
 	SPT_PROFILE_FUNCTION();
 
-	m_layoutHnadle = VulkanRHI::GetPipelineLayoutsManager().GetOrCreatePipelineLayout(definition);
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    pipelineLayoutInfo.setLayoutCount			= static_cast<Uint32>(layoutDef.descriptorSetLayouts.size());
+    pipelineLayoutInfo.pSetLayouts				= layoutDef.descriptorSetLayouts.data();
+    pipelineLayoutInfo.pushConstantRangeCount	= 0;
+	pipelineLayoutInfo.pPushConstantRanges		= nullptr;
+
+	SPT_VK_CHECK(vkCreatePipelineLayout(VulkanRHI::GetDeviceHandle(), &pipelineLayoutInfo, VulkanRHI::GetAllocationCallbacks(), &m_layoutHandle));
+
+	m_descriptorSetLayouts = layoutDef.descriptorSetLayouts;
 }
 
-void PipelineLayout::ReleaseRHI()
+PipelineLayout::~PipelineLayout()
 {
-	SPT_CHECK(IsValid());
+	SPT_PROFILE_FUNCTION();
 
-	// We don't destroy layout, as its managed by PipelineLayoutsManager (and destroyed there)
-	m_layoutHnadle = VK_NULL_HANDLE;
-}
-
-Bool PipelineLayout::IsValid() const
-{
-	return m_layoutHnadle != VK_NULL_HANDLE;
+	vkDestroyPipelineLayout(VulkanRHI::GetDeviceHandle(), m_layoutHandle, VulkanRHI::GetAllocationCallbacks());
 }
 
 VkPipelineLayout PipelineLayout::GetHandle() const
 {
-	return m_layoutHnadle;
+	return m_layoutHandle;
+}
 
+VkDescriptorSetLayout PipelineLayout::GetDescriptorSetLayout(Uint32 descriptorSetIdx) const
+{
+	// it's kinda odd to use Uint32 as idx here, but we use it here because it's used in vulkan api interface
+	const SizeType idxAsSizeType = static_cast<SizeType>(descriptorSetIdx);
+	return idxAsSizeType < m_descriptorSetLayouts.size() ? m_descriptorSetLayouts[idxAsSizeType] : VK_NULL_HANDLE;
+}
+
+Uint32 PipelineLayout::GetDescriptorSetsNum() const
+{
+	return static_cast<Uint32>(m_descriptorSetLayouts.size());
+}
+
+const lib::DynamicArray<VkDescriptorSetLayout>& PipelineLayout::GetDescriptorSetLayouts() const
+{
+	return m_descriptorSetLayouts;
 }
 
 } // spt::vulkan
