@@ -1,6 +1,8 @@
 ShaderCompiler= Project:CreateProject("ShaderCompiler", ETargetType.SharedLibrary)
 
-include "Shaderc/Shaderc"
+if GetSelectedRHI() == ERHI.Vulkan then
+    include "Shaderc/Shaderc"
+end
 
 function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

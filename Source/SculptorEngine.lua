@@ -26,3 +26,6 @@ IncludeProject("ShaderCompiler")
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererTypes")
 IncludeProject("RendererCore")
+
+SetProjectsSubgroupName("Tools")
+IncludeProject("Profiler")

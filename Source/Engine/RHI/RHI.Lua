@@ -1,6 +1,8 @@
 RHI = Project:CreateProject("RHI", ETargetType.SharedLibrary)
 
-include "Vulkan/Vulkan"
+if GetSelectedRHI() == ERHI.Vulkan then
+    include "Vulkan/Vulkan"
+end
 
 function RHI:SetupConfiguration(configuration, platform)
     self:SetupRHIConfiguration(configuration, platform)

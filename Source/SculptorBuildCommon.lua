@@ -474,3 +474,21 @@ function StartProjectsType(projectsType)
     currentProjectsType = projectsType
     ResetProjectsSubgroupName()
 end
+
+
+-- RHI =================================================================
+
+ERHI=
+{
+    Vulkan              = "Vulkan"
+}
+
+selectedRHI = nil
+
+function SetRHI(rhi)
+    selectedRHI = rhi
+end
+
+function GetSelectedRHI()
+    return selectedRHI
+end

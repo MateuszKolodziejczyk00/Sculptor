@@ -51,14 +51,14 @@ private:
 template<typename TDataType>
 void Engine::SaveConfigData(const TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigPath(), configFileName);
+	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
 	srl::SerializationHelper::SaveTextStructToFile(data, finalPath);
 }
 
 template<typename TDataType>
 Bool Engine::LoadConfigData(TDataType& data, const lib::String& configFileName)
 {
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigPath(), configFileName);
+	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
 	return srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
 }
 

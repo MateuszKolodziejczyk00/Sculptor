@@ -16,7 +16,8 @@ namespace priv
 {
 
 static lib::String	g_enginePath;
-static lib::String	g_configPath;
+static lib::String	g_configsPath;
+static lib::String	g_tracesPath;
 
 } // priv
 
@@ -24,7 +25,8 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 {
 	priv::g_enginePath = cmdLineArgs.GetValue(params::enginePath).ToString();
 
-	priv::g_configPath = Combine(priv::g_enginePath, "Config");
+	priv::g_configsPath = Combine(priv::g_enginePath, "Config");
+	priv::g_tracesPath = Combine(priv::g_enginePath, "Saved/Traces");
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -32,9 +34,14 @@ const lib::String& Paths::GetEnginePath()
 	return priv::g_enginePath;
 }
 
-const lib::String& Paths::GetConfigPath()
+const lib::String& Paths::GetConfigsPath()
 {
-	return priv::g_configPath;
+	return priv::g_configsPath;
+}
+
+const lib::String& Paths::GetTracesPath()
+{
+	return priv::g_tracesPath;
 }
 
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)

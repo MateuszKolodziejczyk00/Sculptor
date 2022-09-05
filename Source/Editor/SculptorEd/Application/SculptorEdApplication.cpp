@@ -11,6 +11,7 @@
 #include "imgui.h"
 
 #include "Shaders/ShadersManager.h"
+#include "Profiler.h"
 
 
 namespace spt::ed
@@ -103,9 +104,24 @@ void SculptorEdApplication::OnRun()
 
 		ImGui::NewFrame();
 
-		ImGui::Begin("Test");
-		ImGui::Text("TESTSDasd");
+		ImGui::Begin("ProfilerTest");
+		if (prf::Profiler::StartedCapture())
+		{
+			if (ImGui::Button("Stop Trace"))
+			{
+				prf::Profiler::StopCapture();
+				prf::Profiler::SaveCapture();
+			}
+		}
+		else
+		{
+			if (ImGui::Button("Start Trace"))
+			{
+				prf::Profiler::StartCapture();
+			}
+		}
 		ImGui::End();
+
 		ImGui::Begin("ASD");
 		ImGui::Text("TESTSDasd");
 		ImGui::End();

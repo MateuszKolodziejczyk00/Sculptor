@@ -1,5 +1,7 @@
 include "Source/SculptorBuildCommon"
 
+SetRHI(ERHI.Vulkan)
+
 workspace "Sculptor"
     
 	configurations

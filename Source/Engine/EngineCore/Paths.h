@@ -20,7 +20,9 @@ public:
 
 	static const lib::String&	GetEnginePath();
 
-	static const lib::String&	GetConfigPath();
+	static const lib::String&	GetConfigsPath();
+
+	static const lib::String&	GetTracesPath();
 
 	// Utils =============================================
 

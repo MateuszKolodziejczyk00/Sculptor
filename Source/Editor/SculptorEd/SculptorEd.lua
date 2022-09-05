@@ -5,6 +5,7 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("RendererCore")
 
 	self:AddPrivateDependency("EngineCore")
+	self:AddPrivateDependency("Profiler")
 
 	self:AddDebugArgument("EngineRelativePath=../../../")
 end
