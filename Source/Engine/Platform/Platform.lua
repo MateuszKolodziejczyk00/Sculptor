@@ -3,7 +3,7 @@ Platform = Project:CreateProject("Platform", ETargetType.SharedLibrary)
 function Platform:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorCore")
     self:AddPublicDependency("Math")
-    self:AddPublicDependency("Profiler")
+    self:AddPublicDependency("ProfilerCore")
 end
 
 function GLFW:GetProjectFiles(configuration, platform)

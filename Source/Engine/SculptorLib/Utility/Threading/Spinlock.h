@@ -2,7 +2,7 @@
 
 #include "MathCore.h"
 #include "Platform.h"
-#include "Profiler.h"
+#include "ProfilerCore.h"
 
 
 namespace spt::lib

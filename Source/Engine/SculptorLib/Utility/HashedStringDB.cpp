@@ -1,6 +1,6 @@
 #include "HashedStringDB.h"
 #include "Containers/HashMap.h"
-#include "Profiler.h"
+#include "ProfilerCore.h"
 #include "Threading/Lock.h"
 
 

@@ -1,7 +1,6 @@
 #include "SculptorEdApplication.h"
 #include "Renderer.h"
 #include "RendererBuilder.h"
-#include "Profiler.h"
 #include "Timer/TickingTimer.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"

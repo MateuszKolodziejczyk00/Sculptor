@@ -6,7 +6,7 @@
 #include "StdCoreMinimal.h"
 #include "Assertions/Assertions.h"
 
-#include "Profiler.h"
+#include "ProfilerCore.h"
 
 // Containers
 #include "Containers/DynamicArray.h"
