@@ -11,20 +11,19 @@ namespace priv
 
 static auto GetOpenMode(EFileOpenFlags flags)
 {
-	using FlagsType = std::decay_t<decltype(std::ios::trunc)>;
-	FlagsType openMode{};
+	std::ios_base::openmode openMode{};
 
 	if (lib::HasAnyFlag(flags, EFileOpenFlags::DiscardContent))
 	{
-		openMode = static_cast<FlagsType>(openMode | std::ios::trunc);
+		lib::AddFlag(openMode, std::ios::trunc);
 	}
 	if (lib::HasAnyFlag(flags, EFileOpenFlags::StartAtTheEnd))
 	{
-		openMode = static_cast<FlagsType>(openMode | std::ios::ate);
+		lib::AddFlag(openMode, std::ios::ate);
 	}
 	if (lib::HasAnyFlag(flags, EFileOpenFlags::Binary))
 	{
-		openMode = static_cast<FlagsType>(openMode | std::ios::binary);
+		lib::AddFlag(openMode, std::ios::binary);
 	}
 
 	return openMode;
@@ -52,6 +51,8 @@ std::ofstream File::OpenOutputStream(const lib::String& path, EFileOpenFlags ope
 			outputStream.open(path);
 		}
 	}
+
+	SPT_CHECK(!lib::HasAnyFlag(openFlags, EFileOpenFlags::ForceCreate) || !outputStream.bad());
 
 	return outputStream;
 }

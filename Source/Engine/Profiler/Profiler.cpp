@@ -1,15 +1,26 @@
 #include "Profiler.h"
 #include "Paths.h"
+#include "FileSystem/File.h"
+
 #include <ctime>
 #include <iomanip>
 
 namespace spt::prf
 {
 
+namespace priv
+{
+
+// probably doesn't need to be threadsafe
+static Bool				g_startedCapture = false;
+static std::ofstream	g_currentCaptureStream;
+
+} // priv
+
 namespace utils
 {
 
-static lib::String GetCaptureFileNameWithoutExtension()
+static lib::String GetCaptureFilePathWithoutExtension()
 {
     const std::time_t currentTime = std::time(nullptr);
 
@@ -20,7 +31,7 @@ static lib::String GetCaptureFileNameWithoutExtension()
     oss << std::put_time(&localTime, "%d%m%Y_%H%M%S");
     const lib::String timeString = oss.str();
 
-	return timeString;
+	return engn::Paths::Combine(engn::Paths::GetTracesPath(), timeString);
 }
 
 } // utils
@@ -57,12 +68,26 @@ public:
 
 	static Bool SaveCapture()
 	{
-		const lib::String CaptureFileName = utils::GetCaptureFileNameWithoutExtension() + ".opt";
-		const lib::String CaptureFilePath = engn::Paths::Combine(engn::Paths::GetTracesPath(), CaptureFileName);
+		const lib::String capturePath = utils::GetCaptureFilePathWithoutExtension() + ".opt";
+		priv::g_currentCaptureStream = lib::File::OpenOutputStream(capturePath, lib::Flags(lib::EFileOpenFlags::Binary, lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::ForceCreate));
 
-		OPTICK_SAVE_CAPTURE(CaptureFilePath.c_str());
+		OPTICK_SAVE_CAPTURE(&OptickProfilerImpl::SaveCaptureImpl, true);
+
+		priv::g_currentCaptureStream.close();
 
 		return true;
+	}
+
+private:
+
+	static void SaveCaptureImpl(const char* data, SizeType size)
+	{
+		SPT_CHECK(priv::g_currentCaptureStream.is_open() && !priv::g_currentCaptureStream.bad());
+
+		if (data)
+		{
+			priv::g_currentCaptureStream.write(data, size);
+		}
 	}
 };
 
@@ -79,14 +104,6 @@ using ProfilerImpl = NullProfilerImpl;
 #endif // WITH_OPTICK
 
 } // impl
-
-namespace priv
-{
-
-// probably doesn't need to be threadsafe
-static Bool g_startedCapture = false;
-
-} // priv
 
 void Profiler::StartCapture()
 {
