@@ -66,7 +66,7 @@ void PipelinesBatchBuilder<TVulkanCreateInfoType, TBuildDataType, pipelinesBuild
 	Int32 buildIdx = idxNone<Int32>;
 
 	{
-		SPT_PROFILE_SCOPE("TryBuildPipelineCreateData");
+		SPT_PROFILER_SCOPE("TryBuildPipelineCreateData");
 
 		lib::SharedLockGuard pipelineBuildsLockGuard(m_pipelineBuildsLock);
 		m_flushingPipelineBuilsCV.wait(pipelineBuildsLockGuard, [&, this]() { return TryBuildPipelineCreateData_AssumesLockedShared(buildPipelineDataFunction, buildIdx); });
@@ -81,7 +81,7 @@ template<typename TVulkanCreateInfoType, typename TBuildDataType, SizeType pipel
 template<typename TBuildPipelinesFunction>
 lib::DynamicArray<std::pair<PipelineID, VkPipeline>> PipelinesBatchBuilder<TVulkanCreateInfoType, TBuildDataType, pipelinesBuildsBatchMaxSize>::BuildPendingPipelines(const TBuildPipelinesFunction& buildPipelinesFunction)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	// Guaranteed to have enough big size
 	lib::StaticArray<VkPipeline, pipelinesBuildsBatchMaxSize> outPipelines;
@@ -118,7 +118,7 @@ template<typename TVulkanCreateInfoType, typename TBuildDataType, SizeType pipel
 template<typename TBuildPipelineDataFunctionFunction>
 Bool PipelinesBatchBuilder<TVulkanCreateInfoType, TBuildDataType, pipelinesBuildsBatchMaxSize>::TryBuildPipelineCreateData_AssumesLockedShared(const TBuildPipelineDataFunctionFunction& buildPipelineDataFunction, Int32& outBuildIdx)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outBuildIdx = AcquireNewBuildIdx_AssumesLockedShared();
 	const Bool success = (outBuildIdx != idxNone<Int32>);

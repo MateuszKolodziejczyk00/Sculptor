@@ -70,7 +70,7 @@ namespace spt::sc
 
 Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (!CanUseShadersCache())
 	{
@@ -83,7 +83,7 @@ Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath,
 
 CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	SPT_CHECK(CanUseShadersCache());
 
@@ -104,7 +104,7 @@ CompiledShaderFile CompiledShadersCache::GetCachedShaderChecked(lib::HashedStrin
 
 void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	SPT_CHECK(CanUseShadersCache());
 
@@ -119,7 +119,7 @@ Bool CompiledShadersCache::CanUseShadersCache()
 
 CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return shaderRelativePath.GetKey() ^ compilationSettings.Hash();
 }
@@ -148,7 +148,7 @@ lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)
 
 lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	const HashType hash = HashShader(shaderRelativePath, compilationSettings);
 	return CreateShaderFilePath(hash);

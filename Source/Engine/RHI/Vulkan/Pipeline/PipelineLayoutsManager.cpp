@@ -12,7 +12,7 @@ void PipelineLayoutsManager::InitializeRHI()
 
 void PipelineLayoutsManager::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_cachedPipelineLayouts.clear();
 
@@ -27,7 +27,7 @@ void PipelineLayoutsManager::ReleaseRHI()
 
 lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const std::hash<rhi::PipelineLayoutDefinition> hasher;
 	const SizeType layoutDefinitionHash = hasher(definition);
@@ -43,7 +43,7 @@ lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout
 
 VkDescriptorSetLayout PipelineLayoutsManager::GetOrCreateDSLayout(const rhi::DescriptorSetDefinition& dsDef)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	const std::hash<rhi::DescriptorSetDefinition> hasher;
 	const SizeType hash = hasher(dsDef);
@@ -59,7 +59,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::GetOrCreateDSLayout(const rhi::Des
 
 VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::DescriptorSetDefinition& dsDef) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	lib::DynamicArray<VkDescriptorSetLayoutBinding> bindingsInfos;
 	lib::DynamicArray<VkDescriptorBindingFlags> bindingsFlags;
@@ -100,7 +100,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 
 lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	lib::DynamicArray<VkDescriptorSetLayout> layoutHandles;
 	layoutHandles.reserve(definition.descriptorSets.size());

@@ -23,7 +23,7 @@ static VkPipelineShaderStageCreateInfo BuildPipelineShaderStageInfo(const rhi::R
 
 static SPT_INLINE void ReleasePipelineResource(VkPipeline pipelineHandle)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(pipelineHandle != VK_NULL_HANDLE);
 
@@ -35,7 +35,7 @@ namespace gfx
 
 static void BuildShaderInfos(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineShaderStageCreateInfo>& outShaderStageInfos)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outShaderStageInfos.clear();
 
@@ -48,7 +48,7 @@ static void BuildShaderInfos(const GraphicsPipelineBuildDefinition& pipelineBuil
 
 static void BuildInputAssemblyInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineInputAssemblyStateCreateInfo& outInputAssemblyStateInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	outInputAssemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     outInputAssemblyStateInfo.topology					= RHIToVulkan::GetPrimitiveTopology(pipelineBuildDef.pipelineDefinition.primitiveTopology);
@@ -57,7 +57,7 @@ static void BuildInputAssemblyInfo(const GraphicsPipelineBuildDefinition& pipeli
 
 static void BuildRasterizationStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationStateCreateInfo& outRasterizationState)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const rhi::PipelineRasterizationDefinition& rasterizationDefinition = pipelineBuildDef.pipelineDefinition.rasterizationDefinition;
 
@@ -72,7 +72,7 @@ static void BuildRasterizationStateInfo(const GraphicsPipelineBuildDefinition& p
 
 static void BuildMultisampleStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineMultisampleStateCreateInfo& outMultisampleState)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const rhi::MultisamplingDefinition& multisampleStateDefinition = pipelineBuildDef.pipelineDefinition.multisamplingDefinition;
 
@@ -125,7 +125,7 @@ static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFac
 
 static void BuildColorBlendStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkPipelineColorBlendAttachmentState>& outBlendAttachmentStates, VkPipelineColorBlendStateCreateInfo& outColorBlendState)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outBlendAttachmentStates.clear();
 
@@ -157,7 +157,7 @@ static void BuildColorBlendStateInfo(const GraphicsPipelineBuildDefinition& pipe
 
 static void BuildDynamicStatesInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkDynamicState>& outDynamicStates, VkPipelineDynamicStateCreateInfo& outDynamicStateInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outDynamicStates.clear();
 
@@ -171,7 +171,7 @@ static void BuildDynamicStatesInfo(const GraphicsPipelineBuildDefinition& pipeli
 
 static void BuildPipelineRenderingInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, lib::DynamicArray<VkFormat>& outColorRTFormats, VkPipelineRenderingCreateInfo& outPipelineRenderingInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outColorRTFormats.clear();
 
@@ -197,7 +197,7 @@ static void BuildPipelineRenderingInfo(const GraphicsPipelineBuildDefinition& pi
 
 static void BuildGraphicsPipelineInfo(const GraphicsPipelineBuildData& buildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outPipelineInfo = VkGraphicsPipelineCreateInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
     outPipelineInfo.flags				= 0;
@@ -224,7 +224,7 @@ static void BuildGraphicsPipelineInfo(const GraphicsPipelineBuildData& buildData
 
 static void BuildGraphicsPipelineCreateData(const GraphicsPipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, GraphicsPipelineBuildData& outBuildData, VkGraphicsPipelineCreateInfo& outPipelineInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outBuildData.pipelineID = pipelineID;
 	outBuildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
@@ -243,7 +243,7 @@ static void BuildGraphicsPipelineCreateData(const GraphicsPipelineBuildDefinitio
 // out pipelines are guaranteed to be big-enough
 static void BuildGraphicsPipelines(const VkGraphicsPipelineCreateInfo* pipelineInfos, Uint32 pipelinesNum, VkPipeline* outPipelines)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
@@ -262,7 +262,7 @@ namespace compute
 
 static void BuildComputePipelineInfo(const ComputePipelineBuildDefinition& computePipelineDef, const ComputePipelineBuildData& buildData, VkComputePipelineCreateInfo& outPipelineInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outPipelineInfo = VkComputePipelineCreateInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	outPipelineInfo.stage				= BuildPipelineShaderStageInfo(computePipelineDef.computeShaderModule);
@@ -273,7 +273,7 @@ static void BuildComputePipelineInfo(const ComputePipelineBuildDefinition& compu
 
 static void BuildComputePipelineCreateData(const ComputePipelineBuildDefinition& pipelineBuildDef, PipelineID pipelineID, ComputePipelineBuildData& outBuildData, VkComputePipelineCreateInfo& outPipelineInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	outBuildData.pipelineID = pipelineID;
 	outBuildData.pipelineLayout = pipelineBuildDef.layout.GetHandle();
@@ -284,7 +284,7 @@ static void BuildComputePipelineCreateData(const ComputePipelineBuildDefinition&
 // out pipelines are guaranteed to be big-enough
 static void BuildComputePipelines(const VkComputePipelineCreateInfo* pipelineInfos, Uint32 pipelinesNum, VkPipeline* outPipelines)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
@@ -314,7 +314,7 @@ void PipelinesManager::InitializeRHI()
 
 void PipelinesManager::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	std::for_each(std::cbegin(m_cachedPipelines), std::cend(m_cachedPipelines),
 		[](const auto& idToPipeline)
@@ -329,7 +329,7 @@ void PipelinesManager::ReleaseRHI()
 
 PipelineID PipelinesManager::BuildGraphicsPipelineDeferred(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const PipelineID pipelineID = m_piplineIDCounter.fetch_add(1, std::memory_order_relaxed);
 
@@ -352,7 +352,7 @@ PipelineID PipelinesManager::BuildGraphicsPipelineDeferred(const GraphicsPipelin
 
 void PipelinesManager::FlushPendingGraphicsPipelines()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::DynamicArray<std::pair<PipelineID, VkPipeline>> createdPipelines = m_graphicsPipelinesBatchBuilder.BuildPendingPipelines(&helpers::gfx::BuildGraphicsPipelines);
 	CacheCreatedPipelines(createdPipelines);
@@ -360,7 +360,7 @@ void PipelinesManager::FlushPendingGraphicsPipelines()
 
 PipelineID PipelinesManager::BuildComputePipelineDeferred(const ComputePipelineBuildDefinition& pipelineBuildDef)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const PipelineID pipelineID = m_piplineIDCounter.fetch_add(1, std::memory_order_relaxed);
 
@@ -383,7 +383,7 @@ PipelineID PipelinesManager::BuildComputePipelineDeferred(const ComputePipelineB
 
 void PipelinesManager::FlushPendingComputePipelines()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::DynamicArray<std::pair<PipelineID, VkPipeline>> createdPipelines = m_computePipelinesBatchBuilder.BuildPendingPipelines(&helpers::compute::BuildComputePipelines);
 	CacheCreatedPipelines(createdPipelines);
@@ -391,7 +391,7 @@ void PipelinesManager::FlushPendingComputePipelines()
 
 void PipelinesManager::ReleasePipeline(PipelineID pipelineID)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto foundPipeline = m_cachedPipelines.find(pipelineID);
 	if (foundPipeline != std::cend(m_cachedPipelines))
@@ -402,7 +402,7 @@ void PipelinesManager::ReleasePipeline(PipelineID pipelineID)
 
 VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (pipelineID == idxNone<PipelineID>)
 	{
@@ -419,7 +419,7 @@ VkPipeline PipelinesManager::GetPipelineHandle(PipelineID pipelineID) const
 
 void PipelinesManager::CacheCreatedPipelines(const lib::DynamicArray<std::pair<PipelineID, VkPipeline>>& createdPipelines)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	std::copy(std::cbegin(createdPipelines), std::cend(createdPipelines), std::inserter(m_cachedPipelines, std::end(m_cachedPipelines)));
 }

@@ -46,7 +46,7 @@ const lib::String& Paths::GetTracesPath()
 
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto isSlash = [](char c) { return c == '/' || c == '\\'; };
 
@@ -62,7 +62,7 @@ void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)
 
 lib::String Paths::Combine(lib::StringView pathBegin, lib::StringView pathEnd)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	lib::String path(pathBegin);
 	AppendPath(path, pathEnd);

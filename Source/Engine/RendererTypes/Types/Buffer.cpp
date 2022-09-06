@@ -16,7 +16,7 @@ Buffer::Buffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage 
 
 lib::SharedPtr<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return std::make_shared<BufferView>(shared_from_this(), offset, size);
 }

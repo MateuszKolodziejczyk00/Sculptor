@@ -44,7 +44,7 @@ void CurrentFrameContext::Shutdown()
 
 void CurrentFrameContext::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (priv::currentFrameIdx >= priv::framesInFlightNum)
 	{
@@ -72,7 +72,7 @@ CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanu
 
 void CurrentFrameContext::ReleaseAllResources()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	for (Uint32 i = 0; i < priv::framesInFlightNum; ++i)
 	{
@@ -93,7 +93,7 @@ const lib::SharedPtr<Semaphore>& CurrentFrameContext::GetReleaseFrameSemaphore()
 
 void CurrentFrameContext::FlushCurrentFrameReleases()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Broadcast();
 	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Reset();

@@ -45,7 +45,7 @@ private:
 template<typename TRHIType, Bool deferredReleaseRHI /*= true*/>
 RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(m_rhiResource.IsValid());
 

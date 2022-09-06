@@ -7,7 +7,7 @@ namespace spt::rdr
 GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition& pipelineDef)
 	: Pipeline(shader)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	rhi::PipelineShaderStagesDefinition shaderStagesDef;
 	shaderStagesDef.shaderModules = shader->GetShaderModules();

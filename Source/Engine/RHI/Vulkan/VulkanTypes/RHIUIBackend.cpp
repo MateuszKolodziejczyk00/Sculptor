@@ -13,7 +13,7 @@ RHIUIBackend::RHIUIBackend()
 
 void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(context.IsValid());
 	SPT_CHECK(!IsValid());
@@ -49,7 +49,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 
 void RHIUIBackend::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -65,7 +65,7 @@ Bool RHIUIBackend::IsValid() const
 
 void RHIUIBackend::InitializeFonts(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -77,7 +77,7 @@ void RHIUIBackend::InitializeFonts(const RHICommandBuffer& cmdBuffer)
 
 void RHIUIBackend::DestroyFontsTemporaryObjects()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -86,7 +86,7 @@ void RHIUIBackend::DestroyFontsTemporaryObjects()
 
 void RHIUIBackend::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -95,7 +95,7 @@ void RHIUIBackend::BeginFrame()
 
 void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	ImGui::SetCurrentContext(m_context.GetHandle());
 
@@ -109,7 +109,7 @@ void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 
 void RHIUIBackend::InitializeDescriptorPool()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const VkDescriptorPoolCreateFlags flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 

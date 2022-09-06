@@ -42,7 +42,7 @@ RHICommandBuffer::RHICommandBuffer()
 
 void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferDefinition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
@@ -53,7 +53,7 @@ void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferD
 
 void RHICommandBuffer::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!IsValid());
 
@@ -112,7 +112,7 @@ const lib::HashedString& RHICommandBuffer::GetName() const
 
 void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingDefinition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 	
@@ -209,7 +209,7 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 
 void RHICommandBuffer::EndRendering()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 

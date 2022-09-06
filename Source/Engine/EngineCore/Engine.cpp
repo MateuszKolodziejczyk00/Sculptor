@@ -5,7 +5,7 @@ namespace spt::engn
 
 void Engine::Initialize(const EngineInitializationParams& initializationParams)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	Engine& engineInstance = GetInstance();
 	

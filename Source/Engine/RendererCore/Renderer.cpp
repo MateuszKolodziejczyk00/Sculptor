@@ -61,14 +61,14 @@ void Renderer::Uninitialize()
 
 void Renderer::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	CurrentFrameContext::BeginFrame();
 }
 
 void Renderer::EndFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	CurrentFrameContext::EndFrame();
 }
@@ -80,14 +80,14 @@ ShadersManager& Renderer::GetShadersManager()
 
 lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const CommandsRecordingInfo& recordingInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return std::make_unique<CommandsRecorder>(recordingInfo);
 }
 
 void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!submitBatches.empty());
 
@@ -114,7 +114,7 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 
 void Renderer::WaitIdle()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	rhi::RHI::WaitIdle();
 
@@ -133,7 +133,7 @@ const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
 
 void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
 	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());

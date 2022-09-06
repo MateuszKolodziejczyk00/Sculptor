@@ -21,7 +21,7 @@ VkPhysicalDevice PhysicalDevice::SelectPhysicalDevice(VkInstance instance, VkSur
 
 VkPhysicalDeviceProperties2 PhysicalDevice::GetDeviceProperties(VkPhysicalDevice device)
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     VkPhysicalDeviceProperties2 deviceProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
     vkGetPhysicalDeviceProperties2(device, &deviceProps);
@@ -30,7 +30,7 @@ VkPhysicalDeviceProperties2 PhysicalDevice::GetDeviceProperties(VkPhysicalDevice
 
 VkPhysicalDeviceFeatures2 PhysicalDevice::GetDeviceFeatures(VkPhysicalDevice device)
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     VkPhysicalDeviceFeatures2 deviceFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
     vkGetPhysicalDeviceFeatures2(device, &deviceFeatures);
@@ -39,7 +39,7 @@ VkPhysicalDeviceFeatures2 PhysicalDevice::GetDeviceFeatures(VkPhysicalDevice dev
 
 spt::lib::DynamicArray<VkQueueFamilyProperties2> PhysicalDevice::GetDeviceQueueFamilies(VkPhysicalDevice device)
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
    	Uint32 queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueFamilyCount, nullptr);

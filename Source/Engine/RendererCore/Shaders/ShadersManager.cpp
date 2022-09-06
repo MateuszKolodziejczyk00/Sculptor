@@ -58,7 +58,7 @@ static sc::ETargetEnvironment SelectCompilationTargetEnvironment()
 
 void ShadersManager::Initialize()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	sc::CompilationEnvironmentDef compilationEnvironmentDef;
 	const Bool loaded = engn::Engine::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.yaml");
@@ -75,7 +75,7 @@ void ShadersManager::Uninitialize()
 
 lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, settings);
 
@@ -95,7 +95,7 @@ lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelati
 
 void ShadersManager::ClearCachedShaders()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
@@ -105,7 +105,7 @@ void ShadersManager::ClearCachedShaders()
 
 ShadersManager::ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	ShadersManager::ShaderHashType hash = settings.Hash();
 	lib::HashCombine(hash, lib::GetHash(shaderRelativePath));
@@ -114,7 +114,7 @@ ShadersManager::ShaderHashType ShadersManager::HashCompilationParams(const lib::
 
 lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
@@ -134,7 +134,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& 
 
 lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	sc::CompiledShaderFile compiledShader;
 	const Bool compilationResult = sc::ShaderCompilerToolChain::CompileShader(shaderRelativePath, settings, compiledShader);

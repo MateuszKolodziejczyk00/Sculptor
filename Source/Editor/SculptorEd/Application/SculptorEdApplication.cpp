@@ -85,7 +85,7 @@ void SculptorEdApplication::OnRun()
 
 	while (true)
 	{
-		SPT_PROFILE_FRAME("EditorFrame");
+		SPT_PROFILER_FRAME("EditorFrame");
 
 		const Real32 deltaTime = timer.Tick();
 

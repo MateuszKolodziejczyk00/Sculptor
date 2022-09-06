@@ -14,7 +14,7 @@ RHIPipeline::RHIPipeline()
 
 void RHIPipeline::InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
@@ -27,7 +27,7 @@ void RHIPipeline::InitializeRHI(const rhi::PipelineShaderStagesDefinition& shade
 
 void RHIPipeline::InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
@@ -40,7 +40,7 @@ void RHIPipeline::InitializeRHI(const rhi::RHIShaderModule& computeShaderModule,
 
 void RHIPipeline::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -106,7 +106,7 @@ void RHIPipeline::InitializePipelineLayout(const rhi::PipelineLayoutDefinition& 
 
 void RHIPipeline::InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const GraphicsPipelineBuildDefinition pipelineBuildDefinition(shaderStagesDef, pipelineDefinition, layout);
 	m_pipelineID = VulkanRHI::GetPipelinesManager().BuildGraphicsPipelineDeferred(pipelineBuildDefinition);
@@ -116,7 +116,7 @@ void RHIPipeline::InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefi
 
 void RHIPipeline::InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(computeShaderModule.IsValid());
 

@@ -75,7 +75,7 @@ private:
 
 void SpirvExposedParametersBuilder::AddMembersParameters(const spirv_cross::SPIRType& type) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const Uint32 membersNum = static_cast<Uint32>(type.member_types.size());
 	for (Uint32 memberIdx = 0; memberIdx < membersNum; ++memberIdx)
@@ -86,7 +86,7 @@ void SpirvExposedParametersBuilder::AddMembersParameters(const spirv_cross::SPIR
 
 void SpirvExposedParametersBuilder::AddMemberParameterImpl(const spirv_cross::SPIRType& type, Uint32 memberIdx, Uint32 offset, Uint32 stride) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const spirv_cross::TypeID variableTypeID		= type.member_types[memberIdx];
 	const spirv_cross::SPIRType& singleElementType	= GetSingleElementType(variableTypeID);
@@ -138,7 +138,7 @@ const spirv_cross::SPIRType& SpirvExposedParametersBuilder::GetSingleElementType
 
 static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& uniformBufferResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, uniformBufferResource);
 
@@ -167,7 +167,7 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& storageBufferResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, storageBufferResource);
 
@@ -206,7 +206,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& combinedTextureSamplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, combinedTextureSamplerResource);
 	
@@ -219,7 +219,7 @@ static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, con
 
 static void AddTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, textureResource);
 	
@@ -232,7 +232,7 @@ static void AddTexture(const spirv_cross::Compiler& compiler, const spirv_cross:
 
 static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
@@ -265,7 +265,7 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 
 void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const spirv_cross::Compiler compiler(shader.GetBinary());
 	priv::BuildShaderMetaData(compiler, shader.GetStage(), parametersMetaData, outShaderMetaData);

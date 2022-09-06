@@ -183,7 +183,7 @@ void RHIBarrier::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierText
 
 void RHIBarrier::Execute(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
 
@@ -200,7 +200,7 @@ void RHIBarrier::Execute(const RHICommandBuffer& cmdBuffer)
 
 void RHIBarrier::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 
@@ -215,7 +215,7 @@ void RHIBarrier::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer
 
 void RHIBarrier::WriteNewLayoutsToLayoutsManager(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 

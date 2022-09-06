@@ -57,7 +57,7 @@ lib::String& ShaderSourceCode::GetSourceCodeMutable()
 
 SizeType ShaderSourceCode::Hash() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return static_cast<SizeType>(m_stage);
 }
@@ -70,7 +70,7 @@ ShaderCompilationSettings::ShaderCompilationSettings()
 
 void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (macro.IsValid())
 	{
@@ -85,7 +85,7 @@ const lib::DynamicArray<lib::HashedString>& ShaderCompilationSettings::GetMacros
 
 SizeType ShaderCompilationSettings::Hash() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return lib::HashRange(m_macros.cbegin(), m_macros.cend());
 }

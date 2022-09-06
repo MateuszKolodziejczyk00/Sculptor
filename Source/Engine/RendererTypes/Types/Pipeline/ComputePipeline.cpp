@@ -7,7 +7,7 @@ namespace spt::rdr
 ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader)
 	: Pipeline(shader)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::DynamicArray<rhi::RHIShaderModule>& shaderModules = shader->GetShaderModules();
 	SPT_CHECK(shaderModules.size() == 1); // compute shader must have only one module (compute)

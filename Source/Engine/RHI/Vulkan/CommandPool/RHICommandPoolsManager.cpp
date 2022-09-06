@@ -35,7 +35,7 @@ void CommandPoolsSet::Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags
 
 VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& outAcquireInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SizeType poolIdx = TryFindAndLockAvailablePool();
 	if (poolIdx == m_commandPools.size())
@@ -52,7 +52,7 @@ VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& 
 
 void CommandPoolsSet::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	RHICommandPool& commandPool = SafeGetCommandPool(acquireInfo.commandPoolId);
 
@@ -61,7 +61,7 @@ void CommandPoolsSet::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
 
 void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::WriteLockGuard lockGuard(m_lock);
 
@@ -70,7 +70,7 @@ void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acqui
 
 RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::ReadLockGuard lockGuard(m_lock);
 
@@ -84,7 +84,7 @@ RHICommandPool& CommandPoolsSet::GetCommandPool_AssumesLocked(SizeType commandPo
 
 SizeType CommandPoolsSet::TryFindAndLockAvailablePool()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::ReadLockGuard lockGuard(m_lock);
 
@@ -95,7 +95,7 @@ SizeType CommandPoolsSet::TryFindAndLockAvailablePool()
 
 SizeType CommandPoolsSet::CreateNewPool()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	RHICommandPool* pool = nullptr;
 	SizeType newPoolIdx = 0;
@@ -128,7 +128,7 @@ void CommandPoolsManager::DestroyResources()
 
 VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const Uint32 poolSettingsHash = HashCommandBufferDefinition(bufferDefinition);
 	
@@ -144,7 +144,7 @@ VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBuff
 
 void CommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
 	poolsSet.ReleasePool(acquireInfo);
@@ -152,7 +152,7 @@ void CommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInf
 
 void CommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
 	poolsSet.ReleaseCommandBuffer(acquireInfo, commandBuffer);
@@ -160,7 +160,7 @@ void CommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& a
 
 CommandPoolsSet& CommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	{
 		const lib::ReadLockGuard lockGuard(m_lock);
@@ -178,7 +178,7 @@ CommandPoolsSet& CommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefini
 
 CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkCommandPoolCreateFlags poolFlags = 0;
 	if (bufferDefinition.complexityClass == rhi::ECommandBufferComplexityClass::Low)
@@ -201,7 +201,7 @@ CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefi
 
 CommandPoolsSet& CommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::ReadLockGuard lockGuard(m_lock);
 

@@ -41,7 +41,7 @@ static void OnErrorCallback(int errorCode, const char* description)
 
 static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
@@ -149,7 +149,7 @@ math::Vector2u GLFWWindow::GetFramebufferSize() const
 
 void GLFWWindow::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (HasValidUIContext())
 	{
@@ -159,7 +159,7 @@ void GLFWWindow::BeginFrame()
 
 void GLFWWindow::Update(Real32 deltaTime)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	glfwPollEvents();
 }

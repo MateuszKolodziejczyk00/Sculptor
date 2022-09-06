@@ -18,7 +18,7 @@ static HashMap<HashedStringDB::KeyType, String> records;
 
 HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView& outView)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const KeyType key = HashString(inString);
 
@@ -51,7 +51,7 @@ HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView&
 
 HashedStringDB::KeyType HashedStringDB::GetRecord(StringView inString, StringView& outView)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const KeyType key = HashString(inString);
 
@@ -84,7 +84,7 @@ HashedStringDB::KeyType HashedStringDB::HashString(StringView string)
 
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const ReadLockGuard readRecordsLock(priv::recordsMutex);
 
@@ -101,7 +101,7 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 
 void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const WriteLockGuard addRecordLock(priv::recordsMutex);
 

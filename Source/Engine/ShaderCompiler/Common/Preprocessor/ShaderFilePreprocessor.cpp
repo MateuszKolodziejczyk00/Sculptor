@@ -46,7 +46,7 @@ Bool ShaderFilePreprocessingResult::IsValid() const
 
 ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSourceCode(const lib::String& sourceCode)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	ShaderFilePreprocessingResult result;
 	

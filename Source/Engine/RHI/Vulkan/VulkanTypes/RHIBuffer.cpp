@@ -71,7 +71,7 @@ RHIBuffer::RHIBuffer()
 
 void RHIBuffer::InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_bufferSize = size;
 	m_usageFlags = bufferUsage;
@@ -93,7 +93,7 @@ void RHIBuffer::InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const 
 
 void RHIBuffer::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -130,7 +130,7 @@ rhi::EBufferUsage RHIBuffer::GetUsage() const
 
 void* RHIBuffer::MapBufferMemory() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
@@ -151,7 +151,7 @@ void* RHIBuffer::MapBufferMemory() const
 
 void RHIBuffer::UnmapBufferMemory() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
 	{
@@ -161,7 +161,7 @@ void RHIBuffer::UnmapBufferMemory() const
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
 	addressInfo.buffer = m_bufferHandle;

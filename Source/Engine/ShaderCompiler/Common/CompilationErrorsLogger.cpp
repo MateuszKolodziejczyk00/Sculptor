@@ -55,7 +55,7 @@ private:
 
 void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::String logFilePath = GetShaderPreprocessedCodeLogsPath(shaderPath, sourceCode);
 	priv::LoggerStreamGuard streamGuard(logFilePath);
@@ -67,7 +67,7 @@ void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& sh
 
 void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const lib::String& errors)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::String logFilePath = GetShaderPreprocesingErrorsLogsPath(shaderPath, sourceCode);
 	priv::LoggerStreamGuard streamGuard(logFilePath);
@@ -79,7 +79,7 @@ void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String&
 
 void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const lib::String& errors)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::String logFilePath = GetShaderCompilationErrorsLogsPath(shaderPath, sourceCode);
 	priv::LoggerStreamGuard streamGuard(logFilePath);

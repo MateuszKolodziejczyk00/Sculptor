@@ -12,7 +12,7 @@ namespace spt::sc
 
 Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	Bool compilationResult = false;
 
@@ -51,7 +51,7 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 
 Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	Bool success = true;
 

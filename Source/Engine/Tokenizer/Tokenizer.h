@@ -105,7 +105,7 @@ inline Tokenizer<TTokenizerDictionary>::Tokenizer(lib::StringView string, const 
 template<typename TTokenizerDictionary>
 inline TokensArray Tokenizer<TTokenizerDictionary>::BuildTokensArray() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	TokensArray tokens;
 

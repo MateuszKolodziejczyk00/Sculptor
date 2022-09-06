@@ -7,7 +7,7 @@ namespace spt::vulkan
 PipelineLayout::PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef)
 	: m_layoutHandle(VK_NULL_HANDLE)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     pipelineLayoutInfo.setLayoutCount			= static_cast<Uint32>(layoutDef.descriptorSetLayouts.size());
@@ -22,7 +22,7 @@ PipelineLayout::PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef)
 
 PipelineLayout::~PipelineLayout()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	vkDestroyPipelineLayout(VulkanRHI::GetDeviceHandle(), m_layoutHandle, VulkanRHI::GetAllocationCallbacks());
 }

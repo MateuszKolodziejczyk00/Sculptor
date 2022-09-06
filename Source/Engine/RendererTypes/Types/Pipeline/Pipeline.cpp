@@ -87,7 +87,7 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 
 Pipeline::Pipeline(const lib::SharedPtr<Shader>& shader)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!shader);
 
@@ -101,7 +101,7 @@ const lib::SharedPtr<smd::ShaderMetaData>& Pipeline::GetMetaData() const
 
 rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	rhi::PipelineLayoutDefinition layoutDefinition;
 

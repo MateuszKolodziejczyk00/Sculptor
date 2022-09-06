@@ -10,7 +10,7 @@ DescriptorPool::DescriptorPool()
 
 void DescriptorPool::Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const lib::DynamicArray<VkDescriptorPoolSize>& poolSizes)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
@@ -44,7 +44,7 @@ VkDescriptorPool DescriptorPool::GetHandle() const
 
 Bool DescriptorPool::AllocateDescriptorSets(const lib::DynamicArray<VkDescriptorSetLayout>& layouts, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 	SPT_CHECK(!layouts.empty() && layouts.size() == outDescriptorSets.size());
@@ -61,7 +61,7 @@ Bool DescriptorPool::AllocateDescriptorSets(const lib::DynamicArray<VkDescriptor
 
 void DescriptorPool::ResetPool()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 

@@ -96,7 +96,7 @@ void Includer::SetCurrentShaderLocation(lib::String path)
 
 shaderc_include_result* Includer::GetInclude(const char* requested_source, shaderc_include_type type, const char* requesting_source, size_t include_depth)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	lib::String fileName = requested_source;
 
@@ -137,7 +137,7 @@ lib::String Includer::GetIncludedFilePath(const lib::String& name, shaderc_inclu
 
 lib::String Includer::ReadShaderCode(const lib::String& path) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return ShaderFileReader::ReadShaderFileAbsolute(path.c_str());
 }
@@ -184,7 +184,7 @@ CompilerImpl::CompilerImpl()
 
 CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(m_compiler.IsValid());
 
@@ -224,7 +224,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 void CompilerImpl::CreateCompileOptions(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, shaderc::CompileOptions& outCompileOptions) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
@@ -254,7 +254,7 @@ void CompilerImpl::CreateCompileOptions(const ShaderSourceCode& sourceCode, cons
 
 shaderc::PreprocessedSourceCompilationResult CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode, const shaderc::CompileOptions& options) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const shaderc_shader_kind shaderKind = priv::GetShaderKind(sourceCode.GetShaderStage());
 
@@ -269,7 +269,7 @@ shaderc::PreprocessedSourceCompilationResult CompilerImpl::PreprocessShader(cons
 
 shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCode& preprocessedSourceCode, const shaderc::CompileOptions& options) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const shaderc_shader_kind shaderKind = priv::GetShaderKind(preprocessedSourceCode.GetShaderStage());
 
@@ -283,7 +283,7 @@ shaderc::SpvCompilationResult CompilerImpl::CompileToSpirv(const ShaderSourceCod
 
 ShaderCompiler::ShaderCompiler()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_impl = std::make_unique<CompilerImpl>();
 }
@@ -292,7 +292,7 @@ ShaderCompiler::~ShaderCompiler() = default;
 
 CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	return m_impl->CompileShader(shaderPath, sourceCode, compilationSettings, outParamsMetaData);
 }

@@ -11,7 +11,7 @@ RHIShaderModule::RHIShaderModule()
 
 void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkShaderModuleCreateInfo moduleInfo{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = static_cast<Uint32>(definition.binary.size() * sizeof(Uint32));
@@ -22,7 +22,7 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
 
 void RHIShaderModule::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 

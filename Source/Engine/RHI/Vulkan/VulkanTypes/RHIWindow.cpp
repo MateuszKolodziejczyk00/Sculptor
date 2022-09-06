@@ -80,7 +80,7 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 
 void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
@@ -131,7 +131,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 void RHIWindow::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!IsValid());
 
@@ -146,13 +146,13 @@ Bool RHIWindow::IsValid() const
 
 void RHIWindow::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 }
 
 Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout /*= idxNone<Uint64>*/)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsSwapchainOutOfDate());
 
@@ -188,7 +188,7 @@ Uint32 RHIWindow::GetSwapchainImagesNum() const
 
 Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsSwapchainOutOfDate());
 
@@ -227,7 +227,7 @@ Bool RHIWindow::IsSwapchainOutOfDate() const
 
 void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_swapchain = CreateSwapchain(framebufferSize, m_swapchain);
 
@@ -248,7 +248,7 @@ VkFormat RHIWindow::GetSurfaceFormat() const
 
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const VkFormat swapchainTextureFormat			= m_surfaceFormat.format;
 	const VkImageUsageFlags swapchainTextureUsage	= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -294,7 +294,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 
 void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	Uint32 imagesNum = 0;
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, nullptr));

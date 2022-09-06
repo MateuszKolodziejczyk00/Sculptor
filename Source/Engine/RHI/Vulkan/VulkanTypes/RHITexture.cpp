@@ -245,7 +245,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!IsValid());
 
@@ -273,7 +273,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 
 void RHITexture::ReleaseRHI()
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!!IsValid());
 
@@ -355,7 +355,7 @@ RHITextureView::RHITextureView()
 
 void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition)
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     const rhi::TextureDefinition& textureDef = texture.GetDefinition();
 
@@ -384,7 +384,7 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 
 void RHITextureView::ReleaseRHI()
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!!m_viewHandle);
 

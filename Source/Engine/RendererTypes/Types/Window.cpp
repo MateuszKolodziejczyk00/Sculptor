@@ -27,21 +27,21 @@ Bool Window::ShouldClose() const
 
 void Window::BeginFrame()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_platformWindow->BeginFrame();
 }
 
 void Window::Update(Real32 deltaTime)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	m_platformWindow->Update(deltaTime);
 }
 
 lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout /*= maxValue<Uint64>*/)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
 
@@ -61,7 +61,7 @@ lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr
 
 void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	lib::DynamicArray<rhi::RHISemaphore> rhiWaitSemaphores(waitSemaphores.size());
 	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
@@ -79,7 +79,7 @@ Bool Window::IsSwapchainOutOfDate() const
 
 void Window::RebuildSwapchain()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsSwapchainOutOfDate());
 

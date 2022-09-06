@@ -13,7 +13,7 @@ RHICommandPool::RHICommandPool()
 
 void RHICommandPool::InitializeRHI(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkCommandPoolCreateInfo poolInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	poolInfo.queueFamilyIndex		= queueFamilyIdx;
@@ -26,7 +26,7 @@ void RHICommandPool::InitializeRHI(Uint32 queueFamilyIdx, VkCommandPoolCreateFla
 
 void RHICommandPool::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!IsValid());
 	SPT_CHECK(!IsLocked());
@@ -91,7 +91,7 @@ Bool RHICommandPool::HasAvailableCommandBuffers() const
 
 void RHICommandPool::ReleaseCommandBuffer(VkCommandBuffer cmdBuffer)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	++m_releasedBuffersNum;
 
@@ -105,7 +105,7 @@ void RHICommandPool::ReleaseCommandBuffer(VkCommandBuffer cmdBuffer)
 
 void RHICommandPool::AllocateCommandBuffers(Uint32 commandBuffersNum, VkCommandBufferLevel level)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkCommandBufferAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     allocateInfo.commandPool = m_poolHandle;

@@ -9,7 +9,7 @@ namespace spt::sc
 
 lib::String ShaderFileReader::ReadShaderFileRelative(const lib::String& shaderRelativePath)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	
 	const lib::String shaderPath = ShaderCompilationEnvironment::GetShadersPath() + "/" + shaderRelativePath;
 

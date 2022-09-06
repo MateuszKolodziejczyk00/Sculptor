@@ -42,7 +42,7 @@ const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandsBuffer() const
 
 void CommandsRecorder::ExecuteBarrier(Barrier& barrier)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsRecording());
 
@@ -51,7 +51,7 @@ void CommandsRecorder::ExecuteBarrier(Barrier& barrier)
 
 void CommandsRecorder::BeginRendering(const RenderingDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsRecording());
 
@@ -60,7 +60,7 @@ void CommandsRecorder::BeginRendering(const RenderingDefinition& definition)
 
 void CommandsRecorder::EndRendering()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsRecording());
 
@@ -69,7 +69,7 @@ void CommandsRecorder::EndRendering()
 
 void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsRecording());
 	SPT_CHECK(!!uiBackend);
@@ -79,7 +79,7 @@ void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& u
 
 void CommandsRecorder::RenderUI(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsRecording());
 	SPT_CHECK(!!uiBackend);

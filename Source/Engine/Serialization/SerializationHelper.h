@@ -22,7 +22,7 @@ public:
 template<typename TStructType>
 void SerializationHelper::SaveTextStructToFile(const TStructType& data, const lib::String& filePath)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	YAML::Emitter out;
 
@@ -38,7 +38,7 @@ void SerializationHelper::SaveTextStructToFile(const TStructType& data, const li
 template<typename TStructType>
 Bool SerializationHelper::LoadTextStructFromFile(TStructType& data, const lib::String& filePath)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	std::ifstream stream = lib::File::OpenInputStream(filePath);
 	if (!stream.fail())

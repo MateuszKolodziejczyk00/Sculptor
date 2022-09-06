@@ -34,7 +34,7 @@ RHISemaphore::RHISemaphore()
 
 void RHISemaphore::InitializeRHI(const rhi::SemaphoreDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	VkSemaphoreTypeCreateInfo semaphoreTypeInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
     semaphoreTypeInfo.semaphoreType = priv::GetVulkanSemaphoreType(definition.type);
@@ -50,7 +50,7 @@ void RHISemaphore::InitializeRHI(const rhi::SemaphoreDefinition& definition)
 
 void RHISemaphore::ReleaseRHI()
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	if (m_semaphore)
 	{
@@ -67,7 +67,7 @@ Bool RHISemaphore::IsValid() const
 
 Uint64 RHISemaphore::GetValue() const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	SPT_CHECK(IsValid());
 
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
@@ -79,7 +79,7 @@ Uint64 RHISemaphore::GetValue() const
 
 Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) const
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	SPT_CHECK(IsValid());
 
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
@@ -96,7 +96,7 @@ Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) con
 
 void RHISemaphore::Signal(Uint64 value)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 	SPT_CHECK(IsValid());
 
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
@@ -136,7 +136,7 @@ RHISemaphoresArray::RHISemaphoresArray()
 
 void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage submitStage)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Binary);
 
@@ -145,7 +145,7 @@ void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::
 
 void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, rhi::EPipelineStage submitStage)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Timeline);
 

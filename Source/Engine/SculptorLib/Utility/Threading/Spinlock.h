@@ -29,7 +29,7 @@ public:
 
 	void Lock()
 	{
-		SPT_PROFILE_FUNCTION();
+		SPT_PROFILER_FUNCTION();
 
 		while (true)
 		{

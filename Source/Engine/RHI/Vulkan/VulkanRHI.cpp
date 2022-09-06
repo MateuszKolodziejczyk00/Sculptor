@@ -239,7 +239,7 @@ rhi::ERHIType VulkanRHI::GetRHIType()
 
 void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
 {
-    SPT_PROFILE_FUNCTION();
+    SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!submitBatches.empty());
 

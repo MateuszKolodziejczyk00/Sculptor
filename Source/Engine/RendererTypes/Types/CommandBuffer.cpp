@@ -6,7 +6,7 @@ namespace spt::rdr
 
 CommandBuffer::CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	GetRHI().InitializeRHI(definition);
 	GetRHI().SetName(name.Get());

@@ -6,7 +6,7 @@ namespace spt::rdr
 
 UIBackend::UIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window)
 {
-	SPT_PROFILE_FUNCTION();
+	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(context.IsValid() && !!window);
 
