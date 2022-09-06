@@ -28,7 +28,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
     initInfo.Instance = VulkanRHI::GetInstanceHandle();
     initInfo.PhysicalDevice = VulkanRHI::GetPhysicalDeviceHandle();
     initInfo.Device = device.GetHandle();
-    initInfo.QueueFamily = device.GetGfxQueueIdx();
+    initInfo.QueueFamily = device.GetGfxQueueFamilyIdx();
     initInfo.Queue = device.GetGfxQueueHandle();
     initInfo.PipelineCache = VK_NULL_HANDLE;
 	initInfo.DescriptorPool = m_uiDescriptorPool.GetHandle();

@@ -18,6 +18,7 @@ class RHIBarrier;
 class RHIUIBackend;
 class RHIShaderModule;
 class RHIPipeline;
+class RHIProfiler;
 
 }
 

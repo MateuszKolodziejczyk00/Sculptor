@@ -54,6 +54,8 @@ public:
 
 	VkFormat					GetSurfaceFormat() const;
 
+	VkSwapchainKHR				GetSwapchainHandle() const;
+
 private:
 
 	VkSwapchainKHR				CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);

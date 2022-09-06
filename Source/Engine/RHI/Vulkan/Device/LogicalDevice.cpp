@@ -200,12 +200,12 @@ VkQueue LogicalDevice::GetQueueHandle(rhi::ECommandBufferQueueType queueType) co
 	return VK_NULL_HANDLE;
 }
 
-Uint32 LogicalDevice::GetGfxQueueIdx() const
+Uint32 LogicalDevice::GetGfxQueueFamilyIdx() const
 {
 	return m_gfxFamilyIdx;
 }
 
-Uint32 LogicalDevice::GetAsyncComputeQueueIdx() const
+Uint32 LogicalDevice::GetAsyncComputeQueueFamilyIdx() const
 {
 	return m_asyncComputeFamilyIdx;
 }
@@ -214,16 +214,16 @@ Uint32 LogicalDevice::GetQueueIdx(rhi::ECommandBufferQueueType queueType) const
 {
 	switch (queueType)
 	{
-	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueIdx();
-	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueIdx();
-	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueIdx();
+	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueFamilyIdx();
+	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueFamilyIdx();
+	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueFamilyIdx();
 	}
 
 	SPT_CHECK_NO_ENTRY();
 	return 0;
 }
 
-Uint32 LogicalDevice::GetTransferQueueIdx() const
+Uint32 LogicalDevice::GetTransferQueueFamilyIdx() const
 {
 	return m_transferFamilyIdx;
 }

@@ -105,7 +105,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 	SPT_CHECK(framebufferHeight >= surfaceCapabilities.minImageExtent.height && framebufferHeight <= surfaceCapabilities.maxImageExtent.height);
 
 	VkBool32 isSurfaceSupportedByPhysicalDevice = VK_FALSE;
-	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDeviceHandle, device.GetGfxQueueIdx(), m_surface, &isSurfaceSupportedByPhysicalDevice);
+	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDeviceHandle, device.GetGfxQueueFamilyIdx(), m_surface, &isSurfaceSupportedByPhysicalDevice);
 	if (isSurfaceSupportedByPhysicalDevice != VK_TRUE)
 	{
 		SPT_LOG_FATAL(VulkanRHIWindow, "Surface not supported by physical device");
@@ -244,6 +244,11 @@ math::Vector2u RHIWindow::GetSwapchainSize() const
 VkFormat RHIWindow::GetSurfaceFormat() const
 {
 	return m_surfaceFormat.format;
+}
+
+VkSwapchainKHR RHIWindow::GetSwapchainHandle() const
+{
+	return m_swapchain;
 }
 
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)

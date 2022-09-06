@@ -29,9 +29,9 @@ public:
 
 	VkQueue		GetQueueHandle(rhi::ECommandBufferQueueType queueType) const;
 
-	Uint32		GetGfxQueueIdx() const;
-	Uint32		GetAsyncComputeQueueIdx() const;
-	Uint32		GetTransferQueueIdx() const;
+	Uint32		GetGfxQueueFamilyIdx() const;
+	Uint32		GetAsyncComputeQueueFamilyIdx() const;
+	Uint32		GetTransferQueueFamilyIdx() const;
 
 	Uint32		GetQueueIdx(rhi::ECommandBufferQueueType queueType) const;
 
