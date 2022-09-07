@@ -21,7 +21,7 @@ public:																		\
 	std::shared_ptr<spdlog::logger> logger;									\
 	static LogCategory_##Category##* s_instance;							\
 																			\
-	static const Bool s_enabled = Enabled;											\
+	static const Bool s_enabled = Enabled;									\
 };																			\
 LogCategory_##Category##* LogCategory_##Category##::s_instance = nullptr;
 
