@@ -7,11 +7,12 @@
 #include "CommandsRecorder/CommandsRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "UIContextManager.h"
-#include "Engine.h"
-#include "imgui.h"
-
 #include "Shaders/ShadersManager.h"
 #include "Profiler.h"
+#include "Profiler/GPUProfiler.h"
+
+#include "Engine.h"
+#include "imgui.h"
 
 
 namespace spt::ed
@@ -178,44 +179,52 @@ void SculptorEdApplication::RenderFrame()
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(recordingInfo);
 
-	recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
-
 	{
-		rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
-		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
+		SPT_GPU_PROFILER_CONTEXT(recorder->GetCommandsBuffer());
 
-		recorder->ExecuteBarrier(barrier);
-	}
+		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-	rhi::TextureViewDefinition viewDefinition;
-	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	const lib::SharedPtr<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
+		{
+			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
 
-	rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
-	rdr::RTDefinition renderTarget;
-	renderTarget.textureView			= swapchainTextureView;
-	renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;
-	renderTarget.storeOperation			= rhi::ERTStoreOperation::Store;
-	renderTarget.clearColor.asFloat[0]	= 0.f;
-	renderTarget.clearColor.asFloat[1]	= 0.f;
-	renderTarget.clearColor.asFloat[2]	= 0.f;
-	renderTarget.clearColor.asFloat[3]	= 1.f;
+			recorder->ExecuteBarrier(barrier);
+		}
 
-	renderingDef.AddColorRenderTarget(renderTarget);
+		rhi::TextureViewDefinition viewDefinition;
+		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+		const lib::SharedPtr<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
-	recorder->BeginRendering(renderingDef);
+		rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
+		rdr::RTDefinition renderTarget;
+		renderTarget.textureView			= swapchainTextureView;
+		renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;
+		renderTarget.storeOperation			= rhi::ERTStoreOperation::Store;
+		renderTarget.clearColor.asFloat[0]	= 0.f;
+		renderTarget.clearColor.asFloat[1]	= 0.f;
+		renderTarget.clearColor.asFloat[2]	= 0.f;
+		renderTarget.clearColor.asFloat[3]	= 1.f;
 
-	recorder->RenderUI(uiBackend);
+		renderingDef.AddColorRenderTarget(renderTarget);
 
-	recorder->EndRendering();
+		{
+			SPT_GPU_PROFILER_EVENT("UI");
 
-	{
-		rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
-		const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-		barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+			recorder->BeginRendering(renderingDef);
 
-		recorder->ExecuteBarrier(barrier);
+			recorder->RenderUI(uiBackend);
+
+			recorder->EndRendering();
+		}
+
+		{
+			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+
+			recorder->ExecuteBarrier(barrier);
+		}
 	}
 
 	recorder->FinishRecording();
@@ -231,7 +240,7 @@ void SculptorEdApplication::RenderFrame()
 
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
-	m_window->PresentTexture({ finishCommandsSemaphore });
+	rdr::Renderer::PresentTexture(m_window, { finishCommandsSemaphore });
 
 	if (m_window->IsSwapchainOutOfDate())
 	{

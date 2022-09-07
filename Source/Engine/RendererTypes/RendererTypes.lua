@@ -6,6 +6,7 @@ function RendererTypes:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("ShaderCompiler")
 
     self:AddPublicDefine("RENDERER_VALIDATION=1")
+    self:AddPublicDefine("PROFILE_GPU=0")
 end
 
 RendererTypes:SetupProject()

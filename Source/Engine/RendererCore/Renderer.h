@@ -12,6 +12,7 @@ namespace spt::rdr
 struct CommandsRecordingInfo;
 class CommandsRecorder;
 class ShadersManager;
+class Window;
 
 
 struct CommandsSubmitBatch
@@ -41,6 +42,8 @@ public:
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands(const CommandsRecordingInfo& recordingInfo);
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
+
+	static void									PresentTexture(const lib::SharedPtr<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	static void									WaitIdle();
 

@@ -3,8 +3,10 @@
 #include "CommandsRecorder/CommandsRecorder.h"
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
+#include "Types/Window.h"
 #include "CurrentFrameContext.h"
 #include "Shaders/ShadersManager.h"
+#include "Profiler/GPUProfiler.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
@@ -48,6 +50,8 @@ void Renderer::Initialize()
 void Renderer::PostCreatedWindow()
 {
 	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
+
+	GPUProfiler::Initialize();
 }
 
 void Renderer::Uninitialize()
@@ -112,6 +116,17 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }
 
+void Renderer::PresentTexture(const lib::SharedPtr<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!window);
+
+	GPUProfiler::FlipFrame(window);
+	
+	window->PresentTexture(waitSemaphores);
+}
+
 void Renderer::WaitIdle()
 {
 	SPT_PROFILER_FUNCTION();
@@ -144,4 +159,4 @@ void Renderer::EnableValidationWarnings(Bool enable)
 	rhi::RHI::EnableValidationWarnings(enable);
 }
 
-}
+} // spt::rdr

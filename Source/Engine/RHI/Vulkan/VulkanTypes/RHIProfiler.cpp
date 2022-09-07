@@ -26,26 +26,22 @@ public:
 
 		VkDevice devices[] = {
 			device,
-			device,
 			device
 		};
 
 		VkPhysicalDevice physicalDevices[] = {
-			physicalDevice,
 			physicalDevice,
 			physicalDevice
 		};
 
 		VkQueue queues[] = {
 			logicalDevice.GetGfxQueueHandle(),
-			logicalDevice.GetAsyncComputeQueueHandle(),
-			logicalDevice.GetTransferQueueHandle()
+			logicalDevice.GetAsyncComputeQueueHandle()
 		};
 
 		Uint32 queueFamilies[] = {
 			logicalDevice.GetGfxQueueFamilyIdx(),
-			logicalDevice.GetAsyncComputeQueueFamilyIdx(),
-			logicalDevice.GetTransferQueueFamilyIdx()
+			logicalDevice.GetAsyncComputeQueueFamilyIdx()
 		};
 
 		const Uint32 queuesNum = SPT_ARRAY_SIZE(queues);
