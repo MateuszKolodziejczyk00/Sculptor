@@ -14,7 +14,6 @@
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
 
-#include "Utility/HashedString.h"
 #include "Logging/Log.h"
 
 

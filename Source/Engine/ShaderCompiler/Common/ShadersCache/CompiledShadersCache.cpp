@@ -2,6 +2,7 @@
 #include "Common/ShaderCompilationEnvironment.h"
 #include "Common/ShaderCompilationInput.h"
 #include "FileSystem/File.h"
+#include "Utility/String/StringUtils.h"
 
 #include "SculptorYAML.h"
 #include "SerializationHelper.h"
@@ -126,18 +127,7 @@ CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedStrin
 
 lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
 {
-	constexpr Uint32 fileNameLength = sizeof(HashType);
-
-	lib::String result(fileNameLength, '\0');
-
-	memcpy_s(result.data(), fileNameLength, &hash, fileNameLength);
-	for (char& character : result)
-	{
-		character %= ('Z' - 'A');
-		character += 'A';
-	}
-
-	return result;
+	return lib::StringUtils::ToHexString(reinterpret_cast<const Byte*>(&hash), sizeof(HashType));
 }
 
 lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)

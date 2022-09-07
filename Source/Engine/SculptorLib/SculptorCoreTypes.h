@@ -16,13 +16,13 @@
 
 // Utility
 #include "Utility/SharedRef.h"
-#include "Utility/String.h"
-#include "Utility/HashedString.h"
 #include "Utility/Memory.h"
 #include "Utility/Color.h"
 #include "Utility/Hash.h"
 #include "Utility/UtilityMacros.h"
 #include "Utility/Flags.h"
+#include "Utility/String/HashedString.h"
+#include "Utility/String/String.h"
 #include "Utility/Threading/Lock.h"
 #include "Utility/Threading/Spinlock.h"
 #include "Utility/Templates/TypeTraits.h"

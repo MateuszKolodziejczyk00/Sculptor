@@ -2,7 +2,7 @@
 
 #include "SculptorLibMacros.h"
 #include "HashedStringDB.h"
-#include "UtilityMacros.h"
+#include "Utility/UtilityMacros.h"
 
 
 namespace spt::lib
