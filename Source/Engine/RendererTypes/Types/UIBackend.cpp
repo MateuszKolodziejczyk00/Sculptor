@@ -4,11 +4,11 @@
 namespace spt::rdr
 {
 
-UIBackend::UIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window)
+UIBackend::UIBackend(ui::UIContext context, const lib::SharedRef<Window>& window)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(context.IsValid() && !!window);
+	SPT_CHECK(context.IsValid());
 
 	GetRHI().InitializeRHI(context, window->GetRHI());
 }

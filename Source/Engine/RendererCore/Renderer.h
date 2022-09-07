@@ -43,7 +43,7 @@ public:
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
 
-	static void									PresentTexture(const lib::SharedPtr<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	static void									WaitIdle();
 

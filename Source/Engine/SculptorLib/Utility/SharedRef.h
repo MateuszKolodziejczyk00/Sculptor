@@ -57,4 +57,17 @@ private:
 	SharedPtr<TType>	m_storage;
 };
 
+
+template<typename TType>
+SharedRef<TType> ToSharedRef(lib::SharedPtr<TType> data)
+{
+	return SharedRef<TType>(std::move(data));
+}
+
+template<typename TType, typename... TArgs>
+SharedRef<TType> MakeShared(TArgs&&... args)
+{
+	return SharedRef<TType>(std::make_shared<TType>(std::forward<TArgs>(args)...));
+}
+
 } // spt::lib

@@ -15,11 +15,11 @@ class RENDERER_TYPES_API Shader
 {
 public:
 
-	Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData);
+	Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedRef<smd::ShaderMetaData>& metaData);
 	~Shader();
 
 	const lib::DynamicArray<rhi::RHIShaderModule>&	GetShaderModules() const;
-	const lib::SharedPtr<smd::ShaderMetaData>&		GetMetaData() const;
+	const lib::SharedRef<smd::ShaderMetaData>&		GetMetaData() const;
 	rhi::EPipelineType								GetPipelineType() const;
 
 private:
@@ -27,7 +27,7 @@ private:
 	rhi::EPipelineType SelectPipelineType(const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions) const;
 
 	lib::DynamicArray<rhi::RHIShaderModule>	m_shaderModules;
-	lib::SharedPtr<smd::ShaderMetaData>		m_metaData;
+	lib::SharedRef<smd::ShaderMetaData>		m_metaData;
 	rhi::EPipelineType						m_pipelineType;
 };
 

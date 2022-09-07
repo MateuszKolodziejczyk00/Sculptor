@@ -85,16 +85,11 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Pipeline ======================================================================================
 
-Pipeline::Pipeline(const lib::SharedPtr<Shader>& shader)
-{
-	SPT_PROFILER_FUNCTION();
+Pipeline::Pipeline(const lib::SharedRef<Shader>& shader)
+	: m_metaData(shader->GetMetaData())
+{ }
 
-	SPT_CHECK(!!shader);
-
-	m_metaData = shader->GetMetaData();
-}
-
-const lib::SharedPtr<smd::ShaderMetaData>& Pipeline::GetMetaData() const
+const lib::SharedRef<smd::ShaderMetaData>& Pipeline::GetMetaData() const
 {
 	return m_metaData;
 }

@@ -154,7 +154,9 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 
 			});
 
-		shader = std::make_shared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinitions, std::make_shared<smd::ShaderMetaData>(compiledShader.metaData));
+
+		const lib::SharedRef<smd::ShaderMetaData> metaData = lib::MakeShared<smd::ShaderMetaData>(compiledShader.metaData);
+		shader = std::make_shared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinitions, metaData);
 	}
 	
 	return shader;

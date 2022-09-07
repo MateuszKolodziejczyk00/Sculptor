@@ -17,7 +17,7 @@ protected:
 
 public:
 
-	ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader);
+	ComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader);
 };
 
 } // spt::rdr

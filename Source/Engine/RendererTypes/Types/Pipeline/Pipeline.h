@@ -15,9 +15,9 @@ class RENDERER_TYPES_API Pipeline abstract
 {
 public:
 
-	Pipeline(const lib::SharedPtr<Shader>& shader);
+	Pipeline(const lib::SharedRef<Shader>& shader);
 
-	SPT_NODISCARD const lib::SharedPtr<smd::ShaderMetaData>& GetMetaData() const;
+	SPT_NODISCARD const lib::SharedRef<smd::ShaderMetaData>& GetMetaData() const;
 
 protected:
 
@@ -25,7 +25,7 @@ protected:
 
 private:
 
-	lib::SharedPtr<smd::ShaderMetaData> m_metaData;
+	lib::SharedRef<smd::ShaderMetaData> m_metaData;
 };
 
 } // spt::rdr

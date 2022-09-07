@@ -4,7 +4,7 @@
 namespace spt::rdr
 {
 
-ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader)
+ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader)
 	: Pipeline(shader)
 {
 	SPT_PROFILER_FUNCTION();

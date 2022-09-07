@@ -162,7 +162,7 @@ void SculptorEdApplication::OnShutdown()
 void SculptorEdApplication::RenderFrame()
 {
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedPtr<rdr::Semaphore> acquireSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 
 	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
 
@@ -194,7 +194,7 @@ void SculptorEdApplication::RenderFrame()
 
 		rhi::TextureViewDefinition viewDefinition;
 		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-		const lib::SharedPtr<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
+		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
 		rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
 		rdr::RTDefinition renderTarget;
@@ -229,7 +229,7 @@ void SculptorEdApplication::RenderFrame()
 
 	recorder->FinishRecording();
 
-	lib::SharedPtr<rdr::Semaphore> finishCommandsSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+	lib::SharedRef<rdr::Semaphore> finishCommandsSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
@@ -240,7 +240,7 @@ void SculptorEdApplication::RenderFrame()
 
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
-	rdr::Renderer::PresentTexture(m_window, { finishCommandsSemaphore });
+	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { finishCommandsSemaphore });
 
 	if (m_window->IsSwapchainOutOfDate())
 	{

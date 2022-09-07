@@ -21,7 +21,7 @@ protected:
 
 public:
 
-	UIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window);
+	UIBackend(ui::UIContext context, const lib::SharedRef<Window>& window);
 
 	void						BeginFrame();
 

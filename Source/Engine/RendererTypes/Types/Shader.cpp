@@ -5,11 +5,10 @@
 namespace spt::rdr
 {
 
-Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData)
+Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedRef<smd::ShaderMetaData>& metaData)
+	: m_metaData(metaData)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(!!metaData);
 
 	m_shaderModules.reserve(moduleDefinitions.size());
 
@@ -43,8 +42,6 @@ Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::Sh
 			return rhiShaderModule;
 		});
 	
-	m_metaData = metaData;
-	
 	m_pipelineType = SelectPipelineType(moduleDefinitions);
 }
 
@@ -62,7 +59,7 @@ const lib::DynamicArray<rhi::RHIShaderModule>& Shader::GetShaderModules() const
 	return m_shaderModules;
 }
 
-const lib::SharedPtr<smd::ShaderMetaData>& Shader::GetMetaData() const
+const lib::SharedRef<smd::ShaderMetaData>& Shader::GetMetaData() const
 {
 	return m_metaData;
 }

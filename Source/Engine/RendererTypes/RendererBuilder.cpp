@@ -13,34 +13,34 @@
 namespace spt::rdr
 {
 
-lib::SharedPtr<Window> RendererBuilder::CreateWindow(lib::StringView name, math::Vector2u resolution)
+lib::SharedRef<Window> RendererBuilder::CreateWindow(lib::StringView name, math::Vector2u resolution)
 {
-	return std::make_shared<Window>(name, resolution);
+	return lib::MakeShared<Window>(name, resolution);
 }
 
-lib::SharedPtr<UIBackend> RendererBuilder::CreateUIBackend(ui::UIContext context, const lib::SharedPtr<Window>& window)
+lib::SharedRef<UIBackend> RendererBuilder::CreateUIBackend(ui::UIContext context, const lib::SharedRef<Window>& window)
 {
-	return std::make_shared<UIBackend>(context, window);
+	return lib::MakeShared<UIBackend>(context, window);
 }
 
-lib::SharedPtr<Buffer> RendererBuilder::CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<Buffer> RendererBuilder::CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	return std::make_shared<Buffer>(name, size, bufferUsage, allocationInfo);
+	return lib::MakeShared<Buffer>(name, size, bufferUsage, allocationInfo);
 }
 
-lib::SharedPtr<Texture> RendererBuilder::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<Texture> RendererBuilder::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	return std::make_shared<Texture>(name, textureDefinition, allocationInfo);
+	return lib::MakeShared<Texture>(name, textureDefinition, allocationInfo);
 }
 
-lib::SharedPtr<Semaphore> RendererBuilder::CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
+lib::SharedRef<Semaphore> RendererBuilder::CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
 {
-	return std::make_shared<Semaphore>(name, definition);
+	return lib::MakeShared<Semaphore>(name, definition);
 }
 
-lib::SharedPtr<CommandBuffer> RendererBuilder::CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)
+lib::SharedRef<CommandBuffer> RendererBuilder::CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)
 {
-	return std::make_shared<CommandBuffer>(name, definition);
+	return lib::MakeShared<CommandBuffer>(name, definition);
 }
 
 Barrier RendererBuilder::CreateBarrier()
@@ -48,19 +48,19 @@ Barrier RendererBuilder::CreateBarrier()
 	return Barrier();
 }
 
-lib::SharedPtr<Shader> RendererBuilder::CreateShader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedPtr<smd::ShaderMetaData>& metaData)
+lib::SharedRef<Shader> RendererBuilder::CreateShader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedRef<smd::ShaderMetaData>& metaData)
 {
-	return std::make_shared<Shader>(name, moduleDefinitions, metaData);
+	return lib::MakeShared<Shader>(name, moduleDefinitions, metaData);
 }
 
-lib::SharedPtr<GraphicsPipeline> RendererBuilder::CreateGraphicsPipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef)
+lib::SharedRef<GraphicsPipeline> RendererBuilder::CreateGraphicsPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef)
 {
-	return std::make_shared<GraphicsPipeline>(name, shader, pipelineDef);
+	return lib::MakeShared<GraphicsPipeline>(name, shader, pipelineDef);
 }
 
-lib::SharedPtr<ComputePipeline> RendererBuilder::CreateComputePipeline(const RendererResourceName& name, const lib::SharedPtr<Shader>& shader)
+lib::SharedRef<ComputePipeline> RendererBuilder::CreateComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader)
 {
-	return std::make_shared<ComputePipeline>(name, shader);
+	return lib::MakeShared<ComputePipeline>(name, shader);
 }
 
 } // spt::rdr

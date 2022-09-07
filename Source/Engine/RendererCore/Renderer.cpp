@@ -116,11 +116,9 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }
 
-void Renderer::PresentTexture(const lib::SharedPtr<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+void Renderer::PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(!!window);
 
 	GPUProfiler::FlipFrame(window);
 	
