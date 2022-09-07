@@ -1,6 +1,11 @@
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 5054)
+
 #include "Eigen/Geometry"
+
+#pragma warning(pop)
 
 namespace spt::math
 {

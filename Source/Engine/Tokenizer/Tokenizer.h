@@ -86,7 +86,7 @@ public:
 
 	SizeType							GetTokenEndPosition(TokenInfo token) const
 	{
-		return token.tokenPosition + GetTokenLength(token.tokenTypeIdx):
+		return token.tokenPosition + GetTokenLength(token.tokenTypeIdx);
 	}
 
 private:

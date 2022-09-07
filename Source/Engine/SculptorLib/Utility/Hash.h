@@ -44,7 +44,7 @@ constexpr SizeType HashRange(const Iterator begin, const Iterator end)
 	using ElementType = Iterator::value_type;
 
 	// Source: Thomas Mueller's post https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-	const auto elementHash = [](SizeType& seed, const ElementType& element)
+	const auto elementHash = [](SizeType seed, const ElementType& element) -> SizeType
 	{
 		static_assert(isHashable<ElementType>, "Type must be hashable");
 		const SizeType val = std::hash<ElementType>{}(element);
@@ -53,7 +53,7 @@ constexpr SizeType HashRange(const Iterator begin, const Iterator end)
 		x = ((x >> 16) ^ x) * 0x45d9f3b;
 		x = ((x >> 16) ^ x) * 0x45d9f3b;
 		x = (x >> 16) ^ x;
-		return seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		return x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	};
 
 	const SizeType length = std::distance(begin, end);

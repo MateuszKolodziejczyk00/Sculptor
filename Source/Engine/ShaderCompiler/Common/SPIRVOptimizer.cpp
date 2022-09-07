@@ -56,6 +56,7 @@ void LogOptimizerMessage(spv_message_level_t level, const char* source, const sp
 	}
 }
 
+
 class OptimizerImpl
 {
 public:

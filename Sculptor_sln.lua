@@ -19,7 +19,7 @@ workspace "Sculptor"
 	exceptionhandling "Off"
     rtti "Off"
 
-	cppdialect "C++17"
+	cppdialect "C++20"
 	
 	flags { "FatalWarnings", "MultiProcessorCompile" }
 	warnings "Extra"
