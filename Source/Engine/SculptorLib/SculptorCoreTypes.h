@@ -15,6 +15,7 @@
 #include "Containers/HashSet.h"
 
 // Utility
+#include "Utility/SharedRef.h"
 #include "Utility/String.h"
 #include "Utility/HashedString.h"
 #include "Utility/Memory.h"
