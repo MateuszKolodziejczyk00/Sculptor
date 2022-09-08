@@ -4,7 +4,7 @@
 #include "Vulkan/VulkanCore.h"
 #include "UITypes.h"
 #include "SculptorCoreTypes.h"
-#include "Vulkan/DescriptorSetsManager/DescriptorPool.h"
+#include "Vulkan/DescriptorSets/DescriptorPool.h"
 
 
 namespace spt::vulkan

@@ -2,7 +2,7 @@
 
 #if VULKAN_RHI
 
-#include "Vulkan/VulkanTypes/Pipelines/RHIPipeline.h"
+#include "Vulkan/VulkanTypes/RHIPipeline.h"
 
 #endif
 
