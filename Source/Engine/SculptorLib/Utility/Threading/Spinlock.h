@@ -3,6 +3,7 @@
 #include "MathCore.h"
 #include "Platform.h"
 #include "ProfilerCore.h"
+#include "Utility/UtilityMacros.h"
 
 
 namespace spt::lib

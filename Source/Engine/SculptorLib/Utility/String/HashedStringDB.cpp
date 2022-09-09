@@ -1,20 +1,31 @@
 #include "HashedStringDB.h"
 #include "Containers/HashMap.h"
 #include "ProfilerCore.h"
-#include "Threading/Lock.h"
+#include "Utility/Threading/Lock.h"
 
 
 namespace spt::lib
 {
 
-namespace priv
+namespace db
 {
 
-static ReadWriteLock recordsMutex;
+class DataBase
+{
+public:
 
-static HashMap<HashedStringDB::KeyType, String> records;
+	DataBase()
+	{
+		records.reserve(4096);
+	}
 
-}
+	ReadWriteLock								recordsMutex;
+	HashMap<HashedStringDB::KeyType, String>	records;
+};
+
+static DataBase instance;
+
+} // db
 
 HashedStringDB::KeyType HashedStringDB::GetRecord(String&& inString, StringView& outView)
 {
@@ -86,10 +97,10 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ReadLockGuard readRecordsLock(priv::recordsMutex);
+	const ReadLockGuard readRecordsLock(db::instance.recordsMutex);
 
-	const auto foundRecord = priv::records.find(key);
-	if (foundRecord != priv::records.cend())
+	const auto foundRecord = db::instance.records.find(key);
+	if (foundRecord != db::instance.records.cend())
 	{
 		outView = foundRecord->second;
 
@@ -103,9 +114,9 @@ void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const WriteLockGuard addRecordLock(priv::recordsMutex);
+	const WriteLockGuard addRecordLock(db::instance.recordsMutex);
 
-	priv::records.emplace(key, std::forward<String>(newRecord));
+	db::instance.records.emplace(key, std::forward<String>(newRecord));
 }
 
 }
