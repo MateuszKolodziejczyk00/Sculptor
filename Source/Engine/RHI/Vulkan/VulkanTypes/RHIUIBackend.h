@@ -42,4 +42,4 @@ private:
 	DescriptorPool		m_uiDescriptorPool;
 };
 
-}
+} // spt::vulkan

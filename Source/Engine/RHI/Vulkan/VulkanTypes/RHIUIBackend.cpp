@@ -115,7 +115,7 @@ void RHIUIBackend::InitializeDescriptorPool()
 
 	const Uint32 poolSizeForDescriptorType = 512;
 
-	const lib::DynamicArray<VkDescriptorPoolSize> poolSizes =
+	const lib::StaticArray<VkDescriptorPoolSize, 11> poolSizes =
 	{
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER, poolSizeForDescriptorType },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolSizeForDescriptorType },
@@ -130,9 +130,9 @@ void RHIUIBackend::InitializeDescriptorPool()
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, poolSizeForDescriptorType }
 	};
 
-	const Uint32 maxSetsNum = static_cast<Uint32>(poolSizes.size()) * poolSizeForDescriptorType;
+	constexpr Uint32 maxSetsNum = static_cast<Uint32>(poolSizes.size()) * poolSizeForDescriptorType;
 
-	m_uiDescriptorPool.Initialize(flags, maxSetsNum, poolSizes);
+	m_uiDescriptorPool.Initialize(flags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
 }
 
-}
+} // spt::vulkan

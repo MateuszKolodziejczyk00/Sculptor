@@ -8,7 +8,7 @@ DescriptorPool::DescriptorPool()
 	: m_poolHandle(VK_NULL_HANDLE)
 { }
 
-void DescriptorPool::Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const lib::DynamicArray<VkDescriptorPoolSize>& poolSizes)
+void DescriptorPool::Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const VkDescriptorPoolSize* poolSizes, Uint32 poolSizesNum)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -17,8 +17,8 @@ void DescriptorPool::Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSet
 	VkDescriptorPoolCreateInfo poolInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 	poolInfo.flags = flags;
     poolInfo.maxSets = maxSetsNum;
-    poolInfo.poolSizeCount = static_cast<Uint32>(poolSizes.size());
-    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.poolSizeCount = poolSizesNum;
+    poolInfo.pPoolSizes = poolSizes;
 
 	SPT_VK_CHECK(vkCreateDescriptorPool(VulkanRHI::GetDeviceHandle(), &poolInfo, VulkanRHI::GetAllocationCallbacks(), &m_poolHandle));
 }
@@ -68,4 +68,4 @@ void DescriptorPool::ResetPool()
 	vkResetDescriptorPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, 0);
 }
 
-}
+} // spt::vulkan

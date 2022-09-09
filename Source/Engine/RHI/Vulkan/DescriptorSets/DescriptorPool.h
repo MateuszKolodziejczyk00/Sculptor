@@ -13,7 +13,7 @@ public:
 
 	DescriptorPool();
 
-	void					Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const lib::DynamicArray<VkDescriptorPoolSize>& poolSizes);
+	void					Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSetsNum, const VkDescriptorPoolSize* poolSizes, Uint32 poolSizesNum);
 	void					Release();
 
 	Bool					IsValid() const;
@@ -29,4 +29,4 @@ private:
 	VkDescriptorPool		m_poolHandle;
 };
 
-}
+} // spt::vulkan
