@@ -13,6 +13,7 @@
 #include "Containers/StaticArray.h"
 #include "Containers/HashMap.h"
 #include "Containers/HashSet.h"
+#include "Containers/ArrayView.h"
 
 // Utility
 #include "Utility/SharedRef.h"
