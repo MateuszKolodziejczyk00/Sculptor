@@ -31,6 +31,7 @@ public:
 	template<typename TShaderParamEntryType>
 	TShaderParamEntryType		FindParamEntry(lib::HashedString paramName) const;
 
+	ShaderParamEntryCommon		FindParamEntry(lib::HashedString paramName) const;
 	
 	GenericShaderBinding		GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const;
 
@@ -84,12 +85,18 @@ template<typename TShaderParamEntryType>
 TShaderParamEntryType ShaderMetaData::FindParamEntry(lib::HashedString paramName) const
 {
 	const auto foundParam = m_parameterMap.find(paramName);
-	if (foundParam)
+	if (foundParam != std::cend(m_parameterMap))
 	{
 		return foundParam->second.GetOrDefault<TShaderParamEntryType>();
 	}
 
 	return TShaderParamEntryType();
+}
+
+inline ShaderParamEntryCommon ShaderMetaData::FindParamEntry(lib::HashedString paramName) const
+{
+	const auto foundParam = m_parameterMap.find(paramName);
+	return foundParam != std::cend(m_parameterMap) ? foundParam->second.GetCommonData() : ShaderParamEntryCommon();
 }
 
 inline GenericShaderBinding ShaderMetaData::GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const

@@ -296,12 +296,15 @@ private:
 
 struct ShaderParamEntryCommon
 {
-	ShaderParamEntryCommon() = default;
-
-	ShaderParamEntryCommon(Uint8 inSetIdx, Uint8 inBindingIdx)
+	ShaderParamEntryCommon(Uint8 inSetIdx = idxNone<Uint8>, Uint8 inBindingIdx = idxNone<Uint8>)
 		: setIdx(inSetIdx)
 		, bindingIdx(inBindingIdx)
 	{ }
+
+	Bool IsValid() const
+	{
+		return setIdx != idxNone<Uint8> && bindingIdx != idxNone<Uint8>;
+	}
 
 	Uint8		setIdx;
 	Uint8		bindingIdx;
