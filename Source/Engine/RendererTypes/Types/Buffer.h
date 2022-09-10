@@ -28,7 +28,7 @@ public:
 
 	Buffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 
-	lib::SharedPtr<BufferView>		CreateView(Uint64 offset, Uint64 size) const;
+	lib::SharedRef<BufferView>		CreateView(Uint64 offset, Uint64 size) const;
 };
 
 
@@ -36,7 +36,7 @@ class RENDERER_TYPES_API BufferView
 {
 public:
 
-	BufferView(const lib::SharedPtr<const Buffer>& buffer, Uint64 offset, Uint64 size);
+	BufferView(const lib::SharedRef<const Buffer>& buffer, Uint64 offset, Uint64 size);
 
 	lib::SharedPtr<const Buffer>	GetBuffer() const;
 

@@ -14,18 +14,18 @@ Buffer::Buffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage 
 	GetRHI().SetName(name.Get());
 }
 
-lib::SharedPtr<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
+lib::SharedRef<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return std::make_shared<BufferView>(shared_from_this(), offset, size);
+	return lib::MakeShared<BufferView>(shared_from_this(), offset, size);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferView ====================================================================================
 
-BufferView::BufferView(const lib::SharedPtr<const Buffer>& buffer, Uint64 offset, Uint64 size)
-	: m_buffer(buffer)
+BufferView::BufferView(const lib::SharedRef<const Buffer>& buffer, Uint64 offset, Uint64 size)
+	: m_buffer(buffer.ToSharedPtr())
 	, m_offset(offset)
 	, m_size(size)
 { }
