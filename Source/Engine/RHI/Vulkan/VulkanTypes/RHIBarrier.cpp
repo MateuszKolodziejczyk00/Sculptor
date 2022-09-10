@@ -1,7 +1,7 @@
 #include "RHIBarrier.h"
 #include "RHITexture.h"
 #include "RHICommandBuffer.h"
-#include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/LayoutsManager.h"
 

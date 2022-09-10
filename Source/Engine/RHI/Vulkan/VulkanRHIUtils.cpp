@@ -1,4 +1,4 @@
-#include "RHIToVulkanCommon.h"
+#include "VulkanRHIUtils.h"
 
 namespace spt::vulkan
 {

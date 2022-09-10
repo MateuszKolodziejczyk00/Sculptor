@@ -1,6 +1,6 @@
 #include "PipelineLayoutsManager.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanRHIUtils.h"
 
 namespace spt::vulkan
 {

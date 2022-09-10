@@ -1,6 +1,6 @@
 #include "PipelinesManager.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanUtils.h"
 
 namespace spt::vulkan

@@ -2,7 +2,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Memory/MemoryManager.h"
 #include "Vulkan/LayoutsManager.h"
-#include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanRHIUtils.h"
 
 
 namespace spt::vulkan

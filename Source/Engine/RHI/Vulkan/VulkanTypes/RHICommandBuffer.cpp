@@ -2,7 +2,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/CommandPool/RHICommandPoolsManager.h"
 #include "Vulkan/LayoutsManager.h"
-#include "Vulkan/RHIToVulkanCommon.h"
+#include "Vulkan/VulkanRHIUtils.h"
 #include "RHITexture.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 
