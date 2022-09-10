@@ -66,6 +66,7 @@ struct DescriptorSetDefinition
 	EDescriptorSetFlags									flags;
 };
 
+using DescriptorSetLayoutID = SizeType;
 
 } // spt::rhi
 

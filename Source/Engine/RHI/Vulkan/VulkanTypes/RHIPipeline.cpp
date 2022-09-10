@@ -64,6 +64,14 @@ rhi::EPipelineType RHIPipeline::GetPipelineType() const
 	return m_pipelineType;
 }
 
+rhi::DescriptorSetLayoutID RHIPipeline::GetDescriptorSetLayoutID(Uint32 bindingIdx) const
+{
+	SPT_CHECK(!!m_layout);
+	static_assert(sizeof(rhi::DescriptorSetLayoutID) == sizeof(VkDescriptorSetLayout), "Couldn't save vulkan layout hande as id");
+
+	return reinterpret_cast<rhi::DescriptorSetLayoutID>(m_layout->GetDescriptorSetLayout(bindingIdx));
+}
+
 void RHIPipeline::SetName(const lib::HashedString& name)
 {
 	SPT_CHECK(IsValid());

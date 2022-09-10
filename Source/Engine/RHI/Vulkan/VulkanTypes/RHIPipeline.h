@@ -18,16 +18,18 @@ public:
 	RHIPipeline();
 
 	/** Initialize graphics pipeline */
-	void						InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition);
 
 	/** Initialize compute pipeline */
-	void						InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition);
+	void InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition);
 
-	void						ReleaseRHI();
+	void ReleaseRHI();
 
-	SPT_NODISCARD Bool			IsValid() const;
+	SPT_NODISCARD Bool IsValid() const;
 
-	rhi::EPipelineType			GetPipelineType() const;
+	rhi::EPipelineType GetPipelineType() const;
+
+	SPT_NODISCARD rhi::DescriptorSetLayoutID GetDescriptorSetLayoutID(Uint32 bindingIdx) const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;

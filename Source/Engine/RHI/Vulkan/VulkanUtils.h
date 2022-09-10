@@ -34,4 +34,4 @@ private:
 	const void** m_next;
 };
 
-}
+} // spt::vulkan

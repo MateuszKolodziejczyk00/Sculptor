@@ -12,6 +12,9 @@ using Lock = std::mutex;
 template<typename TLockType>
 using LockGuard = std::lock_guard<TLockType>;
 
+template<typename TLockType>
+using UnlockableLockGuard = std::unique_lock<TLockType>;
+
 template<typename ...Locks>
 using MultiLockGuard = std::scoped_lock<Locks...>;
 
