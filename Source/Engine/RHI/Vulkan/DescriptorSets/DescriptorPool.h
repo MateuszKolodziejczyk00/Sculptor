@@ -20,7 +20,8 @@ public:
 
 	VkDescriptorPool		GetHandle() const;
 
-	Bool					AllocateDescriptorSets(const lib::DynamicArray<VkDescriptorSetLayout>& layouts, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets);
+	Bool					AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets);
+	void					FreeDescriptorSets(const lib::DynamicArray<VkDescriptorSet>& descriptorSets);
 
 	void					ResetPool();
 

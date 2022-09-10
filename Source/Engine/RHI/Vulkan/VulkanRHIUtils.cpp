@@ -2,6 +2,14 @@
 
 namespace spt::vulkan
 {
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers =======================================================================================
+
+	
+static_assert(sizeof(rhi::DescriptorSetLayoutID) == sizeof(VkDescriptorSetLayout), "Couldn't store vulkan layout handle as id");
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIToVulkan ===================================================================================
 
 VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 {
@@ -467,6 +475,29 @@ VkColorComponentFlags RHIToVulkan::GetColorComponentFlags(rhi::ERenderTargetComp
 	}
 
 	return flags;
+}
+
+VkDescriptorSetLayout RHIToVulkan::GetDSLayout(rhi::DescriptorSetLayoutID layoutID)
+{
+	return reinterpret_cast<VkDescriptorSetLayout>(layoutID);
+}
+
+const VkDescriptorSetLayout* RHIToVulkan::GetDSLayoutsPtr(const rhi::DescriptorSetLayoutID* layoutIDs)
+{
+	return reinterpret_cast<const VkDescriptorSetLayout*>(layoutIDs);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// VulkanToRHI ===================================================================================
+
+rhi::DescriptorSetLayoutID VulkanToRHI::GetDSLayoutID(VkDescriptorSetLayout layoutHandle)
+{
+	return reinterpret_cast<rhi::DescriptorSetLayoutID>(layoutHandle);
+}
+
+const rhi::DescriptorSetLayoutID* VulkanToRHI::GetDSLayoutIDsPtr(VkDescriptorSetLayout layoutHandle)
+{
+	return reinterpret_cast<const rhi::DescriptorSetLayoutID*>(layoutHandle);
 }
 
 } // rhi::vulkan

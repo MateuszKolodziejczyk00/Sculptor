@@ -1,17 +1,44 @@
 #include "DescriptorPoolSet.h"
+#include "Vulkan/VulkanRHI.h"
 
 namespace spt::vulkan
 {
-void DescriptorPoolSet::AllocateDescriptorSets(const lib::DynamicArray<VkDescriptorSetLayout>& layouts, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets)
+
+DescriptorPoolSet::DescriptorPoolSet()
+	: m_thisSetIdx(idxNone<Uint16>)
+{ }
+
+void DescriptorPoolSet::SetPoolSetIdx(Uint16 inSetIdx)
+{
+	SPT_CHECK(inSetIdx != idxNone<Uint16>);
+	m_thisSetIdx = inSetIdx;
+}
+
+void DescriptorPoolSet::AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<RHIDescriptorSet>& outDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const auto initDescriptorSets = [this](const lib::DynamicArray<VkDescriptorSet>& handles, Uint16 poolIdx, lib::DynamicArray<RHIDescriptorSet>& outSets)
+	{
+		outSets.reserve(outSets.size() + handles.size());
+
+		std::transform(std::cbegin(handles), std::cend(handles), std::back_inserter(outSets),
+					   [this, poolIdx](VkDescriptorSet ds)
+					   {
+						   return RHIDescriptorSet(ds, m_thisSetIdx, poolIdx);
+					   });
+	};
+
+	lib::DynamicArray<VkDescriptorSet> descriptorSetHandles;
+	descriptorSetHandles.resize(static_cast<SizeType>(layoutsNum));
 
 	// first try alocate from existing pools
 	for (SizeType idx = 0; idx < m_descriptorPools.size(); ++idx)
 	{
-		const Bool success = m_descriptorPools[idx].AllocateDescriptorSets(layouts, outDescriptorSets);
+		const Bool success = m_descriptorPools[idx].AllocateDescriptorSets(layouts, layoutsNum, descriptorSetHandles);
 		if (success)
 		{
+			initDescriptorSets(descriptorSetHandles, static_cast<Uint16>(idx), outDescriptorSets);
 			return;
 		}
 	}
@@ -20,8 +47,19 @@ void DescriptorPoolSet::AllocateDescriptorSets(const lib::DynamicArray<VkDescrip
 	DescriptorPool& newPool = m_descriptorPools.emplace_back(DescriptorPool());
 	InitializeDescriptorPool(newPool);
 
-	const Bool success = newPool.AllocateDescriptorSets(layouts, outDescriptorSets);
+	const Bool success = newPool.AllocateDescriptorSets(layouts, layoutsNum, descriptorSetHandles);
 	SPT_CHECK(success);
+	initDescriptorSets(descriptorSetHandles, static_cast<Uint16>(m_descriptorPools.size() - 1), outDescriptorSets);
+}
+
+void DescriptorPoolSet::FreeDescriptorSets(const lib::DynamicArray<VkDescriptorSet>& dsSets, Uint16 poolIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const SizeType poolIdxST = static_cast<SizeType>(poolIdx);
+	SPT_CHECK(m_descriptorPools.size() < poolIdxST);
+
+	m_descriptorPools[poolIdxST].FreeDescriptorSets(dsSets);
 }
 
 void DescriptorPoolSet::FreeAllDescriptorPools()

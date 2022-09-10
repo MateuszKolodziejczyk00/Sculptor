@@ -18,19 +18,21 @@ class RHI_API RHIDescriptorSet
 public:
 
 	RHIDescriptorSet();
-	RHIDescriptorSet(VkDescriptorSet handle, VkDescriptorSetLayout layout);
+	RHIDescriptorSet(VkDescriptorSet handle, Uint16 poolSetIdx, Uint16 poolIdx);
 
 	Bool IsValid() const;
 
 	// Vulkan ================================================
 
-	VkDescriptorSet			GetHandle() const;
-	VkDescriptorSetLayout	GetLayoutHandle() const;
+	VkDescriptorSet		GetHandle() const;
+	Uint16				GetPoolSetIdx() const;
+	Uint16				GetPoolIdx() const;
 
 private:
 
-	VkDescriptorSet			m_handle;
-	VkDescriptorSetLayout	m_layout;
+	VkDescriptorSet		m_handle;
+	Uint16				m_poolSetIdx;
+	Uint16				m_poolIdx;
 };
 
 } // spt::vulkan

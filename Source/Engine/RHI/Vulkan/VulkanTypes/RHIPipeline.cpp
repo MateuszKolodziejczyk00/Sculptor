@@ -2,6 +2,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Pipeline/PipelinesManager.h"
 #include "Vulkan/Pipeline/PipelineLayoutsManager.h"
+#include "Vulkan/VulkanRHIUtils.h"
 
 namespace spt::vulkan
 {
@@ -67,9 +68,8 @@ rhi::EPipelineType RHIPipeline::GetPipelineType() const
 rhi::DescriptorSetLayoutID RHIPipeline::GetDescriptorSetLayoutID(Uint32 bindingIdx) const
 {
 	SPT_CHECK(!!m_layout);
-	static_assert(sizeof(rhi::DescriptorSetLayoutID) == sizeof(VkDescriptorSetLayout), "Couldn't save vulkan layout hande as id");
 
-	return reinterpret_cast<rhi::DescriptorSetLayoutID>(m_layout->GetDescriptorSetLayout(bindingIdx));
+	return VulkanToRHI::GetDSLayoutID(m_layout->GetDescriptorSetLayout(bindingIdx));
 }
 
 void RHIPipeline::SetName(const lib::HashedString& name)

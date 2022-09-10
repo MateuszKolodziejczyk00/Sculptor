@@ -52,6 +52,17 @@ public:
 	static VkCompareOp						GetCompareOp(rhi::EDepthCompareOperation compareOperation);
 
 	static VkColorComponentFlags			GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
+
+	static VkDescriptorSetLayout			GetDSLayout(rhi::DescriptorSetLayoutID layoutID);
+	static const VkDescriptorSetLayout*		GetDSLayoutsPtr(const rhi::DescriptorSetLayoutID* layoutIDs);
+};
+
+struct VulkanToRHI
+{
+public:
+
+	static rhi::DescriptorSetLayoutID			GetDSLayoutID(VkDescriptorSetLayout layoutHandle);
+	static const rhi::DescriptorSetLayoutID*	GetDSLayoutIDsPtr(VkDescriptorSetLayout layoutHandle);
 };
 
 } // rhi::vulkan
