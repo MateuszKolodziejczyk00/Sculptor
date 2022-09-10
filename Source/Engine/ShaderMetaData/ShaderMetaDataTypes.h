@@ -114,6 +114,12 @@ struct CommonBindingData abstract
 		return priv::BindingFlagsToShaderStageFlags(flags);
 	}
 
+	SizeType Hash() const
+	{
+		return lib::HashCombine(elementsNum,
+								flags);
+	}
+
 	Uint32			elementsNum;
 	EBindingFlags	flags;
 };
@@ -162,6 +168,12 @@ struct BufferBindingData : public CommonBindingData
 	{
 		SPT_CHECK(!IsUnbound());
 		return m_size;
+	}
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(CommonBindingData::Hash(),
+								m_size);
 	}
 
 private:
@@ -239,6 +251,12 @@ struct GenericShaderBinding
 		return m_data;
 	}
 
+	SizeType Hash() const
+	{
+		return lib::HashCombine(GetBindingType(),
+								std::visit([](const auto& data) { return data.Hash(); }, m_data));
+	}
+
 private:
 
 	BindingDataVariant			m_data;
@@ -286,6 +304,15 @@ public:
 		return m_bindings;
 	}
 
+	SizeType Hash() const
+	{
+		return lib::HashRange(std::cbegin(m_bindings), std::cend(m_bindings),
+							  [](const GenericShaderBinding& binding)
+							  {
+								  return binding.Hash();
+							  });
+	}
+
 private:
 
 	lib::DynamicArray<GenericShaderBinding>		m_bindings;
@@ -304,6 +331,11 @@ struct ShaderParamEntryCommon
 	Bool IsValid() const
 	{
 		return setIdx != idxNone<Uint8> && bindingIdx != idxNone<Uint8>;
+	}
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(setIdx, bindingIdx);
 	}
 
 	Uint8		setIdx;
@@ -345,6 +377,11 @@ struct ShaderDataParamEntry : public ShaderParamEntryCommon
 		, size(inSize)
 		, stride(inStride)
 	{ }
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(ShaderParamEntryCommon::Hash(), offset, size, stride);
+	}
 
 	Uint16		offset;
 	Uint16		size;
@@ -421,6 +458,12 @@ public:
 				return ShaderParamEntryCommon(data.setIdx, data.bindingIdx);
 			},
 			m_data);
+	}
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(m_data.index(),
+								std::visit([](const auto& data) { return data.Hash(); }, m_data));
 	}
 
 private:

@@ -20,7 +20,7 @@ class RenderCommandBase abstract
 {
 public:
 
-	RenderCommandBase(Uint32 commandSize)
+	explicit RenderCommandBase(Uint32 commandSize)
 		: m_commandSize(commandSize)
 	{ }
 
@@ -46,7 +46,7 @@ public:
 
 	using RenderCommandType = RenderCommand<CommandInstance>;
 
-	RenderCommand(CommandInstance&& instance)
+	explicit RenderCommand(CommandInstance&& instance)
 		: RenderCommandBase(sizeof(RenderCommandType))
 		, m_command(std::forward<CommandInstance>(instance))
 	{ }
@@ -68,7 +68,7 @@ class CommandsQueueExecutor
 {
 public:
 
-	CommandsQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer);
+	explicit CommandsQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer);
 
 	void Execute(Byte* commandBuffer, Uint32 commandsNum);
 

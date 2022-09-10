@@ -31,23 +31,22 @@ public:
 	};
 };
 
-}
+} // priv
 
 
 template<typename TType>
 static constexpr Bool isHashable = priv::IsHashableHelper<TType>::value;
 
 
-template<typename Iterator>
-constexpr SizeType HashRange(const Iterator begin, const Iterator end)
+template<typename TIterator, typename THasher = std::hash<TIterator::value_type>>
+constexpr SizeType HashRange(const TIterator begin, const TIterator end, THasher hasher = THasher{})
 {
-	using ElementType = Iterator::value_type;
+	using ElementType = TIterator::value_type;
 
 	// Source: Thomas Mueller's post https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-	const auto elementHash = [](SizeType seed, const ElementType& element) -> SizeType
+	const auto elementHash = [hasher](SizeType seed, const ElementType& element) -> SizeType
 	{
-		static_assert(isHashable<ElementType>, "Type must be hashable");
-		const SizeType val = std::hash<ElementType>{}(element);
+		const SizeType val = hasher(element);
 
 		SizeType x = val;
 		x = ((x >> 16) ^ x) * 0x45d9f3b;
@@ -60,16 +59,40 @@ constexpr SizeType HashRange(const Iterator begin, const Iterator end)
 	return std::accumulate(begin, end, length, elementHash);
 }
 
+
+template<typename... TArgs>
+constexpr SizeType HashCombine(TArgs... args)
+{
+	const auto getHash = []<typename TType>(const TType& val) -> SizeType
+	{
+		if constexpr (std::is_same_v<std::decay_t<TType>, SizeType>)
+		{
+			return val;
+		}
+		else
+		{
+			return GetHash(val);
+		}
+	};
+
+	// double brackets are here to trigger underlying array aggreagate initialization 
+	const lib::StaticArray<SizeType, sizeof...(TArgs)> argsView{ { getHash(args)... } };
+
+	return HashRange(std::cbegin(argsView), std::cend(argsView));
+}
+
+
 // Source: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
 template<typename THash>
-inline void HashCombine(THash& seed, THash hash)
+constexpr void HashCombine(THash& seed, THash hash)
 {
 	constexpr THash magicNumber = 0x9e3889b9;
 	seed ^= hash + magicNumber + (seed << 6) + (seed >> 2);
 }
 
+
 template<typename TType>
-inline SizeType GetHash(const TType& value)
+constexpr SizeType GetHash(const TType& value)
 {
 	std::hash<TType> hasher;
 	return hasher(value);
