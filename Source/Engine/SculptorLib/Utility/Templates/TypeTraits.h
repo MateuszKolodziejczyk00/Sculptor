@@ -5,25 +5,27 @@
 namespace spt::lib
 {
 
-/*
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// AsParameter ===================================================================================
+
 namespace details
 {
 template<typename TType> 
-struct AsParameterBase
+struct IsLargerThanRef
 {
-	static constexpr Bool isLargerThanRef = sizeof(TType) > sizeof(TType&);
+	static constexpr Bool value = sizeof(TType) > sizeof(TType&);
 };
 
 template<typename TType> 
-struct AsParameter : public AsParameterBase<TType>
+struct AsParameter
 {
-	using Type = std::conditional_t<isLargerThanRef, TType&, TType>;
+	using Type = std::conditional_t<IsLargerThanRef<TType>::value, TType&, TType>;
 };
 
 template<typename TType> 
-struct AsConstParameter : public AsParameterBase<TType>
+struct AsConstParameter
 {
-	using Type = std::conditional_t<isLargerThanRef, const TType&, const TType>;
+	using Type = std::conditional_t<IsLargerThanRef<TType>::value, const TType&, const TType>;
 };
 
 } // details
@@ -33,8 +35,9 @@ using AsParameter = details::AsParameter<TType>::Type;
 
 template<typename TType>
 using AsConstParameter = details::AsConstParameter<TType>::Type;
-*/
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// IsPair ========================================================================================
 
 template<typename TType>
 struct IsPair : public std::false_type
@@ -45,31 +48,51 @@ struct IsPair<std::pair<TKey, TValue>> : public std::true_type
 { };
 
 template<typename TType>
-constexpr Bool isPair = IsPair<TType>::value;
+static constexpr Bool isPair = IsPair<TType>::value;
 
 static_assert(isPair<int> == false);
 static_assert(isPair<std::pair<int, char>> == true);
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// AllOf =========================================================================================
 
-/*
-template<typename TPredicate, typename... TArgs>
-struct AllOf
+template<template<typename TTest> typename TPredicate, typename... TArgs>
+struct AllOf;
+
+template<template<typename TTest> typename TPredicate, typename TArg, typename... TArgs>
+struct AllOf<TPredicate, TArg, TArgs...>
 {
-	static constexpr value = (TPredicate<TArgs>::value && ...);
+	static constexpr Bool value = TPredicate<TArg>::value && AllOf<TPredicate, TArgs...>::value;
 };
 
-template<typename TPredicate, typename... TArgs>
-using AllOf_v = AllOf<TPredicate, TArgs...>::value;
-
-
-template<typename TPredicate, typename... TArgs>
-struct AnyOf
+template<template<typename TTest> typename TPredicate, typename TArg>
+struct AllOf<TPredicate, TArg>
 {
-	static constexpr value = (TPredicate<TArgs>::value || ...);
+	static constexpr Bool value = TPredicate<TArg>::value;
 };
 
-template<typename TPredicate, typename... TArgs>
-using AnyOf_v = AnyOf<TPredicate, TArgs...>::value;
-*/
+template<template<typename TTest> typename TPredicate, typename... TArgs>
+static constexpr Bool AllOf_v = AllOf<TPredicate, TArgs...>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// AnyOf =========================================================================================
+
+template<template<typename TTest> typename TPredicate, typename... TArgs>
+struct AnyOf;
+
+template<template<typename TTest> typename TPredicate, typename TArg, typename... TArgs>
+struct AnyOf<TPredicate, TArg, TArgs...>
+{
+	static constexpr Bool value = TPredicate<TArg>::value || AnyOf<TPredicate, TArgs...>::value;
+};
+
+template<template<typename TTest> typename TPredicate, typename TArg>
+struct AnyOf<TPredicate, TArg>
+{
+	static constexpr Bool value = TPredicate<TArg>::value;
+};
+
+template<template<typename TTest> typename TPredicate, typename... TArgs>
+static constexpr Bool AnyOf_v = AnyOf<TPredicate, TArgs...>::value;
 
 }
