@@ -14,7 +14,7 @@ class ShaderMetaDataPrerpocessor
 {
 public:
 
-	static ShaderParametersMetaData PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode);
+	SPT_NODISCARD static ShaderParametersMetaData PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode);
 };
 
 } // spt::sc

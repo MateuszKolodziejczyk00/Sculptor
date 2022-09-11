@@ -70,4 +70,12 @@ lib::String File::DiscardExtension(const lib::String& file)
 		: file;
 }
 
+lib::String File::GetExtension(const lib::String& file)
+{
+	const SizeType extensionBeginPosition = file.find_last_of('.');
+	return extensionBeginPosition != lib::String::npos
+		? lib::String(std::cbegin(file) + extensionBeginPosition + 1, std::cend(file))
+		: lib::String();
+}
+
 } // spt::lib

@@ -27,6 +27,7 @@ public:
 	static Bool				Exists(const lib::String& path);
 
 	static lib::String		DiscardExtension(const lib::String& file);
+	static lib::String		GetExtension(const lib::String& file);
 };
 
 } // spt::lib

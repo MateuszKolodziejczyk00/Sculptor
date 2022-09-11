@@ -1,7 +1,11 @@
 ShaderCompiler= Project:CreateProject("ShaderCompiler", ETargetType.SharedLibrary)
 
 if GetSelectedRHI() == ERHI.Vulkan then
-    include "Shaderc/Shaderc"
+    if GetSelectedShaderCompiler() == EShaderCompiler.Shaderc then
+        include "Shaderc/Shaderc"
+    elseif GetSelectedShaderCompiler() == EShaderCompiler.DXC then
+        include "DXC/DXC"
+    end
 end
 
 function ShaderCompiler:SetupConfiguration(configuration, platform)

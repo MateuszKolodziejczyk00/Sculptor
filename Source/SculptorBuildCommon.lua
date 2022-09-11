@@ -192,6 +192,18 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDependencyInternal(dependency)
     end
 
+    -- debug Begin
+    if self.name == "SculptorEd" then
+        print("=================================SculptorEd")
+        local test = projectToPublicDependencies["Serialization"][configuration]
+        print("\t\t" .. configuration)
+        for dependency, _ in pairs(test)
+        do
+            print("\t\t\t" .. dependency)
+        end
+    end
+    -- debug End
+
     -- defines
     self:AddCommonDefines(configuration, platform)
 
@@ -236,6 +248,18 @@ function Project:BuildConfiguration(configuration, platform)
 
     -- files
 	files (self:GetProjectFiles(configuration, platform))
+
+    -- debug Begin
+    if self.name == "Serialization" then
+        print("=================================Serialization")
+        local test = projectToPublicDependencies["Serialization"][configuration]
+        print("\t\t" .. configuration)
+        for dependency, _ in pairs(test)
+        do
+            print("\t\t\t" .. dependency)
+        end
+    end
+    -- debug End
 
     -- warnings
     -- by default use normal warnings level for third party projects, and highest level for sculptor projects
@@ -475,7 +499,6 @@ function StartProjectsType(projectsType)
     ResetProjectsSubgroupName()
 end
 
-
 -- RHI =================================================================
 
 ERHI=
@@ -491,4 +514,22 @@ end
 
 function GetSelectedRHI()
     return selectedRHI
+end
+
+-- ShaderCompiler ======================================================
+
+EShaderCompiler =
+{
+    Shaderc     = "Shaderc",
+    DXC         = "DXC"
+}
+
+selectedShaderCompiler = nil
+
+function SetShaderCompiler(shaderCompiler)
+    selectedShaderCompiler = shaderCompiler
+end
+
+function GetSelectedShaderCompiler()
+    return selectedShaderCompiler
 end

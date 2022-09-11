@@ -98,7 +98,7 @@ lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shader
 
 lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
 {
-	return GetShaderLogsPath(shaderPath, sourceCode) + "/Preprocessed.glsl";
+	return GetShaderLogsPath(shaderPath, sourceCode) + "/Preprocessed." + lib::File::GetExtension(shaderPath);
 }
 
 lib::String CompilationErrorsLogger::GetShaderPreprocesingErrorsLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)

@@ -61,10 +61,13 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shad
 		ShaderParametersMetaData paramsMetaData;
 		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, settings, paramsMetaData);
 
-		CompiledShader::Binary optimizedBinary = SPIRVOptimizer::OptimizeBinary(compiledShader.GetBinary());
-		compiledShader.SetBinary(std::move(optimizedBinary));
-
 		success &= compiledShader.IsValid();
+
+		if (success)
+		{
+			CompiledShader::Binary optimizedBinary = SPIRVOptimizer::OptimizeBinary(compiledShader.GetBinary());
+			compiledShader.SetBinary(std::move(optimizedBinary));
+		}
 
 		if (compiledShader.IsValid())
 		{
