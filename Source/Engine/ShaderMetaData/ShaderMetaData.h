@@ -20,6 +20,8 @@ public:
 
 	ShaderMetaData() = default;
 
+	// Initialization =============================================
+
 	template<typename TShaderParamEntryType>
 	void						AddShaderParamEntry(lib::HashedString paramName, TShaderParamEntryType paramEntry);
 
@@ -27,6 +29,10 @@ public:
 	void						AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData);
 
 	void						AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage);
+
+	void						BuildDSHashes();
+
+	// Queries ====================================================
 
 	template<typename TShaderParamEntryType>
 	TShaderParamEntryType		FindParamEntry(lib::HashedString paramName) const;
@@ -43,6 +49,8 @@ public:
 
 	const ShaderDescriptorSet&	GetDescriptorSet(Uint8 setIdx) const;
 	
+	SizeType					GetDescriptorSetHash(Uint8 setIdx) const;
+	
 private:
 
 	GenericShaderBinding&		GetBindingDataRef(Uint8 setIdx, Uint8 bindingIdx);
@@ -52,6 +60,8 @@ private:
 	DescriptorSetArray	   		m_descriptorSets;
 
 	ShaderParameterMap	   		m_parameterMap;
+
+	lib::DynamicArray<SizeType>	m_descriptorSetHashes;
 
 	friend srl::TypeSerializer<ShaderMetaData>;
 };
@@ -79,6 +89,29 @@ void ShaderMetaData::AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShade
 inline void ShaderMetaData::AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage)
 {
 	GetBindingDataRef(setIdx, bindingIdx).AddShaderStage(stage);
+}
+
+inline void ShaderMetaData::BuildDSHashes()
+{
+	SPT_CHECK(m_descriptorSets.size() <= maxValue<Uint8>);
+	const Uint8 setsNum = static_cast<Uint8>(m_descriptorSets.size());
+
+	for (Uint8 setIdx = 0; setIdx < setsNum; ++setIdx)
+	{
+		SizeType hash = m_descriptorSets[setIdx].Hash();
+
+		for (const auto& [paramName, paramEntry] : m_parameterMap)
+		{
+			if (paramEntry.GetSetIdx() == setIdx)
+			{
+				lib::HashCombine(hash, lib::GetHash(paramName));
+				lib::HashCombine(hash, paramEntry.Hash());
+			}
+		}
+
+		SPT_CHECK(m_descriptorSetHashes.size() == static_cast<SizeType>(setIdx));
+		m_descriptorSetHashes.emplace_back(hash);
+	}
 }
 
 template<typename TShaderParamEntryType>
@@ -146,6 +179,14 @@ inline GenericShaderBinding& ShaderMetaData::GetBindingDataRef(Uint8 setIdx, Uin
 	SPT_CHECK(m_descriptorSets[properSetIdx].GetBindings().size() > properBindingIdx);
 
 	return m_descriptorSets[properSetIdx].GetBindings()[properBindingIdx];
+}
+
+inline SizeType ShaderMetaData::GetDescriptorSetHash(Uint8 setIdx) const
+{
+	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
+	SPT_CHECK(properSetIdx < m_descriptorSetHashes.size());
+
+	return m_descriptorSetHashes[properSetIdx];
 }
 
 } // spt::smd

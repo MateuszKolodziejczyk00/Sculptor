@@ -460,6 +460,26 @@ public:
 			m_data);
 	}
 
+	Uint8 GetSetIdx() const
+	{
+		return std::visit(
+			[](const auto data) -> Uint8
+			{
+				return data.setIdx;
+			},
+			m_data);
+	}
+
+	Uint8 GetBindingIdx() const
+	{
+		return std::visit(
+			[](const auto data) -> Uint8
+			{
+				return data.bindingIdx;
+			},
+			m_data);
+	}
+
 	SizeType Hash() const
 	{
 		return lib::HashCombine(m_data.index(),
