@@ -30,12 +30,22 @@ WString StringUtils::ToWideString(lib::StringView view)
 {
 	SPT_PROFILER_FUNCTION();
 
-	WString wideString(view.size() + 1, '\0'); // add 1 to create slot for '\0' character
+	WString wideString(view.size() + 1, L'\0'); // add 1 to create slot for '\0' character
 
 	SizeType converted = 0;
 	mbstowcs_s(&converted, wideString.data(), wideString.size(), view.data(), view.size());
 
 	return wideString;
+}
+
+String StringUtils::ToMultibyteString(lib::WStringView view)
+{
+	String mutlibyteString(view.size() + 1, '\0');
+
+	SizeType converted = 0;
+	wcstombs_s(&converted, mutlibyteString.data(), mutlibyteString.size(), view.data(), view.size());
+
+	return mutlibyteString;
 }
 
 } // spt::lib

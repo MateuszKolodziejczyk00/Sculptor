@@ -55,7 +55,74 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Includer ======================================================================================
 
+class IncludeHandler : public IDxcIncludeHandler
+{
+public:
 
+	IncludeHandler(ComPtr<IDxcUtils> inUtils, ComPtr<IDxcIncludeHandler> inDefaultIncludeHandler);
+
+	virtual HRESULT STDMETHODCALLTYPE LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob **ppIncludeSource) override;
+
+	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
+
+	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
+	virtual ULONG STDMETHODCALLTYPE Release(void) override;
+
+private:
+
+	lib::String ReadShaderCode(const lib::String& path) const;
+
+	ComPtr<IDxcUtils>			m_utils;
+	ComPtr<IDxcIncludeHandler>	m_defaultIncludeHandler;
+
+	// cache string to make sure that pointers to source won't be destroyed until compilation finishes
+	lib::HashMap<lib::String, lib::String> m_includedSourceCodes;
+};
+
+IncludeHandler::IncludeHandler(ComPtr<IDxcUtils> inUtils, ComPtr<IDxcIncludeHandler> inDefaultIncludeHandler)
+	: m_utils(std::move(inUtils))
+	, m_defaultIncludeHandler(std::move(inDefaultIncludeHandler))
+{ }
+
+HRESULT STDMETHODCALLTYPE IncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::String filePath = lib::StringUtils::ToMultibyteString(pFilename);
+
+	if (!m_includedSourceCodes.contains(filePath))
+	{
+		const lib::String& code = m_includedSourceCodes[filePath] = ReadShaderCode(filePath);
+
+		ComPtr<IDxcBlobEncoding> encoding;
+		m_utils->CreateBlob(code.data(), static_cast<Uint32>(code.size()), 0, encoding.GetAddressOf());
+		*ppIncludeSource = encoding.Detach();
+	}
+
+	return S_OK;
+}
+
+lib::String IncludeHandler::ReadShaderCode(const lib::String& path) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	return ShaderFileReader::ReadShaderFileAbsolute(path.c_str());
+}
+
+HRESULT STDMETHODCALLTYPE IncludeHandler::QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject)
+{
+	return m_defaultIncludeHandler->QueryInterface(riid, ppvObject);
+}
+
+ULONG STDMETHODCALLTYPE IncludeHandler::AddRef(void)
+{
+	return 0;
+}
+
+ULONG STDMETHODCALLTYPE IncludeHandler::Release(void)
+{
+	return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // CompilerImpl ==================================================================================
@@ -73,19 +140,26 @@ private:
 	ComPtr<IDxcResult>		PreprocessShader(const ShaderSourceCode& sourceCode) const;
 	ComPtr<IDxcResult>		CompileToSPIRV(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
 
-	ComPtr<IDxcUtils>		m_utils;
-	ComPtr<IDxcCompiler3>	m_compiler;
+	ComPtr<IDxcUtils>			m_utils;
+	ComPtr<IDxcCompiler3>		m_compiler;
+	ComPtr<IDxcIncludeHandler>	m_defaultIncludeHandler;
 };
 
 
 CompilerImpl::CompilerImpl()
 {
+	SPT_PROFILER_FUNCTION();
+
 	DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(m_utils.GetAddressOf()));
 	DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_compiler.GetAddressOf()));
+
+	m_utils->CreateDefaultIncludeHandler(m_defaultIncludeHandler.GetAddressOf());
 }
 
 CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
+	SPT_PROFILER_FUNCTION();
+
 	CompiledShader result{};
 
 	const ComPtr<IDxcResult> preprocessResult = PreprocessShader(sourceCode);
@@ -93,7 +167,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	HRESULT preprocessStatus{};
 	preprocessResult->GetStatus(&preprocessStatus);
 
-	if (preprocessStatus != S_OK)
+	if (!SUCCEEDED(preprocessStatus))
 	{
 		ComPtr<IDxcBlobUtf8> errorsBlob;
 		preprocessResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
@@ -117,7 +191,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	HRESULT compilationStatus{};
 	compilationResult->GetStatus(&compilationStatus);
 
-	if (compilationStatus != S_OK)
+	if (!SUCCEEDED(compilationStatus))
 	{
 		CompilationErrorsLogger::OutputShaderPreprocessedCode(shaderPath, preprocessedSourceCode);
 
@@ -145,6 +219,8 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode) const
 {
+	SPT_PROFILER_FUNCTION();
+
 	DxcBuffer sourceBuffer{};
 	sourceBuffer.Ptr = sourceCode.GetSourceCode().data();
 	sourceBuffer.Size = static_cast<Uint32>(sourceCode.GetSourceLength());
@@ -210,8 +286,10 @@ ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCo
 		compilationArgs.emplace_back(macro.data());
 	}
 
+	IncludeHandler includeHandler(m_utils, m_defaultIncludeHandler);
+
 	ComPtr<IDxcResult> compileResult{};
-	m_compiler->Compile(&sourceBuffer, compilationArgs.data(), static_cast<Uint32>(compilationArgs.size()), nullptr, IID_PPV_ARGS(compileResult.GetAddressOf()));
+	m_compiler->Compile(&sourceBuffer, compilationArgs.data(), static_cast<Uint32>(compilationArgs.size()), &includeHandler, IID_PPV_ARGS(compileResult.GetAddressOf()));
 
 	return compileResult;
 }

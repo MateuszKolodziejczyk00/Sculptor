@@ -15,6 +15,7 @@ public:
 	static String		ToHexString(const Byte* data, SizeType size);
 
 	static WString		ToWideString(lib::StringView view);
+	static String		ToMultibyteString(lib::WStringView view);
 };
 
 } // spt::lib
