@@ -12,7 +12,9 @@ class SCULPTORLIB_API StringUtils
 {
 public:
 
-	static lib::String		ToHexString(const Byte* data, SizeType size);
+	static String		ToHexString(const Byte* data, SizeType size);
+
+	static WString		ToWideString(lib::StringView view);
 };
 
 } // spt::lib

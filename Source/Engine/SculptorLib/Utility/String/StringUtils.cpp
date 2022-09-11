@@ -26,4 +26,16 @@ String StringUtils::ToHexString(const Byte* data, SizeType size)
 	return result;
 }
 
+WString StringUtils::ToWideString(lib::StringView view)
+{
+	SPT_PROFILER_FUNCTION();
+
+	WString wideString(view.size() + 1, '\0'); // add 1 to create slot for '\0' character
+
+	SizeType converted = 0;
+	mbstowcs_s(&converted, wideString.data(), wideString.size(), view.data(), view.size());
+
+	return wideString;
+}
+
 } // spt::lib

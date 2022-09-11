@@ -123,6 +123,11 @@ public:
 		return stringView.data();
 	}
 
+	SPT_NODISCARD SizeType GetSize() const
+	{
+		return stringView.size();
+	}
+
 	SPT_NODISCARD KeyType GetKey() const
 	{
 		return key;
