@@ -50,7 +50,7 @@ struct ClearColor
 };
 
 
-template<typename TextureType = RHITextureView>
+template<typename TextureViewType = RHITextureView>
 struct RTGenericDefinition
 {
 public:
@@ -59,10 +59,11 @@ public:
 		: loadOperation(ERTLoadOperation::DontCare)
 		, storeOperation(ERTStoreOperation::DontCare)
 		, resolveMode(ERTResolveMode::Average)
+		, clearColor{ 0.f, 0.f, 0.f, 0.f }
 	{ }
 
-	TextureType				textureView;
-	TextureType				resolveTextureView;
+	TextureViewType			textureView;
+	TextureViewType			resolveTextureView;
 	ERTLoadOperation		loadOperation;
 	ERTStoreOperation		storeOperation;
 	ERTResolveMode			resolveMode;
@@ -86,6 +87,9 @@ struct RenderingDefinition
 public:
 
 	RenderingDefinition()
+		: renderingFlags(ERenderingFlags::None)
+		, renderAreaOffset(0, 0)
+		, renderAreaExtent(0, 0)
 	{ }
 
 	ERenderingFlags									renderingFlags;

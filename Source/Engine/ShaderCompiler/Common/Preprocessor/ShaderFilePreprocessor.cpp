@@ -72,7 +72,7 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 		const lib::String shaderTypeName = typeNameMatch.str();
 		const rhi::EShaderStage shaderStage = internal::StringToShaderType(shaderTypeName);
 
-		const lib::String shaderSourceCodeString = nextShaderBegin != std::sregex_iterator()
+		lib::String shaderSourceCodeString = nextShaderBegin != std::sregex_iterator()
 			? lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + nextShaderBegin->prefix().length())
 			: lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + sourceCode.size());
 

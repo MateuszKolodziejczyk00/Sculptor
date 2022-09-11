@@ -29,7 +29,7 @@ protected:
 
 	using LockType = lib::LockGuard<lib::Lock>;
 
-	LockType LockIfNecessary() const
+	SPT_NODISCARD LockType LockIfNecessary() const
 	{
 		return LockType(m_lock);
 	}

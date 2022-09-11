@@ -38,6 +38,8 @@ VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(rhi::ECommandBufferBe
 
 RHICommandBuffer::RHICommandBuffer()
 	: m_cmdBufferHandle(VK_NULL_HANDLE)
+	, m_queueType(rhi::ECommandBufferQueueType::Graphics)
+	, m_cmdBufferType(rhi::ECommandBufferType::Primary)
 { }
 
 void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferDefinition)

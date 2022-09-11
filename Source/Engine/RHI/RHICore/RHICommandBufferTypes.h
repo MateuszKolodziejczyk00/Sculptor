@@ -41,6 +41,7 @@ struct CommandBufferDefinition
 	CommandBufferDefinition()
 		: queueType(ECommandBufferQueueType::Graphics)
 		, cmdBufferType(ECommandBufferType::Primary)
+		, complexityClass(ECommandBufferComplexityClass::Default)
 	{ }
 
 	CommandBufferDefinition(ECommandBufferQueueType inQueueType, ECommandBufferType inCmdBufferType, ECommandBufferComplexityClass::Type inComplexityClass = ECommandBufferComplexityClass::Default)

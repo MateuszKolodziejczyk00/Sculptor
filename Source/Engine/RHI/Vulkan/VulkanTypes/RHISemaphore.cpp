@@ -30,6 +30,7 @@ VkSemaphoreType GetVulkanSemaphoreType(rhi::ESemaphoreType type)
 
 RHISemaphore::RHISemaphore()
 	: m_semaphore(VK_NULL_HANDLE)
+	, m_type(rhi::ESemaphoreType::Binary)
 { }
 
 void RHISemaphore::InitializeRHI(const rhi::SemaphoreDefinition& definition)

@@ -55,7 +55,9 @@ public:
 
 	using ThisType = MulticastDelegateBase<isThreadSafe, Args...>;
 
-	MulticastDelegateBase() = default;
+	MulticastDelegateBase()
+		: m_handleCounter(1)
+	{ }
 
 	MulticastDelegateBase(const ThisType& rhs) = delete;
 	ThisType& operator=(const ThisType& rhs) = delete;

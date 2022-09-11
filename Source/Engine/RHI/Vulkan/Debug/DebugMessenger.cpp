@@ -22,19 +22,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverit
 		return VK_FALSE;
 	}
 
-	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+	if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
 	{
 		SPT_LOG_TRACE(VulkanValidation, pCallbackData->pMessage);
 	}
-	else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
 	{
 		SPT_LOG_INFO(VulkanValidation, pCallbackData->pMessage);
 	}
-	else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
 	{
 		SPT_LOG_WARN(VulkanValidation, pCallbackData->pMessage);
 	}
-	else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
 	{
 		SPT_LOG_ERROR(VulkanValidation, pCallbackData->pMessage);
 		SPT_CHECK_NO_ENTRY();
