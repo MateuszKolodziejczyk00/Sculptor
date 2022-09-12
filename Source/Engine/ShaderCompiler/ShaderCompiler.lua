@@ -25,8 +25,8 @@ function ShaderCompiler:SetupConfiguration(configuration, platform)
         -- debug libs from VulkanSDK doesn't have associated pdbs which causes link warning in debug configuration
         self:AddLinkOption("-IGNORE:4099")
     else
-        self:AddPrivateDependency("spirv-cross-cored")
-        self:AddPrivateDependency("spirv-cross-glsld")
+        self:AddPrivateDependency("spirv-cross-core")
+        self:AddPrivateDependency("spirv-cross-glsl")
     end
 
     self:AddPrivateAbsoluteIncludePath("$(Vulkan_SDK)/Include")
