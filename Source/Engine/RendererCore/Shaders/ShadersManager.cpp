@@ -103,11 +103,11 @@ void ShadersManager::ClearCachedShaders()
 	m_cachedShaders.clear();
 }
 
-ShadersManager::ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
+ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShadersManager::ShaderHashType hash = settings.Hash();
+	ShaderHashType hash = settings.Hash();
 	lib::HashCombine(hash, lib::GetHash(shaderRelativePath));
 	return hash;
 }

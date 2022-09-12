@@ -98,4 +98,4 @@ constexpr SizeType GetHash(const TType& value)
 	return hasher(value);
 }
 
-}
+} // spt::lib

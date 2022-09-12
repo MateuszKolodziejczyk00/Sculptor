@@ -161,6 +161,8 @@ void SculptorEdApplication::OnShutdown()
 
 void SculptorEdApplication::RenderFrame()
 {
+	SPT_PROFILER_FUNCTION();
+
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 

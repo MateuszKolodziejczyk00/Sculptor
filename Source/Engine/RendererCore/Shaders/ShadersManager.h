@@ -3,16 +3,19 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Common/ShaderCompilationInput.h"
+#include "ShaderTypes.h"
 
 namespace spt::rdr
 {
 
 class Shader;
 
+
 enum class EShaderFlags : Flags32
 {
 	None			= 0
 };
+
 
 class RENDERER_CORE_API ShadersManager
 {
@@ -28,8 +31,6 @@ public:
 	void					ClearCachedShaders();
 
 private:
-
-	using ShaderHashType = SizeType;
 
 	ShaderHashType			HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const;
 

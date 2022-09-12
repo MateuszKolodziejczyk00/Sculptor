@@ -164,3 +164,77 @@ struct GraphicsPipelineDefinition
 };
 
 } //spt::rhi
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::rhi::PipelineRasterizationDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::PipelineRasterizationDefinition& rasterizationDef) const
+	{
+		return spt::lib::HashCombine(rasterizationDef.cullMode,
+									 rasterizationDef.polygonMode);;
+	}
+};
+
+
+template<>
+struct hash<spt::rhi::MultisamplingDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::MultisamplingDefinition& multisamplingDef) const
+	{
+		return spt::lib::GetHash(multisamplingDef.samplesNum);
+	}
+};
+
+
+template<>
+struct hash<spt::rhi::ColorRenderTargetDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::ColorRenderTargetDefinition& colorRTDef) const
+	{
+		return spt::lib::HashCombine(colorRTDef.format,
+									 colorRTDef.colorWriteMask,
+									 colorRTDef.alphaBlendType,
+									 colorRTDef.colorBlendType);
+	}
+};
+
+
+template<>
+struct hash<spt::rhi::DepthRenderTargetDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::DepthRenderTargetDefinition& depthRTDef) const
+	{
+		return spt::lib::HashCombine(depthRTDef.format,
+									 depthRTDef.depthCompareOp,
+									 depthRTDef.enableDepthWrite);
+	}
+};
+
+
+template<>
+struct hash<spt::rhi::StencilRenderTargetDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::StencilRenderTargetDefinition& stencilRTDef) const
+	{
+		return spt::lib::GetHash(stencilRTDef.format);
+	}
+};
+
+
+template<>
+struct hash<spt::rhi::PipelineRenderTargetsDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::PipelineRenderTargetsDefinition& renderTargetsDef) const
+	{
+		return spt::lib::HashCombine(spt::lib::HashRange(std::cbegin(renderTargetsDef.colorRTsDefinition),
+														 std::cend(renderTargetsDef.colorRTsDefinition)),
+									 renderTargetsDef.depthRTDefinition,
+									 renderTargetsDef.stencilRTDefinition);
+	}
+};
+
+} // std
