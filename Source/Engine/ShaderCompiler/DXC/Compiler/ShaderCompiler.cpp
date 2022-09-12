@@ -53,75 +53,70 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 } // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Includer ======================================================================================
+// DxcArguments ==================================================================================
 
-class IncludeHandler : public IDxcIncludeHandler
+class DxcArguments
 {
 public:
 
-	IncludeHandler(ComPtr<IDxcUtils> inUtils, ComPtr<IDxcIncludeHandler> inDefaultIncludeHandler);
+	DxcArguments();
 
-	virtual HRESULT STDMETHODCALLTYPE LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob **ppIncludeSource) override;
+	void Append(const char* name, const char* value = nullptr);
+	void Append(const wchar_t* name, const wchar_t* value = nullptr);
 
-	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
+	void Append(lib::WString name, lib::WString value = lib::WString());
 
-	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
-	virtual ULONG STDMETHODCALLTYPE Release(void) override;
+	SPT_NODISCARD std::pair<const wchar_t**, Uint32> GetArgs();
 
 private:
 
-	lib::String ReadShaderCode(const lib::String& path) const;
-
-	ComPtr<IDxcUtils>			m_utils;
-	ComPtr<IDxcIncludeHandler>	m_defaultIncludeHandler;
-
-	// cache string to make sure that pointers to source won't be destroyed until compilation finishes
-	lib::HashMap<lib::String, lib::String> m_includedSourceCodes;
+	lib::DynamicArray<const wchar_t*> m_args;
+	lib::DynamicArray<lib::WString> m_argStrings;
 };
 
-IncludeHandler::IncludeHandler(ComPtr<IDxcUtils> inUtils, ComPtr<IDxcIncludeHandler> inDefaultIncludeHandler)
-	: m_utils(std::move(inUtils))
-	, m_defaultIncludeHandler(std::move(inDefaultIncludeHandler))
-{ }
+DxcArguments::DxcArguments()
+{ 
+	m_argStrings.reserve(32);
+}
 
-HRESULT STDMETHODCALLTYPE IncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource)
+void DxcArguments::Append(const char* name, const char* value /*= nullptr*/)
 {
-	SPT_PROFILER_FUNCTION();
+	lib::WString nameString = lib::StringUtils::ToWideString(lib::String(name));
+	lib::WString valueString;
 
-	const lib::String filePath = lib::StringUtils::ToMultibyteString(pFilename);
-
-	if (!m_includedSourceCodes.contains(filePath))
+	if (value)
 	{
-		const lib::String& code = m_includedSourceCodes[filePath] = ReadShaderCode(filePath);
-
-		ComPtr<IDxcBlobEncoding> encoding;
-		m_utils->CreateBlob(code.data(), static_cast<Uint32>(code.size()), 0, encoding.GetAddressOf());
-		*ppIncludeSource = encoding.Detach();
+		valueString = lib::StringUtils::ToWideString(lib::String(value));
 	}
 
-	return S_OK;
+	Append(std::move(nameString), std::move(valueString));
 }
 
-lib::String IncludeHandler::ReadShaderCode(const lib::String& path) const
+void DxcArguments::Append(const wchar_t* name, const wchar_t* value /*= nullptr*/)
 {
-	SPT_PROFILER_FUNCTION();
-
-	return ShaderFileReader::ReadShaderFileAbsolute(path.c_str());
+	Append(lib::WString(name), value ? lib::WString(value) : lib::WString());
 }
 
-HRESULT STDMETHODCALLTYPE IncludeHandler::QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject)
+void DxcArguments::Append(lib::WString name, lib::WString value /*= lib::WString()*/)
 {
-	return m_defaultIncludeHandler->QueryInterface(riid, ppvObject);
+	m_argStrings.emplace_back(std::move(name));
+	
+	if (!value.empty())
+	{
+		m_argStrings.emplace_back(std::move(value));
+	}
 }
 
-ULONG STDMETHODCALLTYPE IncludeHandler::AddRef(void)
+std::pair<const wchar_t**, Uint32> DxcArguments::GetArgs()
 {
-	return 0;
-}
+	m_args.reserve(m_argStrings.size());
+	std::transform(std::cbegin(m_argStrings), std::cend(m_argStrings), std::back_inserter(m_args),
+				   [](const lib::WString& arg)
+				   {
+					   return arg.c_str();
+				   });
 
-ULONG STDMETHODCALLTYPE IncludeHandler::Release(void)
-{
-	return 0;
+	return std::make_pair(m_args.data(), static_cast<Uint32>(m_args.size()));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,8 +132,10 @@ public:
 
 private:
 
-	ComPtr<IDxcResult>		PreprocessShader(const ShaderSourceCode& sourceCode) const;
-	ComPtr<IDxcResult>		CompileToSPIRV(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
+	ComPtr<IDxcResult>		PreprocessShader(const ShaderSourceCode& sourceCode, const DxcArguments& args) const;
+	ComPtr<IDxcResult>		CompileToSPIRV(const ShaderSourceCode& sourceCode, DxcArguments& args) const;
+
+	DxcArguments			BuildArguments(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
 
 	ComPtr<IDxcUtils>			m_utils;
 	ComPtr<IDxcCompiler3>		m_compiler;
@@ -162,7 +159,9 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 	CompiledShader result{};
 
-	const ComPtr<IDxcResult> preprocessResult = PreprocessShader(sourceCode);
+	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, compilationSettings);
+
+	const ComPtr<IDxcResult> preprocessResult = PreprocessShader(sourceCode, compilerArgs);
 
 	HRESULT preprocessStatus{};
 	preprocessResult->GetStatus(&preprocessStatus);
@@ -186,7 +185,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(preprocessedSourceCode);
 
-	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedSourceCode, compilationSettings);
+	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedSourceCode, compilerArgs);
 
 	HRESULT compilationStatus{};
 	compilationResult->GetStatus(&compilationStatus);
@@ -217,7 +216,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	return result;
 }
 
-ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode) const
+ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode, const DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -226,19 +225,18 @@ ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& source
 	sourceBuffer.Size = static_cast<Uint32>(sourceCode.GetSourceLength());
 	sourceBuffer.Encoding = 0;
 
-	LPCWSTR preprocessArgs[] = 
-	{
-		L"-P",
-		L"main"
-	};
+	DxcArguments preprocessorArgs = args;
+	preprocessorArgs.Append(L"-P", L".");
+
+	const auto [argsPtr, argsNum] = preprocessorArgs.GetArgs();
 
 	ComPtr<IDxcResult> preprocessResult{};
-	m_compiler->Compile(&sourceBuffer, preprocessArgs, SPT_ARRAY_SIZE(preprocessArgs), nullptr, IID_PPV_ARGS(preprocessResult.GetAddressOf()));
+	m_compiler->Compile(&sourceBuffer, argsPtr, argsNum, m_defaultIncludeHandler.Get(), IID_PPV_ARGS(preprocessResult.GetAddressOf()));
 
 	return preprocessResult;
 }
 
-ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCode, DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -247,28 +245,37 @@ ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCo
 	sourceBuffer.Size = static_cast<Uint32>(sourceCode.GetSourceLength());
 	sourceBuffer.Encoding = 0;
 
-	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();
-	SPT_CHECK(targetEnv != ETargetEnvironment::None);
+	const auto [argsPtr, argsNum] = args.GetArgs();
 
-	lib::DynamicArray<LPCWSTR> compilationArgs =
-	{
-		L"-Zpc",
-		L"-HV",
-		L"2021",
-		L"-T",
-		priv::GetShaderTargetProfile(sourceCode.GetShaderStage()),
-		L"-E",
-		L"main",
-		L"-spirv",
-		priv::GetTargetEnvironment(targetEnv),
-		L"-fspv-reflect"
-	};
+	ComPtr<IDxcResult> compileResult{};
+	m_compiler->Compile(&sourceBuffer, argsPtr, argsNum, m_defaultIncludeHandler.Get(), IID_PPV_ARGS(compileResult.GetAddressOf()));
+
+	return compileResult;
+}
+
+DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::WString shadersPath = lib::StringUtils::ToWideString(ShaderCompilationEnvironment::GetShadersPath() + '/');
+
+	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();
+
+	DxcArguments args;
+	args.Append(L"-Zpc");
+	args.Append(L"-HV", L"2021");
+	args.Append(L"-T", priv::GetShaderTargetProfile(sourceCode.GetShaderStage()));
+	args.Append(L"-E", L"main");
+	args.Append(L"-spirv");
+	args.Append(priv::GetTargetEnvironment(targetEnv));
+	args.Append(L"-fspv-reflect");
+	args.Append(lib::WString(L"-I"), shadersPath);
 
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{
-		compilationArgs.emplace_back(L"-Qstrip_debug");
+		args.Append(L"-Qstrip_debug");
 	}
-	
+
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
 	lib::DynamicArray<lib::WString> macrosAsWideString;
@@ -282,16 +289,9 @@ ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCo
 
 	for(const lib::WString& macro : macrosAsWideString)
 	{
-		compilationArgs.emplace_back(L"-D");
-		compilationArgs.emplace_back(macro.data());
+		args.Append(lib::WString(L"-D"), macro.c_str());
 	}
-
-	IncludeHandler includeHandler(m_utils, m_defaultIncludeHandler);
-
-	ComPtr<IDxcResult> compileResult{};
-	m_compiler->Compile(&sourceBuffer, compilationArgs.data(), static_cast<Uint32>(compilationArgs.size()), &includeHandler, IID_PPV_ARGS(compileResult.GetAddressOf()));
-
-	return compileResult;
+	return args;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
