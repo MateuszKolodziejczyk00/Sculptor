@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Shaders/ShaderTypes.h"
+#include "RHICore/RHIPipelineDefinitionTypes.h"
 
 
 namespace spt::rdr
@@ -28,30 +29,3 @@ struct ComputePipeineState
 using PipelineStateID = SizeType;
 
 } // spt::rdr
-
-
-namespace std
-{
-
-template<>
-struct hash<spt::rdr::GraphicsPipelineState>
-{
-	constexpr size_t operator()(const spt::rdr::GraphicsPipelineState& state) const
-	{
-		return spt::lib::HashCombine(state.primitiveTopology,
-									 state.rasterizationDefinition,
-									 state.shader);
-	}
-};
-
-
-template<>
-struct hash<spt::rdr::ComputePipeineState>
-{
-	constexpr size_t operator()(const spt::rdr::ComputePipeineState& state) const
-	{
-		return spt::lib::HashCombine(state.shader);
-	}
-};
-
-} // std

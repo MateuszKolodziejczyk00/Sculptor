@@ -237,4 +237,17 @@ struct hash<spt::rhi::PipelineRenderTargetsDefinition>
 	}
 };
 
+
+template<>
+struct hash<spt::rhi::GraphicsPipelineDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::GraphicsPipelineDefinition& pipelineDef) const
+	{
+		return spt::lib::HashCombine(pipelineDef.primitiveTopology,
+									 pipelineDef.rasterizationDefinition,
+									 pipelineDef.multisamplingDefinition,
+									 pipelineDef.renderTargetsDefinition);
+	}
+};
+
 } // std

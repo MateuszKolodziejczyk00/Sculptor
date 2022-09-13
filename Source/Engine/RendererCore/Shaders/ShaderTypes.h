@@ -53,7 +53,7 @@ namespace std
 template<>
 struct hash<spt::rdr::ShaderID>
 {
-	size_t operator()(const spt::rdr::ShaderID& state) const
+	constexpr size_t operator()(const spt::rdr::ShaderID& state) const
 	{
 		return spt::lib::GetHash(state.GetID());
 	}
