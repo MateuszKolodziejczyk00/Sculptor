@@ -1,4 +1,5 @@
 #include "RendererBuilder.h"
+#include "Types/Context.h"
 #include "Types/Buffer.h"
 #include "Types/Texture.h"
 #include "Types/Window.h"
@@ -12,6 +13,11 @@
 
 namespace spt::rdr
 {
+
+lib::SharedRef<Context> RendererBuilder::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef)
+{
+	return lib::MakeShared<Context>(name, contextDef);
+}
 
 lib::SharedRef<Window> RendererBuilder::CreateWindow(lib::StringView name, math::Vector2u resolution)
 {

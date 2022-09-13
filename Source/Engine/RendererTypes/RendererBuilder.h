@@ -11,6 +11,7 @@
 
 namespace spt::rhi
 {
+struct ContextDefinition;
 struct RHIAllocationInfo;
 struct TextureDefinition;
 struct SemaphoreDefinition;
@@ -30,6 +31,7 @@ class ShaderMetaData;
 namespace spt::rdr
 {
 
+class Context;
 class Window;
 class UIBackend;
 class Buffer;
@@ -45,6 +47,8 @@ class RENDERER_TYPES_API RendererBuilder
 {
 public:
 
+	SPT_NODISCARD static lib::SharedRef<Context>			CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
+	
 	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
 
 	SPT_NODISCARD static lib::SharedRef<UIBackend>			CreateUIBackend(ui::UIContext context, const lib::SharedRef<Window>& window);
