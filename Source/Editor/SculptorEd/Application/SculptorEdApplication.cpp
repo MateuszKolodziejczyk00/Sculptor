@@ -37,7 +37,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	rdr::Renderer::PostCreatedWindow();
 
-	rdr::Renderer::GetShadersManager().GetShader("Test.glsl", sc::ShaderCompilationSettings());
+	SPT_MAYBE_UNUSED
+	const rdr::ShaderID test = rdr::Renderer::GetShadersManager().CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
 }
 
 void SculptorEdApplication::OnRun()

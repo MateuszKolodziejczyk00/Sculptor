@@ -23,18 +23,19 @@ public:
 
 	ShadersManager() = default;
 
-	void					Initialize();
-	void					Uninitialize();
+	void		Initialize();
+	void		Uninitialize();
 
-	lib::SharedPtr<Shader>	GetShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+	void		ClearCachedShaders();
 
-	void					ClearCachedShaders();
+	SPT_NODISCARD ShaderID					CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+	SPT_NODISCARD lib::SharedPtr<Shader>	GetShader(ShaderID shader) const;
 
 private:
 
 	ShaderHashType			HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const;
 
-	lib::SharedPtr<Shader>	CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
+	void					CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
 
 	lib::SharedPtr<Shader>	CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags);
 

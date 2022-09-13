@@ -90,4 +90,4 @@ SizeType ShaderCompilationSettings::Hash() const
 	return lib::HashRange(m_macros.cbegin(), m_macros.cend());
 }
 
-}
+} // spt::sc

@@ -73,26 +73,6 @@ void ShadersManager::Uninitialize()
 	ClearCachedShaders();
 }
 
-lib::SharedPtr<Shader> ShadersManager::GetShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, settings);
-
-	{
-		SPT_MAYBE_UNUSED
-		const lib::ReadLockGuard lockGuard(m_lock);
-
-		const auto foundShader = m_cachedShaders.find(shaderHash);
-		if (foundShader != std::cend(m_cachedShaders))
-		{
-			return foundShader->second;
-		}
-	}
-
-	return CompileAndCacheShader(shaderRelativePath, settings, flags, shaderHash);
-}
-
 void ShadersManager::ClearCachedShaders()
 {
 	SPT_PROFILER_FUNCTION();
@@ -101,6 +81,43 @@ void ShadersManager::ClearCachedShaders()
 	const lib::WriteLockGuard lockGuard(m_lock);
 	
 	m_cachedShaders.clear();
+}
+
+ShaderID ShadersManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, settings);
+
+	Bool foundShader = false;
+
+	{
+		SPT_MAYBE_UNUSED
+		const lib::ReadLockGuard lockGuard(m_lock);
+
+		const auto foundShaderIt = m_cachedShaders.find(shaderHash);
+		if (foundShaderIt != std::cend(m_cachedShaders))
+		{
+			foundShader = true;
+		}
+	}
+
+	if (!foundShader)
+	{
+		CompileAndCacheShader(shaderRelativePath, settings, flags, shaderHash);
+	}
+
+	return ShaderID(shaderHash, RENDERER_RESOURCE_NAME(shaderRelativePath));
+}
+
+lib::SharedPtr<Shader> ShadersManager::GetShader(ShaderID shader) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_MAYBE_UNUSED
+	const lib::ReadLockGuard lockGuard(m_lock);
+
+	return m_cachedShaders.at(shader.GetID());
 }
 
 ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
@@ -112,13 +129,14 @@ ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRe
 	return hash;
 }
 
-lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
+void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
 
+	// check once again if shader object is missing (it might have changed when we were waiting for acquiring lock)
 	auto shaderIt = m_cachedShaders.find(shaderHash);
 	if (shaderIt == std::cend(m_cachedShaders))
 	{
@@ -129,7 +147,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileAndCacheShader(const lib::String& 
 		}
 	}
 
-	return shaderIt != std::cend(m_cachedShaders) ? shaderIt->second : lib::SharedPtr<Shader>{};
+	SPT_CHECK(shaderIt != std::cend(m_cachedShaders));
 }
 
 lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags)
