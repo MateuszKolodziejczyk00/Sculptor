@@ -13,4 +13,7 @@ struct ContextDefinition
 	// For future use
 };
 
+
+using ContextID = SizeType;
+
 } // spt::rhi

@@ -20,13 +20,16 @@ public:
 
 	Bool						IsValid() const;
 
+	rhi::ContextID				GetID() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 
 private:
 
-	DebugName m_name;
+	rhi::ContextID	m_id;
+
+	DebugName		m_name;
 };
 
 } // spt::vulkan
