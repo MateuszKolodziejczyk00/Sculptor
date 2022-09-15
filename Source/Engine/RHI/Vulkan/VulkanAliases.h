@@ -7,6 +7,4 @@ namespace spt::vulkan
 
 using DeviceAddress = VkDeviceAddress;
 
-using PipelineID = Int64;
-
 }

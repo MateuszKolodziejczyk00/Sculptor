@@ -27,7 +27,7 @@ public:
 
 	SPT_NODISCARD Bool IsValid() const;
 
-	rhi::EPipelineType GetPipelineType() const;
+	SPT_NODISCARD rhi::EPipelineType GetPipelineType() const;
 
 	SPT_NODISCARD rhi::DescriptorSetLayoutID GetDescriptorSetLayoutID(Uint32 bindingIdx) const;
 
@@ -48,12 +48,7 @@ private:
 	void InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout);
 	void InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout);
 
-	SPT_NODISCARD VkPipeline GetCachedPipelineHandle() const;
-
-	void CachePipelineHandle(VkPipeline pipelineHandle) const;
-
-	PipelineID						m_pipelineID;
-	mutable VkPipeline				m_cachedPipelineHandle;
+	VkPipeline						m_handle;
 
 	lib::SharedPtr<PipelineLayout>	m_layout;
 
