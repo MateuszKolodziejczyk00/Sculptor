@@ -13,6 +13,7 @@ class CommandBuffer;
 class Barrier;
 class RenderingDefinition;
 class UIBackend;
+class Context;
 
 
 struct CommandsRecordingInfo
@@ -37,7 +38,7 @@ class RENDERER_CORE_API CommandsRecorder
 {
 public:
 
-	explicit CommandsRecorder(const CommandsRecordingInfo& recordingInfo);
+	CommandsRecorder(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo);
 	~CommandsRecorder();
 
 	Bool									IsRecording() const;
@@ -58,6 +59,7 @@ public:
 
 private:
 
+	lib::SharedRef<Context>					m_context;
 	lib::SharedPtr<CommandBuffer>			m_commandsBuffer;
 
 	ECommandsRecorderState					m_state;

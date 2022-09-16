@@ -8,9 +8,10 @@
 namespace spt::rdr
 {
 
-CommandsRecorder::CommandsRecorder(const CommandsRecordingInfo& recordingInfo)
-	: m_state(ECommandsRecorderState::Invalid)
+CommandsRecorder::CommandsRecorder(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo)
+	: m_context(context)
 	, m_commandsBuffer(RendererBuilder::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef))
+	, m_state(ECommandsRecorderState::Invalid)
 { }
 
 CommandsRecorder::~CommandsRecorder()

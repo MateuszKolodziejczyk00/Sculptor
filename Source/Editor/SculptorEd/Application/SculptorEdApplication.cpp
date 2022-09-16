@@ -4,6 +4,7 @@
 #include "Timer/TickingTimer.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
+#include "Types/Context.h"
 #include "CommandsRecorder/CommandsRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "UIContextManager.h"
@@ -61,10 +62,12 @@ void SculptorEdApplication::OnRun()
 	ImGui::SetCurrentContext(context.GetHandle());
 
 	{
+		const lib::SharedRef<rdr::Context> renderingContext = rdr::RendererBuilder::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
+
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
 		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(recordingInfo);
+		lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(renderingContext, recordingInfo);
 
 		recorder->StartRecording(rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
@@ -177,10 +180,12 @@ void SculptorEdApplication::RenderFrame()
 		return;
 	}
 
+	const lib::SharedRef<rdr::Context> renderingContext = rdr::RendererBuilder::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+
 	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(recordingInfo);
+	lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands(renderingContext, recordingInfo);
 
 	{
 		SPT_GPU_PROFILER_CONTEXT(recorder->GetCommandsBuffer());

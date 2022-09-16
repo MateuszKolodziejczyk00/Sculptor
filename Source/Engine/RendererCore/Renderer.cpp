@@ -82,11 +82,11 @@ ShadersManager& Renderer::GetShadersManager()
 	return priv::g_data.shadersManager;
 }
 
-lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const CommandsRecordingInfo& recordingInfo)
+lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo)
 {
 	SPT_PROFILER_FUNCTION();
 
-	return std::make_unique<CommandsRecorder>(recordingInfo);
+	return std::make_unique<CommandsRecorder>(context, recordingInfo);
 }
 
 void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
