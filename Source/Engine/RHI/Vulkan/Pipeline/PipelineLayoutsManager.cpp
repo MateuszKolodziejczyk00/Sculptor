@@ -25,28 +25,46 @@ void PipelineLayoutsManager::ReleaseRHI()
 	m_cachedDSLayouts.clear();
 }
 
-lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
+lib::SharedRef<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const std::hash<rhi::PipelineLayoutDefinition> hasher;
-	const SizeType layoutDefinitionHash = hasher(definition);
+	const SizeType layoutDefinitionHash = lib::GetHash(definition);
 
-	auto pipelineLayoutIt = m_cachedPipelineLayouts.find(layoutDefinitionHash);
-	if (pipelineLayoutIt == std::cend(m_cachedPipelineLayouts))
+	const auto cachedPipelineLayoutIt = m_cachedPipelineLayouts.find(layoutDefinitionHash);
+	if (cachedPipelineLayoutIt != std::cend(m_cachedPipelineLayouts))
 	{
-		pipelineLayoutIt = m_cachedPipelineLayouts.emplace(layoutDefinitionHash, CreatePipelineLayout(definition)).first;
+		return cachedPipelineLayoutIt->second;
 	}
 
-	return pipelineLayoutIt->second;
+	{
+		const lib::LockGuard lockGuard(m_pipelinesPendingFlushLock);
+
+		auto pendingPipelineLayoutIt = m_pipelinesPendingFlush.find(layoutDefinitionHash);
+		if (pendingPipelineLayoutIt == std::cend(m_pipelinesPendingFlush))
+		{
+			pendingPipelineLayoutIt = m_pipelinesPendingFlush.emplace(layoutDefinitionHash, CreatePipelineLayout_AssumesLocked(definition)).first;
+		}
+
+		return pendingPipelineLayoutIt->second;
+	}
 }
 
-VkDescriptorSetLayout PipelineLayoutsManager::GetOrCreateDSLayout(const rhi::DescriptorSetDefinition& dsDef)
+void PipelineLayoutsManager::FlushPendingPipelineLayouts()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lockGuard(m_pipelinesPendingFlushLock);
+
+	std::move(std::cbegin(m_pipelinesPendingFlush), std::cend(m_pipelinesPendingFlush), std::inserter(m_cachedPipelineLayouts, std::end(m_cachedPipelineLayouts)));
+	m_pipelinesPendingFlush.clear();
+}
+
+VkDescriptorSetLayout PipelineLayoutsManager::GetOrCreateDSLayout_AssumesLocked(const rhi::DescriptorSetDefinition& dsDef)
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const std::hash<rhi::DescriptorSetDefinition> hasher;
-	const SizeType hash = hasher(dsDef);
+	const SizeType hash = lib::GetHash(dsDef);
 
 	auto layoutIt = m_cachedDSLayouts.find(hash);
 	if (layoutIt == std::cend(m_cachedDSLayouts))
@@ -98,7 +116,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 	return layoutHandle;
 }
 
-lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition)
+lib::SharedRef<PipelineLayout> PipelineLayoutsManager::CreatePipelineLayout_AssumesLocked(const rhi::PipelineLayoutDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -109,13 +127,13 @@ lib::SharedPtr<PipelineLayout> PipelineLayoutsManager::CreatePipelineLayout(cons
 		std::back_inserter(layoutHandles),
 		[this](const rhi::DescriptorSetDefinition& dsDef) -> VkDescriptorSetLayout
 		{
-			return GetOrCreateDSLayout(dsDef);
+			return GetOrCreateDSLayout_AssumesLocked(dsDef);
 		});
 
 	VulkanPipelineLayoutDefinition layoutDef;
 	layoutDef.descriptorSetLayouts = std::move(layoutHandles);
 
-	return std::make_shared<PipelineLayout>(layoutDef);
+	return lib::MakeShared<PipelineLayout>(layoutDef);
 }
 
 } // spt::vulkan
