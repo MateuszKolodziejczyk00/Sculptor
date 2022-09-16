@@ -29,7 +29,7 @@ public:
 	void		ClearCachedShaders();
 
 	SPT_NODISCARD ShaderID					CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
-	SPT_NODISCARD lib::SharedPtr<Shader>	GetShader(ShaderID shader) const;
+	SPT_NODISCARD lib::SharedRef<Shader>	GetShader(ShaderID shader) const;
 
 private:
 

@@ -18,9 +18,9 @@ struct GraphicsPipelineState
 };
 
 
-struct ComputePipeineState
+struct ComputePipelineState
 {
-	ComputePipeineState() = default;
+	ComputePipelineState() = default;
 
 	ShaderID shader;
 };

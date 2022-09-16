@@ -77,7 +77,6 @@ void ShadersManager::ClearCachedShaders()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
 	
 	m_cachedShaders.clear();
@@ -92,7 +91,6 @@ ShaderID ShadersManager::CreateShader(const lib::String& shaderRelativePath, con
 	Bool foundShader = false;
 
 	{
-		SPT_MAYBE_UNUSED
 		const lib::ReadLockGuard lockGuard(m_lock);
 
 		const auto foundShaderIt = m_cachedShaders.find(shaderHash);
@@ -110,11 +108,10 @@ ShaderID ShadersManager::CreateShader(const lib::String& shaderRelativePath, con
 	return ShaderID(shaderHash, RENDERER_RESOURCE_NAME(shaderRelativePath));
 }
 
-lib::SharedPtr<Shader> ShadersManager::GetShader(ShaderID shader) const
+lib::SharedRef<Shader> ShadersManager::GetShader(ShaderID shader) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_MAYBE_UNUSED
 	const lib::ReadLockGuard lockGuard(m_lock);
 
 	return m_cachedShaders.at(shader.GetID());
@@ -133,7 +130,6 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_MAYBE_UNUSED
 	const lib::WriteLockGuard lockGuard(m_lock);
 
 	// check once again if shader object is missing (it might have changed when we were waiting for acquiring lock)
