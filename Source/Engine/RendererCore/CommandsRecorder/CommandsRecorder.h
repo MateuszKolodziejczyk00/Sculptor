@@ -2,6 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "CommandQueue/CommandQueue.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RendererUtils.h"
 
@@ -26,7 +27,7 @@ struct CommandsRecordingInfo
 enum class ECommandsRecorderState
 {
 	/** Recording didn't started */
-	Invalid,
+	BuildingCommands,
 	/** Currently recording */
 	Recording,
 	/** Finished recording */
@@ -38,31 +39,43 @@ class RENDERER_CORE_API CommandsRecorder
 {
 public:
 
-	CommandsRecorder(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo);
+	CommandsRecorder();
 	~CommandsRecorder();
 
-	Bool									IsRecording() const;
+	Bool	IsBuildingCommands() const;
+	Bool	IsRecording() const;
+	Bool	IsPending() const;
 
-	void									StartRecording(const rhi::CommandBufferUsageDefinition& commandBufferUsage);
-	void									FinishRecording();
+	void									RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandsBuffer() const;
 
-	void									ExecuteBarrier(Barrier& barrier);
+	void									ExecuteBarrier(Barrier barrier);
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
 
-	void									InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& uiBackend);
+	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
-	void									RenderUI(const lib::SharedPtr<rdr::UIBackend>& uiBackend);
+	void									RenderUI(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
 private:
 
-	lib::SharedRef<Context>					m_context;
+	template<CRenderCommand RenderCommand>
+	void EnqueueRenderCommand(RenderCommand&& command);
+
 	lib::SharedPtr<CommandBuffer>			m_commandsBuffer;
+
+	CommandQueue							m_commandQueue;
 
 	ECommandsRecorderState					m_state;
 };
 
+
+template<CRenderCommand RenderCommand>
+void CommandsRecorder::EnqueueRenderCommand(RenderCommand&& command)
+{
+	m_commandQueue.Enqueue(std::move(command));
 }
+
+} // spt::rdr

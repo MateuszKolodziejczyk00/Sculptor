@@ -70,7 +70,7 @@ struct CommandBufferUsageDefinition
 		: beginFlags(ECommandBufferBeginFlags::None)
 	{ }
 
-	CommandBufferUsageDefinition(ECommandBufferBeginFlags inBeginFlags)
+	explicit CommandBufferUsageDefinition(ECommandBufferBeginFlags inBeginFlags)
 		: beginFlags(inBeginFlags)
 	{ }
 

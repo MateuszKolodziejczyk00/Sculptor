@@ -40,7 +40,7 @@ public:
 
 	static ShadersManager&						GetShadersManager();
 
-	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo);
+	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands();
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
 

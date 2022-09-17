@@ -16,6 +16,14 @@ struct CommandExecuteContext
 	// ...
 };
 
+
+template<typename TType>
+concept CRenderCommand = requires(TType instance)
+{
+	{ instance(std::declval<const lib::SharedRef<CommandBuffer>>(), std::declval<const CommandExecuteContext&>()) } -> std::same_as<void>;
+};
+
+
 class RenderCommandBase abstract
 {
 public:
@@ -26,7 +34,7 @@ public:
 
 	virtual ~RenderCommandBase() = default;
 
-	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& executionContext) = 0;
+	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) = 0;
 
 	Uint32 GetCommandSize() const
 	{
@@ -39,7 +47,7 @@ private:
 };
 
 
-template<typename CommandInstance>
+template<CRenderCommand CommandInstance>
 class RenderCommand : public RenderCommandBase
 {
 public:
@@ -52,7 +60,7 @@ public:
 	{ }
 
 	// Begin RenderCommandBase overrides
-	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& executionContext) override
+	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) override
 	{
 		std::invoke(m_command, cmdBuffer, executionContext);
 	}
@@ -126,7 +134,7 @@ public:
 	CommandQueue();
 	~CommandQueue();
 
-	template<typename CommandInstance>
+	template<CRenderCommand CommandInstance>
 	void Enqueue(CommandInstance&& command)
 	{
 		using CommandType = RenderCommand<CommandInstance>;

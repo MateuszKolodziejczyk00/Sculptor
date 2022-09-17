@@ -8,10 +8,8 @@
 namespace spt::rdr
 {
 
-CommandsRecorder::CommandsRecorder(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo)
-	: m_context(context)
-	, m_commandsBuffer(RendererBuilder::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef))
-	, m_state(ECommandsRecorderState::Invalid)
+CommandsRecorder::CommandsRecorder()
+	: m_state(ECommandsRecorderState::BuildingCommands)
 { }
 
 CommandsRecorder::~CommandsRecorder()
@@ -19,20 +17,37 @@ CommandsRecorder::~CommandsRecorder()
 	SPT_CHECK(m_state == ECommandsRecorderState::Pending);
 }
 
+Bool CommandsRecorder::IsBuildingCommands() const
+{
+	return m_state == ECommandsRecorderState::BuildingCommands;
+}
+
 Bool CommandsRecorder::IsRecording() const
 {
 	return m_state == ECommandsRecorderState::Recording;
 }
 
-void CommandsRecorder::StartRecording(const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+Bool CommandsRecorder::IsPending() const
 {
-	m_commandsBuffer->StartRecording(commandBufferUsage);
-	m_state = ECommandsRecorderState::Recording;
+	return m_state == ECommandsRecorderState::Pending;
 }
 
-void CommandsRecorder::FinishRecording()
+void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	m_state = ECommandsRecorderState::Recording;
+	
+	m_commandsBuffer = RendererBuilder::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
+	m_commandsBuffer->StartRecording(commandBufferUsage);
+
+	CommandQueueExecutor executor(m_commandsBuffer);
+	m_commandQueue.ExecuteAndReset(executor);
+
 	m_commandsBuffer->FinishRecording();
+
 	m_state = ECommandsRecorderState::Pending;
 }
 
@@ -41,51 +56,64 @@ const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandsBuffer() const
 	return m_commandsBuffer;
 }
 
-void CommandsRecorder::ExecuteBarrier(Barrier& barrier)
+void CommandsRecorder::ExecuteBarrier(Barrier barrier)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsRecording());
+	SPT_CHECK(IsBuildingCommands());
 
-	barrier.GetRHI().Execute(m_commandsBuffer->GetRHI());
+	EnqueueRenderCommand([localBarrier = std::move(barrier)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+						 {
+							 localBarrier.GetRHI().Execute(cmdBuffer->GetRHI());
+						 });
 }
 
 void CommandsRecorder::BeginRendering(const RenderingDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsRecording());
+	SPT_CHECK(IsBuildingCommands());
 
-	m_commandsBuffer->GetRHI().BeginRendering(definition.GetRHI());
+	EnqueueRenderCommand([definition](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().BeginRendering(definition.GetRHI());
+						 });
 }
 
 void CommandsRecorder::EndRendering()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsRecording());
+	SPT_CHECK(IsBuildingCommands());
 
-	m_commandsBuffer->GetRHI().EndRendering();
+	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().EndRendering();
+						 });
 }
 
-void CommandsRecorder::InitializeUIFonts(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
+void CommandsRecorder::InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsRecording());
-	SPT_CHECK(!!uiBackend);
+	SPT_CHECK(IsBuildingCommands());
 
-	uiBackend->GetRHI().InitializeFonts(m_commandsBuffer->GetRHI());
+	EnqueueRenderCommand([uiBackend](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 uiBackend->GetRHI().InitializeFonts(cmdBuffer->GetRHI());
+						 });
 }
 
-void CommandsRecorder::RenderUI(const lib::SharedPtr<rdr::UIBackend>& uiBackend)
+void CommandsRecorder::RenderUI(const lib::SharedRef<rdr::UIBackend>& uiBackend)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(IsRecording());
-	SPT_CHECK(!!uiBackend);
+	SPT_CHECK(IsBuildingCommands());
 
-	uiBackend->GetRHI().Render(m_commandsBuffer->GetRHI());
+	EnqueueRenderCommand([uiBackend](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 uiBackend->GetRHI().Render(cmdBuffer->GetRHI());
+						 });
 }
 
-}
+} // spt::rdr
