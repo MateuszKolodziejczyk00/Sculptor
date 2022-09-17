@@ -24,9 +24,9 @@ public:
 		: m_commandSize(commandSize)
 	{ }
 
-	~RenderCommandBase() = default;
+	virtual ~RenderCommandBase() = default;
 
-	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& context) = 0;
+	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& executionContext) = 0;
 
 	Uint32 GetCommandSize() const
 	{
@@ -52,9 +52,9 @@ public:
 	{ }
 
 	// Begin RenderCommandBase overrides
-	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& context) override
+	virtual void Execute(const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& executionContext) override
 	{
-		std::invoke(m_command, cmdBuffer, context);
+		std::invoke(m_command, cmdBuffer, executionContext);
 	}
 	// End RenderCommandBase overrides
 
@@ -64,17 +64,50 @@ private:
 };
 
 
-class CommandsQueueExecutor
+class CommandQueueIterator
 {
 public:
 
-	explicit CommandsQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer);
+	CommandQueueIterator();
+	CommandQueueIterator(Byte* commandBuffer, Uint32 commandsNum);
 
-	void Execute(Byte* commandBuffer, Uint32 commandsNum);
+	void				Set(Byte* commandBuffer, Uint32 commandsNum);
+
+	Bool				IsValid() const;
+
+	void				Advance();
+
+	RenderCommandBase*	Get() const;
+
+private:
+
+	Byte*	m_currentCommandPtr;
+
+	/** This also counts current command */
+	Uint32	m_remainingCommandsNum;
+
+	Uint32	m_currentCommandSize;
+};
+
+
+enum class ECommandQueueExecuteFlags
+{
+	None				= 0,
+	DestroyCommands		= BIT(0)
+};
+
+
+class CommandQueueExecutor
+{
+public:
+
+	explicit CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer);
+
+	void Execute(CommandQueueIterator commandIterator, ECommandQueueExecuteFlags flags);
 
 protected:
 
-	/** May be made virtual if neceessary */
+	/** May be made virtual if necessary */
 	void ExecuteCommand(RenderCommandBase& command, const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& context);
 
 private:
@@ -106,10 +139,12 @@ public:
 		++m_commandsNum;
 	}
 
-	void Execute(CommandsQueueExecutor& executor);
-	void ExecuteAndReset(CommandsQueueExecutor& executor);
+	void Execute(CommandQueueExecutor& executor);
+	void ExecuteAndReset(CommandQueueExecutor& executor);
 
 	void Reset();
+
+	Bool HasPendingCommands() const;
 
 private:
 

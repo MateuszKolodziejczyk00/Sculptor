@@ -69,31 +69,88 @@ void CommandQueuesMemoryPool::ReleaseBufferMemoryImpl(lib::DynamicArray<Byte>&& 
 } // utils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// CommandsQueueExecutor =========================================================================
+// CommandQueueIterator ==========================================================================
 
-CommandsQueueExecutor::CommandsQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer)
-	: m_commandBuffer(std::move(cmdBuffer))
+CommandQueueIterator::CommandQueueIterator()
+	: m_currentCommandPtr(nullptr)
+	, m_remainingCommandsNum(0)
+	, m_currentCommandSize(0)
 { }
 
-void CommandsQueueExecutor::Execute(Byte* commandBuffer, Uint32 commandsNum)
+CommandQueueIterator::CommandQueueIterator(Byte* commandBuffer, Uint32 commandsNum)
+	: m_currentCommandPtr(nullptr)
+	, m_remainingCommandsNum(0)
+	, m_currentCommandSize(0)
 {
-	SPT_PROFILER_FUNCTION();
+	Set(commandBuffer, commandsNum);
+}
 
-	Byte* currentCommandPtr = commandBuffer;
-	Uint32 remainingCommands = commandsNum;
-
-	while (remainingCommands)
+void CommandQueueIterator::Set(Byte* commandBuffer, Uint32 commandsNum)
+{
+	m_currentCommandPtr		= commandBuffer;
+	m_remainingCommandsNum	= commandsNum;
+	
+	if (m_remainingCommandsNum > 0)
 	{
-		RenderCommandBase* currentCommand = reinterpret_cast<RenderCommandBase*>(currentCommandPtr);
+		const RenderCommandBase* firstCommand = Get();
+		SPT_CHECK(!!firstCommand);
 
-		ExecuteCommand(*currentCommand, m_commandBuffer, m_context);
-
-		currentCommandPtr += currentCommand->GetCommandSize();
-		--remainingCommands;
+		m_currentCommandSize = firstCommand->GetCommandSize();
+	}
+	else
+	{
+		m_currentCommandSize = 0;
 	}
 }
 
-void CommandsQueueExecutor::ExecuteCommand(RenderCommandBase& command, const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& context)
+Bool CommandQueueIterator::IsValid() const
+{
+	return m_remainingCommandsNum > 0;
+}
+
+void CommandQueueIterator::Advance()
+{
+	SPT_CHECK(IsValid());
+
+	m_currentCommandPtr += m_currentCommandSize;
+	--m_remainingCommandsNum;
+
+	const RenderCommandBase* currentCommand = Get();
+	m_currentCommandSize = currentCommand ? currentCommand->GetCommandSize() : 0;
+}
+
+RenderCommandBase* CommandQueueIterator::Get() const
+{
+	return IsValid() ? reinterpret_cast<RenderCommandBase*>(m_currentCommandPtr) : nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// CommandQueueExecutor ==========================================================================
+
+CommandQueueExecutor::CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer)
+	: m_commandBuffer(std::move(cmdBuffer))
+{ }
+
+void CommandQueueExecutor::Execute(CommandQueueIterator commandIterator, ECommandQueueExecuteFlags flags)
+{
+	SPT_PROFILER_FUNCTION();
+
+	while (commandIterator.IsValid())
+	{
+		RenderCommandBase* currentCommand = commandIterator.Get();
+
+		ExecuteCommand(*currentCommand, m_commandBuffer, m_context);
+
+		if (lib::HasAnyFlag(flags, ECommandQueueExecuteFlags::DestroyCommands))
+		{
+			currentCommand->~RenderCommandBase();
+		}
+
+		commandIterator.Advance();
+	}
+}
+
+void CommandQueueExecutor::ExecuteCommand(RenderCommandBase& command, const lib::SharedRef<CommandBuffer>& cmdBuffer, CommandExecuteContext& context)
 {
 	command.Execute(cmdBuffer, context);
 }
@@ -102,7 +159,8 @@ void CommandsQueueExecutor::ExecuteCommand(RenderCommandBase& command, const lib
 // CommandQueue ==================================================================================
 
 CommandQueue::CommandQueue()
-	: m_commandsNum(0)
+	: m_currentBufferOffset(0)
+	, m_commandsNum(0)
 {
 	AcquireBufferMemory();
 }
@@ -112,23 +170,43 @@ CommandQueue::~CommandQueue()
 	ReleaseBufferMemory();
 }
 
-void CommandQueue::Execute(CommandsQueueExecutor& executor)
+void CommandQueue::Execute(CommandQueueExecutor& executor)
 {
 	SPT_PROFILER_FUNCTION();
 
-	executor.Execute(m_buffer.data(), m_commandsNum);
+	executor.Execute(CommandQueueIterator(m_buffer.data(), m_commandsNum), ECommandQueueExecuteFlags::None);
 }
 
-void CommandQueue::ExecuteAndReset(CommandsQueueExecutor& executor)
+void CommandQueue::ExecuteAndReset(CommandQueueExecutor& executor)
 {
-	Execute(executor);
-	Reset();
+	SPT_PROFILER_FUNCTION();
+
+	executor.Execute(CommandQueueIterator(m_buffer.data(), m_commandsNum), ECommandQueueExecuteFlags::DestroyCommands);
+	m_commandsNum = 0;
+	m_currentBufferOffset = 0;
 }
 
 void CommandQueue::Reset()
 {
+	SPT_PROFILER_FUNCTION();
+
+	CommandQueueIterator commandIterator(m_buffer.data(), m_commandsNum);
+
+	// Call destructor for all commands
+	while (commandIterator.IsValid())
+	{
+		commandIterator.Get()->~RenderCommandBase();
+
+		commandIterator.Advance();
+	}
+
 	m_commandsNum = 0;
 	m_currentBufferOffset = 0;
+}
+
+Bool CommandQueue::HasPendingCommands() const
+{
+	return m_commandsNum > 0;
 }
 
 void CommandQueue::AcquireBufferMemory()
@@ -141,6 +219,11 @@ void CommandQueue::AcquireBufferMemory()
 void CommandQueue::ReleaseBufferMemory()
 {
 	SPT_PROFILER_FUNCTION();
+
+	if (HasPendingCommands())
+	{
+		Reset();
+	}
 
 	utils::CommandQueuesMemoryPool::ReleaseBufferMemory(std::move(m_buffer));
 }
