@@ -47,6 +47,10 @@ public:
 
 	void	BindGraphicsPipeline(const RHIPipeline& pipeline);
 
+	// Compute rendering ====================================
+
+	void	BindComputePipeline(const RHIPipeline& pipeline);
+
 private:
 
 	VkCommandBuffer					m_cmdBufferHandle;

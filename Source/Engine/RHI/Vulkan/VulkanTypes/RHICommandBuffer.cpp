@@ -229,4 +229,14 @@ void RHICommandBuffer::BindGraphicsPipeline(const RHIPipeline& pipeline)
 	vkCmdBindPipeline(m_cmdBufferHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetHandle());
 }
 
+void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(pipeline.IsValid());
+
+	vkCmdBindPipeline(m_cmdBufferHandle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.GetHandle());
+}
+
 } // spt::vulkan

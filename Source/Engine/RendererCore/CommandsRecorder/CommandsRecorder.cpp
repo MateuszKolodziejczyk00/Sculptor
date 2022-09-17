@@ -7,6 +7,7 @@
 #include "Types/Barrier.h"
 #include "Types/UIBackend.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
+#include "Types/Pipeline/ComputePipeline.h"
 
 namespace spt::rdr
 {
@@ -95,15 +96,33 @@ void CommandsRecorder::EndRendering()
 						 });
 }
 
-void CommandsRecorder::BindPipeline(PipelineStateID pipelineID)
+void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
 
 	EnqueueRenderCommand([pipelineID](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
 							 const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesLibrary().GetGraphicsPipeline(pipelineID);
+							 SPT_CHECK(!!pipeline);
 
 							 cmdBuffer->GetRHI().BindGraphicsPipeline(pipeline->GetRHI());
+						 });
+}
+
+void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	EnqueueRenderCommand([pipelineID](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 const lib::SharedPtr<ComputePipeline> pipeline = Renderer::GetPipelinesLibrary().GetComputePipeline(pipelineID);
+							 SPT_CHECK(!!pipeline);
+
+							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
 						 });
 }
 

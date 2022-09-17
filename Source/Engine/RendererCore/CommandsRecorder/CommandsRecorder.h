@@ -56,7 +56,9 @@ public:
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
 
-	void									BindPipeline(PipelineStateID pipelineID);
+	void									BindGraphicsPipeline(PipelineStateID pipelineID);
+
+	void									BindComputePipeline(PipelineStateID pipelineID);
 
 	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
