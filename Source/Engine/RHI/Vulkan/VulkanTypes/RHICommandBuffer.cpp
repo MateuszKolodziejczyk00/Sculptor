@@ -4,6 +4,7 @@
 #include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "RHITexture.h"
+#include "RHIPipeline.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 
 namespace spt::vulkan
@@ -31,7 +32,7 @@ VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(rhi::ECommandBufferBe
 	return usage;
 }
 
-}
+} // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHICommandBuffer ==============================================================================
@@ -174,9 +175,9 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 	lib::DynamicArray<VkRenderingAttachmentInfo> colorAttachments;
 	colorAttachments.reserve(renderingDefinition.colorRTs.size());
 
-	std::transform(	renderingDefinition.colorRTs.cbegin(), renderingDefinition.colorRTs.end(),
-					std::back_inserter(colorAttachments),
-					CreateColorAttachmentInfo);
+	std::transform(renderingDefinition.colorRTs.cbegin(), renderingDefinition.colorRTs.end(),
+				   std::back_inserter(colorAttachments),
+				   CreateColorAttachmentInfo);
 
 	const Bool hasDepthAttachment = renderingDefinition.depthRT.textureView.IsValid();
 	VkRenderingAttachmentInfo depthAttachmentInfo{};
@@ -218,4 +219,14 @@ void RHICommandBuffer::EndRendering()
 	vkCmdEndRendering(m_cmdBufferHandle);
 }
 
+void RHICommandBuffer::BindGraphicsPipeline(const RHIPipeline& pipeline)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(pipeline.IsValid());
+
+	vkCmdBindPipeline(m_cmdBufferHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetHandle());
 }
+
+} // spt::vulkan

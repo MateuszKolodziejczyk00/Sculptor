@@ -29,8 +29,8 @@ public:
 
 	CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
 
-	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
-	void							FinishRecording();
+	void StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
+	void FinishRecording();
 };
 
 }

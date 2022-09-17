@@ -1,9 +1,12 @@
 #include "CommandsRecorder.h"
 #include "RenderingDefinition.h"
 #include "RendererBuilder.h"
+#include "Renderer.h"
+#include "Pipelines/PipelinesLibrary.h"
 #include "Types/CommandBuffer.h"
 #include "Types/Barrier.h"
 #include "Types/UIBackend.h"
+#include "Types/Pipeline/GraphicsPipeline.h"
 
 namespace spt::rdr
 {
@@ -89,6 +92,18 @@ void CommandsRecorder::EndRendering()
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
 							 cmdBuffer->GetRHI().EndRendering();
+						 });
+}
+
+void CommandsRecorder::BindPipeline(PipelineStateID pipelineID)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([pipelineID](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesLibrary().GetGraphicsPipeline(pipelineID);
+
+							 cmdBuffer->GetRHI().BindGraphicsPipeline(pipeline->GetRHI());
 						 });
 }
 

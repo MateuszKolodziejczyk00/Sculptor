@@ -16,6 +16,9 @@ struct RenderingDefinition;
 namespace spt::vulkan
 {
 
+class RHIPipeline;
+
+
 class RHI_API RHICommandBuffer
 {
 public:
@@ -37,8 +40,12 @@ public:
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
 
-	void							BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
-	void							EndRendering();
+	// Gfx rendering ========================================
+
+	void	BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
+	void	EndRendering();
+
+	void	BindGraphicsPipeline(const RHIPipeline& pipeline);
 
 private:
 

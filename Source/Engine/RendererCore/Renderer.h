@@ -12,6 +12,7 @@ namespace spt::rdr
 struct CommandsRecordingInfo;
 class CommandsRecorder;
 class ShadersManager;
+class PipelinesLibrary;
 class Window;
 class Context;
 
@@ -39,6 +40,8 @@ public:
 	static void									EndFrame();
 
 	static ShadersManager&						GetShadersManager();
+
+	static PipelinesLibrary&					GetPipelinesLibrary();
 
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands();
 

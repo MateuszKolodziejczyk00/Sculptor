@@ -6,6 +6,7 @@
 #include "Types/Window.h"
 #include "CurrentFrameContext.h"
 #include "Shaders/ShadersManager.h"
+#include "Pipelines/PipelinesLibrary.h"
 #include "Profiler/GPUProfiler.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
@@ -25,6 +26,8 @@ struct RendererData
 {
 
 ShadersManager shadersManager;
+
+PipelinesLibrary pipelinesLibrary;
 
 };
 
@@ -80,6 +83,11 @@ void Renderer::EndFrame()
 ShadersManager& Renderer::GetShadersManager()
 {
 	return priv::g_data.shadersManager;
+}
+
+PipelinesLibrary& Renderer::GetPipelinesLibrary()
+{
+	return priv::g_data.pipelinesLibrary;
 }
 
 lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands()

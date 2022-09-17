@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "CommandQueue/CommandQueue.h"
 #include "RHICore/RHICommandBufferTypes.h"
+#include "Pipelines/PipelineState.h"
 #include "RendererUtils.h"
 
 
@@ -54,6 +55,8 @@ public:
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
+
+	void									BindPipeline(PipelineStateID pipelineID);
 
 	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
