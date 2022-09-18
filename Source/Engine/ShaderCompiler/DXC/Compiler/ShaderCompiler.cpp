@@ -267,6 +267,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 	args.Append(L"-T", priv::GetShaderTargetProfile(sourceCode.GetShaderStage()));
 	args.Append(L"-E", L"main");
 	args.Append(L"-spirv");
+	args.Append(L"-O0");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
 	args.Append(L"-fspv-reflect");
 	args.Append(lib::WString(L"-I"), shadersPath);
