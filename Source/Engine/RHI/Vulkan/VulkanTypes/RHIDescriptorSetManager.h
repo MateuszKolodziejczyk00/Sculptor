@@ -15,11 +15,18 @@ class RHI_API RHIDescriptorSetManager
 {
 public:
 
-	static void InitializeRHI();
-	static void ReleaseRHI();
+	static RHIDescriptorSetManager& GetInstance();
 
-	SPT_NODISCARD static lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum);
-	static void													FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
+	void InitializeRHI();
+	void ReleaseRHI();
+
+	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum);
+	void												FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
+
+	// Dynamic descriptor pools ===================================
+
+	SPT_NODISCARD lib::UniquePtr<DescriptorPoolSet>	AcquireDescriptorPoolSet();
+	void											ReleaseDescriptorPoolSet(lib::UniquePtr<DescriptorPoolSet> poolSet);
 
 private:
 
@@ -32,13 +39,6 @@ private:
 	};
 	
 	RHIDescriptorSetManager();
-	static RHIDescriptorSetManager& GetInstance();
-
-	void InitializeRHIImpl();
-	void ReleaseRHIImpl();
-
-	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSetsImpl(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum);
-	void												FreeDescriptorSetsImpl(const lib::DynamicArray<RHIDescriptorSet>& sets);
 
 	SPT_NODISCARD DescriptorPoolSetData&	LockDescriptorPoolSet();
 	void									UnlockDescriptorPoolSet(DescriptorPoolSetData& poolSetData);
@@ -46,6 +46,9 @@ private:
 	static constexpr SizeType poolSetsNum = 4;
 
 	lib::StaticArray<DescriptorPoolSetData, poolSetsNum>	m_poolSets;
+
+	lib::DynamicArray<lib::UniquePtr<DescriptorPoolSet>>	m_dynamicPoolSets;
+	lib::Lock m_dynamicPoolSetsLock;
 };
 
 } // spt::vulkan

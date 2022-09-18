@@ -5,12 +5,14 @@ namespace spt::vulkan
 {
 
 DescriptorPoolSet::DescriptorPoolSet()
-	: m_thisSetIdx(idxNone<Uint16>)
+	: m_poolFlags(0)
+	, m_thisSetIdx(idxNone<Uint16>)
 { }
 
-void DescriptorPoolSet::SetPoolSetIdx(Uint16 inSetIdx)
+void DescriptorPoolSet::Initialize(VkDescriptorPoolCreateFlags poolFlags, Uint16 inSetIdx /*= idxNone<Uint16>*/)
 {
-	SPT_CHECK(inSetIdx != idxNone<Uint16>);
+	m_poolFlags = poolFlags;
+
 	m_thisSetIdx = inSetIdx;
 }
 
@@ -95,9 +97,7 @@ void DescriptorPoolSet::InitializeDescriptorPool(DescriptorPool& pool)
 													  return accumulatedCount + poolSize.descriptorCount;
 												  });
 
-	constexpr VkDescriptorPoolCreateFlags flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-
-	pool.Initialize(flags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
+	pool.Initialize(m_poolFlags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
 }
 
 } // spt::vulkan

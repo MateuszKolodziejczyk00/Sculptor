@@ -4,44 +4,26 @@
 namespace spt::vulkan
 {
 
-void RHIDescriptorSetManager::InitializeRHI()
-{
-	GetInstance().InitializeRHIImpl();
-}
-
-void RHIDescriptorSetManager::ReleaseRHI()
-{
-	GetInstance().ReleaseRHIImpl();
-}
-
-lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum)
-{
-	return GetInstance().AllocateDescriptorSetsImpl(LayoutIDs, descriptorSetsNum);
-}
-
-void RHIDescriptorSetManager::FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets)
-{
-	return GetInstance().FreeDescriptorSetsImpl(sets);
-}
-
-RHIDescriptorSetManager::RHIDescriptorSetManager() = default;
-
 RHIDescriptorSetManager& RHIDescriptorSetManager::GetInstance()
 {
 	static RHIDescriptorSetManager instance;
 	return instance;
 }
 
-void RHIDescriptorSetManager::InitializeRHIImpl()
+void RHIDescriptorSetManager::InitializeRHI()
 {
+	SPT_PROFILER_FUNCTION();
+	
+	constexpr VkDescriptorPoolCreateFlags poolFlags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+
 	const Uint16 poolSetsNum16 = static_cast<Uint16>(m_poolSets.size());
 	for (Uint16 idx = 0; idx < poolSetsNum16; ++idx)
 	{
-		m_poolSets[idx].poolSet.SetPoolSetIdx(idx);
+		m_poolSets[idx].poolSet.Initialize(poolFlags, poolSetsNum16);
 	}
 }
 
-void RHIDescriptorSetManager::ReleaseRHIImpl()
+void RHIDescriptorSetManager::ReleaseRHI()
 {
 	std::for_each(std::begin(m_poolSets), std::end(m_poolSets),
 				  [](DescriptorPoolSetData& poolSetData)
@@ -50,7 +32,7 @@ void RHIDescriptorSetManager::ReleaseRHIImpl()
 				  });
 }
 
-lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorSetsImpl(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum)
+lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -67,7 +49,7 @@ lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorS
 	return descriptorSets;
 }
 
-void RHIDescriptorSetManager::FreeDescriptorSetsImpl(const lib::DynamicArray<RHIDescriptorSet>& sets)
+void RHIDescriptorSetManager::FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -102,6 +84,48 @@ void RHIDescriptorSetManager::FreeDescriptorSetsImpl(const lib::DynamicArray<RHI
 		poolSetData.poolSet.FreeDescriptorSets(dsSets, poolIdx);
 	}
 }
+
+lib::UniquePtr<DescriptorPoolSet> RHIDescriptorSetManager::AcquireDescriptorPoolSet()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!m_poolSets.empty())
+	{
+		const lib::LockGuard lockGuard(m_dynamicPoolSetsLock);
+
+		// we need to check it once again, as it might change when we were waiting for acquiring the lock
+		if (!m_poolSets.empty())
+		{
+			lib::UniquePtr<DescriptorPoolSet> poolSet = std::move(m_dynamicPoolSets.back());
+			SPT_CHECK(!!poolSet);
+			
+			m_dynamicPoolSets.pop_back();
+			
+			return poolSet;
+		}
+	}
+
+	// if there wasn't any free pool, create new one
+	lib::UniquePtr<DescriptorPoolSet> poolSet = std::make_unique<DescriptorPoolSet>();
+	poolSet->Initialize(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT);
+
+	return poolSet;
+}
+
+void RHIDescriptorSetManager::ReleaseDescriptorPoolSet(lib::UniquePtr<DescriptorPoolSet> poolSet)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!poolSet);
+
+	poolSet->FreeAllDescriptorPools();
+
+	const lib::LockGuard lockGuard(m_dynamicPoolSetsLock);
+
+	m_dynamicPoolSets.emplace_back(std::move(poolSet));
+}
+
+RHIDescriptorSetManager::RHIDescriptorSetManager() = default;
 
 RHIDescriptorSetManager::DescriptorPoolSetData& RHIDescriptorSetManager::LockDescriptorPoolSet()
 {
