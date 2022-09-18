@@ -66,7 +66,22 @@ struct DescriptorSetDefinition
 	EDescriptorSetFlags									flags;
 };
 
+
 using DescriptorSetLayoutID = SizeType;
+
+
+struct WriteDescriptorDefinition
+{
+	WriteDescriptorDefinition()
+		: bindingIdx(idxNone<Uint32>)
+		, arrayElement(idxNone<Uint32>)
+		, descriptorType(EDescriptorType::None)
+	{ }
+
+	Uint32			bindingIdx;
+	Uint32			arrayElement;
+	EDescriptorType	descriptorType;
+};
 
 } // spt::rhi
 

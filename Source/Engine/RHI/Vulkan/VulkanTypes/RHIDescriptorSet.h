@@ -5,12 +5,22 @@
 #include "SculptorCoreTypes.h"
 
 
+namespace spt::rhi
+{
+struct WriteDescriptorDefinition;
+} // spt::rhi
+
+
 namespace spt::vulkan
 {
 
+class RHIBuffer;
+class RHITextureView;
+
+
 /**
  * Descriptor sets are not initialized as other RHI objects.
- * Instead they has to be allocated and freed using RHIDescriptorSetManager
+ * Instead they has to be allocated and freed using RHIDescriptorSetManager or using DescriptorSetPool
  * This allows batching all allocations, and also makes making descriptors pools threadsafe easier.
  */
 class RHI_API RHIDescriptorSet
@@ -33,6 +43,30 @@ private:
 	VkDescriptorSet		m_handle;
 	Uint16				m_poolSetIdx;
 	Uint16				m_poolIdx;
+};
+
+
+class RHI_API RHIDescriptorSetWriter
+{
+public:
+
+	RHIDescriptorSetWriter();
+
+	void WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range);
+	void WriteTexture(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITextureView& textureView);
+
+	void Reserve(SizeType writesNum);
+	void Flush();
+
+private:
+
+	void ResolveReferences();
+	void SubmitWrites();
+	void Reset();
+
+	lib::DynamicArray<VkWriteDescriptorSet>		m_writes;
+	lib::DynamicArray<VkDescriptorBufferInfo>	m_buffers;
+	lib::DynamicArray<VkDescriptorImageInfo>	m_images;
 };
 
 } // spt::vulkan
