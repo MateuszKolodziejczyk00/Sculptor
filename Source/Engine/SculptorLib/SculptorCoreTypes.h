@@ -14,8 +14,10 @@
 #include "Containers/HashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/ArrayView.h"
+#include "Containers/Stack.h"
 
 // Utility
+#include "Utility/Concepts.h"
 #include "Utility/SharedRef.h"
 #include "Utility/Memory.h"
 #include "Utility/Color.h"
@@ -27,3 +29,4 @@
 #include "Utility/Threading/Lock.h"
 #include "Utility/Threading/Spinlock.h"
 #include "Utility/Templates/TypeTraits.h"
+#include "Utility/Algorithms/Algorithms.h"
