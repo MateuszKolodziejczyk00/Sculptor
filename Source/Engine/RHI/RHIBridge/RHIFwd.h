@@ -20,6 +20,8 @@ class RHIUIBackend;
 class RHIShaderModule;
 class RHIPipeline;
 class RHIProfiler;
+class RHIDescriptorSetManager;
+class RHIDescriptorSet;
 
 }
 
