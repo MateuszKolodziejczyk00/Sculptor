@@ -1,4 +1,5 @@
 #include "RHIContext.h"
+#include "RHIDescriptorSetManager.h"
 
 namespace spt::vulkan
 {
@@ -18,11 +19,18 @@ RHIContext::RHIContext()
 	: m_id(idxNone<rhi::ContextID>)
 { }
 
+// default destructor and move operations in .cpp file, to limit necessary includes in .h file
+RHIContext::~RHIContext() = default;
+RHIContext::RHIContext(RHIContext&& other) = default;
+RHIContext& RHIContext::operator=(RHIContext&& rhs) = default;
+
 void RHIContext::InitializeRHI(const rhi::ContextDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_id = priv::GenerateID();
+
+	m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
 }
 
 void RHIContext::ReleaseRHI()
@@ -30,6 +38,8 @@ void RHIContext::ReleaseRHI()
 	SPT_PROFILER_FUNCTION();
 
 	m_id = idxNone<rhi::ContextID>;
+
+	RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(std::move(m_dynamicDescriptorsPool));
 
 	m_name.Reset();
 }

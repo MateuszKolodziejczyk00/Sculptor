@@ -9,11 +9,18 @@
 namespace spt::vulkan
 {
 
+class DescriptorPoolSet;
+
+
 class RHI_API RHIContext
 {
 public:
 
 	RHIContext();
+	~RHIContext();
+
+	RHIContext(RHIContext&& other);
+	RHIContext& operator=(RHIContext&& rhs);
 
 	void						InitializeRHI(const rhi::ContextDefinition& definition);
 	void						ReleaseRHI();
@@ -27,9 +34,11 @@ public:
 
 private:
 
-	rhi::ContextID	m_id;
+	rhi::ContextID m_id;
 
-	DebugName		m_name;
+	lib::UniquePtr<DescriptorPoolSet> m_dynamicDescriptorsPool;
+
+	DebugName m_name;
 };
 
 } // spt::vulkan

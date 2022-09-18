@@ -89,12 +89,12 @@ lib::UniquePtr<DescriptorPoolSet> RHIDescriptorSetManager::AcquireDescriptorPool
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (!m_poolSets.empty())
+	if (!m_dynamicPoolSets.empty())
 	{
 		const lib::LockGuard lockGuard(m_dynamicPoolSetsLock);
 
 		// we need to check it once again, as it might change when we were waiting for acquiring the lock
-		if (!m_poolSets.empty())
+		if (!m_dynamicPoolSets.empty())
 		{
 			lib::UniquePtr<DescriptorPoolSet> poolSet = std::move(m_dynamicPoolSets.back());
 			SPT_CHECK(!!poolSet);
