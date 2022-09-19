@@ -83,9 +83,11 @@ OptimizerImpl::OptimizerImpl()
 			 .RegisterPass(spvtools::CreateCombineAccessChainsPass())
 			 .RegisterPass(spvtools::CreateInlineExhaustivePass())
 			 .RegisterPass(spvtools::CreateDeadBranchElimPass())
+			 .RegisterPass(spvtools::CreateBlockMergePass())
 			 .RegisterPass(spvtools::CreateLocalMultiStoreElimPass())
 			 .RegisterPass(spvtools::CreateLocalAccessChainConvertPass())
 			 .RegisterPass(spvtools::CreateLocalSingleStoreElimPass())
+			 .RegisterPass(spvtools::CreateSimplificationPass())
 			 .RegisterPass(spvtools::CreateCFGCleanupPass());
 
 	optimizer.SetMessageConsumer(&LogOptimizerMessage);
