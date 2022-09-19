@@ -7,6 +7,7 @@
 #include "RendererUtils.h"
 #include "Types/Barrier.h"
 #include "UITypes.h"
+#include "Types/DescriptorSetWriter.h"
 
 
 namespace spt::rhi
@@ -66,6 +67,8 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<GraphicsPipeline>	CreateGraphicsPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef);
 	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	CreateComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader);
+
+	SPT_NODISCARD static DescriptorSetWriter				CreateDescriptorSetWriter();
 
 private:
 

@@ -69,4 +69,9 @@ lib::SharedRef<ComputePipeline> RendererBuilder::CreateComputePipeline(const Ren
 	return lib::MakeShared<ComputePipeline>(name, shader);
 }
 
+DescriptorSetWriter RendererBuilder::CreateDescriptorSetWriter()
+{
+	return DescriptorSetWriter();
+}
+
 } // spt::rdr
