@@ -21,6 +21,7 @@ struct TypeSerializer<smd::CommonBindingData>
 	{
 		serializer.Serialize("ElementsNum", data.elementsNum);
 		serializer.SerializeEnum("Flags", data.flags);
+		serializer.SerializeEnum("BindingDescriptorType", data.bindingDescriptorType);
 	}
 };
 

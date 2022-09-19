@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RHI/RHICore/RHIShaderTypes.h"
+#include "RHI/RHICore/RHIDescriptorTypes.h"
 
 #include <variant>
 
@@ -74,6 +75,47 @@ inline EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 	return EBindingFlags::None;
 }
 
+inline rhi::EDescriptorType SelectBufferDescriptorType(EBindingFlags bindingFlags)
+{
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::Storage))
+	{
+		if (lib::HasAllFlags(bindingFlags, EBindingFlags::DynamicOffset))
+		{
+			return rhi::EDescriptorType::StorageBufferDynamicOffset;
+		}
+		else if (lib::HasAllFlags(bindingFlags, EBindingFlags::TexelBuffer))
+		{
+			return rhi::EDescriptorType::StorageTexelBuffer;
+		}
+		else
+		{
+			return rhi::EDescriptorType::StorageBuffer;
+		}
+	}
+	else // Uniform
+	{
+		if (lib::HasAllFlags(bindingFlags, EBindingFlags::DynamicOffset))
+		{
+			return rhi::EDescriptorType::UniformBufferDynamicOffset;
+		}
+		else if (lib::HasAllFlags(bindingFlags, EBindingFlags::TexelBuffer))
+		{
+			return rhi::EDescriptorType::UniformTexelBuffer;
+		}
+		else
+		{
+			return rhi::EDescriptorType::UniformBuffer;
+		}
+	}
+}
+
+inline rhi::EDescriptorType SelectTextureDescriptorType(EBindingFlags bindingFlags)
+{
+	return lib::HasAnyFlag(bindingFlags, EBindingFlags::Storage)
+		? rhi::EDescriptorType::StorageTexture
+		: rhi::EDescriptorType::SampledTexture;
+}
+
 } // priv
 
 static constexpr Uint32 maxSetIdx		= 255;
@@ -87,6 +129,7 @@ struct CommonBindingData abstract
 	explicit CommonBindingData(Uint32 inElementsNum, EBindingFlags inFlags)
 		: elementsNum(inElementsNum)
 		, flags(inFlags)
+		, bindingDescriptorType(rhi::EDescriptorType::None)
 	{ }
 
 	void MakeValid()
@@ -114,14 +157,21 @@ struct CommonBindingData abstract
 		return priv::BindingFlagsToShaderStageFlags(flags);
 	}
 
+	rhi::EDescriptorType GetDescriptorType() const
+	{
+		return bindingDescriptorType;
+	}
+
 	SizeType Hash() const
 	{
 		return lib::HashCombine(elementsNum,
-								flags);
+								flags,
+								bindingDescriptorType);
 	}
 
-	Uint32			elementsNum;
-	EBindingFlags	flags;
+	Uint32					elementsNum;
+	EBindingFlags			flags;
+	rhi::EDescriptorType	bindingDescriptorType;
 };
 
 
@@ -130,6 +180,11 @@ struct TextureBindingData : public CommonBindingData
 	explicit TextureBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
 		: CommonBindingData(inElementsNum, inFlags)
 	{ }
+
+	void PostInitialize()
+	{
+		bindingDescriptorType = priv::SelectTextureDescriptorType(flags);
+	}
 };
 
 
@@ -138,6 +193,11 @@ struct CombinedTextureSamplerBindingData : public CommonBindingData
 	explicit CombinedTextureSamplerBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
 		: CommonBindingData(inElementsNum, inFlags)
 	{ }
+
+	void PostInitialize()
+	{
+		bindingDescriptorType = rhi::EDescriptorType::CombinedTextureSampler;
+	}
 };
 
 
@@ -148,7 +208,12 @@ struct BufferBindingData : public CommonBindingData
 		, m_size(0) // invalid
 	{ }
 
-	void SetSize(Uint16 size)
+	void PostInitialize()
+	{
+		bindingDescriptorType = priv::SelectBufferDescriptorType(flags);
+	}
+
+	void SetSize(Uint32 size)
 	{
 		lib::RemoveFlag(flags, EBindingFlags::Unbound);
 		m_size = size;
@@ -164,7 +229,7 @@ struct BufferBindingData : public CommonBindingData
 		return lib::HasAnyFlag(flags, EBindingFlags::Unbound);
 	}
 
-	Uint16 GetSize() const
+	Uint32 GetSize() const
 	{
 		SPT_CHECK(!IsUnbound());
 		return m_size;
@@ -178,7 +243,7 @@ struct BufferBindingData : public CommonBindingData
 
 private:
 
-	Uint16			m_size;
+	Uint32			m_size;
 };
 
 
@@ -196,6 +261,16 @@ struct GenericShaderBinding
 	explicit GenericShaderBinding(TBindingDataType bindingData)
 		: m_data(bindingData)
 	{ }
+
+	void PostInitialize()
+	{
+		return std::visit(
+			[](auto& data)
+			{
+				return data.PostInitialize();
+			},
+			m_data);
+	}
 
 	template<typename TBindingDataType>
 	void Set(TBindingDataType data)
@@ -234,6 +309,16 @@ struct GenericShaderBinding
 	EBindingType GetBindingType() const
 	{
 		return static_cast<EBindingType>(m_data.index());
+	}
+
+	rhi::EDescriptorType GetDescriptorType() const
+	{
+		return std::visit(
+			[](const auto data)
+			{
+				return data.GetDescriptorType();
+			},
+			m_data);
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)
@@ -291,7 +376,18 @@ public:
 			SPT_CHECK(m_bindings[newBindingIdx].Contains<TBindingDataType>());
 			SPT_CHECK(memcmp(&m_bindings[newBindingIdx].As<TBindingDataType>(), &bindingData, sizeof(TBindingDataType)));
 		}
+	}
 
+	void PostInitialize()
+	{
+		std::for_each(std::begin(m_bindings), std::end(m_bindings),
+					  [](GenericShaderBinding& binding)
+					  {
+						  if (binding.IsValid())
+						  {
+							  binding.PostInitialize();
+						  }
+					  });
 	}
 
 	lib::DynamicArray<GenericShaderBinding>& GetBindings()
@@ -446,8 +542,7 @@ public:
 	template<typename TEntryDataType>
 	TEntryDataType GetOrDefault() const
 	{
-		const TEntryDataType* foundData = std::get_if<TEntryDataType>(m_data);
-		return foundData != nullptr ? *foundData : TEntryDataType();
+		return Contains<TEntryDataType>() ? As<TEntryDataType>() : TEntryDataType();
 	}
 
 	ShaderParamEntryCommon GetCommonData() const

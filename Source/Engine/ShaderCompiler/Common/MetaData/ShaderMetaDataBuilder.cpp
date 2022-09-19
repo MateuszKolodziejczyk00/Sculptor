@@ -260,7 +260,7 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 			AddTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
 		});
 
-	outShaderMetaData.BuildDSHashes();
+	outShaderMetaData.PostInitialize();
 }
 
 } // priv
