@@ -170,6 +170,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 	smd::BufferBindingData storageBufferBinding;
 	storageBufferBinding.AddFlag(smd::EBindingFlags::Storage);
+	storageBufferBinding.AddFlag(smd::EBindingFlags::Unbound);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
 	
