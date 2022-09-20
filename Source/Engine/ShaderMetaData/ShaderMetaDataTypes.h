@@ -215,7 +215,7 @@ struct BufferBindingData : public CommonBindingData
 
 	void SetSize(Uint32 size)
 	{
-		lib::RemoveFlag(flags, EBindingFlags::Unbound);
+		SPT_CHECK(!IsUnbound());
 		m_size = size;
 	}
 
