@@ -60,7 +60,7 @@ struct TypeSerializer<smd::BufferBindingData>
 		SerializeType<smd::CommonBindingData>(serializer, data);
 		if (!data.IsUnbound())
 		{
-			if constexpr (Serializer::IsWriting())
+			if constexpr (Serializer::IsSaving())
 			{
 				serializer.Serialize("Size", data.GetSize());
 			}
@@ -82,7 +82,7 @@ struct TypeSerializer<smd::GenericShaderBinding>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		if constexpr (Serializer::IsWriting())
+		if constexpr (Serializer::IsSaving())
 		{
 			if (data.Contains<smd::TextureBindingData>())
 			{
@@ -208,7 +208,7 @@ struct TypeSerializer<smd::GenericShaderParamEntry>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		if constexpr (Serializer::IsWriting())
+		if constexpr (Serializer::IsSaving())
 		{
 			if (data.Contains<smd::ShaderTextureParamEntry>())
 			{

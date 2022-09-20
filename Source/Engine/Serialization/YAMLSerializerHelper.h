@@ -24,9 +24,14 @@ public:
 		: m_node(node)
 	{ }
 
-	static constexpr Bool IsWriting()
+	static constexpr Bool IsSaving()
 	{
 		return true;
+	}
+
+	static constexpr Bool IsLoading()
+	{
+		return !IsSaving();
 	}
 
 	template<typename TDataType>
@@ -56,9 +61,14 @@ public:
 		, m_currentIdx(0)
 	{ }
 
-	static constexpr Bool IsWriting()
+	static constexpr Bool IsSaving()
 	{
 		return false;
+	}
+
+	static constexpr Bool IsLoading()
+	{
+		return !IsSaving();
 	}
 
 	template<typename TDataType>
@@ -89,9 +99,14 @@ public:
 		, m_emittingSequence(false)
 	{ }
 
-	static constexpr Bool IsWriting()
+	static constexpr Bool IsSaving()
 	{
 		return true;
+	}
+
+	static constexpr Bool IsLoading()
+	{
+		return !IsSaving();
 	}
 
 	template<typename TDataType>

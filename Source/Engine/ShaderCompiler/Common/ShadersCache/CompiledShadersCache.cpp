@@ -22,7 +22,7 @@ struct TypeSerializer<sc::CompiledShader>
 		using ShaderBinary			= typename Param::Binary;
 		using ShaderBinaryElement	= typename ShaderBinary::value_type;
 
-		if constexpr (Serializer::IsWriting())
+		if constexpr (Serializer::IsSaving())
 		{
 			const srl::Binary binary(reinterpret_cast<const unsigned char*>(data.GetBinary().data()), data.GetBinary().size() * sizeof(ShaderBinaryElement));
 			serializer.Serialize("Binary", binary);
