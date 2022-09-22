@@ -74,6 +74,18 @@ const smd::ShaderMetaData& DescriptorSetUpdateContext::GetMetaData() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
+DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name)
+	: m_name(name)
+{ }
+
+const spt::lib::HashedString& DescriptorSetBinding::GetName() const
+{
+	return m_name;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DescriptorSetState ============================================================================
+
 DescriptorSetState::DescriptorSetState()
 	: m_state(utils::GenerateStateID())
 	, m_isDirty(false)

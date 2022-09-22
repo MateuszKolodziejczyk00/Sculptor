@@ -10,7 +10,7 @@ DescriptorSetWriter::DescriptorSetWriter()
 
 void DescriptorSetWriter::WriteBuffer(const rhi::RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const lib::SharedRef<BufferView>& bufferView)
 {
-	lib::SharedPtr<const Buffer> buffer = bufferView->GetBuffer();
+	const lib::SharedPtr<const Buffer> buffer = bufferView->GetBuffer();
 	SPT_CHECK(!!buffer);
 	
 	m_rhiWriter.WriteBuffer(set, writeDef, buffer->GetRHI(), bufferView->GetOffset(), bufferView->GetSize());
