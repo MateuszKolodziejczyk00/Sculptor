@@ -60,7 +60,6 @@ private:
 namespace bindings_refl
 {
 
-
 /**
  * Dummy type for head of the bindings list. Shouldn't be directly used
  */
@@ -72,8 +71,9 @@ class BindingHandleNode
 {
 public:
 
-	explicit BindingHandleNode(BindingHandleNode* next)
+	BindingHandleNode(BindingHandleNode* next, DescriptorSetBinding* binding)
 		: m_next(next)
+		, m_binding(binding)
 	{ }
 
 	BindingHandleNode* GetNext() const
@@ -81,17 +81,21 @@ public:
 		return m_next;
 	}
 
+	DescriptorSetBinding& Get()
+	{
+		SPT_CHECK(!!m_binding);
+		return *m_binding;
+	}
+
 private:
 
-	BindingHandleNode* m_next;
+	BindingHandleNode*		m_next;
+	DescriptorSetBinding*	m_binding;
 };
 
 
-template<typename TNextBindingHandleType,
-		 typename TBindingType,
-		 lib::Literal name>
-requires std::is_base_of_v<DescriptorSetBinding, TBindingType> || std::is_same_v<TBindingType, HeadBindingUnderlyingType>
-class BindingHandle : public BindingHandleNode
+template<typename TBindingType, lib::Literal name>
+class BindingDataHandleNode : public BindingHandleNode
 {
 protected:
 
@@ -99,14 +103,48 @@ protected:
 
 public:
 
-	static_assert(std::is_base_of_v<DescriptorSetBinding, TBindingType>);
+	using BindingType			= TBindingType;
+
+	template<typename... TArgs>
+	explicit BindingDataHandleNode(BindingHandleNode* next, TArgs&&... args)
+		: Super(next, &m_binding)
+		, m_binding(name.Get(), std::forward<TArgs>(args)...)
+	{ }
+
+	BindingType& Get()
+	{
+		return m_binding;
+	}
+
+	BindingType* operator->()
+	{
+		return &m_binding;
+	}
+
+private:
+
+	TBindingType m_binding;
+};
+
+
+template<typename TNextBindingHandleType,
+		 typename TBindingType,
+		 lib::Literal name>
+requires std::is_base_of_v<DescriptorSetBinding, TBindingType> || std::is_same_v<TBindingType, HeadBindingUnderlyingType>
+class BindingHandle : public BindingDataHandleNode<TBindingType, name>
+{
+protected:
+
+	using Super = BindingDataHandleNode<TBindingType, name>;
+
+public:
 
 	using BindingType			= TBindingType;
 	using NextBindingHandleType = TNextBindingHandleType;
 
-	explicit BindingHandle(NextBindingHandleType* next)
-		: Super(next)
-		, m_val(name.Get())
+	template<typename... TArgs>
+	explicit BindingHandle(NextBindingHandleType* next, TArgs&&... args)
+		: Super(next, std::forward<TArgs>(args)...)
 	{
 		SPT_CHECK(!!next);
 	}
@@ -115,10 +153,6 @@ public:
 	{
 		return static_cast<NextBindingHandleType*>(Super::GetNext());
 	}
-
-private:
-
-	BindingType				m_val;
 };
 
 
@@ -128,11 +162,11 @@ private:
 template<typename TBindingType,
 		lib::Literal name>
 requires std::is_base_of_v<DescriptorSetBinding, TBindingType>
-class BindingHandle<void, TBindingType, name> : public BindingHandleNode
+class BindingHandle<void, TBindingType, name> : public BindingDataHandleNode<TBindingType, name>
 {
 protected:
 
-	using Super = BindingHandleNode;
+	using Super = BindingDataHandleNode<TBindingType, name>;
 
 public:
 
@@ -140,14 +174,10 @@ public:
 	using NextBindingHandleType = void;
 	using NextBindingType		= void;
 
-	explicit BindingHandle(void*)
-		: Super(nullptr)
-		, m_val(name.Get())
+	template<typename... TArgs>
+	explicit BindingHandle(NextBindingHandleType*, TArgs&&... args)
+		: Super(nullptr, std::forward<TArgs>(args)...)
 	{ }
-
-private:
-
-	BindingType				m_val;
 };
 
 
@@ -165,7 +195,7 @@ public:
 	using NextBindingHandleType = TNextBindingHandleType;
 
 	explicit BindingHandle(NextBindingHandleType* next)
-		: Super(next)
+		: Super(next, nullptr)
 	{ }
 
 	NextBindingHandleType* GetNext() const
@@ -227,6 +257,33 @@ private:
 
 	const DSStateID	m_state;
 	Bool			m_isDirty;
+};
+
+
+//TEST ////////////////////////////////////////////////////////////////////////////
+class RENDERER_TYPES_API TestDescriptorSetBinding : public DescriptorSetBinding
+{
+public:
+
+	TestDescriptorSetBinding(const lib::HashedString& name)
+		: DescriptorSetBinding(name)
+	{ }
+
+	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const override
+	{
+
+	}
+};
+
+class RENDERER_TYPES_API TestDescriptorSetState : public DescriptorSetState
+{
+public:
+
+	DS_BINDINGS_BEGIN()
+		DS_BINDING(TestDescriptorSetBinding, Texture)
+		DS_BINDING(TestDescriptorSetBinding, SizeX)
+		DS_BINDING(TestDescriptorSetBinding, SizeY)
+	DS_BINDINGS_END()
 };
 
 } // spt::rdr
