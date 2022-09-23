@@ -57,6 +57,39 @@ private:
 };
 
 
+/**
+ * Base class for all descriptor set states
+ */
+class RENDERER_TYPES_API DescriptorSetState abstract
+{
+public:
+
+	DescriptorSetState();
+	~DescriptorSetState() = default;
+
+	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
+
+	DSStateID GetID() const;
+
+	Bool IsDirty() const;
+	void ClearDirtyFlag();
+
+	void										SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
+	const lib::DynamicArray<lib::HashedString>&	GetBindingNames() const;
+
+protected:
+
+	void MarkAsDirty();
+
+private:
+
+	const DSStateID	m_id;
+	Bool			m_isDirty;
+
+	lib::DynamicArray<lib::HashedString> m_bindingNames;
+};
+
+
 namespace bindings_refl
 {
 
@@ -81,8 +114,22 @@ public:
 		return m_next;
 	}
 
-	DescriptorSetBinding& Get()
+	/** Head node is just an entry. It doesn't provide any binding */
+	Bool IsHeadNode() const
 	{
+		return !m_binding;
+	}
+
+	const DescriptorSetBinding& GetBinding() const
+	{
+		SPT_CHECK(!IsHeadNode());
+		SPT_CHECK(!!m_binding);
+		return *m_binding;
+	}
+
+	DescriptorSetBinding& GetBinding()
+	{
+		SPT_CHECK(!IsHeadNode());
 		SPT_CHECK(!!m_binding);
 		return *m_binding;
 	}
@@ -95,8 +142,7 @@ private:
 
 
 template<typename TNextBindingHandleType,
-		 typename TBindingType,
-		 lib::Literal name>
+		 typename TBindingType>
 requires std::is_base_of_v<DescriptorSetBinding, TBindingType> || std::is_same_v<TBindingType, HeadBindingUnderlyingType>
 class BindingHandle : public BindingHandleNode
 {
@@ -120,9 +166,14 @@ public:
 		return static_cast<NextBindingHandleType*>(Super::GetNext());
 	}
 
-	BindingType* GetBinding() const
+	const BindingType& GetBinding() const
 	{
-		return static_cast<BindingType*>(Super::Get());
+		return static_cast<const BindingType&>(Super::GetBinding());
+	}
+	
+	BindingType& GetBinding()
+	{
+		return static_cast<BindingType&>(Super::GetBinding());
 	}
 };
 
@@ -130,10 +181,9 @@ public:
 /**
  * Partial specialization for last element in the list (NextBindingHandleType is void)
  */
-template<typename TBindingType,
-		lib::Literal name>
+template<typename TBindingType>
 requires std::is_base_of_v<DescriptorSetBinding, TBindingType>
-class BindingHandle<void, TBindingType, name> : public BindingHandleNode
+class BindingHandle<void, TBindingType> : public BindingHandleNode
 {
 protected:
 
@@ -149,9 +199,14 @@ public:
 		: Super(nullptr, binding)
 	{ }
 
-	BindingType* GetBinding() const
+	const BindingType& GetBinding() const
 	{
-		return static_cast<BindingType*>(Super::Get());
+		return static_cast<const BindingType&>(Super::GetBinding());
+	}
+
+	BindingType& GetBinding()
+	{
+		return static_cast<BindingType&>(Super::GetBinding());
 	}
 };
 
@@ -159,9 +214,8 @@ public:
 /**
  * Partial specialization for first element in the list (head)
  */
-template<typename TNextBindingHandleType,
-		 lib::Literal name>
-class BindingHandle<TNextBindingHandleType, HeadBindingUnderlyingType, name> : public BindingHandleNode
+template<typename TNextBindingHandleType>
+class BindingHandle<TNextBindingHandleType, HeadBindingUnderlyingType> : public BindingHandleNode
 {
 protected:
 
@@ -183,30 +237,51 @@ public:
 };
 
 
-#define DS_BINDINGS_BEGIN()	template<typename TBindingType>																	\
-							TBindingType* ReflGetBindingImpl()																\
-							{																								\
-								return nullptr;																				\
-							}																								\
-							typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
+#define DS_BEGIN(api, className)	class api className : public rdr::DescriptorSetState							\
+									{																				\
+									public:																			\
+									using ThisClass = className;													\
+									using Super = rdr::DescriptorSetState;											\
+									className()																		\
+									{																				\
+										SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));	\
+									}																				\
+									template<typename TBindingType>													\
+									TBindingType* ReflGetBindingImpl()												\
+									{																				\
+										return nullptr;																\
+									}																				\
+									typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
-#define DS_BINDING(Type, Name, ...)	Type, #Name> Refl##Name##BindingType;  /* finish line from prev macros */																		\
-									Type Name = Type(#Name);																														\
+#define DS_BINDING(Type, Name, ...)	Type> Refl##Name##BindingType;  /* finish line from prev macros */																					\
+									Type Name = Type(#Name);																															\
 									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);	\
-									template<>																																		\
-									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																			\
-									{																																				\
-										return &refl##Name;																															\
-									}																																				\
+									template<>																																			\
+									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																				\
+									{																																					\
+										return &refl##Name;																																\
+									}																																					\
 									typedef rdr::bindings_refl::BindingHandle<Refl##Name##BindingType,
 
-#define DS_BINDINGS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;														\
-							ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
-							template<>																														\
-							ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
-							{																																\
-								return &reflHead;																											\
-							}
+#define DS_END()	rdr::bindings_refl::HeadBindingUnderlyingType> ReflHeadBindingType;																\
+					ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
+					template<>																														\
+					ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
+					{																																\
+						return &reflHead;																											\
+					}																																\
+					const ReflHeadBindingType& GetBindingsBegin() const																				\
+					{																																\
+						return reflHead;																											\
+					}																																\
+					virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const final													\
+					{																																\
+						rdr::bindings_refl::ForEachBinding(GetBindingsBegin(), [&context](const auto& binding)										\
+														   {																						\
+															   binding.UpdateDescriptors(context);													\
+														   });																						\
+					}																																\
+					};
 
 
 template<typename TBindingHandle>
@@ -240,33 +315,39 @@ constexpr SizeType GetBindingsNum()
 	}
 }
 
-} // bindings_refl
-
-/**
- * Base class for all descriptor set states
- */
-class RENDERER_TYPES_API DescriptorSetState abstract
+template<typename TBindingHandle, typename TCallable>
+void ForEachBinding(const TBindingHandle& currentBindingHandle, TCallable callable)
 {
-public:
+	if constexpr (!IsHeadBinding<TBindingHandle>())
+	{
+		auto& binding = currentBindingHandle.GetBinding();
+		callable(binding);
+	}
 
-	DescriptorSetState();
-	~DescriptorSetState() = default;
+	if constexpr (!IsTailBinding<TBindingHandle>())
+	{
+		const auto* nextBindingHandle = currentBindingHandle.GetNext();
+		SPT_CHECK(!!nextBindingHandle);
+		ForEachBinding(*nextBindingHandle, callable);
+	}
+}
 
-	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
+template<typename TBindingHandle>
+lib::DynamicArray<lib::HashedString> GetBindingNames(const TBindingHandle& bindingHandle)
+{
+	constexpr SizeType bindingsNum = GetBindingsNum<TBindingHandle>();
 
-	DSStateID GetID() const;
+	lib::DynamicArray<lib::HashedString> bindingNames;
+	bindingNames.reserve(bindingsNum);
 
-	Bool IsDirty() const;
-	void ClearDirtyFlag();
+	ForEachBinding(bindingHandle, [&bindingNames](const DescriptorSetBinding& binding)
+	{
+		bindingNames.emplace_back(binding.GetName());
+	});
 
-protected:
+	return bindingNames;
+}
 
-	void MarkAsDirty();
-
-private:
-
-	const DSStateID	m_state;
-	Bool			m_isDirty;
-};
+} // bindings_refl
 
 } // spt::rdr

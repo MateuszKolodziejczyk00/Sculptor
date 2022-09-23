@@ -87,13 +87,13 @@ const spt::lib::HashedString& DescriptorSetBinding::GetName() const
 // DescriptorSetState ============================================================================
 
 DescriptorSetState::DescriptorSetState()
-	: m_state(utils::GenerateStateID())
+	: m_id(utils::GenerateStateID())
 	, m_isDirty(false)
 { }
 
 DSStateID DescriptorSetState::GetID() const
 {
-	return m_state;
+	return m_id;
 }
 
 Bool DescriptorSetState::IsDirty() const
@@ -109,6 +109,16 @@ void DescriptorSetState::ClearDirtyFlag()
 void DescriptorSetState::MarkAsDirty()
 {
 	m_isDirty = true;
+}
+
+void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)
+{
+	m_bindingNames = std::move(inBindingNames);
+}
+
+const lib::DynamicArray<lib::HashedString>& DescriptorSetState::GetBindingNames() const
+{
+	return m_bindingNames;
 }
 
 } // spt::rdr
