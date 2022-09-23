@@ -94,8 +94,11 @@ private:
 };
 
 
-template<typename TBindingType, lib::Literal name>
-class BindingDataHandleNode : public BindingHandleNode
+template<typename TNextBindingHandleType,
+		 typename TBindingType,
+		 lib::Literal name>
+requires std::is_base_of_v<DescriptorSetBinding, TBindingType> || std::is_same_v<TBindingType, HeadBindingUnderlyingType>
+class BindingHandle : public BindingHandleNode
 {
 protected:
 
@@ -104,47 +107,10 @@ protected:
 public:
 
 	using BindingType			= TBindingType;
-
-	template<typename... TArgs>
-	explicit BindingDataHandleNode(BindingHandleNode* next, TArgs&&... args)
-		: Super(next, &m_binding)
-		, m_binding(name.Get(), std::forward<TArgs>(args)...)
-	{ }
-
-	BindingType& Get()
-	{
-		return m_binding;
-	}
-
-	BindingType* operator->()
-	{
-		return &m_binding;
-	}
-
-private:
-
-	TBindingType m_binding;
-};
-
-
-template<typename TNextBindingHandleType,
-		 typename TBindingType,
-		 lib::Literal name>
-requires std::is_base_of_v<DescriptorSetBinding, TBindingType> || std::is_same_v<TBindingType, HeadBindingUnderlyingType>
-class BindingHandle : public BindingDataHandleNode<TBindingType, name>
-{
-protected:
-
-	using Super = BindingDataHandleNode<TBindingType, name>;
-
-public:
-
-	using BindingType			= TBindingType;
 	using NextBindingHandleType = TNextBindingHandleType;
 
-	template<typename... TArgs>
-	explicit BindingHandle(NextBindingHandleType* next, TArgs&&... args)
-		: Super(next, std::forward<TArgs>(args)...)
+	explicit BindingHandle(NextBindingHandleType* next, BindingType* binding)
+		: Super(next, binding)
 	{
 		SPT_CHECK(!!next);
 	}
@@ -152,6 +118,11 @@ public:
 	NextBindingHandleType* GetNext() const
 	{
 		return static_cast<NextBindingHandleType*>(Super::GetNext());
+	}
+
+	BindingType* GetBinding() const
+	{
+		return static_cast<BindingType*>(Super::Get());
 	}
 };
 
@@ -162,11 +133,11 @@ public:
 template<typename TBindingType,
 		lib::Literal name>
 requires std::is_base_of_v<DescriptorSetBinding, TBindingType>
-class BindingHandle<void, TBindingType, name> : public BindingDataHandleNode<TBindingType, name>
+class BindingHandle<void, TBindingType, name> : public BindingHandleNode
 {
 protected:
 
-	using Super = BindingDataHandleNode<TBindingType, name>;
+	using Super = BindingHandleNode;
 
 public:
 
@@ -174,13 +145,20 @@ public:
 	using NextBindingHandleType = void;
 	using NextBindingType		= void;
 
-	template<typename... TArgs>
-	explicit BindingHandle(NextBindingHandleType*, TArgs&&... args)
-		: Super(nullptr, std::forward<TArgs>(args)...)
+	explicit BindingHandle(NextBindingHandleType*, BindingType* binding)
+		: Super(nullptr, binding)
 	{ }
+
+	BindingType* GetBinding() const
+	{
+		return static_cast<BindingType*>(Super::Get());
+	}
 };
 
 
+/**
+ * Partial specialization for first element in the list (head)
+ */
 template<typename TNextBindingHandleType,
 		 lib::Literal name>
 class BindingHandle<TNextBindingHandleType, HeadBindingUnderlyingType, name> : public BindingHandleNode
@@ -206,29 +184,61 @@ public:
 
 
 #define DS_BINDINGS_BEGIN()	template<typename TBindingType>																	\
-							TBindingType* GetBindingImpl()																	\
+							TBindingType* ReflGetBindingImpl()																\
 							{																								\
 								return nullptr;																				\
 							}																								\
 							typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
-#define DS_BINDING(Type, Name, ...)	Type, #Name> Name##BindingType;  /* finish line from prev macros */													\
-									Name##BindingType Name = Name##BindingType(GetBindingImpl<typename Name##BindingType::NextBindingHandleType>());	\
-									template<>																											\
-									Name##BindingType* GetBindingImpl<Name##BindingType>()																\
-									{																													\
-										return &Name;																									\
-									}																													\
-									typedef rdr::bindings_refl::BindingHandle<Name##BindingType,
+#define DS_BINDING(Type, Name, ...)	Type, #Name> Refl##Name##BindingType;  /* finish line from prev macros */																		\
+									Type Name = Type(#Name);																														\
+									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);	\
+									template<>																																		\
+									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																			\
+									{																																				\
+										return &refl##Name;																															\
+									}																																				\
+									typedef rdr::bindings_refl::BindingHandle<Refl##Name##BindingType,
 
-#define DS_BINDINGS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> HeadBindingType;										\
-							HeadBindingType head = HeadBindingType(GetBindingImpl<typename HeadBindingType::NextBindingHandleType>());	\
-							template<>																									\
-							HeadBindingType* GetBindingImpl<HeadBindingType>()															\
-							{																											\
-								return &head;																							\
+#define DS_BINDINGS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;														\
+							ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
+							template<>																														\
+							ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
+							{																																\
+								return &reflHead;																											\
 							}
 
+
+template<typename TBindingHandle>
+constexpr Bool IsHeadBinding()
+{
+	using BindingType = typename TBindingHandle::BindingType;
+	return std::is_same_v<BindingType, HeadBindingUnderlyingType>;
+}
+
+template<typename TBindingHandle>
+constexpr Bool IsTailBinding()
+{
+	using NextBindingHandleType = typename TBindingHandle::NextBindingHandleType;
+	return std::is_same_v<NextBindingHandleType, void>;
+}
+
+template<typename TBindingHandle>
+constexpr SizeType GetBindingsNum()
+{
+	if constexpr (IsHeadBinding<TBindingHandle>())
+	{
+		return GetBindingsNum<typename TBindingHandle::NextBindingHandleType>();
+	}
+	else if constexpr (IsTailBinding<TBindingHandle>())
+	{
+		return 1;
+	}
+	else
+	{
+		return 1 + GetBindingsNum<typename TBindingHandle::NextBindingHandleType>();
+	}
+}
 
 } // bindings_refl
 
@@ -257,33 +267,6 @@ private:
 
 	const DSStateID	m_state;
 	Bool			m_isDirty;
-};
-
-
-//TEST ////////////////////////////////////////////////////////////////////////////
-class RENDERER_TYPES_API TestDescriptorSetBinding : public DescriptorSetBinding
-{
-public:
-
-	TestDescriptorSetBinding(const lib::HashedString& name)
-		: DescriptorSetBinding(name)
-	{ }
-
-	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const override
-	{
-
-	}
-};
-
-class RENDERER_TYPES_API TestDescriptorSetState : public DescriptorSetState
-{
-public:
-
-	DS_BINDINGS_BEGIN()
-		DS_BINDING(TestDescriptorSetBinding, Texture)
-		DS_BINDING(TestDescriptorSetBinding, SizeX)
-		DS_BINDING(TestDescriptorSetBinding, SizeY)
-	DS_BINDINGS_END()
 };
 
 } // spt::rdr
