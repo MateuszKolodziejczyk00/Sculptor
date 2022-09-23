@@ -8,109 +8,154 @@
 namespace spt::lib
 {
 
+namespace impl
+{
+
+/**
+ * Compile time hash representation.
+ * Can be used to create hashes in compile time, and then efficiently compare with hashed strings in runtime
+ */
 template<typename TDataBase>
-class HashedStringBase
+class StringHash
 {
 public:
 
 	using DataBaseType	= TDataBase;
 	using KeyType		= typename DataBaseType::KeyType;
-	using ThisType		= HashedStringBase<DataBaseType>;
+	using ThisType		= StringHash<DataBaseType>;
 
-	HashedStringBase()
-		: key(DataBaseType::keyNone)
+	constexpr StringHash()
+		: m_key(DataBaseType::keyNone)
 	{ }
 
-	HashedStringBase(const ThisType& rhs)
-		: key(rhs.key)
-		, stringView(rhs.stringView)
+	StringHash(const char* literal)
+		: m_key(DataBaseType::HashString(literal))
 	{ }
 
-	HashedStringBase(StringView rhs)
+	SPT_NODISCARD KeyType GetKey() const
 	{
-		key = DataBaseType::GetRecord(rhs, stringView);
+		return m_key;
 	}
 
-	HashedStringBase(const String& rhs)
+private:
+
+	KeyType m_key;
+};
+
+
+template<typename TDataBase>
+class HashedString
+{
+public:
+
+	using DataBaseType	= TDataBase;
+	using KeyType		= typename DataBaseType::KeyType;
+	using ThisType		= HashedString<DataBaseType>;
+
+	HashedString()
+		: m_key(DataBaseType::keyNone)
+	{ }
+
+	HashedString(const ThisType& rhs)
+		: m_key(rhs.m_key)
+		, m_stringView(rhs.m_stringView)
+	{ }
+
+	HashedString(StringView rhs)
 	{
-		key = DataBaseType::GetRecord(lib::StringView(rhs), stringView);
+		m_key = DataBaseType::GetRecord(rhs, m_stringView);
 	}
 
-	HashedStringBase(String&& rhs)
+	HashedString(const String& rhs)
 	{
-		key = DataBaseType::GetRecord(std::forward<String>(rhs), stringView);
+		m_key = DataBaseType::GetRecord(lib::StringView(rhs), m_stringView);
 	}
 
-	HashedStringBase(const char* rhs)
+	HashedString(String&& rhs)
 	{
-		key = DataBaseType::GetRecord(StringView(rhs), stringView);
+		m_key = DataBaseType::GetRecord(std::forward<String>(rhs), m_stringView);
+	}
+
+	HashedString(const char* rhs)
+	{
+		m_key = DataBaseType::GetRecord(StringView(rhs), m_stringView);
 	}
 
 	ThisType& operator=(const ThisType& rhs)
 	{
-		key = rhs.key;
-		stringView = rhs.stringView;
+		m_key = rhs.m_key;
+		m_stringView = rhs.m_stringView;
 		return *this;
 	}
 
 	ThisType& operator=(StringView rhs)
 	{
-		key = DataBaseType::GetRecord(rhs, stringView);
+		m_key = DataBaseType::GetRecord(rhs, m_stringView);
 		return *this;
 	}
 
 	ThisType& operator=(const String& rhs)
 	{
-		key = DataBaseType::GetRecord(StringView(rhs), stringView);
+		m_key = DataBaseType::GetRecord(StringView(rhs), m_stringView);
 		return *this;
 	}
 
 	ThisType& operator=(String&& rhs)
 	{
-		key = DataBaseType::GetRecord(std::forward<String>(rhs), stringView);
+		m_key = DataBaseType::GetRecord(std::forward<String>(rhs), m_stringView);
 		return *this;
 	}
 
 	ThisType& operator=(const char* rhs)
 	{
-		key = DataBaseType::GetRecord(StringView(rhs), stringView);
+		m_key = DataBaseType::GetRecord(StringView(rhs), m_stringView);
 		return *this;
 	}
 
-	Bool operator==(const ThisType& rhs) const
+	SPT_NODISCARD Bool operator==(const ThisType& rhs) const
 	{
-		return key == rhs.key;
+		return m_key == rhs.m_key;
 	}
 
-	Bool operator==(StringView rhs) const
+	SPT_NODISCARD Bool operator==(StringView rhs) const
 	{
-		return key == DataBaseType::HashString(rhs);
+		return m_key == DataBaseType::HashString(rhs);
 	}
 
-	Bool operator!=(const ThisType& rhs) const
+	SPT_NODISCARD Bool operator==(StringHash<DataBaseType> rhs) const
+	{
+		return m_key == rhs.GetKey();
+	}
+
+	SPT_NODISCARD Bool operator!=(const ThisType& rhs) const
 	{
 		return !(*this == rhs);
 	}
 
-	Bool operator!=(StringView rhs) const
+	SPT_NODISCARD Bool operator!=(StringView rhs) const
+	{
+		return !(*this == rhs);
+	}
+
+	SPT_NODISCARD Bool operator!=(StringHash<DataBaseType> rhs) const
 	{
 		return !(*this == rhs);
 	}
 
 	SPT_NODISCARD Bool IsValid() const
 	{
-		return key != DataBaseType::keyNone;
+		return m_key != DataBaseType::keyNone;
 	}
 
 	void Reset()
 	{
-		key = DataBaseType::keyNone;
-		stringView = {};
+		m_key = DataBaseType::keyNone;
+		m_stringView = {};
 	}
 
 	SPT_NODISCARD StringView GetView() const
 	{
-		return stringView;
+		return m_stringView;
 	}
 
 	SPT_NODISCARD lib::String ToString() const
@@ -120,33 +165,47 @@ public:
 
 	SPT_NODISCARD const char* GetData() const
 	{
-		return stringView.data();
+		return m_stringView.data();
 	}
 
 	SPT_NODISCARD SizeType GetSize() const
 	{
-		return stringView.size();
+		return m_stringView.size();
 	}
 
 	SPT_NODISCARD KeyType GetKey() const
 	{
-		return key;
+		return m_key;
 	}
 
 private:
 
-	KeyType		key;
-	StringView	stringView;
+	KeyType		m_key;
+	StringView	m_stringView;
 };
 
+} // impl
 
-using HashedString = HashedStringBase<HashedStringDB>;
+using StringHash	= impl::StringHash<HashedStringDB>;
+using HashedString	= impl::HashedString<HashedStringDB>;
 
-}
+} // spt::lib
 
 
 namespace std
 {
+
+template<>
+struct hash<spt::lib::StringHash>
+{
+
+	size_t operator()(spt::lib::HashedString string) const
+	{
+		static_assert(std::is_convertible_v<spt::lib::HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
+		return static_cast<size_t>(string.GetKey());
+	}
+
+};
 
 template<>
 struct hash<spt::lib::HashedString>
@@ -160,4 +219,4 @@ struct hash<spt::lib::HashedString>
 
 };
 
-}
+} // std

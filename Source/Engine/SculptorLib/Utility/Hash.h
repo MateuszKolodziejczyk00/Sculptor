@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MathCore.h"
+#include "Containers/StaticArray.h"
 
 #include <numeric>
 #include <functional>

@@ -88,11 +88,6 @@ HashedStringDB::KeyType HashedStringDB::GetRecord(StringView inString, StringVie
 	return key;
 }
 
-HashedStringDB::KeyType HashedStringDB::HashString(StringView string)
-{
-	return std::hash<std::string_view>()(string);
-}
-
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
 	SPT_PROFILER_FUNCTION();

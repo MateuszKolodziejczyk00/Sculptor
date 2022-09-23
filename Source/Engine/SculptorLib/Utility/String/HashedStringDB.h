@@ -1,8 +1,10 @@
 #pragma once
 
 #include "SculptorLibMacros.h"
+#include "Utility/UtilityMacros.h"
 #include "MathCore.h"
 #include "String.h"
+#include "Utility/Hash.h"
 
 
 namespace spt::lib
@@ -19,7 +21,10 @@ public:
 	static KeyType GetRecord(String&& inString, StringView& outView);
 	static KeyType GetRecord(StringView inString, StringView& outView);
 
-	static KeyType HashString(StringView string);
+	SPT_NODISCARD static constexpr KeyType HashString(StringView string)
+	{
+		return GetHash(string);
+	}
 
 private:
 
@@ -28,4 +33,4 @@ private:
 	static void CreateRecord(KeyType key, String&& newRecord);
 };
 
-}
+} // spt::lib
