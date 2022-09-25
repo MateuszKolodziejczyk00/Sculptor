@@ -74,21 +74,27 @@ const smd::ShaderMetaData& DescriptorSetUpdateContext::GetMetaData() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name)
+DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
 	: m_name(name)
+	, m_descriptorDirtyFlag(descriptorDirtyFlag)
 { }
 
-const spt::lib::HashedString& DescriptorSetBinding::GetName() const
+const lib::HashedString& DescriptorSetBinding::GetName() const
 {
 	return m_name;
+}
+
+void DescriptorSetBinding::MarkAsDirty()
+{
+	m_descriptorDirtyFlag = true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
 DescriptorSetState::DescriptorSetState()
-	: m_id(utils::GenerateStateID())
-	, m_isDirty(false)
+	: m_isDirty(false)
+	, m_id(utils::GenerateStateID())
 { }
 
 DSStateID DescriptorSetState::GetID() const
@@ -104,11 +110,6 @@ Bool DescriptorSetState::IsDirty() const
 void DescriptorSetState::ClearDirtyFlag()
 {
 	m_isDirty = false;
-}
-
-void DescriptorSetState::MarkAsDirty()
-{
-	m_isDirty = true;
 }
 
 void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)

@@ -51,4 +51,4 @@ private:
 	Uint64							m_size;
 };
 
-}
+} // spt::rdr

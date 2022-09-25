@@ -44,16 +44,26 @@ class RENDERER_TYPES_API DescriptorSetBinding abstract
 {
 public:
 
-	explicit DescriptorSetBinding(const lib::HashedString& name);
+	explicit DescriptorSetBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag);
 	virtual ~DescriptorSetBinding() = default;
 
 	const lib::HashedString& GetName() const;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 
+protected:
+
+	void MarkAsDirty();
+
 private:
 
 	lib::HashedString m_name;
+
+	/**
+	 * Reference to dirty flag of owning descriptor set instance
+	 * Allows setting this flag as dirty when binding is modified
+	 */
+	Bool& m_descriptorDirtyFlag;
 };
 
 
@@ -79,12 +89,11 @@ public:
 
 protected:
 
-	void MarkAsDirty();
+	Bool			m_isDirty;
 
 private:
 
 	const DSStateID	m_id;
-	Bool			m_isDirty;
 
 	lib::DynamicArray<lib::HashedString> m_bindingNames;
 };
@@ -253,14 +262,14 @@ public:
 									}																				\
 									typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
-#define DS_BINDING(Type, Name, ...)	Type> Refl##Name##BindingType;  /* finish line from prev macros */																					\
-									Type Name = Type(#Name);																															\
-									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);	\
-									template<>																																			\
-									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																				\
-									{																																					\
-										return &refl##Name;																																\
-									}																																					\
+#define DS_BINDING(Type, Name, ...)	Type> Refl##Name##BindingType;  /* finish line from prev macros */																								\
+									Type Name = Type(#Name);																																		\
+									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(m_isDirty, ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);	\
+									template<>																																						\
+									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																							\
+									{																																								\
+										return &refl##Name;																																			\
+									}																																								\
 									typedef rdr::bindings_refl::BindingHandle<Refl##Name##BindingType,
 
 #define DS_END()	rdr::bindings_refl::HeadBindingUnderlyingType> ReflHeadBindingType;																\
