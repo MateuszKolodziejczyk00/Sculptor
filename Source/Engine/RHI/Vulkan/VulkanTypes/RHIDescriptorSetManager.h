@@ -20,7 +20,8 @@ public:
 	void InitializeRHI();
 	void ReleaseRHI();
 
-	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum);
+	SPT_NODISCARD RHIDescriptorSet						AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID);
+	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
 	void												FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
 
 	// Dynamic descriptor pools ===================================

@@ -13,6 +13,7 @@ struct CommandsRecordingInfo;
 class CommandsRecorder;
 class ShadersManager;
 class PipelinesLibrary;
+class DescriptorSetsManager;
 class Window;
 class Context;
 
@@ -42,6 +43,8 @@ public:
 	static ShadersManager&						GetShadersManager();
 
 	static PipelinesLibrary&					GetPipelinesLibrary();
+
+	static DescriptorSetsManager&				GetDescriptorSetsManager();
 
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands();
 

@@ -7,6 +7,7 @@
 #include "CurrentFrameContext.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
+#include "DescriptorSets/DescriptorSetsManager.h"
 #include "Profiler/GPUProfiler.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
@@ -29,6 +30,8 @@ ShadersManager shadersManager;
 
 PipelinesLibrary pipelinesLibrary;
 
+DescriptorSetsManager descriptorSetsManager;
+
 };
 
 static RendererData g_data;
@@ -48,6 +51,8 @@ void Renderer::Initialize()
 	rhi::RHI::Initialize(initializationInfo);
 
 	priv::g_data.shadersManager.Initialize();
+
+	priv::g_data.descriptorSetsManager.Initialize();
 }
 
 void Renderer::PostCreatedWindow()
@@ -59,6 +64,8 @@ void Renderer::PostCreatedWindow()
 
 void Renderer::Uninitialize()
 {
+	priv::g_data.descriptorSetsManager.Uninitialize();
+
 	priv::g_data.shadersManager.Uninitialize();
 
 	CurrentFrameContext::Shutdown();
@@ -88,6 +95,11 @@ ShadersManager& Renderer::GetShadersManager()
 PipelinesLibrary& Renderer::GetPipelinesLibrary()
 {
 	return priv::g_data.pipelinesLibrary;
+}
+
+DescriptorSetsManager& Renderer::GetDescriptorSetsManager()
+{
+	return priv::g_data.descriptorSetsManager;
 }
 
 lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands()

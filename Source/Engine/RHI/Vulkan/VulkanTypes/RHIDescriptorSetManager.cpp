@@ -32,7 +32,17 @@ void RHIDescriptorSetManager::ReleaseRHI()
 				  });
 }
 
-lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* LayoutIDs, Uint32 descriptorSetsNum)
+RHIDescriptorSet RHIDescriptorSetManager::AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::DynamicArray<RHIDescriptorSet> createdDS = AllocateDescriptorSets(&layoutID, 1);
+	SPT_CHECK(createdDS.size() == 1);
+
+	return createdDS[0];
+}
+
+lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -41,7 +51,7 @@ lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorS
 
 	DescriptorPoolSetData& poolData = LockDescriptorPoolSet();
 
-	const VkDescriptorSetLayout* layoutHandles = RHIToVulkan::GetDSLayoutsPtr(LayoutIDs);
+	const VkDescriptorSetLayout* layoutHandles = RHIToVulkan::GetDSLayoutsPtr(layoutIDs);
 	poolData.poolSet.AllocateDescriptorSets(layoutHandles, descriptorSetsNum, descriptorSets);
 
 	UnlockDescriptorPoolSet(poolData);
