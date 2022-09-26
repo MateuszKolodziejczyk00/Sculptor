@@ -92,8 +92,9 @@ void DescriptorSetBinding::MarkAsDirty()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState()
+DescriptorSetState::DescriptorSetState(EDescriptorSetStateFlags flags /*= EDescriptorSetStateFlags::None*/)
 	: m_isDirty(false)
+	, m_flags(flags)
 	, m_id(utils::GenerateStateID())
 { }
 
@@ -110,6 +111,11 @@ Bool DescriptorSetState::IsDirty() const
 void DescriptorSetState::ClearDirtyFlag()
 {
 	m_isDirty = false;
+}
+
+EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
+{
+	return m_flags;
 }
 
 void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)

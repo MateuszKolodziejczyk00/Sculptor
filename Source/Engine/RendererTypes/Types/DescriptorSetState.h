@@ -21,6 +21,13 @@ class TextureView;
 using DSStateID = Uint64;
 
 
+enum class EDescriptorSetStateFlags
+{
+	None			= 0,
+	Persistent		= BIT(0)
+};
+
+
 class RENDERER_TYPES_API DescriptorSetUpdateContext
 {
 public:
@@ -74,7 +81,7 @@ class RENDERER_TYPES_API DescriptorSetState abstract
 {
 public:
 
-	DescriptorSetState();
+	DescriptorSetState(EDescriptorSetStateFlags flags = EDescriptorSetStateFlags::None);
 	~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
@@ -83,6 +90,8 @@ public:
 
 	Bool IsDirty() const;
 	void ClearDirtyFlag();
+
+	EDescriptorSetStateFlags GetFlags() const;
 
 	void										SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
 	const lib::DynamicArray<lib::HashedString>&	GetBindingNames() const;
@@ -94,6 +103,8 @@ protected:
 private:
 
 	const DSStateID	m_id;
+
+	EDescriptorSetStateFlags m_flags;
 
 	lib::DynamicArray<lib::HashedString> m_bindingNames;
 };
