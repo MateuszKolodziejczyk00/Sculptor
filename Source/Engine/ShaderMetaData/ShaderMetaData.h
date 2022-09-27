@@ -186,21 +186,27 @@ inline GenericShaderBinding& ShaderMetaData::GetBindingDataRef(Uint8 setIdx, Uin
 
 inline void ShaderMetaData::BuildDSHashes()
 {
+	SPT_PROFILER_FUNCTION();
+
 	SPT_CHECK(m_descriptorSets.size() <= maxValue<Uint8>);
-	const Uint8 setsNum = static_cast<Uint8>(m_descriptorSets.size());
 
-	for (Uint8 setIdx = 0; setIdx < setsNum; ++setIdx)
+	for (SizeType setIdx = 0; setIdx < m_descriptorSets.size(); ++setIdx)
 	{
-		SizeType hash = m_descriptorSets[setIdx].Hash();
+		SizeType hash = 0;
+		
+		const lib::DynamicArray<GenericShaderBinding>& bindings = m_descriptorSets[setIdx].GetBindings();
 
-		for (const auto& [paramName, paramEntry] : m_parameterMap)
+		for (SizeType bindingIdx = 0; bindingIdx < bindings.size(); ++bindingIdx)
 		{
-			if (paramEntry.GetSetIdx() == setIdx)
-			{
-				lib::HashCombine(hash, lib::GetHash(paramName));
-				lib::HashCombine(hash, paramEntry.Hash());
-				break;
-			}
+			const auto bindingParam = std::find_if(std::cbegin(m_parameterMap), std::cend(m_parameterMap),
+												   [setIdx, bindingIdx](const auto& param)
+												   {
+													   const GenericShaderParamEntry& paramEntry = param.second;
+													   return paramEntry.GetSetIdx() == setIdx && paramEntry.GetBindingIdx() == bindingIdx;
+												   });
+			const lib::HashedString paramName = bindingParam != std::cend(m_parameterMap) ? bindingParam->first : lib::HashedString();
+
+			lib::HashCombine(hash, HashDescriptorSetBinding(bindings[bindingIdx], paramName));
 		}
 
 		SPT_CHECK(m_descriptorSetHashes.size() == static_cast<SizeType>(setIdx));

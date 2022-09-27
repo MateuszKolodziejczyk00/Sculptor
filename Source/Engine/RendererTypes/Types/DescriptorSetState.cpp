@@ -96,6 +96,7 @@ DescriptorSetState::DescriptorSetState(EDescriptorSetStateFlags flags /*= EDescr
 	: m_isDirty(false)
 	, m_flags(flags)
 	, m_id(utils::GenerateStateID())
+	, m_descriptorSetHash(idxNone<SizeType>)
 { }
 
 DSStateID DescriptorSetState::GetID() const
@@ -118,14 +119,24 @@ EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
 	return m_flags;
 }
 
+const lib::DynamicArray<lib::HashedString>& DescriptorSetState::GetBindingNames() const
+{
+	return m_bindingNames;
+}
+
+SizeType DescriptorSetState::GetDescriptorSetHash() const
+{
+	return m_descriptorSetHash;
+}
+
 void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)
 {
 	m_bindingNames = std::move(inBindingNames);
 }
 
-const lib::DynamicArray<lib::HashedString>& DescriptorSetState::GetBindingNames() const
+void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
 {
-	return m_bindingNames;
+	m_descriptorSetHash = hash;
 }
 
 } // spt::rdr

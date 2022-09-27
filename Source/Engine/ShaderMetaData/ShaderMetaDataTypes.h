@@ -35,6 +35,8 @@ enum class EBindingFlags : Flags32
 	VertexShader	= BIT(21),
 	FragmentShader	= BIT(22),
 	ComputeShader	= BIT(23),
+
+	AllShaders		= VertexShader | FragmentShader | ComputeShader
 };
 
 
@@ -284,6 +286,24 @@ struct GenericShaderBinding
 		m_data = data;
 	}
 
+	void AddShaderStage(rhi::EShaderStage stage)
+	{
+		return std::visit([stage](auto& data)
+						  {
+							  return data.AddShaderStage(stage);
+						  },
+						  m_data);
+	}
+
+	void AddFlags(EBindingFlags flags)
+	{
+		return std::visit([flags](auto& data)
+						  {
+							  return data.AddFlag(flags);
+						  },
+						  m_data);
+	}
+
 	template<typename TBindingDataType>
 	TBindingDataType& As()
 	{
@@ -321,15 +341,6 @@ struct GenericShaderBinding
 		return std::visit([](const auto data)
 						  {
 							  return data.GetDescriptorType();
-						  },
-						  m_data);
-	}
-
-	void AddShaderStage(rhi::EShaderStage stage)
-	{
-		return std::visit([stage](auto& data)
-						  {
-							  return data.AddShaderStage(stage);
 						  },
 						  m_data);
 	}
@@ -402,15 +413,6 @@ public:
 		return m_bindings;
 	}
 
-	SizeType Hash() const
-	{
-		return lib::HashRange(std::cbegin(m_bindings), std::cend(m_bindings),
-							  [](const GenericShaderBinding& binding)
-							  {
-								  return binding.Hash();
-							  });
-	}
-
 private:
 
 	lib::DynamicArray<GenericShaderBinding>		m_bindings;
@@ -429,11 +431,6 @@ struct ShaderParamEntryCommon
 	Bool IsValid() const
 	{
 		return setIdx != idxNone<Uint8> && bindingIdx != idxNone<Uint8>;
-	}
-
-	SizeType Hash() const
-	{
-		return lib::HashCombine(setIdx, bindingIdx);
 	}
 
 	Uint8		setIdx;
@@ -554,12 +551,6 @@ public:
 			m_data);
 	}
 
-	SizeType Hash() const
-	{
-		return lib::HashCombine(m_data.index(),
-								std::visit([](const auto& data) { return data.Hash(); }, m_data));
-	}
-
 private:
 
 	ShaderParamEntryVariant		m_data;
@@ -576,15 +567,21 @@ struct ShaderDataParam
 		, stride(inStride)
 	{ }
 
-	SizeType Hash() const
-	{
-		return lib::HashCombine(offset, size, stride);
-	}
-
 	Uint16		offset;
 	Uint16		size;
 	Uint16		stride;
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Utils =========================================================================================
+
+inline SizeType HashDescriptorSetBinding(const GenericShaderBinding& binding, const lib::HashedString& paramName)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(binding.IsValid() == paramName.IsValid());
+
+	return lib::HashCombine(binding.Hash(), paramName);
+}
 
 } // spt::smd
