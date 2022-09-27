@@ -119,8 +119,8 @@ void SpirvExposedParametersBuilder::AddMemberParameterImpl(const spirv_cross::SP
 		SPT_CHECK(memberSize	<= static_cast<Uint32>(std::numeric_limits<Uint16>::max()));
 		SPT_CHECK(memberStride	<= static_cast<Uint32>(std::numeric_limits<Uint16>::max()));
 
-		const smd::ShaderDataParamEntry dataParam(m_setIdx, m_bindingIdx, static_cast<Uint16>(offset), static_cast<Uint16>(memberSize), static_cast<Uint16>(memberStride));
-		m_outShaderMetaData.AddShaderParamEntry(memberName, dataParam);
+		const smd::ShaderDataParam dataParam(static_cast<Uint16>(offset), static_cast<Uint16>(memberSize), static_cast<Uint16>(memberStride));
+		m_outShaderMetaData.AddShaderDataParam(m_setIdx, m_bindingIdx, memberName, dataParam);
 	}
 }
 

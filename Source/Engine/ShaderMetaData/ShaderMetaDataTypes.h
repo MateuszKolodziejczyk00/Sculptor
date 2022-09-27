@@ -465,28 +465,6 @@ struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 };
 
 
-struct ShaderDataParamEntry : public ShaderParamEntryCommon
-{
-	ShaderDataParamEntry() = default;
-
-	ShaderDataParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx, Uint16 inOffset, Uint16 inSize, Uint16 inStride)
-		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
-		, offset(inOffset)
-		, size(inSize)
-		, stride(inStride)
-	{ }
-
-	SizeType Hash() const
-	{
-		return lib::HashCombine(ShaderParamEntryCommon::Hash(), offset, size, stride);
-	}
-
-	Uint16		offset;
-	Uint16		size;
-	Uint16		stride;
-};
-
-
 struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 {
 	ShaderBufferParamEntry() = default;
@@ -501,7 +479,6 @@ struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 
 using ShaderParamEntryVariant = std::variant<ShaderTextureParamEntry,
 											 ShaderCombinedTextureSamplerParamEntry,
-											 ShaderDataParamEntry,
 											 ShaderBufferParamEntry>;
 
 
@@ -587,5 +564,27 @@ private:
 
 	ShaderParamEntryVariant		m_data;
 };
+
+
+struct ShaderDataParam
+{
+	ShaderDataParam() = default;
+
+	ShaderDataParam(Uint16 inOffset, Uint16 inSize, Uint16 inStride)
+		: offset(inOffset)
+		, size(inSize)
+		, stride(inStride)
+	{ }
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(offset, size, stride);
+	}
+
+	Uint16		offset;
+	Uint16		size;
+	Uint16		stride;
+};
+
 
 } // spt::smd

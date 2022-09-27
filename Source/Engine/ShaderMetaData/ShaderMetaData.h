@@ -25,6 +25,8 @@ public:
 	template<typename TShaderParamEntryType>
 	void						AddShaderParamEntry(lib::HashedString paramName, TShaderParamEntryType paramEntry);
 
+	void						AddShaderDataParam(Uint32 setIdx, Uint32 bindingIdx, lib::HashedString paramName, ShaderDataParam dataParam);
+
 	template<typename TShaderBindingDataType>
 	void						AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData);
 
@@ -74,6 +76,11 @@ template<typename TShaderParamEntryType>
 void ShaderMetaData::AddShaderParamEntry(lib::HashedString paramName, TShaderParamEntryType paramEntry)
 {
 	m_parameterMap.emplace(paramName, paramEntry);
+}
+
+inline void ShaderMetaData::AddShaderDataParam(Uint32 setIdx, Uint32 bindingIdx, lib::HashedString paramName, ShaderDataParam dataParam)
+{
+	SPT_CHECK_NO_ENTRY(); // We need to figure out how to store and use raw data parameters. They may be useful for example for materials, so that each material can have custom variables
 }
 
 template<typename TShaderBindingDataType>
@@ -192,6 +199,7 @@ inline void ShaderMetaData::BuildDSHashes()
 			{
 				lib::HashCombine(hash, lib::GetHash(paramName));
 				lib::HashCombine(hash, paramEntry.Hash());
+				break;
 			}
 		}
 

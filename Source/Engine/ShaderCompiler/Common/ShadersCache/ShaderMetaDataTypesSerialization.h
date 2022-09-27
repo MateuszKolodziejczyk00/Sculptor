@@ -173,21 +173,6 @@ struct TypeSerializer<smd::ShaderCombinedTextureSamplerParamEntry>
 	}
 };
 
-// smd::ShaderDataParamEntry =======================================================
-
-template<>
-struct TypeSerializer<smd::ShaderDataParamEntry>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		SerializeType<smd::ShaderParamEntryCommon>(serializer, data);
-		serializer.Serialize("Offset", data.offset);
-		serializer.Serialize("Size", data.size);
-		serializer.Serialize("Stride", data.stride);
-	}
-};
-
 // smd::ShaderBufferParamEntry =====================================================
 
 template<>
@@ -220,14 +205,9 @@ struct TypeSerializer<smd::GenericShaderParamEntry>
 				serializer.Serialize("TypeIdx", 1);
 				serializer.Serialize("Data", data.As<smd::ShaderCombinedTextureSamplerParamEntry>());
 			}
-			else if (data.Contains<smd::ShaderDataParamEntry>())
-			{
-				serializer.Serialize("TypeIdx", 2);
-				serializer.Serialize("Data", data.As<smd::ShaderDataParamEntry>());
-			}
 			else if (data.Contains<smd::ShaderBufferParamEntry>())
 			{
-				serializer.Serialize("TypeIdx", 3);
+				serializer.Serialize("TypeIdx", 2);
 				serializer.Serialize("Data", data.As<smd::ShaderBufferParamEntry>());
 			}
 			else
@@ -254,12 +234,6 @@ struct TypeSerializer<smd::GenericShaderParamEntry>
 				data.Set(paramEntry);
 			}
 			else if (typeIdx == 2)
-			{
-				smd::ShaderDataParamEntry paramEntry;
-				serializer.Serialize("Data", paramEntry);
-				data.Set(paramEntry);
-			}
-			else if (typeIdx == 3)
 			{
 				smd::ShaderBufferParamEntry paramEntry;
 				serializer.Serialize("Data", paramEntry);
@@ -295,6 +269,20 @@ struct TypeSerializer<smd::ShaderMetaData>
 	}
 };
 
+// smd::ShaderDataParam ============================================================
+
+template<>
+struct TypeSerializer<smd::ShaderDataParam>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("Offset", data.offset);
+		serializer.Serialize("Size", data.size);
+		serializer.Serialize("Stride", data.stride);
+	}
+};
+
 } // spt::srl
 
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::CommonBindingData)
@@ -304,7 +292,7 @@ SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::BufferBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::GenericShaderBinding)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderTextureParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderCombinedTextureSamplerParamEntry)
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderDataParamEntry)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderDataParam)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderBufferParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::GenericShaderParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderDescriptorSet)
