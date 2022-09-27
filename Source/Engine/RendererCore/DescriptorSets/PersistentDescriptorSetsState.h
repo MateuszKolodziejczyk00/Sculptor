@@ -29,10 +29,23 @@ public:
 
 private:
 
+	void FlushCreatedDescriptorSets();
 	void RemoveInvalidSets();
 	void UpdateDescriptorSets();
 
-	lib::HashMap<DSStateID, rhi::RHIDescriptorSet> m_descriptorSets;
+	/**
+	 * Descriptors created in current frame.
+	 * Access requires synchranization using lock
+	 */
+	lib::HashMap<DSStateID, rhi::RHIDescriptorSet>	m_createdDescriptorSets;
+	lib::Lock										m_createdDescriptorSetsLock;
+
+	/**
+	 * Descriptors created in previous frames
+	 * Access doesn't require lock
+	 * Can be modified only during UpdatePersistentDescriptors
+	 */
+	lib::HashMap<DSStateID, rhi::RHIDescriptorSet> m_cachedDescriptorSets;
 
 	struct PersistentDSData
 	{
@@ -46,7 +59,7 @@ private:
 		lib::WeakPtr<DescriptorSetState>	state;
 	};
 
-	lib::DynamicArray<PersistentDSData> dsData;
+	lib::DynamicArray<PersistentDSData> m_dsData;
 };
 
 } // spt::rdr
