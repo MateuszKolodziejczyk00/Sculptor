@@ -41,7 +41,7 @@ enum class EBindingFlags : Flags32
 namespace priv
 {
 
-constexpr EBindingFlags defaultBindingFlags = EBindingFlags::Invalid;
+constexpr EBindingFlags defaultBindingFlags = EBindingFlags::None;
 
 inline rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
 {
@@ -132,9 +132,9 @@ struct CommonBindingData abstract
 		, bindingDescriptorType(rhi::EDescriptorType::None)
 	{ }
 
-	void MakeValid()
+	void MakeInvalid()
 	{
-		lib::RemoveFlag(flags, EBindingFlags::Invalid);
+		lib::AddFlag(flags, EBindingFlags::Invalid);
 	}
 
 	Bool IsValid() const
@@ -255,7 +255,14 @@ using BindingDataVariant = std::variant<TextureBindingData,
 
 struct GenericShaderBinding
 {
-	GenericShaderBinding() = default;
+	GenericShaderBinding()
+	{
+		std::visit([](auto& data)
+				   {
+					   return data.AddFlag(EBindingFlags::Invalid);
+				   },
+				   m_data);
+	}
 
 	template<typename TBindingDataType>
 	explicit GenericShaderBinding(TBindingDataType bindingData)
@@ -264,12 +271,11 @@ struct GenericShaderBinding
 
 	void PostInitialize()
 	{
-		return std::visit(
-			[](auto& data)
-			{
-				return data.PostInitialize();
-			},
-			m_data);
+		return std::visit([](auto& data)
+						  {
+							  return data.PostInitialize();
+						  },
+						  m_data);
 	}
 
 	template<typename TBindingDataType>
@@ -298,12 +304,11 @@ struct GenericShaderBinding
 
 	Bool IsValid() const
 	{
-		return std::visit(
-			[](const auto data)
-			{
-				return data.IsValid();
-			},
-			m_data);
+		return std::visit([](const auto data)
+						  {
+							  return data.IsValid();
+						  },
+						  m_data);
 	}
 
 	EBindingType GetBindingType() const
@@ -313,22 +318,20 @@ struct GenericShaderBinding
 
 	rhi::EDescriptorType GetDescriptorType() const
 	{
-		return std::visit(
-			[](const auto data)
-			{
-				return data.GetDescriptorType();
-			},
-			m_data);
+		return std::visit([](const auto data)
+						  {
+							  return data.GetDescriptorType();
+						  },
+						  m_data);
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)
 	{
-		return std::visit(
-			[stage](auto& data)
-			{
-				return data.AddShaderStage(stage);
-			},
-			m_data);
+		return std::visit([stage](auto& data)
+						  {
+							  return data.AddShaderStage(stage);
+						  },
+						  m_data);
 	}
 
 	const BindingDataVariant& GetBindingData() const
@@ -364,10 +367,9 @@ public:
 			m_bindings.resize(newBindingIdx + 1);
 		}
 
-		if (!(m_bindings[newBindingIdx].IsValid()))
+		if (!m_bindings[newBindingIdx].IsValid())
 		{
-			// make sure that this binding will be marked as valid
-			bindingData.MakeValid();
+			SPT_CHECK(bindingData.IsValid());
 
 			m_bindings[newBindingIdx].Set(bindingData);
 		}
