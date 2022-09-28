@@ -9,6 +9,10 @@
 namespace spt::rdr
 {
 
+class Context;
+class Pipeline;
+
+
 class RENDERER_CORE_API DescriptorSetsManager
 {
 public:
@@ -20,11 +24,9 @@ public:
 
 	void BeginFrame();
 
-	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedPtr<Pipeline>& pipeline, const lib::SharedPtr<DescriptorSetState>& descriptorSetState, OUT Uint32& outDescriptorSetIdx);
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedPtr<Pipeline>& pipeline, const lib::SharedPtr<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx);
 
 private:
-
-	Uint32 GetDescriptorSetIdxInPipeline(const lib::SharedPtr<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& state) const;
 
 	PersistentDescriptorSetsState m_persistentDescriptorSets;
 };
