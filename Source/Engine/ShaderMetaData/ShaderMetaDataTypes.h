@@ -45,7 +45,7 @@ namespace priv
 
 constexpr EBindingFlags defaultBindingFlags = EBindingFlags::None;
 
-inline rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
+constexpr rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bindingFlags)
 {
 	rhi::EShaderStageFlags shaderStageFlags = rhi::EShaderStageFlags::None;
 
@@ -65,7 +65,7 @@ inline rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bindi
 	return shaderStageFlags;
 }
 
-inline EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
+constexpr EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
@@ -77,7 +77,27 @@ inline EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 	return EBindingFlags::None;
 }
 
-inline rhi::EDescriptorType SelectBufferDescriptorType(EBindingFlags bindingFlags)
+constexpr EBindingFlags ShaderStageFlagsToBindingFlags(rhi::EShaderStageFlags flags)
+{
+	EBindingFlags bindingFlags = EBindingFlags::None;
+
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::Vertex))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::VertexShader);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::Fragment))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::FragmentShader);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::Compute))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::ComputeShader);
+	}
+
+	return EBindingFlags::None;
+}
+
+constexpr rhi::EDescriptorType SelectBufferDescriptorType(EBindingFlags bindingFlags)
 {
 	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::Storage))
 	{
@@ -111,7 +131,7 @@ inline rhi::EDescriptorType SelectBufferDescriptorType(EBindingFlags bindingFlag
 	}
 }
 
-inline rhi::EDescriptorType SelectTextureDescriptorType(EBindingFlags bindingFlags)
+constexpr rhi::EDescriptorType SelectTextureDescriptorType(EBindingFlags bindingFlags)
 {
 	return lib::HasAnyFlag(bindingFlags, EBindingFlags::Storage)
 		? rhi::EDescriptorType::StorageTexture
@@ -152,6 +172,11 @@ struct CommonBindingData abstract
 	void AddShaderStage(rhi::EShaderStage stage)
 	{
 		lib::AddFlag(flags, priv::ShaderStageToBindingFlag(stage));
+	}
+
+	void AddShaderStages(rhi::EShaderStageFlags stages)
+	{
+		lib::AddFlag(flags, priv::ShaderStageFlagsToBindingFlags(stages));
 	}
 
 	rhi::EShaderStageFlags GetShaderStages() const
@@ -291,6 +316,15 @@ struct GenericShaderBinding
 		return std::visit([stage](auto& data)
 						  {
 							  return data.AddShaderStage(stage);
+						  },
+						  m_data);
+	}
+
+	void AddShaderStages(rhi::EShaderStageFlags stages)
+	{
+		return std::visit([stages](auto& data)
+						  {
+							  return data.AddShaderStages(stages);
 						  },
 						  m_data);
 	}

@@ -26,7 +26,7 @@ enum class EShaderStage : Flags32
 };
 
 
-inline EShaderStageFlags GetStageFlag(EShaderStage stage)
+constexpr EShaderStageFlags GetStageFlag(EShaderStage stage)
 {
 	return static_cast<EShaderStageFlags>(1 << (static_cast<Flags32>(stage) - 1));
 }

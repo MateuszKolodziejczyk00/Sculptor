@@ -266,22 +266,22 @@ public:
 };
 
 
-#define DS_BEGIN(api, className)	class api className : public rdr::DescriptorSetState																		\
-									{																															\
-									public:																														\
-									using ThisClass = className;																								\
-									using Super = rdr::DescriptorSetState;																						\
-									className()																													\
-									{																															\
-										SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
-										SetDescriptorSetHash(rdr::bindings_refl::HashDescriptorSetState(GetBindingsBegin(), GetBindingNames()));				\
-									}																															\
-									template<typename TBindingType>																								\
-									TBindingType* ReflGetBindingImpl()																							\
-									{																															\
-										return nullptr;																											\
-									}																															\
-									typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
+#define DS_BEGIN(api, className, stages)	class api className : public rdr::DescriptorSetState																		\
+											{																															\
+											public:																														\
+											using ThisClass = className;																								\
+											using Super = rdr::DescriptorSetState;																						\
+											className()																													\
+											{																															\
+												SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
+												SetDescriptorSetHash(rdr::bindings_refl::HashDescriptorSetState(GetBindingsBegin(), GetBindingNames(), stages));		\
+											}																															\
+											template<typename TBindingType>																								\
+											TBindingType* ReflGetBindingImpl()																							\
+											{																															\
+												return nullptr;																											\
+											}																															\
+											typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
 #define DS_BINDING(Type, Name, ...)	Type> Refl##Name##BindingType;  /* finish line from prev macros */																								\
 									Type Name = Type(#Name, m_isDirty);																																\
@@ -313,6 +313,7 @@ public:
 					}																																\
 					};
 
+#define DS_STAGES(...) lib::Flags<rhi::EShaderStageFlags>(__VA_ARGS__)
 
 template<typename TBindingHandle>
 constexpr Bool IsHeadBinding()
@@ -379,7 +380,7 @@ lib::DynamicArray<lib::HashedString> GetBindingNames(const TBindingHandle& bindi
 }
 
 template<typename TBindingHandle>
-SizeType HashDescriptorSetState(const TBindingHandle& bindingHandle, const lib::DynamicArray<lib::HashedString>& bindingNames)
+SizeType HashDescriptorSetState(const TBindingHandle& bindingHandle, const lib::DynamicArray<lib::HashedString>& bindingNames, rhi::EShaderStageFlags stageFlags)
 {
 	const SizeType bindingsNum = bindingNames.size();
 	
@@ -387,13 +388,12 @@ SizeType HashDescriptorSetState(const TBindingHandle& bindingHandle, const lib::
 	bindings.reserve(bindingsNum);
 
 	ForEachBinding(bindingHandle,
-				   [&bindings, &bindingNames](const auto& binding)
+				   [&bindings, &bindingNames, stageFlags](const auto& binding)
 				   {
 					   smd::GenericShaderBinding newBinding;
 					   binding.CreateBindingMetaData(OUT newBinding);
 
-					   SPT_CHECK_NO_ENTRY(); // TODO: Handle selecting stages (must be done in compile time, to be able to generate shader code in compile time
-					   //newBinding.AddShaderStage(stages);
+					   newBinding.AddShaderStages(stageFlags);
 					   newBinding.PostInitialize();
 
 					   bindings.emplace_back(newBinding);
