@@ -106,7 +106,7 @@ protected:
 	void		SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
 	void		SetDescriptorSetHash(SizeType hash);
 
-	Bool			m_isDirty;
+	Bool		m_isDirty;
 
 private:
 

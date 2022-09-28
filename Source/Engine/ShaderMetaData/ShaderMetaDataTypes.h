@@ -457,18 +457,18 @@ private:
 
 struct ShaderParamEntryCommon
 {
-	ShaderParamEntryCommon(Uint8 inSetIdx = idxNone<Uint8>, Uint8 inBindingIdx = idxNone<Uint8>)
+	ShaderParamEntryCommon(Uint32 inSetIdx = idxNone<Uint32>, Uint32 inBindingIdx = idxNone<Uint32>)
 		: setIdx(inSetIdx)
 		, bindingIdx(inBindingIdx)
 	{ }
 
 	Bool IsValid() const
 	{
-		return setIdx != idxNone<Uint8> && bindingIdx != idxNone<Uint8>;
+		return setIdx != idxNone<Uint32> && bindingIdx != idxNone<Uint32>;
 	}
 
-	Uint8		setIdx;
-	Uint8		bindingIdx;
+	Uint32		setIdx;
+	Uint32		bindingIdx;
 };
 
 
@@ -476,7 +476,7 @@ struct ShaderTextureParamEntry : public ShaderParamEntryCommon
 {
 	ShaderTextureParamEntry() = default;
 
-	ShaderTextureParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+	ShaderTextureParamEntry(Uint32 inSetIdx, Uint32 inBindingIdx)
 		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
@@ -488,7 +488,7 @@ struct ShaderCombinedTextureSamplerParamEntry : public ShaderParamEntryCommon
 {
 	ShaderCombinedTextureSamplerParamEntry() = default;
 
-	ShaderCombinedTextureSamplerParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+	ShaderCombinedTextureSamplerParamEntry(Uint32 inSetIdx, Uint32 inBindingIdx)
 		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
@@ -500,7 +500,7 @@ struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 {
 	ShaderBufferParamEntry() = default;
 
-	explicit ShaderBufferParamEntry(Uint8 inSetIdx, Uint8 inBindingIdx)
+	explicit ShaderBufferParamEntry(Uint32 inSetIdx, Uint32 inBindingIdx)
 		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
 	{ }
 
@@ -565,7 +565,7 @@ public:
 			m_data);
 	}
 
-	Uint8 GetSetIdx() const
+	Uint32 GetSetIdx() const
 	{
 		return std::visit(
 			[](const auto data) -> Uint8
@@ -575,7 +575,7 @@ public:
 			m_data);
 	}
 
-	Uint8 GetBindingIdx() const
+	Uint32 GetBindingIdx() const
 	{
 		return std::visit(
 			[](const auto data) -> Uint8

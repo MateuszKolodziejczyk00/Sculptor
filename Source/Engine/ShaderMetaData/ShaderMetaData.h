@@ -28,9 +28,9 @@ public:
 	void						AddShaderDataParam(Uint32 setIdx, Uint32 bindingIdx, lib::HashedString paramName, ShaderDataParam dataParam);
 
 	template<typename TShaderBindingDataType>
-	void						AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData);
+	void						AddShaderBindingData(Uint32 setIdx, Uint32 bindingIdx, TShaderBindingDataType bindingData);
 
-	void						AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage);
+	void						AddShaderStageToBinding(Uint32 setIdx, Uint32 bindingIdx, rhi::EShaderStage stage);
 
 	void						PostInitialize();
 
@@ -41,24 +41,26 @@ public:
 
 	ShaderParamEntryCommon		FindParamEntry(lib::HashedString paramName) const;
 	
-	GenericShaderBinding		GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const;
+	GenericShaderBinding		GetBindingData(Uint32 setIdx, Uint32 bindingIdx) const;
 	GenericShaderBinding		GetBindingData(ShaderParamEntryCommon param) const;
 
-	Bool						ContainsBinding(Uint8 setIdx, Uint8 bindingIdx) const;
+	Bool						ContainsBinding(Uint32 setIdx, Uint32 bindingIdx) const;
 
-	Uint8						GetDescriptorSetsNum() const;
+	Uint32						GetDescriptorSetsNum() const;
 
 	const DescriptorSetArray&	GetDescriptorSets() const;
 
-	const ShaderDescriptorSet&	GetDescriptorSet(Uint8 setIdx) const;
+	const ShaderDescriptorSet&	GetDescriptorSet(Uint32 setIdx) const;
 	
-	SizeType					GetDescriptorSetHash(Uint8 setIdx) const;
+	SizeType					GetDescriptorSetHash(Uint32 setIdx) const;
+	
+	Uint32						FindDescriptorSetWithHash(SizeType hash) const;
 	
 private:
 
 	void						BuildDSHashes();
 
-	GenericShaderBinding&		GetBindingDataRef(Uint8 setIdx, Uint8 bindingIdx);
+	GenericShaderBinding&		GetBindingDataRef(Uint32 setIdx, Uint32 bindingIdx);
 
 	using ShaderParameterMap	= lib::HashMap<lib::HashedString, GenericShaderParamEntry>;
 
@@ -84,7 +86,7 @@ inline void ShaderMetaData::AddShaderDataParam(Uint32 setIdx, Uint32 bindingIdx,
 }
 
 template<typename TShaderBindingDataType>
-void ShaderMetaData::AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShaderBindingDataType bindingData)
+void ShaderMetaData::AddShaderBindingData(Uint32 setIdx, Uint32 bindingIdx, TShaderBindingDataType bindingData)
 {
 	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
 
@@ -93,10 +95,10 @@ void ShaderMetaData::AddShaderBindingData(Uint8 setIdx, Uint8 bindingIdx, TShade
 		m_descriptorSets.resize(properSetIdx + 1);
 	}
 	
-	m_descriptorSets[properSetIdx].AddBinding(bindingIdx, bindingData);
+	m_descriptorSets[properSetIdx].AddBinding(static_cast<Uint8>(bindingIdx), bindingData);
 }
 
-inline void ShaderMetaData::AddShaderStageToBinding(Uint8 setIdx, Uint8 bindingIdx, rhi::EShaderStage stage)
+inline void ShaderMetaData::AddShaderStageToBinding(Uint32 setIdx, Uint32 bindingIdx, rhi::EShaderStage stage)
 {
 	GetBindingDataRef(setIdx, bindingIdx).AddShaderStage(stage);
 }
@@ -130,7 +132,7 @@ inline ShaderParamEntryCommon ShaderMetaData::FindParamEntry(lib::HashedString p
 	return foundParam != std::cend(m_parameterMap) ? foundParam->second.GetCommonData() : ShaderParamEntryCommon();
 }
 
-inline GenericShaderBinding ShaderMetaData::GetBindingData(Uint8 setIdx, Uint8 bindingIdx) const
+inline GenericShaderBinding ShaderMetaData::GetBindingData(Uint32 setIdx, Uint32 bindingIdx) const
 {
 	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
 
@@ -152,14 +154,14 @@ inline GenericShaderBinding ShaderMetaData::GetBindingData(ShaderParamEntryCommo
 	return GetBindingData(param.setIdx, param.bindingIdx);
 }
 
-inline Bool ShaderMetaData::ContainsBinding(Uint8 setIdx, Uint8 bindingIdx) const
+inline Bool ShaderMetaData::ContainsBinding(Uint32 setIdx, Uint32 bindingIdx) const
 {
 	return GetBindingData(setIdx, bindingIdx).IsValid();
 }
 
-inline Uint8 ShaderMetaData::GetDescriptorSetsNum() const
+inline Uint32 ShaderMetaData::GetDescriptorSetsNum() const
 {
-	return static_cast<Uint8>(m_descriptorSets.size());
+	return static_cast<Uint32>(m_descriptorSets.size());
 }
 
 inline const ShaderMetaData::DescriptorSetArray& ShaderMetaData::GetDescriptorSets() const
@@ -167,28 +169,33 @@ inline const ShaderMetaData::DescriptorSetArray& ShaderMetaData::GetDescriptorSe
 	return m_descriptorSets;
 }
 
-inline const ShaderDescriptorSet& ShaderMetaData::GetDescriptorSet(Uint8 setIdx) const
+inline const ShaderDescriptorSet& ShaderMetaData::GetDescriptorSet(Uint32 setIdx) const
 {
 	const SizeType idx = static_cast<SizeType>(setIdx);
 	return m_descriptorSets[idx];
 }
 
-inline GenericShaderBinding& ShaderMetaData::GetBindingDataRef(Uint8 setIdx, Uint8 bindingIdx)
+inline SizeType ShaderMetaData::GetDescriptorSetHash(Uint32 setIdx) const
 {
-	const SizeType properSetIdx		= static_cast<SizeType>(setIdx);
-	const SizeType properBindingIdx = static_cast<SizeType>(bindingIdx);
+	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
+	SPT_CHECK(properSetIdx < m_descriptorSetHashes.size());
 
-	SPT_CHECK(m_descriptorSets.size() > properSetIdx);
-	SPT_CHECK(m_descriptorSets[properSetIdx].GetBindings().size() > properBindingIdx);
+	return m_descriptorSetHashes[properSetIdx];
+}
 
-	return m_descriptorSets[properSetIdx].GetBindings()[properBindingIdx];
+inline Uint32 ShaderMetaData::FindDescriptorSetWithHash(SizeType hash) const
+{
+	SPT_PROFILER_FUNCTION();
+	
+	const auto foundDS = std::find(std::cbegin(m_descriptorSetHashes), std::cend(m_descriptorSetHashes), hash);
+	return foundDS != std::cend(m_descriptorSetHashes) ? static_cast<Uint32>(std::distance(std::cbegin(m_descriptorSetHashes), foundDS)) : idxNone<Uint32>;
 }
 
 inline void ShaderMetaData::BuildDSHashes()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_descriptorSets.size() <= maxValue<Uint8>);
+	SPT_CHECK(m_descriptorSets.size() <= maxValue<Uint32>);
 
 	for (SizeType setIdx = 0; setIdx < m_descriptorSets.size(); ++setIdx)
 	{
@@ -214,12 +221,15 @@ inline void ShaderMetaData::BuildDSHashes()
 	}
 }
 
-inline SizeType ShaderMetaData::GetDescriptorSetHash(Uint8 setIdx) const
+inline GenericShaderBinding& ShaderMetaData::GetBindingDataRef(Uint32 setIdx, Uint32 bindingIdx)
 {
-	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
-	SPT_CHECK(properSetIdx < m_descriptorSetHashes.size());
+	const SizeType properSetIdx		= static_cast<SizeType>(setIdx);
+	const SizeType properBindingIdx = static_cast<SizeType>(bindingIdx);
 
-	return m_descriptorSetHashes[properSetIdx];
+	SPT_CHECK(m_descriptorSets.size() > properSetIdx);
+	SPT_CHECK(m_descriptorSets[properSetIdx].GetBindings().size() > properBindingIdx);
+
+	return m_descriptorSets[properSetIdx].GetBindings()[properBindingIdx];
 }
 
 } // spt::smd

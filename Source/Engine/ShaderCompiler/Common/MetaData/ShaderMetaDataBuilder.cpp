@@ -16,23 +16,20 @@ namespace helper
 
 struct SpirvResourceData
 {
-	Uint8				m_setIdx;
-	Uint8				m_bindingIdx;
+	Uint32				m_setIdx;
+	Uint32				m_bindingIdx;
 	lib::HashedString	m_name;
 };
 
 static SpirvResourceData GetResourceData(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource)
 {
-	const Uint32 setIdx32				= compiler.get_decoration(resource.id, spv::Decoration::DecorationDescriptorSet);
-	const Uint32 bindingIdx32			= compiler.get_decoration(resource.id, spv::Decoration::DecorationBinding);
+	const Uint32 setIdx				= compiler.get_decoration(resource.id, spv::Decoration::DecorationDescriptorSet);
+	const Uint32 bindingIdx			= compiler.get_decoration(resource.id, spv::Decoration::DecorationBinding);
 	const lib::HashedString paramName	= resource.name;
 
-	SPT_CHECK(setIdx32 <= smd::maxSetIdx);
-	SPT_CHECK(bindingIdx32 <= smd::maxBindingIdx);
+	SPT_CHECK(setIdx <= smd::maxSetIdx);
+	SPT_CHECK(bindingIdx <= smd::maxBindingIdx);
 	SPT_CHECK(paramName.IsValid());
-
-	const Uint8 setIdx		= static_cast<Uint8>(setIdx32);
-	const Uint8 bindingIdx	= static_cast<Uint8>(bindingIdx32);
 
 	return SpirvResourceData{ setIdx, bindingIdx, paramName };
 }
@@ -42,8 +39,8 @@ class SpirvExposedParametersBuilder
 {
 public:
 
-	SpirvExposedParametersBuilder(Uint8	setIdx,
-								  Uint8 bindingIdx,
+	SpirvExposedParametersBuilder(Uint32 setIdx,
+								  Uint32 bindingIdx,
 								  const spirv_cross::Compiler& compiler,
 								  rhi::EShaderStage shaderStage,
 								  const ShaderParametersMetaData& parametersMetaData,
@@ -65,8 +62,8 @@ private:
 	/** return SPIRType of typeID for single element variables, and SPIRType of single element type for arrays */
 	const spirv_cross::SPIRType& GetSingleElementType(spirv_cross::TypeID typeID) const;
 
-	Uint8							m_setIdx;
-	Uint8							m_bindingIdx;
+	Uint32							m_setIdx;
+	Uint32							m_bindingIdx;
 	const spirv_cross::Compiler&	m_compiler;
 	rhi::EShaderStage				m_shaderStage;
 	const ShaderParametersMetaData& m_parametersMetaData;
@@ -254,4 +251,4 @@ void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, co
 	priv::BuildShaderMetaData(compiler, shader.GetStage(), parametersMetaData, outShaderMetaData);
 }
 
-}
+} // spt::sc
