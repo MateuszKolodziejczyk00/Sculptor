@@ -17,6 +17,7 @@ namespace spt::vulkan
 {
 
 class RHIPipeline;
+class RHIDescriptorSet;
 
 
 class RHI_API RHICommandBuffer
@@ -45,13 +46,18 @@ public:
 	void	BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
 	void	EndRendering();
 
-	void	BindGraphicsPipeline(const RHIPipeline& pipeline);
+	void	BindGfxPipeline(const RHIPipeline& pipeline);
+
+	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
 
 	// Compute rendering ====================================
 
 	void	BindComputePipeline(const RHIPipeline& pipeline);
 
 private:
+
+	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
+	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
 
 	VkCommandBuffer					m_cmdBufferHandle;
 

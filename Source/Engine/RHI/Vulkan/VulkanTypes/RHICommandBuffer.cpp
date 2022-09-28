@@ -5,6 +5,7 @@
 #include "Vulkan/VulkanRHIUtils.h"
 #include "RHITexture.h"
 #include "RHIPipeline.h"
+#include "RHIDescriptorSet.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 
 namespace spt::vulkan
@@ -219,24 +220,44 @@ void RHICommandBuffer::EndRendering()
 	vkCmdEndRendering(m_cmdBufferHandle);
 }
 
-void RHICommandBuffer::BindGraphicsPipeline(const RHIPipeline& pipeline)
+void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 {
-	SPT_PROFILER_FUNCTION();
+	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+}
 
-	SPT_CHECK(IsValid());
-	SPT_CHECK(pipeline.IsValid());
-
-	vkCmdBindPipeline(m_cmdBufferHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetHandle());
+void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+{
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx);
 }
 
 void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 {
+	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+}
+
+void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
+{
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 	SPT_CHECK(pipeline.IsValid());
 
-	vkCmdBindPipeline(m_cmdBufferHandle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.GetHandle());
+	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
+}
+
+void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(ds.IsValid());
+	SPT_CHECK(pipeline.IsValid());
+	SPT_CHECK(dsIdx != idxNone<Uint32>);
+
+	const PipelineLayout& layout = pipeline.GetPipelineLayout();
+	VkDescriptorSet dsHandle = ds.GetHandle();
+
+	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, 0, nullptr);
 }
 
 } // spt::vulkan
