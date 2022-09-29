@@ -146,6 +146,7 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	uniformBufferBinding.SetSize(static_cast<Uint32>(uniformSize));
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, uniformBufferBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 	
 	const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
 	outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
@@ -170,6 +171,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	storageBufferBinding.AddFlag(smd::EBindingFlags::Unbound);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 	
 	const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
 	outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
@@ -189,6 +191,7 @@ static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, con
 	
 	const smd::CombinedTextureSamplerBindingData combinedTextureSamplerBinding;
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, combinedTextureSamplerBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 
 	const smd::ShaderCombinedTextureSamplerParamEntry paramEntry(setIdx, bindingIdx);
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
@@ -203,6 +206,7 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	smd::TextureBindingData textureBinding;
 	textureBinding.AddFlag(smd::EBindingFlags::Storage);
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, textureBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 
 	const smd::ShaderTextureParamEntry paramEntry(setIdx, bindingIdx);
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);

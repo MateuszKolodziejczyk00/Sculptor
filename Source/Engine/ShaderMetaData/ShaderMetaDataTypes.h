@@ -421,7 +421,6 @@ public:
 		else
 		{
 			SPT_CHECK(m_bindings[newBindingIdx].Contains<TBindingDataType>());
-			SPT_CHECK(memcmp(&m_bindings[newBindingIdx].As<TBindingDataType>(), &bindingData, sizeof(TBindingDataType)));
 		}
 	}
 
