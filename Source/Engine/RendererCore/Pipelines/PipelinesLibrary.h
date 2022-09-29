@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "PipelineState.h"
 
@@ -11,7 +12,7 @@ class GraphicsPipeline;
 class ComputePipeline;
 
 
-class PipelinesLibrary
+class RENDERER_CORE_API PipelinesLibrary
 {
 public:
 

@@ -2,15 +2,13 @@
 
 #include "RendererTypesMacros.h"
 #include "RHIBridge/RHITextureImpl.h"
+#include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
 #include "RendererUtils.h"
 
 
 namespace spt::rhi
 {
-struct RHIAllocationInfo;
-
-struct TextureDefinition;
 struct TextureViewDefinition;
 }
 

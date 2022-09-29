@@ -2,6 +2,7 @@
 
 #include "RendererTypesMacros.h"
 #include "RHIBridge/RHIBufferImpl.h"
+#include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
 
 
