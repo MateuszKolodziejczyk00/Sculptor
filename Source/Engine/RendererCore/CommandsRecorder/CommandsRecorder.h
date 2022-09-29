@@ -5,6 +5,7 @@
 #include "CommandQueue/CommandQueue.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "Pipelines/PipelineState.h"
+#include "PipelinePendingState.h"
 #include "RendererUtils.h"
 
 
@@ -16,6 +17,7 @@ class Barrier;
 class RenderingDefinition;
 class UIBackend;
 class Context;
+class DescriptorSetState;
 
 
 struct CommandsRecordingInfo
@@ -60,6 +62,9 @@ public:
 
 	void									BindComputePipeline(PipelineStateID pipelineID);
 
+	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
+	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
+
 	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
 	void									RenderUI(const lib::SharedRef<rdr::UIBackend>& uiBackend);
@@ -74,6 +79,8 @@ private:
 	CommandQueue							m_commandQueue;
 
 	ECommandsRecorderState					m_state;
+
+	PipelinePendingState					m_pipelineState;
 };
 
 

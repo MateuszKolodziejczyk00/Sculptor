@@ -25,9 +25,11 @@ public:
 	void									UnbindGraphicsPipeline();
 	const lib::SharedPtr<GraphicsPipeline>&	GetBoundGraphicsPipeline() const;
 
-	void									FlushDirtyDSForGraphicsPipeline(CommandQueue& cmdQueue);
+	void									EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& cmdQueue);
 
 	// Compute Pipeline =================================================
+	
+	void									BindComputePipeline(const lib::SharedRef<ComputePipeline>& pipeline);
 	
 	// Descriptor Set States ============================================
 	

@@ -102,12 +102,14 @@ void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 
 	SPT_CHECK(IsBuildingCommands());
 
-	EnqueueRenderCommand([pipelineID](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesLibrary().GetGraphicsPipeline(pipelineID);
-							 SPT_CHECK(!!pipeline);
+	const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesLibrary().GetGraphicsPipeline(pipelineID);
+	SPT_CHECK(!!pipeline);
 
-							 cmdBuffer->GetRHI().BindGraphicsPipeline(pipeline->GetRHI());
+	m_pipelineState.BindGraphicsPipeline(pipeline);
+
+	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().BindGfxPipeline(pipeline->GetRHI());
 						 });
 }
 
@@ -117,13 +119,34 @@ void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 	SPT_CHECK(IsBuildingCommands());
 
-	EnqueueRenderCommand([pipelineID](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+	const lib::SharedPtr<ComputePipeline> pipeline = Renderer::GetPipelinesLibrary().GetComputePipeline(pipelineID);
+	SPT_CHECK(!!pipeline);
+
+	m_pipelineState.BindComputePipeline(pipeline);
+
+	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
-							 const lib::SharedPtr<ComputePipeline> pipeline = Renderer::GetPipelinesLibrary().GetComputePipeline(pipelineID);
-							 SPT_CHECK(!!pipeline);
 
 							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
 						 });
+}
+
+void CommandsRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	m_pipelineState.BindDescriptorSetState(state);
+}
+
+void CommandsRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	m_pipelineState.UnbindDescriptorSetState(state);
 }
 
 void CommandsRecorder::InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend)
