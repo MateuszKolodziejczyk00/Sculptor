@@ -54,6 +54,8 @@ public:
 
 	void	BindComputePipeline(const RHIPipeline& pipeline);
 
+	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
+
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);

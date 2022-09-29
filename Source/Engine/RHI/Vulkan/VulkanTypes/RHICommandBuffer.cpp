@@ -235,6 +235,11 @@ void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 }
 
+void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+{
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx);
+}
+
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
 {
 	SPT_PROFILER_FUNCTION();

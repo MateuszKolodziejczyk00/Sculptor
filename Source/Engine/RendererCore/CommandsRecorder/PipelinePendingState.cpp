@@ -22,83 +22,96 @@ void PipelinePendingState::BindGraphicsPipeline(const lib::SharedRef<GraphicsPip
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (m_boundGraphicsPipeline == pipeline.ToSharedPtr())
+	if (m_boundGfxPipeline == pipeline.ToSharedPtr())
 	{
 		return;
 	}
 
-	const lib::SharedPtr<GraphicsPipeline> prevPipeline = pipeline;
+	const lib::SharedPtr<GraphicsPipeline> prevPipeline = std::move(m_boundGfxPipeline);
 		
-	m_boundGraphicsPipeline = pipeline.ToSharedPtr();
-		
-	const lib::SharedRef<smd::ShaderMetaData> newMetaData = pipeline->GetMetaData();
-	m_dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData->GetDescriptorSetsNum()), true);
+	m_boundGfxPipeline = pipeline.ToSharedPtr();
 
-	if (prevPipeline)
-	{
-		const lib::SharedRef<smd::ShaderMetaData> prevMetaData = prevPipeline->GetMetaData();
-
-		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData->GetDescriptorSetsNum(), newMetaData->GetDescriptorSetsNum());
-		for (Uint32 dsIdx = 0; dsIdx < commonDescriptorSetsNum; ++dsIdx)
-		{
-			if (prevMetaData->GetDescriptorSetHash(dsIdx) != newMetaData->GetDescriptorSetHash(dsIdx))
-			{
-				m_dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
-			}
-		}
-	}
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
 }
 
 void PipelinePendingState::UnbindGraphicsPipeline()
 {
-	m_boundGraphicsPipeline.reset();
+	m_boundGfxPipeline.reset();
+	m_dirtyGfxDescriptorSets.clear();
 }
 
 const lib::SharedPtr<GraphicsPipeline>& PipelinePendingState::GetBoundGraphicsPipeline() const
 {
-	return m_boundGraphicsPipeline;
+	return m_boundGfxPipeline;
 }
 
 void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& cmdQueue)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(!!m_boundGraphicsPipeline);
+	SPT_CHECK(!!m_boundGfxPipeline);
 
-	DescriptorSetsManager& dsManager = Renderer::GetDescriptorSetsManager();
-	const lib::SharedRef<smd::ShaderMetaData> metaData = m_boundGraphicsPipeline->GetMetaData();
+	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
 
-	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind;
-	descriptorSetsToBind.reserve(m_dirtyDescriptorSets.size());
-
-	for (SizeType dsIdx = 0; dsIdx < m_dirtyDescriptorSets.size(); ++dsIdx)
+	if (!descriptorSetsToBind.empty())
 	{
-		if (m_boundDescriptorSetStates[dsIdx])
-		{
-			const SizeType dsHash = metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx));
-			const lib::SharedPtr<DescriptorSetState> state = GetBoundDescriptorSetState(dsHash);
-			SPT_CHECK(!!state);
-
-			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(m_boundGraphicsPipeline, state, static_cast<Uint32>(dsIdx));
-			descriptorSetsToBind.emplace_back(descriptorSet, static_cast<Uint32>(dsIdx));
-		}
-	}
-
-	std::fill(std::begin(m_dirtyDescriptorSets), std::end(m_dirtyDescriptorSets), false);
-
-	cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundGraphicsPipeline]
-					 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-					 {
-						 for (const auto& [descriptorSet, idx] : pendingDescriptors)
+		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundGfxPipeline]
+						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
-							 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), descriptorSet, idx);
-						 }
-					 });
+							 for (const auto& [descriptorSet, idx] : pendingDescriptors)
+							 {
+								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), descriptorSet, idx);
+							 }
+						 });
+	}
 }
 
 void PipelinePendingState::BindComputePipeline(const lib::SharedRef<ComputePipeline>& pipeline)
 {
+	SPT_PROFILER_FUNCTION();
 
+	if (m_boundComputePipeline == pipeline.ToSharedPtr())
+	{
+		return;
+	}
+
+	const lib::SharedPtr<ComputePipeline> prevPipeline = std::move(m_boundComputePipeline);
+		
+	m_boundComputePipeline = pipeline.ToSharedPtr();
+
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+}
+
+void PipelinePendingState::UnbindComputePipeline()
+{
+	m_boundComputePipeline.reset();
+	m_dirtyComputeDescriptorSets.clear();
+}
+
+const lib::SharedPtr<ComputePipeline>& PipelinePendingState::GetBoundComputePipeline() const
+{
+	return m_boundComputePipeline;
+}
+
+void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& cmdQueue)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!m_boundComputePipeline);
+
+	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+
+	if (!descriptorSetsToBind.empty())
+	{
+		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundComputePipeline]
+						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 for (const auto& [descriptorSet, idx] : pendingDescriptors)
+							 {
+								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), descriptorSet, idx);
+							 }
+						 });
+	}
 }
 
 void PipelinePendingState::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
@@ -125,14 +138,71 @@ void PipelinePendingState::TryMarkAsDirty(const lib::SharedRef<DescriptorSetStat
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (m_boundGraphicsPipeline)
+	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
+	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+}
+
+void PipelinePendingState::TryMarkAsDirtyImpl(const lib::SharedRef<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (pipeline)
 	{
-		const Uint32 boundIdx = m_boundGraphicsPipeline->GetMetaData()->FindDescriptorSetWithHash(state->GetDescriptorSetHash());
+		const Uint32 boundIdx = pipeline->GetMetaData()->FindDescriptorSetWithHash(state->GetDescriptorSetHash());
 		if (boundIdx != idxNone<Uint32>)
 		{
-			m_dirtyDescriptorSets[static_cast<SizeType>(boundIdx)] = true;
+			dirtyDescriptorSets[static_cast<SizeType>(boundIdx)] = true;
 		}
 	}
+}
+
+void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+{
+	const lib::SharedRef<smd::ShaderMetaData> newMetaData = newPipeline->GetMetaData();
+	dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData->GetDescriptorSetsNum()), true);
+
+	if (prevPipeline)
+	{
+		const lib::SharedRef<smd::ShaderMetaData> prevMetaData = prevPipeline->GetMetaData();
+
+		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData->GetDescriptorSetsNum(), newMetaData->GetDescriptorSetsNum());
+		for (Uint32 dsIdx = 0; dsIdx < commonDescriptorSetsNum; ++dsIdx)
+		{
+			if (prevMetaData->GetDescriptorSetHash(dsIdx) != newMetaData->GetDescriptorSetHash(dsIdx))
+			{
+				dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
+			}
+		}
+	}
+}
+
+lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> PipelinePendingState::FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+{
+	SPT_PROFILER_FUNCTION();
+
+	DescriptorSetsManager& dsManager = Renderer::GetDescriptorSetsManager();
+	const lib::SharedRef<smd::ShaderMetaData> metaData = pipeline->GetMetaData();
+
+	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind;
+	descriptorSetsToBind.reserve(dirtyDescriptorSets.size());
+
+	for (SizeType dsIdx = 0; dsIdx < dirtyDescriptorSets.size(); ++dsIdx)
+	{
+		if (dirtyDescriptorSets[dsIdx])
+		{
+			const SizeType dsHash = metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx));
+			const lib::SharedPtr<DescriptorSetState> state = GetBoundDescriptorSetState(dsHash);
+			SPT_CHECK(!!state);
+
+			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, state, static_cast<Uint32>(dsIdx));
+			descriptorSetsToBind.emplace_back(descriptorSet, static_cast<Uint32>(dsIdx));
+		}
+	}
+
+	// Clear all dirty flags
+	std::fill(std::begin(dirtyDescriptorSets), std::end(dirtyDescriptorSets), false);
+
+	return descriptorSetsToBind;
 }
 
 lib::SharedPtr<DescriptorSetState> PipelinePendingState::GetBoundDescriptorSetState(SizeType hash) const
