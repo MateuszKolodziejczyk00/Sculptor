@@ -59,8 +59,10 @@ public:
 	void									EndRendering();
 
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);
+	void									BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
 
 	void									BindComputePipeline(PipelineStateID pipelineID);
+	void									BindComputePipeline(const ShaderID& shader);
 
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);

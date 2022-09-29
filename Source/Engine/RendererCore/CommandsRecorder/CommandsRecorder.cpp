@@ -113,6 +113,16 @@ void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 						 });
 }
 
+void CommandsRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	const PipelineStateID pipelineID = Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(RENDERER_RESOURCE_NAME(shader.GetName()), pipelineDef, shader);
+	BindGraphicsPipeline(pipelineID);
+}
+
 void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
@@ -129,6 +139,16 @@ void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
 						 });
+}
+
+void CommandsRecorder::BindComputePipeline(const ShaderID& shader)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	const PipelineStateID pipelineID = Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
+	BindComputePipeline(pipelineID);
 }
 
 void CommandsRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)

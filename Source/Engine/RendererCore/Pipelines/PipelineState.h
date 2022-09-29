@@ -18,14 +18,6 @@ struct GraphicsPipelineState
 };
 
 
-struct ComputePipelineState
-{
-	ComputePipelineState() = default;
-
-	ShaderID shader;
-};
-
-
 using PipelineStateID = SizeType;
 
 } // spt::rdr
