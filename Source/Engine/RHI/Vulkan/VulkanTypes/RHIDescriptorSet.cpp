@@ -94,7 +94,8 @@ void RHIDescriptorSetWriter::WriteBuffer(const RHIDescriptorSet& set, const rhi:
 		.pImageInfo			= nullptr,
 		// store idx, as address may change during array reallocation
 		// later this idx will be resolved before descriptor is updated
-		.pBufferInfo		= reinterpret_cast<const VkDescriptorBufferInfo*>(m_buffers.size()),
+		// we have to add 1 to proper idx, to differentiate valid pointers from nullptrs
+		.pBufferInfo		= reinterpret_cast<const VkDescriptorBufferInfo*>(m_buffers.size() + 1),
 		.pTexelBufferView	= nullptr
 	};
 
@@ -125,7 +126,8 @@ void RHIDescriptorSetWriter::WriteTexture(const RHIDescriptorSet& set, const rhi
 		.descriptorType		= RHIToVulkan::GetDescriptorType(writeDef.descriptorType),
 		// store idx, as address may change during array reallocation
 		// later this idx will be resolved before descriptor is updated
-		.pImageInfo			= reinterpret_cast<const VkDescriptorImageInfo*>(m_images.size()),
+		// we have to add 1 to proper idx, to differentiate valid pointers from nullptrs
+		.pImageInfo			= reinterpret_cast<const VkDescriptorImageInfo*>(m_images.size() + 1),
 		.pBufferInfo		= nullptr,
 		.pTexelBufferView	= nullptr
 	};
@@ -168,12 +170,12 @@ void RHIDescriptorSetWriter::ResolveReferences()
 	{
 		if (write.pBufferInfo)
 		{
-			const SizeType bufferInfoIdx = reinterpret_cast<SizeType>(write.pBufferInfo);
+			const SizeType bufferInfoIdx = reinterpret_cast<SizeType>(write.pBufferInfo) - 1;
 			write.pBufferInfo = &m_buffers[bufferInfoIdx];
 		}
 		if (write.pImageInfo)
 		{
-			const SizeType imageInfoIdx = reinterpret_cast<SizeType>(write.pImageInfo);
+			const SizeType imageInfoIdx = reinterpret_cast<SizeType>(write.pImageInfo) - 1;
 			write.pImageInfo = &m_images[imageInfoIdx];
 		}
 	}

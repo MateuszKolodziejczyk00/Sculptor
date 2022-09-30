@@ -92,7 +92,7 @@ void DescriptorSetBinding::MarkAsDirty()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState(EDescriptorSetStateFlags flags /*= EDescriptorSetStateFlags::None*/)
+DescriptorSetState::DescriptorSetState(EDescriptorSetStateFlags flags)
 	: m_isDirty(false)
 	, m_flags(flags)
 	, m_id(utils::GenerateStateID())

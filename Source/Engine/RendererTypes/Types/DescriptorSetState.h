@@ -85,7 +85,7 @@ class RENDERER_TYPES_API DescriptorSetState abstract
 {
 public:
 
-	DescriptorSetState(EDescriptorSetStateFlags flags = EDescriptorSetStateFlags::None);
+	DescriptorSetState(EDescriptorSetStateFlags flags);
 	~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
@@ -271,7 +271,8 @@ public:
 											public:																														\
 											using ThisClass = className;																								\
 											using Super = rdr::DescriptorSetState;																						\
-											className()																													\
+											className(rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)										\
+												: Super(flags)																											\
 											{																															\
 												SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
 												SetDescriptorSetHash(rdr::bindings_refl::HashDescriptorSetState(GetBindingsBegin(), GetBindingNames(), stages));		\

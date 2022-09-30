@@ -196,6 +196,9 @@ lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> PipelinePendingState
 
 			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, state, static_cast<Uint32>(dsIdx));
 			descriptorSetsToBind.emplace_back(descriptorSet, static_cast<Uint32>(dsIdx));
+			
+			// this check must be after getting descriptor set, as this call may clear dirty flag if that's first descriptor created using given state
+			SPT_CHECK(!state->IsDirty());
 		}
 	}
 

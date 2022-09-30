@@ -46,6 +46,14 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(co
 		newDSData.metaData = pipeline->GetMetaData();
 		newDSData.state = state.ToSharedPtr();
 		m_dsData.emplace_back(newDSData);
+
+		DescriptorSetWriter writer = RendererBuilder::CreateDescriptorSetWriter();
+		DescriptorSetUpdateContext updateContext(createdDS, writer, pipeline->GetMetaData());
+		state->UpdateDescriptors(updateContext);
+		writer.Flush();
+
+		// clear flag if that's first time when state is used
+		state->ClearDirtyFlag();
 	}
 
 	return createdDS;

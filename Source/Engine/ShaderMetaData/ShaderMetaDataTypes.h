@@ -94,7 +94,7 @@ constexpr EBindingFlags ShaderStageFlagsToBindingFlags(rhi::EShaderStageFlags fl
 		lib::AddFlag(bindingFlags, EBindingFlags::ComputeShader);
 	}
 
-	return EBindingFlags::None;
+	return bindingFlags;
 }
 
 constexpr rhi::EDescriptorType SelectBufferDescriptorType(EBindingFlags bindingFlags)

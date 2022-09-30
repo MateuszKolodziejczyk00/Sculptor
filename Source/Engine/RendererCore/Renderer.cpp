@@ -82,6 +82,8 @@ void Renderer::BeginFrame()
 	rhi::RHI::BeginFrame();
 
 	CurrentFrameContext::BeginFrame();
+
+	GetDescriptorSetsManager().BeginFrame();
 }
 
 void Renderer::EndFrame()

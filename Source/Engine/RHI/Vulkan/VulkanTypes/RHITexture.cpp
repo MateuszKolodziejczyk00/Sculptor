@@ -163,6 +163,20 @@ VkSampleCountFlagBits GetVulkanSampleCountFlag(Uint32 samples)
     return VK_SAMPLE_COUNT_1_BIT;
 }
 
+static Bool IsArrayView(const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
+{
+    return range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers
+        ? textureDef.arrayLayers - range.baseArrayLayer > 1
+        : range.arrayLayersNum > 1;
+}
+
+static Bool IsCubeArrayView(const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
+{
+    return range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers
+        ? (textureDef.arrayLayers - range.baseArrayLayer) / 6 > 1
+        : (range.arrayLayersNum / 6) > 1;
+}
+
 VkImageViewType GetVulkanViewType(rhi::ETextureViewType viewType, const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
 {
     if (viewType == rhi::ETextureViewType::Default)
@@ -173,16 +187,16 @@ VkImageViewType GetVulkanViewType(rhi::ETextureViewType viewType, const rhi::Tex
         }
         else if (textureDef.resolution.y() > 1)
         {
-            return range.arrayLayersNum > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+            return IsArrayView(range, textureDef) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
         }
         else
         {
-            return range.arrayLayersNum > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+            return IsArrayView(range, textureDef) ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
         }
     }
     else
     {
-        return (range.arrayLayersNum / 6) > 1 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+        return IsCubeArrayView(range, textureDef) ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
     }
 }
 
