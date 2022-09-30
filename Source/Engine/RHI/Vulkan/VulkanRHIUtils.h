@@ -18,7 +18,6 @@ public:
 
 	static VkPipelineStageFlags2			GetStageFlags(rhi::EPipelineStage flags);
 	static VkPipelineStageFlags				GetStageFlagsLegacy(rhi::EPipelineStage flags);
-	static VkPipelineStageFlags				GetStageFlagsLegacy(rhi::EShaderStageFlags flags);
 
 	static VkImageLayout					GetImageLayout(rhi::ETextureLayout layout);
 
@@ -40,6 +39,7 @@ public:
 	static VkDescriptorSetLayoutCreateFlags	GetDescriptorSetFlags(rhi::EDescriptorSetFlags dsFlags);
 
 	static VkShaderStageFlagBits			GetShaderStage(rhi::EShaderStage stage);
+	static VkShaderStageFlags				GetShaderStages(rhi::EShaderStageFlags stages);
 
 	static VkPrimitiveTopology				GetPrimitiveTopology(rhi::EPrimitiveTopology topology);
 

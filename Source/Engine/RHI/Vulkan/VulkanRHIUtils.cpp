@@ -163,26 +163,6 @@ VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EPipelineStage flags)
 	return vulkanFlags;
 }
 
-VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EShaderStageFlags flags)
-{
-	VkPipelineStageFlags vulkanFlags = 0;
-
-	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Vertex))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-	}
-	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Fragment))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-	}
-	if (lib::HasAllFlags(flags, rhi::EShaderStageFlags::Compute))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-	}
-
-	return vulkanFlags;
-}
-
 VkImageLayout RHIToVulkan::GetImageLayout(rhi::ETextureLayout layout)
 {
 	switch (layout)
@@ -364,6 +344,26 @@ VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
 		SPT_CHECK_NO_ENTRY();
 		return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 	}
+}
+
+VkShaderStageFlags RHIToVulkan::GetShaderStages(rhi::EShaderStageFlags stages)
+{
+	VkShaderStageFlags flags{};
+
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Vertex))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_VERTEX_BIT);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Fragment))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_FRAGMENT_BIT);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Compute))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_COMPUTE_BIT);
+	}
+
+	return flags;
 }
 
 VkPrimitiveTopology RHIToVulkan::GetPrimitiveTopology(rhi::EPrimitiveTopology topology)
