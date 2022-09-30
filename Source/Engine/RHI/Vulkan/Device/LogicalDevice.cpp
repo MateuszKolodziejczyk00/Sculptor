@@ -40,16 +40,17 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(features);
 
+	VkPhysicalDeviceVulkan12Features vulkan12Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+	vulkan12Features.bufferDeviceAddress = VK_TRUE;
+	vulkan12Features.timelineSemaphore = VK_TRUE;
+
+	deviceInfoLinkedData.Append(vulkan12Features);
+
 	VkPhysicalDeviceVulkan13Features vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 	vulkan13Features.synchronization2 = VK_TRUE;
 	vulkan13Features.dynamicRendering = VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan13Features);
-
-	VkPhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES };
-	timelineSemaphoreFeatures.timelineSemaphore = VK_TRUE;
-
-	deviceInfoLinkedData.Append(timelineSemaphoreFeatures);
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
