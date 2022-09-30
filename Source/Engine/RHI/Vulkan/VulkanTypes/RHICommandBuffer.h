@@ -56,6 +56,8 @@ public:
 
 	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
 
+	void	Dispatch(const math::Vector3u& groupCount);
+
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);

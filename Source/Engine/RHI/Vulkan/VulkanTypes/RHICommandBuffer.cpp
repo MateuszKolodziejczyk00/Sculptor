@@ -265,4 +265,14 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, 0, nullptr);
 }
 
+void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
+
+	vkCmdDispatch(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.z());
+}
+
 } // spt::vulkan

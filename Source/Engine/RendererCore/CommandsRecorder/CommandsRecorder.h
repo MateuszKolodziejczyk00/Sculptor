@@ -64,6 +64,8 @@ public:
 	void									BindComputePipeline(PipelineStateID pipelineID);
 	void									BindComputePipeline(const ShaderID& shader);
 
+	void									Dispatch(const math::Vector3u& groupCount);
+
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 

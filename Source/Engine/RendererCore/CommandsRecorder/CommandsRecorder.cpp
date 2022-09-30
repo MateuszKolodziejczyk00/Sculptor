@@ -136,7 +136,6 @@ void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
-
 							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
 						 });
 }
@@ -150,6 +149,22 @@ void CommandsRecorder::BindComputePipeline(const ShaderID& shader)
 	const PipelineStateID pipelineID = Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
 	BindComputePipeline(pipelineID);
 }
+
+void CommandsRecorder::Dispatch(const math::Vector3u& groupCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
+
+	m_pipelineState.EnqueueFlushDirtyDSForComputePipeline(m_commandQueue);
+
+	EnqueueRenderCommand([groupCount](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().Dispatch(groupCount);
+						 });
+}
+
 
 void CommandsRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
 {
