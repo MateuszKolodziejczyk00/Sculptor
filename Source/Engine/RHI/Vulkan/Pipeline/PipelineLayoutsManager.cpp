@@ -14,6 +14,7 @@ void PipelineLayoutsManager::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
+	m_pipelinesPendingFlush.clear();
 	m_cachedPipelineLayouts.clear();
 
 	for (const auto& keyToLayout : m_cachedDSLayouts)

@@ -224,6 +224,16 @@ void VulkanRHI::Uninitialize()
     }
 }
 
+void VulkanRHI::BeginFrame()
+{
+    priv::g_data.pipelineLayoutsManager.FlushPendingPipelineLayouts();
+}
+
+void VulkanRHI::EndFrame()
+{
+
+}
+
 rhi::ERHIType VulkanRHI::GetRHIType()
 {
     return rhi::ERHIType::Vulkan_1_3;
@@ -346,4 +356,4 @@ const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
     return nullptr;
 }
 
-}
+} // spt::vulkan

@@ -50,9 +50,9 @@ void Renderer::Initialize()
 
 	rhi::RHI::Initialize(initializationInfo);
 
-	priv::g_data.shadersManager.Initialize();
+	GetShadersManager().Initialize();
 
-	priv::g_data.descriptorSetsManager.Initialize();
+	GetDescriptorSetsManager().Initialize();
 }
 
 void Renderer::PostCreatedWindow()
@@ -64,9 +64,11 @@ void Renderer::PostCreatedWindow()
 
 void Renderer::Uninitialize()
 {
-	priv::g_data.descriptorSetsManager.Uninitialize();
+	GetPipelinesLibrary().ClearCachedPipelines();
 
-	priv::g_data.shadersManager.Uninitialize();
+	GetDescriptorSetsManager().Uninitialize();
+
+	GetShadersManager().Uninitialize();
 
 	CurrentFrameContext::Shutdown();
 
@@ -77,6 +79,8 @@ void Renderer::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();
 
+	rhi::RHI::BeginFrame();
+
 	CurrentFrameContext::BeginFrame();
 }
 
@@ -85,6 +89,8 @@ void Renderer::EndFrame()
 	SPT_PROFILER_FUNCTION();
 
 	CurrentFrameContext::EndFrame();
+
+	rhi::RHI::EndFrame();
 }
 
 ShadersManager& Renderer::GetShadersManager()

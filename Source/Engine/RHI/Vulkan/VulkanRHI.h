@@ -37,6 +37,9 @@ public:
 
 	static void				Uninitialize();
 
+	static void				BeginFrame();
+	static void				EndFrame();
+
 	static rhi::ERHIType	GetRHIType();
 
 	static void				SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
@@ -70,4 +73,4 @@ public:
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
 };
 
-}
+} // spt::vulkan
