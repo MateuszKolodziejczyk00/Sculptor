@@ -17,7 +17,7 @@ protected:
 
 public:
 
-	Sampler(const rhi::SamplerDefinition& def);
+	explicit Sampler(const rhi::SamplerDefinition& def);
 };
 
 } // spt::rdr
