@@ -4,20 +4,17 @@
 #include "Vulkan/VulkanCore.h"
 #include "Vulkan/CommandPool/RHICommandPoolsTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
-
 #include "RHICore/RHICommandBufferTypes.h"
 
-namespace spt::rhi
-{
-struct RenderingDefinition;
-}
-
+#include "RHICore/Commands/RHIRenderingDefinition.h"
+#include "RHICore/Commands/RHICopyDefinition.h"
 
 namespace spt::vulkan
 {
 
 class RHIPipeline;
 class RHIDescriptorSet;
+class RHITexture;
 
 
 class RHI_API RHICommandBuffer
@@ -57,6 +54,10 @@ public:
 	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
 
 	void	Dispatch(const math::Vector3u& groupCount);
+
+	// Transfer =============================================
+
+	void	CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
 private:
 

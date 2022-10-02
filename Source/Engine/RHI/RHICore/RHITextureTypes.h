@@ -6,6 +6,15 @@
 namespace spt::rhi
 {
 
+namespace constants
+{
+
+static constexpr Uint32 allRemainingMips			= idxNone<Uint32>;
+static constexpr Uint32 allRemainingArrayLayers	= idxNone<Uint32>;
+
+} // constants
+
+
 enum class ETextureUsage : Flags32
 {
 	None						= 0,
@@ -130,10 +139,7 @@ enum class ETextureAspect : Flags32
 
 struct TextureSubresourceRange
 {
-	static constexpr Uint32 s_allRemainingMips			= idxNone<Uint32>;
-	static constexpr Uint32 s_allRemainingArrayLayers	= idxNone<Uint32>;
-
-	TextureSubresourceRange(ETextureAspect inAspect = ETextureAspect::None, Uint32 inBaseMip = 0, Uint32 inMipLevelsNum = s_allRemainingMips, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = s_allRemainingArrayLayers)
+	TextureSubresourceRange(ETextureAspect inAspect = ETextureAspect::None, Uint32 inBaseMip = 0, Uint32 inMipLevelsNum = constants::allRemainingMips, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = constants::allRemainingArrayLayers)
 		: aspect(inAspect)
 		, baseMipLevel(inBaseMip)
 		, mipLevelsNum(inMipLevelsNum)

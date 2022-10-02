@@ -165,14 +165,14 @@ VkSampleCountFlagBits GetVulkanSampleCountFlag(Uint32 samples)
 
 static Bool IsArrayView(const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
 {
-    return range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers
+    return range.arrayLayersNum == rhi::constants::allRemainingArrayLayers
         ? textureDef.arrayLayers - range.baseArrayLayer > 1
         : range.arrayLayersNum > 1;
 }
 
 static Bool IsCubeArrayView(const rhi::TextureSubresourceRange& range, const rhi::TextureDefinition& textureDef)
 {
-    return range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers
+    return range.arrayLayersNum == rhi::constants::allRemainingArrayLayers
         ? (textureDef.arrayLayers - range.baseArrayLayer) / 6 > 1
         : (range.arrayLayersNum / 6) > 1;
 }

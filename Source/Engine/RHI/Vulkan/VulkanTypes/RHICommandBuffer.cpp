@@ -6,7 +6,6 @@
 #include "RHITexture.h"
 #include "RHIPipeline.h"
 #include "RHIDescriptorSet.h"
-#include "RHICore/Commands/RHIRenderingDefinition.h"
 
 namespace spt::vulkan
 {
@@ -240,6 +239,74 @@ void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, con
 	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx);
 }
 
+void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
+
+	vkCmdDispatch(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.z());
+}
+
+void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(source.IsValid());
+	SPT_CHECK(target.IsValid());
+
+	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
+
+	const VkImage sourceImage = source.GetHandle();
+	const VkImageLayout sourceLayout = layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, sourceImage, ImageSubresourceRange(sourceRange.mipLevel, 1, sourceRange.baseArrayLayer, sourceRange.arrayLayersNum));
+
+	const VkImage targetImage = target.GetHandle();
+	const VkImageLayout targetLayout = layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, targetImage, ImageSubresourceRange(targetRange.mipLevel, 1, targetRange.baseArrayLayer, targetRange.arrayLayersNum));
+
+	const auto getArrayLayersNum = [](const rhi::TextureCopyRange& range, const RHITexture& texture) -> Uint32
+	{
+		if (range.arrayLayersNum == rhi::constants::allRemainingArrayLayers)
+		{
+			SPT_CHECK(texture.GetDefinition().arrayLayers > range.baseArrayLayer);
+			return texture.GetDefinition().arrayLayers - range.baseArrayLayer;
+		}
+		{
+			const Uint32 arrayLayersEnd = range.baseArrayLayer + range.arrayLayersNum;
+			SPT_CHECK(texture.GetDefinition().arrayLayers >= arrayLayersEnd); // check if array layers range is in texture range
+
+			return range.arrayLayersNum;
+		}
+	};
+
+	VkImageCopy2 copyRegion{ VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
+    copyRegion.srcSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(sourceRange.aspect);
+    copyRegion.srcSubresource.mipLevel			= sourceRange.mipLevel;
+    copyRegion.srcSubresource.baseArrayLayer	= sourceRange.baseArrayLayer;
+    copyRegion.srcSubresource.layerCount		= getArrayLayersNum(sourceRange, source);
+	copyRegion.srcOffset						= VkOffset3D{ .x = sourceRange.offset.x(), .y = sourceRange.offset.y(), .z = sourceRange.offset.z() };
+    copyRegion.dstSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(targetRange.aspect);
+    copyRegion.dstSubresource.mipLevel			= targetRange.mipLevel;
+    copyRegion.dstSubresource.baseArrayLayer	= targetRange.baseArrayLayer;
+    copyRegion.dstSubresource.layerCount		= getArrayLayersNum(targetRange, target);
+	copyRegion.dstOffset						= VkOffset3D{ .x = targetRange.offset.x(), .y = targetRange.offset.y(), .z = targetRange.offset.z() };
+    copyRegion.extent							= VkExtent3D{ .width = extent.x(), .height = extent.y(), .depth = extent.z() };
+ 
+	const VkCopyImageInfo2 copyInfo
+	{
+		.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
+		.srcImage = sourceImage,
+		.srcImageLayout = sourceLayout,
+		.dstImage = targetImage,
+		.dstImageLayout = targetLayout,
+		.regionCount = 1,
+		.pRegions = &copyRegion
+	};
+
+	vkCmdCopyImage2(m_cmdBufferHandle, &copyInfo);
+}
+
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
 {
 	SPT_PROFILER_FUNCTION();
@@ -263,16 +330,6 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	VkDescriptorSet dsHandle = ds.GetHandle();
 
 	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, 0, nullptr);
-}
-
-void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
-{
-	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(IsValid());
-	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
-
-	vkCmdDispatch(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.z());
 }
 
 } // spt::vulkan

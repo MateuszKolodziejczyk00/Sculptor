@@ -90,8 +90,8 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 	SPT_PROFILER_FUNCTION();
 
 	if (	range.baseMipLevel == 0 && range.baseArrayLayer == 0
-		&& (range.mipLevelsNum == m_mipsNum || range.mipLevelsNum == rhi::TextureSubresourceRange::s_allRemainingMips)
-		&& (range.arrayLayersNum == m_arrayLayersNum || range.arrayLayersNum == rhi::TextureSubresourceRange::s_allRemainingArrayLayers))
+		&& (range.mipLevelsNum == m_mipsNum || range.mipLevelsNum == rhi::constants::allRemainingMips)
+		&& (range.arrayLayersNum == m_arrayLayersNum || range.arrayLayersNum == rhi::constants::allRemainingArrayLayers))
 	{
 		SetFullImageLayout(layout);
 	}

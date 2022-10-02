@@ -12,12 +12,56 @@
 #include "Profiler.h"
 #include "Profiler/GPUProfiler.h"
 #include "Engine.h"
+#include "Types/DescriptorSetState.h"
+#include "Pipelines/PipelinesLibrary.h"
 
 #include "imgui.h"
 
 
 namespace spt::ed
 {
+
+class StorageTextureBinding : public rdr::DescriptorSetBinding
+{
+public:
+
+	explicit StorageTextureBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
+		: rdr::DescriptorSetBinding(name, descriptorDirtyFlag)
+	{ }
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
+	{
+		context.UpdateTexture(GetName(), texture);
+	}
+
+	virtual void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const final
+	{
+		binding.Set(smd::TextureBindingData(1, smd::EBindingFlags::Storage));
+	}
+
+	void Set(const lib::SharedPtr<rdr::TextureView>& inTexture)
+	{
+		texture = inTexture;
+		MarkAsDirty();
+	}
+
+	void Reset()
+	{
+		texture.reset();
+	}
+
+private:
+
+	lib::SharedPtr<rdr::TextureView> texture;
+};
+
+DS_BEGIN(, TestDS, rhi::EShaderStageFlags::Compute)
+DS_BINDING(StorageTextureBinding, u_texture)
+DS_END()
+
+lib::SharedPtr<TestDS> ds;
+lib::SharedPtr<rdr::Texture> texture;
+rdr::PipelineStateID computePipelineID;
 
 SculptorEdApplication::SculptorEdApplication()
 {
@@ -38,8 +82,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	rdr::Renderer::PostCreatedWindow();
 
-	SPT_MAYBE_UNUSED
-	const rdr::ShaderID test = rdr::Renderer::GetShadersManager().CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
+	const rdr::ShaderID shaderID = rdr::Renderer::GetShadersManager().CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
+	computePipelineID = rdr::Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME("CompTest"), shaderID);
 }
 
 void SculptorEdApplication::OnRun()
@@ -72,7 +116,7 @@ void SculptorEdApplication::OnRun()
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
 		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 		recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
-		
+
 		lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 		rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
 		submitBatch.recordedCommands.emplace_back(std::move(recorder));
@@ -85,6 +129,20 @@ void SculptorEdApplication::OnRun()
 	}
 
 	lib::TickingTimer timer;
+
+	{
+		rhi::TextureDefinition textureDef;
+		textureDef.resolution = math::Vector3u(1920, 1080, 1);
+		textureDef.usage = rhi::ETextureUsage::StorageTexture;
+
+		rhi::TextureViewDefinition viewDef;
+		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
+
+		ds = lib::MakeShared<TestDS>(rdr::EDescriptorSetStateFlags::Persistent);
+
+		texture = rdr::RendererBuilder::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
+		ds->u_texture.Set(texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef));
+	}
 
 	while (true)
 	{
@@ -150,6 +208,9 @@ void SculptorEdApplication::OnShutdown()
 {
 	Super::OnShutdown();
 
+	ds->u_texture.Reset();
+	texture.reset();
+
 	uiBackend.reset();
 
 	rdr::Renderer::WaitIdle();
@@ -193,23 +254,41 @@ void SculptorEdApplication::RenderFrame()
 			recorder->ExecuteBarrier(std::move(barrier));
 		}
 
+		{
+			SPT_GPU_PROFILER_EVENT("TestCompute");
+
+			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ComputeGeneral);
+
+			recorder->ExecuteBarrier(std::move(barrier));
+
+			recorder->BindComputePipeline(computePipelineID);
+
+			recorder->BindDescriptorSetState(ds);
+
+			recorder->Dispatch(math::Vector3u(1, 1, 1));
+
+			recorder->UnbindDescriptorSetState(ds);
+		}
+
 		rhi::TextureViewDefinition viewDefinition;
 		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
 		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
-		rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
-		rdr::RTDefinition renderTarget;
-		renderTarget.textureView			= swapchainTextureView;
-		renderTarget.loadOperation			= rhi::ERTLoadOperation::Clear;
-		renderTarget.storeOperation			= rhi::ERTStoreOperation::Store;
-		renderTarget.clearColor.asFloat[0]	= 0.f;
-		renderTarget.clearColor.asFloat[1]	= 0.f;
-		renderTarget.clearColor.asFloat[2]	= 0.f;
-		renderTarget.clearColor.asFloat[3]	= 1.f;
-
-		renderingDef.AddColorRenderTarget(renderTarget);
-
 		{
+			rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
+			rdr::RTDefinition renderTarget;
+			renderTarget.textureView = swapchainTextureView;
+			renderTarget.loadOperation = rhi::ERTLoadOperation::Clear;
+			renderTarget.storeOperation = rhi::ERTStoreOperation::Store;
+			renderTarget.clearColor.asFloat[0] = 0.f;
+			renderTarget.clearColor.asFloat[1] = 0.f;
+			renderTarget.clearColor.asFloat[2] = 0.f;
+			renderTarget.clearColor.asFloat[3] = 1.f;
+
+			renderingDef.AddColorRenderTarget(renderTarget);
+
 			SPT_GPU_PROFILER_EVENT("UI");
 
 			recorder->BeginRendering(renderingDef);
