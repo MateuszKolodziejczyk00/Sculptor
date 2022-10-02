@@ -2,8 +2,8 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RHIBridge/RHICommandBufferImpl.h"
 #include "CommandQueue/CommandQueue.h"
-#include "RHICore/RHICommandBufferTypes.h"
 #include "Pipelines/PipelineState.h"
 #include "PipelinePendingState.h"
 #include "RendererUtils.h"
@@ -18,6 +18,7 @@ class RenderingDefinition;
 class UIBackend;
 class Context;
 class DescriptorSetState;
+class Texture;
 
 
 struct CommandsRecordingInfo
@@ -68,6 +69,8 @@ public:
 
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
+
+	void									CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
 	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
 
