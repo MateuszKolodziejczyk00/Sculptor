@@ -7,6 +7,7 @@
 #include "RHICore/RHIPipelineLayoutTypes.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 #include "RHICore/RHIPipelineDefinitionTypes.h"
+#include "RHICore/RHISamplerTypes.h"
 
 
 namespace spt::vulkan
@@ -55,6 +56,16 @@ public:
 
 	static VkDescriptorSetLayout			GetDSLayout(rhi::DescriptorSetLayoutID layoutID);
 	static const VkDescriptorSetLayout*		GetDSLayoutsPtr(const rhi::DescriptorSetLayoutID* layoutIDs);
+
+    static VkSamplerCreateFlags				GetSamplerCreateFlags(rhi::ESamplerFlags flags);
+
+    static VkFilter							GetSamplerFilterType(rhi::ESamplerFilterType type);
+
+    static VkSamplerMipmapMode				GetMipMapAddressingMode(rhi::EMipMapAddressingMode mode);
+
+	static VkSamplerAddressMode				GetAxisAddressingMode(rhi::EAxisAddressingMode mode);
+
+	static VkBorderColor					GetBorderColor(rhi::EBorderColor color);
 };
 
 struct VulkanToRHI

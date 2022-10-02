@@ -487,6 +487,74 @@ const VkDescriptorSetLayout* RHIToVulkan::GetDSLayoutsPtr(const rhi::DescriptorS
 	return reinterpret_cast<const VkDescriptorSetLayout*>(layoutIDs);
 }
 
+VkSamplerCreateFlags RHIToVulkan::GetSamplerCreateFlags(rhi::ESamplerFlags flags)
+{
+	return 0;
+}
+
+VkFilter RHIToVulkan::GetSamplerFilterType(rhi::ESamplerFilterType type)
+{
+	switch (type)
+	{
+	case rhi::ESamplerFilterType::Nearest:	return VK_FILTER_NEAREST;
+	case rhi::ESamplerFilterType::Linear:	return VK_FILTER_LINEAR;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_FILTER_MAX_ENUM;
+	}
+}
+
+VkSamplerMipmapMode RHIToVulkan::GetMipMapAddressingMode(rhi::EMipMapAddressingMode mode)
+{
+	switch (mode)
+	{
+	case rhi::EMipMapAddressingMode::Nearest:	return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	case rhi::EMipMapAddressingMode::Linear:	return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_SAMPLER_MIPMAP_MODE_MAX_ENUM;
+	}
+}
+
+VkSamplerAddressMode RHIToVulkan::GetAxisAddressingMode(rhi::EAxisAddressingMode mode)
+{
+	switch (mode)
+	{
+	case rhi::EAxisAddressingMode::Repeat:				return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	case rhi::EAxisAddressingMode::MirroredRepeat:		return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	case rhi::EAxisAddressingMode::ClampToEdge: 		return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	case rhi::EAxisAddressingMode::ClampToBorder:		return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	case rhi::EAxisAddressingMode::MorroredClampToEdge:	return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+	}
+}
+
+VkBorderColor RHIToVulkan::GetBorderColor(rhi::EBorderColor color)
+{
+	switch (color)
+	{
+	case rhi::EBorderColor::FloatTransparentBlack:	return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+	case rhi::EBorderColor::IntTransparentBlack:	return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+	case rhi::EBorderColor::FloatOpaqueBlack:		return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+	case rhi::EBorderColor::IntOpaqueBlack:			return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	case rhi::EBorderColor::FloatOpaqueWhite:		return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	case rhi::EBorderColor::IntOpaqueWhite:			return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_BORDER_COLOR_MAX_ENUM;
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 

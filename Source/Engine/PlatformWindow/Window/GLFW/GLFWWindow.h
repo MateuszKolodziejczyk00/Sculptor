@@ -34,7 +34,6 @@ public:
 
 	Bool								ShouldClose();
 
-
 	using OnWindowResizedDelegate		= lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
 	OnWindowResizedDelegate&			GetOnResizedCallback();
 
