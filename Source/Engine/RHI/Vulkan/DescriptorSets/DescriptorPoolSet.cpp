@@ -16,6 +16,19 @@ void DescriptorPoolSet::Initialize(VkDescriptorPoolCreateFlags poolFlags, Uint16
 	m_thisSetIdx = inSetIdx;
 }
 
+void DescriptorPoolSet::ReleaseAllPools()
+{
+	SPT_PROFILER_FUNCTION();
+	
+	std::for_each(std::begin(m_descriptorPools), std::end(m_descriptorPools),
+				  [](DescriptorPool& pool)
+				  {
+					  pool.Release();
+				  });
+
+	m_descriptorPools.clear();
+}
+
 void DescriptorPoolSet::AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<RHIDescriptorSet>& outDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();
@@ -66,13 +79,13 @@ void DescriptorPoolSet::FreeDescriptorSets(const lib::DynamicArray<VkDescriptorS
 
 void DescriptorPoolSet::FreeAllDescriptorPools()
 {
+	SPT_PROFILER_FUNCTION();
+
 	std::for_each(std::begin(m_descriptorPools), std::end(m_descriptorPools),
 				  [](DescriptorPool& pool)
 				  {
 					  pool.ResetPool();
 				  });
-
-	m_descriptorPools.clear();
 }
 
 void DescriptorPoolSet::InitializeDescriptorPool(DescriptorPool& pool)

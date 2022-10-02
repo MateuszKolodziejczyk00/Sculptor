@@ -16,6 +16,8 @@ public:
 
 	void Initialize(VkDescriptorPoolCreateFlags poolFlags, Uint16 inSetIdx = idxNone<Uint16>);
 
+	void ReleaseAllPools();
+
 	void AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<RHIDescriptorSet>& outDescriptorSets);
 	void FreeDescriptorSets(const lib::DynamicArray<VkDescriptorSet>& dsSets, Uint16 poolIdx);
 	void FreeAllDescriptorPools();

@@ -28,7 +28,7 @@ void RHIDescriptorSetManager::ReleaseRHI()
 	std::for_each(std::begin(m_poolSets), std::end(m_poolSets),
 				  [](DescriptorPoolSetData& poolSetData)
 				  {
-					  poolSetData.poolSet.FreeAllDescriptorPools();
+					  poolSetData.poolSet.ReleaseAllPools();
 				  });
 }
 
