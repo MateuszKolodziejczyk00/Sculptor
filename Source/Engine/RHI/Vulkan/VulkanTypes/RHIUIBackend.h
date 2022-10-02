@@ -2,8 +2,8 @@
 
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
-#include "UITypes.h"
 #include "SculptorCoreTypes.h"
+#include "UIContext.h"
 #include "Vulkan/DescriptorSets/DescriptorPool.h"
 
 

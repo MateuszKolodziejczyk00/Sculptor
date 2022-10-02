@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
 #include "Window/PlatformWindowCommon.h"
-#include "UITypes.h"
+#include "UIContext.h"
 
 
 #if USE_GLFW

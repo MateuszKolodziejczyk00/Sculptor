@@ -14,8 +14,7 @@
 #include "Engine.h"
 #include "Types/DescriptorSetState.h"
 #include "Pipelines/PipelinesLibrary.h"
-
-#include "imgui.h"
+#include "ImGui/SculptorImGui.h"
 
 
 namespace spt::ed

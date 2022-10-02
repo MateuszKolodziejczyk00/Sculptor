@@ -6,7 +6,7 @@
 #include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
 #include "Types/Barrier.h"
-#include "UITypes.h"
+#include "UIContext.h"
 #include "Types/DescriptorSetWriter.h"
 
 

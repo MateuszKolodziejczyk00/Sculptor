@@ -2,42 +2,9 @@
 
 #include "SculptorCoreTypes.h"
 
-struct ImGuiContext;
-
-
 namespace spt::ui
 {
 
-class UIContext
-{
-public:
+using TextureID = void*;
 
-	UIContext()
-		: m_context(nullptr)
-	{ }
-
-	UIContext(ImGuiContext* context)
-		: m_context(context)
-	{ }
-
-	Bool					IsValid() const
-	{
-		return m_context != nullptr;
-	}
-
-	ImGuiContext*			GetHandle() const
-	{
-		return m_context;
-	}
-
-	void					Reset()
-	{
-		m_context = nullptr;
-	}
-
-private:
-
-	ImGuiContext*			m_context;
-};
-
-}
+} // spt::ui
