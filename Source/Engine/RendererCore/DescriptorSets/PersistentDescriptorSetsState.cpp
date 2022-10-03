@@ -1,5 +1,5 @@
 #include "PersistentDescriptorSetsState.h"
-#include "RendererBuilder.h"
+#include "ResourcesManager.h"
 #include "ShaderMetaData.h"
 #include "Types/DescriptorSetState.h"
 #include "Types/Pipeline/Pipeline.h"
@@ -47,7 +47,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(co
 		newDSData.state = state.ToSharedPtr();
 		m_dsData.emplace_back(newDSData);
 
-		DescriptorSetWriter writer = RendererBuilder::CreateDescriptorSetWriter();
+		DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
 		DescriptorSetUpdateContext updateContext(createdDS, writer, pipeline->GetMetaData());
 		state->UpdateDescriptors(updateContext);
 		writer.Flush();
@@ -99,7 +99,7 @@ void PersistentDescriptorSetsState::UpdateDescriptorSets()
 	lib::DynamicArray<lib::SharedPtr<DescriptorSetState>> dirtyStates;
 	dirtyStates.reserve(64);
 
-	DescriptorSetWriter writer = RendererBuilder::CreateDescriptorSetWriter();
+	DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
 
 	for (const PersistentDSData& ds : m_dsData)
 	{

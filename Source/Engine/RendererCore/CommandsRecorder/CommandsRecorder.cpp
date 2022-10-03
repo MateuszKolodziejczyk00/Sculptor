@@ -1,6 +1,6 @@
 #include "CommandsRecorder.h"
 #include "RenderingDefinition.h"
-#include "RendererBuilder.h"
+#include "ResourcesManager.h"
 #include "Renderer.h"
 #include "Pipelines/PipelinesLibrary.h"
 #include "Types/CommandBuffer.h"
@@ -44,7 +44,7 @@ void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, co
 
 	m_state = ECommandsRecorderState::Recording;
 	
-	m_commandsBuffer = RendererBuilder::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
+	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
 	CommandQueueExecutor executor(m_commandsBuffer);

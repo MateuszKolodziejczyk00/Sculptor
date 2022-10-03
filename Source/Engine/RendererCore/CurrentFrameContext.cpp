@@ -1,5 +1,5 @@
 #include "CurrentFrameContext.h"
-#include "RendererBuilder.h"
+#include "ResourcesManager.h"
 #include "Types/Semaphore.h"
 
 
@@ -30,7 +30,7 @@ void CurrentFrameContext::Initialize(Uint32 framesInFlightNum)
 	priv::cleanupDelegates = new CleanupDelegate[framesInFlightNum];
 
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Timeline);
-	priv::releaseFrameSemaphore = RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("ReleaseFrameSemaphore"), semaphoreDef);
+	priv::releaseFrameSemaphore = ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("ReleaseFrameSemaphore"), semaphoreDef);
 }
 
 void CurrentFrameContext::Shutdown()

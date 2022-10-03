@@ -1,6 +1,6 @@
 #include "SculptorEdApplication.h"
 #include "Renderer.h"
-#include "RendererBuilder.h"
+#include "ResourcesManager.h"
 #include "Timer/TickingTimer.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
@@ -8,12 +8,11 @@
 #include "CommandsRecorder/CommandsRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "UIContextManager.h"
-#include "Shaders/ShadersManager.h"
 #include "Profiler.h"
 #include "Profiler/GPUProfiler.h"
 #include "Engine.h"
 #include "Types/DescriptorSetState.h"
-#include "Pipelines/PipelinesLibrary.h"
+#include "Common/ShaderCompilationInput.h"
 #include "ImGui/SculptorImGui.h"
 
 
@@ -77,12 +76,12 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	rdr::Renderer::Initialize();
 
-	m_window = rdr::RendererBuilder::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
+	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
 
 	rdr::Renderer::PostCreatedWindow();
 
-	const rdr::ShaderID shaderID = rdr::Renderer::GetShadersManager().CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
-	computePipelineID = rdr::Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(RENDERER_RESOURCE_NAME("CompTest"), shaderID);
+	const rdr::ShaderID shaderID = rdr::ResourcesManager::CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
+	computePipelineID = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CompTest"), shaderID);
 }
 
 void SculptorEdApplication::OnRun()
@@ -100,7 +99,7 @@ void SculptorEdApplication::OnRun()
 
 	ui::UIContextManager::SetGlobalContext(context);
 
-	uiBackend = rdr::RendererBuilder::CreateUIBackend(context, m_window);
+	uiBackend = rdr::ResourcesManager::CreateUIBackend(context, m_window);
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
@@ -109,7 +108,7 @@ void SculptorEdApplication::OnRun()
 
 		recorder->InitializeUIFonts(uiBackend);
 
-		const lib::SharedRef<rdr::Context> renderingContext = rdr::RendererBuilder::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
+		const lib::SharedRef<rdr::Context> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
@@ -139,7 +138,7 @@ void SculptorEdApplication::OnRun()
 
 		ds = lib::MakeShared<TestDS>(rdr::EDescriptorSetStateFlags::Persistent);
 
-		texture = rdr::RendererBuilder::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
+		texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
 		ds->u_texture.Set(texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef));
 	}
 
@@ -226,7 +225,7 @@ void SculptorEdApplication::RenderFrame()
 	SPT_PROFILER_FUNCTION();
 
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 
 	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
 
@@ -238,7 +237,7 @@ void SculptorEdApplication::RenderFrame()
 		return;
 	}
 
-	const lib::SharedRef<rdr::Context> renderingContext = rdr::RendererBuilder::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+	const lib::SharedRef<rdr::Context> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
 
 	lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
@@ -246,7 +245,7 @@ void SculptorEdApplication::RenderFrame()
 		SPT_GPU_PROFILER_CONTEXT(recorder->GetCommandsBuffer());
 
 		{
-			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
 			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
 
@@ -256,7 +255,7 @@ void SculptorEdApplication::RenderFrame()
 		{
 			SPT_GPU_PROFILER_EVENT("TestCompute");
 
-			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
 			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ComputeGeneral);
 
@@ -298,7 +297,7 @@ void SculptorEdApplication::RenderFrame()
 		}
 
 		{
-			rdr::Barrier barrier = rdr::RendererBuilder::CreateBarrier();
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
 			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
 
@@ -311,7 +310,7 @@ void SculptorEdApplication::RenderFrame()
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-	lib::SharedRef<rdr::Semaphore> finishCommandsSemaphore = rdr::RendererBuilder::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+	lib::SharedRef<rdr::Semaphore> finishCommandsSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());

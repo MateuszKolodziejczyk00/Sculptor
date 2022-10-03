@@ -11,13 +11,7 @@ namespace spt::rdr
 class Shader;
 
 
-enum class EShaderFlags : Flags32
-{
-	None			= 0
-};
-
-
-class RENDERER_CORE_API ShadersManager
+class ShadersManager
 {
 public:
 

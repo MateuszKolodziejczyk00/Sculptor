@@ -1,7 +1,6 @@
 #include "PipelinesLibrary.h"
 #include "Renderer.h"
 #include "Shaders/ShadersManager.h"
-#include "RendererBuilder.h"
 
 namespace spt::rdr
 {
@@ -40,7 +39,7 @@ PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceN
 		if (!pendingPipeline)
 		{
 			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-			pendingPipeline = RendererBuilder::CreateGraphicsPipeline(nameInNotCached, shaderObject, pipelineDef).ToSharedPtr();
+			pendingPipeline = lib::MakeShared<GraphicsPipeline>(nameInNotCached, shaderObject, pipelineDef);
 		}
 	}
 
@@ -64,19 +63,19 @@ PipelineStateID PipelinesLibrary::GetOrCreateComputePipeline(const RendererResou
 		if (!pendingPipeline)
 		{
 			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-			pendingPipeline = RendererBuilder::CreateComputePipeline(nameInNotCached, shaderObject).ToSharedPtr();
+			pendingPipeline = lib::MakeShared<ComputePipeline>(nameInNotCached, shaderObject);
 		}
 	}
 
 	return stateID;
 }
 
-lib::SharedPtr<GraphicsPipeline> PipelinesLibrary::GetGraphicsPipeline(PipelineStateID id) const
+lib::SharedRef<GraphicsPipeline> PipelinesLibrary::GetGraphicsPipeline(PipelineStateID id) const
 {
 	return GetPipelineImpl<GraphicsPipeline>(id, m_cachedGraphicsPipelines, m_graphicsPipelinesPendingFlush, m_graphicsPipelinesPendingFlushLock);
 }
 
-lib::SharedPtr<ComputePipeline> PipelinesLibrary::GetComputePipeline(PipelineStateID id) const
+lib::SharedRef<ComputePipeline> PipelinesLibrary::GetComputePipeline(PipelineStateID id) const
 {
 	return GetPipelineImpl<ComputePipeline>(id, m_cachedComputePipelines, m_computePipelinesPendingFlush, m_computePipelinesPendingFlushLock);
 }
@@ -111,14 +110,14 @@ PipelineStateID PipelinesLibrary::GetStateID(const rhi::GraphicsPipelineDefiniti
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::HashCombine(pipelineDef, shader);
+	return PipelineStateID(lib::HashCombine(pipelineDef, shader));
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const ShaderID& shader) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::GetHash(shader);
+	return PipelineStateID(lib::GetHash(shader));
 }
 
 } // spt::rdr

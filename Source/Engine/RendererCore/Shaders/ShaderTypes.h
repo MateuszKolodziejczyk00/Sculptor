@@ -7,6 +7,12 @@
 namespace spt::rdr
 {
 
+enum class EShaderFlags : Flags32
+{
+	None			= 0
+};
+
+
 using ShaderHashType = SizeType;
 
 

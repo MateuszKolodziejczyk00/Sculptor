@@ -8,6 +8,8 @@
 #include "Types/Barrier.h"
 #include "UIContext.h"
 #include "Types/DescriptorSetWriter.h"
+#include "Shaders/ShaderTypes.h"
+#include "Pipelines/PipelineState.h"
 
 
 namespace spt::rhi
@@ -29,6 +31,12 @@ class ShaderMetaData;
 } // spt::smd
 
 
+namespace spt::sc
+{
+class ShaderCompilationSettings;
+} // spt::sc
+
+
 namespace spt::rdr
 {
 
@@ -44,7 +52,7 @@ class GraphicsPipeline;
 class ComputePipeline;
 
 
-class RENDERER_CORE_API RendererBuilder
+class RENDERER_CORE_API ResourcesManager
 {
 public:
 
@@ -63,17 +71,21 @@ public:
 
 	SPT_NODISCARD static Barrier							CreateBarrier();
 
-	SPT_NODISCARD static lib::SharedRef<Shader>				CreateShader(const RendererResourceName& name, const lib::DynamicArray<rhi::ShaderModuleDefinition>& moduleDefinitions, const lib::SharedRef<smd::ShaderMetaData>& metaData);
+	SPT_NODISCARD static ShaderID							CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+	SPT_NODISCARD static lib::SharedRef<Shader>				GetShaderObject(ShaderID shaderID);
 
-	SPT_NODISCARD static lib::SharedRef<GraphicsPipeline>	CreateGraphicsPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::GraphicsPipelineDefinition pipelineDef);
-	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	CreateComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader);
+	SPT_NODISCARD static PipelineStateID					CreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
+	SPT_NODISCARD static PipelineStateID					CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	
+	SPT_NODISCARD static lib::SharedRef<GraphicsPipeline>	GetGraphicsPipeline(PipelineStateID id);
+	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	GetComputePipeline(PipelineStateID id);
 
 	SPT_NODISCARD static DescriptorSetWriter				CreateDescriptorSetWriter();
 
 private:
 
 	// block creating instance
-	RendererBuilder() = default;
+	ResourcesManager() = default;
 };
 
 } // spt::rdr
