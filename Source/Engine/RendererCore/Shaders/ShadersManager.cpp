@@ -114,7 +114,7 @@ lib::SharedRef<Shader> ShadersManager::GetShader(ShaderID shader) const
 
 	const lib::ReadLockGuard lockGuard(m_lock);
 
-	return m_cachedShaders.at(shader.GetID());
+	return lib::Ref(m_cachedShaders.at(shader.GetID()));
 }
 
 ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const

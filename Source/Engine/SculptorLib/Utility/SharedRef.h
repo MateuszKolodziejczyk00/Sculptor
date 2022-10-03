@@ -12,7 +12,7 @@ class SharedRef
 {
 public:
 
-	SharedRef(SharedPtr<TType> value)
+	explicit SharedRef(SharedPtr<TType> value)
 		: m_storage(std::move(value))
 	{
 		SPT_CHECK(!!m_storage);
@@ -20,8 +20,16 @@ public:
 
 	template<typename TRhsType>
 		requires std::is_base_of_v<TType, TRhsType>
-	SharedRef(const SharedPtr<TRhsType>& value)
+	explicit SharedRef(const SharedPtr<TRhsType>& value)
 		: m_storage(value)
+	{
+		SPT_CHECK(!!m_storage);
+	}
+
+	template<typename TRhsType>
+		requires std::is_base_of_v<TType, TRhsType>
+	SharedRef(const SharedRef<TRhsType>& value)
+		: m_storage(std::move(value.ToSharedPtr()))
 	{
 		SPT_CHECK(!!m_storage);
 	}
@@ -68,6 +76,12 @@ template<typename TType, typename... TArgs>
 SharedRef<TType> MakeShared(TArgs&&... args)
 {
 	return SharedRef<TType>(std::make_shared<TType>(std::forward<TArgs>(args)...));
+}
+
+template<typename TType>
+SharedRef<TType> Ref(lib::SharedPtr<TType> ptr)
+{
+	return SharedRef<TType>(ptr);
 }
 
 } // spt::lib

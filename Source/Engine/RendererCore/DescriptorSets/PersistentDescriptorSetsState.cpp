@@ -108,7 +108,7 @@ void PersistentDescriptorSetsState::UpdateDescriptorSets()
 
 		if (state->IsDirty())
 		{
-			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.id), writer, ds.metaData);
+			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.id), writer, lib::Ref(ds.metaData));
 			state->UpdateDescriptors(updateContext);
 
 			dirtyStates.emplace_back(std::move(state));

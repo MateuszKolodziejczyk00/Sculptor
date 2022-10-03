@@ -31,7 +31,7 @@ void PipelinePendingState::BindGraphicsPipeline(const lib::SharedRef<GraphicsPip
 		
 	m_boundGfxPipeline = pipeline.ToSharedPtr();
 
-	UpdateDescriptorSetsOnPipelineChange(prevPipeline, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
 }
 
 void PipelinePendingState::UnbindGraphicsPipeline()
@@ -51,7 +51,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& 
 
 	SPT_CHECK(!!m_boundGfxPipeline);
 
-	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
+	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
 
 	if (!descriptorSetsToBind.empty())
 	{
@@ -79,7 +79,7 @@ void PipelinePendingState::BindComputePipeline(const lib::SharedRef<ComputePipel
 		
 	m_boundComputePipeline = pipeline.ToSharedPtr();
 
-	UpdateDescriptorSetsOnPipelineChange(prevPipeline, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
 }
 
 void PipelinePendingState::UnbindComputePipeline()
@@ -99,7 +99,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& c
 
 	SPT_CHECK(!!m_boundComputePipeline);
 
-	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+	lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
 
 	if (!descriptorSetsToBind.empty())
 	{
@@ -194,7 +194,7 @@ lib::DynamicArray<std::pair<rhi::RHIDescriptorSet, Uint32>> PipelinePendingState
 			const lib::SharedPtr<DescriptorSetState> state = GetBoundDescriptorSetState(dsHash);
 			SPT_CHECK(!!state);
 
-			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, state, static_cast<Uint32>(dsIdx));
+			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, lib::Ref(state), static_cast<Uint32>(dsIdx));
 			descriptorSetsToBind.emplace_back(descriptorSet, static_cast<Uint32>(dsIdx));
 			
 			// this check must be after getting descriptor set, as this call may clear dirty flag if that's first descriptor created using given state

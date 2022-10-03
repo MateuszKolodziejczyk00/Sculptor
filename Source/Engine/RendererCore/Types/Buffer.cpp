@@ -18,7 +18,7 @@ lib::SharedRef<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::MakeShared<BufferView>(shared_from_this(), offset, size);
+	return lib::MakeShared<BufferView>(lib::Ref(shared_from_this()), offset, size);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

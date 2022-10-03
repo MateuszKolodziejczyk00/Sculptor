@@ -35,7 +35,7 @@ lib::SharedRef<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout
 	const auto cachedPipelineLayoutIt = m_cachedPipelineLayouts.find(layoutDefinitionHash);
 	if (cachedPipelineLayoutIt != std::cend(m_cachedPipelineLayouts))
 	{
-		return cachedPipelineLayoutIt->second;
+		return lib::Ref(cachedPipelineLayoutIt->second);
 	}
 
 	{
@@ -47,7 +47,7 @@ lib::SharedRef<PipelineLayout> PipelineLayoutsManager::GetOrCreatePipelineLayout
 			pendingPipelineLayoutIt = m_pipelinesPendingFlush.emplace(layoutDefinitionHash, CreatePipelineLayout_AssumesLocked(definition)).first;
 		}
 
-		return pendingPipelineLayoutIt->second;
+		return lib::Ref(pendingPipelineLayoutIt->second);
 	}
 }
 

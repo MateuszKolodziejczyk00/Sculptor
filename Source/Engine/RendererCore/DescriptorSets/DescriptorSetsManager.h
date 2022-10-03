@@ -24,7 +24,7 @@ public:
 
 	void BeginFrame();
 
-	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedPtr<Pipeline>& pipeline, const lib::SharedPtr<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx);
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx);
 
 private:
 

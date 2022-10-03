@@ -26,7 +26,7 @@ void DescriptorSetsManager::BeginFrame()
 	m_persistentDescriptorSets.UpdatePersistentDescriptors();
 }
 
-rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedPtr<Pipeline>& pipeline, const lib::SharedPtr<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx)
+rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx)
 {
 	SPT_PROFILER_FUNCTION();
 

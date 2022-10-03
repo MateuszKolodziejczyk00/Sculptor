@@ -23,11 +23,11 @@ Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTex
 	GetRHI().SetName(name.Get());
 }
 
-lib::SharedPtr<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const
+lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return std::make_shared<TextureView>(name, shared_from_this(), viewDefinition);
+	return lib::Ref(std::make_shared<TextureView>(name, shared_from_this(), viewDefinition));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

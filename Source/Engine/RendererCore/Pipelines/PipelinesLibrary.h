@@ -78,7 +78,7 @@ lib::SharedRef<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID 
 	const auto foundCachedPipeline = cachedPipelines.find(id);
 	if (foundCachedPipeline != std::cend(cachedPipelines))
 	{
-		return foundCachedPipeline->second;
+		return lib::Ref(foundCachedPipeline->second);
 	}
 
 	//before we start searching for pipeline in pipelines pending flush, we need to get exclusive access
@@ -87,7 +87,7 @@ lib::SharedRef<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID 
 	const auto foundPendingPipeline = pipelinesPendingFlush.find(id);
 	SPT_CHECK(foundPendingPipeline != std::cend(pipelinesPendingFlush));
 
-	return foundPendingPipeline->second;
+	return lib::Ref(foundPendingPipeline->second);
 }
 
 template<typename TPipelineType>

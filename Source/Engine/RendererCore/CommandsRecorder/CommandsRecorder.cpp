@@ -47,7 +47,7 @@ void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, co
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
-	CommandQueueExecutor executor(m_commandsBuffer);
+	CommandQueueExecutor executor(lib::Ref(m_commandsBuffer));
 	m_commandQueue.ExecuteAndReset(executor);
 
 	m_commandsBuffer->FinishRecording();
@@ -105,7 +105,7 @@ void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 	const lib::SharedPtr<GraphicsPipeline> pipeline = Renderer::GetPipelinesLibrary().GetGraphicsPipeline(pipelineID);
 	SPT_CHECK(!!pipeline);
 
-	m_pipelineState.BindGraphicsPipeline(pipeline);
+	m_pipelineState.BindGraphicsPipeline(lib::Ref(pipeline));
 
 	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
@@ -132,7 +132,7 @@ void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 	const lib::SharedPtr<ComputePipeline> pipeline = Renderer::GetPipelinesLibrary().GetComputePipeline(pipelineID);
 	SPT_CHECK(!!pipeline);
 
-	m_pipelineState.BindComputePipeline(pipeline);
+	m_pipelineState.BindComputePipeline(lib::Ref(pipeline));
 
 	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {

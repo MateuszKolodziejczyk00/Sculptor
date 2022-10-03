@@ -29,7 +29,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateTexture(GetName(), texture);
+		context.UpdateTexture(GetName(), lib::Ref(texture));
 	}
 
 	virtual void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const final
@@ -99,14 +99,14 @@ void SculptorEdApplication::OnRun()
 
 	ui::UIContextManager::SetGlobalContext(context);
 
-	uiBackend = rdr::ResourcesManager::CreateUIBackend(context, m_window);
+	uiBackend = rdr::ResourcesManager::CreateUIBackend(context, lib::Ref(m_window));
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
 	{
 		lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
-		recorder->InitializeUIFonts(uiBackend);
+		recorder->InitializeUIFonts(lib::Ref(uiBackend));
 
 		const lib::SharedRef<rdr::Context> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
 
@@ -263,11 +263,11 @@ void SculptorEdApplication::RenderFrame()
 
 			recorder->BindComputePipeline(computePipelineID);
 
-			recorder->BindDescriptorSetState(ds);
+			recorder->BindDescriptorSetState(lib::Ref(ds));
 
 			recorder->Dispatch(math::Vector3u(1, 1, 1));
 
-			recorder->UnbindDescriptorSetState(ds);
+			recorder->UnbindDescriptorSetState(lib::Ref(ds));
 		}
 
 		rhi::TextureViewDefinition viewDefinition;
@@ -291,7 +291,7 @@ void SculptorEdApplication::RenderFrame()
 
 			recorder->BeginRendering(renderingDef);
 
-			recorder->RenderUI(uiBackend);
+			recorder->RenderUI(lib::Ref(uiBackend));
 
 			recorder->EndRendering();
 		}
