@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 
@@ -12,7 +12,7 @@ class BufferView;
 class TextureView;
 
 
-class RENDERER_TYPES_API DescriptorSetWriter
+class RENDERER_CORE_API DescriptorSetWriter
 {
 public:
 

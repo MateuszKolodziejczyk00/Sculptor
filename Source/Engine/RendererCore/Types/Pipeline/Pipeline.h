@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RendererResource.h"
 #include "RHIBridge/RHIPipelineImpl.h"
 #include "ShaderMetaData.h"
@@ -13,7 +13,7 @@ namespace spt::rdr
 class Shader;
 
 
-class RENDERER_TYPES_API Pipeline : public RendererResource<rhi::RHIPipeline>
+class RENDERER_CORE_API Pipeline : public RendererResource<rhi::RHIPipeline>
 {
 protected:
 

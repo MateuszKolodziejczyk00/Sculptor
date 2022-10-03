@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHISemaphoreImpl.h"
 
@@ -13,7 +13,7 @@ class Semaphore;
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererResourceName ==========================================================================
 
-struct RENDERER_TYPES_API RendererResourceName
+struct RENDERER_CORE_API RendererResourceName
 {
 public:
 
@@ -61,7 +61,7 @@ private:
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // SemaphoresArray ===============================================================================
 
-class RENDERER_TYPES_API SemaphoresArray
+class RENDERER_CORE_API SemaphoresArray
 {
 public:
 
@@ -81,7 +81,7 @@ private:
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererUtils =================================================================================
 
-class RENDERER_TYPES_API RendererUtils
+class RENDERER_CORE_API RendererUtils
 {
 public:
 

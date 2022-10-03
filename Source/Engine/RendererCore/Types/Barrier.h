@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIBarrierImpl.h"
 
@@ -8,7 +8,7 @@
 namespace spt::rdr
 {
 
-class RENDERER_TYPES_API Barrier
+class RENDERER_CORE_API Barrier
 {
 public:
 

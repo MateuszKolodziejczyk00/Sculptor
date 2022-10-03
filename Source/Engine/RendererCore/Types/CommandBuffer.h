@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
 #include "RendererResource.h"
 #include "SculptorCoreTypes.h"
@@ -19,7 +19,7 @@ namespace spt::rdr
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API CommandBuffer : public RendererResource<rhi::RHICommandBuffer>
+class RENDERER_CORE_API CommandBuffer : public RendererResource<rhi::RHICommandBuffer>
 {
 protected:
 

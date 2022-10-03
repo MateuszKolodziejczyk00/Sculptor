@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHIUIBackendImpl.h"
 #include "SculptorCoreTypes.h"
 #include "RendererResource.h"
@@ -13,7 +13,7 @@ namespace spt::rdr
 class Window;
 
 
-class RENDERER_TYPES_API UIBackend : public RendererResource<rhi::RHIUIBackend>
+class RENDERER_CORE_API UIBackend : public RendererResource<rhi::RHIUIBackend>
 {
 protected:
 

@@ -7,7 +7,7 @@
 namespace spt::rdr
 {
 
-class RENDERER_TYPES_API ComputePipeline : public Pipeline
+class RENDERER_CORE_API ComputePipeline : public Pipeline
 {
 public:
 

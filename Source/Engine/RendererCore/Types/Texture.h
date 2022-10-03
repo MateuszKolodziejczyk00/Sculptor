@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHITextureImpl.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
@@ -19,7 +19,7 @@ namespace spt::rdr
 class TextureView;
 
 
-class RENDERER_TYPES_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>
+class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>
 {
 protected:
 
@@ -34,7 +34,7 @@ public:
 };
 
 
-class RENDERER_TYPES_API TextureView : public RendererResource<rhi::RHITextureView>
+class RENDERER_CORE_API TextureView : public RendererResource<rhi::RHITextureView>
 {
 protected:
 

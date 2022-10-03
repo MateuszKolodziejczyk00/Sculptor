@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIProfilerImpl.h"
 #include "GPUProfiler.h"
@@ -13,7 +13,7 @@ class Window;
 class CommandBuffer;
 
 
-class RENDERER_TYPES_API GPUProfiler
+class RENDERER_CORE_API GPUProfiler
 {
 public:
 

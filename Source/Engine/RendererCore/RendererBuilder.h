@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIBufferTypes.h"
 #include "RHIBridge/RHIFwd.h"
@@ -44,7 +44,7 @@ class GraphicsPipeline;
 class ComputePipeline;
 
 
-class RENDERER_TYPES_API RendererBuilder
+class RENDERER_CORE_API RendererBuilder
 {
 public:
 

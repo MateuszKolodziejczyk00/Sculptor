@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHISemaphoreImpl.h"
 #include "RendererResource.h"
 
@@ -17,7 +17,7 @@ namespace spt::rdr
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API Semaphore : public RendererResource<rhi::RHISemaphore>
+class RENDERER_CORE_API Semaphore : public RendererResource<rhi::RHISemaphore>
 {
 protected:
 

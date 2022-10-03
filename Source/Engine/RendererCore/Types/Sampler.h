@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHISamplerImpl.h"
 #include "SculptorCoreTypes.h"
 #include "RendererResource.h"
@@ -9,7 +9,7 @@
 namespace spt::rdr
 {
 
-class RENDERER_TYPES_API Sampler : public RendererResource<rhi::RHISampler>
+class RENDERER_CORE_API Sampler : public RendererResource<rhi::RHISampler>
 {
 protected:
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHIWindowImpl.h"
 #include "SculptorCoreTypes.h"
 #include "RendererResource.h"
@@ -16,7 +16,7 @@ class Texture;
 class SemaphoresArray;
 
 
-class RENDERER_TYPES_API Window : public RendererResource<rhi::RHIWindow>
+class RENDERER_CORE_API Window : public RendererResource<rhi::RHIWindow>
 {
 protected:
 

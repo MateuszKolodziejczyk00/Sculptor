@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "ShaderMetaDataTypes.h"
@@ -31,7 +31,7 @@ enum class EDescriptorSetStateFlags
 };
 
 
-class RENDERER_TYPES_API DescriptorSetUpdateContext
+class RENDERER_CORE_API DescriptorSetUpdateContext
 {
 public:
 
@@ -50,7 +50,7 @@ private:
 };
 
 
-class RENDERER_TYPES_API DescriptorSetBinding abstract
+class RENDERER_CORE_API DescriptorSetBinding abstract
 {
 public:
 
@@ -81,7 +81,7 @@ private:
 /**
  * Base class for all descriptor set states
  */
-class RENDERER_TYPES_API DescriptorSetState abstract
+class RENDERER_CORE_API DescriptorSetState abstract
 {
 public:
 

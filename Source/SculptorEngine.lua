@@ -24,7 +24,6 @@ IncludeProject("ShaderMetaData")
 IncludeProject("ShaderCompiler")
 
 SetProjectsSubgroupName("Graphics/Rendering")
-IncludeProject("RendererTypes")
 IncludeProject("RendererCore")
 
 SetProjectsSubgroupName("Tools")

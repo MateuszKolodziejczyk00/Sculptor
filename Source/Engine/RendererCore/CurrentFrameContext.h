@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
 
@@ -11,7 +11,7 @@ namespace spt::rdr
 class Semaphore;
 
 
-class RENDERER_TYPES_API CurrentFrameContext
+class RENDERER_CORE_API CurrentFrameContext
 {
 public:
 

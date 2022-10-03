@@ -25,7 +25,9 @@ enum class EAxisAddressingMode
 
 enum class ESamplerFlags
 {
-	None	= 0
+	None			= 0,
+
+	Persistent		= BIT(10)
 };
 
 
@@ -108,3 +110,31 @@ struct SamplerDefinition
 };
 
 } // spt::rhi
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::rhi::SamplerDefinition>
+{
+    size_t operator()(const spt::rhi::SamplerDefinition& samplerDef) const
+    {
+		return spt::lib::HashCombine(samplerDef.flags,
+									 samplerDef.minificationFilter,
+									 samplerDef.magnificationFilter,
+									 samplerDef.mipMapAdressingMode,
+									 samplerDef.addressingModeU,
+									 samplerDef.addressingModeV,
+									 samplerDef.addressingModeW,
+									 samplerDef.mipLodBias,
+									 samplerDef.enableAnisotropy,
+									 samplerDef.maxAnisotropy,
+									 samplerDef.minLod,
+									 samplerDef.maxLod,
+									 samplerDef.borderColor,
+									 samplerDef.unnormalizedCoords);
+    }
+};
+
+} // std

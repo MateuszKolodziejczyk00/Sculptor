@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIShaderModuleImpl.h"
 #include "ShaderMetaData.h"
@@ -11,7 +11,7 @@ namespace spt::rdr
 
 struct RendererResourceName;
 
-class RENDERER_TYPES_API Shader
+class RENDERER_CORE_API Shader
 {
 public:
 

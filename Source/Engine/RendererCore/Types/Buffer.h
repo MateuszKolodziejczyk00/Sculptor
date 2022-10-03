@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypesMacros.h"
+#include "RendererCoreMacros.h"
 #include "RHIBridge/RHIBufferImpl.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
@@ -19,7 +19,7 @@ class BufferView;
 struct RendererResourceName;
 
 
-class RENDERER_TYPES_API Buffer : public RendererResource<rhi::RHIBuffer>, public lib::SharedFromThis<Buffer>
+class RENDERER_CORE_API Buffer : public RendererResource<rhi::RHIBuffer>, public lib::SharedFromThis<Buffer>
 {
 protected:
 
@@ -33,7 +33,7 @@ public:
 };
 
 
-class RENDERER_TYPES_API BufferView
+class RENDERER_CORE_API BufferView
 {
 public:
 
