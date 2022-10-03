@@ -22,6 +22,7 @@ struct CommandBufferDefinition;
 struct ShaderModuleDefinition;
 struct GraphicsPipelineDefinition;
 struct ShaderModuleDefinition;
+struct SamplerDefinition;
 } // spt::rhi
 
 
@@ -50,6 +51,7 @@ class CommandBuffer;
 class Shader;
 class GraphicsPipeline;
 class ComputePipeline;
+class Sampler;
 
 
 class RENDERER_CORE_API ResourcesManager
@@ -81,6 +83,8 @@ public:
 	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	GetComputePipeline(PipelineStateID id);
 
 	SPT_NODISCARD static DescriptorSetWriter				CreateDescriptorSetWriter();
+
+	SPT_NODISCARD static lib::SharedRef<Sampler>			CreateSampler(const rhi::SamplerDefinition& def);
 
 private:
 

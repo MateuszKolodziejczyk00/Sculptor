@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
+#include "Samplers/SamplersCache.h"
 #include "Types/Context.h"
 #include "Types/Buffer.h"
 #include "Types/Texture.h"
@@ -90,6 +91,11 @@ lib::SharedRef<GraphicsPipeline> ResourcesManager::GetGraphicsPipeline(PipelineS
 lib::SharedRef<ComputePipeline> ResourcesManager::GetComputePipeline(PipelineStateID id)
 {
 	return Renderer::GetPipelinesLibrary().GetComputePipeline(id);
+}
+
+lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)
+{
+	return Renderer::GetSamplersCache().GetOrCreateSampler(def);
 }
 
 } // spt::rdr

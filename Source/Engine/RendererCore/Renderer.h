@@ -14,6 +14,7 @@ class CommandsRecorder;
 class ShadersManager;
 class PipelinesLibrary;
 class DescriptorSetsManager;
+class SamplersCache;
 class Window;
 class Context;
 
@@ -45,6 +46,8 @@ public:
 	static PipelinesLibrary&					GetPipelinesLibrary();
 
 	static DescriptorSetsManager&				GetDescriptorSetsManager();
+
+	static SamplersCache&						GetSamplersCache();
 
 	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands();
 

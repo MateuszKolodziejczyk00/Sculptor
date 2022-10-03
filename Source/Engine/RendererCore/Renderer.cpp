@@ -8,6 +8,7 @@
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
 #include "DescriptorSets/DescriptorSetsManager.h"
+#include "Samplers/SamplersCache.h"
 #include "Profiler/GPUProfiler.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
@@ -32,6 +33,8 @@ PipelinesLibrary pipelinesLibrary;
 
 DescriptorSetsManager descriptorSetsManager;
 
+SamplersCache samplersCache;
+
 };
 
 static RendererData g_data;
@@ -53,6 +56,8 @@ void Renderer::Initialize()
 	GetShadersManager().Initialize();
 
 	GetDescriptorSetsManager().Initialize();
+
+	GetSamplersCache().Initialize();
 }
 
 void Renderer::PostCreatedWindow()
@@ -64,6 +69,8 @@ void Renderer::PostCreatedWindow()
 
 void Renderer::Uninitialize()
 {
+	GetSamplersCache().Uninitialize();
+
 	GetPipelinesLibrary().ClearCachedPipelines();
 
 	GetDescriptorSetsManager().Uninitialize();
@@ -84,6 +91,8 @@ void Renderer::BeginFrame()
 	CurrentFrameContext::BeginFrame();
 
 	GetDescriptorSetsManager().BeginFrame();
+
+	GetSamplersCache().FlushPendingSamplers();
 }
 
 void Renderer::EndFrame()
@@ -108,6 +117,11 @@ PipelinesLibrary& Renderer::GetPipelinesLibrary()
 DescriptorSetsManager& Renderer::GetDescriptorSetsManager()
 {
 	return priv::g_data.descriptorSetsManager;
+}
+
+SamplersCache& Renderer::GetSamplersCache()
+{
+	return priv::g_data.samplersCache;
 }
 
 lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands()
