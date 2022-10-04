@@ -43,7 +43,6 @@ namespace spt::rdr
 
 class Context;
 class Window;
-class UIBackend;
 class Buffer;
 class Texture;
 class Semaphore;
@@ -61,8 +60,6 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Context>			CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 	
 	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
-
-	SPT_NODISCARD static lib::SharedRef<UIBackend>			CreateUIBackend(ui::UIContext context, const lib::SharedRef<Window>& window);
 	
 	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
 	SPT_NODISCARD static lib::SharedRef<Texture>			CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);

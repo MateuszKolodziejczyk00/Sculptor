@@ -3,8 +3,7 @@
 #include "RendererCoreMacros.h"
 #include "RHIBridge/RHIUIBackendImpl.h"
 #include "SculptorCoreTypes.h"
-#include "RendererResource.h"
-#include "UITypes.h"
+#include "UIContext.h"
 
 
 namespace spt::rdr
@@ -13,19 +12,28 @@ namespace spt::rdr
 class Window;
 
 
-class RENDERER_CORE_API UIBackend : public RendererResource<rhi::RHIUIBackend>
+class RENDERER_CORE_API UIBackend
 {
-protected:
-
-	using ResourceType = RendererResource<rhi::RHIUIBackend>;
-
 public:
 
-	UIBackend(ui::UIContext context, const lib::SharedRef<Window>& window);
+	static void Initialize(ui::UIContext context, const lib::SharedRef<Window>& window);
+	static void Uninitialize();
 
-	void						BeginFrame();
+	static Bool IsValid();
 
-	void						DestroyFontsTemporaryObjects();
+	static void	BeginFrame();
+
+	static void	DestroyFontsTemporaryObjects();
+
+	static rhi::RHIUIBackend&	GetRHI();
+	
+private:
+
+	UIBackend() = default;
+
+	static UIBackend&			GetInstance();
+
+	rhi::RHIUIBackend m_rhiBackend;
 };
 
-}
+} // spt::rdr

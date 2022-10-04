@@ -72,9 +72,9 @@ public:
 
 	void									CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
-	void									InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend);
+	void									InitializeUIFonts();
 
-	void									RenderUI(const lib::SharedRef<rdr::UIBackend>& uiBackend);
+	void									RenderUI();
 
 private:
 

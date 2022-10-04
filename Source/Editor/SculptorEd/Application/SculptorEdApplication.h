@@ -31,7 +31,6 @@ private:
 	void RenderFrame();
 
 	lib::SharedPtr<rdr::Window> m_window;
-	lib::SharedPtr<rdr::UIBackend> uiBackend;
 };
 
 }

@@ -196,27 +196,27 @@ void CommandsRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const 
 						 });
 }
 
-void CommandsRecorder::InitializeUIFonts(const lib::SharedRef<rdr::UIBackend>& uiBackend)
+void CommandsRecorder::InitializeUIFonts()
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsBuildingCommands());
 
-	EnqueueRenderCommand([uiBackend](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
-							 uiBackend->GetRHI().InitializeFonts(cmdBuffer->GetRHI());
+							 UIBackend::GetRHI().InitializeFonts(cmdBuffer->GetRHI());
 						 });
 }
 
-void CommandsRecorder::RenderUI(const lib::SharedRef<rdr::UIBackend>& uiBackend)
+void CommandsRecorder::RenderUI()
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsBuildingCommands());
 
-	EnqueueRenderCommand([uiBackend](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
-							 uiBackend->GetRHI().Render(cmdBuffer->GetRHI());
+							 UIBackend::GetRHI().Render(cmdBuffer->GetRHI());
 						 });
 }
 

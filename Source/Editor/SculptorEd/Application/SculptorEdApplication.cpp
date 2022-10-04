@@ -99,14 +99,14 @@ void SculptorEdApplication::OnRun()
 
 	ui::UIContextManager::SetGlobalContext(context);
 
-	uiBackend = rdr::ResourcesManager::CreateUIBackend(context, lib::Ref(m_window));
+	rdr::UIBackend::Initialize(context, lib::Ref(m_window));
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
 	{
 		lib::UniquePtr<rdr::CommandsRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
-		recorder->InitializeUIFonts(lib::Ref(uiBackend));
+		recorder->InitializeUIFonts();
 
 		const lib::SharedRef<rdr::Context> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("InitUIContext"), rhi::ContextDefinition());
 
@@ -123,7 +123,7 @@ void SculptorEdApplication::OnRun()
 
 		rdr::Renderer::WaitIdle();
 
-		uiBackend->DestroyFontsTemporaryObjects();
+		rdr::UIBackend::DestroyFontsTemporaryObjects();
 	}
 
 	lib::TickingTimer timer;
@@ -159,7 +159,7 @@ void SculptorEdApplication::OnRun()
 
 		m_window->BeginFrame();
 
-		uiBackend->BeginFrame();
+		rdr::UIBackend::BeginFrame();
 
 		ImGui::NewFrame();
 
@@ -209,7 +209,7 @@ void SculptorEdApplication::OnShutdown()
 	ds->u_texture.Reset();
 	texture.reset();
 
-	uiBackend.reset();
+	rdr::UIBackend::Uninitialize();
 
 	rdr::Renderer::WaitIdle();
 	
@@ -291,7 +291,7 @@ void SculptorEdApplication::RenderFrame()
 
 			recorder->BeginRendering(renderingDef);
 
-			recorder->RenderUI(lib::Ref(uiBackend));
+			recorder->RenderUI();
 
 			recorder->EndRendering();
 		}
