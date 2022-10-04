@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RHIDescriptorTypes.h"
+#include "RHIDescriptorSetDefinition.h"
 
 namespace spt::rhi
 {

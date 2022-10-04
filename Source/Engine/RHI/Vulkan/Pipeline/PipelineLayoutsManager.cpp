@@ -87,12 +87,14 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 
 	for (const rhi::DescriptorSetBindingDefinition& bindingDef : dsDef.bindings)
 	{
+		const VkSampler immutableSampler = bindingDef.immutableSampler.IsValid() ? bindingDef.immutableSampler.GetHandle() : VK_NULL_HANDLE;
+
 		VkDescriptorSetLayoutBinding bindingInfo{};
 		bindingInfo.binding				= bindingDef.bindingIdx;
 		bindingInfo.descriptorType		= RHIToVulkan::GetDescriptorType(bindingDef.descriptorType);
 		bindingInfo.descriptorCount		= bindingDef.descriptorCount;
 		bindingInfo.stageFlags			= RHIToVulkan::GetShaderStages(bindingDef.shaderStages);
-		bindingInfo.pImmutableSamplers	= nullptr; // Currently not supported
+		bindingInfo.pImmutableSamplers = immutableSampler ? &immutableSampler : VK_NULL_HANDLE;
 
 		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
 

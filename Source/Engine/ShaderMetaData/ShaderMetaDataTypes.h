@@ -23,20 +23,33 @@ enum class EBindingType : Uint32
 
 enum class EBindingFlags : Flags32
 {
-	None			= 0,
-	Invalid			= BIT(0),
+	None				= 0,
+	Invalid				= BIT(0),
 
-	Unbound			= BIT(1),
-	DynamicOffset	= BIT(2),
-	TexelBuffer		= BIT(3),
-	Storage			= BIT(4),
+	Unbound				= BIT(1),
+	DynamicOffset		= BIT(2),
+	TexelBuffer			= BIT(3),
+	Storage				= BIT(4),
+
+	// Immutable samplers
+	ImmutableSampler	= BIT(11),
+	ClampAddressing		= BIT(12), // if 1 clamp addressing, otherwise repeat
+	MirroredAddressing	= BIT(13), // if 1 and ClampAdressing is 0 mirrored repeat
+	ClampToBorder		= MirroredAddressing, // if 1 and ClampAdressing is 1 clamp to Border
+	MipMapsLinear		= BIT(14), // if 1 linear mip maps, otherwise nearest
+	FilterLinear		= BIT(15), // if 1 linear filter, otherwise nearest
+	EnableAnisotropy	= BIT(16), // if 1 anisotropy x16, otherwise disabled
+	WhiteBorder			= BIT(17), // if 1 white border, otherwise black
+	TransparentBorder	= BIT(18), // if 1 transparent border, otherwise opaque
+	IntBorder			= BIT(19), // if 1 int border, otherwise float
+	UnnormalizedCoords	= BIT(20), // if 1 enable unnormalized coordinates
 
 	// Shader stages
-	VertexShader	= BIT(21),
-	FragmentShader	= BIT(22),
-	ComputeShader	= BIT(23),
+	VertexShader		= BIT(21),
+	FragmentShader		= BIT(22),
+	ComputeShader		= BIT(23),
 
-	AllShaders		= VertexShader | FragmentShader | ComputeShader
+	AllShaders			= VertexShader | FragmentShader | ComputeShader
 };
 
 
@@ -334,6 +347,15 @@ struct GenericShaderBinding
 		return std::visit([flags](auto& data)
 						  {
 							  return data.AddFlag(flags);
+						  },
+						  m_data);
+	}
+
+	EBindingFlags GetFlags() const
+	{
+		return std::visit([](const auto& data)
+						  {
+							  return data.flags;
 						  },
 						  m_data);
 	}
