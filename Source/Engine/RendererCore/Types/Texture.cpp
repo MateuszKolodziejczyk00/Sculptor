@@ -23,6 +23,21 @@ Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTex
 	GetRHI().SetName(name.Get());
 }
 
+const rhi::TextureDefinition& Texture::GetDefinition() const
+{
+	return GetRHI().GetDefinition();
+}
+
+const math::Vector3u& Texture::GetResolution() const
+{
+	return GetDefinition().resolution;
+}
+
+math::Vector2u Texture::GetResolution2D() const
+{
+	return GetResolution().head<2>();
+}
+
 lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const
 {
 	SPT_PROFILER_FUNCTION();

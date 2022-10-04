@@ -1,6 +1,8 @@
 #include "UIBackend.h"
 #include "Window.h"
 #include "CurrentFrameContext.h"
+#include "Texture.h"
+#include "Sampler.h"
 
 namespace spt::rdr
 {
@@ -35,6 +37,13 @@ void UIBackend::DestroyFontsTemporaryObjects()
 	SPT_PROFILER_FUNCTION();
 
 	GetRHI().DestroyFontsTemporaryObjects();
+}
+
+ui::TextureID UIBackend::GetUITextureID(const lib::SharedRef<TextureView>& texture, const lib::SharedRef<Sampler>& sampler)
+{
+	SPT_PROFILER_FUNCTION();
+
+	return GetRHI().GetUITexture(texture->GetRHI(), sampler->GetRHI());
 }
 
 rhi::RHIUIBackend& UIBackend::GetRHI()

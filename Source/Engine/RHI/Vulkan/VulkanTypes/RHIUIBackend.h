@@ -3,8 +3,9 @@
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
-#include "UIContext.h"
 #include "Vulkan/DescriptorSets/DescriptorPool.h"
+#include "UIContext.h"
+#include "UITypes.h"
 
 
 namespace spt::vulkan
@@ -12,6 +13,8 @@ namespace spt::vulkan
 
 class RHIWindow;
 class RHICommandBuffer;
+class RHITextureView;
+class RHISampler;
 
 
 class RHI_API RHIUIBackend
@@ -32,6 +35,8 @@ public:
 	void				BeginFrame();
 
 	void				Render(const RHICommandBuffer& cmdBuffer);
+
+	ui::TextureID		GetUITexture(const RHITextureView& textureView, const RHISampler& sampler);
 
 private:
 

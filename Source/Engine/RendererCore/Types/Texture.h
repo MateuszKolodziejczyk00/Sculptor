@@ -30,6 +30,10 @@ public:
 	Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 	Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture);
 
+	const rhi::TextureDefinition&	GetDefinition() const;
+	const math::Vector3u&			GetResolution() const;
+	math::Vector2u					GetResolution2D() const;
+
 	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const;
 };
 

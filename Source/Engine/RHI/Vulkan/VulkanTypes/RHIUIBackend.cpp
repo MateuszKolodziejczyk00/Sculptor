@@ -1,6 +1,8 @@
 #include "RHIUIBackend.h"
 #include "imgui_impl_vulkan.h"
 #include "RHIWindow.h"
+#include "RHISampler.h"
+#include "RHITexture.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Device/LogicalDevice.h"
 #include "RHICommandBuffer.h"
@@ -105,6 +107,16 @@ void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 	VulkanRHI::EnableValidationWarnings(false);
 	ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer.GetHandle());
 	VulkanRHI::EnableValidationWarnings(true);
+}
+
+ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, const RHISampler& sampler)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(textureView.IsValid());
+	SPT_CHECK(sampler.IsValid());
+
+	return ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void RHIUIBackend::InitializeDescriptorPool()

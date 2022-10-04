@@ -14,6 +14,7 @@
 #include "Types/DescriptorSetState.h"
 #include "Common/ShaderCompilationInput.h"
 #include "ImGui/SculptorImGui.h"
+#include "Types/Sampler.h"
 
 
 namespace spt::ed
@@ -59,6 +60,7 @@ DS_END()
 
 lib::SharedPtr<TestDS> ds;
 lib::SharedPtr<rdr::Texture> texture;
+ui::TextureID uiTextureID;
 rdr::PipelineStateID computePipelineID;
 
 SculptorEdApplication::SculptorEdApplication()
@@ -131,7 +133,7 @@ void SculptorEdApplication::OnRun()
 	{
 		rhi::TextureDefinition textureDef;
 		textureDef.resolution = math::Vector3u(1920, 1080, 1);
-		textureDef.usage = rhi::ETextureUsage::StorageTexture;
+		textureDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
 
 		rhi::TextureViewDefinition viewDef;
 		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
@@ -139,7 +141,13 @@ void SculptorEdApplication::OnRun()
 		ds = lib::MakeShared<TestDS>(rdr::EDescriptorSetStateFlags::Persistent);
 
 		texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
-		ds->u_texture.Set(texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef));
+		const lib::SharedRef<rdr::TextureView> textureView = texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef);
+
+		ds->u_texture.Set(textureView);
+
+		const rhi::SamplerDefinition samplerDef(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::Repeat);
+		const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
+		uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
 	}
 
 	while (true)
@@ -182,7 +190,7 @@ void SculptorEdApplication::OnRun()
 		ImGui::End();
 
 		ImGui::Begin("ASD");
-		ImGui::Text("TESTSDasd");
+		ImGui::Image(uiTextureID,  math::Vector2f(texture->GetResolution2D().cast<Real32>()));
 		ImGui::End();
 
 		ImGui::Render();
@@ -265,9 +273,17 @@ void SculptorEdApplication::RenderFrame()
 
 			recorder->BindDescriptorSetState(lib::Ref(ds));
 
-			recorder->Dispatch(math::Vector3u(1, 1, 1));
+			recorder->Dispatch(math::Vector3u(20, 20, 20));
 
 			recorder->UnbindDescriptorSetState(lib::Ref(ds));
+		}
+
+		{
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
+			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::FragmentReadOnly);
+
+			recorder->ExecuteBarrier(std::move(barrier));
 		}
 
 		rhi::TextureViewDefinition viewDefinition;
