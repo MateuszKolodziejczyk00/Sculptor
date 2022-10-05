@@ -33,7 +33,7 @@ public:
 		context.UpdateTexture(GetName(), lib::Ref(texture));
 	}
 
-	virtual void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const final
+	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
 	{
 		binding.Set(smd::TextureBindingData(1, smd::EBindingFlags::Storage));
 	}
@@ -214,7 +214,7 @@ void SculptorEdApplication::OnShutdown()
 {
 	Super::OnShutdown();
 
-	ds->u_texture.Reset();
+	ds.reset();
 	texture.reset();
 
 	rdr::UIBackend::Uninitialize();

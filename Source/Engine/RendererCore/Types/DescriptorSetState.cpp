@@ -139,4 +139,26 @@ void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
 	m_descriptorSetHash = hash;
 }
 
+void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
+{
+	m_dynamicOffsets.reserve(dynamicOffsetsNum);
+}
+
+Uint32* DescriptorSetState::AddDynamicOffset()
+{
+	const Uint32* prevDataPtr = m_dynamicOffsets.data();
+
+	Uint32& newOffset = m_dynamicOffsets.emplace_back(0);
+
+	// make sure that array wasn't deallocated as this would result in dangling pointers in bindings to their offsets
+	SPT_CHECK(prevDataPtr == m_dynamicOffsets.data());
+
+	return &newOffset;
+}
+
+const lib::DynamicArray<Uint32>& DescriptorSetState::GetDynamicOffsets() const
+{
+	return m_dynamicOffsets;
+}
+
 } // spt::rdr
