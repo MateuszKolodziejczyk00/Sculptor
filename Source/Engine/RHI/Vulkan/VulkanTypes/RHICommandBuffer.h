@@ -45,13 +45,13 @@ public:
 
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
-	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
+	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets);
 
 	// Compute rendering ====================================
 
 	void	BindComputePipeline(const RHIPipeline& pipeline);
 
-	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
+	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets);
 
 	void	Dispatch(const math::Vector3u& groupCount);
 
@@ -62,7 +62,7 @@ public:
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
-	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx);
+	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets);
 
 	VkCommandBuffer					m_cmdBufferHandle;
 

@@ -224,9 +224,9 @@ void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 }
 
-void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
 {
-	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx);
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx, dynamicOffsets);
 }
 
 void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
@@ -234,9 +234,9 @@ void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 }
 
-void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
 {
-	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx);
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx, dynamicOffsets);
 }
 
 void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
@@ -317,7 +317,7 @@ void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHI
 	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
 }
 
-void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx)
+void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -329,7 +329,7 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	const PipelineLayout& layout = pipeline.GetPipelineLayout();
 	VkDescriptorSet dsHandle = ds.GetHandle();
 
-	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, 0, nullptr);
+	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, static_cast<Uint32>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
 } // spt::vulkan
