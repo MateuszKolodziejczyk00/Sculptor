@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "ShaderMetaDataTypes.h"
+#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefRegistration.h"
 
 
 namespace spt::smd
@@ -304,6 +305,10 @@ public:
 												InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum(bindingsDef));											\
 												rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 											}																															\
+											static lib::HashedString GetDescriptorSetName()																				\
+											{																															\
+												return #className;																										\
+											}																															\
 											template<typename TBindingType>																								\
 											TBindingType* ReflGetBindingImpl()																							\
 											{																															\
@@ -339,6 +344,7 @@ public:
 															   binding.UpdateDescriptors(context);													\
 														   });																						\
 					}																																\
+					inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;									\
 					};
 
 #define DS_STAGES(...) lib::Flags<rhi::EShaderStageFlags>(__VA_ARGS__)
@@ -511,5 +517,25 @@ constexpr lib::StaticArray<char, Size> BuildDescriptorSetShaderCode()
 }
 
 } // bindings_refl
+
+
+template<typename TDSStateType>
+class DescriptorSetStateCompilationDefRegistration : public sc::DescriptorSetCompilationDefRegistration
+{
+public:
+
+	DescriptorSetStateCompilationDefRegistration()
+		: sc::DescriptorSetCompilationDefRegistration(TDSStateType::GetDescriptorSetName(), BuildDSCode())
+	{ }
+
+private:
+
+	static lib::String BuildDSCode()
+	{
+		constexpr SizeType CodeSize = bindings_refl::GetDescriptorSetShaderCodeSize<TDSStateType>();
+		constexpr lib::StaticArray<char, CodeSize> CodeArray = bindings_refl::BuildDescriptorSetShaderCode<TDSStateType, CodeSize>();
+		return lib::String(std::cbegin(CodeArray), std::cend(CodeArray));
+	}
+};
 
 } // spt::rdr

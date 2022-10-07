@@ -60,7 +60,7 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 	// clear previous indices - every time we find all of them
 	m_dsIdxPositions.clear();
 
-	static const std::regex dsIdxRegex(R"~(vk::binding(\d+\s*,\s*X\s*))~");
+	static const std::regex dsIdxRegex(R"~(vk::binding\(\d+\s*,\s*X\s*\))~");
 		
 	auto dsIndicesIt = std::sregex_iterator(std::cbegin(m_shaderCode), std::cend(m_shaderCode), dsIdxRegex);
 
