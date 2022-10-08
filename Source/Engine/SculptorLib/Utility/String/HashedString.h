@@ -61,6 +61,11 @@ public:
 		, m_stringView(rhs.m_stringView)
 	{ }
 
+	HashedString(ThisType&& rhs)
+		: m_key(rhs.m_key)
+		, m_stringView(rhs.m_stringView)
+	{ }
+
 	HashedString(StringView rhs)
 	{
 		m_key = DataBaseType::GetRecord(rhs, m_stringView);

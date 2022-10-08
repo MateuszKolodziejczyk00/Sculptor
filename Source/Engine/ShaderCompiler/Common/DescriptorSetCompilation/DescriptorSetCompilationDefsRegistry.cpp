@@ -66,7 +66,7 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 
 	SPT_CHECK(dsIndicesIt != std::sregex_iterator()); // no bindings found. Probably shouldn't be ever intended
 
-	while (dsIndicesIt != std::sregex_iterator())
+	for (; dsIndicesIt != std::sregex_iterator(); ++dsIndicesIt)
 	{
 		const std::smatch dsIdxMatch = *dsIndicesIt;
 		const lib::String dsIdxString = dsIdxMatch.str();

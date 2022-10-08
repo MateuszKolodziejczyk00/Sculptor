@@ -111,15 +111,15 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     instanceInfo.enabledExtensionCount = static_cast<Uint32>(extensionNames.size());
     instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
 
+#if VULKAN_VALIDATION
     const char* enabledLayers[] =
     {
-#if VULKAN_VALIDATION
         VULKAN_VALIDATION_LAYER_NAME
-#endif // VULKAN_VALIDATION
     };
 
     instanceInfo.enabledLayerCount = SPT_ARRAY_SIZE(enabledLayers);
     instanceInfo.ppEnabledLayerNames = enabledLayers;
+#endif // VULKAN_VALIDATION
 
     VulkanStructsLinkedList instanceInfoLinkedList(instanceInfo);
 
@@ -166,7 +166,9 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
     priv::VolkLoadInstance(priv::g_data.instance);
 
+#if VULKAN_VALIDATION
     priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
+#endif // VULKAN_VALIDATION
 
     priv::g_data.pipelineLayoutsManager.InitializeRHI();
 }
