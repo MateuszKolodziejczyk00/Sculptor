@@ -15,57 +15,14 @@
 #include "Common/ShaderCompilationInput.h"
 #include "ImGui/SculptorImGui.h"
 #include "Types/Sampler.h"
+#include "Bindings/StorageTextureBinding.h"
 
 
 namespace spt::ed
 {
 
-class StorageTextureBinding : public rdr::DescriptorSetBinding
-{
-public:
-
-	explicit StorageTextureBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
-		: rdr::DescriptorSetBinding(name, descriptorDirtyFlag)
-	{ }
-
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		context.UpdateTexture(GetName(), lib::Ref(texture));
-	}
-
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
-	{
-		binding.Set(smd::TextureBindingData(1, GetBindingFlags()));
-	}
-
-	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
-	{
-		return BuildBindingVariableCode(lib::String("RWTexture2D<float4> ") + name, bindingIdx);
-	}
-
-	static constexpr smd::EBindingFlags GetBindingFlags()
-	{
-		return smd::EBindingFlags::Storage;
-	}
-
-	void Set(const lib::SharedPtr<rdr::TextureView>& inTexture)
-	{
-		texture = inTexture;
-		MarkAsDirty();
-	}
-
-	void Reset()
-	{
-		texture.reset();
-	}
-
-private:
-
-	lib::SharedPtr<rdr::TextureView> texture;
-};
-
 DS_BEGIN(, TestDS, rhi::EShaderStageFlags::Compute)
-DS_BINDING(StorageTextureBinding, u_texture)
+DS_BINDING(rdr::StorageTexture2DBinding<math::Vector4f>, u_texture)
 DS_END()
 
 lib::SharedPtr<TestDS> ds;
