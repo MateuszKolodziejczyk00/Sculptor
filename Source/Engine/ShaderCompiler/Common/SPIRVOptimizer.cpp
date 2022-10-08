@@ -75,8 +75,7 @@ private:
 OptimizerImpl::OptimizerImpl()
 	: optimizer(GetTargetEnv())
 {
-	optimizer.RegisterLegalizationPasses()
-			 .RegisterPass(spvtools::CreateAggressiveDCEPass(true))
+	optimizer.RegisterPass(spvtools::CreateAggressiveDCEPass(true))
 			 .RegisterPass(spvtools::CreateEliminateDeadFunctionsPass())
 			 .RegisterPass(spvtools::CreateEliminateDeadConstantPass())
 			 .RegisterPass(spvtools::CreateLoopUnrollPass(true))

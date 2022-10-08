@@ -20,8 +20,11 @@ class ShaderFilePreprocessor
 {
 public:
 
-	static ShaderFilePreprocessingResult		PreprocessShaderFileSourceCode(const lib::String& sourceCode);
-	
+	static ShaderFilePreprocessingResult PreprocessShaderFileSourceCode(const lib::String& sourceCode);
+
+private:
+
+	static void PreprocessShaderSourceCode(lib::String& sourceCode);
 };
 
 }

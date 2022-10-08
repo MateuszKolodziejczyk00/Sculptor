@@ -1,5 +1,6 @@
 #include "ShaderFilePreprocessor.h"
 #include "RHI/RHICore/RHIShaderTypes.h"
+#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 
 #include <regex>
 
@@ -76,12 +77,37 @@ ShaderFilePreprocessingResult ShaderFilePreprocessor::PreprocessShaderFileSource
 			? lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + nextShaderBegin->prefix().length())
 			: lib::String(std::cbegin(sourceCode) + (sourceCode.size() - shadersBeginMacros->suffix().length()), std::cbegin(sourceCode) + sourceCode.size());
 
+		PreprocessShaderSourceCode(shaderSourceCodeString);
+
 		result.shaders.emplace_back(std::move(shaderSourceCodeString), shaderStage);
 
 		shadersBeginMacros = nextShaderBegin;
 	}
 
 	return result;
+}
+
+void ShaderFilePreprocessor::PreprocessShaderSourceCode(lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
+
+	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
+
+	while (descriptorSetIt != std::sregex_iterator())
+	{
+		const std::smatch descriptorSetMatch = *descriptorSetIt;
+		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
+		const lib::HashedString dsName = descriptorSetMatch[1].str();
+		const lib::String dsIdxStr = descriptorSetMatch[2].str();
+		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
+
+		const lib::String dsSourceCode = DescriptorSetCompilationDefsRegistry::GetDescriptorSetShaderSourceCode(dsName, dsIdx);
+		sourceCode.replace(descriptorSetIt->prefix().length(), descriptorSetMatch.length(), dsSourceCode);
+
+		descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
+	}
 }
 
 } // spt::sc

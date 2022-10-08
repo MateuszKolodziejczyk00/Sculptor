@@ -38,6 +38,13 @@ public:
 		binding.Set(smd::TextureBindingData(1, smd::EBindingFlags::Storage));
 	}
 
+	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
+	{
+		SPT_CHECK(bindingIdx <= 9);
+		const char bindingIdxChar = '0' + static_cast<char>(bindingIdx);
+		return lib::String("[[vk::binding(") + bindingIdxChar + ", X)]] RWTexture2D<float4> " + name + ";\n";
+	}
+
 	void Set(const lib::SharedPtr<rdr::TextureView>& inTexture)
 	{
 		texture = inTexture;
@@ -278,14 +285,6 @@ void SculptorEdApplication::RenderFrame()
 			recorder->UnbindDescriptorSetState(lib::Ref(ds));
 		}
 
-		{
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::FragmentReadOnly);
-
-			recorder->ExecuteBarrier(std::move(barrier));
-		}
-
 		rhi::TextureViewDefinition viewDefinition;
 		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
 		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
@@ -314,8 +313,10 @@ void SculptorEdApplication::RenderFrame()
 
 		{
 			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::PresentSource);
+			const SizeType RTBarrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
+			const SizeType computeBarrierIdx = barrier.GetRHI().AddTextureBarrier(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(computeBarrierIdx, rhi::TextureTransition::FragmentReadOnly);
 
 			recorder->ExecuteBarrier(std::move(barrier));
 		}

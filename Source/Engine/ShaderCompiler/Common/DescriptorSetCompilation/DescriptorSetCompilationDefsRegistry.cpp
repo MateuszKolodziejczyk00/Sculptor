@@ -94,4 +94,9 @@ const DescriptorSetCompilationDef& DescriptorSetCompilationDefsRegistry::GetDesc
 	return priv::GetRegistryInstance().at(dsName);
 }
 
+lib::String DescriptorSetCompilationDefsRegistry::GetDescriptorSetShaderSourceCode(const lib::HashedString& dsName, Uint32 dsIdx)
+{
+	return GetDescriptorSetCompilationDef(dsName).GetShaderCode(dsIdx);
+}
+
 } // spt::sc
