@@ -25,7 +25,8 @@ static lib::HashMap<lib::HashedString, DescriptorSetCompilationDef>& GetRegistry
 DescriptorSetCompilationDef::DescriptorSetCompilationDef()
 { }
 
-DescriptorSetCompilationDef::DescriptorSetCompilationDef(const lib::String& shaderCode)
+DescriptorSetCompilationDef::DescriptorSetCompilationDef(const lib::String& shaderCode, DescriptorSetCompilationMetaData metaData)
+	: m_compilationMetaData(std::move(metaData))
 {
 	SetShaderCode(shaderCode);
 }
@@ -45,6 +46,11 @@ lib::String DescriptorSetCompilationDef::GetShaderCode(Uint32 dsIdx) const
 				  });
 
 	return resultShaderCode;
+}
+
+const DescriptorSetCompilationMetaData& DescriptorSetCompilationDef::GetMetaData() const
+{
+	return m_compilationMetaData;
 }
 
 void DescriptorSetCompilationDef::SetShaderCode(lib::StringView code)

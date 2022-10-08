@@ -2,6 +2,9 @@
 #include "Common/ShaderCompilationInput.h"
 #include "Tokenizer.h"
 #include "ArgumentsTokenizer.h"
+#include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
+
+#include <regex>
 
 namespace spt::sc
 {
@@ -50,7 +53,7 @@ static lib::HashedString ExtractParameterName(tkn::TokenInfo beginMetaParameters
 		const SizeType reverseFindEndOffset			= code.size() - beginMetaParametersToken.tokenPosition;
 		const auto nameLastCharacterIt				= std::find_if_not(std::crbegin(code) + reverseFindBeginOffset,
 																	   std::crbegin(code) + reverseFindEndOffset,
-																	   &std::isspace);
+																	   [](char c) { return std::isspace(c); });
 		const SizeType nameLastCharacterPosition	= std::distance(code.data(), &*nameLastCharacterIt);
 		const SizeType whiteCharBeforeNamePosition	= code.find_last_of(" \t", nameLastCharacterPosition);
 
@@ -106,9 +109,51 @@ static void BuildParameterMetaData(lib::HashedString paramName, lib::StringView 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderMetaDataPrerpocessor ====================================================================
 
-ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode)
+ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(ShaderSourceCode& sourceCode)
 {
+	SPT_PROFILER_FUNCTION();
+
 	ShaderParametersMetaData metaData;
+
+	PreprocessShaderDescriptorSets(sourceCode, metaData);
+	//PreprocessShaderParametersMetaData(sourceCode, metaData);
+
+	return metaData;
+}
+
+void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::String& sourceCodeStr = sourceCode.GetSourceCodeMutable();
+
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
+
+	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), descriptorSetRegex);
+
+	while (descriptorSetIt != std::sregex_iterator())
+	{
+		const std::smatch descriptorSetMatch = *descriptorSetIt;
+		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
+		const lib::HashedString dsName = descriptorSetMatch[1].str();
+		const lib::String dsIdxStr = descriptorSetMatch[2].str();
+		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
+
+		const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
+
+		const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
+		sourceCodeStr.replace(descriptorSetIt->prefix().length(), descriptorSetMatch.length(), dsSourceCode);
+
+		outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
+
+		// Always search for new descriptor from the beginning, because we're modifying source code during loop
+		descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), descriptorSetRegex);
+	}
+}
+
+void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
 
 	lib::String& code = sourceCode.GetSourceCodeMutable();
 
@@ -126,16 +171,14 @@ ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShaderParametersM
 			const lib::StringView metaParametersString = helper::ExtractMetaParametersString(tokenInfo, code, metaDataEndPosition);
 			SPT_CHECK(metaDataEndPosition != 0);
 
-			helper::BuildParameterMetaData(paramName, metaParametersString, metaData);
+			helper::BuildParameterMetaData(paramName, metaParametersString, outMetaData);
 
-			// fill whole meta data with strings, so it won't be compiled
+			// fill whole meta data with whitespaces, so it won't be compiled
 			std::fill(std::begin(code) + tokenInfo.tokenPosition, std::begin(code) + metaDataEndPosition, ' ');
 		});
 
 	const tkn::TokensProcessor tokensProcessor(tokensArray);
 	tokensProcessor.VisitAllTokens(metaDataVisitor);
-
-	return metaData;
 }
 
-}
+} // spt::sc

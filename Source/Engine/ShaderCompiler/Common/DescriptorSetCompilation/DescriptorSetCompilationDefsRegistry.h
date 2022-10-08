@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Common/ShaderCompilerMacros.h"
 #include "SculptorCoreTypes.h"
+#include "DescriptorSetCompilationDefTypes.h"
 
 
 namespace spt::sc
@@ -12,9 +12,11 @@ class DescriptorSetCompilationDef
 public:
 
 	DescriptorSetCompilationDef();
-	explicit DescriptorSetCompilationDef(const lib::String& shaderCode);
+	explicit DescriptorSetCompilationDef(const lib::String& shaderCode, DescriptorSetCompilationMetaData metaData);
 
 	lib::String GetShaderCode(Uint32 dsIdx) const;
+
+	const DescriptorSetCompilationMetaData& GetMetaData() const;
 
 	void SetShaderCode(lib::StringView code);
 
@@ -22,8 +24,9 @@ private:
 
 	void BuildDSIdxPositionsArray();
 
-	lib::String					m_shaderCode;
-	lib::DynamicArray<SizeType>	m_dsIdxPositions;
+	lib::String							m_shaderCode;
+	lib::DynamicArray<SizeType>			m_dsIdxPositions;
+	DescriptorSetCompilationMetaData	m_compilationMetaData;
 };
 
 

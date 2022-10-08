@@ -64,14 +64,22 @@ public:
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 
 	// These functions are not virtual, but can be reimplemented in child classes
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const {}
 	void Initialize(DescriptorSetState& owningState) {}
-
+	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const {}
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
+	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
 
 protected:
 
 	void MarkAsDirty();
+
+	// Helpers =========================================
+	static constexpr lib::String BuildBindingVariableCode(lib::StringView bindingVariable, Uint32 bindingIdx)
+	{
+		SPT_CHECK(bindingIdx <= 9);
+		const char bindingIdxChar = '0' + static_cast<char>(bindingIdx);
+		return lib::String("[[vk::binding(") + bindingIdxChar + ", X)]] " + bindingVariable.data() + ";\n";
+	}
 
 private:
 
@@ -397,6 +405,20 @@ void ForEachBinding(TBindingHandle& currentBindingHandle, TCallable callable)
 	}
 }
 
+template<typename TBindingHandle, typename TCallable>
+constexpr void ForEachBinding(TCallable callable)
+{
+	if constexpr (!IsHeadBinding<TBindingHandle>())
+	{
+		callable.operator()<TBindingHandle>();
+	}
+
+	if constexpr (!IsTailBinding<TBindingHandle>())
+	{
+		ForEachBinding<typename TBindingHandle::NextBindingHandleType>(callable);
+	}
+}
+
 template<typename TBindingHandle>
 lib::DynamicArray<lib::HashedString> GetBindingNames(const TBindingHandle& bindingHandle)
 {
@@ -479,18 +501,11 @@ constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdx = 0)
 {
 	lib::String result;
 
-	Uint32 nextBindingIdx = bindingIdx;
-	if constexpr (!IsHeadBinding<TBindingHandle>())
+	ForEachBinding<TBindingHandle>([&result, bindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
 	{
-		using BindingType = typename TBindingHandle::BindingType;
-		result = BindingType::BuildBindingCode(TBindingHandle::GetName(), bindingIdx);
-		++nextBindingIdx;
-	}
-
-	if constexpr (!IsTailBinding<TBindingHandle>())
-	{
-		result += BuildBindingsShaderCode<typename TBindingHandle::NextBindingHandleType>(nextBindingIdx);
-	}
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdx++);
+	});
 
 	return result;
 }
@@ -502,6 +517,7 @@ constexpr SizeType GetDescriptorSetShaderCodeSize()
 	const lib::String code = BuildBindingsShaderCode<HeadBindingType>();
 	return code.size();
 }
+
 template<typename TDSType, SizeType Size>
 constexpr lib::StaticArray<char, Size> BuildDescriptorSetShaderCode()
 {
@@ -516,6 +532,24 @@ constexpr lib::StaticArray<char, Size> BuildDescriptorSetShaderCode()
 	return result;
 }
 
+template<typename TDSType>
+sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
+{
+	SPT_PROFILER_FUNCTION();
+
+	sc::DescriptorSetCompilationMetaData metaData;
+
+	using HeadBindingHandle = typename TDSType::ReflHeadBindingType;
+
+	ForEachBinding<HeadBindingHandle>([&metaData]<typename TCurrentBindingHandle>()
+	{
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+		metaData.bindingsFlags.emplace_back(CurrentBindingType::GetBindingFlags());
+	});
+
+	return metaData;
+}
+
 } // bindings_refl
 
 
@@ -525,7 +559,7 @@ class DescriptorSetStateCompilationDefRegistration : public sc::DescriptorSetCom
 public:
 
 	DescriptorSetStateCompilationDefRegistration()
-		: sc::DescriptorSetCompilationDefRegistration(TDSStateType::GetDescriptorSetName(), BuildDSCode())
+		: sc::DescriptorSetCompilationDefRegistration(TDSStateType::GetDescriptorSetName(), BuildDSCode(), bindings_refl::BuildCompilationMetaData<TDSStateType>())
 	{ }
 
 private:

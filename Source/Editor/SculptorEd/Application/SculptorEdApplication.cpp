@@ -35,14 +35,17 @@ public:
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
 	{
-		binding.Set(smd::TextureBindingData(1, smd::EBindingFlags::Storage));
+		binding.Set(smd::TextureBindingData(1, GetBindingFlags()));
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		SPT_CHECK(bindingIdx <= 9);
-		const char bindingIdxChar = '0' + static_cast<char>(bindingIdx);
-		return lib::String("[[vk::binding(") + bindingIdxChar + ", X)]] RWTexture2D<float4> " + name + ";\n";
+		return BuildBindingVariableCode(lib::String("RWTexture2D<float4> ") + name, bindingIdx);
+	}
+
+	static constexpr smd::EBindingFlags GetBindingFlags()
+	{
+		return smd::EBindingFlags::Storage;
 	}
 
 	void Set(const lib::SharedPtr<rdr::TextureView>& inTexture)

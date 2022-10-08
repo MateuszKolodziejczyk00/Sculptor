@@ -35,6 +35,11 @@ const lib::String& ShaderSourceCode::GetSourceCode() const
 	return m_code;
 }
 
+lib::String& ShaderSourceCode::GetSourceCodeMutable()
+{
+	return m_code;
+}
+
 rhi::EShaderStage ShaderSourceCode::GetShaderStage() const
 {
 	return m_stage;
@@ -48,11 +53,6 @@ const char* ShaderSourceCode::GetSourcePtr() const
 SizeType ShaderSourceCode::GetSourceLength() const
 {
 	return m_code.size();
-}
-
-lib::String& ShaderSourceCode::GetSourceCodeMutable()
-{
-	return m_code;
 }
 
 SizeType ShaderSourceCode::Hash() const

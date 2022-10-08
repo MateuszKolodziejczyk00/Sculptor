@@ -16,9 +16,9 @@ namespace helper
 
 struct SpirvResourceData
 {
-	Uint32				m_setIdx;
-	Uint32				m_bindingIdx;
-	lib::HashedString	m_name;
+	Uint32				setIdx;
+	Uint32				bindingIdx;
+	lib::HashedString	name;
 };
 
 static SpirvResourceData GetResourceData(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource)
@@ -32,6 +32,11 @@ static SpirvResourceData GetResourceData(const spirv_cross::Compiler& compiler, 
 	SPT_CHECK(paramName.IsValid());
 
 	return SpirvResourceData{ setIdx, bindingIdx, paramName };
+}
+
+static void InitializeBinding(smd::CommonBindingData& binding, SpirvResourceData resourceData, const ShaderParametersMetaData& parametersMetaData)
+{
+	binding.AddFlag(parametersMetaData.GetAdditionalBindingFlags(resourceData.setIdx, resourceData.bindingIdx));
 }
 
 
@@ -144,6 +149,7 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 	smd::BufferBindingData uniformBufferBinding;
 	uniformBufferBinding.SetSize(static_cast<Uint32>(uniformSize));
+	helper::InitializeBinding(uniformBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, uniformBufferBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -169,6 +175,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	smd::BufferBindingData storageBufferBinding;
 	storageBufferBinding.AddFlag(smd::EBindingFlags::Storage);
 	storageBufferBinding.AddFlag(smd::EBindingFlags::Unbound);
+	helper::InitializeBinding(storageBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -189,7 +196,9 @@ static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, con
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, combinedTextureSamplerResource);
 	
-	const smd::CombinedTextureSamplerBindingData combinedTextureSamplerBinding;
+	smd::CombinedTextureSamplerBindingData combinedTextureSamplerBinding;
+	helper::InitializeBinding(combinedTextureSamplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, combinedTextureSamplerBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 
@@ -205,6 +214,8 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	
 	smd::TextureBindingData textureBinding;
 	textureBinding.AddFlag(smd::EBindingFlags::Storage);
+	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, textureBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 

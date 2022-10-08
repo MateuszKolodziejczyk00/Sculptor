@@ -183,7 +183,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	preprocessedSourceCode.SetShaderStage(sourceCode.GetShaderStage());
 	preprocessedSourceCode.SetSourceCode(std::move(preprocessedHLSL));
 
-	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(preprocessedSourceCode);
+	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedSourceCode);
 
 	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedSourceCode, compilerArgs);
 
