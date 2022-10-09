@@ -511,22 +511,22 @@ constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdx = 0)
 }
 
 template<typename TDSType>
-constexpr SizeType GetDescriptorSetShaderCodeSize()
+consteval SizeType GetDescriptorSetShaderCodeSize()
 {
 	using HeadBindingType = typename TDSType::ReflHeadBindingType;
 	const lib::String code = BuildBindingsShaderCode<HeadBindingType>();
 	return code.size();
 }
 
-template<typename TDSType, SizeType Size>
-constexpr lib::StaticArray<char, Size> BuildDescriptorSetShaderCode()
+template<typename TDSType>
+consteval auto BuildDescriptorSetShaderCode()
 {
 	using HeadBindingType = typename TDSType::ReflHeadBindingType;
 
 	lib::String code = BuildBindingsShaderCode<HeadBindingType>();
-	SPT_CHECK(code.size() == Size);
 
-	lib::StaticArray<char, Size> result;
+	lib::StaticArray<char, GetDescriptorSetShaderCodeSize<TDSType>()> result;
+	SPT_CHECK(code.size() == result.size());
 	std::copy(std::cbegin(code), std::cend(code), std::begin(result));
 
 	return result;
@@ -566,9 +566,8 @@ private:
 
 	static lib::String BuildDSCode()
 	{
-		constexpr SizeType CodeSize = bindings_refl::GetDescriptorSetShaderCodeSize<TDSStateType>();
-		constexpr lib::StaticArray<char, CodeSize> CodeArray = bindings_refl::BuildDescriptorSetShaderCode<TDSStateType, CodeSize>();
-		return lib::String(std::cbegin(CodeArray), std::cend(CodeArray));
+		constexpr auto codeArray = bindings_refl::BuildDescriptorSetShaderCode<TDSStateType>();
+		return lib::String(std::cbegin(codeArray), std::cend(codeArray));
 	}
 };
 
