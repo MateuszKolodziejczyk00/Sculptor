@@ -34,40 +34,6 @@ constexpr lib::String GetTextureDimSuffix()
 	}
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// PixelFormatType ===============================================================================
-
-template<typename TPixelFormatData>
-constexpr lib::String GetPixelFormatShaderTypeName()
-{
-	SPT_CHECK_NO_ENTRY(); // type not supported
-	return lib::String();
-}
-
-template<>
-constexpr lib::String GetPixelFormatShaderTypeName<Real32>()
-{
-	return lib::String("float");
-}
-
-template<>
-constexpr lib::String GetPixelFormatShaderTypeName<math::Vector2f>()
-{
-	return lib::String("float2");
-}
-
-template<>
-constexpr lib::String GetPixelFormatShaderTypeName<math::Vector3f>()
-{
-	return lib::String("float3");
-}
-
-template<>
-constexpr lib::String GetPixelFormatShaderTypeName<math::Vector4f>()
-{
-	return lib::String("float4");
-}
-
 } // priv
 
 } // spt::rdr

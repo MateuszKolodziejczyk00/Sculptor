@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/DescriptorSetState.h"
 #include "TextureBindingTypes.h"
+#include "ShaderStructs/ShaderStructsTypes.h"
 
 
 namespace spt::rdr
@@ -30,7 +31,7 @@ public:
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		return BuildBindingVariableCode(lib::String("RWTexture") + priv::GetTextureDimSuffix<dimensions>()
-										+ '<' + priv::GetPixelFormatShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
+										+ '<' + shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
