@@ -92,6 +92,10 @@ struct api name \
 private: \
 	using ThisClass = name; \
 public: \
+	static constexpr const char* GetStructName() \
+	{ \
+		return #name; \
+	} \
 	typedef rdr::priv::ShaderStructMemberMetaData<void, 
 
 
@@ -102,7 +106,75 @@ public: \
 
 
 #define END_SHADER_STRUCT() \
-	void, "Head"> _MT_head; \
+	void, "Head"> HeadMemberMetaData; \
 };
+
+
+namespace shader_translator
+{
+
+namespace priv
+{
+
+template<typename TShaderStructMemberMetaData>
+consteval Bool IsHeadMember()
+{
+	using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+	return std::is_same_v<MemberType, void>;
+}
+
+template<typename TShaderStructMemberMetaData>
+consteval Bool IsTailMember()
+{
+	using PrevMemberMetaDataType = typename TShaderStructMemberMetaData::PrevMemberMetaDataType;
+	return std::is_same_v<PrevMemberMetaDataType, void>;
+}
+
+template<typename TShaderStructMemberMetaData>
+constexpr void AppendMemberSourceCode(lib::String& inOutString)
+{
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		inOutString += TShaderStructMemberMetaData::GetVariableLineString();
+	}
+
+	if constexpr (IsTailMember<TShaderStructMemberMetaData>())
+	{
+		AppendMemberSourceCode<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>();
+	}
+}
+
+template<typename TStruct>
+constexpr void BuildShaderStructCodeImpl(lib::String& outStructCode)
+{
+	outStructCode += lib::String("struct") + TStruct::GetStructName() + "\n{\n";
+	AppendMemberSourceCode<typename TStruct::HeadMemberMetaData>(outStructCode);
+	outStructCode += "};\n";
+}
+
+template<typename TStruct>
+consteval SizeType GetShaderStructCodeLength()
+{
+	lib::String structCode;
+	priv::BuildShaderStructCodeImpl<TStruct>(structCode);
+	return structCode.size();
+}
+
+} // priv
+
+template<typename TStruct>
+consteval auto BuildShaderStructCode()
+{
+	lib::String structCode;
+	priv::BuildShaderStructCodeImpl<TStruct>(structCode);
+
+	lib::StaticArray<char, priv::GetShaderStructCodeLength<TStruct>()> result;
+	SPT_CHECK(structCode.size() == result.size());
+	std::copy(std::cbegin(structCode), std::cend(structCode), std::begin(result));
+
+	return result;
+}
+
+} // shader_translator
 
 } // spt::rdr
