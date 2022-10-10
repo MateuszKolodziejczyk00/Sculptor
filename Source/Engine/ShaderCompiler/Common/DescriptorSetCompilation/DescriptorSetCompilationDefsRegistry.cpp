@@ -77,7 +77,7 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 		const std::smatch dsIdxMatch = *dsIndicesIt;
 		const lib::String dsIdxString = dsIdxMatch.str();
 
-		const SizeType dsIdxPosition = m_shaderCode.find_first_of('X', dsIndicesIt->prefix().length()); // find 'X' for which set idx should be substituted
+		const SizeType dsIdxPosition = m_shaderCode.find_first_of('X', dsIndicesIt->position()); // find 'X' for which set idx should be substituted
 		SPT_CHECK(dsIdxPosition != lib::String::npos);
 
 		m_dsIdxPositions.push_back(dsIdxPosition);

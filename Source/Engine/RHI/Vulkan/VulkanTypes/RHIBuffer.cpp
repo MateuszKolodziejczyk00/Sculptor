@@ -134,8 +134,7 @@ void* RHIBuffer::MapBufferMemory() const
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
-		SPT_CHECK(!!m_mappedPointer);
-		return m_mappedPointer;
+		return GetMappedPtr();
 	}
 	else if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
 	{
@@ -157,6 +156,12 @@ void RHIBuffer::UnmapBufferMemory() const
 	{
 		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
 	}
+}
+
+void* RHIBuffer::GetMappedPtr() const
+{	
+	SPT_CHECK(!!m_mappedPointer);
+	return m_mappedPointer;
 }
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const

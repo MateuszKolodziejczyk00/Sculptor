@@ -5,3 +5,6 @@
 
 #pragma warning(disable : 4100) // [argument] unreferenced formal parameter
 							    // Disabled as it generates lots of warnings when delegates etc.
+
+#pragma warning(disable : 4324) // [struct] structure was padded due to alignment specifier
+							    // Disabled as we may want to have padding to match shader struct layout
