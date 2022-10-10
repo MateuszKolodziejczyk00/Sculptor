@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "Common/ShaderStructs/ShaderStructRegistration.h"
 
 namespace spt::rdr
 {
@@ -56,7 +57,7 @@ public:
 		}
 	}
 
-	static constexpr const char* GetTypeName()
+	static constexpr lib::String GetTypeName()
 	{
 		return shader_translator::GetShaderTypeName<UnderlyingType>();
 	}
@@ -107,6 +108,7 @@ public: \
 
 #define END_SHADER_STRUCT() \
 	void, "Head"> HeadMemberMetaData; \
+	static inline rdr::ShaderStructRegistration<ThisClass> _structRegistration; \
 };
 
 
@@ -138,16 +140,16 @@ constexpr void AppendMemberSourceCode(lib::String& inOutString)
 		inOutString += TShaderStructMemberMetaData::GetVariableLineString();
 	}
 
-	if constexpr (IsTailMember<TShaderStructMemberMetaData>())
+	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
 	{
-		AppendMemberSourceCode<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>();
+		AppendMemberSourceCode<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(inOutString);
 	}
 }
 
 template<typename TStruct>
 constexpr void BuildShaderStructCodeImpl(lib::String& outStructCode)
 {
-	outStructCode += lib::String("struct") + TStruct::GetStructName() + "\n{\n";
+	outStructCode += lib::String("struct ") + TStruct::GetStructName() + "\n{\n";
 	AppendMemberSourceCode<typename TStruct::HeadMemberMetaData>(outStructCode);
 	outStructCode += "};\n";
 }
@@ -176,5 +178,23 @@ consteval auto BuildShaderStructCode()
 }
 
 } // shader_translator
+
+template<typename TStruct>
+class ShaderStructRegistration : public sc::ShaderStructRegistration
+{
+public:
+
+	explicit ShaderStructRegistration()
+		: sc::ShaderStructRegistration(TStruct::GetStructName(), GetShaderSourceCode())
+	{ }
+
+private:
+
+	static lib::String GetShaderSourceCode()
+	{
+		const auto sourceCodeArray = shader_translator::BuildShaderStructCode<TStruct>();
+		return lib::String(std::cbegin(sourceCodeArray), std::cend(sourceCodeArray));
+	}
+};
 
 } // spt::rdr
