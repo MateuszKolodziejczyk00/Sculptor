@@ -18,6 +18,7 @@ public:
 
 private:
 
+	static void PreprocessShaderStructs(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
 	static void PreprocessShaderDescriptorSets(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
 	static void PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
 };

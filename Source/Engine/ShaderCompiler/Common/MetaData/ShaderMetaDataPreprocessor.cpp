@@ -3,6 +3,7 @@
 #include "Tokenizer.h"
 #include "ArgumentsTokenizer.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
+#include "Common/ShaderStructs/ShaderStructsRegistry.h"
 
 #include <regex>
 
@@ -116,9 +117,36 @@ ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(ShaderSour
 	ShaderParametersMetaData metaData;
 
 	PreprocessShaderDescriptorSets(sourceCode, metaData);
-	//PreprocessShaderParametersMetaData(sourceCode, metaData);
+	PreprocessShaderStructs(sourceCode, metaData);
+	PreprocessShaderParametersMetaData(sourceCode, metaData);
 
 	return metaData;
+}
+
+void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::String& sourceCodeStr = sourceCode.GetSourceCodeMutable();
+
+	static const std::regex shaderStructRegex(R"~(\[\[shader_struct\(\s*(\w*)\s*\)\]\])~");
+
+	auto shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), shaderStructRegex);
+
+	while (shaderStructsIt != std::sregex_iterator())
+	{
+		const std::smatch shaderStructMatch = *shaderStructsIt;
+		SPT_CHECK(shaderStructMatch.size() == 2); // should be whole match + structNameMatch
+		const lib::HashedString structName = shaderStructMatch[1].str();
+
+		const ShaderStructDefinition& structDef = ShaderStructsRegistry::GetStructDefinition(structName);
+
+		const lib::String structSourceCode = structDef.GetSourceCode();
+		sourceCodeStr.replace(shaderStructsIt->prefix().length(), shaderStructMatch.length(), structSourceCode);
+
+		// Always search for new descriptor from the beginning, because we're modifying source code during loop
+		shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), shaderStructRegex);
+	}
 }
 
 void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
