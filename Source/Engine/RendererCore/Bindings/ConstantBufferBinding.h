@@ -14,6 +14,7 @@ public:
 
 	explicit ConstantBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
 		: DescriptorSetBinding(name, descriptorDirtyFlag)
+		, m_offset(nullptr)
 	{
 		rhi::RHIAllocationInfo allocationInfo;
 		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
@@ -28,6 +29,9 @@ public:
 
 		m_offset = owningState.AddDynamicOffset();
 		*m_offset = 0;
+
+		// construct default value
+		new (&GetImpl()) TStruct();
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
@@ -52,15 +56,45 @@ public:
 		return smd::EBindingFlags::DynamicOffset;
 	}
 
-	void Set(const TStruct& value)
+	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
+	void Set(TAssignable&& value)
 	{
-		*m_offset = *m_offset > 0 ? 0 : sizeof(TStruct);
-		void* bufferPtr = m_buffer->GetRHI().GetMappedPtr() + m_offset;
-		TStruct* structPtr = static_cast<TStruct*>(bufferPtr);
-		*structPtr = value;
+		SwitchBufferOffset();
+		GetImpl() = std::forward<TAssignable>(value);
+	}
+
+	template<typename TSetter> requires requires (TSetter& setter) { setter(std::declval<TStruct>()); }
+	void Set(TSetter&& setter)
+	{
+		const TStruct& oldValue = GetImpl();
+		SwitchBufferOffset();
+		TStruct& newValue = GetImpl();
+
+		SPT_CHECK(&newValue != oldValue);
+
+		// transfer memory to new location before calling setter
+		memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
+
+		setter(newValue);
+	}
+
+	const TStruct& Get() const
+	{
+		return GetImpl();
 	}
 
 private:
+
+	Uint32 SwitchBufferOffset()
+	{
+		*m_offset = *m_offset > 0 ? 0 : sizeof(TStruct);
+		return *m_offset;
+	}
+	
+	TStruct& GetImpl() const
+	{
+		return *reinterpret_cast<TStruct*>(m_buffer->GetRHI().GetMappedPtr() + *m_offset);
+	}
 
 	lib::SharedPtr<Buffer>		m_buffer;
 	lib::SharedPtr<BufferView>	m_bufferView;
