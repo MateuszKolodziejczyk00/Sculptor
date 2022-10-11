@@ -128,7 +128,7 @@ rhi::EBufferUsage RHIBuffer::GetUsage() const
 	return m_usageFlags;
 }
 
-void* RHIBuffer::MapBufferMemory() const
+Byte* RHIBuffer::MapBufferMemory() const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -140,7 +140,7 @@ void* RHIBuffer::MapBufferMemory() const
 	{
 		void* mappedPtr = nullptr;
 		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation, &mappedPtr));
-		return mappedPtr;
+		return static_cast<Byte*>(mappedPtr);
 	}
 	else
 	{
@@ -158,7 +158,7 @@ void RHIBuffer::UnmapBufferMemory() const
 	}
 }
 
-void* RHIBuffer::GetMappedPtr() const
+Byte* RHIBuffer::GetMappedPtr() const
 {	
 	SPT_CHECK(!!m_mappedPointer);
 	return m_mappedPointer;
@@ -199,7 +199,7 @@ void RHIBuffer::InitializeMappingStrategy(const VmaAllocationCreateInfo& allocat
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
-		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation, &m_mappedPointer));
+		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation, reinterpret_cast<void**>(&m_mappedPointer)));
 	}
 }
 

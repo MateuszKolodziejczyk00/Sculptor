@@ -7,6 +7,7 @@ namespace spt::vulkan
 {
 
 class VulkanRHI;
+class VulkanRHILimits;
 class RHIContext;
 class RHIBuffer;
 class RHITexture;
@@ -30,6 +31,7 @@ namespace spt::rhi
 {
 
 using RHI = vulkan::VulkanRHI;
+using RHILimits = vulkan::VulkanRHILimits;
 
 using namespace spt::vulkan;
 

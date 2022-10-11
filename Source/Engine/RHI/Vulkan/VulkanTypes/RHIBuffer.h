@@ -30,10 +30,10 @@ public:
 	Uint64						GetSize() const;
 	rhi::EBufferUsage			GetUsage() const;
 
-	void*						MapBufferMemory() const;
+	Byte*						MapBufferMemory() const;
 	void						UnmapBufferMemory() const;
 
-	void*						GetMappedPtr() const;
+	Byte*						GetMappedPtr() const;
 
 	DeviceAddress				GetDeviceAddress() const;
 
@@ -68,7 +68,7 @@ private:
 	DebugName					m_name;
 
 	EMappingStrategy			m_mappingStrategy;
-	void*						m_mappedPointer;
+	Byte*						m_mappedPointer;
 };
 
 }

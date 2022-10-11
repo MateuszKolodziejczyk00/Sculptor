@@ -1,6 +1,7 @@
 #include "VulkanRHI.h"
 #include "Device/PhysicalDevice.h"
 #include "Device/LogicalDevice.h"
+#include "VulkanRHILimits.h"
 #include "Debug/DebugMessenger.h"
 #include "Memory/MemoryManager.h"
 #include "CommandPool/RHICommandPoolsManager.h"
@@ -187,6 +188,8 @@ void VulkanRHI::InitializeGPUForWindow()
     }
 
     priv::g_data.device.CreateDevice(priv::g_data.physicalDevice, GetAllocationCallbacks());
+
+    VulkanRHILimits::Initialize(GetLogicalDevice(), GetPhysicalDeviceHandle());
 
     priv::g_data.memoryManager.Initialize(priv::g_data.instance, priv::g_data.device.GetHandle(), priv::g_data.physicalDevice, GetAllocationCallbacks());
 }
