@@ -23,9 +23,11 @@ struct SpirvResourceData
 
 static SpirvResourceData GetResourceData(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource)
 {
-	const Uint32 setIdx				= compiler.get_decoration(resource.id, spv::Decoration::DecorationDescriptorSet);
-	const Uint32 bindingIdx			= compiler.get_decoration(resource.id, spv::Decoration::DecorationBinding);
-	const lib::HashedString paramName	= resource.name;
+	SPT_PROFILER_FUNCTION();
+
+	const Uint32 setIdx					= compiler.get_decoration(resource.id, spv::Decoration::DecorationDescriptorSet);
+	const Uint32 bindingIdx				= compiler.get_decoration(resource.id, spv::Decoration::DecorationBinding);
+	const lib::HashedString paramName	= compiler.get_name(resource.id);
 
 	SPT_CHECK(setIdx <= smd::maxSetIdx);
 	SPT_CHECK(bindingIdx <= smd::maxBindingIdx);
@@ -145,7 +147,7 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, uniformBufferResource);
 
 	const spirv_cross::SPIRType& bufferType = compiler.get_type(uniformBufferResource.base_type_id);
-	const SizeType uniformSize = compiler.get_declared_struct_size(bufferType);
+	const SizeType uniformSize = compiler.get_declared_struct_size_runtime_array(bufferType, 1);
 
 	smd::BufferBindingData uniformBufferBinding;
 	uniformBufferBinding.SetSize(static_cast<Uint32>(uniformSize));

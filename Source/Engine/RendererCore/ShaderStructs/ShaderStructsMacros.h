@@ -28,14 +28,14 @@ public:
 	{
 		if constexpr (std::is_same_v<TPrev, void>)
 		{
-			// 16 bytes alignment for first variable
-			return 16;
+			// no alignment for first variable
+			return 0;
 		}
 		else
 		{
 			constexpr Uint32 thisMemberSize = GetSize();
 
-			if (thisMemberSize & (thisMemberSize - 1)) // is 2^n
+			if constexpr (thisMemberSize & (thisMemberSize - 1)) // is 2^n
 			{
 				// find and return next power of 2
 				Uint32 alignment = thisMemberSize;
