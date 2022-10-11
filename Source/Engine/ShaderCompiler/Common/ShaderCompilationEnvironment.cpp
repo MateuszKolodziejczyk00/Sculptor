@@ -37,6 +37,11 @@ Bool ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
 	return priv::g_environmentDef.useCompiledShadersCache;
 }
 
+Bool ShaderCompilationEnvironment::ShouldCacheSeparateSpvFile()
+{
+	return priv::g_environmentDef.cacheSeparateSpvFile;
+}
+
 ETargetEnvironment ShaderCompilationEnvironment::GetTargetEnvironment()
 {
 	return priv::g_environmentDef.targetEnvironment;

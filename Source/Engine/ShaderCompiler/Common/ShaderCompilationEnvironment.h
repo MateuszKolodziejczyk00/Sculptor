@@ -15,6 +15,7 @@ struct CompilationEnvironmentDef
 		: targetEnvironment(ETargetEnvironment::None)
 		, generateDebugInfo(false)
 		, useCompiledShadersCache(true)
+		, cacheSeparateSpvFile(false)
 	{ }
 
 	ETargetEnvironment		targetEnvironment;
@@ -22,6 +23,9 @@ struct CompilationEnvironmentDef
 	Bool					generateDebugInfo;
 
 	Bool					useCompiledShadersCache;
+
+	/** if true, additional, separate .spv file will be generated when shader will be cached */
+	Bool					cacheSeparateSpvFile;
 
 	lib::String				shadersPath;
 
@@ -42,6 +46,8 @@ public:
 	static Bool						ShouldGenerateDebugInfo();
 
 	static Bool						ShouldUseCompiledShadersCache();
+
+	static Bool						ShouldCacheSeparateSpvFile();
 
 	static ETargetEnvironment		GetTargetEnvironment();
 

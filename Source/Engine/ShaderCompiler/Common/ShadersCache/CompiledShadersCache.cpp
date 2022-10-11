@@ -3,6 +3,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "FileSystem/File.h"
 #include "Utility/String/StringUtils.h"
+#include "Paths.h"
 
 #include "SculptorYAML.h"
 #include "SerializationHelper.h"
@@ -111,6 +112,16 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 
 	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 	srl::SerializationHelper::SaveTextStructToFile(shaderFile, filePath);
+
+	if (ShaderCompilationEnvironment::ShouldCacheSeparateSpvFile())
+	{
+		for (const CompiledShader& shader : shaderFile.shaders)
+		{
+			const lib::String binaryPath = filePath + '_' + std::to_string(static_cast<Uint32>(shader.GetStage())) + ".spv";
+			const CompiledShader::Binary& bin = shader.GetBinary();
+			srl::SerializationHelper::SaveBinaryToFile(reinterpret_cast<const Byte*>(bin.data()), bin.size() * 4, binaryPath);
+		}
+	}
 }
 
 Bool CompiledShadersCache::CanUseShadersCache()
@@ -132,8 +143,7 @@ lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
 
 lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)
 {
-	const lib::String shaderName = CreateShaderFileName(hash);
-	return ShaderCompilationEnvironment::GetShadersCachePath() + "/" + shaderName;
+	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersCachePath(), CreateShaderFileName(hash));
 }
 
 lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
@@ -144,4 +154,4 @@ lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderR
 	return CreateShaderFilePath(hash);
 }
 
-}
+} // spt::sc

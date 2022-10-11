@@ -37,4 +37,4 @@ private:
 	static lib::String			CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
 };
 
-}
+} // spt::sc
