@@ -17,6 +17,7 @@ static const VkPhysicalDeviceLimits& GetDeviceLimits()
 
 void VulkanRHILimits::Initialize(const LogicalDevice& logicalDevice, VkPhysicalDevice physicalDevice)
 {
+	priv::g_properties = VkPhysicalDeviceProperties2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
 	vkGetPhysicalDeviceProperties2(physicalDevice, &priv::g_properties);
 }
 

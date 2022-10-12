@@ -135,14 +135,14 @@ consteval Bool IsTailMember()
 template<typename TShaderStructMemberMetaData>
 constexpr void AppendMemberSourceCode(lib::String& inOutString)
 {
-	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
-	{
-		inOutString += TShaderStructMemberMetaData::GetVariableLineString();
-	}
-
 	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
 	{
 		AppendMemberSourceCode<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(inOutString);
+	}
+	
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		inOutString += TShaderStructMemberMetaData::GetVariableLineString();
 	}
 }
 
