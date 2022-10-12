@@ -1,6 +1,7 @@
 #include "DescriptorSetState.h"
 #include "ShaderMetaData.h"
 #include "DescriptorSetWriter.h"
+#include "Buffer.h"
 
 namespace spt::rdr
 {
@@ -37,13 +38,19 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 	if (bufferParam.IsValid())
 	{
 		const smd::GenericShaderBinding binding = m_metaData->GetBindingData(bufferParam);
+		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
 
 		rhi::WriteDescriptorDefinition writeDefinition;
 		writeDefinition.bindingIdx		= bufferParam.bindingIdx;
 		writeDefinition.arrayElement	= 0;
-		writeDefinition.descriptorType	= binding.GetDescriptorType();
+		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
 
-		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer);
+		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer->GetSize());
+
+		const Uint64 range = bufferBinding.IsUnbound() ? buffer->GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
+		SPT_CHECK(range > 0);
+
+		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range);
 	}
 }
 

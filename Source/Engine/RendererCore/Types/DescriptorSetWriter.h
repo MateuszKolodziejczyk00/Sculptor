@@ -18,7 +18,7 @@ public:
 
 	DescriptorSetWriter();
 
-	void WriteBuffer(const rhi::RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const lib::SharedRef<BufferView>& bufferView);
+	void WriteBuffer(const rhi::RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const lib::SharedRef<BufferView>& bufferView, Uint64 range);
 	void WriteTexture(const rhi::RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const lib::SharedRef<TextureView>& textureView);
 
 	void Reserve(SizeType writesNum);
