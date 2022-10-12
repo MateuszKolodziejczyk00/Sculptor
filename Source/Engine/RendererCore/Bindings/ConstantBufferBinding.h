@@ -2,6 +2,8 @@
 
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
+#include "RHI/RHIBridge/RHILimitsImpl.h"
+#include "MathUtils.h"
 
 
 namespace spt::rdr
@@ -14,13 +16,10 @@ public:
 
 	explicit ConstantBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
 		: DescriptorSetBinding(name, descriptorDirtyFlag)
+		, m_secondStructOffset(0)
 		, m_offset(nullptr)
 	{
-		rhi::RHIAllocationInfo allocationInfo;
-		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
-		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(GetName().ToString() + lib::String("_Buffer")), 2 * sizeof(TStruct), rhi::EBufferUsage::Uniform, allocationInfo);
-		m_bufferView = m_buffer->CreateView(0, m_buffer->GetRHI().GetSize());
+		InitResources();
 	}
 
 	void Initialize(DescriptorSetState& owningState)
@@ -32,6 +31,9 @@ public:
 
 		// construct default value
 		new (&GetImpl()) TStruct();
+		SPT_MAYBE_UNUSED
+		TStruct& test = GetImpl();
+
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
@@ -63,14 +65,14 @@ public:
 		GetImpl() = std::forward<TAssignable>(value);
 	}
 
-	template<typename TSetter> requires requires (TSetter& setter) { setter(std::declval<TStruct>()); }
+	template<typename TSetter> requires requires (TSetter& setter) { setter(std::declval<TStruct&>()); }
 	void Set(TSetter&& setter)
 	{
 		const TStruct& oldValue = GetImpl();
 		SwitchBufferOffset();
 		TStruct& newValue = GetImpl();
 
-		SPT_CHECK(&newValue != oldValue);
+		SPT_CHECK(&newValue != &oldValue);
 
 		// transfer memory to new location before calling setter
 		memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
@@ -85,9 +87,9 @@ public:
 
 private:
 
-	Uint32 SwitchBufferOffset()
+	Uint64 SwitchBufferOffset()
 	{
-		*m_offset = *m_offset > 0 ? 0 : sizeof(TStruct);
+		*m_offset = *m_offset > 0 ? 0 : m_secondStructOffset;
 		return *m_offset;
 	}
 	
@@ -96,9 +98,32 @@ private:
 		return *reinterpret_cast<TStruct*>(m_buffer->GetRHI().GetMappedPtr() + *m_offset);
 	}
 
+	void InitResources()
+	{
+		constexpr Uint64 structSize = sizeof(TStruct);
+		const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
+		const Uint64 secondStructOffset = math::Utils::RoundUp(structSize, minOffsetAlignment);
+		
+		const Uint64 bufferSize = secondStructOffset + structSize;
+
+		rhi::RHIAllocationInfo allocationInfo;
+		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
+		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
+		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(GetName().ToString() + lib::String("_Buffer")), bufferSize, rhi::EBufferUsage::Uniform, allocationInfo);
+
+		//m_bufferView = m_buffer->CreateView(0, bufferSize);
+		m_bufferView = m_buffer->CreateView(0, bufferSize);
+
+		// store offset as 32bits integer because that's how dynamic offset are stored
+		SPT_CHECK(secondStructOffset <= maxValue<Uint32>);
+		m_secondStructOffset = static_cast<Uint32>(secondStructOffset);
+	}
+
 	lib::SharedPtr<Buffer>		m_buffer;
 	lib::SharedPtr<BufferView>	m_bufferView;
+	Uint32						m_secondStructOffset;
 
+	// Dynamic Offset value ptr
 	Uint32*						m_offset;
 };
 
