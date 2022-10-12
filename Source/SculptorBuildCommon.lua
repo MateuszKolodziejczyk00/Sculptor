@@ -7,6 +7,26 @@ function AppendTable(t1, t2)
     end
 end
 
+function GetTableLength(table)
+    local length = 0
+    for k, v in pairs(table)
+    do
+        length = length + 1
+    end
+
+    return length
+end
+
+function Copy(table)
+    local newTable = {}
+    for k, v in pairs(table)
+    do
+        newTable[k] = v
+    end
+
+    return newTable
+end
+
 -- Project Generation =====================================================================================
 
 EConfiguration =
@@ -192,18 +212,6 @@ function Project:BuildConfiguration(configuration, platform)
         self:AddDependencyInternal(dependency)
     end
 
-    -- debug Begin
-    if self.name == "SculptorEd" then
-        print("=================================SculptorEd")
-        local test = projectToPublicDependencies["Serialization"][configuration]
-        print("\t\t" .. configuration)
-        for dependency, _ in pairs(test)
-        do
-            print("\t\t\t" .. dependency)
-        end
-    end
-    -- debug End
-
     -- defines
     self:AddCommonDefines(configuration, platform)
 
@@ -248,18 +256,6 @@ function Project:BuildConfiguration(configuration, platform)
 
     -- files
 	files (self:GetProjectFiles(configuration, platform))
-
-    -- debug Begin
-    if self.name == "Serialization" then
-        print("=================================Serialization")
-        local test = projectToPublicDependencies["Serialization"][configuration]
-        print("\t\t" .. configuration)
-        for dependency, _ in pairs(test)
-        do
-            print("\t\t\t" .. dependency)
-        end
-    end
-    -- debug End
 
     -- warnings
     -- by default use normal warnings level for third party projects, and highest level for sculptor projects
@@ -351,7 +347,7 @@ function Project:AddIncludePathInternal(path)
 end
 
 function Project:GetPublicDependencies(configuration)
-    local allPublicDependencies = self.configurations[configuration].publicDependencies
+    local allPublicDependencies = Copy(self.configurations[configuration].publicDependencies)
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
         AppendTable(allPublicDependencies, projectToPublicDependencies[dependency][configuration])
@@ -377,7 +373,7 @@ function Project:GetPrivateDependenciesPublicDependencies(configuration)
 end
 
 function Project:GetThisProjectPublicDefines(configuration)
-    local allPublicDefines = self.configurations[configuration].publicDefines
+    local allPublicDefines = Copy(self.configurations[configuration].publicDefines)
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
         AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
@@ -437,7 +433,7 @@ function Project:AddReleaseDefines()
 end
 
 function Project:GetThisProjectPublicIncludePaths(configuration)
-    local allPublicIncludePaths = self.configurations[configuration].publicIncludePaths
+    local allPublicIncludePaths = Copy(self.configurations[configuration].publicIncludePaths)
     AppendTable(allPublicIncludePaths, self:GetPublicInlcudePathsOfPublicDependencies(configuration))
     return allPublicIncludePaths
 end
