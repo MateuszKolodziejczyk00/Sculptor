@@ -31,9 +31,6 @@ public:
 
 		// construct default value
 		new (&GetImpl()) TStruct();
-		SPT_MAYBE_UNUSED
-		TStruct& test = GetImpl();
-
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
@@ -111,7 +108,6 @@ private:
 		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
 		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(GetName().ToString() + lib::String("_Buffer")), bufferSize, rhi::EBufferUsage::Uniform, allocationInfo);
 
-		//m_bufferView = m_buffer->CreateView(0, bufferSize);
 		m_bufferView = m_buffer->CreateView(0, bufferSize);
 
 		// store offset as 32bits integer because that's how dynamic offset are stored
