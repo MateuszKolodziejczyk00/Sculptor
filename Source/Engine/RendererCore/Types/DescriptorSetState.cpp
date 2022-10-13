@@ -99,11 +99,12 @@ void DescriptorSetBinding::MarkAsDirty()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState(EDescriptorSetStateFlags flags)
+DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags)
 	: m_isDirty(false)
 	, m_flags(flags)
 	, m_id(utils::GenerateStateID())
 	, m_descriptorSetHash(idxNone<SizeType>)
+	, m_name(name)
 { }
 
 DSStateID DescriptorSetState::GetID() const
@@ -136,21 +137,6 @@ SizeType DescriptorSetState::GetDescriptorSetHash() const
 	return m_descriptorSetHash;
 }
 
-void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)
-{
-	m_bindingNames = std::move(inBindingNames);
-}
-
-void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
-{
-	m_descriptorSetHash = hash;
-}
-
-void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
-{
-	m_dynamicOffsets.reserve(dynamicOffsetsNum);
-}
-
 Uint32* DescriptorSetState::AddDynamicOffset()
 {
 	const Uint32* prevDataPtr = m_dynamicOffsets.data();
@@ -166,6 +152,26 @@ Uint32* DescriptorSetState::AddDynamicOffset()
 const lib::DynamicArray<Uint32>& DescriptorSetState::GetDynamicOffsets() const
 {
 	return m_dynamicOffsets;
+}
+
+const lib::HashedString& DescriptorSetState::GetName() const
+{
+	return m_name.Get();
+}
+
+void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)
+{
+	m_bindingNames = std::move(inBindingNames);
+}
+
+void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
+{
+	m_descriptorSetHash = hash;
+}
+
+void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
+{
+	m_dynamicOffsets.reserve(dynamicOffsetsNum);
 }
 
 } // spt::rdr

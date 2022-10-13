@@ -2,6 +2,7 @@
 
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
+#include "Vulkan/Debug/DebugUtils.h"
 #include "SculptorCoreTypes.h"
 
 
@@ -30,6 +31,9 @@ public:
 	RHIDescriptorSet();
 	RHIDescriptorSet(VkDescriptorSet handle, Uint16 poolSetIdx, Uint16 poolIdx);
 
+	void						SetName(const lib::HashedString& name);
+	const lib::HashedString&	GetName() const;
+
 	Bool IsValid() const;
 
 	// Vulkan ================================================
@@ -43,6 +47,8 @@ private:
 	VkDescriptorSet		m_handle;
 	Uint16				m_poolSetIdx;
 	Uint16				m_poolIdx;
+
+	DebugName			m_name;
 };
 
 

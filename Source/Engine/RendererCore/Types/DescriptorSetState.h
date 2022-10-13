@@ -2,6 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RendererUtils.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "ShaderMetaDataTypes.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefRegistration.h"
@@ -100,7 +101,7 @@ class RENDERER_CORE_API DescriptorSetState abstract
 {
 public:
 
-	DescriptorSetState(EDescriptorSetStateFlags flags);
+	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags);
 	~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
@@ -118,6 +119,8 @@ public:
 
 	Uint32* AddDynamicOffset();
 	const lib::DynamicArray<Uint32>& GetDynamicOffsets() const;
+
+	const lib::HashedString& GetName() const;
 
 protected:
 
@@ -138,6 +141,8 @@ private:
 
 	lib::DynamicArray<lib::HashedString>	m_bindingNames;
 	SizeType								m_descriptorSetHash;
+
+	RendererResourceName m_name;
 };
 
 
@@ -304,8 +309,8 @@ public:
 											public:																														\
 											using ThisClass = className;																								\
 											using Super = rdr::DescriptorSetState;																						\
-											className(rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)										\
-												: Super(flags)																											\
+											className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
+												: Super(name, flags)																									\
 											{																															\
 												SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
 												const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef(GetBindingsBegin(), stages);				\

@@ -50,6 +50,16 @@ RHIDescriptorSet::RHIDescriptorSet(VkDescriptorSet handle, Uint16 poolSetIdx, Ui
 	SPT_CHECK(m_poolIdx != idxNone<Uint16>);
 }
 
+void RHIDescriptorSet::SetName(const lib::HashedString& name)
+{
+	m_name.Set(name, reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_DESCRIPTOR_SET);
+}
+
+const lib::HashedString& RHIDescriptorSet::GetName() const
+{
+	return m_name.Get();
+}
+
 Bool RHIDescriptorSet::IsValid() const
 {
 	return m_handle != VK_NULL_HANDLE && m_poolSetIdx != idxNone<Uint16> && m_poolIdx != idxNone<Uint16>;

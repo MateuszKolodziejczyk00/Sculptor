@@ -8,6 +8,7 @@
 #include "Types/Barrier.h"
 #include "UIContext.h"
 #include "Types/DescriptorSetWriter.h"
+#include "Types/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
 #include "Pipelines/PipelineState.h"
 
@@ -83,10 +84,20 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<Sampler>			CreateSampler(const rhi::SamplerDefinition& def);
 
+	template<typename TDSState>
+	SPT_NODISCARD static lib::SharedRef<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags);
+
 private:
 
 	// block creating instance
 	ResourcesManager() = default;
 };
+
+
+template<typename TDSState>
+lib::SharedRef<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
+{
+	return lib::MakeShared<TDSState>(name, flags);
+}
 
 } // spt::rdr

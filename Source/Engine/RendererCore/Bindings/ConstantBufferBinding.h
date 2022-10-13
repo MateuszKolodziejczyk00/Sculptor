@@ -18,13 +18,13 @@ public:
 		: DescriptorSetBinding(name, descriptorDirtyFlag)
 		, m_secondStructOffset(0)
 		, m_offset(nullptr)
-	{
-		InitResources();
-	}
+	{ }
 
 	void Initialize(DescriptorSetState& owningState)
 	{
 		DescriptorSetBinding::Initialize(owningState);
+
+		InitResources(owningState);
 
 		m_offset = owningState.AddDynamicOffset();
 		*m_offset = 0;
@@ -95,8 +95,10 @@ private:
 		return *reinterpret_cast<TStruct*>(m_buffer->GetRHI().GetMappedPtr() + *m_offset);
 	}
 
-	void InitResources()
+	void InitResources(DescriptorSetState& owningState)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		constexpr Uint64 structSize = sizeof(TStruct);
 		const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
 		const Uint64 secondStructOffset = math::Utils::RoundUp(structSize, minOffsetAlignment);
@@ -106,7 +108,7 @@ private:
 		rhi::RHIAllocationInfo allocationInfo;
 		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(GetName().ToString() + lib::String("_Buffer")), bufferSize, rhi::EBufferUsage::Uniform, allocationInfo);
+		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")), bufferSize, rhi::EBufferUsage::Uniform, allocationInfo);
 
 		m_bufferView = m_buffer->CreateView(0, bufferSize);
 

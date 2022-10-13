@@ -40,6 +40,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(co
 	{
 		const rhi::DescriptorSetLayoutID dsLayoutID = pipeline->GetRHI().GetDescriptorSetLayoutID(descriptorSetIdx);
 		createdDS = rhi::RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(dsLayoutID);
+		createdDS.SetName(state->GetName());
 
 		PersistentDSData newDSData;
 		newDSData.id = state->GetID();

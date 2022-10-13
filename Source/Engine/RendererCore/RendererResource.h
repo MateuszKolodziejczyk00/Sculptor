@@ -25,7 +25,6 @@ public:
 	
 	~RendererResource();
 
-
 	inline RHIType&			GetRHI()
 	{
 		return m_rhiResource;
