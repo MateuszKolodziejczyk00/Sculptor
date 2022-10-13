@@ -9,7 +9,7 @@
 #include "Pipelines/PipelinesLibrary.h"
 #include "DescriptorSets/DescriptorSetsManager.h"
 #include "Samplers/SamplersCache.h"
-#include "Profiler/GPUProfiler.h"
+#include "GPUDiagnose/Diagnose.h"
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
@@ -151,7 +151,7 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 						std::back_inserter(rhiSubmitBatch.commandBuffers),
 						[](const lib::UniquePtr<CommandsRecorder>& recorder) -> const rhi::RHICommandBuffer*
 						{
-							return &recorder->GetCommandsBuffer()->GetRHI();
+							return &recorder->GetCommandBuffer()->GetRHI();
 						});
 	}
 

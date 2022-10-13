@@ -332,4 +332,29 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, static_cast<Uint32>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
+void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	const VkDebugMarkerMarkerInfoEXT markerInfo
+	{
+		.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
+		.pMarkerName = name.GetData(),
+		.color = { color.r, color.g, color.b, color.a }
+	};
+
+	vkCmdDebugMarkerBeginEXT(m_cmdBufferHandle, &markerInfo);
+}
+
+void RHICommandBuffer::EndDebugRegion()
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	vkCmdDebugMarkerEndEXT(m_cmdBufferHandle);
+}
+
 } // spt::vulkan

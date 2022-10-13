@@ -60,13 +60,6 @@ public:
 		OPTICK_GPU_FLIP(swapchain);
 	}
 
-	static RHIProfiler::CmdBufferContext GetCommandBufferContext(const RHICommandBuffer& cmdBuffer)
-	{
-		// in case of optick context is handle to vulkan command buffer
-		static_assert(sizeof(VkCommandBuffer) == sizeof(RHIProfiler::CmdBufferContext));
-		return reinterpret_cast<RHIProfiler::CmdBufferContext>(cmdBuffer.GetHandle());
-	}
-
 private:
 
 	static Optick::VulkanFunctions BuildVulkanFunctionsTable()
@@ -105,11 +98,9 @@ class GPUProfiler
 {
 public:
 
-	static void								Initialize() {}
+	static void		Initialize() {}
 
-	static void								FlipFrame(const RHIWindow& window) {}
-
-	static RHIProfiler::CmdBufferContext	GetCommandBufferContext(const RHICommandBuffer& cmdBuffer) { return RHIProfiler::CmdBufferContext{}; }
+	static void		FlipFrame(const RHIWindow& window) {}
 
 };
 
@@ -126,11 +117,6 @@ void RHIProfiler::Initialize()
 void RHIProfiler::FlipFrame(const RHIWindow& window)
 {
 	impl::GPUProfiler::FlipFrame(window);
-}
-
-RHIProfiler::CmdBufferContext RHIProfiler::GetCommandBufferContext(const RHICommandBuffer& cmdBuffer)
-{
-	return impl::GPUProfiler::GetCommandBufferContext(cmdBuffer);
 }
 
 } // spt::vulkan

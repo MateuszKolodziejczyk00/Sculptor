@@ -105,6 +105,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     
 #if VULKAN_VALIDATION
 
+    extensionNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #endif // VULKAN_VALIDATION

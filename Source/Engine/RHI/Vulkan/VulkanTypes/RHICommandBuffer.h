@@ -28,8 +28,6 @@ public:
 
 	Bool							IsValid() const;
 
-	VkCommandBuffer					GetHandle() const;
-
 	rhi::ECommandBufferQueueType	GetQueueType() const;
 
 	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
@@ -59,6 +57,20 @@ public:
 
 	void	CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
+	// Debug ============================================
+
+	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
+	void	EndDebugRegion();
+
+	// Vulkan specific ======================================
+
+	VkCommandBuffer					GetHandle() const;
+
+	operator VkCommandBuffer() const
+	{
+		return GetHandle();
+	}
+
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
@@ -74,4 +86,4 @@ private:
 	DebugName						m_name;
 };
 
-}
+} // spt::vulkan

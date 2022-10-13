@@ -1,23 +1,24 @@
 #pragma once
 
+#include "SculptorLibMacros.h"
 #include "MathCore.h"
 
 
 namespace spt::lib
 {
 
-class Color
+class SCULPTORLIB_API Color
 {
 public:
 
-	Color(Real32 inR = 0.f, Real32 inG = 0.f, Real32 inB = 0.f, Real32 inA = 0.f)
+	explicit constexpr Color(Real32 inR = 0.f, Real32 inG = 0.f, Real32 inB = 0.f, Real32 inA = 0.f)
 		: r(inR)
 		, g(inG)
 		, b(inB)
 		, a(inA)
 	{ }
 
-	Color(const math::Vector3f& color, Real32 inA = 0.f)
+	explicit Color(const math::Vector3f& color, Real32 inA = 0.f)
 		: r(color.x())
 		, g(color.y())
 		, b(color.z())
@@ -35,6 +36,10 @@ public:
 	Real32		g;
 	Real32		b;
 	Real32		a;
+
+	static const Color Red;
+	static const Color Green;
+	static const Color Blue;
 };
 
 

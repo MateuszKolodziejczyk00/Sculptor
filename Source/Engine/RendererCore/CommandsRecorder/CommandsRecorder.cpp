@@ -55,7 +55,7 @@ void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, co
 	m_state = ECommandsRecorderState::Pending;
 }
 
-const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandsBuffer() const
+const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandBuffer() const
 {
 	return m_commandsBuffer;
 }
@@ -217,6 +217,30 @@ void CommandsRecorder::RenderUI()
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
 							 UIBackend::GetRHI().Render(cmdBuffer->GetRHI());
+						 });
+}
+
+void CommandsRecorder::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	EnqueueRenderCommand([name, color](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().BeginDebugRegion(name, color);
+						 });
+}
+
+void CommandsRecorder::EndDebugRegion()
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsBuildingCommands());
+
+	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 cmdBuffer->GetRHI().EndDebugRegion();
 						 });
 }
 

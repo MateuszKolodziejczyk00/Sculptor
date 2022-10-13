@@ -52,7 +52,7 @@ public:
 
 	void									RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
 
-	const lib::SharedPtr<CommandBuffer>&	GetCommandsBuffer() const;
+	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
 	void									ExecuteBarrier(Barrier barrier);
 
@@ -75,6 +75,11 @@ public:
 	void									InitializeUIFonts();
 
 	void									RenderUI();
+
+	// Debug ============================================
+
+	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
+	void	EndDebugRegion();
 
 private:
 
