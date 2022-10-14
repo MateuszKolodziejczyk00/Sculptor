@@ -9,6 +9,8 @@
 #include "SerializationHelper.h"
 #include "ShaderMetaDataTypesSerialization.h"
 
+#include <filesystem>
+
 namespace spt::srl
 {
 
@@ -86,22 +88,31 @@ Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath,
 CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
-	
-	SPT_CHECK(CanUseShadersCache());
 
 	CompiledShaderFile compiledShaderFile;
 
-	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-	srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, filePath);
+	if (CanUseShadersCache())
+	{
+		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
+		const lib::String shaderSourcePath = engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());
+
+		const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
+		const auto shaderSourceWriteTime = std::filesystem::last_write_time(shaderSourcePath);
+
+		if (cachedShaderWriteTime > shaderSourceWriteTime)
+		{
+			srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, cachedShaderPath);
+		}
+	}
 
 	return compiledShaderFile;
 }
 
 CompiledShaderFile CompiledShadersCache::GetCachedShaderChecked(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
-	SPT_CHECK(HasCachedShader(shaderRelativePath, compilationSettings));
-
-	return TryGetCachedShader(shaderRelativePath, compilationSettings);
+	CompiledShaderFile compiledShader = TryGetCachedShader(shaderRelativePath, compilationSettings);
+	SPT_CHECK(compiledShader.IsValid());
+	return compiledShader;
 }
 
 void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile)
