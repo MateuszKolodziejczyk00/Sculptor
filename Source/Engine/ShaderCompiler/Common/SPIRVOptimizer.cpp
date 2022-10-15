@@ -6,7 +6,7 @@
 namespace spt::sc
 {
 
-SPT_IMPLEMENT_LOG_CATEGORY(SPIRVOptimizerLog, true)
+SPT_DEFINE_LOG_CATEGORY(SPIRVOptimizerLog, true)
 
 namespace impl
 {

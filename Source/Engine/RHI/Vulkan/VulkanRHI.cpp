@@ -20,7 +20,7 @@
 namespace spt::vulkan
 {
 
-SPT_IMPLEMENT_LOG_CATEGORY(VulkanRHI, true);
+SPT_DEFINE_LOG_CATEGORY(VulkanRHI, true);
 
 namespace priv
 {

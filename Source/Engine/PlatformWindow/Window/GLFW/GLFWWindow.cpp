@@ -13,7 +13,7 @@
 namespace spt::platf
 {
 
-SPT_IMPLEMENT_LOG_CATEGORY(GLFW, true)
+SPT_DEFINE_LOG_CATEGORY(GLFW, true)
 
 
 struct GLFWWindowData

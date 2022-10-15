@@ -14,7 +14,7 @@ namespace spt::vulkan
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
 
-SPT_IMPLEMENT_LOG_CATEGORY(VulkanRHIWindow, true);
+SPT_DEFINE_LOG_CATEGORY(VulkanRHIWindow, true);
 
 namespace priv
 {
