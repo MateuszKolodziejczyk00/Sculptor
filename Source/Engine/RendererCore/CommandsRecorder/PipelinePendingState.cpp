@@ -139,11 +139,6 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::SharedRef<Descrip
 	TryMarkAsDirty(state);
 }
 
-void PipelinePendingState::PostCommandsSubmit()
-{
-	
-}
-
 void PipelinePendingState::TryMarkAsDirty(const lib::SharedRef<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();

@@ -41,10 +41,6 @@ public:
 	
 	void BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
-	
-	// ===================================================================
-
-	void PostCommandsSubmit();
 
 private:
 

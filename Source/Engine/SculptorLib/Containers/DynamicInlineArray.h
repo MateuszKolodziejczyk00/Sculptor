@@ -31,7 +31,7 @@ public:
 	constexpr DynamicInlineArray(DynamicInlineArray&& other)
 		: Super(AllocatorType(m_inlineStorage.data(), m_inlineStorage.size() * sizeof(TType)))
 	{
-		Super::operator=(std::forward<DynamicInlineArray>(other));
+		*this = std::forward<DynamicInlineArray>(other);
 	}
 
 	explicit constexpr DynamicInlineArray(const lib::DynamicArray<TType, TFallbackAllocator<TType>>& other)
@@ -48,7 +48,17 @@ public:
 
 	DynamicInlineArray& operator=(DynamicInlineArray&& rhs)
 	{
-		Super::operator=(std::forward<DynamicInlineArray>(rhs));
+		if (rhs.capacity() <= inlineSize)
+		{
+			// if size is smaller than inline size, we need to copy elements to our inline storage instead move
+			Super::resize(rhs.size());
+			std::copy(std::cbegin(rhs), std::cend(rhs), std::begin(*this));
+		}
+		else
+		{
+			Super::operator=(std::forward<DynamicInlineArray>(rhs));
+		}
+
 		return *this;
 	}
 	
