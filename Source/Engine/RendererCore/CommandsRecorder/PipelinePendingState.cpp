@@ -60,7 +60,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& 
 						 {
 							 for (const DSBindCommandData& bindData : pendingDescriptors)
 							 {
-								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), bindData.ds, bindData.idx, bindData.dynamicOffsets);
+								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), bindData.ds, bindData.idx, bindData.dynamicOffsets.data(), static_cast<Uint32>(bindData.dynamicOffsets.size()));
 							 }
 						 });
 	}
@@ -108,7 +108,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& c
 						 {
 							 for (const DSBindCommandData& bindData : pendingDescriptors)
 							 {
-								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), bindData.ds, bindData.idx, bindData.dynamicOffsets);
+								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), bindData.ds, bindData.idx, bindData.dynamicOffsets.data(), static_cast<Uint32>(bindData.dynamicOffsets.size()));
 							 }
 						 });
 	}
@@ -118,7 +118,7 @@ void PipelinePendingState::BindDescriptorSetState(const lib::SharedRef<Descripto
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_boundDescriptorSetStates.emplace_back(state);
+	m_boundDescriptorSetStates.emplace_back(BoundDescriptorSetState{ state, DynamicOffsetsArray(state->GetDynamicOffsets()) });
 
 	TryMarkAsDirty(state);
 }
@@ -127,11 +127,21 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::SharedRef<Descrip
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto foundDescriptor = std::find(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates), state.ToSharedPtr());
+	const auto foundDescriptor = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
+											  [statePtr = state.ToSharedPtr()](const BoundDescriptorSetState& boundState)
+											  {
+												  return boundState.instance == statePtr;
+											  });
+
 	SPT_CHECK(foundDescriptor != std::cend(m_boundDescriptorSetStates));
 	m_boundDescriptorSetStates.erase(foundDescriptor);
 
 	TryMarkAsDirty(state);
+}
+
+void PipelinePendingState::PostCommandsSubmit()
+{
+	
 }
 
 void PipelinePendingState::TryMarkAsDirty(const lib::SharedRef<DescriptorSetState>& state)
@@ -191,14 +201,16 @@ lib::DynamicArray<PipelinePendingState::DSBindCommandData> PipelinePendingState:
 		if (dirtyDescriptorSets[dsIdx])
 		{
 			const SizeType dsHash = metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx));
-			const lib::SharedPtr<DescriptorSetState> state = GetBoundDescriptorSetState(dsHash);
-			SPT_CHECK(!!state);
+			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsHash);
+			SPT_CHECK(!!foundState);
 
-			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, lib::Ref(state), static_cast<Uint32>(dsIdx));
-			descriptorSetsToBind.emplace_back(DSBindCommandData(static_cast<Uint32>(dsIdx), descriptorSet, state->GetDynamicOffsets()));
+			const lib::SharedRef<DescriptorSetState> stateInstance = lib::Ref(foundState->instance);
+
+			const rhi::RHIDescriptorSet descriptorSet = dsManager.GetDescriptorSet(pipeline, stateInstance, static_cast<Uint32>(dsIdx));
+			descriptorSetsToBind.emplace_back(DSBindCommandData(static_cast<Uint32>(dsIdx), descriptorSet, foundState->dynamicOffsets));
 			
 			// this check must be after getting descriptor set, as this call may clear dirty flag if that's first descriptor created using given state
-			SPT_CHECK(!state->IsDirty());
+			SPT_CHECK(!stateInstance->IsDirty());
 		}
 	}
 
@@ -208,17 +220,17 @@ lib::DynamicArray<PipelinePendingState::DSBindCommandData> PipelinePendingState:
 	return descriptorSetsToBind;
 }
 
-lib::SharedPtr<DescriptorSetState> PipelinePendingState::GetBoundDescriptorSetState(SizeType hash) const
+const PipelinePendingState::BoundDescriptorSetState* PipelinePendingState::GetBoundDescriptorSetState(SizeType hash) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto foundState = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
-										 [hash](const lib::SharedPtr<DescriptorSetState>& state)
+										 [hash](const BoundDescriptorSetState& state)
 										 {
-											 return state->GetDescriptorSetHash() == hash;
+											 return state.instance->GetDescriptorSetHash() == hash;
 										 });
 
-	return foundState != std::cend(m_boundDescriptorSetStates) ? *foundState : lib::SharedPtr<DescriptorSetState>();
+	return foundState != std::cend(m_boundDescriptorSetStates) ? &(*foundState) : nullptr;
 }
 
 } // spt::rdr

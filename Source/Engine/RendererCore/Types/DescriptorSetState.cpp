@@ -154,6 +154,11 @@ const lib::DynamicArray<Uint32>& DescriptorSetState::GetDynamicOffsets() const
 	return m_dynamicOffsets;
 }
 
+SizeType DescriptorSetState::GetDynamicOffsetsNum() const
+{
+	return m_dynamicOffsets.size();
+}
+
 const lib::HashedString& DescriptorSetState::GetName() const
 {
 	return m_name.Get();

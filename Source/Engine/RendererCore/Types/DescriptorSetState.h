@@ -117,8 +117,9 @@ public:
 
 	SizeType GetDescriptorSetHash() const;
 
-	Uint32* AddDynamicOffset();
-	const lib::DynamicArray<Uint32>& GetDynamicOffsets() const;
+	Uint32*								AddDynamicOffset();
+	const lib::DynamicArray<Uint32>&	GetDynamicOffsets() const;
+	SizeType							GetDynamicOffsetsNum() const;
 
 	const lib::HashedString& GetName() const;
 

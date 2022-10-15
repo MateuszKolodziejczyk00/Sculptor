@@ -224,9 +224,9 @@ void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 }
 
-void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
+void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
-	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx, dynamicOffsets);
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
 }
 
 void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
@@ -234,9 +234,9 @@ void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 }
 
-void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
+void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
-	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx, dynamicOffsets);
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
 }
 
 void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
@@ -317,7 +317,7 @@ void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHI
 	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
 }
 
-void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const lib::DynamicArray<Uint32>& dynamicOffsets)
+void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -325,11 +325,12 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	SPT_CHECK(ds.IsValid());
 	SPT_CHECK(pipeline.IsValid());
 	SPT_CHECK(dsIdx != idxNone<Uint32>);
+	SPT_CHECK(dynamicOffsetsNum == 0 || dynamicOffsets != nullptr);
 
 	const PipelineLayout& layout = pipeline.GetPipelineLayout();
 	VkDescriptorSet dsHandle = ds.GetHandle();
 
-	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, static_cast<Uint32>(dynamicOffsets.size()), dynamicOffsets.data());
+	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, dynamicOffsetsNum, dynamicOffsets);
 }
 
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)

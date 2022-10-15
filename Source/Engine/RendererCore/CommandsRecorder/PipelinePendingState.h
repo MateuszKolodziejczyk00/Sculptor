@@ -41,14 +41,27 @@ public:
 	
 	void BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
+	
+	// ===================================================================
+
+	void PostCommandsSubmit();
 
 private:
 
+	using DynamicOffsetsArray = lib::DynamicInlineArray<Uint32, 2>;
+
 	struct DSBindCommandData
 	{
-		Uint32 idx;
-		rhi::RHIDescriptorSet ds;
-		const lib::DynamicArray<Uint32>& dynamicOffsets;
+		Uint32					idx;
+		rhi::RHIDescriptorSet	ds;
+		DynamicOffsetsArray		dynamicOffsets;
+	};
+
+	struct BoundDescriptorSetState
+	{
+		lib::SharedPtr<DescriptorSetState>	instance;
+		// snapshotted state of dynamic offsets during bound
+		DynamicOffsetsArray					dynamicOffsets;
 	};
 
 	void TryMarkAsDirty(const lib::SharedRef<DescriptorSetState>& state);
@@ -58,12 +71,12 @@ private:
 
 	lib::DynamicArray<DSBindCommandData> FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
 
-	lib::SharedPtr<DescriptorSetState> GetBoundDescriptorSetState(SizeType hash) const;
+	const BoundDescriptorSetState* GetBoundDescriptorSetState(SizeType hash) const;
 
 	lib::SharedPtr<GraphicsPipeline> m_boundGfxPipeline;
 	lib::SharedPtr<ComputePipeline> m_boundComputePipeline;
 
-	lib::DynamicArray<lib::SharedPtr<DescriptorSetState>> m_boundDescriptorSetStates;
+	lib::DynamicArray<BoundDescriptorSetState> m_boundDescriptorSetStates;
 
 	lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
 	lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
