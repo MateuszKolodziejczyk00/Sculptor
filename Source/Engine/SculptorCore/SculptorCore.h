@@ -8,3 +8,6 @@
 
 #pragma warning(disable : 4324) // [struct] structure was padded due to alignment specifier
 							    // Disabled as we may want to have padding to match shader struct layout
+
+#pragma warning(disable : 5063) // std::is_constant_evaluated' always evaluates to true in manifestly constant-evaluated expressions
+							    // Disabled as we want to use it in certain situations to do additional runtime actions like logging if we're not constant evaluated

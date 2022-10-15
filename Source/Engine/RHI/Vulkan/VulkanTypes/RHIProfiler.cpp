@@ -45,9 +45,9 @@ public:
 		};
 
 		const Uint32 queuesNum = SPT_ARRAY_SIZE(queues);
-		SPT_CHECK(queuesNum == SPT_ARRAY_SIZE(devices));
-		SPT_CHECK(queuesNum == SPT_ARRAY_SIZE(physicalDevices));
-		SPT_CHECK(queuesNum == SPT_ARRAY_SIZE(queueFamilies));
+		SPT_STATIC_CHECK(queuesNum == SPT_ARRAY_SIZE(devices));
+		SPT_STATIC_CHECK(queuesNum == SPT_ARRAY_SIZE(physicalDevices));
+		SPT_STATIC_CHECK(queuesNum == SPT_ARRAY_SIZE(queueFamilies));
 
 		const Optick::VulkanFunctions functionsTable = BuildVulkanFunctionsTable();
 

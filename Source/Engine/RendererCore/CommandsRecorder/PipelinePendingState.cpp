@@ -202,7 +202,7 @@ lib::DynamicArray<PipelinePendingState::DSBindCommandData> PipelinePendingState:
 		{
 			const SizeType dsHash = metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx));
 			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsHash);
-			SPT_CHECK(!!foundState);
+			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}", pipeline->GetRHI().GetName().GetData(), dsIdx);
 
 			const lib::SharedRef<DescriptorSetState> stateInstance = lib::Ref(foundState->instance);
 
