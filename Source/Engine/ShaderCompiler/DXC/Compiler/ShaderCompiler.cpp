@@ -273,6 +273,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{
+		args.Append(lib::WString(L"-Zi"));
 		args.Append(L"-Qstrip_debug");
 	}
 

@@ -96,10 +96,17 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
 		const lib::String shaderSourcePath = engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());
 
-		const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
-		const auto shaderSourceWriteTime = std::filesystem::last_write_time(shaderSourcePath);
+		Bool hasValidCachedShader = false;
 
-		if (cachedShaderWriteTime > shaderSourceWriteTime)
+		if (lib::File::Exists(cachedShaderPath))
+		{
+			const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
+			const auto shaderSourceWriteTime = std::filesystem::last_write_time(shaderSourcePath);
+
+			hasValidCachedShader = cachedShaderWriteTime > shaderSourceWriteTime;
+		}
+
+		if (hasValidCachedShader)
 		{
 			srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, cachedShaderPath);
 		}
