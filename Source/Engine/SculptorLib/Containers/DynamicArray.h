@@ -6,7 +6,7 @@
 namespace spt::lib
 {
 
-template <class Type, class Allocator = std::allocator<Type>>
-using DynamicArray = std::vector<Type, Allocator>;
+template <class TType, class TAllocator = std::allocator<TType>>
+using DynamicArray = std::vector<TType, TAllocator>;
 
-}
+} // spt::lib
