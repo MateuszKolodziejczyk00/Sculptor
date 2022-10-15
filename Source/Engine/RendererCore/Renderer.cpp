@@ -13,7 +13,6 @@
 #include "Window/PlatformWindowImpl.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
-#include "RHIBridge/RHIImpl.h"
 #include "RHIBridge/RHISemaphoreImpl.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
 
@@ -192,11 +191,6 @@ void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
 
 	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
 	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
-}
-
-void Renderer::EnableValidationWarnings(Bool enable)
-{
-	rhi::RHI::EnableValidationWarnings(enable);
 }
 
 } // spt::rdr

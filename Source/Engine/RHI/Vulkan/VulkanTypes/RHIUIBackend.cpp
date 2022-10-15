@@ -71,16 +71,11 @@ void RHIUIBackend::InitializeFonts(const RHICommandBuffer& cmdBuffer)
 
 	SPT_CHECK(IsValid());
 
-#if RHI_DEBUG
-	// Disable small allocations performance warnings
-	VulkanRHI::EnableValidationWarnings(false);
-#endif // RHI_DEBUG
-
-	ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.GetHandle());
-
-#if RHI_DEBUG
-	VulkanRHI::EnableValidationWarnings(true);
-#endif // RHI_DEBUG
+	{
+		// Disable small allocations performance warnings
+		RHI_DISABLE_VALIDATION_WARNINGS_SCOPE;
+		ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.GetHandle());
+	}
 }
 
 void RHIUIBackend::DestroyFontsTemporaryObjects()
@@ -109,16 +104,11 @@ void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
 
 	ImDrawData* drawData = ImGui::GetDrawData();
 
-#if RHI_DEBUG
-	// Disable small allocations performance warnings
-	VulkanRHI::EnableValidationWarnings(false);
-#endif // RHI_DEBUG
-
-	ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer.GetHandle());
-
-#if RHI_DEBUG
-	VulkanRHI::EnableValidationWarnings(true);
-#endif // RHI_DEBUG
+	{
+		// Disable small allocations performance warnings
+		RHI_DISABLE_VALIDATION_WARNINGS_SCOPE;
+		ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer.GetHandle());
+	}
 }
 
 ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, const RHISampler& sampler)

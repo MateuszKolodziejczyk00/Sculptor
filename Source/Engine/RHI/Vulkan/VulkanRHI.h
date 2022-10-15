@@ -50,6 +50,19 @@ public:
 
 	static void				EnableValidationWarnings(Bool enable);
 
+	struct DisableValidationWarningsScope
+	{
+		DisableValidationWarningsScope()
+		{
+			VulkanRHI::EnableValidationWarnings(false);
+		}
+
+		~DisableValidationWarningsScope()
+		{
+			VulkanRHI::EnableValidationWarnings(true);
+		}
+	};
+
 #endif // RHI_DEBUG
 
 	// Vulkan Getters ==================================================================
@@ -76,5 +89,16 @@ public:
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
 };
+
+
+#if RHI_DEBUG
+
+#define RHI_DISABLE_VALIDATION_WARNINGS_SCOPE const vulkan::VulkanRHI::DisableValidationWarningsScope SPT_SCOPE_NAME(_rhi_disable_val_warnings_);
+
+#else
+
+#define RHI_DISABLE_VALIDATION_WARNINGS_SCOPE
+
+#endif //RHI_DEBUG
 
 } // spt::vulkan

@@ -2,6 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Utility/UtilityMacros.h"
 
 
 namespace spt::rdr
@@ -27,10 +28,7 @@ private:
 
 #if RENDERER_VALIDATION
 
-#define SPT_GPU_DEBUG_NAME_CONCAT(begin, end) begin ## end
-#define SPT_GPU_DEBUG_NAME_CONCAT_EVAL(begin, end) SPT_GPU_DEBUG_NAME_CONCAT(begin, end)
-
-#define SPT_GPU_DEBUG_REGION_NAME SPT_GPU_DEBUG_NAME_CONCAT_EVAL(_region_, __LINE__)
+#define SPT_GPU_DEBUG_REGION_NAME SPT_SCOPE_NAME(_gpu_debug_region_)
 
 #define SPT_GPU_DEBUG_REGION(recorderRef, name, color) const rdr::DebugRegion SPT_GPU_DEBUG_REGION_NAME (recorderRef, name, color);
 

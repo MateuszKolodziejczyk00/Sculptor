@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RendererUtils.h"
 #include "RHICore/RHICommandBufferTypes.h"
+#include "RHIBridge/RHIImpl.h"
 
 
 namespace spt::rdr
@@ -62,12 +63,12 @@ public:
 
 	static void									IncrementReleaseSemaphoreToCurrentFrame();
 
-	static void									EnableValidationWarnings(Bool enable);
-
 private:
 
 	// block creating instance
 	Renderer() = default;
 };
+
+#define RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE RHI_DISABLE_VALIDATION_WARNINGS_SCOPE
 
 } // spt::rdr
