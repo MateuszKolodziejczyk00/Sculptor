@@ -1,4 +1,4 @@
-#include "CommandsRecorder.h"
+#include "CommandRecorder.h"
 #include "RenderingDefinition.h"
 #include "ResourcesManager.h"
 #include "Renderer.h"
@@ -12,31 +12,31 @@
 namespace spt::rdr
 {
 
-CommandsRecorder::CommandsRecorder()
+CommandRecorder::CommandRecorder()
 	: m_state(ECommandsRecorderState::BuildingCommands)
 { }
 
-CommandsRecorder::~CommandsRecorder()
+CommandRecorder::~CommandRecorder()
 {
 	SPT_CHECK(m_state == ECommandsRecorderState::Pending);
 }
 
-Bool CommandsRecorder::IsBuildingCommands() const
+Bool CommandRecorder::IsBuildingCommands() const
 {
 	return m_state == ECommandsRecorderState::BuildingCommands;
 }
 
-Bool CommandsRecorder::IsRecording() const
+Bool CommandRecorder::IsRecording() const
 {
 	return m_state == ECommandsRecorderState::Recording;
 }
 
-Bool CommandsRecorder::IsPending() const
+Bool CommandRecorder::IsPending() const
 {
 	return m_state == ECommandsRecorderState::Pending;
 }
 
-void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+void CommandRecorder::RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -55,12 +55,12 @@ void CommandsRecorder::RecordCommands(const lib::SharedRef<Context>& context, co
 	m_state = ECommandsRecorderState::Pending;
 }
 
-const lib::SharedPtr<CommandBuffer>& CommandsRecorder::GetCommandBuffer() const
+const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const
 {
 	return m_commandsBuffer;
 }
 
-void CommandsRecorder::ExecuteBarrier(Barrier barrier)
+void CommandRecorder::ExecuteBarrier(Barrier barrier)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -72,7 +72,7 @@ void CommandsRecorder::ExecuteBarrier(Barrier barrier)
 						 });
 }
 
-void CommandsRecorder::BeginRendering(const RenderingDefinition& definition)
+void CommandRecorder::BeginRendering(const RenderingDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -84,7 +84,7 @@ void CommandsRecorder::BeginRendering(const RenderingDefinition& definition)
 						 });
 }
 
-void CommandsRecorder::EndRendering()
+void CommandRecorder::EndRendering()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -96,7 +96,7 @@ void CommandsRecorder::EndRendering()
 						 });
 }
 
-void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
+void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -113,7 +113,7 @@ void CommandsRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 						 });
 }
 
-void CommandsRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
+void CommandRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -123,7 +123,7 @@ void CommandsRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinitio
 	BindGraphicsPipeline(pipelineID);
 }
 
-void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
+void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -140,7 +140,7 @@ void CommandsRecorder::BindComputePipeline(PipelineStateID pipelineID)
 						 });
 }
 
-void CommandsRecorder::BindComputePipeline(const ShaderID& shader)
+void CommandRecorder::BindComputePipeline(const ShaderID& shader)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -150,7 +150,7 @@ void CommandsRecorder::BindComputePipeline(const ShaderID& shader)
 	BindComputePipeline(pipelineID);
 }
 
-void CommandsRecorder::Dispatch(const math::Vector3u& groupCount)
+void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -166,7 +166,7 @@ void CommandsRecorder::Dispatch(const math::Vector3u& groupCount)
 }
 
 
-void CommandsRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void CommandRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -175,7 +175,7 @@ void CommandsRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSet
 	m_pipelineState.BindDescriptorSetState(state);
 }
 
-void CommandsRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void CommandRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -184,7 +184,7 @@ void CommandsRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorS
 	m_pipelineState.UnbindDescriptorSetState(state);
 }
 
-void CommandsRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
+void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -196,7 +196,7 @@ void CommandsRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const 
 						 });
 }
 
-void CommandsRecorder::InitializeUIFonts()
+void CommandRecorder::InitializeUIFonts()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -208,7 +208,7 @@ void CommandsRecorder::InitializeUIFonts()
 						 });
 }
 
-void CommandsRecorder::RenderUI()
+void CommandRecorder::RenderUI()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -220,7 +220,7 @@ void CommandsRecorder::RenderUI()
 						 });
 }
 
-void CommandsRecorder::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
+void CommandRecorder::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -232,7 +232,7 @@ void CommandsRecorder::BeginDebugRegion(const lib::HashedString& name, const lib
 						 });
 }
 
-void CommandsRecorder::EndDebugRegion()
+void CommandRecorder::EndDebugRegion()
 {
 	SPT_PROFILER_FUNCTION();
 

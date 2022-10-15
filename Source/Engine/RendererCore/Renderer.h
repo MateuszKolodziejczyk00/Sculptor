@@ -10,7 +10,7 @@ namespace spt::rdr
 {
 
 struct CommandsRecordingInfo;
-class CommandsRecorder;
+class CommandRecorder;
 class ShadersManager;
 class PipelinesLibrary;
 class DescriptorSetsManager;
@@ -23,7 +23,7 @@ struct CommandsSubmitBatch
 {
 public:
 
-	lib::DynamicArray<lib::UniquePtr<CommandsRecorder>>		recordedCommands;
+	lib::DynamicArray<lib::UniquePtr<CommandRecorder>>		recordedCommands;
 	SemaphoresArray											waitSemaphores;
 	SemaphoresArray											signalSemaphores;
 };
@@ -49,7 +49,7 @@ public:
 
 	static SamplersCache&						GetSamplersCache();
 
-	static lib::UniquePtr<CommandsRecorder>		StartRecordingCommands();
+	static lib::UniquePtr<CommandRecorder>		StartRecordingCommands();
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
 

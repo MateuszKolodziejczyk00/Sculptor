@@ -1,10 +1,10 @@
 #include "GPUDebug.h"
-#include "CommandsRecorder/CommandsRecorder.h"
+#include "CommandsRecorder/CommandRecorder.h"
 
 namespace spt::rdr
 {
 
-DebugRegion::DebugRegion(CommandsRecorder& recorder, const lib::HashedString& regionName, const lib::Color& color)
+DebugRegion::DebugRegion(CommandRecorder& recorder, const lib::HashedString& regionName, const lib::Color& color)
 	: m_cachedRecorder(recorder)
 {
 	SPT_CHECK(m_cachedRecorder.IsBuildingCommands());

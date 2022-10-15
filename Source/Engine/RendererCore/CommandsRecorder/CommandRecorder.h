@@ -39,12 +39,12 @@ enum class ECommandsRecorderState
 };
 
 
-class RENDERER_CORE_API CommandsRecorder
+class RENDERER_CORE_API CommandRecorder
 {
 public:
 
-	CommandsRecorder();
-	~CommandsRecorder();
+	CommandRecorder();
+	~CommandRecorder();
 
 	Bool	IsBuildingCommands() const;
 	Bool	IsRecording() const;
@@ -97,7 +97,7 @@ private:
 
 
 template<CRenderCommand RenderCommand>
-void CommandsRecorder::EnqueueRenderCommand(RenderCommand&& command)
+void CommandRecorder::EnqueueRenderCommand(RenderCommand&& command)
 {
 	m_commandQueue.Enqueue(std::move(command));
 }

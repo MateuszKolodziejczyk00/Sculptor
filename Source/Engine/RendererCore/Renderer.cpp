@@ -1,6 +1,6 @@
 #include "Renderer.h"
 #include "RendererUtils.h"
-#include "CommandsRecorder/CommandsRecorder.h"
+#include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
 #include "Types/Window.h"
@@ -124,11 +124,11 @@ SamplersCache& Renderer::GetSamplersCache()
 	return priv::g_data.samplersCache;
 }
 
-lib::UniquePtr<CommandsRecorder> Renderer::StartRecordingCommands()
+lib::UniquePtr<CommandRecorder> Renderer::StartRecordingCommands()
 {
 	SPT_PROFILER_FUNCTION();
 
-	return std::make_unique<CommandsRecorder>();
+	return std::make_unique<CommandRecorder>();
 }
 
 void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
@@ -149,7 +149,7 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 		rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
 		std::transform(	submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
 						std::back_inserter(rhiSubmitBatch.commandBuffers),
-						[](const lib::UniquePtr<CommandsRecorder>& recorder) -> const rhi::RHICommandBuffer*
+						[](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
 						{
 							return &recorder->GetCommandBuffer()->GetRHI();
 						});

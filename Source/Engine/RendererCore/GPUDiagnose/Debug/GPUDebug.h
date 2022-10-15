@@ -7,19 +7,19 @@
 namespace spt::rdr
 {
 
-class CommandsRecorder;
+class CommandRecorder;
 
 
 class RENDERER_CORE_API DebugRegion
 {
 public:
 
-	DebugRegion(CommandsRecorder& recorder, const lib::HashedString& regionName, const lib::Color& color);
+	DebugRegion(CommandRecorder& recorder, const lib::HashedString& regionName, const lib::Color& color);
 	~DebugRegion();
 
 private:
 
-	CommandsRecorder& m_cachedRecorder;
+	CommandRecorder& m_cachedRecorder;
 };
 
 } // spt::rdr
