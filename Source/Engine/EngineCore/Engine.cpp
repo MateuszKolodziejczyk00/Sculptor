@@ -14,6 +14,11 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 	Paths::Initialize(engineInstance.m_cmdLineArgs);
 }
 
+const CommandLineArguments& Engine::GetCmdLineArgs()
+{
+	return GetInstance().m_cmdLineArgs;
+}
+
 Engine& Engine::GetInstance()
 {
 	static Engine instance;

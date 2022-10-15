@@ -7,7 +7,11 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddPrivateDependency("EngineCore")
 	self:AddPrivateDependency("Profiler")
 
-	self:AddDebugArgument("EngineRelativePath=../../../")
+	self:AddDebugArgument("-EngineRelativePath=../../../")
+
+	if configuration == EConfiguration.Debug then
+		self:AddDebugArgument("-EnableValidation")
+	end
 end
 
 SculptorEd:SetupProject()

@@ -9,6 +9,13 @@ function RHI:SetupConfiguration(configuration, platform)
 
     self:AddPublicDependency("SculptorLib")
     self:AddPublicDependency("UICore")
+    self:AddPublicDependency("EngineCore")
+
+    if configuration ~= EConfiguration.Release then
+        self:AddPublicDefine("RHI_DEBUG=1")
+    else
+        self:AddPublicDefine("RHI_DEBUG=0")
+    end
 end
 
 function RHI:GetProjectFiles(configuration, platform)

@@ -11,11 +11,11 @@ class DebugUtils
 {
 public:
 
-#if VULKAN_VALIDATION
+#if RHI_DEBUG
 
 	static void SetObjectName(VkDevice device, Uint64 object, VkObjectType objectType, const char* name);
 
-#endif // VULKAN_VALIDATION
+#endif // RHI_DEBUG
 };
 
 
@@ -38,9 +38,9 @@ public:
 
 private:
 
-#if VULKAN_VALIDATION
+#if RHI_DEBUG
 	lib::HashedString m_name;
-#endif // VULKAN_VALIDATION
+#endif // RHI_DEBUG
 };
 
 }

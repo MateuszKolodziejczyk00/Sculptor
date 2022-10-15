@@ -335,6 +335,8 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
+#if RHI_DEBUG
+
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
@@ -347,15 +349,21 @@ void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib
 	};
 
 	vkCmdDebugMarkerBeginEXT(m_cmdBufferHandle, &markerInfo);
+
+#endif // RHI_DEBUG
 }
 
 void RHICommandBuffer::EndDebugRegion()
 {
+#if RHI_DEBUG
+
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
 	vkCmdDebugMarkerEndEXT(m_cmdBufferHandle);
+
+#endif // RHI_DEBUG
 }
 
 } // spt::vulkan

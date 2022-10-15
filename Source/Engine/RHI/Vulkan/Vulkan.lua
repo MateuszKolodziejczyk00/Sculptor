@@ -13,7 +13,6 @@ function RHI:SetupRHIConfiguration(configuration, platform)
     self:AddPublicDefine("VULKAN_RHI=1")
 
     -- Validation
-    self:AddPublicDefine("VULKAN_VALIDATION=1")
     self:AddPrivateDefine("VULKAN_VALIDATION_STRICT=1")
     self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_GPU_ASSISTED=1")
     self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_BEST_PRACTICES=1")

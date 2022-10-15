@@ -46,7 +46,11 @@ public:
 
 	static void				WaitIdle();
 
+#if RHI_DEBUG
+
 	static void				EnableValidationWarnings(Bool enable);
+
+#endif // RHI_DEBUG
 
 	// Vulkan Getters ==================================================================
 

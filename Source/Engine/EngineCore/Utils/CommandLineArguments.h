@@ -1,12 +1,13 @@
 #pragma once
 
+#include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
 
 
 namespace spt::engn
 {
 
-class CommandLineArguments
+class ENGINE_CORE_API CommandLineArguments
 {
 public:
 

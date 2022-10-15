@@ -8,9 +8,9 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 {
     return lib::DynamicArray<const char*>
     {
-#if VULKAN_VALIDATION
+#if RHI_DEBUG
         VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
-#endif // VULKAN_VALIDATION
+#endif // RHI_DEBUG
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 }

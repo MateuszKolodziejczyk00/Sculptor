@@ -8,7 +8,7 @@ namespace spt::engn
 namespace params
 {
 
-static const lib::HashedString enginePath = "EngineRelativePath";
+static const lib::HashedString enginePath = "-EngineRelativePath";
 
 } // params
 

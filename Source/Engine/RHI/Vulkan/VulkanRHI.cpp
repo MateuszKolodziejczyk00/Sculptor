@@ -10,6 +10,7 @@
 #include "VulkanUtils.h"
 #include "LayoutsManager.h"
 #include "Pipeline/PipelineLayoutsManager.h"
+#include "Engine.h"
 
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
@@ -21,6 +22,13 @@ namespace spt::vulkan
 {
 
 SPT_DEFINE_LOG_CATEGORY(VulkanRHI, true);
+
+namespace constants
+{
+
+const char* enableValidationCmdArgName = "-EnableValidation";
+
+} // constants
 
 namespace priv
 {
@@ -78,6 +86,9 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 {
     priv::InitializeVolk();
 
+    const engn::CommandLineArguments& cmdLineArgs = engn::Engine::GetCmdLineArgs();
+    const Bool enableVaidationLayer = cmdLineArgs.Contains(constants::enableValidationCmdArgName);
+
     VkApplicationInfo applicationInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
     applicationInfo.pApplicationName = "Sculptor";
     applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -100,67 +111,75 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     
     for (Uint32 i = 0; i < initInfo.extensionsNum; ++i)
     {
-        extensionNames.push_back(initInfo.extensions[i]);
+        extensionNames.emplace_back(initInfo.extensions[i]);
     }
     
-#if VULKAN_VALIDATION
+#if RHI_DEBUG
 
-    extensionNames.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-    extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    extensionNames.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    extensionNames.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-#endif // VULKAN_VALIDATION
+#endif // RHI_DEBUG
 
     instanceInfo.enabledExtensionCount = static_cast<Uint32>(extensionNames.size());
     instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
 
-#if VULKAN_VALIDATION
-    const char* enabledLayers[] =
-    {
-        VULKAN_VALIDATION_LAYER_NAME
-    };
+    lib::DynamicArray<const char*> enabledLayers;
 
-    instanceInfo.enabledLayerCount = SPT_ARRAY_SIZE(enabledLayers);
-    instanceInfo.ppEnabledLayerNames = enabledLayers;
-#endif // VULKAN_VALIDATION
+#if RHI_DEBUG
+
+    enabledLayers.emplace_back(VULKAN_VALIDATION_LAYER_NAME);
+
+#endif // RHI_DEBUG
+
+    instanceInfo.enabledLayerCount = static_cast<Uint32>(enabledLayers.size());
+    instanceInfo.ppEnabledLayerNames = enabledLayers.data();
 
     VulkanStructsLinkedList instanceInfoLinkedList(instanceInfo);
 
-#if VULKAN_VALIDATION
+#if RHI_DEBUG
 
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
-    instanceInfoLinkedList.Append(debugMessengerInfo);
 
-#endif // VULKAN_VALIDATION
+    if (enableVaidationLayer)
+    {
+        instanceInfoLinkedList.Append(debugMessengerInfo);
+    }
+
+#endif // RHI_DEBUG
 
 #if VULKAN_VALIDATION_STRICT
 
-    static_assert(VULKAN_VALIDATION);
+    static_assert(RHI_DEBUG);
 
     lib::DynamicArray<VkValidationFeatureEnableEXT> enabledValidationFeatures;
 
 #if VULKAN_VALIDATION_STRICT_GPU_ASSISTED
-    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
-    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
+    enabledValidationFeatures.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+    enabledValidationFeatures.emplace_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
 #endif // VULKAN_VALIDATION_STRICT_GPU_ASSISTED
 
 #if VULKAN_VALIDATION_STRICT_BEST_PRACTICES
-    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+    enabledValidationFeatures.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
 #endif // VULKAN_VALIDATION_STRICT_BEST_PRACTICES
 
 #if VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
     static_assert(!VULKAN_VALIDATION_STRICT_GPU_ASSISTED);
-    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
+    enabledValidationFeatures.emplace_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
 #endif // VULKAN_VALIDATION_STRICT_DEBUG_PRINTF
 
 #if VULKAN_VALIDATION_STRICT_SYNCHRONIZATION
-    enabledValidationFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+    enabledValidationFeatures.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
 #endif // VULKAN_VALIDATION_STRICT_SYNCHRONIZATION
 
     VkValidationFeaturesEXT validationFeatures{ VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT };
     validationFeatures.enabledValidationFeatureCount = static_cast<Uint32>(enabledValidationFeatures.size());
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
 
-    instanceInfoLinkedList.Append(validationFeatures);
+    if (enableVaidationLayer)
+    {
+        instanceInfoLinkedList.Append(validationFeatures);
+    }
 
 #endif // VULKAN_VALIDATION_STRICT
 
@@ -168,9 +187,14 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
     priv::VolkLoadInstance(priv::g_data.instance);
 
-#if VULKAN_VALIDATION
-    priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
-#endif // VULKAN_VALIDATION
+#if RHI_DEBUG
+
+    if (enableVaidationLayer)
+    {
+        priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
+    }
+
+#endif // RHI_DEBUG
 
     priv::g_data.pipelineLayoutsManager.InitializeRHI();
 }
@@ -297,10 +321,14 @@ void VulkanRHI::WaitIdle()
     priv::g_data.device.WaitIdle();
 }
 
+#if RHI_DEBUG
+
 void VulkanRHI::EnableValidationWarnings(Bool enable)
 {
     DebugMessenger::EnableWarnings(enable);
 }
+
+#endif // RHI_DEBUG
 
 VkInstance VulkanRHI::GetInstanceHandle()
 {

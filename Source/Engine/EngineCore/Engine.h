@@ -36,6 +36,8 @@ public:
 	template<typename TDataType>
 	static Bool LoadConfigData(TDataType& data, const lib::String& configFileName);
 
+	static const CommandLineArguments& GetCmdLineArgs();
+
 private:
 
 	static Engine& GetInstance();
