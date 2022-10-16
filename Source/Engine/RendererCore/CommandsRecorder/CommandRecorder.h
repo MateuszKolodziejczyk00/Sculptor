@@ -99,6 +99,8 @@ private:
 template<CRenderCommand RenderCommand>
 void CommandRecorder::EnqueueRenderCommand(RenderCommand&& command)
 {
+	SPT_CHECK(IsBuildingCommands());
+
 	m_commandQueue.Enqueue(std::move(command));
 }
 
