@@ -17,8 +17,8 @@ String StringUtils::ToHexString(const Byte* data, SizeType size)
 
 	for (SizeType i = 0; i < size; ++i)
 	{
-		const SizeType dictIdx1 = static_cast<SizeType>(data[i] & 0x0f);
-		const SizeType dictIdx2 = static_cast<SizeType>((data[i] >> 4) & 0x0f);
+		const SizeType dictIdx1 = static_cast<SizeType>(data[i] & Byte(0x0f));
+		const SizeType dictIdx2 = static_cast<SizeType>((data[i] >> 4) & Byte(0x0f));
 		result += dictionary[dictIdx1];
 		result += dictionary[dictIdx2];
 	}

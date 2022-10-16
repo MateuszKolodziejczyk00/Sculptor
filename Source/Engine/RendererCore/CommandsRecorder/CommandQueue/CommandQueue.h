@@ -7,13 +7,22 @@ namespace spt::rdr
 {
 
 class CommandBuffer;
+class Context;
 
 
 struct CommandExecuteContext
 {
-	CommandExecuteContext() = default;
+public:
 
-	// ...
+	explicit CommandExecuteContext(lib::SharedRef<Context> renderContext);
+
+	~CommandExecuteContext();
+
+	Context& GetRenderContext() const;
+
+private:
+
+	const lib::SharedRef<Context> m_renderContext;
 };
 
 
@@ -109,7 +118,7 @@ class CommandQueueExecutor
 {
 public:
 
-	explicit CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer);
+	explicit CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer, lib::SharedRef<Context> renderContext);
 
 	void Execute(CommandQueueIterator commandIterator, ECommandQueueExecuteFlags flags);
 
@@ -122,7 +131,6 @@ private:
 
 	lib::SharedRef<CommandBuffer>	m_commandBuffer;
 
-	// for now this is only a placeholder for future use
 	CommandExecuteContext			m_context;
 };
 

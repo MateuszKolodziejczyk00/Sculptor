@@ -45,8 +45,9 @@ RHIDescriptorSet::RHIDescriptorSet(VkDescriptorSet handle, Uint16 poolSetIdx, Ui
 	, m_poolSetIdx(poolSetIdx)
 	, m_poolIdx(poolIdx)
 {
+	// poolSetIdx may be set to idx none if pool isn't part of descriptor set manager, e.g. pool single pool bound to context
+	// such pools doesn't have any id, as they also don't require to deallocate descriptors, because descriptors are desotryed when pools are reseted
 	SPT_CHECK(m_handle != VK_NULL_HANDLE);
-	SPT_CHECK(m_poolSetIdx != idxNone<Uint16>);
 	SPT_CHECK(m_poolIdx != idxNone<Uint16>);
 }
 
@@ -62,7 +63,7 @@ const lib::HashedString& RHIDescriptorSet::GetName() const
 
 Bool RHIDescriptorSet::IsValid() const
 {
-	return m_handle != VK_NULL_HANDLE && m_poolSetIdx != idxNone<Uint16> && m_poolIdx != idxNone<Uint16>;
+	return m_handle != VK_NULL_HANDLE;
 }
 
 VkDescriptorSet RHIDescriptorSet::GetHandle() const

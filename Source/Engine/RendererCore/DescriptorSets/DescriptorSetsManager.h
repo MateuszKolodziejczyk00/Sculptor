@@ -2,7 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "PersistentDescriptorSetsState.h"
+#include "PersistentDescriptorSetsManager.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 
 
@@ -24,11 +24,12 @@ public:
 
 	void BeginFrame();
 
-	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx);
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& descriptorSetState) const;
+	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState);
 
 private:
 
-	PersistentDescriptorSetsState m_persistentDescriptorSets;
+	PersistentDescriptorSetsManager m_persistentDescriptorSets;
 };
 
 } // spt::rdr

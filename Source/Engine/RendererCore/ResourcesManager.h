@@ -8,7 +8,7 @@
 #include "Types/Barrier.h"
 #include "UIContext.h"
 #include "Types/DescriptorSetWriter.h"
-#include "Types/DescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
 #include "Pipelines/PipelineState.h"
 

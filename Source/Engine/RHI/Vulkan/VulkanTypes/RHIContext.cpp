@@ -1,5 +1,6 @@
 #include "RHIContext.h"
 #include "RHIDescriptorSetManager.h"
+#include "Vulkan/VulkanRHIUtils.h"
 
 namespace spt::vulkan
 {
@@ -62,6 +63,18 @@ void RHIContext::SetName(const lib::HashedString& name)
 const lib::HashedString& RHIContext::GetName() const
 {
 	return m_name.Get();
+}
+
+lib::DynamicArray<RHIDescriptorSet> RHIContext::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::DynamicArray<RHIDescriptorSet> outSets;
+	outSets.reserve(static_cast<SizeType>(descriptorSetsNum));
+
+	m_dynamicDescriptorsPool->AllocateDescriptorSets(RHIToVulkan::GetDSLayoutsPtr(layoutIDs), descriptorSetsNum, outSets);
+
+	return outSets;
 }
 
 } // spt::vulkan

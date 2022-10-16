@@ -5,6 +5,7 @@
 #include "RendererUtils.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "ShaderMetaDataTypes.h"
+#include "DescriptorSetStateTypes.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefRegistration.h"
 
 

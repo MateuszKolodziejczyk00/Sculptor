@@ -2,30 +2,39 @@
 
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
-#include "Types/DescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 
 
 namespace spt::smd
 {
 class ShaderMetaData;
-}
+} // spt::smd
 
 
 namespace spt::rdr
 {
 
 class Pipeline;
+class DescriptorSetState;
 
 
-class PersistentDescriptorSetsState
+/**
+ * Persistent descriptor sets states are states with 'Persistent' flag
+ * These states have global, shared descriptor sets, which are cached between frames
+ * Creation and Destruction of such descriptors is slow, as it's currently not batched
+ * and during first frame after creation requires locked access (as they are shared, and we don't want to created multiple descriptors in multiple threads)
+ */
+class PersistentDescriptorSetsManager
 {
 public:
 
-	PersistentDescriptorSetsState();
+	PersistentDescriptorSetsManager();
 
 	void UpdatePersistentDescriptors();
 
-	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& state, Uint32 descriptorSetIdx);
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& state) const;
+
+	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state);
 
 private:
 
@@ -38,7 +47,7 @@ private:
 	 * Access requires synchranization using lock
 	 */
 	lib::HashMap<DSStateID, rhi::RHIDescriptorSet>	m_createdDescriptorSets;
-	lib::Lock										m_createdDescriptorSetsLock;
+	mutable lib::Lock								m_createdDescriptorSetsLock;
 
 	/**
 	 * Descriptors created in previous frames

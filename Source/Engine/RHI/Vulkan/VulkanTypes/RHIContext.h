@@ -3,7 +3,9 @@
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIContextTypes.h"
+#include "RHICore/RHIDescriptorTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
+#include "RHIDescriptorSet.h"
 
 
 namespace spt::vulkan
@@ -31,6 +33,11 @@ public:
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
+
+	// Descriptor sets ======================================================
+
+	/** Allocates dynamic descriptor sets bound to this context. These descriptors are automatically destroyed with this context */
+	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet> AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
 
 private:
 

@@ -30,6 +30,12 @@ void RHIDescriptorSetManager::ReleaseRHI()
 				  {
 					  poolSetData.poolSet.ReleaseAllPools();
 				  });
+
+	std::for_each(std::begin(m_dynamicPoolSets), std::end(m_dynamicPoolSets),
+				  [](const lib::UniquePtr<DescriptorPoolSet>& poolSet)
+				  {
+					  poolSet->ReleaseAllPools();
+				  });
 }
 
 RHIDescriptorSet RHIDescriptorSetManager::AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID)

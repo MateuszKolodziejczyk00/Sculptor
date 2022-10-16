@@ -47,7 +47,7 @@ void DescriptorPoolSet::AllocateDescriptorSets(const VkDescriptorSetLayout* layo
 	lib::DynamicArray<VkDescriptorSet> descriptorSetHandles;
 	descriptorSetHandles.resize(static_cast<SizeType>(layoutsNum));
 
-	// first try alocate from existing pools
+	// first try allocate from existing pools
 	for (SizeType idx = 0; idx < m_descriptorPools.size(); ++idx)
 	{
 		const Bool success = m_descriptorPools[idx].AllocateDescriptorSets(layouts, layoutsNum, descriptorSetHandles);

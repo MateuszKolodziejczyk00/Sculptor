@@ -68,6 +68,8 @@ void Renderer::PostCreatedWindow()
 
 void Renderer::Uninitialize()
 {
+	CurrentFrameContext::ReleaseAllResources();
+
 	GetSamplersCache().Uninitialize();
 
 	GetPipelinesLibrary().ClearCachedPipelines();

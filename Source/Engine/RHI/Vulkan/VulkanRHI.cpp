@@ -86,8 +86,12 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 {
     priv::InitializeVolk();
 
+#if RHI_DEBUG
+    
     const engn::CommandLineArguments& cmdLineArgs = engn::Engine::GetCmdLineArgs();
     const Bool enableVaidationLayer = cmdLineArgs.Contains(constants::enableValidationCmdArgName);
+
+#endif // RHI_DEBUG
 
     VkApplicationInfo applicationInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
     applicationInfo.pApplicationName = "Sculptor";

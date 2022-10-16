@@ -12,4 +12,14 @@ Context::Context(const RendererResourceName& name, const rhi::ContextDefinition&
 	GetRHI().SetName(name.Get());
 }
 
+void Context::BuildDescriptorSets(const lib::DynamicArray<DynamicDescriptorSetInfo>& setInfos)
+{
+	m_dynamicDescriptorSets.BuildDescriptorSets(*this, setInfos);
+}
+
+rhi::RHIDescriptorSet Context::GetDescriptorSet(DSStateID id) const
+{
+	return m_dynamicDescriptorSets.GetDescriptorSet(id);
+}
+
 } // spt::rdr

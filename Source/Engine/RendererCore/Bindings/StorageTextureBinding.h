@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Types/DescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "TextureBindingTypes.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 

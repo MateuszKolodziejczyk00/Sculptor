@@ -1,7 +1,7 @@
 #include "DescriptorSetsManager.h"
 #include "Types/Pipeline/Pipeline.h"
 #include "ShaderMetaData.h"
-#include "Types/DescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 
 namespace spt::rdr
 {
@@ -26,7 +26,17 @@ void DescriptorSetsManager::BeginFrame()
 	m_persistentDescriptorSets.UpdatePersistentDescriptors();
 }
 
-rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& descriptorSetState, Uint32 descriptorSetIdx)
+rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& descriptorSetState) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	// Descriptors without "Persistent" flag, should be accessed using render context
+	SPT_CHECK(lib::HasAnyFlag(descriptorSetState->GetFlags(), EDescriptorSetStateFlags::Persistent));
+	
+	return m_persistentDescriptorSets.GetDescriptorSet(descriptorSetState);
+}
+
+rhi::RHIDescriptorSet DescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -34,7 +44,7 @@ rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedR
 	SPT_CHECK(lib::HasAnyFlag(descriptorSetState->GetFlags(), EDescriptorSetStateFlags::Persistent));
 	SPT_CHECK(descriptorSetIdx != idxNone<Uint32>);
 
-	return m_persistentDescriptorSets.GetOrCreateDescriptorSet(pipeline, descriptorSetState, descriptorSetIdx);
+	return m_persistentDescriptorSets.GetOrCreateDescriptorSet(pipeline, descriptorSetIdx, descriptorSetState);
 }
 
 } // spt::rdr

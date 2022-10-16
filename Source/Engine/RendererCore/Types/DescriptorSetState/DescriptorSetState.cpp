@@ -1,7 +1,7 @@
 #include "DescriptorSetState.h"
 #include "ShaderMetaData.h"
-#include "DescriptorSetWriter.h"
-#include "Buffer.h"
+#include "Types/DescriptorSetWriter.h"
+#include "Types/Buffer.h"
 
 namespace spt::rdr
 {

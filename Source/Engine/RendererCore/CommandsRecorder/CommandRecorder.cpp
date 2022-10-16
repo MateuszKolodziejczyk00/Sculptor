@@ -43,11 +43,13 @@ void CommandRecorder::RecordCommands(const lib::SharedRef<Context>& context, con
 	SPT_CHECK(IsBuildingCommands());
 
 	m_state = ECommandsRecorderState::Recording;
+
+	m_pipelineState.PrepareForExecution(context);
 	
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
-	CommandQueueExecutor executor(lib::Ref(m_commandsBuffer));
+	CommandQueueExecutor executor(lib::Ref(m_commandsBuffer), context);
 	m_commandQueue.ExecuteAndReset(executor);
 
 	m_commandsBuffer->FinishRecording();

@@ -1,15 +1,16 @@
-#include "PersistentDescriptorSetsState.h"
+#include "PersistentDescriptorSetsManager.h"
 #include "ResourcesManager.h"
 #include "ShaderMetaData.h"
-#include "Types/DescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/Pipeline/Pipeline.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 
 namespace spt::rdr
 {
 
-PersistentDescriptorSetsState::PersistentDescriptorSetsState() = default;
+PersistentDescriptorSetsManager::PersistentDescriptorSetsManager() = default;
 
-void PersistentDescriptorSetsState::UpdatePersistentDescriptors()
+void PersistentDescriptorSetsManager::UpdatePersistentDescriptors()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -20,7 +21,28 @@ void PersistentDescriptorSetsState::UpdatePersistentDescriptors()
 	UpdateDescriptorSets();
 }
 
-rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, const lib::SharedRef<DescriptorSetState>& state, Uint32 descriptorSetIdx)
+rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& state) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	rhi::RHIDescriptorSet ds;
+
+	const auto foundDescriptorSet = m_cachedDescriptorSets.find(state->GetID());
+	if (foundDescriptorSet != std::cend(m_cachedDescriptorSets))
+	{
+		ds = foundDescriptorSet->second;
+	}
+	else
+	{
+		const lib::LockGuard lockGuard(m_createdDescriptorSetsLock);
+		ds = m_createdDescriptorSets.at(state->GetID());
+	}
+
+	SPT_CHECK(ds.IsValid());
+	return ds;
+}
+
+rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -38,6 +60,8 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(co
 
 	if (!createdDS.IsValid())
 	{
+		SPT_PROFILER_SCOPE("CreateNewPersistentDescriptorSet");
+
 		const rhi::DescriptorSetLayoutID dsLayoutID = pipeline->GetRHI().GetDescriptorSetLayoutID(descriptorSetIdx);
 		createdDS = rhi::RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(dsLayoutID);
 		createdDS.SetName(state->GetName());
@@ -60,7 +84,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsState::GetOrCreateDescriptorSet(co
 	return createdDS;
 }
 
-void PersistentDescriptorSetsState::FlushCreatedDescriptorSets()
+void PersistentDescriptorSetsManager::FlushCreatedDescriptorSets()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -68,7 +92,7 @@ void PersistentDescriptorSetsState::FlushCreatedDescriptorSets()
 	m_createdDescriptorSets.clear();
 }
 
-void PersistentDescriptorSetsState::RemoveInvalidSets()
+void PersistentDescriptorSetsManager::RemoveInvalidSets()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -93,7 +117,7 @@ void PersistentDescriptorSetsState::RemoveInvalidSets()
 	m_dsData.erase(removedBegin, std::cend(m_dsData));
 }
 
-void PersistentDescriptorSetsState::UpdateDescriptorSets()
+void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 {
 	SPT_PROFILER_FUNCTION();
 
