@@ -8,7 +8,7 @@ namespace spt::vulkan
 
 class VulkanRHI;
 class VulkanRHILimits;
-class RHIContext;
+class RHIRenderContext;
 class RHIBuffer;
 class RHITexture;
 class RHITextureView;

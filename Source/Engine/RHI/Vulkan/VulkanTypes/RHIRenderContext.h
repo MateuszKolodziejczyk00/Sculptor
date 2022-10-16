@@ -2,7 +2,7 @@
 
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHICore/RHIContextTypes.h"
+#include "RHICore/RHIRenderContextTypes.h"
 #include "RHICore/RHIDescriptorTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
 #include "RHIDescriptorSet.h"
@@ -14,15 +14,15 @@ namespace spt::vulkan
 class DescriptorPoolSet;
 
 
-class RHI_API RHIContext
+class RHI_API RHIRenderContext
 {
 public:
 
-	RHIContext();
-	~RHIContext();
+	RHIRenderContext();
+	~RHIRenderContext();
 
-	RHIContext(RHIContext&& other);
-	RHIContext& operator=(RHIContext&& rhs);
+	RHIRenderContext(RHIRenderContext&& other);
+	RHIRenderContext& operator=(RHIRenderContext&& rhs);
 
 	void						InitializeRHI(const rhi::ContextDefinition& definition);
 	void						ReleaseRHI();

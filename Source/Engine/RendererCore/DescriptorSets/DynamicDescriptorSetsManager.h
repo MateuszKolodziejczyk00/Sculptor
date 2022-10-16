@@ -10,7 +10,7 @@
 namespace spt::rdr
 {
 
-class Context;
+class RenderContext;
 
 
 class DynamicDescriptorSetsManager
@@ -19,7 +19,7 @@ public:
 
 	DynamicDescriptorSetsManager();
 
-	void BuildDescriptorSets(Context& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos);
+	void BuildDescriptorSets(RenderContext& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos);
 
 	rhi::RHIDescriptorSet GetDescriptorSet(DSStateID id) const;
 

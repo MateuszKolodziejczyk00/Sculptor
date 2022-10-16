@@ -71,13 +71,13 @@ void CommandQueuesMemoryPool::ReleaseBufferMemoryImpl(lib::DynamicArray<Byte>&& 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // CommandExecuteContext =========================================================================
 
-CommandExecuteContext::CommandExecuteContext(lib::SharedRef<Context> renderContext)
+CommandExecuteContext::CommandExecuteContext(lib::SharedRef<RenderContext> renderContext)
 	: m_renderContext(std::move(renderContext))
 { }
 
 CommandExecuteContext::~CommandExecuteContext() = default;
 
-Context& CommandExecuteContext::GetRenderContext() const
+RenderContext& CommandExecuteContext::GetRenderContext() const
 {
 	return *m_renderContext;
 }
@@ -141,7 +141,7 @@ RenderCommandBase* CommandQueueIterator::Get() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // CommandQueueExecutor ==========================================================================
 
-CommandQueueExecutor::CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer, lib::SharedRef<Context> renderContext)
+CommandQueueExecutor::CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer, lib::SharedRef<RenderContext> renderContext)
 	: m_commandBuffer(std::move(cmdBuffer))
 	, m_context(std::move(renderContext))
 { }

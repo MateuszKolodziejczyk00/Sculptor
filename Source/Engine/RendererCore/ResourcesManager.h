@@ -42,7 +42,7 @@ class ShaderCompilationSettings;
 namespace spt::rdr
 {
 
-class Context;
+class RenderContext;
 class Window;
 class Buffer;
 class Texture;
@@ -58,7 +58,7 @@ class RENDERER_CORE_API ResourcesManager
 {
 public:
 
-	SPT_NODISCARD static lib::SharedRef<Context>			CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
+	SPT_NODISCARD static lib::SharedRef<RenderContext>			CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 	
 	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
 	

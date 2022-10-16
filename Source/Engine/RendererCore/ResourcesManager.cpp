@@ -3,7 +3,7 @@
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
 #include "Samplers/SamplersCache.h"
-#include "Types/Context.h"
+#include "Types/RenderContext.h"
 #include "Types/Buffer.h"
 #include "Types/Texture.h"
 #include "Types/Window.h"
@@ -18,9 +18,9 @@
 namespace spt::rdr
 {
 
-lib::SharedRef<Context> ResourcesManager::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef)
+lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef)
 {
-	return lib::MakeShared<Context>(name, contextDef);
+	return lib::MakeShared<RenderContext>(name, contextDef);
 }
 
 lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, math::Vector2u resolution)

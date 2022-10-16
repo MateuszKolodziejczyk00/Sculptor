@@ -36,7 +36,7 @@ Bool CommandRecorder::IsPending() const
 	return m_state == ECommandsRecorderState::Pending;
 }
 
-void CommandRecorder::RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+void CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
 	SPT_PROFILER_FUNCTION();
 

@@ -9,7 +9,7 @@
 namespace spt::rdr
 {
 
-class Context;
+class RenderContext;
 class Pipeline;
 
 

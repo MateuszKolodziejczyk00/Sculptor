@@ -2,7 +2,7 @@
 
 #if VULKAN_RHI
 
-#include "Vulkan/VulkanTypes/RHIContext.h"
+#include "Vulkan/VulkanTypes/RHIRenderContext.h"
 
 #endif
 

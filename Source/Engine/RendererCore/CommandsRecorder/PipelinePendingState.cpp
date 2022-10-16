@@ -5,7 +5,7 @@
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/CommandBuffer.h"
-#include "Types/Context.h"
+#include "Types/RenderContext.h"
 #include "CommandQueue/CommandQueue.h"
 #include "ShaderMetaData.h"
 
@@ -112,7 +112,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& c
 								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 							 }
 							
-							 Context& renderContext = executionContext.GetRenderContext();
+							 RenderContext& renderContext = executionContext.GetRenderContext();
 							 for (const DynamicDSBindCommand& bindCommand : pendingDescriptors.dynamicDSBinds)
 							 {
 								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsStateID);
@@ -147,7 +147,7 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::SharedRef<Descrip
 	TryMarkAsDirty(state);
 }
 
-void PipelinePendingState::PrepareForExecution(const lib::SharedRef<Context>& renderContext)
+void PipelinePendingState::PrepareForExecution(const lib::SharedRef<RenderContext>& renderContext)
 {
 	SPT_PROFILER_FUNCTION();
 	

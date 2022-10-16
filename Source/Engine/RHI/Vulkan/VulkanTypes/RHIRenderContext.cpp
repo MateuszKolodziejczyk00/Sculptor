@@ -1,4 +1,4 @@
-#include "RHIContext.h"
+#include "RHIRenderContext.h"
 #include "RHIDescriptorSetManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 
@@ -16,16 +16,16 @@ static rhi::ContextID GenerateID()
 
 } // priv
 
-RHIContext::RHIContext()
+RHIRenderContext::RHIRenderContext()
 	: m_id(idxNone<rhi::ContextID>)
 { }
 
 // default destructor and move operations in .cpp file, to limit necessary includes in .h file
-RHIContext::~RHIContext() = default;
-RHIContext::RHIContext(RHIContext&& other) = default;
-RHIContext& RHIContext::operator=(RHIContext&& rhs) = default;
+RHIRenderContext::~RHIRenderContext() = default;
+RHIRenderContext::RHIRenderContext(RHIRenderContext&& other) = default;
+RHIRenderContext& RHIRenderContext::operator=(RHIRenderContext&& rhs) = default;
 
-void RHIContext::InitializeRHI(const rhi::ContextDefinition& definition)
+void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -34,7 +34,7 @@ void RHIContext::InitializeRHI(const rhi::ContextDefinition& definition)
 	m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
 }
 
-void RHIContext::ReleaseRHI()
+void RHIRenderContext::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -45,27 +45,27 @@ void RHIContext::ReleaseRHI()
 	m_name.Reset();
 }
 
-Bool RHIContext::IsValid() const
+Bool RHIRenderContext::IsValid() const
 {
 	return m_id != idxNone<rhi::ContextID>;
 }
 
-rhi::ContextID RHIContext::GetID() const
+rhi::ContextID RHIRenderContext::GetID() const
 {
 	return m_id;
 }
 
-void RHIContext::SetName(const lib::HashedString& name)
+void RHIRenderContext::SetName(const lib::HashedString& name)
 {
 	m_name.SetWithoutObject(name);
 }
 
-const lib::HashedString& RHIContext::GetName() const
+const lib::HashedString& RHIRenderContext::GetName() const
 {
 	return m_name.Get();
 }
 
-lib::DynamicArray<RHIDescriptorSet> RHIContext::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
+lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
 {
 	SPT_PROFILER_FUNCTION();
 

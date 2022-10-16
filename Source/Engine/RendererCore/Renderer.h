@@ -17,7 +17,7 @@ class PipelinesLibrary;
 class DescriptorSetsManager;
 class SamplersCache;
 class Window;
-class Context;
+class RenderContext;
 
 
 struct CommandsSubmitBatch

@@ -7,22 +7,22 @@ namespace spt::rdr
 {
 
 class CommandBuffer;
-class Context;
+class RenderContext;
 
 
 struct CommandExecuteContext
 {
 public:
 
-	explicit CommandExecuteContext(lib::SharedRef<Context> renderContext);
+	explicit CommandExecuteContext(lib::SharedRef<RenderContext> renderContext);
 
 	~CommandExecuteContext();
 
-	Context& GetRenderContext() const;
+	RenderContext& GetRenderContext() const;
 
 private:
 
-	const lib::SharedRef<Context> m_renderContext;
+	const lib::SharedRef<RenderContext> m_renderContext;
 };
 
 
@@ -118,7 +118,7 @@ class CommandQueueExecutor
 {
 public:
 
-	explicit CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer, lib::SharedRef<Context> renderContext);
+	explicit CommandQueueExecutor(lib::SharedRef<CommandBuffer> cmdBuffer, lib::SharedRef<RenderContext> renderContext);
 
 	void Execute(CommandQueueIterator commandIterator, ECommandQueueExecuteFlags flags);
 

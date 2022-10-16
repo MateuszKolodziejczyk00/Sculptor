@@ -2,7 +2,7 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHIBridge/RHIContextImpl.h"
+#include "RHIBridge/RHIRenderContextImpl.h"
 #include "RendererResource.h"
 #include "DescriptorSets/DynamicDescriptorSetsManager.h"
 
@@ -13,15 +13,15 @@ namespace spt::rdr
 struct RendererResourceName;
 
 
-class RENDERER_CORE_API Context : public RendererResource<rhi::RHIContext>
+class RENDERER_CORE_API RenderContext : public RendererResource<rhi::RHIRenderContext>
 {
 protected:
 
-	using ResourceType = RendererResource<rhi::RHIContext>;
+	using ResourceType = RendererResource<rhi::RHIRenderContext>;
 
 public:
 
-	Context(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
+	RenderContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 
 	void BuildDescriptorSets(const lib::DynamicArray<DynamicDescriptorSetInfo>& setInfos);
 	rhi::RHIDescriptorSet GetDescriptorSet(DSStateID id) const;

@@ -1,7 +1,7 @@
 #include "DynamicDescriptorSetsManager.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/Pipeline/Pipeline.h"
-#include "Types/Context.h"
+#include "Types/RenderContext.h"
 #include "ResourcesManager.h"
 
 namespace spt::rdr
@@ -10,11 +10,11 @@ namespace spt::rdr
 DynamicDescriptorSetsManager::DynamicDescriptorSetsManager()
 { }
 
-void DynamicDescriptorSetsManager::BuildDescriptorSets(Context& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos)
+void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos)
 {
 	SPT_PROFILER_FUNCTION();
 
-	rhi::RHIContext& rhiRenderContext = renderContext.GetRHI();
+	rhi::RHIRenderContext& rhiRenderContext = renderContext.GetRHI();
 	SPT_CHECK(rhiRenderContext.IsValid());
 
 	// discard descriptors that are currently created
@@ -43,9 +43,19 @@ void DynamicDescriptorSetsManager::BuildDescriptorSets(Context& renderContext, c
 				   });
 
 	// allocate descriptor sets
-	const lib::DynamicArray<rhi::RHIDescriptorSet> allocatedDescriptorSets = rhiRenderContext.AllocateDescriptorSets(dsLayouts.data(), static_cast<Uint32>(dsLayouts.size()));
+	lib::DynamicArray<rhi::RHIDescriptorSet> allocatedDescriptorSets = rhiRenderContext.AllocateDescriptorSets(dsLayouts.data(), static_cast<Uint32>(dsLayouts.size()));
 
 	SPT_CHECK(allocatedDescriptorSets.size() == dsInfosToAllocate.size());
+
+#if RHI_DEBUG
+
+	// give proper names to allocated descriptor sets
+	for (SizeType idx = 0; idx < dsInfosToAllocate.size(); ++idx)
+	{
+		allocatedDescriptorSets[idx].SetName(dsInfosToAllocate[idx].state->GetName());
+	}
+
+#endif // RHI_DEBUG
 
 	// write to descriptor sets
 	DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();

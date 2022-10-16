@@ -16,7 +16,7 @@ class CommandBuffer;
 class Barrier;
 class RenderingDefinition;
 class UIBackend;
-class Context;
+class RenderContext;
 class DescriptorSetState;
 class Texture;
 
@@ -50,7 +50,7 @@ public:
 	Bool	IsRecording() const;
 	Bool	IsPending() const;
 
-	void									RecordCommands(const lib::SharedRef<Context>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+	void									RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 

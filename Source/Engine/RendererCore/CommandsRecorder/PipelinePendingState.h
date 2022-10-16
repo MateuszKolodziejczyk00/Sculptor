@@ -5,7 +5,7 @@
 #include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 #include "DescriptorSets/DynamicDescriptorSetsTypes.h"
 
-namespace spt { namespace rdr { class Context; } }
+namespace spt { namespace rdr { class RenderContext; } }
 
 
 namespace spt::rdr
@@ -48,7 +48,7 @@ public:
 
 	// ==================================================================
 
-	void PrepareForExecution(const lib::SharedRef<Context>& renderContext);
+	void PrepareForExecution(const lib::SharedRef<RenderContext>& renderContext);
 
 private:
 
