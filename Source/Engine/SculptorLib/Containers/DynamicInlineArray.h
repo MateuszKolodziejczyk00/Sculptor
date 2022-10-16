@@ -21,21 +21,23 @@ public:
 	using ThisType = DynamicInlineArray<TType, inlineSize, TFallbackAllocator>;
 
 	constexpr DynamicInlineArray()
-		: Super(AllocatorType(m_inlineStorage.data(), m_inlineStorage.size() * sizeof(TType)))
-	{ }
+		: Super(AllocatorType(m_inlineStorage, inlineSize * sizeof(TType)))
+	{
+		Super::reserve(inlineSize);
+	}
 
 	constexpr DynamicInlineArray(const DynamicInlineArray& other)
-		: Super(std::cbegin(other), std::cend(other), AllocatorType(m_inlineStorage.data(), m_inlineStorage.size() * sizeof(TType)))
+		: Super(std::cbegin(other), std::cend(other), AllocatorType(m_inlineStorage, inlineSize * sizeof(TType)))
 	{ }
 
 	constexpr DynamicInlineArray(DynamicInlineArray&& other)
-		: Super(AllocatorType(m_inlineStorage.data(), m_inlineStorage.size() * sizeof(TType)))
+		: Super(AllocatorType(m_inlineStorage, inlineSize * sizeof(TType)))
 	{
 		*this = std::forward<DynamicInlineArray>(other);
 	}
 
 	explicit constexpr DynamicInlineArray(const lib::DynamicArray<TType, TFallbackAllocator<TType>>& other)
-		: Super(AllocatorType(m_inlineStorage.data(), m_inlineStorage.size() * sizeof(TType)))
+		: Super(AllocatorType(m_inlineStorage, inlineSize * sizeof(TType)))
 	{
 		*this = other;
 	}
@@ -71,7 +73,7 @@ public:
 
 private:
 
-	StaticArray<TType, inlineSize> m_inlineStorage;
+	alignas(TType) Byte m_inlineStorage[sizeof(TType) * inlineSize];
 };
 
 } // spt::lib

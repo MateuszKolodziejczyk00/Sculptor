@@ -33,11 +33,15 @@ public:
 	InlineAllocator()
 		: m_inlineStoragePtr(nullptr)
 		, m_inlineStorageSize(0)
+		, m_prevAllocationBegin(nullptr)
+		, m_prevAllocationEnd(nullptr)
 	{ }
 
-	explicit InlineAllocator(void* storagePtr, SizeType storageSize)
+	explicit InlineAllocator(Byte* storagePtr, SizeType storageSize)
 		: m_inlineStoragePtr(storagePtr)
 		, m_inlineStorageSize(storageSize)
+		, m_prevAllocationBegin(storagePtr)
+		, m_prevAllocationEnd(storagePtr)
 	{
 		SPT_CHECK(m_inlineStoragePtr != nullptr && m_inlineStorageSize > 0);
 	}
@@ -46,22 +50,44 @@ public:
 	explicit InlineAllocator(const InlineAllocator<TOther, TFallbackAllocator>& other)
 		: m_inlineStoragePtr(other.GetInlineStoragePtr())
 		, m_inlineStorageSize(other.GetInlineStorageSize())
+		, m_prevAllocationBegin(other.GetPrevAllocationBegin())
+		, m_prevAllocationEnd(other.GetPrevAllocationEnd())
 	{ }
 
 	SPT_NODISCARD constexpr TType* allocate(std::size_t n)
 	{
 		SPT_PROFILER_FUNCTION();
 		
-		SPT_CHECK(m_inlineStoragePtr != nullptr && m_inlineStorageSize > 0);
+		SPT_CHECK(m_prevAllocationEnd != nullptr && m_prevAllocationBegin != nullptr && m_inlineStoragePtr != nullptr && m_inlineStorageSize > 0);
 
-		return n * sizeof(TType) <= m_inlineStorageSize ? reinterpret_cast<TType*>(m_inlineStoragePtr) : m_fallbackAllocator.allocate(n);
+		std::size_t allocationSize = n * sizeof(TType);
+
+		if (allocationSize < m_inlineStorageSize)
+		{
+			if (static_cast<std::size_t>(m_prevAllocationBegin - m_inlineStoragePtr) >= allocationSize)
+			{
+				m_prevAllocationBegin = m_inlineStoragePtr;
+				m_prevAllocationEnd = m_inlineStoragePtr + allocationSize;
+				return reinterpret_cast<TType*>(m_inlineStoragePtr);
+			}
+			else if (static_cast<std::size_t>((m_inlineStoragePtr + m_inlineStorageSize) - m_prevAllocationEnd) >= allocationSize)
+			{
+				m_prevAllocationBegin = m_prevAllocationEnd;
+				m_prevAllocationEnd = m_prevAllocationBegin + allocationSize;
+				return reinterpret_cast<TType*>(m_prevAllocationBegin);
+			}
+		}
+
+		m_prevAllocationBegin = m_prevAllocationEnd = m_inlineStoragePtr;
+
+		return m_fallbackAllocator.allocate(n);
 	}
 
 	constexpr void deallocate(TType* ptr, std::size_t n)
 	{
 		SPT_PROFILER_FUNCTION();
 
-		if (n * sizeof(TType) > m_inlineStorageSize)
+		if (reinterpret_cast<Byte*>(ptr) > m_inlineStoragePtr && reinterpret_cast<Byte*>(ptr) < (m_inlineStoragePtr + m_inlineStorageSize))
 		{
 			m_fallbackAllocator.deallocate(ptr, n);
 		}
@@ -77,7 +103,7 @@ public:
         return !(*this == rhs);
     }
 
-	void* GetInlineStoragePtr() const
+	Byte* GetInlineStoragePtr() const
 	{
 		return m_inlineStoragePtr;
 	}
@@ -87,10 +113,24 @@ public:
 		return m_inlineStorageSize;
 	}
 
+	Byte* GetPrevAllocationBegin() const
+	{
+		return m_prevAllocationBegin;
+	}
+
+	Byte* GetPrevAllocationEnd() const
+	{
+		return m_prevAllocationEnd;
+	}
+
 private:
 
-	void*						m_inlineStoragePtr;
+	Byte*						m_inlineStoragePtr;
 	std::size_t					m_inlineStorageSize;
+
+	Byte*						m_prevAllocationBegin;
+	Byte*						m_prevAllocationEnd;
+
 	TFallbackAllocator<TType>	m_fallbackAllocator;
 };
 
