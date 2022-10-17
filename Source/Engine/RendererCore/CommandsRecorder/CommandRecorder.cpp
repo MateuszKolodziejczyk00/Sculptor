@@ -68,6 +68,8 @@ void CommandRecorder::ExecuteBarrier(Barrier barrier)
 
 	EnqueueRenderCommand([localBarrier = std::move(barrier)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
 						 {
+							 SPT_PROFILER_SCOPE("ExecuteBarrier Command");
+
 							 localBarrier.GetRHI().Execute(cmdBuffer->GetRHI());
 						 });
 }
@@ -78,6 +80,8 @@ void CommandRecorder::BeginRendering(const RenderingDefinition& definition)
 
 	EnqueueRenderCommand([definition](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("BeginRendering Command");
+
 							 cmdBuffer->GetRHI().BeginRendering(definition.GetRHI());
 						 });
 }
@@ -88,6 +92,8 @@ void CommandRecorder::EndRendering()
 
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("EndRendering Command");
+
 							 cmdBuffer->GetRHI().EndRendering();
 						 });
 }
@@ -103,6 +109,8 @@ void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 
 	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("BindGraphicsPipeline Command");
+
 							 cmdBuffer->GetRHI().BindGfxPipeline(pipeline->GetRHI());
 						 });
 }
@@ -126,6 +134,8 @@ void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("BindComputePipeline Command");
+
 							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
 						 });
 }
@@ -148,6 +158,8 @@ void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 
 	EnqueueRenderCommand([groupCount](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("Dispatch Command");
+
 							 cmdBuffer->GetRHI().Dispatch(groupCount);
 						 });
 }
@@ -173,6 +185,8 @@ void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const r
 
 	EnqueueRenderCommand([source, sourceRange, target, targetRange, extent](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("CopyTexture Command");
+
 							 cmdBuffer->GetRHI().CopyTexture(source->GetRHI(), sourceRange, target->GetRHI(), targetRange, extent);
 						 });
 }
@@ -183,6 +197,8 @@ void CommandRecorder::InitializeUIFonts()
 
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("InitializeUIFonts Command");
+
 							 UIBackend::GetRHI().InitializeFonts(cmdBuffer->GetRHI());
 						 });
 }
@@ -193,6 +209,8 @@ void CommandRecorder::RenderUI()
 
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("RenderUI Command");
+
 							 UIBackend::GetRHI().Render(cmdBuffer->GetRHI());
 						 });
 }
@@ -203,6 +221,8 @@ void CommandRecorder::BeginDebugRegion(const lib::HashedString& name, const lib:
 
 	EnqueueRenderCommand([name, color](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("BeginDebugRegion Command");
+
 							 cmdBuffer->GetRHI().BeginDebugRegion(name, color);
 						 });
 }
@@ -213,6 +233,8 @@ void CommandRecorder::EndDebugRegion()
 
 	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
+							 SPT_PROFILER_SCOPE("EndDebugRegion Command");
+
 							 cmdBuffer->GetRHI().EndDebugRegion();
 						 });
 }
