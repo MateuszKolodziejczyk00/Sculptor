@@ -95,4 +95,28 @@ struct AnyOf<TPredicate, TArg>
 template<template<typename TTest> typename TPredicate, typename... TArgs>
 static constexpr Bool AnyOf_v = AnyOf<TPredicate, TArgs...>::value;
 
-}
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ParameterPack =================================================================================
+
+template<typename... TArgs>
+struct ParameterPack
+{ };
+
+template<typename... TArgs>
+struct ParameterPack<std::tuple<TArgs...>>
+{ };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// TuplePushFront ================================================================================
+
+template<typename, typename>
+struct TuplePushFront
+{ };
+
+template<typename TType, typename... TArgs>
+struct TuplePushFront<TType, std::tuple<TArgs...>>
+{
+	using Type = std::tuple<TType, TArgs...>;
+};
+
+} // spt::lib
