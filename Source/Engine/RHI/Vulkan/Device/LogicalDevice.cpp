@@ -211,7 +211,7 @@ Uint32 LogicalDevice::GetAsyncComputeQueueFamilyIdx() const
 	return m_asyncComputeFamilyIdx;
 }
 
-Uint32 LogicalDevice::GetQueueIdx(rhi::ECommandBufferQueueType queueType) const
+Uint32 LogicalDevice::GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const
 {
 	switch (queueType)
 	{

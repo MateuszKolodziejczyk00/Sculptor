@@ -6,9 +6,7 @@ namespace spt::vulkan
 
 RHICommandPool::RHICommandPool()
 	: m_poolHandle(VK_NULL_HANDLE)
-	, m_isLocked(false)
 	, m_acquiredBuffersNum(0)
-	, m_releasedBuffersNum(0)
 { }
 
 void RHICommandPool::InitializeRHI(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level)
@@ -29,7 +27,6 @@ void RHICommandPool::ReleaseRHI()
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!IsValid());
-	SPT_CHECK(!IsLocked());
 
 	vkDestroyCommandPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, VulkanRHI::GetAllocationCallbacks());
 
@@ -46,61 +43,16 @@ VkCommandPool RHICommandPool::GetHandle() const
 	return m_poolHandle;
 }
 
-Bool RHICommandPool::IsLocked() const
+VkCommandBuffer RHICommandPool::TryAcquireCommandBuffer()
 {
-	return m_isLocked;
+	return HasAvailableCommandBuffers() ? m_commandBuffers[m_acquiredBuffersNum++] : VK_NULL_HANDLE;
 }
 
-void RHICommandPool::ForceLock()
+void RHICommandPool::ResetCommandPool()
 {
-	const Bool prev = m_isLocked.exchange(true);
-	SPT_CHECK(prev == false);
-}
+	vkResetCommandPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, 0);
 
-Bool RHICommandPool::TryLock()
-{
-	Bool success = false;
-
-	if (HasAvailableCommandBuffers())
-	{
-		const Bool prev = m_isLocked.exchange(true);
-		success = (prev == false);
-	}
-
-	return success;
-}
-
-void RHICommandPool::Unlock()
-{
-	m_isLocked.store(false);
-}
-
-VkCommandBuffer RHICommandPool::AcquireCommandBuffer()
-{
-	SPT_CHECK(IsLocked());
-
-	SPT_CHECK(HasAvailableCommandBuffers());
-	
-	return m_commandBuffers[m_acquiredBuffersNum++];
-}
-
-Bool RHICommandPool::HasAvailableCommandBuffers() const
-{
-	return m_acquiredBuffersNum < m_commandBuffers.size();
-}
-
-void RHICommandPool::ReleaseCommandBuffer(VkCommandBuffer cmdBuffer)
-{
-	SPT_PROFILER_FUNCTION();
-
-	++m_releasedBuffersNum;
-
-	SPT_CHECK(m_releasedBuffersNum <= m_acquiredBuffersNum);
-
-	if (m_releasedBuffersNum == m_commandBuffers.size())
-	{
-		ResetCommandPool();
-	}
+	m_acquiredBuffersNum = 0;
 }
 
 void RHICommandPool::AllocateCommandBuffers(Uint32 commandBuffersNum, VkCommandBufferLevel level)
@@ -117,15 +69,11 @@ void RHICommandPool::AllocateCommandBuffers(Uint32 commandBuffersNum, VkCommandB
 	SPT_VK_CHECK(vkAllocateCommandBuffers(VulkanRHI::GetDeviceHandle(), &allocateInfo, m_commandBuffers.data()));
 
 	m_acquiredBuffersNum = 0;
-	m_releasedBuffersNum = 0;
 }
 
-void RHICommandPool::ResetCommandPool()
+Bool RHICommandPool::HasAvailableCommandBuffers() const
 {
-	vkResetCommandPool(VulkanRHI::GetDeviceHandle(), m_poolHandle, 0);
-
-	m_acquiredBuffersNum = 0;
-	m_releasedBuffersNum = 0;
+	return m_acquiredBuffersNum < m_commandBuffers.size();
 }
 
-}
+} // spt::vulkan

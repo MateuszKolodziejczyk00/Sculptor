@@ -33,7 +33,7 @@ public:
 	Uint32		GetAsyncComputeQueueFamilyIdx() const;
 	Uint32		GetTransferQueueFamilyIdx() const;
 
-	Uint32		GetQueueIdx(rhi::ECommandBufferQueueType queueType) const;
+	Uint32		GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const;
 
 private:
 

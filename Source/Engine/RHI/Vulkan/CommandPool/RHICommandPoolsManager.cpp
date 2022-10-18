@@ -9,114 +9,97 @@ namespace spt::vulkan
 // CommandPoolsSet ===============================================================================
 
 CommandPoolsSet::CommandPoolsSet()
-	: m_queueFamily(0)
-	, m_flags(0)
 { }
 
 CommandPoolsSet::~CommandPoolsSet()
 {
-	for (auto& cmdPool : m_commandPools)
+	for (RHICommandPool& cmdPool : m_pools)
 	{
-		cmdPool->ReleaseRHI();
+		cmdPool.ReleaseRHI();
+	}
+}
+
+VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (RHICommandPool& cmdPool : m_pools)
+	{
+		const VkCommandBuffer cmdBuffer = cmdPool.TryAcquireCommandBuffer();
+
+		if (cmdBuffer != VK_NULL_HANDLE)
+		{
+			return cmdBuffer;
+		}
 	}
 
-	m_commandPools.clear();
+	RHICommandPool& newPool = AllocateNewPool(cmdBufferDef);
+
+	const VkCommandBuffer cmdBuffer = newPool.TryAcquireCommandBuffer();
+	SPT_CHECK(cmdBuffer != VK_NULL_HANDLE);
+
+	return cmdBuffer;
 }
 
-void CommandPoolsSet::Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level)
-{
-	// Initialization must happen before any pool is created
-	SPT_CHECK(m_commandPools.empty());
-
-	m_queueFamily	= queueFamilyIdx;
-	m_flags			= flags;
-	m_buffersLevel	= level;
-}
-
-VkCommandBuffer CommandPoolsSet::AcquireCommandBuffer(CommandBufferAcquireInfo& outAcquireInfo)
+void CommandPoolsSet::Reset()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SizeType poolIdx = TryFindAndLockAvailablePool();
-	if (poolIdx == m_commandPools.size())
+	for (RHICommandPool& cmdPool : m_pools)
 	{
-		poolIdx = CreateNewPool();
+		cmdPool.ResetCommandPool();
+	}
+}
+
+RHICommandPool& CommandPoolsSet::AllocateNewPool(const rhi::CommandBufferDefinition& cmdBufferDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	RHICommandPool& newPool = m_pools.emplace_back(RHICommandPool());
+
+	const LogicalDevice& logicalDevice	= VulkanRHI::GetLogicalDevice();
+	const Uint32 queueFamilyIdx			= logicalDevice.GetQueueFamilyIdx(cmdBufferDef.queueType);
+
+	VkCommandPoolCreateFlags poolFlags = 0;
+	if (cmdBufferDef.complexityClass == rhi::ECommandBufferComplexityClass::Low)
+	{
+		poolFlags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 	}
 
-	SPT_CHECK(m_commandPools[poolIdx]->IsLocked());
+	const VkCommandBufferLevel level = (cmdBufferDef.cmdBufferType == rhi::ECommandBufferType::Primary)
+									 ? VK_COMMAND_BUFFER_LEVEL_PRIMARY
+									 : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+	newPool.InitializeRHI(queueFamilyIdx, poolFlags, level);
 
-	outAcquireInfo.commandPoolId = poolIdx;
-
-	return m_commandPools[poolIdx]->AcquireCommandBuffer();
-}
-
-void CommandPoolsSet::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
-{
-	SPT_PROFILER_FUNCTION();
-
-	RHICommandPool& commandPool = SafeGetCommandPool(acquireInfo.commandPoolId);
-
-	commandPool.Unlock();
-}
-
-void CommandPoolsSet::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer cmdBuffer)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::WriteLockGuard lockGuard(m_lock);
-
-	GetCommandPool_AssumesLocked(acquireInfo.commandPoolId).ReleaseCommandBuffer(cmdBuffer);
-}
-
-RHICommandPool& CommandPoolsSet::SafeGetCommandPool(SizeType commandPoolId)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::ReadLockGuard lockGuard(m_lock);
-
-	return *m_commandPools[commandPoolId];
-}
-
-RHICommandPool& CommandPoolsSet::GetCommandPool_AssumesLocked(SizeType commandPoolId)
-{
-	return *m_commandPools[commandPoolId];
-}
-
-SizeType CommandPoolsSet::TryFindAndLockAvailablePool()
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::ReadLockGuard lockGuard(m_lock);
-
-	const auto foundAvailablePool = std::find_if(m_commandPools.begin(), m_commandPools.end(), [](const lib::UniquePtr<RHICommandPool>& pool) { return pool->TryLock(); });
-
-	return std::distance(m_commandPools.begin(), foundAvailablePool);
-}
-
-SizeType CommandPoolsSet::CreateNewPool()
-{
-	SPT_PROFILER_FUNCTION();
-
-	RHICommandPool* pool = nullptr;
-	SizeType newPoolIdx = 0;
-
-	{
-		const lib::WriteLockGuard lockGuard(m_lock);
-
-		pool = m_commandPools.emplace_back(std::make_unique<RHICommandPool>()).get();
-		newPoolIdx = m_commandPools.size() - 1;
-
-		pool->ForceLock();
-	}
-
-	SPT_CHECK(!!pool);
-	pool->InitializeRHI(m_queueFamily, m_flags, m_buffersLevel);
-
-	return newPoolIdx;
+	return newPool;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// CommandPoolsManager ===========================================================================
+// CommandPoolsCache =============================================================================
+
+CommandPoolsLibrary::CommandPoolsLibrary()
+{ }
+
+VkCommandBuffer CommandPoolsLibrary::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const SizeType definitionHash = lib::HashCombine(cmdBufferDef);
+	return m_commandPools[definitionHash].AcquireCommandBuffer(cmdBufferDef);
+}
+
+void CommandPoolsLibrary::ResetPools()
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (auto& [hash, pool] : m_commandPools)
+	{
+		pool.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// CommandPoolsCache =============================================================================
 
 CommandPoolsManager::CommandPoolsManager()
 { }
@@ -126,103 +109,33 @@ void CommandPoolsManager::DestroyResources()
 	m_poolSets.clear();
 }
 
-VkCommandBuffer CommandPoolsManager::AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const Uint32 poolSettingsHash = HashCommandBufferDefinition(bufferDefinition);
-	
-	outAcquireInfo.poolsSetHash = poolSettingsHash;
-
-	CommandPoolsSet& poolsSet = GetPoolsSet(bufferDefinition, poolSettingsHash);
-
-	const VkCommandBuffer cmdBufferHandle = poolsSet.AcquireCommandBuffer(outAcquireInfo);
-	SPT_CHECK(cmdBufferHandle != VK_NULL_HANDLE && outAcquireInfo.commandPoolId != idxNone<Uint32>);
-
-	return cmdBufferHandle;
-}
-
-void CommandPoolsManager::ReleasePool(const CommandBufferAcquireInfo& acquireInfo)
-{
-	SPT_PROFILER_FUNCTION();
-
-	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
-	poolsSet.ReleasePool(acquireInfo);
-}
-
-void CommandPoolsManager::ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer)
-{
-	SPT_PROFILER_FUNCTION();
-
-	CommandPoolsSet& poolsSet = SafeGetPoolsSetByHash(acquireInfo.poolsSetHash);
-	poolsSet.ReleaseCommandBuffer(acquireInfo, commandBuffer);
-}
-
-CommandPoolsSet& CommandPoolsManager::GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
+lib::UniquePtr<CommandPoolsLibrary> CommandPoolsManager::AcquireCommandPoolsLibrary()
 {
 	SPT_PROFILER_FUNCTION();
 
 	{
-		const lib::ReadLockGuard lockGuard(m_lock);
+		const lib::LockGuard lockGuard(m_lock);
 
-		const auto poolSet = m_poolSets.find(poolHash);
-
-		if (poolSet != m_poolSets.cend())
+		if (!m_poolSets.empty())
 		{
-			return *(poolSet->second);
+			lib::UniquePtr<CommandPoolsLibrary> acquiredPool = std::move(m_poolSets.back());
+			m_poolSets.pop_back();
+			return acquiredPool;
 		}
 	}
 
-	return CreatePoolSet(bufferDefinition, poolHash);
+	return std::make_unique<CommandPoolsLibrary>();
 }
 
-CommandPoolsSet& CommandPoolsManager::CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash)
+void CommandPoolsManager::ReleaseCommandPoolsLibrary(lib::UniquePtr<CommandPoolsLibrary> poolsLibrary)
 {
 	SPT_PROFILER_FUNCTION();
 
-	VkCommandPoolCreateFlags poolFlags = 0;
-	if (bufferDefinition.complexityClass == rhi::ECommandBufferComplexityClass::Low)
-	{
-		poolFlags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-	}
+	poolsLibrary->ResetPools();
 
-	const VkCommandBufferLevel level = (bufferDefinition.cmdBufferType == rhi::ECommandBufferType::Primary)
-									 ? VK_COMMAND_BUFFER_LEVEL_PRIMARY
-									 : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+	const lib::LockGuard lockGuard(m_lock);
 
-	lib::UniquePtr<CommandPoolsSet> commandPoolsSet = std::make_unique<CommandPoolsSet>();
-	commandPoolsSet->Initialize(GetQueueFamilyIdx(bufferDefinition.queueType), poolFlags, level);
-
-	const lib::WriteLockGuard lockGuard(m_lock);
-
-	const lib::UniquePtr<CommandPoolsSet>& addedSet = m_poolSets[poolHash] = std::move(commandPoolsSet);
-	return *addedSet;
+	m_poolSets.emplace_back(std::move(poolsLibrary));
 }
 
-CommandPoolsSet& CommandPoolsManager::SafeGetPoolsSetByHash(Uint32 poolHash)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::ReadLockGuard lockGuard(m_lock);
-
-	return *m_poolSets[poolHash];
-}
-
-Uint32 CommandPoolsManager::HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const
-{
-	Uint32 result = 0;
-	result += static_cast<Uint32>(bufferDefinition.queueType) << 5;
-	result += static_cast<Uint32>(bufferDefinition.cmdBufferType) << 12;
-	result += static_cast<Uint32>(bufferDefinition.complexityClass) << 23;
-
-	return result;
-}
-
-Uint32 CommandPoolsManager::GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const
-{
-	const LogicalDevice& logicalDevice = VulkanRHI::GetLogicalDevice();
-
-	return logicalDevice.GetQueueIdx(queueType);
-}
-
-}
+} // spt::vulkan

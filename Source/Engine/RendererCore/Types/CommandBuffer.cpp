@@ -1,14 +1,15 @@
 #include "CommandBuffer.h"
 #include "RendererUtils.h"
+#include "RenderContext.h"
 
 namespace spt::rdr
 {
 
-CommandBuffer::CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)
+CommandBuffer::CommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	GetRHI().InitializeRHI(definition);
+	GetRHI().InitializeRHI(renderContext->GetRHI(), definition);
 	GetRHI().SetName(name.Get());
 }
 

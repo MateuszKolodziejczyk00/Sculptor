@@ -16,6 +16,7 @@ struct CommandBufferUsageDefinition;
 namespace spt::rdr
 {
 
+class RenderContext;
 struct RendererResourceName;
 
 
@@ -27,7 +28,7 @@ protected:
 
 public:
 
-	CommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition);
+	CommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition);
 
 	void StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
 	void FinishRecording();

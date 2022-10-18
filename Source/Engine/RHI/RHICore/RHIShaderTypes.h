@@ -74,4 +74,4 @@ struct ShaderModuleDefinition
 	EShaderStage					stage;
 };
 
-}
+} // spt::rhi

@@ -8,10 +8,17 @@
 #include "RHIDescriptorSet.h"
 
 
+namespace spt::rhi
+{
+struct CommandBufferDefinition;
+} // spt::rhi
+
+
 namespace spt::vulkan
 {
 
 class DescriptorPoolSet;
+class CommandPoolsLibrary;
 
 
 class RHI_API RHIRenderContext
@@ -33,17 +40,23 @@ public:
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
-
+	
 	// Descriptor sets ======================================================
 
 	/** Allocates dynamic descriptor sets bound to this context. These descriptors are automatically destroyed with this context */
 	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet> AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
+
+	// Command Buffers ======================================================
+	
+	VkCommandBuffer AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef);
 
 private:
 
 	rhi::ContextID m_id;
 
 	lib::UniquePtr<DescriptorPoolSet> m_dynamicDescriptorsPool;
+
+	lib::UniquePtr<CommandPoolsLibrary> m_commandPoolsLibrary;
 
 	DebugName m_name;
 };

@@ -3,41 +3,43 @@
 #include "RHICommandPool.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
-#include "RHICommandPoolsTypes.h"
 
 
 namespace spt::vulkan
 {
 
-struct CommandPoolsSet
+class CommandPoolsSet
 {
 public:
 
 	CommandPoolsSet();
 	~CommandPoolsSet();
 
-	void												Initialize(Uint32 queueFamilyIdx, VkCommandPoolCreateFlags flags, VkCommandBufferLevel level);
+	VkCommandBuffer AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef);
 
-	VkCommandBuffer										AcquireCommandBuffer(CommandBufferAcquireInfo& outAcquireInfo);
+	void			Reset();
 
-	void												ReleasePool(const CommandBufferAcquireInfo& acquireInfo);
+private:
 
-	void												ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer cmdBuffer);
+	RHICommandPool& AllocateNewPool(const rhi::CommandBufferDefinition& cmdBufferDef);
+
+	lib::DynamicArray<RHICommandPool> m_pools;
+};
+
+
+class CommandPoolsLibrary
+{
+public:
+
+	CommandPoolsLibrary();
+
+	VkCommandBuffer		AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef);
+
+	void				ResetPools();
 	
 private:
-	RHICommandPool&										SafeGetCommandPool(SizeType commandPoolId);
-	RHICommandPool&										GetCommandPool_AssumesLocked(SizeType commandPoolId);
 
-	SizeType											TryFindAndLockAvailablePool();
-
-	SizeType											CreateNewPool();
-
-	lib::DynamicArray<lib::UniquePtr<RHICommandPool>>	m_commandPools;
-	lib::ReadWriteLock									m_lock;
-
-	Uint32												m_queueFamily;
-	VkCommandPoolCreateFlags							m_flags;
-	VkCommandBufferLevel								m_buffersLevel;
+	lib::HashMap<SizeType, CommandPoolsSet>	m_commandPools;
 };
 
 
@@ -47,29 +49,16 @@ public:
 
 	CommandPoolsManager();
 
-	void												DestroyResources();
+	void								DestroyResources();
 
-	VkCommandBuffer										AcquireCommandBuffer(const rhi::CommandBufferDefinition& bufferDefinition, CommandBufferAcquireInfo& outAcquireInfo);
-
-	void												ReleasePool(const CommandBufferAcquireInfo& acquireInfo);
-
-	void												ReleaseCommandBuffer(const CommandBufferAcquireInfo& acquireInfo, VkCommandBuffer commandBuffer);
+	lib::UniquePtr<CommandPoolsLibrary>	AcquireCommandPoolsLibrary();
+	void								ReleaseCommandPoolsLibrary(lib::UniquePtr<CommandPoolsLibrary> poolsLibrary);
 
 private:
 
-	CommandPoolsSet&									GetPoolsSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash);
-	CommandPoolsSet&									CreatePoolSet(const rhi::CommandBufferDefinition& bufferDefinition, Uint32 poolHash);
+	lib::DynamicArray<lib::UniquePtr<CommandPoolsLibrary>> m_poolSets;
+	lib::Lock m_lock;
 
-	CommandPoolsSet&									SafeGetPoolsSetByHash(Uint32 poolHash);
-
-	Uint32												HashCommandBufferDefinition(const rhi::CommandBufferDefinition& bufferDefinition) const;
-
-	Uint32												GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const;
-
-	using CommandPoolsSetsMap							= lib::HashMap<Uint32, lib::UniquePtr<CommandPoolsSet>>;
-	CommandPoolsSetsMap									m_poolSets;
-
-	lib::ReadWriteLock									m_lock;
 };
 
-}
+} // spt::vulkan

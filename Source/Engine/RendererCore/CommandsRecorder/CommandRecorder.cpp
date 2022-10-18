@@ -46,7 +46,7 @@ void CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& contex
 
 	m_pipelineState.PrepareForExecution(context);
 	
-	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, recordingInfo.commandBufferDef);
+	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, context, recordingInfo.commandBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
 	CommandQueueExecutor executor(lib::Ref(m_commandsBuffer), context);

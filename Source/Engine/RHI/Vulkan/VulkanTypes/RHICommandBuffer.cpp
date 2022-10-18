@@ -6,6 +6,7 @@
 #include "RHITexture.h"
 #include "RHIPipeline.h"
 #include "RHIDescriptorSet.h"
+#include "RHIRenderContext.h"
 
 namespace spt::vulkan
 {
@@ -43,13 +44,13 @@ RHICommandBuffer::RHICommandBuffer()
 	, m_cmdBufferType(rhi::ECommandBufferType::Primary)
 { }
 
-void RHICommandBuffer::InitializeRHI(const rhi::CommandBufferDefinition& bufferDefinition)
+void RHICommandBuffer::InitializeRHI(RHIRenderContext& renderContext, const rhi::CommandBufferDefinition& bufferDefinition)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	m_cmdBufferHandle	= VulkanRHI::GetCommandPoolsManager().AcquireCommandBuffer(bufferDefinition, m_acquireInfo);
+	m_cmdBufferHandle	= renderContext.AcquireCommandBuffer(bufferDefinition);
 	m_queueType			= bufferDefinition.queueType;
 	m_cmdBufferType		= bufferDefinition.cmdBufferType;
 }
@@ -60,10 +61,7 @@ void RHICommandBuffer::ReleaseRHI()
 
 	SPT_CHECK(!!IsValid());
 
-	VulkanRHI::GetCommandPoolsManager().ReleaseCommandBuffer(m_acquireInfo, m_cmdBufferHandle);
-
 	m_cmdBufferHandle = VK_NULL_HANDLE;
-	m_acquireInfo.Reset();
 	m_name.Reset();
 }
 
@@ -99,8 +97,6 @@ void RHICommandBuffer::StopRecording()
 	VulkanRHI::GetLayoutsManager().UnregisterRecordingCommnadBuffer(m_cmdBufferHandle);
 
 	vkEndCommandBuffer(m_cmdBufferHandle);
-
-	VulkanRHI::GetCommandPoolsManager().ReleasePool(m_acquireInfo);
 }
 
 void RHICommandBuffer::SetName(const lib::HashedString& name)

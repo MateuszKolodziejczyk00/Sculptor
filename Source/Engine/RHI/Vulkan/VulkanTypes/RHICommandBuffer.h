@@ -2,7 +2,6 @@
 
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
-#include "Vulkan/CommandPool/RHICommandPoolsTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
 #include "RHICore/RHICommandBufferTypes.h"
 
@@ -12,6 +11,7 @@
 namespace spt::vulkan
 {
 
+class RHIRenderContext;
 class RHIPipeline;
 class RHIDescriptorSet;
 class RHITexture;
@@ -23,7 +23,7 @@ public:
 
 	RHICommandBuffer();
 
-	void							InitializeRHI(const rhi::CommandBufferDefinition& bufferDefinition);
+	void							InitializeRHI(RHIRenderContext& renderContext, const rhi::CommandBufferDefinition& bufferDefinition);
 	void							ReleaseRHI();
 
 	Bool							IsValid() const;
@@ -80,8 +80,6 @@ private:
 
 	rhi::ECommandBufferQueueType	m_queueType;
 	rhi::ECommandBufferType			m_cmdBufferType;
-
-	CommandBufferAcquireInfo		m_acquireInfo;
 
 	DebugName						m_name;
 };

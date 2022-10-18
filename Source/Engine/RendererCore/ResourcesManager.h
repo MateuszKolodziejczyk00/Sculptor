@@ -58,7 +58,7 @@ class RENDERER_CORE_API ResourcesManager
 {
 public:
 
-	SPT_NODISCARD static lib::SharedRef<RenderContext>			CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
+	SPT_NODISCARD static lib::SharedRef<RenderContext>		CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 	
 	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
 	
@@ -67,7 +67,7 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 
-	SPT_NODISCARD static lib::SharedRef<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition); 
+	SPT_NODISCARD static lib::SharedRef<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition); 
 
 	SPT_NODISCARD static Barrier							CreateBarrier();
 

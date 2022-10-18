@@ -43,9 +43,9 @@ lib::SharedRef<Semaphore> ResourcesManager::CreateSemaphore(const RendererResour
 	return lib::MakeShared<Semaphore>(name, definition);
 }
 
-lib::SharedRef<CommandBuffer> ResourcesManager::CreateCommandBuffer(const RendererResourceName& name, const rhi::CommandBufferDefinition& definition)
+lib::SharedRef<CommandBuffer> ResourcesManager::CreateCommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition)
 {
-	return lib::MakeShared<CommandBuffer>(name, definition);
+	return lib::MakeShared<CommandBuffer>(name, renderContext, definition);
 }
 
 Barrier ResourcesManager::CreateBarrier()

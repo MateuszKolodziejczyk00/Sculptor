@@ -1,6 +1,8 @@
 #include "RHIRenderContext.h"
 #include "RHIDescriptorSetManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
+#include "Vulkan/VulkanRHI.h"
+#include "Vulkan/CommandPool/RHICommandPoolsManager.h"
 
 namespace spt::vulkan
 {
@@ -32,6 +34,8 @@ void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 	m_id = priv::GenerateID();
 
 	m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
+
+	m_commandPoolsLibrary = VulkanRHI::GetCommandPoolsManager().AcquireCommandPoolsLibrary();
 }
 
 void RHIRenderContext::ReleaseRHI()
@@ -41,6 +45,8 @@ void RHIRenderContext::ReleaseRHI()
 	m_id = idxNone<rhi::ContextID>;
 
 	RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(std::move(m_dynamicDescriptorsPool));
+
+	VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
 
 	m_name.Reset();
 }
@@ -75,6 +81,13 @@ lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(con
 	m_dynamicDescriptorsPool->AllocateDescriptorSets(RHIToVulkan::GetDSLayoutsPtr(layoutIDs), descriptorSetsNum, outSets);
 
 	return outSets;
+}
+
+VkCommandBuffer RHIRenderContext::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	return m_commandPoolsLibrary->AcquireCommandBuffer(cmdBufferDef);
 }
 
 } // spt::vulkan
