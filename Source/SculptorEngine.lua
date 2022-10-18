@@ -10,6 +10,8 @@ IncludeProject("UICore")
 IncludeProject("Tokenizer")
 IncludeProject("Serialization")
 
+IncludeProject("JobSystem")
+
 SetProjectsSubgroupName("Engine")
 IncludeProject("EngineCore")
 
