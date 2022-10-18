@@ -6,7 +6,7 @@ function Platform:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("ProfilerCore")
 end
 
-function GLFW:GetProjectFiles(configuration, platform)
+function Platform:GetProjectFiles(configuration, platform)
     if platform == EPlatform.Windows then
         return
         {
