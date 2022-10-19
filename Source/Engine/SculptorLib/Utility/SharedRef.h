@@ -34,6 +34,12 @@ public:
 		SPT_CHECK(!!m_storage);
 	}
 
+	explicit SharedRef(TType* value)
+		: m_storage(value)
+	{
+		SPT_CHECK(!!m_storage);
+	}
+
 	SharedRef(const SharedRef<TType>& value) = default;
 	SharedRef(SharedRef<TType>&& value) = default;
 

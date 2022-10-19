@@ -7,7 +7,7 @@
 namespace spt::js
 {
 
-namespace spt::impl
+namespace impl
 {
 
 template<typename TType>
@@ -23,14 +23,21 @@ static constexpr Bool isJobWithResult = IsJobWithResult<TType>::value;
 template<typename... TPrerequisites>
 struct PrerequisitesResults
 {
-	using Type = lib::TuplePushFront<
+	using Type = std::tuple<void>;
+};
+
+
+template<typename TPrerequisite>
+struct PrerequisitesResults<std::tuple<TPrerequisite>>
+{
+	using Type = std::tuple<typename TPrerequisite::ResultType>;
 };
 
 
 template<typename TPrerequisite, typename... TPrerequisites>
 struct PrerequisitesResults<std::tuple<TPrerequisite, TPrerequisites...>>
 {
-	using Type = lib::TuplePushFront<typename TPrerequisite::ResultType, PrerequisitesResults<TPrerequisites...>::Type>;
+	using Type = lib::TuplePushFront<typename TPrerequisite::ResultType, typename PrerequisitesResults<std::tuple<TPrerequisites...>>::Type>;
 };
 
 
@@ -41,15 +48,17 @@ struct PrerequisitesResults<std::tuple<void>>
 };
 
 
-template<typename TCallable, typename TArgs...>
+template<typename TCallable, typename... TArgs>
 struct JobInvokeResult
-{ };
-
-
-template<typename TCallable, typename TArgs...>
-struct JobInvokeResult<TCallable, std::tuple<TArgs...>>
 {
-	using Type = std::invoke_result_t<TCallable&, TArgs...>;
+	using Type = std::invoke_result_t<TCallable&, TArgs&...>;
+};
+
+
+template<typename TCallable>
+struct JobInvokeResult<TCallable, void>
+{
+	using Type = std::invoke_result_t<TCallable&>;
 };
 
 
@@ -59,14 +68,14 @@ class JobCaller
 public:
 
 	template<typename TArgs>
-	void Inoke(TCallable& callable, TArgs&& args)
+	void Invoke(TCallable& callable, TArgs&& args)
 	{
-		new (m_inlineStorage) TReturnType(std::apply(callable, args));
+		new (reinterpret_cast<TReturnType*>(m_inlineStorage)) TReturnType(std::apply(callable, args));
 	}
 
-	TReturnType& GetResult() const
+	const TReturnType& GetResult() const
 	{
-		return *reinterpret_cast<TReturnType*>(m_inlineStorage);
+		return *reinterpret_cast<const TReturnType*>(m_inlineStorage);
 	}
 
 private:
@@ -90,28 +99,100 @@ public:
 	{ }
 };
 
-} // spt::impl
 
-template<typename TCallable, typename... TPrerequisites>
-class JobInstance
+template<typename TPrerequisite>
+struct GetResult
+{
+	static_assert(impl::isJobWithResult<TPrerequisite>, "Prerequisite must have result type");
+	using Type = TPrerequisite;
+
+	Type& prerequisiteRef;
+};
+
+
+template<typename TPrerequisite>
+struct ShouldGetResult
+{
+	static constexpr Bool value = false;
+};
+
+
+template<typename TPrerequisite>
+struct ShouldGetResult<GetResult<TPrerequisite>>
+{
+	static constexpr Bool value = true;
+};
+
+
+template<typename TPrerequisiteWrapped>
+struct UnwrapPrerequisite
+{
+	using Type = TPrerequisiteWrapped;
+};
+
+
+template<typename TPrerequisiteWrapped>
+struct UnwrapPrerequisite<GetResult<TPrerequisiteWrapped>>
+{
+	using Type = TPrerequisiteWrapped;
+};
+
+
+template<typename TPrerequisitesWrapped>
+struct UnwrapPrerequisites
+{
+	using Type = TPrerequisitesWrapped;
+};
+
+
+template<typename... TPrerequisitesWrapped>
+struct UnwrapPrerequisites<std::tuple<TPrerequisitesWrapped...>>
+{
+	using Type = std::tuple<typename UnwrapPrerequisite<TPrerequisitesWrapped>::Type...>;
+};
+
+} // impl
+
+class JobInstanceBase abstract
 {
 public:
 
-	using PrerequisitesWithResult = lib::Filter<impl::isJobWithResult, TPrerequisites...>;
-	using Arguments = impl::PrerequisitesResults<PrerequisitesWithResult>::Type;
-	using ResultType = impl::JobInvokeResult<TCallable, Arguments>;
+	JobInstanceBase() = default;
+	virtual ~JobInstanceBase() = default;
+
+	virtual void Execute() { SPT_CHECK_NO_ENTRY(); }
+};
+
+
+template<typename TCallable, typename... TArguments>
+class JobInstance
+{ };
+
+
+template<typename TCallable, typename... TArguments>
+class JobInstance<TCallable, std::tuple<TArguments...>> : public JobInstanceBase
+{
+public:
+
+	using ResultType = typename impl::JobInvokeResult<TCallable, TArguments...>::Type;
 	using JobCaller = impl::JobCaller<TCallable, ResultType>;
 
-	JobInstance(TCallable&& callable)
+	explicit JobInstance(TCallable&& callable)
 		: m_callable(std::forward<TCallable>(callable))
 	{ }
 
-	void Invoke(const Arguments& args)
+	virtual void Execute() override
 	{
-		m_caller.Invoke(m_callable, args)
+		//Invoke();
 	}
 
-	ResultType& GetResult() const
+	template<typename... TArgs>
+	void Invoke(const TArgs&... args)
+	{
+		m_caller.Invoke(m_callable, std::forward_as_tuple(args...));
+	}
+
+	const ResultType& GetResult() const
 	{
 		return m_caller.GetResult();
 	}
@@ -120,6 +201,64 @@ private:
 
 	JobCaller m_caller;
 	TCallable m_callable;
+};
+
+
+class JobBase abstract
+{
+public:
+
+	void Execute()
+	{
+		m_instance->Execute();
+	}
+
+protected:
+
+	explicit JobBase(lib::SharedRef<JobInstanceBase> inInstance)
+		: m_instance(std::move(inInstance))
+	{ }
+
+private:
+
+	lib::SharedRef<JobInstanceBase> m_instance;
+};
+
+
+template<typename TJobInstance>
+class Job : public JobBase
+{
+public:
+
+	template<typename... TArgs>  
+	explicit Job(TArgs&&... args)
+		: JobBase(lib::SharedRef<JobInstanceBase>(new TJobInstance(std::forward<TArgs>(args)...)))
+	{ }
+};
+
+
+template<typename TPrerequisite>
+impl::GetResult<TPrerequisite> GetResult(TPrerequisite& prerequisite)
+{
+	return impl::GetResult<TPrerequisite>(prerequisite);
+}
+
+
+class JobBuilder
+{
+public:
+
+	template<typename TCallable, typename... TStaticPrerequisites>
+	static auto BuildJob(TCallable&& callable, TStaticPrerequisites&&... prerequisites)
+	{
+		using PrerequisitesWithResultWrapped = typename lib::Filter<impl::ShouldGetResult, TStaticPrerequisites...>::Type;
+		using PrerequisitesWithResult = typename impl::UnwrapPrerequisites<PrerequisitesWithResultWrapped>::Type;
+		using Arguments = typename impl::PrerequisitesResults<PrerequisitesWithResult>::Type;
+
+		using JobInstanceType = JobInstance<TCallable, Arguments>;
+
+		return Job<JobInstanceType>(std::forward<TCallable>(callable));
+	}
 };
 
 } // spt::js

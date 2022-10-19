@@ -119,4 +119,10 @@ struct TuplePushFront<TType, std::tuple<TArgs...>>
 	using Type = std::tuple<TType, TArgs...>;
 };
 
+template<typename TType>
+struct TuplePushFront<TType, std::tuple<void>>
+{
+	using Type = std::tuple<TType>;
+};
+
 } // spt::lib

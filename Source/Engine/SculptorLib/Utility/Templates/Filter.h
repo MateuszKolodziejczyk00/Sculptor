@@ -10,19 +10,19 @@ template<template<typename TArg> typename TPredicate, typename... TArgs>
 struct Filter
 { };
 
-template<template<typename TArg> Bool Predicate, typename TCurrentArg, typename... TArgs>
+template<template<typename TArg> typename Predicate, typename TCurrentArg, typename... TArgs>
 struct Filter<Predicate, TCurrentArg, TArgs...>
 {
-	using Types = std::conditional_t<Predicate<TCurrentArg>,
-									TuplePushFront<TCurrentArg, Filter<Predicate, TArgs...>::Type>::Type,
-									Filter<Predicate, TArgs...>::Type...>;
+	using Type = std::conditional_t<Predicate<TCurrentArg>::value,
+									typename TuplePushFront<TCurrentArg, typename Filter<Predicate, TArgs...>::Type>::Type,
+									typename Filter<Predicate, TArgs...>::Type>;
 
 };
 
-template<template<typename TArg> Bool Predicate>
+template<template<typename TArg> typename Predicate>
 struct Filter<Predicate>
 {
-	using Types = std::tuple<void>;
+	using Type = std::tuple<void>;
 };
 
 } // spt::lib
