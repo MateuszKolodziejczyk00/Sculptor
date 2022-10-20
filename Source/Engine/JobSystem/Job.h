@@ -48,15 +48,8 @@ struct PrerequisitesResults<std::tuple<void>>
 };
 
 
-template<typename TCallable, typename... TArgs>
-struct JobInvokeResult
-{
-	using Type = std::invoke_result_t<TCallable&, TArgs&...>;
-};
-
-
 template<typename TCallable>
-struct JobInvokeResult<TCallable, void>
+struct JobInvokeResult
 {
 	using Type = std::invoke_result_t<TCallable&>;
 };
@@ -67,10 +60,9 @@ class JobCaller
 {
 public:
 
-	template<typename TArgs>
-	void Invoke(TCallable& callable, TArgs&& args)
+	void Invoke(TCallable& callable)
 	{
-		new (reinterpret_cast<TReturnType*>(m_inlineStorage)) TReturnType(std::apply(callable, args));
+		new (reinterpret_cast<TReturnType*>(m_inlineStorage)) TReturnType(std::invoke(callable));
 	}
 
 	const TReturnType& GetResult() const
@@ -89,8 +81,7 @@ class JobCaller<TCallable, void>
 {
 public:
 
-	template<typename TArgs>
-	void Invoke(TCallable& callable, TArgs&& args)
+	void Invoke(TCallable& callable)
 	{
 		callable();
 	}
@@ -99,59 +90,8 @@ public:
 	{ }
 };
 
-
-template<typename TPrerequisite>
-struct GetResult
-{
-	static_assert(impl::isJobWithResult<TPrerequisite>, "Prerequisite must have result type");
-	using Type = TPrerequisite;
-
-	Type& prerequisiteRef;
-};
-
-
-template<typename TPrerequisite>
-struct ShouldGetResult
-{
-	static constexpr Bool value = false;
-};
-
-
-template<typename TPrerequisite>
-struct ShouldGetResult<GetResult<TPrerequisite>>
-{
-	static constexpr Bool value = true;
-};
-
-
-template<typename TPrerequisiteWrapped>
-struct UnwrapPrerequisite
-{
-	using Type = TPrerequisiteWrapped;
-};
-
-
-template<typename TPrerequisiteWrapped>
-struct UnwrapPrerequisite<GetResult<TPrerequisiteWrapped>>
-{
-	using Type = TPrerequisiteWrapped;
-};
-
-
-template<typename TPrerequisitesWrapped>
-struct UnwrapPrerequisites
-{
-	using Type = TPrerequisitesWrapped;
-};
-
-
-template<typename... TPrerequisitesWrapped>
-struct UnwrapPrerequisites<std::tuple<TPrerequisitesWrapped...>>
-{
-	using Type = std::tuple<typename UnwrapPrerequisite<TPrerequisitesWrapped>::Type...>;
-};
-
 } // impl
+
 
 class JobInstanceBase abstract
 {
@@ -160,37 +100,131 @@ public:
 	JobInstanceBase() = default;
 	virtual ~JobInstanceBase() = default;
 
-	virtual void Execute() { SPT_CHECK_NO_ENTRY(); }
+	template<typename TPrerequisitesRange>
+	void AddPrerequisistes(TPrerequisitesRange&& prerequisites)
+	{
+		// we don't require any synchronization here - it's called only locally during job initialization
+
+		m_remainingPrerequisitesNum.store(static_cast<Int32>(prerequisites.size()));
+
+		m_prerequisites.reserve(prerequisites.size());
+
+		for (auto& prerequisite : prerequisites)
+		{
+			m_prerequisites.emplace_back(prerequisite);
+		}
+	}
+
+	void OnConstructed()
+	{
+		if (m_remainingPrerequisitesNum.load() == 0)
+		{
+			Schedule();
+		}
+	}
+
+	Bool Execute()
+	{
+		const Bool executeThisThread = m_startedExecution.exchange(1) == 0;
+
+		if (executeThisThread)
+		{
+			SPT_CHECK(m_remainingPrerequisitesNum.load() == 0);
+			DoExecute();
+
+			if (CanFinishExecution())
+			{
+				Finish();
+			}
+		}
+
+		return executeThisThread;
+	}
+
+	void AddConsequent(JobInstanceBase* next)
+	{
+		SPT_CHECK(!!next);
+
+		const lib::LockGuard lockGuard(m_consequentsLock);
+		m_consequents.emplace_back(next);
+	}
+
+	inline void AddNested()
+	{
+		m_remainingPrerequisitesNum.fetch_add(1);
+	}
+
+	inline void PostPrerequisiteExecuted()
+	{
+		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1);
+
+		if (remaining == 0)
+		{
+			Schedule();
+		}
+	}
+
+	void Wait()
+	{
+		// TODO prerequisites
+		SPT_CHECK_NO_ENTRY();
+		const Bool executed = Execute();
+		if (!executed)
+		{
+			// wait
+		}
+	}
+
+protected:
+
+	virtual void DoExecute()
+	{
+		SPT_CHECK_NO_ENTRY(); // Implement in child classes
+	}
+
+	inline Bool CanFinishExecution()
+	{
+		return m_remainingPrerequisitesNum.load() == 0;
+	}
+
+	void Finish()
+	{
+		const lib::LockGuard lockGuard(m_consequentsLock);
+
+		for (JobInstanceBase* consequent : m_consequents)
+		{
+			consequent->PostPrerequisiteExecuted();
+		}
+	}
+
+	void Schedule()
+	{
+
+	}
+
+private:
+
+	lib::DynamicArray<lib::SharedPtr<JobInstanceBase>>  m_prerequisites;
+	std::atomic<Int32>									m_remainingPrerequisitesNum;
+
+	std::atomic<Bool> m_startedExecution;
+
+	lib::DynamicArray<JobInstanceBase*>	m_consequents;
+	lib::Lock							m_consequentsLock;
 };
 
 
-template<typename TCallable, typename... TArguments>
-class JobInstance
-{ };
-
-
-template<typename TCallable, typename... TArguments>
-class JobInstance<TCallable, std::tuple<TArguments...>> : public JobInstanceBase
+template<typename TCallable>
+class JobInstance : public JobInstanceBase
 {
 public:
 
-	using ResultType = typename impl::JobInvokeResult<TCallable, TArguments...>::Type;
+	using ResultType = typename impl::JobInvokeResult<TCallable>::Type;
 	using JobCaller = impl::JobCaller<TCallable, ResultType>;
 
 	explicit JobInstance(TCallable&& callable)
 		: m_callable(std::forward<TCallable>(callable))
 	{ }
-
-	virtual void Execute() override
-	{
-		//Invoke();
-	}
-
-	template<typename... TArgs>
-	void Invoke(const TArgs&... args)
-	{
-		m_caller.Invoke(m_callable, std::forward_as_tuple(args...));
-	}
 
 	const ResultType& GetResult() const
 	{
@@ -198,6 +232,16 @@ public:
 	}
 
 private:
+
+	virtual void DoExecute() override
+	{
+		Invoke();
+	}
+
+	void Invoke()
+	{
+		m_caller.Invoke(m_callable);
+	}
 
 	JobCaller m_caller;
 	TCallable m_callable;
@@ -217,7 +261,16 @@ protected:
 
 	explicit JobBase(lib::SharedRef<JobInstanceBase> inInstance)
 		: m_instance(std::move(inInstance))
-	{ }
+	{
+		m_instance->OnConstructed();
+	}
+	
+	template<typename TJobType>
+	const TJobType& GetJob() const
+	{
+		static_assert(std::is_base_of_v<JobInstanceBase, TJobType>);
+		return static_cast<const TJobType&>(*m_instance);
+	}
 
 private:
 
@@ -230,18 +283,19 @@ class Job : public JobBase
 {
 public:
 
+	using JobInstanceType = TJobInstance;
+	using ResultType = typename TJobInstance::ResultType;
+
 	template<typename... TArgs>  
 	explicit Job(TArgs&&... args)
 		: JobBase(lib::SharedRef<JobInstanceBase>(new TJobInstance(std::forward<TArgs>(args)...)))
 	{ }
+
+	decltype(auto) GetResult() const
+	{
+		return GetJob<JobInstanceType>().GetResult();
+	}
 };
-
-
-template<typename TPrerequisite>
-impl::GetResult<TPrerequisite> GetResult(TPrerequisite& prerequisite)
-{
-	return impl::GetResult<TPrerequisite>(prerequisite);
-}
 
 
 class JobBuilder
@@ -251,11 +305,7 @@ public:
 	template<typename TCallable, typename... TStaticPrerequisites>
 	static auto BuildJob(TCallable&& callable, TStaticPrerequisites&&... prerequisites)
 	{
-		using PrerequisitesWithResultWrapped = typename lib::Filter<impl::ShouldGetResult, TStaticPrerequisites...>::Type;
-		using PrerequisitesWithResult = typename impl::UnwrapPrerequisites<PrerequisitesWithResultWrapped>::Type;
-		using Arguments = typename impl::PrerequisitesResults<PrerequisitesWithResult>::Type;
-
-		using JobInstanceType = JobInstance<TCallable, Arguments>;
+		using JobInstanceType = JobInstance<TCallable>;
 
 		return Job<JobInstanceType>(std::forward<TCallable>(callable));
 	}
