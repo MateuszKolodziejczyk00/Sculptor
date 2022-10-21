@@ -92,26 +92,51 @@ public:
 
 } // impl
 
+class JobInstanceBase;
+
+
+template<typename T>
+lib::SharedPtr<JobInstanceBase> GetJobSharedPtr(const T& val)
+{
+	SPT_CHECK_NO_ENTRY();
+
+	return lib::SharedPtr<JobInstanceBase>{};
+}
+
 
 class JobInstanceBase abstract
 {
+	enum class EJobState : Uint8
+	{
+		Pending,
+		Executing,
+		Finished
+	};
+
 public:
 
-	JobInstanceBase() = default;
+	JobInstanceBase()
+		: m_remainingPrerequisitesNum(0)
+		, m_jobState(EJobState::Pending)
+	{ }
+
 	virtual ~JobInstanceBase() = default;
 
 	template<typename TPrerequisitesRange>
-	void AddPrerequisistes(TPrerequisitesRange&& prerequisites)
+	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
 	{
 		// we don't require any synchronization here - it's called only locally during job initialization
-
 		m_remainingPrerequisitesNum.store(static_cast<Int32>(prerequisites.size()));
 
 		m_prerequisites.reserve(prerequisites.size());
 
 		for (auto& prerequisite : prerequisites)
 		{
+			lib::SharedPtr<JobInstanceBase> prerequisitePtr = GetJobSharedPtr(prerequisite);
+
 			m_prerequisites.emplace_back(prerequisite);
+
+			prerequisitePtr->AddConsequent(this);
 		}
 	}
 
@@ -125,7 +150,8 @@ public:
 
 	Bool Execute()
 	{
-		const Bool executeThisThread = m_startedExecution.exchange(1) == 0;
+		EJobState expected = EJobState::Pending;
+		const Bool executeThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Executing);
 
 		if (executeThisThread)
 		{
@@ -138,7 +164,7 @@ public:
 			}
 		}
 
-		return executeThisThread;
+		return executeThisThread || expected == EJobState::Finished;
 	}
 
 	void AddConsequent(JobInstanceBase* next)
@@ -146,7 +172,11 @@ public:
 		SPT_CHECK(!!next);
 
 		const lib::LockGuard lockGuard(m_consequentsLock);
-		m_consequents.emplace_back(next);
+
+		if(m_jobState.load() != EJobState::Finished)
+		{
+			m_consequents.emplace_back(next);
+		}
 	}
 
 	inline void AddNested()
@@ -166,13 +196,38 @@ public:
 
 	void Wait()
 	{
-		// TODO prerequisites
-		SPT_CHECK_NO_ENTRY();
-		const Bool executed = Execute();
-		if (!executed)
+		const EJobState loadedState = m_jobState.load();
+		if (loadedState == EJobState::Finished)
 		{
-			// wait
+			return;
 		}
+
+		if (loadedState == EJobState::Pending)
+		{
+			// We probably don't need lock here for now
+			for (const lib::SharedPtr<JobInstanceBase>& prerequisite : m_prerequisites)
+			{
+				prerequisite->Execute();
+			}
+
+			if (m_remainingPrerequisitesNum.load() == 0)
+			{
+				const Bool executed = Execute();
+				if (executed)
+				{
+					return;
+				}
+			}
+		}
+
+		std::condition_variable cv;
+		lib::Lock lock;
+
+		// add consequent;
+		SPT_CHECK_NO_ENTRY();
+		
+		lib::UnlockableLockGuard lockGuard(lock);
+		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
 	}
 
 protected:
@@ -195,6 +250,8 @@ protected:
 		{
 			consequent->PostPrerequisiteExecuted();
 		}
+
+		m_jobState.store(EJobState::Finished);
 	}
 
 	void Schedule()
@@ -207,7 +264,7 @@ private:
 	lib::DynamicArray<lib::SharedPtr<JobInstanceBase>>  m_prerequisites;
 	std::atomic<Int32>									m_remainingPrerequisitesNum;
 
-	std::atomic<Bool> m_startedExecution;
+	std::atomic<EJobState> m_jobState;
 
 	lib::DynamicArray<JobInstanceBase*>	m_consequents;
 	lib::Lock							m_consequentsLock;
@@ -257,13 +314,27 @@ public:
 		m_instance->Execute();
 	}
 
+	template<typename TPrerequisitesRange>
+	void AddPrerequisites(const TPrerequisitesRange& range)
+	{
+		m_instance->AddPrerequisites(range);
+	}
+
+	void OnConstructed()
+	{
+		m_instance->OnConstructed();
+	}
+
+	const lib::SharedRef<JobInstanceBase>& GetJobInstance() const
+	{
+		return m_instance;
+	}
+
 protected:
 
 	explicit JobBase(lib::SharedRef<JobInstanceBase> inInstance)
 		: m_instance(std::move(inInstance))
-	{
-		m_instance->OnConstructed();
-	}
+	{ }
 	
 	template<typename TJobType>
 	const TJobType& GetJob() const
@@ -297,17 +368,38 @@ public:
 	}
 };
 
+template<typename T>
+lib::SharedPtr<Job<T>> GetJobSharedPtr(const Job<T>& val)
+{
+	return val.GetJobInstance();
+}
+
 
 class JobBuilder
 {
 public:
 
-	template<typename TCallable, typename... TStaticPrerequisites>
-	static auto BuildJob(TCallable&& callable, TStaticPrerequisites&&... prerequisites)
+	template<typename TCallable, typename TPrerequisitesRange>
+	static auto BuildJob(TCallable&& callable, const TPrerequisitesRange& prerequisites)
 	{
 		using JobInstanceType = JobInstance<TCallable>;
 
-		return Job<JobInstanceType>(std::forward<TCallable>(callable));
+		Job<JobInstanceType> job(std::forward<TCallable>(callable));
+		job.AddPrerequisites(prerequisites);
+		job.OnConstructed();
+
+		return job;
+	}
+
+	template<typename TCallable>
+	static auto BuildJob(TCallable&& callable)
+	{
+		using JobInstanceType = JobInstance<TCallable>;
+
+		Job<JobInstanceType> job(std::forward<TCallable>(callable));
+		job.OnConstructed();
+
+		return job;
 	}
 };
 
