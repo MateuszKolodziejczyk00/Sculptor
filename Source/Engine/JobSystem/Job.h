@@ -228,7 +228,7 @@ private:
 };
 
 
-class JobInstance
+class JobInstance : public std::enable_shared_from_this<JobInstance>
 {
 	enum class EJobState : Uint8
 	{
@@ -239,10 +239,34 @@ class JobInstance
 
 public:
 
-	JobInstance()
+	template<typename TCallable>
+	explicit JobInstance(TCallable&& callable)
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
-	{ }
+	{
+		SetCallable(std::forward<TCallable>(callable));
+		OnConstructed();
+	}
+
+	template<typename TCallable, typename TPrerequisitesRange>
+	JobInstance(TCallable&& callable, TPrerequisitesRange&& prerequisites)
+		: m_remainingPrerequisitesNum(0)
+		, m_jobState(EJobState::Pending)
+	{
+		SetCallable(std::forward<TCallable>(callable));
+		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
+		OnConstructed();
+	}
+
+	template<typename TCallable>
+	JobInstance(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite)
+		: m_remainingPrerequisitesNum(0)
+		, m_jobState(EJobState::Pending)
+	{
+		SetCallable(std::forward<TCallable>(callable));
+		AddPrerequisite(std::forward<lib::SharedPtr<JobInstance>>(prerequisite));
+		OnConstructed();
+	}
 
 	virtual ~JobInstance() = default;
 
@@ -256,7 +280,7 @@ public:
 	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
 	{
 		// we don't require any synchronization here - it's called only locally during job initialization
-		m_remainingPrerequisitesNum.store(static_cast<Int32>(prerequisites.size()));
+		m_remainingPrerequisitesNum.fetch_add(static_cast<Int32>(prerequisites.size()));
 
 		m_prerequisites.reserve(prerequisites.size());
 
@@ -267,12 +291,10 @@ public:
 		}
 	}
 
-	void OnConstructed()
+	void AddPrerequisite(lib::SharedPtr<JobInstance> job)
 	{
-		if (m_remainingPrerequisitesNum.load() == 0)
-		{
-			Schedule();
-		}
+		m_remainingPrerequisitesNum.fetch_add(1);
+		m_prerequisites.emplace_back(std::forward<lib::SharedPtr<JobInstance>>(job));
 	}
 
 	void AddConsequent(JobInstance* next)
@@ -287,9 +309,12 @@ public:
 		}
 	}
 
-	inline void AddNested()
+	inline void AddNested(lib::SharedPtr<JobInstance> job)
 	{
 		m_remainingPrerequisitesNum.fetch_add(1);
+
+		// added only on thread that creates job, on or thread executing job, so we don't need lock
+		m_prerequisites.emplace_back(std::forward<lib::SharedPtr<JobInstance>>(job));
 	}
 
 	Bool Execute()
@@ -340,8 +365,7 @@ public:
 		std::condition_variable cv;
 		lib::Lock lock;
 
-		// add consequent;
-		SPT_CHECK_NO_ENTRY();
+		const lib::SharedRef<JobInstance> finishEvent = lib::MakeShared<JobInstance>([&cv] { cv.notify_one(); }, shared_from_this());
 		
 		lib::UnlockableLockGuard lockGuard(lock);
 		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
@@ -354,6 +378,14 @@ public:
 	}
 
 protected:
+
+	void OnConstructed()
+	{
+		if (m_remainingPrerequisitesNum.load() == 0)
+		{
+			Schedule();
+		}
+	}
 
 	virtual void DoExecute()
 	{
@@ -472,10 +504,7 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = CreateJobInstance(std::forward<TCallable>(callable));
-		job->AddPrerequisites(prerequisites);
-		job->OnConstructed();
-
+		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites));
 		return CreateJobWrapper<TCallable>(job);
 	}
 
@@ -484,23 +513,11 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = CreateJobInstance(std::forward<TCallable>(callable));
-		job->OnConstructed();
-
+		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>(std::forward<TCallable>(callable));
 		return CreateJobWrapper<TCallable>(job);
 	}
 
 private:
-
-	template<typename TCallable>
-	static lib::SharedRef<JobInstance> CreateJobInstance(TCallable&& callable)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
-		job->SetCallable(std::forward<TCallable>(callable));
-		return job;
-	}
 
 	template<typename TCallable>
 	static auto CreateJobWrapper(const lib::SharedRef<JobInstance>& jobInstance)
