@@ -55,56 +55,189 @@ struct JobInvokeResult
 };
 
 
-template<typename TCallable, typename TReturnType>
-class JobCaller
+class JobCallableBase
 {
 public:
 
-	void Invoke(TCallable& callable)
+	JobCallableBase() = default;
+	virtual ~JobCallableBase() = default;
+
+	virtual void Invoke() = 0;
+
+	template<typename TType>
+	const TType& GetResultAs() const
 	{
-		new (reinterpret_cast<TReturnType*>(m_inlineStorage)) TReturnType(std::invoke(callable));
+		const TType* result = static_cast<const TType*>(GetResultPtr(sizeof(TType)));
+		SPT_CHECK(!!result);
+		return *result;
+	}
+
+protected:
+
+	virtual const void* GetResultPtr(SizeType size) const
+	{
+		return nullptr;
+	}
+};
+
+
+template<typename TReturnType>
+class JobCallableWithResult : public JobCallableBase
+{
+public:
+
+	~JobCallableWithResult()
+	{
+		GetResultMutable().~TReturnType();
 	}
 
 	const TReturnType& GetResult() const
 	{
 		return *reinterpret_cast<const TReturnType*>(m_inlineStorage);
 	}
+	
+protected:
+
+	TReturnType& GetResultMutable()
+	{
+		return *reinterpret_cast<TReturnType*>(m_inlineStorage);
+	}
 
 private:
+
+	virtual const void* GetResultPtr(SizeType size) const
+	{
+		SPT_CHECK(size == sizeof(TReturnType));
+		return m_inlineStorage;
+	}
 
 	alignas(TReturnType) Byte m_inlineStorage[sizeof(TReturnType)];
 };
 
 
-template<typename TCallable>
-class JobCaller<TCallable, void>
+template<>
+class JobCallableWithResult<void> : public JobCallableBase
 {
 public:
 
-	void Invoke(TCallable& callable)
+};
+
+
+template<typename TCallable, typename TReturnType>
+class JobCallable : public JobCallableWithResult<TReturnType>
+{
+public:
+
+	explicit JobCallable(TCallable&& callable)
+		: m_callable(std::move(callable))
+	{ }
+
+	virtual void Invoke() override
 	{
-		callable();
+		if constexpr (!std::is_same_v<TReturnType, void>)
+		{
+			JobCallableWithResult<TReturnType>::GetResultMutable() = InvokeImpl();
+		}
+		else
+		{
+			InvokeImpl();
+		}
 	}
 
-	void GetResult() const
-	{ }
+private:
+
+	decltype(auto) InvokeImpl() const
+	{
+		return std::invoke(m_callable);
+	}
+
+	TCallable m_callable;
 };
 
 } // impl
 
-class JobInstanceBase;
+class JobInstance;
+
+
+class JobCallableWrapper
+{
+	static constexpr SizeType s_inlineStorageSize = 32;
+
+public:
+
+	JobCallableWrapper()
+		: m_callable(nullptr)
+	{ }
+
+	~JobCallableWrapper()
+	{
+		DestroyCallable();
+	}
+
+	template<typename TCallable>
+	void SetCallable(TCallable&& callable)
+	{
+		DestroyCallable();
+		
+		using ResultType = typename impl::JobInvokeResult<TCallable>::Type;
+		using CallableType = impl::JobCallable<std::decay_t<TCallable>, ResultType>;
+
+		if constexpr (sizeof(CallableType) <= s_inlineStorageSize)
+		{
+			m_callable = new (m_inlineStorage) CallableType(std::move(callable));
+		}
+		else
+		{
+			m_callable = new CallableType(std::move(callable));
+		}
+	}
+
+	void Invoke()
+	{
+		SPT_CHECK(!!m_callable);
+
+		m_callable->Invoke();
+	}
+
+	template<typename TType>
+	const TType& GetResult() const
+	{
+		SPT_CHECK(!!m_callable);
+		return m_callable->GetResultAs<TType>();
+	}
+
+private:
+
+	void DestroyCallable()
+	{
+		if (m_callable)
+		{
+			if (reinterpret_cast<void*>(m_callable) == reinterpret_cast<void*>(m_inlineStorage))
+			{
+				m_callable->~JobCallableBase();
+			}
+			else
+			{
+				delete m_callable;
+			}
+		}
+	}
+
+	alignas(4) Byte			m_inlineStorage[s_inlineStorageSize];
+	impl::JobCallableBase*	m_callable;
+};
 
 
 template<typename T>
-lib::SharedPtr<JobInstanceBase> GetJobSharedPtr(const T& val)
+lib::SharedPtr<JobInstance> GetJobSharedPtr(const T& val)
 {
 	SPT_CHECK_NO_ENTRY();
 
-	return lib::SharedPtr<JobInstanceBase>{};
+	return lib::SharedPtr<JobInstance>{};
 }
 
 
-class JobInstanceBase abstract
+class JobInstance
 {
 	enum class EJobState : Uint8
 	{
@@ -115,12 +248,18 @@ class JobInstanceBase abstract
 
 public:
 
-	JobInstanceBase()
+	JobInstance()
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
 	{ }
 
-	virtual ~JobInstanceBase() = default;
+	virtual ~JobInstance() = default;
+
+	template<typename TCallable>
+	void SetCallable(TCallable&& callable)
+	{
+		m_callable.SetCallable(callable);
+	}
 
 	template<typename TPrerequisitesRange>
 	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
@@ -132,7 +271,7 @@ public:
 
 		for (auto& prerequisite : prerequisites)
 		{
-			lib::SharedPtr<JobInstanceBase> prerequisitePtr = GetJobSharedPtr(prerequisite);
+			lib::SharedPtr<JobInstance> prerequisitePtr = GetJobSharedPtr(prerequisite);
 
 			m_prerequisites.emplace_back(prerequisite);
 
@@ -146,6 +285,23 @@ public:
 		{
 			Schedule();
 		}
+	}
+
+	void AddConsequent(JobInstance* next)
+	{
+		SPT_CHECK(!!next);
+
+		const lib::LockGuard lockGuard(m_consequentsLock);
+
+		if(m_jobState.load() != EJobState::Finished)
+		{
+			m_consequents.emplace_back(next);
+		}
+	}
+
+	inline void AddNested()
+	{
+		m_remainingPrerequisitesNum.fetch_add(1);
 	}
 
 	Bool Execute()
@@ -167,33 +323,6 @@ public:
 		return executeThisThread || expected == EJobState::Finished;
 	}
 
-	void AddConsequent(JobInstanceBase* next)
-	{
-		SPT_CHECK(!!next);
-
-		const lib::LockGuard lockGuard(m_consequentsLock);
-
-		if(m_jobState.load() != EJobState::Finished)
-		{
-			m_consequents.emplace_back(next);
-		}
-	}
-
-	inline void AddNested()
-	{
-		m_remainingPrerequisitesNum.fetch_add(1);
-	}
-
-	inline void PostPrerequisiteExecuted()
-	{
-		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1);
-
-		if (remaining == 0)
-		{
-			Schedule();
-		}
-	}
-
 	void Wait()
 	{
 		const EJobState loadedState = m_jobState.load();
@@ -205,7 +334,7 @@ public:
 		if (loadedState == EJobState::Pending)
 		{
 			// We probably don't need lock here for now
-			for (const lib::SharedPtr<JobInstanceBase>& prerequisite : m_prerequisites)
+			for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
 			{
 				prerequisite->Execute();
 			}
@@ -230,11 +359,17 @@ public:
 		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
 	}
 
+	template<typename TResultType>
+	const TResultType& GetResultAs() const
+	{
+		return m_callable.GetResult<TResultType>();
+	}
+
 protected:
 
 	virtual void DoExecute()
 	{
-		SPT_CHECK_NO_ENTRY(); // Implement in child classes
+		m_callable.Invoke();
 	}
 
 	inline Bool CanFinishExecution()
@@ -246,12 +381,22 @@ protected:
 	{
 		const lib::LockGuard lockGuard(m_consequentsLock);
 
-		for (JobInstanceBase* consequent : m_consequents)
+		for (JobInstance* consequent : m_consequents)
 		{
 			consequent->PostPrerequisiteExecuted();
 		}
 
 		m_jobState.store(EJobState::Finished);
+	}
+
+	inline void PostPrerequisiteExecuted()
+	{
+		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1);
+
+		if (remaining == 0)
+		{
+			Schedule();
+		}
 	}
 
 	void Schedule()
@@ -261,115 +406,65 @@ protected:
 
 private:
 
-	lib::DynamicArray<lib::SharedPtr<JobInstanceBase>>  m_prerequisites;
+	lib::DynamicArray<lib::SharedPtr<JobInstance>>  m_prerequisites;
 	std::atomic<Int32>									m_remainingPrerequisitesNum;
 
 	std::atomic<EJobState> m_jobState;
 
-	lib::DynamicArray<JobInstanceBase*>	m_consequents;
+	lib::DynamicArray<JobInstance*>	m_consequents;
 	lib::Lock							m_consequentsLock;
+
+	JobCallableWrapper	m_callable;
 };
 
 
-template<typename TCallable>
-class JobInstance : public JobInstanceBase
+class Job
 {
 public:
 
-	using ResultType = typename impl::JobInvokeResult<TCallable>::Type;
-	using JobCaller = impl::JobCaller<TCallable, ResultType>;
-
-	explicit JobInstance(TCallable&& callable)
-		: m_callable(std::forward<TCallable>(callable))
+	explicit Job(lib::SharedRef<JobInstance> inInstance)
+		: m_instance(std::move(inInstance))
 	{ }
 
-	const ResultType& GetResult() const
+	void Wait()
 	{
-		return m_caller.GetResult();
+		m_instance->Wait();
 	}
 
-private:
-
-	virtual void DoExecute() override
-	{
-		Invoke();
-	}
-
-	void Invoke()
-	{
-		m_caller.Invoke(m_callable);
-	}
-
-	JobCaller m_caller;
-	TCallable m_callable;
-};
-
-
-class JobBase abstract
-{
-public:
-
-	void Execute()
-	{
-		m_instance->Execute();
-	}
-
-	template<typename TPrerequisitesRange>
-	void AddPrerequisites(const TPrerequisitesRange& range)
-	{
-		m_instance->AddPrerequisites(range);
-	}
-
-	void OnConstructed()
-	{
-		m_instance->OnConstructed();
-	}
-
-	const lib::SharedRef<JobInstanceBase>& GetJobInstance() const
+	const lib::SharedRef<JobInstance>& GetJobInstance() const
 	{
 		return m_instance;
 	}
 
-protected:
-
-	explicit JobBase(lib::SharedRef<JobInstanceBase> inInstance)
-		: m_instance(std::move(inInstance))
-	{ }
-	
-	template<typename TJobType>
-	const TJobType& GetJob() const
-	{
-		static_assert(std::is_base_of_v<JobInstanceBase, TJobType>);
-		return static_cast<const TJobType&>(*m_instance);
-	}
-
 private:
 
-	lib::SharedRef<JobInstanceBase> m_instance;
+	lib::SharedRef<JobInstance> m_instance;
 };
 
 
-template<typename TJobInstance>
-class Job : public JobBase
+template<typename TResultType>
+class JobWithResult : public Job
 {
 public:
 
-	using JobInstanceType = TJobInstance;
-	using ResultType = typename TJobInstance::ResultType;
-
-	template<typename... TArgs>  
-	explicit Job(TArgs&&... args)
-		: JobBase(lib::SharedRef<JobInstanceBase>(new TJobInstance(std::forward<TArgs>(args)...)))
+	explicit JobWithResult(lib::SharedRef<JobInstance> inInstance)
+		: Job(std::move(inInstance))
 	{ }
 
-	decltype(auto) GetResult() const
+	const TResultType& GetResult() const
 	{
-		return GetJob<JobInstanceType>().GetResult();
+		return GetJobInstance()->GetResultAs<TResultType>();
 	}
 };
 
+
+lib::SharedPtr<JobInstance> GetJobSharedPtr(const Job& val)
+{
+	return val.GetJobInstance();
+}
+
 template<typename T>
-lib::SharedPtr<Job<T>> GetJobSharedPtr(const Job<T>& val)
+lib::SharedPtr<JobInstance> GetJobSharedPtr(const JobWithResult<T>& val)
 {
 	return val.GetJobInstance();
 }
@@ -382,24 +477,45 @@ public:
 	template<typename TCallable, typename TPrerequisitesRange>
 	static auto BuildJob(TCallable&& callable, const TPrerequisitesRange& prerequisites)
 	{
-		using JobInstanceType = JobInstance<TCallable>;
+		SPT_PROFILER_FUNCTION();
 
-		Job<JobInstanceType> job(std::forward<TCallable>(callable));
-		job.AddPrerequisites(prerequisites);
-		job.OnConstructed();
+		lib::SharedRef<JobInstance> job = CreateJobInstance(std::forward<TCallable>(callable));
+		job->AddPrerequisites(prerequisites);
+		job->OnConstructed();
 
-		return job;
+		return CreateJobWrapper<TCallable>(job);
 	}
 
 	template<typename TCallable>
 	static auto BuildJob(TCallable&& callable)
 	{
-		using JobInstanceType = JobInstance<TCallable>;
+		SPT_PROFILER_FUNCTION();
 
-		Job<JobInstanceType> job(std::forward<TCallable>(callable));
-		job.OnConstructed();
+		lib::SharedRef<JobInstance> job = CreateJobInstance(std::forward<TCallable>(callable));
+		job->OnConstructed();
 
+		return CreateJobWrapper<TCallable>(job);
+	}
+
+private:
+
+	template<typename TCallable>
+	static lib::SharedRef<JobInstance> CreateJobInstance(TCallable&& callable)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
+		job->SetCallable(std::forward<TCallable>(callable));
 		return job;
+	}
+
+	template<typename TCallable>
+	static auto CreateJobWrapper(const lib::SharedRef<JobInstance>& jobInstance)
+	{
+		using CallableResult = impl::JobInvokeResult<TCallable>::Type;
+		using JobType = std::conditional_t<std::is_same_v<CallableResult, void>, Job, JobWithResult<CallableResult>>;
+
+		return JobType(jobInstance);
 	}
 };
 
