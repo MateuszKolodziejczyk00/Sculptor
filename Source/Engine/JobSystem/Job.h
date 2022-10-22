@@ -228,15 +228,6 @@ private:
 };
 
 
-template<typename T>
-lib::SharedPtr<JobInstance> GetJobSharedPtr(const T& val)
-{
-	SPT_CHECK_NO_ENTRY();
-
-	return lib::SharedPtr<JobInstance>{};
-}
-
-
 class JobInstance
 {
 	enum class EJobState : Uint8
@@ -271,11 +262,8 @@ public:
 
 		for (auto& prerequisite : prerequisites)
 		{
-			lib::SharedPtr<JobInstance> prerequisitePtr = GetJobSharedPtr(prerequisite);
-
 			m_prerequisites.emplace_back(prerequisite);
-
-			prerequisitePtr->AddConsequent(this);
+			prerequisite->AddConsequent(this);
 		}
 	}
 
@@ -407,7 +395,7 @@ protected:
 private:
 
 	lib::DynamicArray<lib::SharedPtr<JobInstance>>  m_prerequisites;
-	std::atomic<Int32>									m_remainingPrerequisitesNum;
+	std::atomic<Int32>								m_remainingPrerequisitesNum;
 
 	std::atomic<EJobState> m_jobState;
 
@@ -458,15 +446,20 @@ public:
 };
 
 
-lib::SharedPtr<JobInstance> GetJobSharedPtr(const Job& val)
+template<typename... TJobs>
+auto Prerequisites(const TJobs&... jobs)
 {
-	return val.GetJobInstance();
-}
+	constexpr SizeType size = lib::ParameterPackSize<TJobs...>::Count;
 
-template<typename T>
-lib::SharedPtr<JobInstance> GetJobSharedPtr(const JobWithResult<T>& val)
-{
-	return val.GetJobInstance();
+	using PrerequsitesRangeType = lib::StaticArray<lib::SharedPtr<JobInstance>, size>;
+
+	const auto getJobInstance = []<typename T>(const T& job)
+	{
+		static_assert(std::is_base_of_v<Job, T>);
+		return job.GetJobInstance();
+	};
+
+	return PrerequsitesRangeType{ getJobInstance(jobs)... };
 }
 
 
@@ -475,7 +468,7 @@ class JobBuilder
 public:
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	static auto BuildJob(TCallable&& callable, const TPrerequisitesRange& prerequisites)
+	static auto BuildJob(TCallable&& callable, TPrerequisitesRange&& prerequisites)
 	{
 		SPT_PROFILER_FUNCTION();
 

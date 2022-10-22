@@ -96,17 +96,6 @@ template<template<typename TTest> typename TPredicate, typename... TArgs>
 static constexpr Bool AnyOf_v = AnyOf<TPredicate, TArgs...>::value;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// ParameterPack =================================================================================
-
-template<typename... TArgs>
-struct ParameterPack
-{ };
-
-template<typename... TArgs>
-struct ParameterPack<std::tuple<TArgs...>>
-{ };
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // TuplePushFront ================================================================================
 
 template<typename, typename>
@@ -123,6 +112,21 @@ template<typename TType>
 struct TuplePushFront<TType, std::tuple<void>>
 {
 	using Type = std::tuple<TType>;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ParameterPackSize =============================================================================
+
+template<typename T, typename... Ts>
+struct ParameterPackSize
+{
+	static constexpr SizeType Count = ParameterPackSize<Ts...>::Count + 1;
+};
+
+template<typename T>
+struct ParameterPackSize<T>
+{
+	static constexpr SizeType Count = 1;
 };
 
 } // spt::lib
