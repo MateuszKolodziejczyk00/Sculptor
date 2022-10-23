@@ -9,7 +9,9 @@
 namespace spt::lib
 {
 
-// single-producer/single-consumer queue 
+// single-producer/single-consumer waitfree queue
+// Based on implementation provided by Dmitry Vyukov:
+// https://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
 template<typename TType> 
 class SPSCQueue
 {
