@@ -238,20 +238,23 @@ class JobInstance : public std::enable_shared_from_this<JobInstance>
 	};
 
 public:
-
-	template<typename TCallable>
-	explicit JobInstance(TCallable&& callable)
+	
+	JobInstance()
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
+	{ }
+
+	virtual ~JobInstance() = default;
+	
+	template<typename TCallable>
+	void Init(TCallable&& callable)
 	{
 		SetCallable(std::forward<TCallable>(callable));
 		OnConstructed();
 	}
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	JobInstance(TCallable&& callable, TPrerequisitesRange&& prerequisites)
-		: m_remainingPrerequisitesNum(0)
-		, m_jobState(EJobState::Pending)
+	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites)
 	{
 		SetCallable(std::forward<TCallable>(callable));
 		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
@@ -259,62 +262,11 @@ public:
 	}
 
 	template<typename TCallable>
-	JobInstance(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite)
-		: m_remainingPrerequisitesNum(0)
-		, m_jobState(EJobState::Pending)
+	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite)
 	{
 		SetCallable(std::forward<TCallable>(callable));
-		AddPrerequisite(std::forward<lib::SharedPtr<JobInstance>>(prerequisite));
+		AddPrerequisite(std::move(prerequisite));
 		OnConstructed();
-	}
-
-	virtual ~JobInstance() = default;
-
-	template<typename TCallable>
-	void SetCallable(TCallable&& callable)
-	{
-		m_callable.SetCallable(callable);
-	}
-
-	template<typename TPrerequisitesRange>
-	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
-	{
-		// we don't require any synchronization here - it's called only locally during job initialization
-		m_remainingPrerequisitesNum.fetch_add(static_cast<Int32>(prerequisites.size()));
-
-		m_prerequisites.reserve(prerequisites.size());
-
-		for (auto& prerequisite : prerequisites)
-		{
-			m_prerequisites.emplace_back(prerequisite);
-			prerequisite->AddConsequent(this);
-		}
-	}
-
-	void AddPrerequisite(lib::SharedPtr<JobInstance> job)
-	{
-		m_remainingPrerequisitesNum.fetch_add(1);
-		m_prerequisites.emplace_back(std::forward<lib::SharedPtr<JobInstance>>(job));
-	}
-
-	void AddConsequent(JobInstance* next)
-	{
-		SPT_CHECK(!!next);
-
-		const lib::LockGuard lockGuard(m_consequentsLock);
-
-		if(m_jobState.load() != EJobState::Finished)
-		{
-			m_consequents.emplace_back(next);
-		}
-	}
-
-	inline void AddNested(lib::SharedPtr<JobInstance> job)
-	{
-		m_remainingPrerequisitesNum.fetch_add(1);
-
-		// added only on thread that creates job, on or thread executing job, so we don't need lock
-		m_prerequisites.emplace_back(std::forward<lib::SharedPtr<JobInstance>>(job));
 	}
 
 	Bool Execute()
@@ -365,7 +317,8 @@ public:
 		std::condition_variable cv;
 		lib::Lock lock;
 
-		const lib::SharedRef<JobInstance> finishEvent = lib::MakeShared<JobInstance>([&cv] { cv.notify_one(); }, shared_from_this());
+		lib::SharedRef<JobInstance> finishEvent = lib::MakeShared<JobInstance>();
+		finishEvent->Init([&cv] { cv.notify_one(); }, shared_from_this());
 		
 		lib::UnlockableLockGuard lockGuard(lock);
 		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
@@ -378,6 +331,53 @@ public:
 	}
 
 protected:
+
+	template<typename TCallable>
+	void SetCallable(TCallable&& callable)
+	{
+		m_callable.SetCallable(callable);
+	}
+
+	template<typename TPrerequisitesRange>
+	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
+	{
+		// we don't require any synchronization here - it's called only locally during job initialization
+		m_remainingPrerequisitesNum.fetch_add(static_cast<Int32>(prerequisites.size()));
+
+		m_prerequisites.reserve(prerequisites.size());
+
+		for (auto& prerequisite : prerequisites)
+		{
+			m_prerequisites.emplace_back(prerequisite);
+			prerequisite->AddConsequent(shared_from_this());
+		}
+	}
+
+	void AddPrerequisite(lib::SharedPtr<JobInstance> job)
+	{
+		m_remainingPrerequisitesNum.fetch_add(1);
+		m_prerequisites.emplace_back(std::move(job));
+	}
+
+	void AddConsequent(lib::SharedPtr<JobInstance> next)
+	{
+		SPT_CHECK(!!next);
+
+		const lib::LockGuard lockGuard(m_consequentsLock);
+
+		if(m_jobState.load() != EJobState::Finished)
+		{
+			m_consequents.emplace_back(std::move(next));
+		}
+	}
+
+	inline void AddNested(lib::SharedPtr<JobInstance> job)
+	{
+		m_remainingPrerequisitesNum.fetch_add(1);
+
+		// added only on thread that creates job, on or thread executing job, so we don't need lock
+		m_prerequisites.emplace_back(std::move(job));
+	}
 
 	void OnConstructed()
 	{
@@ -401,10 +401,13 @@ protected:
 	{
 		const lib::LockGuard lockGuard(m_consequentsLock);
 
-		for (JobInstance* consequent : m_consequents)
+		for (const lib::SharedPtr<JobInstance>& consequent : m_consequents)
 		{
 			consequent->PostPrerequisiteExecuted();
 		}
+
+		// clear references to avoiod shared ptr reference cycles
+		m_consequents.clear();
 
 		m_jobState.store(EJobState::Finished);
 	}
@@ -431,8 +434,8 @@ private:
 
 	std::atomic<EJobState> m_jobState;
 
-	lib::DynamicArray<JobInstance*>	m_consequents;
-	lib::Lock							m_consequentsLock;
+	lib::DynamicArray<lib::SharedPtr<JobInstance>>	m_consequents;
+	lib::Lock										m_consequentsLock;
 
 	JobCallableWrapper	m_callable;
 };
@@ -504,7 +507,8 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites));
+		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
+		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites));
 		return CreateJobWrapper<TCallable>(job);
 	}
 
@@ -513,7 +517,8 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>(std::forward<TCallable>(callable));
+		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
+		job->Init(std::forward<TCallable>(callable));
 		return CreateJobWrapper<TCallable>(job);
 	}
 
