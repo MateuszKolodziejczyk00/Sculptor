@@ -1,4 +1,5 @@
 #pragma once
 
+#include "SculptorAliases.h"
+
 #include "MathLib.h"
-#include "MathTypes.h"

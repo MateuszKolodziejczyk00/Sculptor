@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathCore.h"
+#include "SculptorAliases.h"
 #include "Platform.h"
 #include "ProfilerCore.h"
 #include "Utility/UtilityMacros.h"

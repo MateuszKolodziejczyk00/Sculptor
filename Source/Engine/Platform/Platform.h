@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PlatformMacros.h"
-#include "MathCore.h"
+#include "SculptorAliases.h"
 
 
 namespace spt::platf

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Utility/UtilityMacros.h"
-#include "MathCore.h"
+#include "SculptorAliases.h"
 
 #include <memory.h>
 

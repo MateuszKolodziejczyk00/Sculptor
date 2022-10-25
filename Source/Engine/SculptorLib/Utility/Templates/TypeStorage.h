@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathTypes.h"
+#include "SculptorAliases.h"
 
 
 namespace spt::lib

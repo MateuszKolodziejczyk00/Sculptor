@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathCore.h"
+#include "SculptorAliases.h"
 #include "Containers/StaticArray.h"
 
 #include <numeric>

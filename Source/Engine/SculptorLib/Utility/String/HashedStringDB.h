@@ -2,7 +2,7 @@
 
 #include "SculptorLibMacros.h"
 #include "Utility/UtilityMacros.h"
-#include "MathCore.h"
+#include "SculptorAliases.h"
 #include "String.h"
 #include "Utility/Hash.h"
 

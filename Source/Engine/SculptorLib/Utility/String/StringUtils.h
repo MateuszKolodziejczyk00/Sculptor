@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorLibMacros.h"
-#include "MathCore.h"
+#include "SculptorAliases.h"
 #include "String.h"
 
 

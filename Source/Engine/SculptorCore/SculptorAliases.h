@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstdint>
+#include <cstddef>
+
 #include <limits>
+
 
 namespace spt
 {
@@ -38,4 +42,4 @@ static constexpr TType minValue = std::numeric_limits<TType>::min();
 template<typename TType>
 static constexpr TType maxValue = std::numeric_limits<TType>::max();
 
-}
+} // spt
