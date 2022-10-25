@@ -104,7 +104,7 @@ private:
     // producer part 
     // accessed only by producer 
 
-    alignas(InterferenceProps::destructiveInterferenceSize) Node* m_head; // head of the queue 
+    ALIGNAS_CACHE_LINE Node* m_head; // head of the queue 
 
     Node* m_first; // last unused node (tail of node cache) 
 

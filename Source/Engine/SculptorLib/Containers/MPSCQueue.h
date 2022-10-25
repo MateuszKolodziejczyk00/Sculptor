@@ -84,7 +84,7 @@ private:
     
     // Consumer only data ======== 
 
-    alignas(InterferenceProps::destructiveInterferenceSize) Node* m_tail;
+    ALIGNAS_CACHE_LINE Node* m_tail;
 };
 
 } // spt::lib

@@ -1,50 +1,53 @@
 #pragma once
 
+#include "Utility/Templates/TypeStorage.h"
+#include "Containers/StaticArray.h"
+
+#include <optional>
+#include <atomic>
+
 
 namespace spt::lib
 {
 
-
-template<typename TType>
+// multi-producer/single-consumer waitfree queue
+// Based on implementation provided by Dmitry Vyukov:
+// https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
+template<typename TType, SizeType size>
 class MPMCQueue
 {
+    static_assert((size >= 2) && ((size & (size - 1)) == 0));
+    static constexpr SizeType bufferMask = size - 1;
+
 public:
 
-    explicit MPMCQueue(size_t buffer_size)
-        : buffer_(new cell_t[buffer_size])
-        , buffer_mask_(buffer_size - 1)
+    MPMCQueue()
     {
-        SPT_CHECK((buffer_size >= 2) && ((buffer_size & (buffer_size - 1)) == 0));
-
-        for (size_t i = 0; i != buffer_size; i += 1)
+        for (SizeType i = 0; i != size; i += 1)
         {
-            buffer_[i].sequence_.store(i, std::memory_order_relaxed);
+            m_buffer[i].sequence.store(i, std::memory_order_relaxed);
         }
 
-        enqueue_pos_.store(0, std::memory_order_relaxed);
-        dequeue_pos_.store(0, std::memory_order_relaxed);
+        m_enqueuePos.store(0, std::memory_order_relaxed);
+        m_dequeuePos.store(0, std::memory_order_relaxed);
     }
 
-    ~MPMCQueue()
+    template<typename... TArgs>
+    bool Enqueue(TArgs&&... args)
     {
-        delete[] buffer_;
-    }
+        Node* node = nullptr;
+        SizeType pos = m_enqueuePos.load(std::memory_order_relaxed);
 
-    bool enqueue(const TType& data)
-    {
-        cell_t* cell;
-        size_t pos = enqueue_pos_.load(std::memory_order_relaxed);
-
-        for (;;)
+        while(true)
         {
-            cell = &buffer_[pos & buffer_mask_];
+            node = &m_buffer[pos & bufferMask];
 
-            size_t seq = cell->sequence_.load(std::memory_order_acquire);
-            intptr_t dif = (intptr_t)seq - (intptr_t)pos;
+            const SizeType seq = node->sequence.load(std::memory_order_acquire);
+            const IntPtr dif = static_cast<IntPtr>(seq) - static_cast<IntPtr>(pos);
 
             if (dif == 0)
             {
-                if (enqueue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+                if (m_enqueuePos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
                 {
                     break;
                 }
@@ -55,79 +58,63 @@ public:
             }
             else
             {
-                pos = enqueue_pos_.load(std::memory_order_relaxed);
+                pos = m_enqueuePos.load(std::memory_order_relaxed);
             }
         }
 
-        cell->data_ = data;
-        cell->sequence_.store(pos + 1, std::memory_order_release);
-        return true;
+        node->value.Construct(std::forward<TArgs>(args)...);
+        node->sequence.store(pos + 1, std::memory_order_release);
 
+        return true;
     }
 
-    bool dequeue(TType& data)
+    std::optional<TType> Dequeue()
     {
-        cell_t* cell;
-        size_t pos = dequeue_pos_.load(std::memory_order_relaxed);
+        Node* node = nullptr;
+        SizeType pos = m_dequeuePos.load(std::memory_order_relaxed);
 
-        for (;;)
+        while(true)
         {
-            cell = &buffer_[pos & buffer_mask_];
+            node = &m_buffer[pos & bufferMask];
 
-            size_t seq = cell->sequence_.load(std::memory_order_acquire);
-            intptr_t dif = (intptr_t)seq - (intptr_t)(pos + 1);
+            const SizeType seq = node->sequence.load(std::memory_order_acquire);
+            const IntPtr dif = static_cast<IntPtr>(seq) - static_cast<IntPtr>(pos + 1);
 
             if (dif == 0)
             {
-                if (dequeue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+                if (m_dequeuePos.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
                 {
                     break;
                 }
             }
             else if (dif < 0)
             {
-                return false;
+                return std::nullopt;
             }
             else
             {
-                pos = dequeue_pos_.load(std::memory_order_relaxed);
+                pos = m_dequeuePos.load(std::memory_order_relaxed);
             }
         }
 
-        data = cell->data_;
-        cell->sequence_.store(pos + buffer_mask_ + 1, std::memory_order_release);
+        std::optional<TType> result = node->value.Get();
+        node->sequence.store(pos + bufferMask + 1, std::memory_order_release);
 
-        return true;
-
+        return result;
     }
 
 private:
 
-    struct cell_t
+    struct Node
     {
-        std::atomic<size_t>   sequence_;
-        TType                     data_;
+        std::atomic<SizeType>   sequence;
+        lib::TypeStorage<TType> value;
     };
 
-    static size_t const     cacheline_size = 64;
+    lib::StaticArray<Node, size>    m_buffer;
 
-    typedef char            cacheline_pad_t[cacheline_size];
-
-    cacheline_pad_t         pad0_;
-
-    cell_t* const           buffer_;
-
-    size_t const            buffer_mask_;
-
-    cacheline_pad_t         pad1_;
-
-    std::atomic<size_t>     enqueue_pos_;
-
-    cacheline_pad_t         pad2_;
-
-    std::atomic<size_t>     dequeue_pos_;
-
-    cacheline_pad_t         pad3_;
+    std::atomic<SizeType>           m_enqueuePos;
+    std::atomic<SizeType>           m_dequeuePos;
 };
 
 } // spt::lib
