@@ -2,6 +2,7 @@
 
 #include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Job.h"
 
 
 namespace spt::js
@@ -9,11 +10,15 @@ namespace spt::js
 
 struct JobSystemInitializationParams
 {
-	explicit JobSystemInitializationParams(Uint32 inWorkerThreadsNum)
+	JobSystemInitializationParams()
+		: workerThreadsNum(1)
+	{ }
+
+	explicit JobSystemInitializationParams(SizeType inWorkerThreadsNum)
 		: workerThreadsNum(inWorkerThreadsNum)
 	{ }
 		
-	Uint32 workerThreadsNum;
+	SizeType workerThreadsNum;
 };
 
 
@@ -22,6 +27,21 @@ class JOB_SYSTEM_API JobSystem
 public:
 
 	static void Initialize(const JobSystemInitializationParams& initParams);
+
+	static void Shutdown();
 };
+
+
+template<typename TCallable, typename TPrerequisitesRange>
+auto Launch(TCallable&& callable, TPrerequisitesRange&& prerequisites)
+{
+	return JobBuilder::BuildJob(std::move(callable), std::move(prerequisites));
+}
+
+template<typename TCallable>
+auto Launch(TCallable&& callable)
+{
+	return JobBuilder::BuildJob(std::move(callable));
+}
 
 } // spt::js

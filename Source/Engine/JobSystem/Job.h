@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "SculptorLib/Utility/Templates/Filter.h"
+#include "Scheduler.h"
 
 
 namespace spt::js
@@ -424,7 +425,7 @@ protected:
 
 	void Schedule()
 	{
-
+		Scheduler::ScheduleJob(shared_from_this());
 	}
 
 private:
