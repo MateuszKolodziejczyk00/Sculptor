@@ -415,7 +415,7 @@ protected:
 
 	inline void PostPrerequisiteExecuted()
 	{
-		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1);
+		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1) - 1;
 
 		if (remaining == 0)
 		{

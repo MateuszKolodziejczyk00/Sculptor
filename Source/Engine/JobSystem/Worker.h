@@ -7,6 +7,9 @@
 namespace spt::js
 {
 
+class JobInstance;
+
+
 struct WorkerContext
 {
 	WorkerContext()
@@ -29,6 +32,7 @@ class Worker
 public:
 
 	static void WorkerMain(WorkerContext& inContext);
+	static Bool TryExecuteJob(const lib::SharedPtr<JobInstance>& job);
 
 	Worker(WorkerContext& inContext);
 

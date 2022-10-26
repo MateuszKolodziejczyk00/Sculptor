@@ -84,7 +84,11 @@ void Scheduler::ScheduleJob(lib::SharedPtr<JobInstance> job)
 {
 	SPT_PROFILER_FUNCTION();
 
-	JobsQueueManagerTls::EnqueueGlobal(std::move(job));
+	while (!JobsQueueManagerTls::EnqueueGlobal(std::move(job)))
+	{
+		// Execute job locally if couldn't enqueue global job
+		Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal());
+	}
 }
 
 } // spt::js

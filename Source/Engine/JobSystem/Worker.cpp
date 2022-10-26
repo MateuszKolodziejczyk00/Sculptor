@@ -6,27 +6,6 @@ namespace spt::js
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Private =======================================================================================
-
-namespace priv
-{
-
-bool TryExecuteJob(const lib::SharedPtr<JobInstance>& job)
-{
-	if (job)
-	{
-		SPT_PROFILER_SCOPE("Execute Job");
-
-		job->Execute();
-		return true;
-	}
-
-	return false;
-}
-
-} // priv
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // Worker ========================================================================================
 
 void Worker::WorkerMain(WorkerContext& jobsQueue)
@@ -43,6 +22,19 @@ void Worker::WorkerMain(WorkerContext& jobsQueue)
 	worker.Run();
 }
 
+Bool Worker::TryExecuteJob(const lib::SharedPtr<JobInstance>& job)
+{
+	if (job)
+	{
+		SPT_PROFILER_SCOPE("Execute Job");
+
+		job->Execute();
+		return true;
+	}
+
+	return false;
+}
+
 Worker::Worker(WorkerContext& inContext)
 	: m_workerContext(inContext)
 { }
@@ -51,13 +43,13 @@ void Worker::Run()
 {
 	while (true)
 	{
-		if (priv::TryExecuteJob(JobsQueueManagerTls::DequeueLocal()))
+		if (TryExecuteJob(JobsQueueManagerTls::DequeueLocal()))
 		{
 			continue;
 		}
 
 		// If worker doesn't have local jobs, try dequeue one from global queue
-		if (priv::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal()))
+		if (TryExecuteJob(JobsQueueManagerTls::DequeueGlobal()))
 		{
 			continue;
 		}

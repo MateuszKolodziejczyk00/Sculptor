@@ -20,7 +20,7 @@ public:
 
 	// Global Queue =======================================
 
-	static void EnqueueGlobal(lib::SharedPtr<JobInstance> job);
+	static Bool EnqueueGlobal(lib::SharedPtr<JobInstance> job);
 	static lib::SharedPtr<JobInstance> DequeueGlobal();
 
 	// Local Queue ========================================

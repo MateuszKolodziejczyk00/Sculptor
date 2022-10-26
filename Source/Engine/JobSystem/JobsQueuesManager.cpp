@@ -7,9 +7,9 @@ GlobalQueueType JobsQueueManagerTls::s_globalQueue{};
 thread_local SizeType JobsQueueManagerTls::tls_localQueueIdx = idxNone<SizeType>;
 lib::DynamicArray<lib::UniquePtr<LocalQueueType>> JobsQueueManagerTls::s_localQueues{};
 
-void JobsQueueManagerTls::EnqueueGlobal(lib::SharedPtr<JobInstance> job)
+Bool JobsQueueManagerTls::EnqueueGlobal(lib::SharedPtr<JobInstance> job)
 {
-	while (!s_globalQueue.Enqueue(std::move(job)));
+	return s_globalQueue.Enqueue(std::move(job));
 }
 
 lib::SharedPtr<JobInstance> JobsQueueManagerTls::DequeueGlobal()
