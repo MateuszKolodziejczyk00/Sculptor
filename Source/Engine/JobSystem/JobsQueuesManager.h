@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Containers/SPSCQueue.h"
 #include "Containers/MPMCQueue.h"
+#include "JobTypes.h"
 
 
 namespace spt::js
@@ -21,6 +22,7 @@ public:
 	// Global Queue =======================================
 
 	static Bool EnqueueGlobal(lib::SharedPtr<JobInstance> job);
+	static lib::SharedPtr<JobInstance> DequeueGlobal(SizeType priority);
 	static lib::SharedPtr<JobInstance> DequeueGlobal();
 
 	// Local Queue ========================================
@@ -33,7 +35,7 @@ public:
 
 private:
 
-	static GlobalQueueType s_globalQueue;
+	static GlobalQueueType s_globalQueues[EJobPriority::Num];
 
 	thread_local static SizeType tls_localQueueIdx;
 

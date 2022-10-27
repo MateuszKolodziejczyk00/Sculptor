@@ -251,7 +251,7 @@ public:
 	virtual ~JobInstance() = default;
 	
 	template<typename TCallable>
-	void Init(TCallable&& callable, EJobPriority priority, EJobFlags flags)
+	void Init(TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -264,7 +264,7 @@ public:
 	}
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority, EJobFlags flags)
+	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -278,7 +278,7 @@ public:
 	}
 
 	template<typename TCallable>
-	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite, EJobPriority priority, EJobFlags flags)
+	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -352,7 +352,7 @@ public:
 		return m_callable.GetResult<TResultType>();
 	}
 
-	EJobPriority GetPriority() const
+	EJobPriority::Type GetPriority() const
 	{
 		return m_priority;
 	}
@@ -473,8 +473,8 @@ private:
 
 	JobCallableWrapper	m_callable;
 
-	EJobPriority	m_priority;
-	EJobFlags		m_flags;
+	EJobPriority::Type	m_priority;
+	EJobFlags			m_flags;
 };
 
 
@@ -540,7 +540,7 @@ class JobBuilder
 public:
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	static auto BuildJob(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority, EJobFlags flags)
+	static auto BuildJob(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -554,7 +554,7 @@ public:
 	}
 
 	template<typename TCallable>
-	static auto BuildJob(TCallable&& callable, EJobPriority priority, EJobFlags flags)
+	static auto BuildJob(TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 

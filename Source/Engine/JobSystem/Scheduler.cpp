@@ -1,5 +1,6 @@
 #include "Scheduler.h"
 #include "Worker.h"
+#include "Job.h"
 
 namespace spt::js
 {
@@ -84,10 +85,12 @@ void Scheduler::ScheduleJob(lib::SharedPtr<JobInstance> job)
 {
 	SPT_PROFILER_FUNCTION();
 
-	while (!JobsQueueManagerTls::EnqueueGlobal(std::move(job)))
+	const SizeType priority = job->GetPriority();
+
+	while (!JobsQueueManagerTls::EnqueueGlobal(job))
 	{
 		// Execute job locally if couldn't enqueue global job
-		Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal());
+		Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal(priority));
 	}
 }
 

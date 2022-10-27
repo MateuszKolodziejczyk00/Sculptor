@@ -43,13 +43,8 @@ void Worker::Run()
 {
 	while (true)
 	{
-		if (TryExecuteJob(JobsQueueManagerTls::DequeueLocal()))
-		{
-			continue;
-		}
-
-		// If worker doesn't have local jobs, try dequeue one from global queue
-		if (TryExecuteJob(JobsQueueManagerTls::DequeueGlobal()))
+		if (	TryExecuteJob(JobsQueueManagerTls::DequeueLocal())
+			||	TryExecuteJob(JobsQueueManagerTls::DequeueGlobal()))
 		{
 			continue;
 		}

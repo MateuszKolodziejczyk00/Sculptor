@@ -6,21 +6,26 @@
 namespace spt::js
 {
 
-enum class EJobPriority
+namespace EJobPriority
 {
-	Low,
-	Medium,
+
+enum Type
+{
 	High,
+	Medium,
+	Low,
 
 	Num,
 
 	Default = Medium
 };
 
+} // EJobPriority
+
 
 enum class EJobFlags
 {
-	None					= 0,
+	None			= 0,
 
 	Default = None
 };

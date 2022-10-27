@@ -3,6 +3,7 @@
 #include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Job.h"
+#include "Utility/Concepts.h"
 
 
 namespace spt::js
@@ -32,14 +33,14 @@ public:
 };
 
 
-template<typename TCallable, typename TPrerequisitesRange>
-auto Launch(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
+template<typename TCallable, lib::CContainer TPrerequisitesRange>
+auto Launch(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
 	return JobBuilder::BuildJob(std::move(callable), std::move(prerequisites), priority, flags);
 }
 
 template<typename TCallable>
-auto Launch(TCallable&& callable, EJobPriority priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
+auto Launch(TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
 	return JobBuilder::BuildJob(std::move(callable), priority, flags);
 }

@@ -1,20 +1,37 @@
 #include "JobsQueuesManager.h"
+#include "Job.h"
 
 namespace spt::js
 {
 
-GlobalQueueType JobsQueueManagerTls::s_globalQueue{};
+GlobalQueueType JobsQueueManagerTls::s_globalQueues[EJobPriority::Num];
 thread_local SizeType JobsQueueManagerTls::tls_localQueueIdx = idxNone<SizeType>;
 lib::DynamicArray<lib::UniquePtr<LocalQueueType>> JobsQueueManagerTls::s_localQueues{};
 
 Bool JobsQueueManagerTls::EnqueueGlobal(lib::SharedPtr<JobInstance> job)
 {
-	return s_globalQueue.Enqueue(std::move(job));
+	SizeType priority = static_cast<SizeType>(job->GetPriority());
+
+	return s_globalQueues[priority].Enqueue(std::move(job));
+}
+
+lib::SharedPtr<JobInstance> JobsQueueManagerTls::DequeueGlobal(SizeType priority)
+{
+	return s_globalQueues[priority].Dequeue().value_or(nullptr);
 }
 
 lib::SharedPtr<JobInstance> JobsQueueManagerTls::DequeueGlobal()
 {
-	return s_globalQueue.Dequeue().value_or(nullptr);
+	for (SizeType priority = 0; priority < EJobPriority::Num; ++priority)
+	{
+		lib::SharedPtr<JobInstance> job = DequeueGlobal(priority);
+		if (job)
+		{
+			return job;
+		}
+	}
+
+	return lib::SharedPtr<JobInstance>{};
 }
 
 void JobsQueueManagerTls::InitializeLocalQueues(SizeType queuesNum)
