@@ -33,15 +33,15 @@ public:
 
 
 template<typename TCallable, typename TPrerequisitesRange>
-auto Launch(TCallable&& callable, TPrerequisitesRange&& prerequisites)
+auto Launch(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
-	return JobBuilder::BuildJob(std::move(callable), std::move(prerequisites));
+	return JobBuilder::BuildJob(std::move(callable), std::move(prerequisites), priority, flags);
 }
 
 template<typename TCallable>
-auto Launch(TCallable&& callable)
+auto Launch(TCallable&& callable, EJobPriority priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
-	return JobBuilder::BuildJob(std::move(callable));
+	return JobBuilder::BuildJob(std::move(callable), priority, flags);
 }
 
 } // spt::js

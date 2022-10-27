@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "JobTypes.h"
 #include "SculptorLib/Utility/Templates/Filter.h"
 #include "Scheduler.h"
 
@@ -239,34 +240,54 @@ class JobInstance : public std::enable_shared_from_this<JobInstance>
 	};
 
 public:
-	
+
 	JobInstance()
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
+		, m_priority(EJobPriority::Default)
+		, m_flags(EJobFlags::Default)
 	{ }
 
 	virtual ~JobInstance() = default;
 	
 	template<typename TCallable>
-	void Init(TCallable&& callable)
+	void Init(TCallable&& callable, EJobPriority priority, EJobFlags flags)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		SetCallable(std::forward<TCallable>(callable));
+
+		m_priority = priority;
+		m_flags = flags;
+
 		OnConstructed();
 	}
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites)
+	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority, EJobFlags flags)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		SetCallable(std::forward<TCallable>(callable));
 		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
+
+		m_priority = priority;
+		m_flags = flags;
+
 		OnConstructed();
 	}
 
 	template<typename TCallable>
-	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite)
+	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite, EJobPriority priority, EJobFlags flags)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		SetCallable(std::forward<TCallable>(callable));
 		AddPrerequisite(std::move(prerequisite));
+
+		m_priority = priority;
+		m_flags = flags;
+
 		OnConstructed();
 	}
 
@@ -319,7 +340,7 @@ public:
 		lib::Lock lock;
 
 		lib::SharedRef<JobInstance> finishEvent = lib::MakeShared<JobInstance>();
-		finishEvent->Init([&cv] { cv.notify_one(); }, shared_from_this());
+		finishEvent->Init([&cv] { cv.notify_one(); }, shared_from_this(), GetPriority(), GetFlags());
 		
 		lib::UnlockableLockGuard lockGuard(lock);
 		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
@@ -329,6 +350,16 @@ public:
 	const TResultType& GetResultAs() const
 	{
 		return m_callable.GetResult<TResultType>();
+	}
+
+	EJobPriority GetPriority() const
+	{
+		return m_priority;
+	}
+
+	EJobFlags GetFlags() const
+	{
+		return m_flags;
 	}
 
 protected:
@@ -342,6 +373,8 @@ protected:
 	template<typename TPrerequisitesRange>
 	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		// we don't require any synchronization here - it's called only locally during job initialization
 		m_remainingPrerequisitesNum.fetch_add(static_cast<Int32>(prerequisites.size()));
 
@@ -439,6 +472,9 @@ private:
 	lib::Lock										m_consequentsLock;
 
 	JobCallableWrapper	m_callable;
+
+	EJobPriority	m_priority;
+	EJobFlags		m_flags;
 };
 
 
@@ -504,23 +540,31 @@ class JobBuilder
 public:
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	static auto BuildJob(TCallable&& callable, TPrerequisitesRange&& prerequisites)
+	static auto BuildJob(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
-		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites));
-		return CreateJobWrapper<TCallable>(job);
+		lib::SharedPtr<JobInstance> job;
+		{
+			SPT_PROFILER_SCOPE("Allocate Job");
+			job = lib::MakeShared<JobInstance>();
+		}
+		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites), priority, flags);
+		return CreateJobWrapper<TCallable>(lib::Ref(job));
 	}
 
 	template<typename TCallable>
-	static auto BuildJob(TCallable&& callable)
+	static auto BuildJob(TCallable&& callable, EJobPriority priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedRef<JobInstance> job = lib::MakeShared<JobInstance>();
-		job->Init(std::forward<TCallable>(callable));
-		return CreateJobWrapper<TCallable>(job);
+		lib::SharedPtr<JobInstance> job;
+		{
+			SPT_PROFILER_SCOPE("Allocate Job");
+			job = lib::MakeShared<JobInstance>();
+		}
+		job->Init(std::forward<TCallable>(callable), priority, flags);
+		return CreateJobWrapper<TCallable>(lib::Ref(job));
 	}
 
 private:
