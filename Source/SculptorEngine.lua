@@ -29,4 +29,5 @@ SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererCore")
 
 SetProjectsSubgroupName("Tools")
+IncludeProject("ScUI")
 IncludeProject("Profiler")
