@@ -222,7 +222,7 @@ class TokensVisitor
 
 public:
 
-	using TokenVisitorDelegate = lib::Delegate<TokenInfo/* tokenInfo*/, const TokensProcessor& /*processor*/>;
+	using TokenVisitorDelegate = lib::Delegate<void(TokenInfo/* tokenInfo*/, const TokensProcessor& /*processor*/)>;
 
 	TokenVisitorDelegate& BindToToken(SizeType tokenTypeIdx)
 	{
