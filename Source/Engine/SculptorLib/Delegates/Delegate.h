@@ -85,7 +85,7 @@ private:
 
 	using ThreadSafeUtils = DelegateConditionalThreadSafeData<isThreadSafe>;
 
-	UniquePtr<internal::DelegateBindingInterface<TArgs...>> m_binding;
+	UniquePtr<internal::DelegateBindingInterface<TReturnType(TArgs...)>> m_binding;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindMember(ObjectType* u
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateMemberBinding<ObjectType, FuncType, TArgs...>(user, function);
+	m_binding = internal::DelegateBindingBuilder::CreateMemberBinding<ObjectType, FuncType, TReturnType(TArgs...)>(user, function);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
@@ -106,7 +106,7 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(FuncType functio
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateBinding<FuncType, TArgs...>(function);
+	m_binding = internal::DelegateBindingBuilder::CreateBinding<FuncType, TReturnType(TArgs...)>(function);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
@@ -115,7 +115,7 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindLambda(Lambda&& func
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, TArgs...>(std::forward<Lambda>(functor));
+	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, TReturnType(TArgs...)>(std::forward<Lambda>(functor));
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
