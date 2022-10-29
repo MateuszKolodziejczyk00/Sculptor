@@ -22,7 +22,7 @@ class RawFunctionBinding : public DelegateBindingInterface<Args...>
 {
 public:
 
-	RawFunctionBinding(FuncType* function)
+	RawFunctionBinding(FuncType function)
 		: m_function(function)
 	{
 	}
@@ -39,7 +39,7 @@ public:
 
 private:
 
-	FuncType* m_function;
+	FuncType m_function;
 };
 
 

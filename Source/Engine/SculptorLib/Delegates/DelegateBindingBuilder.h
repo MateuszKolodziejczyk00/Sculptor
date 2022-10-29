@@ -14,7 +14,7 @@ class DelegateBindingBuilder
 public:
 
 	template<typename FuncType, typename... TArgs>
-	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateBinding(FuncType* function);
+	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateBinding(FuncType function);
 
 	template<typename UserObject, typename FuncType, typename... TArgs>
 	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateMemberBinding(UserObject* user, FuncType function);
@@ -25,7 +25,7 @@ public:
 
 
 template<typename FuncType, typename... TArgs>
-UniquePtr<DelegateBindingInterface<TArgs...>> DelegateBindingBuilder::CreateBinding(FuncType* function)
+UniquePtr<DelegateBindingInterface<TArgs...>> DelegateBindingBuilder::CreateBinding(FuncType function)
 {
 	return UniquePtr<DelegateBindingInterface<TArgs...>>(new RawFunctionBinding<FuncType, TArgs...>(function));
 }

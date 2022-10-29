@@ -75,7 +75,7 @@ public:
 	DelegateHandle		AddMember(ObjectType* user, FuncType function);
 
 	template<typename FuncType>
-	DelegateHandle		AddRaw(FuncType* function);
+	DelegateHandle		AddRaw(FuncType function);
 
 	template<typename Lambda>
 	DelegateHandle		AddLambda(Lambda&& functor);
@@ -94,6 +94,8 @@ private:
 	DelegateIDType						m_handleCounter;
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Binds =========================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename ObjectType, typename FuncType>
@@ -108,7 +110,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddMe
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename FuncType>
-DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddRaw(FuncType* function)
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddRaw(FuncType function)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
@@ -141,6 +143,9 @@ void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Reset()
 {
 	m_delegates.clear();
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Execution =====================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Broadcast(const TArgs&... arguments)

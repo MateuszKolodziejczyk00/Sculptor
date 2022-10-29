@@ -68,7 +68,7 @@ public:
 	void BindMember(ObjectType* user, FuncType function);
 
 	template<typename FuncType>
-	void BindRaw(FuncType* function);
+	void BindRaw(FuncType function);
 
 	template<typename Lambda>
 	void BindLambda(Lambda&& functor);
@@ -88,6 +88,9 @@ private:
 	UniquePtr<internal::DelegateBindingInterface<TArgs...>> m_binding;
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Binds =========================================================================================
+
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename ObjectType, typename FuncType>
 void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindMember(ObjectType* user, FuncType function)
@@ -99,7 +102,7 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindMember(ObjectType* u
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename FuncType>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(FuncType* function)
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(FuncType function)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
@@ -116,17 +119,6 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindLambda(Lambda&& func
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::ExecuteIfBound(const TArgs&... arguments) const
-{
-	SPT_MAYBE_UNUSED
-	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	if (m_binding.get() && m_binding->IsValid())
-	{
-		m_binding->Execute(arguments...);
-	}
-}
-
-template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::Unbind()
 {
 	SPT_MAYBE_UNUSED
@@ -138,6 +130,20 @@ template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 Bool DelegateBase<isThreadSafe, TReturnType(TArgs...)>::IsBound() const
 {
 	return m_binding.get() && m_binding->IsValid();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Execution =====================================================================================
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::ExecuteIfBound(const TArgs&... arguments) const
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	if (m_binding.get() && m_binding->IsValid())
+	{
+		m_binding->Execute(arguments...);
+	}
 }
 
 template<typename... TArgs>
