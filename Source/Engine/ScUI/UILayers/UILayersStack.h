@@ -22,12 +22,12 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::UniquePtr<UILayerID> layerInstance = std::make_unique<TLayerType>(std::forward<TArgs>(args)...);
+		lib::UniquePtr<UILayer> layerInstance = std::make_unique<TLayerType>(std::forward<TArgs>(args)...);
 
 		UILayerID layerID = UILayerID::GenerateID();
 		layerInstance->SetID(layerID);
 
-		m_layers.emplace(std::move(layerInstance));
+		m_layers.emplace_back(std::move(layerInstance));
 
 		return layerID;
 	}

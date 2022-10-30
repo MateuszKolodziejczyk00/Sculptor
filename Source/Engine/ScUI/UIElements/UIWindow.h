@@ -13,11 +13,12 @@ class SCUI_API UIWindow
 {
 public:
 
-	UIWindow(const lib::HashedString& name);
+	explicit UIWindow(const lib::HashedString& name);
 
 	const lib::HashedString& GetName() const;
+	Bool WantsClose() const;
 
-	void Draw(ui::UIContext context);
+	void Draw();
 
 	template<typename TLayerType, typename... TArgs>
 	UILayerID PushLayer(TArgs&&... args)
@@ -32,8 +33,9 @@ public:
 
 private:
 
-	lib::HashedString m_name;
-	UILayersStack	m_layers;
+	lib::HashedString	m_name;
+	UILayersStack		m_layers;
+	Bool				bWantsClose;
 };
 
 } // spt::scui

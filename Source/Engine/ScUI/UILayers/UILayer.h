@@ -10,6 +10,8 @@ namespace spt::scui
 
 struct LayerDefinition
 {
+	LayerDefinition() = default;
+
 	explicit LayerDefinition(const lib::HashedString& inName)
 		: name(inName)
 	{ }
