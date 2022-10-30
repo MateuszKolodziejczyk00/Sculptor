@@ -13,8 +13,8 @@ class DelegateBindingBuilder
 {
 public:
 
-	template<typename FuncType, typename... TArgs>
-	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateBinding(FuncType function);
+	template<typename TFuncType, typename TDelegateSignature, typename... TPayload>
+	static UniquePtr<DelegateBindingInterface<TDelegateSignature>> CreateRawBinding(TFuncType function, TPayload&&... payload);
 
 	template<typename UserObject, typename FuncType, typename... TArgs>
 	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateMemberBinding(UserObject* user, FuncType function);
@@ -24,10 +24,10 @@ public:
 };
 
 
-template<typename FuncType, typename... TArgs>
-UniquePtr<DelegateBindingInterface<TArgs...>> DelegateBindingBuilder::CreateBinding(FuncType function)
+template<typename TFuncType, typename TDelegateSignature, typename... TPayload>
+UniquePtr<DelegateBindingInterface<TDelegateSignature>> DelegateBindingBuilder::CreateRawBinding(TFuncType function, TPayload&&... payload)
 {
-	return UniquePtr<DelegateBindingInterface<TArgs...>>(new RawFunctionBinding<FuncType, TArgs...>(function));
+	return std::make_unique<RawFunctionBinding<TFuncType, TDelegateSignature, TPayload...>>(function, std::forward<TPayload>(payload)...);
 }
 
 template<typename UserObject, typename FuncType, typename... TArgs>

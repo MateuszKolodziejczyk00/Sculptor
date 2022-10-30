@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 
 namespace spt::lib::internal
 {
@@ -20,16 +22,53 @@ public:
 	virtual TReturnType Execute(TArgs... arguments) = 0;
 };
 
+
+template<typename... TArgs>
+class DelegateBindingWithPayload {};
+
+template<typename TReturnType, typename... TArgs, typename... TPayload>
+class DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...> : public DelegateBindingInterface<TReturnType(TArgs...)>
+{
+protected:
+
+	using Super = DelegateBindingInterface<TReturnType(TArgs...)>;
+
+public:
+	
+	using PayloadType = std::tuple<TPayload...>;
+
+	explicit DelegateBindingWithPayload(TPayload&&... payload)
+		: m_payload(std::forward<TPayload>(payload)...)
+	{ }
+
+protected:
+
+	PayloadType& GetPayload()
+	{
+		return m_payload;
+	}
+
+private:
+
+	PayloadType m_payload;
+};
+
+
 template<typename TFuncType, typename... TArgs>
 class RawFunctionBinding {};
 
-template<typename TFuncType, typename TReturnType, typename... TArgs>
-class RawFunctionBinding<TFuncType, TReturnType(TArgs...)> : public DelegateBindingInterface<TReturnType(TArgs...)>
+template<typename TFuncType, typename TReturnType, typename... TArgs, typename... TPayload>
+class RawFunctionBinding<TFuncType, TReturnType(TArgs...), TPayload...> : public DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>
 {
+protected:
+
+	using Super = DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>;
+
 public:
 
-	explicit RawFunctionBinding(TFuncType function)
-		: m_function(function)
+	explicit RawFunctionBinding(TFuncType function, TPayload&&... payload)
+		: Super(std::forward<TPayload>(payload)...)
+		, m_function(function)
 	{ }
 
 	virtual Bool IsValid() const override
@@ -39,10 +78,16 @@ public:
 
 	virtual TReturnType Execute(TArgs... arguments) override
 	{
-		return (*m_function)(arguments...);
+		return ExecuteImpl(std::forward<TArgs>(arguments)..., std::index_sequence_for<TPayload...>{});
 	}
 
 private:
+
+	template<SizeType... indices>
+	TReturnType ExecuteImpl(TArgs... arguments, std::index_sequence<indices...>)
+	{
+		return (*m_function)(arguments..., std::get<indices>(Super::GetPayload())...);
+	}
 
 	TFuncType m_function;
 };

@@ -67,8 +67,8 @@ public:
 	template<typename ObjectType, typename FuncType>
 	void BindMember(ObjectType* user, FuncType function);
 
-	template<typename FuncType>
-	void BindRaw(FuncType function);
+	template<typename TFuncType, typename... TPayload>
+	void BindRaw(TFuncType function, TPayload&&... payload);
 
 	template<typename Lambda>
 	void BindLambda(Lambda&& functor);
@@ -101,12 +101,12 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindMember(ObjectType* u
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename FuncType>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(FuncType function)
+template<typename TFuncType, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateBinding<FuncType, TReturnType(TArgs...)>(function);
+	m_binding = internal::DelegateBindingBuilder::CreateRawBinding<TFuncType, TReturnType(TArgs...), TPayload...>(function, std::forward<TPayload>(payload)...);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
