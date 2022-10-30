@@ -44,9 +44,6 @@ template<Bool isThreadSafe, typename... TArgs>
 class DelegateBase {};
 
 
-/**
- * Basic Delegate, that can be used for m_binding and executing callables
- */
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 class DelegateBase<isThreadSafe, TReturnType(TArgs...)> : private DelegateConditionalThreadSafeData<isThreadSafe>
 {
@@ -64,11 +61,17 @@ public:
 
 	~DelegateBase() = default;
 
+	template<typename TFuncType, typename... TPayload>
+	void BindRaw(TFuncType function, TPayload&&... payload);
+
 	template<typename TObjectType, typename TFuncType, typename... TPayload>
 	void BindRawMember(TObjectType* object, TFuncType function, TPayload&&... payload);
 
-	template<typename TFuncType, typename... TPayload>
-	void BindRaw(TFuncType function, TPayload&&... payload);
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	void BindSharedMember(lib::SharedPtr<TObjectType> object, TFuncType function, TPayload&&... payload);
+
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	void BindWeakMember(const lib::SharedPtr<TObjectType>& object, TFuncType function, TPayload&&... payload);
 
 	template<typename TLambda, typename... TPayload>
 	void BindLambda(TLambda&& callable, TPayload&&... payload);
@@ -92,6 +95,15 @@ private:
 // Binds =========================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+template<typename TFuncType, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(TFuncType function, TPayload&&... payload)
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	m_binding = internal::DelegateBindingBuilder::CreateRawBinding<TFuncType, TReturnType(TArgs...), TPayload...>(function, std::forward<TPayload>(payload)...);
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename TObjectType, typename TFuncType, typename... TPayload>
 void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRawMember(TObjectType* object, TFuncType function, TPayload&&... payload)
 {
@@ -101,12 +113,21 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRawMember(TObjectTyp
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename TFuncType, typename... TPayload>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(TFuncType function, TPayload&&... payload)
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindSharedMember(lib::SharedPtr<TObjectType> object, TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateRawBinding<TFuncType, TReturnType(TArgs...), TPayload...>(function, std::forward<TPayload>(payload)...);
+	m_binding = internal::DelegateBindingBuilder::CreateSharedMemberBinding<TObjectType, TFuncType, TReturnType(TArgs...), TPayload...>(std::move(object), function, std::forward<TPayload>(payload)...);
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindWeakMember(const lib::SharedPtr<TObjectType>& object, TFuncType function, TPayload&&... payload)
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	m_binding = internal::DelegateBindingBuilder::CreateWeakMemberBinding<TObjectType, TFuncType, TReturnType(TArgs...), TPayload...>(object, function, std::forward<TPayload>(payload)...);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
