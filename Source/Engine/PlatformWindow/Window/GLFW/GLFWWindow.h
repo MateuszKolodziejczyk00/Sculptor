@@ -34,10 +34,10 @@ public:
 
 	Bool								ShouldClose();
 
-	using OnWindowResizedDelegate		= lib::MulticastDelegate<Uint32 /*newWidth*/, Uint32 /*newHeight*/>;
+	using OnWindowResizedDelegate		= lib::MulticastDelegate<void(Uint32 /*newWidth*/, Uint32 /*newHeight*/)>;
 	OnWindowResizedDelegate&			GetOnResizedCallback();
 
-	using OnWindowClosedDelegate		= lib::MulticastDelegate<>;
+	using OnWindowClosedDelegate		= lib::MulticastDelegate<void()>;
 	OnWindowClosedDelegate&				GetOnClosedCallback();
 
 	void								InitializeUI(ui::UIContext context);

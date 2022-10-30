@@ -21,7 +21,7 @@ public:
 	static void									BeginFrame();
 	static void									EndFrame();
 
-	using CleanupDelegate						= lib::ThreadSafeMulticastDelegate<>;
+	using CleanupDelegate						= lib::ThreadSafeMulticastDelegate<void()>;
 	static CleanupDelegate&						GetCurrentFrameCleanupDelegate();
 
 	static void									ReleaseAllResources();

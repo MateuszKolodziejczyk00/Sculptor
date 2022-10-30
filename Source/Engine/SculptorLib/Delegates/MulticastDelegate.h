@@ -47,12 +47,15 @@ class MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)> : private Deleg
 {
 	struct DelegateInfo
 	{
+		DelegateInfo()
+		{}
+
 		explicit DelegateInfo(DelegateHandle inHandle)
 			: handle(inHandle)
 		{}
 
-		DelegateBase<isThreadSafe, TReturnType(TArgs...)>	delegate;
-		DelegateHandle										handle;
+		DelegateBase<false, TReturnType(TArgs...)>	delegate;
+		DelegateHandle								handle;
 	};
 
 public:
@@ -71,20 +74,26 @@ public:
 
 	~MulticastDelegateBase() = default;
 
-	template<typename ObjectType, typename FuncType>
-	DelegateHandle		AddMember(ObjectType* user, FuncType function);
+	template<typename TFuncType, typename... TPayload>
+	DelegateHandle		AddRaw(TFuncType function, TPayload&&... payload);
 
-	template<typename FuncType>
-	DelegateHandle		AddRaw(FuncType function);
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	DelegateHandle		AddRawMember(TObjectType* object, TFuncType function, TPayload&&... payload);
 
-	template<typename Lambda>
-	DelegateHandle		AddLambda(Lambda&& functor);
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	DelegateHandle		AddSharedMember(lib::SharedPtr<TObjectType> object, TFuncType function, TPayload&&... payload);
+
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	DelegateHandle		AddWeakMember(const lib::SharedPtr<TObjectType>& object, TFuncType function, TPayload&&... payload);
+
+	template<typename TLambda, typename... TPayload>
+	DelegateHandle		AddLambda(TLambda&& callable, TPayload&&... payload);
 
 	void				Unbind(DelegateHandle handle);
 
 	void				Reset();
 
-	void				Broadcast(const TArgs&... arguments);
+	void				Broadcast(TArgs... arguments);
 
 private:
 
@@ -98,35 +107,57 @@ private:
 // Binds =========================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename ObjectType, typename FuncType>
-DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddMember(ObjectType* user, FuncType function)
+template<typename TFuncType, typename... TPayload>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddRaw(TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRawMember(user, function);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRaw(function, std::forward<TPayload>(payload)...);
 	return handle;
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename FuncType>
-DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddRaw(FuncType function)
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddRawMember(TObjectType* object, TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRaw(function);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRawMember(object, function, std::forward<TPayload>(payload)...);
 	return handle;
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename Lambda>
-DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddLambda(Lambda&& functor)
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddSharedMember(lib::SharedPtr<TObjectType> object, TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindLambda(std::forward<Lambda>(functor));
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindSharedMember(std::move(object), function, std::forward<TPayload>(payload)...);
+	return handle;
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddWeakMember(const lib::SharedPtr<TObjectType>& object, TFuncType function, TPayload&&... payload)
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindWeakMember(object, function, std::forward<TPayload>(payload)...);
+	return handle;
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+template<typename TLambda, typename... TPayload>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddLambda(TLambda&& callable, TPayload&&... payload)
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindLambda(std::forward<TLambda>(callable), std::forward<TPayload>(payload)...);
 	return handle;
 }
 
@@ -148,7 +179,7 @@ void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Reset()
 // Execution =====================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Broadcast(const TArgs&... arguments)
+void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Broadcast(TArgs... arguments)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();

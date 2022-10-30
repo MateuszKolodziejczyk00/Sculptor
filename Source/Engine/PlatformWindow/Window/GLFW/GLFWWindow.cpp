@@ -233,7 +233,7 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
 
-	GetOnClosedCallback().AddMember(this, &GLFWWindow::OnThisWindowClosed);
+	GetOnClosedCallback().AddRawMember(this, &GLFWWindow::OnThisWindowClosed);
 }
 
 } // spt::plat
