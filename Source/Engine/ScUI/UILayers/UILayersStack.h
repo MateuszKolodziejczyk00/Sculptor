@@ -32,7 +32,9 @@ public:
 		return layerID;
 	}
 
-	void Draw(Real32 deltaTime);
+	void Remove(UILayerID id);
+
+	void Draw();
 
 private:
 

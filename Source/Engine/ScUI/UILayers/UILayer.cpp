@@ -17,11 +17,11 @@ UILayerID UILayer::GetID() const
 	return m_id;
 }
 
-void UILayer::Draw(Real32 deltaTime)
+void UILayer::Draw()
 {
 	SPT_PROFILER_SCOPE((lib::String("Draw") + GetName().ToString()).data());
 
-	DrawUI(deltaTime);
+	DrawUI();
 }
 
 const lib::HashedString& UILayer::GetName() const
@@ -29,7 +29,7 @@ const lib::HashedString& UILayer::GetName() const
 	return m_name;
 }
 
-void UILayer::DrawUI(Real32 deltaTime)
+void UILayer::DrawUI()
 {
 
 }

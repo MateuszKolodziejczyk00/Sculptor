@@ -27,13 +27,13 @@ public:
 	void SetID(UILayerID id);
 	UILayerID GetID() const;
 
-	void Draw(Real32 deltaTime);
+	void Draw();
 
 	const lib::HashedString& GetName() const;
 
 protected:
 
-	virtual void DrawUI(Real32 deltaTime);
+	virtual void DrawUI();
 
 private:
 
