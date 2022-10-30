@@ -19,7 +19,7 @@ public:
 
 	virtual Bool IsValid() const = 0;
 
-	virtual TReturnType Execute(TArgs... arguments) = 0;
+	virtual TReturnType Execute(TArgs&&... arguments) = 0;
 };
 
 
@@ -76,7 +76,7 @@ public:
 		return m_function != nullptr;
 	}
 
-	virtual TReturnType Execute(TArgs... arguments) override
+	virtual TReturnType Execute(TArgs&&... arguments) override
 	{
 		return ExecuteImpl(std::forward<TArgs>(arguments)..., std::index_sequence_for<TPayload...>{});
 	}
@@ -84,9 +84,9 @@ public:
 private:
 
 	template<SizeType... indices>
-	TReturnType ExecuteImpl(TArgs... arguments, std::index_sequence<indices...>)
+	TReturnType ExecuteImpl(TArgs&&... arguments, std::index_sequence<indices...>)
 	{
-		return (*m_function)(arguments..., std::get<indices>(Super::GetPayload())...);
+		return (*m_function)(std::forward<TArgs>(arguments)..., std::get<indices>(Super::GetPayload())...);
 	}
 
 	TFuncType m_function;
@@ -96,13 +96,18 @@ private:
 template<typename TObjectType, typename TFuncType, typename... TArgs>
 class RawMemberFunctionBinding {};
 
-template<typename TObjectType, typename TFuncType, typename TReturnType, typename... TArgs>
-class RawMemberFunctionBinding<TObjectType, TFuncType, TReturnType(TArgs...)> : public DelegateBindingInterface<TReturnType(TArgs...)>
+template<typename TObjectType, typename TFuncType, typename TReturnType, typename... TArgs, typename... TPayload>
+class RawMemberFunctionBinding<TObjectType, TFuncType, TReturnType(TArgs...), TPayload...> : public DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>
 {
+protected:
+
+	using Super = DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>;
+
 public:
 
-	RawMemberFunctionBinding(TObjectType* object, TFuncType function)
-		: m_object(object)
+	explicit RawMemberFunctionBinding(TObjectType* object, TFuncType function, TPayload&&... payload)
+		: Super(std::forward<TPayload>(payload)...)
+		, m_object(object)
 		, m_function(function)
 	{
 	}
@@ -112,12 +117,18 @@ public:
 		return m_object != nullptr && m_function != nullptr;
 	}
 
-	virtual TReturnType Execute(const TArgs&... arguments) override
+	virtual TReturnType Execute(TArgs&&... arguments) override
 	{
-		return (m_object->*m_function)(arguments...);
+		return ExecuteImpl(std::forward<TArgs>(arguments)..., std::index_sequence_for<TPayload...>{});
 	}
 
 private:
+
+	template<SizeType... indices>
+	TReturnType ExecuteImpl(TArgs&&... arguments, std::index_sequence<indices...>)
+	{
+		return (m_object->*m_function)(std::forward<TArgs>(arguments)..., std::get<indices>(Super::GetPayload())...);
+	}
 
 	TObjectType*	m_object;
 	TFuncType		m_function;
@@ -142,9 +153,9 @@ public:
 		return m_object && m_function != nullptr;
 	}
 
-	virtual TReturnType Execute(TArgs... arguments) override
+	virtual TReturnType Execute(TArgs&&... arguments) override
 	{
-		return (m_object->*m_function)(arguments...);
+		return (m_object->*m_function)(std::forward<TArgs>(arguments)...);
 	}
 
 private:
@@ -157,13 +168,18 @@ private:
 template<typename TCallable, typename... TArgs>
 class LambdaBinding {};
 
-template<typename TCallable, typename TReturnType, typename... TArgs>
-class LambdaBinding<TCallable, TReturnType(TArgs...)> : public DelegateBindingInterface<TReturnType(TArgs...)>
+template<typename TCallable, typename TReturnType, typename... TArgs, typename... TPayload>
+class LambdaBinding<TCallable, TReturnType(TArgs...), TPayload...> : public DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>
 {
+protected:
+
+	using Super = DelegateBindingWithPayload<TReturnType(TArgs...), TPayload...>;
+
 public:
 
-	explicit LambdaBinding(TCallable&& callable)
-		: m_callable(std::forward<TCallable>(callable))
+	explicit LambdaBinding(TCallable&& callable, TPayload&&... payload)
+		: Super(std::forward<TPayload>(payload)...)
+		, m_callable(std::forward<TCallable>(callable))
 	{ }
 
 	virtual Bool IsValid() const override
@@ -171,12 +187,18 @@ public:
 		return true;
 	}
 
-	virtual TReturnType Execute(TArgs... arguments) override
+	virtual TReturnType Execute(TArgs&&... arguments) override
 	{
-		return m_callable(std::forward<TArgs>(arguments)...);
+		return ExecuteImpl(std::forward<TArgs>(arguments)..., std::index_sequence_for<TPayload...>{});
 	}
 
 private:
+
+	template<SizeType... indices>
+	TReturnType ExecuteImpl(TArgs&&... arguments, std::index_sequence<indices...>)
+	{
+		return m_callable(std::forward<TArgs>(arguments)..., std::get<indices>(Super::GetPayload())...);
+	}
 
 	TCallable m_callable;
 };

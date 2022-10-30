@@ -16,11 +16,11 @@ public:
 	template<typename TFuncType, typename TDelegateSignature, typename... TPayload>
 	static UniquePtr<DelegateBindingInterface<TDelegateSignature>> CreateRawBinding(TFuncType function, TPayload&&... payload);
 
-	template<typename UserObject, typename FuncType, typename... TArgs>
-	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateMemberBinding(UserObject* user, FuncType function);
+	template<typename TObjectType, typename TFuncType, typename TDelegateSignature, typename... TPayload>
+	static UniquePtr<DelegateBindingInterface<TDelegateSignature>> CreateRawMemberBinding(TObjectType* object, TFuncType function, TPayload&&... payload);
 
-	template<typename Lambda, typename... TArgs>
-	static UniquePtr<DelegateBindingInterface<TArgs...>> CreateLambda(Lambda&& functor);
+	template<typename TLambda, typename TDelegateSignature, typename... TPayload>
+	static UniquePtr<DelegateBindingInterface<TDelegateSignature>> CreateLambda(TLambda&& callable, TPayload&&... payload);
 };
 
 
@@ -30,16 +30,16 @@ UniquePtr<DelegateBindingInterface<TDelegateSignature>> DelegateBindingBuilder::
 	return std::make_unique<RawFunctionBinding<TFuncType, TDelegateSignature, TPayload...>>(function, std::forward<TPayload>(payload)...);
 }
 
-template<typename UserObject, typename FuncType, typename... TArgs>
-UniquePtr<DelegateBindingInterface<TArgs...>> DelegateBindingBuilder::CreateMemberBinding(UserObject* user, FuncType function)
+template<typename TObjectType, typename TFuncType, typename TDelegateSignature, typename... TPayload>
+UniquePtr<DelegateBindingInterface<TDelegateSignature>> DelegateBindingBuilder::CreateRawMemberBinding(TObjectType* object, TFuncType function, TPayload&&... payload)
 {
-	return UniquePtr<DelegateBindingInterface<TArgs...>>(new RawMemberFunctionBinding<UserObject, FuncType, TArgs...>(user, function));
+	return std::make_unique<RawMemberFunctionBinding<TObjectType, TFuncType, TDelegateSignature, TPayload...>>(object, function, std::forward<TPayload>(payload)...);
 }
 
-template<typename Lambda, typename... TArgs>
-UniquePtr<DelegateBindingInterface<TArgs...>> DelegateBindingBuilder::CreateLambda(Lambda&& functor)
+template<typename TLambda, typename TDelegateSignature, typename... TPayload>
+UniquePtr<DelegateBindingInterface<TDelegateSignature>> DelegateBindingBuilder::CreateLambda(TLambda&& callable, TPayload&&... payload)
 {
-	return UniquePtr<DelegateBindingInterface<TArgs...>>(new LambdaBinding<Lambda, TArgs...>(std::forward<Lambda>(functor)));
+	return std::make_unique<LambdaBinding<TLambda, TDelegateSignature, TPayload...>>(std::forward<TLambda>(callable), std::forward<TPayload>(payload)...);
 }
 
 } // spt::lib::internal

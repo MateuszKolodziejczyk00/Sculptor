@@ -64,14 +64,14 @@ public:
 
 	~DelegateBase() = default;
 
-	template<typename ObjectType, typename FuncType>
-	void BindMember(ObjectType* user, FuncType function);
+	template<typename TObjectType, typename TFuncType, typename... TPayload>
+	void BindRawMember(TObjectType* object, TFuncType function, TPayload&&... payload);
 
 	template<typename TFuncType, typename... TPayload>
 	void BindRaw(TFuncType function, TPayload&&... payload);
 
-	template<typename Lambda>
-	void BindLambda(Lambda&& functor);
+	template<typename TLambda, typename... TPayload>
+	void BindLambda(TLambda&& callable, TPayload&&... payload);
 
 	void Unbind();
 
@@ -79,7 +79,7 @@ public:
 	Bool IsBound() const;
 
 	/** Invokes currently bound function if it's valid */
-	void ExecuteIfBound(const TArgs&... arguments) const;
+	void ExecuteIfBound(TArgs... arguments) const;
 
 private:
 
@@ -92,12 +92,12 @@ private:
 // Binds =========================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename ObjectType, typename FuncType>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindMember(ObjectType* user, FuncType function)
+template<typename TObjectType, typename TFuncType, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRawMember(TObjectType* object, TFuncType function, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateMemberBinding<ObjectType, FuncType, TReturnType(TArgs...)>(user, function);
+	m_binding = internal::DelegateBindingBuilder::CreateRawMemberBinding<TObjectType, TFuncType, TReturnType(TArgs...), TPayload...>(object, function, std::forward<TPayload>(payload)...);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
@@ -110,12 +110,12 @@ void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindRaw(TFuncType functi
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-template<typename Lambda>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindLambda(Lambda&& functor)
+template<typename TLambda, typename... TPayload>
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::BindLambda(TLambda&& callable, TPayload&&... payload)
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	m_binding = internal::DelegateBindingBuilder::CreateLambda<Lambda, TReturnType(TArgs...)>(std::forward<Lambda>(functor));
+	m_binding = internal::DelegateBindingBuilder::CreateLambda<TLambda, TReturnType(TArgs...), TPayload...>(std::forward<TLambda>(callable), std::forward<TPayload>(payload)...);
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
@@ -136,13 +136,13 @@ Bool DelegateBase<isThreadSafe, TReturnType(TArgs...)>::IsBound() const
 // Execution =====================================================================================
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
-void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::ExecuteIfBound(const TArgs&... arguments) const
+void DelegateBase<isThreadSafe, TReturnType(TArgs...)>::ExecuteIfBound(TArgs... arguments) const
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	if (m_binding.get() && m_binding->IsValid())
 	{
-		m_binding->Execute(arguments...);
+		m_binding->Execute(std::forward<TArgs>(arguments)...);
 	}
 }
 

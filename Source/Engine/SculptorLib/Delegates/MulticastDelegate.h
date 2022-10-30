@@ -104,7 +104,7 @@ DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::AddMe
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	const DelegateHandle handle = m_handleCounter++;
-	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindMember(user, function);
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate.BindRawMember(user, function);
 	return handle;
 }
 
