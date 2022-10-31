@@ -21,6 +21,8 @@ Event::Event(const wchar_t* name, Bool manualReset, Bool initialState /*= false*
 
 Event::~Event()
 {
+	SPT_PROFILER_FUNCTION();
+
 	CloseHandle(reinterpret_cast<HANDLE>(m_handle));
 }
 

@@ -1,5 +1,6 @@
 #include "UIElements/ApplicationUI.h"
 #include "ImGui/SculptorImGui.h"
+#include "UIUtils.h"
 
 namespace spt::scui
 {
@@ -52,6 +53,8 @@ void ApplicationUI::Draw(ui::UIContext context)
 	lib::DynamicArray<lib::SharedPtr<UIWindow>> windowsCopy = std::move(instance.m_windows);
 
 	ImGui::SetCurrentContext(context.GetHandle());
+
+	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 	
 	for (const lib::SharedPtr<UIWindow>& window : windowsCopy)
 	{
