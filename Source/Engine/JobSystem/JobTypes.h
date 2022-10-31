@@ -30,4 +30,6 @@ enum class EJobFlags
 	Default = None
 };
 
+static constexpr SizeType g_maxWorkerThreadsNum = 32;
+
 } // spt::js

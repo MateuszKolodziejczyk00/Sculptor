@@ -1,6 +1,7 @@
 #include "Scheduler.h"
 #include "Worker.h"
 #include "Job.h"
+#include "Event.h"
 
 namespace spt::js
 {
@@ -20,13 +21,15 @@ public:
 
 private:
 
-	lib::DynamicArray<WorkerContext>	m_workersContexts;
-	lib::DynamicArray<std::thread>		m_workers;
+	lib::DynamicArray<WorkerContext>				m_workersContexts;
+	lib::DynamicArray<std::thread>					m_workers;
 };
 
 void SchedulerImpl::InitWorkers(SizeType workersNum)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(workersNum <= g_maxWorkerThreadsNum);
 
 	JobsQueueManagerTls::InitializeLocalQueues(workersNum);
 
@@ -35,7 +38,10 @@ void SchedulerImpl::InitWorkers(SizeType workersNum)
 	for (SizeType i = 0; i < workersNum; ++i)
 	{
 		m_workersContexts[i].localQueueIdx = i;
+		m_workersContexts[i].sleepEvent = lib::MakeShared<platf::Event>(L"WorkerSleepEvent", false);
 	}
+
+	m_workers.reserve(workersNum);
 
 	for (SizeType i = 0; i < workersNum; ++i)
 	{
@@ -91,6 +97,20 @@ void Scheduler::ScheduleJob(lib::SharedPtr<JobInstance> job)
 	{
 		// Execute job locally if couldn't enqueue global job
 		Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal(priority));
+	}
+
+	WakeWorker();
+}
+
+void Scheduler::WakeWorker()
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::SharedPtr<platf::Event> sleepEndEvent = JobsQueueManagerTls::DequeueSleepEvents();
+
+	if (sleepEndEvent)
+	{
+		sleepEndEvent->Trigger();
 	}
 }
 

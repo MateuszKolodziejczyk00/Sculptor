@@ -31,6 +31,8 @@ public:
 
 private:
 
+	static void WakeWorker();
+
 	Scheduler() = default;
 };
 

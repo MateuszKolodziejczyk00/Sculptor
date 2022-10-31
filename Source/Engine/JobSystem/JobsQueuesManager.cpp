@@ -7,6 +7,8 @@ namespace spt::js
 GlobalQueueType JobsQueueManagerTls::s_globalQueues[EJobPriority::Num];
 thread_local SizeType JobsQueueManagerTls::tls_localQueueIdx = idxNone<SizeType>;
 lib::DynamicArray<lib::UniquePtr<LocalQueueType>> JobsQueueManagerTls::s_localQueues{};
+lib::MPMCQueue<lib::SharedPtr<platf::Event>, g_maxWorkerThreadsNum> JobsQueueManagerTls::s_sleepEventsQueue{};
+std::atomic<Int32> JobsQueueManagerTls::s_activeWorkers = 0;
 
 Bool JobsQueueManagerTls::EnqueueGlobal(lib::SharedPtr<JobInstance> job)
 {
@@ -59,6 +61,36 @@ lib::SharedPtr<JobInstance> JobsQueueManagerTls::DequeueLocal()
 {
 	SPT_CHECK(tls_localQueueIdx != idxNone<SizeType>);
 	return s_localQueues[tls_localQueueIdx]->Dequeue().value_or(nullptr);
+}
+
+void JobsQueueManagerTls::EnqueueSleepEvents(lib::SharedPtr<platf::Event> sleepEvent)
+{
+	SPT_PROFILER_FUNCTION();
+
+	s_sleepEventsQueue.Enqueue(std::move(sleepEvent));
+}
+
+lib::SharedPtr<platf::Event> JobsQueueManagerTls::DequeueSleepEvents()
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::optional<lib::SharedPtr<platf::Event>> sleepEvent = s_sleepEventsQueue.Dequeue();
+	return sleepEvent.value_or(lib::SharedPtr<platf::Event>{});
+}
+
+void JobsQueueManagerTls::IncrementActiveWorkersCount()
+{
+	s_activeWorkers.fetch_add(1, std::memory_order_acq_rel);
+}
+
+void JobsQueueManagerTls::DecrementActiveWorkersCount()
+{
+	s_activeWorkers.fetch_add(-1, std::memory_order_acq_rel);
+}
+
+Int32 JobsQueueManagerTls::GetActiveWorkersCount()
+{
+	return s_activeWorkers.load(std::memory_order_acquire);
 }
 
 } // spt::js

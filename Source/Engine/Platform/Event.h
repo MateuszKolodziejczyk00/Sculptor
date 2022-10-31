@@ -14,6 +14,12 @@ public:
 	explicit Event(const wchar_t* name, Bool manualReset, Bool initialState = false);
 	~Event();
 
+	Event(Event&& rhs)				= delete;
+	Event& operator=(Event&& rhs)	= delete;
+
+	Event(const Event& rhs)				= delete;
+	Event& operator=(const Event& rhs)	= delete;
+
 	void Trigger();
 	void Reset();
 

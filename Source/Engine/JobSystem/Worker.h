@@ -22,8 +22,9 @@ struct WorkerContext
 		, shouldContinue(rhs.shouldContinue.load(std::memory_order_acquire))
 	{ }
 
-	SizeType			localQueueIdx;
-	std::atomic<Bool>	shouldContinue;
+	SizeType						localQueueIdx;
+	std::atomic<Bool>				shouldContinue;
+	lib::SharedPtr<platf::Event>	sleepEvent;
 };
 
 
