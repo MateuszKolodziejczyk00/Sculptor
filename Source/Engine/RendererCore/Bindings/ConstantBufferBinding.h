@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
 #include "RHI/RHIBridge/RHILimitsImpl.h"
+#include "ResourcesManager.h"
 #include "MathUtils.h"
 
 

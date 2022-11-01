@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Common/ShaderStructs/ShaderStructRegistration.h"
+#include "ShaderStructs/ShaderStructsTypes.h"
 
 namespace spt::rdr
 {
