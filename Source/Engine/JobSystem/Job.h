@@ -387,10 +387,11 @@ protected:
 		}
 	}
 
-	void AddPrerequisite(lib::SharedPtr<JobInstance> job)
+	void AddPrerequisite(const lib::SharedPtr<JobInstance>& job)
 	{
 		m_remainingPrerequisitesNum.fetch_add(1);
-		m_prerequisites.emplace_back(std::move(job));
+		m_prerequisites.emplace_back(job);
+		job->AddConsequent(shared_from_this());
 	}
 
 	void AddConsequent(lib::SharedPtr<JobInstance> next)

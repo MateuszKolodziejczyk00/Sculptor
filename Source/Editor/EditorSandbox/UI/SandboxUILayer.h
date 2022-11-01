@@ -22,9 +22,13 @@ public:
 
 protected:
 
+	//~ Begin  UILayer overrides
 	virtual void DrawUI() override;
+	//~ End  UILayer overrides
 
 private:
+
+	void DrawJobSystemTestsUI();
 
 	const SandboxRenderer* m_renderer;
 };

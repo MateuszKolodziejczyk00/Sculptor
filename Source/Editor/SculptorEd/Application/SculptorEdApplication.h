@@ -28,8 +28,6 @@ protected:
 
 private:
 
-	void RenderFrame();
-
 	lib::SharedPtr<rdr::Window> m_window;
 };
 
