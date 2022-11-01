@@ -20,7 +20,7 @@ Bool UIWindow::WantsClose() const
 	return bWantsClose;
 }
 
-void UIWindow::Draw()
+void UIWindow::DrawWindow()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -29,11 +29,18 @@ void UIWindow::Draw()
 
 	ImGui::DockSpace(ImGui::GetID(m_name.GetData()), ui::UIUtils::GetWindowContentSize());
 
-	m_layers.Draw();
+	DrawContent();
 
 	ImGui::End();
 
 	bWantsClose = !isOpen;
+}
+
+void UIWindow::DrawContent()
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_layers.Draw();
 }
 
 } // spt::scui

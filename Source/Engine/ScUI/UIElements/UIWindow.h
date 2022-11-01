@@ -18,7 +18,8 @@ public:
 	const lib::HashedString& GetName() const;
 	Bool WantsClose() const;
 
-	void Draw();
+	void DrawWindow();
+	void DrawContent();
 
 	template<typename TLayerType, typename... TArgs>
 	UILayerID PushLayer(TArgs&&... args)
