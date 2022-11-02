@@ -26,15 +26,12 @@ public:
 	static lib::SharedRef<UIWindow> OpenWindow(const lib::HashedString& name);
 	static void CloseWindow(const lib::HashedString& name);
 
-	static lib::SharedPtr<UIWindow> GetMainWindow();
-
 	static void Draw(ui::UIContext context);
 
 private:
 
-	ApplicationUI();
+	ApplicationUI() = default;
 
-	lib::SharedPtr<UIWindow>					m_mainWindow;
 	lib::DynamicArray<lib::SharedPtr<UIWindow>> m_windows;
 };
 

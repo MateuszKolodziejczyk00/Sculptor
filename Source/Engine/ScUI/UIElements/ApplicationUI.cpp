@@ -41,11 +41,6 @@ void ApplicationUI::CloseWindow(const lib::HashedString& name)
 	}
 }
 
-lib::SharedPtr<UIWindow> ApplicationUI::GetMainWindow()
-{
-	return GetInstance().m_mainWindow;
-}
-
 void ApplicationUI::Draw(ui::UIContext context)
 {
 	SPT_PROFILER_FUNCTION();
@@ -59,16 +54,13 @@ void ApplicationUI::Draw(ui::UIContext context)
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
-	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+	ImGuiWindowClass mainWindowDockspaceClass;
+	mainWindowDockspaceClass.ClassId = UIWindow::GetWindowsDockspaceID();
+	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), 0, &mainWindowDockspaceClass);
 	
-	if (instance.m_mainWindow)
-	{
-		instance.m_mainWindow->DrawContent();
-	}
-
 	for (const lib::SharedPtr<UIWindow>& window : windowsCopy)
 	{
-		window->DrawWindow();
+		window->Draw();
 	}
 
 	if (instance.m_windows.empty())
@@ -87,9 +79,5 @@ void ApplicationUI::Draw(ui::UIContext context)
 					 });
 	}
 }
-
-ApplicationUI::ApplicationUI()
-	: m_mainWindow(lib::MakeShared<UIWindow>("MainWindow"))
-{ }
 
 } // spt::scui

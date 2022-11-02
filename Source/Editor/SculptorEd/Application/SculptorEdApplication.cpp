@@ -105,7 +105,7 @@ void SculptorEdApplication::OnRun()
 
 	scui::LayerDefinition sandboxLayerDef;
 	sandboxLayerDef.name = "SandboxLayer";
-	scui::ApplicationUI::GetMainWindow()->PushLayer<SandboxUILayer>(sandboxLayerDef, renderer);
+	scui::ApplicationUI::OpenWindowWithLayer<SandboxUILayer>("SandboxWindow", sandboxLayerDef, renderer);
 	
 	scui::LayerDefinition profilerLayerDef;
 	profilerLayerDef.name = "ProfilerLayer";

@@ -3,6 +3,7 @@
 #include "UIUtils.h"
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
+#include "UIElements/UIWindowTypes.h"
 
 namespace spt::ed
 {
@@ -18,9 +19,16 @@ void SandboxUILayer::DrawUI()
 {
 	Super::DrawUI();
 
+	ImGuiWindowClass windowsClass;
+	windowsClass.ClassId = scui::CurrentWindowBuildingContext::GetCurrentWindowDockspaceID();
+
+	ImGui::SetNextWindowClass(&windowsClass);
+
 	ImGui::Begin("RendererTexture");
 	ImGui::Image(m_renderer->GetUITextureID(), ui::UIUtils::GetWindowContentSize());
 	ImGui::End();
+
+	ImGui::SetNextWindowClass(&windowsClass);
 
 	ImGui::Begin("SandboxUI");
 	

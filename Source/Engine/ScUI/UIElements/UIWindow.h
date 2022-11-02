@@ -4,6 +4,7 @@
 #include "ScUIMacros.h"
 #include "UIContext.h"
 #include "UILayers/UILayersStack.h"
+#include "UIWindowTypes.h"
 
 
 namespace spt::scui
@@ -13,13 +14,14 @@ class SCUI_API UIWindow
 {
 public:
 
+	static const ImGuiID& GetWindowsDockspaceID();
+
 	explicit UIWindow(const lib::HashedString& name);
 
 	const lib::HashedString& GetName() const;
 	Bool WantsClose() const;
 
-	void DrawWindow();
-	void DrawContent();
+	void Draw();
 
 	template<typename TLayerType, typename... TArgs>
 	UILayerID PushLayer(TArgs&&... args)
