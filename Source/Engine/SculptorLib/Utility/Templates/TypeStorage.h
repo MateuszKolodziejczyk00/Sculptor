@@ -40,6 +40,21 @@ public:
 		return *reinterpret_cast<const TType*>(m_storage);
 	}
 
+	TType* Address()
+	{
+		return reinterpret_cast<TType*>(m_storage);
+	}
+
+	const TType* Address() const
+	{
+		return reinterpret_cast<const TType*>(m_storage);
+	}
+
+	SizeType GetSize() const
+	{
+		return sizeof(TType);
+	}
+
 private:
 
 	alignas(alignof(TType)) Byte m_storage[sizeof(TType)];

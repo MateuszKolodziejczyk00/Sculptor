@@ -4,6 +4,7 @@
 #include "JobTypes.h"
 #include "SculptorLib/Utility/Templates/Filter.h"
 #include "Scheduler.h"
+#include "Utility/Templates/TypeStorage.h"
 
 
 namespace spt::js
@@ -90,30 +91,30 @@ public:
 
 	~JobCallableWithResult()
 	{
-		GetResultMutable().~TReturnType();
+		m_returnTypeStorage.Destroy();
 	}
 
 	const TReturnType& GetResult() const
 	{
-		return *reinterpret_cast<const TReturnType*>(m_inlineStorage);
+		return m_returnTypeStorage.Get();
 	}
 	
 protected:
 
 	TReturnType& GetResultMutable()
 	{
-		return *reinterpret_cast<TReturnType*>(m_inlineStorage);
+		return m_returnTypeStorage.Get();
 	}
 
 private:
 
 	virtual const void* GetResultPtr(SizeType size) const
 	{
-		SPT_CHECK(size == sizeof(TReturnType));
-		return m_inlineStorage;
+		SPT_CHECK(size == m_returnTypeStorage.GetSize());
+		return m_returnTypeStorage.GetAddress();
 	}
 
-	alignas(TReturnType) Byte m_inlineStorage[sizeof(TReturnType)];
+	lib::TypeStorage<TReturnType> m_returnTypeStorage;
 };
 
 
