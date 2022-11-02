@@ -14,6 +14,7 @@ class SchedulerImpl
 public:
 	
 	SchedulerImpl() = default;
+	~SchedulerImpl();
 
 	void InitWorkers(SizeType workersNum);
 
@@ -24,6 +25,11 @@ private:
 	lib::DynamicArray<WorkerContext>				m_workersContexts;
 	lib::DynamicArray<std::thread>					m_workers;
 };
+
+SchedulerImpl::~SchedulerImpl()
+{
+	DestroyWorkers();
+}
 
 void SchedulerImpl::InitWorkers(SizeType workersNum)
 {
@@ -57,6 +63,9 @@ void SchedulerImpl::DestroyWorkers()
 				  [](WorkerContext& context)
 				  {
 					  context.shouldContinue.exchange(false, std::memory_order_release);
+					  
+					  // Wake all workers, so that they can clean all resources
+					  context.sleepEvent->Trigger();
 				  });
 
 	std::for_each(std::begin(m_workers), std::end(m_workers),

@@ -42,8 +42,6 @@ void Event::Reset()
 
 void Event::Wait()
 {
-	SPT_PROFILER_FUNCTION();
-
 	WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), INFINITE);
 }
 
