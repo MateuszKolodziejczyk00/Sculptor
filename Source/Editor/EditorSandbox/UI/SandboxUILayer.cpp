@@ -75,6 +75,26 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 					   }, js::Prerequisites(jobs.back()));
 		}
 	}
+
+	if (ImGui::Button("Test2"))
+	{
+		js::Launch([]
+				   {
+					   SPT_LOG_TRACE(SandboxUI, "1");
+				   }).Then([]
+				   {
+					   SPT_LOG_TRACE(SandboxUI, "2");
+				   }).Then([]
+				   {
+					   SPT_LOG_TRACE(SandboxUI, "3");
+				   }).Then([]
+				   {
+					   SPT_LOG_TRACE(SandboxUI, "4");
+				   }).Then([]
+				   {
+					   SPT_LOG_TRACE(SandboxUI, "5");
+				   });
+	}
 }
 
 } // spt::ed
