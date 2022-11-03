@@ -406,6 +406,8 @@ public:
 		
 		lib::UnlockableLockGuard lockGuard(lock);
 		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
+
+		while (!finishEvent->IsFinished()) {}
 	}
 
 	template<typename TResultType>
@@ -466,6 +468,10 @@ protected:
 		if(m_jobState.load() != EJobState::Finished)
 		{
 			m_consequents.emplace_back(std::move(next));
+		}
+		else
+		{
+			next->PostPrerequisiteExecuted();
 		}
 	}
 
