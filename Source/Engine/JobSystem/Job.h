@@ -497,6 +497,8 @@ protected:
 
 	void Finish()
 	{
+		m_jobState.store(EJobState::Finished);
+
 		const lib::LockGuard lockGuard(m_consequentsLock);
 
 		for (const lib::SharedPtr<JobInstance>& consequent : m_consequents)
@@ -506,8 +508,6 @@ protected:
 
 		// clear references to avoiod shared ptr reference cycles
 		m_consequents.clear();
-
-		m_jobState.store(EJobState::Finished);
 	}
 
 	inline void PostPrerequisiteExecuted()
