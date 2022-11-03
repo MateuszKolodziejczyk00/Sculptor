@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Common/ShaderStructs/ShaderStructRegistration.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
+#include "MathUtils.h"
 
 namespace spt::rdr
 {
@@ -35,26 +36,7 @@ public:
 		else
 		{
 			constexpr Uint32 thisMemberSize = GetSize();
-
-			if constexpr (thisMemberSize & (thisMemberSize - 1)) // is 2^n
-			{
-				// find and return next power of 2
-				Uint32 alignment = thisMemberSize;
-				alignment--;
-				alignment |= alignment >> 1;
-				alignment |= alignment >> 2;
-				alignment |= alignment >> 4;
-				alignment |= alignment >> 8;
-				alignment |= alignment >> 16;
-				alignment++;
-
-				return alignment;
-			}
-			else
-			{
-				// if size is power of 2, just return it
-				return thisMemberSize;
-			}
+			return math::Utils::RoundUpToPowerOf2(thisMemberSize);
 		}
 	}
 

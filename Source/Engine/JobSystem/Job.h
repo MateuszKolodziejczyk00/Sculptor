@@ -5,6 +5,7 @@
 #include "SculptorLib/Utility/Templates/Filter.h"
 #include "Scheduler.h"
 #include "Utility/Templates/TypeStorage.h"
+#include "MathUtils.h"
 
 
 namespace spt::js
@@ -214,11 +215,24 @@ public:
 		using ResultType = typename impl::JobInvokeResult<TCallable>::Type;
 		using CallableType = impl::JobCallable<std::decay_t<TCallable>, ResultType>;
 
+		constexpr SizeType callableAlignment = alignof(CallableType);
+
+		Bool allocatedInline = false;
+
+		SPT_MAYBE_UNUSED
+		const SizeType size = sizeof(CallableType);
 		if constexpr (sizeof(CallableType) <= s_inlineStorageSize)
 		{
-			m_callable = new (m_inlineStorage) CallableType(std::move(callable));
+			const SizeType inlineStorageAddress = reinterpret_cast<SizeType>(m_inlineStorage);
+			const SizeType inlineAllocationAddress = math::Utils::RoundUp(inlineStorageAddress, callableAlignment);
+			if (inlineStorageAddress + s_inlineStorageSize >= inlineAllocationAddress + sizeof(CallableType))
+			{
+				m_callable = new (reinterpret_cast<void*>(inlineAllocationAddress)) CallableType(std::move(callable));
+				allocatedInline = true;
+			}
 		}
-		else
+
+		if (!allocatedInline)
 		{
 			m_callable = new CallableType(std::move(callable));
 		}
@@ -244,7 +258,8 @@ private:
 	{
 		if (m_callable)
 		{
-			if (reinterpret_cast<void*>(m_callable) == reinterpret_cast<void*>(m_inlineStorage))
+			if (   reinterpret_cast<void*>(m_callable) >= reinterpret_cast<void*>(m_inlineStorage)
+				&& reinterpret_cast<void*>(m_callable) < reinterpret_cast<void*>(m_inlineStorage + s_inlineStorageSize))
 			{
 				m_callable->~JobCallableBase();
 			}
@@ -255,7 +270,7 @@ private:
 		}
 	}
 
-	alignas(4) Byte			m_inlineStorage[s_inlineStorageSize];
+	alignas(8) Byte			m_inlineStorage[s_inlineStorageSize];
 	impl::JobCallableBase*	m_callable;
 };
 
