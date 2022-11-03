@@ -144,7 +144,6 @@ void SculptorEdApplication::OnRun()
 
 		scui::ApplicationUI::Draw(context);
 		ImGui::Render();
-		//renderer.RenderFrame();
 		RenderFrame(renderer);
 
 		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -156,38 +155,6 @@ void SculptorEdApplication::OnRun()
 		}
 	
 		rdr::Renderer::EndFrame();
-		/*
-		js::Job imGuiFinishRender = js::Launch([context]
-											   {
-												   scui::ApplicationUI::Draw(context);
-											   }, js::EJobPriority::Default, js::EJobFlags::WorkersOnly)
-										 .Then([]
-										 	  {
-										 		  ImGui::Render();
-										 	  });
-		js::Job renderJob = js::Launch([&renderer]
-									   {
-										  renderer.RenderFrame();
-								 	   }, js::Prerequisites(imGuiFinishRender));
-
-
-		js::Launch([&imGuiIO]
-				   {
-					   if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-					   {
-						   // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-						   RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-							   ImGui::UpdatePlatformWindows();
-						   ImGui::RenderPlatformWindowsDefault();
-
-					   }
-				   }, js::Prerequisites(imGuiFinishRender));
-
-		js::Launch([]
-				   {
-					   rdr::Renderer::EndFrame();
-				   }, js::Prerequisites(renderJob)).Wait();
-				   */
 	}
 }
 
