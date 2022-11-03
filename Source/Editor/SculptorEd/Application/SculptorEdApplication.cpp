@@ -143,21 +143,51 @@ void SculptorEdApplication::OnRun()
 												   });
 
 		scui::ApplicationUI::Draw(context);
-
 		ImGui::Render();
+		//renderer.RenderFrame();
+		RenderFrame(renderer);
 
 		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 		    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
 		    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-		    ImGui::UpdatePlatformWindows();
+		 	ImGui::UpdatePlatformWindows();
 		    ImGui::RenderPlatformWindowsDefault();
-
 		}
-
-		renderer.RenderFrame();
-
+	
 		rdr::Renderer::EndFrame();
+		/*
+		js::Job imGuiFinishRender = js::Launch([context]
+											   {
+												   scui::ApplicationUI::Draw(context);
+											   }, js::EJobPriority::Default, js::EJobFlags::WorkersOnly)
+										 .Then([]
+										 	  {
+										 		  ImGui::Render();
+										 	  });
+		js::Job renderJob = js::Launch([&renderer]
+									   {
+										  renderer.RenderFrame();
+								 	   }, js::Prerequisites(imGuiFinishRender));
+
+
+		js::Launch([&imGuiIO]
+				   {
+					   if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+					   {
+						   // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
+						   RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
+							   ImGui::UpdatePlatformWindows();
+						   ImGui::RenderPlatformWindowsDefault();
+
+					   }
+				   }, js::Prerequisites(imGuiFinishRender));
+
+		js::Launch([]
+				   {
+					   rdr::Renderer::EndFrame();
+				   }, js::Prerequisites(renderJob)).Wait();
+				   */
 	}
 }
 
@@ -176,6 +206,112 @@ void SculptorEdApplication::OnShutdown()
 	rdr::Renderer::Uninitialize();
 
 	js::JobSystem::Shutdown();
+}
+
+void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+
+	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
+
+	if (m_window->IsSwapchainOutOfDate())
+	{
+		rdr::Renderer::WaitIdle();
+		m_window->RebuildSwapchain();
+		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
+		return;
+	}
+
+	js::JobWithResult rendererWaitSemaphore = js::Launch([&renderer]
+														 {
+															 return renderer.RenderFrame();
+														 });
+
+	const js::JobWithResult createRenderingContextJob = js::Launch([]
+																   {
+																	   return rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+																   });
+		
+
+	js::JobWithResult finishSemaphoreJob = js::Launch([]() -> lib::SharedRef<rdr::Semaphore>
+													  {
+														  const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+														  return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+													  });
+
+	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+	{
+		rhi::TextureViewDefinition viewDefinition;
+		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
+
+		{
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
+			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
+
+			recorder->ExecuteBarrier(std::move(barrier));
+		}
+
+		{
+			rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
+			rdr::RTDefinition renderTarget;
+			renderTarget.textureView = swapchainTextureView;
+			renderTarget.loadOperation = rhi::ERTLoadOperation::Clear;
+			renderTarget.storeOperation = rhi::ERTStoreOperation::Store;
+			renderTarget.clearColor.asFloat[0] = 0.f;
+			renderTarget.clearColor.asFloat[1] = 0.f;
+			renderTarget.clearColor.asFloat[2] = 0.f;
+			renderTarget.clearColor.asFloat[3] = 1.f;
+
+			renderingDef.AddColorRenderTarget(renderTarget);
+
+			SPT_GPU_PROFILER_EVENT("UI");
+			SPT_GPU_DEBUG_REGION(*recorder, "UI", lib::Color::Green);
+
+			recorder->BeginRendering(renderingDef);
+
+			recorder->RenderUI();
+
+			recorder->EndRendering();
+		}
+
+		{
+			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
+			const SizeType RTBarrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			barrier.GetRHI().SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
+
+			recorder->ExecuteBarrier(std::move(barrier));
+		}
+	}
+
+	rdr::CommandsRecordingInfo recordingInfo;
+	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	recorder->RecordCommands(createRenderingContextJob.Await(), recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+	lib::SharedRef<rdr::Semaphore> finishSemaphore = finishSemaphoreJob.Await();
+
+	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
+	rdr::CommandsSubmitBatch& submitUIBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
+	submitUIBatch.recordedCommands.emplace_back(std::move(recorder));
+	submitUIBatch.waitSemaphores.AddBinarySemaphore(rendererWaitSemaphore.Await(), rhi::EPipelineStage::TopOfPipe);
+	submitUIBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::TopOfPipe);
+	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
+
+	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+
+	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { finishSemaphore });
+
+	if (m_window->IsSwapchainOutOfDate())
+	{
+		rdr::Renderer::WaitIdle();
+		m_window->RebuildSwapchain();
+	}
 }
 
 } // spt::ed

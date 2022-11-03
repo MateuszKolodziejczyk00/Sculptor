@@ -13,6 +13,7 @@ namespace spt::rdr
 {
 class Texture;
 class Window;
+class Semaphore;
 } // spt::rdr
 
 namespace spt::ed
@@ -40,7 +41,7 @@ public:
 
 	explicit SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow);
 
-	void RenderFrame();
+	lib::SharedPtr<rdr::Semaphore> RenderFrame();
 
 	ui::TextureID GetUITextureID() const;
 

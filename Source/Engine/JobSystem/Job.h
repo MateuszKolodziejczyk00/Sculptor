@@ -6,6 +6,7 @@
 #include "Scheduler.h"
 #include "Utility/Templates/TypeStorage.h"
 #include "MathUtils.h"
+#include "ThreadInfo.h"
 
 
 namespace spt::js
@@ -95,6 +96,12 @@ public:
 		m_returnTypeStorage.Destroy();
 	}
 
+	template<typename... TArgs>
+	void ConstructResult(TArgs&&... args)
+	{
+		m_returnTypeStorage.Construct(std::forward<TArgs>(args)...);
+	}
+
 	const TReturnType& GetResult() const
 	{
 		return m_returnTypeStorage.Get();
@@ -140,7 +147,7 @@ public:
 	{
 		if constexpr (!std::is_same_v<TReturnType, void>)
 		{
-			JobCallableWithResult<TReturnType>::GetResultMutable() = InvokeImpl();
+			JobCallableWithResult<TReturnType>::ConstructResult(InvokeImpl());
 		}
 		else
 		{
@@ -338,12 +345,17 @@ public:
 
 	Bool Execute()
 	{
+		const Int32 remainingPrerequisites = m_remainingPrerequisitesNum.load(std::memory_order_acquire);
+		if (remainingPrerequisites > 0)
+		{
+			return false;
+		}
+
 		EJobState expected = EJobState::Pending;
 		const Bool executeThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Executing);
 
 		if (executeThisThread)
 		{
-			SPT_CHECK(m_remainingPrerequisitesNum.load() == 0);
 			DoExecute();
 
 			if (CanFinishExecution())
@@ -355,7 +367,12 @@ public:
 		return executeThisThread || expected == EJobState::Finished;
 	}
 
-	void Wait()
+	Bool IsFinished() const
+	{
+		return m_jobState.load(std::memory_order_acquire) == EJobState::Finished;
+	}
+
+	void Wait(Bool canExecute)
 	{
 		const EJobState loadedState = m_jobState.load();
 		if (loadedState == EJobState::Finished)
@@ -363,7 +380,7 @@ public:
 			return;
 		}
 
-		if (loadedState == EJobState::Pending)
+		if (loadedState == EJobState::Pending && canExecute)
 		{
 			// We probably don't need lock here for now
 			for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
@@ -394,6 +411,7 @@ public:
 	template<typename TResultType>
 	const TResultType& GetResultAs() const
 	{
+		SPT_CHECK(IsFinished());
 		return m_callable.GetResult<TResultType>();
 	}
 
@@ -566,9 +584,10 @@ public:
 		: m_instance(std::move(inInstance))
 	{ }
 
-	void Wait()
+	void Wait() const
 	{
-		m_instance->Wait();
+		const Bool canExecuteOnCurrentThread = !lib::HasAnyFlag(m_instance->GetFlags(), EJobFlags::WorkersOnly) || ThreadInfoTls::IsWorker();
+		m_instance->Wait(canExecuteOnCurrentThread);
 	}
 
 	const lib::SharedRef<JobInstance>& GetJobInstance() const
@@ -600,6 +619,12 @@ public:
 
 	const TResultType& GetResult() const
 	{
+		return GetJobInstance()->GetResultAs<TResultType>();
+	}
+
+	const TResultType& Await() const
+	{
+		Wait();
 		return GetJobInstance()->GetResultAs<TResultType>();
 	}
 };

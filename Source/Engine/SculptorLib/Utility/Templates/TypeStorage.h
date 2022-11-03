@@ -40,12 +40,12 @@ public:
 		return *reinterpret_cast<const TType*>(m_storage);
 	}
 
-	TType* Address()
+	TType* GetAddress()
 	{
 		return reinterpret_cast<TType*>(m_storage);
 	}
 
-	const TType* Address() const
+	const TType* GetAddress() const
 	{
 		return reinterpret_cast<const TType*>(m_storage);
 	}

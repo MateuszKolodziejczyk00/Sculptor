@@ -26,6 +26,7 @@ enum Type
 enum class EJobFlags
 {
 	None			= 0,
+	WorkersOnly		= BIT(0),
 
 	Default = None
 };

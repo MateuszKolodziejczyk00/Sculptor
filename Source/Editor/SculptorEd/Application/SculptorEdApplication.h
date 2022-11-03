@@ -5,8 +5,12 @@
 #include "Types/Window.h"
 #include "Types/UIBackend.h"
 
+
 namespace spt::ed
 {
+
+class SandboxRenderer;
+
 
 class SculptorEdApplication : public lib::Application
 {
@@ -27,6 +31,8 @@ protected:
 	// End lib::Application overrides
 
 private:
+
+	void RenderFrame(SandboxRenderer& renderer);
 
 	lib::SharedPtr<rdr::Window> m_window;
 };

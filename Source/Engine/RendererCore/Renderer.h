@@ -24,6 +24,13 @@ struct CommandsSubmitBatch
 {
 public:
 
+	CommandsSubmitBatch() = default;
+
+	Bool IsValid() const
+	{
+		return !recordedCommands.empty();
+	}
+
 	lib::DynamicArray<lib::UniquePtr<CommandRecorder>>		recordedCommands;
 	SemaphoresArray											waitSemaphores;
 	SemaphoresArray											signalSemaphores;

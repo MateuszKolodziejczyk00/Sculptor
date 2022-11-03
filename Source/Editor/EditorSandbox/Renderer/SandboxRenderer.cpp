@@ -10,6 +10,7 @@
 #include "Types/Sampler.h"
 #include "GPUDiagnose/Profiler/GPUProfiler.h"
 #include "GPUDiagnose/Debug/GPUDebug.h"
+#include "JobSystem.h"
 
 namespace spt::ed
 {
@@ -39,39 +40,24 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	m_uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
 }
 
-void SandboxRenderer::RenderFrame()
+lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
-
-	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
-
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
-		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
-		return;
-	}
-
 	const lib::SharedRef<rdr::RenderContext> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+
+	js::JobWithResult createFinishSemaphoreJob = js::Launch([]() -> lib::SharedRef<rdr::Semaphore>
+															{
+																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+															});
 
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
 	{
 		SPT_GPU_PROFILER_CONTEXT(recorder->GetCommandBuffer());
 		SPT_GPU_DEBUG_REGION(*recorder, "FrameRegion", lib::Color::Red);
-
-		{
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
-
-			recorder->ExecuteBarrier(std::move(barrier));
-		}
-
+		
 		{
 			SPT_GPU_PROFILER_EVENT("TestCompute");
 			SPT_GPU_DEBUG_REGION(*recorder, "TestCompute", lib::Color::Blue);
@@ -90,38 +76,9 @@ void SandboxRenderer::RenderFrame()
 
 			recorder->UnbindDescriptorSetState(lib::Ref(m_descriptorSet));
 		}
-
-		rhi::TextureViewDefinition viewDefinition;
-		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
-
-		{
-			rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
-			rdr::RTDefinition renderTarget;
-			renderTarget.textureView = swapchainTextureView;
-			renderTarget.loadOperation = rhi::ERTLoadOperation::Clear;
-			renderTarget.storeOperation = rhi::ERTStoreOperation::Store;
-			renderTarget.clearColor.asFloat[0] = 0.f;
-			renderTarget.clearColor.asFloat[1] = 0.f;
-			renderTarget.clearColor.asFloat[2] = 0.f;
-			renderTarget.clearColor.asFloat[3] = 1.f;
-
-			renderingDef.AddColorRenderTarget(renderTarget);
-
-			SPT_GPU_PROFILER_EVENT("UI");
-			SPT_GPU_DEBUG_REGION(*recorder, "UI", lib::Color::Green);
-
-			recorder->BeginRendering(renderingDef);
-
-			recorder->RenderUI();
-
-			recorder->EndRendering();
-		}
-
+		
 		{
 			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType RTBarrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
 			const SizeType computeBarrierIdx = barrier.GetRHI().AddTextureBarrier(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			barrier.GetRHI().SetLayoutTransition(computeBarrierIdx, rhi::TextureTransition::FragmentReadOnly);
 
@@ -134,24 +91,15 @@ void SandboxRenderer::RenderFrame()
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-	lib::SharedRef<rdr::Semaphore> finishCommandsSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
-
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
 	submitBatch.recordedCommands.emplace_back(std::move(recorder));
-	submitBatch.waitSemaphores.AddBinarySemaphore(acquireSemaphore, rhi::EPipelineStage::TopOfPipe);
-	submitBatch.signalSemaphores.AddBinarySemaphore(finishCommandsSemaphore, rhi::EPipelineStage::TopOfPipe);
+	submitBatch.signalSemaphores.AddBinarySemaphore(createFinishSemaphoreJob.Await(), rhi::EPipelineStage::TopOfPipe);
 	submitBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
 
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
-	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { finishCommandsSemaphore });
-
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
-	}
+	return createFinishSemaphoreJob.Await();
 }
 
 ui::TextureID SandboxRenderer::GetUITextureID() const

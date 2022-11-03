@@ -43,7 +43,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 {
 	ImGui::Text("Job System");;
 		
-	if (ImGui::Button("Test"))
+	if (ImGui::Button("Test (Multiple small jobs)"))
 	{
 		lib::DynamicArray<js::Job> jobs;
 
@@ -76,7 +76,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 		}
 	}
 
-	if (ImGui::Button("Test2"))
+	if (ImGui::Button("Test (Then)"))
 	{
 		js::Launch([]
 				   {
