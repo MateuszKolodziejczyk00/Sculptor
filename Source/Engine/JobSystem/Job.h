@@ -360,7 +360,7 @@ public:
 		return m_jobState.load(std::memory_order_acquire) == EJobState::Finished;
 	}
 
-	void Wait(Bool canExecute)
+	void Wait()
 	{
 		const EJobState loadedState = m_jobState.load();
 		if (loadedState == EJobState::Finished)
@@ -368,7 +368,7 @@ public:
 			return;
 		}
 
-		if (loadedState == EJobState::Pending && canExecute)
+		if (loadedState == EJobState::Pending)
 		{
 			// We probably don't need lock here for now
 			for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
@@ -581,8 +581,7 @@ public:
 
 	void Wait() const
 	{
-		const Bool canExecuteOnCurrentThread = !lib::HasAnyFlag(m_instance->GetFlags(), EJobFlags::WorkersOnly) || ThreadInfoTls::IsWorker();
-		m_instance->Wait(canExecuteOnCurrentThread);
+		m_instance->Wait();
 	}
 
 	const lib::SharedRef<JobInstance>& GetJobInstance() const
