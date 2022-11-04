@@ -22,6 +22,11 @@ protected:
 	//~ Begin  UILayer overrides
 	virtual void DrawUI() override;
 	//~ End  UILayer overrides
+
+private:
+
+	lib::StaticArray<float, 64>	m_lastFrameTimes;
+	SizeType					m_oldestFrameTimeIdx;
 };
 
 } // spt::prf

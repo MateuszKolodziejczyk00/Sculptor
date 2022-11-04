@@ -1,5 +1,6 @@
 #include "ShaderCompilationEnvironment.h"
 #include "EngineCore/Engine.h"
+#include "Paths.h"
 
 namespace spt::sc
 {

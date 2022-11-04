@@ -1,7 +1,6 @@
 #include "SculptorEdApplication.h"
 #include "Renderer.h"
 #include "ResourcesManager.h"
-#include "Timer/TickingTimer.h"
 #include "Types/Semaphore.h"
 #include "Types/Texture.h"
 #include "Types/RenderContext.h"
@@ -44,13 +43,15 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	engn::EngineInitializationParams engineInitializationParams;
 	engineInitializationParams.cmdLineArgsNum = argc;
 	engineInitializationParams.cmdLineArgs = argv;
-	engn::Engine::Initialize(engineInitializationParams);
+	engn::Engine::Get().Initialize(engineInitializationParams);
 
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());
 
 	js::JobSystemInitializationParams jobSystemParams;
 	jobSystemParams.workerThreadsNum = threadsNum - 1;
 	js::JobSystem::Initialize(jobSystemParams);
+
+	prf::Profiler::Get().Initialize();
 
 	rdr::Renderer::Initialize();
 
@@ -111,15 +112,11 @@ void SculptorEdApplication::OnRun()
 	profilerLayerDef.name = "ProfilerLayer";
 	scui::ApplicationUI::OpenWindowWithLayer<prf::ProfilerUILayer>("ProfilerWindow", profilerLayerDef);
 
-	lib::TickingTimer timer;
-	Real32 time = 0.f;
-
 	while (true)
 	{
 		SPT_PROFILER_FRAME("EditorFrame");
 
-		const Real32 deltaTime = timer.Tick();
-		time += deltaTime;
+		const Real32 deltaTime = engn::Engine::Get().BeginFrame();
 
 		m_window->Update(deltaTime);
 
@@ -136,8 +133,7 @@ void SculptorEdApplication::OnRun()
 
 		ImGui::NewFrame();
 
-
-		renderer.GetDescriptorSet().u_viewInfo.Set([time](TestViewInfo& info)
+		renderer.GetDescriptorSet().u_viewInfo.Set([time = engn::Engine::Get().GetTime()](TestViewInfo& info)
 												   {
 													   info.color = math::Vector4f::Constant(sin(time));
 												   });

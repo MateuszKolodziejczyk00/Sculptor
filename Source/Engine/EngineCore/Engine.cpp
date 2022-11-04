@@ -38,4 +38,14 @@ const CommandLineArguments& Engine::GetCmdLineArgs()
 	return m_cmdLineArgs;
 }
 
+const EngineTimer& Engine::GetEngineTimer() const
+{
+	return m_timer;
+}
+
+Real32 Engine::GetTime() const
+{
+	return m_timer.GetTime();
+}
+
 } // spt::engn

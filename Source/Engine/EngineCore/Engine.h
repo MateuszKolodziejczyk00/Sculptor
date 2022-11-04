@@ -37,6 +37,9 @@ public:
 
 	const CommandLineArguments& GetCmdLineArgs();
 
+	const EngineTimer& GetEngineTimer() const;
+	Real32 GetTime() const;
+
 private:
 
 	Engine() = default;
