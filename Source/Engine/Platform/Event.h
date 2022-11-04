@@ -12,6 +12,7 @@ class PLATFORM_API Event
 public:
 
 	explicit Event(const wchar_t* name, Bool manualReset, Bool initialState = false);
+	explicit Event(Bool manualReset, Bool initialState = false);
 	~Event();
 
 	Event(Event&& rhs)				= delete;
@@ -22,6 +23,8 @@ public:
 
 	void Trigger();
 	void Reset();
+
+	Bool IsTriggered() const;
 
 	void Wait();
 
