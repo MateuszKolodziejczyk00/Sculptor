@@ -294,11 +294,12 @@ class JobInstance : public std::enable_shared_from_this<JobInstance>
 
 public:
 
-	JobInstance()
+	JobInstance(const char* name)
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
 		, m_priority(EJobPriority::Default)
 		, m_flags(EJobFlags::Default)
+		, m_name(name)
 	{ }
 
 	virtual ~JobInstance() = default;
@@ -323,20 +324,6 @@ public:
 
 		SetCallable(std::forward<TCallable>(callable));
 		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
-
-		m_priority = priority;
-		m_flags = flags;
-
-		OnConstructed();
-	}
-
-	template<typename TCallable>
-	void Init(TCallable&& callable, lib::SharedPtr<JobInstance> prerequisite, EJobPriority::Type priority, EJobFlags flags)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		SetCallable(std::forward<TCallable>(callable));
-		AddPrerequisite(std::move(prerequisite));
 
 		m_priority = priority;
 		m_flags = flags;
@@ -401,8 +388,8 @@ public:
 
 		platf::Event finishEvent(true);
 
-		lib::SharedRef<JobInstance> finishEventJob = lib::MakeShared<JobInstance>();
-		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, shared_from_this(), GetPriority(), GetFlags());
+		lib::SharedRef<JobInstance> finishEventJob = lib::MakeShared<JobInstance>("WaitEventJob");
+		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(shared_from_this()), GetPriority(), GetFlags());
 		
 		finishEvent.Wait();
 	}
@@ -545,6 +532,8 @@ private:
 
 	EJobPriority::Type	m_priority;
 	EJobFlags			m_flags;
+
+	const char* m_name;
 };
 
 
@@ -553,28 +542,28 @@ class JobInstanceBuilder
 public:
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	static auto Build(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
+	static auto Build(const char* name, TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
 		lib::SharedPtr<JobInstance> job;
 		{
 			SPT_PROFILER_SCOPE("Allocate Job");
-			job = lib::MakeShared<JobInstance>();
+			job = lib::MakeShared<JobInstance>(name);
 		}
 		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites), priority, flags);
 		return lib::Ref(job);
 	}
 
 	template<typename TCallable>
-	static auto Build(TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
+	static auto Build(const char* name, TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
 	{
 		SPT_PROFILER_FUNCTION();
 
 		lib::SharedPtr<JobInstance> job;
 		{
 			SPT_PROFILER_SCOPE("Allocate Job");
-			job = lib::MakeShared<JobInstance>();
+			job = lib::MakeShared<JobInstance>(name);
 		}
 		job->Init(std::forward<TCallable>(callable), priority, flags);
 		return lib::Ref(job);
@@ -602,9 +591,9 @@ public:
 	}
 
 	template<typename TCallable>
-	Job Then(TCallable&& callable)
+	Job Then(const char* name, TCallable&& callable)
 	{
-		lib::SharedRef<JobInstance> instance =  JobInstanceBuilder::Build(callable, Prerequisites(*this), m_instance->GetPriority(), m_instance->GetFlags());
+		lib::SharedRef<JobInstance> instance =  JobInstanceBuilder::Build(name, callable, Prerequisites(*this), m_instance->GetPriority(), m_instance->GetFlags());
 		return Job(std::move(instance));
 	}
 

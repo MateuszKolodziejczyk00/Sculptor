@@ -192,21 +192,24 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		return;
 	}
 
-	js::JobWithResult rendererWaitSemaphore = js::Launch([&renderer]
+	js::JobWithResult rendererWaitSemaphore = js::Launch(SPT_GENERIC_JOB_NAME, [&renderer]
 														 {
-															 return renderer.RenderFrame();
+															 const auto res = renderer.RenderFrame();
+															 return res;
 														 });
 
-	const js::JobWithResult createRenderingContextJob = js::Launch([]
+	const js::JobWithResult createRenderingContextJob = js::Launch(SPT_GENERIC_JOB_NAME, []
 																   {
-																	   return rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+																	   const auto res = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
+																		return res;
 																   });
 		
 
-	js::JobWithResult finishSemaphoreJob = js::Launch([]() -> lib::SharedRef<rdr::Semaphore>
+	js::JobWithResult finishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
 													  {
 														  const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-														  return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+														  const auto res = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+															return res;
 													  });
 
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();

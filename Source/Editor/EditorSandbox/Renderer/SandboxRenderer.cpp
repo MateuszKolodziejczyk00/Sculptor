@@ -46,7 +46,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 	const lib::SharedRef<rdr::RenderContext> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
 
-	js::JobWithResult createFinishSemaphoreJob = js::Launch([]() -> lib::SharedRef<rdr::Semaphore>
+	js::JobWithResult createFinishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
 															{
 																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);

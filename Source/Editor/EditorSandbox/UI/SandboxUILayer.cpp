@@ -49,7 +49,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 
 		for (SizeType i = 0; i < 5; ++i)
 		{
-			jobs.emplace_back(js::Launch([]
+			jobs.emplace_back(js::Launch(SPT_GENERIC_JOB_NAME, []
 										 {
 											 for (Int64 x = 0; x < 1000000; ++x)
 											 {
@@ -57,7 +57,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 												 float s = std::sin(std::cos(std::sin(std::cos(static_cast<float>(x)))));
 												 if (x % 50 == 0)
 												 {
-													 js::Launch([]
+													 js::Launch(SPT_GENERIC_JOB_NAME, []
 																{
 																	for (Int64 x = 0; x < 100; ++x)
 																	{
@@ -69,7 +69,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 											 }
 										 }, js::EJobPriority::High));
 
-			js::Launch([i]
+			js::Launch(SPT_GENERIC_JOB_NAME, [i]
 					   {
 						   SPT_LOG_TRACE(SandboxUI, "Finished {0}", i);
 					   }, js::Prerequisites(jobs.back()));
@@ -78,19 +78,19 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 
 	if (ImGui::Button("Test (Then)"))
 	{
-		js::Launch([]
+		js::Launch(SPT_GENERIC_JOB_NAME, []
 				   {
 					   SPT_LOG_TRACE(SandboxUI, "1");
-				   }).Then([]
+				   }).Then(SPT_GENERIC_JOB_NAME, []
 				   {
 					   SPT_LOG_TRACE(SandboxUI, "2");
-				   }).Then([]
+				   }).Then(SPT_GENERIC_JOB_NAME, []
 				   {
 					   SPT_LOG_TRACE(SandboxUI, "3");
-				   }).Then([]
+				   }).Then(SPT_GENERIC_JOB_NAME, []
 				   {
 					   SPT_LOG_TRACE(SandboxUI, "4");
-				   }).Then([]
+				   }).Then(SPT_GENERIC_JOB_NAME, []
 				   {
 					   SPT_LOG_TRACE(SandboxUI, "5");
 				   });
