@@ -4,9 +4,9 @@
 
 #ifdef SPT_PLATFORM_WINDOWS
 	#ifdef SCULPTORLIB_BUILD_DLL
-		#define SCULPTORLIB_API __declspec(dllexport)
+		#define SCULPTOR_LIB_API __declspec(dllexport)
 	#else
-		#define SCULPTORLIB_API __declspec(dllimport)
+		#define SCULPTOR_LIB_API __declspec(dllimport)
 	#endif
 #else
 	#error Sculptor only supports Windows

@@ -3,7 +3,7 @@
 #include "Types/Shader.h"
 #include "RendererUtils.h"
 #include "RHIBridge/RHIImpl.h"
-#include "Engine.h"
+#include "ConfigUtils.h"
 #include "Common/ShaderCompilationEnvironment.h"
 
 #include "YAMLSerializerHelper.h"
@@ -62,7 +62,7 @@ void ShadersManager::Initialize()
 	SPT_PROFILER_FUNCTION();
 	
 	sc::CompilationEnvironmentDef compilationEnvironmentDef;
-	const Bool loaded = engn::Engine::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.yaml");
+	const Bool loaded = engn::ConfigUtils::LoadConfigData(compilationEnvironmentDef, "ShadersCompilationEnvironment.yaml");
 	SPT_CHECK(loaded);
 	compilationEnvironmentDef.targetEnvironment = priv::SelectCompilationTargetEnvironment(); // always override loaded target environment basing on current RHI
 

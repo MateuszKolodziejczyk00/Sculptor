@@ -88,7 +88,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
 #if RHI_DEBUG
     
-    const engn::CommandLineArguments& cmdLineArgs = engn::Engine::GetCmdLineArgs();
+    const engn::CommandLineArguments& cmdLineArgs = engn::Engine::Get().GetCmdLineArgs();
     const Bool enableVaidationLayer = cmdLineArgs.Contains(constants::enableValidationCmdArgName);
 
 #endif // RHI_DEBUG

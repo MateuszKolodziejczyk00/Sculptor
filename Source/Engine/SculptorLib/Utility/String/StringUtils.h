@@ -8,7 +8,7 @@
 namespace spt::lib
 {
 
-class SCULPTORLIB_API StringUtils
+class SCULPTOR_LIB_API StringUtils
 {
 public:
 

@@ -10,7 +10,7 @@
 namespace spt::lib
 {
 
-class SCULPTORLIB_API HashedStringDB
+class SCULPTOR_LIB_API HashedStringDB
 {
 public:
 

@@ -2,9 +2,9 @@
 
 #include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "SerializationHelper.h"
-#include "Paths.h"
 #include "Utils/CommandLineArguments.h"
+#include "Delegates/MulticastDelegate.h"
+#include "EngineTimer.h"
 
 
 namespace spt::engn
@@ -26,42 +26,27 @@ class ENGINE_CORE_API Engine
 {
 public:
 
-	static void Initialize(const EngineInitializationParams& initializationParams);
+	static Engine& Get();
 
-	// Config helpers ===============================================
+	void Initialize(const EngineInitializationParams& initializationParams);
 
-	template<typename TDataType>
-	static void SaveConfigData(const TDataType& data, const lib::String& configFileName);
+	Real32 BeginFrame();
 
-	template<typename TDataType>
-	static Bool LoadConfigData(TDataType& data, const lib::String& configFileName);
+	using  OnBeginFrameDelegate = lib::MulticastDelegate<void()>;
+	OnBeginFrameDelegate& GetOnBeginFrameDelegate();
 
-	static const CommandLineArguments& GetCmdLineArgs();
+	const CommandLineArguments& GetCmdLineArgs();
 
 private:
 
-	static Engine& GetInstance();
-
 	Engine() = default;
 
-	EngineInitializationParams	m_initParams;
+	EngineInitializationParams m_initParams;
 
-	CommandLineArguments		m_cmdLineArgs;
+	CommandLineArguments m_cmdLineArgs;
+
+	EngineTimer m_timer;
+	OnBeginFrameDelegate m_onBeginFrameDelegate;
 };
-
-
-template<typename TDataType>
-void Engine::SaveConfigData(const TDataType& data, const lib::String& configFileName)
-{
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
-	srl::SerializationHelper::SaveTextStructToFile(data, finalPath);
-}
-
-template<typename TDataType>
-Bool Engine::LoadConfigData(TDataType& data, const lib::String& configFileName)
-{
-	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
-	return srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
-}
 
 } // spt::engn

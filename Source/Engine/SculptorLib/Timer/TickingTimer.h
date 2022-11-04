@@ -8,7 +8,7 @@
 namespace spt::lib
 {
 
-class SCULPTORLIB_API TickingTimer
+class SCULPTOR_LIB_API TickingTimer
 {
 public:
 
@@ -23,4 +23,4 @@ private:
 	std::chrono::steady_clock::time_point m_lastTimestamp;
 };
 
-}
+} // std::lib

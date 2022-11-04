@@ -7,7 +7,7 @@
 namespace spt::lib
 {
 
-class SCULPTORLIB_API Color
+class SCULPTOR_LIB_API Color
 {
 public:
 

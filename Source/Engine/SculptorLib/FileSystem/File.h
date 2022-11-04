@@ -17,7 +17,7 @@ enum class EFileOpenFlags
 };
 
 
-class SCULPTORLIB_API File
+class SCULPTOR_LIB_API File
 {
 public:
 

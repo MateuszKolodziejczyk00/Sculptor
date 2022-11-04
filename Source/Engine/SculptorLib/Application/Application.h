@@ -6,7 +6,7 @@
 namespace spt::lib
 {
 
-class SCULPTORLIB_API Application
+class SCULPTOR_LIB_API Application
 {
 public:
 
