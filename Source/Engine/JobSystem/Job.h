@@ -7,6 +7,7 @@
 #include "Utility/Templates/TypeStorage.h"
 #include "MathUtils.h"
 #include "ThreadInfo.h"
+#include "Event.h"
 
 
 namespace spt::js
@@ -398,16 +399,12 @@ public:
 			}
 		}
 
-		std::condition_variable cv;
-		lib::Lock lock;
+		platf::Event finishEvent(true);
 
-		lib::SharedRef<JobInstance> finishEvent = lib::MakeShared<JobInstance>();
-		finishEvent->Init([&cv] { cv.notify_one(); }, shared_from_this(), GetPriority(), GetFlags());
+		lib::SharedRef<JobInstance> finishEventJob = lib::MakeShared<JobInstance>();
+		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, shared_from_this(), GetPriority(), GetFlags());
 		
-		lib::UnlockableLockGuard lockGuard(lock);
-		cv.wait(lockGuard, [this] { return m_jobState.load() == EJobState::Finished; });
-
-		while (!finishEvent->IsFinished()) {}
+		finishEvent.Wait();
 	}
 
 	template<typename TResultType>
@@ -481,6 +478,8 @@ protected:
 
 		// added only on thread that creates job, on or thread executing job, so we don't need lock
 		m_prerequisites.emplace_back(std::move(job));
+
+		SPT_CHECK_NO_ENTRY(); // TODO properly handle nested prerequisites in CanFinish and Finish
 	}
 
 	void OnConstructed()
@@ -505,6 +504,8 @@ protected:
 	{
 		m_jobState.store(EJobState::Finished);
 
+		m_prerequisites.clear();
+
 		const lib::LockGuard lockGuard(m_consequentsLock);
 
 		for (const lib::SharedPtr<JobInstance>& consequent : m_consequents)
@@ -512,7 +513,6 @@ protected:
 			consequent->PostPrerequisiteExecuted();
 		}
 
-		// clear references to avoiod shared ptr reference cycles
 		m_consequents.clear();
 	}
 
