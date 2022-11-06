@@ -31,25 +31,33 @@ enum class ERGResourceFlags
 };
 
 
-/**
- * TODO
- * Resource - id only
- * Resource View
- * 
- */
-
 using RGResourceID = SizeType;
+
+
+struct RGResourceDef
+{
+	RGResourceDef()
+		: m_id(idxNone<RGResourceID>)
+		, m_flags(ERGResourceFlags::None)
+	{ }
+
+	RGResourceID		id;
+	lib::HashedString	name;
+	ERGResourceFlags	flags;
+};
 
 
 class RGResource abstract
 {
 public:
 
-	RGResource(RGResourceID id, const lib::HashedString& name, ERGResourceFlags flags)
-		: m_id(id)
-		, m_name(name)
-		, m_flags(flags)
-	{ }
+	explicit RGResource(const RGResourceDef& definition)
+		: m_id(definition.id)
+		, m_name(definition.name)
+		, m_flags(definition.flags)
+	{
+		SPT_CHECK(m_id != idxNone<RGResourceID>);
+	}
 
 	Bool IsValid() const
 	{
@@ -79,12 +87,24 @@ private:
 };
 
 
+template<typename TResourceType>
+class RGResourceHandle
+{
+public:
+
+private:
+
+	RGResourceID			m_id;
+	RenderGraphDebugName	m_name;
+};
+
+
 class RGTexture : public RGResource
 {
 public:
 
-	RGTexture(RGResourceID id, const lib::HashedString& name, ERGResourceFlags flags, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
-		: RGResource(id, name, flags)
+	RGTexture(const RGResourceDef& resourceDefinition, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+		: RGResource(resourceDefinition)
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
 	{ }
@@ -105,32 +125,69 @@ private:
 	rhi::RHIAllocationInfo m_allocationInfo;
 };
 
+using RGTextureHandle = RGResourceHandle<RGTexture>;
+
+
+class RGTextureView : public RGResource
+{
+public:
+
+	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition)
+		: RGResource(resourceDefinition)
+		, m_texture(texture)
+		, viewDefinition(m_viewDef)
+	{ }
+
+	RGTextureHandle GetTextureView() const
+	{
+		return m_texture;
+	}
+
+	rhi::TextureViewDefinition GetViewDefinition() const
+	{
+		return m_viewDef;
+	}
+
+private:
+
+	RGTextureHandle				m_texture;
+	rhi::TextureViewDefinition	m_viewDef;
+
+};
+
+using RGTextureViewHandle = RGResourceHandle<RGTextureView>;
+
 
 class RGBuffer : public RGResource
 {
 public:
 
+	RGBuffer(const RGResourceDef& resourceDefinition, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition)
+		: RGResource(resourceDefinition)
+	{ }
+
+	Uint64 GetSize() const
+	{
+		return m_size;
+	}
+
+	rhi::EBufferUsage GetBufferUsage()
+	{
+		return m_bufferUsage;
+	}
+
+	const rhi::RHIAllocationInfo& GetAllocationInfo() const
+	{
+		return m_allocationInfo;
+	}
+
 private:
 
-	Uint64 size;
-	rhi::EBufferUsage bufferUsage;
-	rhi::RHIAllocationInfo& allocationInfo;
+	Uint64					m_size;
+	rhi::EBufferUsage		m_bufferUsage;
+	rhi::RHIAllocationInfo	m_allocationInfo;
 };
 
-
-template<typename TResourceType>
-class RGResourceHandle
-{
-public:
-
-private:
-
-	RGResourceID			m_id;
-	RenderGraphDebugName	m_name;
-};
-
-
-using RHTextureHandle	= RGResourceHandle<RGTexture>;
-using RHBufferHandle	= RGResourceHandle<RGBuffer>;
+using RGBufferHandle = RGResourceHandle<RGBuffer>;
 
 } // spt::rg
