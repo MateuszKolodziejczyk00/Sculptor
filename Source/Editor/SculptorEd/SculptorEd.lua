@@ -3,6 +3,7 @@ SculptorEd = Project:CreateProject("SculptorEd", ETargetType.Application)
 function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("SculptorLib")
 	self:AddPublicDependency("RendererCore")
+	self:AddPublicDependency("RenderGraph")
 	self:AddPublicDependency("JobSystem")
 	self:AddPublicDependency("ScUI")
 

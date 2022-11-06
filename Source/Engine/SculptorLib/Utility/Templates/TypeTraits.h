@@ -117,16 +117,10 @@ struct TuplePushFront<TType, std::tuple<void>>
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ParameterPackSize =============================================================================
 
-template<typename T, typename... Ts>
+template<typename... Ts>
 struct ParameterPackSize
 {
-	static constexpr SizeType Count = ParameterPackSize<Ts...>::Count + 1;
-};
-
-template<typename T>
-struct ParameterPackSize<T>
-{
-	static constexpr SizeType Count = 1;
+	static constexpr SizeType Count = sizeof...(Ts);
 };
 
 } // spt::lib

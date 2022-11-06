@@ -55,4 +55,4 @@ private:
 	lib::WeakPtr<const Texture>		m_texture;
 };
 
-}
+} // spt::rdr

@@ -27,6 +27,8 @@ using SizeType = size_t;
 
 using IntPtr = intptr_t;
 
+using Flags8 = Uint8;
+using Flags16 = Uint16;
 using Flags32 = Uint32;
 using Flags64 = Uint64;
 

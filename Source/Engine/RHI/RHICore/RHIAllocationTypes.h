@@ -4,7 +4,7 @@
 namespace spt::rhi
 {
 
-enum class EMemoryUsage
+enum class EMemoryUsage : Flags8
 {
 	GPUOnly,
 	CPUOnly,
@@ -14,7 +14,7 @@ enum class EMemoryUsage
 };
 
 
-enum class EAllocationFlags : Flags32
+enum class EAllocationFlags : Flags8
 {
 	None							= 0,
 	CreateDedicatedAllocation		= BIT(0),

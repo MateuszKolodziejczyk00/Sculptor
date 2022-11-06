@@ -90,14 +90,14 @@ struct TextureDefinition
 };
 
 
-enum class ETextureViewType
+enum class ETextureViewType : Uint8
 {
 	Default,
 	Cube
 };
 
 
-enum class ETextureComponentMapping
+enum class ETextureComponentMapping : Uint8
 {
 	R,
 	G,
@@ -128,7 +128,7 @@ struct TextureComponentMappings
 };
 
 
-enum class ETextureAspect : Flags32
+enum class ETextureAspect : Flags8
 {
 	None			= 0,
 	Color			= BIT(0),
