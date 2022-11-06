@@ -29,7 +29,7 @@ BEGIN_SHADER_STRUCT(, TestViewInfo)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(, TestDS, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(, TestDS, rdr::DescriptorSetState, rhi::EShaderStageFlags::Compute)
 	DS_BINDING(rdr::StorageTexture2DBinding<math::Vector4f>, u_texture)
 	DS_BINDING(rdr::ConstantBufferBinding<TestViewInfo>, u_viewInfo)
 DS_END()

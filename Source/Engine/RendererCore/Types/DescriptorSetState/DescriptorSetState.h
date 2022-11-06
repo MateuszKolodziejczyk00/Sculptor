@@ -306,30 +306,31 @@ public:
 };
 
 
-#define DS_BEGIN(api, className, stages)	class api className : public rdr::DescriptorSetState																		\
-											{																															\
-											public:																														\
-											using ThisClass = className;																								\
-											using Super = rdr::DescriptorSetState;																						\
-											className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
-												: Super(name, flags)																									\
-											{																															\
-												SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
-												const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef(GetBindingsBegin(), stages);				\
-												SetDescriptorSetHash(rdr::bindings_refl::HashDescriptorSetState(bindingsDef, GetBindingNames()));						\
-												InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum(bindingsDef));											\
-												rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
-											}																															\
-											static lib::HashedString GetDescriptorSetName()																				\
-											{																															\
-												return #className;																										\
-											}																															\
-											template<typename TBindingType>																								\
-											TBindingType* ReflGetBindingImpl()																							\
-											{																															\
-												return nullptr;																											\
-											}																															\
-											typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
+#define DS_BEGIN(api, className, parentClass, stages)																			\
+	class api className : public parentClass																					\
+	{																															\
+	public:																														\
+	using ThisClass = className;																								\
+	using Super = parentClass;																									\
+	className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
+		: Super(name, flags)																									\
+	{																															\
+		SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
+		const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef(GetBindingsBegin(), stages);				\
+		SetDescriptorSetHash(rdr::bindings_refl::HashDescriptorSetState(bindingsDef, GetBindingNames()));						\
+		InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum(bindingsDef));											\
+		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
+	}																															\
+	static lib::HashedString GetDescriptorSetName()																				\
+	{																															\
+		return #className;																										\
+	}																															\
+	template<typename TBindingType>																								\
+	TBindingType* ReflGetBindingImpl()																							\
+	{																															\
+		return nullptr;																											\
+	}																															\
+	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
 #define DS_BINDING(Type, Name, ...)	Type, #Name> Refl##Name##BindingType;  /* finish line from prev macros */																								\
 									Type Name = Type(#Name, m_isDirty);																																\
@@ -341,7 +342,7 @@ public:
 									}																																								\
 									typedef rdr::bindings_refl::BindingHandle<Refl##Name##BindingType,
 
-#define DS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;																\
+#define DS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;														\
 					ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
 					template<>																														\
 					ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
@@ -359,7 +360,7 @@ public:
 															   binding.UpdateDescriptors(context);													\
 														   });																						\
 					}																																\
-					inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;									\
+					inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;								\
 					};
 
 #define DS_STAGES(...) lib::Flags<rhi::EShaderStageFlags>(__VA_ARGS__)
