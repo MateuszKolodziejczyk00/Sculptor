@@ -106,10 +106,13 @@ private:
 		
 		const Uint64 bufferSize = secondStructOffset + structSize;
 
+		const rhi::BufferDefinition bufferDef(bufferSize, rhi::EBufferUsage::Uniform);
+
 		rhi::RHIAllocationInfo allocationInfo;
 		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")), bufferSize, rhi::EBufferUsage::Uniform, allocationInfo);
+		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
+												  bufferDef, allocationInfo);
 
 		m_bufferView = m_buffer->CreateView(0, bufferSize);
 

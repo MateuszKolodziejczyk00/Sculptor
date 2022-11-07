@@ -22,7 +22,7 @@ public:
 
 	RHIBuffer();
 
-	void						InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	void						InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;

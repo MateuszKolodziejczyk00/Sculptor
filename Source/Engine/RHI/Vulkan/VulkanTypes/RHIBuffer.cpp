@@ -69,20 +69,20 @@ RHIBuffer::RHIBuffer()
 	, m_mappedPointer(nullptr)
 { }
 
-void RHIBuffer::InitializeRHI(Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_bufferSize = size;
-	m_usageFlags = bufferUsage;
+	m_bufferSize = definition.size;
+	m_usageFlags = definition.usage;
 
 	const VmaAllocationCreateInfo vmaAllocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocationInfo);
 
-	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(bufferUsage);
+	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(definition.usage);
 
 	VkBufferCreateInfo bufferInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     bufferInfo.flags = 0;
-    bufferInfo.size = size;
+    bufferInfo.size = definition.size;
     bufferInfo.usage = vulkanUsage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 

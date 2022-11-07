@@ -28,9 +28,9 @@ lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, math
 	return lib::MakeShared<Window>(name, resolution);
 }
 
-lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	return lib::MakeShared<Buffer>(name, size, bufferUsage, allocationInfo);
+	return lib::MakeShared<Buffer>(name, definition, allocationInfo);
 }
 
 lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)

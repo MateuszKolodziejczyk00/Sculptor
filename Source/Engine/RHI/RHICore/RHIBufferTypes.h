@@ -20,4 +20,16 @@ enum class EBufferUsage : Flags32
 	LAST
 };
 
-}
+
+struct BufferDefinition
+{
+	explicit BufferDefinition(Uint64 inSize = 0, EBufferUsage inUsage = EBufferUsage::None)
+		: size(inSize)
+		, usage(inUsage)
+	{ }
+
+	Uint64			size;
+	EBufferUsage	usage;
+};
+
+} // spt::rhi

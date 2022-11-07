@@ -8,9 +8,9 @@ namespace spt::rdr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer ========================================================================================
 
-Buffer::Buffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo)
+Buffer::Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	GetRHI().InitializeRHI(size, bufferUsage, allocationInfo);
+	GetRHI().InitializeRHI(definition, allocationInfo);
 	GetRHI().SetName(name.Get());
 }
 

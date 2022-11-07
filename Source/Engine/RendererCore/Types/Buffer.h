@@ -27,7 +27,7 @@ protected:
 
 public:
 
-	Buffer(const RendererResourceName& name, Uint64 size, rhi::EBufferUsage bufferUsage, const rhi::RHIAllocationInfo& allocationInfo);
+	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 
 	lib::SharedRef<BufferView>		CreateView(Uint64 offset, Uint64 size) const;
 };
