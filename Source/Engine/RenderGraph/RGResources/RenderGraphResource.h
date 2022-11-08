@@ -93,7 +93,12 @@ public:
 		: m_id(idxNone<RGResourceID>)
 	{ }
 
-	RGResourceHandle(const TResourceType& resource)
+	RGResourceHandle(RGResourceID id, const RenderGraphDebugName& name)
+		: m_id(id)
+		, m_name(name)
+	{ }
+
+	explicit RGResourceHandle(const TResourceType& resource)
 		: m_id(resource.GetID())
 		, m_name(resource.GetName())
 	{ }

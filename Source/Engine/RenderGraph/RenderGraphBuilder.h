@@ -3,7 +3,6 @@
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
-#include "RenderGraph.h"
 #include "Pipelines/PipelineState.h"
 #include "RGDescriptorSetState.h"
 #include "RGResources/RenderGraphResource.h"
@@ -28,7 +27,7 @@ public:
 
 	RGTextureHandle AcquireExternalTexture(lib::SharedPtr<rdr::Texture> texture);
 
-	RGTextureHandle CreateTexture(const RenderGraphDebugName& m_name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
@@ -37,13 +36,21 @@ public:
 
 private:
 
-	RenderGraph graph;
+	lib::HashMap<RGResourceID, RGTexture> m_textureResources;
+
+	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGResourceID> m_externalTextures;
+
+	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
+
+	RGResourceID resourceIDCounter;
 };
 
 template<typename TDescriptorSetStatesRange>
 void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange)
 {
+	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK_NO_ENTRY();
 }
 
 } // spt::rg
