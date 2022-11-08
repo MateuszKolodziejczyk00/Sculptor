@@ -174,7 +174,7 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 	SPT_CHECK(imageIdx < static_cast<Uint32>(m_swapchainImages.size()));
 
 	RHITexture texture;
-	texture.InitializeRHI(m_swapchainTextureDef, m_swapchainImages[imageIdx]);
+	texture.InitializeRHI(m_swapchainTextureDef, m_swapchainImages[imageIdx], rhi::EMemoryUsage::GPUOnly);
 
 	return texture;
 }

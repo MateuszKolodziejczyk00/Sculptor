@@ -17,8 +17,9 @@ enum class EMemoryUsage : Flags8
 enum class EAllocationFlags : Flags8
 {
 	None							= 0,
-	CreateDedicatedAllocation		= BIT(0),
-	CreateMapped					= BIT(1)
+	Unknown							= BIT(0),
+	CreateDedicatedAllocation		= BIT(1),
+	CreateMapped					= BIT(2)
 };
 
 

@@ -4,12 +4,8 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
+#include "RHICore/RHIAllocationTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
-
-namespace spt::rhi
-{
-struct RHIAllocationInfo;
-}
 
 
 namespace spt::vulkan
@@ -21,13 +17,15 @@ public:
 
 	RHITexture();
 
-	void							InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle);
-	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation);
+	void							InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle, rhi::EMemoryUsage memoryUsage);
+	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationDef);
 	void							ReleaseRHI();
 
 	Bool							IsValid() const;
 
 	const rhi::TextureDefinition&	GetDefinition() const;
+	
+	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
 	VkImage							GetHandle() const;
 
@@ -48,6 +46,7 @@ private:
 	void							PreImageReleased();
 
 	rhi::TextureDefinition			m_definition;
+	rhi::RHIAllocationInfo			m_allocationInfo;
 
 	VkImage							m_imageHandle;
 

@@ -246,18 +246,21 @@ RHITexture::RHITexture()
     , m_allocation(VK_NULL_HANDLE)
 { }
 
-void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle)
+void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle, rhi::EMemoryUsage memoryUsage)
 {
     SPT_CHECK(!IsValid());
 
     m_imageHandle   = imageHandle;
     m_allocation    = VK_NULL_HANDLE;
     m_definition    = definition;
+
+    m_allocationInfo.memoryUsage = memoryUsage;
+    m_allocationInfo.allocationFlags = rhi::EAllocationFlags::Unknown;
     
     PostImageInitialized();
 }
 
-void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocation)
+void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationDef)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -276,11 +279,12 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
     imageInfo.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	const VmaAllocationCreateInfo allocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocation);
+	const VmaAllocationCreateInfo allocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocationDef);
 
 	SPT_VK_CHECK(vmaCreateImage(VulkanRHI::GetAllocatorHandle(), &imageInfo, &allocationInfo, &m_imageHandle, &m_allocation, nullptr));
 
     m_definition = definition;
+    m_allocationInfo = allocationDef;
 
     PostImageInitialized();
 }
@@ -300,6 +304,10 @@ void RHITexture::ReleaseRHI()
 
     m_imageHandle   = VK_NULL_HANDLE;
     m_allocation    = VK_NULL_HANDLE;
+
+    m_definition        = rhi::TextureDefinition();
+    m_allocationInfo    = rhi::RHIAllocationInfo();
+
     m_name.Reset();
 }
 
@@ -311,6 +319,11 @@ Bool RHITexture::IsValid() const
 const rhi::TextureDefinition& RHITexture::GetDefinition() const
 {
     return m_definition;
+}
+
+const rhi::RHIAllocationInfo& RHITexture::GetAllocationInfo() const
+{
+    return m_allocationInfo;
 }
 
 VkImage RHITexture::GetHandle() const
