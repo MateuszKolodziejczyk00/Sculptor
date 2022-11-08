@@ -5,6 +5,7 @@
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
+#include "Types/Texture.h"
 
 
 namespace spt::rg
@@ -26,7 +27,7 @@ enum class ERGResourceType
 enum class ERGResourceFlags : Flags32
 {
 	None = 0,
-	Persistent	= BIT(0),
+	External	= BIT(0),
 
 	Default = None
 };
@@ -58,11 +59,6 @@ public:
 		, m_flags(definition.flags)
 	{
 		SPT_CHECK(m_id != idxNone<RGResourceID>);
-	}
-
-	Bool IsValid() const
-	{
-		return m_id != idxNone<RGResourceID>;
 	}
 
 	RGResourceID GetID() const
@@ -97,10 +93,15 @@ public:
 		: m_id(idxNone<RGResourceID>)
 	{ }
 
-	RGResourceHandle(const RGResource& resource)
+	RGResourceHandle(const TResourceType& resource)
 		: m_id(resource.GetID())
 		, m_name(resource.GetName())
 	{ }
+
+	Bool IsValid() const
+	{
+		return GetID() != idxNone<RGResourceID>;
+	}
 
 	RGResourceID GetID() const
 	{
@@ -127,7 +128,20 @@ public:
 		: RGResource(resourceDefinition)
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
+		, m_extractionDest(nullptr)
 	{ }
+
+	RGTexture(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Texture> texture)
+		: RGResource(resourceDefinition)
+		, m_textureDefinition(texture->GetRHI().GetDefinition())
+		, m_allocationInfo(texture->GetRHI().GetAllocationInfo())
+		, m_texture(texture)
+		, m_extractionDest(nullptr)
+	{
+		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
+	}
+	
+	// Texture Definition ==================================================
 	
 	const rhi::TextureDefinition& GetTextureDefinition() const
 	{
@@ -139,10 +153,48 @@ public:
 		return m_allocationInfo;
 	}
 
+	// Texture Resource ====================================================
+
+	void AcquireResource(lib::SharedPtr<rdr::Texture> texture)
+	{
+		SPT_CHECK(!!m_texture);
+		m_texture = std::move(texture);
+	}
+
+	lib::SharedPtr<rdr::Texture> ReleaseResource()
+	{
+		lib::SharedPtr<rdr::Texture> texture = std::move(m_texture);
+		SPT_CHECK(!m_texture);
+		return texture;
+	}
+
+	// Extraction ==========================================================
+
+	void SetExtractionDestination(lib::SharedPtr<rdr::Texture>& destination)
+	{
+		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
+		m_extractionDest = &destination;
+	}
+
+	Bool IsExtracted() const
+	{
+		return !!m_extractionDest;
+	}
+
+	lib::SharedPtr<rdr::Texture>& GetExtractionDestChecked() const
+	{
+		SPT_CHECK(IsExtracted());
+		return *m_extractionDest;
+	}
+
 private:
 
 	rhi::TextureDefinition m_textureDefinition;
 	rhi::RHIAllocationInfo m_allocationInfo;
+
+	lib::SharedPtr<rdr::Texture> m_texture;
+
+	lib::SharedPtr<rdr::Texture>* m_extractionDest;
 };
 
 using RGTextureHandle = RGResourceHandle<RGTexture>;

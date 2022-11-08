@@ -6,6 +6,7 @@
 #include "RenderGraph.h"
 #include "Pipelines/PipelineState.h"
 #include "RGDescriptorSetState.h"
+#include "RGResources/RenderGraphResource.h"
 
 
 namespace spt::rg
@@ -25,15 +26,24 @@ public:
 
 	RenderGraphBuilder();
 
+	RGTextureHandle AcquireExternalTexture(lib::SharedPtr<rdr::Texture> texture);
+
+	RGTextureHandle CreateTexture(const RenderGraphDebugName& m_name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+
+	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
+
 	template<typename TDescriptorSetStatesRange>
-	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange)
-	{
-		
-	}
+	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange);
 
 private:
 
 	RenderGraph graph;
 };
+
+template<typename TDescriptorSetStatesRange>
+void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange)
+{
+
+}
 
 } // spt::rg

@@ -14,9 +14,9 @@ public:
 	explicit RenderGraphDebugName(const lib::HashedString& name)
 		: m_name(name)
 	{ }
-#else
-	RenderGraphDebugName() = default;
 #endif // DEBUG_RENDER_GRAPH
+
+	RenderGraphDebugName() = default;
 
 	const lib::HashedString& Get() const
 	{
