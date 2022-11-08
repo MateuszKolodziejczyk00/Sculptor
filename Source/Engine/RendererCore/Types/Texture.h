@@ -30,6 +30,8 @@ public:
 	Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 	Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture);
 
+	void Rename(const RendererResourceName& name);
+
 	const rhi::TextureDefinition&	GetDefinition() const;
 	const math::Vector3u&			GetResolution() const;
 	math::Vector2u					GetResolution2D() const;

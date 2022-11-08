@@ -19,8 +19,13 @@ public:
 
 #if RENDERER_VALIDATION
 
-	RendererResourceName(const lib::HashedString& name)
+	explicit RendererResourceName(const lib::HashedString& name)
 		: m_name(name)
+	{ }
+
+#else
+
+	explicit RendererResourceName(const lib::HashedString& name)
 	{ }
 
 #endif // RENDERER_VALIDATION

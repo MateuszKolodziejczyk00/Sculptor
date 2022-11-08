@@ -23,6 +23,11 @@ Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTex
 	GetRHI().SetName(name.Get());
 }
 
+void Texture::Rename(const RendererResourceName& name)
+{
+	GetRHI().SetName(name.Get());
+}
+
 const rhi::TextureDefinition& Texture::GetDefinition() const
 {
 	return GetRHI().GetDefinition();
