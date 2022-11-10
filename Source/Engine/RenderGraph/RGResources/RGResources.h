@@ -7,17 +7,15 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
 #include "Types/Texture.h"
+#include "RGResources/RGNode.h"
 
 
 namespace spt::rg
 {
 
-class RGNode;
-
-
-class ERGAccess
+enum class ERGAccess
 {
-	
+	Unknown
 };
 
 
@@ -74,20 +72,110 @@ private:
 };
 
 
-class RGTextureSubresourceLayout
+struct RGTextureSubresourcesRange
 {
-public:
+	explicit RGTextureSubresourcesRange(Uint32 inFirstMipMapIdx = 0, Uint32 mipMapsNum = 1, Uint32 inFirstLayerIdx = 0, Uint32 inLayersNum = 1)
+		: firstMipMapIdx(inFirstMipMapIdx)
+		, mipMapsNum(mipMapsNum)
+		, firstLayerIdx(inFirstLayerIdx)
+		, layersNum(inLayersNum)
+	{ }
 
-
-	
+	Uint32 firstMipMapIdx;
+	Uint32 mipMapsNum;
+	Uint32 firstLayerIdx;
+	Uint32 layersNum;
 };
 
 
-class RGTextureLayout
+struct RGTextureSubresourceAccessState
+{
+	RGTextureSubresourceAccessState()
+		: lastAccess(ERGAccess::Unknown)
+	{ }
+
+	ERGAccess		lastAccess;
+	RGNodeHandle	lastProducerNode;
+};
+
+
+class RGTextureAccessState
 {
 public:
 
+	RGTextureAccessState(Uint32 inTextureMipsNum, Uint32 inTextureLayersNum)
+		: textureMipsNum(inTextureLayersNum)
+		, textureLayersNum(inTextureLayersNum)
+	{ }
 
+	Bool IsFullResource() const
+	{
+		return m_subresourcesAccesses.size() == 1;
+	}
+
+	RGTextureSubresourceAccessState& GetForSubresource(Uint32 mipMapIdx, Uint32 layerIdx)
+	{
+		SPT_CHECK(mipMapIdx < textureMipsNum && layerIdx < textureLayersNum);
+
+		if (IsFullResource())
+		{
+			return m_subresourcesAccesses[0];
+		}
+
+		return m_subresourcesAccesses[GetSubresourceIdx(mipMapIdx, layerIdx)];
+	}
+
+	void SetSubresourcesAccess(const RGTextureSubresourceAccessState& access, const RGTextureSubresourcesRange& range)
+	{
+		if (IsFullResource())
+		{
+			if (IsRangeForFullResource(range))
+			{
+				m_subresourcesAccesses[0] = access;
+				return;
+			}
+			else
+			{
+				m_subresourcesAccesses.resize(static_cast<SizeType>(textureLayersNum * textureMipsNum));
+			}
+		}
+
+		const Uint32 lastLayerIdx = range.firstLayerIdx + range.layersNum;
+		const Uint32 lastMipIdx = range.firstMipMapIdx + range.mipMapsNum;
+
+		for (Uint32 layerIdx = range.firstLayerIdx; layerIdx < lastLayerIdx; ++layerIdx)
+		{
+			for (Uint32 mipIdx = range.firstMipMapIdx; mipIdx < lastMipIdx; ++mipIdx)
+			{
+				m_subresourcesAccesses[GetSubresourceIdx(mipIdx, layerIdx)] = access;
+			}
+		}
+	}
+
+	void MergeTo(const RGTextureSubresourceAccessState& access)
+	{
+		m_subresourcesAccesses.resize(1);
+		m_subresourcesAccesses[0] = access;
+	}
+
+private:
+
+	inline SizeType GetSubresourceIdx(Uint32 mipMapIdx, Uint32 layerIdx) const
+	{
+		return static_cast<SizeType>(layerIdx * textureMipsNum + mipMapIdx);
+	}
+
+	Bool IsRangeForFullResource(const RGTextureSubresourcesRange& range) const
+	{
+		return range.firstLayerIdx == 0
+			&& range.firstMipMapIdx == 0
+			&& range.layersNum == textureLayersNum
+			&& range.mipMapsNum == textureMipsNum;
+	}
+
+	Uint32 textureMipsNum;
+	Uint32 textureLayersNum;
+	lib::DynamicArray<RGTextureSubresourceAccessState> m_subresourcesAccesses;
 };
 
 
@@ -99,6 +187,7 @@ public:
 		: RGResource(resourceDefinition)
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
+		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
 		, m_extractionDest(nullptr)
 	{ }
 
@@ -107,6 +196,7 @@ public:
 		, m_textureDefinition(texture->GetRHI().GetDefinition())
 		, m_allocationInfo(texture->GetRHI().GetAllocationInfo())
 		, m_texture(texture)
+		, m_accessState(texture->GetRHI().GetDefinition().mipLevels, texture->GetRHI().GetDefinition().arrayLayers)
 		, m_extractionDest(nullptr)
 	{
 		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
@@ -158,12 +248,21 @@ public:
 		return *m_extractionDest;
 	}
 
+	// Access State ========================================================
+
+	RGTextureAccessState& GetAccessState()
+	{
+		return m_accessState;
+	}
+
 private:
 
 	rhi::TextureDefinition m_textureDefinition;
 	rhi::RHIAllocationInfo m_allocationInfo;
 
 	lib::SharedPtr<rdr::Texture> m_texture;
+
+	RGTextureAccessState m_accessState;
 
 	lib::SharedPtr<rdr::Texture>* m_extractionDest;
 };

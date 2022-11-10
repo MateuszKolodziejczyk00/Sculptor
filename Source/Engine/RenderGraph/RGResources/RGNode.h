@@ -2,7 +2,7 @@
 
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RGResources/RGResources.h"
+#include "RGResources/RGTrackedResource.h"
 
 
 namespace spt::rg
@@ -30,15 +30,6 @@ public:
 private:
 
 	std::function<RGExecuteFunctionType> executeFunction;
-
-	struct TextureViewAccess
-	{
-		RGTextureView texture;
-		ERGAccess prevAccess;
-		ERGAccess access;
-	};
-
-	lib::DynamicArray<TextureViewAccess> m_textureViewAccesses;
 };
 
 
