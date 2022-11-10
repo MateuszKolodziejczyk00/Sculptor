@@ -6,10 +6,14 @@
 #include "Pipelines/PipelineState.h"
 #include "RGDescriptorSetState.h"
 #include "RGResources/RenderGraphResource.h"
+#include "Allocator/RenderGraphAllocator.h"
 
 
 namespace spt::rg
 {
+
+class CommandRecorder;
+
 
 template<typename... TDescriptorSetStates>
 auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
@@ -17,6 +21,38 @@ auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 	constexpr SizeType size = lib::ParameterPackSize<TDescriptorSetStates...>::Count;
 	return lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetState>, size>{ descriptorSetStates... };
 }
+
+
+using RGExecuteFunctionType = void(const lib::SharedPtr<CommandRecorder>& /*recorder*/);
+
+
+class RENDER_GRAPH_API RGNode
+{
+public:
+
+	RGNode();
+
+	template<typename TCallable>
+	void SetExecuteFunction(TCallable&& callable)
+	{
+		executeFunction = std::forward<TCallable>(callable);
+	}
+
+	void Execute(const lib::SharedPtr<CommandRecorder>& recorder);
+
+private:
+
+	std::function<RGExecuteFunctionType> executeFunction;
+
+	struct TextureViewAccess
+	{
+		RGTextureView texture;
+		ERGAccess prevAccess;
+		ERGAccess access;
+	};
+
+	lib::DynamicArray<TextureViewAccess> m_textureViewAccesses;
+};
 
 
 class RENDER_GRAPH_API RenderGraphBuilder
@@ -36,13 +72,13 @@ public:
 
 private:
 
-	lib::HashMap<RGResourceID, RGTexture> m_textureResources;
-
-	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGResourceID> m_externalTextures;
+	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
 
-	RGResourceID resourceIDCounter;
+	lib::DynamicArray<RGNode*> m_nodes;
+
+	RenderGraphAllocator allocator;
 };
 
 template<typename TDescriptorSetStatesRange>

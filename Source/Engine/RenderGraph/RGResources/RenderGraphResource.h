@@ -6,6 +6,7 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
 #include "Types/Texture.h"
+#include "Allocator/RenderGraphAllocator.h"
 
 
 namespace spt::rg
@@ -33,38 +34,25 @@ enum class ERGResourceFlags : Flags32
 };
 
 
-using RGResourceID = SizeType;
-
-
 struct RGResourceDef
 {
 	RGResourceDef()
-		: id(idxNone<RGResourceID>)
-		, flags(ERGResourceFlags::None)
+		: flags(ERGResourceFlags::None)
 	{ }
 
-	RGResourceID			id;
 	RenderGraphDebugName	name;
 	ERGResourceFlags		flags;
 };
 
 
-class RGResource abstract
+class RGResource abstract : public RGTrackedResource
 {
 public:
 
 	explicit RGResource(const RGResourceDef& definition)
-		: m_id(definition.id)
-		, m_name(definition.name)
+		: m_name(definition.name)
 		, m_flags(definition.flags)
-	{
-		SPT_CHECK(m_id != idxNone<RGResourceID>);
-	}
-
-	RGResourceID GetID() const
-	{
-		return m_id;
-	}
+	{ }
 
 	const lib::HashedString& GetName() const
 	{
@@ -78,7 +66,6 @@ public:
 
 private:
 
-	RGResourceID			m_id;
 	RenderGraphDebugName	m_name;
 	ERGResourceFlags		m_flags;
 };
@@ -90,38 +77,36 @@ class RGResourceHandle
 public:
 
 	RGResourceHandle()
-		: m_id(idxNone<RGResourceID>)
+		: m_resource(nullptr)
 	{ }
 
-	RGResourceHandle(RGResourceID id, const RenderGraphDebugName& name)
-		: m_id(id)
-		, m_name(name)
-	{ }
-
-	explicit RGResourceHandle(const TResourceType& resource)
-		: m_id(resource.GetID())
-		, m_name(resource.GetName())
+	RGResourceHandle(TResourceType* resource)
+		: m_resource(resource)
 	{ }
 
 	Bool IsValid() const
 	{
-		return GetID() != idxNone<RGResourceID>;
+		return !!m_resource;
 	}
 
-	RGResourceID GetID() const
+	TResourceType* Get() const
 	{
-		return m_id;
+		return m_resource;
 	}
 
-	const lib::HashedString& GetName() const
+	TResourceType* operator->() const
 	{
-		return m_name;
+		return m_resource;
+	}
+
+	void Reset()
+	{
+		m_resource = nullptr;
 	}
 
 private:
 
-	RGResourceID			m_id;
-	RenderGraphDebugName	m_name;
+	TResourceType* m_resource;
 };
 
 

@@ -7,7 +7,7 @@
 namespace spt::lib
 {
 
-template<typename TType, SizeType memChunkSize = 1024 * 1024>
+template<typename TTrackedType, SizeType memChunkSize = 1024 * 1024>
 class StackTrackingAllocator
 {
 public:
@@ -19,19 +19,21 @@ public:
 		Deallocate();
 	}
 
-	template<typename... TArgs>
+	template<typename TType, typename... TArgs>
 	TType* Allocate(TArgs&&... args)
 	{
-		TType* object = AllocateUntracked(std::forward<TArgs>(args)...);
+		TType* object = AllocateUntracked<TType>(std::forward<TArgs>(args)...);
 		m_trackedObjects.emplace_back(object);
 		return object;
 	}
 
-	template<typename... TArgs>
+	template<typename TType, typename... TArgs>
 	TType* AllocateUntracked(TArgs&&... args)
 	{
-		constexpr SizeType size			= sizeof(TType);
-		constexpr SizeType alignment	= alignof(TType);
+		static_assert(std::is_base_of_v<TTrackedType, TType>);
+
+		constexpr SizeType size			= sizeof(TTrackedType);
+		constexpr SizeType alignment	= alignof(TTrackedType);
 
 		void* memoryPtr = m_stackMemory.Allocate(size, alignment);
 
@@ -40,10 +42,12 @@ public:
 
 	void Deallocate()
 	{
-		for (TType* trackedObj : m_trackedObjects)
+		for (TTrackedType* trackedObj : m_trackedObjects)
 		{
-			trackedObj->~TType();
+			trackedObj->~TTrackedType();
 		}
+
+		m_trackedObjects.clear();
 	}
 
 private:
@@ -52,7 +56,7 @@ private:
 
 	StackMemoryType m_stackMemory;
 
-	lib::DynamicArray<TType*> m_trackedObjects;
+	lib::DynamicArray<TTrackedType*> m_trackedObjects;
 };
 
 } // spt::lib
