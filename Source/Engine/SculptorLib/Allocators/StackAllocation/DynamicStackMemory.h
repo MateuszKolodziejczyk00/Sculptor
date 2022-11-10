@@ -3,13 +3,14 @@
 #include "SculptorAliases.h"
 #include "ProfilerCore.h"
 #include "MathUtils.h"
+#include "Utility/NonCopyable.h"
 
 
 namespace spt::lib
 {
 
 template<SizeType chunkSize>
-class DynamicStackMemory
+class DynamicStackMemory : public  NonCopyable
 {
 public:
 
