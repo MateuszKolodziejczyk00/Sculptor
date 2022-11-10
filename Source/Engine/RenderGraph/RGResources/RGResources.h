@@ -2,15 +2,18 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
+#include "RGResources/RGTrackedResource.h"
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
 #include "Types/Texture.h"
-#include "Allocator/RenderGraphAllocator.h"
 
 
 namespace spt::rg
 {
+
+class RGNode;
+
 
 class ERGAccess
 {
@@ -71,42 +74,20 @@ private:
 };
 
 
-template<typename TResourceType>
-class RGResourceHandle
+class RGTextureSubresourceLayout
 {
 public:
 
-	RGResourceHandle()
-		: m_resource(nullptr)
-	{ }
 
-	RGResourceHandle(TResourceType* resource)
-		: m_resource(resource)
-	{ }
+	
+};
 
-	Bool IsValid() const
-	{
-		return !!m_resource;
-	}
 
-	TResourceType* Get() const
-	{
-		return m_resource;
-	}
+class RGTextureLayout
+{
+public:
 
-	TResourceType* operator->() const
-	{
-		return m_resource;
-	}
 
-	void Reset()
-	{
-		m_resource = nullptr;
-	}
-
-private:
-
-	TResourceType* m_resource;
 };
 
 

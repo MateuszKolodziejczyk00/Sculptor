@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RGResources/RenderGraphResource.h"
+#include "RenderGraphTypes.h"
 #include "Types/Texture.h"
 
 namespace spt::rg
