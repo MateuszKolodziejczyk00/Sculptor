@@ -555,6 +555,18 @@ VkBorderColor RHIToVulkan::GetBorderColor(rhi::EBorderColor color)
 	}
 }
 
+VkEventCreateFlags RHIToVulkan::GetEventFlags(rhi::EEventFlags eventFlags)
+{
+	VkEventCreateFlags flags = 0;
+
+	if (lib::HasAnyFlag(eventFlags, rhi::EEventFlags::GPUOnly))
+	{
+		lib::AddFlag(flags, VK_EVENT_CREATE_DEVICE_ONLY_BIT);
+	}
+
+	return flags;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 

@@ -8,6 +8,7 @@
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 #include "RHICore/RHIPipelineDefinitionTypes.h"
 #include "RHICore/RHISamplerTypes.h"
+#include "RHICore/RHISynchronizationTypes.h"
 
 
 namespace spt::vulkan
@@ -66,6 +67,8 @@ public:
 	static VkSamplerAddressMode				GetAxisAddressingMode(rhi::EAxisAddressingMode mode);
 
 	static VkBorderColor					GetBorderColor(rhi::EBorderColor color);
+
+	static VkEventCreateFlags				GetEventFlags(rhi::EEventFlags eventFlags);
 };
 
 struct VulkanToRHI

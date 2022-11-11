@@ -3,7 +3,7 @@
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
-#include "RHICore/RHITextureTypes.h"
+#include "RHICore/RHISynchronizationTypes.h"
 
 
 namespace spt::vulkan
