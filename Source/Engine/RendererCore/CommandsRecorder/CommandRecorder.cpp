@@ -7,6 +7,7 @@
 #include "Types/UIBackend.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
+#include "Types/Event.h"
 
 namespace spt::rdr
 {
@@ -70,6 +71,30 @@ void CommandRecorder::ExecuteBarrier(rhi::RHIDependency dependency)
 							 SPT_PROFILER_SCOPE("ExecuteBarrier Command");
 							
 							 localDependency.ExecuteBarrier(cmdBuffer->GetRHI());
+						 });
+}
+
+void CommandRecorder::SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([event, localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+						 {
+							 SPT_PROFILER_SCOPE("SetEvent Command");
+							
+							 localDependency.SetEvent(cmdBuffer->GetRHI(), event->GetRHI());
+						 });
+}
+
+void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([event, localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+						 {
+							 SPT_PROFILER_SCOPE("WaitEvent Command");
+							
+							 localDependency.WaitEvent(cmdBuffer->GetRHI(), event->GetRHI());
 						 });
 }
 

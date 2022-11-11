@@ -19,6 +19,7 @@ class UIBackend;
 class RenderContext;
 class DescriptorSetState;
 class Texture;
+class Event;
 
 
 struct CommandsRecordingInfo
@@ -55,6 +56,9 @@ public:
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
 	void									ExecuteBarrier(rhi::RHIDependency dependency);
+
+	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
+	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();

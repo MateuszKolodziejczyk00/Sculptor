@@ -23,6 +23,7 @@ struct ShaderModuleDefinition;
 struct GraphicsPipelineDefinition;
 struct ShaderModuleDefinition;
 struct SamplerDefinition;
+struct EventDefinition;
 } // spt::rhi
 
 
@@ -43,6 +44,7 @@ namespace spt::rdr
 
 class RenderContext;
 class Window;
+class Event;
 class Buffer;
 class Texture;
 class Semaphore;
@@ -60,6 +62,8 @@ public:
 	SPT_NODISCARD static lib::SharedRef<RenderContext>		CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 	
 	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
+
+	SPT_NODISCARD static lib::SharedRef<Event>				CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	
 	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 	SPT_NODISCARD static lib::SharedRef<Texture>			CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);

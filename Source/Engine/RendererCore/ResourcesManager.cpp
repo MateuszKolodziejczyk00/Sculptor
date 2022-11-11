@@ -13,6 +13,7 @@
 #include "Types/Shader.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
+#include "Types/Event.h"
 
 
 namespace spt::rdr
@@ -26,6 +27,11 @@ lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererReso
 lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, math::Vector2u resolution)
 {
 	return lib::MakeShared<Window>(name, resolution);
+}
+
+lib::SharedRef<Event> ResourcesManager::CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition)
+{
+	return lib::MakeShared<Event>(name, definition);
 }
 
 lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
