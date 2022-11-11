@@ -55,7 +55,10 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	rdr::Renderer::Initialize();
 
-	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", math::Vector2u(1920, 1080));
+	rhi::RHIWindowInitializationInfo windowInitInfo;
+	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
+	windowInitInfo.enableVSync = true;
+	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", windowInitInfo);
 
 	rdr::Renderer::PostCreatedWindow();
 }

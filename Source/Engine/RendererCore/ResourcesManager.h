@@ -24,6 +24,7 @@ struct GraphicsPipelineDefinition;
 struct ShaderModuleDefinition;
 struct SamplerDefinition;
 struct EventDefinition;
+struct RHIWindowInitializationInfo;
 } // spt::rhi
 
 
@@ -61,7 +62,7 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<RenderContext>		CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 	
-	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, math::Vector2u resolution);
+	SPT_NODISCARD static lib::SharedRef<Window>				CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
 
 	SPT_NODISCARD static lib::SharedRef<Event>				CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	

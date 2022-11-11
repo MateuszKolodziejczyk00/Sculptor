@@ -3,13 +3,8 @@
 #include "RHIMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Vulkan/VulkanCore.h"
+#include "RHICore/RHIInitialization.h"
 #include "RHITexture.h"
-
-
-namespace spt::rhi
-{
-struct RHIWindowInitializationInfo;
-}
 
 
 namespace spt::vulkan

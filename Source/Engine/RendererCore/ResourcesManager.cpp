@@ -24,9 +24,9 @@ lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererReso
 	return lib::MakeShared<RenderContext>(name, contextDef);
 }
 
-lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, math::Vector2u resolution)
+lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)
 {
-	return lib::MakeShared<Window>(name, resolution);
+	return lib::MakeShared<Window>(name, windowInfo);
 }
 
 lib::SharedRef<Event> ResourcesManager::CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition)

@@ -24,7 +24,7 @@ protected:
 
 public:
 
-	Window(lib::StringView name, math::Vector2u resolution);
+	Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
 
 	Bool						ShouldClose() const;
 

@@ -8,16 +8,12 @@
 namespace spt::rdr
 {
 
-Window::Window(lib::StringView name, math::Vector2u resolution)
-	: m_platformWindow(std::make_unique<platf::PlatformWindow>(name, resolution))
+Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)
+	: m_platformWindow(std::make_unique<platf::PlatformWindow>(name, windowInfo.framebufferSize))
 {
 	rhi::RHI::InitializeGPUForWindow();
 
-	rhi::RHIWindowInitializationInfo initInfo;
-	initInfo.framebufferSize = m_platformWindow->GetFramebufferSize();
-	initInfo.minImageCount = RendererUtils::GetFramesInFlightNum();
-
-	GetRHI().InitializeRHI(initInfo);
+	GetRHI().InitializeRHI(windowInfo);
 }
 
 Bool Window::ShouldClose() const
