@@ -112,4 +112,9 @@ ed::TestDS& SandboxRenderer::GetDescriptorSet()
 	return *m_descriptorSet;
 }
 
+const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
+{
+	return m_window;
+}
+
 } // spt::ed

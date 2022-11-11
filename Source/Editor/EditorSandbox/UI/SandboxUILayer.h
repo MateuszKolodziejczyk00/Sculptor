@@ -28,6 +28,8 @@ protected:
 
 private:
 
+	void DrawRendererSettings();
+
 	void DrawJobSystemTestsUI();
 
 	const SandboxRenderer* m_renderer;

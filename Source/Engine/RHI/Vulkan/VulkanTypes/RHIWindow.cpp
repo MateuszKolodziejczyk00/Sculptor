@@ -43,6 +43,7 @@ RHIWindow::RHIWindow()
 	: m_swapchain(VK_NULL_HANDLE)
 	, m_surface(VK_NULL_HANDLE)
 	, m_minImagesNum(idxNone<Uint32>)
+	, m_enableVSync(false)
 	, m_swapchainOutOfDate(false)
 	, m_swapchainSize(0, 0)
 { }
@@ -52,9 +53,9 @@ RHIWindow::RHIWindow(RHIWindow&& rhs)
 	, m_swapchainImages(std::move(rhs.m_swapchainImages))
 	, m_swapchainTextureDef(rhs.m_swapchainTextureDef)
 	, m_surface(rhs.m_surface)
-	, m_presentMode(rhs.m_presentMode)
 	, m_surfaceFormat(rhs.m_surfaceFormat)
 	, m_minImagesNum(rhs.m_minImagesNum)
+	, m_enableVSync(rhs.m_enableVSync)
 	, m_swapchainOutOfDate(rhs.m_swapchainOutOfDate)
 	, m_swapchainSize(rhs.m_swapchainSize)
 {
@@ -67,9 +68,9 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 	m_swapchainImages		= std::move(rhs.m_swapchainImages);
 	m_swapchainTextureDef	= rhs.m_swapchainTextureDef;
 	m_surface				= rhs.m_surface;
-	m_presentMode			= rhs.m_presentMode;
 	m_surfaceFormat			= rhs.m_surfaceFormat;
 	m_minImagesNum			= rhs.m_minImagesNum;
+	m_enableVSync			= rhs.m_enableVSync;
 	m_swapchainOutOfDate	= rhs.m_swapchainOutOfDate;
 	m_swapchainSize			= rhs.m_swapchainSize;
 
@@ -84,7 +85,8 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	SPT_CHECK(!IsValid());
 
-	m_minImagesNum = windowInfo.minImageCount;
+	m_minImagesNum	= windowInfo.minImageCount;
+	m_enableVSync	= windowInfo.enableVSync;
 
 	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();
 	const VkPhysicalDevice physicalDeviceHandle		= VulkanRHI::GetPhysicalDeviceHandle();
@@ -121,10 +123,6 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 	};
 	const VkColorSpaceKHR requestedColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 	m_surfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(physicalDeviceHandle, m_surface, requestSurfaceImageFormats, SPT_ARRAY_SIZE(requestSurfaceImageFormats), requestedColorSpace);
-
-	const VkPresentModeKHR requestedPresentModes[] = { VK_PRESENT_MODE_FIFO_KHR };
-
-	m_presentMode = ImGui_ImplVulkanH_SelectPresentMode(physicalDeviceHandle, surfaceHandle, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
 	RebuildSwapchain(windowInfo.framebufferSize);
 }
@@ -241,6 +239,20 @@ math::Vector2u RHIWindow::GetSwapchainSize() const
 	return m_swapchainSize;
 }
 
+Bool RHIWindow::IsVSyncEnabled() const
+{
+	return m_enableVSync;
+}
+
+void RHIWindow::SetVSyncEnabled(Bool newValue)
+{
+	if (m_enableVSync != newValue)
+	{
+		m_enableVSync = newValue;
+		m_swapchainOutOfDate = true;
+	}
+}
+
 VkFormat RHIWindow::GetSurfaceFormat() const
 {
 	return m_surfaceFormat.format;
@@ -254,6 +266,9 @@ VkSwapchainKHR RHIWindow::GetSwapchainHandle() const
 VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const VkPresentModeKHR requestedPresentModes[] = { m_enableVSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR };
+	const VkPresentModeKHR presentMode = ImGui_ImplVulkanH_SelectPresentMode(VulkanRHI::GetPhysicalDeviceHandle(), m_surface, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
 	const VkFormat swapchainTextureFormat			= m_surfaceFormat.format;
 	const VkImageUsageFlags swapchainTextureUsage	= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -273,7 +288,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	swapchainInfo.imageSharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 	swapchainInfo.preTransform				= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	swapchainInfo.compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapchainInfo.presentMode				= m_presentMode;
+	swapchainInfo.presentMode				= presentMode;
 	swapchainInfo.clipped					= VK_TRUE;
 	swapchainInfo.oldSwapchain				= oldSwapchain;
 
@@ -312,4 +327,4 @@ void RHIWindow::SetSwapchainOutOfDate()
 	m_swapchainOutOfDate = true;
 }
 
-}
+} // spt::vulkan

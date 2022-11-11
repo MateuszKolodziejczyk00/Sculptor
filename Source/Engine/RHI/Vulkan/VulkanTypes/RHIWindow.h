@@ -50,6 +50,9 @@ public:
 
 	math::Vector2u				GetSwapchainSize() const;
 
+	Bool						IsVSyncEnabled() const;
+	void						SetVSyncEnabled(Bool newValue);
+
 	// Vulkan Specific ============================================
 
 	VkFormat					GetSurfaceFormat() const;
@@ -72,14 +75,14 @@ private:
 
 	VkSurfaceKHR				m_surface;
 
-	VkPresentModeKHR			m_presentMode;
 	VkSurfaceFormatKHR			m_surfaceFormat;
 
 	Uint32						m_minImagesNum;
+	Bool						m_enableVSync;
 
 	Bool						m_swapchainOutOfDate;
 
 	math::Vector2u				m_swapchainSize;
 };
 
-}
+} // spt::vulkan

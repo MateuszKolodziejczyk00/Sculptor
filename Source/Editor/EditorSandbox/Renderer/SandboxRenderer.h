@@ -47,6 +47,8 @@ public:
 
 	TestDS& GetDescriptorSet();
 
+	const lib::SharedPtr<rdr::Window>& GetWindow() const;
+
 private:
 
 	lib::SharedPtr<rdr::Window>		m_window;

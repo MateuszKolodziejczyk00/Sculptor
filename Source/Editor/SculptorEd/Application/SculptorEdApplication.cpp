@@ -175,6 +175,20 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 {
 	SPT_PROFILER_FUNCTION();
 
+	const auto onSwapchainOutOfDateBeforeRendering = [this]()
+	{
+		rdr::Renderer::WaitIdle();
+		m_window->RebuildSwapchain();
+		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
+	};
+
+	// Additional check in case of changing swapchain settings in application
+	if (m_window->IsSwapchainOutOfDate())
+	{
+		onSwapchainOutOfDateBeforeRendering();
+		return;
+	}
+
 	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
 
@@ -182,9 +196,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 	if (m_window->IsSwapchainOutOfDate())
 	{
-		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
-		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
+		onSwapchainOutOfDateBeforeRendering();
 		return;
 	}
 

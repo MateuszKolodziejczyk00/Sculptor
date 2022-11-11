@@ -4,6 +4,7 @@
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
 #include "UIElements/UIWindowTypes.h"
+#include "Types/Window.h"
 
 namespace spt::ed
 {
@@ -33,10 +34,25 @@ void SandboxUILayer::DrawUI()
 	ImGui::Begin("SandboxUI");
 	
 	ImGui::Separator();
+	DrawRendererSettings();
+	ImGui::Separator();
 	DrawJobSystemTestsUI();
 	ImGui::Separator();
 
 	ImGui::End();
+}
+
+void SandboxUILayer::DrawRendererSettings()
+{
+	ImGui::Text("Renderer Settings");
+
+	const lib::SharedPtr<rdr::Window>& window = m_renderer->GetWindow();
+
+	Bool vsyncEnabled = window->GetRHI().IsVSyncEnabled();
+	if (ImGui::Checkbox("Enable VSync", &vsyncEnabled))
+	{
+		window->GetRHI().SetVSyncEnabled(vsyncEnabled);
+	}
 }
 
 void SandboxUILayer::DrawJobSystemTestsUI()
