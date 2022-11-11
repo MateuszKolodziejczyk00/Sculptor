@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RGResources/RenderGraphResource.h"
+#include "RGResources/RGResourceHandles.h"
 
 
 namespace spt::rg

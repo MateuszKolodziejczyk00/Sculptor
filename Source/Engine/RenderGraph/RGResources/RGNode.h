@@ -19,20 +19,35 @@ public:
 
 	RGNode();
 
-	template<typename TCallable>
-	void SetExecuteFunction(TCallable&& callable)
-	{
-		executeFunction = std::forward<TCallable>(callable);
-	}
-
 	void Execute(const lib::SharedPtr<CommandRecorder>& recorder);
 
-private:
+protected:
 
-	std::function<RGExecuteFunctionType> executeFunction;
+	virtual void OnExecute(const lib::SharedPtr<CommandRecorder>& recorder) = 0;
 };
 
 
-using RGNodeHandle = RGResourceHandle<RGNode>;
+template<typename TCallable>
+class RGLambdaNode
+{
+public:
+
+	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedPtr<CommandRecorder>&>));
+
+	explicit RGLambdaNode(TCallable callable)
+		: m_callable(std::move(callable))
+	{ }
+
+protected:
+
+	virtual void OnExecute(const lib::SharedPtr<CommandRecorder>& recorder) override
+	{
+		m_callable(recorder);
+	}
+
+private:
+
+	TCallable m_callable;
+};
 
 } // spt::rg

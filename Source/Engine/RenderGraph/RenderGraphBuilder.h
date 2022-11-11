@@ -7,6 +7,7 @@
 #include "RGDescriptorSetState.h"
 #include "RGResources/RGResources.h"
 #include "RGResources/RGAllocator.h"
+#include "DependenciesBuilder.h"
 
 
 namespace spt::rg
@@ -16,7 +17,7 @@ template<typename... TDescriptorSetStates>
 auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 {
 	constexpr SizeType size = lib::ParameterPackSize<TDescriptorSetStates...>::Count;
-	return lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetState>, size>{ descriptorSetStates... };
+	return lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetStateBase>, size>{ descriptorSetStates... };
 }
 
 
@@ -51,7 +52,26 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK_NO_ENTRY();
+	const auto executeLambda = [](const lib::SharedPtr<CommandRecorder>& recorder)
+	{
+
+	};
+
+	using LambdaType = decltype(executeLambda);
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType* node = allocator.Allocate<NodeType>(std::move(executeLambda));
+
+	RGDependenciesBuilder dependenciesBuilder;
+	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
+	{
+		stateToBind->BuildRGDependencies(dependenciesBuilder);
+	}
+
+	for (const RGTextureAccessDef& textureAccessDef : dependenciesBuilder.GetTextureAccesses())
+	{
+		const RGTextureHandle texture = textureAccessDef.textureView.GetTexture();
+	}
 }
 
 } // spt::rg

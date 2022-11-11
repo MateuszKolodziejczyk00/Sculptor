@@ -10,16 +10,26 @@ namespace spt::rg
 class RGDependenciesBuilder;
 
 
+class RGDescriptorSetStateBase abstract : public rdr::DescriptorSetState
+{
+public:
+
+	RGDescriptorSetStateBase() = default;
+
+	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const = 0;
+};
+
+
 template<typename TInstanceType>
-class RGDescriptorSetState abstract : public rdr::DescriptorSetState
+class RGDescriptorSetState abstract : public RGDescriptorSetStateBase
 {
 public:
 
 	RGDescriptorSetState() = default;
 
-	void BuildRGDependencies(RGDependenciesBuilder& builder)
+	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const override
 	{
-		TInstanceType& self = SelfAsInstance();
+		const TInstanceType& self = SelfAsInstance();
 		const auto& bindingsBegin = self.GetBindingsBegin();
 		rdr::bindings_refl::ForEachBinding(bindingsBegin, [&builder]<typename TBindingHandle>(const TBindingHandle& bindingHandle)
 		{
@@ -38,7 +48,7 @@ public:
 
 private:
 
-	TInstanceType& SelfAsInstance()
+	const TInstanceType& SelfAsInstance() const
 	{
 		return *static_cast<TInstanceType*>(this);
 	}

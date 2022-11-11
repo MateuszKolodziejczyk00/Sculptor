@@ -8,6 +8,7 @@
 #include "RHICore/RHIBufferTypes.h"
 #include "Types/Texture.h"
 #include "RGResources/RGNode.h"
+#include "RGResources/RGResourceHandles.h"
 
 
 namespace spt::rg
@@ -65,10 +66,35 @@ public:
 		return m_flags;
 	}
 
+	void SetAcquireNode(RGNodeHandle node)
+	{
+		m_acquireNode = node;
+	}
+
+	RGNodeHandle GetAcquireNode() const
+	{
+		return m_acquireNode;
+	}
+
+	void SetReleaseNode(RGNodeHandle node)
+	{
+		m_releaseNode = node;
+	}
+
+	RGNodeHandle GetReleaseNode() const
+	{
+		return m_releaseNode;
+	}
+
 private:
 
 	RenderGraphDebugName	m_name;
 	ERGResourceFlags		m_flags;
+
+	// Node that initializes this resource
+	RGNodeHandle	m_acquireNode;
+	// Node that releases this resource
+	RGNodeHandle	m_releaseNode;
 };
 
 
@@ -93,6 +119,10 @@ struct RGTextureSubresourceAccessState
 	RGTextureSubresourceAccessState()
 		: lastAccess(ERGAccess::Unknown)
 	{ }
+	RGTextureSubresourceAccessState(ERGAccess inLastAccess, RGNodeHandle inLastProducer)
+		: lastAccess(inLastAccess)
+		, lastProducerNode(inLastProducer)
+	{ }
 
 	ERGAccess		lastAccess;
 	RGNodeHandle	lastProducerNode;
@@ -106,7 +136,10 @@ public:
 	RGTextureAccessState(Uint32 inTextureMipsNum, Uint32 inTextureLayersNum)
 		: textureMipsNum(inTextureLayersNum)
 		, textureLayersNum(inTextureLayersNum)
-	{ }
+	{
+		m_subresourcesAccesses.resize(1);
+		m_subresourcesAccesses[0] = RGTextureSubresourceAccessState(ERGAccess::Unknown, nullptr);
+	}
 
 	Bool IsFullResource() const
 	{
@@ -267,8 +300,6 @@ private:
 	lib::SharedPtr<rdr::Texture>* m_extractionDest;
 };
 
-using RGTextureHandle = RGResourceHandle<RGTexture>;
-
 
 class RGTextureView
 {
@@ -323,6 +354,19 @@ private:
 	rhi::RHIAllocationInfo	m_allocationInfo;
 };
 
-using RGBufferHandle = RGResourceHandle<RGBuffer>;
-
 } // spt::rg
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::rg::RGTextureAccessState>
+{
+	size_t operator()(const spt::rg::RGTextureSubresourceAccessState& accessState) const
+	{
+		return spt::lib::HashCombine(accessState.lastAccess, accessState.lastProducerNode);
+	}
+};
+
+} // std
