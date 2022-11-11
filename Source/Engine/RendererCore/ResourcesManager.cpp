@@ -48,11 +48,6 @@ lib::SharedRef<CommandBuffer> ResourcesManager::CreateCommandBuffer(const Render
 	return lib::MakeShared<CommandBuffer>(name, renderContext, definition);
 }
 
-Barrier ResourcesManager::CreateBarrier()
-{
-	return Barrier();
-}
-
 ShaderID ResourcesManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
 {
 	return Renderer::GetShadersManager().CreateShader(shaderRelativePath, settings, flags);

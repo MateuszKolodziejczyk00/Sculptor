@@ -62,11 +62,11 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 			SPT_GPU_PROFILER_EVENT("TestCompute");
 			SPT_GPU_DEBUG_REGION(*recorder, "TestCompute", lib::Color::Blue);
 
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ComputeGeneral);
+			rhi::RHIDependency dependency;
+			const SizeType barrierIdx = dependency.AddTextureDependency(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::ComputeGeneral);
 
-			recorder->ExecuteBarrier(std::move(barrier));
+			recorder->ExecuteBarrier(std::move(dependency));
 
 			recorder->BindComputePipeline(m_computePipelineID);
 
@@ -78,11 +78,11 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 		}
 		
 		{
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType computeBarrierIdx = barrier.GetRHI().AddTextureBarrier(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(computeBarrierIdx, rhi::TextureTransition::FragmentReadOnly);
+			rhi::RHIDependency dependency;
+			const SizeType computeBarrierIdx = dependency.AddTextureDependency(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			dependency.SetLayoutTransition(computeBarrierIdx, rhi::TextureTransition::FragmentReadOnly);
 
-			recorder->ExecuteBarrier(std::move(barrier));
+			recorder->ExecuteBarrier(std::move(dependency));
 		}
 	}
 

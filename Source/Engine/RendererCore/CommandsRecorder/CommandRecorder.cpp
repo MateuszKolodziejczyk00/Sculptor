@@ -4,7 +4,6 @@
 #include "Renderer.h"
 #include "Pipelines/PipelinesLibrary.h"
 #include "Types/CommandBuffer.h"
-#include "Types/Barrier.h"
 #include "Types/UIBackend.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
@@ -62,15 +61,15 @@ const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const
 	return m_commandsBuffer;
 }
 
-void CommandRecorder::ExecuteBarrier(Barrier barrier)
+void CommandRecorder::ExecuteBarrier(rhi::RHIDependency dependency)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([localBarrier = std::move(barrier)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+	EnqueueRenderCommand([localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
 						 {
 							 SPT_PROFILER_SCOPE("ExecuteBarrier Command");
-
-							 localBarrier.GetRHI().Execute(cmdBuffer->GetRHI());
+							
+							 localDependency.ExecuteBarrier(cmdBuffer->GetRHI());
 						 });
 }
 

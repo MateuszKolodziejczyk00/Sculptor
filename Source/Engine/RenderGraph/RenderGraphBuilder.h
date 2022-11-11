@@ -70,7 +70,16 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 
 	for (const RGTextureAccessDef& textureAccessDef : dependenciesBuilder.GetTextureAccesses())
 	{
-		const RGTextureHandle texture = textureAccessDef.textureView.GetTexture();
+		const RGTextureHandle accessedTexture = textureAccessDef.textureView.GetTexture();
+
+		if (!accessedTexture->GetAcquireNode())
+		{
+			accessedTexture->SetAcquireNode(node);
+		}
+
+		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
+
+		// TODO insert dependencies
 	}
 }
 

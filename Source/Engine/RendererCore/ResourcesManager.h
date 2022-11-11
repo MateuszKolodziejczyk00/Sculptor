@@ -5,7 +5,6 @@
 #include "RHICore/RHIBufferTypes.h"
 #include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
-#include "Types/Barrier.h"
 #include "UIContext.h"
 #include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
@@ -68,8 +67,6 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Semaphore>			CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 
 	SPT_NODISCARD static lib::SharedRef<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition); 
-
-	SPT_NODISCARD static Barrier							CreateBarrier();
 
 	SPT_NODISCARD static ShaderID							CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD static lib::SharedRef<Shader>				GetShaderObject(ShaderID shaderID);

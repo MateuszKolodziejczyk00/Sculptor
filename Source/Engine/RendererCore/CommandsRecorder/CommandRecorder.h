@@ -7,13 +7,13 @@
 #include "Pipelines/PipelineState.h"
 #include "PipelinePendingState.h"
 #include "RendererUtils.h"
+#include "RHIBridge/RHIDependencyImpl.h"
 
 
 namespace spt::rdr
 {
 
 class CommandBuffer;
-class Barrier;
 class RenderingDefinition;
 class UIBackend;
 class RenderContext;
@@ -54,7 +54,7 @@ public:
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
-	void									ExecuteBarrier(Barrier barrier);
+	void									ExecuteBarrier(rhi::RHIDependency dependency);
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();

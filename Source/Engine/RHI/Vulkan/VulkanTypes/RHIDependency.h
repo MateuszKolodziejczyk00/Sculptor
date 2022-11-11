@@ -11,6 +11,7 @@ namespace spt::vulkan
 
 class RHITexture;
 class RHICommandBuffer;
+class RHIEvent;
 
 
 class RHI_API RHIDependency
@@ -30,8 +31,8 @@ public:
 
 	void ExecuteBarrier(const RHICommandBuffer& cmdBuffer);
 
-	//void SetEvent()
-	//void WaitEvent()
+	void SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event);
+	void WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event);
 
 	// Vulkan Only ============================================================
 

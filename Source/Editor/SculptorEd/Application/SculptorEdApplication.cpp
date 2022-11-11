@@ -216,11 +216,11 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		const lib::SharedRef<rdr::TextureView> swapchainTextureView = swapchainTexture->CreateView(RENDERER_RESOURCE_NAME("TextureRenderView"), viewDefinition);
 
 		{
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType barrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
+			rhi::RHIDependency dependency;
+			const SizeType barrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::ColorRenderTarget);
 
-			recorder->ExecuteBarrier(std::move(barrier));
+			recorder->ExecuteBarrier(std::move(dependency));
 		}
 
 		{
@@ -247,11 +247,11 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 
 		{
-			rdr::Barrier barrier = rdr::ResourcesManager::CreateBarrier();
-			const SizeType RTBarrierIdx = barrier.GetRHI().AddTextureBarrier(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			barrier.GetRHI().SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
+			rhi::RHIDependency dependency;
+			const SizeType RTBarrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			dependency.SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
 
-			recorder->ExecuteBarrier(std::move(barrier));
+			recorder->ExecuteBarrier(std::move(dependency));
 		}
 	}
 

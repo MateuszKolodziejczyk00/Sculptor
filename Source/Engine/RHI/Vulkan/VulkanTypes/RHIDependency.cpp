@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanTypes/RHICommandBuffer.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanRHI.h"
+#include "Vulkan/VulkanTypes/RHIEvent.h"
 
 namespace spt::vulkan
 {
@@ -202,6 +203,44 @@ void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierT
     barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.stage);
     barrier.dstAccessMask	= priv::GetVulkanAccessFlags(transitionTarget);
     barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);
+}
+
+void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
+
+	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
+	vkCmdPipelineBarrier2(cmdBuffer.GetHandle(), &dependencyInfo);
+
+	WriteNewLayoutsToLayoutsManager(cmdBuffer);
+}
+
+void RHIDependency::SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(event.IsValid());
+
+	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
+
+	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
+	vkCmdSetEvent2(cmdBuffer.GetHandle(), event.GetHandle(), &dependencyInfo);
+}
+
+void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(event.IsValid());
+
+	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
+
+	const VkEvent eventHandle = event.GetHandle();
+	vkCmdWaitEvents2(cmdBuffer, 1, &eventHandle, &dependencyInfo);
+
+	WriteNewLayoutsToLayoutsManager(cmdBuffer);
 }
 
 void RHIDependency::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer& cmdBuffer)
