@@ -27,6 +27,10 @@ function Copy(table)
     return newTable
 end
 
+function ArrayAdd(array, element)
+    array[GetTableLength(array) + 1] = element
+end
+
 -- Project Generation =====================================================================================
 
 EConfiguration =
@@ -73,6 +77,12 @@ projectToPublicIncludePaths = {}
 projectToPublicDependencies = {}
 
 projectToPublicDefines = {}
+
+projectToLinkLibNames = {}
+
+projectToPrecompiledLibsPath = {}
+
+projectToAdditionalCopyCommands = {}
 
 currentProjectsType = nil
 
@@ -155,6 +165,9 @@ function Project:SetupProject()
     projectToPublicDependencies[self.name] = {}
     projectToPublicDefines[self.name] = {}
     projectToPublicIncludePaths[self.name] = {}
+    projectToLinkLibNames[self.name] = {}
+    projectToPrecompiledLibsPath[self.name] = {}
+    projectToAdditionalCopyCommands[self.name] = {}
 
     filter "configurations:Debug"
     self:BuildConfiguration(EConfiguration.Debug, EPlatform.Windows)
@@ -190,8 +203,16 @@ end
 function Project:BuildConfiguration(configuration, platform)
     self.currentConfiguration = configuration
     
+    projectToLinkLibNames[self.name][configuration] = {}
+    projectToAdditionalCopyCommands[self.name][configuration] = {}
+    projectToPrecompiledLibsPath[self.name][configuration] = {}
+
     -- setup function
     self:SetupConfiguration(configuration, platform)
+
+    if #projectToLinkLibNames[self.name][configuration] == 0 then
+        projectToLinkLibNames[self.name][configuration] = self.name
+    end
     
     -- dependencies
     projectToPublicDependencies[self.name][configuration] = self:GetPublicDependencies(configuration)
@@ -266,6 +287,16 @@ function Project:BuildConfiguration(configuration, platform)
     else
         warnings "Extra"
     end
+
+    if self.targetType == ETargetType.Application then
+        for copyCommand, _ in pairs(projectToAdditionalCopyCommands[self.name][configuration])
+        do
+            postbuildcommands
+            {
+                copyCommand
+            }
+        end
+    end
 end
 
 function Project:AddPublicDefine(define)
@@ -338,8 +369,37 @@ function Project:AddDefineInternal(define)
     defines { define }
 end
 
+function Project:SetLinkLibNames(names)
+    projectToLinkLibNames[self.name][self.currentConfiguration] = names
+end
+
+function Project:CopyLibToOutputDir(libPath)
+    if self.targetType == ETargetType.None then
+        localCommand = "{COPY} ".. "%{prj.location}/".. self:GetProjectReferencePath() .. libPath .. " " .. "%{cfg.buildtarget.directory}"
+        projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
+    else
+        postbuildcommands
+        {
+            {"{COPY} %{prj.location}" .. libPath .. "%{cfg.buildtarget.directory}"}
+        }
+    end
+end
+
 function Project:AddDependencyInternal(dependency)
-    links { dependency }
+    if projectToPrecompiledLibsPath[dependencies] ~= nil then
+        local precompiledLibsPath = projectToPrecompiledLibsPath[dependencies][self.currentConfiguration]
+        if precompiledLibsPath ~= nil then
+            libdirs { precompiledLibsPath }
+        end
+    end
+    
+    -- If dependency is a project, add it link lib names
+    if projectToLinkLibNames[dependency] ~= nil then
+        links { projectToLinkLibNames[dependency][self.currentConfiguration] }
+        AppendTable(projectToAdditionalCopyCommands[self.name][self.currentConfiguration], projectToAdditionalCopyCommands[dependency][self.currentConfiguration])
+    else
+        links { dependency }
+    end
 end
 
 function Project:AddIncludePathInternal(path)
@@ -398,6 +458,10 @@ function Project:GetPrivateDependenciesPublicDefines(configuration)
     return allPublicDefines
 end
 
+function Project:SetPrecompiledLibsPath(path)
+    projectToPrecompiledLibsPath[self.name][self.currentConfiguration] = self:GetProjectReferencePath() .. path
+end
+
 function Project:AddCommonDefines(configuration, platform)
     if self.targetType == ETargetType.SharedLibrary then
         self:AddDefineInternal(string.upper(self.name) .. "_BUILD_DLL")
@@ -406,7 +470,7 @@ function Project:AddCommonDefines(configuration, platform)
     if configuration == EConfiguration.Debug then
         self:AddDebugDefines()
     elseif configuration == EConfiguration.Development then
-        self:AddWindowsDefines()
+        self:AddDevelopmentDefines()
     elseif configuration == EConfiguration.Release then
         self:AddReleaseDefines()
     end
