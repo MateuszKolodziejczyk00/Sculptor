@@ -1,5 +1,7 @@
 RHI = Project:CreateProject("RHI", ETargetType.SharedLibrary)
 
+useNsightAftermath = true
+
 if GetSelectedRHI() == ERHI.Vulkan then
     include "Vulkan/Vulkan"
 end
@@ -15,6 +17,13 @@ function RHI:SetupConfiguration(configuration, platform)
         self:AddPublicDefine("RHI_DEBUG=1")
     else
         self:AddPublicDefine("RHI_DEBUG=0")
+    end
+     
+    if useNsightAftermath then
+        self:AddPrivateDefine("USE_NSIGHT_AFTERMATH=1")
+        self:AddPrivateDependency("NsightAftermath")
+    else
+        self:AddPrivateDefine("USE_NSIGHT_AFTERMATH=0")
     end
 end
 

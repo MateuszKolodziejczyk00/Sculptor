@@ -8,6 +8,7 @@ IncludeProject("Volk")
 IncludeProject("VMA")
 IncludeProject("Optick")
 IncludeProject("YAML")
+IncludeProject("NsightAftermath")
 
 SetProjectsSubgroupName("ImGui")
 IncludeProject("ImGui")
