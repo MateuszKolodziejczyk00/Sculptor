@@ -1,18 +1,31 @@
 #include "VulkanDeviceCommon.h"
 #include "Vulkan/VulkanCore.h"
+#include "Vulkan/VulkanRHI.h"
 
 namespace spt::vulkan
 {
 
 lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 {
-    return lib::DynamicArray<const char*>
-    {
+    lib::DynamicArray<const char*> requiredExtensions;
+
+    requiredExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
 #if RHI_DEBUG
-        VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+    requiredExtensions.emplace_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 #endif // RHI_DEBUG
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
+
+#if WITH_NSIGHT_AFTERMATH
+
+    if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
+    {
+        requiredExtensions.emplace_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+        requiredExtensions.emplace_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+    }
+
+#endif // WITH_NSIGHT_AFTERMATH
+
+    return requiredExtensions;
 }
 
-}
+} // spt::vulkan

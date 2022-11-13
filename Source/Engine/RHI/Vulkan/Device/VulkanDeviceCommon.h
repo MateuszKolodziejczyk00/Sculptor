@@ -11,4 +11,4 @@ struct VulkanDeviceCommon
 	static lib::DynamicArray<const char*> GetRequiredDeviceExtensions();
 };
 
-}
+} // spt::vulkan

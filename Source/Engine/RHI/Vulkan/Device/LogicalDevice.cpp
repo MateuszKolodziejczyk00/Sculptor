@@ -2,6 +2,7 @@
 #include "VulkanDeviceCommon.h"
 #include "PhysicalDevice.h"
 #include "Vulkan/VulkanUtils.h"
+#include "Vulkan/VulkanRHI.h"
 
 
 namespace spt::vulkan
@@ -19,6 +20,8 @@ LogicalDevice::LogicalDevice()
 
 void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* allocator)
 {
+	SPT_PROFILER_FUNCTION();
+
 	const lib::DynamicArray<const char*> deviceExtensions = VulkanDeviceCommon::GetRequiredDeviceExtensions();
 
 	const lib::DynamicArray<VkDeviceQueueCreateInfo> queueInfos = CreateQueueInfos(physicalDevice);
@@ -51,6 +54,20 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan13Features.dynamicRendering = VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan13Features);
+
+#if WITH_NSIGHT_AFTERMATH
+	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
+
+	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
+	{
+		const VkDeviceDiagnosticsConfigFlagsNV aftermathFlags = VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV
+															  | VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV
+															  | VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV;
+		aftermathInfo.flags = aftermathFlags;
+		
+		deviceInfoLinkedData.Append(aftermathInfo);
+	}
+#endif // WITH_NSIGHT_AFTERMATH
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 

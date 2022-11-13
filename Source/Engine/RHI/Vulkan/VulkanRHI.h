@@ -5,6 +5,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHICore/RHITypes.h"
+#include "RHICore/RHISettings.h"
 
 
 namespace spt::rhi
@@ -88,6 +89,8 @@ public:
 	static void								SetSurfaceHandle(VkSurfaceKHR surface);
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
+
+	static const rhi::RHISettings&			GetSettings();
 };
 
 

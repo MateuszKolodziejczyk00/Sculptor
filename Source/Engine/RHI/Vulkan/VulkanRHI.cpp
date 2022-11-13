@@ -15,6 +15,8 @@
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
 
+#include "Vulkan/Debug/GPUCrashTracker.h"
+
 #include "Logging/Log.h"
 
 
@@ -22,13 +24,6 @@ namespace spt::vulkan
 {
 
 SPT_DEFINE_LOG_CATEGORY(VulkanRHI, true);
-
-namespace constants
-{
-
-const char* enableValidationCmdArgName = "-EnableValidation";
-
-} // constants
 
 namespace priv
 {
@@ -62,6 +57,8 @@ public:
     LayoutsManager              layoutsManager;
 
     PipelineLayoutsManager      pipelineLayoutsManager;
+
+    rhi::RHISettings            rhiSettings;
 };
 
 static VulkanInstanceData g_data;
@@ -84,14 +81,9 @@ void VolkLoadInstance(VkInstance instance)
 
 void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 {
+    priv::g_data.rhiSettings.Initialize();
+
     priv::InitializeVolk();
-
-#if RHI_DEBUG
-    
-    const engn::CommandLineArguments& cmdLineArgs = engn::Engine::Get().GetCmdLineArgs();
-    const Bool enableVaidationLayer = cmdLineArgs.Contains(constants::enableValidationCmdArgName);
-
-#endif // RHI_DEBUG
 
     VkApplicationInfo applicationInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
     applicationInfo.pApplicationName = "Sculptor";
@@ -145,7 +137,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
 
-    if (enableVaidationLayer)
+    if (GetSettings().IsValidationEnabled())
     {
         instanceInfoLinkedList.Append(debugMessengerInfo);
     }
@@ -180,7 +172,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     validationFeatures.enabledValidationFeatureCount = static_cast<Uint32>(enabledValidationFeatures.size());
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
 
-    if (enableVaidationLayer)
+    if (GetSettings().IsValidationEnabled())
     {
         instanceInfoLinkedList.Append(validationFeatures);
     }
@@ -193,7 +185,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
 #if RHI_DEBUG
 
-    if (enableVaidationLayer)
+    if (GetSettings().IsValidationEnabled())
     {
         priv::g_data.debugMessenger = DebugMessenger::CreateDebugMessenger(priv::g_data.instance, GetAllocationCallbacks());
     }
@@ -201,6 +193,13 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 #endif // RHI_DEBUG
 
     priv::g_data.pipelineLayoutsManager.InitializeRHI();
+
+#if WITH_GPU_CRASH_DUMPS
+    if (GetSettings().AreGPUCrashDumpsEnabled())
+    {
+        GPUCrashTracker::EnableGPUCrashDumps();
+    }
+#endif // WITH_GPU_CRASH_DUMPS
 }
 
 void VulkanRHI::InitializeGPUForWindow()
@@ -317,7 +316,18 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
         submitInfo.pSignalSemaphoreInfos    = signalSemaphores ? signalSemaphores->GetSubmitInfos().data() : nullptr;
     }
 
-    SPT_VK_CHECK(vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE));
+    const VkResult submitResult = vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE);
+    if (submitResult != VK_SUCCESS)
+    {
+#if WITH_GPU_CRASH_DUMPS
+        if (GetSettings().AreGPUCrashDumpsEnabled())
+        {
+            GPUCrashTracker::SaveGPUCrashDump();
+        }
+#endif // WITH_GPU_CRASH_DUMPS
+
+        SPT_CHECK_NO_ENTRY();
+    }
 }
 
 void VulkanRHI::WaitIdle()
@@ -392,6 +402,11 @@ void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
 {
     return nullptr;
+}
+
+const rhi::RHISettings& VulkanRHI::GetSettings()
+{
+    return priv::g_data.rhiSettings;
 }
 
 } // spt::vulkan

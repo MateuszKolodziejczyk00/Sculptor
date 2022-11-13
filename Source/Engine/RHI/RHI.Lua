@@ -16,14 +16,16 @@ function RHI:SetupConfiguration(configuration, platform)
     if configuration ~= EConfiguration.Release then
         self:AddPublicDefine("RHI_DEBUG=1")
     else
-        self:AddPublicDefine("RHI_DEBUG=0")
+        self:AddPublicDefine("RHI_DEBUG=1")
     end
      
     if useNsightAftermath then
-        self:AddPrivateDefine("USE_NSIGHT_AFTERMATH=1")
+        self:AddPrivateDefine("WITH_GPU_CRASH_DUMPS=1")
+        self:AddPrivateDefine("WITH_NSIGHT_AFTERMATH=1")
         self:AddPrivateDependency("NsightAftermath")
     else
-        self:AddPrivateDefine("USE_NSIGHT_AFTERMATH=0")
+        self:AddPrivateDefine("WITH_GPU_CRASH_DUMPS=0")
+        self:AddPrivateDefine("WITH_NSIGHT_AFTERMATH=0")
     end
 end
 
