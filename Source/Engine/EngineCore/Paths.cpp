@@ -18,6 +18,7 @@ namespace priv
 static lib::String	g_enginePath;
 static lib::String	g_configsPath;
 static lib::String	g_tracesPath;
+static lib::String	g_gpuCrashDumpsPath;
 
 } // priv
 
@@ -27,6 +28,7 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 
 	priv::g_configsPath = Combine(priv::g_enginePath, "Config");
 	priv::g_tracesPath = Combine(priv::g_enginePath, "Saved/Traces");
+	priv::g_gpuCrashDumpsPath = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -42,6 +44,11 @@ const lib::String& Paths::GetConfigsPath()
 const lib::String& Paths::GetTracesPath()
 {
 	return priv::g_tracesPath;
+}
+
+const lib::String& Paths::GetGPUCrashDumpsPath()
+{
+	return priv::g_gpuCrashDumpsPath;
 }
 
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)

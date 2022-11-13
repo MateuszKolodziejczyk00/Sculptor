@@ -24,6 +24,8 @@ public:
 
 	static const lib::String&	GetTracesPath();
 
+	static const lib::String&	GetGPUCrashDumpsPath();
+
 	// Utils =============================================
 
 	static void AppendPath(lib::String& path, lib::StringView pathToAppend);
