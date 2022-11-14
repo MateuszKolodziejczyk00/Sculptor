@@ -34,7 +34,7 @@ const rhi::RHISemaphoresArray& SemaphoresArray::GetRHISemaphores() const
 
 Uint32 RendererUtils::GetFramesInFlightNum()
 {
-	return 3;
+	return 2;
 }
 
 }

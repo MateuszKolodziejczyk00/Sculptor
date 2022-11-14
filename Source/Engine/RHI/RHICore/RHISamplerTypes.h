@@ -27,7 +27,7 @@ enum class ESamplerFlags
 {
 	None			= 0,
 
-	Persistent		= BIT(10) // Samplers that are not implicitly cached
+	NotCached		= BIT(1) // Samplers that are not implicitly cached
 };
 
 

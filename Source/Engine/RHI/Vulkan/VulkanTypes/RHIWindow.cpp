@@ -79,13 +79,13 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 	return *this;
 }
 
-void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo)
+void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	m_minImagesNum	= windowInfo.minImageCount;
+	m_minImagesNum	= minImagesCount;
 	m_enableVSync	= windowInfo.enableVSync;
 
 	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();

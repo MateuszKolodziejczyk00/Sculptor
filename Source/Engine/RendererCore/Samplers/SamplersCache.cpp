@@ -34,9 +34,8 @@ lib::SharedRef<Sampler> SamplersCache::GetOrCreateSampler(const rhi::SamplerDefi
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (lib::HasAnyFlag(def.flags, rhi::ESamplerFlags::Persistent))
+	if (lib::HasAnyFlag(def.flags, rhi::ESamplerFlags::NotCached))
 	{
-		// Persistent samplers are not cached
 		return lib::MakeShared<Sampler>(def);
 	}
 

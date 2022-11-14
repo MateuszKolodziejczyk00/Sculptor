@@ -13,7 +13,7 @@ Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& win
 {
 	rhi::RHI::InitializeGPUForWindow();
 
-	GetRHI().InitializeRHI(windowInfo);
+	GetRHI().InitializeRHI(windowInfo, RendererUtils::GetFramesInFlightNum());
 }
 
 Bool Window::ShouldClose() const

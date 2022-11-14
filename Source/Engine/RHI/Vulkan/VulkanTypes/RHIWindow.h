@@ -26,7 +26,7 @@ public:
 	RHIWindow(const RHIWindow& rhs) = delete;
 	RHIWindow&					operator=(const RHIWindow& rhs) = delete;
 
-	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo);
+	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;

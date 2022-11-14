@@ -20,12 +20,10 @@ struct RHIWindowInitializationInfo
 {
 	RHIWindowInitializationInfo()
 		: framebufferSize(idxNone<Uint32>, idxNone<Uint32>)
-		, minImageCount(2)
 		, enableVSync(true)
 	{ }
 
 	math::Vector2u			framebufferSize;
-	Uint32					minImageCount;
 	Bool					enableVSync;
 };
 

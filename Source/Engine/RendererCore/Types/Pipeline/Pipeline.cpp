@@ -80,7 +80,6 @@ static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::CommonBi
 	SPT_CHECK(lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::ImmutableSampler));
 
 	rhi::SamplerDefinition samplerDef;
-	lib::AddFlag(samplerDef.flags, rhi::ESamplerFlags::Persistent);
 	samplerDef.minificationFilter	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::FilterLinear) ? rhi::ESamplerFilterType::Linear : rhi::ESamplerFilterType::Nearest;
 	samplerDef.magnificationFilter	= samplerDef.minificationFilter;
 	samplerDef.mipMapAdressingMode	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::MipMapsLinear) ? rhi::EMipMapAddressingMode::Linear : rhi::EMipMapAddressingMode::Nearest;

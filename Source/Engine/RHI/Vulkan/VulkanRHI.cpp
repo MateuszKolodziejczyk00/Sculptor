@@ -316,8 +316,12 @@ void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib
         submitInfo.pSignalSemaphoreInfos    = signalSemaphores ? signalSemaphores->GetSubmitInfos().data() : nullptr;
     }
 
-    const VkResult submitResult = vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE);
-    if (submitResult != VK_SUCCESS)
+    VkResult submitResult = VK_SUCCESS;
+    {
+        SPT_PROFILER_SCOPE("vkQueueSubmit2");
+        submitResult = vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE);
+    }
+    if (submitResult == VK_ERROR_DEVICE_LOST)
     {
 #if WITH_GPU_CRASH_DUMPS
         if (GetSettings().AreGPUCrashDumpsEnabled())
