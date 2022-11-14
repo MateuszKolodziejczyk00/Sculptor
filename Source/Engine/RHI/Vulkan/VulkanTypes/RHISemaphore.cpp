@@ -73,9 +73,9 @@ Uint64 RHISemaphore::GetValue() const
 
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
-	Uint64 result = 0;
-	vkGetSemaphoreCounterValue(VulkanRHI::GetDeviceHandle(), m_semaphore, &result);
-	return result;
+	Uint64 value = 0;
+	SPT_VK_CHECK(vkGetSemaphoreCounterValue(VulkanRHI::GetDeviceHandle(), m_semaphore, &value));
+	return value;
 }
 
 Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) const
@@ -155,6 +155,10 @@ void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uin
 
 const lib::DynamicArray<VkSemaphoreSubmitInfo>& RHISemaphoresArray::GetSubmitInfos() const
 {
+	for (SizeType idx = 0; idx < m_submitInfos.size(); ++idx)
+	{
+		SPT_CHECK(m_submitInfos[idx].value < 100000);
+	}
 	return m_submitInfos;
 }
 

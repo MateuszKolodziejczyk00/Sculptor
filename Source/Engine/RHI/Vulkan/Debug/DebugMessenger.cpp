@@ -13,7 +13,7 @@ namespace priv
 
 static std::atomic<Int32>		g_disableWaningsLockNum = 0;
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -24,19 +24,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverit
 
 	if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
 	{
-		SPT_LOG_TRACE(VulkanValidation, pCallbackData->pMessage);
+		SPT_LOG_TRACE(VulkanValidation, callbackData->pMessage);
 	}
 	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
 	{
-		SPT_LOG_INFO(VulkanValidation, pCallbackData->pMessage);
+		SPT_LOG_INFO(VulkanValidation, callbackData->pMessage);
 	}
 	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
 	{
-		SPT_LOG_WARN(VulkanValidation, pCallbackData->pMessage);
+		SPT_LOG_WARN(VulkanValidation, callbackData->pMessage);
 	}
 	else if (lib::HasAnyFlag(messageSeverity, VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
 	{
-		SPT_LOG_ERROR(VulkanValidation, pCallbackData->pMessage);
+		SPT_LOG_ERROR(VulkanValidation, callbackData->pMessage);
 		SPT_CHECK_NO_ENTRY();
 	}
 

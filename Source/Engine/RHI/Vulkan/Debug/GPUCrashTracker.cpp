@@ -80,6 +80,8 @@ public:
 
     void OnShaderDebugInfo(const void* pShaderDebugInfo, const Uint32 shaderDebugInfoSize);
 
+    void ResolveMarker(const void* marker, void* userData, void** resolvedMarkerData, Uint32* markerSize);
+
 private:
 
     lib::String GenerateDumpFileNameWithoutExtension() const;
@@ -245,6 +247,17 @@ void GPUCrashTrackerInstance::OnShaderDebugInfo(const void* shaderDebugInfo, con
 
 }
 
+void GPUCrashTrackerInstance::ResolveMarker(const void* marker, void* userData, void** resolvedMarkerData, Uint32* markerSize)
+{
+    SPT_PROFILER_FUNCTION();
+
+    const lib::HashedString::KeyType key = reinterpret_cast<lib::HashedString::KeyType>(marker);
+    const lib::HashedString markerString(key);
+
+    *resolvedMarkerData = const_cast<char*>(markerString.GetData());
+    *markerSize = static_cast<Uint32>(markerString.GetSize());
+}
+
 void GPUCrashTrackerInstance::WriteShaderDebugInformationToFile(GFSDK_Aftermath_ShaderDebugInfoIdentifier identifier, const void* shaderDebugInfo, const Uint32 shaderDebugInfoSize) const
 {
     const lib::String filePath = engn::Paths::Combine(engn::Paths::GetGPUCrashDumpsPath(), "shader-" + std::to_string(identifier) + ".nvdbg");
@@ -283,8 +296,8 @@ static void CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDesc
 
 static void ResolveMarkerCallback(const void* marker, void* userData, void** resolvedMarkerData, Uint32* markerSize)
 {
-    //GPUCrashTrackerInstance* gpuCrashTracker = reinterpret_cast<GPUCrashTrackerInstance*>(userData);
-	SPT_LOG_INFO(GPUCrashTracker, "ResolveMarkerCallback");
+    GPUCrashTrackerInstance* gpuCrashTracker = reinterpret_cast<GPUCrashTrackerInstance*>(userData);
+    gpuCrashTracker->ResolveMarker(marker, userData, resolvedMarkerData, markerSize);
 }
 #endif // WITH_NSIGHT_AFTERMATH
 

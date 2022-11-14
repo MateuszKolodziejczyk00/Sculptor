@@ -2,6 +2,7 @@
 #include "Containers/HashMap.h"
 #include "ProfilerCore.h"
 #include "Utility/Threading/Lock.h"
+#include "Assertions/Assertions.h"
 
 
 namespace spt::lib
@@ -86,6 +87,17 @@ HashedStringDB::KeyType HashedStringDB::GetRecord(StringView inString, StringVie
 	}
 
 	return key;
+}
+
+StringView HashedStringDB::GetRecordStringChecked(KeyType key)
+{
+	SPT_PROFILER_FUNCTION();
+
+	StringView outString;
+	const Bool found = FindRecord(key, outString);
+	SPT_CHECK(found);
+
+	return outString;
 }
 
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)

@@ -1,6 +1,7 @@
 #include "CurrentFrameContext.h"
 #include "ResourcesManager.h"
 #include "Types/Semaphore.h"
+#include "Renderer.h"
 
 
 namespace spt::rdr
@@ -46,15 +47,14 @@ void CurrentFrameContext::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (priv::currentFrameIdx >= priv::framesInFlightNum)
-	{
-		// We need to add 1 to this, because index of first frame is actually 1.
-		// Thats because releaseSemaphore has initial value of 0, and if frame idx would start from 0, semaphore for first frame would be always signaled
-		const Uint64 releasedFrameIdx = priv::currentFrameIdx - static_cast<Uint64>(priv::framesInFlightNum) + 1;
-		priv::releaseFrameSemaphore->GetRHI().Wait(releasedFrameIdx);
-	}
-
 	++priv::currentFrameIdx;
+
+	if (priv::currentFrameIdx > priv::framesInFlightNum)
+	{
+		const Uint64 releasedFrameIdx = priv::currentFrameIdx - static_cast<Uint64>(priv::framesInFlightNum);
+		const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(releasedFrameIdx);
+		SPT_CHECK(released);
+	}
 
 	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
 	FlushCurrentFrameReleases();

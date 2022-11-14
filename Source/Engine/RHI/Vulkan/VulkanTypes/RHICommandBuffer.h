@@ -62,6 +62,8 @@ public:
 	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
 	void	EndDebugRegion();
 
+	void	SetDebugCheckpoint(const void* markerPtr);
+
 	// Vulkan specific ======================================
 
 	VkCommandBuffer					GetHandle() const;

@@ -215,6 +215,20 @@ void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const r
 						 });
 }
 
+#if WITH_GPU_CRASH_DUMPS
+void CommandRecorder::SetDebugCheckpoint(const void* markerPtr)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([markerPtr](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("SetDebugCheckpoint Command");
+
+							 cmdBuffer->GetRHI().SetDebugCheckpoint(markerPtr);
+						 });
+}
+#endif // WITH_GPU_CRASH_DUMPS
+
 void CommandRecorder::InitializeUIFonts()
 {
 	SPT_PROFILER_FUNCTION();

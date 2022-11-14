@@ -362,4 +362,15 @@ void RHICommandBuffer::EndDebugRegion()
 #endif // RHI_DEBUG
 }
 
+void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
+{
+#if WITH_GPU_CRASH_DUMPS
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	vkCmdSetCheckpointNV(m_cmdBufferHandle, markerPtr);
+#endif // WITH_GPU_CRASH_DUMPS
+}
+
 } // spt::vulkan

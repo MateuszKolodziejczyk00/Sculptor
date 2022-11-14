@@ -86,10 +86,10 @@ void Renderer::Uninitialize()
 void Renderer::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();
+	
+	CurrentFrameContext::BeginFrame();
 
 	rhi::RHI::BeginFrame();
-
-	CurrentFrameContext::BeginFrame();
 
 	GetDescriptorSetsManager().BeginFrame();
 
@@ -100,9 +100,9 @@ void Renderer::EndFrame()
 {
 	SPT_PROFILER_FUNCTION();
 
-	CurrentFrameContext::EndFrame();
-
 	rhi::RHI::EndFrame();
+
+	CurrentFrameContext::EndFrame();
 }
 
 ShadersManager& Renderer::GetShadersManager()

@@ -56,6 +56,11 @@ public:
 		: m_key(DataBaseType::keyNone)
 	{ }
 
+	explicit HashedString(KeyType key)
+		: m_key(key)
+		, m_stringView(DataBaseType::GetRecordStringChecked(key))
+	{ }
+
 	HashedString(const ThisType& rhs)
 		: m_key(rhs.m_key)
 		, m_stringView(rhs.m_stringView)

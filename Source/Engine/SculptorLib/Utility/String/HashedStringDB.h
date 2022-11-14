@@ -21,6 +21,8 @@ public:
 	static KeyType GetRecord(String&& inString, StringView& outView);
 	static KeyType GetRecord(StringView inString, StringView& outView);
 
+	static StringView GetRecordStringChecked(KeyType key);
+
 	SPT_NODISCARD static constexpr KeyType HashString(StringView string)
 	{
 		return GetHash(string);
