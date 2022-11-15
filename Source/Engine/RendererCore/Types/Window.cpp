@@ -1,5 +1,5 @@
 #include "Window.h"
-#include "RendererUtils.h"
+#include "RendererSettings.h"
 #include "RHICore/RHIInitialization.h"
 #include "RHIBridge/RHIImpl.h"
 #include "Semaphore.h"
@@ -13,7 +13,7 @@ Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& win
 {
 	rhi::RHI::InitializeGPUForWindow();
 
-	GetRHI().InitializeRHI(windowInfo, RendererUtils::GetFramesInFlightNum());
+	GetRHI().InitializeRHI(windowInfo, RendererSettings::Get().framesInFlight);
 }
 
 Bool Window::ShouldClose() const

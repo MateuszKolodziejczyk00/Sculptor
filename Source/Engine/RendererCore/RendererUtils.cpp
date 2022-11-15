@@ -29,12 +29,4 @@ const rhi::RHISemaphoresArray& SemaphoresArray::GetRHISemaphores() const
 	return m_rhiSemaphores;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// RendererUtils =================================================================================
-
-Uint32 RendererUtils::GetFramesInFlightNum()
-{
-	return 2;
-}
-
 }

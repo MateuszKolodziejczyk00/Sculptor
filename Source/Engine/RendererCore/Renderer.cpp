@@ -1,5 +1,5 @@
 #include "Renderer.h"
-#include "RendererUtils.h"
+#include "RendererSettings.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
@@ -61,7 +61,7 @@ void Renderer::Initialize()
 
 void Renderer::PostCreatedWindow()
 {
-	CurrentFrameContext::Initialize(RendererUtils::GetFramesInFlightNum());
+	CurrentFrameContext::Initialize(RendererSettings::Get().framesInFlight);
 
 	GPUProfiler::Initialize();
 }
