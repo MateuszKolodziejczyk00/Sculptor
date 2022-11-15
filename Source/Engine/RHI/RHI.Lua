@@ -17,7 +17,7 @@ function RHI:SetupConfiguration(configuration, platform)
     if configuration ~= EConfiguration.Release or forceRHIValidation then
         self:AddPublicDefine("RHI_DEBUG=1")
     else
-        self:AddPublicDefine("RHI_DEBUG=1")
+        self:AddPublicDefine("RHI_DEBUG=0")
     end
      
     if useNsightAftermath then

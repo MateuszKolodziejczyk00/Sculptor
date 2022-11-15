@@ -26,6 +26,8 @@ static std::ofstream	g_currentCaptureStream;
 namespace utils
 {
 
+#if ENABLE_PROFILER
+
 static lib::String GetCaptureFilePathWithoutExtension()
 {
     const std::time_t currentTime = std::time(nullptr);
@@ -39,6 +41,8 @@ static lib::String GetCaptureFilePathWithoutExtension()
 
 	return engn::Paths::Combine(engn::Paths::GetTracesPath(), timeString);
 }
+
+#endif // ENABLE_PROFILER
 
 } // utils
 
@@ -56,6 +60,7 @@ public:
 	static Bool SaveCapture() { return false; }
 };
 
+#if ENABLE_PROFILER
 #if WITH_OPTICK
 
 class OptickProfilerBackend
@@ -98,6 +103,9 @@ private:
 };
 
 #endif // WITH_OPTICK
+#endif // ENABLE_PROFILER
+
+#if ENABLE_PROFILER
 
 #if WITH_OPTICK
 
@@ -108,6 +116,12 @@ using ProfilerBackend = OptickProfilerBackend;
 using ProfilerBackend = NullProfilerBackend;
 
 #endif // WITH_OPTICK
+
+#else
+
+using ProfilerBackend = NullProfilerBackend;
+
+#endif // ENABLE_PROFILER 
 
 } // impl
 

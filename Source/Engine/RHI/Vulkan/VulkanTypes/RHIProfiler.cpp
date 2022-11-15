@@ -11,9 +11,10 @@ namespace spt::vulkan
 namespace impl
 {
 
+#if ENABLE_PROFILER
 #if WITH_OPTICK
 
-class GPUProfiler
+class OptickGPUProfiler
 {
 public:
 
@@ -91,10 +92,10 @@ private:
 	}
 };
 
-#else
+#endif // WITH_OPTICK
+#endif // ENABLE_PROFILER
 
-// Null implementation
-class GPUProfiler
+class NullGPUProfiler
 {
 public:
 
@@ -104,8 +105,23 @@ public:
 
 };
 
+#if ENABLE_PROFILER
+
+#if WITH_OPTCK
+
+using GPUProfiler = OptickGPUProfiler;
+
+#else
+
+using GPUProfiler = NullGPUProfiler;
+
 #endif // WITH_OPTICK
 
+#else
+
+using GPUProfiler = NullGPUProfiler;
+
+#endif // ENABLE_PROFILER
 
 } // impl
 
