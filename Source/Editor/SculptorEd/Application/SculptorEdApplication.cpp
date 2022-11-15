@@ -239,6 +239,13 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 
 		{
+#if WITH_GPU_CRASH_DUMPS
+			static lib::HashedString checkpoint = "Pre UI Render";
+			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+#endif // WITH_GPU_CRASH_DUMPS
+		}
+
+		{
 			rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
 			rdr::RTDefinition renderTarget;
 			renderTarget.textureView = swapchainTextureView;
@@ -268,6 +275,13 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 			recorder->ExecuteBarrier(std::move(dependency));
 		}
+
+		{
+#if WITH_GPU_CRASH_DUMPS
+			static lib::HashedString checkpoint = "Post UI Render";
+			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+#endif // WITH_GPU_CRASH_DUMPS
+		}
 	}
 
 	rdr::CommandsRecordingInfo recordingInfo;
@@ -280,9 +294,9 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 	rdr::CommandsSubmitBatch& submitUIBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
 	submitUIBatch.recordedCommands.emplace_back(std::move(recorder));
-	submitUIBatch.waitSemaphores.AddBinarySemaphore(rendererWaitSemaphore.Await(), rhi::EPipelineStage::TopOfPipe);
-	submitUIBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::TopOfPipe);
-	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::TopOfPipe);
+	submitUIBatch.waitSemaphores.AddBinarySemaphore(rendererWaitSemaphore.Await(), rhi::EPipelineStage::ALL_COMMANDS);
+	submitUIBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
+	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
 
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 

@@ -62,7 +62,9 @@ public:
 	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
 	void	EndDebugRegion();
 
+#if WITH_GPU_CRASH_DUMPS
 	void	SetDebugCheckpoint(const void* markerPtr);
+#endif // WITH_GPU_CRASH_DUMPS
 
 	// Vulkan specific ======================================
 

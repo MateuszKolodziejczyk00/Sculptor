@@ -155,10 +155,6 @@ void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uin
 
 const lib::DynamicArray<VkSemaphoreSubmitInfo>& RHISemaphoresArray::GetSubmitInfos() const
 {
-	for (SizeType idx = 0; idx < m_submitInfos.size(); ++idx)
-	{
-		SPT_CHECK(m_submitInfos[idx].value < 100000);
-	}
 	return m_submitInfos;
 }
 
