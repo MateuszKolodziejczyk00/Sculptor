@@ -8,6 +8,13 @@
 #include "RGResources/RGResources.h"
 #include "RGResources/RGAllocator.h"
 #include "DependenciesBuilder.h"
+#include "RGResources/RGNode.h"
+#include "CommandsRecorder/CommandRecorder.h"
+
+namespace spt::rhi
+{
+struct BarrierTextureTransitionTarget;
+} // spt::rhi
 
 
 namespace spt::rg
@@ -34,9 +41,11 @@ public:
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
 	template<typename TDescriptorSetStatesRange>
-	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange);
+	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
 private:
+
+	const rhi::BarrierTextureTransitionTarget& GetTransitionDefForAccess(ERGAccess access) const;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 
@@ -48,13 +57,14 @@ private:
 };
 
 template<typename TDescriptorSetStatesRange>
-void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, TDescriptorSetStatesRange&& dsStatesRange)
+void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [](const lib::SharedPtr<CommandRecorder>& recorder)
+	const auto executeLambda = [computePipelineID, groupCount](const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 	{
-
+		recorder->BindComputePipeline(computePipelineID);
+		recorder->Dispatch(groupCount);
 	};
 
 	using LambdaType = decltype(executeLambda);
@@ -70,16 +80,35 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 
 	for (const RGTextureAccessDef& textureAccessDef : dependenciesBuilder.GetTextureAccesses())
 	{
-		const RGTextureHandle accessedTexture = textureAccessDef.textureView.GetTexture();
+		const RGTextureView& accessedTextureView = textureAccessDef.textureView;
+		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
 
-		if (!accessedTexture->GetAcquireNode())
+		if (accessedTexture->HasAcquiredNode())
 		{
 			accessedTexture->SetAcquireNode(node);
 		}
 
 		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 
-		// TODO insert dependencies
+		const rhi::BarrierTextureTransitionTarget& transitionTarget = GetTransitionDefForAccess(textureAccessDef.access);
+
+		if (textureAccessState.IsFullResource())
+		{
+			const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().access);
+			node->AddTextureState(accessedTextureView, transitionSource, transitionTarget);
+		}
+		else
+		{
+			textureAccessState.ForEachSubresource(accessedTextureView.GetViewDefinition().subresourceRange,
+												  [this, &textureAccessState, &transitionTarget, node](RGTextureSubresource subresource)
+												  {
+													  const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource));
+													  SPT_CHECK_NO_ENTRY();
+												  });
+		}
+
+		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, node), accessedTextureView.GetViewDefinition().subresourceRange);
+
 	}
 }
 

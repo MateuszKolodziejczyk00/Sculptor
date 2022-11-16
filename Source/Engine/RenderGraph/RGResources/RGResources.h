@@ -3,12 +3,11 @@
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
 #include "RGResources/RGTrackedResource.h"
+#include "RGResources/RGResourceHandles.h"
+#include "Types/Texture.h"
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
-#include "Types/Texture.h"
-#include "RGResources/RGNode.h"
-#include "RGResources/RGResourceHandles.h"
 
 
 namespace spt::rg
@@ -66,6 +65,11 @@ public:
 		return m_flags;
 	}
 
+	Bool HasAcquiredNode() const
+	{
+		return m_acquireNode.IsValid();
+	}
+
 	void SetAcquireNode(RGNodeHandle node)
 	{
 		m_acquireNode = node;
@@ -98,34 +102,30 @@ private:
 };
 
 
-struct RGTextureSubresourcesRange
-{
-	explicit RGTextureSubresourcesRange(Uint32 inFirstMipMapIdx = 0, Uint32 mipMapsNum = 1, Uint32 inFirstLayerIdx = 0, Uint32 inLayersNum = 1)
-		: firstMipMapIdx(inFirstMipMapIdx)
-		, mipMapsNum(mipMapsNum)
-		, firstLayerIdx(inFirstLayerIdx)
-		, layersNum(inLayersNum)
-	{ }
-
-	Uint32 firstMipMapIdx;
-	Uint32 mipMapsNum;
-	Uint32 firstLayerIdx;
-	Uint32 layersNum;
-};
-
-
 struct RGTextureSubresourceAccessState
 {
 	RGTextureSubresourceAccessState()
-		: lastAccess(ERGAccess::Unknown)
+		: lastAccessType(ERGAccess::Unknown)
 	{ }
-	RGTextureSubresourceAccessState(ERGAccess inLastAccess, RGNodeHandle inLastProducer)
-		: lastAccess(inLastAccess)
-		, lastProducerNode(inLastProducer)
+	RGTextureSubresourceAccessState(ERGAccess inLastAccessType, RGNodeHandle inLastAccessNode)
+		: lastAccessType(inLastAccessType)
+		, lastAccessNode(inLastAccessNode)
 	{ }
 
-	ERGAccess		lastAccess;
-	RGNodeHandle	lastProducerNode;
+	ERGAccess		lastAccessType;
+	RGNodeHandle	lastAccessNode;
+};
+
+
+struct RGTextureSubresource
+{
+	explicit RGTextureSubresource(Uint32 inArrayLayerIdx, Uint32 inMipMapIdx)
+		: arrayLayerIdx(inArrayLayerIdx)
+		, mipMapIdx(inMipMapIdx)
+	{ }
+
+	Uint32 arrayLayerIdx;
+	Uint32 mipMapIdx;
 };
 
 
@@ -133,9 +133,9 @@ class RGTextureAccessState
 {
 public:
 
-	RGTextureAccessState(Uint32 inTextureMipsNum, Uint32 inTextureLayersNum)
-		: textureMipsNum(inTextureLayersNum)
-		, textureLayersNum(inTextureLayersNum)
+	RGTextureAccessState(Uint32 textureMipsNum, Uint32 textureLayersNum)
+		: m_textureMipsNum(textureMipsNum)
+		, m_textureLayersNum(textureLayersNum)
 	{
 		m_subresourcesAccesses.resize(1);
 		m_subresourcesAccesses[0] = RGTextureSubresourceAccessState(ERGAccess::Unknown, nullptr);
@@ -146,43 +146,74 @@ public:
 		return m_subresourcesAccesses.size() == 1;
 	}
 
-	RGTextureSubresourceAccessState& GetForSubresource(Uint32 mipMapIdx, Uint32 layerIdx)
+	RGTextureSubresourceAccessState& GetForFullResource()
 	{
-		SPT_CHECK(mipMapIdx < textureMipsNum && layerIdx < textureLayersNum);
-
-		if (IsFullResource())
-		{
-			return m_subresourcesAccesses[0];
-		}
-
-		return m_subresourcesAccesses[GetSubresourceIdx(mipMapIdx, layerIdx)];
+		SPT_CHECK(IsFullResource());
+		return m_subresourcesAccesses[0];
 	}
 
-	void SetSubresourcesAccess(const RGTextureSubresourceAccessState& access, const RGTextureSubresourcesRange& range)
+	RGTextureSubresourceAccessState& GetForSubresource(RGTextureSubresource subresource)
 	{
+		return GetForSubresource(subresource.arrayLayerIdx, subresource.mipMapIdx);
+	}
+
+	RGTextureSubresourceAccessState& GetForSubresource(Uint32 layerIdx, Uint32 mipMapIdx)
+	{
+		SPT_CHECK(mipMapIdx < m_textureMipsNum && layerIdx < m_textureLayersNum);
+
 		if (IsFullResource())
 		{
-			if (IsRangeForFullResource(range))
-			{
-				m_subresourcesAccesses[0] = access;
-				return;
-			}
-			else
-			{
-				m_subresourcesAccesses.resize(static_cast<SizeType>(textureLayersNum * textureMipsNum));
-			}
+			return GetForFullResource();
 		}
 
-		const Uint32 lastLayerIdx = range.firstLayerIdx + range.layersNum;
-		const Uint32 lastMipIdx = range.firstMipMapIdx + range.mipMapsNum;
+		return m_subresourcesAccesses[GetSubresourceIdx(layerIdx, mipMapIdx)];
+	}
 
-		for (Uint32 layerIdx = range.firstLayerIdx; layerIdx < lastLayerIdx; ++layerIdx)
+	template<typename TCallable>
+	void ForEachSubresource(const rhi::TextureSubresourceRange& range, TCallable&& callable)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		const Uint32 lastLayerIdx = range.baseArrayLayer + range.arrayLayersNum;
+		const Uint32 lastMipIdx = range.baseMipLevel + range.mipLevelsNum;
+
+		for (Uint32 layerIdx = range.baseArrayLayer; layerIdx < lastLayerIdx; ++layerIdx)
 		{
-			for (Uint32 mipIdx = range.firstMipMapIdx; mipIdx < lastMipIdx; ++mipIdx)
+			for (Uint32 mipIdx = range.baseMipLevel; mipIdx < lastMipIdx; ++mipIdx)
 			{
-				m_subresourcesAccesses[GetSubresourceIdx(mipIdx, layerIdx)] = access;
+				callable(RGTextureSubresource(layerIdx, mipIdx));
 			}
 		}
+	}
+
+	void SetSubresourcesAccess(const RGTextureSubresourceAccessState& access, const rhi::TextureSubresourceRange& range)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		if (RangeContainsFullResource(range))
+		{
+			MergeTo(access);
+			return;
+		}
+
+		if (IsFullResource())
+		{
+			BreakIntoSubresources();
+		}
+
+		ForEachSubresource(range,
+						   [this, &access](RGTextureSubresource subresource)
+						   {
+							   GetForSubresource(subresource) = access;
+						   });
+	}
+
+	Bool RangeContainsFullResource(const rhi::TextureSubresourceRange& range)
+	{
+		return range.baseMipLevel == 0
+			&& range.baseArrayLayer == 0
+			&& range.mipLevelsNum == m_textureLayersNum
+			&& range.arrayLayersNum == m_textureMipsNum;
 	}
 
 	void MergeTo(const RGTextureSubresourceAccessState& access)
@@ -191,23 +222,27 @@ public:
 		m_subresourcesAccesses[0] = access;
 	}
 
+	void BreakIntoSubresources()
+	{
+		if (IsFullResource())
+		{
+			const RGTextureSubresourceAccessState state = m_subresourcesAccesses[0];
+			m_subresourcesAccesses.resize(m_textureLayersNum * m_textureMipsNum);
+			std::fill(std::begin(m_subresourcesAccesses), std::end(m_subresourcesAccesses), state);
+		}
+	}
+
 private:
 
-	inline SizeType GetSubresourceIdx(Uint32 mipMapIdx, Uint32 layerIdx) const
+	inline SizeType GetSubresourceIdx(Uint32 layerIdx, Uint32 mipMapIdx) const
 	{
-		return static_cast<SizeType>(layerIdx * textureMipsNum + mipMapIdx);
+		return static_cast<SizeType>(layerIdx * m_textureMipsNum + mipMapIdx);
 	}
 
-	Bool IsRangeForFullResource(const RGTextureSubresourcesRange& range) const
-	{
-		return range.firstLayerIdx == 0
-			&& range.firstMipMapIdx == 0
-			&& range.layersNum == textureLayersNum
-			&& range.mipMapsNum == textureMipsNum;
-	}
+	Uint32 m_textureMipsNum;
+	Uint32 m_textureLayersNum;
 
-	Uint32 textureMipsNum;
-	Uint32 textureLayersNum;
+	// For now we don't support different access masks
 	lib::DynamicArray<RGTextureSubresourceAccessState> m_subresourcesAccesses;
 };
 
@@ -248,6 +283,17 @@ public:
 	}
 
 	// Texture Resource ====================================================
+
+	Bool IsAcquired() const
+	{
+		return !!m_texture;
+	}
+	
+	const lib::SharedPtr<rdr::Texture>& GetResource() const
+	{
+		SPT_CHECK(IsAcquired());
+		return m_texture;
+	}
 
 	void AcquireResource(lib::SharedPtr<rdr::Texture> texture)
 	{
@@ -315,7 +361,7 @@ public:
 		return m_texture;
 	}
 
-	rhi::TextureViewDefinition GetViewDefinition() const
+	const rhi::TextureViewDefinition& GetViewDefinition() const
 	{
 		return m_viewDef;
 	}
@@ -365,7 +411,7 @@ struct hash<spt::rg::RGTextureAccessState>
 {
 	size_t operator()(const spt::rg::RGTextureSubresourceAccessState& accessState) const
 	{
-		return spt::lib::HashCombine(accessState.lastAccess, accessState.lastProducerNode);
+		return spt::lib::HashCombine(accessState.lastAccessType, accessState.lastAccessNode);
 	}
 };
 

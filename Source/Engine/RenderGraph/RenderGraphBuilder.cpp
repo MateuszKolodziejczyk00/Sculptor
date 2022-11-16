@@ -48,4 +48,10 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 	m_extractedTextures.emplace_back(textureHandle);
 }
 
+const rhi::BarrierTextureTransitionTarget& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
+{
+	SPT_CHECK_NO_ENTRY();
+	return rhi::TextureTransition::Undefined;
+}
+
 } // spt::rg

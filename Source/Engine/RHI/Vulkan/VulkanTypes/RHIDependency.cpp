@@ -152,6 +152,11 @@ static VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTa
 RHIDependency::RHIDependency()
 { }
 
+Bool RHIDependency::IsEmpty() const
+{
+	return m_textureBarriers.empty() && m_bufferBarriers.empty();
+}
+
 SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange)
 {
 	SPT_PROFILER_FUNCTION();

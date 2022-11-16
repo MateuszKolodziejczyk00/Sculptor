@@ -3,15 +3,22 @@
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGTrackedResource.h"
+#include "RGResources/RGResources.h"
+
+namespace spt::rhi
+{
+struct BarrierTextureTransitionTarget;
+} // spt::rhi
+
+
+namespace spt::rdr
+{
+class CommandRecorder;
+} // spt::rdr
 
 
 namespace spt::rg
 {
-
-class CommandRecorder;
-
-using RGExecuteFunctionType = void(const lib::SharedPtr<CommandRecorder>& /*recorder*/);
-
 
 class RENDER_GRAPH_API RGNode : public RGTrackedResource
 {
@@ -19,11 +26,34 @@ public:
 
 	RGNode();
 
-	void Execute(const lib::SharedPtr<CommandRecorder>& recorder);
+	void AddTextureState(const RGTextureView& textureView, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+
+	void Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
 
 protected:
 
-	virtual void OnExecute(const lib::SharedPtr<CommandRecorder>& recorder) = 0;
+	void PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
+
+	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) = 0;
+
+	struct TextureTransitionDef
+	{
+		TextureTransitionDef(const RGTextureView& inTextureView,
+							 const rhi::BarrierTextureTransitionTarget* inTransitionSource,
+							 const rhi::BarrierTextureTransitionTarget* inTransitionTarget)
+			: textureView(inTextureView)
+			, transitionSource(inTransitionSource)
+			, transitionTarget(inTransitionTarget)
+		{ }
+
+		RGTextureView textureView;
+		const rhi::BarrierTextureTransitionTarget* transitionSource;
+		const rhi::BarrierTextureTransitionTarget* transitionTarget;
+	};
+
+	lib::DynamicArray<TextureTransitionDef> m_preExecuteTransitions;
+
+	Bool m_executed;
 };
 
 
@@ -32,7 +62,7 @@ class RGLambdaNode
 {
 public:
 
-	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedPtr<CommandRecorder>&>));
+	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedPtr<rdr::CommandRecorder>&>));
 
 	explicit RGLambdaNode(TCallable callable)
 		: m_callable(std::move(callable))
@@ -40,7 +70,7 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedPtr<CommandRecorder>& recorder) override
+	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
 	{
 		m_callable(recorder);
 	}

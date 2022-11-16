@@ -22,6 +22,8 @@ public:
 
 	// Building ===============================================================
 
+	Bool		IsEmpty() const;
+
 	SizeType	AddTextureDependency(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange);
 
 	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionTarget);
