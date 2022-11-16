@@ -60,8 +60,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 		
 		{
 #if WITH_GPU_CRASH_DUMPS
-			static lib::HashedString checkpoint = "Pre Dispatch";
-			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+			recorder->SetDebugCheckpoint("Pre Dispatch");
 #endif // WITH_GPU_CRASH_DUMPS
 		}
 		
@@ -94,8 +93,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 		{
 #if WITH_GPU_CRASH_DUMPS
-			static lib::HashedString checkpoint = "Post Dispatch";
-			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+			recorder->SetDebugCheckpoint("Post Dispatch");
 #endif // WITH_GPU_CRASH_DUMPS
 		}
 	}

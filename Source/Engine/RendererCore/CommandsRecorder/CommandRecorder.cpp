@@ -216,15 +216,15 @@ void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const r
 }
 
 #if WITH_GPU_CRASH_DUMPS
-void CommandRecorder::SetDebugCheckpoint(const void* markerPtr)
+void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([markerPtr](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+	EnqueueRenderCommand([marker](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
 						 {
 							 SPT_PROFILER_SCOPE("SetDebugCheckpoint Command");
 
-							 cmdBuffer->GetRHI().SetDebugCheckpoint(markerPtr);
+							 cmdBuffer->GetRHI().SetDebugCheckpoint(reinterpret_cast<const void*>(marker.GetKey()));
 						 });
 }
 #endif // WITH_GPU_CRASH_DUMPS

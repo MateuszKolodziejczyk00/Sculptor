@@ -240,8 +240,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 		{
 #if WITH_GPU_CRASH_DUMPS
-			static lib::HashedString checkpoint = "Pre UI Render";
-			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+			recorder->SetDebugCheckpoint("Pre UI Render");
 #endif // WITH_GPU_CRASH_DUMPS
 		}
 
@@ -278,8 +277,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 		{
 #if WITH_GPU_CRASH_DUMPS
-			static lib::HashedString checkpoint = "Post UI Render";
-			recorder->SetDebugCheckpoint(reinterpret_cast<const void*>(checkpoint.GetKey()));
+			recorder->SetDebugCheckpoint("Post UI Render");
 #endif // WITH_GPU_CRASH_DUMPS
 		}
 	}

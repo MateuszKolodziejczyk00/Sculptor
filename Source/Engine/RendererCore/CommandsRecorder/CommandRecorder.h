@@ -77,7 +77,7 @@ public:
 	void									CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
 #if WITH_GPU_CRASH_DUMPS
-	void									SetDebugCheckpoint(const void* markerPtr);
+	void									SetDebugCheckpoint(const lib::HashedString& marker);
 #endif // WITH_GPU_CRASH_DUMPS
 
 	void									InitializeUIFonts();
