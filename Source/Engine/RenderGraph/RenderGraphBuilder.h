@@ -45,13 +45,23 @@ public:
 
 private:
 
+	template<typename TDescriptorSetStatesRange>
+	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
+
+	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
+
+	void ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies);
+
+	void ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
+	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& yependencies);
+
 	const rhi::BarrierTextureTransitionTarget& GetTransitionDefForAccess(ERGAccess access) const;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
 
-	lib::DynamicArray<RGNode*> m_nodes;
+	lib::DynamicArray<RGNodeHandle> m_nodes;
 
 	RGAllocator allocator;
 };
@@ -73,53 +83,20 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 	NodeType* node = allocator.Allocate<NodeType>(std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
+	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
+
+	AddNodeInternal(node, dependencies);
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies)
+{
+	SPT_PROFILER_FUNCTION();
+
 	RGDependenciesBuilder dependenciesBuilder(dependencies);
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
 	{
 		stateToBind->BuildRGDependencies(dependenciesBuilder);
-	}
-
-	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
-	{
-		const RGTextureView& accessedTextureView = textureAccessDef.textureView;
-		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
-		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView.GetViewDefinition().subresourceRange;
-
-		if (accessedTexture->HasAcquiredNode())
-		{
-			accessedTexture->SetAcquireNode(node);
-		}
-
-		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
-
-		const rhi::BarrierTextureTransitionTarget& transitionTarget = GetTransitionDefForAccess(textureAccessDef.access);
-
-		if (textureAccessState.IsFullResource())
-		{
-			const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().access);
-			node->AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
-		}
-		else
-		{
-			textureAccessState.ForEachSubresource(accessedSubresourceRange,
-												  [&, this](RGTextureSubresource subresource)
-												  {
-													  const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource));
-
-													  rhi::TextureSubresourceRange subresourceRange;
-													  subresourceRange.aspect = accessedSubresourceRange.aspect;
-													  subresourceRange.baseArrayLayer = subresource.arrayLayerIdx;
-													  subresourceRange.arrayLayersNum = 1;
-													  subresourceRange.baseMipLevel = subresource.mipMapIdx;
-													  subresourceRange.mipLevelsNum = 1;
-
-													  node->AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
-												  });
-		}
-
-		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, node), accessedSubresourceRange);
-
-		m_nodes.emplace_back(node);
 	}
 }
 
