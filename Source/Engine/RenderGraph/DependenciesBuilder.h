@@ -20,36 +20,34 @@ struct RGBufferAccessDef
 };
 
 
+struct RGDependeciesContainer
+{
+	lib::DynamicArray<RGTextureAccessDef> textureAccesses;
+	lib::DynamicArray<RGBufferAccessDef>  bufferAccesses;
+};
+
+
 class RGDependenciesBuilder
 {
 public:
 
-	RGDependenciesBuilder() = default;
+	RGDependenciesBuilder(RGDependeciesContainer& dependecies)
+		: m_dependeciesRef(dependecies)
+	{ }
 
 	void AddTextureAccess(RGTextureView texture, ERGAccess access)
 	{
-		m_textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
+		m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
 	}
 
 	void AddBufferAccess(RGBufferHandle buffer, ERGAccess access)
 	{
-		m_bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
-	}
-
-	const lib::DynamicArray<RGTextureAccessDef>& GetTextureAccesses() const
-	{
-		return m_textureAccesses;
-	}
-
-	const lib::DynamicArray<RGBufferAccessDef>& GetBufferAccesses() const
-	{
-		return m_bufferAccesses;
+		m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
 	}
 
 private:
 
-	lib::DynamicArray<RGTextureAccessDef>  m_textureAccesses;
-	lib::DynamicArray<RGBufferAccessDef>  m_bufferAccesses;
+	RGDependeciesContainer& m_dependeciesRef;
 };
 
 } // spt::rg

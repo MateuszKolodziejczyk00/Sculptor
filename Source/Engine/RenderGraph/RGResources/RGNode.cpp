@@ -9,11 +9,11 @@ RGNode::RGNode()
 	: m_executed(false)
 { }
 
-void RGNode::AddTextureState(const RGTextureView& textureView, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget)
+void RGNode::AddTextureState(RGTextureHandle inTexture, const rhi::TextureSubresourceRange& inTextureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_preExecuteTransitions.emplace_back(TextureTransitionDef(textureView, &transitionSource, &transitionTarget));
+	m_preExecuteTransitions.emplace_back(TextureTransitionDef(inTexture, inTextureSubresourceRange, &transitionSource, &transitionTarget));
 }
 
 void RGNode::PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder)
@@ -24,10 +24,8 @@ void RGNode::PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recor
 
 	for (const TextureTransitionDef& textureTransition : m_preExecuteTransitions)
 	{
-		const RGTextureHandle texture = textureTransition.textureView.GetTexture();
-		const lib::SharedPtr<rdr::Texture>& textureResource = texture->GetResource();
-
-		const SizeType barrierIdx = barrierDependency.AddTextureDependency(textureResource->GetRHI(), textureTransition.textureView.GetViewDefinition().subresourceRange);
+		const lib::SharedPtr<rdr::Texture>& textureInstance = textureTransition.texture->GetResource();
+		const SizeType barrierIdx = barrierDependency.AddTextureDependency(textureInstance->GetRHI(), textureTransition.textureSubresourceRange);
 		barrierDependency.SetLayoutTransition(barrierIdx, *textureTransition.transitionSource, *textureTransition.transitionTarget);
 	}
 

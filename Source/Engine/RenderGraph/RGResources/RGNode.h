@@ -26,7 +26,7 @@ public:
 
 	RGNode();
 
-	void AddTextureState(const RGTextureView& textureView, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+	void AddTextureState(RGTextureHandle inTexture, const rhi::TextureSubresourceRange& inTextureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
 
 	void Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
 
@@ -38,15 +38,18 @@ protected:
 
 	struct TextureTransitionDef
 	{
-		TextureTransitionDef(const RGTextureView& inTextureView,
+		TextureTransitionDef(RGTextureHandle inTexture,
+							 const rhi::TextureSubresourceRange& inTextureSubresourceRange,
 							 const rhi::BarrierTextureTransitionTarget* inTransitionSource,
 							 const rhi::BarrierTextureTransitionTarget* inTransitionTarget)
-			: textureView(inTextureView)
+			: texture(inTexture)
+			, textureSubresourceRange(inTextureSubresourceRange)
 			, transitionSource(inTransitionSource)
 			, transitionTarget(inTransitionTarget)
 		{ }
 
-		RGTextureView textureView;
+		RGTextureHandle texture;
+		rhi::TextureSubresourceRange textureSubresourceRange;
 		const rhi::BarrierTextureTransitionTarget* transitionSource;
 		const rhi::BarrierTextureTransitionTarget* transitionTarget;
 	};

@@ -72,16 +72,18 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 
 	NodeType* node = allocator.Allocate<NodeType>(std::move(executeLambda));
 
-	RGDependenciesBuilder dependenciesBuilder;
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(dependencies);
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
 	{
 		stateToBind->BuildRGDependencies(dependenciesBuilder);
 	}
 
-	for (const RGTextureAccessDef& textureAccessDef : dependenciesBuilder.GetTextureAccesses())
+	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
 	{
 		const RGTextureView& accessedTextureView = textureAccessDef.textureView;
 		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
+		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView.GetViewDefinition().subresourceRange;
 
 		if (accessedTexture->HasAcquiredNode())
 		{
@@ -95,20 +97,29 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 		if (textureAccessState.IsFullResource())
 		{
 			const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().access);
-			node->AddTextureState(accessedTextureView, transitionSource, transitionTarget);
+			node->AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
 		}
 		else
 		{
-			textureAccessState.ForEachSubresource(accessedTextureView.GetViewDefinition().subresourceRange,
-												  [this, &textureAccessState, &transitionTarget, node](RGTextureSubresource subresource)
+			textureAccessState.ForEachSubresource(accessedSubresourceRange,
+												  [&, this](RGTextureSubresource subresource)
 												  {
 													  const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource));
-													  SPT_CHECK_NO_ENTRY();
+
+													  rhi::TextureSubresourceRange subresourceRange;
+													  subresourceRange.aspect = accessedSubresourceRange.aspect;
+													  subresourceRange.baseArrayLayer = subresource.arrayLayerIdx;
+													  subresourceRange.arrayLayersNum = 1;
+													  subresourceRange.baseMipLevel = subresource.mipMapIdx;
+													  subresourceRange.mipLevelsNum = 1;
+
+													  node->AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
 												  });
 		}
 
-		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, node), accessedTextureView.GetViewDefinition().subresourceRange);
+		textureAccessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(textureAccessDef.access, node), accessedSubresourceRange);
 
+		m_nodes.emplace_back(node);
 	}
 }
 
