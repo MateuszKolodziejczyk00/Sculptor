@@ -20,21 +20,42 @@ class CommandRecorder;
 namespace spt::rg
 {
 
+using RGNodeID = SizeType;
+
+
 class RENDER_GRAPH_API RGNode : public RGTrackedResource
 {
 public:
 
-	RGNode();
+	RGNode(const RenderGraphDebugName& name, RGNodeID id);
 
-	void AddTextureState(RGTextureHandle inTexture, const rhi::TextureSubresourceRange& inTextureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+	RGNodeID GetID() const;
+	const RenderGraphDebugName& GetName() const;
+
+	void AddTextureToAcquire(RGTextureHandle texture);
+	void AddTextureToRelease(RGTextureHandle texture);
+
+	void AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
 
 	void Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
 
 protected:
 
-	void PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
-
 	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) = 0;
+
+private:
+
+	// Node Execution ===================================================
+
+	void CreateResources();
+	void PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
+	void ReleaseResources();
+
+	// Execution Helpers ================================================
+
+	void CreateTextures();
+
+	void ReleaseTextures();
 
 	struct TextureTransitionDef
 	{
@@ -54,6 +75,14 @@ protected:
 		const rhi::BarrierTextureTransitionTarget* transitionTarget;
 	};
 
+
+	RenderGraphDebugName m_name;
+
+	RGNodeID m_id;
+
+	lib::DynamicArray<RGTextureHandle> m_texturesToAcquire;
+	lib::DynamicArray<RGTextureHandle> m_texturesToRelease;
+
 	lib::DynamicArray<TextureTransitionDef> m_preExecuteTransitions;
 
 	Bool m_executed;
@@ -61,14 +90,19 @@ protected:
 
 
 template<typename TCallable>
-class RGLambdaNode
+class RGLambdaNode : public RGNode
 {
+protected:
+
+	using Super = RGNode;
+
 public:
 
 	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedPtr<rdr::CommandRecorder>&>));
 
-	explicit RGLambdaNode(TCallable callable)
-		: m_callable(std::move(callable))
+	explicit RGLambdaNode(const RenderGraphDebugName& name, RGNodeID id, TCallable callable)
+		: Super(name, id)
+		, m_callable(std::move(callable))
 	{ }
 
 protected:

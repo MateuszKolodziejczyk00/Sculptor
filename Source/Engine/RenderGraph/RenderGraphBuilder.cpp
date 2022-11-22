@@ -79,9 +79,12 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
 		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView.GetViewDefinition().subresourceRange;
 
-		if (accessedTexture->HasAcquiredNode())
+		if (!accessedTexture->IsExtracted())
 		{
-			accessedTexture->SetAcquireNode(&node);
+			if (accessedTexture->HasAcquiredNode())
+			{
+				accessedTexture->SetAcquireNode(&node);
+			}
 		}
 
 		RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();

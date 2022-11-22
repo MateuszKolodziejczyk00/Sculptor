@@ -80,7 +80,9 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 	using LambdaType = decltype(executeLambda);
 	using NodeType = RGLambdaNode<LambdaType>;
 
-	NodeType* node = allocator.Allocate<NodeType>(std::move(executeLambda));
+	const RGNodeID nodeID = m_nodes.size();
+
+	NodeType* node = allocator.Allocate<NodeType>(dispatchName, nodeID, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
