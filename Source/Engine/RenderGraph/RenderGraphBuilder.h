@@ -57,6 +57,12 @@ private:
 
 	const rhi::BarrierTextureTransitionTarget& GetTransitionDefForAccess(ERGAccess access) const;
 
+	void ResolveResourceReleases();
+
+	void ResolveTextureReleases();
+
+	lib::DynamicArray<RGTextureHandle> m_textures;
+
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;

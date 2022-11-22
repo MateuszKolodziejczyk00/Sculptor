@@ -23,6 +23,8 @@ RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(lib::SharedPtr<rdr::T
 
 	m_externalTextures.emplace(std::move(texture), textureHandle);
 
+	m_textures.emplace_back(textureHandle);
+
 	return textureHandle;
 }
 
@@ -36,6 +38,8 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 
 	RGTextureHandle textureHandle = allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
 
+	m_textures.emplace_back(textureHandle);
+
 	return textureHandle;
 }
 
@@ -46,12 +50,6 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 	textureHandle->SetExtractionDestination(extractDestination);
 
 	m_extractedTextures.emplace_back(textureHandle);
-}
-
-const rhi::BarrierTextureTransitionTarget& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
-{
-	SPT_CHECK_NO_ENTRY();
-	return rhi::TextureTransition::Undefined;
 }
 
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
@@ -79,9 +77,9 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
 		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView.GetViewDefinition().subresourceRange;
 
-		if (!accessedTexture->IsExtracted())
+		if (!accessedTexture->IsExternal())
 		{
-			if (accessedTexture->HasAcquiredNode())
+			if (accessedTexture->HasAcquireNode())
 			{
 				accessedTexture->SetAcquireNode(&node);
 			}
@@ -123,6 +121,53 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 	SPT_PROFILER_FUNCTION();
 
 
+}
+
+const rhi::BarrierTextureTransitionTarget& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
+{
+	SPT_CHECK_NO_ENTRY();
+	return rhi::TextureTransition::Undefined;
+}
+
+void RenderGraphBuilder::ResolveResourceReleases()
+{
+	ResolveTextureReleases();
+}
+
+void RenderGraphBuilder::ResolveTextureReleases()
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (RGTextureHandle texture : m_textures)
+	{
+		if (!texture->IsExternal() && !texture->IsExtracted())
+		{
+			RGTextureAccessState& textureAccesses = texture->GetAccessState();
+
+			RGNodeHandle lastAccessNode;
+
+			if (textureAccesses.IsFullResource())
+			{
+				const RGTextureSubresourceAccessState& accessState = textureAccesses.GetForFullResource();
+				lastAccessNode = accessState.lastAccessNode;
+			}
+			else
+			{
+				// find last accessed subresource
+				textureAccesses.ForEachSubresource([&](RGTextureSubresource subresource)
+												   {
+													   const RGTextureSubresourceAccessState& accessState = textureAccesses.GetForSubresource(subresource);
+													   if (!lastAccessNode.IsValid() || lastAccessNode->GetID() < accessState.lastAccessNode->GetID())
+													   {
+														   lastAccessNode = accessState.lastAccessNode;
+													   }
+												   });
+			}
+
+			SPT_CHECK(lastAccessNode.IsValid());
+			lastAccessNode->AddTextureToRelease(texture);
+		}
+	}
 }
 
 } // spt::rg

@@ -2,6 +2,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "RHIBridge/RHIDependencyImpl.h"
 #include "RenderGraphPersistentState.h"
+#include "GPUDiagnose/Diagnose.h"
 
 namespace spt::rg
 {
@@ -29,6 +30,7 @@ void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 
 void RGNode::AddTextureToRelease(RGTextureHandle texture)
 {
+	SPT_CHECK(!texture->HasReleaseNode());
 	m_texturesToRelease.emplace_back(texture);
 }
 
@@ -42,6 +44,9 @@ void RGNode::AddTextureState(RGTextureHandle texture, const rhi::TextureSubresou
 void RGNode::Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
+	SPT_GPU_DEBUG_REGION(*recorder, GetName().Get().GetData(), lib::Color::Blue);
 
 	SPT_CHECK(!m_executed);
 

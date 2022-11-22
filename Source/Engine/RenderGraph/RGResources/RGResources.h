@@ -19,13 +19,6 @@ enum class ERGAccess
 };
 
 
-enum class ERGResourceType
-{
-	TextureView,
-	Buffer
-};
-
-
 enum class ERGResourceFlags : Flags32
 {
 	None = 0,
@@ -65,7 +58,7 @@ public:
 		return m_flags;
 	}
 
-	Bool HasAcquiredNode() const
+	Bool HasAcquireNode() const
 	{
 		return m_acquireNode.IsValid();
 	}
@@ -80,6 +73,11 @@ public:
 		return m_acquireNode;
 	}
 
+	Bool HasReleaseNode() const
+	{
+		return m_releaseNode.IsValid();
+	}
+
 	void SetReleaseNode(RGNodeHandle node)
 	{
 		m_releaseNode = node;
@@ -88,6 +86,11 @@ public:
 	RGNodeHandle GetReleaseNode() const
 	{
 		return m_releaseNode;
+	}
+
+	Bool IsExternal()
+	{
+		return lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External);
 	}
 
 private:
@@ -180,6 +183,20 @@ public:
 		for (Uint32 layerIdx = range.baseArrayLayer; layerIdx < lastLayerIdx; ++layerIdx)
 		{
 			for (Uint32 mipIdx = range.baseMipLevel; mipIdx < lastMipIdx; ++mipIdx)
+			{
+				callable(RGTextureSubresource(layerIdx, mipIdx));
+			}
+		}
+	}
+
+	template<typename TCallable>
+	void ForEachSubresource(TCallable&& callable)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		for (Uint32 layerIdx = 0; layerIdx < m_textureLayersNum; ++layerIdx)
+		{
+			for (Uint32 mipIdx = 0; mipIdx < m_textureMipsNum; ++mipIdx)
 			{
 				callable(RGTextureSubresource(layerIdx, mipIdx));
 			}
