@@ -14,9 +14,6 @@ namespace priv
 
 constexpr VkImageLayout g_uninitializedLayoutValue = VK_IMAGE_LAYOUT_MAX_ENUM;
 
-// adding 1 here should be fine (VK_IMAGE_LAYOUT_MAX_ENUM is not max value so it won't overflow)
-constexpr VkImageLayout g_invalidLayoutValue = static_cast<VkImageLayout>(static_cast<Uint32>(VK_IMAGE_LAYOUT_MAX_ENUM) + 1);
-
 static void FillImageLayoutTransitionFlags(VkImageLayout layout, VkPipelineStageFlags2& outStage, VkAccessFlags2& outAccessFlags)
 {
 	switch (layout)
@@ -161,11 +158,6 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::TextureDefinition& textureDef = texture.GetDefinition();
-	const Bool isTrackingTextureLayout = !lib::HasAnyFlag(textureDef.flags, rhi::ETextureFlags::UntrackedLayout);
-
-	const VkImageLayout initalLayout = isTrackingTextureLayout ? priv::g_uninitializedLayoutValue : priv::g_invalidLayoutValue;
-
 	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
 	barrier.image								= texture.GetHandle();
 	barrier.subresourceRange.aspectMask			= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
@@ -177,8 +169,8 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
     barrier.srcAccessMask						= VK_ACCESS_2_NONE;
     barrier.dstStageMask						= VK_PIPELINE_STAGE_2_NONE;
     barrier.dstAccessMask						= VK_ACCESS_2_NONE;
-	barrier.oldLayout							= initalLayout;
-    barrier.newLayout							= initalLayout;
+	barrier.oldLayout							= priv::g_uninitializedLayoutValue;
+    barrier.newLayout							= priv::g_uninitializedLayoutValue;
     barrier.srcQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex					= VK_QUEUE_FAMILY_IGNORED;
 
@@ -232,6 +224,8 @@ void RHIDependency::SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& 
 
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 	vkCmdSetEvent2(cmdBuffer.GetHandle(), event.GetHandle(), &dependencyInfo);
+
+	ReleaseTexturesWriteAccess(cmdBuffer);
 }
 
 void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
@@ -239,6 +233,8 @@ void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent&
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(event.IsValid());
+
+	AcquireTexturesWriteAccess(cmdBuffer);
 
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
 
@@ -293,13 +289,41 @@ VkDependencyInfo RHIDependency::GetDependencyInfo() const
 	return dependency;
 }
 
+void RHIDependency::ReleaseTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
+
+	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
+	{
+		const VkImageMemoryBarrier2& textureBarrier = m_textureBarriers[idx];
+
+		layoutsManager.ReleaseImageWriteAccess(cmdBuffer.GetHandle(), textureBarrier.image);
+	}
+}
+
+void RHIDependency::AcquireTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
+
+	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
+	{
+		const VkImageMemoryBarrier2& textureBarrier = m_textureBarriers[idx];
+
+		layoutsManager.AcquireImageWriteAccess(cmdBuffer.GetHandle(), textureBarrier.image);
+	}
+}
+
 void RHIDependency::ValidateBarriers() const
 {
 	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
 	{
 		const VkImageMemoryBarrier2& textureBarrier = m_textureBarriers[idx];
-		SPT_CHECK_MSG(textureBarrier.oldLayout != priv::g_invalidLayoutValue, "Didn't provide old layout for texture with untracked layout (idx = {0})", idx);
-		SPT_CHECK(textureBarrier.newLayout != priv::g_invalidLayoutValue); // Should never happen
+		SPT_CHECK_MSG(textureBarrier.oldLayout != priv::g_uninitializedLayoutValue, "Didn't provide old layout for texture (idx = {0})", idx);
+		SPT_CHECK(textureBarrier.newLayout != priv::g_uninitializedLayoutValue); // Should never happen
 	}
 }
 

@@ -51,6 +51,10 @@ public:
 	void								SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);
 	void								SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout);
 
+	Bool								HasWriteAccess() const;
+	void								AcquireWriteAccess();
+	void								ReleaseWriteAccess();
+
 private:
 
 	SizeType							GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const;
@@ -66,6 +70,8 @@ private:
 	VkImageLayout						m_fullImageLayout;
 
 	lib::DynamicArray<VkImageLayout>	m_subresourceLayouts;
+
+	Bool								m_hasWriteAccess;
 };
 
 
@@ -131,6 +137,9 @@ public:
 	void										SetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout);
 	void										SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range, VkImageLayout layout);
 
+	void										AcquireImageWriteAccess(VkCommandBuffer cmdBuffer, VkImage image);
+	void										ReleaseImageWriteAccess(VkCommandBuffer cmdBuffer, VkImage image);
+
 	void										RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer);
 	void										UnregisterRecordingCommnadBuffer(VkCommandBuffer cmdBuffer);
 
@@ -155,4 +164,4 @@ private:
 	mutable lib::ReadWriteLock					m_cmdBuffersLayoutManagersLock;
 };
 
-}
+} // spt::vulkan

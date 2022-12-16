@@ -11,6 +11,7 @@ ImageSubresourcesLayoutsData::ImageSubresourcesLayoutsData(Uint32 mipsNum, Uint3
 	: m_mipsNum(mipsNum)
 	, m_arrayLayersNum(arrayLayers)
 	, m_fullImageLayout(layout)
+	, m_hasWriteAccess(true)
 { }
 
 Bool ImageSubresourcesLayoutsData::AreAllSubresourcesInSameLayout() const
@@ -59,12 +60,16 @@ VkImageLayout ImageSubresourcesLayoutsData::GetSubresourcesSharedLayout(const Im
 
 void ImageSubresourcesLayoutsData::SetFullImageLayout(VkImageLayout layout)
 {
+	SPT_CHECK_MSG(HasWriteAccess(), "Attempt to change layout without write access!");
+
 	m_fullImageLayout = layout;
 	m_subresourceLayouts.clear();
 }
 
 void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 arrayLayer, VkImageLayout layout)
 {
+	SPT_CHECK_MSG(HasWriteAccess(), "Attempt to change layout without write access!");
+
 	SPT_CHECK(mipLevel < m_mipsNum && arrayLayer < m_arrayLayersNum);
 
 	if (!AreAllSubresourcesInSameLayout())
@@ -88,6 +93,8 @@ void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 
 void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK_MSG(HasWriteAccess(), "Attempt to change layout without write access!");
 
 	if (	range.baseMipLevel == 0 && range.baseArrayLayer == 0
 		&& (range.mipLevelsNum == m_mipsNum || range.mipLevelsNum == rhi::constants::allRemainingMips)
@@ -119,6 +126,21 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 
 		TransitionToFullImageLayoutIfPossible();
 	}
+}
+
+Bool ImageSubresourcesLayoutsData::HasWriteAccess() const
+{
+	return m_hasWriteAccess;
+}
+
+void ImageSubresourcesLayoutsData::AcquireWriteAccess()
+{
+	m_hasWriteAccess = true;
+}
+
+void ImageSubresourcesLayoutsData::ReleaseWriteAccess()
+{
+	m_hasWriteAccess = false;
 }
 
 SizeType ImageSubresourcesLayoutsData::GetSubresourceIdx(Uint32 mipLevel, Uint32 arrayLayer) const
@@ -322,6 +344,21 @@ void LayoutsManager::SetSubresourcesLayout(VkCommandBuffer cmdBuffer, VkImage im
 	layoutData.SetSubresourcesLayout(range, layout);
 }
 
+void LayoutsManager::AcquireImageWriteAccess(VkCommandBuffer cmdBuffer, VkImage image)
+{
+	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+	layoutData.AcquireWriteAccess();
+}
+
+void LayoutsManager::ReleaseImageWriteAccess(VkCommandBuffer cmdBuffer, VkImage image)
+{
+	ImageSubresourcesLayoutsData& layoutData = GetAcquiredImageLayoutData(cmdBuffer, image);
+
+	SPT_CHECK_MSG(layoutData.GetFullImageLayout() == GetGlobalFullImageLayout(image), "Cannot release image with changed layout");
+
+	layoutData.ReleaseWriteAccess();
+}
+
 void LayoutsManager::RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer)
 {
 	SPT_PROFILER_FUNCTION();
@@ -386,14 +423,14 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 
 	const CommandBufferLayoutsManager::ImagesLayoutData& images = cmdBufferLayouts.GetAcquiredImagesLayouts();
 
-	for (const auto& imageLayout : images)
+	for (const auto& [image, layoutData] : images)
 	{
-		const VkImage image = imageLayout.first;
-		const ImageSubresourcesLayoutsData& layoutData = imageLayout.second;
+		if (layoutData.HasWriteAccess())
+		{
+			SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
 
-		SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
-
-		SetFullImageLayout(cmdBuffer, image, layoutData.GetFullImageLayout());
+			SetFullImageLayout(cmdBuffer, image, layoutData.GetFullImageLayout());
+		}
 	}
 }
 
@@ -435,4 +472,4 @@ VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const
 	return foundLayout->second.fullImageLayout;
 }
 
-}
+} // spt::vulkan
