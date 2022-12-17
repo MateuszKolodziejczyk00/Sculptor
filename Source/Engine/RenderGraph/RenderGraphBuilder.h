@@ -39,11 +39,17 @@ public:
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
+	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionTarget& preExtractionTransitionTarget);
 
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
+	void Execute();
+
 private:
+
+	template<typename TNodeType, typename... TArgs>
+	TNodeType& AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
@@ -53,12 +59,19 @@ private:
 	void ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	void ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
-	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& yependencies);
+	void AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+
+	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	const rhi::BarrierTextureTransitionTarget& GetTransitionDefForAccess(ERGAccess access) const;
 
-	void ResolveResourceReleases();
+	void PostBuild();
+	void Compile();
+	void ExecuteGraph();
 
+	void AddPrepareTexturesForExtractionNode();
+
+	void ResolveResourceReleases();
 	void ResolveTextureReleases();
 
 	lib::DynamicArray<RGTextureHandle> m_textures;
@@ -71,6 +84,19 @@ private:
 
 	RGAllocator allocator;
 };
+
+template<typename TNodeType, typename... TArgs>
+TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RGNodeID nodeID = m_nodes.size();
+
+	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(dispatchName, nodeID, std::forward_as_tuple<TArgs>(args)...);
+	SPT_CHECK(!!allocatedNode);
+
+	return *allocatedNode;
+}
 
 template<typename TDescriptorSetStatesRange>
 void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
@@ -86,9 +112,7 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 	using LambdaType = decltype(executeLambda);
 	using NodeType = RGLambdaNode<LambdaType>;
 
-	const RGNodeID nodeID = m_nodes.size();
-
-	NodeType* node = allocator.Allocate<NodeType>(dispatchName, nodeID, std::move(executeLambda));
+	NodeType& node = AllocateNode<NodeType>(dispatchName, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);

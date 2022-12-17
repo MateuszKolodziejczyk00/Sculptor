@@ -53,6 +53,9 @@ enum class ETextureLayout : Uint32
 
 	ReadOnlyOptimal,
 	RenderTargetOptimal,
+
+	// Special layout that can be used as prev texture layout when performing layout transitions
+	Auto
 };
 
 
@@ -66,7 +69,7 @@ enum class EFragmentFormat : Uint32
 	BGR8_UN_Float,
 
 	RGBA32_S_Float,
-	D32_S_Float,
+	D32_S_Float
 };
 
 

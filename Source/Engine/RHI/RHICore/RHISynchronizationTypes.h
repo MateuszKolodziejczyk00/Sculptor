@@ -32,6 +32,9 @@ namespace TextureTransition
 
 	static constexpr BarrierTextureTransitionTarget Undefined			= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::Undefined, EPipelineStage::TopOfPipe);
 
+	// This can be used only as a source transition
+	static constexpr BarrierTextureTransitionTarget Auto				= BarrierTextureTransitionTarget(EAccessType::None, ETextureLayout::Auto, EPipelineStage::None);
+
 	static constexpr BarrierTextureTransitionTarget ComputeGeneral		= BarrierTextureTransitionTarget(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::ComputeShader);
 	static constexpr BarrierTextureTransitionTarget FragmentGeneral		= BarrierTextureTransitionTarget(lib::Flags(EAccessType::Read, EAccessType::Write), ETextureLayout::General, EPipelineStage::FragmentShader);
 

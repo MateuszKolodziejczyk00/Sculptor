@@ -8,6 +8,7 @@
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
+#include "RHICore/RHISynchronizationTypes.h"
 
 
 namespace spt::rg
@@ -274,6 +275,7 @@ public:
 		, m_allocationInfo(allocationInfo)
 		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
 		, m_extractionDest(nullptr)
+		, m_preExtractionTransitionTarget(nullptr)
 	{ }
 
 	RGTexture(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Texture> texture)
@@ -283,6 +285,7 @@ public:
 		, m_texture(texture)
 		, m_accessState(texture->GetRHI().GetDefinition().mipLevels, texture->GetRHI().GetDefinition().arrayLayers)
 		, m_extractionDest(nullptr)
+		, m_preExtractionTransitionTarget(nullptr)
 	{
 		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
 	}
@@ -331,6 +334,15 @@ public:
 	{
 		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
 		m_extractionDest = &destination;
+		m_preExtractionTransitionTarget = nullptr;
+	}
+
+	void SetExtractionDestination(lib::SharedPtr<rdr::Texture>& destination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionTarget& preExtractionTransitionTarget)
+	{
+		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
+		m_extractionDest = &destination;
+		m_preExtractionTransitionRange = transitionRange;
+		m_preExtractionTransitionTarget = &preExtractionTransitionTarget;
 	}
 
 	Bool IsExtracted() const
@@ -342,6 +354,16 @@ public:
 	{
 		SPT_CHECK(IsExtracted());
 		return *m_extractionDest;
+	}
+
+	const rhi::BarrierTextureTransitionTarget* GetPreExtractionTransitionTarget() const
+	{
+		return m_preExtractionTransitionTarget;
+	}
+
+	const rhi::TextureSubresourceRange& GetPreExtractionTransitionRange() const
+	{
+		return m_preExtractionTransitionRange;
 	}
 
 	// Access State ========================================================
@@ -360,7 +382,9 @@ private:
 
 	RGTextureAccessState m_accessState;
 
-	lib::SharedPtr<rdr::Texture>* m_extractionDest;
+	lib::SharedPtr<rdr::Texture>*				m_extractionDest;
+	const rhi::BarrierTextureTransitionTarget*	m_preExtractionTransitionTarget;
+	rhi::TextureSubresourceRange				m_preExtractionTransitionRange;
 };
 
 

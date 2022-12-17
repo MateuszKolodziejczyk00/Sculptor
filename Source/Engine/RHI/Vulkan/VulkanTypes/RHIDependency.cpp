@@ -194,9 +194,14 @@ void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierT
 	SPT_CHECK(barrierIdx < m_textureBarriers.size());
 
 	VkImageMemoryBarrier2& barrier = m_textureBarriers[barrierIdx];
-    barrier.srcStageMask	= RHIToVulkan::GetStageFlags(transitionSource.stage);
-    barrier.srcAccessMask	= priv::GetVulkanAccessFlags(transitionSource);
-    barrier.oldLayout		= RHIToVulkan::GetImageLayout(transitionSource.layout);
+
+	if (transitionSource.layout != rhi::ETextureLayout::Auto)
+	{
+		barrier.srcStageMask = RHIToVulkan::GetStageFlags(transitionSource.stage);
+		barrier.srcAccessMask = priv::GetVulkanAccessFlags(transitionSource);
+		barrier.oldLayout = RHIToVulkan::GetImageLayout(transitionSource.layout);
+	}
+
     barrier.dstStageMask	= RHIToVulkan::GetStageFlags(transitionTarget.stage);
     barrier.dstAccessMask	= priv::GetVulkanAccessFlags(transitionTarget);
     barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);

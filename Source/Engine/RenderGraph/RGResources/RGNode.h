@@ -117,4 +117,23 @@ private:
 	TCallable m_callable;
 };
 
+
+class RGEmptyNode : public RGNode
+{
+protected:
+
+	using Super = RGNode;
+
+public:
+
+	RGEmptyNode(const RenderGraphDebugName& name, RGNodeID id)
+		: Super(name, id)
+	{ }
+
+protected:
+
+	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
+	{ }
+};
+
 } // spt::rg
