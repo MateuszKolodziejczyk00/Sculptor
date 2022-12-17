@@ -73,7 +73,6 @@ enum class EFragmentFormat : Uint32
 enum class ETextureFlags : Flags8
 {
 	None = 0,
-	UntrackedLayout = BIT(1),
 
 	Default = None
 };

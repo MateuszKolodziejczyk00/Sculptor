@@ -17,9 +17,21 @@ public:
 
 	explicit ConstantBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
 		: DescriptorSetBinding(name, descriptorDirtyFlag)
+		, m_bufferMappedPtr(nullptr)
 		, m_secondStructOffset(0)
 		, m_offset(nullptr)
 	{ }
+
+	~ConstantBufferBinding()
+	{
+		if (m_bufferMappedPtr)
+		{
+			SPT_CHECK(!!m_buffer);
+		
+			m_buffer->GetRHI().UnmapBufferMemory();
+			m_bufferMappedPtr = nullptr;
+		}
+	}
 
 	void Initialize(DescriptorSetState& owningState)
 	{
@@ -93,7 +105,8 @@ private:
 	
 	TStruct& GetImpl() const
 	{
-		return *reinterpret_cast<TStruct*>(m_buffer->GetRHI().GetMappedPtr() + *m_offset);
+		SPT_CHECK(!!m_bufferMappedPtr);
+		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + *m_offset);
 	}
 
 	void InitResources(DescriptorSetState& owningState)
@@ -114,6 +127,8 @@ private:
 		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
 												  bufferDef, allocationInfo);
 
+		m_bufferMappedPtr = m_buffer->GetRHI().MapBufferMemory();
+
 		m_bufferView = m_buffer->CreateView(0, bufferSize);
 
 		// store offset as 32bits integer because that's how dynamic offset are stored
@@ -123,6 +138,8 @@ private:
 
 	lib::SharedPtr<Buffer>		m_buffer;
 	lib::SharedPtr<BufferView>	m_bufferView;
+	Byte*						m_bufferMappedPtr;
+
 	Uint32						m_secondStructOffset;
 
 	// Dynamic Offset value ptr

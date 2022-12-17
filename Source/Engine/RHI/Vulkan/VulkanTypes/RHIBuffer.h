@@ -33,8 +33,6 @@ public:
 	Byte*						MapBufferMemory() const;
 	void						UnmapBufferMemory() const;
 
-	Byte*						GetMappedPtr() const;
-
 	DeviceAddress				GetDeviceAddress() const;
 
 	void						SetName(const lib::HashedString& name);
