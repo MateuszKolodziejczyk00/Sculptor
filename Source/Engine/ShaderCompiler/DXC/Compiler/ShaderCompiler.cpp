@@ -16,6 +16,8 @@ using namespace Microsoft::WRL; // ComPtr
 namespace spt::sc
 {
 
+SPT_DEFINE_LOG_CATEGORY(ShaderCompiler, true)
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
 
@@ -172,6 +174,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 		preprocessResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
 		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
 		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, errors);
+		SPT_LOG_TRACE(ShaderCompiler, "Failed to preprocess shader {0}", shaderPath.c_str());
 		return result;
 	}
 
@@ -198,6 +201,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 		compilationResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
 		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
 		CompilationErrorsLogger::OutputShaderCompilationErrors(shaderPath, preprocessedSourceCode, errors);
+		SPT_LOG_TRACE(ShaderCompiler, "Failed to compile shader {0}", shaderPath.c_str());
 		return result;
 	}
 
@@ -226,7 +230,7 @@ ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& source
 	sourceBuffer.Encoding = 0;
 
 	DxcArguments preprocessorArgs = args;
-	preprocessorArgs.Append(L"-P", L".");
+	preprocessorArgs.Append(L"-P");
 
 	const auto [argsPtr, argsNum] = preprocessorArgs.GetArgs();
 

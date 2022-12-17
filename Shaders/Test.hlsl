@@ -7,6 +7,5 @@
 [numthreads(8, 8, 1)]
 void main(uint3 id : SV_DispatchThreadID)
 {
-    const float4 val = u_texture.Load(id.xy);
-    u_texture[uint2(id.xy)] = val + float4(1.0, 1.0, 1.0, 1.0);
+    u_texture[uint2(id.xy)] = float4(u_viewInfo.color.xyz + float3(0.2f, 1.f, 0.f), 1.f);
 }
