@@ -34,7 +34,7 @@ void RGNode::AddTextureToRelease(RGTextureHandle texture)
 	m_texturesToRelease.emplace_back(texture);
 }
 
-void RGNode::AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget)
+void RGNode::AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	SPT_PROFILER_FUNCTION();
 

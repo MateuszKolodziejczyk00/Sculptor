@@ -26,8 +26,8 @@ public:
 
 	SizeType	AddTextureDependency(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange);
 
-	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionTarget);
-	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
+	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
 	// Execution ==============================================================
 

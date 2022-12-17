@@ -13,7 +13,7 @@
 
 namespace spt::rhi
 {
-struct BarrierTextureTransitionTarget;
+struct BarrierTextureTransitionDefinition;
 } // spt::rhi
 
 
@@ -39,7 +39,7 @@ public:
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
-	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionTarget& preExtractionTransitionTarget);
+	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget);
 
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
@@ -59,11 +59,11 @@ private:
 	void ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	void ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
-	void AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+	void AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
 	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 
-	const rhi::BarrierTextureTransitionTarget& GetTransitionDefForAccess(ERGAccess access) const;
+	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(ERGAccess access) const;
 
 	void PostBuild();
 	void Compile();

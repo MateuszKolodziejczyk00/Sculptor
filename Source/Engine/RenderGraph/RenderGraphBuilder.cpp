@@ -52,7 +52,7 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 	m_extractedTextures.emplace_back(textureHandle);
 }
 
-void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionTarget& preExtractionTransitionTarget)
+void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget)
 {
 	SPT_PROFILER_FUNCTION()
 
@@ -104,7 +104,7 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 			}
 		}
 
-		const rhi::BarrierTextureTransitionTarget& transitionTarget = GetTransitionDefForAccess(textureAccessDef.access);
+		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(textureAccessDef.access);
 
 		AppendTextureTransitionToNode(node, accessedTexture, accessedSubresourceRange, transitionTarget);
 
@@ -113,13 +113,13 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 	}
 }
 
-void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionTarget)
+void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHandle accessedTexture, const rhi::TextureSubresourceRange& accessedSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 
 	if (textureAccessState.IsFullResource())
 	{
-		const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().lastAccessType);
+		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().lastAccessType);
 		node.AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
 	}
 	else
@@ -127,7 +127,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 		textureAccessState.ForEachSubresource(accessedSubresourceRange,
 											  [&, this](RGTextureSubresource subresource)
 											  {
-												  const rhi::BarrierTextureTransitionTarget& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource).lastAccessType);
+												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource).lastAccessType);
 
 												  rhi::TextureSubresourceRange subresourceRange;
 												  subresourceRange.aspect = accessedSubresourceRange.aspect;
@@ -148,7 +148,7 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 
 }
 
-const rhi::BarrierTextureTransitionTarget& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
+const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
 {
 	SPT_CHECK_NO_ENTRY();
 	return rhi::TextureTransition::Undefined;
@@ -186,7 +186,7 @@ void RenderGraphBuilder::AddPrepareTexturesForExtractionNode()
 
 	for (RGTextureHandle extractedTexture : m_extractedTextures)
 	{
-		const rhi::BarrierTextureTransitionTarget* transitionTarget = extractedTexture->GetPreExtractionTransitionTarget();
+		const rhi::BarrierTextureTransitionDefinition* transitionTarget = extractedTexture->GetPreExtractionTransitionTarget();
 		if (transitionTarget)
 		{
 			const rhi::TextureSubresourceRange& transitionRange = extractedTexture->GetPreExtractionTransitionRange();

@@ -7,7 +7,7 @@
 
 namespace spt::rhi
 {
-struct BarrierTextureTransitionTarget;
+struct BarrierTextureTransitionDefinition;
 } // spt::rhi
 
 
@@ -35,7 +35,7 @@ public:
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
 
-	void AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget);
+	void AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
 	void Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
 
@@ -61,8 +61,8 @@ private:
 	{
 		TextureTransitionDef(RGTextureHandle inTexture,
 							 const rhi::TextureSubresourceRange& inTextureSubresourceRange,
-							 const rhi::BarrierTextureTransitionTarget* inTransitionSource,
-							 const rhi::BarrierTextureTransitionTarget* inTransitionTarget)
+							 const rhi::BarrierTextureTransitionDefinition* inTransitionSource,
+							 const rhi::BarrierTextureTransitionDefinition* inTransitionTarget)
 			: texture(inTexture)
 			, textureSubresourceRange(inTextureSubresourceRange)
 			, transitionSource(inTransitionSource)
@@ -71,8 +71,8 @@ private:
 
 		RGTextureHandle texture;
 		rhi::TextureSubresourceRange textureSubresourceRange;
-		const rhi::BarrierTextureTransitionTarget* transitionSource;
-		const rhi::BarrierTextureTransitionTarget* transitionTarget;
+		const rhi::BarrierTextureTransitionDefinition* transitionSource;
+		const rhi::BarrierTextureTransitionDefinition* transitionTarget;
 	};
 
 

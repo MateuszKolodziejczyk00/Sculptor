@@ -337,7 +337,7 @@ public:
 		m_preExtractionTransitionTarget = nullptr;
 	}
 
-	void SetExtractionDestination(lib::SharedPtr<rdr::Texture>& destination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionTarget& preExtractionTransitionTarget)
+	void SetExtractionDestination(lib::SharedPtr<rdr::Texture>& destination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget)
 	{
 		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
 		m_extractionDest = &destination;
@@ -356,7 +356,7 @@ public:
 		return *m_extractionDest;
 	}
 
-	const rhi::BarrierTextureTransitionTarget* GetPreExtractionTransitionTarget() const
+	const rhi::BarrierTextureTransitionDefinition* GetPreExtractionTransitionTarget() const
 	{
 		return m_preExtractionTransitionTarget;
 	}
@@ -382,9 +382,9 @@ private:
 
 	RGTextureAccessState m_accessState;
 
-	lib::SharedPtr<rdr::Texture>*				m_extractionDest;
-	const rhi::BarrierTextureTransitionTarget*	m_preExtractionTransitionTarget;
-	rhi::TextureSubresourceRange				m_preExtractionTransitionRange;
+	lib::SharedPtr<rdr::Texture>*					m_extractionDest;
+	const rhi::BarrierTextureTransitionDefinition*	m_preExtractionTransitionTarget;
+	rhi::TextureSubresourceRange					m_preExtractionTransitionRange;
 };
 
 

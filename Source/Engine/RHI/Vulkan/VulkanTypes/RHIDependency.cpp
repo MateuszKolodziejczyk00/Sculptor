@@ -69,7 +69,7 @@ static void FillImageLayoutTransitionFlags(VkImageLayout layout, VkPipelineStage
 	}
 }
 
-static VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionTarget& transitionTarget)
+static VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	const rhi::EAccessType rhiFlags = transitionTarget.accessType;
 
@@ -179,7 +179,7 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
 	return m_textureBarriers.size() - 1;
 }
 
-void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionTarget)
+void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	SPT_CHECK(barrierIdx < m_textureBarriers.size());
 
@@ -189,7 +189,7 @@ void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierT
     barrier.newLayout		= RHIToVulkan::GetImageLayout(transitionTarget.layout);
 }
 
-void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionTarget& transitionSource, const rhi::BarrierTextureTransitionTarget& transitionTarget)
+void RHIDependency::SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
 	SPT_CHECK(barrierIdx < m_textureBarriers.size());
 
