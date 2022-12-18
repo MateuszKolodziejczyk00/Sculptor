@@ -13,6 +13,7 @@ struct BarrierTextureTransitionDefinition;
 
 namespace spt::rdr
 {
+class RenderContext;
 class CommandRecorder;
 } // spt::rdr
 
@@ -37,11 +38,11 @@ public:
 
 	void AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
-	void Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
+	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder);
 
 protected:
 
-	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) = 0;
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) = 0;
 
 private:
 
@@ -98,7 +99,7 @@ protected:
 
 public:
 
-	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedPtr<rdr::CommandRecorder>&>));
+	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, const lib::SharedPtr<rdr::CommandRecorder>&>));
 
 	explicit RGLambdaNode(const RenderGraphDebugName& name, RGNodeID id, TCallable callable)
 		: Super(name, id)
@@ -107,9 +108,9 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
 	{
-		m_callable(recorder);
+		m_callable(renderContext, recorder);
 	}
 
 private:
@@ -132,7 +133,7 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
 	{ }
 };
 

@@ -411,7 +411,6 @@ private:
 
 	RGTextureHandle				m_texture;
 	rhi::TextureViewDefinition	m_viewDef;
-
 };
 
 

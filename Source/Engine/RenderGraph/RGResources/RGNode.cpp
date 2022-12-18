@@ -41,7 +41,7 @@ void RGNode::AddTextureState(RGTextureHandle texture, const rhi::TextureSubresou
 	m_preExecuteTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
 }
 
-void RGNode::Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -54,7 +54,7 @@ void RGNode::Execute(const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 
 	PreExecuteBarrier(recorder);
 
-	OnExecute(recorder);
+	OnExecute(renderContext, recorder);
 
 	ReleaseResources();
 

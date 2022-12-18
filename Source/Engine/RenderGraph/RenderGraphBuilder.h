@@ -103,7 +103,7 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [computePipelineID, groupCount](const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+	const auto executeLambda = [computePipelineID, groupCount](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 	{
 		recorder->BindComputePipeline(computePipelineID);
 		recorder->Dispatch(groupCount);
