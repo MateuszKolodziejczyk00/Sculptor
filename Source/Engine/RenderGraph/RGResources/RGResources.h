@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
-#include "RGResources/RGTrackedResource.h"
+#include "RGResources/RGTrackedObject.h"
 #include "RGResources/RGResourceHandles.h"
 #include "Types/Texture.h"
 #include "RHICore/RHITextureTypes.h"
@@ -40,7 +40,7 @@ struct RGResourceDef
 };
 
 
-class RGResource abstract : public RGTrackedResource
+class RGResource abstract : public RGTrackedObject
 {
 public:
 
@@ -388,12 +388,13 @@ private:
 };
 
 
-class RGTextureView
+class RGTextureView : public RGResource
 {
 public:
 
-	RGTextureView(RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition)
-		: m_texture(texture)
+	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition)
+		: RGResource(resourceDefinition)
+		, m_texture(texture)
 		, m_viewDef(viewDefinition)
 	{ }
 
@@ -407,10 +408,34 @@ public:
 		return m_viewDef;
 	}
 
+	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
+	{
+		if (!!m_textureView)
+		{
+			m_textureView = CreateView();
+		}
+
+		SPT_CHECK(!!m_textureView);
+		return m_textureView;
+	}
+
 private:
+
+	lib::SharedPtr<rdr::TextureView> CreateView() const
+	{
+		SPT_CHECK(m_texture.IsValid());
+		SPT_CHECK(m_texture->IsAcquired());
+
+		const lib::SharedPtr<rdr::Texture>& textureInstance = m_texture->GetResource();
+		SPT_CHECK(!!textureInstance);
+
+		return textureInstance->CreateView(RENDERER_RESOURCE_NAME(GetName()), GetViewDefinition());
+	}
 
 	RGTextureHandle				m_texture;
 	rhi::TextureViewDefinition	m_viewDef;
+
+	mutable lib::SharedPtr<rdr::TextureView> m_textureView;
 };
 
 

@@ -91,9 +91,9 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 
 	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
 	{
-		const RGTextureView& accessedTextureView = textureAccessDef.textureView;
-		const RGTextureHandle accessedTexture = accessedTextureView.GetTexture();
-		const rhi::TextureSubresourceRange& accessedSubresourceRange = accessedTextureView.GetViewDefinition().subresourceRange;
+		const RGTextureViewHandle accessedTextureView					= textureAccessDef.textureView;
+		const RGTextureHandle accessedTexture							= accessedTextureView->GetTexture();
+		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetViewDefinition().subresourceRange;
 
 		if (!accessedTexture->IsExternal())
 		{
@@ -130,11 +130,11 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource).lastAccessType);
 
 												  rhi::TextureSubresourceRange subresourceRange;
-												  subresourceRange.aspect = accessedSubresourceRange.aspect;
-												  subresourceRange.baseArrayLayer = subresource.arrayLayerIdx;
-												  subresourceRange.arrayLayersNum = 1;
-												  subresourceRange.baseMipLevel = subresource.mipMapIdx;
-												  subresourceRange.mipLevelsNum = 1;
+												  subresourceRange.aspect			= accessedSubresourceRange.aspect;
+												  subresourceRange.baseArrayLayer	= subresource.arrayLayerIdx;
+												  subresourceRange.arrayLayersNum	= 1;
+												  subresourceRange.baseMipLevel		= subresource.mipMapIdx;
+												  subresourceRange.mipLevelsNum		= 1;
 
 												  node.AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
 											  });

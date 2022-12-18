@@ -8,12 +8,12 @@
 namespace spt::rg
 {
 
-class RENDER_GRAPH_API RGTrackedResource
+class RENDER_GRAPH_API RGTrackedObject
 {
 public:
 
-	RGTrackedResource() = default;
-	virtual ~RGTrackedResource() = default;
+	RGTrackedObject() = default;
+	virtual ~RGTrackedObject() = default;
 };
 
 } // spt::rg

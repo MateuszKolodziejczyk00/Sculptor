@@ -10,6 +10,7 @@
 #include "DependenciesBuilder.h"
 #include "RGResources/RGNode.h"
 #include "CommandsRecorder/CommandRecorder.h"
+#include "CommandsRecorder/RenderingDefinition.h"
 
 namespace spt::rhi
 {
@@ -28,6 +29,97 @@ auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 }
 
 
+using RGRenderTargetDef = rhi::RTGenericDefinition<RGTextureViewHandle>;
+
+
+class RGRenderPassDefinition
+{
+public:
+
+	RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default)
+		: m_renderAreaOffset(renderAreaOffset)
+		, m_renderAreaExtent(renderAreaExtent)
+		, m_renderingFlags(renderingFlags)
+	{ }
+
+	void AddColorRenderTarget(const RGRenderTargetDef& definition)
+	{
+		m_colorRenderTargetDefs.emplace_back(definition);
+	}
+
+	void AddDepthRenderTarget(const RGRenderTargetDef& definition)
+	{
+		m_depthRenderTargetDef = definition;
+	}
+
+	void AddStencilRenderTarget(const RGRenderTargetDef& definition)
+	{
+		m_stencilRenderTargetDef = definition;
+	}
+
+	rdr::RenderingDefinition CreateRenderingDefinition() const
+	{
+		SPT_PROFILER_FUNCTION();
+
+		rdr::RenderingDefinition renderingDefinition(m_renderAreaOffset, m_renderAreaExtent, m_renderingFlags);
+	
+		std::for_each(std::cbegin(m_colorRenderTargetDefs), std::cend(m_colorRenderTargetDefs),
+					  [this, &renderingDefinition](const RGRenderTargetDef& def)
+					  {
+						  renderingDefinition.AddColorRenderTarget(CreateRTDefinition(def));
+					  });
+
+		if (IsRTDefinitionValid(m_depthRenderTargetDef))
+		{
+			renderingDefinition.AddDepthRenderTarget(CreateRTDefinition(m_depthRenderTargetDef));
+		}
+
+		if (IsRTDefinitionValid(m_stencilRenderTargetDef))
+		{
+			renderingDefinition.AddStencilRenderTarget(CreateRTDefinition(m_stencilRenderTargetDef));
+		}
+
+		return renderingDefinition;
+	}
+
+private:
+
+	rdr::RTDefinition CreateRTDefinition(const RGRenderTargetDef& rgDef) const
+	{
+		SPT_CHECK(rgDef.textureView.IsValid());
+
+		rdr::RTDefinition def;
+
+		def.textureView = rgDef.textureView->GetViewInstance();
+
+		if (rgDef.resolveTextureView.IsValid())
+		{
+			def.resolveTextureView = rgDef.resolveTextureView->GetViewInstance();
+		}
+
+		def.loadOperation = rgDef.loadOperation;
+		def.storeOperation = rgDef.storeOperation;
+		def.resolveMode = rgDef.resolveMode;
+		def.clearColor = rgDef.clearColor;
+
+		return def;
+	}
+
+	Bool IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const
+	{
+		return rgDef.textureView.IsValid();
+	}
+
+	lib::DynamicArray<RGRenderTargetDef>	m_colorRenderTargetDefs;
+	RGRenderTargetDef						m_depthRenderTargetDef;
+	RGRenderTargetDef						m_stencilRenderTargetDef;
+
+	math::Vector2i			m_renderAreaOffset;
+	math::Vector2u			m_renderAreaExtent;
+	rhi::ERenderingFlags	m_renderingFlags;
+};
+
+
 class RENDER_GRAPH_API RenderGraphBuilder
 {
 public:
@@ -43,6 +135,9 @@ public:
 
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
+
+	template<typename TDescriptorSetStatesRange>
+	void AddRenderPass(const RenderGraphDebugName& dispatchName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange);
 
 	void Execute();
 
@@ -85,21 +180,9 @@ private:
 	RGAllocator allocator;
 };
 
-template<typename TNodeType, typename... TArgs>
-TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const RGNodeID nodeID = m_nodes.size();
-
-	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(dispatchName, nodeID, std::forward_as_tuple<TArgs>(args)...);
-	SPT_CHECK(!!allocatedNode);
-
-	return *allocatedNode;
-}
 
 template<typename TDescriptorSetStatesRange>
-void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
+void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -118,6 +201,25 @@ void rg::RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchNam
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
 
 	AddNodeInternal(node, dependencies);
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& dispatchName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange)
+{
+
+}
+
+template<typename TNodeType, typename... TArgs>
+TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RGNodeID nodeID = m_nodes.size();
+
+	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(dispatchName, nodeID, std::forward_as_tuple<TArgs>(args)...);
+	SPT_CHECK(!!allocatedNode);
+
+	return *allocatedNode;
 }
 
 template<typename TDescriptorSetStatesRange>

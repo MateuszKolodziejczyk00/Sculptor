@@ -2,7 +2,7 @@
 
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RGResources/RGTrackedResource.h"
+#include "RGResources/RGTrackedObject.h"
 #include "RGResources/RGResources.h"
 
 namespace spt::rhi
@@ -24,7 +24,7 @@ namespace spt::rg
 using RGNodeID = SizeType;
 
 
-class RENDER_GRAPH_API RGNode : public RGTrackedResource
+class RENDER_GRAPH_API RGNode : public RGTrackedObject
 {
 public:
 

@@ -245,7 +245,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 
 		{
-			rdr::RenderingDefinition renderingDef(rhi::ERenderingFlags::None, math::Vector2i(0, 0), m_window->GetSwapchainSize());
+			rdr::RenderingDefinition renderingDef( math::Vector2i(0, 0), m_window->GetSwapchainSize());
 			rdr::RTDefinition renderTarget;
 			renderTarget.textureView = swapchainTextureView;
 			renderTarget.loadOperation = rhi::ERTLoadOperation::Clear;

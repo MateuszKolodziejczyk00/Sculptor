@@ -47,6 +47,9 @@ using RGNodeHandle = RGResourceHandle<RGNode>;
 class RGTexture;
 using RGTextureHandle = RGResourceHandle<RGTexture>;
 
+class RGTextureView;
+using RGTextureViewHandle = RGResourceHandle<RGTextureView>;
+
 class RGBuffer;
 using RGBufferHandle = RGResourceHandle<RGBuffer>;
 

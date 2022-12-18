@@ -15,24 +15,24 @@ class RenderingDefinition
 {
 public:
 
-	RenderingDefinition(rhi::ERenderingFlags renderingFlags, math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent)
+	RenderingDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default)
 	{
-		m_rhiDefinition.renderingFlags		= renderingFlags;
 		m_rhiDefinition.renderAreaOffset	= renderAreaOffset;
 		m_rhiDefinition.renderAreaExtent	= renderAreaExtent;
+		m_rhiDefinition.renderingFlags		= renderingFlags;
 	}
 
-	void							AddColorRenderTarget(const RTDefinition& renderTarget)
+	void AddColorRenderTarget(const RTDefinition& renderTarget)
 	{
 		m_rhiDefinition.colorRTs.push_back(GetRTDefRHI(renderTarget));
 	}
 
-	void							AddDepthRenderTarget(const RTDefinition& renderTarget)
+	void AddDepthRenderTarget(const RTDefinition& renderTarget)
 	{
 		m_rhiDefinition.depthRT = GetRTDefRHI(renderTarget);
 	}
 
-	void							AddStencilRenderTarget(const RTDefinition& renderTarget)
+	void AddStencilRenderTarget(const RTDefinition& renderTarget)
 	{
 		m_rhiDefinition.stencilRT = GetRTDefRHI(renderTarget);
 	}
@@ -44,22 +44,22 @@ public:
 
 private:
 
-	rhi::RHIRenderTargetDefinition				GetRTDefRHI(const RTDefinition& renderTarget) const
+	rhi::RHIRenderTargetDefinition GetRTDefRHI(const RTDefinition& renderTarget) const
 	{
 		SPT_CHECK(!!renderTarget.textureView);
 
 		rhi::RHIRenderTargetDefinition rhiDef;
-		rhiDef.textureView			= renderTarget.textureView->GetRHI();
+		rhiDef.textureView = renderTarget.textureView->GetRHI();
 
 		if (renderTarget.resolveTextureView)
 		{
 			rhiDef.resolveTextureView = renderTarget.resolveTextureView->GetRHI();
 		}
 
-		rhiDef.loadOperation			= renderTarget.loadOperation;
-		rhiDef.storeOperation			= renderTarget.storeOperation;
-		rhiDef.resolveMode				= renderTarget.resolveMode;
-		rhiDef.clearColor				= renderTarget.clearColor;
+		rhiDef.loadOperation	= renderTarget.loadOperation;
+		rhiDef.storeOperation	= renderTarget.storeOperation;
+		rhiDef.resolveMode		= renderTarget.resolveMode;
+		rhiDef.clearColor		= renderTarget.clearColor;
 
 		return rhiDef;
 	}

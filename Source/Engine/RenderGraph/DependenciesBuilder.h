@@ -8,8 +8,8 @@ namespace spt::rg
 
 struct RGTextureAccessDef
 {
-	RGTextureView	textureView;
-	ERGAccess		access;
+	RGTextureViewHandle	textureView;
+	ERGAccess			access;
 };
 
 
@@ -35,7 +35,7 @@ public:
 		: m_dependeciesRef(dependecies)
 	{ }
 
-	void AddTextureAccess(RGTextureView texture, ERGAccess access)
+	void AddTextureAccess(RGTextureViewHandle texture, ERGAccess access)
 	{
 		m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
 	}

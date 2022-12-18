@@ -79,6 +79,8 @@ enum class ERenderingFlags : Flags32
 	None							= 0,
 	ContentsSecondaryCmdBuffers		= BIT(0),
 	Resuming						= BIT(1),
+
+	Default							= None
 };
 
 
@@ -87,7 +89,7 @@ struct RenderingDefinition
 public:
 
 	RenderingDefinition()
-		: renderingFlags(ERenderingFlags::None)
+		: renderingFlags(ERenderingFlags::Default)
 		, renderAreaOffset(0, 0)
 		, renderAreaExtent(0, 0)
 	{ }
@@ -100,4 +102,4 @@ public:
 	RHIRenderTargetDefinition						stencilRT;
 };
 
-}
+} // spt::rhi
