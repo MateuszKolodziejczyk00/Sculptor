@@ -136,15 +136,15 @@ public:
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
-	template<typename TDescriptorSetStatesRange>
-	void AddRenderPass(const RenderGraphDebugName& dispatchName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange);
+	template<typename TDescriptorSetStatesRange, typename TCallable>
+	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	void Execute();
 
 private:
 
 	template<typename TNodeType, typename... TArgs>
-	TNodeType& AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args);
+	TNodeType& AllocateNode(const RenderGraphDebugName& name, TArgs&&... args);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
@@ -186,10 +186,20 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [computePipelineID, groupCount](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 	{
+		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
+		{
+			recorder->BindDescriptorSetState(dsState);
+		}
+
 		recorder->BindComputePipeline(computePipelineID);
 		recorder->Dispatch(groupCount);
+
+		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
+		{
+			recorder->UnbindDescriptorSetState(dsState);
+		}
 	};
 
 	using LambdaType = decltype(executeLambda);
@@ -203,20 +213,51 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 	AddNodeInternal(node, dependencies);
 }
 
-template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& dispatchName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange)
+template<typename TDescriptorSetStatesRange, typename TCallable>
+void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
+	SPT_PROFILER_FUNCTION();
 
+	const auto executeLambda = [renderPassDef, dsStatesRange, callable](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+	{
+		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
+
+		recorder->BeginRendering(renderingDefinition);
+
+		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
+		{
+			recorder->BindDescriptorSetState(dsState);
+		}
+
+		callable(renderContext, recorder);
+
+		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
+		{
+			recorder->UnbindDescriptorSetState(dsState);
+		}
+
+		recorder->EndRendering();
+	};
+
+	using LambdaType = decltype(executeLambda);
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(renderPassName, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
+
+	AddNodeInternal(node, dependencies);
 }
 
 template<typename TNodeType, typename... TArgs>
-TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& dispatchName, TArgs&&... args)
+TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, TArgs&&... args)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const RGNodeID nodeID = m_nodes.size();
-
-	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(dispatchName, nodeID, std::forward_as_tuple<TArgs>(args)...);
+	
+	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(name, nodeID, std::forward_as_tuple<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;
