@@ -74,6 +74,12 @@ public:
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 
+	template<typename TDescriptorSetStatesRange>
+	void									BindDescriptorSetStates(TDescriptorSetStatesRange&& states);
+
+	template<typename TDescriptorSetStatesRange>
+	void									UnbindDescriptorSetStates(TDescriptorSetStatesRange&& states);
+
 	void									CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 
 #if WITH_GPU_CRASH_DUMPS
@@ -103,6 +109,23 @@ private:
 	PipelinePendingState					m_pipelineState;
 };
 
+template<typename TDescriptorSetStatesRange>
+void CommandRecorder::BindDescriptorSetStates(TDescriptorSetStatesRange&& states)
+{
+	for (const auto& state : states)
+	{
+		BindDescriptorSetState(state);
+	}
+}
+
+template<typename TDescriptorSetStatesRange>
+void CommandRecorder::UnbindDescriptorSetStates(TDescriptorSetStatesRange&& states)
+{
+	for (const auto& state : states)
+	{
+		UnbindDescriptorSetState(state);
+	}
+}
 
 template<CRenderCommand RenderCommand>
 void CommandRecorder::EnqueueRenderCommand(RenderCommand&& command)

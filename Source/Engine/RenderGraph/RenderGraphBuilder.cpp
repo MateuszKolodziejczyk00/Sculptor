@@ -19,7 +19,7 @@ RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(lib::SharedPtr<rdr::T
 	definition.name = name;
 	definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
 
-	RGTextureHandle textureHandle = allocator.Allocate<RGTexture>(definition, texture);
+	RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, texture);
 
 	m_externalTextures.emplace(std::move(texture), textureHandle);
 
@@ -36,7 +36,7 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	definition.name = name;
 	definition.flags = flags;
 
-	RGTextureHandle textureHandle = allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
+	RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
 
 	m_textures.emplace_back(textureHandle);
 
@@ -59,6 +59,24 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 	textureHandle->SetExtractionDestination(extractDestination, transitionRange, preExtractionTransitionTarget);
 
 	m_extractedTextures.emplace_back(textureHandle);
+}
+
+void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_boundDSStates.emplace_back(dsState);
+}
+
+void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
+	if (foundDS != std::cend(m_boundDSStates))
+	{
+		m_boundDSStates.erase(foundDS);
+	}
 }
 
 void RenderGraphBuilder::Execute()

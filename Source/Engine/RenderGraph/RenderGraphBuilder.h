@@ -139,6 +139,9 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
+	void BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
+	void UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
+
 	void Execute();
 
 private:
@@ -177,9 +180,10 @@ private:
 
 	lib::DynamicArray<RGNodeHandle> m_nodes;
 
-	RGAllocator allocator;
-};
+	lib::DynamicArray<lib::SharedPtr<rdr::DescriptorSetState>> m_boundDSStates;
 
+	RGAllocator m_allocator;
+};
 
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
@@ -188,18 +192,14 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 
 	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
 	{
-		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
-		{
-			recorder->BindDescriptorSetState(dsState);
-		}
+		recorder->BindDescriptorSetStates(m_boundDSStates);
+		recorder->BindDescriptorSetStates(dsStatesRange);
 
 		recorder->BindComputePipeline(computePipelineID);
 		recorder->Dispatch(groupCount);
 
-		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
-		{
-			recorder->UnbindDescriptorSetState(dsState);
-		}
+		recorder->UnbindDescriptorSetStates(dsStatesRange);
+		recorder->UnbindDescriptorSetStates(m_boundDSStates);
 	};
 
 	using LambdaType = decltype(executeLambda);
@@ -224,17 +224,13 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 
 		recorder->BeginRendering(renderingDefinition);
 
-		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
-		{
-			recorder->BindDescriptorSetState(dsState);
-		}
+		recorder->BindDescriptorSetStates(m_boundDSStates);
+		recorder->BindDescriptorSetStates(dsStatesRange);
 
 		callable(renderContext, recorder);
 
-		for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
-		{
-			recorder->UnbindDescriptorSetState(dsState);
-		}
+		recorder->UnbindDescriptorSetStates(dsStatesRange);
+		recorder->UnbindDescriptorSetStates(m_boundDSStates);
 
 		recorder->EndRendering();
 	};
@@ -257,7 +253,7 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, TA
 
 	const RGNodeID nodeID = m_nodes.size();
 	
-	TNodeType* allocatedNode = allocator.Allocate<TNodeType>(name, nodeID, std::forward_as_tuple<TArgs>(args)...);
+	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, std::forward_as_tuple<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;
