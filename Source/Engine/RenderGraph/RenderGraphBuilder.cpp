@@ -345,4 +345,18 @@ void RenderGraphBuilder::ResolveTextureReleases()
 	}
 }
 
+lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> RenderGraphBuilder::GetExternalDSStates() const
+{
+	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> states;
+	states.reserve(m_boundDSStates.size());
+
+	std::transform(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), std::back_inserter(states),
+				   [](const lib::SharedPtr<rdr::DescriptorSetState>& state)
+				   {
+					   return lib::ToSharedRef(state);
+				   });
+
+	return states;
+}
+
 } // spt::rg

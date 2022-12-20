@@ -46,7 +46,7 @@ private:
 
 #if DEBUG_RENDER_GRAPH
 
-#define RG_DEBUG_NAME(name) RenderGraphDebugName(name)
+#define RG_DEBUG_NAME(name) spt::rg::RenderGraphDebugName(name)
 
 #else
 

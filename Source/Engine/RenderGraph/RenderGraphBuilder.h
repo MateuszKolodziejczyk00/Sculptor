@@ -25,7 +25,14 @@ template<typename... TDescriptorSetStates>
 auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 {
 	constexpr SizeType size = lib::ParameterPackSize<TDescriptorSetStates...>::Count;
-	return lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetStateBase>, size>{ descriptorSetStates... };
+	return lib::StaticArray<lib::SharedRef<rg::RGDescriptorSetStateBase>, size>{ descriptorSetStates... };
+}
+
+
+decltype(auto) EmptyDescriptorSets()
+{
+	static lib::StaticArray<lib::SharedRef<rg::RGDescriptorSetStateBase>, 0> empty;
+	return empty;
 }
 
 
@@ -41,6 +48,11 @@ public:
 		, m_renderAreaExtent(renderAreaExtent)
 		, m_renderingFlags(renderingFlags)
 	{ }
+	
+	SPT_NODISCARD RGRenderTargetDef& AddColorRenderTarget()
+	{
+		return m_colorRenderTargetDefs.emplace_back();
+	}
 
 	void AddColorRenderTarget(const RGRenderTargetDef& definition)
 	{
@@ -80,6 +92,28 @@ public:
 		}
 
 		return renderingDefinition;
+	}
+
+	void BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const
+	{
+		SPT_PROFILER_FUNCTION();
+
+		for (const RGRenderTargetDef& colorRenderTarget : m_colorRenderTargetDefs)
+		{
+			SPT_CHECK(colorRenderTarget.textureView.IsValid());
+
+			dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGAccess::ColorRenderTarget);
+		}
+
+		if (m_depthRenderTargetDef.textureView.IsValid())
+		{
+			dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGAccess::DepthRenderTarget);
+		}
+		
+		if (m_stencilRenderTargetDef.textureView.IsValid())
+		{
+			dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGAccess::StencilRenderTarget);
+		}
 	}
 
 private:
@@ -175,6 +209,8 @@ private:
 	void ResolveResourceReleases();
 	void ResolveTextureReleases();
 
+	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> GetExternalDSStates() const;
+
 	lib::DynamicArray<RGTextureHandle> m_textures;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
@@ -193,19 +229,19 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
-		recorder.BindDescriptorSetStates(m_boundDSStates);
+		recorder.BindDescriptorSetStates(externalBoundStates);
 		recorder.BindDescriptorSetStates(dsStatesRange);
 
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.Dispatch(groupCount);
 
 		recorder.UnbindDescriptorSetStates(dsStatesRange);
-		recorder.UnbindDescriptorSetStates(m_boundDSStates);
+		recorder.UnbindDescriptorSetStates(externalBoundStates);
 	};
 
-	using LambdaType = decltype(executeLambda);
+	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
@@ -221,30 +257,33 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [renderPassDef, dsStatesRange, callable](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	const auto executeLambda = [renderPassDef, dsStatesRange, callable, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
 
 		recorder.BeginRendering(renderingDefinition);
 
-		recorder.BindDescriptorSetStates(m_boundDSStates);
+		recorder.BindDescriptorSetStates(externalBoundStates);
 		recorder.BindDescriptorSetStates(dsStatesRange);
 
 		callable(renderContext, recorder);
 
 		recorder.UnbindDescriptorSetStates(dsStatesRange);
-		recorder.UnbindDescriptorSetStates(m_boundDSStates);
+		recorder.UnbindDescriptorSetStates(externalBoundStates);
 
 		recorder.EndRendering();
 	};
 
-	using LambdaType = decltype(executeLambda);
+	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
+
+	RGDependenciesBuilder renderTargetsDependenciesBuilder(dependencies);
+	renderPassDef.BuildDependencies(renderTargetsDependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -256,7 +295,7 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 
 	const RGNodeID nodeID = m_nodes.size();
 	
-	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, type, std::forward_as_tuple<TArgs>(args)...);
+	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, type, std::forward<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;
