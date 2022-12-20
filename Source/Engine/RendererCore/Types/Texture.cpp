@@ -47,13 +47,13 @@ lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::Ref(std::make_shared<TextureView>(name, shared_from_this(), viewDefinition));
+	return lib::Ref(std::make_shared<TextureView>(name, const_cast<Texture*>(this)->shared_from_this(), viewDefinition));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture =======================================================================================
 
-TextureView::TextureView(const RendererResourceName& name, const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition)
+TextureView::TextureView(const RendererResourceName& name, const lib::SharedPtr<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition)
 	: m_texture(texture)
 {
 	SPT_PROFILER_FUNCTION();
@@ -66,7 +66,7 @@ TextureView::TextureView(const RendererResourceName& name, const lib::SharedPtr<
 	GetRHI().SetName(name.Get());
 }
 
-lib::SharedPtr<const Texture> TextureView::GetTexture() const
+lib::SharedPtr<Texture> TextureView::GetTexture() const
 {
 	return m_texture.lock();
 }

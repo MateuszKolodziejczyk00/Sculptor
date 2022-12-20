@@ -48,13 +48,13 @@ protected:
 
 public:
 
-	TextureView(const RendererResourceName& name, const lib::SharedPtr<const Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
+	TextureView(const RendererResourceName& name, const lib::SharedPtr<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
 
-	lib::SharedPtr<const Texture>	GetTexture() const;
+	lib::SharedPtr<Texture>	GetTexture() const;
 
 private:
 
-	lib::WeakPtr<const Texture>		m_texture;
+	lib::WeakPtr<Texture>		m_texture;
 };
 
 } // spt::rdr
