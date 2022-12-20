@@ -161,17 +161,17 @@ RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPt
 
 	SPT_CHECK(!!textureView);
 
-	//const lib::SharedPtr<rdr::Texture>& texture = textureView->GetTexture();
-	//SPT_CHECK(!!texture);
+	const lib::SharedPtr<rdr::Texture>& texture = textureView->GetTexture();
+	SPT_CHECK(!!texture);
 
-	//const RGTextureHandle textureHandle = AcquireExternalTexture(texture);
+	const RGTextureHandle textureHandle = AcquireExternalTexture(texture);
 
-	//const RenderGraphDebugName name = RG_DEBUG_NAME(textureView->GetRHI().GetName());
+	const RenderGraphDebugName name = RG_DEBUG_NAME(textureView->GetRHI().GetName());
 
-	//RGResourceDef definition;
-	//definition.name = name;
-	//definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
-	const RGTextureViewHandle rgTextureView;// = m_allocator.Allocate<RGTextureView>(definition, texture, std::move(textureView));
+	RGResourceDef definition;
+	definition.name = name;
+	definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
+	const RGTextureViewHandle rgTextureView = m_allocator.Allocate<RGTextureView>(definition, textureHandle, lib::Ref(std::move(textureView)));
 
 	return rgTextureView;
 }
@@ -213,13 +213,14 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 	m_extractedTextures.emplace_back(textureHandle);
 }
 
-void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget)
+void RenderGraphBuilder::ReleaseTextureWithTransition(RGTextureHandle textureHandle, const rhi::BarrierTextureTransitionDefinition& releaseTransitionTarget)
 {
-	SPT_PROFILER_FUNCTION()
+	SPT_PROFILER_FUNCTION();
 
-	textureHandle->SetExtractionDestination(extractDestination, transitionRange, preExtractionTransitionTarget);
+	SPT_CHECK(textureHandle.IsValid());
+	SPT_CHECK(textureHandle->IsExternal() || textureHandle->IsExtracted());
 
-	m_extractedTextures.emplace_back(textureHandle);
+	textureHandle->SetReleaseTransitionTarget(&releaseTransitionTarget);
 }
 
 void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
@@ -367,6 +368,7 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		else
 		{
 			SPT_CHECK_NO_ENTRY();
+			return rhi::TextureTransition::Undefined;
 		}
 
 	case spt::rg::ERGAccess::SampledTexture:
@@ -381,6 +383,7 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		else
 		{
 			SPT_CHECK_NO_ENTRY();
+			return rhi::TextureTransition::Undefined;
 		}
 
 	default:
@@ -403,7 +406,7 @@ void RenderGraphBuilder::PostBuild()
 {
 	SPT_PROFILER_FUNCTION();
 
-	AddPrepareTexturesForExtractionNode();
+	AddReleaseResourcesNode();
 
 	ResolveTextureReleases();
 }
@@ -430,20 +433,22 @@ void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 }
 
-void RenderGraphBuilder::AddPrepareTexturesForExtractionNode()
+void RenderGraphBuilder::AddReleaseResourcesNode()
 {
 	SPT_PROFILER_FUNCTION();
 
 	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"), ERenderGraphNodeType::None);
 	AddNodeInternal(barrierNode, RGDependeciesContainer{});
 
-	for (RGTextureHandle extractedTexture : m_extractedTextures)
+	for (RGTextureHandle texture : m_textures)
 	{
-		const rhi::BarrierTextureTransitionDefinition* transitionTarget = extractedTexture->GetPreExtractionTransitionTarget();
+		const rhi::BarrierTextureTransitionDefinition* transitionTarget = texture->GetReleaseTransitionTarget();
 		if (transitionTarget)
 		{
-			const rhi::TextureSubresourceRange& transitionRange = extractedTexture->GetPreExtractionTransitionRange();
-			AppendTextureTransitionToNode(barrierNode, extractedTexture, transitionRange, *transitionTarget);
+			const rhi::EFragmentFormat textureFormat = texture->GetTextureDefinition().format;
+			const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
+
+			AppendTextureTransitionToNode(barrierNode, texture, transitionRange, *transitionTarget);
 		}
 	}
 }

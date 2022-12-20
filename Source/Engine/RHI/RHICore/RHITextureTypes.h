@@ -191,4 +191,28 @@ enum class EAccessType : Flags32
 	Write		= BIT(1)
 };
 
+
+inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
+{
+	switch (format)
+	{
+	case spt::rhi::EFragmentFormat::D32_S_Float:
+		return ETextureAspect::Depth;
+
+	case spt::rhi::EFragmentFormat::RGBA8_UN_Float:
+	case spt::rhi::EFragmentFormat::BGRA8_UN_Float:
+	case spt::rhi::EFragmentFormat::RGB8_UN_Float:
+	case spt::rhi::EFragmentFormat::BGR8_UN_Float:
+	case spt::rhi::EFragmentFormat::RGBA32_S_Float:
+
+		return ETextureAspect::Color;
+
+	case spt::rhi::EFragmentFormat::None:
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return ETextureAspect::None;
+	}
+}
+
 } // spt::rhi

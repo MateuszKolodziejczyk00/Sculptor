@@ -282,8 +282,7 @@ public:
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
 		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
-		, m_extractionDest(nullptr)
-		, m_preExtractionTransitionTarget(nullptr)
+		, m_releaseTransitionTarget(nullptr)
 	{ }
 
 	RGTexture(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Texture> texture)
@@ -292,8 +291,7 @@ public:
 		, m_allocationInfo(texture->GetRHI().GetAllocationInfo())
 		, m_texture(texture)
 		, m_accessState(texture->GetRHI().GetDefinition().mipLevels, texture->GetRHI().GetDefinition().arrayLayers)
-		, m_extractionDest(nullptr)
-		, m_preExtractionTransitionTarget(nullptr)
+		, m_releaseTransitionTarget(nullptr)
 	{
 		SPT_CHECK(IsExternal());
 	}
@@ -342,15 +340,6 @@ public:
 	{
 		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
 		m_extractionDest = &destination;
-		m_preExtractionTransitionTarget = nullptr;
-	}
-
-	void SetExtractionDestination(lib::SharedPtr<rdr::Texture>& destination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget)
-	{
-		SPT_CHECK_MSG(!IsExtracted(), "Texture cannot be extracted twice");
-		m_extractionDest = &destination;
-		m_preExtractionTransitionRange = transitionRange;
-		m_preExtractionTransitionTarget = &preExtractionTransitionTarget;
 	}
 
 	Bool IsExtracted() const
@@ -364,21 +353,24 @@ public:
 		return *m_extractionDest;
 	}
 
-	const rhi::BarrierTextureTransitionDefinition* GetPreExtractionTransitionTarget() const
-	{
-		return m_preExtractionTransitionTarget;
-	}
-
-	const rhi::TextureSubresourceRange& GetPreExtractionTransitionRange() const
-	{
-		return m_preExtractionTransitionRange;
-	}
-
 	// Access State ========================================================
 
 	RGTextureAccessState& GetAccessState()
 	{
 		return m_accessState;
+	}
+
+	// Relase ==============================================================
+
+	void SetReleaseTransitionTarget(const rhi::BarrierTextureTransitionDefinition* transitionTarget)
+	{
+		SPT_CHECK_MSG(!!m_releaseTransitionTarget, "Release transition already defined");
+		m_releaseTransitionTarget = transitionTarget;
+	}
+
+	const rhi::BarrierTextureTransitionDefinition* GetReleaseTransitionTarget() const
+	{
+		return m_releaseTransitionTarget;
 	}
 
 private:
@@ -391,8 +383,8 @@ private:
 	RGTextureAccessState m_accessState;
 
 	lib::SharedPtr<rdr::Texture>*					m_extractionDest;
-	const rhi::BarrierTextureTransitionDefinition*	m_preExtractionTransitionTarget;
-	rhi::TextureSubresourceRange					m_preExtractionTransitionRange;
+
+	const rhi::BarrierTextureTransitionDefinition*	m_releaseTransitionTarget;
 };
 
 
