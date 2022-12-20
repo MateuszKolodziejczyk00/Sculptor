@@ -28,28 +28,29 @@ class RENDER_GRAPH_API RGNode : public RGTrackedObject
 {
 public:
 
-	RGNode(const RenderGraphDebugName& name, RGNodeID id);
+	RGNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type);
 
-	RGNodeID GetID() const;
+	RGNodeID					GetID() const;
 	const RenderGraphDebugName& GetName() const;
+	ERenderGraphNodeType		GetType() const;
 
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
 
 	void AddTextureState(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 
-	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder);
+	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) = 0;
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
 
 private:
 
 	// Node Execution ===================================================
 
 	void CreateResources();
-	void PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder);
+	void PreExecuteBarrier(rdr::CommandRecorder& recorder);
 	void ReleaseResources();
 
 	// Execution Helpers ================================================
@@ -81,6 +82,8 @@ private:
 
 	RGNodeID m_id;
 
+	ERenderGraphNodeType m_type;
+
 	lib::DynamicArray<RGTextureHandle> m_texturesToAcquire;
 	lib::DynamicArray<RGTextureHandle> m_texturesToRelease;
 
@@ -99,16 +102,16 @@ protected:
 
 public:
 
-	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, const lib::SharedPtr<rdr::CommandRecorder>&>));
+	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, rdr::CommandRecorder&>));
 
-	explicit RGLambdaNode(const RenderGraphDebugName& name, RGNodeID id, TCallable callable)
-		: Super(name, id)
+	explicit RGLambdaNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, TCallable callable)
+		: Super(name, id, type)
 		, m_callable(std::move(callable))
 	{ }
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
 	{
 		m_callable(renderContext, recorder);
 	}
@@ -127,13 +130,13 @@ protected:
 
 public:
 
-	RGEmptyNode(const RenderGraphDebugName& name, RGNodeID id)
-		: Super(name, id)
+	RGEmptyNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
+		: Super(name, id, type)
 	{ }
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
 	{ }
 };
 

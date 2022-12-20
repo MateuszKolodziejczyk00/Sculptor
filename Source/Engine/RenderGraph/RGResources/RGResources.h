@@ -16,7 +16,15 @@ namespace spt::rg
 
 enum class ERGAccess
 {
-	Unknown
+	Unknown,
+
+	ColorRenderTarget,
+	DepthRenderTarget,
+	StencilRenderTarget,
+
+	StorageWriteTexture,
+
+	SampledTexture
 };
 
 

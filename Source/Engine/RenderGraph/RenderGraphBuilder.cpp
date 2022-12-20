@@ -1,5 +1,9 @@
 #include "RenderGraphBuilder.h"
 #include "Allocators/StackAllocation/StackTrackingAllocator.h"
+#include "ResourcesManager.h"
+#include "Renderer.h"
+#include "CommandsRecorder/CommandRecorder.h"
+#include "Types/RenderContext.h"
 
 namespace spt::rg
 {
@@ -43,6 +47,19 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	return textureHandle;
 }
 
+RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	RGResourceDef definition;
+	definition.name = name;
+	definition.flags = flags;
+
+	RGTextureViewHandle textureViewHandle = m_allocator.Allocate<RGTextureView>(definition, texture, viewDefinition);
+
+	return textureViewHandle;
+}
+
 void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination)
 {
 	SPT_PROFILER_FUNCTION()
@@ -79,13 +96,11 @@ void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedPtr<rdr::Desc
 	}
 }
 
-void RenderGraphBuilder::Execute()
+void RenderGraphBuilder::Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores)
 {
 	PostBuild();
 
-	Compile();
-
-	ExecuteGraph();
+	ExecuteGraph(waitSemaphores, signalSemaphores);
 }
 
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
@@ -122,7 +137,7 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 			}
 		}
 
-		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(textureAccessDef.access);
+		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, textureAccessDef.access);
 
 		AppendTextureTransitionToNode(node, accessedTexture, accessedSubresourceRange, transitionTarget);
 
@@ -137,15 +152,21 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 
 	if (textureAccessState.IsFullResource())
 	{
-		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForFullResource().lastAccessType);
-		node.AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+		const RGTextureSubresourceAccessState& sourceAccessState = textureAccessState.GetForFullResource();
+		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, sourceAccessState.lastAccessType);
+
+		if (RequiresSynchronization(transitionSource, transitionTarget))
+		{
+			node.AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+		}
 	}
 	else
 	{
 		textureAccessState.ForEachSubresource(accessedSubresourceRange,
 											  [&, this](RGTextureSubresource subresource)
 											  {
-												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(textureAccessState.GetForSubresource(subresource).lastAccessType);
+												  const RGTextureSubresourceAccessState& subresourceSourceAccessState = textureAccessState.GetForSubresource(subresource);
+												  const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(subresourceSourceAccessState.lastAccessNode, subresourceSourceAccessState.lastAccessType);
 
 												  rhi::TextureSubresourceRange subresourceRange;
 												  subresourceRange.aspect			= accessedSubresourceRange.aspect;
@@ -154,7 +175,11 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 												  subresourceRange.baseMipLevel		= subresource.mipMapIdx;
 												  subresourceRange.mipLevelsNum		= 1;
 
-												  node.AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+		
+												  if (RequiresSynchronization(transitionSource, transitionTarget))
+												  {
+													  node.AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+												  }
 											  });
 	}
 }
@@ -163,13 +188,71 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 {
 	SPT_PROFILER_FUNCTION();
 
-
+	SPT_CHECK_NO_ENTRY();
 }
 
-const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(ERGAccess access) const
+const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGAccess access) const
 {
 	SPT_CHECK_NO_ENTRY();
-	return rhi::TextureTransition::Undefined;
+
+	const ERenderGraphNodeType nodeType = node.IsValid() ? node->GetType() : ERenderGraphNodeType::None;
+
+	switch (access)
+	{
+	case spt::rg::ERGAccess::Unknown:
+		return rhi::TextureTransition::Auto;
+
+	case spt::rg::ERGAccess::ColorRenderTarget:
+		return rhi::TextureTransition::ColorRenderTarget;
+
+	case spt::rg::ERGAccess::DepthRenderTarget:
+		return rhi::TextureTransition::DepthRenderTarget;
+
+	case spt::rg::ERGAccess::StencilRenderTarget:
+		return rhi::TextureTransition::DepthStencilRenderTarget;
+
+	case spt::rg::ERGAccess::StorageWriteTexture:
+		if (nodeType == ERenderGraphNodeType::RenderPass)
+		{
+			return rhi::TextureTransition::FragmentGeneral;
+		}
+		else if (nodeType == ERenderGraphNodeType::Dispatch)
+		{
+			return rhi::TextureTransition::ComputeGeneral;
+		}
+		else
+		{
+			SPT_CHECK_NO_ENTRY();
+		}
+
+	case spt::rg::ERGAccess::SampledTexture:
+		if (nodeType == ERenderGraphNodeType::RenderPass)
+		{
+			return rhi::TextureTransition::FragmentReadOnly;
+		}
+		else if (nodeType == ERenderGraphNodeType::Dispatch)
+		{
+			return rhi::TextureTransition::ComputeReadOnly;
+		}
+		else
+		{
+			SPT_CHECK_NO_ENTRY();
+		}
+
+	default:
+		SPT_CHECK_NO_ENTRY();
+		return rhi::TextureTransition::Undefined;
+	}
+}
+
+Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const
+{
+	const Bool prevAccessIsWrite = transitionSource.accessType == rhi::EAccessType::Write;
+	const Bool newAccessIsWrite = transitionTarget.accessType == rhi::EAccessType::Write;
+
+	return transitionSource.layout != transitionTarget.layout
+		|| prevAccessIsWrite != newAccessIsWrite // read -> write, write -> read
+		|| prevAccessIsWrite && newAccessIsWrite; // write -> write
 }
 
 void RenderGraphBuilder::PostBuild()
@@ -181,25 +264,33 @@ void RenderGraphBuilder::PostBuild()
 	ResolveTextureReleases();
 }
 
-void RenderGraphBuilder::Compile()
+void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
 
-	
-}
+	rhi::ContextDefinition contextDefinition;
+	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("Render Graph Context"), contextDefinition);
+	lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
 
-void RenderGraphBuilder::ExecuteGraph()
-{
-	SPT_PROFILER_FUNCTION();
+	for (const RGNodeHandle node : m_nodes)
+	{
+		node->Execute(renderContext, *commandRecorder);
+	}
 
+	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
+	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
+	submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
+	submitBatch.waitSemaphores = waitSemaphores;
+	submitBatch.signalSemaphores = signalSemaphores;
 
+	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 }
 
 void RenderGraphBuilder::AddPrepareTexturesForExtractionNode()
 {
 	SPT_PROFILER_FUNCTION();
 
-	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"));
+	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"), ERenderGraphNodeType::None);
 	AddNodeInternal(barrierNode, RGDependeciesContainer{});
 
 	for (RGTextureHandle extractedTexture : m_extractedTextures)

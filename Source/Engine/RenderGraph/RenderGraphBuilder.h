@@ -130,6 +130,8 @@ public:
 
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
+	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags = ERGResourceFlags::Default);
+
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination, const rhi::TextureSubresourceRange& transitionRange, const rhi::BarrierTextureTransitionDefinition& preExtractionTransitionTarget);
 
@@ -142,12 +144,12 @@ public:
 	void BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
 
-	void Execute();
+	void Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
 
 private:
 
 	template<typename TNodeType, typename... TArgs>
-	TNodeType& AllocateNode(const RenderGraphDebugName& name, TArgs&&... args);
+	TNodeType& AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
@@ -161,11 +163,12 @@ private:
 
 	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 
-	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(ERGAccess access) const;
+	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGAccess access) const;
+
+	Bool RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const;
 
 	void PostBuild();
-	void Compile();
-	void ExecuteGraph();
+	void ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
 
 	void AddPrepareTexturesForExtractionNode();
 
@@ -190,22 +193,22 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
-		recorder->BindDescriptorSetStates(m_boundDSStates);
-		recorder->BindDescriptorSetStates(dsStatesRange);
+		recorder.BindDescriptorSetStates(m_boundDSStates);
+		recorder.BindDescriptorSetStates(dsStatesRange);
 
-		recorder->BindComputePipeline(computePipelineID);
-		recorder->Dispatch(groupCount);
+		recorder.BindComputePipeline(computePipelineID);
+		recorder.Dispatch(groupCount);
 
-		recorder->UnbindDescriptorSetStates(dsStatesRange);
-		recorder->UnbindDescriptorSetStates(m_boundDSStates);
+		recorder.UnbindDescriptorSetStates(dsStatesRange);
+		recorder.UnbindDescriptorSetStates(m_boundDSStates);
 	};
 
 	using LambdaType = decltype(executeLambda);
 	using NodeType = RGLambdaNode<LambdaType>;
 
-	NodeType& node = AllocateNode<NodeType>(dispatchName, std::move(executeLambda));
+	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
@@ -218,27 +221,27 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [renderPassDef, dsStatesRange, callable](const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+	const auto executeLambda = [renderPassDef, dsStatesRange, callable](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
 
-		recorder->BeginRendering(renderingDefinition);
+		recorder.BeginRendering(renderingDefinition);
 
-		recorder->BindDescriptorSetStates(m_boundDSStates);
-		recorder->BindDescriptorSetStates(dsStatesRange);
+		recorder.BindDescriptorSetStates(m_boundDSStates);
+		recorder.BindDescriptorSetStates(dsStatesRange);
 
 		callable(renderContext, recorder);
 
-		recorder->UnbindDescriptorSetStates(dsStatesRange);
-		recorder->UnbindDescriptorSetStates(m_boundDSStates);
+		recorder.UnbindDescriptorSetStates(dsStatesRange);
+		recorder.UnbindDescriptorSetStates(m_boundDSStates);
 
-		recorder->EndRendering();
+		recorder.EndRendering();
 	};
 
 	using LambdaType = decltype(executeLambda);
 	using NodeType = RGLambdaNode<LambdaType>;
 
-	NodeType& node = AllocateNode<NodeType>(renderPassName, std::move(executeLambda));
+	NodeType& node = AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
@@ -247,13 +250,13 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 }
 
 template<typename TNodeType, typename... TArgs>
-TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, TArgs&&... args)
+TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const RGNodeID nodeID = m_nodes.size();
 	
-	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, std::forward_as_tuple<TArgs>(args)...);
+	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, type, std::forward_as_tuple<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;

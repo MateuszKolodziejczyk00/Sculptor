@@ -31,6 +31,11 @@ public:
 		return m_resource;
 	}
 
+	TResourceType& operator*() const
+	{
+		return *m_resource;
+	}
+
 	void Reset()
 	{
 		m_resource = nullptr;

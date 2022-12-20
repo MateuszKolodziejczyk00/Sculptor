@@ -7,9 +7,10 @@
 namespace spt::rg
 {
 
-RGNode::RGNode(const RenderGraphDebugName& name, RGNodeID id)
+RGNode::RGNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
 	: m_name(name)
 	, m_id(id)
+	, m_type(type)
 	, m_executed(false)
 { }
 
@@ -21,6 +22,11 @@ RGNodeID RGNode::GetID() const
 const RenderGraphDebugName& RGNode::GetName() const
 {
 	return m_name;
+}
+
+ERenderGraphNodeType RGNode::GetType() const
+{
+	return m_type;
 }
 
 void RGNode::AddTextureToAcquire(RGTextureHandle texture)
@@ -41,12 +47,12 @@ void RGNode::AddTextureState(RGTextureHandle texture, const rhi::TextureSubresou
 	m_preExecuteTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
 }
 
-void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
-	SPT_GPU_DEBUG_REGION(*recorder, GetName().Get().GetData(), lib::Color::Blue);
+	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
 
 	SPT_CHECK(!m_executed);
 
@@ -68,7 +74,7 @@ void RGNode::CreateResources()
 	CreateTextures();
 }
 
-void RGNode::PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recorder)
+void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -81,7 +87,7 @@ void RGNode::PreExecuteBarrier(const lib::SharedPtr<rdr::CommandRecorder>& recor
 		barrierDependency.SetLayoutTransition(barrierIdx, *textureTransition.transitionSource, *textureTransition.transitionTarget);
 	}
 
-	recorder->ExecuteBarrier(std::move(barrierDependency));
+	recorder.ExecuteBarrier(std::move(barrierDependency));
 }
 
 void RGNode::ReleaseResources()

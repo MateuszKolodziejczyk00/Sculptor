@@ -6,6 +6,14 @@
 namespace spt::rg
 {
 
+enum class ERenderGraphNodeType
+{
+	None,
+	RenderPass,
+	Dispatch
+};
+
+
 class RenderGraphDebugName
 {
 public:
