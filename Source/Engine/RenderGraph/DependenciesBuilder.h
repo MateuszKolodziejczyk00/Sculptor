@@ -1,11 +1,15 @@
 #pragma once
 
+#include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "RGResources/RGResources.h"
 
 
 namespace spt::rg
 {
+
+class RenderGraphBuilder;
+
 
 struct RGTextureAccessDef
 {
@@ -32,22 +36,16 @@ class RGDependenciesBuilder
 {
 public:
 
-	RGDependenciesBuilder(RGDependeciesContainer& dependecies)
-		: m_dependeciesRef(dependecies)
-	{ }
+	explicit RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies);
 
-	void AddTextureAccess(RGTextureViewHandle texture, ERGAccess access)
-	{
-		m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
-	}
+	void AddTextureAccess(RGTextureViewHandle texture, ERGAccess access);
+	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGAccess access);
 
-	void AddBufferAccess(RGBufferHandle buffer, ERGAccess access)
-	{
-		m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
-	}
+	void AddBufferAccess(RGBufferHandle buffer, ERGAccess access);
 
 private:
 
+	RenderGraphBuilder& m_graphBuilder;
 	RGDependeciesContainer& m_dependeciesRef;
 };
 

@@ -34,6 +34,10 @@ public:
 		{
 			builder.AddTextureAccess(m_renderGraphTexture, rg::ERGAccess::StorageWriteTexture);
 		}
+		else
+		{
+			builder.AddTextureAccess(m_texture, rg::ERGAccess::StorageWriteTexture);
+		}
 	}
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
@@ -97,6 +101,8 @@ private:
 
 	lib::SharedRef<rdr::TextureView> GetTextureToBind() const
 	{
+		SPT_CHECK(!m_texture || !m_renderGraphTexture.IsValid()); // only one of these textures can be valid
+		
 		lib::SharedPtr<rdr::TextureView> textureView = m_texture ? m_texture : m_renderGraphTexture->GetViewInstance();
 		SPT_CHECK(!!textureView);
 

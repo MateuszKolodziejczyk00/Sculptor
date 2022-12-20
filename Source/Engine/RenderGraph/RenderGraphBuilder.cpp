@@ -8,28 +8,172 @@
 namespace spt::rg
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RGRenderPassDefinition ========================================================================
+
+RGRenderPassDefinition::RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags /*= rhi::ERenderingFlags::Default*/)
+	: m_renderAreaOffset(renderAreaOffset)
+	, m_renderAreaExtent(renderAreaExtent)
+	, m_renderingFlags(renderingFlags)
+{ }
+
+RGRenderTargetDef& RGRenderPassDefinition::AddColorRenderTarget()
+{
+	return m_colorRenderTargetDefs.emplace_back();
+}
+
+void RGRenderPassDefinition::AddColorRenderTarget(const RGRenderTargetDef& definition)
+{
+	m_colorRenderTargetDefs.emplace_back(definition);
+}
+
+RGRenderTargetDef& RGRenderPassDefinition::GetDepthRenderTargetRef()
+{
+	return m_depthRenderTargetDef;
+}
+
+void RGRenderPassDefinition::SetDepthRenderTarget(const RGRenderTargetDef& definition)
+{
+	m_depthRenderTargetDef = definition;
+}
+
+RGRenderTargetDef& RGRenderPassDefinition::GetStencilRenderTargetRef()
+{
+	return m_stencilRenderTargetDef;
+}
+
+void RGRenderPassDefinition::SetStencilRenderTarget(const RGRenderTargetDef& definition)
+{
+	m_stencilRenderTargetDef = definition;
+}
+
+rdr::RenderingDefinition RGRenderPassDefinition::CreateRenderingDefinition() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	rdr::RenderingDefinition renderingDefinition(m_renderAreaOffset, m_renderAreaExtent, m_renderingFlags);
+
+	std::for_each(std::cbegin(m_colorRenderTargetDefs), std::cend(m_colorRenderTargetDefs),
+				  [this, &renderingDefinition](const RGRenderTargetDef& def)
+				  {
+					  renderingDefinition.AddColorRenderTarget(CreateRTDefinition(def));
+				  });
+
+	if (IsRTDefinitionValid(m_depthRenderTargetDef))
+	{
+		renderingDefinition.AddDepthRenderTarget(CreateRTDefinition(m_depthRenderTargetDef));
+	}
+
+	if (IsRTDefinitionValid(m_stencilRenderTargetDef))
+	{
+		renderingDefinition.AddStencilRenderTarget(CreateRTDefinition(m_stencilRenderTargetDef));
+	}
+
+	return renderingDefinition;
+}
+
+void RGRenderPassDefinition::BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (const RGRenderTargetDef& colorRenderTarget : m_colorRenderTargetDefs)
+	{
+		SPT_CHECK(colorRenderTarget.textureView.IsValid());
+
+		dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGAccess::ColorRenderTarget);
+
+		if (colorRenderTarget.resolveTextureView.IsValid())
+		{
+			dependenciesBuilder.AddTextureAccess(colorRenderTarget.resolveTextureView, ERGAccess::ColorRenderTarget);
+		}
+	}
+
+	if (m_depthRenderTargetDef.textureView.IsValid())
+	{
+		dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGAccess::DepthRenderTarget);
+	}
+
+	if (m_stencilRenderTargetDef.textureView.IsValid())
+	{
+		dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGAccess::StencilRenderTarget);
+	}
+}
+
+rdr::RTDefinition RGRenderPassDefinition::CreateRTDefinition(const RGRenderTargetDef& rgDef) const
+{
+	SPT_CHECK(rgDef.textureView.IsValid());
+
+	rdr::RTDefinition def;
+
+	def.textureView = rgDef.textureView->GetViewInstance();
+
+	if (rgDef.resolveTextureView.IsValid())
+	{
+		def.resolveTextureView = rgDef.resolveTextureView->GetViewInstance();
+	}
+
+	def.loadOperation	= rgDef.loadOperation;
+	def.storeOperation	= rgDef.storeOperation;
+	def.resolveMode		= rgDef.resolveMode;
+	def.clearColor		= rgDef.clearColor;
+
+	return def;
+}
+
+Bool RGRenderPassDefinition::IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const
+{
+	return rgDef.textureView.IsValid();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RenderGraphBuilder ============================================================================
+
 RenderGraphBuilder::RenderGraphBuilder()
 { }
 
-RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(lib::SharedPtr<rdr::Texture> texture)
+RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!texture);
 
-	const RenderGraphDebugName name = RG_DEBUG_NAME(texture->GetRHI().GetName());
+	RGTextureHandle& textureHandle = m_externalTextures[texture];
 
-	RGResourceDef definition;
-	definition.name = name;
-	definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
+	if (!textureHandle.IsValid())
+	{
+		const RenderGraphDebugName name = RG_DEBUG_NAME(texture->GetRHI().GetName());
 
-	RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, texture);
+		RGResourceDef definition;
+		definition.name = name;
+		definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
 
-	m_externalTextures.emplace(std::move(texture), textureHandle);
+		textureHandle = m_allocator.Allocate<RGTexture>(definition, texture);
 
-	m_textures.emplace_back(textureHandle);
+		m_textures.emplace_back(textureHandle);
+	}
 
 	return textureHandle;
+}
+
+RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!textureView);
+
+	//const lib::SharedPtr<rdr::Texture>& texture = textureView->GetTexture();
+	//SPT_CHECK(!!texture);
+
+	//const RGTextureHandle textureHandle = AcquireExternalTexture(texture);
+
+	//const RenderGraphDebugName name = RG_DEBUG_NAME(textureView->GetRHI().GetName());
+
+	//RGResourceDef definition;
+	//definition.name = name;
+	//definition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
+	const RGTextureViewHandle rgTextureView;// = m_allocator.Allocate<RGTextureView>(definition, texture, std::move(textureView));
+
+	return rgTextureView;
 }
 
 RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -40,7 +184,7 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	definition.name = name;
 	definition.flags = flags;
 
-	RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
+	const RGTextureHandle textureHandle = m_allocator.Allocate<RGTexture>(definition, textureDefinition, allocationInfo);
 
 	m_textures.emplace_back(textureHandle);
 
@@ -126,7 +270,7 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 	{
 		const RGTextureViewHandle accessedTextureView					= textureAccessDef.textureView;
 		const RGTextureHandle accessedTexture							= accessedTextureView->GetTexture();
-		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetViewDefinition().subresourceRange;
+		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetSubresourceRange();
 
 		if (!accessedTexture->IsExternal())
 		{

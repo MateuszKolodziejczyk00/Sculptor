@@ -29,7 +29,7 @@ auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 }
 
 
-decltype(auto) EmptyDescriptorSets()
+inline decltype(auto) EmptyDescriptorSets()
 {
 	static lib::StaticArray<lib::SharedRef<rg::RGDescriptorSetStateBase>, 0> empty;
 	return empty;
@@ -43,106 +43,26 @@ class RGRenderPassDefinition
 {
 public:
 
-	RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default)
-		: m_renderAreaOffset(renderAreaOffset)
-		, m_renderAreaExtent(renderAreaExtent)
-		, m_renderingFlags(renderingFlags)
-	{ }
+	RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default);
 	
-	SPT_NODISCARD RGRenderTargetDef& AddColorRenderTarget()
-	{
-		return m_colorRenderTargetDefs.emplace_back();
-	}
+	SPT_NODISCARD RGRenderTargetDef& AddColorRenderTarget();
+	void AddColorRenderTarget(const RGRenderTargetDef& definition);
 
-	void AddColorRenderTarget(const RGRenderTargetDef& definition)
-	{
-		m_colorRenderTargetDefs.emplace_back(definition);
-	}
+	SPT_NODISCARD RGRenderTargetDef& GetDepthRenderTargetRef();
+	void SetDepthRenderTarget(const RGRenderTargetDef& definition);
 
-	void AddDepthRenderTarget(const RGRenderTargetDef& definition)
-	{
-		m_depthRenderTargetDef = definition;
-	}
+	SPT_NODISCARD RGRenderTargetDef& GetStencilRenderTargetRef();
+	void SetStencilRenderTarget(const RGRenderTargetDef& definition);
 
-	void AddStencilRenderTarget(const RGRenderTargetDef& definition)
-	{
-		m_stencilRenderTargetDef = definition;
-	}
+	rdr::RenderingDefinition CreateRenderingDefinition() const;
 
-	rdr::RenderingDefinition CreateRenderingDefinition() const
-	{
-		SPT_PROFILER_FUNCTION();
-
-		rdr::RenderingDefinition renderingDefinition(m_renderAreaOffset, m_renderAreaExtent, m_renderingFlags);
-	
-		std::for_each(std::cbegin(m_colorRenderTargetDefs), std::cend(m_colorRenderTargetDefs),
-					  [this, &renderingDefinition](const RGRenderTargetDef& def)
-					  {
-						  renderingDefinition.AddColorRenderTarget(CreateRTDefinition(def));
-					  });
-
-		if (IsRTDefinitionValid(m_depthRenderTargetDef))
-		{
-			renderingDefinition.AddDepthRenderTarget(CreateRTDefinition(m_depthRenderTargetDef));
-		}
-
-		if (IsRTDefinitionValid(m_stencilRenderTargetDef))
-		{
-			renderingDefinition.AddStencilRenderTarget(CreateRTDefinition(m_stencilRenderTargetDef));
-		}
-
-		return renderingDefinition;
-	}
-
-	void BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const
-	{
-		SPT_PROFILER_FUNCTION();
-
-		for (const RGRenderTargetDef& colorRenderTarget : m_colorRenderTargetDefs)
-		{
-			SPT_CHECK(colorRenderTarget.textureView.IsValid());
-
-			dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGAccess::ColorRenderTarget);
-		}
-
-		if (m_depthRenderTargetDef.textureView.IsValid())
-		{
-			dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGAccess::DepthRenderTarget);
-		}
-		
-		if (m_stencilRenderTargetDef.textureView.IsValid())
-		{
-			dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGAccess::StencilRenderTarget);
-		}
-	}
+	void BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const;
 
 private:
 
-	rdr::RTDefinition CreateRTDefinition(const RGRenderTargetDef& rgDef) const
-	{
-		SPT_CHECK(rgDef.textureView.IsValid());
+	rdr::RTDefinition CreateRTDefinition(const RGRenderTargetDef& rgDef) const;
 
-		rdr::RTDefinition def;
-
-		def.textureView = rgDef.textureView->GetViewInstance();
-
-		if (rgDef.resolveTextureView.IsValid())
-		{
-			def.resolveTextureView = rgDef.resolveTextureView->GetViewInstance();
-		}
-
-		def.loadOperation = rgDef.loadOperation;
-		def.storeOperation = rgDef.storeOperation;
-		def.resolveMode = rgDef.resolveMode;
-		def.clearColor = rgDef.clearColor;
-
-		return def;
-	}
-
-	Bool IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const
-	{
-		return rgDef.textureView.IsValid();
-	}
+	Bool IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const;
 
 	lib::DynamicArray<RGRenderTargetDef>	m_colorRenderTargetDefs;
 	RGRenderTargetDef						m_depthRenderTargetDef;
@@ -160,7 +80,9 @@ public:
 
 	RenderGraphBuilder();
 
-	RGTextureHandle AcquireExternalTexture(lib::SharedPtr<rdr::Texture> texture);
+	RGTextureHandle AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture);
+
+	RGTextureViewHandle AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);
 
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 

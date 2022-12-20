@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SculptorCoreTypes.h"
+
 namespace spt::rg
 {
 

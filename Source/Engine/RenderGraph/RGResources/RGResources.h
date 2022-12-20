@@ -97,7 +97,7 @@ public:
 		return m_releaseNode;
 	}
 
-	Bool IsExternal()
+	Bool IsExternal() const
 	{
 		return lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External);
 	}
@@ -295,7 +295,7 @@ public:
 		, m_extractionDest(nullptr)
 		, m_preExtractionTransitionTarget(nullptr)
 	{
-		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
+		SPT_CHECK(IsExternal());
 	}
 	
 	// Texture Definition ==================================================
@@ -406,14 +406,22 @@ public:
 		, m_viewDef(viewDefinition)
 	{ }
 
+	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, lib::SharedRef<rdr::TextureView> textureView)
+		: RGResource(resourceDefinition)
+		, m_texture(texture)
+		, m_textureView(textureView)
+	{
+		SPT_CHECK(IsExternal());
+	}
+
 	RGTextureHandle GetTexture() const
 	{
 		return m_texture;
 	}
 
-	const rhi::TextureViewDefinition& GetViewDefinition() const
+	const rhi::TextureSubresourceRange& GetSubresourceRange() const
 	{
-		return m_viewDef;
+		return IsExternal() ? m_textureView->GetRHI().GetSubresourceRange() : GetViewDefinition().subresourceRange;
 	}
 
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
@@ -438,6 +446,12 @@ private:
 		SPT_CHECK(!!textureInstance);
 
 		return textureInstance->CreateView(RENDERER_RESOURCE_NAME(GetName()), GetViewDefinition());
+	}
+
+	const rhi::TextureViewDefinition& GetViewDefinition() const
+	{
+		SPT_CHECK_MSG(!IsExternal(), "View Definition is not valid for external texture views");
+		return m_viewDef;
 	}
 
 	RGTextureHandle				m_texture;
