@@ -32,10 +32,6 @@ void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 	SPT_PROFILER_FUNCTION();
 
 	m_id = priv::GenerateID();
-
-	m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
-
-	m_commandPoolsLibrary = VulkanRHI::GetCommandPoolsManager().AcquireCommandPoolsLibrary();
 }
 
 void RHIRenderContext::ReleaseRHI()
@@ -44,9 +40,15 @@ void RHIRenderContext::ReleaseRHI()
 
 	m_id = idxNone<rhi::ContextID>;
 
-	RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(std::move(m_dynamicDescriptorsPool));
+	if (m_dynamicDescriptorsPool)
+	{
+		RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(std::move(m_dynamicDescriptorsPool));
+	}
 
-	VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
+	if (m_commandPoolsLibrary)
+	{
+		VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
+	}
 
 	m_name.Reset();
 }
@@ -75,6 +77,11 @@ lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(con
 {
 	SPT_PROFILER_FUNCTION();
 
+	if (!m_dynamicDescriptorsPool)
+	{
+		m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
+	}
+
 	lib::DynamicArray<RHIDescriptorSet> outSets;
 	outSets.reserve(static_cast<SizeType>(descriptorSetsNum));
 
@@ -86,6 +93,11 @@ lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(con
 VkCommandBuffer RHIRenderContext::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)
 {
 	SPT_PROFILER_FUNCTION();
+
+	if (!m_commandPoolsLibrary)
+	{
+		m_commandPoolsLibrary = VulkanRHI::GetCommandPoolsManager().AcquireCommandPoolsLibrary();
+	}
 
 	return m_commandPoolsLibrary->AcquireCommandBuffer(cmdBufferDef);
 }
