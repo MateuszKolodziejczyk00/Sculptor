@@ -205,7 +205,7 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
 
-	RGDependenciesBuilder renderTargetsDependenciesBuilder(dependencies);
+	RGDependenciesBuilder renderTargetsDependenciesBuilder(*this, dependencies);
 	renderPassDef.BuildDependencies(renderTargetsDependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
@@ -229,7 +229,7 @@ void RenderGraphBuilder::BuildDescriptorSetDependencies(TDescriptorSetStatesRang
 {
 	SPT_PROFILER_FUNCTION();
 
-	RGDependenciesBuilder dependenciesBuilder(dependencies);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
 	{
 		stateToBind->BuildRGDependencies(dependenciesBuilder);

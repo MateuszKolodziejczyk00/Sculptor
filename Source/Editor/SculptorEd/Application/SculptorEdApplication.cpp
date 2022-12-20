@@ -23,7 +23,6 @@
 #include "Renderer/SandboxRenderer.h"
 #include "UIUtils.h"
 #include "ProfilerUILayer.h"
-#include "RenderGraphBuilder.h"
 
 
 namespace spt::ed
@@ -305,60 +304,5 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		m_window->RebuildSwapchain();
 	}
 }
-/*
-void SculptorEdApplication::RenderFrame2(SandboxRenderer& renderer)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const auto onSwapchainOutOfDateBeforeRendering = [this]()
-	{
-		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
-		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
-	};
-
-	// Additional check in case of changing swapchain settings in application
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		onSwapchainOutOfDateBeforeRendering();
-		return;
-	}
-
-	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
-
-	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
-
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		onSwapchainOutOfDateBeforeRendering();
-		return;
-	}
-
-	rg::RenderGraphBuilder graphBuilder;
-
-	const rg::RGTextureHandle rgSwapchainTexture = graphBuilder.AcquireExternalTexture(swapchainTexture);
-
-	rhi::TextureViewDefinition viewDefinition;
-	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	const rg::RGTextureViewHandle rgSwapchainTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Swapchain Texture View"), rgSwapchainTexture, viewDefinition);
-
-	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), m_window->GetSwapchainSize());
-	rg::RGRenderTargetDef& colorRenderTarget = renderPassDef.AddColorRenderTarget();
-	colorRenderTarget.textureView = rgSwapchainTextureView;
-	colorRenderTarget.loadOperation = rhi::ERTLoadOperation::Clear;
-	colorRenderTarget.storeOperation = rhi::ERTStoreOperation::Store;
-	colorRenderTarget.clearColor.asFloat[0] = 0.f;
-	colorRenderTarget.clearColor.asFloat[1] = 0.f;
-	colorRenderTarget.clearColor.asFloat[2] = 0.f;
-	colorRenderTarget.clearColor.asFloat[3] = 1.f;
-	graphBuilder.AddRenderPass(RG_DEBUG_NAME("UI Pass"), renderPassDef, rg::EmptyDescriptorSets(),
-							   [](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							   {
-								   recorder.RenderUI();
-							   });
-
-	//graphBuilder.Execute()
-}*/
 
 } // spt::ed

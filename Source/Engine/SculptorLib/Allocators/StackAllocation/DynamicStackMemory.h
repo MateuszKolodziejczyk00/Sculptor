@@ -29,14 +29,14 @@ public:
 	{
 		SPT_CHECK(size <= chunkSize);
 
-		if (m_lastChunk)
+		if (!m_lastChunk)
 		{
 			AllocNewChunk();
 		}
 
 		void* allocatedFromCurrentChunk = TryAllocFromCurrentChunk(size, alignment);
 
-		if (allocatedFromCurrentChunk == nullptr)
+		if (!allocatedFromCurrentChunk)
 		{
 			AllocNewChunk();
 			allocatedFromCurrentChunk = TryAllocFromCurrentChunk(size, alignment);
@@ -68,7 +68,16 @@ private:
 
 		m_currentChunkOffset = 0;
 		MemChunk* newChunk = new MemChunk();
-		m_lastChunk->next = newChunk;
+
+		if (m_firstChunk)
+		{
+			m_lastChunk->next = newChunk;
+		}
+		else
+		{
+			m_firstChunk = newChunk;
+		}
+
 		m_lastChunk = newChunk;
 		return newChunk;
 	}
@@ -80,7 +89,7 @@ private:
 
 		if (chunkAddress + chunkSize - allocationAddress >= size)
 		{
-			m_currentChunkOffset = allocationAddress + size;
+			m_currentChunkOffset = allocationAddress + size - chunkAddress;
 			return reinterpret_cast<void*>(allocationAddress);
 		}
 		else

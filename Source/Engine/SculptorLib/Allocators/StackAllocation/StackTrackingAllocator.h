@@ -32,8 +32,8 @@ public:
 	{
 		static_assert(std::is_base_of_v<TTrackedType, TType>);
 
-		constexpr SizeType size			= sizeof(TTrackedType);
-		constexpr SizeType alignment	= alignof(TTrackedType);
+		constexpr SizeType size			= sizeof(TType);
+		constexpr SizeType alignment	= alignof(TType);
 
 		void* memoryPtr = m_stackMemory.Allocate(size, alignment);
 

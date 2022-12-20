@@ -12,9 +12,15 @@ class RGDependenciesBuilder;
 
 class RGDescriptorSetStateBase abstract : public rdr::DescriptorSetState
 {
+protected:
+
+	using Super = rdr::DescriptorSetState;
+
 public:
 
-	RGDescriptorSetStateBase() = default;
+	RGDescriptorSetStateBase(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
+		: Super(name, flags)
+	{ }
 
 	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const = 0;
 };
@@ -23,24 +29,26 @@ public:
 template<typename TInstanceType>
 class RGDescriptorSetState abstract : public RGDescriptorSetStateBase
 {
+protected:
+
+	using Super = RGDescriptorSetStateBase;
+
 public:
 
-	RGDescriptorSetState() = default;
+	RGDescriptorSetState(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
+		: Super(name, flags)
+	{ }
 
 	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const override
 	{
 		const TInstanceType& self = SelfAsInstance();
 		const auto& bindingsBegin = self.GetBindingsBegin();
-		rdr::bindings_refl::ForEachBinding(bindingsBegin, [&builder]<typename TBindingHandle>(const TBindingHandle& bindingHandle)
+		rdr::bindings_refl::ForEachBinding(bindingsBegin, [&builder]<typename TBindingType>(const TBindingType& binding)
 		{
-			using BindingType = typename TBindingHandle::BindingType;
-
-			constexpr Bool supportsRG = (requires(const BindingType& binding) { binding.BuildRGDependencies(std::declval<RGDependenciesBuilder>()); });
-
-			SPT_STATIC_CHECK_MSG(supportsRG, "binding doesn't support Render Graph");
+			constexpr Bool supportsRG = requires (const TBindingType& bindingInstance, RGDependenciesBuilder& builder) { bindingInstance.BuildRGDependencies(builder); };
+			
 			if constexpr (supportsRG)
 			{
-				const BindingType& binding = bindingHandle.GetBinding();
 				binding.BuildRGDependencies(builder);
 			}
 		});
@@ -50,7 +58,7 @@ private:
 
 	const TInstanceType& SelfAsInstance() const
 	{
-		return *static_cast<TInstanceType*>(this);
+		return *static_cast<const TInstanceType*>(this);
 	}
 };
 

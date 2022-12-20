@@ -332,14 +332,10 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK_NO_ENTRY();
 }
 
 const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGAccess access) const
 {
-	SPT_CHECK_NO_ENTRY();
-
 	const ERenderGraphNodeType nodeType = node.IsValid() ? node->GetType() : ERenderGraphNodeType::None;
 
 	switch (access)
@@ -397,7 +393,8 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 	const Bool prevAccessIsWrite = transitionSource.accessType == rhi::EAccessType::Write;
 	const Bool newAccessIsWrite = transitionTarget.accessType == rhi::EAccessType::Write;
 
-	return transitionSource.layout != transitionTarget.layout
+	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
+		|| transitionSource.layout != transitionTarget.layout
 		|| prevAccessIsWrite != newAccessIsWrite // read -> write, write -> read
 		|| prevAccessIsWrite && newAccessIsWrite; // write -> write
 }
@@ -423,6 +420,11 @@ void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores
 	{
 		node->Execute(renderContext, *commandRecorder);
 	}
+
+	rdr::CommandsRecordingInfo recordingInfo;
+	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("RenderGraphCommandBuffer");
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+	commandRecorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
 	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());

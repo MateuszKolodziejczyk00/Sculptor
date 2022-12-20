@@ -5,7 +5,7 @@
 #include "UITypes.h"
 #include "Pipelines/PipelineState.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
@@ -29,7 +29,7 @@ BEGIN_SHADER_STRUCT(, TestViewInfo)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(, TestDS, rdr::DescriptorSetState, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(, TestDS, rg::RGDescriptorSetState<TestDS>, rhi::EShaderStageFlags::Compute)
 	DS_BINDING(gfx::RWTexture2DBinding<math::Vector4f>, u_texture)
 	DS_BINDING(gfx::ConstantBufferBinding<TestViewInfo>, u_viewInfo)
 DS_END()

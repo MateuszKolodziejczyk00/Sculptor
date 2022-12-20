@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "RGResources/RGResources.h"
@@ -32,7 +33,7 @@ struct RGDependeciesContainer
 };
 
 
-class RGDependenciesBuilder
+class RENDER_GRAPH_API RGDependenciesBuilder
 {
 public:
 

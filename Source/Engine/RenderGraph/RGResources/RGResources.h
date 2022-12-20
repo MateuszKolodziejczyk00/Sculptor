@@ -238,8 +238,8 @@ public:
 	{
 		return range.baseMipLevel == 0
 			&& range.baseArrayLayer == 0
-			&& range.mipLevelsNum == m_textureLayersNum
-			&& range.arrayLayersNum == m_textureMipsNum;
+			&& (range.mipLevelsNum == m_textureLayersNum || range.mipLevelsNum == rhi::constants::allRemainingMips)
+			&& (range.arrayLayersNum == m_textureMipsNum || range.arrayLayersNum == rhi::constants::allRemainingArrayLayers);
 	}
 
 	void MergeTo(const RGTextureSubresourceAccessState& access)
@@ -364,7 +364,7 @@ public:
 
 	void SetReleaseTransitionTarget(const rhi::BarrierTextureTransitionDefinition* transitionTarget)
 	{
-		SPT_CHECK_MSG(!!m_releaseTransitionTarget, "Release transition already defined");
+		SPT_CHECK_MSG(!m_releaseTransitionTarget, "Release transition already defined");
 		m_releaseTransitionTarget = transitionTarget;
 	}
 

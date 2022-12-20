@@ -28,15 +28,15 @@ public:
 		context.UpdateTexture(GetName(), GetTextureToBind());
 	}
 	
-	void BuildRGDependencies(rg::RGDependenciesBuilder& builder)
+	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		if (m_renderGraphTexture)
+		if (m_renderGraphTexture.IsValid())
 		{
 			builder.AddTextureAccess(m_renderGraphTexture, rg::ERGAccess::StorageWriteTexture);
 		}
 		else
 		{
-			builder.AddTextureAccess(m_texture, rg::ERGAccess::StorageWriteTexture);
+			builder.AddTextureAccess(lib::Ref(m_texture), rg::ERGAccess::StorageWriteTexture);
 		}
 	}
 

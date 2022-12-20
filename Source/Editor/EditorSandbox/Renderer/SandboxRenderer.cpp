@@ -11,6 +11,7 @@
 #include "GPUDiagnose/Profiler/GPUProfiler.h"
 #include "GPUDiagnose/Debug/GPUDebug.h"
 #include "JobSystem.h"
+#include "RenderGraphBuilder.h"
 
 namespace spt::ed
 {
@@ -44,76 +45,34 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedRef<rdr::RenderContext> renderingContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
-
 	js::JobWithResult createFinishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
 															{
 																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 															});
+	rg::RenderGraphBuilder graphBuilder;
 
-	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+	const rg::RGTextureHandle texture = graphBuilder.AcquireExternalTexture(m_texture);
 
-	{
-		SPT_GPU_PROFILER_CONTEXT(recorder->GetCommandBuffer());
-		SPT_GPU_DEBUG_REGION(*recorder, "FrameRegion", lib::Color::Red);
-		
-		{
-#if WITH_GPU_CRASH_DUMPS
-			recorder->SetDebugCheckpoint("Pre Dispatch");
-#endif // WITH_GPU_CRASH_DUMPS
-		}
-		
-		{
-			SPT_GPU_PROFILER_EVENT("TestCompute");
-			SPT_GPU_DEBUG_REGION(*recorder, "TestCompute", lib::Color::Blue);
+	graphBuilder.AddDispatch(RG_DEBUG_NAME("Sandbox Dispatch"),
+							 m_computePipelineID,
+							 math::Vector3u(240, 135, 1),
+							 rg::BindDescriptorSets(lib::Ref(m_descriptorSet)));
 
-			rhi::RHIDependency dependency;
-			const SizeType barrierIdx = dependency.AddTextureDependency(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::ComputeGeneral);
+	// prepare for UI pass
+	graphBuilder.ReleaseTextureWithTransition(texture, rhi::TextureTransition::FragmentReadOnly);
 
-			recorder->ExecuteBarrier(std::move(dependency));
+	rdr::SemaphoresArray waitSemaphores;
+	// Wait for previous frame as we're reusing resources
+	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_COMMANDS);
 
-			recorder->BindComputePipeline(m_computePipelineID);
+	const lib::SharedRef<rdr::Semaphore> finishSemaphore = createFinishSemaphoreJob.Await();
+	rdr::SemaphoresArray signalSemaphores;
+	signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
 
-			recorder->BindDescriptorSetState(lib::Ref(m_descriptorSet));
+	graphBuilder.Execute(waitSemaphores, signalSemaphores);
 
-			recorder->Dispatch(math::Vector3u(240, 135, 1));
-
-			recorder->UnbindDescriptorSetState(lib::Ref(m_descriptorSet));
-		}
-		
-		{
-			rhi::RHIDependency dependency;
-			const SizeType computeBarrierIdx = dependency.AddTextureDependency(m_texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
-			dependency.SetLayoutTransition(computeBarrierIdx, rhi::TextureTransition::FragmentReadOnly);
-
-			recorder->ExecuteBarrier(std::move(dependency));
-		}
-
-		{
-#if WITH_GPU_CRASH_DUMPS
-			recorder->SetDebugCheckpoint("Post Dispatch");
-#endif // WITH_GPU_CRASH_DUMPS
-		}
-	}
-
-	rdr::CommandsRecordingInfo recordingInfo;
-	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("SandboxCommandBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
-
-	lib::SharedRef<rdr::Semaphore> finishSemaphore = createFinishSemaphoreJob.Await();
-
-	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
-	submitBatch.recordedCommands.emplace_back(std::move(recorder));
-	submitBatch.waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_COMMANDS); // Wait for previous frame as We're reusing resources
-	submitBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
-
-	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
-
-	return finishSemaphore;
+	return finishSemaphore.ToSharedPtr();
 }
 
 ui::TextureID SandboxRenderer::GetUITextureID() const
