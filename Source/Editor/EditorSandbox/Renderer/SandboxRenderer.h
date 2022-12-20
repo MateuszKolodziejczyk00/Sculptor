@@ -6,8 +6,8 @@
 #include "Pipelines/PipelineState.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
-#include "Bindings/StorageTextureBinding.h"
-#include "Bindings/ConstantBufferBinding.h"
+#include "DescriptorSetBindings/RWTextureBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 namespace spt::rdr
 {
@@ -30,8 +30,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(, TestDS, rdr::DescriptorSetState, rhi::EShaderStageFlags::Compute)
-	DS_BINDING(rdr::StorageTexture2DBinding<math::Vector4f>, u_texture)
-	DS_BINDING(rdr::ConstantBufferBinding<TestViewInfo>, u_viewInfo)
+	DS_BINDING(gfx::RWTexture2DBinding<math::Vector4f>, u_texture)
+	DS_BINDING(gfx::ConstantBufferBinding<TestViewInfo>, u_viewInfo)
 DS_END()
 
 

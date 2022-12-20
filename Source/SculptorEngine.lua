@@ -28,6 +28,7 @@ IncludeProject("ShaderCompiler")
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererCore")
 IncludeProject("RenderGraph")
+IncludeProject("Graphics")
 
 SetProjectsSubgroupName("Tools")
 IncludeProject("ScUI")

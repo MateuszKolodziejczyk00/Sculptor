@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RGResources/RGResourceHandles.h"
+#include "RGResources/RGResources.h"
 
 
 namespace spt::rg

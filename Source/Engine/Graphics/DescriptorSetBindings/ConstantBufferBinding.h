@@ -7,16 +7,20 @@
 #include "MathUtils.h"
 
 
-namespace spt::rdr
+namespace spt::gfx
 {
 
 template<typename TStruct>
-class ConstantBufferBinding : public DescriptorSetBinding 
+class ConstantBufferBinding : public rdr::DescriptorSetBinding 
 {
+protected:
+
+	using Super = rdr::DescriptorSetBinding;
+
 public:
 
 	explicit ConstantBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
-		: DescriptorSetBinding(name, descriptorDirtyFlag)
+		: Super(name, descriptorDirtyFlag)
 		, m_bufferMappedPtr(nullptr)
 		, m_secondStructOffset(0)
 		, m_offset(nullptr)
@@ -33,9 +37,9 @@ public:
 		}
 	}
 
-	void Initialize(DescriptorSetState& owningState)
+	void Initialize(rdr::DescriptorSetState& owningState)
 	{
-		DescriptorSetBinding::Initialize(owningState);
+		Super::Initialize(owningState);
 
 		InitResources(owningState);
 
@@ -109,7 +113,7 @@ private:
 		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + *m_offset);
 	}
 
-	void InitResources(DescriptorSetState& owningState)
+	void InitResources(rdr::DescriptorSetState& owningState)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -124,7 +128,7 @@ private:
 		rhi::RHIAllocationInfo allocationInfo;
 		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 		allocationInfo.memoryUsage = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
+		m_buffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
 												  bufferDef, allocationInfo);
 
 		m_bufferMappedPtr = m_buffer->GetRHI().MapBufferMemory();
@@ -136,14 +140,14 @@ private:
 		m_secondStructOffset = static_cast<Uint32>(secondStructOffset);
 	}
 
-	lib::SharedPtr<Buffer>		m_buffer;
-	lib::SharedPtr<BufferView>	m_bufferView;
-	Byte*						m_bufferMappedPtr;
+	lib::SharedPtr<rdr::Buffer>		m_buffer;
+	lib::SharedPtr<rdr::BufferView>	m_bufferView;
+	Byte*							m_bufferMappedPtr;
 
-	Uint32						m_secondStructOffset;
+	Uint32							m_secondStructOffset;
 
 	// Dynamic Offset value ptr
-	Uint32*						m_offset;
+	Uint32*							m_offset;
 };
 
-} // spt::rdr
+} // spt::gfx

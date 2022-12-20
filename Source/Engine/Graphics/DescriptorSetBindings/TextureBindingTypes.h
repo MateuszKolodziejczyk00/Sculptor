@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 
-namespace spt::rdr
+namespace spt::gfx
 {
 
 namespace priv
@@ -36,4 +36,4 @@ constexpr lib::String GetTextureDimSuffix()
 
 } // priv
 
-} // spt::rdr
+} // spt::gfx
