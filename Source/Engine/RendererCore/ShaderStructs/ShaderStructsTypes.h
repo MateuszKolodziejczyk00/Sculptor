@@ -42,6 +42,15 @@ constexpr lib::String GetShaderTypeName<math::Vector4f>()
 	return lib::String("float4");
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Utilities =====================================================================================
+
+template<typename TStruct>
+constexpr lib::String AddShaderStruct()
+{
+	return lib::String("[[shader_struct(") + TStruct::GetStructName() + ")]]";
+}
+
 } // shader_translator
 
 } // spt::rdr

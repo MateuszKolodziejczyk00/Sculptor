@@ -50,7 +50,6 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 								   });
 }
 
-
 lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 {
 	SPT_PROFILER_FUNCTION();
