@@ -302,7 +302,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 
 		if (RequiresSynchronization(transitionSource, transitionTarget))
 		{
-			node.AddTextureState(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
+			node.AddTextureTransition(accessedTexture, accessedSubresourceRange, transitionSource, transitionTarget);
 		}
 	}
 	else
@@ -323,7 +323,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 		
 												  if (RequiresSynchronization(transitionSource, transitionTarget))
 												  {
-													  node.AddTextureState(accessedTexture, subresourceRange, transitionSource, transitionTarget);
+													  node.AddTextureTransition(accessedTexture, subresourceRange, transitionSource, transitionTarget);
 												  }
 											  });
 	}

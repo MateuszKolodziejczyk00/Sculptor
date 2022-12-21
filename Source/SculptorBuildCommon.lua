@@ -288,14 +288,15 @@ function Project:BuildConfiguration(configuration, platform)
         warnings "Extra"
     end
 
-    if self.targetType == ETargetType.Application then
+    if self.targetType ~= ETargetType.None then
         for copyCommand, _ in pairs(projectToAdditionalCopyCommands[self.name][configuration])
         do
-            postbuildcommands
+            prelinkcommands
             {
                 copyCommand
             }
         end
+        projectToAdditionalCopyCommands[self.name][self.currentConfiguration] = {}
     end
 end
 
@@ -378,7 +379,7 @@ function Project:CopyLibToOutputDir(libPath)
         localCommand = "{COPY} ".. "%{prj.location}/".. self:GetProjectReferencePath() .. libPath .. " " .. "%{cfg.buildtarget.directory}"
         projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
     else
-        postbuildcommands
+        prelinkcommands
         {
             {"{COPY} %{prj.location}" .. libPath .. "%{cfg.buildtarget.directory}"}
         }
