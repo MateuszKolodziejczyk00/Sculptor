@@ -8,7 +8,7 @@
 namespace spt::lib
 {
 
-template<typename TTrackedType>
+template<typename TTrackedType, typename ChunksAllocator = StackMemoryChunksAllocator>
 class StackTrackingAllocator
 {
 public:
@@ -59,7 +59,7 @@ public:
 
 private:
 
-	using StackMemoryType = DynamicStackMemory;
+	using StackMemoryType = DynamicStackMemory<ChunksAllocator>;
 
 	StackMemoryType m_stackMemory;
 
