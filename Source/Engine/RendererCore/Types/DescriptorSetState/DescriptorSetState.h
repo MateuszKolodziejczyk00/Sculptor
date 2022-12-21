@@ -333,7 +333,7 @@ public:
 	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
 #define DS_BINDING(Type, Name, ...)	Type, #Name> Refl##Name##BindingType;  /* finish line from prev macros */																								\
-									Type Name = Type(#Name, m_isDirty);																																\
+									Type Name = Type(#Name, m_isDirty, __VA_ARGS__);																																\
 									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);				\
 									template<>																																						\
 									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																							\
