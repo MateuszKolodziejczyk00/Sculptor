@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SculptorLibMacros.h"
 #include "SculptorAliases.h"
 #include "ProfilerCore.h"
 #include "MathUtils.h"
@@ -9,47 +10,17 @@
 namespace spt::lib
 {
 
-template<SizeType chunkSize>
-class DynamicStackMemory : public  NonCopyable
+class SCULPTOR_LIB_API DynamicStackMemory : public NonCopyable
 {
 public:
 
-	DynamicStackMemory()
-		: m_firstChunk(nullptr)
-		, m_lastChunk(nullptr)
-		, m_currentChunkOffset(0)
-	{ }
+	explicit DynamicStackMemory(SizeType memoryChunkSize);
 
-	~DynamicStackMemory()
-	{
-		Reset();
-	}
+	~DynamicStackMemory();
 
-	void* Allocate(SizeType size, SizeType alignment)
-	{
-		SPT_CHECK(size <= chunkSize);
+	void* Allocate(SizeType size, SizeType alignment);
 
-		if (!m_lastChunk)
-		{
-			AllocNewChunk();
-		}
-
-		void* allocatedFromCurrentChunk = TryAllocFromCurrentChunk(size, alignment);
-
-		if (!allocatedFromCurrentChunk)
-		{
-			AllocNewChunk();
-			allocatedFromCurrentChunk = TryAllocFromCurrentChunk(size, alignment);
-		}
-
-		SPT_CHECK(!!allocatedFromCurrentChunk);
-		return allocatedFromCurrentChunk;
-	}
-
-	void Deallocate()
-	{
-		Reset();
-	}
+	void Deallocate();
 
 private:
 
@@ -59,59 +30,15 @@ private:
 			: next(nullptr)
 		{ }
 		MemChunk*	next;
-		Byte		memory[chunkSize];
 	};
 
-	MemChunk* AllocNewChunk()
-	{
-		SPT_PROFILER_FUNCTION();
+	MemChunk* AllocNewChunk();
 
-		m_currentChunkOffset = 0;
-		MemChunk* newChunk = new MemChunk();
+	void* TryAllocFromCurrentChunk(SizeType size, SizeType alignment);
 
-		if (m_firstChunk)
-		{
-			m_lastChunk->next = newChunk;
-		}
-		else
-		{
-			m_firstChunk = newChunk;
-		}
+	void Reset();
 
-		m_lastChunk = newChunk;
-		return newChunk;
-	}
-
-	void* TryAllocFromCurrentChunk(SizeType size, SizeType alignment)
-	{
-		const SizeType chunkAddress = reinterpret_cast<SizeType>(m_lastChunk->memory);
-		const SizeType allocationAddress = math::Utils::RoundUp(chunkAddress + m_currentChunkOffset, alignment);
-
-		if (chunkAddress + chunkSize - allocationAddress >= size)
-		{
-			m_currentChunkOffset = allocationAddress + size - chunkAddress;
-			return reinterpret_cast<void*>(allocationAddress);
-		}
-		else
-		{
-			return nullptr;
-		}
-	}
-
-	void Reset()
-	{
-		while (m_firstChunk)
-		{
-			MemChunk* next = m_firstChunk->next;
-
-			delete m_firstChunk;
-
-			m_firstChunk = next;
-		}
-
-		m_lastChunk = nullptr;
-		m_currentChunkOffset = 0;
-	}
+	SizeType m_memoryChunkSize;
 
 	MemChunk* m_firstChunk;
 	MemChunk* m_lastChunk;

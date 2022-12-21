@@ -2,17 +2,20 @@
 
 #include "DynamicStackMemory.h"
 #include "Containers/DynamicArray.h"
+#include "ProfilerCore.h"
 
 
 namespace spt::lib
 {
 
-template<typename TTrackedType, SizeType memChunkSize = 1024 * 1024>
+template<typename TTrackedType>
 class StackTrackingAllocator
 {
 public:
 
-	StackTrackingAllocator() = default;
+	explicit StackTrackingAllocator(SizeType memoryChunkSize = 1024 * 1024)
+		: m_stackMemory(memoryChunkSize)
+	{ }
 
 	~StackTrackingAllocator()
 	{
@@ -30,6 +33,8 @@ public:
 	template<typename TType, typename... TArgs>
 	TType* AllocateUntracked(TArgs&&... args)
 	{
+		SPT_PROFILER_FUNCTION();
+
 		static_assert(std::is_base_of_v<TTrackedType, TType>);
 
 		constexpr SizeType size			= sizeof(TType);
@@ -42,6 +47,8 @@ public:
 
 	void Deallocate()
 	{
+		SPT_PROFILER_FUNCTION();
+
 		for (TTrackedType* trackedObj : m_trackedObjects)
 		{
 			trackedObj->~TTrackedType();
@@ -52,7 +59,7 @@ public:
 
 private:
 
-	using StackMemoryType = DynamicStackMemory<memChunkSize>;
+	using StackMemoryType = DynamicStackMemory;
 
 	StackMemoryType m_stackMemory;
 

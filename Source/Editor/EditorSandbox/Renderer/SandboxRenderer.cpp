@@ -12,6 +12,7 @@
 #include "GPUDiagnose/Debug/GPUDebug.h"
 #include "JobSystem.h"
 #include "RenderGraphBuilder.h"
+#include "Engine.h"
 
 namespace spt::ed
 {
@@ -40,6 +41,15 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
 	m_uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
 }
+
+void SandboxRenderer::Tick(Real32 deltaTime)
+{
+	m_descriptorSet->u_viewInfo.Set([](TestViewInfo& info)
+								   {
+									   info.color = math::Vector4f::Constant(sin(engn::Engine::Get().GetTime()));
+								   });
+}
+
 
 lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 {

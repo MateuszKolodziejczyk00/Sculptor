@@ -1,9 +1,12 @@
 #pragma once
 
+#include "SculptorLibMacros.h"
+
+
 namespace spt::lib
 {
 
-class NonCopyable
+class SCULPTOR_LIB_API NonCopyable
 {
 protected:
 

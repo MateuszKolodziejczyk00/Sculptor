@@ -41,6 +41,8 @@ public:
 
 	explicit SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow);
 
+	void Tick(Real32 deltaTime);
+
 	lib::SharedPtr<rdr::Semaphore> RenderFrame();
 
 	ui::TextureID GetUITextureID() const;

@@ -134,10 +134,7 @@ void SculptorEdApplication::OnRun()
 
 		ImGui::NewFrame();
 
-		renderer.GetDescriptorSet().u_viewInfo.Set([time = engn::Engine::Get().GetTime()](TestViewInfo& info)
-												   {
-													   info.color = math::Vector4f::Constant(sin(time));
-												   });
+		renderer.Tick(deltaTime);
 
 		scui::ApplicationUI::Draw(context);
 		ImGui::Render();

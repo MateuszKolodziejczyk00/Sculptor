@@ -13,7 +13,6 @@ public:
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType RoundUp(TType value, TType multiple)
 	{
-		SPT_CHECK(multiple > 0);
 		return ((value + multiple - 1) / multiple) * multiple;
 	}
 
@@ -26,8 +25,6 @@ public:
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType RoundUpToPowerOf2(TType value)
 	{
-		SPT_CHECK(value > 0);
-
 		--value;
 		value |= value >> 1;
 		value |= value >> 2;
