@@ -60,6 +60,9 @@ using RGTextureViewHandle = RGResourceHandle<RGTextureView>;
 class RGBuffer;
 using RGBufferHandle = RGResourceHandle<RGBuffer>;
 
+class RGBufferView;
+using RGBufferViewHandle = RGResourceHandle<RGBufferView>;
+
 } // spt::rg
 
 

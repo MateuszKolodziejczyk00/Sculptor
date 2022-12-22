@@ -18,19 +18,19 @@ lib::SharedRef<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::MakeShared<BufferView>(lib::Ref(shared_from_this()), offset, size);
+	return lib::MakeShared<BufferView>(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), offset, size);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferView ====================================================================================
 
-BufferView::BufferView(const lib::SharedRef<const Buffer>& buffer, Uint64 offset, Uint64 size)
+BufferView::BufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size)
 	: m_buffer(buffer.ToSharedPtr())
 	, m_offset(offset)
 	, m_size(size)
 { }
 
-lib::SharedPtr<const Buffer> BufferView::GetBuffer() const
+lib::SharedPtr<Buffer> BufferView::GetBuffer() const
 {
 	return m_buffer.lock();
 }

@@ -96,9 +96,13 @@ public:
 	
 	// Buffers ================================================
 
-	RGBufferHandle AcquireExternalBuffer(lib::SharedPtr<rdr::Buffer> buffer);
+	RGBufferHandle AcquireExternalBuffer(const lib::SharedPtr<rdr::Buffer>& buffer);
+
+	RGBufferViewHandle AcquireExternalBufferView(lib::SharedPtr<rdr::BufferView> bufferView);
 
 	RGBufferHandle CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+
+	RGBufferViewHandle CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	
@@ -149,6 +153,7 @@ private:
 	lib::DynamicArray<RGTextureHandle> m_textures;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
+	lib::HashMap<lib::SharedPtr<rdr::Buffer>, RGBufferHandle> m_externalBuffers;
 
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
 	lib::DynamicArray<RGBufferHandle> m_extractedBuffers;

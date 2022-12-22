@@ -223,21 +223,50 @@ void RenderGraphBuilder::ReleaseTextureWithTransition(RGTextureHandle textureHan
 	textureHandle->SetReleaseTransitionTarget(&releaseTransitionTarget);
 }
 
-RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(lib::SharedPtr<rdr::Buffer> buffer)
+RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rdr::Buffer>& buffer)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!buffer);
 
-	const RenderGraphDebugName name = RG_DEBUG_NAME(buffer->GetRHI().GetName());
-	
-	RGResourceDef resourceDefinition;
-	resourceDefinition.name = name;
-	resourceDefinition.flags = ERGResourceFlags::External;
+	RGBufferHandle& bufferHandle = m_externalBuffers[buffer];
 
-	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, std::move(buffer));
+	if (!bufferHandle.IsValid())
+	{
+		const RenderGraphDebugName name = RG_DEBUG_NAME(buffer->GetRHI().GetName());
+
+		RGResourceDef resourceDefinition;
+		resourceDefinition.name = name;
+		resourceDefinition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
+
+		bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, buffer);
+	}
+	SPT_CHECK(bufferHandle.IsValid());
 
 	return bufferHandle;
+}
+
+RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(lib::SharedPtr<rdr::BufferView> bufferView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!bufferView);
+
+	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView->GetBuffer();
+	SPT_CHECK(!!owningBuffer);
+
+	const RGBufferHandle owningBufferHandle = AcquireExternalBuffer(owningBuffer);
+	SPT_CHECK(owningBufferHandle.IsValid());
+
+	const RenderGraphDebugName name = RG_DEBUG_NAME(owningBuffer->GetRHI().GetName().ToString() + "View");
+
+	RGResourceDef resourceDefinition;
+	resourceDefinition.name = name;
+	resourceDefinition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
+
+	const RGBufferViewHandle bufferViewHandle = m_allocator.Allocate<RGBufferView>(resourceDefinition, owningBufferHandle, std::move(bufferView));
+
+	return bufferViewHandle;
 }
 
 RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
@@ -251,6 +280,17 @@ RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name
 	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, bufferDefinition, allocationInfo);
 	
 	return bufferHandle;
+}
+
+RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	RGResourceDef resourceDefinition;
+	resourceDefinition.name = name;
+	resourceDefinition.flags = flags;
+	
+	return m_allocator.Allocate<RGBufferView>(resourceDefinition, buffer, offset, size);
 }
 
 void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination)

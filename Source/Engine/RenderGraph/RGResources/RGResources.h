@@ -557,6 +557,71 @@ private:
 	lib::SharedPtr<rdr::Buffer>* m_extractionDest;
 };
 
+
+class RGBufferView : public RGResource
+{
+public:
+
+	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, Uint64 offset, Uint64 size)
+		: RGResource(resourceDefinition)
+		, m_buffer(buffer)
+		, m_offset(offset)
+		, m_size(size)
+	{
+		SPT_CHECK(m_buffer.IsValid());
+	}
+
+	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, lib::SharedPtr<rdr::BufferView> bufferView)
+		: RGResource(resourceDefinition)
+		, m_buffer(buffer)
+		, m_offset(bufferView->GetOffset())
+		, m_size(bufferView->GetSize())
+		, m_bufferViewInstance(std::move(bufferView))
+	{
+		SPT_CHECK(m_buffer.IsValid());
+		SPT_CHECK(IsExternal());
+		SPT_CHECK(m_offset + m_size <= m_bufferViewInstance->GetBuffer()->GetRHI().GetSize());
+	}
+
+	Uint64 GetOffset() const
+	{
+		return m_offset;
+	}
+
+	Uint64 GetSize() const
+	{
+		return m_size;
+	}
+
+	RGBufferHandle GetBuffer() const
+	{
+		return m_buffer;
+	}
+
+	const lib::SharedPtr<rdr::BufferView>& GetBufferViewInstance() const
+	{
+		if (!m_bufferViewInstance)
+		{
+			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource();
+			SPT_CHECK(!!owningBufferInstance);
+
+			m_bufferViewInstance = owningBufferInstance->CreateView(m_offset, m_size);
+		}
+
+		SPT_CHECK(!!m_bufferViewInstance);
+		return m_bufferViewInstance;
+	}
+
+private:
+
+	RGBufferHandle m_buffer;
+
+	Uint64 m_offset;
+	Uint64 m_size;
+
+	mutable lib::SharedPtr<rdr::BufferView> m_bufferViewInstance;
+};
+
 } // spt::rg
 
 

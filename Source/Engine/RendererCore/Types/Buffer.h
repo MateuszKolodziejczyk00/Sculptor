@@ -29,7 +29,7 @@ public:
 
 	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 
-	lib::SharedRef<BufferView>		CreateView(Uint64 offset, Uint64 size) const;
+	lib::SharedRef<BufferView> CreateView(Uint64 offset, Uint64 size) const;
 };
 
 
@@ -37,19 +37,19 @@ class RENDERER_CORE_API BufferView
 {
 public:
 
-	BufferView(const lib::SharedRef<const Buffer>& buffer, Uint64 offset, Uint64 size);
+	BufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size);
 
-	lib::SharedPtr<const Buffer>	GetBuffer() const;
+	lib::SharedPtr<Buffer>	GetBuffer() const;
 
-	Uint64							GetOffset() const;
-	Uint64							GetSize() const;
+	Uint64					GetOffset() const;
+	Uint64					GetSize() const;
 
 private:
 
-	lib::WeakPtr<const Buffer>		m_buffer;
+	lib::WeakPtr<Buffer>	m_buffer;
 
-	Uint64							m_offset;
-	Uint64							m_size;
+	Uint64					m_offset;
+	Uint64					m_size;
 };
 
 } // spt::rdr
