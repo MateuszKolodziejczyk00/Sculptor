@@ -81,9 +81,9 @@ const smd::ShaderMetaData& DescriptorSetUpdateContext::GetMetaData() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
+DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name)
 	: m_name(name)
-	, m_descriptorDirtyFlag(descriptorDirtyFlag)
+	, m_owningState(nullptr)
 { }
 
 const lib::HashedString& DescriptorSetBinding::GetName() const
@@ -91,18 +91,32 @@ const lib::HashedString& DescriptorSetBinding::GetName() const
 	return m_name;
 }
 
+void DescriptorSetBinding::SetOwningDSState(DescriptorSetState& state)
+{
+	SPT_CHECK(m_owningState == nullptr);
+	m_owningState = &state;
+}
+
+rhi::EShaderStageFlags DescriptorSetBinding::GetShaderStageFlags() const
+{
+	SPT_CHECK(!!m_owningState);
+	return m_owningState->GetShaderStages();
+}
+
 void DescriptorSetBinding::MarkAsDirty()
 {
-	m_descriptorDirtyFlag = true;
+	SPT_CHECK(!!m_owningState);
+	m_owningState->SetDirty();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags)
-	: m_isDirty(false)
+DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags, rhi::EShaderStageFlags shaderStages)
+	: m_id(utils::GenerateStateID())
+	, m_isDirty(false)
 	, m_flags(flags)
-	, m_id(utils::GenerateStateID())
+	, m_shaderStages(shaderStages)
 	, m_descriptorSetHash(idxNone<SizeType>)
 	, m_name(name)
 { }
@@ -117,6 +131,11 @@ Bool DescriptorSetState::IsDirty() const
 	return m_isDirty;
 }
 
+void DescriptorSetState::SetDirty()
+{
+	m_isDirty = true;
+}
+
 void DescriptorSetState::ClearDirtyFlag()
 {
 	m_isDirty = false;
@@ -125,6 +144,11 @@ void DescriptorSetState::ClearDirtyFlag()
 EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
 {
 	return m_flags;
+}
+
+rhi::EShaderStageFlags DescriptorSetState::GetShaderStages() const
+{
+	return m_shaderStages;
 }
 
 const lib::DynamicArray<lib::HashedString>& DescriptorSetState::GetBindingNames() const

@@ -19,8 +19,8 @@ protected:
 
 public:
 
-	explicit RWBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
-		: Super(name, descriptorDirtyFlag)
+	explicit RWBufferBinding(const lib::HashedString& name)
+		: Super(name)
 	{ }
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final

@@ -58,7 +58,7 @@ class RENDERER_CORE_API DescriptorSetBinding abstract
 {
 public:
 
-	explicit DescriptorSetBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag);
+	explicit DescriptorSetBinding(const lib::HashedString& name);
 	virtual ~DescriptorSetBinding() = default;
 
 	const lib::HashedString& GetName() const;
@@ -68,8 +68,13 @@ public:
 	// These functions are not virtual, but can be reimplemented in child classes
 	void Initialize(DescriptorSetState& owningState) {}
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const {}
+
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
 	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
+
+	void SetOwningDSState(DescriptorSetState& state);
+
+	rhi::EShaderStageFlags GetShaderStageFlags() const;
 
 protected:
 
@@ -87,11 +92,7 @@ private:
 
 	lib::HashedString m_name;
 
-	/**
-	 * Reference to dirty flag of owning descriptor set instance
-	 * Allows setting this flag as dirty when binding is modified
-	 */
-	Bool& m_descriptorDirtyFlag;
+	DescriptorSetState* m_owningState;
 };
 
 
@@ -102,7 +103,7 @@ class RENDERER_CORE_API DescriptorSetState abstract
 {
 public:
 
-	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags);
+	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags, rhi::EShaderStageFlags shaderStages);
 	~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
@@ -110,9 +111,12 @@ public:
 	DSStateID GetID() const;
 
 	Bool IsDirty() const;
+	void SetDirty();
 	void ClearDirtyFlag();
 
 	EDescriptorSetStateFlags GetFlags() const;
+
+	rhi::EShaderStageFlags GetShaderStages() const;
 
 	const lib::DynamicArray<lib::HashedString>& GetBindingNames() const;
 
@@ -126,18 +130,20 @@ public:
 
 protected:
 
-	void		SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
-	void		SetDescriptorSetHash(SizeType hash);
+	void SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
+	void SetDescriptorSetHash(SizeType hash);
 
-	void		InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
-
-	Bool		m_isDirty;
+	void InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
 
 private:
 
 	const DSStateID	m_id;
 
+	Bool m_isDirty;
+
 	EDescriptorSetStateFlags m_flags;
+
+	rhi::EShaderStageFlags m_shaderStages;
 
 	lib::DynamicArray<Uint32> m_dynamicOffsets;
 
@@ -313,7 +319,7 @@ public:
 	using ThisClass = className;																								\
 	using Super = parentClass;																									\
 	className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
-		: Super(name, flags)																									\
+		: Super(name, flags, stages)																							\
 	{																															\
 		SetBindingNames(rdr::bindings_refl::GetBindingNames(GetBindingsBegin()));												\
 		const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef(GetBindingsBegin(), stages);				\
@@ -333,7 +339,7 @@ public:
 	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
 #define DS_BINDING(Type, Name, ...)	Type, #Name> Refl##Name##BindingType;  /* finish line from prev macros */																								\
-									Type Name = Type(#Name, m_isDirty, __VA_ARGS__);																																\
+									Type Name = Type(#Name, __VA_ARGS__);																																\
 									Refl##Name##BindingType refl##Name = Refl##Name##BindingType(ReflGetBindingImpl<typename Refl##Name##BindingType::NextBindingHandleType>(), &Name);				\
 									template<>																																						\
 									Refl##Name##BindingType* ReflGetBindingImpl<Refl##Name##BindingType>()																							\
@@ -500,6 +506,7 @@ void InitializeBindings(TBindingHandle& bindingHandle, DescriptorSetState& ownin
 	ForEachBinding(bindingHandle,
 				   [&owningState](auto& binding)
 				   {
+					   binding.SetOwningDSState(owningState);
 					   binding.Initialize(owningState);
 				   });
 }

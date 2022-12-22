@@ -19,8 +19,8 @@ protected:
 
 public:
 
-	explicit ConstantBufferBinding(const lib::HashedString& name, Bool& descriptorDirtyFlag)
-		: Super(name, descriptorDirtyFlag)
+	explicit ConstantBufferBinding(const lib::HashedString& name)
+		: Super(name)
 		, m_bufferMappedPtr(nullptr)
 		, m_secondStructOffset(0)
 		, m_offset(nullptr)
