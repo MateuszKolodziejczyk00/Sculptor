@@ -29,6 +29,15 @@ enum class ERGTextureAccess
 };
 
 
+enum class ERGBufferAccess
+{
+	Unknown,
+	Read,
+	Write,
+	ReadWrite
+};
+
+
 enum class ERGResourceFlags : Flags32
 {
 	None = 0,
@@ -462,11 +471,15 @@ public:
 		: RGResource(resourceDefinition)
 		, m_bufferDef(definition)
 		, m_allocationInfo(allocationInfo)
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_extractionDest(nullptr)
 	{ }
 
-	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedRef<rdr::Buffer> bufferInstance)
+	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Buffer> bufferInstance)
 		: RGResource(resourceDefinition)
-		, m_bufferInstance(bufferInstance.ToSharedPtr())
+		, m_bufferInstance(std::move(bufferInstance))
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_extractionDest(nullptr)
 	{
 		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
 		SPT_CHECK(IsAcquired());
@@ -513,6 +526,24 @@ public:
 		return m_bufferInstance;
 	}
 
+	// Extraction ==========================================================
+
+	Bool IsExtracted() const
+	{
+		return !!m_extractionDest;
+	}
+
+	lib::SharedPtr<rdr::Buffer>* GetExtractionDest() const
+	{
+		return m_extractionDest;
+	}
+
+	void SetExtractionDest(lib::SharedPtr<rdr::Buffer>* dest)
+	{
+		SPT_CHECK_MSG(!IsExtracted(), "This resource was already extracted");
+		m_extractionDest = dest;
+	}
+
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
@@ -520,8 +551,10 @@ private:
 
 	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
 
-	RGNodeHandle m_lastAccessNode;
+	RGNodeHandle	m_lastAccessNode;
+	ERGBufferAccess	m_lastAccess;
 
+	lib::SharedPtr<rdr::Buffer>* m_extractionDest;
 };
 
 } // spt::rg

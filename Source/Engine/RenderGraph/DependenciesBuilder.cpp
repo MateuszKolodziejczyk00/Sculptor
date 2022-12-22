@@ -20,7 +20,7 @@ void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureVi
 	AddTextureAccess(rgTextureView, access);
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferHandle buffer, ERGTextureAccess access)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferHandle buffer, ERGBufferAccess access)
 {
 	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
 }

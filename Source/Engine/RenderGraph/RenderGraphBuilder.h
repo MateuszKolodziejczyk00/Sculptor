@@ -80,6 +80,8 @@ public:
 
 	RenderGraphBuilder();
 
+	// Textures ===============================================
+
 	RGTextureHandle AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture);
 
 	RGTextureViewHandle AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);
@@ -91,6 +93,16 @@ public:
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
 	void ReleaseTextureWithTransition(RGTextureHandle textureHandle, const rhi::BarrierTextureTransitionDefinition& releaseTransitionTarget);
+	
+	// Buffers ================================================
+
+	RGBufferHandle AcquireExternalBuffer(lib::SharedPtr<rdr::Buffer> buffer);
+
+	RGBufferHandle CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+
+	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
+	
+	// Commands ===============================================
 
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
@@ -139,6 +151,7 @@ private:
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 
 	lib::DynamicArray<RGTextureHandle> m_extractedTextures;
+	lib::DynamicArray<RGBufferHandle> m_extractedBuffers;
 
 	lib::DynamicArray<RGNodeHandle> m_nodes;
 

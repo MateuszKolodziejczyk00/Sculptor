@@ -15,14 +15,14 @@ class RenderGraphBuilder;
 struct RGTextureAccessDef
 {
 	RGTextureViewHandle	textureView;
-	ERGTextureAccess			access;
+	ERGTextureAccess	access;
 };
 
 
 struct RGBufferAccessDef
 {
 	RGBufferHandle	resource;
-	ERGTextureAccess		access;
+	ERGBufferAccess	access;
 };
 
 
@@ -42,7 +42,7 @@ public:
 	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access);
 	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access);
 
-	void AddBufferAccess(RGBufferHandle buffer, ERGTextureAccess access);
+	void AddBufferAccess(RGBufferHandle buffer, ERGBufferAccess access);
 
 private:
 

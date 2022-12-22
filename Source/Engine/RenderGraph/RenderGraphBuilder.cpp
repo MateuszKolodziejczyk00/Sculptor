@@ -223,6 +223,46 @@ void RenderGraphBuilder::ReleaseTextureWithTransition(RGTextureHandle textureHan
 	textureHandle->SetReleaseTransitionTarget(&releaseTransitionTarget);
 }
 
+RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(lib::SharedPtr<rdr::Buffer> buffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!buffer);
+
+	const RenderGraphDebugName name = RG_DEBUG_NAME(buffer->GetRHI().GetName());
+	
+	RGResourceDef resourceDefinition;
+	resourceDefinition.name = name;
+	resourceDefinition.flags = ERGResourceFlags::External;
+
+	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, std::move(buffer));
+
+	return bufferHandle;
+}
+
+RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	RGResourceDef resourceDefinition;
+	resourceDefinition.name = name;
+	resourceDefinition.flags = flags;
+
+	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, bufferDefinition, allocationInfo);
+	
+	return bufferHandle;
+}
+
+void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	SPT_CHECK(buffer.IsValid());
+
+	buffer->SetExtractionDest(&extractDestination);
+	m_extractedBuffers.emplace_back(buffer);
+}
+
 void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
