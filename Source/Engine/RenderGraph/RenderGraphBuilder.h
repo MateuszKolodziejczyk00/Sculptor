@@ -139,6 +139,7 @@ private:
 	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const;
 
 	Bool RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const;
+	Bool RequiresSynchronization(ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const;
 
 	void PostBuild();
 	void ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
@@ -147,10 +148,12 @@ private:
 
 	void ResolveResourceReleases();
 	void ResolveTextureReleases();
+	void ResolveBufferReleases();
 
 	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> GetExternalDSStates() const;
 
 	lib::DynamicArray<RGTextureHandle> m_textures;
+	lib::DynamicArray<RGBufferHandle> m_buffers;
 
 	lib::HashMap<lib::SharedPtr<rdr::Texture>, RGTextureHandle> m_externalTextures;
 	lib::HashMap<lib::SharedPtr<rdr::Buffer>, RGBufferHandle> m_externalBuffers;

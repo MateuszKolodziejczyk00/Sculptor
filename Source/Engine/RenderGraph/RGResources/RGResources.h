@@ -544,6 +544,28 @@ public:
 		m_extractionDest = dest;
 	}
 
+	// Access Synchronization ==============================================
+
+	RGNodeHandle GetLastAccessNode() const
+	{
+		return m_lastAccessNode;
+	}
+
+	void SetLastAccessNode(RGNodeHandle node)
+	{
+		m_lastAccessNode = node;
+	}
+
+	ERGBufferAccess GetLastAccessType() const
+	{
+		return m_lastAccess;
+	}
+
+	void SetLastAccessType(ERGBufferAccess access)
+	{
+		m_lastAccess = access;
+	}
+
 private:
 
 	rhi::BufferDefinition	m_bufferDef;

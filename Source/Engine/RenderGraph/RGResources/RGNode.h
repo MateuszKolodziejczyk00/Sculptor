@@ -37,7 +37,11 @@ public:
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
 
+	void AddBufferToAcquire(RGBufferHandle buffer);
+	void AddBufferToRelease(RGBufferHandle buffer);
+
 	void AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
+	void AddBufferSynchronization(RGBufferHandle buffer);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
 
@@ -56,8 +60,10 @@ private:
 	// Execution Helpers ================================================
 
 	void CreateTextures();
-
 	void ReleaseTextures();
+	
+	void CreateBuffers();
+	void ReleaseBuffers();
 
 	struct TextureTransitionDef
 	{
@@ -86,6 +92,9 @@ private:
 
 	lib::DynamicArray<RGTextureHandle> m_texturesToAcquire;
 	lib::DynamicArray<RGTextureHandle> m_texturesToRelease;
+
+	lib::DynamicArray<RGBufferHandle> m_buffersToAcquire;
+	lib::DynamicArray<RGBufferHandle> m_buffersToRelease;
 
 	lib::DynamicArray<TextureTransitionDef> m_preExecuteTransitions;
 

@@ -240,6 +240,7 @@ RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rd
 		resourceDefinition.flags = lib::Flags(ERGResourceFlags::Default, ERGResourceFlags::External);
 
 		bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, buffer);
+		m_buffers.emplace_back(bufferHandle);
 	}
 	SPT_CHECK(bufferHandle.IsValid());
 
@@ -278,6 +279,7 @@ RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name
 	resourceDefinition.flags = flags;
 
 	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, bufferDefinition, allocationInfo);
+	m_buffers.emplace_back(bufferHandle);
 	
 	return bufferHandle;
 }
@@ -357,7 +359,6 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		{
 			if (accessedTexture->HasAcquireNode())
 			{
-				accessedTexture->SetAcquireNode(&node);
 				node.AddTextureToAcquire(accessedTexture);
 			}
 		}
@@ -412,6 +413,31 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies)
 {
 	SPT_PROFILER_FUNCTION();
+
+	for (const RGBufferAccessDef& bufferAccess : dependencies.bufferAccesses)
+	{
+		const RGBufferViewHandle accessedBufferView = bufferAccess.resource;
+		SPT_CHECK(accessedBufferView.IsValid());
+
+		const RGBufferHandle accessedBuffer = accessedBufferView->GetBuffer();
+		SPT_CHECK(accessedBuffer.IsValid());
+
+		if (!accessedBuffer->IsExternal() && !accessedBuffer->GetAcquireNode().IsValid())
+		{
+			node.AddBufferToAcquire(accessedBuffer);
+		}
+
+		const ERGBufferAccess prevAccess = accessedBuffer->GetLastAccessType();
+		const ERGBufferAccess nextAccess = bufferAccess.access;
+
+		if (RequiresSynchronization(prevAccess, nextAccess))
+		{
+			node.AddBufferSynchronization(accessedBuffer);
+		}
+
+		accessedBuffer->SetLastAccessNode(&node);
+		accessedBuffer->SetLastAccessType(nextAccess);
+	}
 }
 
 const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const
@@ -475,8 +501,21 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 
 	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
 		|| transitionSource.layout != transitionTarget.layout
-		|| prevAccessIsWrite != newAccessIsWrite // read -> write, write -> read
-		|| prevAccessIsWrite && newAccessIsWrite; // write -> write
+		|| prevAccessIsWrite || newAccessIsWrite; // read -> write, write -> read, write -> write
+}
+
+Bool RenderGraphBuilder::RequiresSynchronization(ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const
+{
+	const auto isWriteAccess = [](ERGBufferAccess access)
+	{
+		return access == ERGBufferAccess::ReadWrite
+			|| access == ERGBufferAccess::Write;
+	};
+
+	const Bool prevAccessIsWrite = isWriteAccess(prevAccess);
+	const Bool nextAccessIsWrite = isWriteAccess(nextAccess);
+
+	return prevAccessIsWrite || nextAccessIsWrite;
 }
 
 void RenderGraphBuilder::PostBuild()
@@ -538,6 +577,7 @@ void RenderGraphBuilder::AddReleaseResourcesNode()
 void RenderGraphBuilder::ResolveResourceReleases()
 {
 	ResolveTextureReleases();
+	ResolveBufferReleases();
 }
 
 void RenderGraphBuilder::ResolveTextureReleases()
@@ -571,7 +611,24 @@ void RenderGraphBuilder::ResolveTextureReleases()
 			}
 
 			SPT_CHECK(lastAccessNode.IsValid());
+
 			lastAccessNode->AddTextureToRelease(texture);
+		}
+	}
+}
+
+void RenderGraphBuilder::ResolveBufferReleases()
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (RGBufferHandle buffer : m_buffers)
+	{
+		if (!buffer->IsExternal() && !buffer->IsExtracted())
+		{
+			const RGNodeHandle lastAccessNode = buffer->GetLastAccessNode();
+			SPT_CHECK(lastAccessNode.IsValid());
+
+			lastAccessNode->AddBufferToRelease(buffer);
 		}
 	}
 }

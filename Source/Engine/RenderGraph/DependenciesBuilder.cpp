@@ -20,9 +20,15 @@ void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureVi
 	AddTextureAccess(rgTextureView, access);
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferHandle buffer, ERGBufferAccess access)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access)
 {
 	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
+}
+
+void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access)
+{
+	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer.ToSharedPtr());
+	AddBufferAccess(rgBufferView, access);
 }
 
 } // spt::rg

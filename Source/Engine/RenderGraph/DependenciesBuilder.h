@@ -21,8 +21,8 @@ struct RGTextureAccessDef
 
 struct RGBufferAccessDef
 {
-	RGBufferHandle	resource;
-	ERGBufferAccess	access;
+	RGBufferViewHandle	resource;
+	ERGBufferAccess		access;
 };
 
 
@@ -42,7 +42,8 @@ public:
 	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access);
 	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access);
 
-	void AddBufferAccess(RGBufferHandle buffer, ERGBufferAccess access);
+	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access);
+	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access);
 
 private:
 
