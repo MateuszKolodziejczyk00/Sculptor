@@ -9,18 +9,18 @@ RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, R
 	, m_dependeciesRef(dependecies)
 { }
 
-void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGAccess access)
+void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access)
 {
 	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
 }
 
-void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGAccess access)
+void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access)
 {
 	const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
 	AddTextureAccess(rgTextureView, access);
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferHandle buffer, ERGAccess access)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferHandle buffer, ERGTextureAccess access)
 {
 	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
 }

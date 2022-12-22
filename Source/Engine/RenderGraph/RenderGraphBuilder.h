@@ -120,7 +120,7 @@ private:
 
 	void ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies);
 
-	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGAccess access) const;
+	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const;
 
 	Bool RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const;
 

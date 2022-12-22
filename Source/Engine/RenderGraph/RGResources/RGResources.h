@@ -5,6 +5,7 @@
 #include "RGResources/RGTrackedObject.h"
 #include "RGResources/RGResourceHandles.h"
 #include "Types/Texture.h"
+#include "Types/Buffer.h"
 #include "RHICore/RHITextureTypes.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
@@ -14,7 +15,7 @@
 namespace spt::rg
 {
 
-enum class ERGAccess
+enum class ERGTextureAccess
 {
 	Unknown,
 
@@ -117,14 +118,14 @@ private:
 struct RGTextureSubresourceAccessState
 {
 	RGTextureSubresourceAccessState()
-		: lastAccessType(ERGAccess::Unknown)
+		: lastAccessType(ERGTextureAccess::Unknown)
 	{ }
-	RGTextureSubresourceAccessState(ERGAccess inLastAccessType, RGNodeHandle inLastAccessNode)
+	RGTextureSubresourceAccessState(ERGTextureAccess inLastAccessType, RGNodeHandle inLastAccessNode)
 		: lastAccessType(inLastAccessType)
 		, lastAccessNode(inLastAccessNode)
 	{ }
 
-	ERGAccess		lastAccessType;
+	ERGTextureAccess		lastAccessType;
 	RGNodeHandle	lastAccessNode;
 };
 
@@ -150,7 +151,7 @@ public:
 		, m_textureLayersNum(textureLayersNum)
 	{
 		m_subresourcesAccesses.resize(1);
-		m_subresourcesAccesses[0] = RGTextureSubresourceAccessState(ERGAccess::Unknown, nullptr);
+		m_subresourcesAccesses[0] = RGTextureSubresourceAccessState(ERGTextureAccess::Unknown, nullptr);
 	}
 
 	Bool IsFullResource() const
@@ -463,20 +464,64 @@ public:
 		, m_allocationInfo(allocationInfo)
 	{ }
 
-	const rhi::BufferDefinition& GetBufferUsage()
+	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedRef<rdr::Buffer> bufferInstance)
+		: RGResource(resourceDefinition)
+		, m_bufferInstance(bufferInstance.ToSharedPtr())
 	{
+		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
+		SPT_CHECK(IsAcquired());
+	}
+
+	const rhi::BufferDefinition& GetBufferDefinition() const
+	{
+		SPT_CHECK_MSG(!IsExternal(), "Definition is invalid for external buffers");
 		return m_bufferDef;
 	}
 
 	const rhi::RHIAllocationInfo& GetAllocationInfo() const
 	{
+		SPT_CHECK_MSG(!IsExternal(), "Allocation Info is invalid for external buffers");
 		return m_allocationInfo;
+	}
+
+	rhi::EBufferUsage GetUsageFlags() const
+	{
+		return IsExternal() ? m_bufferInstance->GetRHI().GetUsage() : GetBufferDefinition().usage;
+	}
+
+	// Resource ============================================================
+
+	Bool IsAcquired() const
+	{
+		return !!m_bufferInstance;
+	}
+	
+	void AcquireResource(lib::SharedPtr<rdr::Buffer> buffer)
+	{
+		SPT_CHECK(!m_bufferInstance);
+	}
+
+	lib::SharedPtr<rdr::Buffer> ReleaseResource()
+	{
+		lib::SharedPtr<rdr::Buffer> resource = std::move(m_bufferInstance);
+		SPT_CHECK(m_bufferInstance);
+		return resource;
+	}
+
+	const lib::SharedPtr<rdr::Buffer>& GetResource() const
+	{
+		return m_bufferInstance;
 	}
 
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
 	rhi::RHIAllocationInfo	m_allocationInfo;
+
+	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
+
+	RGNodeHandle m_lastAccessNode;
+
 };
 
 } // spt::rg

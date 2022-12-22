@@ -80,22 +80,22 @@ void RGRenderPassDefinition::BuildDependencies(RGDependenciesBuilder& dependenci
 	{
 		SPT_CHECK(colorRenderTarget.textureView.IsValid());
 
-		dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGAccess::ColorRenderTarget);
+		dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGTextureAccess::ColorRenderTarget);
 
 		if (colorRenderTarget.resolveTextureView.IsValid())
 		{
-			dependenciesBuilder.AddTextureAccess(colorRenderTarget.resolveTextureView, ERGAccess::ColorRenderTarget);
+			dependenciesBuilder.AddTextureAccess(colorRenderTarget.resolveTextureView, ERGTextureAccess::ColorRenderTarget);
 		}
 	}
 
 	if (m_depthRenderTargetDef.textureView.IsValid())
 	{
-		dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGAccess::DepthRenderTarget);
+		dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGTextureAccess::DepthRenderTarget);
 	}
 
 	if (m_stencilRenderTargetDef.textureView.IsValid())
 	{
-		dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGAccess::StencilRenderTarget);
+		dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGTextureAccess::StencilRenderTarget);
 	}
 }
 
@@ -334,25 +334,25 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 	SPT_PROFILER_FUNCTION();
 }
 
-const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGAccess access) const
+const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const
 {
 	const ERenderGraphNodeType nodeType = node.IsValid() ? node->GetType() : ERenderGraphNodeType::None;
 
 	switch (access)
 	{
-	case spt::rg::ERGAccess::Unknown:
+	case spt::rg::ERGTextureAccess::Unknown:
 		return rhi::TextureTransition::Auto;
 
-	case spt::rg::ERGAccess::ColorRenderTarget:
+	case spt::rg::ERGTextureAccess::ColorRenderTarget:
 		return rhi::TextureTransition::ColorRenderTarget;
 
-	case spt::rg::ERGAccess::DepthRenderTarget:
+	case spt::rg::ERGTextureAccess::DepthRenderTarget:
 		return rhi::TextureTransition::DepthRenderTarget;
 
-	case spt::rg::ERGAccess::StencilRenderTarget:
+	case spt::rg::ERGTextureAccess::StencilRenderTarget:
 		return rhi::TextureTransition::DepthStencilRenderTarget;
 
-	case spt::rg::ERGAccess::StorageWriteTexture:
+	case spt::rg::ERGTextureAccess::StorageWriteTexture:
 		if (nodeType == ERenderGraphNodeType::RenderPass)
 		{
 			return rhi::TextureTransition::FragmentGeneral;
@@ -367,7 +367,7 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 			return rhi::TextureTransition::Undefined;
 		}
 
-	case spt::rg::ERGAccess::SampledTexture:
+	case spt::rg::ERGTextureAccess::SampledTexture:
 		if (nodeType == ERenderGraphNodeType::RenderPass)
 		{
 			return rhi::TextureTransition::FragmentReadOnly;
