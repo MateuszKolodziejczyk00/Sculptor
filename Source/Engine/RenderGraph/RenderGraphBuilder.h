@@ -138,8 +138,10 @@ private:
 
 	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const;
 
+	void GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EShaderStageFlags lastAccessStages, rhi::EPipelineStage& outPipelineStage, rhi::EAccessType& outAccessType) const;
+
 	Bool RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const;
-	Bool RequiresSynchronization(ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const;
+	Bool RequiresSynchronization(RGBufferHandle buffer, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const;
 
 	void PostBuild();
 	void ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);

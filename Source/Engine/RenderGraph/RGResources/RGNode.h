@@ -41,7 +41,7 @@ public:
 	void AddBufferToRelease(RGBufferHandle buffer);
 
 	void AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
-	void AddBufferSynchronization(RGBufferHandle buffer);
+	void AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
 
@@ -83,6 +83,28 @@ private:
 		const rhi::BarrierTextureTransitionDefinition* transitionTarget;
 	};
 
+	struct BufferTransitionDef
+	{
+		BufferTransitionDef(RGBufferHandle inBuffer, Uint64 inOffset, Uint64 inSize, rhi::EPipelineStage inSourceStage, rhi::EAccessType inSourceAccess, rhi::EPipelineStage inDestStage, rhi::EAccessType inDestAccess)
+			: buffer(inBuffer)
+			, offset(inOffset)
+			, size(inSize)
+			, sourceStage(inSourceStage)
+			, sourceAccess(inSourceAccess)
+			, destStage(inDestStage)
+			, destAccess(inDestAccess)
+		{ }
+
+		RGBufferHandle		buffer;
+		Uint64				offset;
+		Uint64				size;
+
+		rhi::EPipelineStage	sourceStage;
+		rhi::EAccessType	sourceAccess;
+
+		rhi::EPipelineStage	destStage;
+		rhi::EAccessType	destAccess;
+	};
 
 	RenderGraphDebugName m_name;
 
@@ -96,7 +118,8 @@ private:
 	lib::DynamicArray<RGBufferHandle> m_buffersToAcquire;
 	lib::DynamicArray<RGBufferHandle> m_buffersToRelease;
 
-	lib::DynamicArray<TextureTransitionDef> m_preExecuteTransitions;
+	lib::DynamicArray<TextureTransitionDef>	m_preExecuteTextureTransitions;
+	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;
 
 	Bool m_executed;
 };

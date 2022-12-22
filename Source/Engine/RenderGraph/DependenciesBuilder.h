@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "RGResources/RGResources.h"
+#include "RHICore/RHIShaderTypes.h"
 
 
 namespace spt::rg
@@ -14,15 +15,17 @@ class RenderGraphBuilder;
 
 struct RGTextureAccessDef
 {
-	RGTextureViewHandle	textureView;
-	ERGTextureAccess	access;
+	RGTextureViewHandle		textureView;
+	ERGTextureAccess		access;
+	rhi::EShaderStageFlags	shaderStages;
 };
 
 
 struct RGBufferAccessDef
 {
-	RGBufferViewHandle	resource;
-	ERGBufferAccess		access;
+	RGBufferViewHandle		resource;
+	ERGBufferAccess			access;
+	rhi::EShaderStageFlags	shaderStages;
 };
 
 
@@ -39,11 +42,11 @@ public:
 
 	explicit RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies);
 
-	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access);
-	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access);
+	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
+	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
 
-	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access);
-	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access);
+	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
+	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
 
 private:
 

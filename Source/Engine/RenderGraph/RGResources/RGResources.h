@@ -10,6 +10,7 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "RHICore/RHIBufferTypes.h"
 #include "RHICore/RHISynchronizationTypes.h"
+#include "RHICore/RHIShaderTypes.h"
 
 
 namespace spt::rg
@@ -32,9 +33,9 @@ enum class ERGTextureAccess
 enum class ERGBufferAccess
 {
 	Unknown,
-	Read,
-	Write,
-	ReadWrite
+	ShaderRead,
+	ShaderWrite,
+	ShaderReadWrite
 };
 
 
@@ -472,6 +473,7 @@ public:
 		, m_bufferDef(definition)
 		, m_allocationInfo(allocationInfo)
 		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 		, m_extractionDest(nullptr)
 	{ }
 
@@ -479,6 +481,7 @@ public:
 		: RGResource(resourceDefinition)
 		, m_bufferInstance(std::move(bufferInstance))
 		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 		, m_extractionDest(nullptr)
 	{
 		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
@@ -500,6 +503,18 @@ public:
 	rhi::EBufferUsage GetUsageFlags() const
 	{
 		return IsExternal() ? m_bufferInstance->GetRHI().GetUsage() : GetBufferDefinition().usage;
+	}
+
+	Bool AllowsHostWrites() const
+	{
+		if (IsExternal())
+		{
+			return m_bufferInstance->GetRHI().CanMapMemory();
+		}
+		else
+		{
+			return m_allocationInfo.memoryUsage != rhi::EMemoryUsage::GPUOnly;
+		}
 	}
 
 	// Resource ============================================================
@@ -566,6 +581,16 @@ public:
 		m_lastAccess = access;
 	}
 
+	rhi::EShaderStageFlags GetLastAccessShaderStages() const
+	{
+		return m_lastAccessShaderStages;
+	}
+
+	void SetLastAccessShaderStages(rhi::EShaderStageFlags stages)
+	{
+		m_lastAccessShaderStages = stages;
+	}
+
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
@@ -573,8 +598,9 @@ private:
 
 	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
 
-	RGNodeHandle	m_lastAccessNode;
-	ERGBufferAccess	m_lastAccess;
+	RGNodeHandle			m_lastAccessNode;
+	ERGBufferAccess			m_lastAccess;
+	rhi::EShaderStageFlags	m_lastAccessShaderStages;
 
 	lib::SharedPtr<rdr::Buffer>* m_extractionDest;
 };

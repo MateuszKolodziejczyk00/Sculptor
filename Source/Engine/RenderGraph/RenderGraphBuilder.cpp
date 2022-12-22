@@ -427,16 +427,31 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			node.AddBufferToAcquire(accessedBuffer);
 		}
 
-		const ERGBufferAccess prevAccess = accessedBuffer->GetLastAccessType();
-		const ERGBufferAccess nextAccess = bufferAccess.access;
+		const ERGBufferAccess prevAccess				= accessedBuffer->GetLastAccessType();
+		const rhi::EShaderStageFlags prevAccessStages	= accessedBuffer->GetLastAccessShaderStages();
 
-		if (RequiresSynchronization(prevAccess, nextAccess))
+		const ERGBufferAccess nextAccess				= bufferAccess.access;
+		const rhi::EShaderStageFlags nextAccessStages	= bufferAccess.shaderStages;
+
+		if (RequiresSynchronization(accessedBuffer, prevAccess, nextAccess))
 		{
-			node.AddBufferSynchronization(accessedBuffer);
+			const Uint64 offset	= accessedBufferView->GetOffset();
+			const Uint64 size	= accessedBufferView->GetSize();
+			
+			rhi::EPipelineStage sourcePipelineStages = rhi::EPipelineStage::None;
+			rhi::EAccessType sourceAccessType = rhi::EAccessType::None;
+			GetSynchronizationParamsForBuffer(prevAccess, prevAccessStages, sourcePipelineStages, sourceAccessType);
+			
+			rhi::EPipelineStage destPipelineStages = rhi::EPipelineStage::None;
+			rhi::EAccessType destAccessType = rhi::EAccessType::None;
+			GetSynchronizationParamsForBuffer(nextAccess, nextAccessStages, destPipelineStages, destAccessType);
+
+			node.AddBufferSynchronization(accessedBuffer, offset, size, sourcePipelineStages, sourceAccessType, destPipelineStages, destAccessType);
 		}
 
 		accessedBuffer->SetLastAccessNode(&node);
 		accessedBuffer->SetLastAccessType(nextAccess);
+		accessedBuffer->SetLastAccessShaderStages(nextAccessStages);
 	}
 }
 
@@ -494,6 +509,43 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 	}
 }
 
+void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EShaderStageFlags lastAccessStages, rhi::EPipelineStage& outPipelineStage, rhi::EAccessType& outAccessType) const
+{
+	switch (lastAccess)
+	{
+	case ERGBufferAccess::ShaderRead:
+		outAccessType = rhi::EAccessType::Write;
+		break;
+
+	case ERGBufferAccess::ShaderWrite:
+		outAccessType = rhi::EAccessType::Write;
+		break;
+
+	case ERGBufferAccess::ShaderReadWrite:
+		outAccessType = lib::Flags(rhi::EAccessType::Read, rhi::EAccessType::Write);
+		break;
+
+	default:
+		SPT_CHECK_NO_ENTRY();
+		outAccessType = rhi::EAccessType::None;
+	}
+
+	outPipelineStage = rhi::EPipelineStage::None;
+
+	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Vertex))
+	{
+		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::VertexShader);
+	}
+	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Fragment))
+	{
+		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::FragmentShader);
+	}
+	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Compute))
+	{
+		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::ComputeShader);
+	}
+}
+
 Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const
 {
 	const Bool prevAccessIsWrite = transitionSource.accessType == rhi::EAccessType::Write;
@@ -504,12 +556,19 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 		|| prevAccessIsWrite || newAccessIsWrite; // read -> write, write -> read, write -> write
 }
 
-Bool RenderGraphBuilder::RequiresSynchronization(ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const
+Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const
 {
+	// Assume that we don't need synchronization for buffers that were not used before in this render graph and host cannot write to them
+	// This type of buffers should be already properly synchronized using semaphores if wrote on GPU
+	if (!buffer->AllowsHostWrites() && prevAccess == ERGBufferAccess::Unknown)
+	{
+		return false;
+	}
+
 	const auto isWriteAccess = [](ERGBufferAccess access)
 	{
-		return access == ERGBufferAccess::ReadWrite
-			|| access == ERGBufferAccess::Write;
+		return access == ERGBufferAccess::ShaderReadWrite
+			|| access == ERGBufferAccess::ShaderWrite;
 	};
 
 	const Bool prevAccessIsWrite = isWriteAccess(prevAccess);

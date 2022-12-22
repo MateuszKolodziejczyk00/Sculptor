@@ -32,11 +32,11 @@ public:
 	{
 		if (m_renderGraphTexture.IsValid())
 		{
-			builder.AddTextureAccess(m_renderGraphTexture, rg::ERGTextureAccess::StorageWriteTexture);
+			builder.AddTextureAccess(m_renderGraphTexture, rg::ERGTextureAccess::StorageWriteTexture, GetShaderStageFlags());
 		}
 		else
 		{
-			builder.AddTextureAccess(lib::Ref(m_texture), rg::ERGTextureAccess::StorageWriteTexture);
+			builder.AddTextureAccess(lib::Ref(m_texture), rg::ERGTextureAccess::StorageWriteTexture, GetShaderStageFlags());
 		}
 	}
 

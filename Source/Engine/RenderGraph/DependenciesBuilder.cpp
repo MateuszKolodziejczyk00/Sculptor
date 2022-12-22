@@ -9,26 +9,26 @@ RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, R
 	, m_dependeciesRef(dependecies)
 { }
 
-void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access)
+void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
 {
-	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access });
+	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, shaderStages });
 }
 
-void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access)
+void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
 {
 	const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
-	AddTextureAccess(rgTextureView, access);
+	AddTextureAccess(rgTextureView, access, shaderStages);
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
 {
-	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access });
+	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, shaderStages });
 }
 
-void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access)
+void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
 {
 	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer.ToSharedPtr());
-	AddBufferAccess(rgBufferView, access);
+	AddBufferAccess(rgBufferView, access, shaderStages);
 }
 
 } // spt::rg

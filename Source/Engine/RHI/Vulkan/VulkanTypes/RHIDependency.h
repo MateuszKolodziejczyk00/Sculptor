@@ -10,6 +10,7 @@ namespace spt::vulkan
 {
 
 class RHITexture;
+class RHIBuffer;
 class RHICommandBuffer;
 class RHIEvent;
 
@@ -26,8 +27,12 @@ public:
 
 	SizeType	AddTextureDependency(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange);
 
-	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
-	void		SetLayoutTransition(SizeType barrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
+	void		SetLayoutTransition(SizeType textureBarrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
+	void		SetLayoutTransition(SizeType textureBarrierIdx, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
+
+	SizeType	AddBufferDependency(const RHIBuffer& buffer, SizeType offset, SizeType size);
+	void		SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
+	void		SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
 	// Execution ==============================================================
 

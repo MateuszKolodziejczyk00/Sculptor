@@ -30,6 +30,7 @@ public:
 	Uint64						GetSize() const;
 	rhi::EBufferUsage			GetUsage() const;
 
+	Bool						CanMapMemory() const;
 	Byte*						MapBufferMemory() const;
 	void						UnmapBufferMemory() const;
 

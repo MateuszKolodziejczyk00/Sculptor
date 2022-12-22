@@ -78,14 +78,14 @@ void RGNode::AddTextureTransition(RGTextureHandle texture, const rhi::TextureSub
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_preExecuteTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
+	m_preExecuteTextureTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
 }
 
-void RGNode::AddBufferSynchronization(RGBufferHandle buffer)
+void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK_NO_ENTRY_MSG("TODO: Buffer Synchronization not supported in RHI!");
+	m_preExecuteBufferTransitions.emplace_back(BufferTransitionDef(buffer, offset, size, sourceStage, sourceAccess, destStage, destAccess));
 }
 
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -122,11 +122,20 @@ void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 
 	rhi::RHIDependency barrierDependency;
 
-	for (const TextureTransitionDef& textureTransition : m_preExecuteTransitions)
+	for (const TextureTransitionDef& textureTransition : m_preExecuteTextureTransitions)
 	{
+		SPT_CHECK(textureTransition.texture->IsAcquired());
 		const lib::SharedPtr<rdr::Texture>& textureInstance = textureTransition.texture->GetResource();
 		const SizeType barrierIdx = barrierDependency.AddTextureDependency(textureInstance->GetRHI(), textureTransition.textureSubresourceRange);
 		barrierDependency.SetLayoutTransition(barrierIdx, *textureTransition.transitionSource, *textureTransition.transitionTarget);
+	}
+
+	for (const BufferTransitionDef& transition : m_preExecuteBufferTransitions)
+	{
+		SPT_CHECK(transition.buffer->IsAcquired());
+		const lib::SharedPtr<rdr::Buffer>& bufferInstance = transition.buffer->GetResource();
+		const SizeType barrierIdx = barrierDependency.AddBufferDependency(bufferInstance->GetRHI(), transition.offset, transition.size);
+		barrierDependency.SetBufferDependencyStages(barrierIdx, transition.sourceStage, transition.sourceAccess, transition.destStage, transition.destAccess);
 	}
 
 	recorder.ExecuteBarrier(std::move(barrierDependency));
@@ -177,7 +186,6 @@ void RGNode::ReleaseBuffers()
 	for (RGBufferHandle buffer : m_buffersToRelease)
 	{
 		buffer->ReleaseResource();
-		
 	}
 }
 

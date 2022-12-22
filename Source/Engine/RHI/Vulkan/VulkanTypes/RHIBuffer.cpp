@@ -128,6 +128,11 @@ rhi::EBufferUsage RHIBuffer::GetUsage() const
 	return m_usageFlags;
 }
 
+Bool RHIBuffer::CanMapMemory() const
+{
+	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
+}
+
 Byte* RHIBuffer::MapBufferMemory() const
 {
 	SPT_PROFILER_FUNCTION();
@@ -225,4 +230,4 @@ RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const VmaAllocation
 	return EMappingStrategy::CannotBeMapped;
 }
 
-}
+} // spt::vulkan
