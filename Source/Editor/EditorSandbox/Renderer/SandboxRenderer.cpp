@@ -17,6 +17,10 @@
 namespace spt::ed
 {
 
+BEGIN_RG_NODE_PARAMETERS_STRUCT(, TestStruct)
+	RG_BUFFER_VIEW(test, rg::ERGBufferAccess::ShaderWrite, rhi::EShaderStageFlags::Vertex)
+END_RG_NODE_PARAMETERS_STRUCT()
+
 SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	: m_window(std::move(owningWindow))
 {

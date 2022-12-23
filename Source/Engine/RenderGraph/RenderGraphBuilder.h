@@ -12,6 +12,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "RGNodeParametersStruct.h"
+#include "Utility/Templates/Overload.h"
 
 namespace spt::rhi
 {
@@ -120,8 +121,8 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
-	//template<typename TDescriptorSetStatesRange, typename TCallable>
-	//void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
+	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
 	void BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
@@ -137,7 +138,13 @@ private:
 	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	template<typename TDescriptorSetStatesRange>
-	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
+	void BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const;
+
+	template<typename TParametersStruct>
+	void BuildParametersDepenencies(const TParametersStruct& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const;
+	
+	template<typename TParameters>
+	void BuildParametersStructDepenencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
 
 	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
 
@@ -211,7 +218,8 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
-	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -219,15 +227,21 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 template<typename TDescriptorSetStatesRange, typename TCallable>
 void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
+	AddRenderPass(renderPassName, renderPassDef, dsStatesRange, std::make_tuple(), callable);
+}
+
+template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
+void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
+{
 	SPT_PROFILER_FUNCTION();
 	
 	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, callable);
 
 	RGDependeciesContainer dependencies;
-	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
-
-	RGDependenciesBuilder renderTargetsDependenciesBuilder(*this, dependencies);
-	renderPassDef.BuildDependencies(renderTargetsDependenciesBuilder);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+	renderPassDef.BuildDependencies(dependenciesBuilder);
+	BuildParametersDepenencies(parameters, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -272,15 +286,38 @@ RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugN
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies)
+void RenderGraphBuilder::BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
 	{
 		stateToBind->BuildRGDependencies(dependenciesBuilder);
 	}
+}
+
+template<typename TParametersStruct>
+void RenderGraphBuilder::BuildParametersDepenencies(const TParametersStruct& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const
+{
+	std::apply([this, &dependenciesBuilder](const auto& parameters)
+			   {
+				   BuildParametersStructDepenencies(parameters, dependenciesBuilder);
+			   },
+			   parametersStructs);
+}
+
+template<typename TParameters>
+void RenderGraphBuilder::BuildParametersStructDepenencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const
+{
+	ForEachRGParameterAccess(parameters,
+							 lib::Overload([&dependenciesBuilder](RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages)
+										   {
+											   dependenciesBuilder.AddBufferAccess(buffer, access, shaderStages);
+										   },
+										   [&dependenciesBuilder](RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages)
+										   {
+											   dependenciesBuilder.AddTextureAccess(texture, access, shaderStages);
+										   }));
 }
 
 } // spt::rg
