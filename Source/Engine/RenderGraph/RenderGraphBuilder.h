@@ -11,6 +11,7 @@
 #include "RGResources/RGNode.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "CommandsRecorder/RenderingDefinition.h"
+#include "RGNodeParametersStruct.h"
 
 namespace spt::rhi
 {
@@ -106,6 +107,11 @@ public:
 
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	
+	// Utilities ==============================================
+
+	template<typename TParametersType>
+	TParametersType& AllocateParametersStruct();
+	
 	// Commands ===============================================
 
 	template<typename TDescriptorSetStatesRange>
@@ -113,6 +119,9 @@ public:
 
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+
+	//template<typename TDescriptorSetStatesRange, typename TCallable>
+	//void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	void BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
@@ -123,6 +132,9 @@ private:
 
 	template<typename TNodeType, typename... TArgs>
 	TNodeType& AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args);
+
+	template<typename TDescriptorSetStatesRange, typename TCallable>
+	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(TDescriptorSetStatesRange&& dsStatesRange, RGDependeciesContainer& dependencies);
@@ -170,6 +182,12 @@ private:
 	RGAllocator m_allocator;
 };
 
+template<typename TParametersType>
+TParametersType& RenderGraphBuilder::AllocateParametersStruct()
+{
+	return *m_allocator.Allocate<TParametersType>();
+}
+
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
@@ -202,28 +220,8 @@ template<typename TDescriptorSetStatesRange, typename TCallable>
 void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
 	SPT_PROFILER_FUNCTION();
-
-	const auto executeLambda = [renderPassDef, dsStatesRange, callable, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-	{
-		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
-
-		recorder.BeginRendering(renderingDefinition);
-
-		recorder.BindDescriptorSetStates(externalBoundStates);
-		recorder.BindDescriptorSetStates(dsStatesRange);
-
-		callable(renderContext, recorder);
-
-		recorder.UnbindDescriptorSetStates(dsStatesRange);
-		recorder.UnbindDescriptorSetStates(externalBoundStates);
-
-		recorder.EndRendering();
-	};
-
-	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
-	using NodeType = RGLambdaNode<LambdaType>;
-
-	NodeType& node = AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, std::move(executeLambda));
+	
+	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, callable);
 
 	RGDependeciesContainer dependencies;
 	BuildDescriptorSetDependencies(dsStatesRange, dependencies);
@@ -245,6 +243,32 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;
+}
+
+template<typename TDescriptorSetStatesRange, typename TCallable>
+RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+{
+	const auto executeLambda = [renderPassDef, dsStatesRange, callable, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
+
+		recorder.BeginRendering(renderingDefinition);
+
+		recorder.BindDescriptorSetStates(externalBoundStates);
+		recorder.BindDescriptorSetStates(dsStatesRange);
+
+		callable(renderContext, recorder);
+
+		recorder.UnbindDescriptorSetStates(dsStatesRange);
+		recorder.UnbindDescriptorSetStates(externalBoundStates);
+
+		recorder.EndRendering();
+	};
+
+	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, std::move(executeLambda));
 }
 
 template<typename TDescriptorSetStatesRange>

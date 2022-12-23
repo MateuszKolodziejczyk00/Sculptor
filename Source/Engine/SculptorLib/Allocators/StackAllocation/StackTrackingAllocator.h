@@ -25,6 +25,8 @@ public:
 	template<typename TType, typename... TArgs>
 	TType* Allocate(TArgs&&... args)
 	{
+		static_assert(std::is_base_of_v<TTrackedType, TType>);
+
 		TType* object = AllocateUntracked<TType>(std::forward<TArgs>(args)...);
 		m_trackedObjects.emplace_back(object);
 		return object;
@@ -34,8 +36,6 @@ public:
 	TType* AllocateUntracked(TArgs&&... args)
 	{
 		SPT_PROFILER_FUNCTION();
-
-		static_assert(std::is_base_of_v<TTrackedType, TType>);
 
 		constexpr SizeType size			= sizeof(TType);
 		constexpr SizeType alignment	= alignof(TType);
