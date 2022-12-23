@@ -30,7 +30,14 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		SPT_CHECK_NO_ENTRY();
+		if (m_boundRGBuffer.IsValid())
+		{
+			builder.AddBufferAccess(m_boundRGBuffer, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
+		}
+		else
+		{
+			builder.AddBufferAccess(m_boundBufferInstance, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
+		}
 	}
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
@@ -63,34 +70,64 @@ public:
 
 	void Set(const lib::SharedRef<rdr::BufferView>& buffer)
 	{
-		m_boundBuffer = buffer.ToSharedPtr();
+		if (m_boundBufferInstance != buffer.ToSharedPtr())
+		{
+			m_boundBufferInstance = buffer.ToSharedPtr();
+			m_boundRGBuffer.Reset();
+			MarkAsDirty();
+		}
+	}
+
+	void Set(rg::RGBufferViewHandle buffer)
+	{
+		if (m_boundRGBuffer != buffer)
+		{
+			m_boundRGBuffer = buffer;
+			m_boundBufferInstance.reset();
+			MarkAsDirty();
+		}
 	}
 
 	void Reset()
 	{
-		m_boundBuffer.reset();
+		m_boundBufferInstance.reset();
+		m_boundRGBuffer.Reset();
 	}
 
 	const lib::SharedPtr<rdr::BufferView>& GetBoundBufferInstance() const
 	{
-		return m_boundBuffer;
+		return m_boundBufferInstance;
+	}
+
+	rg::RGBufferViewHandle GetBoundRGBuffer() const
+	{
+		return m_boundRGBuffer;
 	}
 
 	Bool IsValid() const
 	{
-		return !!m_boundBuffer;
+		return !!m_boundBufferInstance || m_boundRGBuffer.IsValid();
 	}
 
 protected:
 
 	lib::SharedRef<rdr::BufferView> GetBufferToBind() const
 	{
-		SPT_CHECK(!!m_boundBuffer);
+		SPT_CHECK(IsValid());
 
-		return lib::Ref(m_boundBuffer);
+		if (m_boundRGBuffer.IsValid())
+		{
+			SPT_CHECK(m_boundRGBuffer->IsAcquired());
+			return lib::Ref(m_boundRGBuffer->GetBufferViewInstance());
+		}
+		else
+		{
+			return lib::Ref(m_boundBufferInstance);
+		}
 	}
 
-	lib::SharedPtr<rdr::BufferView> m_boundBuffer;
+	lib::SharedPtr<rdr::BufferView> m_boundBufferInstance;
+	rg::RGBufferViewHandle			m_boundRGBuffer;
 };
 
 
