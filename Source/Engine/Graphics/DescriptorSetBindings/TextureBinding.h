@@ -11,7 +11,7 @@ namespace spt::gfx
 {
 
 template<priv::EBindingTextureDimensions dimensions, typename TPixelFormatType>
-class RWTextureBinding : public gfx::priv::TextureBindingBase
+class TextureBinding : public gfx::priv::TextureBindingBase
 {
 protected:
 
@@ -19,7 +19,7 @@ protected:
 
 public:
 
-	explicit RWTextureBinding(const lib::HashedString& name)
+	explicit TextureBinding(const lib::HashedString& name)
 		: Super(name)
 	{ }
 
@@ -35,7 +35,7 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::StorageWriteTexture);
+		BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::SampledTexture);
 	}
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
@@ -45,13 +45,13 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return BuildBindingVariableCode(lib::String("RWTexture") + priv::GetTextureDimSuffix<dimensions>()
+		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>()
 										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		return smd::EBindingFlags::Storage;
+		return smd::EBindingFlags::None;
 	}
 
 private:
@@ -60,18 +60,18 @@ private:
 	{
 		const lib::SharedPtr<rdr::Texture> texture = textureView->GetTexture();
 		SPT_CHECK(!!texture);
-		SPT_CHECK(lib::HasAnyFlag(texture->GetRHI().GetDefinition().usage, rhi::ETextureUsage::StorageTexture));
+		SPT_CHECK(lib::HasAnyFlag(texture->GetRHI().GetDefinition().usage, rhi::ETextureUsage::SampledTexture));
 	}
 };
 
 
 template<typename TPixelFormatType>
-using RWTexture1DBinding = RWTextureBinding<priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType>;
+using Texture1DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType>;
 
 template<typename TPixelFormatType>
-using RWTexture2DBinding = RWTextureBinding<priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType>;
+using Texture2DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType>;
 
 template<typename TPixelFormatType>
-using RWTexture3DBinding = RWTextureBinding<priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType>;
+using Texture3DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType>;
 
 } // spt::gfx

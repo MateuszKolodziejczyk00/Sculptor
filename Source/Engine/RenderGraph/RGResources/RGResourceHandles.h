@@ -38,6 +38,16 @@ public:
 		return *m_resource;
 	}
 
+	Bool operator==(RGResourceHandle rhs) const
+	{
+		return Get() == rhs.Get();
+	}
+
+	Bool operator!=(RGResourceHandle rhs) const
+	{
+		return !(*this == rhs);
+	}
+
 	void Reset()
 	{
 		m_resource = nullptr;

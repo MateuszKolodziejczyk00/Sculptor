@@ -319,6 +319,11 @@ public:
 		return m_allocationInfo;
 	}
 
+	rhi::ETextureUsage GetUsage() const
+	{
+		return GetTextureDefinition().usage;
+	}
+
 	// Texture Resource ====================================================
 
 	Bool IsAcquired() const
