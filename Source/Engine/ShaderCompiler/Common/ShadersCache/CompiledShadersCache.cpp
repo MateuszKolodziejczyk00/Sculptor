@@ -94,19 +94,11 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 	if (CanUseShadersCache())
 	{
 		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-		const lib::String shaderSourcePath = engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());
+		const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath);
 
-		Bool hasValidCachedShader = false;
+		const Bool isCachedShaderUpToDate = IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath);
 
-		if (lib::File::Exists(cachedShaderPath))
-		{
-			const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
-			const auto shaderSourceWriteTime = std::filesystem::last_write_time(shaderSourcePath);
-
-			hasValidCachedShader = cachedShaderWriteTime > shaderSourceWriteTime;
-		}
-
-		if (hasValidCachedShader)
+		if (!isCachedShaderUpToDate)
 		{
 			srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, cachedShaderPath);
 		}
@@ -142,6 +134,12 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 	}
 }
 
+Bool CompiledShadersCache::IsCachedShaderUpToDate(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+{
+	return CanUseShadersCache()
+		&& IsCachedShaderUpToDateImpl(CreateShaderFilePath(shaderRelativePath, compilationSettings), CreateShaderSourceCodeFilePath(shaderRelativePath));
+}
+
 Bool CompiledShadersCache::CanUseShadersCache()
 {
 	return ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
@@ -164,12 +162,32 @@ lib::String CompiledShadersCache::CreateShaderFilePath(HashType hash)
 	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersCachePath(), CreateShaderFileName(hash));
 }
 
+lib::String CompiledShadersCache::CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath)
+{
+	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());;
+}
+
 lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 	
 	const HashType hash = HashShader(shaderRelativePath, compilationSettings);
 	return CreateShaderFilePath(hash);
+}
+
+Bool CompiledShadersCache::IsCachedShaderUpToDateImpl(const lib::String& cachedShaderPath, const lib::String& shaderSourceCodePath)
+{
+	Bool isCachedShaderUpToDate = false;
+
+	if (lib::File::Exists(cachedShaderPath))
+	{
+		const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
+		const auto shaderSourceWriteTime = std::filesystem::last_write_time(shaderSourceCodePath);
+
+		isCachedShaderUpToDate = cachedShaderWriteTime > shaderSourceWriteTime;
+	}
+
+	return isCachedShaderUpToDate;
 }
 
 } // spt::sc

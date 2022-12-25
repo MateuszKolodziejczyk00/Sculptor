@@ -40,6 +40,7 @@ void ProfilerUILayer::DrawUI()
 	const Real32 averageFrameTime = prf::Profiler::Get().GetAverageFrameTime();
 	const Real32 averageFrameTimeMS = averageFrameTime * 1000.f;
 	ImGui::Text("Average Frame Time: %fms", averageFrameTimeMS);
+	ImGui::Text("Average FPS: %f", 1000.f / averageFrameTimeMS);
 
 	ImGui::Separator();
 

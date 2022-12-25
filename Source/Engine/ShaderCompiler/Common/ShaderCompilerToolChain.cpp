@@ -11,7 +11,7 @@
 namespace spt::sc
 {
 
-Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, CompiledShaderFile& outCompiledShaders)
+Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, EShaderCompilationFlags compilationFlags, CompiledShaderFile& outCompiledShaders)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -19,12 +19,21 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 
 	const Bool shouldUseShadersCache = ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
 
-	if (shouldUseShadersCache)
+	const Bool updateOnly = lib::HasAnyFlag(compilationFlags, EShaderCompilationFlags::UpdateOnly);
+
+	if (shouldUseShadersCache && !updateOnly)
 	{
 		outCompiledShaders = CompiledShadersCache::TryGetCachedShader(shaderRelativePath, settings);
+		compilationResult = outCompiledShaders.IsValid();
 	}
 
-	if(!outCompiledShaders.IsValid())
+	// Early out. We don't want to compile shader if UpdateOnly is set to true and shader in cache is up to date
+	if (updateOnly && CompiledShadersCache::IsCachedShaderUpToDate(shaderRelativePath, settings))
+	{
+		return compilationResult;
+	}
+
+	if(!compilationResult)
 	{
 		const lib::String shaderCode = ShaderFileReader::ReadShaderFileRelative(shaderRelativePath);
 
@@ -41,10 +50,6 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 				CompiledShadersCache::CacheShader(shaderRelativePath, settings, outCompiledShaders);
 			}
 		}
-	}
-	else
-	{
-		compilationResult = true;
 	}
 
 	return compilationResult;

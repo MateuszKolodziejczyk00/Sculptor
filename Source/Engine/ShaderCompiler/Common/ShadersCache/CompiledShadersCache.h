@@ -23,6 +23,8 @@ public:
 
 	static void					CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile);
 
+	static Bool					IsCachedShaderUpToDate(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
+
 private:
 
 	using HashType				= SizeType;
@@ -35,6 +37,9 @@ private:
 
 	static lib::String			CreateShaderFilePath(HashType hash);
 	static lib::String			CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings);
+	static lib::String			CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath);
+
+	static Bool					IsCachedShaderUpToDateImpl(const lib::String& cachedShaderPath, const lib::String& shaderSourceCodePath);
 };
 
 } // spt::sc

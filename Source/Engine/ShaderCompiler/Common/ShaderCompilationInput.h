@@ -56,4 +56,15 @@ private:
 	lib::DynamicArray<lib::HashedString>		m_macros;
 };
 
+
+enum class EShaderCompilationFlags
+{
+	None			= 0,
+
+	// Compiles shader only if source code was updated. If Cached shader is up to date compilation will return invalid shader
+	UpdateOnly		= BIT(0),
+
+	Default			= None
+};
+
 }

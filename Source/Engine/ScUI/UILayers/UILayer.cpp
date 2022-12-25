@@ -19,7 +19,7 @@ UILayerID UILayer::GetID() const
 
 void UILayer::Draw()
 {
-	SPT_PROFILER_SCOPE((lib::String("Draw") + GetName().ToString()).data());
+	SPT_PROFILER_SCOPE(GetName().GetData());
 
 	DrawUI();
 }

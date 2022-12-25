@@ -128,7 +128,7 @@ void ShadersManager::HotReloadShaders()
 						m_compiledShadersHotReloadParams,
 						[this](ShaderHotReloadParameters& params)
 						{
-							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.settings, params.flags);
+							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.settings, sc::EShaderCompilationFlags::UpdateOnly, params.flags);
 							if (shader)
 							{
 								const lib::WriteLockGuard lockGuard(m_lock);
@@ -161,7 +161,7 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 	auto shaderIt = m_cachedShaders.find(shaderHash);
 	if (shaderIt == std::cend(m_cachedShaders))
 	{
-		const lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, settings, flags);
+		const lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, settings, sc::EShaderCompilationFlags::Default, flags);
 		if (shader)
 		{
 			shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
@@ -172,12 +172,12 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 	SPT_CHECK(shaderIt != std::cend(m_cachedShaders));
 }
 
-lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags)
+lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags)
 {
 	SPT_PROFILER_FUNCTION();
 
 	sc::CompiledShaderFile compiledShader;
-	const Bool compilationResult = sc::ShaderCompilerToolChain::CompileShader(shaderRelativePath, settings, compiledShader);
+	const Bool compilationResult = sc::ShaderCompilerToolChain::CompileShader(shaderRelativePath, settings, compilationFlags, compiledShader);
 
 	lib::SharedPtr<Shader> shader;
 	if (compilationResult)
@@ -219,7 +219,6 @@ void ShadersManager::CacheShaderHotReloadParams(const lib::String& shaderRelativ
 	hotReloadParams.settings = settings;
 	hotReloadParams.flags = flags;
 	hotReloadParams.shaderHash = shaderHash;
-	hotReloadParams.compilationTime = std::chrono::steady_clock::now();
 }
 #endif // WITH_SHADERS_HOT_RELOAD
 

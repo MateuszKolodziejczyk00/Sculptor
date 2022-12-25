@@ -35,7 +35,7 @@ private:
 
 	void					CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
 
-	lib::SharedPtr<Shader>	CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags);
+	lib::SharedPtr<Shader>	CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags);
 
 	void					OnShaderCompiled(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
 
@@ -51,11 +51,15 @@ private:
 
 	struct ShaderHotReloadParameters
 	{
+		ShaderHotReloadParameters()
+			: flags(EShaderFlags::None)
+			, shaderHash(idxNone<ShaderHashType>)
+		{ }
+
 		lib::String shaderRelativePath;
 		sc::ShaderCompilationSettings settings;
 		EShaderFlags flags;
 		ShaderHashType shaderHash;
-		std::chrono::steady_clock::time_point compilationTime;
 	};
 
 	lib::DynamicArray<ShaderHotReloadParameters> m_compiledShadersHotReloadParams;
