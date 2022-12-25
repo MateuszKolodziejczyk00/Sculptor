@@ -342,17 +342,26 @@ public:
 		EJobState expected = EJobState::Pending;
 		const Bool executeThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Executing);
 
+		Bool finishedThisThread = false;
+
 		if (executeThisThread)
 		{
-			DoExecute();
+			{
+				const JobExecutionScope executionScope(*this);
+
+				m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
+				DoExecute();
+				m_remainingPrerequisitesNum.fetch_add(-1, std::memory_order_release);
+			}
 
 			if (CanFinishExecution())
 			{
 				Finish();
+				finishedThisThread = true;
 			}
 		}
 
-		return executeThisThread || expected == EJobState::Finished;
+		return (executeThisThread && finishedThisThread) || expected == EJobState::Finished;
 	}
 
 	Bool IsFinished() const
@@ -411,6 +420,11 @@ public:
 		return m_flags;
 	}
 
+	void AddNested(lib::SharedPtr<JobInstance> job)
+	{
+		AddPrerequisite(std::move(job));
+	}
+
 protected:
 
 	template<typename TCallable>
@@ -459,16 +473,6 @@ protected:
 		}
 	}
 
-	inline void AddNested(lib::SharedPtr<JobInstance> job)
-	{
-		m_remainingPrerequisitesNum.fetch_add(1);
-
-		// added only on thread that creates job, on or thread executing job, so we don't need lock
-		m_prerequisites.emplace_back(std::move(job));
-
-		SPT_CHECK_NO_ENTRY(); // TODO properly handle nested prerequisites in CanFinish and Finish
-	}
-
 	void OnConstructed()
 	{
 		if (m_remainingPrerequisitesNum.load() == 0)
@@ -489,6 +493,7 @@ protected:
 
 	void Finish()
 	{
+		SPT_CHECK(m_jobState.load() == EJobState::Executing);
 		m_jobState.store(EJobState::Finished);
 
 		m_prerequisites.clear();
@@ -503,13 +508,24 @@ protected:
 		m_consequents.clear();
 	}
 
-	inline void PostPrerequisiteExecuted()
+	void PostPrerequisiteExecuted()
 	{
 		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1) - 1;
 
 		if (remaining == 0)
 		{
-			Schedule();
+			const EJobState currentState = m_jobState.load();
+			if (currentState == EJobState::Pending)
+			{
+				Schedule();
+			}
+			else if(currentState == EJobState::Executing)
+			{
+				if (CanFinishExecution())
+				{
+					Finish();
+				}
+			}
 		}
 	}
 

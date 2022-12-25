@@ -50,25 +50,37 @@ auto Launch(const char* name, TCallable&& callable, EJobPriority::Type priority 
 	return JobBuilder::Build<TCallable>(instance);
 }
 
+template<typename TCallable>
+auto AddNested(const char* name, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
+{
+	JobInstance* currentJob = ThreadInfoTls::GetCurrentJob();
+	SPT_CHECK(!!currentJob);
+	
+	lib::SharedRef<JobInstance> instance = JobInstanceBuilder::Build(name, std::move(callable), priority, flags);
+	currentJob->AddNested(instance);
+}
+
 template<typename TRange, typename TCallable>
 auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
-	lib::DynamicArray<js::Job> parallelJobs;
+	return Launch(name,
+				  [name, &range, &callable, priority, flags]
+				  {
+					  lib::DynamicArray<js::Job> parallelJobs;
 
-	for (auto& elem : range)
-	{
-		const js::Job parallelJob = js::Launch(name,
-											   [elem, callable]() mutable
-											   {
-												   callable(elem);
-											   },
-											   priority,
-											   flags);
-
-		parallelJobs.emplace_back(parallelJob);
-	}
-
-	//return js::Launch(name, [] {}, parallelJobs, EJobPriority::High);
+					  for (auto& elem : range)
+					  {
+						  AddNested(name,
+									[elem, &callable]() mutable
+									{
+										callable(elem);
+									},
+									priority,
+									flags);
+					  }
+				  },
+				  priority,
+				  flags);
 }
 
 } // spt::js
