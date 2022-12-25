@@ -32,6 +32,10 @@ public:
 
 	/** Shouldn't be called during rendering, as it modifies cached pipelines maps without any synchronization */
 	void ClearCachedPipelines();
+
+#if WITH_SHADERS_HOT_RELOAD
+	void InvalidatePipelinesUsingShader(ShaderID shader);
+#endif // WITH_SHADERS_HOT_RELOAD
 	
 private:
 
@@ -46,6 +50,10 @@ private:
 
 	template<typename TPipelineType>
 	void FlushPipelinesImpl(PipelinesMap<TPipelineType>& cachedPipelines, PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock);
+
+#if WITH_SHADERS_HOT_RELOAD
+	void FlushPipelinesHotReloads();
+#endif // WITH_SHADERS_HOT_RELOAD
 
 	/**
 	 * These are pipelines created in previous frames
@@ -65,6 +73,15 @@ private:
 
 	PipelinesMap<ComputePipeline>	m_computePipelinesPendingFlush;
 	mutable lib::Lock				m_computePipelinesPendingFlushLock;
+
+#if WITH_SHADERS_HOT_RELOAD
+	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>		m_shaderToPipelineStates;
+	lib::HashMap<PipelineStateID, rhi::GraphicsPipelineDefinition>	m_graphicsPipelineDefinitions;
+	mutable lib::ReadWriteLock										m_hotReloadLock;
+	
+	lib::DynamicArray<ShaderID>	m_invalidatedShaders;
+	mutable lib::Lock			m_invalidatedShadersLock;
+#endif // WITH_SHADERS_HOT_RELOAD
 };
 
 

@@ -70,6 +70,10 @@ public:
 
 	static void									IncrementReleaseSemaphoreToCurrentFrame();
 
+#if WITH_SHADERS_HOT_RELOAD
+	static void HotReloadShaders();
+#endif // WITH_SHADERS_HOT_RELOAD
+
 private:
 
 	// block creating instance

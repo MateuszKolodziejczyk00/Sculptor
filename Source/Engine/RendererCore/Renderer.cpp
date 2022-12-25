@@ -94,6 +94,8 @@ void Renderer::BeginFrame()
 	GetDescriptorSetsManager().BeginFrame();
 
 	GetSamplersCache().FlushPendingSamplers();
+	
+	GetPipelinesLibrary().FlushCreatedPipelines();
 }
 
 void Renderer::EndFrame()
@@ -194,5 +196,14 @@ void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
 	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
 	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
 }
+
+#if WITH_SHADERS_HOT_RELOAD
+void Renderer::HotReloadShaders()
+{
+	SPT_PROFILER_FUNCTION();
+
+	GetShadersManager().HotReloadShaders();
+}
+#endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

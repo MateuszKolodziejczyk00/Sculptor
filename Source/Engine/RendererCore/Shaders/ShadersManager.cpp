@@ -4,9 +4,12 @@
 #include "RendererUtils.h"
 #include "RHIBridge/RHIImpl.h"
 #include "ConfigUtils.h"
+#include "JobSystem/JobSystem.h"
 #include "Common/ShaderCompilationEnvironment.h"
 
 #include "YAMLSerializerHelper.h"
+#include "Renderer.h"
+#include "Pipelines/PipelinesLibrary.h"
 
 namespace spt::srl
 {
@@ -118,6 +121,27 @@ lib::SharedRef<Shader> ShadersManager::GetShader(ShaderID shader) const
 	return lib::Ref(m_cachedShaders.at(shader.GetID()));
 }
 
+#if WITH_SHADERS_HOT_RELOAD
+void ShadersManager::HotReloadShaders()
+{
+	js::ParallelForEach(SPT_GENERIC_JOB_NAME,
+						m_compiledShadersHotReloadParams,
+						[this](ShaderHotReloadParameters& params)
+						{
+							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.settings, params.flags);
+							if (shader)
+							{
+								const lib::WriteLockGuard lockGuard(m_lock);
+								m_cachedShaders[params.shaderHash] = shader;
+							}
+
+							const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
+							Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
+						});
+
+}
+#endif // WITH_SHADERS_HOT_RELOAD
+
 ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
@@ -141,6 +165,7 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 		if (shader)
 		{
 			shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
+			OnShaderCompiled(shaderRelativePath, settings, flags, shaderHash);
 		}
 	}
 
@@ -176,5 +201,26 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 	
 	return shader;
 }
+
+void ShadersManager::OnShaderCompiled(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
+{
+#if WITH_SHADERS_HOT_RELOAD
+	CacheShaderHotReloadParams(shaderRelativePath, settings, flags, shaderHash);
+#endif // WITH_SHADERS_HOT_RELOAD
+}
+
+#if WITH_SHADERS_HOT_RELOAD
+void ShadersManager::CacheShaderHotReloadParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderHotReloadParameters& hotReloadParams = m_compiledShadersHotReloadParams.emplace_back(ShaderHotReloadParameters{});
+	hotReloadParams.shaderRelativePath = shaderRelativePath;
+	hotReloadParams.settings = settings;
+	hotReloadParams.flags = flags;
+	hotReloadParams.shaderHash = shaderHash;
+	hotReloadParams.compilationTime = std::chrono::steady_clock::now();
+}
+#endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

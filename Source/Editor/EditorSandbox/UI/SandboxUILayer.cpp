@@ -5,6 +5,8 @@
 #include "JobSystem.h"
 #include "UIElements/UIWindowTypes.h"
 #include "Types/Window.h"
+#include "Renderer.h"
+#include "Shaders/ShaderTypes.h"
 
 namespace spt::ed
 {
@@ -37,6 +39,15 @@ void SandboxUILayer::DrawUI()
 	DrawRendererSettings();
 	ImGui::Separator();
 	DrawJobSystemTestsUI();
+	ImGui::Separator();
+
+	ImGui::Text("Shaders");
+#if WITH_SHADERS_HOT_RELOAD
+	if (ImGui::Button("HotReload Shaders"))
+	{
+		rdr::Renderer::HotReloadShaders();
+	}
+#endif WITH_SHADERS_HOT_RELOAD
 	ImGui::Separator();
 
 	ImGui::End();

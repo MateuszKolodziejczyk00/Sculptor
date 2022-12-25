@@ -144,7 +144,7 @@ public:
 		: m_callable(std::move(callable))
 	{ }
 
-	virtual void Invoke() override
+	void Invoke() override
 	{
 		if constexpr (!std::is_same_v<TReturnType, void>)
 		{
@@ -158,7 +158,7 @@ public:
 
 private:
 
-	decltype(auto) InvokeImpl() const
+	decltype(auto) InvokeImpl()
 	{
 		return std::invoke(m_callable);
 	}

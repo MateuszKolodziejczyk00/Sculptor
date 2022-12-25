@@ -34,6 +34,16 @@ public:
 		return m_id != idxNone<ShaderHashType>;
 	}
 
+	Bool operator==(ShaderID rhs) const
+	{
+		return GetID() == rhs.GetID();
+	}
+
+	Bool operator!=(ShaderID rhs) const
+	{
+		return !(*this == rhs);
+	}
+
 	ShaderHashType GetID() const
 	{
 		return m_id;
