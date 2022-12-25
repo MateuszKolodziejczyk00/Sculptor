@@ -53,7 +53,7 @@ auto Launch(const char* name, TCallable&& callable, EJobPriority::Type priority 
 template<typename TCallable>
 auto AddNested(const char* name, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
-	JobInstance* currentJob = ThreadInfoTls::GetCurrentJob();
+	JobInstance* currentJob = ThreadInfoTls::Get().GetCurrentJob();
 	SPT_CHECK(!!currentJob);
 	
 	lib::SharedRef<JobInstance> instance = JobInstanceBuilder::Build(name, std::move(callable), priority, flags);
@@ -64,16 +64,16 @@ template<typename TRange, typename TCallable>
 auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
 {
 	return Launch(name,
-				  [name, &range, &callable, priority, flags]
+				  [name, &range, priority, flags, localCallable = std::forward<TCallable>(callable)]
 				  {
 					  lib::DynamicArray<js::Job> parallelJobs;
 
 					  for (auto& elem : range)
 					  {
 						  AddNested(name,
-									[elem, &callable]() mutable
+									[elem, &localCallable]() mutable
 									{
-										callable(elem);
+										localCallable(elem);
 									},
 									priority,
 									flags);

@@ -1,10 +1,13 @@
 #pragma once
 
+#include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
 
 
 namespace spt::js
 {
+
+class JobInstance;
 
 struct ThreadInfoDefinition
 {
@@ -15,35 +18,25 @@ struct ThreadInfoDefinition
 	Bool isWorker;
 };
 
-class ThreadInfoTls
+class JOB_SYSTEM_API ThreadInfoTls
 {
 public:
 
-	static void Init(const ThreadInfoDefinition& info)
-	{
-		isWorker = info.isWorker;
-	}
+	static ThreadInfoTls& Get();
 
-	static Bool IsWorker()
-	{
-		return isWorker;
-	}
+	void Init(const ThreadInfoDefinition& info);
 
-	static void SetCurrentJob(JobInstance* job)
-	{
-		currentJob = job;
-	}
+	Bool IsWorker();
 
-	static JobInstance* GetCurrentJob()
-	{
-		return currentJob;
-	}
+	void			SetCurrentJob(JobInstance* job);
+	JobInstance*	GetCurrentJob();
 
 private:
 
-	inline static thread_local Bool isWorker = false;
+	ThreadInfoTls();
 
-	inline static thread_local JobInstance* currentJob = nullptr;
+	Bool isWorker;
+	JobInstance* currentJob;
 };
 
 
@@ -52,14 +45,14 @@ struct JobExecutionScope
 public:
 
 	explicit JobExecutionScope(JobInstance& job)
-		: m_prevJob(ThreadInfoTls::GetCurrentJob())
+		: m_prevJob(ThreadInfoTls::Get().GetCurrentJob())
 	{
-		ThreadInfoTls::SetCurrentJob(&job);
+		ThreadInfoTls::Get().SetCurrentJob(&job);
 	}
 
 	~JobExecutionScope()
 	{
-		ThreadInfoTls::SetCurrentJob(m_prevJob);
+		ThreadInfoTls::Get().SetCurrentJob(m_prevJob);
 	}
 
 private:

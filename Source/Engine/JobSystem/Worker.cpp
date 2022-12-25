@@ -56,7 +56,7 @@ void Worker::WorkerMain(WorkerContext& jobsQueue)
 
 	ThreadInfoDefinition threadInfo;
 	threadInfo.isWorker = true;
-	ThreadInfoTls::Init(threadInfo);
+	ThreadInfoTls::Get().Init(threadInfo);
 
 	JobsQueueManagerTls::InitThreadLocalQueue(jobsQueue.localQueueIdx);
 
