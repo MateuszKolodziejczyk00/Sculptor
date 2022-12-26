@@ -102,10 +102,6 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 		{
 			[&rhiBindingDef](const smd::TextureBindingData& textureBinding)
 			{
-				const Bool isStorageData = lib::HasAnyFlag(textureBinding.flags, smd::EBindingFlags::Storage);
-
-				rhiBindingDef.descriptorType = isStorageData ? rhi::EDescriptorType::StorageTexture : rhi::EDescriptorType::SampledTexture;
-
 				if (lib::HasAnyFlag(textureBinding.flags, smd::EBindingFlags::Unbound))
 				{
 					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
@@ -118,8 +114,6 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 			},
 			[&rhiBindingDef](const smd::CombinedTextureSamplerBindingData& combinedTextureSamplerBinding)
 			{
-				rhiBindingDef.descriptorType = rhi::EDescriptorType::CombinedTextureSampler;
-
 				if (lib::HasAnyFlag(combinedTextureSamplerBinding.flags, smd::EBindingFlags::Unbound))
 				{
 					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
@@ -132,32 +126,19 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 			},
 			[&rhiBindingDef](const smd::BufferBindingData& bufferBinding)
 			{
-				const Bool isStorageData = lib::HasAnyFlag(bufferBinding.flags, smd::EBindingFlags::Storage);
-
-				if (lib::HasAnyFlag(bufferBinding.flags, smd::EBindingFlags::DynamicOffset))
-				{
-					rhiBindingDef.descriptorType = isStorageData ? rhi::EDescriptorType::StorageBufferDynamicOffset : rhi::EDescriptorType::UniformBufferDynamicOffset;
-				}
-				else if (lib::HasAnyFlag(bufferBinding.flags, smd::EBindingFlags::TexelBuffer))
-				{
-					rhiBindingDef.descriptorType = isStorageData ? rhi::EDescriptorType::StorageTexelBuffer : rhi::EDescriptorType::UniformTexelBuffer;
-				}
-				else
-				{
-					rhiBindingDef.descriptorType = isStorageData ? rhi::EDescriptorType::StorageBuffer : rhi::EDescriptorType::UniformBuffer;
-				}
-
 				rhiBindingDef.descriptorCount = 1;
 			},
 			[&rhiBindingDef](const smd::SamplerBindingData& samplerBinding)
 			{
-				rhiBindingDef.descriptorType = rhi::EDescriptorType::Sampler;
+				rhiBindingDef.descriptorCount = 1;
 			}
 		},
 		bindingMetaData.GetBindingData());
 
 	std::visit([&rhiBindingDef](const smd::CommonBindingData& commonBindingData)
 			   {
+				   rhiBindingDef.descriptorType = commonBindingData.GetDescriptorType();
+
 					rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
 					
 					if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
