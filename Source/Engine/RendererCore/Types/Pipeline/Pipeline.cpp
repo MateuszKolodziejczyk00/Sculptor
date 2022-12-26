@@ -148,18 +148,22 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 				}
 
 				rhiBindingDef.descriptorCount = 1;
+			},
+			[&rhiBindingDef](const smd::SamplerBindingData& samplerBinding)
+			{
+				rhiBindingDef.descriptorType = rhi::EDescriptorType::Sampler;
 			}
 		},
 		bindingMetaData.GetBindingData());
 
 	std::visit([&rhiBindingDef](const smd::CommonBindingData& commonBindingData)
 			   {
-				   rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
-
-				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
-				   {
+					rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
+					
+					if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
+					{
 					   rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(commonBindingData)->GetRHI();
-				   }
+					}
 			   },
 			   bindingMetaData.GetBindingData());
 

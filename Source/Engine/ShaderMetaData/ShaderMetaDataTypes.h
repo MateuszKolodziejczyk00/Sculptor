@@ -16,6 +16,7 @@ enum class EBindingType : Uint32
 	Texture,
 	CombinedTextureSampler,
 	Buffer,
+	Sampler,
 
 	NUM
 };
@@ -287,10 +288,32 @@ private:
 };
 
 
+struct SamplerBindingData : public CommonBindingData
+{
+public:
+
+	explicit SamplerBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
+	{ }
+
+
+	void PostInitialize()
+	{
+		bindingDescriptorType = rhi::EDescriptorType::Sampler;
+	}
+
+	Bool IsImmutable() const
+	{
+		return lib::HasAnyFlag(flags, EBindingFlags::ImmutableSampler);
+	}
+};
+
+
 // should be in the same order as EBindingType
 using BindingDataVariant = std::variant<TextureBindingData,
 										CombinedTextureSamplerBindingData,
-										BufferBindingData>;
+										BufferBindingData,
+										SamplerBindingData>;
 
 
 struct GenericShaderBinding
@@ -529,9 +552,22 @@ struct ShaderBufferParamEntry : public ShaderParamEntryCommon
 };
 
 
+struct ShaderSamplerParamEntry : public ShaderParamEntryCommon
+{
+	ShaderSamplerParamEntry() = default;
+
+	explicit ShaderSamplerParamEntry(Uint32 inSetIdx, Uint32 inBindingIdx)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
+	{ }
+
+	// No additional data for now
+};
+
+
 using ShaderParamEntryVariant = std::variant<ShaderTextureParamEntry,
 											 ShaderCombinedTextureSamplerParamEntry,
-											 ShaderBufferParamEntry>;
+											 ShaderBufferParamEntry,
+											 ShaderSamplerParamEntry>;
 
 
 struct GenericShaderParamEntry

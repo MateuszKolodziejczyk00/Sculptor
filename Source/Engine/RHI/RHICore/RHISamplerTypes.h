@@ -51,7 +51,7 @@ enum class EBorderColor
 
 struct SamplerDefinition
 {
-	SamplerDefinition()
+	constexpr SamplerDefinition()
 		: flags(ESamplerFlags::None)
 		, minificationFilter(ESamplerFilterType::Nearest)
 		, magnificationFilter(ESamplerFilterType::Nearest)
@@ -68,7 +68,7 @@ struct SamplerDefinition
 		, unnormalizedCoords(false)
 	{ }
 
-	SamplerDefinition(ESamplerFilterType filterType, EMipMapAddressingMode mipsAddressingMode, EAxisAddressingMode axisAddressingMode)
+	constexpr SamplerDefinition(ESamplerFilterType filterType, EMipMapAddressingMode mipsAddressingMode, EAxisAddressingMode axisAddressingMode)
 		: flags(ESamplerFlags::None)
 		, minificationFilter(filterType)
 		, magnificationFilter(filterType)

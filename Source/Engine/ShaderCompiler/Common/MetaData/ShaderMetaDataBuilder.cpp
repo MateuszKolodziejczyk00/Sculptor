@@ -225,6 +225,25 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
+static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, samplerResource);
+
+	smd::SamplerBindingData samplerBinding;
+	helper::InitializeBinding(samplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+
+	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, samplerBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
+
+	if (!samplerBinding.IsImmutable())
+	{
+		const smd::ShaderSamplerParamEntry paramEntry(setIdx, bindingIdx);
+		outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
+	}
+}
+
 static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
@@ -253,6 +272,12 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 		[&](const spirv_cross::Resource& texture)
 		{
 			AddStorageTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+		});
+
+	std::for_each(std::cbegin(resources.separate_samplers), std::cend(resources.separate_samplers),
+		[&](const spirv_cross::Resource& sampler)
+		{
+			AddSampler(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
 		});
 
 	outShaderMetaData.PostInitialize();
