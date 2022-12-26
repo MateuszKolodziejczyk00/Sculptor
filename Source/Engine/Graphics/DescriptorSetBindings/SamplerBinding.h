@@ -32,7 +32,7 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return BuildBindingVariableCode(lib::String("sampler ") + name, bindingIdx);
+		return BuildBindingVariableCode(lib::String("SamplerState ") + name, bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()

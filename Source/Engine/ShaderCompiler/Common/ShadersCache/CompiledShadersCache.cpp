@@ -98,7 +98,7 @@ CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString sh
 
 		const Bool isCachedShaderUpToDate = IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath);
 
-		if (!isCachedShaderUpToDate)
+		if (isCachedShaderUpToDate)
 		{
 			srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, cachedShaderPath);
 		}
