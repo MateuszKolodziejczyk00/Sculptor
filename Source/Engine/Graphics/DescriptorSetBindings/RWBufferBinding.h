@@ -31,7 +31,7 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.BuildRGDependencies(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
+		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
 	}
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
@@ -62,20 +62,14 @@ public:
 		return std::is_same_v<TStruct, Byte>;
 	}
 
-	void Set(const lib::SharedRef<rdr::BufferView>& buffer)
+	template<CInstanceOrRGBufferView TType>
+	void Set(lib::AsConstParameter<TType> buffer)
 	{
-		if (m_boundBuffer != buffer.ToSharedPtr())
-		{
-			m_boundBuffer.Set(buffer.ToSharedPtr());
-			MarkAsDirty();
-		}
-	}
+		SPT_CHECK(!!buffer);
 
-	void Set(rg::RGBufferViewHandle buffer)
-	{
 		if (m_boundBuffer != buffer)
 		{
-			m_boundBuffer.Set(buffer);
+			m_boundBuffer.Set<TType>(buffer);
 			MarkAsDirty();
 		}
 	}
@@ -85,14 +79,10 @@ public:
 		m_boundBuffer.Reset();
 	}
 
-	const lib::SharedPtr<rdr::BufferView>& GetBoundBufferInstance() const
+	template<CInstanceOrRGBufferView TType> 
+	lib::AsConstParameter<TType> GetAs() const
 	{
-		return m_boundBuffer.AsBufferInstance();
-	}
-
-	rg::RGBufferViewHandle GetBoundRGBuffer() const
-	{
-		return m_boundBuffer.AsRGBuffer();
+		return m_boundBuffer.GetAs<TType>();
 	}
 
 	Bool IsValid() const

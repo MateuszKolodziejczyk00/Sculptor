@@ -48,6 +48,11 @@ public:
 		return !(*this == rhs);
 	}
 
+	operator Bool() const
+	{
+		return IsValid();
+	}
+
 	void Reset()
 	{
 		m_resource = nullptr;

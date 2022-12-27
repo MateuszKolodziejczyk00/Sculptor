@@ -3,10 +3,17 @@
 #include "Types/Buffer.h"
 #include "DependenciesBuilder.h"
 #include "Utility/Templates/Overload.h"
+#include "Utility/Templates/TypeTraits.h"
 
 
 namespace spt::gfx
 {
+
+template<typename TType>
+concept CInstanceOrRGBufferView = requires
+{
+	requires std::is_same_v<TType, lib::SharedPtr<rdr::BufferView>> || std::is_same_v<TType, rg::RGBufferViewHandle>;
+};
 
 namespace priv
 {
@@ -35,7 +42,7 @@ public:
 						  m_buffer);
 	}
 
-	void BuildRGDependencies(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access, rhi::EShaderStageFlags shaderStages) const
+	void AddRGDependency(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access, rhi::EShaderStageFlags shaderStages) const
 	{
 		std::visit(lib::Overload
 				   {
@@ -51,12 +58,8 @@ public:
 				   m_buffer);
 	}
 
-	void Set(const lib::SharedRef<rdr::BufferView>& buffer)
-	{
-		m_buffer = buffer;
-	}
-
-	void Set(rg::RGBufferViewHandle buffer)
+	template<CInstanceOrRGBufferView TType>
+	void Set(lib::AsConstParameter<TType> buffer)
 	{
 		m_buffer = buffer;
 	}
@@ -98,14 +101,10 @@ public:
 						  m_buffer);
 	}
 
-	const lib::SharedPtr<rdr::BufferView>& AsBufferInstance() const
+	template<CInstanceOrRGBufferView TType>
+	lib::AsConstParameter<TType> GetAs() const
 	{
-		return std::get<lib::SharedPtr<rdr::BufferView>>(m_buffer);
-	}
-
-	rg::RGBufferViewHandle AsRGBuffer() const
-	{
-		return std::get<rg::RGBufferViewHandle>(m_buffer);
+		return std::get<TType>(m_buffer);
 	}
 
 	Bool IsValid() const
