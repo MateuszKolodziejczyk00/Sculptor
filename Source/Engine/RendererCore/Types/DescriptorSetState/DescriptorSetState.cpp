@@ -54,6 +54,31 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 	}
 }
 
+void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const lib::SharedRef<BufferView>& buffer, const lib::SharedRef<BufferView>& countBuffer) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const smd::ShaderBufferParamEntry bufferParam = m_metaData->FindParamEntry<smd::ShaderBufferParamEntry>(name);
+	
+	if (bufferParam.IsValid())
+	{
+		const smd::GenericShaderBinding binding = m_metaData->GetBindingData(bufferParam);
+		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
+
+		rhi::WriteDescriptorDefinition writeDefinition;
+		writeDefinition.bindingIdx		= bufferParam.bindingIdx;
+		writeDefinition.arrayElement	= 0;
+		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
+
+		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer->GetSize());
+
+		const Uint64 range = bufferBinding.IsUnbound() ? buffer->GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
+		SPT_CHECK(range > 0);
+
+		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range, countBuffer);
+	}
+}
+
 void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture) const
 {
 	SPT_PROFILER_FUNCTION();

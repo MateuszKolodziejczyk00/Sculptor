@@ -42,6 +42,7 @@ public:
 	DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const lib::SharedRef<smd::ShaderMetaData>& metaData);
 
 	void UpdateBuffer(const lib::HashedString& name, const lib::SharedRef<BufferView>& buffer) const;
+	void UpdateBuffer(const lib::HashedString& name, const lib::SharedRef<BufferView>& buffer, const lib::SharedRef<BufferView>& countBuffer) const;
 	void UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture) const;
 
 	const smd::ShaderMetaData& GetMetaData() const;

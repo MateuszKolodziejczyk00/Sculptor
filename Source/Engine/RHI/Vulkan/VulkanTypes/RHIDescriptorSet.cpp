@@ -122,6 +122,22 @@ void RHIDescriptorSetWriter::WriteBuffer(const RHIDescriptorSet& set, const rhi:
 	m_buffers.emplace_back(bufferInfo);
 }
 
+void RHIDescriptorSetWriter::WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range, const RHIBuffer& countBuffer, Uint64 countBufferOffset)
+{
+	SPT_CHECK_MSG(writeDef.descriptorType == rhi::EDescriptorType::StorageBuffer, "Counter buffers are allowed only for storage buffers (UAVs)");
+
+	WriteBuffer(set, writeDef, buffer, offset, range);
+
+	rhi::WriteDescriptorDefinition countBufferWriteDef{};
+	countBufferWriteDef.bindingIdx = writeDef.bindingIdx + 1; // count buffer always use next binding idx
+	countBufferWriteDef.arrayElement = writeDef.arrayElement;
+	countBufferWriteDef.descriptorType = rhi::EDescriptorType::StorageBuffer;
+	
+	constexpr Uint64 countBufferRange = sizeof(Int32);
+
+	WriteBuffer(set, countBufferWriteDef, countBuffer, countBufferOffset, countBufferRange);
+}
+
 void RHIDescriptorSetWriter::WriteTexture(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITextureView& textureView)
 {
 	SPT_CHECK(set.IsValid());

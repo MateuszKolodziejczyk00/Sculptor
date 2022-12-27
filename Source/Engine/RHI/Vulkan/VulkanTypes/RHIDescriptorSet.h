@@ -59,6 +59,7 @@ public:
 	RHIDescriptorSetWriter();
 
 	void WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range);
+	void WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range, const RHIBuffer& countBuffer, Uint64 countBufferOffset);
 	void WriteTexture(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITextureView& textureView);
 
 	void Reserve(SizeType writesNum);

@@ -28,8 +28,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
-		SPT_CHECK_NO_ENTRY_MSG("TODO Handle Count buffers");
+		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind(), countBuffer.GetBufferToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
