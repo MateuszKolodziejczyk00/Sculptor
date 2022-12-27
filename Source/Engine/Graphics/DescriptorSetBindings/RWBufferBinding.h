@@ -5,6 +5,7 @@
 #include "Types/Buffer.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "DependenciesBuilder.h"
+#include "BufferBindingTypes.h"
 
 
 namespace spt::gfx
@@ -25,19 +26,12 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), GetBufferToBind());
+		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		if (m_boundRGBuffer.IsValid())
-		{
-			builder.AddBufferAccess(m_boundRGBuffer, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
-		}
-		else
-		{
-			builder.AddBufferAccess(m_boundBufferInstance, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
-		}
+		m_boundBuffer.BuildRGDependencies(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
 	}
 
 	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
@@ -70,64 +64,45 @@ public:
 
 	void Set(const lib::SharedRef<rdr::BufferView>& buffer)
 	{
-		if (m_boundBufferInstance != buffer.ToSharedPtr())
+		if (m_boundBuffer != buffer.ToSharedPtr())
 		{
-			m_boundBufferInstance = buffer.ToSharedPtr();
-			m_boundRGBuffer.Reset();
+			m_boundBuffer.Set(buffer.ToSharedPtr());
 			MarkAsDirty();
 		}
 	}
 
 	void Set(rg::RGBufferViewHandle buffer)
 	{
-		if (m_boundRGBuffer != buffer)
+		if (m_boundBuffer != buffer)
 		{
-			m_boundRGBuffer = buffer;
-			m_boundBufferInstance.reset();
+			m_boundBuffer.Set(buffer);
 			MarkAsDirty();
 		}
 	}
 
 	void Reset()
 	{
-		m_boundBufferInstance.reset();
-		m_boundRGBuffer.Reset();
+		m_boundBuffer.Reset();
 	}
 
 	const lib::SharedPtr<rdr::BufferView>& GetBoundBufferInstance() const
 	{
-		return m_boundBufferInstance;
+		return m_boundBuffer.AsBufferInstance();
 	}
 
 	rg::RGBufferViewHandle GetBoundRGBuffer() const
 	{
-		return m_boundRGBuffer;
+		return m_boundBuffer.AsRGBuffer();
 	}
 
 	Bool IsValid() const
 	{
-		return !!m_boundBufferInstance || m_boundRGBuffer.IsValid();
+		return m_boundBuffer.IsValid();
 	}
 
-protected:
+private:
 
-	lib::SharedRef<rdr::BufferView> GetBufferToBind() const
-	{
-		SPT_CHECK(IsValid());
-
-		if (m_boundRGBuffer.IsValid())
-		{
-			SPT_CHECK(m_boundRGBuffer->IsAcquired());
-			return lib::Ref(m_boundRGBuffer->GetBufferViewInstance());
-		}
-		else
-		{
-			return lib::Ref(m_boundBufferInstance);
-		}
-	}
-
-	lib::SharedPtr<rdr::BufferView> m_boundBufferInstance;
-	rg::RGBufferViewHandle			m_boundRGBuffer;
+	priv::BoundBufferVariant m_boundBuffer;
 };
 
 

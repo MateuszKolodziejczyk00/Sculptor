@@ -651,7 +651,7 @@ public:
 		return m_buffer;
 	}
 
-	const lib::SharedPtr<rdr::BufferView>& GetBufferViewInstance() const
+	lib::SharedRef<rdr::BufferView> GetBufferViewInstance() const
 	{
 		if (!m_bufferViewInstance)
 		{
@@ -662,7 +662,7 @@ public:
 		}
 
 		SPT_CHECK(!!m_bufferViewInstance);
-		return m_bufferViewInstance;
+		return lib::Ref(m_bufferViewInstance);
 	}
 
 private:
