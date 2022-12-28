@@ -58,7 +58,31 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	return vulkanFlags;
 }
 
+VmaVirtualAllocationCreateFlags GetVMAVirtualAllocationFlags(rhi::EBufferSuballocationFlags rhiFlags)
+{
+	VmaVirtualAllocationCreateFlags flags = 0;
+
+	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferUpperAddress))
+	{
+		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_UPPER_ADDRESS_BIT);
+	}
+	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferMinMemory))
+	{
+		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT);
+	}
+	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferFasterAllocation))
+	{
+		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT);
+	}
+	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferMinOffset))
+	{
+		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_OFFSET_BIT);
+	}
+
+	return flags;
 }
+
+} // priv
 
 RHIBuffer::RHIBuffer()
 	: m_bufferHandle(VK_NULL_HANDLE)
@@ -67,6 +91,7 @@ RHIBuffer::RHIBuffer()
 	, m_usageFlags(rhi::EBufferUsage::None)
 	, m_mappingStrategy(EMappingStrategy::CannotBeMapped)
 	, m_mappedPointer(nullptr)
+	, m_allocatorVirtualBlock(VK_NULL_HANDLE)
 { }
 
 void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
@@ -89,6 +114,11 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 	SPT_VK_CHECK(vmaCreateBuffer(VulkanRHI::GetAllocatorHandle(), &bufferInfo, &vmaAllocationInfo, &m_bufferHandle, &m_allocation, nullptr));
 
 	InitializeMappingStrategy(vmaAllocationInfo);
+
+	if (lib::HasAnyFlag(definition.flags, rhi::EBufferFlags::WithVirtualSuballocations))
+	{
+		InitVirtualBlock(definition);
+	}
 }
 
 void RHIBuffer::ReleaseRHI()
@@ -104,6 +134,11 @@ void RHIBuffer::ReleaseRHI()
 
 	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
 
+	if (m_allocatorVirtualBlock != VK_NULL_HANDLE)
+	{
+		vmaDestroyVirtualBlock(m_allocatorVirtualBlock);
+	}
+
 	m_bufferHandle = VK_NULL_HANDLE;
 	m_allocation = VK_NULL_HANDLE;
 	m_bufferSize = 0;
@@ -111,6 +146,7 @@ void RHIBuffer::ReleaseRHI()
 	m_name.Reset();
 	m_mappingStrategy = EMappingStrategy::CannotBeMapped;
 	m_mappedPointer = nullptr;
+	m_allocatorVirtualBlock = VK_NULL_HANDLE;
 }
 
 Bool RHIBuffer::IsValid() const
@@ -172,6 +208,41 @@ DeviceAddress RHIBuffer::GetDeviceAddress() const
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
 }
 
+Bool RHIBuffer::AllowsSuballocations() const
+{
+	return m_allocatorVirtualBlock != VK_NULL_HANDLE;
+}
+
+rhi::RHISuballocation RHIBuffer::CreateSuballocation(const rhi::SuballocationDefinition& definition)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(AllowsSuballocations());
+	SPT_CHECK(definition.size > 0);
+
+	VmaVirtualAllocationCreateInfo virtualAllocationDef{};
+	virtualAllocationDef.alignment = definition.alignment;
+	virtualAllocationDef.size = definition.size;
+	virtualAllocationDef.flags = priv::GetVMAVirtualAllocationFlags(definition.flags);
+
+	VmaVirtualAllocation virtualAllocation = VK_NULL_HANDLE;
+	VkDeviceSize offset = 0;
+	vmaVirtualAllocate(m_allocatorVirtualBlock, &virtualAllocationDef, &virtualAllocation, &offset);
+
+	SPT_STATIC_CHECK(sizeof(VmaVirtualAllocation) == sizeof(Uint64));
+	return virtualAllocation != VK_NULL_HANDLE ? rhi::RHISuballocation(reinterpret_cast<Uint64>(virtualAllocation), offset) : rhi::RHISuballocation();
+}
+
+void RHIBuffer::DestroySuballocation(rhi::RHISuballocation suballocation)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(AllowsSuballocations());
+	SPT_CHECK(suballocation.IsValid());
+
+	vmaVirtualFree(m_allocatorVirtualBlock, reinterpret_cast<VmaVirtualAllocation>(suballocation.GetSuballocationHandle()));
+}
+
 void RHIBuffer::SetName(const lib::HashedString& name)
 {
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
@@ -228,6 +299,15 @@ RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const VmaAllocation
 
 	// Allocations that are not visible for host cannot be mapped
 	return EMappingStrategy::CannotBeMapped;
+}
+
+void RHIBuffer::InitVirtualBlock(const rhi::BufferDefinition& definition)
+{
+	SPT_CHECK(lib::HasAnyFlag(definition.flags, rhi::EBufferFlags::WithVirtualSuballocations));
+
+	VmaVirtualBlockCreateInfo blockInfo{};
+	blockInfo.size = definition.size;
+	vmaCreateVirtualBlock(&blockInfo, &m_allocatorVirtualBlock);
 }
 
 } // spt::vulkan

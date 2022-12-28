@@ -36,6 +36,10 @@ public:
 
 	DeviceAddress				GetDeviceAddress() const;
 
+	Bool						AllowsSuballocations() const;
+	rhi::RHISuballocation		CreateSuballocation(const rhi::SuballocationDefinition& definition);
+	void						DestroySuballocation(rhi::RHISuballocation suballocation);
+
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 
@@ -56,6 +60,8 @@ private:
 	void						InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo);
 	EMappingStrategy			SelectMappingStrategy(const VmaAllocationCreateInfo& allocationInfo) const;
 
+	void						InitVirtualBlock(const rhi::BufferDefinition& definition);
+
 	VkBuffer					m_bufferHandle;
 
 	VmaAllocation				m_allocation;
@@ -68,6 +74,8 @@ private:
 
 	EMappingStrategy			m_mappingStrategy;
 	Byte*						m_mappedPointer;
+
+	VmaVirtualBlock				m_allocatorVirtualBlock;
 };
 
-}
+} // spt::vulkan
