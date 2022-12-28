@@ -68,10 +68,11 @@ public:
 
 	// These functions are not virtual, but can be reimplemented in child classes
 	void Initialize(DescriptorSetState& owningState) {}
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const {}
+	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const {}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
 	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
+	static constexpr Uint32 GetBindingIdxDelta() { return 1; }
 
 	void SetOwningDSState(DescriptorSetState& state);
 
@@ -444,10 +445,16 @@ lib::DynamicArray<lib::HashedString> GetBindingNames(const TBindingHandle& bindi
 	lib::DynamicArray<lib::HashedString> bindingNames;
 	bindingNames.reserve(bindingsNum);
 
-	ForEachBinding(bindingHandle, [&bindingNames](const DescriptorSetBinding& binding)
-	{
-		bindingNames.emplace_back(binding.GetName());
-	});
+	ForEachBinding(bindingHandle,
+				   [&bindingNames]<typename TBindingType>(const TBindingType& binding)
+				   {
+					   const SizeType currentBindingIdx = bindingNames.size();
+					   
+					   const Uint32 bindingIdxDelta = TBindingType::GetBindingIdxDelta();
+					   bindingNames.resize(bindingNames.size() + static_cast<SizeType>(bindingIdxDelta));
+
+					   bindingNames[currentBindingIdx] = binding.GetName();
+				   });
 
 	return bindingNames;
 }
@@ -457,22 +464,22 @@ lib::DynamicArray<smd::GenericShaderBinding> CreateDescriptorSetBindingsDef(cons
 {
 	SPT_PROFILER_FUNCTION();
 	
-	lib::DynamicArray<smd::GenericShaderBinding> bindings;
-	bindings.reserve(GetBindingsNum<TBindingHandle>());
+	lib::DynamicArray<smd::GenericShaderBinding> bindingsMetaData;
+	bindingsMetaData.reserve(GetBindingsNum<TBindingHandle>());
 
 	ForEachBinding(bindingHandle,
-				   [&bindings, stageFlags](const auto& binding)
+				   [&bindingsMetaData](const auto& binding)
 				   {
-					   smd::GenericShaderBinding newBinding;
-					   binding.CreateBindingMetaData(OUT newBinding);
-
-					   newBinding.AddShaderStages(stageFlags);
-					   newBinding.PostInitialize();
-
-					   bindings.emplace_back(newBinding);
+					   binding.CreateBindingMetaData(INOUT bindingsMetaData);
 				   });
 
-	return bindings;
+	for (smd::GenericShaderBinding& bindingMetaData : bindingsMetaData)
+	{
+		bindingMetaData.AddShaderStages(stageFlags);
+		bindingMetaData.PostInitialize();
+	}
+
+	return bindingsMetaData;
 }
 
 inline SizeType HashDescriptorSetState(const lib::DynamicArray<smd::GenericShaderBinding>& bindingsDef, const lib::DynamicArray<lib::HashedString>& bindingNames)
@@ -520,7 +527,8 @@ constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdx = 0)
 	ForEachBinding<TBindingHandle>([&result, bindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdx++);
+		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdx);
+		bindingIdx += CurrentBindingType::GetBindingIdxDelta();
 	});
 
 	return result;

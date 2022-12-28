@@ -28,7 +28,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind(), countBuffer.GetBufferToBind());
+		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind(), m_boundCountBuffer.GetBufferToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -37,17 +37,31 @@ public:
 		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
 	}
 
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
+	// We need to take two bindings - first for buffer and second for count (storage buffer)
+	static constexpr Uint32 GetBindingIdxDelta()
 	{
-		binding.Set(smd::BufferBindingData(1, GetBindingFlags()));
+		return 2;
+	}
+
+	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
+	{
+		// buffer
+		smd::GenericShaderBinding& bufferBindingMetaData = bindingsMetaData.emplace_back();
+		bufferBindingMetaData.Set(smd::BufferBindingData(1, GetBindingFlags()));
+
+		// count
+		smd::BufferBindingData countBufferData(1, smd::EBindingFlags::Storage);
+		countBufferData.SetSize(sizeof(Int32));
+		smd::GenericShaderBinding& countBindingMetaData = bindingsMetaData.emplace_back();
+		countBindingMetaData.Set(countBufferData);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		constexpr char* bufferTypeName = isAppend ? "AppendStructuredBuffer" : "AppendStructuredBuffer";
+		lib::String bufferTypeName = isAppend ? lib::String("AppendStructuredBuffer") : lib::String("AppendStructuredBuffer");
 		lib::String code;
 		code += rdr::shader_translator::AddShaderStruct<TStorageType>();
-		code += BuildBindingVariableCode(lib::String(bufferTypeName) + '<' + TStorageType::GetStructName() + "> " + name, bindingIdx);
+		code += BuildBindingVariableCode(bufferTypeName + '<' + TStorageType::GetStructName() + "> " + name, bindingIdx);
 		return code;
 	}
 
@@ -108,6 +122,12 @@ protected:
 };
 
 } // priv
+
+template<typename TStorageType>
+using AppendStructuredBuffer = priv::AppendConsumeBufferBindingBase<TStorageType, true>;
+
+template<typename TStorageType>
+using ConsumeStructuredBuffer = priv::AppendConsumeBufferBindingBase<TStorageType, false>;
 
 } // spt::gfx
 

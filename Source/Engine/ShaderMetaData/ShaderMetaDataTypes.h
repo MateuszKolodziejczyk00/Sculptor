@@ -670,7 +670,7 @@ inline SizeType HashDescriptorSetBinding(const GenericShaderBinding& binding, co
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(binding.IsValid() == paramName.IsValid());
+	SPT_CHECK(binding.IsValid());
 
 	return lib::HashCombine(binding.Hash(), paramName);
 }

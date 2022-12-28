@@ -25,9 +25,10 @@ public:
 		// Do nothing
 	}
 
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
+	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
 	{
-		binding.Set(smd::TextureBindingData(1, GetBindingFlags()));
+		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
+		newBindingMetaData.Set(smd::TextureBindingData(1, GetBindingFlags()));
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)

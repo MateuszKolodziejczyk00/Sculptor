@@ -6,6 +6,7 @@
 #define SPT_INLINE inline
 
 #define OUT
+#define INOUT
 
 #define SPT_STRING(s) #s
 #define SPT_EVAL_STRING(s) SPT_STRING(s)

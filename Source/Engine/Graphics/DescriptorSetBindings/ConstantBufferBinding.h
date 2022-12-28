@@ -55,11 +55,13 @@ public:
 		context.UpdateBuffer(GetName(), lib::Ref(m_bufferView));
 	}
 
-	void CreateBindingMetaData(OUT smd::GenericShaderBinding& binding) const
+	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
 	{
 		smd::BufferBindingData bindingData(1, GetBindingFlags());
 		bindingData.SetSize(sizeof(TStruct));
-		binding.Set(bindingData);
+		
+		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
+		newBindingMetaData.Set(bindingData);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)

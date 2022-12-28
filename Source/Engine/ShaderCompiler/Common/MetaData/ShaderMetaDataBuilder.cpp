@@ -182,8 +182,13 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 	
-	const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
-	outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
+	// Don't create parameters for this buffer if name contains dots
+	// If it contains dots it's some kind of additional binding, e.g. counter binding for StructuredBuffer
+	if (std::find(std::cbegin(paramName.GetView()), std::cend(paramName.GetView()), '.') == std::cend(paramName.GetView()))
+	{
+		const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
+		outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
+	}
 
 	if (parametersMetaData.HasMeta(paramName, meta::exposeInner))
 	{
