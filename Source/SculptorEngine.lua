@@ -35,3 +35,6 @@ IncludeProject("Graphics")
 SetProjectsSubgroupName("Tools")
 IncludeProject("ScUI")
 IncludeProject("Profiler")
+
+SetProjectsSubgroupName("Scene")
+IncludeProject("RenderScene")

@@ -1,13 +1,12 @@
 EditorSandbox = Project:CreateProject("EditorSandbox", ETargetType.SharedLibrary)
 
 function EditorSandbox:SetupConfiguration(configuration, platform)
-	self:AddPublicDependency("SculptorLib")
-	self:AddPublicDependency("Graphics")
-	self:AddPublicDependency("JobSystem")
 	self:AddPublicDependency("ScUI")
-
+	
+	self:AddPrivateDependency("JobSystem")
 	self:AddPrivateDependency("EngineCore")
-	self:AddPrivateDependency("Profiler")
+	
+	self:AddPrivateDependency("RenderScene")
 end
 
 EditorSandbox:SetupProject()
