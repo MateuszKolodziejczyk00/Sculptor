@@ -4,7 +4,7 @@ function RenderScene:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Graphics")
     self:AddPublicDependency("SculptorECS")
 
-    self:AddPrivateDependency("TinyGLTFLoader")
+    self:AddPrivateDependency("TinyGLTF")
 end
 
 RenderScene:SetupProject()

@@ -27,6 +27,6 @@
 [submodule "Source/ThirdParty/Entt/Entt"]
 	path = Source/ThirdParty/Entt/Entt
 	url = https://github.com/skypjack/entt
-[submodule "Source/ThirdParty/TinyGLTFLoader/TinyGLTFLoader"]
-	path = Source/ThirdParty/TinyGLTFLoader/TinyGLTFLoader
-	url = https://github.com/syoyo/tinygltfloader
+[submodule "Source/ThirdParty/TinyGLTF/TinyGLTF"]
+	path = Source/ThirdParty/TinyGLTF/TinyGLTF
+	url = https://github.com/syoyo/tinygltf

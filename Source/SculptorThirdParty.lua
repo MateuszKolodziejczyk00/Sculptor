@@ -11,7 +11,7 @@ IncludeProject("YAML")
 IncludeProject("Entt")
 IncludeProject("NsightAftermath")
 
-IncludeProject("TinyGLTFLoader")
+IncludeProject("TinyGLTF")
 
 SetProjectsSubgroupName("ImGui")
 IncludeProject("ImGui")
