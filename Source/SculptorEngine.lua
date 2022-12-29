@@ -12,6 +12,8 @@ IncludeProject("Serialization")
 
 IncludeProject("JobSystem")
 
+IncludeProject("SculptorECS")
+
 SetProjectsSubgroupName("Engine")
 IncludeProject("EngineCore")
 

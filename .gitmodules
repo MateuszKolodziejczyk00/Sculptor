@@ -24,3 +24,6 @@
 [submodule "Source/ThirdParty/YAML/YAML"]
 	path = Source/ThirdParty/YAML/YAML
 	url = https://github.com/jbeder/yaml-cpp
+[submodule "Source/ThirdParty/Entt/Entt"]
+	path = Source/ThirdParty/Entt/Entt
+	url = https://github.com/skypjack/entt
