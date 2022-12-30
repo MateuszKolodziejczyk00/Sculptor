@@ -8,6 +8,7 @@
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Event.h"
+#include "Types/Buffer.h"
 
 namespace spt::rdr
 {
@@ -212,6 +213,18 @@ void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const r
 							 SPT_PROFILER_SCOPE("CopyTexture Command");
 
 							 cmdBuffer->GetRHI().CopyTexture(source->GetRHI(), sourceRange, target->GetRHI(), targetRange, extent);
+						 });
+}
+
+void CommandRecorder::CopyBuffer(const lib::SharedRef<Buffer>& sourceBuffer, Uint64 sourceOffset, const lib::SharedRef<Buffer>& destBuffer, Uint64 destOffset, Uint64 size)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([sourceBuffer, sourceOffset, destBuffer, destOffset, size](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("CopyBuffer Command");
+
+							 cmdBuffer->GetRHI().CopyBuffer(sourceBuffer->GetRHI(), sourceOffset, destBuffer->GetRHI(), destOffset, size);
 						 });
 }
 

@@ -15,6 +15,7 @@ class RHIRenderContext;
 class RHIPipeline;
 class RHIDescriptorSet;
 class RHITexture;
+class RHIBuffer;
 
 
 class RHI_API RHICommandBuffer
@@ -56,6 +57,7 @@ public:
 	// Transfer =============================================
 
 	void	CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
+	void	CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size);
 
 	// Debug ============================================
 

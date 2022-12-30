@@ -19,6 +19,8 @@ public:
 
 	static Uint64 GetMinUniformBufferOffsetAlignment();
 
+	static Uint64 GetOptimalBufferCopyOffsetAlignment();
+
 private:
 
 	VulkanRHILimits() = default;

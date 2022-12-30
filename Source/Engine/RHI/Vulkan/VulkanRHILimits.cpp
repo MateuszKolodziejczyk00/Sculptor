@@ -26,4 +26,9 @@ Uint64 VulkanRHILimits::GetMinUniformBufferOffsetAlignment()
 	return priv::GetDeviceLimits().minUniformBufferOffsetAlignment;
 }
 
+Uint64 VulkanRHILimits::GetOptimalBufferCopyOffsetAlignment()
+{
+	return priv::GetDeviceLimits().optimalBufferCopyOffsetAlignment;
+}
+
 } // spt::vulkan

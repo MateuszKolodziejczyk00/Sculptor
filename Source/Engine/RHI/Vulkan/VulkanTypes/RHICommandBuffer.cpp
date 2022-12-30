@@ -4,6 +4,7 @@
 #include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "RHITexture.h"
+#include "RHIBuffer.h"
 #include "RHIPipeline.h"
 #include "RHIDescriptorSet.h"
 #include "RHIRenderContext.h"
@@ -303,30 +304,28 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 	vkCmdCopyImage2(m_cmdBufferHandle, &copyInfo);
 }
 
-void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
+void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
-	SPT_CHECK(pipeline.IsValid());
+	SPT_CHECK(sourceBuffer.IsValid());
+	SPT_CHECK(destBuffer.IsValid());
+	SPT_CHECK(sourceOffset + size <= sourceBuffer.GetSize());
+	SPT_CHECK(destOffset + size <= destBuffer.GetSize());
 
-	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
-}
+	VkBufferCopy2 copyRegion{ VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+    copyRegion.srcOffset = sourceOffset;
+    copyRegion.dstOffset = destOffset;
+    copyRegion.size = size;
 
-void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
-{
-	SPT_PROFILER_FUNCTION();
+	VkCopyBufferInfo2 copyInfo{ VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+    copyInfo.srcBuffer = sourceBuffer.GetBufferHandle();
+    copyInfo.dstBuffer = destBuffer.GetBufferHandle();
+    copyInfo.regionCount = 1;
+    copyInfo.pRegions = &copyRegion;
 
-	SPT_CHECK(IsValid());
-	SPT_CHECK(ds.IsValid());
-	SPT_CHECK(pipeline.IsValid());
-	SPT_CHECK(dsIdx != idxNone<Uint32>);
-	SPT_CHECK(dynamicOffsetsNum == 0 || dynamicOffsets != nullptr);
-
-	const PipelineLayout& layout = pipeline.GetPipelineLayout();
-	VkDescriptorSet dsHandle = ds.GetHandle();
-
-	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, dynamicOffsetsNum, dynamicOffsets);
+	vkCmdCopyBuffer2(m_cmdBufferHandle, &copyInfo);
 }
 
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
@@ -374,6 +373,33 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 		vkCmdSetCheckpointNV(m_cmdBufferHandle, markerPtr);
 	}
 }
+
 #endif // WITH_GPU_CRASH_DUMPS
+
+void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(pipeline.IsValid());
+
+	vkCmdBindPipeline(m_cmdBufferHandle, bindPoint, pipeline.GetHandle());
+}
+
+void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(ds.IsValid());
+	SPT_CHECK(pipeline.IsValid());
+	SPT_CHECK(dsIdx != idxNone<Uint32>);
+	SPT_CHECK(dynamicOffsetsNum == 0 || dynamicOffsets != nullptr);
+
+	const PipelineLayout& layout = pipeline.GetPipelineLayout();
+	VkDescriptorSet dsHandle = ds.GetHandle();
+
+	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, dynamicOffsetsNum, dynamicOffsets);
+}
 
 } // spt::vulkan
