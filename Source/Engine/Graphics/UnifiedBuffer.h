@@ -8,11 +8,11 @@
 namespace spt::gfx
 {
 
-class GRAPHICS_API UnifiedGeometryBuffer
+class GRAPHICS_API UnifiedBuffer
 {
 public:
 
-	static UnifiedGeometryBuffer& Get();
+	explicit UnifiedBuffer(Uint64 size);
 
 	rhi::RHISuballocation	Allocate(Uint64 size);
 	void					Deallocate(rhi::RHISuballocation allocation);
@@ -21,8 +21,6 @@ public:
 	const lib::SharedPtr<rdr::BufferView>&	GetBufferView() const;
 
 private:
-	
-	UnifiedGeometryBuffer();
 
 	lib::SharedPtr<rdr::Buffer>		m_bufferInstance;
 	lib::SharedPtr<rdr::BufferView>	m_bufferView;

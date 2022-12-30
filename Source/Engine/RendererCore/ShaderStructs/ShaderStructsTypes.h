@@ -19,6 +19,18 @@ constexpr lib::String GetShaderTypeName()
 }
 
 template<>
+constexpr lib::String GetShaderTypeName<Int32>()
+{
+	return lib::String("int");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<Uint32>()
+{
+	return lib::String("uint");
+}
+
+template<>
 constexpr lib::String GetShaderTypeName<Real32>()
 {
 	return lib::String("float");
