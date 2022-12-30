@@ -18,13 +18,15 @@ public:
 
 	// Getters ===========================================
 
-	static const lib::String&	GetEnginePath();
+	static const lib::String&		GetEnginePath();
 
-	static const lib::String&	GetConfigsPath();
+	static const lib::String&		GetConfigsPath();
 
-	static const lib::String&	GetTracesPath();
+	static const lib::String&		GetTracesPath();
 
-	static const lib::String&	GetGPUCrashDumpsPath();
+	static const lib::String&		GetGPUCrashDumpsPath();
+
+	static const lib::StringView	GetExtension(lib::StringView path);
 
 	// Utils =============================================
 

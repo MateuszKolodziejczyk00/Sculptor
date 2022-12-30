@@ -51,6 +51,12 @@ const lib::String& Paths::GetGPUCrashDumpsPath()
 	return priv::g_gpuCrashDumpsPath;
 }
 
+const lib::StringView Paths::GetExtension(lib::StringView path)
+{
+	const SizeType dotPosition = path.rfind('.');
+	return dotPosition != lib::StringView::npos ? lib::StringView(std::begin(path) + dotPosition + 1, std::end(path)) : lib::StringView();
+}
+
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)
 {
 	SPT_PROFILER_FUNCTION();
