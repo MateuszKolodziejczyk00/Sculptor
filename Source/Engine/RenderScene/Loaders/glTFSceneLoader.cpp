@@ -1,6 +1,6 @@
 #include "glTFSceneLoader.h"
 #include "Paths.h"
-#include "GeometryManager.h"
+#include "MeshBuilder.h"
 
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
@@ -13,18 +13,22 @@
 namespace spt::rsc
 {
 
-SPT_DEFINE_LOG_CATEGORY(LogglTFLoader, true);
+SPT_DEFINE_LOG_CATEGORY(LogGLTFLoader, true);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GLTFPrimitiveBuilder ==========================================================================
 
-class GLTFPrimitiveBuilder
+class GLTFMeshBuilder : public MeshBuilder
 {
 public:
 
-	GLTFPrimitiveBuilder();
+	GLTFMeshBuilder();
 
-	gfx::PrimitiveGeometryInfo EmitPrimitive();
+	void BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model);
+
+private:
+
+	const tinygltf::Accessor* GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name);
 
 	void SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 	void SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
@@ -32,144 +36,107 @@ public:
 	void SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 	void SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 
-	Uint64 GetSize() const;
-
-	Uint32 GetIndicesNum() const;
-
-	Uint32 GetLocationsOffset() const;
-	Uint32 GetNormalsOffset() const;
-	Uint32 GetTangentsOffset() const;
-	Uint32 GetUvsOffset() const;
-
-private:
-
 	template<typename TDestType>
-	Uint32 AppendData(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
-
-	template<typename TDestType, typename TSourceType>
-	void AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count);
-
-	lib::DynamicArray<Byte> m_geometryData;
-
-	Uint32 m_indicesNum;
-
-	Uint32 m_locationsOffset;
-	Uint32 m_normalsOffset;
-	Uint32 m_tangentsOffset;
-	Uint32 m_uvsOffset;
-
-	rhi::RHISuballocation m_geometrySuballocation;
+	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 };
 
-GLTFPrimitiveBuilder::GLTFPrimitiveBuilder()
-	: m_indicesNum(idxNone<Uint32>)
-	, m_locationsOffset(idxNone<Uint32>)
-	, m_normalsOffset(idxNone<Uint32>)
-	, m_tangentsOffset(idxNone<Uint32>)
-	, m_uvsOffset(idxNone<Uint32>)
+GLTFMeshBuilder::GLTFMeshBuilder()
 { }
 
-gfx::PrimitiveGeometryInfo GLTFPrimitiveBuilder::EmitPrimitive()
+void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_geometrySuballocation = gfx::GeometryManager::Get().CreateGeometry(m_geometryData.data(), m_geometryData.size());
-	SPT_CHECK(m_geometrySuballocation.IsValid());
-	SPT_CHECK(m_geometrySuballocation.GetOffset() + m_geometryData.size() < maxValue<Uint32>);
+	for (const tinygltf::Primitive& prim : mesh.primitives)
+	{
+		BeginNewPrimitive();
 
-	const Uint32 baseOffset = static_cast<Uint32>(m_geometrySuballocation.GetOffset());
+		SetIndices(model.accessors[prim.indices], model);
 
-	gfx::PrimitiveGeometryInfo geometry{};
-	geometry.indexBufferOffset	= baseOffset;
-	geometry.indicesNum			= m_indicesNum;
-	geometry.locationsOffset	= baseOffset + m_locationsOffset;
-	geometry.normalsOffset		= baseOffset + m_normalsOffset;
-	geometry.tangentsOffset		= baseOffset + m_tangentsOffset;
-	geometry.uvsOffset			= baseOffset + m_uvsOffset;
+		const static lib::String locationsAccessorName = "POSITION";
+		if (const tinygltf::Accessor* locationsAccessor = GetAttributeAccessor(prim, model, locationsAccessorName))
+		{
+			SetLocations(*locationsAccessor, model);
+		}
 
-	return geometry;
+		const static lib::String normalsAccessorName = "NORMAL";
+		if (const tinygltf::Accessor* normalsAccessor = GetAttributeAccessor(prim, model, normalsAccessorName))
+		{
+			SetNormals(*normalsAccessor, model);
+		}
+
+		const static lib::String tangentsAccessorName = "TANGENT";
+		if (const tinygltf::Accessor* tangentsAccessor = GetAttributeAccessor(prim, model, tangentsAccessorName))
+		{
+			SetTangents(*tangentsAccessor, model);
+		}
+
+		const static lib::String uvsAccessorName = "TEXCOOORD_0";
+		if (const tinygltf::Accessor* uvsAccessor = GetAttributeAccessor(prim, model, uvsAccessorName))
+		{
+			SetUVs(*uvsAccessor, model);
+		}
+	}
 }
 
-void GLTFPrimitiveBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+const tinygltf::Accessor* GLTFMeshBuilder::GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name)
 {
-	SPT_CHECK_MSG(m_geometryData.empty(), "Indices must be set before all vertex attributes");
-	SPT_CHECK(m_indicesNum == idxNone<Uint32>);
-
-	m_indicesNum = AppendData<Uint32>(accessor, model);
+	const auto foundAccessorIdxIt = prim.attributes.find(name);
+	const Int32 foundAccessorIdx = foundAccessorIdxIt != std::cend(prim.attributes) ? foundAccessorIdxIt->second : -1;
+	return foundAccessorIdx != -1 ? &model.accessors[foundAccessorIdx] : nullptr;
 }
 
-void GLTFPrimitiveBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	SPT_CHECK_MSG(m_indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(m_locationsOffset == idxNone<Uint32>);
+	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
+	SPT_CHECK(prim.indicesNum == idxNone<Uint32>);
+
+	prim.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
+	prim.indicesNum = AppendAccessorData<Uint32>(accessor, model);
+}
+
+void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+{
+	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
+	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
+	SPT_CHECK(prim.locationsOffset == idxNone<Uint32>);
 	
-	m_locationsOffset = static_cast<Uint32>(m_geometryData.size());
-	AppendData<Real32>(accessor, model);
+	prim.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	AppendAccessorData<Real32>(accessor, model);
 }
 
-void GLTFPrimitiveBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	SPT_CHECK_MSG(m_indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(m_normalsOffset == idxNone<Uint32>);
+	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
+	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
+	SPT_CHECK(prim.normalsOffset == idxNone<Uint32>);
 	
-	m_normalsOffset = static_cast<Uint32>(m_geometryData.size());
-	AppendData<Real32>(accessor, model);
+	prim.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	AppendAccessorData<Real32>(accessor, model);
 }
 
-void GLTFPrimitiveBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	SPT_CHECK_MSG(m_indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(m_tangentsOffset == idxNone<Uint32>);
+	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
+	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
+	SPT_CHECK(prim.tangentsOffset == idxNone<Uint32>);
 	
-	m_tangentsOffset = static_cast<Uint32>(m_geometryData.size());
-	AppendData<Real32>(accessor, model);
+	prim.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	AppendAccessorData<Real32>(accessor, model);
 }
 
-void GLTFPrimitiveBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	SPT_CHECK_MSG(m_indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(m_uvsOffset == idxNone<Uint32>);
+	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
+	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
+	SPT_CHECK(prim.uvsOffset == idxNone<Uint32>);
 	
-	m_uvsOffset = static_cast<Uint32>(m_geometryData.size());
-	AppendData<Real32>(accessor, model);
-}
-
-Uint64 GLTFPrimitiveBuilder::GetSize() const
-{
-	return m_geometryData.size();
-}
-
-Uint32 GLTFPrimitiveBuilder::GetIndicesNum() const
-{
-	SPT_CHECK_MSG(m_indicesNum != idxNone<Uint32>, "Indices were not loaded!");
-	return m_indicesNum;
-}
-
-Uint32 GLTFPrimitiveBuilder::GetLocationsOffset() const
-{
-	SPT_CHECK_MSG(m_locationsOffset != idxNone<Uint32>, "Positions were not loaded!");
-	return m_locationsOffset;
-}
-
-Uint32 GLTFPrimitiveBuilder::GetNormalsOffset() const
-{
-	SPT_CHECK_MSG(m_normalsOffset != idxNone<Uint32>, "Normals were not loaded!");
-	return m_normalsOffset;
-}
-
-Uint32 GLTFPrimitiveBuilder::GetTangentsOffset() const
-{
-	SPT_CHECK_MSG(m_tangentsOffset != idxNone<Uint32>, "Tangents were not loaded!");
-	return m_tangentsOffset;
-}
-
-Uint32 GLTFPrimitiveBuilder::GetUvsOffset() const
-{
-	return m_uvsOffset;
+	prim.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	AppendAccessorData<Real32>(accessor, model);
 }
 
 template<typename TDestType>
-Uint32 GLTFPrimitiveBuilder::AppendData(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -226,88 +193,20 @@ Uint32 GLTFPrimitiveBuilder::AppendData(const tinygltf::Accessor& accessor, cons
 	return static_cast<Uint32>(elementsNum);
 }
 
-template<typename TDestType, typename TSourceType>
-void GLTFPrimitiveBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count)
-{
-	const SizeType prevSize = m_geometryData.size();
-	const SizeType destDataSize = count * componentsNum * sizeof(TDestType);
-	m_geometryData.resize(prevSize + destDataSize);
-
-	Byte* destPtr = m_geometryData.data() + prevSize;
-
-	if constexpr (std::is_same_v<TDestType, TSourceType>)
-	{
-		if (stride == sizeof(TDestType) * componentsNum)
-		{
-			memcpy(destPtr, sourceData, count * componentsNum * sizeof(TDestType));
-			return;
-		}
-	}
-
-	for (SizeType sourceOffset = 0, destOffset = prevSize; destOffset < m_geometryData.size(); sourceOffset += stride, destOffset += sizeof(TDestType))
-	{
-		TDestType* dest = reinterpret_cast<TDestType*>(m_geometryData[destOffset]);
-		const TSourceType* source = reinterpret_cast<const TSourceType*>(sourceData[sourceOffset]);
-		for (SizeType componentIdx = 0; componentIdx < componentsNum; ++componentIdx)
-		{
-			dest[componentIdx] = static_cast<TDestType>(source[componentIdx]);
-		}
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // glTFLoader ====================================================================================
 
 namespace glTFLoader
 {
 
-static const tinygltf::Accessor* GetAttributeAccessor(const tinygltf::Primitive& prim, const tinygltf::Model& model, const lib::String& name)
-{
-	const auto foundAccessorIdxIt = prim.attributes.find(name);
-	const Int32 foundAccessorIdx = foundAccessorIdxIt != std::cend(prim.attributes) ? foundAccessorIdxIt->second : -1;
-	return foundAccessorIdx != -1 ? &model.accessors[foundAccessorIdx] : nullptr;
-}
-
-static void LoadPrimitive(const tinygltf::Primitive& prim, const tinygltf::Model& model)
-{
-	SPT_PROFILER_FUNCTION();
-
-	GLTFPrimitiveBuilder gltfBuilder;
-	gltfBuilder.SetIndices(model.accessors[prim.indices], model);
-
-	const static lib::String locationsAccessorName = "POSITION";
-	if (const tinygltf::Accessor* locationsAccessor = GetAttributeAccessor(prim, model, locationsAccessorName))
-	{
-		gltfBuilder.SetLocations(*locationsAccessor, model);
-	}
-
-	const static lib::String normalsAccessorName = "NORMAL";
-	if (const tinygltf::Accessor* normalsAccessor = GetAttributeAccessor(prim, model, normalsAccessorName))
-	{
-		gltfBuilder.SetNormals(*normalsAccessor, model);
-	}
-
-	const static lib::String tangentsAccessorName = "TANGENT";
-	if (const tinygltf::Accessor* tangentsAccessor = GetAttributeAccessor(prim, model, tangentsAccessorName))
-	{
-		gltfBuilder.SetTangents(*tangentsAccessor, model);
-	}
-
-	const static lib::String uvsAccessorName = "TEXCOOORD_0";
-	if (const tinygltf::Accessor* uvsAccessor = GetAttributeAccessor(prim, model, uvsAccessorName))
-	{
-		gltfBuilder.SetUVs(*uvsAccessor, model);
-	}
-}
-
 static void LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (const tinygltf::Primitive& prim : mesh.primitives)
-	{
-		LoadPrimitive(prim, model);
-	}
+	GLTFMeshBuilder builder;
+	builder.BuildMesh(mesh, model);
+
+	builder.EmitMeshGeometry();
 }
 
 void LoadScene(RenderScene& scene, lib::StringView path)
@@ -334,12 +233,12 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (!warning.empty())
 	{
-		SPT_LOG_WARN(LogglTFLoader, warning.data());
+		SPT_LOG_WARN(LogGLTFLoader, warning.data());
 	}
 
 	if (!error.empty())
 	{
-		SPT_LOG_ERROR(LogglTFLoader, error.data());
+		SPT_LOG_ERROR(LogGLTFLoader, error.data());
 	}
 
 	if (loaded)

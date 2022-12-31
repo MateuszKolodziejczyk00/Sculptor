@@ -1,16 +1,15 @@
 #pragma once
 
-#include "GraphicsMacros.h"
 #include "SculptorCoreTypes.h"
-#include "UnifiedBuffer.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "Types/Buffer.h"
 
 
-namespace spt::gfx
+namespace spt::rsc
 {
 
 BEGIN_SHADER_STRUCT(, PrimitiveGeometryInfo)
-	SHADER_STRUCT_FIELD(Uint32, indexBufferOffset)
+	SHADER_STRUCT_FIELD(Uint32, indicesOffset)
 	SHADER_STRUCT_FIELD(Uint32, indicesNum)
 	SHADER_STRUCT_FIELD(Uint32, locationsOffset)
 	SHADER_STRUCT_FIELD(Uint32, normalsOffset)
@@ -21,7 +20,7 @@ BEGIN_SHADER_STRUCT(, PrimitiveGeometryInfo)
 END_SHADER_STRUCT();
 
 
-class GRAPHICS_API GeometryManager
+class GeometryManager
 {
 public:
 
@@ -35,8 +34,8 @@ private:
 
 	GeometryManager();
 
-	UnifiedBuffer m_geometryBuffer;
-	UnifiedBuffer m_primitivesBuffer;
+	lib::SharedPtr<rdr::Buffer> m_geometryBuffer;
+	lib::SharedPtr<rdr::Buffer> m_primitivesBuffer;
 };
 
-} // spt::gfx
+} // spt::rsc
