@@ -136,6 +136,7 @@ void RHIBuffer::ReleaseRHI()
 
 	if (m_allocatorVirtualBlock != VK_NULL_HANDLE)
 	{
+		vmaClearVirtualBlock(m_allocatorVirtualBlock);
 		vmaDestroyVirtualBlock(m_allocatorVirtualBlock);
 	}
 
@@ -218,7 +219,7 @@ rhi::RHISuballocation RHIBuffer::CreateSuballocation(const rhi::SuballocationDef
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(AllowsSuballocations());
-	SPT_CHECK(definition.size > 0);
+	SPT_CHECK(definition.size > 0 && definition.size < GetSize());
 
 	VmaVirtualAllocationCreateInfo virtualAllocationDef{};
 	virtualAllocationDef.alignment = definition.alignment;

@@ -58,10 +58,10 @@ void MeshBuilder::AppendData(const unsigned char* sourceData, SizeType component
 		}
 	}
 
-	for (SizeType sourceOffset = 0, destOffset = 0; destOffset < m_geometryData.size(); sourceOffset += stride, destOffset += sizeof(TDestType))
+	for (SizeType sourceOffset = 0, destOffset = 0; destOffset < destDataSize; sourceOffset += stride, destOffset += sizeof(TDestType))
 	{
-		TDestType* dest = reinterpret_cast<TDestType*>(destPtr[destOffset]);
-		const TSourceType* source = reinterpret_cast<const TSourceType*>(sourceData[sourceOffset]);
+		TDestType* dest = reinterpret_cast<TDestType*>(&destPtr[destOffset]);
+		const TSourceType* source = reinterpret_cast<const TSourceType*>(&sourceData[sourceOffset]);
 		for (SizeType componentIdx = 0; componentIdx < componentsNum; ++componentIdx)
 		{
 			dest[componentIdx] = static_cast<TDestType>(source[componentIdx]);

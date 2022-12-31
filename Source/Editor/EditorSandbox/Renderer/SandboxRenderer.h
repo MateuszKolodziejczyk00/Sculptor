@@ -9,6 +9,9 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
+#include "SculptorECS.h"
+#include "RenderScene.h"
+
 namespace spt::rdr
 {
 class Texture;
@@ -59,6 +62,9 @@ private:
 	lib::SharedPtr<rdr::Texture>	m_texture;
 	ui::TextureID					m_uiTextureID;
 	rdr::PipelineStateID			m_computePipelineID;
+
+	entt::registry					m_registry;
+	rsc::RenderScene				m_renderScene;
 };
 
 } // spt::ed

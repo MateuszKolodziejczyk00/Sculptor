@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 
 
@@ -11,7 +12,7 @@ class RenderScene;
 namespace glTFLoader
 {
 
-void LoadScene(RenderScene& scene, lib::StringView path);
+void RENDER_SCENE_API LoadScene(RenderScene& scene, lib::StringView path);
 
 } // glTFLoader
 

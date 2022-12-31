@@ -6,7 +6,7 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPrivateDependency("JobSystem")
 	self:AddPrivateDependency("EngineCore")
 	
-	self:AddPrivateDependency("RenderScene")
+	self:AddPublicDependency("RenderScene")
 end
 
 EditorSandbox:SetupProject()

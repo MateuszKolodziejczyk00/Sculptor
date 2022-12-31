@@ -13,6 +13,9 @@
 #include "JobSystem.h"
 #include "RenderGraphBuilder.h"
 #include "Engine.h"
+#include "Loaders/glTFSceneLoader.h"
+#include "Paths.h"
+#include "BufferUtilities.h"
 
 namespace spt::ed
 {
@@ -40,6 +43,15 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	const rhi::SamplerDefinition samplerDef(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::Repeat);
 	const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
 	m_uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
+
+	m_renderScene.Initialize(m_registry);
+	
+	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
+	if (scenePath.IsValid())
+	{
+		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
+		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
+	}
 }
 
 void SandboxRenderer::Tick(Real32 deltaTime)
@@ -59,6 +71,12 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
 																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 															});
+
+	js::JobWithResult flushPendingBufferUploads = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedPtr<rdr::Semaphore>
+															 {
+																 return gfx::FlushPendingUploads();
+															 });
+
 	rg::RenderGraphBuilder graphBuilder;
 
 	const rg::RGTextureHandle texture = graphBuilder.AcquireExternalTexture(m_texture);
@@ -74,6 +92,12 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	rdr::SemaphoresArray waitSemaphores;
 	// Wait for previous frame as we're reusing resources
 	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_COMMANDS);
+	
+	const lib::SharedPtr<rdr::Semaphore> finishPendingUploadsSemaphore = flushPendingBufferUploads.Await();
+	if (finishPendingUploadsSemaphore)
+	{
+		waitSemaphores.AddBinarySemaphore(finishPendingUploadsSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
+	}
 
 	const lib::SharedRef<rdr::Semaphore> finishSemaphore = createFinishSemaphoreJob.Await();
 	rdr::SemaphoresArray signalSemaphores;

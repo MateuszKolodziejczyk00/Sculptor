@@ -26,6 +26,8 @@ public:
 
 	static const lib::String&		GetGPUCrashDumpsPath();
 
+	static const lib::String&		GetContentPath();
+
 	static const lib::StringView	GetExtension(lib::StringView path);
 
 	// Utils =============================================

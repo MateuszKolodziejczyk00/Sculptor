@@ -358,3 +358,5 @@ FodyWeavers.xsd
 
 # command line arguments vs extension
 **.args.json
+
+Content/Private/**

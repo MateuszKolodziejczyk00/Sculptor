@@ -29,6 +29,11 @@ struct RHIAllocationInfo
 		: memoryUsage(EMemoryUsage::GPUOnly)
 		, allocationFlags(EAllocationFlags::None)
 	{ }
+	
+	explicit RHIAllocationInfo(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
+		: memoryUsage(inMemoryUsage)
+		, allocationFlags(inAllocationFlags)
+	{ }
 
 	EMemoryUsage				memoryUsage;
 	EAllocationFlags			allocationFlags;

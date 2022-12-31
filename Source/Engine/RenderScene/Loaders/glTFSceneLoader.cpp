@@ -2,8 +2,8 @@
 #include "Paths.h"
 #include "MeshBuilder.h"
 
-#define TINYGLTF_NO_STB_IMAGE
-#define TINYGLTF_NO_STB_IMAGE_WRITE
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 #pragma warning(push)
 #pragma warning(disable: 4996)
@@ -89,7 +89,7 @@ const tinygltf::Accessor* GLTFMeshBuilder::GetAttributeAccessor(const tinygltf::
 void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.indicesNum == idxNone<Uint32>);
+	SPT_CHECK(prim.indicesNum == 0);
 
 	prim.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
 	prim.indicesNum = AppendAccessorData<Uint32>(accessor, model);
@@ -98,8 +98,7 @@ void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinyg
 void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(prim.locationsOffset == idxNone<Uint32>);
+	SPT_CHECK(prim.locationsOffset == 0);
 	
 	prim.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);
@@ -108,8 +107,7 @@ void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tin
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(prim.normalsOffset == idxNone<Uint32>);
+	SPT_CHECK(prim.normalsOffset == 0);
 	
 	prim.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);
@@ -118,8 +116,7 @@ void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinyg
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(prim.tangentsOffset == idxNone<Uint32>);
+	SPT_CHECK(prim.tangentsOffset == 0);
 	
 	prim.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);
@@ -128,8 +125,7 @@ void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tiny
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK_MSG(prim.indicesNum != idxNone<Uint32>, "Indices must be set before all vertex attributes");
-	SPT_CHECK(prim.uvsOffset == idxNone<Uint32>);
+	SPT_CHECK(prim.uvsOffset == 0);
 	
 	prim.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);
@@ -150,7 +146,9 @@ Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, c
 	const tinygltf::Buffer& buffer = model.buffers[bufferIdx];
 
 	const SizeType bufferByteOffset = accessor.byteOffset + bufferView.byteOffset;
-	const SizeType stride = bufferView.byteStride;
+	const Int32 strideAsInt = accessor.ByteStride(bufferView);
+	SPT_CHECK(strideAsInt != -1);
+	const SizeType stride = static_cast<SizeType>(strideAsInt);
 
 	const SizeType elementsNum = accessor.count;
 	const SizeType componentsNum = tinygltf::GetNumComponentsInType(accessor.type);

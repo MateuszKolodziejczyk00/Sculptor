@@ -15,7 +15,7 @@ public:
 
 	void Initialize(entt::registry& registry);
 
-
+	entt::registry& GetRegistry() const;
 
 private:
 

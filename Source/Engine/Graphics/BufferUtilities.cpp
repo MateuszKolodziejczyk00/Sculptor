@@ -4,6 +4,9 @@
 #include "MathUtils.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "CurrentFrameContext.h"
+#include "Renderer.h"
+#include "Types/Semaphore.h"
+#include "Types/RenderContext.h"
 
 namespace spt::gfx
 {
@@ -101,7 +104,14 @@ lib::SharedPtr<rdr::Buffer> GPUBuffersUploadStagingManager::GetAvailableStagingB
 
 GPUBuffersUploadStagingManager::GPUBuffersUploadStagingManager()
 	: m_currentStagingBufferOffset(0)
-{ }
+{
+	// This is singleton object so we can capture this safely
+	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																m_preservedStagingBuffers.clear();
+																m_stagingBuffers.clear();
+															});
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferUtilities ===============================================================================
@@ -129,6 +139,42 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 
 		GPUBuffersUploadStagingManager::Get().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
 	}
+}
+
+lib::SharedPtr<rdr::Semaphore> FlushPendingUploads()
+{
+	SPT_PROFILER_FUNCTION();
+
+	GPUBuffersUploadStagingManager& uploadsManager = GPUBuffersUploadStagingManager::Get();
+
+	lib::SharedPtr<rdr::Semaphore> finishSemaphore;
+
+	if (uploadsManager.HasPendingUploads())
+	{
+		const rhi::SemaphoreDefinition semaphoreDef;
+		finishSemaphore = rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FlushPendingBuffersUploadsSemaphore"), semaphoreDef);
+
+		rhi::ContextDefinition contextDef;
+		const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingBuffersUploadsContext"), contextDef);
+
+		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+		uploadsManager.FlushPendingUploads(*recorder);
+
+		rdr::CommandsRecordingInfo recordingInfo;
+		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("FlushPendingBuffersUploadsCmdBuffer");
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		recorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
+		rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back();
+		submitBatch.recordedCommands.emplace_back(std::move(recorder));
+		submitBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_TRANSFER);
+
+		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+	}
+
+	return finishSemaphore;
 }
 
 } // spt::gfx

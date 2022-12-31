@@ -1,6 +1,7 @@
 #include "GeometryManager.h"
 #include "BufferUtilities.h"
 #include "ResourcesManager.h"
+#include "Renderer.h"
 
 namespace spt::rsc
 {
@@ -51,6 +52,13 @@ GeometryManager::GeometryManager()
 	const rhi::RHIAllocationInfo upbAllocationInfo(rhi::EMemoryUsage::GPUOnly);
 	const rhi::BufferDefinition upbDef(8 * 1024 * 1024, unifiedBuffersUsage, unifiedBuffersFlags);
 	m_primitivesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("UnifiedPrimitivesBuffer"), upbDef, upbAllocationInfo);
+	
+	// This is singleton object so we can capture this safely
+	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																m_geometryBuffer.reset();
+																m_primitivesBuffer.reset();
+															});
 }
 
 } // spt::rsc

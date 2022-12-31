@@ -5,6 +5,7 @@
 #include "RendererUtils.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHIBridge/RHIImpl.h"
+#include "Delegates/MulticastDelegate.h"
 
 
 namespace spt::rdr
@@ -35,6 +36,9 @@ public:
 	SemaphoresArray											waitSemaphores;
 	SemaphoresArray											signalSemaphores;
 };
+
+
+using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
 
 
 class RENDERER_CORE_API Renderer
@@ -69,6 +73,8 @@ public:
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
 	static void									IncrementReleaseSemaphoreToCurrentFrame();
+
+	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
 
 #if WITH_SHADERS_HOT_RELOAD
 	static void HotReloadShaders();

@@ -34,6 +34,8 @@ DescriptorSetsManager descriptorSetsManager;
 
 SamplersCache samplersCache;
 
+OnRendererCleanupDelegate cleanupDelegate;
+
 };
 
 static RendererData g_data;
@@ -69,6 +71,8 @@ void Renderer::PostCreatedWindow()
 void Renderer::Uninitialize()
 {
 	CurrentFrameContext::ReleaseAllResources();
+
+	GetOnRendererCleanupDelegate().Broadcast();
 
 	GetSamplersCache().Uninitialize();
 
@@ -204,6 +208,12 @@ void Renderer::HotReloadShaders()
 
 	GetShadersManager().HotReloadShaders();
 }
+
+OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
+{
+	return priv::g_data.cleanupDelegate;
+}
+
 #endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

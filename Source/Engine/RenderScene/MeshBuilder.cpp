@@ -4,7 +4,9 @@ namespace spt::rsc
 {
 
 MeshBuilder::MeshBuilder()
-{ }
+{
+	m_geometryData.reserve(1024 * 1024);
+}
 
 MeshGeometryData MeshBuilder::EmitMeshGeometry()
 {
@@ -58,7 +60,8 @@ Uint64 MeshBuilder::GetCurrentDataSize() const
 Byte* MeshBuilder::AppendData(Uint64 appendSize)
 {
 	const SizeType prevSize = m_geometryData.size();
-	m_geometryData.resize(m_geometryData.size() + appendSize);
+	const SizeType newSize = m_geometryData.size() + appendSize;
+	m_geometryData.resize(newSize);
 	return &m_geometryData[prevSize];
 }
 
