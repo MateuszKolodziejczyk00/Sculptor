@@ -8,8 +8,6 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
-
-#include "SculptorECS.h"
 #include "RenderScene.h"
 
 namespace spt::rdr
@@ -63,7 +61,6 @@ private:
 	ui::TextureID					m_uiTextureID;
 	rdr::PipelineStateID			m_computePipelineID;
 
-	entt::registry					m_registry;
 	rsc::RenderScene				m_renderScene;
 };
 

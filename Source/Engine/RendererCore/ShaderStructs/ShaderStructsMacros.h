@@ -70,7 +70,7 @@ public:
 
 } // priv
 
-#define BEGIN_SHADER_STRUCT(api, name) \
+#define BEGIN_ALIGNED_SHADER_STRUCT(api, alignment, name) \
 struct api name \
 { \
 private: \
@@ -81,6 +81,10 @@ public: \
 		return #name; \
 	} \
 	typedef rdr::priv::ShaderStructMemberMetaData<void, 
+
+
+// Use 4 as default alignment (it can be still greater if any of members will have greater alignment)
+#define BEGIN_SHADER_STRUCT(api, name) BEGIN_ALIGNED_SHADER_STRUCT(api, 4, name)
 
 
 #define SHADER_STRUCT_FIELD(type, name) \
