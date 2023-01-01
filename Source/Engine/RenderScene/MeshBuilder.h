@@ -2,19 +2,11 @@
 
 #include "SculptorCoreTypes.h"
 #include "GeometryManager.h"
+#include "Meshes/StaticMesh.h"
 
 
 namespace spt::rsc
 {
-
-struct MeshGeometryData
-{
-	Uint32 firstPrimitiveIdx;
-	Uint32 primitivesNum;
-	rhi::RHISuballocation primtivesSuballocation;
-	rhi::RHISuballocation geometrySuballocation;
-};
-
 
 class MeshBuilder abstract
 {
@@ -22,7 +14,7 @@ public:
 
 	MeshBuilder();
 
-	MeshGeometryData EmitMeshGeometry();
+	StaticMeshGeometryData EmitMeshGeometry();
 
 protected:
 

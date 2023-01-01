@@ -43,6 +43,14 @@ public:
 #endif // RENDERER_VALIDATION
 	}
 
+	RendererResourceName operator+(const char* suffix) const
+	{
+#if RENDERER_VALIDATION
+		return RendererResourceName(Get().ToString() + suffix);
+#else
+		return RendererResourceName();
+#endif // RENDERER_VALIDATION
+	}
 
 private:
 

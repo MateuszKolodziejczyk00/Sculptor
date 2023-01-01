@@ -8,7 +8,7 @@ MeshBuilder::MeshBuilder()
 	m_geometryData.reserve(1024 * 1024);
 }
 
-MeshGeometryData MeshBuilder::EmitMeshGeometry()
+StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -32,7 +32,7 @@ MeshGeometryData MeshBuilder::EmitMeshGeometry()
 	SPT_CHECK(primitivesSuballocation.IsValid());
 	SPT_CHECK(primitivesSuballocation.GetOffset() % sizeof(PrimitiveGeometryInfo) == 0);
 
-	MeshGeometryData mesh;
+	StaticMeshGeometryData mesh;
 	mesh.firstPrimitiveIdx = static_cast<Uint32>(primitivesSuballocation.GetOffset() / sizeof(PrimitiveGeometryInfo));
 	mesh.primitivesNum = static_cast<Uint32>(m_primitives.size());
 	mesh.primtivesSuballocation = primitivesSuballocation;

@@ -3,6 +3,7 @@
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "SculptorECS.h"
+#include "RenderInstancesRegistry.h"
 
 namespace spt::rsc
 {
@@ -20,6 +21,8 @@ public:
 private:
 
 	entt::registry* m_registry;
+
+	RenderInstancesRegistry m_renderInstancesRegistry;
 };
 
 } // spt::rsc
