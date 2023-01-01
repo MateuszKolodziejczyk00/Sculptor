@@ -2,11 +2,33 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
+#include "InstancesLists/BasePassRenderInstancesList.h"
 #include "SculptorECS.h"
-#include "RenderInstancesRegistry.h"
+#include "Utility/NamedType.h"
 
 namespace spt::rsc
 {
+
+struct RenderInstanceData
+{
+	math::Transform3f transfrom;
+};
+
+
+struct EntityTransformHandle
+{
+	EntityTransformHandle() = default;
+
+	explicit EntityTransformHandle(const rhi::RHISuballocation& inSuballocation)
+		: transformSuballocation(inSuballocation)
+	{ }
+
+	rhi::RHISuballocation transformSuballocation;
+};
+
+
+using RenderSceneEntity = lib::NamedType<ecs::Entity, struct RenderSceneEntityParameter>;
+
 
 class RENDER_SCENE_API RenderScene
 {
@@ -14,15 +36,22 @@ public:
 
 	RenderScene();
 
-	void Initialize(entt::registry& registry);
+	ecs::Registry& GetRegistry();
+	const ecs::Registry& GetRegistry() const;
 
-	entt::registry& GetRegistry() const;
+	RenderSceneEntity CreateEntity(const RenderInstanceData& instanceData);
+	void DestroyEntity(RenderSceneEntity entity);
+
+	BasePassRenderInstancesList& GetBasePassRenderInstancesList();
+	const BasePassRenderInstancesList& GetBasePassRenderInstancesList() const;
 
 private:
 
-	entt::registry* m_registry;
+	ecs::Registry m_registry;
 
-	RenderInstancesRegistry m_renderInstancesRegistry;
+	BasePassRenderInstancesList m_basePassRenderInstances;
+
+	lib::SharedPtr<rdr::Buffer> m_instanceTransforms;
 };
 
 } // spt::rsc
