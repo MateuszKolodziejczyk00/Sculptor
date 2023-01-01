@@ -5,6 +5,8 @@
 #include "RHI/RHIBridge/RHILimitsImpl.h"
 #include "ResourcesManager.h"
 #include "MathUtils.h"
+#include "RendererSettings.h"
+#include "Renderer.h"
 
 
 namespace spt::gfx
@@ -22,7 +24,8 @@ public:
 	explicit ConstantBufferBinding(const lib::HashedString& name)
 		: Super(name)
 		, m_bufferMappedPtr(nullptr)
-		, m_secondStructOffset(0)
+		, m_structsStride(0)
+		, m_lastDynamicOffsetChangeFrameIdx(0)
 		, m_offset(nullptr)
 	{ }
 
@@ -78,7 +81,7 @@ public:
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
 	void Set(TAssignable&& value)
 	{
-		SwitchBufferOffset();
+		SwitchBufferOffsetIfNecessary();
 		GetImpl() = std::forward<TAssignable>(value);
 	}
 
@@ -86,13 +89,14 @@ public:
 	void Set(TSetter&& setter)
 	{
 		const TStruct& oldValue = GetImpl();
-		SwitchBufferOffset();
+		SwitchBufferOffsetIfNecessary();
 		TStruct& newValue = GetImpl();
-
-		SPT_CHECK(&newValue != &oldValue);
-
-		// transfer memory to new location before calling setter
-		memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
+		
+		// If struct offset was changed and we're using other copy, copy prev instance to new, so that changes to value will be incremental
+		if (&newValue != &oldValue)
+		{
+			memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
+		}
 
 		setter(newValue);
 	}
@@ -104,9 +108,23 @@ public:
 
 private:
 
-	Uint64 SwitchBufferOffset()
+	Bool ShouldSwitchBufferOffsetOnChange() const
 	{
-		*m_offset = *m_offset > 0 ? 0 : m_secondStructOffset;
+		return m_structsStride > 0 && rdr::Renderer::GetCurrentFrameIdx() != m_lastDynamicOffsetChangeFrameIdx;
+	}
+
+	Uint64 SwitchBufferOffsetIfNecessary()
+	{
+		if (ShouldSwitchBufferOffsetOnChange())
+		{
+			SPT_CHECK(m_structsStride != 0);
+			*m_offset += m_structsStride;
+			if (*m_offset >= m_buffer->GetRHI().GetSize())
+			{
+				*m_offset = 0;
+			}
+			m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+		}
 		return *m_offset;
 	}
 	
@@ -121,10 +139,25 @@ private:
 		SPT_PROFILER_FUNCTION();
 
 		constexpr Uint64 structSize = sizeof(TStruct);
-		const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
-		const Uint64 secondStructOffset = math::Utils::RoundUp(structSize, minOffsetAlignment);
-		
-		const Uint64 bufferSize = secondStructOffset + structSize;
+
+		const Bool isPersistent = lib::HasAnyFlag(owningState.GetFlags(), rdr::EDescriptorSetStateFlags::Persistent);
+		const Uint32 structsCopiesNum = isPersistent ? rdr::RendererSettings::Get().framesInFlight : 1;
+
+		Uint64 bufferSize = 0;
+		if (structsCopiesNum > 1)
+		{
+			const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
+			const Uint64 structStride = math::Utils::RoundUp(structSize, minOffsetAlignment);
+
+			bufferSize = (structsCopiesNum - 1) * structStride + structSize;
+
+			SPT_CHECK(structStride <= maxValue<Uint32>);
+			m_structsStride = static_cast<Uint32>(structStride);
+		}
+		else
+		{
+			bufferSize = structSize;
+		}
 
 		const rhi::BufferDefinition bufferDef(bufferSize, rhi::EBufferUsage::Uniform);
 
@@ -137,17 +170,17 @@ private:
 		m_bufferMappedPtr = m_buffer->GetRHI().MapBufferMemory();
 
 		m_bufferView = m_buffer->CreateView(0, bufferSize);
-
-		// store offset as 32bits integer because that's how dynamic offset are stored
-		SPT_CHECK(secondStructOffset <= maxValue<Uint32>);
-		m_secondStructOffset = static_cast<Uint32>(secondStructOffset);
 	}
 
 	lib::SharedPtr<rdr::Buffer>		m_buffer;
 	lib::SharedPtr<rdr::BufferView>	m_bufferView;
 	Byte*							m_bufferMappedPtr;
 
-	Uint32							m_secondStructOffset;
+	Uint32							m_structsStride;
+
+	// Store frame idx snapshotted when changing value
+	// It's used to not changing offset multiple times during one frame as this could override data used on GPU
+	Uint64							m_lastDynamicOffsetChangeFrameIdx;
 
 	// Dynamic Offset value ptr
 	Uint32*							m_offset;

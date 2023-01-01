@@ -1,14 +1,15 @@
 #pragma once
 
+#include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 
 namespace spt::rdr
 {
 
-class RendererSettings
+class RENDERER_CORE_API RendererSettings
 {
 public:
-
+	
 	RendererSettings();
 
 	static const RendererSettings& Get();

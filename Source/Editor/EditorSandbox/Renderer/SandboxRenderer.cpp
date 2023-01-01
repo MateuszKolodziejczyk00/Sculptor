@@ -33,7 +33,7 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	rhi::TextureViewDefinition viewDef;
 	viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
 
-	m_descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<TestDS>(RENDERER_RESOURCE_NAME("TestDS"), rdr::EDescriptorSetStateFlags::None);
+	m_descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<TestDS>(RENDERER_RESOURCE_NAME("TestDS"), rdr::EDescriptorSetStateFlags::Persistent);
 
 	m_texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
 	const lib::SharedRef<rdr::TextureView> textureView = m_texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef);
