@@ -2,7 +2,7 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
-#include "InstancesLists/BasePassRenderInstancesList.h"
+#include "Types/Buffer.h"
 #include "SculptorECS.h"
 #include "Utility/NamedType.h"
 
@@ -42,14 +42,11 @@ public:
 	RenderSceneEntity CreateEntity(const RenderInstanceData& instanceData);
 	void DestroyEntity(RenderSceneEntity entity);
 
-	BasePassRenderInstancesList& GetBasePassRenderInstancesList();
-	const BasePassRenderInstancesList& GetBasePassRenderInstancesList() const;
+	Uint64 GetTransformIdx(RenderSceneEntity entity) const;
 
 private:
 
 	ecs::Registry m_registry;
-
-	BasePassRenderInstancesList m_basePassRenderInstances;
 
 	lib::SharedPtr<rdr::Buffer> m_instanceTransforms;
 };

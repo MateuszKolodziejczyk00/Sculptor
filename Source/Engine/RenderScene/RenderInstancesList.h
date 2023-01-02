@@ -18,6 +18,7 @@ protected:
 
 	rhi::RHISuballocation	AddInstanceImpl(const Byte* instanceData, Uint64 instanceDataSize);
 	void					RemoveInstanceImpl(const rhi::RHISuballocation& instanceSuballocation);
+	void					FlushRemovedInstancesImpl();
 
 private:
 
@@ -50,6 +51,11 @@ public:
 	void RemoveInstance(const rhi::RHISuballocation& instanceSuballocation)
 	{
 		return RemoveInstanceImpl(instanceSuballocation);
+	}
+
+	void FlushRemovedInstances()
+	{
+		return FlushRemovedInstancesImpl();
 	}
 };
 
