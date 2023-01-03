@@ -43,7 +43,7 @@ public:
 	SharedRef(const SharedRef<TType>& value) = default;
 	SharedRef(SharedRef<TType>&& value) = default;
 
-	SharedRef<TType>& operator=(const SharedRef<TType>& rhs)	= delete;
+	SharedRef<TType>& operator=(const SharedRef<TType>& rhs)	= default;
 	SharedRef<TType>& operator=(SharedRef<TType>&& rhs)			= delete;
 
 	SPT_NODISCARD decltype(auto) operator->() const
