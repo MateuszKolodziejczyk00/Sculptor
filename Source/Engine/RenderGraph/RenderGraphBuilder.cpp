@@ -8,126 +8,6 @@
 namespace spt::rg
 {
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// RGRenderPassDefinition ========================================================================
-
-RGRenderPassDefinition::RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags /*= rhi::ERenderingFlags::Default*/)
-	: m_renderAreaOffset(renderAreaOffset)
-	, m_renderAreaExtent(renderAreaExtent)
-	, m_renderingFlags(renderingFlags)
-{ }
-
-RGRenderTargetDef& RGRenderPassDefinition::AddColorRenderTarget()
-{
-	return m_colorRenderTargetDefs.emplace_back();
-}
-
-void RGRenderPassDefinition::AddColorRenderTarget(const RGRenderTargetDef& definition)
-{
-	m_colorRenderTargetDefs.emplace_back(definition);
-}
-
-RGRenderTargetDef& RGRenderPassDefinition::GetDepthRenderTargetRef()
-{
-	return m_depthRenderTargetDef;
-}
-
-void RGRenderPassDefinition::SetDepthRenderTarget(const RGRenderTargetDef& definition)
-{
-	m_depthRenderTargetDef = definition;
-}
-
-RGRenderTargetDef& RGRenderPassDefinition::GetStencilRenderTargetRef()
-{
-	return m_stencilRenderTargetDef;
-}
-
-void RGRenderPassDefinition::SetStencilRenderTarget(const RGRenderTargetDef& definition)
-{
-	m_stencilRenderTargetDef = definition;
-}
-
-rdr::RenderingDefinition RGRenderPassDefinition::CreateRenderingDefinition() const
-{
-	SPT_PROFILER_FUNCTION();
-
-	rdr::RenderingDefinition renderingDefinition(m_renderAreaOffset, m_renderAreaExtent, m_renderingFlags);
-
-	std::for_each(std::cbegin(m_colorRenderTargetDefs), std::cend(m_colorRenderTargetDefs),
-				  [this, &renderingDefinition](const RGRenderTargetDef& def)
-				  {
-					  renderingDefinition.AddColorRenderTarget(CreateRTDefinition(def));
-				  });
-
-	if (IsRTDefinitionValid(m_depthRenderTargetDef))
-	{
-		renderingDefinition.AddDepthRenderTarget(CreateRTDefinition(m_depthRenderTargetDef));
-	}
-
-	if (IsRTDefinitionValid(m_stencilRenderTargetDef))
-	{
-		renderingDefinition.AddStencilRenderTarget(CreateRTDefinition(m_stencilRenderTargetDef));
-	}
-
-	return renderingDefinition;
-}
-
-void RGRenderPassDefinition::BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const RGRenderTargetDef& colorRenderTarget : m_colorRenderTargetDefs)
-	{
-		SPT_CHECK(colorRenderTarget.textureView.IsValid());
-
-		dependenciesBuilder.AddTextureAccess(colorRenderTarget.textureView, ERGTextureAccess::ColorRenderTarget);
-
-		if (colorRenderTarget.resolveTextureView.IsValid())
-		{
-			dependenciesBuilder.AddTextureAccess(colorRenderTarget.resolveTextureView, ERGTextureAccess::ColorRenderTarget);
-		}
-	}
-
-	if (m_depthRenderTargetDef.textureView.IsValid())
-	{
-		dependenciesBuilder.AddTextureAccess(m_depthRenderTargetDef.textureView, ERGTextureAccess::DepthRenderTarget);
-	}
-
-	if (m_stencilRenderTargetDef.textureView.IsValid())
-	{
-		dependenciesBuilder.AddTextureAccess(m_stencilRenderTargetDef.textureView, ERGTextureAccess::StencilRenderTarget);
-	}
-}
-
-rdr::RTDefinition RGRenderPassDefinition::CreateRTDefinition(const RGRenderTargetDef& rgDef) const
-{
-	SPT_CHECK(rgDef.textureView.IsValid());
-
-	rdr::RTDefinition def;
-
-	def.textureView = rgDef.textureView->GetViewInstance();
-
-	if (rgDef.resolveTextureView.IsValid())
-	{
-		def.resolveTextureView = rgDef.resolveTextureView->GetViewInstance();
-	}
-
-	def.loadOperation	= rgDef.loadOperation;
-	def.storeOperation	= rgDef.storeOperation;
-	def.resolveMode		= rgDef.resolveMode;
-	def.clearColor		= rgDef.clearColor;
-
-	return def;
-}
-
-Bool RGRenderPassDefinition::IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const
-{
-	return rgDef.textureView.IsValid();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// RenderGraphBuilder ============================================================================
-
 RenderGraphBuilder::RenderGraphBuilder()
 { }
 
@@ -305,17 +185,18 @@ void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr
 	m_extractedBuffers.emplace_back(buffer);
 }
 
-void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
+void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_boundDSStates.emplace_back(dsState);
 }
 
-void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState)
+void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_MAYBE_UNUSED
 	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
 	if (foundDS != std::cend(m_boundDSStates))
 	{
@@ -690,20 +571,6 @@ void RenderGraphBuilder::ResolveBufferReleases()
 			lastAccessNode->AddBufferToRelease(buffer);
 		}
 	}
-}
-
-lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> RenderGraphBuilder::GetExternalDSStates() const
-{
-	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> states;
-	states.reserve(m_boundDSStates.size());
-
-	std::transform(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), std::back_inserter(states),
-				   [](const lib::SharedPtr<rdr::DescriptorSetState>& state)
-				   {
-					   return lib::ToSharedRef(state);
-				   });
-
-	return states;
 }
 
 } // spt::rg

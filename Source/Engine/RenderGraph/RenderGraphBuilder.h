@@ -38,44 +38,6 @@ inline decltype(auto) EmptyDescriptorSets()
 }
 
 
-using RGRenderTargetDef = rhi::RTGenericDefinition<RGTextureViewHandle>;
-
-
-class RGRenderPassDefinition
-{
-public:
-
-	RGRenderPassDefinition(math::Vector2i renderAreaOffset, math::Vector2u renderAreaExtent, rhi::ERenderingFlags renderingFlags = rhi::ERenderingFlags::Default);
-	
-	SPT_NODISCARD RGRenderTargetDef& AddColorRenderTarget();
-	void AddColorRenderTarget(const RGRenderTargetDef& definition);
-
-	SPT_NODISCARD RGRenderTargetDef& GetDepthRenderTargetRef();
-	void SetDepthRenderTarget(const RGRenderTargetDef& definition);
-
-	SPT_NODISCARD RGRenderTargetDef& GetStencilRenderTargetRef();
-	void SetStencilRenderTarget(const RGRenderTargetDef& definition);
-
-	rdr::RenderingDefinition CreateRenderingDefinition() const;
-
-	void BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const;
-
-private:
-
-	rdr::RTDefinition CreateRTDefinition(const RGRenderTargetDef& rgDef) const;
-
-	Bool IsRTDefinitionValid(const RGRenderTargetDef& rgDef) const;
-
-	lib::DynamicArray<RGRenderTargetDef>	m_colorRenderTargetDefs;
-	RGRenderTargetDef						m_depthRenderTargetDef;
-	RGRenderTargetDef						m_stencilRenderTargetDef;
-
-	math::Vector2i			m_renderAreaOffset;
-	math::Vector2u			m_renderAreaExtent;
-	rhi::ERenderingFlags	m_renderingFlags;
-};
-
-
 class RENDER_GRAPH_API RenderGraphBuilder
 {
 public:
@@ -115,17 +77,28 @@ public:
 	
 	// Commands ===============================================
 
+	/** Calls dispatch command with given descriptor sets */
 	template<typename TDescriptorSetStatesRange>
 	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
+	/** Creates render pass with given descriptor sets and executes callable inside it */
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
+	/** Creates render pass with given descriptor sets and executes callable inside it */
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
-	void BindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
-	void UnbindDescriptorSetState(const lib::SharedPtr<rdr::DescriptorSetState>& dsState);
+	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
+	template<typename TDescriptorSetStatesRange, typename TCallable>
+	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+
+	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
+	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
+	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
+
+	void BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
+	void UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 
 	void Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
 
@@ -136,6 +109,9 @@ private:
 
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+
+	template<typename TDescriptorSetStatesRange>
+	void AddDescriptorSetStatesToNode(RGNodeHandle node, const TDescriptorSetStatesRange& dsStatesRange);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const;
@@ -171,8 +147,6 @@ private:
 	void ResolveTextureReleases();
 	void ResolveBufferReleases();
 
-	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> GetExternalDSStates() const;
-
 	lib::DynamicArray<RGTextureHandle> m_textures;
 	lib::DynamicArray<RGBufferHandle> m_buffers;
 
@@ -184,7 +158,7 @@ private:
 
 	lib::DynamicArray<RGNodeHandle> m_nodes;
 
-	lib::DynamicArray<lib::SharedPtr<rdr::DescriptorSetState>> m_boundDSStates;
+	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_boundDSStates;
 
 	RGAllocator m_allocator;
 };
@@ -200,22 +174,17 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
-		recorder.BindDescriptorSetStates(externalBoundStates);
-		recorder.BindDescriptorSetStates(dsStatesRange);
-
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.Dispatch(groupCount);
-
-		recorder.UnbindDescriptorSetStates(dsStatesRange);
-		recorder.UnbindDescriptorSetStates(externalBoundStates);
 	};
 
 	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
+	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
@@ -236,6 +205,7 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 	SPT_PROFILER_FUNCTION();
 	
 	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, callable);
+	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
@@ -244,6 +214,32 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 	BuildParametersDepenencies(parameters, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
+}
+
+template<typename TDescriptorSetStatesRange, typename TCallable>
+void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+{
+	AddSubpass(subpassName, dsStatesRange, std::make_tuple(), callable);
+}
+
+	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
+void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!m_nodes.empty());
+
+	RGNodeHandle lastNode = m_nodes.back();
+	SPT_CHECK_MSG(lastNode->GetType() == ERenderGraphNodeType::RenderPass, "Subpasses can be added only to render pass nodes");
+
+	RGRenderPassNodeBase* lastRenderPass = static_cast<RGRenderPassNodeBase*>(lastNode.Get());
+
+	RGDependeciesContainer subpassDependencies;
+	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies);
+	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
+	BuildParametersDepenencies(dsStatesRange, parameters);
+
+	ResolveNodeDependecies(*lastRenderPass, subpassDependencies);
 }
 
 template<typename TNodeType, typename... TArgs>
@@ -262,27 +258,25 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 template<typename TDescriptorSetStatesRange, typename TCallable>
 RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
-	const auto executeLambda = [renderPassDef, dsStatesRange, callable, externalBoundStates = GetExternalDSStates()](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-	{
-		const rdr::RenderingDefinition renderingDefinition = renderPassDef.CreateRenderingDefinition();
-
-		recorder.BeginRendering(renderingDefinition);
-
-		recorder.BindDescriptorSetStates(externalBoundStates);
-		recorder.BindDescriptorSetStates(dsStatesRange);
-
-		callable(renderContext, recorder);
-
-		recorder.UnbindDescriptorSetStates(dsStatesRange);
-		recorder.UnbindDescriptorSetStates(externalBoundStates);
-
-		recorder.EndRendering();
-	};
-
-	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
+	using LambdaType = TCallable;
 	using NodeType = RGLambdaNode<LambdaType>;
 
-	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, std::move(executeLambda));
+	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, renderPassDef, std::forward<TCallable>(callable));
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::AddDescriptorSetStatesToNode(RGNodeHandle node, const TDescriptorSetStatesRange& dsStatesRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (const lib::SharedRef<rdr::DescriptorSetState>& state : dsStatesRange)
+	{
+		node->AddDescriptorSetState(state);
+	}
+	for (const lib::SharedRef<rdr::DescriptorSetState>& state : m_boundDSStates)
+	{
+		node->AddDescriptorSetState(state);
+	}
 }
 
 template<typename TDescriptorSetStatesRange>

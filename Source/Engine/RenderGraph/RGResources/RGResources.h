@@ -414,7 +414,7 @@ public:
 		, m_viewDef(viewDefinition)
 	{ }
 
-	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, lib::SharedRef<rdr::TextureView> textureView)
+	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, const lib::SharedRef<rdr::TextureView>& textureView)
 		: RGResource(resourceDefinition)
 		, m_texture(texture)
 		, m_textureView(textureView)

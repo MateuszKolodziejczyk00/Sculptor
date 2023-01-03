@@ -66,6 +66,9 @@ private:
 class RGNode;
 using RGNodeHandle = RGResourceHandle<RGNode>;
 
+class RGSubpass;
+using RGSubpassHandle = RGResourceHandle<RGSubpass>;
+
 class RGTexture;
 using RGTextureHandle = RGResourceHandle<RGTexture>;
 

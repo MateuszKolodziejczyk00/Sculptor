@@ -4,6 +4,9 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGTrackedObject.h"
 #include "RGResources/RGResources.h"
+#include "RGRenderPassDefinition.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
+
 
 namespace spt::rhi
 {
@@ -43,6 +46,8 @@ public:
 	void AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget);
 	void AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
+	void AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
+
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
 
 protected:
@@ -56,6 +61,9 @@ private:
 	void CreateResources();
 	void PreExecuteBarrier(rdr::CommandRecorder& recorder);
 	void ReleaseResources();
+
+	void BindDescriptorSetStates(rdr::CommandRecorder& recorder);
+	void UnbindDescriptorSetStates(rdr::CommandRecorder& recorder);
 
 	// Execution Helpers ================================================
 
@@ -121,6 +129,8 @@ private:
 	lib::DynamicArray<TextureTransitionDef>	m_preExecuteTextureTransitions;
 	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;
 
+	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_dsStates;
+
 	Bool m_executed;
 };
 
@@ -144,6 +154,108 @@ public:
 protected:
 
 	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
+	{
+		m_callable(renderContext, recorder);
+	}
+
+private:
+
+	TCallable m_callable;
+};
+
+
+class RGSubpass : public RGTrackedObject
+{
+public:
+
+	explicit RGSubpass(const RenderGraphDebugName& name);
+	
+	const RenderGraphDebugName& GetName() const;
+
+	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
+
+protected:
+
+	virtual void DoExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
+
+private:
+
+	RenderGraphDebugName m_name;
+};
+
+
+template<typename TCallable>
+class RGLambdaSubpass : public RGSubpass
+{
+protected:
+
+	using Super = RGSubpass;
+
+public:
+
+	explicit RGLambdaSubpass(const RenderGraphDebugName& name, TCallable callable)
+		: Super(name)
+		, m_callable(callable)
+	{ }
+
+protected:
+
+	virtual void DoExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
+	{
+		m_callable(renderContext, recorder);
+	}
+
+private:
+
+	TCallable				m_callable;
+};
+
+
+class RGRenderPassNodeBase : public RGNode
+{
+protected:
+
+	using Super = RGNode;
+
+public:
+
+	explicit RGRenderPassNodeBase(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef);
+
+	void AppendSubpass(RGSubpassHandle subpass);
+
+protected:
+
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) final;
+
+	virtual void ExecuteRenderPass(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
+
+private:
+
+	RGRenderPassDefinition m_renderPassDef;
+
+	lib::DynamicArray<RGSubpassHandle> m_subpasses;
+};
+
+
+template<typename TCallable>
+class RGRenderPassNode : public RGRenderPassNodeBase
+{
+protected:
+
+	using Super = RGRenderPassNodeBase;
+
+public:
+
+	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, rdr::CommandRecorder&>));
+
+	explicit RGRenderPassNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef, TCallable callable)
+		: Super(name, id, type, renderPassDef)
+		, m_callable(std::move(callable))
+	{ }
+
+protected:
+
+	virtual void ExecuteRenderPass(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
 	{
 		m_callable(renderContext, recorder);
 	}

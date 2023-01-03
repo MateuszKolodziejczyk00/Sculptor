@@ -8,6 +8,9 @@
 namespace spt::rg
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RGNode ========================================================================================
+
 RGNode::RGNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
 	: m_name(name)
 	, m_id(id)
@@ -88,6 +91,11 @@ void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint
 	m_preExecuteBufferTransitions.emplace_back(BufferTransitionDef(buffer, offset, size, sourceStage, sourceAccess, destStage, destAccess));
 }
 
+void RGNode::AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
+{
+	m_dsStates.emplace_back(dsState);
+}
+
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 {
 	SPT_PROFILER_FUNCTION();
@@ -101,7 +109,9 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 
 	PreExecuteBarrier(recorder);
 
+	BindDescriptorSetStates(recorder);
 	OnExecute(renderContext, recorder);
+	UnbindDescriptorSetStates(recorder);
 
 	ReleaseResources();
 
@@ -149,6 +159,20 @@ void RGNode::ReleaseResources()
 	ReleaseBuffers();
 }
 
+void RGNode::BindDescriptorSetStates(rdr::CommandRecorder& recorder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	recorder.BindDescriptorSetStates(m_dsStates);
+}
+
+void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	recorder.UnbindDescriptorSetStates(m_dsStates);
+}
+
 void RGNode::CreateTextures()
 {
 	RenderGraphResourcesPool& resourcesPool = RenderGraphPersistentState::GetResourcesPool();
@@ -187,6 +211,54 @@ void RGNode::ReleaseBuffers()
 	{
 		buffer->ReleaseResource();
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RGSubpass =====================================================================================
+
+RGSubpass::RGSubpass(const RenderGraphDebugName& name)
+	: m_name(name)
+{ }
+
+const RenderGraphDebugName& RGSubpass::GetName() const
+{
+	return m_name;
+}
+
+void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
+	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
+
+	DoExecute(renderContext, recorder);
+}
+
+RGRenderPassNodeBase::RGRenderPassNodeBase(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef)
+	: Super(name, id, type)
+	, m_renderPassDef(renderPassDef)
+{ }
+
+void RGRenderPassNodeBase::AppendSubpass(RGSubpassHandle subpass)
+{
+	m_subpasses.emplace_back(subpass);
+}
+
+void RGRenderPassNodeBase::OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+{
+	const rdr::RenderingDefinition renderingDefinition = m_renderPassDef.CreateRenderingDefinition();
+
+	recorder.BeginRendering(renderingDefinition);
+
+	ExecuteRenderPass(renderContext, recorder);
+
+	for (RGSubpassHandle subpass : m_subpasses)
+	{
+		subpass->Execute(renderContext, recorder);
+	}
+
+	recorder.EndRendering();
 }
 
 } // spt::rg
