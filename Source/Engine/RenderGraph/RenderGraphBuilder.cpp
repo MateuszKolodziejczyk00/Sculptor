@@ -196,7 +196,6 @@ void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedRef<rdr::Desc
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_MAYBE_UNUSED
 	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
 	if (foundDS != std::cend(m_boundDSStates))
 	{

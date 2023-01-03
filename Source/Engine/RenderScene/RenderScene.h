@@ -3,8 +3,7 @@
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
-#include "SculptorECS.h"
-#include "Utility/NamedType.h"
+#include "RenderSceneRegistry.h"
 
 namespace spt::rsc
 {
@@ -27,9 +26,6 @@ struct EntityTransformHandle
 };
 
 
-using RenderSceneEntity = lib::NamedType<ecs::Entity, struct RenderSceneEntityParameter>;
-
-
 class RENDER_SCENE_API RenderScene
 {
 public:
@@ -39,14 +35,14 @@ public:
 	ecs::Registry& GetRegistry();
 	const ecs::Registry& GetRegistry() const;
 
-	RenderSceneEntity CreateEntity(const RenderInstanceData& instanceData);
-	void DestroyEntity(RenderSceneEntity entity);
+	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
+	void DestroyEntity(RenderSceneEntityHandle entity);
 
-	Uint64 GetTransformIdx(RenderSceneEntity entity) const;
+	Uint64 GetTransformIdx(RenderSceneEntityHandle entity) const;
 
 private:
 
-	ecs::Registry m_registry;
+	RenderSceneRegistry m_registry;
 
 	lib::SharedPtr<rdr::Buffer> m_instanceTransforms;
 };

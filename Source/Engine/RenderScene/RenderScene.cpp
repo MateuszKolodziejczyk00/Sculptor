@@ -6,7 +6,6 @@ namespace spt::rsc
 {
 
 RenderScene::RenderScene()
-	: m_basePassRenderInstances(RENDERER_RESOURCE_NAME("BasePassInstancesList"), 1024)
 {
 	rhi::RHIAllocationInfo transformsAllocationInfo;
 	transformsAllocationInfo.memoryUsage = rhi::EMemoryUsage::GPUOnly;
@@ -30,16 +29,17 @@ const ecs::Registry& RenderScene::GetRegistry() const
 	return m_registry;
 }
 
-rsc::RenderSceneEntity RenderScene::CreateEntity(const RenderInstanceData& instanceData)
+RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& instanceData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rsc::RenderSceneEntity entity(m_registry.create());
+	const RenderSceneEntity entityID = m_registry.create();
+	const RenderSceneEntityHandle entity(m_registry, entityID);
 
 	const rhi::SuballocationDefinition suballocationDef(sizeof(math::Transform3f), sizeof(math::Transform3f), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
 	const rhi::RHISuballocation entityTransformSuballocation = m_instanceTransforms->GetRHI().CreateSuballocation(suballocationDef);
 
-	m_registry.emplace<EntityTransformHandle>(entity, entityTransformSuballocation);
+	entity.emplace<EntityTransformHandle>(entityTransformSuballocation);
 
 	const Byte* transformData = reinterpret_cast<const Byte*>(instanceData.transfrom.data());
 	gfx::UploadDataToBuffer(lib::Ref(m_instanceTransforms), entityTransformSuballocation.GetOffset(), transformData, sizeof(math::Transform3f));
@@ -47,21 +47,19 @@ rsc::RenderSceneEntity RenderScene::CreateEntity(const RenderInstanceData& insta
 	return entity;
 }
 
-void RenderScene::DestroyEntity(RenderSceneEntity entity)
+void RenderScene::DestroyEntity(RenderSceneEntityHandle entity)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK_NO_ENTRY_MSG("TODO");
 }
 
-BasePassRenderInstancesList& RenderScene::GetBasePassRenderInstancesList()
+Uint64 RenderScene::GetTransformIdx(RenderSceneEntityHandle entity) const
 {
-	return m_basePassRenderInstances;
-}
+	SPT_PROFILER_FUNCTION();
 
-const BasePassRenderInstancesList& RenderScene::GetBasePassRenderInstancesList() const
-{
-	return m_basePassRenderInstances;
+	const EntityTransformHandle& transformHandle = entity.get<EntityTransformHandle>();
+	return transformHandle.transformSuballocation.GetOffset() / sizeof(math::Transform3f);
 }
 
 } // spt::rsc
