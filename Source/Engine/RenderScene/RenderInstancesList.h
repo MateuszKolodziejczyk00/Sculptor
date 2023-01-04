@@ -25,8 +25,6 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_instances;
 
 	const Uint64 m_instanceDataAlignment;
-
-	lib::Lock m_instancesBufferLock;
 };
 
 

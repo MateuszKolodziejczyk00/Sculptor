@@ -34,12 +34,15 @@ public:
 	
 	StaticMeshRenderSystem();
 
+protected:
+
 	// Begin RenderSystem overrides
-	virtual void Initialize(RenderScene& renderScene) override;
-	virtual void Update(const RenderScene& renderScene, float dt) override;
+	virtual void OnInitialize(RenderScene& renderScene) override;
 	// End RenderSystem overrides
 
 private:
+	
+	void ExtractDataPerScene(const RenderScene& renderScene);
 
 	void PostBasePassSMConstructed(ecs::Registry& registry, ecs::Entity entity);
 	void PreBasePassSMDestroyed(ecs::Registry& registry, ecs::Entity entity);

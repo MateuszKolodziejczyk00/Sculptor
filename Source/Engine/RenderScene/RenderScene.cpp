@@ -62,4 +62,17 @@ Uint64 RenderScene::GetTransformIdx(RenderSceneEntityHandle entity) const
 	return transformHandle.transformSuballocation.GetOffset() / sizeof(math::Transform3f);
 }
 
+void RenderScene::InitializeRenderSystem(RenderSystem& system)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RenderSceneEntity systemEntity = m_registry.create();
+	system.Initialize(*this, RenderSceneEntityHandle(m_registry, systemEntity));
+}
+
+void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
+{
+	system.Deinitialize(*this);
+}
+
 } // spt::rsc

@@ -8,10 +8,10 @@ namespace spt::rsc
 StaticMeshRenderSystem::StaticMeshRenderSystem()
 	: m_basePassInstances(RENDERER_RESOURCE_NAME("BasePassInstancesList"), 1024)
 {
-	bWantsCallUpdate = true;
+	m_supportedStages = ERenderStage::BasePassStage;
 }
 
-void StaticMeshRenderSystem::Initialize(RenderScene& renderScene)
+void StaticMeshRenderSystem::OnInitialize(RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -23,9 +23,12 @@ void StaticMeshRenderSystem::Initialize(RenderScene& renderScene)
 
 	sceneRegistry.on_construct<BasePassStaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PostBasePassSMConstructed>(this);
 	sceneRegistry.on_destroy<BasePassStaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PreBasePassSMDestroyed>(this);
+
+	OnExtractDataPerSceneDelegate& onExtractDataPerScene = GetSystemEntity().emplace<OnExtractDataPerSceneDelegate>();
+	onExtractDataPerScene.m_callable.BindRawMember(this, &StaticMeshRenderSystem::ExtractDataPerScene);
 }
 
-void StaticMeshRenderSystem::Update(const RenderScene& renderScene, float dt)
+void StaticMeshRenderSystem::ExtractDataPerScene(const RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
 
