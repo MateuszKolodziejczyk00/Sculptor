@@ -328,6 +328,17 @@ void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOf
 	vkCmdCopyBuffer2(m_cmdBufferHandle, &copyInfo);
 }
 
+void RHICommandBuffer::FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64 range, Byte data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(buffer.IsValid());
+	SPT_CHECK(offset + range <= buffer.GetSize());
+
+	vkCmdFillBuffer(m_cmdBufferHandle, buffer.GetBufferHandle(), offset, range, static_cast<Uint32>(data));
+}
+
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
 #if RHI_DEBUG

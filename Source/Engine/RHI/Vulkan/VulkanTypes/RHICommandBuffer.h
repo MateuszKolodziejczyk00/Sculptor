@@ -58,6 +58,7 @@ public:
 
 	void	CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 	void	CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size);
+	void	FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64 range, Byte data);
 
 	// Debug ============================================
 

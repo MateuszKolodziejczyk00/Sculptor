@@ -48,22 +48,18 @@ void RenderInstancesListBase::RemoveInstanceImpl(const rhi::RHISuballocation& in
 
 	SPT_CHECK(instanceSuballocation.IsValid());
 
-	SPT_CHECK_NO_ENTRY_MSG("TODO");
-	
-	/*
-	TODO:
-	store removed suballocations in buffer
-	at the end of the frame free pending suballocations and schedule FillBuffer commands to clear deleted instances on GPU before rendering next frame
-	***	We cannot clear suballocations here, as we would also have to schedule FillBuffer here
-		if during same frame other instance would be allocated in the same place FillBuffer would clear its data 
-	*/
+	m_pendingRemoveSuballocations.emplace_back(instanceSuballocation);
 }
 
-void RenderInstancesListBase::FlushRemovedInstancesImpl()
+void RenderInstancesListBase::FlushRemovedInstancesImpl(Uint64 instanceDataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK_NO_ENTRY_MSG("TODO");
+	for (const rhi::RHISuballocation& removedSuballocation : m_pendingRemoveSuballocations)
+	{
+		m_instances->GetRHI().DestroySuballocation(removedSuballocation);
+		gfx::FillBuffer(lib::Ref(m_instances), removedSuballocation.GetOffset(), instanceDataSize, Byte(0));
+	}
 }
 
 } // spt::rsc

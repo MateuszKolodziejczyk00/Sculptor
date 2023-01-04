@@ -83,6 +83,7 @@ public:
 
 	void									CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 	void									CopyBuffer(const lib::SharedRef<Buffer>& sourceBuffer, Uint64 sourceOffset, const lib::SharedRef<Buffer>& destBuffer, Uint64 destOffset, Uint64 size);
+	void									FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 range, Byte data);
 
 #if WITH_GPU_CRASH_DUMPS
 	void									SetDebugCheckpoint(const lib::HashedString& marker);

@@ -18,11 +18,13 @@ protected:
 
 	rhi::RHISuballocation	AddInstanceImpl(const Byte* instanceData, Uint64 instanceDataSize);
 	void					RemoveInstanceImpl(const rhi::RHISuballocation& instanceSuballocation);
-	void					FlushRemovedInstancesImpl();
+	void					FlushRemovedInstancesImpl(Uint64 instanceDataSize);
 
 private:
 
 	lib::SharedPtr<rdr::Buffer> m_instances;
+	
+	lib::DynamicArray<rhi::RHISuballocation> m_pendingRemoveSuballocations;
 
 	const Uint64 m_instanceDataAlignment;
 };
@@ -53,7 +55,7 @@ public:
 
 	void FlushRemovedInstances()
 	{
-		return FlushRemovedInstancesImpl();
+		return FlushRemovedInstancesImpl(sizeof(TInstanceDataType));
 	}
 };
 

@@ -228,6 +228,18 @@ void CommandRecorder::CopyBuffer(const lib::SharedRef<Buffer>& sourceBuffer, Uin
 						 });
 }
 
+void CommandRecorder::FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 range, Byte data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([buffer, offset, range, data](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("FillBuffer Command");
+
+							 cmdBuffer->GetRHI().FillBuffer(buffer->GetRHI(), offset, range, data);
+						 });
+}
+
 #if WITH_GPU_CRASH_DUMPS
 void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 {

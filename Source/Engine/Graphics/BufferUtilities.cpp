@@ -46,6 +46,24 @@ void GPUBuffersUploadStagingManager::EnqueueUpload(const lib::SharedRef<rdr::Buf
 	math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
 }
 
+void GPUBuffersUploadStagingManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Byte data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	CopyCommand* command = nullptr;
+
+	{
+		const lib::LockGuard enqueueLockGuard(m_enqueueLock);
+		command = &m_commands.emplace_back();
+	}
+
+	command->destBuffer = buffer;
+	command->destBufferOffset = bufferOffset;
+	command->stagingBufferIdx = idxNone<SizeType>;
+	command->fillData = data;
+	command->dataSize = range;
+}
+
 Bool GPUBuffersUploadStagingManager::HasPendingUploads() const
 {
 	return !m_commands.empty();
@@ -57,8 +75,15 @@ void GPUBuffersUploadStagingManager::FlushPendingUploads(rdr::CommandRecorder& r
 
 	for (const CopyCommand& command : m_commands)
 	{
-		const lib::SharedRef<rdr::Buffer> stagingBuffer = lib::Ref(m_stagingBuffers[command.stagingBufferIdx]);
-		recorder.CopyBuffer(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destBuffer), command.destBufferOffset, command.dataSize);
+		if (command.stagingBufferIdx != idxNone<SizeType>)
+		{
+			const lib::SharedRef<rdr::Buffer> stagingBuffer = lib::Ref(m_stagingBuffers[command.stagingBufferIdx]);
+			recorder.CopyBuffer(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destBuffer), command.destBufferOffset, command.dataSize);
+		}
+		else
+		{
+			recorder.FillBuffer(lib::Ref(command.destBuffer), command.destBufferOffset, command.dataSize, command.fillData);
+		}
 	}
 
 	m_commands.clear();
@@ -138,6 +163,29 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 		SPT_CHECK_MSG(lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::TransferDst), "Buffer memory cannot be mapped on host and cannot be transfer destination!");
 
 		GPUBuffersUploadStagingManager::Get().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
+	}
+}
+
+void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Byte data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
+	SPT_CHECK(bufferOffset + range <= rhiBuffer.GetSize());
+
+	const Bool isBufferHostAccessible = rhiBuffer.CanMapMemory();
+	if (isBufferHostAccessible)
+	{
+		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+		SPT_CHECK(!!bufferMemoryPtr);
+		
+		memset(bufferMemoryPtr + bufferOffset, static_cast<int>(data), range);
+
+		rhiBuffer.UnmapBufferMemory();
+	}
+	else
+	{
+		GPUBuffersUploadStagingManager::Get().EnqueueFill(destBuffer, bufferOffset, range, data);
 	}
 }
 
