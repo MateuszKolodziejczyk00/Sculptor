@@ -106,7 +106,7 @@ class RENDERER_CORE_API DescriptorSetState abstract
 public:
 
 	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags, rhi::EShaderStageFlags shaderStages);
-	~DescriptorSetState() = default;
+	virtual ~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 
