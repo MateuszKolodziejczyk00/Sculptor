@@ -4,11 +4,16 @@
 #include "SceneRendererTypes.h"
 #include "RenderSceneRegistry.h"
 
+namespace spt::rg
+{
+class RenderGraphBuilder;
+} // spt::rg
 
 namespace spt::rsc
 {
 
 class RenderScene;
+class RenderView;
 
 
 class RenderSystem

@@ -41,13 +41,13 @@ void StaticMeshRenderSystem::PostBasePassSMConstructed(ecs::Registry& registry, 
 
 	const StaticMeshRenderData& renderData = registry.get<StaticMeshRenderData>(entity);
 
-	const EntityTransformHandle& transformHandle = registry.get<EntityTransformHandle>();
+	const EntityTransformHandle& transformHandle = registry.get<EntityTransformHandle>(entity);
 	const Uint64 transformIdx = transformHandle.transformSuballocation.GetOffset() / sizeof(math::Transform3f);
 
 	StaticMeshGPURenderData gpuRenderData;
 	gpuRenderData.firstPrimitiveIdx	= renderData.firstPrimitiveIdx;
 	gpuRenderData.primitivesNum		= renderData.primitivesNum;
-	gpuRenderData.transformIdx		= transformIdx;
+	gpuRenderData.transformIdx		= static_cast<Uint32>(transformIdx);
 	entityRenderData.basePassInstanceData = m_basePassInstances.AddInstance(gpuRenderData);
 }
 
