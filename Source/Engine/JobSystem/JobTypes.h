@@ -27,6 +27,9 @@ enum class EJobFlags
 {
 	None			= 0,
 
+	// Launches job on calling thread
+	Inline			= BIT(1),
+
 	Default = None
 };
 

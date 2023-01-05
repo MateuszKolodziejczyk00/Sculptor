@@ -475,9 +475,16 @@ protected:
 
 	void OnConstructed()
 	{
-		if (m_remainingPrerequisitesNum.load() == 0)
+		if (lib::HasAnyFlag(GetFlags(), EJobFlags::Inline))
 		{
-			Schedule();
+			Wait();
+		}
+		else
+		{
+			if (m_remainingPrerequisitesNum.load() == 0)
+			{
+				Schedule();
+			}
 		}
 	}
 
