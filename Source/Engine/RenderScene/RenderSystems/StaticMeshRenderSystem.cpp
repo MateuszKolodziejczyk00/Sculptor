@@ -11,6 +11,13 @@ StaticMeshRenderSystem::StaticMeshRenderSystem()
 	m_supportedStages = ERenderStage::BasePassStage;
 }
 
+void StaticMeshRenderSystem::ExtractPerFrame(SceneRenderContext& context, const RenderScene& renderScene)
+{
+	Super::ExtractPerFrame(context, renderScene);
+
+	m_basePassInstances.FlushRemovedInstances();
+}
+
 void StaticMeshRenderSystem::OnInitialize(RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
@@ -19,38 +26,36 @@ void StaticMeshRenderSystem::OnInitialize(RenderScene& renderScene)
 	RenderSceneEntity test = renderScene.CreateEntity(data);
 
 	ecs::Registry& sceneRegistry = renderScene.GetRegistry();
-	sceneRegistry.emplace<BasePassStaticMeshRenderDataHandle>(test);
+	sceneRegistry.emplace<StaticMeshRenderDataHandle>(test);
 
-	sceneRegistry.on_construct<BasePassStaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PostBasePassSMConstructed>(this);
-	sceneRegistry.on_destroy<BasePassStaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PreBasePassSMDestroyed>(this);
-
-	OnExtractDataPerSceneDelegate& onExtractDataPerScene = GetSystemEntity().emplace<OnExtractDataPerSceneDelegate>();
-	onExtractDataPerScene.m_callable.BindRawMember(this, &StaticMeshRenderSystem::ExtractDataPerScene);
-}
-
-void StaticMeshRenderSystem::ExtractDataPerScene(const RenderScene& renderScene)
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_basePassInstances.FlushRemovedInstances();
+	sceneRegistry.on_construct<StaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PostBasePassSMConstructed>(this);
+	sceneRegistry.on_destroy<StaticMeshRenderDataHandle>().connect<&StaticMeshRenderSystem::PreBasePassSMDestroyed>(this);
 }
 
 void StaticMeshRenderSystem::PostBasePassSMConstructed(ecs::Registry& registry, ecs::Entity entity)
 {
 	SPT_PROFILER_FUNCTION();
 
-	BasePassStaticMeshRenderDataHandle& entityRenderData = registry.get<BasePassStaticMeshRenderDataHandle>(entity);
+	StaticMeshRenderDataHandle& entityRenderData = registry.get<StaticMeshRenderDataHandle>(entity);
 	SPT_CHECK(!entityRenderData.basePassInstanceData.IsValid());
 
-	BasePassStaticMeshRenderData renderData = registry.ctx().get<BasePassStaticMeshRenderData>();
-	entityRenderData.basePassInstanceData = m_basePassInstances.AddInstance(renderData);
+	const StaticMeshRenderData& renderData = registry.get<StaticMeshRenderData>(entity);
+
+	const EntityTransformHandle& transformHandle = registry.get<EntityTransformHandle>();
+	const Uint64 transformIdx = transformHandle.transformSuballocation.GetOffset() / sizeof(math::Transform3f);
+
+	StaticMeshGPURenderData gpuRenderData;
+	gpuRenderData.firstPrimitiveIdx	= renderData.firstPrimitiveIdx;
+	gpuRenderData.primitivesNum		= renderData.primitivesNum;
+	gpuRenderData.transformIdx		= transformIdx;
+	entityRenderData.basePassInstanceData = m_basePassInstances.AddInstance(gpuRenderData);
 }
 
 void StaticMeshRenderSystem::PreBasePassSMDestroyed(ecs::Registry& registry, ecs::Entity entity)
 {
 	SPT_PROFILER_FUNCTION();
 
-	BasePassStaticMeshRenderDataHandle& entityRenderData = registry.get<BasePassStaticMeshRenderDataHandle>(entity);
+	const StaticMeshRenderDataHandle& entityRenderData = registry.get<StaticMeshRenderDataHandle>(entity);
 	SPT_CHECK(entityRenderData.basePassInstanceData.IsValid());
 	
 	m_basePassInstances.RemoveInstance(entityRenderData.basePassInstanceData);

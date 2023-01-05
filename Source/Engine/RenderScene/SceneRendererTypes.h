@@ -13,4 +13,10 @@ enum class ERenderStage
 	BasePassStage			= BIT(1)
 };
 
+
+struct SceneRenderContext
+{
+	// For future use
+};
+
 } // spt::rsc

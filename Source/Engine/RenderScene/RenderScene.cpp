@@ -62,6 +62,11 @@ Uint64 RenderScene::GetTransformIdx(RenderSceneEntityHandle entity) const
 	return transformHandle.transformSuballocation.GetOffset() / sizeof(math::Transform3f);
 }
 
+const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSystems() const
+{
+	return m_renderSystems;
+}
+
 void RenderScene::InitializeRenderSystem(RenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();

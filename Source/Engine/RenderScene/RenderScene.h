@@ -27,12 +27,6 @@ struct EntityTransformHandle
 };
 
 
-struct OnExtractDataPerSceneDelegate
-{
-	lib::Delegate<void(RenderScene& /*scene*/)> m_callable;
-};
-
-
 class RENDER_SCENE_API RenderScene
 {
 public:
@@ -51,6 +45,8 @@ public:
 	
 	// Render Systems =======================================================
 
+	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& GetRenderSystems() const;
+
 	template<typename TSystemType>
 	void AddRenderSystem()
 	{
@@ -58,13 +54,20 @@ public:
 
 		const RenderSystemTypeID typeID = ecs::type_id<TSystemType>();
 
-		const lib::LockGuard lockGuard(m_lock);
-
-		lib::UniquePtr<RenderSystem> system = m_renderSystems[typeID];
-		if (!system)
+		RenderSystem* addedSystem = nullptr;
 		{
-			system = std::make_unique<RenderSystem>();
-			InitializeRenderSystem(*system);
+			const lib::LockGuard lockGuard(m_lock);
+
+			if (std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID) == std::cend(m_renderSystemsID))
+			{
+				addedSystem = m_renderSystems.emplace_back(std::make_unique<RenderSystem>()).get();
+				m_renderSystemsID.emplace_back(typeID);
+			}
+		}
+		
+		if (addedSystem)
+		{
+			InitializeRenderSystem(*addedSystem);
 		}
 	}
 
@@ -75,12 +78,24 @@ public:
 
 		const RenderSystemTypeID typeID = ecs::type_id<TSystemType>();
 		
-		const lib::LockGuard lockGuard(m_lock);
-		
-		const auto foundSystem = m_renderSystems.find(typeID);
-		if (foundSystem != std::cend(m_renderSystems))
+		lib::UniquePtr<RenderSystem> removedSystem;
 		{
-			DeinitializeRenderSystem(*foundSystem->second);
+			const lib::LockGuard lockGuard(m_lock);
+
+			const auto foundSystem = std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID);
+			if (foundSystem != std::cend(m_renderSystems))
+			{
+				const SizeType systemIdx = std::distance(std::cbegin(m_renderSystemsID), foundSystem);
+				removedSystem = std::move(m_renderSystems[systemIdx]);
+
+				m_renderSystems.erase(std::begin(m_renderSystems) + systemIdx);
+				m_renderSystemsID.erase(std::begin(m_renderSystemsID) + systemIdx);
+			}
+		}
+
+		if (removedSystem)
+		{
+			DeinitializeRenderSystem(*removedSystem);
 		}
 	}
 
@@ -96,7 +111,9 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_instanceTransforms;
 
 	lib::Lock m_lock;
-	lib::HashMap<RenderSystemTypeID, lib::UniquePtr<RenderSystem>> m_renderSystems;
+	// These to arrays must match - m_systemsID[i] is id of system m_renderSystems[i]
+	lib::DynamicArray<lib::UniquePtr<RenderSystem>> m_renderSystems;
+	lib::DynamicArray<RenderSystemTypeID>			m_renderSystemsID;
 };
 
 } // spt::rsc

@@ -8,20 +8,33 @@
 namespace spt::rsc
 {
 
-BEGIN_ALIGNED_SHADER_STRUCT(, 16, BasePassStaticMeshRenderData)
+BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPURenderData)
 	SHADER_STRUCT_FIELD(Uint32, transformIdx)
 	SHADER_STRUCT_FIELD(Uint32, firstPrimitiveIdx)
 	SHADER_STRUCT_FIELD(Uint32, primitivesNum)
 END_SHADER_STRUCT();
 
 
-struct BasePassStaticMeshRenderDataHandle
+/**
+ * CPU side render data
+ */
+struct StaticMeshRenderData
+{
+	Uint32 firstPrimitiveIdx;
+	Uint32 primitivesNum;
+};
+
+
+/**
+ * Handle to allocation of GPU render data
+ */
+struct StaticMeshRenderDataHandle
 {
 	rhi::RHISuballocation basePassInstanceData;
 };
 
 
-using BasePassStaticMeshInstancesList = RenderInstancesList<BasePassStaticMeshRenderData>;
+using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPURenderData>;
 
 
 class StaticMeshRenderSystem : public RenderSystem
@@ -33,6 +46,10 @@ protected:
 public:
 	
 	StaticMeshRenderSystem();
+	
+	// Begin RenderSystem overrides
+	virtual void ExtractPerFrame(SceneRenderContext& context, const RenderScene& renderScene);
+	// End RenderSystem overrides
 
 protected:
 
@@ -41,13 +58,11 @@ protected:
 	// End RenderSystem overrides
 
 private:
-	
-	void ExtractDataPerScene(const RenderScene& renderScene);
 
 	void PostBasePassSMConstructed(ecs::Registry& registry, ecs::Entity entity);
 	void PreBasePassSMDestroyed(ecs::Registry& registry, ecs::Entity entity);
 
-	BasePassStaticMeshInstancesList m_basePassInstances;
+	StaticMeshInstancesList m_basePassInstances;
 };
 
 } // spt::rsc

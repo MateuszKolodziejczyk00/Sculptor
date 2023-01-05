@@ -21,6 +21,12 @@ public:
 	void Initialize(RenderScene& renderScene, RenderSceneEntityHandle systemEntity);
 	void Deinitialize(RenderScene& renderScene);
 
+	virtual void ExtractPerFrame(SceneRenderContext& context, const RenderScene& renderScene) {}
+	virtual void ExtractPerView(SceneRenderContext& context, const RenderScene& renderScene, const RenderView& view) {}
+
+	virtual void PreparePerFrame(SceneRenderContext& context, rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {}
+	virtual void PreparePerView(SceneRenderContext& context, rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const RenderView& view) {}
+
 	ERenderStage GetSupportedStages() const;
 
 protected:
