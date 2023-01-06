@@ -11,7 +11,7 @@
 namespace spt::gfx
 {
 
-template<typename TStruct>
+template<typename TStruct, rg::ERGBufferAccess accessType>
 class RWBufferBinding : public rdr::DescriptorSetBinding
 {
 protected:
@@ -31,7 +31,7 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
+		m_boundBuffer.AddRGDependency(builder, accessType, GetShaderStageFlags());
 	}
 
 	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
@@ -97,10 +97,11 @@ private:
 };
 
 
-template<typename TStruct>
-using RWStructuredBufferBinding = RWBufferBinding<TStruct>;
+template<typename TStruct, rg::ERGBufferAccess accessType>
+using RWStructuredBufferBinding = RWBufferBinding<TStruct, accessType>;
 
-using RWByteAddressBuffer = RWBufferBinding<Byte>;
+template<rg::ERGBufferAccess accessType>
+using RWByteAddressBuffer = RWBufferBinding<Byte, accessType>;
 
 } // spt::gfx
 
