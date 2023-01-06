@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "SceneRendererTypes.h"
 #include "RenderSceneRegistry.h"
@@ -16,7 +17,7 @@ class RenderScene;
 class RenderView;
 
 
-class RenderSystem
+class RENDER_SCENE_API RenderSystem
 {
 public:
 
@@ -32,13 +33,13 @@ public:
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const RenderView& view) {};
 
 	ERenderStage GetSupportedStages() const;
+	
+	RenderSceneEntityHandle GetSystemEntity() const;
 
 protected:
 
 	virtual void OnInitialize(RenderScene& renderScene);
 	virtual void OnDeinitialize(RenderScene& renderScene);
-
-	RenderSceneEntityHandle GetSystemEntity() const;
 
 	Bool m_wantsCallUpdate;
 

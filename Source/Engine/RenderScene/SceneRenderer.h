@@ -1,22 +1,26 @@
 #pragma once
 
-#include "RenderStages/BasePassRenderStage.h"
+#include "SculptorCoreTypes.h"
 
+
+namespace spt::rg
+{
+class RenderGraphBuilder;
+} // spt::rg
 
 namespace spt::rsc
 {
 
-class SceneRenderer
+class RenderScene;
+class RenderView;
+
+class SceneRenderer abstract
 {
 public:
 
 	SceneRenderer();
 
-	const BasePassRenderStage& GetBasePassStage() const;
-
-private:
-
-	BasePassRenderStage m_basePass;
+	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, RenderView& view);
 };
 
 } // spt::rsc

@@ -6,9 +6,11 @@ namespace spt::rsc
 SceneRenderer::SceneRenderer()
 { }
 
-const BasePassRenderStage& SceneRenderer::GetBasePassStage() const
+void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, RenderView& view)
 {
-	return m_basePass;
+	SPT_PROFILER_FUNCTION();
+
+
 }
 
 } // spt::rsc

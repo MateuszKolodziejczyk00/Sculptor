@@ -64,7 +64,7 @@ Uint64 RenderScene::GetTransformIdx(RenderSceneEntityHandle entity) const
 
 const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSystems() const
 {
-	return m_renderSystems;
+	return m_renderSystems.GetRenderSystems();
 }
 
 void RenderScene::InitializeRenderSystem(RenderSystem& system)
@@ -77,6 +77,7 @@ void RenderScene::InitializeRenderSystem(RenderSystem& system)
 
 void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
 {
+	m_registry.destroy(system.GetSystemEntity());
 	system.Deinitialize(*this);
 }
 
