@@ -294,7 +294,7 @@ class JobInstance : public std::enable_shared_from_this<JobInstance>
 
 public:
 
-	JobInstance(const char* name)
+	explicit JobInstance(const char* name)
 		: m_remainingPrerequisitesNum(0)
 		, m_jobState(EJobState::Pending)
 		, m_priority(EJobPriority::Default)
@@ -302,8 +302,6 @@ public:
 		, m_name(name)
 	{ }
 
-	virtual ~JobInstance() = default;
-	
 	template<typename TCallable>
 	void Init(TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
 	{
@@ -331,7 +329,7 @@ public:
 		OnConstructed();
 	}
 
-	Bool Execute()
+	Bool TryExecute()
 	{
 		const Int32 remainingPrerequisites = m_remainingPrerequisitesNum.load(std::memory_order_acquire);
 		if (remainingPrerequisites > 0)
@@ -346,18 +344,16 @@ public:
 
 		if (executeThisThread)
 		{
-			{
-				const JobExecutionScope executionScope(*this);
-
-				m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
-				DoExecute();
-				m_remainingPrerequisitesNum.fetch_add(-1, std::memory_order_release);
-			}
+			Execute();
 
 			if (CanFinishExecution())
 			{
 				Finish();
 				finishedThisThread = true;
+			}
+			else
+			{
+				TryExecutePrerequisites();
 			}
 		}
 
@@ -379,15 +375,11 @@ public:
 
 		if (loadedState == EJobState::Pending)
 		{
-			// We probably don't need lock here for now
-			for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
-			{
-				prerequisite->Execute();
-			}
+			TryExecutePrerequisites();
 
 			if (m_remainingPrerequisitesNum.load() == 0)
 			{
-				const Bool executed = Execute();
+				const Bool executed = TryExecute();
 				if (executed)
 				{
 					return;
@@ -488,7 +480,27 @@ protected:
 		}
 	}
 
-	virtual void DoExecute()
+	void TryExecutePrerequisites() const
+	{
+		// We probably don't need lock here for now
+		for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
+		{
+			prerequisite->TryExecute();
+		}
+	}
+
+	void Execute()
+	{
+		const JobExecutionScope executionScope(*this);
+
+		m_prerequisites.clear();
+
+		m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
+		DoExecute();
+		m_remainingPrerequisitesNum.fetch_add(-1, std::memory_order_release);
+	}
+
+	void DoExecute()
 	{
 		m_callable.Invoke();
 	}
@@ -528,6 +540,7 @@ protected:
 			}
 			else if(currentState == EJobState::Executing)
 			{
+				// Finished nested job
 				if (CanFinishExecution())
 				{
 					Finish();

@@ -70,7 +70,7 @@ Bool Worker::TryExecuteJob(const lib::SharedPtr<JobInstance>& job)
 	{
 		SPT_PROFILER_SCOPE("Execute Job");
 
-		job->Execute();
+		job->TryExecute();
 		return true;
 	}
 
