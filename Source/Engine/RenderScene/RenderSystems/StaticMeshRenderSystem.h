@@ -46,10 +46,6 @@ protected:
 public:
 	
 	StaticMeshRenderSystem();
-	
-	// Begin RenderSystem overrides
-	virtual void ExtractPerFrame(SceneRenderContext& context, const RenderScene& renderScene);
-	// End RenderSystem overrides
 
 protected:
 

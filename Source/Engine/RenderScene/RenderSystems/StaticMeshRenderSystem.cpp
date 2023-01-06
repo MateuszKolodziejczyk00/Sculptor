@@ -11,13 +11,6 @@ StaticMeshRenderSystem::StaticMeshRenderSystem()
 	m_supportedStages = ERenderStage::BasePassStage;
 }
 
-void StaticMeshRenderSystem::ExtractPerFrame(SceneRenderContext& context, const RenderScene& renderScene)
-{
-	Super::ExtractPerFrame(context, renderScene);
-
-	m_basePassInstances.FlushRemovedInstances();
-}
-
 void StaticMeshRenderSystem::OnInitialize(RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
