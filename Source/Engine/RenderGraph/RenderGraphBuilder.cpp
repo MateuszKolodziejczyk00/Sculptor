@@ -307,8 +307,8 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			node.AddBufferToAcquire(accessedBuffer);
 		}
 
-		const ERGBufferAccess prevAccess				= accessedBuffer->GetLastAccessType();
-		const rhi::EShaderStageFlags prevAccessStages	= accessedBuffer->GetLastAccessShaderStages();
+		const ERGBufferAccess prevAccess				= accessedBufferView->GetLastAccessType();
+		const rhi::EShaderStageFlags prevAccessStages	= accessedBufferView->GetLastAccessShaderStages();
 
 		const ERGBufferAccess nextAccess				= bufferAccess.access;
 		const rhi::EShaderStageFlags nextAccessStages	= bufferAccess.shaderStages;
@@ -328,10 +328,12 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 
 			node.AddBufferSynchronization(accessedBuffer, offset, size, sourcePipelineStages, sourceAccessType, destPipelineStages, destAccessType);
 		}
-
+		
 		accessedBuffer->SetLastAccessNode(&node);
-		accessedBuffer->SetLastAccessType(nextAccess);
-		accessedBuffer->SetLastAccessShaderStages(nextAccessStages);
+
+		accessedBufferView->SetLastAccessNode(&node);
+		accessedBufferView->SetLastAccessType(nextAccess);
+		accessedBufferView->SetLastAccessShaderStages(nextAccessStages);
 	}
 }
 

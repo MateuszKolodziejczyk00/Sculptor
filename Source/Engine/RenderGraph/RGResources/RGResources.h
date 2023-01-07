@@ -477,16 +477,12 @@ public:
 		: RGResource(resourceDefinition)
 		, m_bufferDef(definition)
 		, m_allocationInfo(allocationInfo)
-		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 		, m_extractionDest(nullptr)
 	{ }
 
 	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Buffer> bufferInstance)
 		: RGResource(resourceDefinition)
 		, m_bufferInstance(std::move(bufferInstance))
-		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 		, m_extractionDest(nullptr)
 	{
 		SPT_CHECK(lib::HasAnyFlag(GetFlags(), ERGResourceFlags::External));
@@ -576,36 +572,14 @@ public:
 		m_lastAccessNode = node;
 	}
 
-	ERGBufferAccess GetLastAccessType() const
-	{
-		return m_lastAccess;
-	}
-
-	void SetLastAccessType(ERGBufferAccess access)
-	{
-		m_lastAccess = access;
-	}
-
-	rhi::EShaderStageFlags GetLastAccessShaderStages() const
-	{
-		return m_lastAccessShaderStages;
-	}
-
-	void SetLastAccessShaderStages(rhi::EShaderStageFlags stages)
-	{
-		m_lastAccessShaderStages = stages;
-	}
-
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
 	rhi::RHIAllocationInfo	m_allocationInfo;
 
-	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
-
 	RGNodeHandle			m_lastAccessNode;
-	ERGBufferAccess			m_lastAccess;
-	rhi::EShaderStageFlags	m_lastAccessShaderStages;
+
+	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
 
 	lib::SharedPtr<rdr::Buffer>* m_extractionDest;
 };
@@ -620,6 +594,8 @@ public:
 		, m_buffer(buffer)
 		, m_offset(offset)
 		, m_size(size)
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 	{
 		SPT_CHECK(m_buffer.IsValid());
 	}
@@ -629,6 +605,8 @@ public:
 		, m_buffer(buffer)
 		, m_offset(bufferView->GetOffset())
 		, m_size(bufferView->GetSize())
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
 		, m_bufferViewInstance(std::move(bufferView))
 	{
 		SPT_CHECK(m_buffer.IsValid());
@@ -665,12 +643,48 @@ public:
 		return lib::Ref(m_bufferViewInstance);
 	}
 
+	// Access Synchronization ==============================================
+
+	RGNodeHandle GetLastAccessNode() const
+	{
+		return m_lastAccessNode;
+	}
+
+	void SetLastAccessNode(RGNodeHandle node)
+	{
+		m_lastAccessNode = node;
+	}
+
+	ERGBufferAccess GetLastAccessType() const
+	{
+		return m_lastAccess;
+	}
+
+	void SetLastAccessType(ERGBufferAccess access)
+	{
+		m_lastAccess = access;
+	}
+
+	rhi::EShaderStageFlags GetLastAccessShaderStages() const
+	{
+		return m_lastAccessShaderStages;
+	}
+
+	void SetLastAccessShaderStages(rhi::EShaderStageFlags stages)
+	{
+		m_lastAccessShaderStages = stages;
+	}
+
 private:
 
 	RGBufferHandle m_buffer;
 
 	Uint64 m_offset;
 	Uint64 m_size;
+
+	RGNodeHandle			m_lastAccessNode;
+	ERGBufferAccess			m_lastAccess;
+	rhi::EShaderStageFlags	m_lastAccessShaderStages;
 
 	mutable lib::SharedPtr<rdr::BufferView> m_bufferViewInstance;
 };
