@@ -51,6 +51,8 @@ enum class EBorderColor
 
 struct SamplerDefinition
 {
+	static constexpr Real32 infiniteMaxLod = -1.f;
+
 	constexpr SamplerDefinition()
 		: flags(ESamplerFlags::None)
 		, minificationFilter(ESamplerFilterType::Nearest)
@@ -79,8 +81,8 @@ struct SamplerDefinition
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
-		, minLod(0)
-		, maxLod(0)
+		, minLod(0.f)
+		, maxLod(0.f)
 		, borderColor(EBorderColor::FloatTransparentBlack)
 		, unnormalizedCoords(false)
 	{ }

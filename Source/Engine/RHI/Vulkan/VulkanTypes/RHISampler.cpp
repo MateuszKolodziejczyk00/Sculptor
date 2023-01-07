@@ -31,7 +31,7 @@ void RHISampler::InitializeRHI(const rhi::SamplerDefinition& def)
         .compareEnable              = VK_FALSE,
         .compareOp                  = VK_COMPARE_OP_MAX_ENUM,
         .minLod                     = def.minLod,
-        .maxLod                     = def.maxLod,
+        .maxLod                     = def.maxLod < 0.f ? VK_LOD_CLAMP_NONE : def.maxLod,
         .borderColor                = RHIToVulkan::GetBorderColor(def.borderColor),
         .unnormalizedCoordinates    = def.unnormalizedCoords
 	};

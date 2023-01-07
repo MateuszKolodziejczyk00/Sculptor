@@ -89,6 +89,7 @@ static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::CommonBi
 	samplerDef.maxAnisotropy		= samplerDef.enableAnisotropy ? 16.f : 0.f;
 	samplerDef.unnormalizedCoords	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::UnnormalizedCoords);
 	samplerDef.borderColor			= GetBorderColor(bindingFlags);
+	samplerDef.maxLod				= samplerDef.enableAnisotropy ? rhi::SamplerDefinition::infiniteMaxLod : 0.f;
 
 	return ResourcesManager::CreateSampler(samplerDef);
 }
