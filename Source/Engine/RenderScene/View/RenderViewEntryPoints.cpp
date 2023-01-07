@@ -56,6 +56,12 @@ const RenderView& RenderViewEntryPoints::GetRenderView() const
 	return *m_renderView;
 }
 
+ERenderStage RenderViewEntryPoints::GetSupportedStages() const
+{
+	SPT_CHECK(!!m_renderView);
+	return m_renderView->GetSupportedStages();
+}
+
 Bool RenderViewEntryPoints::SupportsStage(ERenderStage stage) const
 {
 	SPT_CHECK(!!m_renderView);

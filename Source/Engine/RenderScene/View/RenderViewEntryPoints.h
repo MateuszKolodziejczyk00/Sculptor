@@ -46,6 +46,7 @@ public:
 	void Initialize(const RenderView& renderView);
 
 	const RenderView& GetRenderView() const;
+	ERenderStage GetSupportedStages() const;
 	Bool SupportsStage(ERenderStage stage) const;
 
 	const RenderStageEntries&	GetRenderStageEntries(ERenderStage stage) const;

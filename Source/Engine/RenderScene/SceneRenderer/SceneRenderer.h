@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "View/RenderViewEntryPoints.h"
 
 
 namespace spt::rg
@@ -21,6 +22,10 @@ public:
 	SceneRenderer();
 
 	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, RenderView& view);
+
+private:
+
+	lib::DynamicArray<RenderViewEntryPoints> CollectRenderViews(const RenderScene& scene, RenderView& view) const;
 };
 
 } // spt::rsc

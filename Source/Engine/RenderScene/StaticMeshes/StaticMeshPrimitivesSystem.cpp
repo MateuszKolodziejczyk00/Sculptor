@@ -10,6 +10,7 @@ StaticMeshPrimitivesSystem::StaticMeshPrimitivesSystem(RenderScene& owningScene)
 	, m_staticMeshInstances(RENDERER_RESOURCE_NAME("StaticMeshInstancesList"), 1024)
 {
 	ecs::Registry& sceneRegistry = owningScene.GetRegistry();
+	sceneRegistry.on_construct<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
 	sceneRegistry.on_update<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
 	sceneRegistry.on_destroy<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
 }
@@ -18,6 +19,7 @@ StaticMeshPrimitivesSystem::~StaticMeshPrimitivesSystem()
 {
 	RenderScene& owningScene = GetOwningScene();
 	ecs::Registry& sceneRegistry = owningScene.GetRegistry();
+	sceneRegistry.on_construct<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
 	sceneRegistry.on_update<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
 	sceneRegistry.on_destroy<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
 }
