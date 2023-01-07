@@ -54,6 +54,8 @@ public:
 
 private:
 
+	void InitializeRenderScene();
+
 	lib::SharedPtr<rdr::Window>		m_window;
 
 	lib::SharedPtr<TestDS>			m_descriptorSet;

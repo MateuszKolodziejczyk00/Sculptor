@@ -15,6 +15,7 @@ class RENDER_SCENE_API PrimitivesSystem
 public:
 
 	explicit PrimitivesSystem(RenderScene& owningScene);
+	virtual ~PrimitivesSystem() = default;
 
 	virtual void Update() {};
 

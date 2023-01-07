@@ -1,9 +1,9 @@
-#include "StaticMeshRenderSystem.h"
+#include "StaticMeshesRenderSystem.h"
 
 namespace spt::rsc
 {
 
-StaticMeshRenderSystem::StaticMeshRenderSystem()
+StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
 	m_supportedStages = lib::Flags(ERenderStage::BasePassStage, ERenderStage::ShadowGenerationStage);
 }

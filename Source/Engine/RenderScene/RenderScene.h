@@ -131,7 +131,7 @@ public:
 		PrimitivesSystem*& system = m_typeIDToSystem[typeID];
 		if (!system)
 		{
-			m_systems.emplace(std::make_unique<TPrimitiveSystem>(scene));
+			m_systems.emplace_back(std::make_unique<TPrimitiveSystem>(scene));
 			system = m_systems.back().get();
 		}
 	}

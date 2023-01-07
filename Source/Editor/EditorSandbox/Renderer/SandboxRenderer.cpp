@@ -16,6 +16,8 @@
 #include "Loaders/glTFSceneLoader.h"
 #include "Paths.h"
 #include "BufferUtilities.h"
+#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+#include "StaticMeshes/StaticMeshesRenderSystem.h"
 
 namespace spt::ed
 {
@@ -43,13 +45,8 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	const rhi::SamplerDefinition samplerDef(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::Repeat);
 	const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
 	m_uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
-	
-	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
-	if (scenePath.IsValid())
-	{
-		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
-		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
-	}
+
+	InitializeRenderScene();
 }
 
 void SandboxRenderer::Tick(Real32 deltaTime)
@@ -119,6 +116,19 @@ ed::TestDS& SandboxRenderer::GetDescriptorSet()
 const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 {
 	return m_window;
+}
+
+void SandboxRenderer::InitializeRenderScene()
+{
+	m_renderScene.AddPrimitiveSystem<rsc::StaticMeshPrimitivesSystem>();
+	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
+
+	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
+	if (scenePath.IsValid())
+	{
+		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
+		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
+	}
 }
 
 } // spt::ed

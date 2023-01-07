@@ -5,7 +5,7 @@
 namespace spt::rsc
 {
 
-class StaticMeshRenderSystem : public RenderSystem
+class RENDER_SCENE_API StaticMeshesRenderSystem : public RenderSystem
 {
 protected:
 
@@ -13,7 +13,7 @@ protected:
 
 public:
 	
-	StaticMeshRenderSystem();
+	StaticMeshesRenderSystem();
 
 };
 

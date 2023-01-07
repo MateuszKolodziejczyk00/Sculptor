@@ -37,7 +37,7 @@ struct StaticMeshRenderDataHandle
 using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPURenderData>;
 
 
-class StaticMeshPrimitivesSystem : public PrimitivesSystem
+class RENDER_SCENE_API StaticMeshPrimitivesSystem : public PrimitivesSystem
 {
 protected:
 
@@ -46,7 +46,7 @@ protected:
 public:
 
 	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
-	~StaticMeshPrimitivesSystem();
+	virtual ~StaticMeshPrimitivesSystem();
 
 	virtual void Update() override;
 
