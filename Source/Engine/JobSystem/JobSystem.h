@@ -71,12 +71,12 @@ auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJo
 					  for (auto& elem : range)
 					  {
 						  AddNested(name,
-									[elem, &localCallable]() mutable
+									[&elem, &localCallable]() mutable
 									{
 										localCallable(elem);
 									},
 									priority,
-									flags);
+									EJobFlags::Default); // we don't want to use flags from args as they should be applied only to enclosing job
 					  }
 				  },
 				  priority,

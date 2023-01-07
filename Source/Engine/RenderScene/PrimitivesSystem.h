@@ -10,17 +10,17 @@ namespace spt::rsc
 class RenderScene;
 
 
-class RENDER_SCENE_API PrimitiveSystem
+class RENDER_SCENE_API PrimitivesSystem
 {
 public:
 
-	explicit PrimitiveSystem(RenderScene& owningScene);
+	explicit PrimitivesSystem(RenderScene& owningScene);
 
 	virtual void Update() {};
 
 protected:
 
-	RenderScene& GetRenderScene() const;
+	RenderScene& GetOwningScene() const;
 
 private:
 

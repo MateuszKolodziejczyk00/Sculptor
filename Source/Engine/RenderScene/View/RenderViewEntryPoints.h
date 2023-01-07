@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Delegates/MulticastDelegate.h"
-#include "SceneRendererTypes.h"
+#include "SceneRenderingTypes.h"
 
 namespace spt::rg
 {

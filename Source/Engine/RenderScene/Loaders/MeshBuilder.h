@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "GeometryManager.h"
-#include "Meshes/StaticMesh.h"
+#include "StaticMeshes/StaticMeshGeometry.h"
 
 
 namespace spt::rsc

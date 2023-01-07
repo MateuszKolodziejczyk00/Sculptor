@@ -1,9 +1,9 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "PrimitivesSystem.h"
 #include "RenderInstancesList.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
-#include "SculptorECS.h"
+#include "RenderSceneRegistry.h"
 
 namespace spt::rsc
 {
@@ -37,28 +37,25 @@ struct StaticMeshRenderDataHandle
 using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPURenderData>;
 
 
-class StaticMeshRenderSystem : public RenderSystem
+class StaticMeshPrimitivesSystem : public PrimitivesSystem
 {
 protected:
 
-	using Super = RenderSystem;
+	using Super = PrimitivesSystem;
 
 public:
-	
-	StaticMeshRenderSystem();
 
-protected:
+	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
+	~StaticMeshPrimitivesSystem();
 
-	// Begin RenderSystem overrides
-	virtual void OnInitialize(RenderScene& renderScene) override;
-	// End RenderSystem overrides
+	virtual void Update() override;
 
 private:
 
-	void PostBasePassSMConstructed(ecs::Registry& registry, ecs::Entity entity);
-	void PreBasePassSMDestroyed(ecs::Registry& registry, ecs::Entity entity);
+	void OnStaticMeshUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
+	void OnStaticMeshDestryed(RenderSceneRegistry& registry, RenderSceneEntity entity);
 
-	StaticMeshInstancesList m_basePassInstances;
+	StaticMeshInstancesList m_staticMeshInstances;
 };
 
 } // spt::rsc

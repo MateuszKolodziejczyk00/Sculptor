@@ -13,11 +13,4 @@ struct StaticMeshGeometryData
 	rhi::RHISuballocation geometrySuballocation;
 };
 
-struct alignas(16) StaticMeshInstance
-{
-	math::Transform3f transform;
-	Uint32 firstPrimitiveIdx;
-	Uint32 primitivesNum;
-};
-
 } // spt::rsc

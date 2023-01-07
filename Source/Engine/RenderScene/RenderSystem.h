@@ -2,7 +2,7 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
-#include "SceneRendererTypes.h"
+#include "SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
 
 namespace spt::rg
@@ -31,6 +31,8 @@ public:
 
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const RenderView& view) {};
+	
+	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
 
 	ERenderStage GetSupportedStages() const;
 	

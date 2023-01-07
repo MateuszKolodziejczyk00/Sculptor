@@ -1,4 +1,4 @@
-#include "RenderSystems/RenderSystem.h"
+#include "RenderSystem.h"
 
 namespace spt::rsc
 {

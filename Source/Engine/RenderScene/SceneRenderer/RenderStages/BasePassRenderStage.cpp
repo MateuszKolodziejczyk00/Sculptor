@@ -1,4 +1,4 @@
-#include "RenderStages/BasePassRenderStage.h"
+#include "BasePassRenderStage.h"
 
 
 namespace spt::rsc

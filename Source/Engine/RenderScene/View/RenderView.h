@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SceneView.h"
-#include "SceneRendererTypes.h"
+#include "SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
 
 

@@ -1,6 +1,8 @@
 #include "glTFSceneLoader.h"
 #include "Paths.h"
 #include "MeshBuilder.h"
+#include "RenderScene.h"
+#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -197,14 +199,49 @@ Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, c
 namespace glTFLoader
 {
 
-static void LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
+static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
+{
+	if (!node.matrix.empty())
+	{
+		SPT_CHECK(node.matrix.size() == 16);
+		const math::Matrix4f matrix(math::Map<const math::Matrix4d>(node.matrix.data()).cast<float>());
+		return math::Affine3f(matrix);
+	}
+
+	math::Affine3f transform = math::Affine3f::Identity();
+	
+	if (!node.scale.empty())
+	{
+		SPT_CHECK(node.scale.size() == 3);
+		const math::AlignedScaling3f nodeScale(math::Map<const math::Vector3d>(node.scale.data()).cast<float>());
+		transform *= nodeScale;
+	}
+
+	if (!node.rotation.empty())
+	{
+		SPT_CHECK(node.rotation.size() == 4);
+		const math::Quaternionf nodeQuaternion(math::Map<const math::Vector4d>(node.rotation.data()).cast<float>());
+		transform *= nodeQuaternion.matrix();
+	}
+	
+	if (!node.translation.empty())
+	{
+		SPT_CHECK(node.translation.size() == 3);
+		const math::Translation3f nodeTranslation(math::Map<const math::Vector3d>(node.translation.data()).cast<float>());
+		transform *= nodeTranslation;
+	}
+
+	return transform;
+}
+
+static StaticMeshGeometryData LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
 	GLTFMeshBuilder builder;
 	builder.BuildMesh(mesh, model);
 
-	builder.EmitMeshGeometry();
+	return builder.EmitMeshGeometry();
 }
 
 void LoadScene(RenderScene& scene, lib::StringView path)
@@ -241,9 +278,28 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
+		lib::DynamicArray<StaticMeshGeometryData> loadedMeshes;
+		loadedMeshes.reserve(model.meshes.size());
+
 		for (const tinygltf::Mesh& mesh : model.meshes)
 		{
-			LoadMesh(mesh, model);
+			loadedMeshes.emplace_back(LoadMesh(mesh, model));
+		}
+
+		for (const tinygltf::Node& node : model.nodes)
+		{
+			if (node.mesh != -1)
+			{
+				SPT_CHECK(static_cast<SizeType>(node.mesh) < loadedMeshes.size());
+
+				RenderInstanceData instanceData;
+				instanceData.transfrom = GetNodeTransform(node);
+				const RenderSceneEntityHandle meshEntity = scene.CreateEntity(instanceData);
+				StaticMeshRenderData entityStaticMeshData;
+				entityStaticMeshData.firstPrimitiveIdx = loadedMeshes[node.mesh].firstPrimitiveIdx;
+				entityStaticMeshData.primitivesNum = loadedMeshes[node.mesh].primitivesNum;
+				meshEntity.emplace<StaticMeshRenderData>(entityStaticMeshData);
+			}
 		}
 	}
 }

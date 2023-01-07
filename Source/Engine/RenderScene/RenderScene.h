@@ -4,8 +4,8 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
 #include "RenderSceneRegistry.h"
-#include "RenderSystems/RenderSystem.h"
-#include "PrimitiveSystems/PrimitiveSystem.h"
+#include "RenderSystem.h"
+#include "PrimitivesSystem.h"
 
 namespace spt::rsc
 {
@@ -15,7 +15,7 @@ class RenderScene;
 
 struct RenderInstanceData
 {
-	math::Transform3f transfrom;
+	math::Affine3f transfrom;
 };
 
 
@@ -105,7 +105,7 @@ public:
 
 	PrimitiveSystemsRegistry() = default;
 
-	const lib::DynamicArray<lib::UniquePtr<PrimitiveSystem>>& GetSystems() const
+	const lib::DynamicArray<lib::UniquePtr<PrimitivesSystem>>& GetSystems() const
 	{
 		return m_systems;
 	}
@@ -128,7 +128,7 @@ public:
 
 		const lib::LockGuard lockGuard(m_lock);
 
-		PrimitiveSystem*& system = m_typeIDToSystem[typeID];
+		PrimitivesSystem*& system = m_typeIDToSystem[typeID];
 		if (!system)
 		{
 			m_systems.emplace(std::make_unique<TPrimitiveSystem>(scene));
@@ -148,9 +148,9 @@ public:
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
 		if (foundSystem != std::cend(m_typeIDToSystem))
 		{
-			const PrimitiveSystem* systemToRemove = foundSystem->second;
+			const PrimitivesSystem* systemToRemove = foundSystem->second;
 			const auto systemInstanceIt = std::find_if(std::cbegin(m_systems), std::cend(m_systems),
-													   [systemToRemove](const lib::UniquePtr<PrimitiveSystem>& system)
+													   [systemToRemove](const lib::UniquePtr<PrimitivesSystem>& system)
 													   {
 														   return system.get() == systemToRemove;
 													   });
@@ -167,8 +167,8 @@ private:
 
 	lib::Lock m_lock;
 
-	lib::DynamicArray<lib::UniquePtr<PrimitiveSystem>> m_systems;
-	lib::HashMap<PrimitiveSystemTypeID, PrimitiveSystem*> m_typeIDToSystem;
+	lib::DynamicArray<lib::UniquePtr<PrimitivesSystem>> m_systems;
+	lib::HashMap<PrimitiveSystemTypeID, PrimitivesSystem*> m_typeIDToSystem;
 };
 
 
@@ -180,6 +180,8 @@ public:
 
 	ecs::Registry& GetRegistry();
 	const ecs::Registry& GetRegistry() const;
+
+	void Update();
 
 	// Entities =============================================================
 
