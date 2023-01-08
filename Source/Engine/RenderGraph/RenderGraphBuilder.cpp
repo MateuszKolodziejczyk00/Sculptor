@@ -175,6 +175,15 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 	return m_allocator.Allocate<RGBufferView>(resourceDefinition, buffer, offset, size);
 }
 
+RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RGBufferHandle buffer = CreateBuffer(name, bufferDefinition, allocationInfo, flags);
+
+	return CreateBufferView(name, buffer, 0, bufferDefinition.size, flags);
+}
+
 void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination)
 {
 	SPT_PROFILER_FUNCTION();
@@ -307,33 +316,31 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			node.AddBufferToAcquire(accessedBuffer);
 		}
 
-		const ERGBufferAccess prevAccess				= accessedBufferView->GetLastAccessType();
-		const rhi::EShaderStageFlags prevAccessStages	= accessedBufferView->GetLastAccessShaderStages();
+		const ERGBufferAccess prevAccess			= accessedBufferView->GetLastAccessType();
+		const rhi::EPipelineStage prevAccessStages	= accessedBufferView->GetLastAccessPipelineStages();
 
-		const ERGBufferAccess nextAccess				= bufferAccess.access;
-		const rhi::EShaderStageFlags nextAccessStages	= bufferAccess.shaderStages;
+		const ERGBufferAccess nextAccess			= bufferAccess.access;
+		const rhi::EPipelineStage nextAccessStages	= bufferAccess.pipelineStages;
 
 		if (RequiresSynchronization(accessedBuffer, prevAccess, nextAccess))
 		{
 			const Uint64 offset	= accessedBufferView->GetOffset();
 			const Uint64 size	= accessedBufferView->GetSize();
 			
-			rhi::EPipelineStage sourcePipelineStages = rhi::EPipelineStage::None;
 			rhi::EAccessType sourceAccessType = rhi::EAccessType::None;
-			GetSynchronizationParamsForBuffer(prevAccess, prevAccessStages, sourcePipelineStages, sourceAccessType);
+			GetSynchronizationParamsForBuffer(prevAccess, sourceAccessType);
 			
-			rhi::EPipelineStage destPipelineStages = rhi::EPipelineStage::None;
 			rhi::EAccessType destAccessType = rhi::EAccessType::None;
-			GetSynchronizationParamsForBuffer(nextAccess, nextAccessStages, destPipelineStages, destAccessType);
+			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
 
-			node.AddBufferSynchronization(accessedBuffer, offset, size, sourcePipelineStages, sourceAccessType, destPipelineStages, destAccessType);
+			node.AddBufferSynchronization(accessedBuffer, offset, size, prevAccessStages, sourceAccessType, nextAccessStages, destAccessType);
 		}
 		
 		accessedBuffer->SetLastAccessNode(&node);
 
 		accessedBufferView->SetLastAccessNode(&node);
 		accessedBufferView->SetLastAccessType(nextAccess);
-		accessedBufferView->SetLastAccessShaderStages(nextAccessStages);
+		accessedBufferView->SetLastAccessPipelineStages(nextAccessStages);
 	}
 }
 
@@ -391,7 +398,7 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 	}
 }
 
-void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EShaderStageFlags lastAccessStages, rhi::EPipelineStage& outPipelineStage, rhi::EAccessType& outAccessType) const
+void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EAccessType& outAccessType) const
 {
 	switch (lastAccess)
 	{
@@ -410,21 +417,6 @@ void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastA
 	default:
 		SPT_CHECK_NO_ENTRY();
 		outAccessType = rhi::EAccessType::None;
-	}
-
-	outPipelineStage = rhi::EPipelineStage::None;
-
-	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Vertex))
-	{
-		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::VertexShader);
-	}
-	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Fragment))
-	{
-		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::FragmentShader);
-	}
-	if (lib::HasAnyFlag(lastAccessStages, rhi::EShaderStageFlags::Compute))
-	{
-		lib::AddFlag(outPipelineStage, rhi::EPipelineStage::ComputeShader);
 	}
 }
 

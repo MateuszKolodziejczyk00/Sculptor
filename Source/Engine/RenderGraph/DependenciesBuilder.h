@@ -17,7 +17,7 @@ struct RGTextureAccessDef
 {
 	RGTextureViewHandle		textureView;
 	ERGTextureAccess		access;
-	rhi::EShaderStageFlags	shaderStages;
+	rhi::EPipelineStage		pipelineStages;
 };
 
 
@@ -25,7 +25,7 @@ struct RGBufferAccessDef
 {
 	RGBufferViewHandle		resource;
 	ERGBufferAccess			access;
-	rhi::EShaderStageFlags	shaderStages;
+	rhi::EPipelineStage		pipelineStages;
 };
 
 
@@ -36,17 +36,48 @@ struct RGDependeciesContainer
 };
 
 
+struct RGDependencyStages
+{
+	RGDependencyStages()
+		: pipelineStages(rhi::EPipelineStage::None)
+	{ }
+	
+	RGDependencyStages(rhi::EPipelineStage inStages)
+		: pipelineStages(inStages)
+	{ }
+	
+	RGDependencyStages(rhi::EShaderStageFlags shaderStages)
+		: pipelineStages(rhi::EPipelineStage::None)
+	{
+		if (lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::Vertex))
+		{
+			lib::AddFlag(pipelineStages, rhi::EPipelineStage::VertexShader);
+		}
+		if (lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::Fragment))
+		{
+			lib::AddFlag(pipelineStages, rhi::EPipelineStage::FragmentShader);
+		}
+		if (lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::Compute))
+		{
+			lib::AddFlag(pipelineStages, rhi::EPipelineStage::ComputeShader);
+		}
+	}
+
+	rhi::EPipelineStage pipelineStages;
+};
+
+
 class RENDER_GRAPH_API RGDependenciesBuilder
 {
 public:
 
 	explicit RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies);
 
-	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
-	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
+	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
-	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
-	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages = rhi::EShaderStageFlags::None);
+	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 private:
 

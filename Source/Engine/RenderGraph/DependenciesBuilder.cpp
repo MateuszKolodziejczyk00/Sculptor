@@ -9,26 +9,26 @@ RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, R
 	, m_dependeciesRef(dependecies)
 { }
 
-void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
+void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, shaderStages });
+	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, dependencyStages.pipelineStages });
 }
 
-void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
+void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
-	AddTextureAccess(rgTextureView, access, shaderStages);
+	AddTextureAccess(rgTextureView, access, dependencyStages.pipelineStages);
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, shaderStages });
+	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, dependencyStages.pipelineStages });
 }
 
-void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages /*= rhi::EShaderStageFlags::None*/)
+void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer.ToSharedPtr());
-	AddBufferAccess(rgBufferView, access, shaderStages);
+	AddBufferAccess(rgBufferView, access, dependencyStages.pipelineStages);
 }
 
 } // spt::rg

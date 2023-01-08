@@ -595,7 +595,7 @@ public:
 		, m_offset(offset)
 		, m_size(size)
 		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
+		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 	{
 		SPT_CHECK(m_buffer.IsValid());
 	}
@@ -606,7 +606,7 @@ public:
 		, m_offset(bufferView->GetOffset())
 		, m_size(bufferView->GetSize())
 		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessShaderStages(rhi::EShaderStageFlags::None)
+		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 		, m_bufferViewInstance(std::move(bufferView))
 	{
 		SPT_CHECK(m_buffer.IsValid());
@@ -665,14 +665,14 @@ public:
 		m_lastAccess = access;
 	}
 
-	rhi::EShaderStageFlags GetLastAccessShaderStages() const
+	rhi::EPipelineStage GetLastAccessPipelineStages() const
 	{
-		return m_lastAccessShaderStages;
+		return m_lastAccessPipelineStages;
 	}
 
-	void SetLastAccessShaderStages(rhi::EShaderStageFlags stages)
+	void SetLastAccessPipelineStages(rhi::EPipelineStage stages)
 	{
-		m_lastAccessShaderStages = stages;
+		m_lastAccessPipelineStages = stages;
 	}
 
 private:
@@ -684,7 +684,7 @@ private:
 
 	RGNodeHandle			m_lastAccessNode;
 	ERGBufferAccess			m_lastAccess;
-	rhi::EShaderStageFlags	m_lastAccessShaderStages;
+	rhi::EPipelineStage		m_lastAccessPipelineStages;
 
 	mutable lib::SharedPtr<rdr::BufferView> m_bufferViewInstance;
 };

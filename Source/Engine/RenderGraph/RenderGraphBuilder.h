@@ -68,6 +68,9 @@ public:
 
 	RGBufferViewHandle CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags = ERGResourceFlags::Default);
 
+	/** Creates buffer and returns view of full buffer */
+	RGBufferViewHandle CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	
 	// Utilities ==============================================
@@ -133,7 +136,7 @@ private:
 
 	const rhi::BarrierTextureTransitionDefinition& GetTransitionDefForAccess(RGNodeHandle node, ERGTextureAccess access) const;
 
-	void GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EShaderStageFlags lastAccessStages, rhi::EPipelineStage& outPipelineStage, rhi::EAccessType& outAccessType) const;
+	void GetSynchronizationParamsForBuffer(ERGBufferAccess lastAccess, rhi::EAccessType& outAccessType) const;
 
 	Bool RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const;
 	Bool RequiresSynchronization(RGBufferHandle buffer, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess) const;
@@ -304,13 +307,13 @@ template<typename TParameters>
 void RenderGraphBuilder::BuildParametersStructDepenencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const
 {
 	ForEachRGParameterAccess(parameters,
-							 lib::Overload([&dependenciesBuilder](RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EShaderStageFlags shaderStages)
+							 lib::Overload([&dependenciesBuilder](RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EPipelineStage pipelineStages)
 										   {
-											   dependenciesBuilder.AddBufferAccess(buffer, access, shaderStages);
+											   dependenciesBuilder.AddBufferAccess(buffer, access, pipelineStages);
 										   },
-										   [&dependenciesBuilder](RGTextureViewHandle texture, ERGTextureAccess access, rhi::EShaderStageFlags shaderStages)
+										   [&dependenciesBuilder](RGTextureViewHandle texture, ERGTextureAccess access, rhi::EPipelineStage pipelineStages)
 										   {
-											   dependenciesBuilder.AddTextureAccess(texture, access, shaderStages);
+											   dependenciesBuilder.AddTextureAccess(texture, access, pipelineStages);
 										   }));
 }
 

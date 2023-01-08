@@ -33,7 +33,7 @@ struct ParameterTypeUtils<RGTextureViewHandle>
 };
 
 
-template<typename TStruct, typename TNextParameterAccessType, typename TParameterType, typename ParameterTypeUtils<TParameterType>::AccessType access, rhi::EShaderStageFlags shaderStages, lib::Literal name>
+template<typename TStruct, typename TNextParameterAccessType, typename TParameterType, typename ParameterTypeUtils<TParameterType>::AccessType access, rhi::EPipelineStage pipelineStages, lib::Literal name>
 class RGParameterAccessMetaData
 {
 public:
@@ -72,9 +72,9 @@ public:
 		return access;
 	}
 
-	static constexpr rhi::EShaderStageFlags GetShaderStages()
+	static constexpr rhi::EPipelineStage GetPipelineStages()
 	{
-		return shaderStages;
+		return pipelineStages;
 	}
 
 	static TParameterType& GetParameter(TStruct& parametersStruct)
@@ -94,7 +94,7 @@ public:
 
 
 template<typename TStruct, typename TNextParameterAccessType>
-class RGParameterAccessMetaData<TStruct, TNextParameterAccessType, void, 0, rhi::EShaderStageFlags::None, "Head">
+class RGParameterAccessMetaData<TStruct, TNextParameterAccessType, void, 0, rhi::EPipelineStage::None, "Head">
 {
 public:
 
@@ -119,16 +119,16 @@ public: \
 	} \
 	typedef spt::rg::priv::RGParameterAccessMetaData<ThisClass, void
 
-#define PARAMETER(type, name, access, shaderStages) \
-	, type, access, shaderStages, #name> _MT_##name; \
+#define PARAMETER(type, name, access, pipelineStages) \
+	, type, access, pipelineStages, #name> _MT_##name; \
 	type name; \
 	typedef spt::rg::priv::RGParameterAccessMetaData<ThisClass, _MT_##name
 
 #define END_RG_NODE_PARAMETERS_STRUCT() \
-	, void, 0, rhi::EShaderStageFlags::None, "Head"> MetaDataHead; \
+	, void, 0, rhi::EPipelineStage::None, "Head"> MetaDataHead; \
 };
 
-#define RG_BUFFER_VIEW(name, access, shaderStages) PARAMETER(spt::rg::RGBufferViewHandle, name, access, shaderStages)
+#define RG_BUFFER_VIEW(name, access, pipelineStages) PARAMETER(spt::rg::RGBufferViewHandle, name, access, pipelineStages)
 #define RG_TEXTURE_VIEW(name, access, shaderStages) PARAMETER(spt::rg::RGTextureViewHandle, name, access, shaderStages)
 
 
@@ -140,7 +140,7 @@ void ForEachRGParameterAccess(const TRGParametersStruct& parameters, TCallable&&
 	// If current parameter is valid
 	if constexpr (!std::is_same_v<typename TCurrentParameterMetaData::ParameterType, void>)
 	{
-		callable(TCurrentParameterMetaData::GetParameter(parameters), TCurrentParameterMetaData::GetAccess(), TCurrentParameterMetaData::GetShaderStages());
+		callable(TCurrentParameterMetaData::GetParameter(parameters), TCurrentParameterMetaData::GetAccess(), TCurrentParameterMetaData::GetPipelineStages());
 	}
 
 	// If has next parameter
