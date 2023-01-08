@@ -214,24 +214,32 @@ public:
 		}
 	}
 	
-	// Primitive Systems ====================================================
+	// Primitives Systems ===================================================
 
-	template<typename TPrimitiveSystem>
-	void AddPrimitiveSystem()
+	template<typename TPrimitivesSystem>
+	void AddPrimitivesSystem()
 	{
-		m_primitiveSystems.AddSystem<TPrimitiveSystem>(*this);
+		m_primitiveSystems.AddSystem<TPrimitivesSystem>(*this);
 	}
 
-	template<typename TPrimitiveSystem>
-	void RemovePrimitiveSystem()
+	template<typename TPrimitivesSystem>
+	void RemovePrimitivesSystem()
 	{
-		m_primitiveSystems.RemoveSystem<TPrimitiveSystem>();
+		m_primitiveSystems.RemoveSystem<TPrimitivesSystem>();
 	}
 
-	template<typename TPrimitiveSystem>
-	const TPrimitiveSystem* GetPrimitiveSystem() const
+	template<typename TPrimitivesSystem>
+	const TPrimitivesSystem* GetPrimitivesSystem() const
 	{
-		return m_primitiveSystems.GetSystem<TPrimitiveSystem>();
+		return m_primitiveSystems.GetSystem<TPrimitivesSystem>();
+	}
+	
+	template<typename TPrimitivesSystem>
+	const TPrimitivesSystem& GetPrimitivesSystemChecked() const
+	{
+		const TPrimitivesSystem* system = GetPrimitivesSystem<TPrimitivesSystem>();
+		SPT_CHECK(!!system);
+		return *system;
 	}
 
 private:

@@ -120,7 +120,7 @@ const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 
 void SandboxRenderer::InitializeRenderScene()
 {
-	m_renderScene.AddPrimitiveSystem<rsc::StaticMeshPrimitivesSystem>();
+	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 
 	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");

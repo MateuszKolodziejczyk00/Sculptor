@@ -2,9 +2,31 @@
 #include "RenderScene.h"
 #include "RenderSystem.h"
 #include "BufferUtilities.h"
+#include "RenderStages/GBufferGenerationStage.h"
 
 namespace spt::rsc
 {
+
+namespace renderer_utils
+{
+
+template<typename TRenderStage>
+void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec>& renderViews)
+{
+	SPT_PROFILER_FUNCTION();
+
+	TRenderStage stageInstance;
+
+	for (ViewRenderingSpec& view : renderViews)
+	{
+		if (view.SupportsStage(stage))
+		{
+			stageInstance.Render(graphBuilder, scene, view);
+		}
+	}
+}
+
+} // renderer_utils
 
 SceneRenderer::SceneRenderer()
 { }
@@ -37,8 +59,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
 
-	// TODO: Process render stages here
-	SPT_CHECK_NO_ENTRY();
+	renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViews);
 
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{

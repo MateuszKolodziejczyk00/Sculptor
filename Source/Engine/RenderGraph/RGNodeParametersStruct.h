@@ -107,8 +107,8 @@ public:
 
 } // priv
 
-#define BEGIN_RG_NODE_PARAMETERS_STRUCT(api, name) \
-struct api name \
+#define BEGIN_RG_NODE_PARAMETERS_STRUCT(name) \
+struct name \
 { \
 private: \
 	using ThisClass = name; \

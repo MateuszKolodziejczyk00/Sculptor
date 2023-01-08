@@ -10,7 +10,7 @@ enum class ERenderStage
 {
 	None					= 0,
 	ShadowGenerationStage	= BIT(0),
-	BasePassStage			= BIT(1)
+	GBufferGenerationStage	= BIT(1)
 };
 
 

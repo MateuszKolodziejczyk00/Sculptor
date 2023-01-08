@@ -15,6 +15,13 @@ public:
 	
 	StaticMeshesRenderSystem();
 
+	// Begin RenderSystem overrides
+	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view) override;
+	// End RenderSystem overrides
+
+private:
+
+	void RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view);
 };
 
 } // spt::rsc

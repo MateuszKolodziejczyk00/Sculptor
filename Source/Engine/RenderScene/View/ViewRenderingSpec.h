@@ -15,6 +15,7 @@ namespace spt::rsc
 
 class RenderScene;
 class RenderView;
+class ViewRenderingSpec;
 
 
 class ViewRenderingDataElement
@@ -48,6 +49,14 @@ public:
 		return !!m_dataPtr;
 	}
 
+	template<typename TDataType, typename... TArgs>
+	TDataType& Create(TArgs&&... args)
+	{
+		SPT_CHECK(!IsValid());
+		CreateImpl<TDataType>(std::forward<TArgs>(args)...);
+		return Get<TDataType>();
+	}
+
 	template<typename TDataType, typename TValueType>
 	void Set(TValueType&& value)
 	{
@@ -58,23 +67,18 @@ public:
 		}
 		else
 		{
-			SPT_STATIC_CHECK_MSG(alignof(TDataType) <= 16, "Currently alignments higher thatn 16 are not handled");
-			if (sizeof(TDataType) <= inlineSize)
-			{
-				new (m_inlineStorage) TDataType(std::forward<TValueType>(value));
-			}
-			else
-			{
-				m_dataPtr = new TDataType(std::forward<TValueType>(value));
-			}
-
-			if constexpr (!std::is_pod_v<TDataType>)
-			{
-				m_deleter = [](void* data) { ~reinterpret_cast<TDataType*>(data); };
-			}
-
-			m_moveOperator = [](void* dst, void* src) { reinterpret_cast<TDataType*>(dst) = std::move(*reinterpret_cast<TDataType*>(src)); };
+			CreateImpl<TDataType>(std::forward_as_tuple<TValueType>(value));
 		}
+	}
+	
+	template<typename TDataType>
+	TDataType& GetOrCreate()
+	{
+		if (!IsValid())
+		{
+			CreateImpl<TDataType>();
+		}
+		return Get<TDataType>();
 	}
 
 	template<typename TDataType>
@@ -96,6 +100,27 @@ private:
 	Bool IsAllocatedInline() const
 	{
 		return m_dataPtr == m_inlineStorage;
+	}
+
+	template<typename TDataType, typename... TArgs>
+	void CreateImpl(TArgs&&... args)
+	{
+		SPT_STATIC_CHECK_MSG(alignof(TDataType) <= 16, "Currently alignments higher thatn 16 are not handled");
+		if constexpr (sizeof(TDataType) <= inlineSize)
+		{
+			new (m_inlineStorage) TDataType(std::forward<TArgs>(args)...);
+		}
+		else
+		{
+			m_dataPtr = new TDataType(std::forward<TArgs>(args)...);
+		}
+
+		if constexpr (!std::is_pod_v<TDataType>)
+		{
+			m_deleter = [](void* data) { reinterpret_cast<TDataType*>(data)->~TDataType(); };
+		}
+
+		m_moveOperator = [](void* dst, void* src) { *reinterpret_cast<TDataType*>(dst) = std::move(*reinterpret_cast<TDataType*>(src)); };
 	}
 
 	void Delete()
@@ -152,12 +177,24 @@ public:
 
 	ViewRenderingDataContainer() = default;
 
+	template<typename TDataType, typename... TArgs>
+	TDataType& Create(TArgs&&... args)
+	{
+		return m_data[ecs::type_id<TDataType>()].Create<TDataType>(std::forward<TArgs>(args)...);
+	}
+
 	template<typename TDataType, typename TValueType>
 	void Set(TValueType&& newValue)
 	{
 		m_data[ecs::type_id<TDataType>()].Set<TDataType>(std::forward<TValueType>(newValue));
 	}
 
+	template<typename TDataType>
+	TDataType& GetOrCreate()
+	{
+		return m_data[ecs::type_id<TDataType>()].GetOrCreate<TDataType>();
+	}
+	
 	template<typename TDataType>
 	TDataType& Get()
 	{
@@ -202,9 +239,9 @@ class RenderStageEntries
 {
 public:
 
-	using PreRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, const RenderView& /*view*/)>;
-	using OnRenderStageDelegate		= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, const RenderView& /*view*/)>;
-	using PostRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, const RenderView& /*view*/)>;
+	using PreRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*view*/)>;
+	using OnRenderStageDelegate		= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*view*/)>;
+	using PostRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*view*/)>;
 
 	RenderStageEntries();
 
