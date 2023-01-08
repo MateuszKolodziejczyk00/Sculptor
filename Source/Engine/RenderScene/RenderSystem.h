@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
-#include "View/RenderViewEntryPoints.h"
+#include "View/ViewRenderingSpec.h"
 
 namespace spt::rg
 {
@@ -31,7 +31,7 @@ public:
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) {};
 
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, RenderViewEntryPoints& view) {};
+	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view) {};
 	
 	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
 

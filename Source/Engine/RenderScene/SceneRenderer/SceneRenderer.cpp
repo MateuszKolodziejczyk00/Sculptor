@@ -1,6 +1,7 @@
 #include "SceneRenderer.h"
 #include "RenderScene.h"
 #include "RenderSystem.h"
+#include "BufferUtilities.h"
 
 namespace spt::rsc
 {
@@ -8,11 +9,13 @@ namespace spt::rsc
 SceneRenderer::SceneRenderer()
 { }
 
-void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, RenderView& view)
+void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::DynamicArray<RenderViewEntryPoints> renderViews = CollectRenderViews(scene, view);
+	scene.Update();
+
+	lib::DynamicArray<ViewRenderingSpec> renderViews = CollectRenderViews(scene, view);
 
 	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
@@ -22,7 +25,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 	
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
-		for (RenderViewEntryPoints& renderView : renderViews)
+		for (ViewRenderingSpec& renderView : renderViews)
 		{
 			if (lib::HasAnyFlag(renderView.GetSupportedStages(), renderSystem->GetSupportedStages()))
 			{
@@ -30,6 +33,9 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 			}
 		}
 	}
+
+	// Flush all writes that happened during prepare phrase
+	gfx::FlushPendingUploads();
 
 	// TODO: Process render stages here
 	SPT_CHECK_NO_ENTRY();
@@ -40,7 +46,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 	}
 }
 
-lib::DynamicArray<RenderViewEntryPoints> SceneRenderer::CollectRenderViews(const RenderScene& scene, RenderView& view) const
+lib::DynamicArray<ViewRenderingSpec> SceneRenderer::CollectRenderViews(RenderScene& scene, RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -58,7 +64,7 @@ lib::DynamicArray<RenderViewEntryPoints> SceneRenderer::CollectRenderViews(const
 	std::sort(std::begin(views), std::end(views));
 	views.erase(std::unique(std::begin(views), std::end(views)), std::end(views));
 
-	lib::DynamicArray<RenderViewEntryPoints> viewsEntryPoints(views.size());
+	lib::DynamicArray<ViewRenderingSpec> viewsEntryPoints(views.size());
 	for (SizeType viewIdx = 0; viewIdx < views.size(); ++viewIdx)
 	{
 		viewsEntryPoints[viewIdx].Initialize(*views[viewIdx]);

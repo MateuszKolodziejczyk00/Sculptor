@@ -1,4 +1,4 @@
-#include "RenderViewEntryPoints.h"
+#include "ViewRenderingSpec.h"
 #include "RenderView.h"
 
 namespace spt::rsc
@@ -26,13 +26,13 @@ RenderStageEntries::PostRenderStageDelegate& RenderStageEntries::GetPostRenderSt
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// RenderViewEntryPoints =========================================================================
+// ViewRenderingSpec =============================================================================
 
-RenderViewEntryPoints::RenderViewEntryPoints()
+ViewRenderingSpec::ViewRenderingSpec()
 	: m_renderView(nullptr)
 { }
 
-void RenderViewEntryPoints::Initialize(const RenderView& renderView)
+void ViewRenderingSpec::Initialize(const RenderView& renderView)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -50,31 +50,41 @@ void RenderViewEntryPoints::Initialize(const RenderView& renderView)
 	}
 }
 
-const RenderView& RenderViewEntryPoints::GetRenderView() const
+const RenderView& ViewRenderingSpec::GetRenderView() const
 {
 	SPT_CHECK(!!m_renderView);
 	return *m_renderView;
 }
 
-ERenderStage RenderViewEntryPoints::GetSupportedStages() const
+ERenderStage ViewRenderingSpec::GetSupportedStages() const
 {
 	SPT_CHECK(!!m_renderView);
 	return m_renderView->GetSupportedStages();
 }
 
-Bool RenderViewEntryPoints::SupportsStage(ERenderStage stage) const
+Bool ViewRenderingSpec::SupportsStage(ERenderStage stage) const
 {
 	SPT_CHECK(!!m_renderView);
 	return lib::HasAnyFlag(m_renderView->GetSupportedStages(), stage);
 }
 
-const RenderStageEntries& RenderViewEntryPoints::GetRenderStageEntries(ERenderStage stage) const
+const ViewRenderingDataContainer& ViewRenderingSpec::GetData() const
+{
+	return m_viewRenderingData;
+}
+
+ViewRenderingDataContainer& ViewRenderingSpec::GetData()
+{
+	return m_viewRenderingData;
+}
+
+const RenderStageEntries& ViewRenderingSpec::GetRenderStageEntries(ERenderStage stage) const
 {
 	SPT_CHECK(!!m_renderView);
 	return m_stagesEntries.at(static_cast<SizeType>(stage));
 }
 
-RenderStageEntries& RenderViewEntryPoints::GetRenderStageEntries(ERenderStage stage)
+RenderStageEntries& ViewRenderingSpec::GetRenderStageEntries(ERenderStage stage)
 {
 	SPT_CHECK(!!m_renderView);
 	return m_stagesEntries.at(static_cast<SizeType>(stage));
