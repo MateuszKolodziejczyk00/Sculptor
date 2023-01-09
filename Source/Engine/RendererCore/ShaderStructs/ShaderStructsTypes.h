@@ -63,10 +63,32 @@ constexpr lib::String GetShaderTypeName<math::Matrix4f>()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utilities =====================================================================================
 
-template<typename TStruct>
-constexpr lib::String AddShaderStruct()
+template<typename TType>
+concept CShaderStruct = std::is_same_v<decltype(TType::GetStructName()), const char*>;
+
+template<typename TType>
+constexpr lib::String DefineType()
 {
-	return lib::String("[[shader_struct(") + TStruct::GetStructName() + ")]]";
+	lib::String code;
+	// if TType is struct defined in C++, add it's definition to shader code
+	if constexpr (CShaderStruct<TType>)
+	{
+		code += lib::String("[[shader_struct(") + TType::GetStructName() + ")]]";
+	}
+	return code;
+}
+
+template<typename TType>
+constexpr lib::String GetTypeName()
+{
+	if constexpr (CShaderStruct<TType>)
+	{
+		return lib::String(TType::GetStructName());
+	}
+	else
+	{
+		return GetShaderTypeName<TType>();
+	}
 }
 
 } // shader_translator

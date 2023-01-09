@@ -95,6 +95,7 @@ public: \
 
 #define END_SHADER_STRUCT() \
 	void, "Head"> HeadMemberMetaData; \
+	private: \
 	static inline rdr::ShaderStructRegistration<ThisClass> _structRegistration; \
 };
 

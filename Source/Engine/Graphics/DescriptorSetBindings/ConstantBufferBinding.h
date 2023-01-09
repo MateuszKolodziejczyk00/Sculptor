@@ -69,8 +69,8 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return rdr::shader_translator::AddShaderStruct<TStruct>() + '\n' +
-			BuildBindingVariableCode(lib::String("ConstantBuffer<") + TStruct::GetStructName() + "> " + name, bindingIdx);
+		return rdr::shader_translator::DefineType<TStruct>() + '\n' +
+			BuildBindingVariableCode(lib::String("ConstantBuffer<") + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
