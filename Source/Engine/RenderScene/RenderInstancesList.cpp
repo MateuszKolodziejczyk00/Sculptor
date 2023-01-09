@@ -10,19 +10,11 @@ namespace spt::rsc
 // RenderInstancesListBase =======================================================================
 
 RenderInstancesListBase::RenderInstancesListBase(const rdr::RendererResourceName& listName, Uint64 dataSize, Uint64 instanceDataAlignment)
-	: m_instanceDataAlignment(instanceDataAlignment)
-{
-	rhi::RHIAllocationInfo bufferAllocationInfo(rhi::EMemoryUsage::CPUToGPU);
+	: m_instances(CreateInstancesBuffer(listName, dataSize))
+	, m_instanceDataAlignment(instanceDataAlignment)
+{ }
 
-	rhi::BufferDefinition instancesBufferDef;
-	instancesBufferDef.size		= dataSize;
-	instancesBufferDef.usage	= rhi::EBufferUsage::Storage;
-	instancesBufferDef.flags	= rhi::EBufferFlags::WithVirtualSuballocations;
-
-	m_instances = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(listName + "_InstancesBuffer"), instancesBufferDef, bufferAllocationInfo);
-}
-
-const lib::SharedPtr<rdr::Buffer>& RenderInstancesListBase::GetInstancesBuffer() const
+const lib::SharedRef<rdr::Buffer>& RenderInstancesListBase::GetInstancesBuffer() const
 {
 	return m_instances;
 }
@@ -37,7 +29,7 @@ rhi::RHISuballocation RenderInstancesListBase::AddInstanceImpl(const Byte* insta
 	instanceSuballocation = m_instances->GetRHI().CreateSuballocation(suballocationDef);
 
 	SPT_CHECK(instanceSuballocation.IsValid());
-	gfx::UploadDataToBuffer(lib::Ref(m_instances), instanceSuballocation.GetOffset(), instanceData, instanceDataSize);
+	gfx::UploadDataToBuffer(m_instances, instanceSuballocation.GetOffset(), instanceData, instanceDataSize);
 
 	return instanceSuballocation;
 }
@@ -58,8 +50,20 @@ void RenderInstancesListBase::FlushRemovedInstancesImpl(Uint64 instanceDataSize)
 	for (const rhi::RHISuballocation& removedSuballocation : m_pendingRemoveSuballocations)
 	{
 		m_instances->GetRHI().DestroySuballocation(removedSuballocation);
-		gfx::FillBuffer(lib::Ref(m_instances), removedSuballocation.GetOffset(), instanceDataSize, Byte(0));
+		gfx::FillBuffer(m_instances, removedSuballocation.GetOffset(), instanceDataSize, Byte(0));
 	}
 }
 
-} // spt::rsc
+lib::SharedRef<rdr::Buffer> RenderInstancesListBase::CreateInstancesBuffer(const rdr::RendererResourceName& listName, Uint64 dataSize) const
+{
+	rhi::RHIAllocationInfo bufferAllocationInfo(rhi::EMemoryUsage::CPUToGPU);
+
+	rhi::BufferDefinition instancesBufferDef;
+	instancesBufferDef.size		= dataSize;
+	instancesBufferDef.usage	= rhi::EBufferUsage::Storage;
+	instancesBufferDef.flags	= rhi::EBufferFlags::WithVirtualSuballocations;
+
+	return rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(listName + "_InstancesBuffer"), instancesBufferDef, bufferAllocationInfo);
+}
+
+} // spt::rs

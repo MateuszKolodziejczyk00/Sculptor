@@ -49,6 +49,8 @@ public:
 	virtual ~StaticMeshPrimitivesSystem();
 
 	virtual void Update() override;
+	
+	const StaticMeshInstancesList& GetStaticMeshInstances() const;
 
 private:
 

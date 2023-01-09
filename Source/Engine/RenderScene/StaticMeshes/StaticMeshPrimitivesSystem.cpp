@@ -33,6 +33,11 @@ void StaticMeshPrimitivesSystem::Update()
 	m_staticMeshInstances.FlushRemovedInstances();
 }
 
+const StaticMeshInstancesList& StaticMeshPrimitivesSystem::GetStaticMeshInstances() const
+{
+	return m_staticMeshInstances;
+}
+
 void StaticMeshPrimitivesSystem::OnStaticMeshUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity)
 {
 	SPT_PROFILER_FUNCTION();

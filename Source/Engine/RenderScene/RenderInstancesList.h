@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
 
+
 namespace spt::rsc
 {
 
@@ -12,7 +13,7 @@ public:
 
 	explicit RenderInstancesListBase(const rdr::RendererResourceName& listName, Uint64 dataSize, Uint64 instanceDataAlignment);
 
-	const lib::SharedPtr<rdr::Buffer>& GetInstancesBuffer() const;
+	const lib::SharedRef<rdr::Buffer>& GetInstancesBuffer() const;
 
 protected:
 
@@ -22,7 +23,9 @@ protected:
 
 private:
 
-	lib::SharedPtr<rdr::Buffer> m_instances;
+	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer(const rdr::RendererResourceName& listName, Uint64 dataSize) const;
+
+	lib::SharedRef<rdr::Buffer> m_instances;
 	
 	lib::DynamicArray<rhi::RHISuballocation> m_pendingRemoveSuballocations;
 
@@ -56,6 +59,11 @@ public:
 	void FlushRemovedInstances()
 	{
 		return FlushRemovedInstancesImpl(sizeof(TInstanceDataType));
+	}
+
+	Uint64 GetMaxInstancesNum() const
+	{
+		return GetInstancesBuffer()->GetRHI().GetSize() / sizeof(TInstanceDataType);
 	}
 };
 
