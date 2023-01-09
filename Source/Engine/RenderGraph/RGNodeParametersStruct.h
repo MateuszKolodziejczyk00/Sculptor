@@ -53,13 +53,15 @@ public:
 		{
 			return 0;
 		}
+		else
+		{
+			using PrevMemberType = typename NextParamMetaData::ParameterType;
 
-		using PrevMemberType = typename NextParamMetaData::ParameterType;
-
-		constexpr SizeType prevMemberEndOffset = NextParamMetaData::GetOffset() + sizeof(PrevMemberType);
-		constexpr SizeType thisMemberAlignment = alignof(ParameterType);
-		constexpr SizeType offset = math::Utils::RoundUp(prevMemberEndOffset, thisMemberAlignment);
-		return offset;
+			constexpr SizeType prevMemberEndOffset = NextParamMetaData::GetOffset() + sizeof(PrevMemberType);
+			constexpr SizeType thisMemberAlignment = alignof(ParameterType);
+			constexpr SizeType offset = math::Utils::RoundUp(prevMemberEndOffset, thisMemberAlignment);
+			return offset;
+		}
 	}
 
 	static constexpr const char* GetName()

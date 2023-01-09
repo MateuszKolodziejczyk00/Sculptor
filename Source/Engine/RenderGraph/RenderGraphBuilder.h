@@ -119,11 +119,11 @@ private:
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const;
 
-	template<typename TParametersStruct>
-	void BuildParametersDepenencies(const TParametersStruct& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const;
+	template<typename TParametersTuple>
+	void BuildParametersDependencies(const TParametersTuple& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const;
 	
 	template<typename TParameters>
-	void BuildParametersStructDepenencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
+	void BuildParametersStructDependencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
 
 	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
 
@@ -214,7 +214,7 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
 	renderPassDef.BuildDependencies(dependenciesBuilder);
-	BuildParametersDepenencies(parameters, dependenciesBuilder);
+	BuildParametersDependencies(parameters, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -240,7 +240,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	RGDependeciesContainer subpassDependencies;
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies);
 	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
-	BuildParametersDepenencies(dsStatesRange, parameters);
+	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
 
 	ResolveNodeDependecies(*lastRenderPass, subpassDependencies);
 }
@@ -293,18 +293,18 @@ void RenderGraphBuilder::BuildDescriptorSetDependencies(const TDescriptorSetStat
 	}
 }
 
-template<typename TParametersStruct>
-void RenderGraphBuilder::BuildParametersDepenencies(const TParametersStruct& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const
+template<typename TParametersTuple>
+void RenderGraphBuilder::BuildParametersDependencies(const TParametersTuple& parametersTuple, RGDependenciesBuilder& dependenciesBuilder) const
 {
-	std::apply([this, &dependenciesBuilder](const auto& parameters)
+	std::apply([this, &dependenciesBuilder](const auto&... parameters)
 			   {
-				   BuildParametersStructDepenencies(parameters, dependenciesBuilder);
+				   (BuildParametersStructDependencies(parameters, dependenciesBuilder), ...);
 			   },
-			   parametersStructs);
+			   parametersTuple);
 }
 
 template<typename TParameters>
-void RenderGraphBuilder::BuildParametersStructDepenencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const
+void RenderGraphBuilder::BuildParametersStructDependencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const
 {
 	ForEachRGParameterAccess(parameters,
 							 lib::Overload([&dependenciesBuilder](RGBufferViewHandle buffer, ERGBufferAccess access, rhi::EPipelineStage pipelineStages)
