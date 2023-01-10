@@ -7,18 +7,8 @@ namespace spt::rsc
 {
 
 RenderScene::RenderScene()
-{
-	rhi::RHIAllocationInfo transformsAllocationInfo;
-	transformsAllocationInfo.memoryUsage = rhi::EMemoryUsage::GPUOnly;
-	transformsAllocationInfo.allocationFlags = rhi::EAllocationFlags::CreateDedicatedAllocation;
-
-	rhi::BufferDefinition transformsBufferDef;
-	transformsBufferDef.size = 1024 * sizeof(math::Affine3f);
-	transformsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
-	transformsBufferDef.flags = rhi::EBufferFlags::WithVirtualSuballocations;
-
-	m_instanceTransforms = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("InstanceTransformsBuffer"), transformsBufferDef, transformsAllocationInfo);
-}
+	: m_transformsBuffer(CreateTransformsBuffer())
+{ }
 
 ecs::Registry& RenderScene::GetRegistry()
 {
@@ -54,12 +44,12 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 	const RenderSceneEntityHandle entity(m_registry, entityID);
 
 	const rhi::SuballocationDefinition suballocationDef(sizeof(math::Affine3f), sizeof(math::Affine3f), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
-	const rhi::RHISuballocation entityTransformSuballocation = m_instanceTransforms->GetRHI().CreateSuballocation(suballocationDef);
+	const rhi::RHISuballocation entityTransformSuballocation = m_transformsBuffer->GetRHI().CreateSuballocation(suballocationDef);
 
 	entity.emplace<EntityTransformHandle>(entityTransformSuballocation);
 
 	const Byte* transformData = reinterpret_cast<const Byte*>(instanceData.transfrom.data());
-	gfx::UploadDataToBuffer(lib::Ref(m_instanceTransforms), entityTransformSuballocation.GetOffset(), transformData, sizeof(math::Affine3f));
+	gfx::UploadDataToBuffer(m_transformsBuffer, entityTransformSuballocation.GetOffset(), transformData, sizeof(math::Affine3f));
 
 	return entity;
 }
@@ -84,6 +74,20 @@ const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSys
 	return m_renderSystems.GetRenderSystems();
 }
 
+lib::SharedRef<rdr::Buffer> RenderScene::CreateTransformsBuffer() const
+{
+	rhi::RHIAllocationInfo transformsAllocationInfo;
+	transformsAllocationInfo.memoryUsage = rhi::EMemoryUsage::GPUOnly;
+	transformsAllocationInfo.allocationFlags = rhi::EAllocationFlags::CreateDedicatedAllocation;
+
+	rhi::BufferDefinition transformsBufferDef;
+	transformsBufferDef.size = 1024 * sizeof(math::Affine3f);
+	transformsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	transformsBufferDef.flags = rhi::EBufferFlags::WithVirtualSuballocations;
+
+	return rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("InstanceTransformsBuffer"), transformsBufferDef, transformsAllocationInfo);
+}
+
 void RenderScene::InitializeRenderSystem(RenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();
@@ -96,6 +100,11 @@ void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
 {
 	m_registry.destroy(system.GetSystemEntity());
 	system.Deinitialize(*this);
+}
+
+const lib::SharedRef<rdr::Buffer>& RenderScene::GetTransformsBuffer() const
+{
+	return m_transformsBuffer;
 }
 
 } // spt::rsc

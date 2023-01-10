@@ -111,11 +111,11 @@ public:
 	}
 
 	template<typename TPrimitiveSystem>
-	TPrimitiveSystem* GetSystem() const
+	const TPrimitiveSystem* GetSystem() const
 	{
 		const PrimitiveSystemTypeID typeID = ecs::type_id<TPrimitiveSystem>();
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
-		return foundSystem != std::cend(m_typeIDToSystem) ? foundSystem->second : nullptr;
+		return foundSystem != std::cend(m_typeIDToSystem) ? static_cast<TPrimitiveSystem*>(foundSystem->second) : nullptr;
 	}
 
 
@@ -189,6 +189,10 @@ public:
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
 	Uint64 GetTransformIdx(RenderSceneEntityHandle entity) const;
+
+	// Rendering ============================================================
+
+	const lib::SharedRef<rdr::Buffer>& GetTransformsBuffer() const;
 	
 	// Render Systems =======================================================
 
@@ -244,12 +248,14 @@ public:
 
 private:
 
+	lib::SharedRef<rdr::Buffer> CreateTransformsBuffer() const;
+
 	void InitializeRenderSystem(RenderSystem& system);
 	void DeinitializeRenderSystem(RenderSystem& system);
 
 	RenderSceneRegistry m_registry;
 
-	lib::SharedPtr<rdr::Buffer> m_instanceTransforms;
+	lib::SharedRef<rdr::Buffer> m_transformsBuffer;
 
 	PrimitiveSystemsRegistry m_primitiveSystems;
 

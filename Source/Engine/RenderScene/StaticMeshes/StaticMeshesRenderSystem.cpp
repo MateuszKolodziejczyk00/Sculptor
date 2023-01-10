@@ -4,6 +4,10 @@
 #include "RenderGraphBuilder.h"
 #include "View/ViewRenderingSpec.h"
 #include "RenderScene.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
 
 namespace spt::rsc
 {
@@ -22,6 +26,14 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(StaticMeshIndirectDataPerView)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
+DS_BEGIN(, BuildIndirectStaticMeshCommandsDS, rg::RGDescriptorSetState<BuildIndirectStaticMeshCommandsDS>, rhi::EShaderStageFlags::Compute)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData, rg::ERGBufferAccess::ShaderWrite>),	drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWBufferBinding<Uint32, rg::ERGBufferAccess::ShaderWrite>),							drawCommandsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshGPURenderData, rg::ERGBufferAccess::ShaderRead>),	staticMeshes)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Matrix4f, rg::ERGBufferAccess::ShaderRead>),			instanceTransforms)
+DS_END();
+
+
 namespace utils
 {
 
@@ -38,7 +50,8 @@ StaticMeshIndirectDataPerView CreateIndirectDataForView(rg::RenderGraphBuilder& 
 	const rhi::BufferDefinition indirectCountBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
 	const rhi::RHIAllocationInfo indirectCountBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
 	indirectData.indirectCountBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshIndirectCountBuffer"), indirectCountBufferDef, indirectCountBufferAllocation);
-	SPT_CHECK_NO_ENTRY_MSG("indirectCountBuffer must be initialized to 0. TODO: figure out how to do it with render graph");
+
+	graphBuilder.AddFillBuffer(RG_DEBUG_NAME("Initialize Mesh Instances Count"), indirectData.indirectCountBuffer, 0, sizeof(Uint32), 0);
 
 	return indirectData;
 }
@@ -56,15 +69,24 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	Super::RenderPerView(graphBuilder, renderScene, view);
 
-	/*const StaticMeshIndirectDataPerView& viewIndirectData =*/ view.GetData().Create<StaticMeshIndirectDataPerView>(utils::CreateIndirectDataForView(graphBuilder, renderScene));
+	const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
+	const lib::SharedRef<rdr::Buffer>& instancesBuffer = staticMeshPrimsSystem.GetStaticMeshInstances().GetBuffer();
 
-	//SPT_CHECK_NO_ENTRY_MSG("TODO: Create shader");
-	//rdr::PipelineStateID indirectCommandsGenerationPipeline;
+	const StaticMeshIndirectDataPerView& viewIndirectData = view.GetData().Create<StaticMeshIndirectDataPerView>(utils::CreateIndirectDataForView(graphBuilder, renderScene));
 
-	//graphBuilder.AddDispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
-	//						 indirectCommandsGenerationPipeline,
-	//						 math::Vector3u(1, 1, 1),
-	//						 rg::BindDescriptorSets());
+	lib::SharedRef<BuildIndirectStaticMeshCommandsDS> descriptorSetState = rdr::ResourcesManager::CreateDescriptorSetState<BuildIndirectStaticMeshCommandsDS>(RENDERER_RESOURCE_NAME("IndirectCommandsDS"));
+	descriptorSetState->drawCommands = viewIndirectData.indirectBuffer;
+	descriptorSetState->drawCommandsCount = viewIndirectData.indirectCountBuffer;
+	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView().ToSharedPtr();
+	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView().ToSharedPtr();
+
+	SPT_CHECK_NO_ENTRY_MSG("TODO: Create shader");
+	rdr::PipelineStateID indirectCommandsGenerationPipeline;
+
+	graphBuilder.AddDispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
+							 indirectCommandsGenerationPipeline,
+							 math::Vector3u(1, 1, 1),
+							 rg::BindDescriptorSets(descriptorSetState));
 
 	if (view.SupportsStage(ERenderStage::GBufferGenerationStage))
 	{
@@ -79,12 +101,6 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 	SPT_PROFILER_FUNCTION();
 
 	const StaticMeshIndirectDataPerView& indirectBuffers = view.GetData().Get<StaticMeshIndirectDataPerView>();
-
-	rg::ForEachRGParameterAccess(indirectBuffers,
-								 [](auto buffer, rg::ERGBufferAccess access, rhi::EPipelineStage pipelineStages)
-								 {
-
-								 });
 
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),
 							rg::EmptyDescriptorSets(),

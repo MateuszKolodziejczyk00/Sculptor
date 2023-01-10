@@ -21,6 +21,11 @@ lib::SharedRef<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
 	return lib::MakeShared<BufferView>(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), offset, size);
 }
 
+lib::SharedRef<rdr::BufferView> Buffer::CreateFullView() const
+{
+	return CreateView(0, GetRHI().GetSize());
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferView ====================================================================================
 

@@ -87,7 +87,7 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Sampler>			CreateSampler(const rhi::SamplerDefinition& def);
 
 	template<typename TDSState>
-	SPT_NODISCARD static lib::SharedRef<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags);
+	SPT_NODISCARD static lib::SharedRef<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::Default);
 
 private:
 
@@ -97,7 +97,7 @@ private:
 
 
 template<typename TDSState>
-lib::SharedRef<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
+lib::SharedRef<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags /*= rdr::EDescriptorSetStateFlags::Default*/)
 {
 	return lib::MakeShared<TDSState>(name, flags);
 }

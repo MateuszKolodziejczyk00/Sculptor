@@ -14,7 +14,7 @@ RenderInstancesListBase::RenderInstancesListBase(const rdr::RendererResourceName
 	, m_instanceDataAlignment(instanceDataAlignment)
 { }
 
-const lib::SharedRef<rdr::Buffer>& RenderInstancesListBase::GetInstancesBuffer() const
+const lib::SharedRef<rdr::Buffer>& RenderInstancesListBase::GetBuffer() const
 {
 	return m_instances;
 }

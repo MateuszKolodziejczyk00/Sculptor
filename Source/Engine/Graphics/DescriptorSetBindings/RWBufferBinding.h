@@ -12,7 +12,7 @@ namespace spt::gfx
 {
 
 template<typename TStruct, Bool isUnbound, rg::ERGBufferAccess accessType>
-class RWBufferBinding : public rdr::DescriptorSetBinding
+class RWGenericBufferBinding : public rdr::DescriptorSetBinding
 {
 protected:
 
@@ -20,7 +20,7 @@ protected:
 
 public:
 
-	explicit RWBufferBinding(const lib::HashedString& name)
+	explicit RWGenericBufferBinding(const lib::HashedString& name)
 		: Super(name)
 	{ }
 
@@ -51,12 +51,13 @@ public:
 			else
 			{
 				return rdr::shader_translator::DefineType<TStruct>() + '\n' +
-					BuildBindingVariableCode(lib::String("RWStructuredBuffer") + '<' + TStruct::GetStructName() + "> " + name, bindingIdx);
+					BuildBindingVariableCode(lib::String("RWStructuredBuffer") + '<' + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 			}
 		}
 		else
+		{
 			return rdr::shader_translator::DefineType<TStruct>() + '\n' +
-				BuildBindingVariableCode(lib::String("RWBuffer") + '<' + TStruct::GetStructName() + "> " + name, bindingIdx);
+				BuildBindingVariableCode(lib::String("RWBuffer") + '<' + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 		}
 	}
 
@@ -67,7 +68,7 @@ public:
 		{
 			lib::AddFlags(flags, smd::EBindingFlags::Unbound);
 		}
-		return isUnbound;
+		return flags;
 	}
 
 	static constexpr Bool IsByteBuffer()
@@ -85,6 +86,13 @@ public:
 			m_boundBuffer.Set<TType>(buffer);
 			MarkAsDirty();
 		}
+	}
+
+	template<CInstanceOrRGBufferView TType>
+	RWGenericBufferBinding& operator=(const TType& buffer)
+	{
+		Set<TType>(buffer);
+		return *this;
 	}
 
 	void Reset()
@@ -110,13 +118,13 @@ private:
 
 
 template<typename TStruct, rg::ERGBufferAccess accessType>
-using RWStructuredBufferBinding = RWBufferBinding<TStruct, true, accessType>;
+using RWStructuredBufferBinding = RWGenericBufferBinding<TStruct, true, accessType>;
 
 template<rg::ERGBufferAccess accessType>
-using RWByteAddressBuffer = RWBufferBinding<Byte, true, accessType>;
+using RWByteAddressBuffer = RWGenericBufferBinding<Byte, true, accessType>;
 
 template<typename TStruct, rg::ERGBufferAccess accessType>
-using RWBufferBinding = RWBufferBinding<TStruct, false, accessType>;
+using RWBufferBinding = RWGenericBufferBinding<TStruct, false, accessType>;
 
 } // spt::gfx
 

@@ -31,7 +31,9 @@ using DSStateID = Uint64;
 enum class EDescriptorSetStateFlags
 {
 	None			= 0,
-	Persistent		= BIT(0)
+	Persistent		= BIT(0),
+
+	Default = None
 };
 
 
@@ -372,6 +374,8 @@ public:
 					};
 
 #define DS_STAGES(...) lib::Flags<rhi::EShaderStageFlags>(__VA_ARGS__)
+
+#define BINDING_TYPE(...) __VA_ARGS__
 
 template<typename TBindingHandle>
 constexpr Bool IsHeadBinding()

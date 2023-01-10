@@ -13,7 +13,7 @@ public:
 
 	explicit RenderInstancesListBase(const rdr::RendererResourceName& listName, Uint64 dataSize, Uint64 instanceDataAlignment);
 
-	const lib::SharedRef<rdr::Buffer>& GetInstancesBuffer() const;
+	const lib::SharedRef<rdr::Buffer>& GetBuffer() const;
 
 protected:
 
@@ -63,7 +63,7 @@ public:
 
 	Uint64 GetMaxInstancesNum() const
 	{
-		return GetInstancesBuffer()->GetRHI().GetSize() / sizeof(TInstanceDataType);
+		return GetBuffer()->GetRHI().GetSize() / sizeof(TInstanceDataType);
 	}
 };
 
