@@ -629,6 +629,11 @@ public:
 		return m_buffer;
 	}
 
+	Bool AllowsHostWrites() const
+	{
+		return m_buffer->AllowsHostWrites();
+	}
+
 	lib::SharedRef<rdr::BufferView> GetBufferViewInstance() const
 	{
 		if (!m_bufferViewInstance)

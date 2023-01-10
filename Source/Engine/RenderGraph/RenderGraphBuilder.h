@@ -100,6 +100,8 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
+	void AddFillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
+
 	void BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 

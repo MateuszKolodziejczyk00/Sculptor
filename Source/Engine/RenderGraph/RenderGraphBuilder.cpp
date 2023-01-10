@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
+#include "Vulkan/VulkanTypes/RHIBuffer.h"
 
 namespace spt::rg
 {
@@ -192,6 +193,52 @@ void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr
 
 	buffer->SetExtractionDest(&extractDestination);
 	m_extractedBuffers.emplace_back(buffer);
+}
+
+void RenderGraphBuilder::AddFillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(bufferView.IsValid());
+	SPT_CHECK(offset + range <= bufferView->GetSize());
+
+	const Bool isHostAccessible = bufferView->AllowsHostWrites();
+	const Bool canFillOnHost = isHostAccessible && !bufferView->GetLastAccessNode().IsValid();
+
+	const Uint64 writeOffset = bufferView->GetOffset() + offset;
+	const auto executeLambda = [canFillOnHost, bufferView, writeOffset, range, data](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::Buffer>& bufferInstance = bufferView->GetBuffer()->GetResource();
+		SPT_CHECK(!!bufferInstance);
+		if (canFillOnHost)
+		{
+			rhi::RHIBuffer& rhiBuffer = bufferInstance->GetRHI();
+
+			SPT_CHECK(rhiBuffer.CanMapMemory());
+			Byte* bufferData = rhiBuffer.MapBufferMemory();
+			SPT_CHECK(!bufferData);
+			memset(bufferData + writeOffset, static_cast<int>(data), range);
+			rhiBuffer.UnmapBufferMemory();
+		}
+		else
+		{
+			recorder.FillBuffer(lib::Ref(bufferInstance), writeOffset, range, data);
+		}
+	};
+
+	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	if (!canFillOnHost)
+	{
+		RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+		dependenciesBuilder.AddBufferAccess(bufferView, ERGBufferAccess::ShaderWrite, rhi::EPipelineStage::Transfer);
+	}
+
+	AddNodeInternal(node, dependencies);
 }
 
 void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)

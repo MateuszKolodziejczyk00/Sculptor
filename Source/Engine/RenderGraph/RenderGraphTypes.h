@@ -10,7 +10,8 @@ enum class ERenderGraphNodeType
 {
 	None,
 	RenderPass,
-	Dispatch
+	Dispatch,
+	Transfer
 };
 
 
