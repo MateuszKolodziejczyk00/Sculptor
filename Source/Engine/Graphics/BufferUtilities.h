@@ -21,7 +21,7 @@ public:
 	static GPUBuffersUploadStagingManager& Get();
 
 	void EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
-	void EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Byte data);
+	void EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data);
 
 	Bool HasPendingUploads() const;
 	void FlushPendingUploads(rdr::CommandRecorder & recorder);
@@ -49,7 +49,7 @@ private:
 			// valid if staging buffer idx != idxNone. used for copy commands
 			Uint64						stagingBufferOffset = 0;
 			// valid if staging buffer idx == idxNone. used for fill commands
-			Byte						fillData;
+			Uint32						fillData;
 		};
 
 		Uint64						dataSize = 0;
@@ -66,7 +66,7 @@ private:
 	lib::Lock m_preservedBuffersLock;
 };
 
-void GRAPHICS_API FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Byte data);
+void GRAPHICS_API FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Uint32 data);
 void GRAPHICS_API UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
 
 lib::SharedPtr<rdr::Semaphore> GRAPHICS_API FlushPendingUploads();

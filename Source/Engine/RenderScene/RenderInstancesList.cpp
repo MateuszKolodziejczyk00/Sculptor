@@ -50,7 +50,7 @@ void RenderInstancesListBase::FlushRemovedInstancesImpl(Uint64 instanceDataSize)
 	for (const rhi::RHISuballocation& removedSuballocation : m_pendingRemoveSuballocations)
 	{
 		m_instances->GetRHI().DestroySuballocation(removedSuballocation);
-		gfx::FillBuffer(m_instances, removedSuballocation.GetOffset(), instanceDataSize, Byte(0));
+		gfx::FillBuffer(m_instances, removedSuballocation.GetOffset(), instanceDataSize, 0);
 	}
 }
 

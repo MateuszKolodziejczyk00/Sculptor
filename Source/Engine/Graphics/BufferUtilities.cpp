@@ -46,7 +46,7 @@ void GPUBuffersUploadStagingManager::EnqueueUpload(const lib::SharedRef<rdr::Buf
 	math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
 }
 
-void GPUBuffersUploadStagingManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Byte data)
+void GPUBuffersUploadStagingManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -166,7 +166,7 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 	}
 }
 
-void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Byte data)
+void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 

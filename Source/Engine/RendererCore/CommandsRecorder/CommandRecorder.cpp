@@ -228,7 +228,7 @@ void CommandRecorder::CopyBuffer(const lib::SharedRef<Buffer>& sourceBuffer, Uin
 						 });
 }
 
-void CommandRecorder::FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 range, Byte data)
+void CommandRecorder::FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 
