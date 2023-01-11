@@ -154,7 +154,7 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
 		SPT_CHECK(!!bufferMemoryPtr);
 		
-		memcpy(bufferMemoryPtr, sourceData, dataSize);
+		std::memcpy(bufferMemoryPtr, sourceData, dataSize);
 
 		rhiBuffer.UnmapBufferMemory();
 	}

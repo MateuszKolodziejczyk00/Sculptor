@@ -337,8 +337,8 @@ public:
 			return false;
 		}
 
-		EJobState expected = EJobState::Pending;
-		const Bool executeThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Executing);
+		EJobState previous = EJobState::Pending;
+		const Bool executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing);
 
 		Bool finishedThisThread = false;
 
@@ -349,6 +349,11 @@ public:
 			if (CanFinishExecution())
 			{
 				finishedThisThread = TryFinish();
+				if (!finishedThisThread)
+				{
+					// This thead couldn't finish this job, but we should return true if job was already finished
+					previous = m_jobState.load(std::memory_order_acquire);
+				}
 			}
 			else
 			{
@@ -357,7 +362,7 @@ public:
 			}
 		}
 
-		return (executeThisThread && finishedThisThread) || expected == EJobState::Finished;
+		return (executeThisThread && finishedThisThread) || previous == EJobState::Finished;
 	}
 
 	Bool IsFinished() const
@@ -390,7 +395,7 @@ public:
 		platf::Event finishEvent(true);
 
 		lib::SharedRef<JobInstance> finishEventJob = lib::MakeShared<JobInstance>("WaitEventJob");
-		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(shared_from_this()), GetPriority(), GetFlags());
+		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(shared_from_this()), GetPriority(), js::EJobFlags::None);
 		
 		finishEvent.Wait();
 	}

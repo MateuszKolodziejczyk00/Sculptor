@@ -215,7 +215,7 @@ void RenderGraphBuilder::AddFillBuffer(const RenderGraphDebugName& commandName, 
 			SPT_CHECK(rhiBuffer.CanMapMemory());
 			Byte* bufferData = rhiBuffer.MapBufferMemory();
 			SPT_CHECK(!!bufferData);
-			memset(bufferData + writeOffset, static_cast<int>(data), range);
+			std::memset(bufferData + writeOffset, static_cast<int>(data), range);
 			rhiBuffer.UnmapBufferMemory();
 		}
 		else
