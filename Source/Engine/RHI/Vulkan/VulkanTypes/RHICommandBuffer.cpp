@@ -216,6 +216,19 @@ void RHICommandBuffer::EndRendering()
 	vkCmdEndRendering(m_cmdBufferHandle);
 }
 
+void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(drawsBuffer.IsValid());
+	SPT_CHECK(drawsOffset + drawsStride * maxDrawsCount <= drawsBuffer.GetSize());
+	SPT_CHECK(countBuffer.IsValid());
+	SPT_CHECK(countOffset + sizeof(Uint32) <= drawsBuffer.GetSize());
+
+	vkCmdDrawIndirectCount(m_cmdBufferHandle, drawsBuffer.GetBufferHandle(), drawsOffset, countBuffer.GetBufferHandle(), countOffset, maxDrawsCount, drawsStride);
+}
+
 void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

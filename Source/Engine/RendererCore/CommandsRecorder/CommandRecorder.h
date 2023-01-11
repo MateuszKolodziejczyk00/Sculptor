@@ -64,6 +64,8 @@ public:
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
 
+	void									DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
+
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);
 	void									BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
 

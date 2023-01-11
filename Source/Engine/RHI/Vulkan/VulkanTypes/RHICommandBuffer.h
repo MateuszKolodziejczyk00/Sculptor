@@ -42,6 +42,8 @@ public:
 	void	BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
 	void	EndRendering();
 
+	void	DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
+
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
 	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);

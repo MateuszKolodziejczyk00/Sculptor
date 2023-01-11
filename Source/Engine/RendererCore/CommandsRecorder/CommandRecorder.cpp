@@ -123,6 +123,18 @@ void CommandRecorder::EndRendering()
 						 });
 }
 
+void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("DrawIndirect Command");
+
+							 cmdBuffer->GetRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
+						 });
+}
+
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
