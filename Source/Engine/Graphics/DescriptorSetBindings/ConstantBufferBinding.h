@@ -55,7 +55,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), lib::Ref(m_bufferView));
+		context.UpdateBuffer(GetName(), m_buffer->CreateFullView());
 	}
 
 	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
@@ -168,12 +168,9 @@ private:
 												  bufferDef, allocationInfo);
 
 		m_bufferMappedPtr = m_buffer->GetRHI().MapBufferMemory();
-
-		m_bufferView = m_buffer->CreateView(0, bufferSize);
 	}
 
 	lib::SharedPtr<rdr::Buffer>		m_buffer;
-	lib::SharedPtr<rdr::BufferView>	m_bufferView;
 	Byte*							m_bufferMappedPtr;
 
 	Uint32							m_structsStride;

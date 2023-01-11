@@ -25,9 +25,9 @@ void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBuffer
 	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, dependencyStages.pipelineStages });
 }
 
-void RGDependenciesBuilder::AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+void RGDependenciesBuilder::AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer.ToSharedPtr());
+	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer);
 	AddBufferAccess(rgBufferView, access, dependencyStages.pipelineStages);
 }
 

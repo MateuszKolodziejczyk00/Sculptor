@@ -77,8 +77,8 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	lib::SharedRef<BuildIndirectStaticMeshCommandsDS> descriptorSetState = rdr::ResourcesManager::CreateDescriptorSetState<BuildIndirectStaticMeshCommandsDS>(RENDERER_RESOURCE_NAME("IndirectCommandsDS"));
 	descriptorSetState->drawCommands = viewIndirectData.indirectBuffer;
 	descriptorSetState->drawCommandsCount = viewIndirectData.indirectCountBuffer;
-	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView().ToSharedPtr();
-	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView().ToSharedPtr();
+	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView();
+	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
 
 	SPT_CHECK_NO_ENTRY_MSG("TODO: Create shader");
 	rdr::PipelineStateID indirectCommandsGenerationPipeline;

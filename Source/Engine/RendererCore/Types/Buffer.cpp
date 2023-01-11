@@ -14,16 +14,9 @@ Buffer::Buffer(const RendererResourceName& name, const rhi::BufferDefinition& de
 	GetRHI().SetName(name.Get());
 }
 
-lib::SharedRef<BufferView> Buffer::CreateView(Uint64 offset, Uint64 size) const
+BufferView Buffer::CreateFullView() const
 {
-	SPT_PROFILER_FUNCTION();
-
-	return lib::MakeShared<BufferView>(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), offset, size);
-}
-
-lib::SharedRef<rdr::BufferView> Buffer::CreateFullView() const
-{
-	return CreateView(0, GetRHI().GetSize());
+	return BufferView(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), 0, GetRHI().GetSize());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,9 +28,23 @@ BufferView::BufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint
 	, m_size(size)
 { }
 
-lib::SharedPtr<Buffer> BufferView::GetBuffer() const
+void BufferView::Initialize(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size)
 {
-	return m_buffer.lock();
+	m_buffer = buffer;
+	m_offset = offset;
+	m_size = size;
+}
+
+Bool BufferView::operator==(const BufferView& rhs) const
+{
+	return m_buffer == rhs.m_buffer
+		&& m_offset == rhs.m_offset
+		&& m_size == rhs.m_size;
+}
+
+const lib::SharedRef<Buffer>& BufferView::GetBuffer() const
+{
+	return m_buffer;
 }
 
 Uint64 BufferView::GetOffset() const

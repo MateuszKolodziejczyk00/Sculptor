@@ -29,7 +29,7 @@ DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet des
 	, m_metaData(metaData)
 { }
 
-void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const lib::SharedRef<BufferView>& buffer) const
+void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -45,16 +45,16 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 		writeDefinition.arrayElement	= 0;
 		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
 
-		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer->GetSize());
+		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize());
 
-		const Uint64 range = bufferBinding.IsUnbound() ? buffer->GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
+		const Uint64 range = bufferBinding.IsUnbound() ? buffer.GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
 		SPT_CHECK(range > 0);
 
 		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range);
 	}
 }
 
-void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const lib::SharedRef<BufferView>& buffer, const lib::SharedRef<BufferView>& countBuffer) const
+void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -70,9 +70,9 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 		writeDefinition.arrayElement	= 0;
 		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
 
-		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer->GetSize());
+		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize());
 
-		const Uint64 range = bufferBinding.IsUnbound() ? buffer->GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
+		const Uint64 range = bufferBinding.IsUnbound() ? buffer.GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
 		SPT_CHECK(range > 0);
 
 		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range, countBuffer);

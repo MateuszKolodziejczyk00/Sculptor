@@ -77,7 +77,7 @@ public:
 	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
-	void AddBufferAccess(const lib::SharedRef<rdr::BufferView>& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 private:
 

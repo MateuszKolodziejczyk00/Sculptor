@@ -11,6 +11,7 @@
 #include "RHICore/RHIBufferTypes.h"
 #include "RHICore/RHISynchronizationTypes.h"
 #include "RHICore/RHIShaderTypes.h"
+#include "Utility/Templates/TypeStorage.h"
 
 
 namespace spt::rg
@@ -596,22 +597,28 @@ public:
 		, m_size(size)
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
+		, m_hasValidInstance(false)
 	{
 		SPT_CHECK(m_buffer.IsValid());
 	}
 
-	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, lib::SharedPtr<rdr::BufferView> bufferView)
+	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, const rdr::BufferView& bufferView)
 		: RGResource(resourceDefinition)
 		, m_buffer(buffer)
-		, m_offset(bufferView->GetOffset())
-		, m_size(bufferView->GetSize())
+		, m_offset(bufferView.GetOffset())
+		, m_size(bufferView.GetSize())
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
-		, m_bufferViewInstance(std::move(bufferView))
+		, m_bufferViewInstance(bufferView)
+		, m_hasValidInstance(true)
 	{
 		SPT_CHECK(m_buffer.IsValid());
 		SPT_CHECK(IsExternal());
-		SPT_CHECK(m_offset + m_size <= m_bufferViewInstance->GetBuffer()->GetRHI().GetSize());
+	}
+
+	~RGBufferView()
+	{
+		m_bufferViewInstance.Destroy();
 	}
 
 	Uint64 GetOffset() const
@@ -634,18 +641,18 @@ public:
 		return m_buffer->AllowsHostWrites();
 	}
 
-	lib::SharedRef<rdr::BufferView> GetBufferViewInstance() const
+	const rdr::BufferView& GetBufferViewInstance() const
 	{
-		if (!m_bufferViewInstance)
+		if (!m_hasValidInstance)
 		{
 			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource();
 			SPT_CHECK(!!owningBufferInstance);
 
-			m_bufferViewInstance = owningBufferInstance->CreateView(m_offset, m_size);
+			m_bufferViewInstance.Construct(lib::Ref(owningBufferInstance), m_offset, m_size);
+			m_hasValidInstance = true;
 		}
 
-		SPT_CHECK(!!m_bufferViewInstance);
-		return lib::Ref(m_bufferViewInstance);
+		return m_bufferViewInstance.Get();
 	}
 
 	// Access Synchronization ==============================================
@@ -691,7 +698,8 @@ private:
 	ERGBufferAccess			m_lastAccess;
 	rhi::EPipelineStage		m_lastAccessPipelineStages;
 
-	mutable lib::SharedPtr<rdr::BufferView> m_bufferViewInstance;
+	mutable lib::TypeStorage<rdr::BufferView>	m_bufferViewInstance;
+	mutable Bool								m_hasValidInstance;
 };
 
 } // spt::rg

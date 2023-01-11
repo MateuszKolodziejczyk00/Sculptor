@@ -12,7 +12,7 @@ namespace spt::gfx
 template<typename TType>
 concept CInstanceOrRGBufferView = requires
 {
-	requires std::is_same_v<TType, lib::SharedPtr<rdr::BufferView>> || std::is_same_v<TType, rg::RGBufferViewHandle>;
+	requires std::is_same_v<TType, rdr::BufferView> || std::is_same_v<TType, rg::RGBufferViewHandle>;
 };
 
 namespace priv
@@ -24,18 +24,16 @@ public:
 	
 	BoundBufferVariant() = default;
 	
-	lib::SharedRef<rdr::BufferView> GetBufferToBind() const
+	const rdr::BufferView& GetBufferToBind() const
 	{
 		return std::visit(lib::Overload
 						  {
-							  [](const lib::SharedPtr<rdr::BufferView>& buffer)
+							  [](const rdr::BufferView& buffer) -> const rdr::BufferView&
 							  {
-								  SPT_CHECK(!!buffer)
-							      return lib::Ref(buffer);
+							      return buffer;
 							  },
-							  [](const rg::RGBufferViewHandle buffer)
+							  [](const rg::RGBufferViewHandle buffer) -> const rdr::BufferView&
 							  {
-								  SPT_CHECK(buffer.IsValid());
 								  return buffer->GetBufferViewInstance();
 							  }
 						  },
@@ -46,9 +44,9 @@ public:
 	{
 		std::visit(lib::Overload
 				   {
-				       [&builder, access, shaderStages](const lib::SharedPtr<rdr::BufferView>& buffer)
+				       [&builder, access, shaderStages](const rdr::BufferView& buffer)
 				       {
-				           builder.AddBufferAccess(lib::Ref(buffer), access, shaderStages);
+				           builder.AddBufferAccess(buffer, access, shaderStages);
 				       },
 				       [&builder, access, shaderStages](rg::RGBufferViewHandle buffer)
 				       {
@@ -69,11 +67,11 @@ public:
 		m_buffer = rg::RGBufferViewHandle{};
 	}
 
-	Bool operator==(const lib::SharedPtr<rdr::BufferView>& rhs) const
+	Bool operator==(const rdr::BufferView& rhs) const
 	{
 		return std::visit(lib::Overload
 						  {
-							  [rhs](const lib::SharedPtr<rdr::BufferView>& buffer)
+							  [rhs](const rdr::BufferView& buffer)
 							  {
 								  return buffer == rhs;
 							  },
@@ -111,9 +109,9 @@ public:
 	{
 		return std::visit(lib::Overload
 						  {
-							  [](const lib::SharedPtr<rdr::BufferView>& buffer)
+							  [](const rdr::BufferView& buffer)
 							  {
-							      return !!buffer;
+								  return true;
 							  },
 							  [](const rg::RGBufferViewHandle buffer)
 							  {
@@ -125,8 +123,8 @@ public:
 
 private:
 
-	using VariantType = std::variant<lib::SharedPtr<rdr::BufferView>,
-									 rg::RGBufferViewHandle>;
+	using VariantType = std::variant<rg::RGBufferViewHandle,
+									 rdr::BufferView>;
 
 	VariantType m_buffer;
 };

@@ -79,8 +79,6 @@ public:
 	template<CInstanceOrRGBufferView TType>
 	void Set(lib::AsConstParameter<TType> buffer)
 	{
-		SPT_CHECK(!!buffer);
-
 		if (m_boundBuffer != buffer)
 		{
 			m_boundBuffer.Set<TType>(buffer);

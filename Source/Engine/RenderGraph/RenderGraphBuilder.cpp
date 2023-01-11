@@ -128,13 +128,11 @@ RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rd
 	return bufferHandle;
 }
 
-RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(lib::SharedPtr<rdr::BufferView> bufferView)
+RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(const rdr::BufferView& bufferView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(!!bufferView);
-
-	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView->GetBuffer();
+	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView.GetBuffer();
 	SPT_CHECK(!!owningBuffer);
 
 	const RGBufferHandle owningBufferHandle = AcquireExternalBuffer(owningBuffer);

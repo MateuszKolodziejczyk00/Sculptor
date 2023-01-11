@@ -29,9 +29,7 @@ public:
 
 	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 
-	lib::SharedRef<BufferView> CreateView(Uint64 offset, Uint64 size) const;
-
-	lib::SharedRef<BufferView> CreateFullView() const;
+	BufferView CreateFullView() const;
 };
 
 
@@ -41,14 +39,18 @@ public:
 
 	BufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size);
 
-	lib::SharedPtr<Buffer>	GetBuffer() const;
+	void Initialize(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size);
 
-	Uint64					GetOffset() const;
-	Uint64					GetSize() const;
+	Bool operator==(const BufferView& rhs) const;
+
+	const lib::SharedRef<Buffer>& GetBuffer() const;
+
+	Uint64 GetOffset() const;
+	Uint64 GetSize() const;
 
 private:
 
-	lib::WeakPtr<Buffer>	m_buffer;
+	lib::SharedRef<Buffer>	m_buffer;
 
 	Uint64					m_offset;
 	Uint64					m_size;

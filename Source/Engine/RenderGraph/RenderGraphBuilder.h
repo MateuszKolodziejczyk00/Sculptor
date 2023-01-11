@@ -62,7 +62,7 @@ public:
 
 	RGBufferHandle AcquireExternalBuffer(const lib::SharedPtr<rdr::Buffer>& buffer);
 
-	RGBufferViewHandle AcquireExternalBufferView(lib::SharedPtr<rdr::BufferView> bufferView);
+	RGBufferViewHandle AcquireExternalBufferView(const rdr::BufferView& bufferView);
 
 	RGBufferHandle CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
