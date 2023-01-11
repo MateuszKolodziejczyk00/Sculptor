@@ -34,9 +34,9 @@ enum class ERGTextureAccess
 enum class ERGBufferAccess
 {
 	Unknown,
-	ShaderRead,
-	ShaderWrite,
-	ShaderReadWrite
+	Read,
+	Write,
+	ReadWrite
 };
 
 
@@ -529,6 +529,7 @@ public:
 	void AcquireResource(lib::SharedPtr<rdr::Buffer> buffer)
 	{
 		SPT_CHECK(!m_bufferInstance);
+		m_bufferInstance = std::move(buffer);
 	}
 
 	lib::SharedPtr<rdr::Buffer> ReleaseResource()
@@ -618,7 +619,10 @@ public:
 
 	~RGBufferView()
 	{
-		m_bufferViewInstance.Destroy();
+		if (m_hasValidInstance)
+		{
+			m_bufferViewInstance.Destroy();
+		}
 	}
 
 	Uint64 GetOffset() const

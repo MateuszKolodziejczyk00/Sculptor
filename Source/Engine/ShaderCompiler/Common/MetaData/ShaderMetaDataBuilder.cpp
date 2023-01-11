@@ -173,10 +173,19 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, storageBufferResource);
 
 	const spirv_cross::SPIRType& bufferType = compiler.get_type(storageBufferResource.base_type_id);
+	const SizeType bufferSize = compiler.get_declared_struct_size(bufferType);
+	const Bool isUnbound = bufferSize == 0;
 
 	smd::BufferBindingData storageBufferBinding;
 	storageBufferBinding.AddFlag(smd::EBindingFlags::Storage);
-	storageBufferBinding.AddFlag(smd::EBindingFlags::Unbound);
+	if (isUnbound)
+	{
+		storageBufferBinding.SetUnbound();
+	}
+	else
+	{
+		storageBufferBinding.SetSize(static_cast<Uint32>(bufferSize));
+	}
 	helper::InitializeBinding(storageBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);

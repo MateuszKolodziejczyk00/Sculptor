@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 
 
@@ -12,7 +13,7 @@ BEGIN_SHADER_STRUCT(, SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
 END_SHADER_STRUCT();
 
-class SceneView
+class RENDER_SCENE_API SceneView
 {
 public:
 

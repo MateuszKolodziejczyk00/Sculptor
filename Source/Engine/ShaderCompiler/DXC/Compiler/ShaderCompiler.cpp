@@ -6,6 +6,8 @@
 #include "Common/ShaderFileReader.h"
 #include "Utility/String/StringUtils.h"
 
+#include <filesystem>
+
 #define NOMINMAX
 #include <windows.h>
 #include "dxc/dxcapi.h"
@@ -261,7 +263,8 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::WString shadersPath = lib::StringUtils::ToWideString(ShaderCompilationEnvironment::GetShadersPath() + '/');
+	const lib::String shadersPath = ShaderCompilationEnvironment::GetShadersPath();
+	const lib::WString absoluteShadersPath = std::filesystem::absolute(shadersPath);
 
 	const ETargetEnvironment targetEnv = ShaderCompilationEnvironment::GetTargetEnvironment();
 
@@ -273,7 +276,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 	args.Append(L"-spirv");
 	args.Append(L"-O0");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
-	args.Append(lib::WString(L"-I"), shadersPath);
+	args.Append(lib::WString(L"-I"), absoluteShadersPath);
 
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{

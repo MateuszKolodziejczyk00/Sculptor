@@ -214,7 +214,7 @@ void RenderGraphBuilder::AddFillBuffer(const RenderGraphDebugName& commandName, 
 
 			SPT_CHECK(rhiBuffer.CanMapMemory());
 			Byte* bufferData = rhiBuffer.MapBufferMemory();
-			SPT_CHECK(!bufferData);
+			SPT_CHECK(!!bufferData);
 			memset(bufferData + writeOffset, static_cast<int>(data), range);
 			rhiBuffer.UnmapBufferMemory();
 		}
@@ -230,11 +230,8 @@ void RenderGraphBuilder::AddFillBuffer(const RenderGraphDebugName& commandName, 
 	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
 
 	RGDependeciesContainer dependencies;
-	if (!canFillOnHost)
-	{
-		RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-		dependenciesBuilder.AddBufferAccess(bufferView, ERGBufferAccess::ShaderWrite, rhi::EPipelineStage::Transfer);
-	}
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddBufferAccess(bufferView, ERGBufferAccess::Write, canFillOnHost ? rhi::EPipelineStage::Host : rhi::EPipelineStage::Transfer);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -447,15 +444,20 @@ void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastA
 {
 	switch (lastAccess)
 	{
-	case ERGBufferAccess::ShaderRead:
+	case ERGBufferAccess::Unknown:
+		// Assume worst case (write) if we don't know previous access
 		outAccessType = rhi::EAccessType::Write;
 		break;
 
-	case ERGBufferAccess::ShaderWrite:
+	case ERGBufferAccess::Read:
+		outAccessType = rhi::EAccessType::Read;
+		break;
+
+	case ERGBufferAccess::Write:
 		outAccessType = rhi::EAccessType::Write;
 		break;
 
-	case ERGBufferAccess::ShaderReadWrite:
+	case ERGBufferAccess::ReadWrite:
 		outAccessType = lib::Flags(rhi::EAccessType::Read, rhi::EAccessType::Write);
 		break;
 
@@ -486,8 +488,8 @@ Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, ERGBuffe
 
 	const auto isWriteAccess = [](ERGBufferAccess access)
 	{
-		return access == ERGBufferAccess::ShaderReadWrite
-			|| access == ERGBufferAccess::ShaderWrite;
+		return access == ERGBufferAccess::ReadWrite
+			|| access == ERGBufferAccess::Write;
 	};
 
 	const Bool prevAccessIsWrite = isWriteAccess(prevAccess);

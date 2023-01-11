@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderScene.h"
+#include "View/RenderView.h"
 
 namespace spt::rdr
 {
@@ -41,6 +42,7 @@ class EDITOR_SANDBOX_API SandboxRenderer
 public:
 
 	explicit SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow);
+	~SandboxRenderer();
 
 	void Tick(Real32 deltaTime);
 
@@ -64,6 +66,7 @@ private:
 	rdr::PipelineStateID			m_computePipelineID;
 
 	rsc::RenderScene				m_renderScene;
+	lib::UniquePtr<rsc::RenderView>	m_renderView;
 };
 
 } // spt::ed

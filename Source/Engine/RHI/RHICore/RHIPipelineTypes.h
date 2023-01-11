@@ -23,6 +23,8 @@ enum class EPipelineStage : Flags64
 	Clear							= BIT64(12),
 	IndexInput						= BIT64(13),
 
+	Host							= BIT64(14),
+
 	ALL_GRAPHICS					= BIT64(50),
 	ALL_TRANSFER					= BIT64(51),
 	ALL_COMMANDS					= BIT64(52)

@@ -33,8 +33,8 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
-		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ShaderReadWrite, GetShaderStageFlags());
+		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite, GetShaderStageFlags());
+		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite, GetShaderStageFlags());
 	}
 
 	// We need to take two bindings - first for buffer and second for count (storage buffer)
@@ -60,7 +60,7 @@ public:
 	{
 		lib::String bufferTypeName = isAppend ? lib::String("AppendStructuredBuffer") : lib::String("AppendStructuredBuffer");
 		lib::String code;
-		code += rdr::shader_translator::AddShaderStruct<TStorageType>();
+		code += rdr::shader_translator::DefineType<TStorageType>();
 		code += BuildBindingVariableCode(bufferTypeName + '<' + TStorageType::GetStructName() + "> " + name, bindingIdx);
 		return code;
 	}

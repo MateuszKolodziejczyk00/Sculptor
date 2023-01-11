@@ -18,6 +18,7 @@
 #include "BufferUtilities.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
+#include "SceneRenderer/SceneRenderer.h"
 
 namespace spt::ed
 {
@@ -49,6 +50,12 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	InitializeRenderScene();
 }
 
+SandboxRenderer::~SandboxRenderer()
+{
+	// explicit destroy view before scene
+	m_renderView.reset();
+}
+
 void SandboxRenderer::Tick(Real32 deltaTime)
 {
 	m_descriptorSet->u_viewInfo.Set([](TestViewInfo& info)
@@ -73,6 +80,9 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 															 });
 
 	rg::RenderGraphBuilder graphBuilder;
+
+	rsc::SceneRenderer sceneRenderer;
+	sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
 
 	const rg::RGTextureHandle texture = graphBuilder.AcquireExternalTexture(m_texture);
 
@@ -129,6 +139,10 @@ void SandboxRenderer::InitializeRenderScene()
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
 		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
 	}
+
+	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
+	m_renderView->AddRenderStages(rsc::ERenderStage::GBufferGenerationStage);
+	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 }
 
 } // spt::ed

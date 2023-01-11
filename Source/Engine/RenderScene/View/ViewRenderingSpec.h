@@ -106,9 +106,10 @@ private:
 	void CreateImpl(TArgs&&... args)
 	{
 		SPT_STATIC_CHECK_MSG(alignof(TDataType) <= 16, "Currently alignments higher thatn 16 are not handled");
+		
 		if constexpr (sizeof(TDataType) <= inlineSize)
 		{
-			new (m_inlineStorage) TDataType(std::forward<TArgs>(args)...);
+			m_dataPtr = new (m_inlineStorage) TDataType(std::forward<TArgs>(args)...);
 		}
 		else
 		{

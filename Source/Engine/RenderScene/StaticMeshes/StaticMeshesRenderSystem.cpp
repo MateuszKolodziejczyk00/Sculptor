@@ -8,6 +8,7 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "Common/ShaderCompilationInput.h"
 
 namespace spt::rsc
 {
@@ -21,16 +22,16 @@ END_SHADER_STRUCT();
 
 
 BEGIN_RG_NODE_PARAMETERS_STRUCT(StaticMeshIndirectDataPerView)
-	RG_BUFFER_VIEW(indirectBuffer, rg::ERGBufferAccess::ShaderRead, rhi::EPipelineStage::DrawIndirect)
-	RG_BUFFER_VIEW(indirectCountBuffer, rg::ERGBufferAccess::ShaderRead, rhi::EPipelineStage::DrawIndirect)
+	RG_BUFFER_VIEW(indirectBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+	RG_BUFFER_VIEW(indirectCountBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
 DS_BEGIN(, BuildIndirectStaticMeshCommandsDS, rg::RGDescriptorSetState<BuildIndirectStaticMeshCommandsDS>, rhi::EShaderStageFlags::Compute)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData, rg::ERGBufferAccess::ShaderWrite>),	drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWBufferBinding<Uint32, rg::ERGBufferAccess::ShaderWrite>),							drawCommandsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshGPURenderData, rg::ERGBufferAccess::ShaderRead>),	staticMeshes)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Matrix4f, rg::ERGBufferAccess::ShaderRead>),			instanceTransforms)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData>),	drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					drawCommandsCount)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPURenderData>),		staticMeshes)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),				instanceTransforms)
 DS_END();
 
 
@@ -61,6 +62,10 @@ StaticMeshIndirectDataPerView CreateIndirectDataForView(rg::RenderGraphBuilder& 
 StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
 	m_supportedStages = lib::Flags(ERenderStage::GBufferGenerationStage, ERenderStage::ShadowGenerationStage);
+
+	sc::ShaderCompilationSettings compilationSettings;
+	const rdr::ShaderID generateCommandsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateIndirectCommands.hlsl", compilationSettings);
+	indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
 }
 
 void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view)
@@ -79,9 +84,6 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	descriptorSetState->drawCommandsCount = viewIndirectData.indirectCountBuffer;
 	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView();
 	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
-
-	SPT_CHECK_NO_ENTRY_MSG("TODO: Create shader");
-	rdr::PipelineStateID indirectCommandsGenerationPipeline;
 
 	graphBuilder.AddDispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
 							 indirectCommandsGenerationPipeline,

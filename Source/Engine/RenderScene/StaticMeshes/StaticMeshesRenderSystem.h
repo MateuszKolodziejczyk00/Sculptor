@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderSystem.h"
+#include "Pipelines/PipelineState.h"
 
 namespace spt::rsc
 {
@@ -22,6 +23,8 @@ public:
 private:
 
 	void RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view);
+
+	rdr::PipelineStateID indirectCommandsGenerationPipeline;
 };
 
 } // spt::rsc

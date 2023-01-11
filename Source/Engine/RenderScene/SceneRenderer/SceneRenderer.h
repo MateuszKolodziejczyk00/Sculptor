@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "View/ViewRenderingSpec.h"
 
@@ -15,7 +16,7 @@ namespace spt::rsc
 class RenderScene;
 class RenderView;
 
-class SceneRenderer abstract
+class RENDER_SCENE_API SceneRenderer
 {
 public:
 

@@ -1,13 +1,20 @@
 #include "RenderView.h"
+#include "RenderScene.h"
 
 namespace spt::rsc
 {
 
-RenderView::RenderView(RenderSceneEntityHandle viewEntity)
+RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
-	, m_viewEntity(viewEntity)
-{ }
+{
+	m_viewEntity = renderScene.CreateViewEntity();
+}
+
+RenderView::~RenderView()
+{
+	m_viewEntity.destroy();
+}
 
 void RenderView::SetRenderStages(ERenderStage stages)
 {

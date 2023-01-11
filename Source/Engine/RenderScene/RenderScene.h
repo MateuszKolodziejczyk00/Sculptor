@@ -55,7 +55,7 @@ public:
 
 			if (std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID) == std::cend(m_renderSystemsID))
 			{
-				addedSystem = m_renderSystems.emplace_back(std::make_unique<RenderSystem>()).get();
+				addedSystem = m_renderSystems.emplace_back(std::make_unique<TSystemType>()).get();
 				m_renderSystemsID.emplace_back(typeID);
 			}
 		}
@@ -189,6 +189,8 @@ public:
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
 	Uint64 GetTransformIdx(RenderSceneEntityHandle entity) const;
+
+	RenderSceneEntityHandle CreateViewEntity();
 
 	// Rendering ============================================================
 

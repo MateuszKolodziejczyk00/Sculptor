@@ -348,11 +348,11 @@ public:
 
 			if (CanFinishExecution())
 			{
-				Finish();
-				finishedThisThread = true;
+				finishedThisThread = TryFinish();
 			}
 			else
 			{
+				// Try execute pending nested tasks
 				TryExecutePrerequisites();
 			}
 		}
@@ -444,7 +444,7 @@ protected:
 
 	void AddPrerequisite(const lib::SharedPtr<JobInstance>& job)
 	{
-		m_remainingPrerequisitesNum.fetch_add(1);
+		m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
 		m_prerequisites.emplace_back(job);
 		job->AddConsequent(shared_from_this());
 	}
@@ -510,21 +510,36 @@ protected:
 		return m_remainingPrerequisitesNum.load() == 0;
 	}
 
-	void Finish()
+	Bool TryFinish()
 	{
-		SPT_CHECK(m_jobState.load() == EJobState::Executing);
-		m_jobState.store(EJobState::Finished);
+		EJobState expected = EJobState::Executing;
+		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finished);
 
-		m_prerequisites.clear();
+		SPT_CHECK(expected == EJobState::Executing || expected == EJobState::Finished);
 
-		const lib::LockGuard lockGuard(m_consequentsLock);
-
-		for (const lib::SharedPtr<JobInstance>& consequent : m_consequents)
+		if (finishThisThread)
 		{
-			consequent->PostPrerequisiteExecuted();
+			m_jobState.store(EJobState::Finished);
+
+			m_prerequisites.clear();
+
+			lib::DynamicArray<lib::SharedPtr<JobInstance>> consequentsCopy;
+			{
+				const lib::LockGuard lockGuard(m_consequentsLock);
+
+				// During next for loop we this job may be destroyed during call to PostPrerequisiteExecuted if consequent had only reference to this job
+				// This may happen if this job is nested
+				// Because of this we don't want to use any members from now on, so we need to move consequents to local array
+				consequentsCopy = std::move(m_consequents);
+			}
+
+			for (const lib::SharedPtr<JobInstance>& consequent : consequentsCopy)
+			{
+				consequent->PostPrerequisiteExecuted();
+			}
 		}
 
-		m_consequents.clear();
+		return finishThisThread || expected == EJobState::Finished;
 	}
 
 	void PostPrerequisiteExecuted()
@@ -543,7 +558,7 @@ protected:
 				// Finished nested job
 				if (CanFinishExecution())
 				{
-					Finish();
+					TryFinish();
 				}
 			}
 		}

@@ -74,6 +74,17 @@ const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSys
 	return m_renderSystems.GetRenderSystems();
 }
 
+RenderSceneEntityHandle RenderScene::CreateViewEntity()
+{
+	const RenderSceneEntity entityID = m_registry.create();
+	return RenderSceneEntityHandle(m_registry, entityID);
+}
+
+const lib::SharedRef<rdr::Buffer>& RenderScene::GetTransformsBuffer() const
+{
+	return m_transformsBuffer;
+}
+
 lib::SharedRef<rdr::Buffer> RenderScene::CreateTransformsBuffer() const
 {
 	rhi::RHIAllocationInfo transformsAllocationInfo;
@@ -100,11 +111,6 @@ void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
 {
 	m_registry.destroy(system.GetSystemEntity());
 	system.Deinitialize(*this);
-}
-
-const lib::SharedRef<rdr::Buffer>& RenderScene::GetTransformsBuffer() const
-{
-	return m_transformsBuffer;
 }
 
 } // spt::rsc

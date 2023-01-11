@@ -200,8 +200,8 @@ void RGNode::CreateBuffers()
 {
 	for (RGBufferHandle buffer : m_buffersToAcquire)
 	{
-		const lib::SharedPtr<rdr::Buffer> bufferInstance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(buffer->GetName()), buffer->GetBufferDefinition(), buffer->GetAllocationInfo());
-		buffer->AcquireResource(bufferInstance);
+		lib::SharedPtr<rdr::Buffer> bufferInstance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(buffer->GetName()), buffer->GetBufferDefinition(), buffer->GetAllocationInfo());
+		buffer->AcquireResource(std::move(bufferInstance));
 	}
 }
 

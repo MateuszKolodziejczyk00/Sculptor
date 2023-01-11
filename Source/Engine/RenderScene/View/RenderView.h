@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "SceneView.h"
 #include "SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
@@ -8,7 +9,10 @@
 namespace spt::rsc
 {
 
-class RenderView : public SceneView
+class RenderScene;
+
+
+class RENDER_SCENE_API RenderView : public SceneView
 {
 protected:
 
@@ -16,7 +20,8 @@ protected:
 
 public:
 
-	explicit RenderView(RenderSceneEntityHandle viewEntity);
+	explicit RenderView(RenderScene& renderScene);
+	~RenderView();
 
 	void SetRenderStages(ERenderStage stages);
 	void AddRenderStages(ERenderStage stagesToAdd);
