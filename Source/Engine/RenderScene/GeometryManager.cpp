@@ -59,6 +59,22 @@ GeometryManager::GeometryManager()
 																m_geometryBuffer.reset();
 																m_primitivesBuffer.reset();
 															});
+
+	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"), rdr::EDescriptorSetStateFlags::Persistent);
+	m_geometryDSState->geometryData = m_geometryBuffer->CreateFullView();
+
+	m_primitivesDSState = rdr::ResourcesManager::CreateDescriptorSetState<PrimitivesDS>(RENDERER_RESOURCE_NAME("UPS DS"), rdr::EDescriptorSetStateFlags::Persistent);
+	m_primitivesDSState->primitives = m_primitivesBuffer->CreateFullView();
+}
+
+const lib::SharedPtr<PrimitivesDS>& GeometryManager::GetPrimitivesDSState() const
+{
+	return m_primitivesDSState;
+}
+
+const lib::SharedPtr<GeometryDS>& GeometryManager::GetGeometryDSState() const
+{
+	return m_geometryDSState;
 }
 
 } // spt::rsc
