@@ -68,6 +68,7 @@ private:
 
 void GRAPHICS_API FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Uint32 data);
 void GRAPHICS_API UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
+void GRAPHICS_API UploadDataToBufferOnCPU(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
 
 lib::SharedPtr<rdr::Semaphore> GRAPHICS_API FlushPendingUploads();
 

@@ -52,19 +52,18 @@ GeometryManager::GeometryManager()
 	const rhi::RHIAllocationInfo upbAllocationInfo(rhi::EMemoryUsage::GPUOnly);
 	const rhi::BufferDefinition upbDef(8 * 1024 * 1024, unifiedBuffersUsage, unifiedBuffersFlags);
 	m_primitivesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("UnifiedPrimitivesBuffer"), upbDef, upbAllocationInfo);
-	
-	// This is singleton object so we can capture this safely
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
-															{
-																m_geometryBuffer.reset();
-																m_primitivesBuffer.reset();
-															});
 
 	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"), rdr::EDescriptorSetStateFlags::Persistent);
 	m_geometryDSState->geometryData = m_geometryBuffer->CreateFullView();
 
 	m_primitivesDSState = rdr::ResourcesManager::CreateDescriptorSetState<PrimitivesDS>(RENDERER_RESOURCE_NAME("UPS DS"), rdr::EDescriptorSetStateFlags::Persistent);
-	m_primitivesDSState->primitives = m_primitivesBuffer->CreateFullView();
+	m_primitivesDSState->primitivesData = m_primitivesBuffer->CreateFullView();
+	
+	// This is singleton object so we can capture this safely
+	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																DestroyResources();
+															});
 }
 
 const lib::SharedPtr<PrimitivesDS>& GeometryManager::GetPrimitivesDSState() const
@@ -75,6 +74,14 @@ const lib::SharedPtr<PrimitivesDS>& GeometryManager::GetPrimitivesDSState() cons
 const lib::SharedPtr<GeometryDS>& GeometryManager::GetGeometryDSState() const
 {
 	return m_geometryDSState;
+}
+
+void GeometryManager::DestroyResources()
+{
+	m_geometryBuffer.reset();
+	m_primitivesBuffer.reset();
+	m_geometryDSState.reset();
+	m_primitivesDSState.reset();
 }
 
 } // spt::rsc

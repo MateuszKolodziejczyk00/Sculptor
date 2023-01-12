@@ -26,24 +26,41 @@ void GPUBuffersUploadStagingManager::EnqueueUpload(const lib::SharedRef<rdr::Buf
 
 	SPT_CHECK(dataSize <= stagingBufferSize);
 
-	const lib::LockGuard enqueueLockGuard(m_enqueueLock);
+	CopyCommand* command = nullptr;
+	lib::SharedPtr<rdr::Buffer> stagingBufferInstance;
+	SizeType stagingBufferIdx = idxNone<SizeType>;
+	Uint64 stagingBufferOffset = 0;
 
-	if (m_stagingBuffers.empty() || m_currentStagingBufferOffset + dataSize > stagingBufferSize)
 	{
-		m_stagingBuffers.emplace_back(GetAvailableStagingBuffer());
-		m_currentStagingBufferOffset = 0;
+		const lib::LockGuard enqueueLockGuard(m_enqueueLock);
+
+		if (m_stagingBuffers.empty() || m_currentStagingBufferOffset + dataSize > stagingBufferSize)
+		{
+			m_stagingBuffers.emplace_back(GetAvailableStagingBuffer());
+			m_currentStagingBufferOffset = 0;
+		}
+
+		command = &m_commands.emplace_back();
+
+		SPT_CHECK(!m_stagingBuffers.empty());
+		stagingBufferIdx = m_stagingBuffers.size() - 1;
+		stagingBufferOffset = m_currentStagingBufferOffset;
+		stagingBufferInstance = m_stagingBuffers.back();
+	
+		m_currentStagingBufferOffset += dataSize;
+		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
 	}
 
-	CopyCommand& command = m_commands.emplace_back();
-	command.destBuffer = destBuffer;
-	command.destBufferOffset = bufferOffset;
-	command.stagingBufferIdx = m_stagingBuffers.size() - 1;
-	command.stagingBufferOffset = m_currentStagingBufferOffset;
-	command.dataSize = dataSize;
+	SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
+	SPT_CHECK(!!stagingBufferInstance);
+	
+	command->destBuffer = destBuffer;
+	command->destBufferOffset = bufferOffset;
+	command->stagingBufferIdx = stagingBufferIdx;
+	command->stagingBufferOffset = stagingBufferOffset;
+	command->dataSize = dataSize;
 
-	m_currentStagingBufferOffset += dataSize;
-
-	math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
+	UploadDataToBufferOnCPU(lib::Ref(stagingBufferInstance), stagingBufferOffset, sourceData, dataSize);
 }
 
 void GPUBuffersUploadStagingManager::EnqueueFill(const lib::SharedRef<rdr::Buffer>& buffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
@@ -141,31 +158,6 @@ GPUBuffersUploadStagingManager::GPUBuffersUploadStagingManager()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferUtilities ===============================================================================
 
-void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
-	SPT_CHECK(bufferOffset + dataSize <= rhiBuffer.GetSize());
-
-	const Bool isBufferHostAccessible = rhiBuffer.CanMapMemory();
-	if (isBufferHostAccessible)
-	{
-		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
-		SPT_CHECK(!!bufferMemoryPtr);
-		
-		std::memcpy(bufferMemoryPtr, sourceData, dataSize);
-
-		rhiBuffer.UnmapBufferMemory();
-	}
-	else
-	{
-		SPT_CHECK_MSG(lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::TransferDst), "Buffer memory cannot be mapped on host and cannot be transfer destination!");
-
-		GPUBuffersUploadStagingManager::Get().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
-	}
-}
-
 void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
@@ -187,6 +179,46 @@ void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffs
 	{
 		GPUBuffersUploadStagingManager::Get().EnqueueFill(destBuffer, bufferOffset, range, data);
 	}
+}
+
+void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
+	SPT_CHECK(bufferOffset + dataSize <= rhiBuffer.GetSize());
+
+	const Bool isBufferHostAccessible = rhiBuffer.CanMapMemory();
+	if (isBufferHostAccessible)
+	{
+		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+		SPT_CHECK(!!bufferMemoryPtr);
+		
+		std::memcpy(bufferMemoryPtr + bufferOffset, sourceData, dataSize);
+
+		rhiBuffer.UnmapBufferMemory();
+	}
+	else
+	{
+		SPT_CHECK_MSG(lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::TransferDst), "Buffer memory cannot be mapped on host and cannot be transfer destination!");
+
+		GPUBuffersUploadStagingManager::Get().EnqueueUpload(destBuffer, bufferOffset, sourceData, dataSize);
+	}
+}
+
+void UploadDataToBufferOnCPU(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
+	SPT_CHECK(bufferOffset + dataSize <= rhiBuffer.GetSize());
+
+	Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+	SPT_CHECK(!!bufferMemoryPtr);
+	
+	std::memcpy(bufferMemoryPtr + bufferOffset, sourceData, dataSize);
+
+	rhiBuffer.UnmapBufferMemory();
 }
 
 lib::SharedPtr<rdr::Semaphore> FlushPendingUploads()

@@ -23,12 +23,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(, PrimitivesDS, rg::RGDescriptorSetState<PrimitivesDS>, rhi::EShaderStageFlags::Compute)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<PrimitiveGeometryInfo>), primitives)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PrimitiveGeometryInfo>), primitivesData)
 DS_END();
 
 
 DS_BEGIN(, GeometryDS, rg::RGDescriptorSetState<GeometryDS>, rhi::EShaderStageFlags::Vertex)
-	DS_BINDING(BINDING_TYPE(gfx::RWByteAddressBuffer), geometryData)
+	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer), geometryData)
 DS_END();
 
 
@@ -48,6 +48,7 @@ public:
 private:
 
 	GeometryManager();
+	void DestroyResources();
 
 	lib::SharedPtr<rdr::Buffer> m_geometryBuffer;
 	lib::SharedPtr<rdr::Buffer> m_primitivesBuffer;

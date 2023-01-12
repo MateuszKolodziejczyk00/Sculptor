@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Common/ShaderCompilationInput.h"
+#include "GeometryManager.h"
 
 namespace spt::rsc
 {
@@ -18,6 +19,7 @@ BEGIN_SHADER_STRUCT(, StaticMeshDrawCallData)
 	SHADER_STRUCT_FIELD(Uint32, instanceCount)
 	SHADER_STRUCT_FIELD(Uint32, firstVertex)
 	SHADER_STRUCT_FIELD(Uint32, firstInstance)
+	SHADER_STRUCT_FIELD(Uint32, primitiveIdx)
 END_SHADER_STRUCT();
 
 
@@ -88,7 +90,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	graphBuilder.AddDispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
 							 indirectCommandsGenerationPipeline,
 							 math::Vector3u(1, 1, 1),
-							 rg::BindDescriptorSets(descriptorSetState));
+							 rg::BindDescriptorSets(descriptorSetState, lib::Ref(GeometryManager::Get().GetPrimitivesDSState())));
 
 	if (view.SupportsStage(ERenderStage::GBufferGenerationStage))
 	{
