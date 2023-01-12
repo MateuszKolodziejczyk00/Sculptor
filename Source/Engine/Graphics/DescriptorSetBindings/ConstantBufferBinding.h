@@ -79,6 +79,13 @@ public:
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
+	ConstantBufferBinding& operator=(TAssignable&& assignable)
+	{
+		Set(std::forward<TAssignable>(assignable));
+		return *this;
+	}
+
+	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
 	void Set(TAssignable&& value)
 	{
 		SwitchBufferOffsetIfNecessary();

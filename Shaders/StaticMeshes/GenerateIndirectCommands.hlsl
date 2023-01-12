@@ -11,6 +11,14 @@ groupshared uint outputIdx;
 [numthreads(1024, 1, 1)]
 void main(uint3 id : SV_DispatchThreadID)
 {
+    // Initialize idx value
+    if(id.x == 0)
+    {
+        outputIdx = 0;
+    }
+
+    GroupMemoryBarrier();
+
     const uint commandsNum = staticMeshes[id.x].primitivesNum;
     if(commandsNum > 0)
     {

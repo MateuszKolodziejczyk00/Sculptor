@@ -135,6 +135,18 @@ void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Ui
 						 });
 }
 
+void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, const BufferView& countBufferView, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("DrawIndirect Command");
+
+							 cmdBuffer->GetRHI().DrawIndirect(drawsBufferView.GetBuffer()->GetRHI(), drawsBufferView.GetOffset() + drawsOffset, drawsStride, countBufferView.GetBuffer()->GetRHI(), countBufferView.GetOffset() + countOffset, maxDrawsCount);
+						 });
+}
+
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
