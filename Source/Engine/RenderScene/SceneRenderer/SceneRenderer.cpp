@@ -11,17 +11,17 @@ namespace renderer_utils
 {
 
 template<typename TRenderStage>
-void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec>& renderViews)
+void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec>& renderViewsSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
 	TRenderStage stageInstance;
 
-	for (ViewRenderingSpec& view : renderViews)
+	for (ViewRenderingSpec& viewSpec : renderViewsSpecs)
 	{
-		if (view.SupportsStage(stage))
+		if (viewSpec.SupportsStage(stage))
 		{
-			stageInstance.Render(graphBuilder, scene, view);
+			stageInstance.Render(graphBuilder, scene, viewSpec);
 		}
 	}
 }
@@ -37,7 +37,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 
 	scene.Update();
 
-	lib::DynamicArray<ViewRenderingSpec> renderViews = CollectRenderViews(scene, view);
+	lib::DynamicArray<ViewRenderingSpec> renderViewsSpecs = CollectRenderViews(scene, view);
 
 	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
@@ -47,11 +47,11 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
-		for (ViewRenderingSpec& renderView : renderViews)
+		for (ViewRenderingSpec& viewSpec : renderViewsSpecs)
 		{
-			if (lib::HasAnyFlag(renderView.GetSupportedStages(), renderSystem->GetSupportedStages()))
+			if (lib::HasAnyFlag(viewSpec.GetSupportedStages(), renderSystem->GetSupportedStages()))
 			{
-				renderSystem->RenderPerView(graphBuilder, scene, renderView);
+				renderSystem->RenderPerView(graphBuilder, scene, viewSpec);
 			}
 		}
 	}
@@ -59,7 +59,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
 
-	//renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViews);
+	//renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
 
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{

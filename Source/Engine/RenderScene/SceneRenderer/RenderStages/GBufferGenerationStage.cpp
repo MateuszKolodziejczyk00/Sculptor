@@ -8,22 +8,24 @@ namespace spt::rsc
 GBufferGenerationStage::GBufferGenerationStage()
 { }
 
-void GBufferGenerationStage::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view)
+void GBufferGenerationStage::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
-	RenderStageEntries& viewStageEntries = view.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
+	RenderStageEntries& viewStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
 
-	viewStageEntries.GetPreRenderStageDelegate().Broadcast(graphBuilder, renderScene, view);
+	RenderStageExecutionContext stageContext(ERenderStage::GBufferGenerationStage);
+
+	viewStageEntries.GetPreRenderStageDelegate().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 
 	SPT_MAYBE_UNUSED
-	GBufferData& gBuffer = view.GetData().Create<GBufferData>();
+	GBufferData& gBuffer = viewSpec.GetData().Create<GBufferData>();
 
 	//graphBuilder.AddRenderPass()
 
-	viewStageEntries.GetOnRenderStage().Broadcast(graphBuilder, renderScene, view);
+	viewStageEntries.GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 	
-	viewStageEntries.GetPostRenderStage().Broadcast(graphBuilder, renderScene, view);
+	viewStageEntries.GetPostRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

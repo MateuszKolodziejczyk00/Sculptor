@@ -77,16 +77,16 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
 }
 
-void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view)
+void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerView(graphBuilder, renderScene, view);
+	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
 	const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
 	const lib::SharedRef<rdr::Buffer>& instancesBuffer = staticMeshPrimsSystem.GetStaticMeshInstances().GetBuffer();
 
-	const StaticMeshIndirectDataPerView& viewIndirectData = view.GetData().Create<StaticMeshIndirectDataPerView>(utils::CreateIndirectDataForView(graphBuilder, renderScene));
+	const StaticMeshIndirectDataPerView& viewIndirectData = viewSpec.GetData().Create<StaticMeshIndirectDataPerView>(utils::CreateIndirectDataForView(graphBuilder, renderScene));
 
 	lib::SharedRef<BuildIndirectStaticMeshCommandsDS> descriptorSetState = rdr::ResourcesManager::CreateDescriptorSetState<BuildIndirectStaticMeshCommandsDS>(RENDERER_RESOURCE_NAME("IndirectCommandsDS"));
 	descriptorSetState->drawCommands = viewIndirectData.drawsBuffer;
@@ -99,24 +99,24 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 							 math::Vector3u(1, 1, 1),
 							 rg::BindDescriptorSets(descriptorSetState, lib::Ref(GeometryManager::Get().GetPrimitivesDSState())));
 
-	if (view.SupportsStage(ERenderStage::GBufferGenerationStage))
+	if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))
 	{
-		RenderStageEntries& basePassStageEntries = view.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
+		RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
 
 		basePassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderMeshesPerView);
 	}
 }
 
-void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& view)
+void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const StaticMeshIndirectDataPerView& indirectBuffers = view.GetData().Get<StaticMeshIndirectDataPerView>();
+	const StaticMeshIndirectDataPerView& indirectBuffers = viewSpec.GetData().Get<StaticMeshIndirectDataPerView>();
 
 	const lib::SharedRef<StaticMeshRenderingVSDS> geometryDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingVSDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingVSDS"));
 	geometryDS->drawCommands = indirectBuffers.drawsBuffer;
 	geometryDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
-	geometryDS->sceneViewData = view.GetRenderView().GenerateViewData();
+	geometryDS->sceneViewData = viewSpec.GetRenderView().GenerateViewData();
 
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),
 							rg::BindDescriptorSets(geometryDS),
