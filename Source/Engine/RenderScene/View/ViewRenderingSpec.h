@@ -238,7 +238,7 @@ private:
 
 struct RenderStageExecutionContext
 {
-	RenderStageExecutionContext(ERenderStage inStage)
+	explicit RenderStageExecutionContext(ERenderStage inStage)
 		: stage(inStage)
 	{ }
 
