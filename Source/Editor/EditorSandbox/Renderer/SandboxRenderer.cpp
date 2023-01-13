@@ -118,7 +118,7 @@ ui::TextureID SandboxRenderer::GetUITextureID() const
 	return m_uiTextureID;
 }
 
-ed::TestDS& SandboxRenderer::GetDescriptorSet()
+TestDS& SandboxRenderer::GetDescriptorSet()
 {
 	return *m_descriptorSet;
 }

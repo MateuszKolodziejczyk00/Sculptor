@@ -1,12 +1,16 @@
-#include "RenderGraphPersistentState.h"
+#include "RenderGraphResourcesPool.h"
 #include "ResourcesManager.h"
+#include "Renderer.h"
 
 
 namespace spt::rg
 {
 
-RenderGraphResourcesPool::RenderGraphResourcesPool()
-{ }
+RenderGraphResourcesPool& RenderGraphResourcesPool::Get()
+{
+	static RenderGraphResourcesPool instance;
+	return instance;
+}
 
 lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
@@ -19,9 +23,9 @@ lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const Rend
 		const rhi::TextureDefinition& textureDef			= rhiTexture.GetDefinition();
 		const rhi::RHIAllocationInfo& textureAllocationInfo	= rhiTexture.GetAllocationInfo();
 
-		return textureDef.resolution.x() > definition.resolution.x()
-			&& textureDef.resolution.y() > definition.resolution.y()
-			&& textureDef.resolution.z() > definition.resolution.z()
+		return textureDef.resolution.x() >= definition.resolution.x()
+			&& textureDef.resolution.y() >= definition.resolution.y()
+			&& textureDef.resolution.z() >= definition.resolution.z()
 			&& lib::HasAllFlags(textureDef.usage, definition.usage)
 			&& textureDef.format == definition.format
 			&& textureDef.samples == definition.samples
@@ -51,6 +55,20 @@ void RenderGraphResourcesPool::ReleaseTexture(lib::SharedPtr<rdr::Texture> textu
 	SPT_PROFILER_FUNCTION();
 
 	m_pooledTextures.emplace_back(PooledTexture{ std::move(texture) });
+}
+
+RenderGraphResourcesPool::RenderGraphResourcesPool()
+{
+	// This is singleton object so we can capture this safely
+	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
+															{
+																DestroyResources();
+															});
+}
+
+void RenderGraphResourcesPool::DestroyResources()
+{
+	m_pooledTextures.clear();
 }
 
 } // spt::rg

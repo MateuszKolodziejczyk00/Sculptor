@@ -1,7 +1,7 @@
 #include "RGResources/RGNode.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "RHIBridge/RHIDependencyImpl.h"
-#include "RenderGraphPersistentState.h"
+#include "RenderGraphResourcesPool.h"
 #include "GPUDiagnose/Diagnose.h"
 #include "ResourcesManager.h"
 
@@ -175,7 +175,7 @@ void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
 
 void RGNode::CreateTextures()
 {
-	RenderGraphResourcesPool& resourcesPool = RenderGraphPersistentState::GetResourcesPool();
+	RenderGraphResourcesPool& resourcesPool = RenderGraphResourcesPool::Get();
 
 	for (RGTextureHandle textureToAcquire : m_texturesToAcquire)
 	{
@@ -188,7 +188,7 @@ void RGNode::CreateTextures()
 
 void RGNode::ReleaseTextures()
 {
-	RenderGraphResourcesPool& resourcesPool = RenderGraphPersistentState::GetResourcesPool();
+	RenderGraphResourcesPool& resourcesPool = RenderGraphResourcesPool::Get();
 
 	for (RGTextureHandle textureToRelease : m_texturesToRelease)
 	{

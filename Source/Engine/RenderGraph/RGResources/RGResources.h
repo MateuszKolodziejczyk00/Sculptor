@@ -294,6 +294,7 @@ public:
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
 		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
+		, m_extractionDest(nullptr)
 		, m_releaseTransitionTarget(nullptr)
 	{ }
 
@@ -303,6 +304,7 @@ public:
 		, m_allocationInfo(texture->GetRHI().GetAllocationInfo())
 		, m_texture(texture)
 		, m_accessState(texture->GetRHI().GetDefinition().mipLevels, texture->GetRHI().GetDefinition().arrayLayers)
+		, m_extractionDest(nullptr)
 		, m_releaseTransitionTarget(nullptr)
 	{
 		SPT_CHECK(IsExternal());
