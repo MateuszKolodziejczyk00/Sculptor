@@ -59,13 +59,13 @@ lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
 	switch (stage)
 	{
 	case rhi::EShaderStage::Vertex:
-		return lib::WString(L"VERTEX 1");
+		return lib::WString(L"VERTEX_SHADER");
 
 	case rhi::EShaderStage::Fragment:
-		return lib::WString(L"FRAGMENT 1");
+		return lib::WString(L"FRAGMENT_SHADER");
 
 	case rhi::EShaderStage::Compute:
-		return lib::WString(L"COMPUTE 1");
+		return lib::WString(L"COMPUTE_SHADER");
 
 	default:
 		SPT_CHECK_NO_ENTRY();
@@ -290,7 +290,6 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	args.Append(L"-T", priv::GetShaderTargetProfile(stageCompilationDef.stage));
 	args.Append(L"-E", lib::StringUtils::ToWideString(stageCompilationDef.entryPoint.GetView()));
 	args.Append(L"-spirv");
-	args.Append(L"-O0");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
 	args.Append(lib::WString(L"-I"), absoluteShadersPath);
 

@@ -293,8 +293,16 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 		{
 			AddSampler(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
 		});
-
-	outShaderMetaData.PostInitialize();
+	
+	const Uint32 descriptorSetsNum = outShaderMetaData.GetDescriptorSetsNum();
+	for (Uint32 dsIdx = 0; dsIdx < descriptorSetsNum; ++dsIdx)
+	{
+		const SizeType overridingHash = parametersMetaData.GetDSRegisteredHash(dsIdx);
+		if (overridingHash != idxNone<SizeType>)
+		{
+			outShaderMetaData.OverrideDescriptorSetHash(dsIdx, overridingHash);
+		}
+	}
 }
 
 } // priv
@@ -305,6 +313,13 @@ void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, co
 
 	const spirv_cross::Compiler compiler(shader.GetBinary());
 	priv::BuildShaderMetaData(compiler, shader.GetStage(), parametersMetaData, outShaderMetaData);
+}
+
+void ShaderMetaDataBuilder::FinishBuildingMetaData(smd::ShaderMetaData& outShaderMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	outShaderMetaData.PostInitialize();
 }
 
 } // spt::sc

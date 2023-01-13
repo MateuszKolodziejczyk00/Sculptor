@@ -34,7 +34,7 @@ public:
 		m_boundBuffer.AddRGDependency(builder, accessType, GetShaderStageFlags());
 	}
 
-	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
+	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
 	{
 		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
 		newBindingMetaData.Set(smd::BufferBindingData(1, GetBindingFlags()));

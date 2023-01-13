@@ -87,6 +87,11 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 
 	for (const rhi::DescriptorSetBindingDefinition& bindingDef : dsDef.bindings)
 	{
+		if (bindingDef.descriptorType == rhi::EDescriptorType::None)
+		{
+			continue;
+		}
+
 		const VkSampler immutableSampler = bindingDef.immutableSampler.IsValid() ? bindingDef.immutableSampler.GetHandle() : VK_NULL_HANDLE;
 
 		VkDescriptorSetLayoutBinding bindingInfo{};
@@ -109,7 +114,7 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 	VkDescriptorSetLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     layoutInfo.pNext		= &bindingFlagsInfo;
 	layoutInfo.flags		= RHIToVulkan::GetDescriptorSetFlags(dsDef.flags);
-    layoutInfo.bindingCount	= static_cast<Uint32>(dsDef.bindings.size());
+    layoutInfo.bindingCount	= static_cast<Uint32>(bindingsInfos.size());
     layoutInfo.pBindings	= bindingsInfos.data();
 
 	VkDescriptorSetLayout layoutHandle = VK_NULL_HANDLE;

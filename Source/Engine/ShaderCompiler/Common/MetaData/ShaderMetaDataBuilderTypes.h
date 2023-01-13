@@ -68,6 +68,20 @@ public:
 		return foundParamMetaData != std::cend(m_paramsMetaData) ? foundParamMetaData->second.HasMeta(metaParam) : false;
 	}
 
+	SizeType GetDSRegisteredHash(Uint32 descriptorSetIdx) const
+	{
+		const SizeType properDSIdx = static_cast<SizeType>(descriptorSetIdx);
+
+		if (properDSIdx < m_dsMetaData.size())
+		{
+			return m_dsMetaData[properDSIdx].hash;
+		}
+		else
+		{
+			return idxNone<SizeType>;
+		}
+	}
+
 	smd::EBindingFlags GetAdditionalBindingFlags(Uint32 descriptorSetIdx, Uint32 bindingIdx) const
 	{
 		const SizeType properDSIdx = static_cast<SizeType>(descriptorSetIdx);

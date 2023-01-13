@@ -32,6 +32,8 @@ public:
 
 	void						AddShaderStageToBinding(Uint32 setIdx, Uint32 bindingIdx, rhi::EShaderStage stage);
 
+	void						OverrideDescriptorSetHash(Uint32 setIdx, SizeType hash);
+
 	void						PostInitialize();
 
 	// Queries ====================================================
@@ -93,6 +95,7 @@ void ShaderMetaData::AddShaderBindingData(Uint32 setIdx, Uint32 bindingIdx, TSha
 	if (properSetIdx >= m_descriptorSets.size())
 	{
 		m_descriptorSets.resize(properSetIdx + 1);
+		m_descriptorSetHashes.resize(properSetIdx + 1, idxNone<SizeType>);
 	}
 	
 	m_descriptorSets[properSetIdx].AddBinding(static_cast<Uint8>(bindingIdx), bindingData);
@@ -101,6 +104,15 @@ void ShaderMetaData::AddShaderBindingData(Uint32 setIdx, Uint32 bindingIdx, TSha
 inline void ShaderMetaData::AddShaderStageToBinding(Uint32 setIdx, Uint32 bindingIdx, rhi::EShaderStage stage)
 {
 	GetBindingDataRef(setIdx, bindingIdx).AddShaderStage(stage);
+}
+
+inline void ShaderMetaData::OverrideDescriptorSetHash(Uint32 setIdx, SizeType hash)
+{
+	SPT_CHECK(setIdx < m_descriptorSetHashes.size());
+	SPT_CHECK(hash != idxNone<SizeType>);
+	SPT_CHECK(m_descriptorSetHashes[setIdx] == idxNone<SizeType> || m_descriptorSetHashes[setIdx] == hash);
+
+	m_descriptorSetHashes[setIdx] = hash;
 }
 
 inline void ShaderMetaData::PostInitialize()
@@ -195,10 +207,14 @@ inline void ShaderMetaData::BuildDSHashes()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_descriptorSets.size() <= maxValue<Uint32>);
-
 	for (SizeType setIdx = 0; setIdx < m_descriptorSets.size(); ++setIdx)
 	{
+		// if this hash was externally overriden we don't have to calculate it
+		if (m_descriptorSetHashes[setIdx] != idxNone<SizeType>)
+		{
+			continue;
+		}
+
 		SizeType hash = 0;
 		
 		const lib::DynamicArray<GenericShaderBinding>& bindings = m_descriptorSets[setIdx].GetBindings();
@@ -217,7 +233,7 @@ inline void ShaderMetaData::BuildDSHashes()
 		}
 
 		SPT_CHECK(m_descriptorSetHashes.size() == static_cast<SizeType>(setIdx));
-		m_descriptorSetHashes.emplace_back(hash);
+		m_descriptorSetHashes[setIdx] = hash;
 	}
 }
 

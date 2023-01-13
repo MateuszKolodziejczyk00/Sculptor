@@ -75,6 +75,11 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shad
 		}
 	}
 
+	if (success)
+	{
+		ShaderMetaDataBuilder::FinishBuildingMetaData(outCompiledShaders.metaData);
+	}
+
 	return success;
 }
 

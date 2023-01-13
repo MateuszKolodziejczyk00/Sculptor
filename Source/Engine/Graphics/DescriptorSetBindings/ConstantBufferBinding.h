@@ -58,7 +58,7 @@ public:
 		context.UpdateBuffer(GetName(), m_buffer->CreateFullView());
 	}
 
-	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
+	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
 	{
 		smd::BufferBindingData bindingData(1, GetBindingFlags());
 		bindingData.SetSize(sizeof(TStruct));

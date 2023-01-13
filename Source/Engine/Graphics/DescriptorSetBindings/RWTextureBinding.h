@@ -38,7 +38,7 @@ public:
 		BuildRGDependenciesImpl(builder, rg::ERGTextureAccess::StorageWriteTexture);
 	}
 
-	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
+	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
 	{
 		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
 		newBindingMetaData.Set(smd::TextureBindingData(1, GetBindingFlags()));

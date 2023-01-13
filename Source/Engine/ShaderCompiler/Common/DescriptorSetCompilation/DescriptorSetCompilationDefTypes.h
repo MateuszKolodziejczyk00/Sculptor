@@ -9,9 +9,12 @@ namespace spt::sc
 
 struct DescriptorSetCompilationMetaData
 {
-	DescriptorSetCompilationMetaData() = default;
+	DescriptorSetCompilationMetaData()
+		: hash(0)
+	{ }
 
 	lib::DynamicArray<smd::EBindingFlags> bindingsFlags;
+	SizeType hash;
 };
 
 } // spt::sc

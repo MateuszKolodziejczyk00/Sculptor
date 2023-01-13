@@ -43,7 +43,7 @@ public:
 		return 2;
 	}
 
-	void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) const
+	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
 	{
 		// buffer
 		smd::GenericShaderBinding& bufferBindingMetaData = bindingsMetaData.emplace_back();
