@@ -73,6 +73,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::GBufferGenerationStage, ERenderStage::ShadowGenerationStage);
 
 	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateCommandsCS"));
 	const rdr::ShaderID generateCommandsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateIndirectCommands.hlsl", compilationSettings);
 	indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
 }

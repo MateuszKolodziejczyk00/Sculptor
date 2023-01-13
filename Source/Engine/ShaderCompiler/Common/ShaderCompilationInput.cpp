@@ -68,6 +68,16 @@ SizeType ShaderSourceCode::Hash() const
 ShaderCompilationSettings::ShaderCompilationSettings()
 { }
 
+void ShaderCompilationSettings::AddShaderToCompile(const ShaderStageCompilationDef& stageCompilationDef)
+{
+	m_stagesToCompile.emplace_back(stageCompilationDef);
+}
+
+const lib::DynamicArray<ShaderStageCompilationDef>& ShaderCompilationSettings::GetStagesToCompile() const
+{
+	return m_stagesToCompile;
+}
+
 void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 {
 	SPT_PROFILER_FUNCTION();
@@ -87,7 +97,8 @@ SizeType ShaderCompilationSettings::Hash() const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return lib::HashRange(m_macros.cbegin(), m_macros.cend());
+	return lib::HashCombine(lib::HashRange(std::cbegin(m_macros), std::cend(m_macros)),
+							lib::HashRange(std::cbegin(m_stagesToCompile), std::cend(m_stagesToCompile)));
 }
 
 } // spt::sc

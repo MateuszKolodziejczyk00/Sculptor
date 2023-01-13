@@ -7,20 +7,17 @@
 namespace spt::sc
 {
 
-class ShaderSourceCode;
-
-
 class ShaderMetaDataPrerpocessor
 {
 public:
 
-	SPT_NODISCARD static ShaderParametersMetaData PreprocessShader(ShaderSourceCode& sourceCode);
+	SPT_NODISCARD static ShaderParametersMetaData PreprocessShader(lib::String& sourceCode);
 
 private:
 
-	static void PreprocessShaderStructs(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
-	static void PreprocessShaderDescriptorSets(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
-	static void PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData);
+	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
+	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
+	static void PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
 };
 
 } // spt::sc

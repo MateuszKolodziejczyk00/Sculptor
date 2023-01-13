@@ -20,7 +20,7 @@ static VkPipelineShaderStageCreateInfo BuildPipelineShaderStageInfo(const rhi::R
 	VkPipelineShaderStageCreateInfo stageInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 	stageInfo.stage = RHIToVulkan::GetShaderStage(shaderModule.GetStage());
 	stageInfo.module = shaderModule.GetHandle();
-	stageInfo.pName = "main";
+	stageInfo.pName = shaderModule.GetEntryPoint().GetData();
 
 	return stageInfo;
 }

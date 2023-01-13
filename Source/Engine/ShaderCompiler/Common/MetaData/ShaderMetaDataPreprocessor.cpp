@@ -110,7 +110,7 @@ static void BuildParameterMetaData(lib::HashedString paramName, lib::StringView 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderMetaDataPrerpocessor ====================================================================
 
-ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(ShaderSourceCode& sourceCode)
+ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -123,15 +123,13 @@ ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(ShaderSour
 	return metaData;
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::String& sourceCodeStr = sourceCode.GetSourceCodeMutable();
-
 	static const std::regex shaderStructRegex(R"~(\[\[shader_struct\(\s*(\w*)\s*\)\]\])~");
 
-	auto shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), shaderStructRegex);
+	auto shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderStructRegex);
 
 	while (shaderStructsIt != std::sregex_iterator())
 	{
@@ -142,22 +140,20 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(ShaderSourceCode& sourc
 		const ShaderStructDefinition& structDef = ShaderStructsRegistry::GetStructDefinition(structName);
 
 		const lib::String structSourceCode = structDef.GetSourceCode();
-		sourceCodeStr.replace(shaderStructsIt->prefix().length(), shaderStructMatch.length(), structSourceCode);
+		sourceCode.replace(shaderStructsIt->prefix().length(), shaderStructMatch.length(), structSourceCode);
 
 		// Always search for new descriptor from the beginning, because we're modifying source code during loop
-		shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), shaderStructRegex);
+		shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderStructRegex);
 	}
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::String& sourceCodeStr = sourceCode.GetSourceCodeMutable();
-
 	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
 
-	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), descriptorSetRegex);
+	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
 
 	while (descriptorSetIt != std::sregex_iterator())
 	{
@@ -170,39 +166,37 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(ShaderSourceCode
 		const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 
 		const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
-		sourceCodeStr.replace(descriptorSetIt->prefix().length(), descriptorSetMatch.length(), dsSourceCode);
+		sourceCode.replace(descriptorSetIt->prefix().length(), descriptorSetMatch.length(), dsSourceCode);
 
 		outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
 
 		// Always search for new descriptor from the beginning, because we're modifying source code during loop
-		descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCodeStr), std::cend(sourceCodeStr), descriptorSetRegex);
+		descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
 	}
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(ShaderSourceCode& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::String& code = sourceCode.GetSourceCodeMutable();
-
-	const tkn::Tokenizer tokenizer(code, g_metaDataProcessorTokens);
+	const tkn::Tokenizer tokenizer(sourceCode, g_metaDataProcessorTokens);
 	const tkn::TokensArray tokensArray = tokenizer.BuildTokensArray();
 
 	tkn::TokensVisitor metaDataVisitor;
 	metaDataVisitor.BindToToken(EMetaDataProcessorToken::BeginMetaData).BindLambda(
 		[&](tkn::TokenInfo tokenInfo, const tkn::TokensProcessor& processor)
 		{
-			const lib::HashedString paramName = helper::ExtractParameterName(tokenInfo, code);
+			const lib::HashedString paramName = helper::ExtractParameterName(tokenInfo, sourceCode);
 			SPT_CHECK(paramName.IsValid());
 
 			SizeType metaDataEndPosition = 0;
-			const lib::StringView metaParametersString = helper::ExtractMetaParametersString(tokenInfo, code, metaDataEndPosition);
+			const lib::StringView metaParametersString = helper::ExtractMetaParametersString(tokenInfo, sourceCode, metaDataEndPosition);
 			SPT_CHECK(metaDataEndPosition != 0);
 
 			helper::BuildParameterMetaData(paramName, metaParametersString, outMetaData);
 
 			// fill whole meta data with whitespaces, so it won't be compiled
-			std::fill(std::begin(code) + tokenInfo.tokenPosition, std::begin(code) + metaDataEndPosition, ' ');
+			std::fill(std::begin(sourceCode) + tokenInfo.tokenPosition, std::begin(sourceCode) + metaDataEndPosition, ' ');
 		});
 
 	const tkn::TokensProcessor tokensProcessor(tokensArray);

@@ -17,6 +17,7 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
     moduleInfo.codeSize	= static_cast<Uint32>(definition.binary.size() * sizeof(Uint32));
     moduleInfo.pCode	= definition.binary.data();
 	m_stage				= definition.stage;
+	m_entryPoint		= definition.entryPoint;
 
 	SPT_VK_CHECK(vkCreateShaderModule(VulkanRHI::GetDeviceHandle(), &moduleInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle))
 }
@@ -28,6 +29,9 @@ void RHIShaderModule::ReleaseRHI()
 	SPT_CHECK(IsValid());
 
 	vkDestroyShaderModule(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
+	
+	m_stage = rhi::EShaderStage::None;
+	m_entryPoint.Reset();
 
 	m_handle = VK_NULL_HANDLE;
 }
@@ -40,6 +44,11 @@ Bool RHIShaderModule::IsValid() const
 rhi::EShaderStage RHIShaderModule::GetStage() const
 {
 	return m_stage;
+}
+
+const lib::HashedString& RHIShaderModule::GetEntryPoint() const
+{
+	return m_entryPoint;
 }
 
 void RHIShaderModule::SetName(const lib::HashedString& name)

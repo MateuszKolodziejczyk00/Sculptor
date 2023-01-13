@@ -39,21 +39,36 @@ private:
 };
 
 
+struct ShaderStageCompilationDef
+{
+	ShaderStageCompilationDef(rhi::EShaderStage inStage = rhi::EShaderStage::None, const lib::HashedString& inEntryPoint = "Main")
+		: stage(inStage)
+		, entryPoint(inEntryPoint)
+	{ }
+
+	rhi::EShaderStage stage;
+	lib::HashedString entryPoint;
+};
+
+
 class SHADER_COMPILER_API ShaderCompilationSettings
 {
 public:
 
 	ShaderCompilationSettings();
 
-	void										AddMacroDefinition(MacroDefinition macro);
+	void AddShaderToCompile(const ShaderStageCompilationDef& stageCompilationDef);
+	const lib::DynamicArray<ShaderStageCompilationDef>& GetStagesToCompile() const;
 
-	const lib::DynamicArray<lib::HashedString>&	GetMacros() const;
+	void AddMacroDefinition(MacroDefinition macro);
+	const lib::DynamicArray<lib::HashedString>& GetMacros() const;
 
-	SizeType									Hash() const;
+	SizeType Hash() const;
 
 private:
 
-	lib::DynamicArray<lib::HashedString>		m_macros;
+	lib::DynamicArray<lib::HashedString> m_macros;
+	lib::DynamicArray<ShaderStageCompilationDef> m_stagesToCompile;
 };
 
 
@@ -67,4 +82,20 @@ enum class EShaderCompilationFlags
 	Default			= None
 };
 
-}
+} // spt::sc
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::sc::ShaderStageCompilationDef>
+{
+    size_t operator()(const spt::sc::ShaderStageCompilationDef& stageCompilation) const
+    {
+		return spt::lib::HashCombine(stageCompilation.stage,
+									 stageCompilation.entryPoint);
+    }
+};
+
+} // std

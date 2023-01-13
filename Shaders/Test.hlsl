@@ -1,4 +1,3 @@
-#type(compute) //===========================================================
 #include "SculptorShader.hlsli"
 
 [[descriptor_set(TestDS, 0)]]

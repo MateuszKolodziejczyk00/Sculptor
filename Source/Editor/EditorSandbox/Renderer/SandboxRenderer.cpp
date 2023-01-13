@@ -26,7 +26,9 @@ namespace spt::ed
 SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	: m_window(std::move(owningWindow))
 {
-	const rdr::ShaderID shaderID = rdr::ResourcesManager::CreateShader("Test.hlsl", sc::ShaderCompilationSettings());
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "main"));
+	const rdr::ShaderID shaderID = rdr::ResourcesManager::CreateShader("Test.hlsl", compilationSettings);
 	m_computePipelineID = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CompTest"), shaderID);
 
 	rhi::TextureDefinition textureDef;

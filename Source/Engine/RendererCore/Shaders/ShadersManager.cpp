@@ -190,8 +190,7 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 		std::transform(std::cbegin(compiledShader.shaders), std::cend(compiledShader.shaders), std::back_inserter(moduleDefinitions),
 			[](const sc::CompiledShader& shaderBinary)
 			{
-				return rhi::ShaderModuleDefinition(shaderBinary.GetBinary(), shaderBinary.GetStage());
-
+				return rhi::ShaderModuleDefinition(shaderBinary.GetBinary(), shaderBinary.GetStage(), shaderBinary.GetEntryPoint());
 			});
 
 

@@ -23,6 +23,7 @@ public:
 	Bool						IsValid() const;
 
 	rhi::EShaderStage			GetStage() const;
+	const lib::HashedString&	GetEntryPoint() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
@@ -36,6 +37,7 @@ private:
 	VkShaderModule				m_handle;
 
 	rhi::EShaderStage			m_stage;
+	lib::HashedString			m_entryPoint;
 
 	DebugName					m_name;
 };

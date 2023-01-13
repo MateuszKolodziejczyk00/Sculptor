@@ -54,6 +54,25 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 	}
 }
 
+lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
+{
+	switch (stage)
+	{
+	case rhi::EShaderStage::Vertex:
+		return lib::WString(L"VERTEX 1");
+
+	case rhi::EShaderStage::Fragment:
+		return lib::WString(L"FRAGMENT 1");
+
+	case rhi::EShaderStage::Compute:
+		return lib::WString(L"COMPUTE 1");
+
+	default:
+		SPT_CHECK_NO_ENTRY();
+		return lib::WString();
+	}
+}
+
 } // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,14 +151,14 @@ public:
 
 	CompilerImpl();
 
-	CompiledShader			CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
+	CompiledShader			CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
 
 private:
 
-	ComPtr<IDxcResult>		PreprocessShader(const ShaderSourceCode& sourceCode, const DxcArguments& args) const;
-	ComPtr<IDxcResult>		CompileToSPIRV(const ShaderSourceCode& sourceCode, DxcArguments& args) const;
+	ComPtr<IDxcResult>		PreprocessShader(const lib::String& sourceCode, const DxcArguments& args) const;
+	ComPtr<IDxcResult>		CompileToSPIRV(const lib::String& sourceCode, DxcArguments& args) const;
 
-	DxcArguments			BuildArguments(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const;
+	DxcArguments			BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
 
 	ComPtr<IDxcUtils>			m_utils;
 	ComPtr<IDxcCompiler3>		m_compiler;
@@ -157,13 +176,13 @@ CompilerImpl::CompilerImpl()
 	m_utils->CreateDefaultIncludeHandler(m_defaultIncludeHandler.GetAddressOf());
 }
 
-CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	CompiledShader result{};
 
-	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, compilationSettings);
+	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, stageCompilationDef, compilationSettings);
 
 	const ComPtr<IDxcResult> preprocessResult = PreprocessShader(sourceCode, compilerArgs);
 
@@ -175,7 +194,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 		ComPtr<IDxcBlobUtf8> errorsBlob;
 		preprocessResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
 		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
-		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, errors);
+		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, stageCompilationDef, errors);
 		SPT_LOG_TRACE(ShaderCompiler, "Failed to preprocess shader {0}", shaderPath.c_str());
 		return result;
 	}
@@ -184,25 +203,21 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	preprocessResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(preprocessedSourceBlob.GetAddressOf()), nullptr);
 	lib::String preprocessedHLSL(static_cast<const char*>(preprocessedSourceBlob->GetBufferPointer()), static_cast<SizeType>(preprocessedSourceBlob->GetStringLength()));
 
-	ShaderSourceCode preprocessedSourceCode;
-	preprocessedSourceCode.SetShaderStage(sourceCode.GetShaderStage());
-	preprocessedSourceCode.SetSourceCode(std::move(preprocessedHLSL));
+	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedHLSL);
 
-	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedSourceCode);
-
-	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedSourceCode, compilerArgs);
+	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedHLSL, compilerArgs);
 
 	HRESULT compilationStatus{};
 	compilationResult->GetStatus(&compilationStatus);
 
 	if (!SUCCEEDED(compilationStatus))
 	{
-		CompilationErrorsLogger::OutputShaderPreprocessedCode(shaderPath, preprocessedSourceCode);
+		CompilationErrorsLogger::OutputShaderPreprocessedCode(shaderPath, preprocessedHLSL, stageCompilationDef);
 
 		ComPtr<IDxcBlobUtf8> errorsBlob;
 		compilationResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
 		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
-		CompilationErrorsLogger::OutputShaderCompilationErrors(shaderPath, preprocessedSourceCode, errors);
+		CompilationErrorsLogger::OutputShaderCompilationErrors(shaderPath, preprocessedHLSL, stageCompilationDef, errors);
 		SPT_LOG_TRACE(ShaderCompiler, "Failed to compile shader {0}", shaderPath.c_str());
 		return result;
 	}
@@ -217,18 +232,19 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	memcpy_s(compiledBinary.data(), compiledBinary.size() * sizeof(Uint32), blobPtr, blobSize * sizeof(Uint32));
 
 	result.SetBinary(std::move(compiledBinary));
-	result.SetStage(sourceCode.GetShaderStage());
+	result.SetStage(stageCompilationDef.stage);
+	result.SetEntryPoint(stageCompilationDef.entryPoint);
 
 	return result;
 }
 
-ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& sourceCode, const DxcArguments& args) const
+ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const lib::String& sourceCode, const DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	DxcBuffer sourceBuffer{};
-	sourceBuffer.Ptr = sourceCode.GetSourceCode().data();
-	sourceBuffer.Size = static_cast<Uint32>(sourceCode.GetSourceLength());
+	sourceBuffer.Ptr = sourceCode.data();
+	sourceBuffer.Size = static_cast<Uint32>(sourceCode.size());
 	sourceBuffer.Encoding = 0;
 
 	DxcArguments preprocessorArgs = args;
@@ -242,13 +258,13 @@ ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const ShaderSourceCode& source
 	return preprocessResult;
 }
 
-ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCode, DxcArguments& args) const
+ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const lib::String& sourceCode, DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	DxcBuffer sourceBuffer{};
-	sourceBuffer.Ptr = sourceCode.GetSourceCode().data();
-	sourceBuffer.Size = static_cast<Uint32>(sourceCode.GetSourceLength());
+	sourceBuffer.Ptr = sourceCode.data();
+	sourceBuffer.Size = static_cast<Uint32>(sourceCode.size());
 	sourceBuffer.Encoding = 0;
 
 	const auto [argsPtr, argsNum] = args.GetArgs();
@@ -259,7 +275,7 @@ ComPtr<IDxcResult> CompilerImpl::CompileToSPIRV(const ShaderSourceCode& sourceCo
 	return compileResult;
 }
 
-DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings) const
+DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -271,8 +287,8 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 	DxcArguments args;
 	args.Append(L"-Zpc");
 	args.Append(L"-HV", L"2021");
-	args.Append(L"-T", priv::GetShaderTargetProfile(sourceCode.GetShaderStage()));
-	args.Append(L"-E", L"main");
+	args.Append(L"-T", priv::GetShaderTargetProfile(stageCompilationDef.stage));
+	args.Append(L"-E", lib::StringUtils::ToWideString(stageCompilationDef.entryPoint.GetView()));
 	args.Append(L"-spirv");
 	args.Append(L"-O0");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
@@ -294,6 +310,8 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const S
 					   return lib::StringUtils::ToWideString(macro.GetView());
 				   });
 
+	macrosAsWideString.emplace_back(priv::GetShaderStageMacro(stageCompilationDef.stage));
+
 	for(const lib::WString& macro : macrosAsWideString)
 	{
 		args.Append(lib::WString(L"-D"), macro.c_str());
@@ -313,11 +331,11 @@ ShaderCompiler::ShaderCompiler()
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return m_impl->CompileShader(shaderPath, sourceCode, compilationSettings, outParamsMetaData);
+	return m_impl->CompileShader(shaderPath, sourceCode, stageCompilationDef, compilationSettings, outParamsMetaData);
 }
 
 } // spt::sc

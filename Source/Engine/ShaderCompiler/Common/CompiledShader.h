@@ -17,18 +17,21 @@ public:
 
 	CompiledShader();
 
-	Bool					IsValid() const;
+	Bool IsValid() const;
 
-	void					SetBinary(Binary binary);
-	void					SetStage(rhi::EShaderStage stage);
+	void SetBinary(Binary binary);
+	void SetStage(rhi::EShaderStage stage);
+	void SetEntryPoint(const lib::HashedString& entryPoint);
 	
-	const Binary&			GetBinary() const;
-	rhi::EShaderStage		GetStage() const;
+	const Binary&				GetBinary() const;
+	rhi::EShaderStage			GetStage() const;
+	const lib::HashedString&	GetEntryPoint() const;
 
 private:
 
 	Binary					m_binary;
 	rhi::EShaderStage		m_stage;
+	lib::HashedString		m_entryPoint;
 };
 
 

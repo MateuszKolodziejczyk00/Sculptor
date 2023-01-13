@@ -9,7 +9,6 @@
 namespace spt::sc
 {
 
-struct ShaderFilePreprocessingResult;
 class ShaderCompiler;
 
 
@@ -21,7 +20,7 @@ public:
 
 private:
 
-	static Bool CompilePreprocessedShaders(const lib::String& shaderRelativePath, const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders);
+	static Bool CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders);
 };
 
 } // spt::sc

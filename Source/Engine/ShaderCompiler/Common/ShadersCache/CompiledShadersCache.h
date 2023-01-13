@@ -7,7 +7,6 @@
 namespace spt::sc
 {
 
-class ShaderSourceCode;
 class ShaderCompilationSettings;
 
 

@@ -31,6 +31,7 @@ struct TypeSerializer<sc::CompiledShader>
 			serializer.Serialize("Binary", binary);
 
 			serializer.SerializeEnum("Stage", data.GetStage());
+			serializer.Serialize("EntryPoint", data.GetEntryPoint());
 		}
 		else
 		{
@@ -47,6 +48,10 @@ struct TypeSerializer<sc::CompiledShader>
 			rhi::EShaderStage stage = rhi::EShaderStage::None;
 			serializer.SerializeEnum("Stage", stage);
 			data.SetStage(stage);
+
+			lib::HashedString entryPoint;
+			serializer.Serialize("EntryPoint", entryPoint);
+			data.SetEntryPoint(entryPoint);
 		}
 	}
 };

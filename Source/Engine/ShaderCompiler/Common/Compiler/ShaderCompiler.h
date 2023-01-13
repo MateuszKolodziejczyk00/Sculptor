@@ -9,8 +9,8 @@ namespace spt::sc
 {
 
 class CompilerImpl;
-class ShaderSourceCode;
 class ShaderCompilationSettings;
+struct ShaderStageCompilationDef;
 struct ShaderParametersMetaData;
 
 
@@ -21,11 +21,11 @@ public:
 	ShaderCompiler();
 	~ShaderCompiler();
 
-	CompiledShader					CompileShader(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
+	CompiledShader CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
 
 private:
 
-	lib::UniquePtr<CompilerImpl>	m_impl;
+	lib::UniquePtr<CompilerImpl> m_impl;
 };
 
 }

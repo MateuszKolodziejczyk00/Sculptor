@@ -2,7 +2,6 @@
 #include "ShaderCompilationEnvironment.h"
 #include "ShadersCache/CompiledShadersCache.h"
 #include "ShaderFileReader.h"
-#include "Preprocessor/ShaderFilePreprocessor.h"
 #include "Compiler/ShaderCompiler.h"
 #include "SPIRVOptimizer.h"
 #include "MetaData/ShaderMetaDataBuilderTypes.h"
@@ -36,35 +35,30 @@ Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePat
 	if(!compilationResult)
 	{
 		const lib::String shaderCode = ShaderFileReader::ReadShaderFileRelative(shaderRelativePath);
+			
+		ShaderCompiler compiler;
 
-		const ShaderFilePreprocessingResult preprocessingResult = ShaderFilePreprocessor::PreprocessShaderFileSourceCode(shaderCode);
+		compilationResult = CompilePreprocessedShaders(shaderRelativePath, shaderCode, settings, compiler, outCompiledShaders);
 
-		if (preprocessingResult.IsValid())
+		if (compilationResult && shouldUseShadersCache)
 		{
-			ShaderCompiler compiler;
-
-			compilationResult = CompilePreprocessedShaders(shaderRelativePath, preprocessingResult, settings, compiler, outCompiledShaders);
-
-			if (compilationResult && shouldUseShadersCache)
-			{
-				CompiledShadersCache::CacheShader(shaderRelativePath, settings, outCompiledShaders);
-			}
+			CompiledShadersCache::CacheShader(shaderRelativePath, settings, outCompiledShaders);
 		}
 	}
 
 	return compilationResult;
 }
 
-Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const ShaderFilePreprocessingResult& preprocessingResult, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
+Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
 {
 	SPT_PROFILER_FUNCTION();
 
 	Bool success = true;
 
-	for (const ShaderSourceCode& shaderCode : preprocessingResult.shaders)
+	for(const ShaderStageCompilationDef& stageCompilationDef : settings.GetStagesToCompile())
 	{
 		ShaderParametersMetaData paramsMetaData;
-		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, settings, paramsMetaData);
+		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, stageCompilationDef, settings, paramsMetaData);
 
 		success &= compiledShader.IsValid();
 

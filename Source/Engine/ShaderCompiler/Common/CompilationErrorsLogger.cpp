@@ -53,35 +53,23 @@ private:
 
 }
 
-void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
+void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::String logFilePath = GetShaderPreprocessedCodeLogsPath(shaderPath, sourceCode);
+	const lib::String logFilePath = GetShaderPreprocessedCodeLogsPath(shaderPath, sourceCode, stageCompilationDef);
 	priv::LoggerStreamGuard streamGuard(logFilePath);
 
 	std::ofstream& stream = streamGuard.getStream();
 
-	stream << sourceCode.GetSourceCode();
+	stream << sourceCode;
 }
 
-void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const lib::String& errors)
+void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const lib::String& errors)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::String logFilePath = GetShaderPreprocesingErrorsLogsPath(shaderPath, sourceCode);
-	priv::LoggerStreamGuard streamGuard(logFilePath);
-
-	std::ofstream& stream = streamGuard.getStream();
-
-	stream << errors;
-}
-
-void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& shaderPath, const ShaderSourceCode& sourceCode, const lib::String& errors)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::String logFilePath = GetShaderCompilationErrorsLogsPath(shaderPath, sourceCode);
+	const lib::String logFilePath = GetShaderPreprocesingErrorsLogsPath(shaderPath, sourceCode, stageCompilationDef);
 	priv::LoggerStreamGuard streamGuard(logFilePath);
 
 	std::ofstream& stream = streamGuard.getStream();
@@ -89,26 +77,38 @@ void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& s
 	stream << errors;
 }
 
-lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
+void CompilationErrorsLogger::OutputShaderCompilationErrors(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const lib::String& errors)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::String logFilePath = GetShaderCompilationErrorsLogsPath(shaderPath, sourceCode, stageCompilationDef);
+	priv::LoggerStreamGuard streamGuard(logFilePath);
+
+	std::ofstream& stream = streamGuard.getStream();
+
+	stream << errors;
+}
+
+lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
 	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath();
 
-	return logsPath + "/" + lib::File::DiscardExtension(shaderPath) + "/" + priv::getShaderStageName(sourceCode.GetShaderStage());
+	return logsPath + '/' + lib::File::DiscardExtension(shaderPath) + '/' + priv::getShaderStageName(stageCompilationDef.stage) + '/' + stageCompilationDef.entryPoint.GetData();
 }
 
-lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
+lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
-	return GetShaderLogsPath(shaderPath, sourceCode) + "/Preprocessed." + lib::File::GetExtension(shaderPath);
+	return GetShaderLogsPath(shaderPath, sourceCode, stageCompilationDef) + "/Preprocessed." + lib::File::GetExtension(shaderPath);
 }
 
-lib::String CompilationErrorsLogger::GetShaderPreprocesingErrorsLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
+lib::String CompilationErrorsLogger::GetShaderPreprocesingErrorsLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
-	return GetShaderLogsPath(shaderPath, sourceCode) + "/PreprocessingErrors.log";
+	return GetShaderLogsPath(shaderPath, sourceCode, stageCompilationDef) + "/PreprocessingErrors.log";
 }
 
-lib::String CompilationErrorsLogger::GetShaderCompilationErrorsLogsPath(const lib::String& shaderPath, const ShaderSourceCode& sourceCode)
+lib::String CompilationErrorsLogger::GetShaderCompilationErrorsLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
-	return GetShaderLogsPath(shaderPath, sourceCode) + "/CompilationErrors.log";
+	return GetShaderLogsPath(shaderPath, sourceCode, stageCompilationDef) + "/CompilationErrors.log";
 }
 
-}
+} // spt::sc
