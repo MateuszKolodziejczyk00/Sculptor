@@ -12,6 +12,24 @@ RenderGraphResourcesPool& RenderGraphResourcesPool::Get()
 	return instance;
 }
 
+void RenderGraphResourcesPool::OnBeginFrame()
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::for_each(std::begin(m_pooledTextures), std::end(m_pooledTextures),
+				  [](PooledTexture& texture)
+				  {
+					  ++texture.unusedFramesNum;
+				  });
+
+	lib::RemoveAllBy(m_pooledTextures,
+					 [](PooledTexture& texture)
+					 {
+						 constexpr Uint32 maxUnusedFrames = 4;
+						 return texture.unusedFramesNum > maxUnusedFrames;
+					 });
+}
+
 lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILER_FUNCTION();
@@ -54,7 +72,7 @@ void RenderGraphResourcesPool::ReleaseTexture(lib::SharedPtr<rdr::Texture> textu
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_pooledTextures.emplace_back(PooledTexture{ std::move(texture) });
+	m_pooledTextures.emplace_back(PooledTexture{ std::move(texture), 0 });
 }
 
 RenderGraphResourcesPool::RenderGraphResourcesPool()

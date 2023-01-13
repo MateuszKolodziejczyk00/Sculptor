@@ -23,6 +23,7 @@
 #include "Renderer/SandboxRenderer.h"
 #include "UIUtils.h"
 #include "ProfilerUILayer.h"
+#include "RenderGraphManager.h"
 
 
 namespace spt::ed
@@ -127,6 +128,8 @@ void SculptorEdApplication::OnRun()
 		}
 
 		rdr::Renderer::BeginFrame();
+
+		rg::RenderGraphManager::OnBeginFrame();
 
 		m_window->BeginFrame();
 
