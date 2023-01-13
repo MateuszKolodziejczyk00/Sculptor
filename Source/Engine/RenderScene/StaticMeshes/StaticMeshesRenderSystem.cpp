@@ -123,11 +123,11 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 							std::tie(indirectBuffers),
 							[&indirectBuffers](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
-								const Uint32 maxInstances = 1024;
+								//const Uint32 maxInstances = 1024;
 
-								const rdr::BufferView& drawsBufferView = indirectBuffers.drawsBuffer->GetBufferViewInstance();
-								const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();
-								recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshDrawCallData), drawsCountBufferView, 0, maxInstances);
+								//const rdr::BufferView& drawsBufferView = indirectBuffers.drawsBuffer->GetBufferViewInstance();
+								//const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();
+								//recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshDrawCallData), drawsCountBufferView, 0, maxInstances);
 							});
 }
 

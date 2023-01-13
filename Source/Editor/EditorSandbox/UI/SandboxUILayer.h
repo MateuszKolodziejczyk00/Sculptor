@@ -18,7 +18,7 @@ protected:
 
 public:
 
-	explicit SandboxUILayer(const scui::LayerDefinition& definition, const SandboxRenderer& renderer);
+	explicit SandboxUILayer(const scui::LayerDefinition& definition, SandboxRenderer& renderer);
 
 protected:
 
@@ -32,7 +32,7 @@ private:
 
 	void DrawJobSystemTestsUI();
 
-	const SandboxRenderer* m_renderer;
+	SandboxRenderer* m_renderer;
 };
 
 } // spt::ed

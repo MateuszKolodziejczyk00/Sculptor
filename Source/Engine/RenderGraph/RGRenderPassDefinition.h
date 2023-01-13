@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderGraphMacros.h"
 #include "RGResources/RGResourceHandles.h"
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 #include "CommandsRecorder/RenderingDefinition.h"
@@ -14,7 +15,7 @@ class RGDependenciesBuilder;
 using RGRenderTargetDef = rhi::RTGenericDefinition<RGTextureViewHandle>;
 
 
-class RGRenderPassDefinition
+class RENDER_GRAPH_API RGRenderPassDefinition
 {
 public:
 

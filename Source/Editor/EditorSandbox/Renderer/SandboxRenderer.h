@@ -54,6 +54,8 @@ public:
 
 	const lib::SharedPtr<rdr::Window>& GetWindow() const;
 
+	void SetImageSize(const math::Vector2u& imageSize);
+
 private:
 
 	void InitializeRenderScene();

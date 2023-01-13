@@ -10,7 +10,6 @@
 #include "DependenciesBuilder.h"
 #include "RGResources/RGNode.h"
 #include "CommandsRecorder/CommandRecorder.h"
-#include "CommandsRecorder/RenderingDefinition.h"
 #include "RGNodeParametersStruct.h"
 #include "Utility/Templates/Overload.h"
 
@@ -53,6 +52,9 @@ public:
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags = ERGResourceFlags::Default);
+	
+	/** Creates texture from given definition and returns full view of this texture */
+	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
@@ -185,7 +187,7 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 		recorder.Dispatch(groupCount);
 	};
 
-	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
@@ -209,7 +211,7 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 {
 	SPT_PROFILER_FUNCTION();
 	
-	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, callable);
+	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<TCallable>(callable));
 	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
@@ -224,7 +226,7 @@ void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassNam
 template<typename TDescriptorSetStatesRange, typename TCallable>
 void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
-	AddSubpass(subpassName, dsStatesRange, std::make_tuple(), callable);
+	AddSubpass(subpassName, dsStatesRange, std::make_tuple(), std::forward<TCallable>(callable));
 }
 
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
@@ -263,10 +265,10 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 template<typename TDescriptorSetStatesRange, typename TCallable>
 RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
-	using LambdaType = TCallable;
-	using NodeType = RGLambdaNode<LambdaType>;
+	using LambdaType = std::remove_cvref_t<TCallable>;
+	using NodeType = RGRenderPassNode<LambdaType>;
 
-	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, renderPassDef, std::forward<TCallable>(callable));
+	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, renderPassDef, callable);
 }
 
 template<typename TDescriptorSetStatesRange>

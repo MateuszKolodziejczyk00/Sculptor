@@ -211,7 +211,7 @@ private:
 };
 
 
-class RGRenderPassNodeBase : public RGNode
+class RENDER_GRAPH_API RGRenderPassNodeBase : public RGNode
 {
 protected:
 

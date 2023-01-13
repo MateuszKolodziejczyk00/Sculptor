@@ -7,12 +7,14 @@
 namespace spt::rsc
 {
 
-class GBufferData
+struct GBufferData
 {
-	rg::RGTextureHandle m_depth;
-	rg::RGTextureHandle m_tangentFrame;
-	rg::RGTextureHandle m_uvsAndDepthGradients;
-	rg::RGTextureHandle m_uvGradients;
+	rg::RGTextureViewHandle depth;
+	//rg::RGTextureViewHandle tangentFrame;
+	//rg::RGTextureViewHandle uvsAndDepthGradients;
+	//rg::RGTextureViewHandle uvGradients;
+
+	rg::RGTextureViewHandle testColor;
 };
 
 } // spt::rsc

@@ -128,6 +128,14 @@ const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 	return m_window;
 }
 
+void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
+{
+	math::Vector2u renderingResolution = imageSize;
+	renderingResolution.x() = std::max<Uint32>(renderingResolution.x(), 2);
+	renderingResolution.y() = std::max<Uint32>(renderingResolution.y(), 2);
+	m_renderView->SetRenderingResolution(renderingResolution);
+}
+
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();

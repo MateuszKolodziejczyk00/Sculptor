@@ -59,7 +59,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
 
-	//renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
 
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{

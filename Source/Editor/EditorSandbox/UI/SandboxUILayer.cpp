@@ -13,7 +13,7 @@ namespace spt::ed
 
 SPT_DEFINE_LOG_CATEGORY(SandboxUI, true);
 
-SandboxUILayer::SandboxUILayer(const scui::LayerDefinition& definition, const SandboxRenderer& renderer)
+SandboxUILayer::SandboxUILayer(const scui::LayerDefinition& definition, SandboxRenderer& renderer)
 	: Super(definition)
 	, m_renderer(&renderer)
 { }
@@ -26,9 +26,14 @@ void SandboxUILayer::DrawUI()
 	windowsClass.ClassId = scui::CurrentWindowBuildingContext::GetCurrentWindowDockspaceID();
 
 	ImGui::SetNextWindowClass(&windowsClass);
+	
+	ImGui::Begin("Scene");
 
-	ImGui::Begin("RendererTexture");
-	ImGui::Image(m_renderer->GetUITextureID(), ui::UIUtils::GetWindowContentSize());
+	const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
+
+	m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
+
+	ImGui::Image(m_renderer->GetUITextureID(), sceneContentSize);
 	ImGui::End();
 
 	ImGui::SetNextWindowClass(&windowsClass);

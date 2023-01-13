@@ -340,7 +340,7 @@ public:
 
 	void AcquireResource(lib::SharedPtr<rdr::Texture> texture)
 	{
-		SPT_CHECK(!!m_texture);
+		SPT_CHECK(!IsAcquired());
 		m_texture = std::move(texture);
 	}
 
@@ -435,7 +435,7 @@ public:
 
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
 	{
-		if (!!m_textureView)
+		if (!m_textureView)
 		{
 			m_textureView = CreateView();
 		}

@@ -85,6 +85,18 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 	return textureViewHandle;
 }
 
+RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RGTextureHandle texture = CreateTexture(name, textureDefinition, allocationInfo, flags);
+
+	rhi::TextureViewDefinition viewDefintion;
+	viewDefintion.subresourceRange.aspect = rhi::GetFullAspectForFormat(textureDefinition.format);
+
+	return CreateTextureView(name, texture, viewDefintion, flags);
+}
+
 void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination)
 {
 	SPT_PROFILER_FUNCTION()
@@ -286,12 +298,9 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		const RGTextureHandle accessedTexture							= accessedTextureView->GetTexture();
 		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetSubresourceRange();
 
-		if (!accessedTexture->IsExternal())
+		if (!accessedTexture->IsExternal() && !accessedTexture->HasAcquireNode())
 		{
-			if (accessedTexture->HasAcquireNode())
-			{
-				node.AddTextureToAcquire(accessedTexture);
-			}
+			node.AddTextureToAcquire(accessedTexture);
 		}
 
 		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, textureAccessDef.access);

@@ -265,6 +265,9 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!IsValid());
+    SPT_CHECK(definition.resolution.x() > 0);
+    SPT_CHECK(definition.resolution.y() > 0);
+    SPT_CHECK(definition.resolution.z() > 0);
 
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
     imageInfo.flags             = 0;
