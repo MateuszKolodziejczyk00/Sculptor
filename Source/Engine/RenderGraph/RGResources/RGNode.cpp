@@ -88,7 +88,28 @@ void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(buffer->GetLastAccessNode() != this);
+
 	m_preExecuteBufferTransitions.emplace_back(BufferTransitionDef(buffer, offset, size, sourceStage, sourceAccess, destStage, destAccess));
+}
+
+void RGNode::TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto foundBufferTranstion = std::find_if(std::begin(m_preExecuteBufferTransitions), std::end(m_preExecuteBufferTransitions),
+												   [=](const BufferTransitionDef& bufferTransition)
+												   {
+													   return bufferTransition.buffer == buffer
+														   && bufferTransition.offset == offset
+														   && bufferTransition.size == size;
+												   });
+
+	if (foundBufferTranstion != std::end(m_preExecuteBufferTransitions))
+	{
+		foundBufferTranstion->destStage		= lib::Union(foundBufferTranstion->destStage, destStage);
+		foundBufferTranstion->destAccess	= lib::Union(foundBufferTranstion->destAccess, destAccess);
+	}
 }
 
 void RGNode::AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)

@@ -362,22 +362,32 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 		const RGBufferHandle accessedBuffer = accessedBufferView->GetBuffer();
 		SPT_CHECK(accessedBuffer.IsValid());
 
+		const Uint64 offset	= accessedBufferView->GetOffset();
+		const Uint64 size	= accessedBufferView->GetSize();
+
 		if (!accessedBuffer->IsExternal() && !accessedBuffer->GetAcquireNode().IsValid())
 		{
 			node.AddBufferToAcquire(accessedBuffer);
+		}
+			
+		const ERGBufferAccess nextAccess			= bufferAccess.access;
+		const rhi::EPipelineStage nextAccessStages	= bufferAccess.pipelineStages;
+
+		// Buffers may be used in multiple ways in the same node, for example as a indirect buffer and storage buffer
+		// Because of that, we need to merge transitions of same buffer views
+		if (accessedBufferView->GetLastAccessNode() == &node)
+		{
+			rhi::EAccessType destAccessType = rhi::EAccessType::None;
+			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
+			node.TryAppendBufferSynchronizationDest(accessedBuffer, offset, size, nextAccessStages, destAccessType);
+			continue;
 		}
 
 		const ERGBufferAccess prevAccess			= accessedBufferView->GetLastAccessType();
 		const rhi::EPipelineStage prevAccessStages	= accessedBufferView->GetLastAccessPipelineStages();
 
-		const ERGBufferAccess nextAccess			= bufferAccess.access;
-		const rhi::EPipelineStage nextAccessStages	= bufferAccess.pipelineStages;
-
 		if (RequiresSynchronization(accessedBuffer, prevAccess, nextAccess))
 		{
-			const Uint64 offset	= accessedBufferView->GetOffset();
-			const Uint64 size	= accessedBufferView->GetSize();
-			
 			rhi::EAccessType sourceAccessType = rhi::EAccessType::None;
 			GetSynchronizationParamsForBuffer(prevAccess, sourceAccessType);
 			
