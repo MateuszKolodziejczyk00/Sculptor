@@ -164,7 +164,7 @@ private:
 };
 
 
-class RGSubpass : public RGTrackedObject
+class RENDER_GRAPH_API RGSubpass : public RGTrackedObject
 {
 public:
 

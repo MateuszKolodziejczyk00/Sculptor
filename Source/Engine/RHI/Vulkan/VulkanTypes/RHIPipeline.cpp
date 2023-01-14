@@ -91,7 +91,7 @@ static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const 
 
 	VkPipelineRasterizationStateCreateInfo rasterizationState{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rasterizationState.depthClampEnable			= VK_FALSE;
-    rasterizationState.rasterizerDiscardEnable	= VK_FALSE;
+    rasterizationState.rasterizerDiscardEnable	= VK_TRUE;
 	rasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
 	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
     rasterizationState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
@@ -114,24 +114,30 @@ static VkPipelineMultisampleStateCreateInfo BuildMultisampleStateInfo(const Grap
 
 static VkPipelineDepthStencilStateCreateInfo BuildDepthStencilStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
 {
-	SPT_CHECK_NO_ENTRY();
+	SPT_PROFILER_FUNCTION();
 
 	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
 	const rhi::DepthRenderTargetDefinition& depthRTDef = renderTargetsDefinition.depthRTDefinition;
 
+	const Bool enableCompare = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
+
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    depthStencilState.depthTestEnable = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
-	if (depthRTDef.enableDepthWrite)
+    depthStencilState.depthTestEnable = enableCompare;
+	if (enableCompare)
 	{
-		depthStencilState.depthWriteEnable	= VK_TRUE;
-		depthStencilState.depthCompareOp	= RHIToVulkan::GetCompareOp(depthRTDef.depthCompareOp);
+		depthStencilState.depthCompareOp = RHIToVulkan::GetCompareOp(depthRTDef.depthCompareOp);
 	}
-	else
-	{
-		depthStencilState.depthWriteEnable = VK_FALSE;
-	}
+	depthStencilState.depthWriteEnable = depthRTDef.enableDepthWrite;
 
 	return depthStencilState;
+}
+
+static VkPipelineVertexInputStateCreateInfo BuildVertexInputState(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
+{
+	VkPipelineVertexInputStateCreateInfo vertexInputState{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+
+	// We're not using any vertex input
+	return vertexInputState;
 }
 
 static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFactor& outSrcBlendFactor, VkBlendFactor& outDstBlendFactor, VkBlendOp& outBlendOp)
@@ -242,6 +248,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	const VkPipelineRasterizationStateCreateInfo rasterizationStateInfo		= BuildRasterizationStateInfo(pipelineBuildDef);
 	const VkPipelineMultisampleStateCreateInfo multisampleStateInfo			= BuildMultisampleStateInfo(pipelineBuildDef);
 	const VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo		= BuildDepthStencilStateInfo(pipelineBuildDef);
+	const VkPipelineVertexInputStateCreateInfo vertexInputState				= BuildVertexInputState(pipelineBuildDef);
 
 	lib::DynamicArray<VkPipelineColorBlendAttachmentState> blendAttachmentStates;
 	const VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = BuildColorBlendStateInfo(pipelineBuildDef, OUT blendAttachmentStates);
@@ -256,10 +263,10 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
     pipelineInfo.flags					= 0;
     pipelineInfo.stageCount				= static_cast<Uint32>(shaderStages.size());
     pipelineInfo.pStages				= shaderStages.data();
-    pipelineInfo.pVertexInputState		= nullptr; // don't use standard vertex input
+    pipelineInfo.pVertexInputState		= &vertexInputState;
     pipelineInfo.pInputAssemblyState	= &inputAssemblyStateInfo;
-    pipelineInfo.pTessellationState		= nullptr;
-    pipelineInfo.pViewportState			= nullptr; // we use dynamic viewports
+    pipelineInfo.pTessellationState		= VK_NULL_HANDLE;
+    pipelineInfo.pViewportState			= VK_NULL_HANDLE; // we use dynamic viewports
     pipelineInfo.pRasterizationState	= &rasterizationStateInfo;
     pipelineInfo.pMultisampleState		= &multisampleStateInfo;
     pipelineInfo.pDepthStencilState		= &depthStencilStateInfo;

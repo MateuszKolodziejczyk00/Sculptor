@@ -83,8 +83,14 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
-		SPT_MAYBE_UNUSED
 		const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateGBuffer_StaticMesh.hlsl", compilationSettings);
+
+		rhi::GraphicsPipelineDefinition pipelineDef;
+		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = rhi::EFragmentFormat::D32_S_Float;
+		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(spt::rhi::EFragmentFormat::BGRA8_UN_Float));
+
+		generateGBufferPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("GenerateGBuffer_StaticMesh"), pipelineDef, generateGBufferShader);
 	}
 }
 
@@ -132,13 +138,15 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),
 							rg::BindDescriptorSets(geometryDS),
 							std::tie(indirectBuffers),
-							[&indirectBuffers](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							[&indirectBuffers, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
-								//const Uint32 maxInstances = 1024;
+								recorder.BindGraphicsPipeline(generateGBufferPipeline);
 
-								//const rdr::BufferView& drawsBufferView = indirectBuffers.drawsBuffer->GetBufferViewInstance();
-								//const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();
-								//recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshDrawCallData), drawsCountBufferView, 0, maxInstances);
+								const Uint32 maxInstances = 1024;
+
+								const rdr::BufferView& drawsBufferView = indirectBuffers.drawsBuffer->GetBufferViewInstance();
+								const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();
+								recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshDrawCallData), drawsCountBufferView, 0, maxInstances);
 							});
 }
 

@@ -241,6 +241,12 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 
 	RGRenderPassNodeBase* lastRenderPass = static_cast<RGRenderPassNodeBase*>(lastNode.Get());
 
+	using CallableType	= std::remove_cvref_t<TCallable>;
+	using SubpassType	= RGLambdaSubpass<CallableType>;
+	RGSubpassHandle subpass = m_allocator.Allocate<SubpassType>(subpassName, std::forward<TCallable>(callable));
+
+	lastRenderPass->AppendSubpass(subpass);
+
 	RGDependeciesContainer subpassDependencies;
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies);
 	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
