@@ -54,7 +54,12 @@ public:
 
 	const lib::SharedPtr<rdr::Window>& GetWindow() const;
 
+	rsc::RenderView& GetRenderView() const;
+
 	void SetImageSize(const math::Vector2u& imageSize);
+
+	void	SetFov(Real32 fovDegrees);
+	Real32	GetFov();
 
 private:
 
@@ -69,6 +74,10 @@ private:
 
 	rsc::RenderScene				m_renderScene;
 	lib::UniquePtr<rsc::RenderView>	m_renderView;
+
+	/** Default FOV value used when scene image have same width as window */
+	Real32							m_fovDegrees;
+	Real32							m_nearPlane;
 };
 
 } // spt::ed

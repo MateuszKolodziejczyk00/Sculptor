@@ -25,6 +25,8 @@ namespace spt::ed
 
 SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	: m_window(std::move(owningWindow))
+	, m_fovDegrees(80.f)
+	, m_nearPlane(1.f)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "main"));
@@ -133,9 +135,32 @@ const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
 {
 	math::Vector2u renderingResolution = imageSize;
+	// we want to have some minimal resolution as image size may be sometimes 0 (for example when imgui layout is resetted)
 	renderingResolution.x() = std::max<Uint32>(renderingResolution.x(), 2);
 	renderingResolution.y() = std::max<Uint32>(renderingResolution.y(), 2);
 	m_renderView->SetRenderingResolution(renderingResolution);
+
+	const Uint32 windowWidth = m_window->GetSwapchainSize().x();
+	const Real32 renderingFov = (renderingResolution.x() / static_cast<Real32>(windowWidth)) * m_fovDegrees;
+	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
+	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.y()) / static_cast<Real32>(renderingResolution.x());
+
+	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane);
+}
+
+rsc::RenderView& SandboxRenderer::GetRenderView() const
+{
+	return *m_renderView;
+}
+
+void SandboxRenderer::SetFov(Real32 fovDegrees)
+{
+	m_fovDegrees = fovDegrees;
+}
+
+Real32 SandboxRenderer::GetFov()
+{
+	return m_fovDegrees;
 }
 
 void SandboxRenderer::InitializeRenderScene()
@@ -153,6 +178,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
 	m_renderView->AddRenderStages(rsc::ERenderStage::GBufferGenerationStage);
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
+	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1080.f / 1920.f, m_nearPlane);
 }
 
 } // spt::ed

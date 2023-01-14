@@ -44,6 +44,19 @@ public:
 		return value;
 	}
 
+	template<typename TType> requires std::is_floating_point_v<TType>
+	static constexpr TType DegreesToRadians(TType valueInDegees)
+	{
+		constexpr TType degreesToRadiansMultiplier = Pi<TType> / static_cast<TType>(180.0);
+		return valueInDegees * degreesToRadiansMultiplier;
+	}
+
+	template<typename TType> requires std::is_floating_point_v<TType>
+	static constexpr TType RadiansToDegrees(TType valueInRadians)
+	{
+		constexpr TType radiansToDegreesMultiplier =  static_cast<TType>(180.0) / Pi<TType>;
+		return valueInRadians * radiansToDegreesMultiplier;
+	}
 };
 
 } // spt::math

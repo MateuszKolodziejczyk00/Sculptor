@@ -39,7 +39,7 @@ void SandboxUILayer::DrawUI()
 	ImGui::SetNextWindowClass(&windowsClass);
 
 	ImGui::Begin("SandboxUI");
-	
+
 	ImGui::Separator();
 	DrawRendererSettings();
 	ImGui::Separator();
@@ -68,6 +68,12 @@ void SandboxUILayer::DrawRendererSettings()
 	if (ImGui::Checkbox("Enable VSync", &vsyncEnabled))
 	{
 		window->GetRHI().SetVSyncEnabled(vsyncEnabled);
+	}
+
+	Real32 fov = m_renderer->GetFov();
+	if (ImGui::SliderFloat("FOV (Degrees)", &fov, 40.f, 90.f))
+	{
+		m_renderer->SetFov(fov);
 	}
 }
 
