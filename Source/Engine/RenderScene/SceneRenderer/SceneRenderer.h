@@ -2,7 +2,6 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
-#include "View/ViewRenderingSpec.h"
 
 
 namespace spt::rg
@@ -15,6 +14,8 @@ namespace spt::rsc
 
 class RenderScene;
 class RenderView;
+class ViewRenderingSpec;
+
 
 class RENDER_SCENE_API SceneRenderer
 {
@@ -26,7 +27,7 @@ public:
 
 private:
 
-	lib::DynamicArray<ViewRenderingSpec> CollectRenderViews(RenderScene& scene, RenderView& view) const;
+	lib::DynamicArray<ViewRenderingSpec*> CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view) const;
 };
 
 } // spt::rsc

@@ -38,12 +38,12 @@ DS_BEGIN(, BuildIndirectStaticMeshCommandsDS, rg::RGDescriptorSetState<BuildIndi
 DS_END();
 
 
-DS_BEGIN(, StaticMeshRenderingVSDS, rg::RGDescriptorSetState<StaticMeshRenderingVSDS>, rhi::EShaderStageFlags::Vertex)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshDrawCallData>),	drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),			instanceTransforms)
+DS_BEGIN(, StaticMeshRenderingDS, rg::RGDescriptorSetState<StaticMeshRenderingDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Fragment))
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),				sceneViewData)
 DS_END();
 
+	//DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshDrawCallData>),	drawCommands)
+	//DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),			instanceTransforms)
 
 namespace utils
 {
@@ -57,7 +57,7 @@ StaticMeshIndirectDataPerView CreateIndirectDataForView(rg::RenderGraphBuilder& 
 	StaticMeshIndirectDataPerView indirectData;
 	indirectData.drawsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshDrawsBuffer"), drawsBufferDef, drawsBufferAllocation);
 
-	const rhi::BufferDefinition countBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
+	const rhi::BufferDefinition countBufferDef(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 	const rhi::RHIAllocationInfo countBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
 	indirectData.countBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshCountBuffer"), countBufferDef, countBufferAllocation);
 
@@ -130,9 +130,9 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 
 	const StaticMeshIndirectDataPerView& indirectBuffers = viewSpec.GetData().Get<StaticMeshIndirectDataPerView>();
 
-	const lib::SharedRef<StaticMeshRenderingVSDS> geometryDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingVSDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingVSDS"));
-	geometryDS->drawCommands = indirectBuffers.drawsBuffer;
-	geometryDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
+	const lib::SharedRef<StaticMeshRenderingDS> geometryDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingDS"));
+	//geometryDS->drawCommands = indirectBuffers.drawsBuffer;
+	//geometryDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
 	geometryDS->sceneViewData = viewSpec.GetRenderView().GenerateViewData();
 
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),

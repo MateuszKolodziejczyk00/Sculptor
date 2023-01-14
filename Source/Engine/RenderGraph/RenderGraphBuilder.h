@@ -77,8 +77,8 @@ public:
 	
 	// Utilities ==============================================
 
-	template<typename TParametersType>
-	TParametersType& AllocateParametersStruct();
+	template<typename TType, typename... TArgs>
+	TType* Allocate(TArgs&&... args);
 	
 	// Commands ===============================================
 
@@ -170,10 +170,10 @@ private:
 	RGAllocator m_allocator;
 };
 
-template<typename TParametersType>
-TParametersType& RenderGraphBuilder::AllocateParametersStruct()
+template<typename TType, typename... TArgs>
+TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 {
-	return *m_allocator.Allocate<TParametersType>();
+	return m_allocator.Allocate<TType>(std::forward<TArgs>(args)...);
 }
 
 template<typename TDescriptorSetStatesRange>
@@ -244,6 +244,11 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	using CallableType	= std::remove_cvref_t<TCallable>;
 	using SubpassType	= RGLambdaSubpass<CallableType>;
 	RGSubpassHandle subpass = m_allocator.Allocate<SubpassType>(subpassName, std::forward<TCallable>(callable));
+
+	for (const lib::SharedRef<rdr::DescriptorSetState>& dsState : dsStatesRange)
+	{
+		subpass->BindDSState(dsState);
+	}
 
 	lastRenderPass->AppendSubpass(subpass);
 

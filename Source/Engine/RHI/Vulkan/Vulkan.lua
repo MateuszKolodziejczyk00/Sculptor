@@ -15,7 +15,7 @@ function RHI:SetupRHIConfiguration(configuration, platform)
     -- Validation
     if configuration == EConfiguration.Debug then
         self:AddPrivateDefine("VULKAN_VALIDATION_STRICT=1")
-        self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_GPU_ASSISTED=1")
+        self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_GPU_ASSISTED=0")
         self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_BEST_PRACTICES=1")
         self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_DEBUG_PRINTF=0")
         self:AddPrivateDefine("VULKAN_VALIDATION_STRICT_SYNCHRONIZATION=1")

@@ -63,6 +63,13 @@ void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& 
 							 {
 								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 							 }
+							
+							 RenderContext& renderContext = executionContext.GetRenderContext();
+							 for (const DynamicDSBindCommand& bindCommand : pendingDescriptors.dynamicDSBinds)
+							 {
+								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsStateID);
+								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
+							 }
 						 });
 	}
 }

@@ -172,6 +172,8 @@ public:
 	
 	const RenderGraphDebugName& GetName() const;
 
+	void BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds);
+
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
 
 protected:
@@ -179,6 +181,8 @@ protected:
 	virtual void DoExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
 
 private:
+
+	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_dsStatesToBind;
 
 	RenderGraphDebugName m_name;
 };

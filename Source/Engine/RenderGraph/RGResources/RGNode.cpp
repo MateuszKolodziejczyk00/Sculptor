@@ -225,6 +225,11 @@ const RenderGraphDebugName& RGSubpass::GetName() const
 	return m_name;
 }
 
+void RGSubpass::BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds)
+{
+	m_dsStatesToBind.emplace_back(std::move(ds));
+}
+
 void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 {
 	SPT_PROFILER_FUNCTION();
@@ -232,7 +237,17 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
 
+	for(const lib::SharedRef<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	{
+		recorder.BindDescriptorSetState(ds);
+	}
+
 	DoExecute(renderContext, recorder);
+
+	for(const lib::SharedRef<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	{
+		recorder.UnbindDescriptorSetState(ds);
+	}
 }
 
 RGRenderPassNodeBase::RGRenderPassNodeBase(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef)

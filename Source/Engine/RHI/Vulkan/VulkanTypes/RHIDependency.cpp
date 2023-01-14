@@ -145,20 +145,67 @@ static VkAccessFlags2 GetVulkanAccessFlags(const rhi::BarrierTextureTransitionDe
 	return flags;
 }
 
-static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access)
+static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::EPipelineStage stage)
 {
 	VkAccessFlags2 result = 0;
 
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Read))
 	{
-		lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::None, rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
+		}
+
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::DrawIndirect))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
+			lib::AddFlag(result, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR);
+		}
+		
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::VertexShader, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_SHADER_READ_BIT);
+		}
+
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::Transfer, rhi::EPipelineStage::Copy)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_TRANSFER_READ_BIT);
+		}
+		
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::IndexInput))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_INDEX_READ_BIT_KHR);
+		}
+
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::Host))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_HOST_READ_BIT_KHR);
+		}
 	}
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Write))
 	{
-		lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::None, rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+		}
+
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::VertexShader, rhi::EPipelineStage::FragmentShader, rhi::EPipelineStage::ComputeShader)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_SHADER_WRITE_BIT);
+		}
+
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::Transfer, rhi::EPipelineStage::Copy)))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+		}
+
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::Host))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_HOST_WRITE_BIT);
+		}
 	}
 
-	return VK_ACCESS_2_NONE;
+	return result;
 }
 
 } // spt::priv
@@ -249,7 +296,7 @@ void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipeline
 	VkBufferMemoryBarrier2& barrier = m_bufferBarriers[bufferIdx];
 
 	barrier.dstStageMask	= RHIToVulkan::GetStageFlags(destStage);
-	barrier.dstAccessMask	= priv::GetVulkanBufferAccessFlags(destAccess);
+	barrier.dstAccessMask	= priv::GetVulkanBufferAccessFlags(destAccess, destStage);
 }
 
 void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
@@ -259,9 +306,9 @@ void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipeline
 	VkBufferMemoryBarrier2& barrier = m_bufferBarriers[bufferIdx];
 
 	barrier.srcStageMask	= RHIToVulkan::GetStageFlags(sourceStage);
-	barrier.srcAccessMask	= priv::GetVulkanBufferAccessFlags(sourceAccess);
+	barrier.srcAccessMask	= priv::GetVulkanBufferAccessFlags(sourceAccess, sourceStage);
 	barrier.dstStageMask	= RHIToVulkan::GetStageFlags(destStage);
-	barrier.dstAccessMask	= priv::GetVulkanBufferAccessFlags(destAccess);
+	barrier.dstAccessMask	= priv::GetVulkanBufferAccessFlags(destAccess, destStage);
 }
 
 void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)

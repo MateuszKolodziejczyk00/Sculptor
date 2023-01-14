@@ -3,6 +3,7 @@
 #include "Delegates/MulticastDelegate.h"
 #include "SceneRenderingTypes.h"
 #include "SculptorECS.h"
+#include "RGResources/RGTrackedObject.h"
 
 namespace spt::rg
 {
@@ -268,7 +269,7 @@ private:
 };
 
 
-class ViewRenderingSpec
+class ViewRenderingSpec : public rg::RGTrackedObject
 {
 public:
 

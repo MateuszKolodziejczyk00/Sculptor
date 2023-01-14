@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 #include "GBuffer/GBuffer.hlsli"
 
-[[descriptor_set(StaticMeshRenderingVSDS, 0)]]
+[[descriptor_set(StaticMeshRenderingDS, 0)]]
 
 struct VS_INPUT
 {
@@ -19,7 +19,7 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     VS_OUTPUT output;
       
     float3 vertexLocation = float3(1.f, 1.f, 3.f);
-    output.clipSpace = mul(float4(vertexLocation, 1.f), sceneViewData.viewProjectionMatrix);
+    output.clipSpace = mul(float4(vertexLocation + float3(float(input.drawIndex), 0.f, 0.f), 1.f), sceneViewData.viewProjectionMatrix);
 
     return output;
 }

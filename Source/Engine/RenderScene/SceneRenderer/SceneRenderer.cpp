@@ -3,6 +3,7 @@
 #include "RenderSystem.h"
 #include "BufferUtilities.h"
 #include "RenderStages/GBufferGenerationStage.h"
+#include "RenderGraphBuilder.h"
 
 namespace spt::rsc
 {
@@ -11,17 +12,17 @@ namespace renderer_utils
 {
 
 template<typename TRenderStage>
-void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec>& renderViewsSpecs)
+void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec*>& renderViewsSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
 	TRenderStage stageInstance;
 
-	for (ViewRenderingSpec& viewSpec : renderViewsSpecs)
+	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		if (viewSpec.SupportsStage(stage))
+		if (viewSpec->SupportsStage(stage))
 		{
-			stageInstance.Render(graphBuilder, scene, viewSpec);
+			stageInstance.Render(graphBuilder, scene, *viewSpec);
 		}
 	}
 }
@@ -37,7 +38,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 
 	scene.Update();
 
-	lib::DynamicArray<ViewRenderingSpec> renderViewsSpecs = CollectRenderViews(scene, view);
+	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view);
 
 	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
@@ -47,11 +48,11 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
-		for (ViewRenderingSpec& viewSpec : renderViewsSpecs)
+		for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 		{
-			if (lib::HasAnyFlag(viewSpec.GetSupportedStages(), renderSystem->GetSupportedStages()))
+			if (lib::HasAnyFlag(viewSpec->GetSupportedStages(), renderSystem->GetSupportedStages()))
 			{
-				renderSystem->RenderPerView(graphBuilder, scene, viewSpec);
+				renderSystem->RenderPerView(graphBuilder, scene, *viewSpec);
 			}
 		}
 	}
@@ -67,7 +68,7 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 	}
 }
 
-lib::DynamicArray<ViewRenderingSpec> SceneRenderer::CollectRenderViews(RenderScene& scene, RenderView& view) const
+lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -85,10 +86,11 @@ lib::DynamicArray<ViewRenderingSpec> SceneRenderer::CollectRenderViews(RenderSce
 	std::sort(std::begin(views), std::end(views));
 	views.erase(std::unique(std::begin(views), std::end(views)), std::end(views));
 
-	lib::DynamicArray<ViewRenderingSpec> viewsEntryPoints(views.size());
+	lib::DynamicArray<ViewRenderingSpec*> viewsEntryPoints(views.size(), nullptr);
 	for (SizeType viewIdx = 0; viewIdx < views.size(); ++viewIdx)
 	{
-		viewsEntryPoints[viewIdx].Initialize(*views[viewIdx]);
+		viewsEntryPoints[viewIdx] = graphBuilder.Allocate<ViewRenderingSpec>();
+		viewsEntryPoints[viewIdx]->Initialize(*views[viewIdx]);
 	}
 
 	return viewsEntryPoints;

@@ -49,8 +49,9 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(vulkan11Features);
 
 	VkPhysicalDeviceVulkan12Features vulkan12Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-	vulkan12Features.bufferDeviceAddress = VK_TRUE;
-	vulkan12Features.timelineSemaphore = VK_TRUE;
+	vulkan12Features.bufferDeviceAddress	= VK_TRUE;
+	vulkan12Features.timelineSemaphore		= VK_TRUE;
+	vulkan12Features.drawIndirectCount		= VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan12Features);
 
