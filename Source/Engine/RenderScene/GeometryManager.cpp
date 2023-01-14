@@ -55,6 +55,7 @@ GeometryManager::GeometryManager()
 
 	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"), rdr::EDescriptorSetStateFlags::Persistent);
 	m_geometryDSState->geometryData = m_geometryBuffer->CreateFullView();
+	m_geometryDSState->primitivesData = m_primitivesBuffer->CreateFullView();
 
 	m_primitivesDSState = rdr::ResourcesManager::CreateDescriptorSetState<PrimitivesDS>(RENDERER_RESOURCE_NAME("UPS DS"), rdr::EDescriptorSetStateFlags::Persistent);
 	m_primitivesDSState->primitivesData = m_primitivesBuffer->CreateFullView();

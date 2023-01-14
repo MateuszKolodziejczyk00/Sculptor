@@ -130,13 +130,15 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 
 	const StaticMeshIndirectDataPerView& indirectBuffers = viewSpec.GetData().Get<StaticMeshIndirectDataPerView>();
 
-	const lib::SharedRef<StaticMeshRenderingDS> geometryDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingDS"));
-	geometryDS->drawCommands = indirectBuffers.drawsBuffer;
-	geometryDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
-	geometryDS->sceneViewData = viewSpec.GetRenderView().GenerateViewData();
+	const lib::SharedRef<StaticMeshRenderingDS> staticMeshRenderingDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingDS"));
+	staticMeshRenderingDS->drawCommands = indirectBuffers.drawsBuffer;
+	staticMeshRenderingDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
+	staticMeshRenderingDS->sceneViewData = viewSpec.GetRenderView().GenerateViewData();
+
+	const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
 
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),
-							rg::BindDescriptorSets(geometryDS),
+							rg::BindDescriptorSets(staticMeshRenderingDS, unifiedGeometryDS),
 							std::tie(indirectBuffers),
 							[&indirectBuffers, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{

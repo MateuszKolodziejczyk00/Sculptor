@@ -28,7 +28,8 @@ DS_END();
 
 
 DS_BEGIN(, GeometryDS, rg::RGDescriptorSetState<GeometryDS>, rhi::EShaderStageFlags::Vertex)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer), geometryData)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PrimitiveGeometryInfo>),	primitivesData)
+	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),								geometryData)
 DS_END();
 
 
