@@ -118,7 +118,7 @@ struct ColorRenderTargetDefinition
 
 struct DepthRenderTargetDefinition
 {
-	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EDepthCompareOperation inDepthCompareOp = EDepthCompareOperation::Less, Bool inEnableDepthWrite = true)
+	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EDepthCompareOperation inDepthCompareOp = EDepthCompareOperation::Greater, Bool inEnableDepthWrite = true)
 		: format(inFormat)
 		, depthCompareOp(inDepthCompareOp)
 		, enableDepthWrite(inEnableDepthWrite)

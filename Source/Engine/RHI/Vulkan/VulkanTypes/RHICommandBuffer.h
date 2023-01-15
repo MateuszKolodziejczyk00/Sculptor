@@ -42,6 +42,9 @@ public:
 	void	BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
 	void	EndRendering();
 
+	void	SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth);
+	void	SetScissor(const math::AlignedBox2u& renderingScissor);
+
 	void	DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
 
 	void	BindGfxPipeline(const RHIPipeline& pipeline);

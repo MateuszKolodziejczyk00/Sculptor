@@ -21,6 +21,7 @@ BEGIN_SHADER_STRUCT(, StaticMeshDrawCallData)
 	SHADER_STRUCT_FIELD(Uint32, firstVertex)
 	SHADER_STRUCT_FIELD(Uint32, firstInstance)
 	SHADER_STRUCT_FIELD(Uint32, primitiveIdx)
+	SHADER_STRUCT_FIELD(Uint32, transformIdx)
 END_SHADER_STRUCT();
 
 
@@ -88,7 +89,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = rhi::EFragmentFormat::D32_S_Float;
-		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(spt::rhi::EFragmentFormat::BGRA8_UN_Float));
+		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::RGBA8_UN_Float));
 
 		generateGBufferPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("GenerateGBuffer_StaticMesh"), pipelineDef, generateGBufferShader);
 	}
@@ -140,11 +141,16 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes"),
 							rg::BindDescriptorSets(staticMeshRenderingDS, unifiedGeometryDS),
 							std::tie(indirectBuffers),
-							[&indirectBuffers, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							[&indirectBuffers, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.BindGraphicsPipeline(generateGBufferPipeline);
 
 								const Uint32 maxInstances = 1024;
+
+								const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
+
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 
 								const rdr::BufferView& drawsBufferView = indirectBuffers.drawsBuffer->GetBufferViewInstance();
 								const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();

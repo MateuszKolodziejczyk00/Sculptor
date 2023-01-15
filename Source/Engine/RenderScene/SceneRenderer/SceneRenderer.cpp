@@ -38,7 +38,8 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 
 	scene.Update();
 
-	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view);
+	SizeType mainViewIdx = idxNone<SizeType>;
+	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view, OUT mainViewIdx);
 
 	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
@@ -62,15 +63,19 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 
 	renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
 
+	//ViewRenderingSpec& mainViewSpec = renderViewsSpecs[mainViewIdx];
+
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
 }
 
-lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view) const
+lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const
 {
 	SPT_PROFILER_FUNCTION();
+
+	mainViewIdx = idxNone<SizeType>;
 
 	lib::DynamicArray<RenderView*> views;
 	views.reserve(4);
@@ -91,7 +96,14 @@ lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::Rend
 	{
 		viewsEntryPoints[viewIdx] = graphBuilder.Allocate<ViewRenderingSpec>();
 		viewsEntryPoints[viewIdx]->Initialize(*views[viewIdx]);
+
+		if (views[viewIdx] == &view)
+		{
+			mainViewIdx = viewIdx;
+		}
 	}
+
+	SPT_CHECK(mainViewIdx != idxNone<SizeType>);
 
 	return viewsEntryPoints;
 }

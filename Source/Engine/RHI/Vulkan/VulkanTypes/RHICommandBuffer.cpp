@@ -216,6 +216,34 @@ void RHICommandBuffer::EndRendering()
 	vkCmdEndRendering(m_cmdBufferHandle);
 }
 
+void RHICommandBuffer::SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth)
+{
+	SPT_PROFILER_FUNCTION();
+
+	VkViewport viewport{};
+	viewport.x			= renderingViewport.min().x();
+	viewport.y			= renderingViewport.min().y();
+    viewport.width		= renderingViewport.max().x();
+    viewport.height		= renderingViewport.max().y();
+    viewport.minDepth	= minDepth;
+    viewport.maxDepth	= maxDepth;
+
+	vkCmdSetViewport(m_cmdBufferHandle, 0, 1, &viewport);
+}
+
+void RHICommandBuffer::SetScissor(const math::AlignedBox2u& renderingScissor)
+{
+	SPT_PROFILER_FUNCTION();
+
+	VkRect2D scissor{};
+	scissor.offset.x		= renderingScissor.min().x();
+	scissor.offset.y		= renderingScissor.min().y();
+	scissor.extent.width	= renderingScissor.max().x();
+	scissor.extent.height	= renderingScissor.max().y();
+	
+	vkCmdSetScissor(m_cmdBufferHandle, 0, 1, &scissor);
+}
+
 void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
 	SPT_PROFILER_FUNCTION();

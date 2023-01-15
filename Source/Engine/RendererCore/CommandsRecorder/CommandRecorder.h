@@ -64,6 +64,9 @@ public:
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();
+	
+	void									SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth);
+	void									SetScissor(const math::AlignedBox2u& renderingScissor);
 
 	void									DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
 	void									DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, const BufferView& countBufferView, Uint64 countOffset, Uint32 maxDrawsCount);

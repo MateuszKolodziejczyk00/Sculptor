@@ -34,6 +34,7 @@ void GenerateCommandsCS(uint3 id : SV_DispatchThreadID)
             drawCommands[commandIdx].firstVertex = 0;
             drawCommands[commandIdx].firstInstance = 0;
             drawCommands[commandIdx].primitiveIdx = primitiveIdx;
+            drawCommands[commandIdx].transformIdx = staticMeshes[id.x].transformIdx;
         }
     }
 

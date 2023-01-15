@@ -91,10 +91,9 @@ static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const 
 
 	VkPipelineRasterizationStateCreateInfo rasterizationState{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rasterizationState.depthClampEnable			= VK_FALSE;
-    rasterizationState.rasterizerDiscardEnable	= VK_TRUE;
 	rasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
 	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
-    rasterizationState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+    rasterizationState.frontFace				= VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizationState.lineWidth				= 1.f;
 
 	return rasterizationState;
@@ -138,6 +137,15 @@ static VkPipelineVertexInputStateCreateInfo BuildVertexInputState(const Graphics
 
 	// We're not using any vertex input
 	return vertexInputState;
+}
+
+static VkPipelineViewportStateCreateInfo BuildViewportState(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
+{
+	VkPipelineViewportStateCreateInfo viewportStateCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+	viewportStateCreateInfo.viewportCount	= 1;
+	viewportStateCreateInfo.scissorCount	= 1;
+
+	return viewportStateCreateInfo;
 }
 
 static void SetVulkanBlendType(rhi::ERenderTargetBlendType blendType, VkBlendFactor& outSrcBlendFactor, VkBlendFactor& outDstBlendFactor, VkBlendOp& outBlendOp)
@@ -249,6 +257,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	const VkPipelineMultisampleStateCreateInfo multisampleStateInfo			= BuildMultisampleStateInfo(pipelineBuildDef);
 	const VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo		= BuildDepthStencilStateInfo(pipelineBuildDef);
 	const VkPipelineVertexInputStateCreateInfo vertexInputState				= BuildVertexInputState(pipelineBuildDef);
+    const VkPipelineViewportStateCreateInfo viewportStateInfo				= BuildViewportState(pipelineBuildDef);
 
 	lib::DynamicArray<VkPipelineColorBlendAttachmentState> blendAttachmentStates;
 	const VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = BuildColorBlendStateInfo(pipelineBuildDef, OUT blendAttachmentStates);
@@ -266,7 +275,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
     pipelineInfo.pVertexInputState		= &vertexInputState;
     pipelineInfo.pInputAssemblyState	= &inputAssemblyStateInfo;
     pipelineInfo.pTessellationState		= VK_NULL_HANDLE;
-    pipelineInfo.pViewportState			= VK_NULL_HANDLE; // we use dynamic viewports
+    pipelineInfo.pViewportState			= &viewportStateInfo;
     pipelineInfo.pRasterizationState	= &rasterizationStateInfo;
     pipelineInfo.pMultisampleState		= &multisampleStateInfo;
     pipelineInfo.pDepthStencilState		= &depthStencilStateInfo;

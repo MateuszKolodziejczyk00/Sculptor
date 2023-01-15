@@ -123,6 +123,30 @@ void CommandRecorder::EndRendering()
 						 });
 }
 
+void CommandRecorder::SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("SetScissor Command");
+
+							 cmdBuffer->GetRHI().SetViewport(renderingViewport, minDepth, maxDepth);
+						 });
+}
+
+void CommandRecorder::SetScissor(const math::AlignedBox2u& renderingScissor)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("SetScissor Command");
+
+							 cmdBuffer->GetRHI().SetScissor(renderingScissor);
+						 });
+}
+
 void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
 	SPT_PROFILER_FUNCTION();

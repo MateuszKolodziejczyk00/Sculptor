@@ -12,8 +12,8 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-    float3 worldLocation : WORLD_LOCATION;
     float4 clipSpace : SV_POSITION;
+    float3 vertexNormal : WORLD_LOCATION;
 };
 
 VS_OUTPUT StaticMeshVS(VS_INPUT input)
@@ -24,15 +24,18 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
 
     const PrimitiveGeometryInfo primitiveGeometry = primitivesData[primitiveIdx];
 
-    const uint index = geometryData.Load(primitiveGeometry.indicesOffset + input.index * 4);
+    const float4x4 instanceTransform = instanceTransforms[drawCommands[input.drawIndex].transformIdx];
 
-    const uint3 test = geometryData.Load3(primitiveGeometry.locationsOffset + index * 12);
-    const float3 vertexLocation = float3(asfloat(test.x), asfloat(test.y), asfloat(test.z));
-    // TODO
-    //const float3 vertexWorldLocation = mul(float3(vertexLocation, 1.f), )
+    const uint index = geometryData.Load<uint>(primitiveGeometry.indicesOffset + input.index * 4);
 
-    output.clipSpace = mul(float4(vertexLocation, 1.f), sceneViewData.viewProjectionMatrix);
-    output.worldLocation = vertexLocation;
+    const float3 vertexLocation = geometryData.Load<float3>(primitiveGeometry.locationsOffset + index * 12);
+    const float3 vertexWorldLocation = mul(float4(vertexLocation, 1.f), instanceTransform);
+
+    float3 vertexNormal = geometryData.Load<float3>(primitiveGeometry.normalsOffset + index * 12);
+    vertexNormal = mul(float4(vertexNormal, 0.f), instanceTransform);
+
+    output.clipSpace = mul(float4(vertexWorldLocation, 1.f), sceneViewData.viewProjectionMatrix);
+    output.vertexNormal = vertexNormal;
 
     return output;
 }
@@ -41,6 +44,7 @@ GBUFFER_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     GBUFFER_OUTPUT output;
 
-    output.testColor = float4((vertexInput.worldLocation + float3(2000.f, 2000.f, 2000.f)) / 4000.f, 1.f);
+    const float3 color = normalize(vertexInput.vertexNormal) * 0.5f + 0.5f;
+    output.testColor = float4(color, 1.f);
     return output;
 }
