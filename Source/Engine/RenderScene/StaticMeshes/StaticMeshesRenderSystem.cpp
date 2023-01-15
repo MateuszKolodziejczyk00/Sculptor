@@ -62,7 +62,7 @@ StaticMeshIndirectDataPerView CreateIndirectDataForView(rg::RenderGraphBuilder& 
 	const rhi::RHIAllocationInfo countBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
 	indirectData.countBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshCountBuffer"), countBufferDef, countBufferAllocation);
 
-	graphBuilder.AddFillBuffer(RG_DEBUG_NAME("Initialize Mesh Instances Count"), indirectData.countBuffer, 0, sizeof(Uint32), 0);
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Mesh Instances Count"), indirectData.countBuffer, 0, sizeof(Uint32), 0);
 
 	return indirectData;
 }
@@ -112,10 +112,10 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView();
 	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
 
-	graphBuilder.AddDispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
-							 indirectCommandsGenerationPipeline,
-							 math::Vector3u(1, 1, 1),
-							 rg::BindDescriptorSets(descriptorSetState, lib::Ref(GeometryManager::Get().GetPrimitivesDSState())));
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
+						  indirectCommandsGenerationPipeline,
+						  math::Vector3u(1, 1, 1),
+						  rg::BindDescriptorSets(descriptorSetState, lib::Ref(GeometryManager::Get().GetPrimitivesDSState())));
 
 	if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))
 	{

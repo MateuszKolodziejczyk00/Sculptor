@@ -205,7 +205,7 @@ void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr
 	m_extractedBuffers.emplace_back(buffer);
 }
 
-void RenderGraphBuilder::AddFillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
+void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 

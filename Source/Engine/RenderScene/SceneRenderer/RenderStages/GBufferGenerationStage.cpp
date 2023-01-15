@@ -60,10 +60,10 @@ void GBufferGenerationStage::Render(rg::RenderGraphBuilder& graphBuilder, const 
 	colorRTDef.clearColor.asFloat[3]			= 1.f;
 	renderPassDef.AddColorRenderTarget(colorRTDef);
 
-	graphBuilder.AddRenderPass(RG_DEBUG_NAME("GBuffer Generation Render Pass"),
-							   renderPassDef,
-							   rg::EmptyDescriptorSets(),
-							   [] (const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) {});
+	graphBuilder.RenderPass(RG_DEBUG_NAME("GBuffer Generation Render Pass"),
+							renderPassDef,
+							rg::EmptyDescriptorSets(),
+							[](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) {});
 
 	viewStageEntries.GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 	

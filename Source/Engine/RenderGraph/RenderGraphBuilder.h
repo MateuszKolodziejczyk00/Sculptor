@@ -84,15 +84,15 @@ public:
 
 	/** Calls dispatch command with given descriptor sets */
 	template<typename TDescriptorSetStatesRange>
-	void AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
+	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
 	/** Creates render pass with given descriptor sets and executes callable inside it */
 	template<typename TDescriptorSetStatesRange, typename TCallable>
-	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
+	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	/** Creates render pass with given descriptor sets and executes callable inside it */
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-	void AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
+	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
 	/** Appends callable with its dependencies to previous render pass (must be called after render pass) */
 	template<typename TDescriptorSetStatesRange, typename TCallable>
@@ -102,7 +102,7 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
-	void AddFillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
+	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
 	void BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
@@ -177,7 +177,7 @@ TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
+void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -201,13 +201,13 @@ void RenderGraphBuilder::AddDispatch(const RenderGraphDebugName& dispatchName, r
 }
 
 template<typename TDescriptorSetStatesRange, typename TCallable>
-void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
+void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable)
 {
-	AddRenderPass(renderPassName, renderPassDef, dsStatesRange, std::make_tuple(), callable);
+	RenderPass(renderPassName, renderPassDef, dsStatesRange, std::make_tuple(), callable);
 }
 
 template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
-void RenderGraphBuilder::AddRenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
+void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
 {
 	SPT_PROFILER_FUNCTION();
 	
