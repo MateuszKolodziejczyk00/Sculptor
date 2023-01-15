@@ -16,6 +16,7 @@ IncludeProject("SculptorECS")
 
 SetProjectsSubgroupName("Engine")
 IncludeProject("EngineCore")
+IncludeProject("Input")
 
 SetProjectsSubgroupName("Graphics/RHI")
 IncludeProject("RHI")

@@ -1,0 +1,39 @@
+#pragma once
+
+#include "InputMacros.h"
+#include "SculptorCoreTypes.h"
+#include "InputTypes.h"
+
+
+namespace spt::inp
+{
+
+class INPUT_API InputManager
+{
+public:
+
+	static InputManager& Get();
+
+	Bool IsKeyPressed(EKey key) const;
+
+	math::Vector2i GetMousePosition() const;
+	math::Vector2i GetMouseMoveDelta() const;
+
+private:
+
+	InputManager();
+
+	void OnKeyAction(EKey key, EInputActionType action);
+	void OnMousePositionChanged(const math::Vector2i& newPosition);
+
+	static constexpr SizeType keysNum = static_cast<SizeType>(EKey::Num);
+
+	lib::StaticArray<Bool, keysNum> m_keysPressStatus;
+
+	math::Vector2i m_mouseCurrentPosition;
+	math::Vector2i m_mousePrevPosition;
+
+	friend class InputAdapter;
+};
+
+} // spt::inp

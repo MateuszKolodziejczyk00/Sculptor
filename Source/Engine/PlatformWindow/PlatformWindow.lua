@@ -1,9 +1,9 @@
 PlatformWindow = Project:CreateProject("PlatformWindow", ETargetType.SharedLibrary)
 
 function PlatformWindow:SetupConfiguration(configuration, platform)
-
     self:AddPublicDependency("RHI")
     self:AddPublicDependency("UICore")
+    self:AddPublicDependency("Input")
 
     self:AddPrivateDependency("ImGuiGLFWBackend")
 

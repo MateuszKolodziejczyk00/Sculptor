@@ -5,6 +5,7 @@
 #include "Logging/Log.h"
 #include "RHIBridge/RHIImpl.h"
 #include "RHICore/RHIInitialization.h"
+#include "GLFWInputAdapter.h"
 
 #include <GLFW/glfw3.h>
 #include "backends/imgui_impl_glfw.h"
@@ -26,6 +27,8 @@ struct GLFWWindowData
 
 	GLFWWindow::OnWindowResizedDelegate onResized;
 	GLFWWindow::OnWindowClosedDelegate onClosed;
+
+	GLFWInputAdapter inputAdapter;
 };
 
 namespace priv
@@ -59,17 +62,26 @@ static void OnWindowClosed(GLFWwindow* window)
 
 static void OnKeyAction(GLFWwindow* window, int key, int scanCode, int action, int mods)
 {
+	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
+	SPT_CHECK(!!windowData);
 
+	windowData->inputAdapter.OnKeyboardKeyAction(key, action);
 }
 
 static void OnMouseButtonAction(GLFWwindow* window, int key, int action, int mods)
 {
+	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
+	SPT_CHECK(!!windowData);
 
+	windowData->inputAdapter.OnMouseKeyAction(key, action);
 }
 
 static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 {
+	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
+	SPT_CHECK(!!windowData);
 
+	//windowData->inputAdapter.OnMousePositionChanged(newX, newY);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
