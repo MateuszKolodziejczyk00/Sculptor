@@ -2,6 +2,7 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
+#include "RGResources/RGResourceHandles.h"
 
 
 namespace spt::rg
@@ -23,7 +24,7 @@ public:
 
 	SceneRenderer();
 
-	void Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view);
+	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view);
 
 private:
 

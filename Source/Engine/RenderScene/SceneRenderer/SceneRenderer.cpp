@@ -4,6 +4,7 @@
 #include "BufferUtilities.h"
 #include "RenderStages/GBufferGenerationStage.h"
 #include "RenderGraphBuilder.h"
+#include "SceneRendererTypes.h"
 
 namespace spt::rsc
 {
@@ -32,7 +33,7 @@ void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder
 SceneRenderer::SceneRenderer()
 { }
 
-void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
+rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -63,12 +64,15 @@ void SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& sc
 
 	renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
 
-	//ViewRenderingSpec& mainViewSpec = renderViewsSpecs[mainViewIdx];
+	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
+
+	const GBufferData& mainViewGBuffer = mainViewSpec.GetData().Get<GBufferData>();
+	return mainViewGBuffer.testColor;
 }
 
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const

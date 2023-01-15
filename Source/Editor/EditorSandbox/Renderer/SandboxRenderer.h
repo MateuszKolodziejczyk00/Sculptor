@@ -50,13 +50,13 @@ public:
 
 	ui::TextureID GetUITextureID() const;
 
-	TestDS& GetDescriptorSet();
-
 	const lib::SharedPtr<rdr::Window>& GetWindow() const;
 
 	rsc::RenderView& GetRenderView() const;
 
 	void SetImageSize(const math::Vector2u& imageSize);
+
+	math::Vector2u GetDisplayTextureResolution() const;
 
 	void	SetFov(Real32 fovDegrees);
 	Real32	GetFov();
@@ -65,19 +65,18 @@ private:
 
 	void InitializeRenderScene();
 
-	lib::SharedPtr<rdr::Window>		m_window;
+	lib::SharedPtr<rdr::Window>			m_window;
 
-	lib::SharedPtr<TestDS>			m_descriptorSet;
-	lib::SharedPtr<rdr::Texture>	m_texture;
-	ui::TextureID					m_uiTextureID;
-	rdr::PipelineStateID			m_computePipelineID;
+	lib::SharedPtr<rdr::Texture>		m_displayTexture;
+	lib::SharedPtr<rdr::TextureView>	m_displayTextureView;
+	ui::TextureID						m_uiTextureID;
 
-	rsc::RenderScene				m_renderScene;
-	lib::UniquePtr<rsc::RenderView>	m_renderView;
+	rsc::RenderScene					m_renderScene;
+	lib::UniquePtr<rsc::RenderView>		m_renderView;
 
-	/** Default FOV value used when scene image have same width as window */
-	Real32							m_fovDegrees;
-	Real32							m_nearPlane;
+	/** Default FOV value used when		scene image have same width as window */
+	Real32								m_fovDegrees;
+	Real32								m_nearPlane;
 };
 
 } // spt::ed

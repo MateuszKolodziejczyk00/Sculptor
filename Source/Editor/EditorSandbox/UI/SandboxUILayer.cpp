@@ -33,7 +33,9 @@ void SandboxUILayer::DrawUI()
 
 	m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
 
-	ImGui::Image(m_renderer->GetUITextureID(), sceneContentSize);
+	const math::Vector2u fullTextureResolution = m_renderer->GetDisplayTextureResolution();
+	const math::Vector2f imageMaxUV = sceneContentSize.array() / fullTextureResolution.cast<Real32>().array();
+	ImGui::Image(m_renderer->GetUITextureID(), sceneContentSize, ImVec2{}, ImVec2{ imageMaxUV.x(), imageMaxUV.y() });
 	ImGui::End();
 
 	ImGui::SetNextWindowClass(&windowsClass);

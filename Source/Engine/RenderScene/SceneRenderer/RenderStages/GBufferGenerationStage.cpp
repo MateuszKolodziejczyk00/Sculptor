@@ -37,7 +37,7 @@ void GBufferGenerationStage::Render(rg::RenderGraphBuilder& graphBuilder, const 
 
 	rhi::TextureDefinition testDef;
 	testDef.resolution = texturesRes;
-	testDef.usage = gBufferColorTexturesUsage;
+	testDef.usage = lib::Flags(gBufferColorTexturesUsage, rhi::ETextureUsage::TransferSource);
 	testDef.format = rhi::EFragmentFormat::RGBA8_UN_Float;
 	gBuffer.testColor = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GBuffer Color"), testDef, gBufferAllocationInfo);
 

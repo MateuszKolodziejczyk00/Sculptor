@@ -342,7 +342,10 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 		.pRegions = &copyRegion
 	};
 
-	vkCmdCopyImage2(m_cmdBufferHandle, &copyInfo);
+	{
+		SPT_PROFILER_SCOPE("ASDASDASDAS");
+		vkCmdCopyImage2(m_cmdBufferHandle, &copyInfo);
+	}
 }
 
 void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size)

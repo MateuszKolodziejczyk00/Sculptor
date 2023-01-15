@@ -28,28 +28,19 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	, m_fovDegrees(80.f)
 	, m_nearPlane(1.f)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "main"));
-	const rdr::ShaderID shaderID = rdr::ResourcesManager::CreateShader("Test.hlsl", compilationSettings);
-	m_computePipelineID = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CompTest"), shaderID);
-
 	rhi::TextureDefinition textureDef;
 	textureDef.resolution = math::Vector3u(1920, 1080, 1);
-	textureDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+	textureDef.usage = lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
 
 	rhi::TextureViewDefinition viewDef;
 	viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
 
-	m_descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<TestDS>(RENDERER_RESOURCE_NAME("TestDS"), rdr::EDescriptorSetStateFlags::Persistent);
-
-	m_texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("TestTexture"), textureDef, rhi::RHIAllocationInfo());
-	const lib::SharedRef<rdr::TextureView> textureView = m_texture->CreateView(RENDERER_RESOURCE_NAME("TestTextureView"), viewDef);
-
-	m_descriptorSet->u_texture.Set(textureView);
-
+	m_displayTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("DisplayTexture"), textureDef, rhi::RHIAllocationInfo());
+	m_displayTextureView = m_displayTexture->CreateView(RENDERER_RESOURCE_NAME("DisplayTextureView"), viewDef);
+	
 	const rhi::SamplerDefinition samplerDef(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::Repeat);
 	const lib::SharedRef<rdr::Sampler> sampler = rdr::ResourcesManager::CreateSampler(samplerDef);
-	m_uiTextureID = rdr::UIBackend::GetUITextureID(textureView, sampler);
+	m_uiTextureID = rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTextureView), sampler);
 
 	InitializeRenderScene();
 }
@@ -62,10 +53,6 @@ SandboxRenderer::~SandboxRenderer()
 
 void SandboxRenderer::Tick(Real32 deltaTime)
 {
-	m_descriptorSet->u_viewInfo.Set([](TestViewInfo& info)
-								   {
-									   info.color = math::Vector4f::Constant(sin(engn::Engine::Get().GetTime()));
-								   });
 }
 
 lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
@@ -86,17 +73,18 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	rg::RenderGraphBuilder graphBuilder;
 
 	rsc::SceneRenderer sceneRenderer;
-	sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
+	const rg::RGTextureViewHandle sceneRenderingResultTextureView = sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
+	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
-	const rg::RGTextureHandle texture = graphBuilder.AcquireExternalTexture(m_texture);
+	const rg::RGTextureViewHandle displaytextureView = graphBuilder.AcquireExternalTextureView(m_displayTextureView);
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Sandbox Dispatch"),
-						  m_computePipelineID,
-						  math::Vector3u(240, 135, 1),
-						  rg::BindDescriptorSets(lib::Ref(m_descriptorSet)));
+	graphBuilder.CopyTexture(RG_DEBUG_NAME("Copy Scene Result Texture"),
+							 sceneRenderingResultTextureView, math::Vector3i::Zero(),
+							 displaytextureView, math::Vector3i::Zero(),
+							 sceneRenderingResultTextureView->GetResolution());
 
 	// prepare for UI pass
-	graphBuilder.ReleaseTextureWithTransition(texture, rhi::TextureTransition::FragmentReadOnly);
+	graphBuilder.ReleaseTextureWithTransition(displaytextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
 
 	rdr::SemaphoresArray waitSemaphores;
 	// Wait for previous frame as we're reusing resources
@@ -122,11 +110,6 @@ ui::TextureID SandboxRenderer::GetUITextureID() const
 	return m_uiTextureID;
 }
 
-TestDS& SandboxRenderer::GetDescriptorSet()
-{
-	return *m_descriptorSet;
-}
-
 const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 {
 	return m_window;
@@ -146,6 +129,11 @@ void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
 	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.y()) / static_cast<Real32>(renderingResolution.x());
 
 	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane);
+}
+
+math::Vector2u SandboxRenderer::GetDisplayTextureResolution() const
+{
+	return m_displayTexture->GetResolution().head<2>();
 }
 
 rsc::RenderView& SandboxRenderer::GetRenderView() const
