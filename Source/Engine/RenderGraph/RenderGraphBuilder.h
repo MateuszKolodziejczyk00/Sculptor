@@ -104,6 +104,8 @@ public:
 
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
+	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
+
 	void BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 

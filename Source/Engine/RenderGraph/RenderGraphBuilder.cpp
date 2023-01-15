@@ -236,7 +236,7 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 		}
 	};
 
-	using LambdaType = std::remove_cv_t<decltype(executeLambda)>;
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
@@ -244,6 +244,57 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddBufferAccess(bufferView, ERGBufferAccess::Write, canFillOnHost ? rhi::EPipelineStage::Host : rhi::EPipelineStage::Transfer);
+
+	AddNodeInternal(node, dependencies);
+}
+
+void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(sourceRGTextureView.IsValid());
+	SPT_CHECK(destRGTextureView.IsValid());
+	SPT_CHECK((copyExtent.array() > 0).all());
+
+	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::TextureView> sourceView = sourceRGTextureView->GetViewInstance();
+		const lib::SharedPtr<rdr::TextureView> destView = destRGTextureView->GetViewInstance();
+		SPT_CHECK(!!sourceView);
+		SPT_CHECK(!!destView);
+
+		const lib::SharedPtr<rdr::Texture> sourceTextureInstance = sourceView->GetTexture();
+		const lib::SharedPtr<rdr::Texture> destTextureInstance = destView->GetTexture();
+
+		const rhi::TextureSubresourceRange& sourceSubresource = sourceRGTextureView->GetSubresourceRange();
+		const rhi::TextureSubresourceRange& destSubresource = destRGTextureView->GetSubresourceRange();
+		
+		const auto createCopyRange = [](const rhi::TextureSubresourceRange& subresourceRange, const rhi::TextureDefinition& textureDef, const math::Vector3i& offset)
+		{
+			rhi::TextureCopyRange copyRange;
+			copyRange.aspect = subresourceRange.aspect;
+			copyRange.mipLevel = subresourceRange.baseMipLevel;
+			copyRange.baseArrayLayer = subresourceRange.baseArrayLayer;
+			copyRange.arrayLayersNum = subresourceRange.arrayLayersNum != rhi::constants::allRemainingArrayLayers ? subresourceRange.arrayLayersNum : textureDef.arrayLayers;
+			copyRange.offset = offset;
+			return copyRange;
+		};
+
+		const rhi::TextureCopyRange sourceCopyRange = createCopyRange(sourceSubresource, sourceTextureInstance->GetRHI().GetDefinition(), sourceOffset);
+		const rhi::TextureCopyRange destCopyRange = createCopyRange(destSubresource, destTextureInstance->GetRHI().GetDefinition(), destOffset);
+
+		recorder.CopyTexture(lib::Ref(std::move(sourceTextureInstance)), sourceCopyRange, lib::Ref(std::move(destTextureInstance)), destCopyRange, copyExtent);
+	};
+	
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::TransferSource);
+	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::TransferDest);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -411,19 +462,19 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 
 	switch (access)
 	{
-	case spt::rg::ERGTextureAccess::Unknown:
+	case ERGTextureAccess::Unknown:
 		return rhi::TextureTransition::Auto;
 
-	case spt::rg::ERGTextureAccess::ColorRenderTarget:
+	case ERGTextureAccess::ColorRenderTarget:
 		return rhi::TextureTransition::ColorRenderTarget;
 
-	case spt::rg::ERGTextureAccess::DepthRenderTarget:
+	case ERGTextureAccess::DepthRenderTarget:
 		return rhi::TextureTransition::DepthRenderTarget;
 
-	case spt::rg::ERGTextureAccess::StencilRenderTarget:
+	case ERGTextureAccess::StencilRenderTarget:
 		return rhi::TextureTransition::DepthStencilRenderTarget;
 
-	case spt::rg::ERGTextureAccess::StorageWriteTexture:
+	case ERGTextureAccess::StorageWriteTexture:
 		if (nodeType == ERenderGraphNodeType::RenderPass)
 		{
 			return rhi::TextureTransition::FragmentGeneral;
@@ -438,7 +489,7 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 			return rhi::TextureTransition::Undefined;
 		}
 
-	case spt::rg::ERGTextureAccess::SampledTexture:
+	case ERGTextureAccess::SampledTexture:
 		if (nodeType == ERenderGraphNodeType::RenderPass)
 		{
 			return rhi::TextureTransition::FragmentReadOnly;
@@ -452,6 +503,12 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 			SPT_CHECK_NO_ENTRY();
 			return rhi::TextureTransition::Undefined;
 		}
+
+	case ERGTextureAccess::TransferSource:
+		return rhi::TextureTransition::TransferSource;
+
+	case ERGTextureAccess::TransferDest:
+		return rhi::TextureTransition::TransferDest;
 
 	default:
 		SPT_CHECK_NO_ENTRY();

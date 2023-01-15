@@ -27,7 +27,10 @@ enum class ERGTextureAccess
 
 	StorageWriteTexture,
 
-	SampledTexture
+	SampledTexture,
+
+	TransferSource,
+	TransferDest
 };
 
 
@@ -327,6 +330,11 @@ public:
 		return GetTextureDefinition().usage;
 	}
 
+	const math::Vector3u& GetResolution() const
+	{
+		return GetTextureDefinition().resolution;
+	}
+
 	// Texture Resource ====================================================
 
 	Bool IsAcquired() const
@@ -433,6 +441,11 @@ public:
 	const rhi::TextureSubresourceRange& GetSubresourceRange() const
 	{
 		return IsExternal() ? m_textureView->GetRHI().GetSubresourceRange() : GetViewDefinition().subresourceRange;
+	}
+
+	const math::Vector3u& GetResolution() const
+	{
+		return GetTexture()->GetResolution();
 	}
 
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
