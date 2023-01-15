@@ -90,10 +90,10 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 	const rg::RGTextureHandle texture = graphBuilder.AcquireExternalTexture(m_texture);
 
-	graphBuilder.AddDispatch(RG_DEBUG_NAME("Sandbox Dispatch"),
-							 m_computePipelineID,
-							 math::Vector3u(240, 135, 1),
-							 rg::BindDescriptorSets(lib::Ref(m_descriptorSet)));
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Sandbox Dispatch"),
+						  m_computePipelineID,
+						  math::Vector3u(240, 135, 1),
+						  rg::BindDescriptorSets(lib::Ref(m_descriptorSet)));
 
 	// prepare for UI pass
 	graphBuilder.ReleaseTextureWithTransition(texture, rhi::TextureTransition::FragmentReadOnly);
