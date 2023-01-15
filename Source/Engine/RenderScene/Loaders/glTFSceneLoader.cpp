@@ -39,7 +39,7 @@ private:
 	void SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 
 	template<typename TDestType>
-	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
+	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model, const lib::DynamicArray<SizeType>& remapping = lib::DynamicArray<SizeType>{});
 };
 
 GLTFMeshBuilder::GLTFMeshBuilder()
@@ -103,7 +103,7 @@ void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tin
 	SPT_CHECK(prim.locationsOffset == 0);
 	
 	prim.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
+	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
 }
 
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -112,7 +112,7 @@ void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinyg
 	SPT_CHECK(prim.normalsOffset == 0);
 	
 	prim.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
+	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
 }
 
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -121,7 +121,7 @@ void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tiny
 	SPT_CHECK(prim.tangentsOffset == 0);
 	
 	prim.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model);
+	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1, 3 });
 }
 
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -134,7 +134,7 @@ void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf:
 }
 
 template<typename TDestType>
-Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
+Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model, const lib::DynamicArray<SizeType>& remapping /*= lib::DynamicArray<SizeType>{}*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -161,28 +161,28 @@ Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, c
 	switch (componentType)
 	{
 	case TINYGLTF_COMPONENT_TYPE_BYTE:
-		AppendData<TDestType, char>(buffer.data.data(), componentsNum, stride, elementsNum);
+		AppendData<TDestType, char>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-		AppendData<TDestType, unsigned char>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, unsigned char>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_SHORT:
-		AppendData<TDestType, short>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, short>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-		AppendData<TDestType, unsigned short>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, unsigned short>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_INT:
-		AppendData<TDestType, Int32>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, Int32>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-		AppendData<TDestType, Uint32>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, Uint32>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_FLOAT:
-		AppendData<TDestType, Real32>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, Real32>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-		AppendData<TDestType, Real64>(data, componentsNum, stride, elementsNum);
+		AppendData<TDestType, Real64>(data, componentsNum, stride, elementsNum, remapping);
 		break;
 	default:
 		SPT_CHECK_NO_ENTRY();

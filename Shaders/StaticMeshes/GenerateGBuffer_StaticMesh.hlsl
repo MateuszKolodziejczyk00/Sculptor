@@ -13,7 +13,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 clipSpace : SV_POSITION;
-    float3 vertexNormal : WORLD_LOCATION;
+    float3 vertexNormal : VERTEX_NORMAL;
 };
 
 VS_OUTPUT StaticMeshVS(VS_INPUT input)
@@ -29,12 +29,12 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const uint index = geometryData.Load<uint>(primitiveGeometry.indicesOffset + input.index * 4);
 
     const float3 vertexLocation = geometryData.Load<float3>(primitiveGeometry.locationsOffset + index * 12);
-    const float3 vertexWorldLocation = mul(float4(vertexLocation, 1.f), instanceTransform);
+    const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f));
 
     float3 vertexNormal = geometryData.Load<float3>(primitiveGeometry.normalsOffset + index * 12);
-    vertexNormal = mul(float4(vertexNormal, 0.f), instanceTransform);
+    vertexNormal = mul(instanceTransform, float4(vertexNormal, 0.f));
 
-    output.clipSpace = mul(float4(vertexWorldLocation, 1.f), sceneViewData.viewProjectionMatrix);
+    output.clipSpace = mul(sceneViewData.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
     output.vertexNormal = vertexNormal;
 
     return output;
