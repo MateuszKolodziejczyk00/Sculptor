@@ -19,6 +19,7 @@
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
+#include "InputManager.h"
 
 namespace spt::ed
 {
@@ -53,6 +54,47 @@ SandboxRenderer::~SandboxRenderer()
 
 void SandboxRenderer::Tick(Real32 deltaTime)
 {
+	SPT_PROFILER_FUNCTION();
+
+	const Real32 cameraSpeed = 5.f;
+
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
+	{
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * math::Vector3f::UnitX()));
+	}
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
+	{
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * -math::Vector3f::UnitX()));
+	}
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
+	{
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * math::Vector3f::UnitY()));
+	}
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
+	{
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * -math::Vector3f::UnitY()));
+	}
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
+	{
+		m_renderView->Move(deltaTime * cameraSpeed * math::Vector3f::UnitZ());
+	}
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
+	{
+		m_renderView->Move(deltaTime * cameraSpeed * -math::Vector3f::UnitZ());
+	}
+
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
+	{
+		const math::Vector2f mouseVel = inp::InputManager::Get().GetMouseMoveDelta().cast<Real32>() / deltaTime;
+		if (mouseVel.squaredNorm() > math::Utils::Square(200.f))
+		{
+			const Real32 rotationSpeed = 0.00005f;
+			const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
+
+			m_renderView->Rotate(math::AngleAxisf(-rotationDelta.x(), math::Vector3f::UnitZ()));
+			m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+		}
+	}
 }
 
 lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
@@ -126,7 +168,7 @@ void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
 	const Uint32 windowWidth = m_window->GetSwapchainSize().x();
 	const Real32 renderingFov = (renderingResolution.x() / static_cast<Real32>(windowWidth)) * m_fovDegrees;
 	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
-	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.y()) / static_cast<Real32>(renderingResolution.x());
+	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
 
 	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane);
 }
@@ -166,7 +208,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
 	m_renderView->AddRenderStages(rsc::ERenderStage::GBufferGenerationStage);
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
-	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1080.f / 1920.f, m_nearPlane);
+	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane);
 }
 
 } // spt::ed

@@ -57,6 +57,13 @@ public:
 		constexpr TType radiansToDegreesMultiplier =  static_cast<TType>(180.0) / Pi<TType>;
 		return valueInRadians * radiansToDegreesMultiplier;
 	}
+
+	template<typename TType>
+	static TType Square(TType val)
+	{
+		return val * val;
+	}
+
 };
 
 } // spt::math

@@ -81,7 +81,7 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
 
-	//windowData->inputAdapter.OnMousePositionChanged(newX, newY);
+	windowData->inputAdapter.OnMousePositionChanged(newX, newY);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
