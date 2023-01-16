@@ -8,6 +8,13 @@
 namespace spt::rsc
 {
 
+struct SubmeshBuildData
+{
+	SubmeshData submesh;
+	Uint32 vertexCount;
+};
+
+
 class MeshBuilder abstract
 {
 public:
@@ -18,28 +25,35 @@ public:
 
 protected:
 
-	void BeginNewPrimitive();
-	PrimitiveGeometryInfo& GetBuiltPrimitive();
+	void BeginNewSubmesh();
+	SubmeshBuildData& GetBuiltSubmesh();
 
 	Uint64 GetCurrentDataSize() const;
 
 	template<typename TDestType, typename TSourceType>
-	void AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping = lib::DynamicArray<SizeType>{});
+	SizeType AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping = lib::DynamicArray<SizeType>{});
 
 private:
+
+	void OptimizeSubmesh(SubmeshBuildData& submeshBuildData);
+	void BuildMeshlets(SubmeshBuildData& submeshBuildData);
 
 	Byte* AppendData(Uint64 appendSize);
 
 	lib::DynamicArray<Byte> m_geometryData;
-	lib::DynamicArray<PrimitiveGeometryInfo> m_primitives;
+	
+	lib::DynamicArray<SubmeshBuildData> m_submeshes;
+	lib::DynamicArray<MeshletData> m_meshlets;
 };
 
 
 template<typename TDestType, typename TSourceType>
-void MeshBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping /*= lib::DynamicArray<SizeType>{}*/)
+SizeType MeshBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping /*= lib::DynamicArray<SizeType>{}*/)
 {
 	const SizeType destDataSize = count * componentsNum * sizeof(TDestType);
 	Byte* destPtr = AppendData(destDataSize);
+
+	const SizeType offset = destPtr - m_geometryData.data();
 
 	if (componentsRemapping.empty())
 	{
@@ -48,7 +62,7 @@ void MeshBuilder::AppendData(const unsigned char* sourceData, SizeType component
 			if (stride == sizeof(TDestType) * componentsNum)
 			{
 				memcpy(destPtr, sourceData, count * componentsNum * sizeof(TDestType));
-				return;
+				return offset;
 			}
 		}
 	}
@@ -70,6 +84,8 @@ void MeshBuilder::AppendData(const unsigned char* sourceData, SizeType component
 			dest[componentIdx] = static_cast<TDestType>(source[remapping[componentIdx]]);
 		}
 	}
+
+	return offset;
 }
 
 } // spt::rsc

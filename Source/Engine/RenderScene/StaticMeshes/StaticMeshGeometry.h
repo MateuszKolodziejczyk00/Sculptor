@@ -7,9 +7,7 @@ namespace spt::rsc
 
 struct StaticMeshGeometryData
 {
-	Uint32 firstPrimitiveIdx;
-	Uint32 primitivesNum;
-	rhi::RHISuballocation primtivesSuballocation;
+	rhi::RHISuballocation primRenderDataSuballocation;
 	rhi::RHISuballocation geometrySuballocation;
 };
 

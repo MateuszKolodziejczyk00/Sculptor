@@ -12,30 +12,46 @@ GeometryManager& GeometryManager::Get()
 	return instance;
 }
 
-rhi::RHISuballocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 size)
+rhi::RHISuballocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::SuballocationDefinition suballocationDef(size, 4, rhi::EBufferSuballocationFlags::PreferMinMemory);
-	const rhi::RHISuballocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
-	SPT_CHECK(geometryDataSuballocation.IsValid());
+	const rhi::RHISuballocation geometryDataSuballocation = CreateGeometry(dataSize);
 
-	gfx::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, size);
+	gfx::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
 
 	return geometryDataSuballocation;
 }
 
-rhi::RHISuballocation GeometryManager::CreatePrimitives(const PrimitiveGeometryInfo* primitivesInfo, Uint32 primitivesNum)
+rhi::RHISuballocation GeometryManager::CreateGeometry(Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Uint64 primitivesDataSize = sizeof(PrimitiveGeometryInfo) * static_cast<Uint64>(primitivesNum);
+	const rhi::SuballocationDefinition suballocationDef(dataSize, 4, rhi::EBufferSuballocationFlags::PreferMinMemory);
+	const rhi::RHISuballocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
+	SPT_CHECK(geometryDataSuballocation.IsValid());
 
-	const rhi::SuballocationDefinition suballocationDef(primitivesDataSize, sizeof(PrimitiveGeometryInfo), rhi::EBufferSuballocationFlags::PreferMinMemory);
+	return geometryDataSuballocation;
+}
+
+rhi::RHISuballocation GeometryManager::CreatePrimitiveRenderData(const Byte* primitiveData, Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHISuballocation primitivesDataSuballocation = CreatePrimitiveRenderData(dataSize);
+
+	gfx::UploadDataToBuffer(lib::Ref(m_primitivesBuffer), primitivesDataSuballocation.GetOffset(), primitiveData, dataSize);
+
+	return primitivesDataSuballocation;
+}
+
+rhi::RHISuballocation GeometryManager::CreatePrimitiveRenderData(Uint64 dataSize)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::SuballocationDefinition suballocationDef(dataSize, sizeof(PrimitiveGeometryInfo), rhi::EBufferSuballocationFlags::PreferMinMemory);
 	const rhi::RHISuballocation primitivesDataSuballocation = m_primitivesBuffer->GetRHI().CreateSuballocation(suballocationDef);
 	SPT_CHECK(primitivesDataSuballocation.IsValid());
-
-	gfx::UploadDataToBuffer(lib::Ref(m_primitivesBuffer), primitivesDataSuballocation.GetOffset(), reinterpret_cast<const Byte*>(primitivesInfo), primitivesDataSize);
 
 	return primitivesDataSuballocation;
 }

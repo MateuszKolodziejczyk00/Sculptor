@@ -32,10 +32,10 @@ END_RG_NODE_PARAMETERS_STRUCT();
 
 
 DS_BEGIN(, BuildIndirectStaticMeshCommandsDS, rg::RGDescriptorSetState<BuildIndirectStaticMeshCommandsDS>, rhi::EShaderStageFlags::Compute)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData>),	drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					drawCommandsCount)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPURenderData>),		staticMeshes)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),				instanceTransforms)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData>),		drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),						drawCommandsCount)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPUInstanceRenderData>),	staticMeshes)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),					instanceTransforms)
 DS_END();
 
 

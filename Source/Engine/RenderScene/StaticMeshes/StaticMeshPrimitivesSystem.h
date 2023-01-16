@@ -8,20 +8,23 @@
 namespace spt::rsc
 {
 
-BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPURenderData)
+BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPUInstanceRenderData)
 	SHADER_STRUCT_FIELD(Uint32, transformIdx)
-	SHADER_STRUCT_FIELD(Uint32, firstPrimitiveIdx)
-	SHADER_STRUCT_FIELD(Uint32, primitivesNum)
+	SHADER_STRUCT_FIELD(Uint32, staticMeshDataOffset)
 END_SHADER_STRUCT();
 
 
-/**
- * CPU side render data
- */
-struct StaticMeshRenderData
+BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPURenderData)
+	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
+	SHADER_STRUCT_FIELD(Uint32, submeshesOffset)
+	SHADER_STRUCT_FIELD(Uint32, meshletsOffset)
+	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
+END_SHADER_STRUCT();
+
+
+struct StaticMeshInstanceRenderData
 {
-	Uint32 firstPrimitiveIdx;
-	Uint32 primitivesNum;
+	Uint32 staticMeshDataOffset;
 };
 
 
@@ -30,11 +33,11 @@ struct StaticMeshRenderData
  */
 struct StaticMeshRenderDataHandle
 {
-	rhi::RHISuballocation basePassInstanceData;
+	rhi::RHISuballocation staticMeshGPUInstanceData;
 };
 
 
-using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPURenderData>;
+using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPUInstanceRenderData>;
 
 
 class RENDER_SCENE_API StaticMeshPrimitivesSystem : public PrimitivesSystem

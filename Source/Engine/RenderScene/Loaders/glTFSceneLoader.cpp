@@ -51,7 +51,7 @@ void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Mode
 
 	for (const tinygltf::Primitive& prim : mesh.primitives)
 	{
-		BeginNewPrimitive();
+		BeginNewSubmesh();
 
 		SetIndices(model.accessors[prim.indices], model);
 
@@ -90,46 +90,46 @@ const tinygltf::Accessor* GLTFMeshBuilder::GetAttributeAccessor(const tinygltf::
 
 void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.indicesNum == 0);
+	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
+	SPT_CHECK(submeshBD.submesh.indicesNum == 0);
 
-	prim.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
-	prim.indicesNum = AppendAccessorData<Uint32>(accessor, model);
+	submeshBD.submesh.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
+	submeshBD.submesh.indicesNum = AppendAccessorData<Uint32>(accessor, model);
 }
 
 void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.locationsOffset == 0);
+	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
+	SPT_CHECK(submeshBD.submesh.locationsOffset == 0);
 	
-	prim.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
-	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
+	submeshBD.submesh.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
 }
 
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.normalsOffset == 0);
+	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
+	SPT_CHECK(submeshBD.submesh.normalsOffset == 0);
 	
-	prim.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	submeshBD.submesh.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
 }
 
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.tangentsOffset == 0);
+	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
+	SPT_CHECK(submeshBD.submesh.tangentsOffset == 0);
 	
-	prim.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	submeshBD.submesh.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1, 3 });
 }
 
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
-	PrimitiveGeometryInfo& prim = GetBuiltPrimitive();
-	SPT_CHECK(prim.uvsOffset == 0);
+	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
+	SPT_CHECK(submeshBD.submesh.uvsOffset == 0);
 	
-	prim.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
+	submeshBD.submesh.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);
 }
 
@@ -295,10 +295,9 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				RenderInstanceData instanceData;
 				instanceData.transfrom = GetNodeTransform(node);
 				const RenderSceneEntityHandle meshEntity = scene.CreateEntity(instanceData);
-				StaticMeshRenderData entityStaticMeshData;
-				entityStaticMeshData.firstPrimitiveIdx = loadedMeshes[node.mesh].firstPrimitiveIdx;
-				entityStaticMeshData.primitivesNum = loadedMeshes[node.mesh].primitivesNum;
-				meshEntity.emplace<StaticMeshRenderData>(entityStaticMeshData);
+				StaticMeshInstanceRenderData entityStaticMeshData;
+				entityStaticMeshData.staticMeshDataOffset = static_cast<Uint32>(loadedMeshes[node.mesh].primRenderDataSuballocation.GetOffset());
+				meshEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
 			}
 		}
 	}

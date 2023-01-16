@@ -1,5 +1,8 @@
 #include "MeshBuilder.h"
 
+#include "meshoptimizer.h"
+#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+
 namespace spt::rsc
 {
 
@@ -12,49 +15,151 @@ StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
 {
 	SPT_PROFILER_FUNCTION();
 
+	for (SubmeshBuildData& submeshBD : m_submeshes)
+	{
+		OptimizeSubmesh(submeshBD);
+		BuildMeshlets(submeshBD);
+	}
+
 	GeometryManager& geomManager = GeometryManager::Get();
 	const rhi::RHISuballocation geometrySuballocation = geomManager.CreateGeometry(m_geometryData.data(), m_geometryData.size());
 	SPT_CHECK(geometrySuballocation.IsValid());
 
 	SPT_CHECK(geometrySuballocation.GetOffset() + m_geometryData.size() <= maxValue<Uint32>);
-	const Uint32 baseOffset = static_cast<Uint32>(geometrySuballocation.GetOffset());
+	const Uint32 baseGeometryOffset = static_cast<Uint32>(geometrySuballocation.GetOffset());
 
-	for (PrimitiveGeometryInfo& prim : m_primitives)
-	{
-		prim.indicesOffset += baseOffset;
-		prim.locationsOffset += baseOffset;
-		prim.normalsOffset += baseOffset;
-		prim.tangentsOffset += baseOffset;
-		prim.uvsOffset += baseOffset;
-	}
+	lib::DynamicArray<SubmeshData> submeshesData;
+	submeshesData.reserve(m_submeshes.size());
+	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes), std::back_inserter(submeshesData),
+				   [](const SubmeshBuildData& submeshBD)
+				   {
+					   return submeshBD.submesh;
+				   });
 
-	const rhi::RHISuballocation primitivesSuballocation = geomManager.CreatePrimitives(m_primitives.data(), static_cast<Uint32>(m_primitives.size()));
-	SPT_CHECK(primitivesSuballocation.IsValid());
-	SPT_CHECK(primitivesSuballocation.GetOffset() % sizeof(PrimitiveGeometryInfo) == 0);
+	const SizeType submeshesSize = sizeof(SubmeshData) * submeshesData.size();
+	const SizeType meshletsSize = sizeof(MeshletData) * m_meshlets.size();
+	const SizeType geometryDataSize = sizeof(StaticMeshGPURenderData) + meshletsSize + submeshesSize;
+
+	// This single allocation will contain three items:
+	// 1. Static mesh gpu render data
+	// 2. Array of all submeshes
+	// 3. Array of all meshlets
+	const rhi::RHISuballocation primitiveSuballocation = geomManager.CreatePrimitiveRenderData(geometryDataSize);
+
+	StaticMeshGPURenderData staticMeshRenderData;
+	staticMeshRenderData.submeshesNum = static_cast<Uint32>(submeshesData.size());
+	staticMeshRenderData.submeshesOffset = static_cast<Uint32>(primitiveSuballocation.GetOffset() + sizeof(StaticMeshGPURenderData));
+	staticMeshRenderData.meshletsOffset = static_cast<Uint32>(primitiveSuballocation.GetOffset() + sizeof(StaticMeshGPURenderData) + meshletsSize);
+	staticMeshRenderData.geometryDataOffset = baseGeometryOffset;
 
 	StaticMeshGeometryData mesh;
-	mesh.firstPrimitiveIdx = static_cast<Uint32>(primitivesSuballocation.GetOffset() / sizeof(PrimitiveGeometryInfo));
-	mesh.primitivesNum = static_cast<Uint32>(m_primitives.size());
-	mesh.primtivesSuballocation = primitivesSuballocation;
+	mesh.primRenderDataSuballocation = primitiveSuballocation;
 	mesh.geometrySuballocation = geometrySuballocation;
 
 	return mesh;
 }
 
-void MeshBuilder::BeginNewPrimitive()
+void MeshBuilder::BeginNewSubmesh()
 {
-	m_primitives.emplace_back();
+	m_submeshes.emplace_back();
 }
 
-PrimitiveGeometryInfo& MeshBuilder::GetBuiltPrimitive()
+SubmeshBuildData& MeshBuilder::GetBuiltSubmesh()
 {
-	SPT_CHECK(!m_primitives.empty());
-	return m_primitives.back();
+	SPT_CHECK(!m_submeshes.empty());
+	return m_submeshes.back();
 }
 
 Uint64 MeshBuilder::GetCurrentDataSize() const
 {
 	return m_geometryData.size();
+}
+
+void MeshBuilder::OptimizeSubmesh(SubmeshBuildData& submeshBuildData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto getData = [this]<typename TDataType>(std::type_identity<TDataType*>, Uint32 offset)
+	{
+		return reinterpret_cast<TDataType*>(&m_geometryData[offset]);
+	};
+
+	Uint32* indices = getData(std::type_identity<Uint32*>{}, submeshBuildData.submesh.indicesOffset);
+
+	const SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
+	const SizeType indexCount = static_cast<SizeType>(submeshBuildData.submesh.indicesNum);
+
+	meshopt_optimizeVertexCache<Uint32>(indices, indices, indexCount, vertexCount);
+
+	lib::DynamicArray<unsigned int> remapArray(indexCount);
+	meshopt_optimizeVertexFetchRemap(remapArray.data(), indices, indexCount, vertexCount);
+	meshopt_remapIndexBuffer(indices, indices, indexCount, remapArray.data());
+
+	math::Vector3f* locations = getData(std::type_identity<math::Vector3f*>{}, submeshBuildData.submesh.locationsOffset);
+	meshopt_remapVertexBuffer(locations, locations, vertexCount, sizeof(math::Vector3f), remapArray.data());
+
+	math::Vector2f* uvs = getData(std::type_identity<math::Vector2f*>{}, submeshBuildData.submesh.uvsOffset);
+	meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(math::Vector2f), remapArray.data());
+
+	math::Vector3f* normals = getData(std::type_identity<math::Vector3f*>{}, submeshBuildData.submesh.normalsOffset);
+	meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(math::Vector3f), remapArray.data());
+
+	math::Vector4f* tangents = getData(std::type_identity<math::Vector4f*>{}, submeshBuildData.submesh.tangentsOffset);
+	meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(math::Vector4f), remapArray.data());
+}
+
+void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const SizeType meshletMaxTriangles = 64;
+	const SizeType meshletMaxVertices = 64;
+
+	const SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
+	const SizeType indexCount = static_cast<SizeType>(submeshBuildData.submesh.indicesNum);
+
+	const SizeType meshletsMaxNum = meshopt_buildMeshletsBound(indexCount, meshletMaxVertices, meshletMaxTriangles);
+
+	lib::DynamicArray<Uint32> meshletVertices(meshletsMaxNum * meshletMaxVertices);
+	lib::DynamicArray<Uint8> meshletPrimitives(meshletsMaxNum * meshletMaxTriangles * 3);
+
+	lib::DynamicArray<meshopt_Meshlet> moMeshlets(meshletsMaxNum);
+
+	const Uint32* indices = reinterpret_cast<const Uint32*>(&m_geometryData[submeshBuildData.submesh.indicesOffset]);
+	const math::Vector3f* locations = reinterpret_cast<const math::Vector3f*>(&m_geometryData[submeshBuildData.submesh.locationsOffset]);
+
+	const Real32 coneWeigth = 0.5f;
+
+	const SizeType finalMeshletsNum = meshopt_buildMeshlets<Uint32>(moMeshlets.data(),
+																	meshletVertices.data(),
+																	meshletPrimitives.data(),
+																	indices,
+																	indexCount,
+																	reinterpret_cast<const Real32*>(locations),
+																	vertexCount,
+																	sizeof(math::Vector3f),
+																	meshletMaxVertices,
+																	meshletMaxTriangles,
+																	coneWeigth);
+
+	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size(), {});
+	submeshBuildData.submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
+
+	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 1, sizeof(Uint8), meshletPrimitives.size(), {});
+	submeshBuildData.submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
+
+	const SizeType submeshMeshletsBegin = m_meshlets.size();
+	submeshBuildData.submesh.meshletsBeginIdx = static_cast<Uint32>(submeshMeshletsBegin);
+	submeshBuildData.submesh.meshletsNum = static_cast<Uint32>(finalMeshletsNum);
+		
+	m_meshlets.resize(m_meshlets.size() + finalMeshletsNum);
+	for (SizeType meshletIdx = 0; meshletIdx < finalMeshletsNum; ++meshletIdx)
+	{
+		const SizeType meshletBuildDataIdx = submeshMeshletsBegin + meshletIdx;
+		m_meshlets[meshletBuildDataIdx].triangleCount = moMeshlets[meshletIdx].triangle_count;
+		m_meshlets[meshletBuildDataIdx].meshletPrimitivesOffset = moMeshlets[meshletIdx].triangle_offset;
+		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset = moMeshlets[meshletIdx].vertex_offset;
+	}
 }
 
 Byte* MeshBuilder::AppendData(Uint64 appendSize)

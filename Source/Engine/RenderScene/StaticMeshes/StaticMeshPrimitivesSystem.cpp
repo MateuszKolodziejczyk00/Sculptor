@@ -10,18 +10,18 @@ StaticMeshPrimitivesSystem::StaticMeshPrimitivesSystem(RenderScene& owningScene)
 	, m_staticMeshInstances(RENDERER_RESOURCE_NAME("StaticMeshInstancesList"), 1024)
 {
 	ecs::Registry& sceneRegistry = owningScene.GetRegistry();
-	sceneRegistry.on_construct<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
-	sceneRegistry.on_update<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
-	sceneRegistry.on_destroy<StaticMeshRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
+	sceneRegistry.on_construct<StaticMeshInstanceRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
+	sceneRegistry.on_update<StaticMeshInstanceRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
+	sceneRegistry.on_destroy<StaticMeshInstanceRenderData>().connect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
 }
 
 StaticMeshPrimitivesSystem::~StaticMeshPrimitivesSystem()
 {
 	RenderScene& owningScene = GetOwningScene();
 	ecs::Registry& sceneRegistry = owningScene.GetRegistry();
-	sceneRegistry.on_construct<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
-	sceneRegistry.on_update<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
-	sceneRegistry.on_destroy<StaticMeshRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
+	sceneRegistry.on_construct<StaticMeshInstanceRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
+	sceneRegistry.on_update<StaticMeshInstanceRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshUpdated>(this);
+	sceneRegistry.on_destroy<StaticMeshInstanceRenderData>().disconnect<&StaticMeshPrimitivesSystem::OnStaticMeshDestryed>(this);
 }
 
 void StaticMeshPrimitivesSystem::Update()
@@ -42,25 +42,24 @@ void StaticMeshPrimitivesSystem::OnStaticMeshUpdated(RenderSceneRegistry& regist
 {
 	SPT_PROFILER_FUNCTION();
 
-	const StaticMeshRenderData& renderData = registry.get<StaticMeshRenderData>(entity);
+	const StaticMeshInstanceRenderData& instanceRenderData = registry.get<StaticMeshInstanceRenderData>(entity);
 	
-	StaticMeshRenderDataHandle& entityRenderData = registry.get_or_emplace<StaticMeshRenderDataHandle>(entity);
+	StaticMeshRenderDataHandle& entityGPURenderDataHandle = registry.get_or_emplace<StaticMeshRenderDataHandle>(entity);
 
-	if (entityRenderData.basePassInstanceData.IsValid())
+	if (entityGPURenderDataHandle.staticMeshGPUInstanceData.IsValid())
 	{
 		// Destroy old data
-		m_staticMeshInstances.RemoveInstance(entityRenderData.basePassInstanceData);
+		m_staticMeshInstances.RemoveInstance(entityGPURenderDataHandle.staticMeshGPUInstanceData);
 	}
 
 	const EntityTransformHandle& transformHandle = registry.get<EntityTransformHandle>(entity);
 	const Uint64 transformIdx = transformHandle.transformSuballocation.GetOffset() / sizeof(math::Affine3f);
 
-	StaticMeshGPURenderData gpuRenderData;
-	gpuRenderData.firstPrimitiveIdx	= renderData.firstPrimitiveIdx;
-	gpuRenderData.primitivesNum		= renderData.primitivesNum;
-	gpuRenderData.transformIdx		= static_cast<Uint32>(transformIdx);
+	StaticMeshGPUInstanceRenderData gpuRenderData;
+	gpuRenderData.transformIdx			= static_cast<Uint32>(transformIdx);
+	gpuRenderData.staticMeshDataOffset	= instanceRenderData.staticMeshDataOffset;
 
-	entityRenderData.basePassInstanceData = m_staticMeshInstances.AddInstance(gpuRenderData);
+	entityGPURenderDataHandle.staticMeshGPUInstanceData = m_staticMeshInstances.AddInstance(gpuRenderData);
 }
 
 void StaticMeshPrimitivesSystem::OnStaticMeshDestryed(RenderSceneRegistry& registry, RenderSceneEntity entity)
@@ -68,9 +67,9 @@ void StaticMeshPrimitivesSystem::OnStaticMeshDestryed(RenderSceneRegistry& regis
 	SPT_PROFILER_FUNCTION();
 
 	StaticMeshRenderDataHandle entityRenderData = registry.get<StaticMeshRenderDataHandle>(entity);
-	SPT_CHECK(entityRenderData.basePassInstanceData.IsValid());
+	SPT_CHECK(entityRenderData.staticMeshGPUInstanceData.IsValid());
 	
-	m_staticMeshInstances.RemoveInstance(entityRenderData.basePassInstanceData);
+	m_staticMeshInstances.RemoveInstance(entityRenderData.staticMeshGPUInstanceData);
 	registry.remove<StaticMeshRenderDataHandle>(entity);
 }
 
