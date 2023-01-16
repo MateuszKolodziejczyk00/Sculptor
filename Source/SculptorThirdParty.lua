@@ -13,6 +13,8 @@ IncludeProject("NsightAftermath")
 
 IncludeProject("TinyGLTF")
 
+IncludeProject("MeshOptimizer")
+
 SetProjectsSubgroupName("ImGui")
 IncludeProject("ImGui")
 IncludeProjectFromDirectory("ImGui", "ImGuiGLFWBackend")

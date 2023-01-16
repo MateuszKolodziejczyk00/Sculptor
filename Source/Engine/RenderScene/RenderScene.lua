@@ -5,6 +5,7 @@ function RenderScene:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorECS")
 
     self:AddPrivateDependency("TinyGLTF")
+    self:AddPrivateDependency("MeshOptimizer")
     
     self:AddPrivateDependency("JobSystem")
 end

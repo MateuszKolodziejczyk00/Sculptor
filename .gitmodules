@@ -30,3 +30,6 @@
 [submodule "Source/ThirdParty/TinyGLTF/TinyGLTF"]
 	path = Source/ThirdParty/TinyGLTF/TinyGLTF
 	url = https://github.com/syoyo/tinygltf
+[submodule "Source/ThirdParty/MeshOptimizer/MeshOptimizer"]
+	path = Source/ThirdParty/MeshOptimizer/MeshOptimizer
+	url = https://github.com/zeux/meshoptimizer
