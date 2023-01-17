@@ -82,6 +82,9 @@ public:
 
 	void									Dispatch(const math::Vector3u& groupCount);
 
+	void									DispatchIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset);
+	void									DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset);
+
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 

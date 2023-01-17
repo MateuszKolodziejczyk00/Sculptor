@@ -287,6 +287,17 @@ void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
 	vkCmdDispatch(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.z());
 }
 
+void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(indirectArgsBuffer.IsValid());
+	SPT_CHECK(indirectArgsOffset + sizeof(Uint32) * 3 <= indirectArgsBuffer.GetSize());
+
+	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetBufferHandle(), indirectArgsOffset);
+}
+
 void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();
@@ -428,7 +439,6 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 		vkCmdSetCheckpointNV(m_cmdBufferHandle, markerPtr);
 	}
 }
-
 #endif // WITH_GPU_CRASH_DUMPS
 
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)

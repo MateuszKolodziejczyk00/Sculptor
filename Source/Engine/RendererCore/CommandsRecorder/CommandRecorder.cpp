@@ -247,6 +247,26 @@ void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 						 });
 }
 
+void CommandRecorder::DispatchIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
+
+	m_pipelineState.EnqueueFlushDirtyDSForComputePipeline(m_commandQueue);
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("DispatchIndirect Command");
+
+							 cmdBuffer->GetRHI().DispatchIndirect(indirectArgsBuffer->GetRHI(), indirectArgsOffset);
+						 });
+}
+
+void CommandRecorder::DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset)
+{
+	DispatchIndirect(indirectArgsBufferView.GetBuffer(), indirectArgsBufferView.GetOffset() + indirectArgsOffset);
+}
 
 void CommandRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
 {

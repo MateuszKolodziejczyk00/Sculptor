@@ -86,6 +86,10 @@ public:
 	template<typename TDescriptorSetStatesRange>
 	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
+	/** Calls dispatch indirect command with given descriptor sets */
+	template<typename TDescriptorSetStatesRange>
+	void DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange);
+
 	/** Creates render pass with given descriptor sets and executes callable inside it */
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	void RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
@@ -198,6 +202,31 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+
+	AddNodeInternal(node, dependencies);
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		recorder.BindComputePipeline(computePipelineID);
+		recorder.DispatchIndirect(indirectArgsBuffer->GetBufferViewInstance(), indirectArgsOffset);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
+	AddDescriptorSetStatesToNode(&node, dsStatesRange);
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
 
 	AddNodeInternal(node, dependencies);
 }

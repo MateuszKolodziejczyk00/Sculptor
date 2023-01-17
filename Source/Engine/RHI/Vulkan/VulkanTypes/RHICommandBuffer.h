@@ -58,6 +58,7 @@ public:
 	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
 	void	Dispatch(const math::Vector3u& groupCount);
+	void	DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
 
 	// Transfer =============================================
 
