@@ -10,7 +10,7 @@ namespace spt::rsc
 
 struct SubmeshBuildData
 {
-	SubmeshData submesh;
+	SubmeshGPUData submesh;
 	Uint32 vertexCount;
 };
 
@@ -43,7 +43,7 @@ private:
 	lib::DynamicArray<Byte> m_geometryData;
 	
 	lib::DynamicArray<SubmeshBuildData> m_submeshes;
-	lib::DynamicArray<MeshletData> m_meshlets;
+	lib::DynamicArray<MeshletGPUData> m_meshlets;
 };
 
 

@@ -296,7 +296,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				instanceData.transfrom = GetNodeTransform(node);
 				const RenderSceneEntityHandle meshEntity = scene.CreateEntity(instanceData);
 				StaticMeshInstanceRenderData entityStaticMeshData;
-				entityStaticMeshData.staticMeshDataOffset = static_cast<Uint32>(loadedMeshes[node.mesh].primRenderDataSuballocation.GetOffset());
+				entityStaticMeshData.staticMeshIdx = static_cast<Uint32>(loadedMeshes[node.mesh].staticMeshSuballocation.GetOffset() / sizeof(StaticMeshGPUData));
 				meshEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
 			}
 		}

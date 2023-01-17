@@ -8,23 +8,16 @@
 namespace spt::rsc
 {
 
-BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPUInstanceRenderData)
+BEGIN_SHADER_STRUCT(, StaticMeshGPUInstanceRenderData)
 	SHADER_STRUCT_FIELD(Uint32, transformIdx)
-	SHADER_STRUCT_FIELD(Uint32, staticMeshDataOffset)
-END_SHADER_STRUCT();
-
-
-BEGIN_ALIGNED_SHADER_STRUCT(, 16, StaticMeshGPURenderData)
-	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
-	SHADER_STRUCT_FIELD(Uint32, submeshesOffset)
-	SHADER_STRUCT_FIELD(Uint32, meshletsOffset)
-	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
+	SHADER_STRUCT_FIELD(Uint32, staticMeshIdx)
 END_SHADER_STRUCT();
 
 
 struct StaticMeshInstanceRenderData
 {
-	Uint32 staticMeshDataOffset;
+	Uint32 staticMeshIdx;
+	Uint32 trianglesNum;
 };
 
 

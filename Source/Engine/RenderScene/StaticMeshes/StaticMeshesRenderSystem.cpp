@@ -73,26 +73,26 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
 	m_supportedStages = lib::Flags(ERenderStage::GBufferGenerationStage, ERenderStage::ShadowGenerationStage);
 
-	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateCommandsCS"));
-		const rdr::ShaderID generateCommandsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateIndirectCommands.hlsl", compilationSettings);
-		indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
-	}
+	//{
+	//	sc::ShaderCompilationSettings compilationSettings;
+	//	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateCommandsCS"));
+	//	const rdr::ShaderID generateCommandsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateIndirectCommands.hlsl", compilationSettings);
+	//	indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
+	//}
 
-	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
-		const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateGBuffer_StaticMesh.hlsl", compilationSettings);
+	//{
+	//	sc::ShaderCompilationSettings compilationSettings;
+	//	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
+	//	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
+	//	const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateGBuffer_StaticMesh.hlsl", compilationSettings);
 
-		rhi::GraphicsPipelineDefinition pipelineDef;
-		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = rhi::EFragmentFormat::D32_S_Float;
-		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::RGBA8_UN_Float));
+	//	rhi::GraphicsPipelineDefinition pipelineDef;
+	//	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+	//	pipelineDef.renderTargetsDefinition.depthRTDefinition.format = rhi::EFragmentFormat::D32_S_Float;
+	//	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::RGBA8_UN_Float));
 
-		generateGBufferPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("GenerateGBuffer_StaticMesh"), pipelineDef, generateGBufferShader);
-	}
+	//	generateGBufferPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("GenerateGBuffer_StaticMesh"), pipelineDef, generateGBufferShader);
+	//}
 }
 
 void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -101,6 +101,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
+	/*
 	const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
 	const lib::SharedRef<rdr::Buffer>& instancesBuffer = staticMeshPrimsSystem.GetStaticMeshInstances().GetBuffer();
 
@@ -123,6 +124,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 		basePassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderMeshesPerView);
 	}
+	*/
 }
 
 void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)

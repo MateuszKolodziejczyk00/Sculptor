@@ -8,7 +8,7 @@ namespace spt::rsc
 
 MeshBuilder::MeshBuilder()
 {
-	m_geometryData.reserve(1024 * 1024);
+	m_geometryData.reserve(1024 * 1024 * 8);
 }
 
 StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
@@ -24,11 +24,9 @@ StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
 	GeometryManager& geomManager = GeometryManager::Get();
 	const rhi::RHISuballocation geometrySuballocation = geomManager.CreateGeometry(m_geometryData.data(), m_geometryData.size());
 	SPT_CHECK(geometrySuballocation.IsValid());
-
 	SPT_CHECK(geometrySuballocation.GetOffset() + m_geometryData.size() <= maxValue<Uint32>);
-	const Uint32 baseGeometryOffset = static_cast<Uint32>(geometrySuballocation.GetOffset());
 
-	lib::DynamicArray<SubmeshData> submeshesData;
+	lib::DynamicArray<SubmeshGPUData> submeshesData;
 	submeshesData.reserve(m_submeshes.size());
 	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes), std::back_inserter(submeshesData),
 				   [](const SubmeshBuildData& submeshBD)
@@ -36,27 +34,8 @@ StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
 					   return submeshBD.submesh;
 				   });
 
-	const SizeType submeshesSize = sizeof(SubmeshData) * submeshesData.size();
-	const SizeType meshletsSize = sizeof(MeshletData) * m_meshlets.size();
-	const SizeType geometryDataSize = sizeof(StaticMeshGPURenderData) + meshletsSize + submeshesSize;
-
-	// This single allocation will contain three items:
-	// 1. Static mesh gpu render data
-	// 2. Array of all submeshes
-	// 3. Array of all meshlets
-	const rhi::RHISuballocation primitiveSuballocation = geomManager.CreatePrimitiveRenderData(geometryDataSize);
-
-	StaticMeshGPURenderData staticMeshRenderData;
-	staticMeshRenderData.submeshesNum = static_cast<Uint32>(submeshesData.size());
-	staticMeshRenderData.submeshesOffset = static_cast<Uint32>(primitiveSuballocation.GetOffset() + sizeof(StaticMeshGPURenderData));
-	staticMeshRenderData.meshletsOffset = static_cast<Uint32>(primitiveSuballocation.GetOffset() + sizeof(StaticMeshGPURenderData) + meshletsSize);
-	staticMeshRenderData.geometryDataOffset = baseGeometryOffset;
-
-	StaticMeshGeometryData mesh;
-	mesh.primRenderDataSuballocation = primitiveSuballocation;
-	mesh.geometrySuballocation = geometrySuballocation;
-
-	return mesh;
+	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
+	return staticMeshGeometryData;
 }
 
 void MeshBuilder::BeginNewSubmesh()

@@ -56,8 +56,8 @@ void StaticMeshPrimitivesSystem::OnStaticMeshUpdated(RenderSceneRegistry& regist
 	const Uint64 transformIdx = transformHandle.transformSuballocation.GetOffset() / sizeof(math::Affine3f);
 
 	StaticMeshGPUInstanceRenderData gpuRenderData;
-	gpuRenderData.transformIdx			= static_cast<Uint32>(transformIdx);
-	gpuRenderData.staticMeshDataOffset	= instanceRenderData.staticMeshDataOffset;
+	gpuRenderData.transformIdx	= static_cast<Uint32>(transformIdx);
+	gpuRenderData.staticMeshIdx	= instanceRenderData.staticMeshIdx;
 
 	entityGPURenderDataHandle.staticMeshGPUInstanceData = m_staticMeshInstances.AddInstance(gpuRenderData);
 }
