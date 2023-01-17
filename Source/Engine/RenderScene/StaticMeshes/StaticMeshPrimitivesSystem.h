@@ -8,29 +8,34 @@
 namespace spt::rsc
 {
 
-BEGIN_SHADER_STRUCT(, StaticMeshGPUInstanceRenderData)
-	SHADER_STRUCT_FIELD(Uint32, transformIdx)
-	SHADER_STRUCT_FIELD(Uint32, staticMeshIdx)
-END_SHADER_STRUCT();
+class RenderView;
 
 
 struct StaticMeshInstanceRenderData
 {
 	Uint32 staticMeshIdx;
-	Uint32 trianglesNum;
 };
 
 
-/**
- * Handle to allocation of GPU render data
- */
-struct StaticMeshRenderDataHandle
+BEGIN_SHADER_STRUCT(, StaticMeshBatchElement)
+	SHADER_STRUCT_FIELD(Uint32, instanceIdx)
+	SHADER_STRUCT_FIELD(Uint32, staticMeshIdx)
+END_SHADER_STRUCT();
+
+
+struct StaticMeshBatch
 {
-	rhi::RHISuballocation staticMeshGPUInstanceData;
+	StaticMeshBatch()
+		: maxSubmeshesNum(0)
+		, maxMeshletsNum(0)
+		, maxTrianglesNum(0)
+	{ }
+
+	lib::DynamicArray<StaticMeshBatchElement> batchElements;
+	Uint32 maxSubmeshesNum;
+	Uint32 maxMeshletsNum;
+	Uint32 maxTrianglesNum;
 };
-
-
-using StaticMeshInstancesList = RenderInstancesList<StaticMeshGPUInstanceRenderData>;
 
 
 class RENDER_SCENE_API StaticMeshPrimitivesSystem : public PrimitivesSystem
@@ -42,18 +47,8 @@ protected:
 public:
 
 	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
-	virtual ~StaticMeshPrimitivesSystem();
 
-	virtual void Update() override;
-	
-	const StaticMeshInstancesList& GetStaticMeshInstances() const;
-
-private:
-
-	void OnStaticMeshUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
-	void OnStaticMeshDestryed(RenderSceneRegistry& registry, RenderSceneEntity entity);
-
-	StaticMeshInstancesList m_staticMeshInstances;
+	StaticMeshBatch BuildBatchForView(const RenderView& view) const;
 };
 
 } // spt::rsc

@@ -129,6 +129,8 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 
 	static const std::regex shaderStructRegex(R"~(\[\[shader_struct\(\s*(\w*)\s*\)\]\])~");
 
+	lib::HashSet<lib::HashedString> m_definedStructs;
+
 	auto shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderStructRegex);
 
 	while (shaderStructsIt != std::sregex_iterator())
@@ -137,12 +139,18 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 		SPT_CHECK(shaderStructMatch.size() == 2); // should be whole match + structNameMatch
 		const lib::HashedString structName = shaderStructMatch[1].str();
 
-		const ShaderStructDefinition& structDef = ShaderStructsRegistry::GetStructDefinition(structName);
+		lib::String structSourceCode;
+		if (!m_definedStructs.contains(structName))
+		{
+			const ShaderStructDefinition& structDef = ShaderStructsRegistry::GetStructDefinition(structName);
+			structSourceCode = structDef.GetSourceCode();
 
-		const lib::String structSourceCode = structDef.GetSourceCode();
+			m_definedStructs.emplace(structName);
+		}
+
 		sourceCode.replace(shaderStructsIt->prefix().length(), shaderStructMatch.length(), structSourceCode);
 
-		// Always search for new descriptor from the beginning, because we're modifying source code during loop
+		// Always search for new struct from the beginning, because we're modifying source code during loop
 		shaderStructsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderStructRegex);
 	}
 }

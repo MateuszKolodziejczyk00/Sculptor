@@ -2,6 +2,9 @@
 
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "Types/Buffer.h"
+#include "RGDescriptorSetState.h"
+#include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
 
 namespace spt::rsc
 {
@@ -47,6 +50,13 @@ BEGIN_SHADER_STRUCT(, MeshletGPUData)
 END_SHADER_STRUCT();
 
 
+DS_BEGIN(, StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedDataDS>, rhi::EShaderStageFlags::Compute)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPUData>),	staticMeshes)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SubmeshGPUData>),		submeshes)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<MeshletGPUData>),		meshlets)
+DS_END();
+
+
 class StaticMeshUnifiedData
 {
 public:
@@ -54,6 +64,8 @@ public:
 	static StaticMeshUnifiedData& Get();
 
 	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
+
+	const lib::SharedPtr<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 
 private:
 
@@ -63,6 +75,8 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_staticMeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_submeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletsBuffer;
+
+	lib::SharedPtr<StaticMeshUnifiedDataDS> m_unifiedDataDS;
 };
 
 } // spt::rsc

@@ -11,6 +11,8 @@
 #include "Common/ShaderCompilationInput.h"
 #include "GeometryManager.h"
 #include "View/RenderView.h"
+#include "BufferUtilities.h"
+#include "StaticMeshGeometry.h"
 
 namespace spt::rsc
 {
@@ -25,46 +27,77 @@ BEGIN_SHADER_STRUCT(, StaticMeshDrawCallData)
 END_SHADER_STRUCT();
 
 
-BEGIN_RG_NODE_PARAMETERS_STRUCT(StaticMeshIndirectDataPerView)
-	RG_BUFFER_VIEW(drawsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
-	RG_BUFFER_VIEW(countBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
-END_RG_NODE_PARAMETERS_STRUCT();
+//BEGIN_RG_NODE_PARAMETERS_STRUCT(StaticMeshIndirectDataPerView)
+//	RG_BUFFER_VIEW(drawsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+//	RG_BUFFER_VIEW(countBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+//END_RG_NODE_PARAMETERS_STRUCT();
 
 
-DS_BEGIN(, BuildIndirectStaticMeshCommandsDS, rg::RGDescriptorSetState<BuildIndirectStaticMeshCommandsDS>, rhi::EShaderStageFlags::Compute)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshDrawCallData>),		drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),						drawCommandsCount)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPUInstanceRenderData>),	staticMeshes)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),					instanceTransforms)
+DS_BEGIN(, StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Fragment, rhi::EShaderStage::Compute))
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	batchElements)
 DS_END();
 
 
-DS_BEGIN(, StaticMeshRenderingDS, rg::RGDescriptorSetState<StaticMeshRenderingDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Fragment))
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshDrawCallData>),	drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Matrix4f>),			instanceTransforms)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),				sceneViewData)
+BEGIN_SHADER_STRUCT(, GPUWorkloadID)
+	SHADER_STRUCT_FIELD(Uint32, data1)
+	SHADER_STRUCT_FIELD(Uint32, data2)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(, StaticMeshSubmeshesWorkloadsDS, rg::RGDescriptorSetState<StaticMeshSubmeshesWorkloadsDS>, rhi::EShaderStageFlags::Compute)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),		submeshesWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			submeshesWorkloadsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			indirectDispatchSubmeshesParams)
 DS_END();
 
+
+DS_BEGIN(, StaticMeshMeshletsWorkloadsDS, rg::RGDescriptorSetState<StaticMeshMeshletsWorkloadsDS>, rhi::EShaderStageFlags::Compute)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),		meshletsWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			meshletsWorkloadsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			indirectDispatchMeshletsParams)
+DS_END();
+
+
+struct StaticMeshBatchRenderingData
+{
+	lib::SharedPtr<StaticMeshBatchDS> batchDS;
+	lib::SharedPtr<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS;
+};
 
 namespace utils
 {
 
-StaticMeshIndirectDataPerView CreateIndirectDataForView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatch& batch)
 {
 	SPT_PROFILER_FUNCTION();
+	
+	StaticMeshBatchRenderingData batchRenderingData;
 
-	const rhi::BufferDefinition drawsBufferDef(sizeof(StaticMeshDrawCallData) * 1024, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-	const rhi::RHIAllocationInfo drawsBufferAllocation(rhi::EMemoryUsage::GPUOnly);
-	StaticMeshIndirectDataPerView indirectData;
-	indirectData.drawsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshDrawsBuffer"), drawsBufferDef, drawsBufferAllocation);
+	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batch.batchElements.size();
+	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
+	const rhi::RHIAllocationInfo batchBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
+	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatchBuffer"), batchBufferDef, batchBufferAllocation);
 
-	const rhi::BufferDefinition countBufferDef(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-	const rhi::RHIAllocationInfo countBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
-	indirectData.countBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("StaticMeshCountBuffer"), countBufferDef, countBufferAllocation);
+	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batch.batchElements.data()), batchDataSize);
 
-	graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Mesh Instances Count"), indirectData.countBuffer, 0, sizeof(Uint32), 0);
+	batchRenderingData.batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
 
-	return indirectData;
+	const rhi::RHIAllocationInfo workloadBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
+
+	const lib::SharedRef<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshSubmeshesWorkloadsDS>(RENDERER_RESOURCE_NAME("SMSubmeshesWorkloadsDS"));
+
+	const rhi::BufferDefinition submeshesWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxSubmeshesNum, rhi::EBufferUsage::Storage);
+	submeshesWorkloadsDS->submeshesWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsBuffer"), submeshesWorkloadsBufferDef, workloadBuffersAllocation);
+
+	const rhi::BufferDefinition meshletsWorkloadsNumBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
+	submeshesWorkloadsDS->submeshesWorkloadsNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsNumBuffer"), meshletsWorkloadsNumBufferDef, workloadBuffersAllocation);
+
+	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchMeshletsParamsBufferDef, workloadBuffersAllocation);
+
+	batchRenderingData.submeshesWorkloadsDS = submeshesWorkloadsDS;
+
+	return batchRenderingData;
 }
 
 } // utils
@@ -73,12 +106,12 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
 	m_supportedStages = lib::Flags(ERenderStage::GBufferGenerationStage, ERenderStage::ShadowGenerationStage);
 
-	//{
-	//	sc::ShaderCompilationSettings compilationSettings;
-	//	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateCommandsCS"));
-	//	const rdr::ShaderID generateCommandsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/GenerateIndirectCommands.hlsl", compilationSettings);
-	//	indirectCommandsGenerationPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateIndirectCommandsPipeline"), generateCommandsShader);
-	//}
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"));
+		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullSubmeshes.hlsl", compilationSettings);
+		cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullSubmeshesPipeline"), cullSubmeshesShader);
+	}
 
 	//{
 	//	sc::ShaderCompilationSettings compilationSettings;
@@ -101,23 +134,21 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
-	/*
 	const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
-	const lib::SharedRef<rdr::Buffer>& instancesBuffer = staticMeshPrimsSystem.GetStaticMeshInstances().GetBuffer();
 
-	const StaticMeshIndirectDataPerView& viewIndirectData = viewSpec.GetData().Create<StaticMeshIndirectDataPerView>(utils::CreateIndirectDataForView(graphBuilder, renderScene));
+	const StaticMeshBatch batch = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 
-	lib::SharedRef<BuildIndirectStaticMeshCommandsDS> descriptorSetState = rdr::ResourcesManager::CreateDescriptorSetState<BuildIndirectStaticMeshCommandsDS>(RENDERER_RESOURCE_NAME("IndirectCommandsDS"));
-	descriptorSetState->drawCommands = viewIndirectData.drawsBuffer;
-	descriptorSetState->drawCommandsCount = viewIndirectData.countBuffer;
-	descriptorSetState->staticMeshes = instancesBuffer->CreateFullView();
-	descriptorSetState->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
+	const StaticMeshBatchRenderingData batchRenderingData = utils::CreateBatchRenderingData(graphBuilder, renderScene, batch);
+	const Uint32 batchElementsNum = static_cast<Uint32>(batch.batchElements.size());
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Static Mesh Indirect Command"),
-						  indirectCommandsGenerationPipeline,
-						  math::Vector3u(1, 1, 1),
-						  rg::BindDescriptorSets(descriptorSetState, lib::Ref(GeometryManager::Get().GetPrimitivesDSState())));
+	graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
+						  cullSubmeshesPipeline,
+						  math::Vector3u(batchElementsNum, 1, 1),
+						  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+												 lib::Ref(batchRenderingData.batchDS),
+												 lib::Ref(batchRenderingData.submeshesWorkloadsDS)));
 
+	/*
 	if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))
 	{
 		RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
@@ -130,7 +161,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
-
+/*
 	const StaticMeshIndirectDataPerView& indirectBuffers = viewSpec.GetData().Get<StaticMeshIndirectDataPerView>();
 
 	const lib::SharedRef<StaticMeshRenderingDS> staticMeshRenderingDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshRenderingDS>(RENDERER_RESOURCE_NAME("StaticMeshRenderingDS"));
@@ -158,6 +189,7 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 								const rdr::BufferView& drawsCountBufferView = indirectBuffers.countBuffer->GetBufferViewInstance();
 								recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshDrawCallData), drawsCountBufferView, 0, maxInstances);
 							});
+	*/
 }
 
 } // spt::rsc

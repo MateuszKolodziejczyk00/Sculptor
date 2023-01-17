@@ -239,10 +239,11 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			else
 			{
 				const DSStateID stateID = stateInstance->GetID();
-				if (!m_cachedDynamicDescriptorSets.contains(stateID))
+				const SizeType stateAndPipelineDSHash = lib::HashCombine(stateInstance->GetID(), dsHash);
+				if (!m_cachedDynamicDescriptorSets.contains(stateAndPipelineDSHash))
 				{
 					m_dynamicDescriptorSetInfos.emplace_back(DynamicDescriptorSetInfo(pipeline, static_cast<Uint32>(dsIdx), stateInstance));
-					m_cachedDynamicDescriptorSets.emplace(stateID);
+					m_cachedDynamicDescriptorSets.emplace(stateAndPipelineDSHash);
 				}
 				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateID, foundState->dynamicOffsets));
 			}

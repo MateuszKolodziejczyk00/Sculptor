@@ -8,7 +8,16 @@ namespace spt::rsc
 
 using RenderSceneEntity = ecs::Entity;
 
-using RenderSceneRegistry = ecs::basic_registry<RenderSceneEntity>;
+class RenderSceneRegistry : public ecs::basic_registry<RenderSceneEntity>
+{
+protected:
+
+	using Super = ecs::basic_registry<RenderSceneEntity>;
+
+public:
+
+	using Super::Super;
+};
 
 using RenderSceneEntityHandle = ecs::basic_handle<RenderSceneRegistry>;
 using ConstRenderSceneEntityHandle = ecs::basic_handle<const RenderSceneRegistry>;
