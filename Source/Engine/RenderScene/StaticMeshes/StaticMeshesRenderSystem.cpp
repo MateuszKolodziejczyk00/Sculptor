@@ -81,6 +81,7 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batch.batchElements.data()), batchDataSize);
 
 	batchRenderingData.batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
+	batchRenderingData.batchDS->batchElements = batchBuffer->CreateFullView();
 
 	const rhi::RHIAllocationInfo workloadBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
 

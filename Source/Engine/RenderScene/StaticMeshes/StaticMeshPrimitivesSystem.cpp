@@ -1,6 +1,7 @@
 #include "StaticMeshPrimitivesSystem.h"
 #include "RendererUtils.h"
 #include "RenderScene.h"
+#include "StaticMeshGeometry.h"
 
 namespace spt::rsc
 {
@@ -18,12 +19,19 @@ StaticMeshBatch StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& 
 	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityTransformHandle>();
 	for (const auto& [entity, staticMeshRenderData, transformHandle] : meshesView.each())
 	{
+		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+
+		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
+
 		StaticMeshBatchElement batchElement;
 		batchElement.instanceIdx = static_cast<Uint32>(transformHandle.transformSuballocation.GetOffset() / sizeof(math::Affine3f));
-		batchElement.staticMeshIdx = staticMeshRenderData.staticMeshIdx;
+		batchElement.staticMeshIdx = meshRenderingDef.staticMeshIdx;
 		batch.batchElements.emplace_back(batchElement);
+		
+		batch.maxSubmeshesNum	+= meshRenderingDef.maxSubmeshesNum;
+		batch.maxMeshletsNum	+= meshRenderingDef.maxMeshletsNum;
+		batch.maxTrianglesNum	+= meshRenderingDef.maxTrianglesNum;
 	}
-	SPT_CHECK_NO_ENTRY(); // TODO handle calculating batch counts;
 
 	return batch;
 }

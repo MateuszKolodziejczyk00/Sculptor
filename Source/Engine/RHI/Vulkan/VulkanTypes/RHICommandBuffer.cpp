@@ -354,7 +354,7 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 	};
 
 	{
-		SPT_PROFILER_SCOPE("ASDASDASDAS");
+		SPT_PROFILER_SCOPE("vkCmdCopyImage2");
 		vkCmdCopyImage2(m_cmdBufferHandle, &copyInfo);
 	}
 }

@@ -61,7 +61,7 @@ void CullSubmeshesCS(CS_INPUT input)
     // Initialize idx value
     if (input.globalID.x == 0)
     {
-        outputIdx = 0;
+        submeshesWorkloadsNum[0] = 0;
     }
 
     AllMemoryBarrier();
@@ -93,6 +93,7 @@ void CullSubmeshesCS(CS_INPUT input)
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
 
             const GPUWorkloadID submeshWorkload = PackSubmeshWorkload(batchElementIdx, globalSubmeshIdx);
+            submeshesWorkloads[outputBufferIdx] = submeshWorkload;
         }
     }
 

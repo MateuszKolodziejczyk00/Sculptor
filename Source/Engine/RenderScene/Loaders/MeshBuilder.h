@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "GeometryManager.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
+#include "RenderingDataRegistry.h"
 
 
 namespace spt::rsc
@@ -21,7 +22,7 @@ public:
 
 	MeshBuilder();
 
-	StaticMeshGeometryData EmitMeshGeometry();
+	RenderingDataEntityHandle EmitMeshGeometry();
 
 protected:
 

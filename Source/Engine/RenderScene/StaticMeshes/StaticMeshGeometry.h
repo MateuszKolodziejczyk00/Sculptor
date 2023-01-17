@@ -18,6 +18,25 @@ struct StaticMeshGeometryData
 };
 
 
+struct StaticMeshRenderingDefinition
+{
+	StaticMeshRenderingDefinition()
+		: staticMeshIdx(0)
+		, maxSubmeshesNum(0)
+		, maxMeshletsNum(0)
+		, maxTrianglesNum(0)
+	{ }
+
+	Uint32 staticMeshIdx;
+	// Submeshes of first LOD
+	Uint32 maxSubmeshesNum;
+	// Meshlets of first LOD
+	Uint32 maxMeshletsNum;
+	// Triangles of first LOD
+	Uint32 maxTrianglesNum;
+};
+
+
 BEGIN_SHADER_STRUCT(, StaticMeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)

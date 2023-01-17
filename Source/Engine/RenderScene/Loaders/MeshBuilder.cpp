@@ -11,7 +11,7 @@ MeshBuilder::MeshBuilder()
 	m_geometryData.reserve(1024 * 1024 * 8);
 }
 
-StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
+RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -34,8 +34,30 @@ StaticMeshGeometryData MeshBuilder::EmitMeshGeometry()
 					   return submeshBD.submesh;
 				   });
 
+	const Uint32 indicesNum = std::accumulate(std::cbegin(submeshesData), std::cend(submeshesData), 0,
+											  [](Uint32 indices, const SubmeshGPUData& submesh)
+											  {
+												  return indices + submesh.indicesNum;
+											  });
+
+	const Uint32 trianglesNum = indicesNum / 3;
+
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
-	return staticMeshGeometryData;
+
+	StaticMeshRenderingDefinition staticMeshRenderingDef;
+	staticMeshRenderingDef.staticMeshIdx	= static_cast<Uint32>(staticMeshGeometryData.staticMeshSuballocation.GetOffset() / sizeof(StaticMeshGPUData));
+	staticMeshRenderingDef.maxSubmeshesNum	= static_cast<Uint32>(submeshesData.size());
+	staticMeshRenderingDef.maxMeshletsNum	= static_cast<Uint32>(m_meshlets.size());
+	staticMeshRenderingDef.maxTrianglesNum	= trianglesNum;
+
+	RenderingDataRegistry& renderingDataRegistry = RenderingData::Get();
+	const RenderingDataEntity staticMeshEntity = renderingDataRegistry.create();
+	const RenderingDataEntityHandle staticMeshDataHandle(renderingDataRegistry, staticMeshEntity);
+
+	staticMeshDataHandle.emplace<StaticMeshGeometryData>(staticMeshGeometryData);
+	staticMeshDataHandle.emplace<StaticMeshRenderingDefinition>(staticMeshRenderingDef);
+
+	return staticMeshDataHandle;
 }
 
 void MeshBuilder::BeginNewSubmesh()

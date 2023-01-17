@@ -4,6 +4,7 @@
 #include "RenderInstancesList.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderSceneRegistry.h"
+#include "RenderingDataRegistry.h"
 
 namespace spt::rsc
 {
@@ -13,7 +14,7 @@ class RenderView;
 
 struct StaticMeshInstanceRenderData
 {
-	Uint32 staticMeshIdx;
+	RenderingDataEntityHandle staticMesh;
 };
 
 

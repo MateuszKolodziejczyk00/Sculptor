@@ -10,6 +10,7 @@
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
+#include "RenderingDataRegistry.h"
 #pragma warning(pop)
 
 namespace spt::rsc
@@ -234,7 +235,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	return transform;
 }
 
-static StaticMeshGeometryData LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
+static RenderingDataEntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -278,7 +279,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
-		lib::DynamicArray<StaticMeshGeometryData> loadedMeshes;
+		lib::DynamicArray<RenderingDataEntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
 		for (const tinygltf::Mesh& mesh : model.meshes)
@@ -296,7 +297,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				instanceData.transfrom = GetNodeTransform(node);
 				const RenderSceneEntityHandle meshEntity = scene.CreateEntity(instanceData);
 				StaticMeshInstanceRenderData entityStaticMeshData;
-				entityStaticMeshData.staticMeshIdx = static_cast<Uint32>(loadedMeshes[node.mesh].staticMeshSuballocation.GetOffset() / sizeof(StaticMeshGPUData));
+				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
 				meshEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
 			}
 		}
