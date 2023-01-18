@@ -62,6 +62,7 @@ struct StaticMeshBatchRenderingData
 {
 	lib::SharedPtr<StaticMeshBatchDS> batchDS;
 	lib::SharedPtr<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS;
+	lib::SharedPtr<StaticMeshMeshletsWorkloadsDS> meshletsWorkloadsDS;
 };
 
 namespace utils
@@ -84,19 +85,34 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	batchRenderingData.batchDS->batchElements = batchBuffer->CreateFullView();
 
 	const rhi::RHIAllocationInfo workloadBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
-
+	
+	// Create buffers for submeshes workloads
 	const lib::SharedRef<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshSubmeshesWorkloadsDS>(RENDERER_RESOURCE_NAME("SMSubmeshesWorkloadsDS"));
 
 	const rhi::BufferDefinition submeshesWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxSubmeshesNum, rhi::EBufferUsage::Storage);
 	submeshesWorkloadsDS->submeshesWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsBuffer"), submeshesWorkloadsBufferDef, workloadBuffersAllocation);
 
-	const rhi::BufferDefinition meshletsWorkloadsNumBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
-	submeshesWorkloadsDS->submeshesWorkloadsNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsNumBuffer"), meshletsWorkloadsNumBufferDef, workloadBuffersAllocation);
+	const rhi::BufferDefinition submeshesWorkloadsNumBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
+	submeshesWorkloadsDS->submeshesWorkloadsNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsNumBuffer"), submeshesWorkloadsNumBufferDef, workloadBuffersAllocation);
 
-	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchMeshletsParamsBufferDef, workloadBuffersAllocation);
+	const rhi::BufferDefinition indirectDispatchSubmeshesParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchSubmeshesParamsBufferDef, workloadBuffersAllocation);
 
 	batchRenderingData.submeshesWorkloadsDS = submeshesWorkloadsDS;
+
+	// Create buffers for meshlets workloads
+	const lib::SharedRef<StaticMeshMeshletsWorkloadsDS> meshletsWorkloadsDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshMeshletsWorkloadsDS>(RENDERER_RESOURCE_NAME("SMMeshletsWorkloadsDS"));
+
+	const rhi::BufferDefinition meshletsWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxMeshletsNum, rhi::EBufferUsage::Storage);
+	meshletsWorkloadsDS->meshletsWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMMeshletsWorkloadsBuffer"), meshletsWorkloadsBufferDef, workloadBuffersAllocation);
+
+	const rhi::BufferDefinition meshletsWorkloadsNumBufferDef(sizeof(Uint32), rhi::EBufferUsage::Storage);
+	meshletsWorkloadsDS->meshletsWorkloadsNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMMeshletsWorkloadsNumBuffer"), meshletsWorkloadsNumBufferDef, workloadBuffersAllocation);
+
+	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	meshletsWorkloadsDS->indirectDispatchMeshletsParams = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchMeshletsParamsBuffer"), indirectDispatchMeshletsParamsBufferDef, workloadBuffersAllocation);
+
+	batchRenderingData.meshletsWorkloadsDS = meshletsWorkloadsDS;
 
 	return batchRenderingData;
 }
@@ -139,15 +155,18 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	const StaticMeshBatch batch = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 
-	const StaticMeshBatchRenderingData batchRenderingData = utils::CreateBatchRenderingData(graphBuilder, renderScene, batch);
-	const Uint32 batchElementsNum = static_cast<Uint32>(batch.batchElements.size());
+	if (batch.IsValid())
+	{
+		const StaticMeshBatchRenderingData batchRenderingData = utils::CreateBatchRenderingData(graphBuilder, renderScene, batch);
+		const Uint32 batchElementsNum = static_cast<Uint32>(batch.batchElements.size());
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
-						  cullSubmeshesPipeline,
-						  math::Vector3u(batchElementsNum, 1, 1),
-						  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-												 lib::Ref(batchRenderingData.batchDS),
-												 lib::Ref(batchRenderingData.submeshesWorkloadsDS)));
+		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
+							  cullSubmeshesPipeline,
+							  math::Vector3u(batchElementsNum, 1, 1),
+							  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+													 lib::Ref(batchRenderingData.batchDS),
+													 lib::Ref(batchRenderingData.submeshesWorkloadsDS)));
+	}
 
 	/*
 	if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))

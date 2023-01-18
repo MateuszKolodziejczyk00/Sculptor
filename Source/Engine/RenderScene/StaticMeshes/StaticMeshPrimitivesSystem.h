@@ -32,6 +32,11 @@ struct StaticMeshBatch
 		, maxTrianglesNum(0)
 	{ }
 
+	Bool IsValid() const
+	{
+		return !batchElements.empty();
+	}
+
 	lib::DynamicArray<StaticMeshBatchElement> batchElements;
 	Uint32 maxSubmeshesNum;
 	Uint32 maxMeshletsNum;

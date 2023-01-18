@@ -19,7 +19,7 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
-    // Initialize idx value
+    // Initialize num value
     if (input.globalID.x == 0)
     {
         submeshesWorkloadsNum[0] = 0;
@@ -58,7 +58,7 @@ void CullSubmeshesCS(CS_INPUT input)
         }
     }
 
-    // Wait for all threads to output idx
+    // Wait for all threads to wrie submeshes
     AllMemoryBarrier();
 
     if(input.globalID.x == 0)
