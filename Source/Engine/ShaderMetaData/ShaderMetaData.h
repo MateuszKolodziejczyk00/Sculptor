@@ -32,7 +32,7 @@ public:
 
 	void						AddShaderStageToBinding(Uint32 setIdx, Uint32 bindingIdx, rhi::EShaderStage stage);
 
-	void						OverrideDescriptorSetHash(Uint32 setIdx, SizeType hash);
+	void						SetDescriptorSetStateTypeHash(Uint32 setIdx, SizeType hash);
 
 	void						PostInitialize();
 
@@ -58,6 +58,8 @@ public:
 	
 	Uint32						FindDescriptorSetWithHash(SizeType hash) const;
 	
+	SizeType					GetDescriptorSetStateTypeHash(Uint32 setIdx) const;
+	
 private:
 
 	void						BuildDSHashes();
@@ -70,7 +72,11 @@ private:
 
 	ShaderParameterMap	   		m_parameterMap;
 
+	/** Hash of descriptor set used in shader */
 	lib::DynamicArray<SizeType>	m_descriptorSetHashes;
+	
+	/** Hash of descriptor set state types used to create ds in shader */
+	lib::DynamicArray<SizeType>	m_dsStateTypeHashes;
 
 	friend srl::TypeSerializer<ShaderMetaData>;
 };
@@ -96,6 +102,7 @@ void ShaderMetaData::AddShaderBindingData(Uint32 setIdx, Uint32 bindingIdx, TSha
 	{
 		m_descriptorSets.resize(properSetIdx + 1);
 		m_descriptorSetHashes.resize(properSetIdx + 1, idxNone<SizeType>);
+		m_dsStateTypeHashes.resize(properSetIdx + 1, idxNone<SizeType>);
 	}
 	
 	m_descriptorSets[properSetIdx].AddBinding(static_cast<Uint8>(bindingIdx), bindingData);
@@ -106,13 +113,13 @@ inline void ShaderMetaData::AddShaderStageToBinding(Uint32 setIdx, Uint32 bindin
 	GetBindingDataRef(setIdx, bindingIdx).AddShaderStage(stage);
 }
 
-inline void ShaderMetaData::OverrideDescriptorSetHash(Uint32 setIdx, SizeType hash)
+inline void ShaderMetaData::SetDescriptorSetStateTypeHash(Uint32 setIdx, SizeType hash)
 {
-	SPT_CHECK(setIdx < m_descriptorSetHashes.size());
+	SPT_CHECK(setIdx < m_dsStateTypeHashes.size());
 	SPT_CHECK(hash != idxNone<SizeType>);
-	SPT_CHECK(m_descriptorSetHashes[setIdx] == idxNone<SizeType> || m_descriptorSetHashes[setIdx] == hash);
+	SPT_CHECK(m_dsStateTypeHashes[setIdx] == idxNone<SizeType> || m_dsStateTypeHashes[setIdx] == hash);
 
-	m_descriptorSetHashes[setIdx] = hash;
+	m_dsStateTypeHashes[setIdx] = hash;
 }
 
 inline void ShaderMetaData::PostInitialize()
@@ -199,8 +206,26 @@ inline Uint32 ShaderMetaData::FindDescriptorSetWithHash(SizeType hash) const
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const auto foundDS = std::find(std::cbegin(m_descriptorSetHashes), std::cend(m_descriptorSetHashes), hash);
-	return foundDS != std::cend(m_descriptorSetHashes) ? static_cast<Uint32>(std::distance(std::cbegin(m_descriptorSetHashes), foundDS)) : idxNone<Uint32>;
+	for (SizeType dsIdx = 0; dsIdx < m_descriptorSetHashes.size(); ++dsIdx)
+	{
+		const Bool hasSameType = m_dsStateTypeHashes[dsIdx] != idxNone<SizeType> && m_dsStateTypeHashes[dsIdx] == hash;
+		const Bool hasSameHash = m_descriptorSetHashes[dsIdx] == hash;
+		if (hasSameType || hasSameHash)
+		{
+			return static_cast<Uint32>(dsIdx);
+		}
+	}
+
+	return idxNone<Uint32>;
+}
+
+inline SizeType ShaderMetaData::GetDescriptorSetStateTypeHash(Uint32 setIdx) const
+{
+	const SizeType properSetIdx = static_cast<SizeType>(setIdx);
+	SPT_CHECK(properSetIdx < m_dsStateTypeHashes.size());
+
+	const Bool hasValidType = m_dsStateTypeHashes[properSetIdx];
+	return hasValidType ? m_dsStateTypeHashes[properSetIdx] : m_descriptorSetHashes[properSetIdx];
 }
 
 inline void ShaderMetaData::BuildDSHashes()
@@ -209,12 +234,6 @@ inline void ShaderMetaData::BuildDSHashes()
 
 	for (SizeType setIdx = 0; setIdx < m_descriptorSets.size(); ++setIdx)
 	{
-		// if this hash was externally overriden we don't have to calculate it
-		if (m_descriptorSetHashes[setIdx] != idxNone<SizeType>)
-		{
-			continue;
-		}
-
 		SizeType hash = 0;
 		
 		const lib::DynamicArray<GenericShaderBinding>& bindings = m_descriptorSets[setIdx].GetBindings();
@@ -232,7 +251,7 @@ inline void ShaderMetaData::BuildDSHashes()
 			lib::HashCombine(hash, HashDescriptorSetBinding(bindings[bindingIdx], paramName));
 		}
 
-		SPT_CHECK(m_descriptorSetHashes.size() == static_cast<SizeType>(setIdx));
+		SPT_CHECK(static_cast<SizeType>(setIdx) < m_descriptorSetHashes.size());
 		m_descriptorSetHashes[setIdx] = hash;
 	}
 }

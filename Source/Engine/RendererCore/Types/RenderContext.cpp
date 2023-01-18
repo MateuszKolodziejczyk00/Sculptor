@@ -17,9 +17,9 @@ void RenderContext::BuildDescriptorSets(const lib::DynamicArray<DynamicDescripto
 	m_dynamicDescriptorSets.BuildDescriptorSets(*this, setInfos);
 }
 
-rhi::RHIDescriptorSet RenderContext::GetDescriptorSet(DSStateID id) const
+rhi::RHIDescriptorSet RenderContext::GetDescriptorSet(SizeType hash) const
 {
-	return m_dynamicDescriptorSets.GetDescriptorSet(id);
+	return m_dynamicDescriptorSets.GetDescriptorSet(hash);
 }
 
 } // spt::rdr

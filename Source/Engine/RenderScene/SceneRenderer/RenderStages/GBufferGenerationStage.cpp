@@ -54,7 +54,7 @@ void GBufferGenerationStage::Render(rg::RenderGraphBuilder& graphBuilder, const 
 	colorRTDef.textureView						= gBuffer.testColor;
 	colorRTDef.loadOperation					= rhi::ERTLoadOperation::Clear;
 	colorRTDef.storeOperation					= rhi::ERTStoreOperation::Store;
-	colorRTDef.clearColor.asFloat[0]			= 1.f;
+	colorRTDef.clearColor.asFloat[0]			= 0.f;
 	colorRTDef.clearColor.asFloat[1]			= 0.f;
 	colorRTDef.clearColor.asFloat[2]			= 0.f;
 	colorRTDef.clearColor.asFloat[3]			= 1.f;

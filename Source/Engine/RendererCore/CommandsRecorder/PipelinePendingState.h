@@ -64,7 +64,7 @@ private:
 	struct DynamicDSBindCommand
 	{
 		Uint32					idx;
-		DSStateID				dsStateID;
+		DSStateID				dsHash;
 		DynamicOffsetsArray		dynamicOffsets;
 	};
 
@@ -88,7 +88,7 @@ private:
 
 	DSBindCommands FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
 
-	const BoundDescriptorSetState* GetBoundDescriptorSetState(SizeType hash) const;
+	const BoundDescriptorSetState* GetBoundDescriptorSetState(SizeType dsTypeHash) const;
 
 	lib::SharedPtr<GraphicsPipeline> m_boundGfxPipeline;
 	lib::SharedPtr<ComputePipeline> m_boundComputePipeline;

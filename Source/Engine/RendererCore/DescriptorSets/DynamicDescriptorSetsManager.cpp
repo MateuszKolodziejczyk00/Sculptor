@@ -76,15 +76,15 @@ void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderCont
 
 	for (SizeType idx = 0; idx < dsInfosToAllocate.size(); ++idx)
 	{
-		m_descriptorSets.emplace(dsInfosToAllocate[idx].state->GetID(), allocatedDescriptorSets[idx]);
+		m_descriptorSets.emplace(dsInfosToAllocate[idx].dsHash, allocatedDescriptorSets[idx]);
 	}
 }
 
-rhi::RHIDescriptorSet DynamicDescriptorSetsManager::GetDescriptorSet(DSStateID id) const
+rhi::RHIDescriptorSet DynamicDescriptorSetsManager::GetDescriptorSet(SizeType hash) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return m_descriptorSets.at(id);
+	return m_descriptorSets.at(hash);
 }
 
 } // spt::rdr

@@ -63,6 +63,8 @@ struct StaticMeshBatchRenderingData
 	lib::SharedPtr<StaticMeshBatchDS> batchDS;
 	lib::SharedPtr<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS;
 	lib::SharedPtr<StaticMeshMeshletsWorkloadsDS> meshletsWorkloadsDS;
+
+	rg::RGBufferViewHandle submeshesWorkloadsDispatchArgsBuffer;
 };
 
 namespace utils
@@ -96,7 +98,9 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	submeshesWorkloadsDS->submeshesWorkloadsNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsNumBuffer"), submeshesWorkloadsNumBufferDef, workloadBuffersAllocation);
 
 	const rhi::BufferDefinition indirectDispatchSubmeshesParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchSubmeshesParamsBufferDef, workloadBuffersAllocation);
+	const rg::RGBufferViewHandle submeshesWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchSubmeshesParamsBufferDef, workloadBuffersAllocation);
+	batchRenderingData.submeshesWorkloadsDispatchArgsBuffer = submeshesWorkloadsDispatchArgsBuffer;
+	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = submeshesWorkloadsDispatchArgsBuffer;
 
 	batchRenderingData.submeshesWorkloadsDS = submeshesWorkloadsDS;
 
@@ -128,6 +132,13 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"));
 		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullSubmeshes.hlsl", compilationSettings);
 		cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullSubmeshesPipeline"), cullSubmeshesShader);
+	}
+	
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullMeshletsCS"));
+		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullMeshlets.hlsl", compilationSettings);
+		cullMeshletsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullMeshletsPipeline"), cullSubmeshesShader);
 	}
 
 	//{
@@ -166,6 +177,15 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 							  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 													 lib::Ref(batchRenderingData.batchDS),
 													 lib::Ref(batchRenderingData.submeshesWorkloadsDS)));
+
+		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
+									  cullMeshletsPipeline,
+									  batchRenderingData.submeshesWorkloadsDispatchArgsBuffer,
+									  0,
+									  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+															 lib::Ref(batchRenderingData.batchDS),
+															 lib::Ref(batchRenderingData.submeshesWorkloadsDS),
+															 lib::Ref(batchRenderingData.meshletsWorkloadsDS)));
 	}
 
 	/*

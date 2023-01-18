@@ -25,6 +25,7 @@ private:
 	void RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 	rdr::PipelineStateID cullSubmeshesPipeline;
+	rdr::PipelineStateID cullMeshletsPipeline;
 };
 
 } // spt::rsc

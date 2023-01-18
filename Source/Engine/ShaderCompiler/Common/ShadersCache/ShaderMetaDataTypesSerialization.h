@@ -266,6 +266,7 @@ struct TypeSerializer<smd::ShaderMetaData>
 		serializer.Serialize("DescriptorSets", data.m_descriptorSets);
 		serializer.Serialize("ParameterMap", data.m_parameterMap);
 		serializer.Serialize("DescriptorSetHashes", data.m_descriptorSetHashes);
+		serializer.Serialize("DescriptorSetTypesHashes", data.m_dsStateTypeHashes);
 	}
 };
 

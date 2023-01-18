@@ -300,7 +300,7 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 		const SizeType overridingHash = parametersMetaData.GetDSRegisteredHash(dsIdx);
 		if (overridingHash != idxNone<SizeType>)
 		{
-			outShaderMetaData.OverrideDescriptorSetHash(dsIdx, overridingHash);
+			outShaderMetaData.SetDescriptorSetStateTypeHash(dsIdx, overridingHash);
 		}
 	}
 }

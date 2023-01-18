@@ -13,6 +13,7 @@ struct DynamicDescriptorSetInfo
 {
 	lib::SharedPtr<Pipeline>			pipeline;
 	Uint32								dsIdx;
+	SizeType							dsHash;
 	lib::SharedPtr<DescriptorSetState>	state;
 };
 

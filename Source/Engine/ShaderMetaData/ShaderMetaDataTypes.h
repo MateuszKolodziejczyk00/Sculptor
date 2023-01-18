@@ -431,13 +431,17 @@ struct GenericShaderBinding
 
 	SizeType Hash() const
 	{
-		return lib::HashCombine(GetBindingType(),
-								std::visit([](const auto& data) { return data.Hash(); }, m_data));
+		if (IsValid())
+		{
+			return lib::HashCombine(GetBindingType(),
+									std::visit([](const auto& data) { return data.Hash(); }, m_data));
+		}
+		return 0;
 	}
 
 private:
 
-	BindingDataVariant			m_data;
+	BindingDataVariant m_data;
 };
 
 
@@ -669,8 +673,6 @@ struct ShaderDataParam
 inline SizeType HashDescriptorSetBinding(const GenericShaderBinding& binding, const lib::HashedString& paramName)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(binding.IsValid());
 
 	return lib::HashCombine(binding.Hash(), paramName);
 }

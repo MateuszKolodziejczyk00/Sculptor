@@ -21,7 +21,7 @@ public:
 
 	void BuildDescriptorSets(RenderContext& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos);
 
-	rhi::RHIDescriptorSet GetDescriptorSet(DSStateID id) const;
+	rhi::RHIDescriptorSet GetDescriptorSet(SizeType hash) const;
 
 private:
 

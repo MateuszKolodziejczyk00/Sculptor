@@ -24,7 +24,7 @@ public:
 	RenderContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
 
 	void BuildDescriptorSets(const lib::DynamicArray<DynamicDescriptorSetInfo>& setInfos);
-	rhi::RHIDescriptorSet GetDescriptorSet(DSStateID id) const;
+	rhi::RHIDescriptorSet GetDescriptorSet(SizeType hash) const;
 
 private:
 

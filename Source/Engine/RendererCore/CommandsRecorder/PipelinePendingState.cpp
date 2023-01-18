@@ -67,7 +67,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& 
 							 RenderContext& renderContext = executionContext.GetRenderContext();
 							 for (const DynamicDSBindCommand& bindCommand : pendingDescriptors.dynamicDSBinds)
 							 {
-								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsStateID);
+								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsHash);
 								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 							 }
 						 });
@@ -122,7 +122,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& c
 							 RenderContext& renderContext = executionContext.GetRenderContext();
 							 for (const DynamicDSBindCommand& bindCommand : pendingDescriptors.dynamicDSBinds)
 							 {
-								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsStateID);
+								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsHash);
 								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 							 }
 						 });
@@ -222,8 +222,8 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 	{
 		if (dirtyDescriptorSets[dsIdx])
 		{
-			const SizeType dsHash = metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx));
-			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsHash);
+			const SizeType dsTypeHash = metaData->GetDescriptorSetStateTypeHash(static_cast<Uint32>(dsIdx));
+			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsTypeHash);
 			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}", pipeline->GetRHI().GetName().GetData(), dsIdx);
 			
 			const lib::SharedRef<DescriptorSetState> stateInstance = lib::Ref(foundState->instance);
@@ -238,14 +238,15 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			}
 			else
 			{
-				const DSStateID stateID = stateInstance->GetID();
-				const SizeType stateAndPipelineDSHash = lib::HashCombine(stateInstance->GetID(), dsHash);
+				// This hash must contain descriptor set hash (not descriptor set type) from meta data, so that it will be different for different pipelines
+				// (f.e. if some uniform will be optimized away)
+				const SizeType stateAndPipelineDSHash = lib::HashCombine(metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx)), stateInstance->GetID());
 				if (!m_cachedDynamicDescriptorSets.contains(stateAndPipelineDSHash))
 				{
-					m_dynamicDescriptorSetInfos.emplace_back(DynamicDescriptorSetInfo(pipeline, static_cast<Uint32>(dsIdx), stateInstance));
+					m_dynamicDescriptorSetInfos.emplace_back(DynamicDescriptorSetInfo(pipeline, static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, stateInstance));
 					m_cachedDynamicDescriptorSets.emplace(stateAndPipelineDSHash);
 				}
-				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateID, foundState->dynamicOffsets));
+				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, foundState->dynamicOffsets));
 			}
 		}
 	}
@@ -256,14 +257,14 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 	return descriptorSetsToBind;
 }
 
-const PipelinePendingState::BoundDescriptorSetState* PipelinePendingState::GetBoundDescriptorSetState(SizeType hash) const
+const PipelinePendingState::BoundDescriptorSetState* PipelinePendingState::GetBoundDescriptorSetState(SizeType dsTypeHash) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto foundState = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
-										 [hash](const BoundDescriptorSetState& state)
+										 [dsTypeHash](const BoundDescriptorSetState& state)
 										 {
-											 return state.instance->GetDescriptorSetHash() == hash;
+											 return state.instance->GetDescriptorSetHash() == dsTypeHash;
 										 });
 
 	return foundState != std::cend(m_boundDescriptorSetStates) ? &(*foundState) : nullptr;
