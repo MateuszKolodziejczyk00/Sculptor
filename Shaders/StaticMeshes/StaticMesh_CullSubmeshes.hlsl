@@ -19,14 +19,6 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
-    // Initialize num value
-    if (input.globalID.x == 0)
-    {
-        submeshesWorkloadsNum[0] = 0;
-    }
-
-    AllMemoryBarrier();
-    
     const uint batchElementIdx = input.groupID.x;
 
     const uint meshIdx = batchElements[batchElementIdx].staticMeshIdx;
@@ -48,7 +40,7 @@ void CullSubmeshesCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(submeshesWorkloadsNum[0], visibleSubmeshesNum, outputBufferIdx);
+                InterlockedAdd(indirectDispatchSubmeshesParams[0], visibleSubmeshesNum, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
@@ -58,13 +50,8 @@ void CullSubmeshesCS(CS_INPUT input)
         }
     }
 
-    // Wait for all threads to wrie submeshes
-    AllMemoryBarrier();
-
     if(input.globalID.x == 0)
     {
-        const uint submeshesNum = submeshesWorkloadsNum[0];
-        indirectDispatchSubmeshesParams[0] = submeshesNum;
         indirectDispatchSubmeshesParams[1] = 1;
         indirectDispatchSubmeshesParams[2] = 1;
     }

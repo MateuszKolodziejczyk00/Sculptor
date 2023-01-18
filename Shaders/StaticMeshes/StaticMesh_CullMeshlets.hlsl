@@ -20,14 +20,6 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullMeshletsCS(CS_INPUT input)
 {
-    // Initialize num value
-    if (input.globalID.x == 0)
-    {
-        meshletsWorkloadsNum[0] = 0;
-    }
-
-    AllMemoryBarrier();
-    
     uint batchElementIdx;
     uint submeshIdx;
     UnpackSubmeshWorkload(submeshesWorkloads[input.groupID.x], batchElementIdx, submeshIdx);
@@ -49,7 +41,7 @@ void CullMeshletsCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(meshletsWorkloadsNum[0], visibleMeshletsNum, outputBufferIdx);
+                InterlockedAdd(indirectDispatchMeshletsParams[0], visibleMeshletsNum, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
@@ -58,13 +50,8 @@ void CullMeshletsCS(CS_INPUT input)
         }
     }
 
-    // Wait for all threads to write workloads
-    AllMemoryBarrier();
-
     if(input.globalID.x == 0)
     {
-        const uint meshletsNum = meshletsWorkloadsNum[0];
-        indirectDispatchMeshletsParams[0] = meshletsNum;
         indirectDispatchMeshletsParams[1] = 1;
         indirectDispatchMeshletsParams[2] = 1;
     }
