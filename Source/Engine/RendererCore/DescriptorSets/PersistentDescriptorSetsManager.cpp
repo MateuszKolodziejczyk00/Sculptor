@@ -21,13 +21,15 @@ void PersistentDescriptorSetsManager::UpdatePersistentDescriptors()
 	UpdateDescriptorSets();
 }
 
-rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& state) const
+rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const
 {
 	SPT_PROFILER_FUNCTION();
 
+	const PersistentDSHash dsHash = HashPersistentDS(pipeline, descriptorSetIdx, state);
+
 	rhi::RHIDescriptorSet ds;
 
-	const auto foundDescriptorSet = m_cachedDescriptorSets.find(state->GetID());
+	const auto foundDescriptorSet = m_cachedDescriptorSets.find(dsHash);
 	if (foundDescriptorSet != std::cend(m_cachedDescriptorSets))
 	{
 		ds = foundDescriptorSet->second;
@@ -35,7 +37,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const li
 	else
 	{
 		const lib::LockGuard lockGuard(m_createdDescriptorSetsLock);
-		ds = m_createdDescriptorSets.at(state->GetID());
+		ds = m_createdDescriptorSets.at(dsHash);
 	}
 
 	SPT_CHECK(ds.IsValid());
@@ -46,7 +48,9 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto foundDescriptorSet = m_cachedDescriptorSets.find(state->GetID());
+	const PersistentDSHash dsHash = HashPersistentDS(pipeline, descriptorSetIdx, state);
+
+	const auto foundDescriptorSet = m_cachedDescriptorSets.find(dsHash);
 
 	if (foundDescriptorSet != std::cend(m_cachedDescriptorSets))
 	{
@@ -56,7 +60,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 
 	const lib::LockGuard lockGuard(m_createdDescriptorSetsLock);
 
-	rhi::RHIDescriptorSet& createdDS = m_createdDescriptorSets[state->GetID()];
+	rhi::RHIDescriptorSet& createdDS = m_createdDescriptorSets[dsHash];
 
 	if (!createdDS.IsValid())
 	{
@@ -147,6 +151,13 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 			 {
 				 state->ClearDirtyFlag();
 			 });
+}
+
+PersistentDescriptorSetsManager::PersistentDSHash PersistentDescriptorSetsManager::HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const
+{
+	const smd::ShaderMetaData& metaData = pipeline->GetMetaDataRef();
+
+	return lib::HashCombine(metaData.GetDescriptorSetHash(descriptorSetIdx), state->GetID());
 }
 
 } // spt::rdr

@@ -26,13 +26,15 @@ class DescriptorSetState;
  */
 class PersistentDescriptorSetsManager
 {
+	using PersistentDSHash = SizeType;
+
 public:
 
 	PersistentDescriptorSetsManager();
 
 	void UpdatePersistentDescriptors();
 
-	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& state) const;
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const;
 
 	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state);
 
@@ -42,19 +44,21 @@ private:
 	void RemoveInvalidSets();
 	void UpdateDescriptorSets();
 
+	PersistentDSHash HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const;
+
 	/**
 	 * Descriptors created in current frame.
 	 * Access requires synchranization using lock
 	 */
-	lib::HashMap<DSStateID, rhi::RHIDescriptorSet>	m_createdDescriptorSets;
-	mutable lib::Lock								m_createdDescriptorSetsLock;
+	lib::HashMap<PersistentDSHash, rhi::RHIDescriptorSet>	m_createdDescriptorSets;
+	mutable lib::Lock										m_createdDescriptorSetsLock;
 
 	/**
 	 * Descriptors created in previous frames
 	 * Access doesn't require lock
 	 * Can be modified only during UpdatePersistentDescriptors
 	 */
-	lib::HashMap<DSStateID, rhi::RHIDescriptorSet> m_cachedDescriptorSets;
+	lib::HashMap<PersistentDSHash, rhi::RHIDescriptorSet> m_cachedDescriptorSets;
 
 	struct PersistentDSData
 	{
@@ -62,7 +66,7 @@ private:
 			: id(idxNone<DSStateID>)
 		{ }
 
-		// cached id from state (we need to cache it because otherwise after state is removed we wouldn't know which descriptor should be deleted
+		// cached id from state (we need to cache it because otherwise after state is removed we wouldn't know which descriptor should be deleted)
 		DSStateID							id;
 		lib::SharedPtr<smd::ShaderMetaData>	metaData;
 		lib::WeakPtr<DescriptorSetState>	state;

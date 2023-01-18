@@ -26,14 +26,14 @@ void DescriptorSetsManager::BeginFrame()
 	m_persistentDescriptorSets.UpdatePersistentDescriptors();
 }
 
-rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<DescriptorSetState>& descriptorSetState) const
+rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	// Descriptors without "Persistent" flag, should be accessed using render context
 	SPT_CHECK(lib::HasAnyFlag(descriptorSetState->GetFlags(), EDescriptorSetStateFlags::Persistent));
 	
-	return m_persistentDescriptorSets.GetDescriptorSet(descriptorSetState);
+	return m_persistentDescriptorSets.GetDescriptorSet(pipeline, descriptorSetIdx, descriptorSetState);
 }
 
 rhi::RHIDescriptorSet DescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState)

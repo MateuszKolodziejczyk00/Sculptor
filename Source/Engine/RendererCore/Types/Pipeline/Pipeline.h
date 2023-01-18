@@ -23,7 +23,8 @@ public:
 
 	Pipeline(const lib::SharedRef<Shader>& shader);
 
-	SPT_NODISCARD const lib::SharedRef<smd::ShaderMetaData>& GetMetaData() const;
+	SPT_NODISCARD const lib::SharedRef<smd::ShaderMetaData>&	GetMetaData() const;
+	SPT_NODISCARD const smd::ShaderMetaData&					GetMetaDataRef() const;
 
 protected:
 

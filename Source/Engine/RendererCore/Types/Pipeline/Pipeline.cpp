@@ -166,6 +166,11 @@ const lib::SharedRef<smd::ShaderMetaData>& Pipeline::GetMetaData() const
 	return m_metaData;
 }
 
+const smd::ShaderMetaData& Pipeline::GetMetaDataRef() const
+{
+	return *m_metaData;
+}
+
 rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const
 {
 	SPT_PROFILER_FUNCTION();
