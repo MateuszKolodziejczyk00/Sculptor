@@ -6,6 +6,8 @@
 namespace spt::rsc
 {
 
+SPT_DEFINE_LOG_CATEGORY(LogMeshBuilder, true);
+
 MeshBuilder::MeshBuilder()
 {
 	m_geometryData.reserve(1024 * 1024 * 8);
@@ -146,13 +148,13 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size(), {});
 	submeshBuildData.submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
 
-	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 1, sizeof(Uint8), meshletPrimitives.size(), {});
+	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 4, sizeof(Uint8) * 3, meshletPrimitives.size() / 4, { 0, 1, 2, 2 });
 	submeshBuildData.submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
 
 	const SizeType submeshMeshletsBegin = m_meshlets.size();
 	submeshBuildData.submesh.meshletsBeginIdx = static_cast<Uint32>(submeshMeshletsBegin);
 	submeshBuildData.submesh.meshletsNum = static_cast<Uint32>(finalMeshletsNum);
-		
+
 	m_meshlets.resize(m_meshlets.size() + finalMeshletsNum);
 	for (SizeType meshletIdx = 0; meshletIdx < finalMeshletsNum; ++meshletIdx)
 	{

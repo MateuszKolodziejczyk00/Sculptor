@@ -27,7 +27,7 @@ StaticMeshBatch StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& 
 		batchElement.instanceIdx = static_cast<Uint32>(transformHandle.transformSuballocation.GetOffset() / sizeof(math::Affine3f));
 		batchElement.staticMeshIdx = meshRenderingDef.staticMeshIdx;
 		batch.batchElements.emplace_back(batchElement);
-		
+
 		batch.maxSubmeshesNum	+= meshRenderingDef.maxSubmeshesNum;
 		batch.maxMeshletsNum	+= meshRenderingDef.maxMeshletsNum;
 		batch.maxTrianglesNum	+= meshRenderingDef.maxTrianglesNum;

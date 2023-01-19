@@ -26,9 +26,9 @@ void CullMeshletsCS(CS_INPUT input)
 
     const SubmeshGPUData submesh = submeshes[submeshIdx];
     
-    for (uint idx = input.localID.x; idx < submesh.meshletsNum; idx += WORKLOAD_SIZE)
+    for (uint localMeshletIdx = input.localID.x; localMeshletIdx < submesh.meshletsNum; localMeshletIdx += WORKLOAD_SIZE)
     {
-        const uint globalMeshletIdx = submesh.meshletsBeginIdx + idx;
+        const uint globalMeshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
         
         const bool isMeshletVisible = true;
 
@@ -46,7 +46,7 @@ void CullMeshletsCS(CS_INPUT input)
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
 
-            meshletsWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, globalMeshletIdx);
+            meshletsWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, submeshIdx, localMeshletIdx);
         }
     }
 

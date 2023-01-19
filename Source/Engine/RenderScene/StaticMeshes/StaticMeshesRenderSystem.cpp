@@ -56,13 +56,24 @@ DS_BEGIN(, StaticMeshMeshletsWorkloadsDS, rg::RGDescriptorSetState<StaticMeshMes
 DS_END();
 
 
+DS_BEGIN(, StaticMeshTrianglesWorkloadsDS, rg::RGDescriptorSetState<StaticMeshTrianglesWorkloadsDS>, rhi::EShaderStageFlags::Compute)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),		trianglesWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			indirectDispatchTrianglesParams)
+DS_END();
+
+
 struct StaticMeshBatchRenderingData
 {
 	lib::SharedPtr<StaticMeshBatchDS> batchDS;
+	
 	lib::SharedPtr<StaticMeshSubmeshesWorkloadsDS> submeshesWorkloadsDS;
-	lib::SharedPtr<StaticMeshMeshletsWorkloadsDS> meshletsWorkloadsDS;
-
 	rg::RGBufferViewHandle submeshesWorkloadsDispatchArgsBuffer;
+	
+	lib::SharedPtr<StaticMeshMeshletsWorkloadsDS> meshletsWorkloadsDS;
+	rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer;
+	
+	lib::SharedPtr<StaticMeshTrianglesWorkloadsDS> trianglesWorkloadsDS;
+	rg::RGBufferViewHandle trianglesWorkloadsDispatchArgsBuffer;
 };
 
 namespace utils
@@ -108,10 +119,25 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 
 	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
 	const rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchMeshletsParamsBuffer"), indirectDispatchMeshletsParamsBufferDef, workloadBuffersAllocation);
+	batchRenderingData.meshletsWorkloadsDispatchArgsBuffer = meshletsWorkloadsDispatchArgsBuffer;
 	meshletsWorkloadsDS->indirectDispatchMeshletsParams = meshletsWorkloadsDispatchArgsBuffer;
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDispatchMeshletsParams"), meshletsWorkloadsDispatchArgsBuffer, 0, sizeof(Uint32), 0);
 
 	batchRenderingData.meshletsWorkloadsDS = meshletsWorkloadsDS;
+
+	// Create buffers for triangles workloads
+	const lib::SharedRef<StaticMeshTrianglesWorkloadsDS> trianglesWorkloadsDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshTrianglesWorkloadsDS>(RENDERER_RESOURCE_NAME("SMTrianglesWorkloadsDS"));
+
+	const rhi::BufferDefinition trianglesWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxTrianglesNum, rhi::EBufferUsage::Storage);
+	trianglesWorkloadsDS->trianglesWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMTrianglesWorkloadsBuffer"), trianglesWorkloadsBufferDef, workloadBuffersAllocation);
+
+	const rhi::BufferDefinition indirectDispatchTrianglesParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+	const rg::RGBufferViewHandle trianglesWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchtrianglesParamsBuffer"), indirectDispatchTrianglesParamsBufferDef, workloadBuffersAllocation);
+	batchRenderingData.trianglesWorkloadsDispatchArgsBuffer = trianglesWorkloadsDispatchArgsBuffer;
+	trianglesWorkloadsDS->indirectDispatchTrianglesParams = trianglesWorkloadsDispatchArgsBuffer;
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDispatchTrianglesParams"), trianglesWorkloadsDispatchArgsBuffer, 0, sizeof(Uint32), 0);
+
+	batchRenderingData.trianglesWorkloadsDS = trianglesWorkloadsDS;
 
 	return batchRenderingData;
 }
@@ -134,6 +160,13 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullMeshletsCS"));
 		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullMeshlets.hlsl", compilationSettings);
 		cullMeshletsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullMeshletsPipeline"), cullSubmeshesShader);
+	}
+
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullTrianglesCS"));
+		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullTriangles.hlsl", compilationSettings);
+		cullTrianglesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullTrianglesPipeline"), cullSubmeshesShader);
 	}
 
 	//{
@@ -181,6 +214,16 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 															 lib::Ref(batchRenderingData.batchDS),
 															 lib::Ref(batchRenderingData.submeshesWorkloadsDS),
 															 lib::Ref(batchRenderingData.meshletsWorkloadsDS)));
+
+		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Triangles"),
+									  cullTrianglesPipeline,
+									  batchRenderingData.meshletsWorkloadsDispatchArgsBuffer,
+									  0,
+									  rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+															 lib::Ref(batchRenderingData.batchDS),
+															 lib::Ref(batchRenderingData.meshletsWorkloadsDS),
+															 lib::Ref(batchRenderingData.trianglesWorkloadsDS),
+															 lib::Ref(GeometryManager::Get().GetGeometryDSState())));
 	}
 
 	/*

@@ -74,7 +74,7 @@ void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Mode
 			SetTangents(*tangentsAccessor, model);
 		}
 
-		const static lib::String uvsAccessorName = "TEXCOOORD_0";
+		const static lib::String uvsAccessorName = "TEXCOORD_0";
 		if (const tinygltf::Accessor* uvsAccessor = GetAttributeAccessor(prim, model, uvsAccessorName))
 		{
 			SetUVs(*uvsAccessor, model);
