@@ -69,7 +69,7 @@ BEGIN_SHADER_STRUCT(, MeshletGPUData)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(, StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedDataDS>, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(, StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedDataDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Compute))
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPUData>),	staticMeshes)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SubmeshGPUData>),		submeshes)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<MeshletGPUData>),		meshlets)

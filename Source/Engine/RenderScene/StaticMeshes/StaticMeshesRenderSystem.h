@@ -27,6 +27,8 @@ private:
 	rdr::PipelineStateID cullSubmeshesPipeline;
 	rdr::PipelineStateID cullMeshletsPipeline;
 	rdr::PipelineStateID cullTrianglesPipeline;
+	
+	rdr::PipelineStateID forwadOpaqueShadingPipeline;
 };
 
 } // spt::rsc

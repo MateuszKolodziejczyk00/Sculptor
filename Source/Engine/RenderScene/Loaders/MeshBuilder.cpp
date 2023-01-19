@@ -145,10 +145,10 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 																	meshletMaxTriangles,
 																	coneWeigth);
 
-	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size(), {});
+	const SizeType meshletVertsOffset = AppendData<Uint32, Uint32>(reinterpret_cast<const unsigned char*>(meshletVertices.data()), 1, sizeof(Uint32), meshletVertices.size());
 	submeshBuildData.submesh.meshletsVerticesDataOffset = static_cast<Uint32>(meshletVertsOffset);
 
-	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 4, sizeof(Uint8) * 3, meshletPrimitives.size() / 4, { 0, 1, 2, 2 });
+	const SizeType meshletPrimsOffset = AppendData<Uint8, Uint8>(reinterpret_cast<const unsigned char*>(meshletPrimitives.data()), 1, sizeof(Uint8), meshletPrimitives.size());
 	submeshBuildData.submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
 
 	const SizeType submeshMeshletsBegin = m_meshlets.size();
@@ -160,8 +160,8 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 	{
 		const SizeType meshletBuildDataIdx = submeshMeshletsBegin + meshletIdx;
 		m_meshlets[meshletBuildDataIdx].triangleCount = moMeshlets[meshletIdx].triangle_count;
-		m_meshlets[meshletBuildDataIdx].meshletPrimitivesOffset = moMeshlets[meshletIdx].triangle_offset;
-		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset = moMeshlets[meshletIdx].vertex_offset;
+		m_meshlets[meshletBuildDataIdx].meshletPrimitivesOffset = (moMeshlets[meshletIdx].triangle_offset);
+		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset = moMeshlets[meshletIdx].vertex_offset * 4;
 	}
 }
 

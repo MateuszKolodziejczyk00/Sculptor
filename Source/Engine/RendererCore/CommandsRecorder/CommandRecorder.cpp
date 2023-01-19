@@ -147,7 +147,28 @@ void CommandRecorder::SetScissor(const math::AlignedBox2u& renderingScissor)
 						 });
 }
 
-void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+void CommandRecorder::DrawIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_pipelineState.EnqueueFlushDirtyDSForGraphicsPipeline(m_commandQueue);
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("DrawIndirectCount Command");
+
+							 cmdBuffer->GetRHI().DrawIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
+						 });
+}
+
+void CommandRecorder::DrawIndirectCount(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, const BufferView& countBufferView, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	DrawIndirectCount(drawsBufferView.GetBuffer(), drawsBufferView.GetOffset() + drawsOffset, drawsStride, countBufferView.GetBuffer(), countBufferView.GetOffset() + countOffset, maxDrawsCount);
+}
+
+void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -157,15 +178,15 @@ void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Ui
 						 {
 							 SPT_PROFILER_SCOPE("DrawIndirect Command");
 
-							 cmdBuffer->GetRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
+							 cmdBuffer->GetRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
 						 });
 }
 
-void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, const BufferView& countBufferView, Uint64 countOffset, Uint32 maxDrawsCount)
+void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
 	SPT_PROFILER_FUNCTION();
 
-	DrawIndirect(drawsBufferView.GetBuffer(), drawsBufferView.GetOffset() + drawsOffset, drawsStride, countBufferView.GetBuffer(), countBufferView.GetOffset() + countOffset, maxDrawsCount);
+	DrawIndirect(drawsBufferView.GetBuffer(), drawsBufferView.GetOffset() + drawsOffset, drawsStride, drawsCount);
 }
 
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)

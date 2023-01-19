@@ -36,28 +36,6 @@ void CullTrianglesCS(CS_INPUT input)
 
     if(triangleIdx < meshlet.triangleCount)
     {
-        const uint triangleStride = 4;
-        const uint primitivesOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset + triangleIdx * triangleStride;
-
-        const uint meshletPrimitiveData = geometryData.Load<uint>(primitivesOffset);
-
-        const uint primitiveIdxMask = 0x000000ff;
-        const uint prim0 = meshletPrimitiveData & primitiveIdxMask;
-        const uint prim1 = (meshletPrimitiveData >> 8) & primitiveIdxMask;
-        const uint prim2 = (meshletPrimitiveData >> 16) & primitiveIdxMask;
-        
-        const uint verticesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
-
-        const uint vertex0 = geometryData.Load<uint>(verticesOffset + (prim0 << 2));
-        const uint vertex1 = geometryData.Load<uint>(verticesOffset + (prim1 << 2));
-        const uint vertex2 = geometryData.Load<uint>(verticesOffset + (prim2 << 2));
-
-        const uint locationsOffset = submesh.locationsOffset;
-
-        const float3 location0 = geometryData.Load<float3>(locationsOffset + vertex0 * 12);
-        const float3 location1 = geometryData.Load<float3>(locationsOffset + vertex1 * 12);
-        const float3 location2 = geometryData.Load<float3>(locationsOffset + vertex2 * 12);
-        
         const bool isTriangleVisible = true;
 
         if(isTriangleVisible)
@@ -69,10 +47,10 @@ void CullTrianglesCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(indirectDispatchTrianglesParams[0], visibleTrianglesNum, outputBufferIdx);
+                InterlockedAdd(indirectDrawCommandParams[0].vertexCount, visibleTrianglesNum * 3, outputBufferIdx);
             }
 
-            outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(trianglesVisibleBallot, WaveGetLaneIndex());
+            outputBufferIdx = WaveReadLaneFirst(outputBufferIdx / 3) + GetCompactedIndex(trianglesVisibleBallot, WaveGetLaneIndex());
 
             trianglesWorkloads[outputBufferIdx] = PackTriangleWorkload(batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
         }
@@ -80,7 +58,8 @@ void CullTrianglesCS(CS_INPUT input)
 
     if(input.globalID.x == 0)
     {
-        indirectDispatchTrianglesParams[1] = 1;
-        indirectDispatchTrianglesParams[2] = 1;
+        indirectDrawCommandParams[0].instanceCount    = 1;
+        indirectDrawCommandParams[0].firstVertex      = 0;
+        indirectDrawCommandParams[0].firstInstance    = 0;
     }
 }
