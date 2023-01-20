@@ -141,6 +141,7 @@ void SculptorEdApplication::OnRun()
 
 		scui::ApplicationUI::Draw(context);
 		ImGui::Render();
+		
 		RenderFrame(renderer);
 
 		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

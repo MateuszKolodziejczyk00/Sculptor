@@ -29,13 +29,18 @@ void SandboxUILayer::DrawUI()
 	
 	ImGui::Begin("Scene");
 
-	const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
+	const ui::TextureID sceneTexture = m_renderer->GetUITextureID();
+	if (sceneTexture)
+	{
+		const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
 
-	m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
+		m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
 
-	const math::Vector2u fullTextureResolution = m_renderer->GetDisplayTextureResolution();
-	const math::Vector2f imageMaxUV = sceneContentSize.array() / fullTextureResolution.cast<Real32>().array();
-	ImGui::Image(m_renderer->GetUITextureID(), sceneContentSize, ImVec2{}, ImVec2{ imageMaxUV.x(), imageMaxUV.y() });
+		const math::Vector2u fullTextureResolution = m_renderer->GetDisplayTextureResolution();
+		const math::Vector2f imageMaxUV = sceneContentSize.array() / fullTextureResolution.cast<Real32>().array();
+		ImGui::Image(sceneTexture, sceneContentSize, ImVec2{}, ImVec2{ imageMaxUV.x(), imageMaxUV.y() });
+	}
+
 	ImGui::End();
 
 	ImGui::SetNextWindowClass(&windowsClass);

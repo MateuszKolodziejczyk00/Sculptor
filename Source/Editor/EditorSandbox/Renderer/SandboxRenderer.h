@@ -65,11 +65,12 @@ private:
 
 	void InitializeRenderScene();
 
+	void UpdateSceneUITextureForView(const rsc::RenderView& renderView);
+
 	lib::SharedPtr<rdr::Window>			m_window;
 
-	lib::SharedPtr<rdr::Texture>		m_displayTexture;
-	lib::SharedPtr<rdr::TextureView>	m_displayTextureView;
-	ui::TextureID						m_uiTextureID;
+	lib::SharedPtr<rdr::Texture>		m_sceneUITexture;
+	lib::SharedPtr<rdr::TextureView>	m_sceneUITextureView;
 
 	rsc::RenderScene					m_renderScene;
 	lib::UniquePtr<rsc::RenderView>		m_renderView;
