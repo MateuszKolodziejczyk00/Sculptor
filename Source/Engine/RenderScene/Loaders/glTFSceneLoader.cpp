@@ -214,22 +214,26 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);
-		const math::AlignedScaling3f nodeScale(math::Map<const math::Vector3d>(node.scale.data()).cast<float>());
-		transform *= nodeScale;
+		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
+		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
+		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
+		transform *= remappedScale;
 	}
 
 	if (!node.rotation.empty())
 	{
 		SPT_CHECK(node.rotation.size() == 4);
-		const math::Quaternionf nodeQuaternion(math::Map<const math::Vector4d>(node.rotation.data()).cast<float>());
-		transform *= nodeQuaternion.matrix();
+		const math::Vector4f nodeQuaternion = math::Map<const math::Vector4d>(node.rotation.data()).cast<float>();
+		const math::Quaternionf remappedQuaternion(math::Vector4f(nodeQuaternion.z(), nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.w()));
+		transform *= remappedQuaternion.matrix();
 	}
 	
 	if (!node.translation.empty())
 	{
 		SPT_CHECK(node.translation.size() == 3);
-		const math::Translation3f nodeTranslation(math::Map<const math::Vector3d>(node.translation.data()).cast<float>());
-		transform *= nodeTranslation;
+		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
+		const math::Translation3f remappedTranslation(nodeTranslation.z(), nodeTranslation.x(), nodeTranslation.y());
+		transform *= remappedTranslation;
 	}
 
 	return transform;

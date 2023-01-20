@@ -31,9 +31,16 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	const SizeType meshletsAllocationStartIdx = meshletsSuballocation.GetOffset() / sizeof(MeshletGPUData);
 
 	std::for_each(std::begin(submeshes), std::end(submeshes),
-				  [meshletsAllocationStartIdx](SubmeshGPUData& submesh)
+				  [meshletsAllocationStartIdx, geometryDataSuballocation](SubmeshGPUData& submesh)
 				  {
-					  submesh.meshletsBeginIdx += static_cast<Uint32>(meshletsAllocationStartIdx);
+					  submesh.meshletsBeginIdx				+= static_cast<Uint32>(meshletsAllocationStartIdx);
+					  submesh.indicesOffset					+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.locationsOffset				+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.normalsOffset					+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.tangentsOffset				+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.uvsOffset						+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.meshletsPrimitivesDataOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.meshletsVerticesDataOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
 				  });
 
 	const rhi::SuballocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(SubmeshGPUData), rhi::EBufferSuballocationFlags::PreferMinMemory);
@@ -47,7 +54,7 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	staticMesh.submeshesNum			= static_cast<Uint32>(submeshes.size());
 	
 	const rhi::SuballocationDefinition staticMeshSuballocationDef(staticMeshDataSize, sizeof(StaticMeshGPUData), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
-	const rhi::RHISuballocation staticMeshSuballocation = m_submeshesBuffer->GetRHI().CreateSuballocation(staticMeshSuballocationDef);
+	const rhi::RHISuballocation staticMeshSuballocation = m_staticMeshesBuffer->GetRHI().CreateSuballocation(staticMeshSuballocationDef);
 
 	gfx::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(meshlets.data()),		meshletsDataSize);
 	gfx::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(submeshes.data()),	submeshesDataSize);
