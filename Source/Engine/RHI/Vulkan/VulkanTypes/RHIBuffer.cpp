@@ -224,7 +224,7 @@ rhi::RHISuballocation RHIBuffer::CreateSuballocation(const rhi::SuballocationDef
 
 	// alignment in VMA must be power of 2
 	const Uint64 properAlignment = math::Utils::IsPowerOf2(definition.alignment) ? definition.alignment : math::Utils::RoundDownToPowerOf2(definition.alignment);
-	const Uint64 missingAlignment = std::max<Uint64>(definition.alignment - properAlignment, properAlignment);
+	const Uint64 missingAlignment = definition.alignment != properAlignment ? std::max<Uint64>(definition.alignment - properAlignment, properAlignment) : 0;
 	const Uint64 properAllocationSize = definition.size + missingAlignment;
 
 	VmaVirtualAllocationCreateInfo virtualAllocationDef{};

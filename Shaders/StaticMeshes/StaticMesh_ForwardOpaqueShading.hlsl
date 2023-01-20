@@ -10,6 +10,8 @@
 
 [[descriptor_set(StaticMeshTrianglesWorkloadsInputDS, 4)]]
 
+[[descriptor_set(RenderSceneDS, 5)]]
+
 
 struct VS_INPUT
 {
@@ -37,7 +39,8 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     uint triangleIdx;
     UnpackTriangleWorkload(trianglesWorkloads[workloadIdx], batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
     
-    const float4x4 instanceTransform = instanceTransforms[batchElements[batchElementIdx].instanceIdx];
+    const RenderEntityGPUData entityData = u_renderEntitiesData[batchElements[batchElementIdx].instanceIdx];
+    const float4x4 instanceTransform = entityData.transform;
 
     const SubmeshGPUData submesh = submeshes[submeshIdx];
     

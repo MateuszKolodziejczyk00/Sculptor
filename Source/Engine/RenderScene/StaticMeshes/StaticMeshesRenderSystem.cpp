@@ -266,7 +266,7 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 	const StaticMeshBatchesViewData& viewBatches = viewSpec.GetData().Get<StaticMeshBatchesViewData>();
 
 	const lib::SharedRef<StaticMeshForwardOpaqueDS> smDrawOpaqueDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshForwardOpaqueDS>(RENDERER_RESOURCE_NAME("StaticMeshForwardOpaqueDS"));
-	smDrawOpaqueDS->instanceTransforms = renderScene.GetTransformsBuffer()->CreateFullView();
+	smDrawOpaqueDS->instanceTransforms = renderScene.GetRenderEntitiesBuffer()->CreateFullView();
 	smDrawOpaqueDS->sceneView = viewSpec.GetRenderView().GenerateViewData();
 
 	const StaticMeshBatchRenderingData& batch = viewBatches.batch;
@@ -281,7 +281,8 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 												   lib::Ref(batch.batchDS),
 												   smDrawOpaqueDS,
 												   lib::Ref(batch.trianglesWorkloadsInputDS),
-												   unifiedGeometryDS),
+												   unifiedGeometryDS,
+												   renderScene.GetRenderSceneDS()),
 							std::tie(drawParams),
 							[drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{

@@ -16,15 +16,15 @@ StaticMeshBatch StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& 
 
 	StaticMeshBatch batch;
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityTransformHandle>();
-	for (const auto& [entity, staticMeshRenderData, transformHandle] : meshesView.each())
+	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityGPUDataHandle>();
+	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
 	{
 		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
 		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
 
 		StaticMeshBatchElement batchElement;
-		batchElement.instanceIdx = static_cast<Uint32>(transformHandle.transformSuballocation.GetOffset() / sizeof(math::Affine3f));
+		batchElement.instanceIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
 		batchElement.staticMeshIdx = meshRenderingDef.staticMeshIdx;
 		batch.batchElements.emplace_back(batchElement);
 

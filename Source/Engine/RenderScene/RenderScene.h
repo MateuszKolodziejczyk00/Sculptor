@@ -6,6 +6,9 @@
 #include "RenderSceneRegistry.h"
 #include "RenderSystem.h"
 #include "PrimitivesSystem.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
 
 namespace spt::rsc
 {
@@ -19,13 +22,29 @@ struct RenderInstanceData
 };
 
 
-struct EntityTransformHandle
-{
-	EntityTransformHandle() = default;
+// we don't need 64 bytes for now, but we for sure will need more than 32, so 64 will be fine to properly align suballocations
+BEGIN_ALIGNED_SHADER_STRUCT(, 64, RenderEntityGPUData)
+	SHADER_STRUCT_FIELD(math::Matrix4f, transform)
+END_SHADER_STRUCT();
 
-	explicit EntityTransformHandle(const rhi::RHISuballocation& inSuballocation)
+
+DS_BEGIN(, RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Compute))
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>), u_renderEntitiesData)
+DS_END();
+
+
+struct EntityGPUDataHandle
+{
+	EntityGPUDataHandle() = default;
+
+	explicit EntityGPUDataHandle(const rhi::RHISuballocation& inSuballocation)
 		: transformSuballocation(inSuballocation)
 	{ }
+
+	Uint64 GetEntityIdx() const
+	{
+		return transformSuballocation.GetOffset() / sizeof(RenderEntityGPUData);
+	}
 
 	rhi::RHISuballocation transformSuballocation;
 };
@@ -188,13 +207,15 @@ public:
 	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
-	Uint64 GetTransformIdx(RenderSceneEntityHandle entity) const;
+	Uint64 GetEntityIdx(RenderSceneEntityHandle entity) const;
 
 	RenderSceneEntityHandle CreateViewEntity();
 
 	// Rendering ============================================================
 
-	const lib::SharedRef<rdr::Buffer>& GetTransformsBuffer() const;
+	const lib::SharedRef<rdr::Buffer>& GetRenderEntitiesBuffer() const;
+
+	const lib::SharedRef<RenderSceneDS>& GetRenderSceneDS() const;
 	
 	// Render Systems =======================================================
 
@@ -250,14 +271,17 @@ public:
 
 private:
 
-	lib::SharedRef<rdr::Buffer> CreateTransformsBuffer() const;
+	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
+	lib::SharedRef<RenderSceneDS> CreateRenderSceneDS() const;
 
 	void InitializeRenderSystem(RenderSystem& system);
 	void DeinitializeRenderSystem(RenderSystem& system);
 
 	RenderSceneRegistry m_registry;
 
-	lib::SharedRef<rdr::Buffer> m_transformsBuffer;
+	lib::SharedRef<rdr::Buffer> m_renderEntitiesBuffer;
+
+	lib::SharedRef<RenderSceneDS> m_renderSceneDS;
 
 	PrimitiveSystemsRegistry m_primitiveSystems;
 
