@@ -149,7 +149,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 ui::TextureID SandboxRenderer::GetUITextureID() const
 {
-	return m_uiTextureID;
+	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTextureView));
 }
 
 const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const

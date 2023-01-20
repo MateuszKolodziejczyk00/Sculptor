@@ -20,9 +20,16 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 	SPT_CHECK(context.IsValid());
 	SPT_CHECK(!IsValid());
 
-	InitializeDescriptorPool();
-
 	const Uint32 imagesNum = window.GetSwapchainImagesNum();
+
+	// First descriptor pool will be for im gui internal objects. Next ones will be swapped every frame
+	const Uint32 descriptorPools = imagesNum + 1; 
+	for (Uint32 i = 0; i < imagesNum + 1; ++i)
+	{
+		m_uiDescriptorPools.emplace_back(InitializeDescriptorPool());
+	}
+
+	SPT_CHECK(m_uiDescriptorPools.size() >= 2);
 	
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
@@ -33,7 +40,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
     initInfo.QueueFamily = device.GetGfxQueueFamilyIdx();
     initInfo.Queue = device.GetGfxQueueHandle();
     initInfo.PipelineCache = VK_NULL_HANDLE;
-	initInfo.DescriptorPool = m_uiDescriptorPool.GetHandle();
+	initInfo.DescriptorPool = m_uiDescriptorPools[0].GetHandle();
     initInfo.MinImageCount = imagesNum;
     initInfo.ImageCount = imagesNum;
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -47,6 +54,8 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 	SPT_CHECK(success);
 
 	m_context = context;
+
+	m_lastPoolIdx = 0;
 }
 
 void RHIUIBackend::ReleaseRHI()
@@ -56,7 +65,12 @@ void RHIUIBackend::ReleaseRHI()
 	SPT_CHECK(IsValid());
 
 	ImGui_ImplVulkan_Shutdown();
-	m_uiDescriptorPool.Release();
+
+	for (DescriptorPool& pool : m_uiDescriptorPools)
+	{
+		pool.Release();
+	}
+
 	m_context.Reset();
 }
 
@@ -94,6 +108,17 @@ void RHIUIBackend::BeginFrame()
 	SPT_CHECK(IsValid());
 
 	ImGui_ImplVulkan_NewFrame();
+
+	SizeType descriptorPoolIdxThisFrame = ++m_lastPoolIdx;
+	if (descriptorPoolIdxThisFrame == m_uiDescriptorPools.size())
+	{
+		descriptorPoolIdxThisFrame = 1; // 0 idx is reserved for im gui. We're looping from 1
+	}
+
+	m_uiDescriptorPools[descriptorPoolIdxThisFrame].ResetPool();
+	ImGui_ImplVulkan_SwapDescriptorPool(m_uiDescriptorPools[descriptorPoolIdxThisFrame].GetHandle());
+
+	m_lastPoolIdx = descriptorPoolIdxThisFrame;
 }
 
 void RHIUIBackend::Render(const RHICommandBuffer& cmdBuffer)
@@ -121,32 +146,25 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 	return ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void RHIUIBackend::InitializeDescriptorPool()
+DescriptorPool RHIUIBackend::InitializeDescriptorPool()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const VkDescriptorPoolCreateFlags flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	DescriptorPool uiDescriptorPool;
 
-	const Uint32 poolSizeForDescriptorType = 512;
+	const VkDescriptorPoolCreateFlags flags = 0;
 
-	const lib::StaticArray<VkDescriptorPoolSize, 11> poolSizes =
+	const Uint32 poolSizeForDescriptorType = 128;
+
+	const lib::StaticArray<VkDescriptorPoolSize, 1> poolSizes =
 	{
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER, poolSizeForDescriptorType },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, poolSizeForDescriptorType },
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, poolSizeForDescriptorType }
 	};
 
 	constexpr Uint32 maxSetsNum = static_cast<Uint32>(poolSizes.size()) * poolSizeForDescriptorType;
 
-	m_uiDescriptorPool.Initialize(flags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
+	uiDescriptorPool.Initialize(flags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
+	return uiDescriptorPool;
 }
 
 } // spt::vulkan

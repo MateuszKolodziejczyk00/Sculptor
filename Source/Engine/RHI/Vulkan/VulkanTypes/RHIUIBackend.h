@@ -40,11 +40,12 @@ public:
 
 private:
 
-	void				InitializeDescriptorPool();
+	DescriptorPool		InitializeDescriptorPool();
 
-	ui::UIContext		m_context;
+	ui::UIContext m_context;
 
-	DescriptorPool		m_uiDescriptorPool;
+	lib::DynamicArray<DescriptorPool> m_uiDescriptorPools;
+	SizeType m_lastPoolIdx;
 };
 
 } // spt::vulkan
