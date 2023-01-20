@@ -113,10 +113,10 @@ void GPUCrashTrackerInstance::GPUCrashDump(const void* gpuCrashDump, const Uint3
     {
         // Print information about the GPU page fault.
         SPT_LOG_WARN(GPUCrashTracker, "GPU page fault at {0}", pageFaultInfo.faultingGpuVA);
-        SPT_LOG_WARN(GPUCrashTracker, "Fault Type: {0}", pageFaultInfo.faultType);
-        SPT_LOG_WARN(GPUCrashTracker, "Access Type: {0}", pageFaultInfo.accessType);
-        SPT_LOG_WARN(GPUCrashTracker, "Engine: {0}", pageFaultInfo.engine);
-        SPT_LOG_WARN(GPUCrashTracker, "Client: {0}", pageFaultInfo.client);
+        SPT_LOG_WARN(GPUCrashTracker, "Fault Type: {0}", static_cast<Uint32>(pageFaultInfo.faultType));
+        SPT_LOG_WARN(GPUCrashTracker, "Access Type: {0}", static_cast<Uint32>(pageFaultInfo.accessType));
+        SPT_LOG_WARN(GPUCrashTracker, "Engine: {0}", static_cast<Uint32>(pageFaultInfo.engine));
+        SPT_LOG_WARN(GPUCrashTracker, "Client: {0}", static_cast<Uint32>(pageFaultInfo.client));
         if (pageFaultInfo.bHasResourceInfo)
         {
             SPT_LOG_WARN(GPUCrashTracker, "Fault in resource starting at {0}", pageFaultInfo.resourceInfo.gpuVa);
@@ -351,7 +351,7 @@ void GPUCrashTracker::SaveGPUCrashDump()
     }
     else
     {
-        SPT_LOG_FATAL(GPUCrashTracker, "Unexpected crash dump status after timeout: {0}", status);
+        SPT_LOG_FATAL(GPUCrashTracker, "Unexpected crash dump status after timeout: {0}", static_cast<Uint32>(status));
     }
 #endif // WITH_NSIGHT_AFTERMATH
 }
