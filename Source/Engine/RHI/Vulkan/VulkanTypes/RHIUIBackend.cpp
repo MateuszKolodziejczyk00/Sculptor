@@ -24,7 +24,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
 
 	// First descriptor pool will be for im gui internal objects. Next ones will be swapped every frame
 	const Uint32 descriptorPools = imagesNum + 1; 
-	for (Uint32 i = 0; i < imagesNum + 1; ++i)
+	for (Uint32 i = 0; i < descriptorPools; ++i)
 	{
 		m_uiDescriptorPools.emplace_back(InitializeDescriptorPool());
 	}
