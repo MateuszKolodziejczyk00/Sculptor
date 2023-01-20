@@ -1,6 +1,7 @@
 #include "RHIBuffer.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Memory/MemoryManager.h"
+#include "MathUtils.h"
 
 namespace spt::vulkan
 {
@@ -221,17 +222,26 @@ rhi::RHISuballocation RHIBuffer::CreateSuballocation(const rhi::SuballocationDef
 	SPT_CHECK(AllowsSuballocations());
 	SPT_CHECK(definition.size > 0 && definition.size < GetSize());
 
+	// alignment in VMA must be power of 2
+	const Uint64 properAlignment = math::Utils::IsPowerOf2(definition.alignment) ? definition.alignment : math::Utils::RoundDownToPowerOf2(definition.alignment);
+	const Uint64 missingAlignment = std::max<Uint64>(definition.alignment - properAlignment, properAlignment);
+	const Uint64 properAllocationSize = definition.size + missingAlignment;
+
 	VmaVirtualAllocationCreateInfo virtualAllocationDef{};
-	virtualAllocationDef.alignment = definition.alignment;
-	virtualAllocationDef.size = definition.size;
+	virtualAllocationDef.alignment = properAlignment;
+	virtualAllocationDef.size = properAllocationSize;
 	virtualAllocationDef.flags = priv::GetVMAVirtualAllocationFlags(definition.flags);
 
 	VmaVirtualAllocation virtualAllocation = VK_NULL_HANDLE;
 	VkDeviceSize offset = 0;
-	vmaVirtualAllocate(m_allocatorVirtualBlock, &virtualAllocationDef, &virtualAllocation, &offset);
+	const VkResult allocationResult = vmaVirtualAllocate(m_allocatorVirtualBlock, &virtualAllocationDef, &virtualAllocation, &offset);
+
+	SPT_CHECK(virtualAllocation != VK_NULL_HANDLE || allocationResult == VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+	const Uint64 aligndDataOffset = offset == 0 ? offset : math::Utils::RoundUp(offset, definition.alignment);
 
 	SPT_STATIC_CHECK(sizeof(VmaVirtualAllocation) == sizeof(Uint64));
-	return virtualAllocation != VK_NULL_HANDLE ? rhi::RHISuballocation(reinterpret_cast<Uint64>(virtualAllocation), offset) : rhi::RHISuballocation();
+	return allocationResult != VK_ERROR_OUT_OF_DEVICE_MEMORY ? rhi::RHISuballocation(reinterpret_cast<Uint64>(virtualAllocation), aligndDataOffset) : rhi::RHISuballocation();
 }
 
 void RHIBuffer::DestroySuballocation(rhi::RHISuballocation suballocation)

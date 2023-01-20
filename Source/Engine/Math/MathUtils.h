@@ -22,6 +22,7 @@ public:
 		return (value & (value - 1)) == 0;
 	}
 
+	/** Based on Toby Speight answer: https://stackoverflow.com/questions/466204/rounding-up-to-next-power-of-2 */
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType RoundUpToPowerOf2(TType value)
 	{
@@ -42,6 +43,26 @@ public:
 		++value;
 
 		return value;
+	}
+	
+	/** Based on Paul R answer: https://stackoverflow.com/questions/2679815/previous-power-of-2 */
+	template<typename TType> requires std::is_integral_v<TType>
+	static constexpr TType RoundDownToPowerOf2(TType value)
+	{
+		value = value | (value >> 1);
+		value = value | (value >> 2);
+		value = value | (value >> 4);
+		value = value | (value >> 8);
+		value = value | (value >> 16);
+		if constexpr (sizeof(TType) > 32)
+		{
+			value = value | (value >> 32);
+		}
+		if constexpr (sizeof(TType) > 64)
+		{
+			value = value | (value >> 64);
+		}
+		return value - (value >> 1);
 	}
 
 	template<typename TType> requires std::is_floating_point_v<TType>
