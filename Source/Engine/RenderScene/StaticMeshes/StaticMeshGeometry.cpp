@@ -33,14 +33,29 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	std::for_each(std::begin(submeshes), std::end(submeshes),
 				  [meshletsAllocationStartIdx, geometryDataSuballocation](SubmeshGPUData& submesh)
 				  {
-					  submesh.meshletsBeginIdx				+= static_cast<Uint32>(meshletsAllocationStartIdx);
-					  submesh.indicesOffset					+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.locationsOffset				+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.normalsOffset					+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.tangentsOffset				+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.uvsOffset						+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.meshletsPrimitivesDataOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
-					  submesh.meshletsVerticesDataOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.meshletsBeginIdx	+= static_cast<Uint32>(meshletsAllocationStartIdx);
+					  submesh.indicesOffset		+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  submesh.locationsOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  if (submesh.normalsOffset != idxNone<Uint32>)
+					  {
+						  submesh.normalsOffset += static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  }
+					  if (submesh.tangentsOffset != idxNone<Uint32>)
+					  {
+						  submesh.tangentsOffset += static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  }
+					  if (submesh.uvsOffset != idxNone<Uint32>)
+					  {
+						  submesh.uvsOffset += static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  }
+					  if (submesh.meshletsPrimitivesDataOffset != idxNone<Uint32>)
+					  {
+						  submesh.meshletsPrimitivesDataOffset += static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  }
+					  if (submesh.meshletsVerticesDataOffset != idxNone<Uint32>)
+					  {
+						  submesh.meshletsVerticesDataOffset += static_cast<Uint32>(geometryDataSuballocation.GetOffset());
+					  }
 				  });
 
 	const rhi::SuballocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(SubmeshGPUData), rhi::EBufferSuballocationFlags::PreferMinMemory);

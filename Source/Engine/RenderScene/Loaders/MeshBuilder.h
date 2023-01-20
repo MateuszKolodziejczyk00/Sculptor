@@ -11,6 +11,10 @@ namespace spt::rsc
 
 struct SubmeshBuildData
 {
+	SubmeshBuildData()
+		: vertexCount(0)
+	{ }
+
 	SubmeshGPUData submesh;
 	Uint32 vertexCount;
 };
@@ -35,6 +39,10 @@ protected:
 	SizeType AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping = lib::DynamicArray<SizeType>{});
 
 private:
+	
+#if SPT_DEBUG
+	void ValidateSubmesh(const SubmeshBuildData& submeshBuildData);
+#endif // SPT_DEBUG
 
 	void OptimizeSubmesh(SubmeshBuildData& submeshBuildData);
 	void BuildMeshlets(SubmeshBuildData& submeshBuildData);

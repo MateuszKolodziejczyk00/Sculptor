@@ -93,6 +93,7 @@ void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinyg
 {
 	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
 	SPT_CHECK(submeshBD.submesh.indicesNum == 0);
+	SPT_CHECK(submeshBD.submesh.indicesOffset == idxNone<Uint32>);
 
 	submeshBD.submesh.indicesOffset = static_cast<Uint32>(GetCurrentDataSize());
 	submeshBD.submesh.indicesNum = AppendAccessorData<Uint32>(accessor, model);
@@ -101,7 +102,7 @@ void GLTFMeshBuilder::SetIndices(const tinygltf::Accessor& accessor, const tinyg
 void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.locationsOffset == 0);
+	SPT_CHECK(submeshBD.submesh.locationsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
@@ -110,7 +111,7 @@ void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tin
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.normalsOffset == 0);
+	SPT_CHECK(submeshBD.submesh.normalsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
@@ -119,7 +120,7 @@ void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinyg
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.tangentsOffset == 0);
+	SPT_CHECK(submeshBD.submesh.tangentsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1, 3 });
@@ -128,7 +129,7 @@ void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tiny
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SubmeshBuildData& submeshBD = GetBuiltSubmesh();
-	SPT_CHECK(submeshBD.submesh.uvsOffset == 0);
+	SPT_CHECK(submeshBD.submesh.uvsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.uvsOffset = static_cast<Uint32>(GetCurrentDataSize());
 	AppendAccessorData<Real32>(accessor, model);

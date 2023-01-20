@@ -19,6 +19,9 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	for (SubmeshBuildData& submeshBD : m_submeshes)
 	{
+#if SPT_DEBUG
+		ValidateSubmesh(submeshBD);
+#endif // SPT_DEBUG
 		OptimizeSubmesh(submeshBD);
 		BuildMeshlets(submeshBD);
 	}
@@ -64,7 +67,14 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 void MeshBuilder::BeginNewSubmesh()
 {
-	m_submeshes.emplace_back();
+	SubmeshBuildData& submeshBD = m_submeshes.emplace_back();
+	submeshBD.submesh.indicesOffset					= idxNone<Uint32>;
+	submeshBD.submesh.locationsOffset				= idxNone<Uint32>;
+	submeshBD.submesh.normalsOffset					= idxNone<Uint32>;
+	submeshBD.submesh.tangentsOffset				= idxNone<Uint32>;
+	submeshBD.submesh.uvsOffset						= idxNone<Uint32>;
+	submeshBD.submesh.meshletsPrimitivesDataOffset	= idxNone<Uint32>;
+	submeshBD.submesh.meshletsVerticesDataOffset	= idxNone<Uint32>;
 }
 
 SubmeshBuildData& MeshBuilder::GetBuiltSubmesh()
@@ -78,6 +88,15 @@ Uint64 MeshBuilder::GetCurrentDataSize() const
 	return m_geometryData.size();
 }
 
+#if SPT_DEBUG
+void MeshBuilder::ValidateSubmesh(const SubmeshBuildData& submeshBuildData)
+{
+	SPT_CHECK(submeshBuildData.vertexCount > 0);
+	SPT_CHECK(submeshBuildData.submesh.indicesOffset != idxNone<Uint32>);
+	SPT_CHECK(submeshBuildData.submesh.locationsOffset != idxNone<Uint32>);
+}
+#endif // SPT_DEBUG
+
 void MeshBuilder::OptimizeSubmesh(SubmeshBuildData& submeshBuildData)
 {
 	SPT_PROFILER_FUNCTION();
@@ -89,26 +108,37 @@ void MeshBuilder::OptimizeSubmesh(SubmeshBuildData& submeshBuildData)
 
 	Uint32* indices = getData(std::type_identity<Uint32*>{}, submeshBuildData.submesh.indicesOffset);
 
-	const SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
+	SizeType vertexCount = static_cast<SizeType>(submeshBuildData.vertexCount);
 	const SizeType indexCount = static_cast<SizeType>(submeshBuildData.submesh.indicesNum);
 
 	meshopt_optimizeVertexCache<Uint32>(indices, indices, indexCount, vertexCount);
 
-	lib::DynamicArray<unsigned int> remapArray(indexCount);
+	lib::DynamicArray<unsigned int> remapArray(vertexCount);
 	meshopt_optimizeVertexFetchRemap(remapArray.data(), indices, indexCount, vertexCount);
 	meshopt_remapIndexBuffer(indices, indices, indexCount, remapArray.data());
 
 	math::Vector3f* locations = getData(std::type_identity<math::Vector3f*>{}, submeshBuildData.submesh.locationsOffset);
 	meshopt_remapVertexBuffer(locations, locations, vertexCount, sizeof(math::Vector3f), remapArray.data());
 
-	math::Vector2f* uvs = getData(std::type_identity<math::Vector2f*>{}, submeshBuildData.submesh.uvsOffset);
-	meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(math::Vector2f), remapArray.data());
+	if (submeshBuildData.submesh.uvsOffset != idxNone<Uint32>)
+	{
+		math::Vector2f* uvs = getData(std::type_identity<math::Vector2f*>{}, submeshBuildData.submesh.uvsOffset);
+		meshopt_remapVertexBuffer(uvs, uvs, vertexCount, sizeof(math::Vector2f), remapArray.data());
+	}
 
-	math::Vector3f* normals = getData(std::type_identity<math::Vector3f*>{}, submeshBuildData.submesh.normalsOffset);
-	meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(math::Vector3f), remapArray.data());
+	if (submeshBuildData.submesh.normalsOffset != idxNone<Uint32>)
+	{
+		math::Vector3f* normals = getData(std::type_identity<math::Vector3f*>{}, submeshBuildData.submesh.normalsOffset);
+		meshopt_remapVertexBuffer(normals, normals, vertexCount, sizeof(math::Vector3f), remapArray.data());
+	}
 
-	math::Vector4f* tangents = getData(std::type_identity<math::Vector4f*>{}, submeshBuildData.submesh.tangentsOffset);
-	meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(math::Vector4f), remapArray.data());
+	if (submeshBuildData.submesh.tangentsOffset != idxNone<Uint32>)
+	{
+		math::Vector4f* tangents = getData(std::type_identity<math::Vector4f*>{}, submeshBuildData.submesh.tangentsOffset);
+		meshopt_remapVertexBuffer(tangents, tangents, vertexCount, sizeof(math::Vector4f), remapArray.data());
+	}
+
+	submeshBuildData.vertexCount = static_cast<Uint32>(vertexCount);
 }
 
 void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
