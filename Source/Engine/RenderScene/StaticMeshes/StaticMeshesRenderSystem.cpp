@@ -111,6 +111,8 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	batchRenderingData.batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
 	batchRenderingData.batchDS->batchElements = batchBuffer->CreateFullView();
 
+	const rhi::EBufferUsage indirectBuffersUsageFlags = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
+
 	const rhi::RHIAllocationInfo workloadBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
 	
 	// Create buffers for submeshes workloads
@@ -119,7 +121,7 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	const rhi::BufferDefinition submeshesWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxSubmeshesNum, rhi::EBufferUsage::Storage);
 	submeshesWorkloadsDS->submeshesWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshesWorkloadsBuffer"), submeshesWorkloadsBufferDef, workloadBuffersAllocation);
 
-	const rhi::BufferDefinition indirectDispatchSubmeshesParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+	const rhi::BufferDefinition indirectDispatchSubmeshesParamsBufferDef(sizeof(Uint32) * 3, indirectBuffersUsageFlags);
 	const rg::RGBufferViewHandle submeshesWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchSubmeshesParamsBuffer"), indirectDispatchSubmeshesParamsBufferDef, workloadBuffersAllocation);
 	batchRenderingData.submeshesWorkloadsDispatchArgsBuffer = submeshesWorkloadsDispatchArgsBuffer;
 	submeshesWorkloadsDS->indirectDispatchSubmeshesParams = submeshesWorkloadsDispatchArgsBuffer;
@@ -133,7 +135,7 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	const rhi::BufferDefinition meshletsWorkloadsBufferDef(sizeof(GPUWorkloadID) * batch.maxMeshletsNum, rhi::EBufferUsage::Storage);
 	meshletsWorkloadsDS->meshletsWorkloads = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMMeshletsWorkloadsBuffer"), meshletsWorkloadsBufferDef, workloadBuffersAllocation);
 
-	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+	const rhi::BufferDefinition indirectDispatchMeshletsParamsBufferDef(sizeof(Uint32) * 3, indirectBuffersUsageFlags);
 	const rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchMeshletsParamsBuffer"), indirectDispatchMeshletsParamsBufferDef, workloadBuffersAllocation);
 	batchRenderingData.meshletsWorkloadsDispatchArgsBuffer = meshletsWorkloadsDispatchArgsBuffer;
 	meshletsWorkloadsDS->indirectDispatchMeshletsParams = meshletsWorkloadsDispatchArgsBuffer;
@@ -148,7 +150,7 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 	const rg::RGBufferViewHandle trianglesWorkloadsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMTrianglesWorkloadsBuffer"), trianglesWorkloadsBufferDef, workloadBuffersAllocation);
 	trianglesWorkloadsDS->trianglesWorkloads = trianglesWorkloadsBuffer;
 
-	const rhi::BufferDefinition indirectDispatchTrianglesParamsBufferDef(sizeof(StaticMeshIndirectDrawCallData), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+	const rhi::BufferDefinition indirectDispatchTrianglesParamsBufferDef(sizeof(StaticMeshIndirectDrawCallData), indirectBuffersUsageFlags);
 	const rg::RGBufferViewHandle trianglesWorkloadsDispatchArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDispatchTrianglesParamsBuffer"), indirectDispatchTrianglesParamsBufferDef, workloadBuffersAllocation);
 	batchRenderingData.trianglesWorkloadsDispatchArgsBuffer = trianglesWorkloadsDispatchArgsBuffer;
 	trianglesWorkloadsDS->indirectDrawCommandParams = trianglesWorkloadsDispatchArgsBuffer;

@@ -16,11 +16,13 @@ struct VS_INPUT
     uint index : SV_VertexID;
 };
 
+
 struct VS_OUTPUT
 {
     float4 clipSpace    : SV_POSITION;
-    float3 vertexNormal : VERTEX_NORMAL;
+    float3 color        : VERTEX_COLOR;
 };
+
 
 VS_OUTPUT StaticMeshVS(VS_INPUT input)
 {
@@ -62,8 +64,12 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
     const float3 vertexWorldNormal = mul(instanceTransform, float4(vertexNormal, 0.f)).xyz;
 
+    const uint meshletHash = HashPCG(localMeshletIdx);
+    const float3 color = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
+
     output.clipSpace = mul(sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
-    output.vertexNormal = vertexNormal;
+    //output.vertexNormal = vertexNormal;
+    output.color = color;
 
     return output;
 }
@@ -79,7 +85,8 @@ PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     PS_OUTPUT output;
 
-    const float3 color = normalize(vertexInput.vertexNormal) * 0.5f + 0.5f;
-    output.testColor = float4(color, 1.f);
+    //const float3 color = normalize(vertexInput.vertexNormal) * 0.5f + 0.5f;
+    //output.testColor = float4(color, 1.f);
+    output.testColor = float4(vertexInput.color, 1.f);
     return output;
 }
