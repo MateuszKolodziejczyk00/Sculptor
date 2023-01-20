@@ -72,10 +72,10 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
 	{
-		const math::Vector2f mouseVel = inp::InputManager::Get().GetMouseMoveDelta().cast<Real32>() / deltaTime;
-		if (mouseVel.squaredNorm() > math::Utils::Square(200.f))
+		const math::Vector2f mouseVel = inp::InputManager::Get().GetMouseMoveDelta().cast<Real32>();
+		if (mouseVel.squaredNorm() > math::Utils::Square(5.f) * deltaTime)
 		{
-			const Real32 rotationSpeed = 0.00005f;
+			const Real32 rotationSpeed = 0.0045f;
 			const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
 
 			m_renderView->Rotate(math::AngleAxisf(-rotationDelta.x(), math::Vector3f::UnitZ()));

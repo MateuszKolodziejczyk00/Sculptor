@@ -17,6 +17,8 @@ public:
 
 protected:
 
+	void PreUpdateInputImpl();
+
 	void OnKeyActionImpl(EKey key, EInputActionType action);
 	void OnMousePositionChangedImpl(const math::Vector2i& newPosition);
 };

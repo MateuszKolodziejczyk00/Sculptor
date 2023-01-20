@@ -173,6 +173,11 @@ inp::EInputActionType TranslateInputAction(int action)
 
 GLFWInputAdapter::GLFWInputAdapter() = default;
 
+void GLFWInputAdapter::PreUpdateInput()
+{
+	PreUpdateInputImpl();
+}
+
 void GLFWInputAdapter::OnMouseKeyAction(int key, int keyAction)
 {
 	OnKeyActionImpl(priv::TranslateMouseInputCode(key), priv::TranslateInputAction(keyAction));

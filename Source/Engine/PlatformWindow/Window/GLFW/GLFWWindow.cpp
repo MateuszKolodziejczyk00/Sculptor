@@ -172,6 +172,8 @@ void GLFWWindow::Update(Real32 deltaTime)
 {
 	SPT_PROFILER_FUNCTION();
 
+	m_windowData->inputAdapter.PreUpdateInput();
+
 	glfwPollEvents();
 }
 

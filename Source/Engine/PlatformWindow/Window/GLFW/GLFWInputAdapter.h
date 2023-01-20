@@ -14,6 +14,8 @@ public:
 
 	GLFWInputAdapter();
 
+	void PreUpdateInput();
+
 	void OnMouseKeyAction(int key, int keyAction);
 	void OnKeyboardKeyAction(int key, int keyAction);
 

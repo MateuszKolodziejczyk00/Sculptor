@@ -4,6 +4,11 @@
 namespace spt::inp
 {
 
+void InputAdapter::PreUpdateInputImpl()
+{
+	InputManager::Get().PreUpdateInput();
+}
+
 void InputAdapter::OnKeyActionImpl(EKey key, EInputActionType action)
 {
 	InputManager::Get().OnKeyAction(key, action);

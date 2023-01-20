@@ -23,6 +23,8 @@ private:
 
 	InputManager();
 
+	void PreUpdateInput();
+
 	void OnKeyAction(EKey key, EInputActionType action);
 	void OnMousePositionChanged(const math::Vector2i& newPosition);
 

@@ -32,6 +32,11 @@ InputManager::InputManager()
 	std::fill(std::begin(m_keysPressStatus), std::end(m_keysPressStatus), false);
 }
 
+void InputManager::PreUpdateInput()
+{
+	m_mousePrevPosition = m_mouseCurrentPosition;
+}
+
 void InputManager::OnKeyAction(EKey key, EInputActionType action)
 {
 	const SizeType keyIdx = static_cast<SizeType>(key);
@@ -40,7 +45,6 @@ void InputManager::OnKeyAction(EKey key, EInputActionType action)
 
 void InputManager::OnMousePositionChanged(const math::Vector2i& newPosition)
 {
-	m_mousePrevPosition = m_mouseCurrentPosition;
 	m_mouseCurrentPosition = newPosition;
 }
 
