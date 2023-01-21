@@ -40,6 +40,26 @@ struct ClearDepthStencil
 
 struct ClearColor
 {
+	ClearColor()
+		: asFloat{ 0.f, 0.f, 0.f, 0.f }
+	{ }
+
+	ClearColor(Real32 r, Real32 g, Real32 b, Real32 a)
+		: asFloat{ r, g, b, a }
+	{ }
+	
+	ClearColor(Uint32 r, Uint32 g, Uint32 b, Uint32 a)
+		: asUint{ r, g, b, a }
+	{ }
+	
+	ClearColor(Int32 r, Int32 g, Int32 b, Int32 a)
+		: asInt{ r, g, b, a }
+	{ }
+	
+	explicit ClearColor(Real32 depth, Uint32 stencil = 0)
+		: asDepthStencil{ depth, stencil }
+	{ }
+
 	union
 	{
 		Real32				asFloat[4];

@@ -1,5 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
+#include "RenderStages/ForwardOpaque.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -76,18 +77,11 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
 }
 
 
-struct PS_OUTPUT
+FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
-    float4 testColor : SV_TARGET0;
-};
+    FO_PS_OUTPUT output;
 
-
-PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
-{
-    PS_OUTPUT output;
-
-    //const float3 color = normalize(vertexInput.vertexNormal) * 0.5f + 0.5f;
-    //output.testColor = float4(color, 1.f);
-    output.testColor = float4(vertexInput.color, 1.f);
+    output.radiance = float4(vertexInput.color, 1.f);
+    output.normals = 0.f;
     return output;
 }

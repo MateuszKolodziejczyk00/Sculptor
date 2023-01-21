@@ -7,14 +7,15 @@
 namespace spt::rsc
 {
 
-struct GBufferData
+struct DepthPrepassResult
 {
 	rg::RGTextureViewHandle depth;
-	//rg::RGTextureViewHandle tangentFrame;
-	//rg::RGTextureViewHandle uvsAndDepthGradients;
-	//rg::RGTextureViewHandle uvGradients;
+};
 
-	rg::RGTextureViewHandle testColor;
+struct ForwardOpaquePassResult
+{
+	rg::RGTextureViewHandle radiance;
+	rg::RGTextureViewHandle normals;
 };
 
 } // spt::rsc

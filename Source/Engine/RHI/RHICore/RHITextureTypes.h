@@ -68,6 +68,8 @@ enum class EFragmentFormat : Uint32
 	RGB8_UN_Float,
 	BGR8_UN_Float,
 
+	RGBA16_UN_Float,
+
 	RGBA32_S_Float,
 	D32_S_Float
 };
@@ -196,18 +198,19 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 {
 	switch (format)
 	{
-	case spt::rhi::EFragmentFormat::D32_S_Float:
+	case EFragmentFormat::D32_S_Float:
 		return ETextureAspect::Depth;
 
-	case spt::rhi::EFragmentFormat::RGBA8_UN_Float:
-	case spt::rhi::EFragmentFormat::BGRA8_UN_Float:
-	case spt::rhi::EFragmentFormat::RGB8_UN_Float:
-	case spt::rhi::EFragmentFormat::BGR8_UN_Float:
-	case spt::rhi::EFragmentFormat::RGBA32_S_Float:
+	case EFragmentFormat::RGBA8_UN_Float:
+	case EFragmentFormat::BGRA8_UN_Float:
+	case EFragmentFormat::RGB8_UN_Float:
+	case EFragmentFormat::BGR8_UN_Float:
+	case EFragmentFormat::RGBA16_UN_Float:
+	case EFragmentFormat::RGBA32_S_Float:
 
 		return ETextureAspect::Color;
 
-	case spt::rhi::EFragmentFormat::None:
+	case EFragmentFormat::None:
 	default:
 
 		SPT_CHECK_NO_ENTRY();

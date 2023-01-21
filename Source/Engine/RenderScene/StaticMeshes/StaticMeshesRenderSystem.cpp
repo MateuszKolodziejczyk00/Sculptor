@@ -12,6 +12,7 @@
 #include "GeometryManager.h"
 #include "StaticMeshGeometry.h"
 #include "BufferUtilities.h"
+#include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 
 namespace spt::rsc
 {
@@ -181,7 +182,7 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 
 StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
-	m_supportedStages = lib::Flags(ERenderStage::GBufferGenerationStage, ERenderStage::ShadowGenerationStage);
+	m_supportedStages = ERenderStage::ForwardOpaque;
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
@@ -205,6 +206,8 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	}
 
 	{
+		const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats();
+
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
@@ -212,8 +215,11 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = rhi::EFragmentFormat::D32_S_Float;
-		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::RGBA8_UN_Float));
+		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = forwardOpaqueRTFormats.depthRTFormat;
+		for (const rhi::EFragmentFormat format : forwardOpaqueRTFormats.colorRTFormats)
+		{
+			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
+		}
 
 		forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, generateGBufferShader);
 	}
@@ -287,9 +293,9 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		}
 
 
-		if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))
+		if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
 		{
-			RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::GBufferGenerationStage);
+			RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
 
 			basePassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderMeshesPerView);
 		}

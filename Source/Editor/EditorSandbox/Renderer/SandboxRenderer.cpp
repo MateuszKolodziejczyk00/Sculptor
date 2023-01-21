@@ -195,7 +195,7 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
-	m_renderView->AddRenderStages(rsc::ERenderStage::GBufferGenerationStage);
+	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::DepthPrepass));
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane);
 }

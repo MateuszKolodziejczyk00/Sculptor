@@ -9,8 +9,8 @@ namespace spt::rsc
 enum class ERenderStage
 {
 	None					= 0,
-	ShadowGenerationStage	= BIT(0),
-	GBufferGenerationStage	= BIT(1)
+	DepthPrepass			= BIT(0),
+	ForwardOpaque			= BIT(1)
 };
 
 

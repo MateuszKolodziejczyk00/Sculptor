@@ -2,7 +2,8 @@
 #include "RenderScene.h"
 #include "RenderSystem.h"
 #include "BufferUtilities.h"
-#include "RenderStages/GBufferGenerationStage.h"
+#include "RenderStages/ForwardOpaqueRenderStage.h"
+#include "RenderStages/DepthPrepassRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
 
@@ -13,7 +14,7 @@ namespace renderer_utils
 {
 
 template<typename TRenderStage>
-void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec*>& renderViewsSpecs)
+void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec*>& renderViewsSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -21,7 +22,7 @@ void ProcessRenderStage(ERenderStage stage, rg::RenderGraphBuilder& graphBuilder
 
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		if (viewSpec->SupportsStage(stage))
+		if (viewSpec->SupportsStage(TRenderStage::GetStageEnum()))
 		{
 			stageInstance.Render(graphBuilder, scene, *viewSpec);
 		}
@@ -61,18 +62,20 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
+	
+	renderer_utils::ProcessRenderStage<DepthPrepassRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
-	renderer_utils::ProcessRenderStage<GBufferGenerationStage>(ERenderStage::GBufferGenerationStage, graphBuilder, scene, renderViewsSpecs);
-
-	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
+	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
 
-	const GBufferData& mainViewGBuffer = mainViewSpec.GetData().Get<GBufferData>();
-	return mainViewGBuffer.testColor;
+	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
+
+	const ForwardOpaquePassResult& mainViewOFResult = mainViewSpec.GetData().Get<ForwardOpaquePassResult>();
+	return mainViewOFResult.radiance;
 }
 
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const
