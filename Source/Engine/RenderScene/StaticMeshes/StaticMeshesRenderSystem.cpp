@@ -3,16 +3,15 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderGraphBuilder.h"
 #include "View/ViewRenderingSpec.h"
+#include "View/RenderView.h"
 #include "RenderScene.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Common/ShaderCompilationInput.h"
 #include "GeometryManager.h"
-#include "View/RenderView.h"
-#include "BufferUtilities.h"
 #include "StaticMeshGeometry.h"
+#include "BufferUtilities.h"
 
 namespace spt::rsc
 {
@@ -82,13 +81,15 @@ struct StaticMeshBatchRenderingData
 	lib::SharedPtr<SMCullMeshletsDS>			cullMeshletsDS;
 	lib::SharedPtr<SMCullTrianglesDS>			cullTrianglesDS;
 	lib::SharedPtr<SMIndirectRenderTrianglesDS>	indirectRenderTrianglesDS;
+
+	Uint32 batchedInstancesNum;
 };
 
 
 struct StaticMeshBatchesViewData
 {
 	lib::SharedPtr<SMProcessBatchForViewDS> viewDS;
-	StaticMeshBatchRenderingData batch;
+	lib::DynamicArray<StaticMeshBatchRenderingData> batches;
 };
 
 namespace utils
@@ -111,6 +112,8 @@ StaticMeshBatchRenderingData CreateBatchRenderingData(rg::RenderGraphBuilder& gr
 
 	batchRenderingData.batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
 	batchRenderingData.batchDS->u_batchElements = batchBuffer->CreateFullView();
+
+	batchRenderingData.batchedInstancesNum = static_cast<Uint32>(batch.batchElements.size());
 
 	const rhi::EBufferUsage indirectBuffersUsageFlags = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
 	const rhi::RHIAllocationInfo batchBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
@@ -226,44 +229,60 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	const StaticMeshBatch batch = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 
-	const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
-	viewDS->u_sceneView = viewSpec.GetRenderView().GenerateViewData();
-
-	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
-															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  renderScene.GetRenderSceneDS(),
-																					  viewDS));
+	StaticMeshBatchesViewData viewBatchesData;
 
 	if (batch.IsValid())
 	{
 		const StaticMeshBatchRenderingData batchRenderingData = utils::CreateBatchRenderingData(graphBuilder, renderScene, batch);
-		const Uint32 batchElementsNum = static_cast<Uint32>(batch.batchElements.size());
+		viewBatchesData.batches.emplace_back(batchRenderingData);
+	}
 
-		StaticMeshBatchesViewData viewBatchesData;
+	if (!viewBatchesData.batches.empty())
+	{
+		const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
+		viewDS->u_sceneView = viewSpec.GetRenderView().GenerateViewData();
+	
+		const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
+																   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+																						  renderScene.GetRenderSceneDS(),
+																						  viewDS));
 		viewBatchesData.viewDS = viewDS;
-		viewBatchesData.batch = batchRenderingData;
 
-		viewSpec.GetData().Create<StaticMeshBatchesViewData>(viewBatchesData);
+		StaticMeshBatchesViewData& viewBatches = viewSpec.GetData().Create<StaticMeshBatchesViewData>(std::move(viewBatchesData));
 
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batchRenderingData.batchDS)));
+		for (const StaticMeshBatchRenderingData& batchRenderingData : viewBatches.batches)
+		{
+			const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batchRenderingData.batchDS)));
 
-		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
-							  cullSubmeshesPipeline,
-							  math::Vector3u(batchElementsNum, 1, 1),
-							  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullSubmeshesDS)));
+			graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
+								  cullSubmeshesPipeline,
+								  math::Vector3u(batchRenderingData.batchedInstancesNum, 1, 1),
+								  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullSubmeshesDS)));
+		}
 
-		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
-									  cullMeshletsPipeline,
-									  batchRenderingData.submeshesWorkloadsDispatchArgsBuffer,
-									  0,
-									  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullMeshletsDS)));
+		for (const StaticMeshBatchRenderingData& batchRenderingData : viewBatches.batches)
+		{
+			const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batchRenderingData.batchDS)));
 
-		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Triangles"),
-									  cullTrianglesPipeline,
-									  batchRenderingData.meshletsWorkloadsDispatchArgsBuffer,
-									  0,
-									  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullTrianglesDS),
-															 lib::Ref(GeometryManager::Get().GetGeometryDSState())));
+			graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
+										  cullMeshletsPipeline,
+										  batchRenderingData.submeshesWorkloadsDispatchArgsBuffer,
+										  0,
+										  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullMeshletsDS)));
+		}
+
+		for (const StaticMeshBatchRenderingData& batchRenderingData : viewBatches.batches)
+		{
+			const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batchRenderingData.batchDS)));
+
+			graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Triangles"),
+										  cullTrianglesPipeline,
+										  batchRenderingData.meshletsWorkloadsDispatchArgsBuffer,
+										  0,
+										  rg::BindDescriptorSets(lib::Ref(batchRenderingData.cullTrianglesDS),
+																 lib::Ref(GeometryManager::Get().GetGeometryDSState())));
+		}
+
 
 		if (viewSpec.SupportsStage(ERenderStage::GBufferGenerationStage))
 		{
@@ -286,30 +305,31 @@ void StaticMeshesRenderSystem::RenderMeshesPerView(rg::RenderGraphBuilder& graph
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
 																						lib::Ref(viewBatches.viewDS)));
 
-	const StaticMeshBatchRenderingData& batch = viewBatches.batch;
+	for (const StaticMeshBatchRenderingData& batch : viewBatches.batches)
+	{
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
-	const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		StaticMeshIndirectBatchDrawParams drawParams;
+		drawParams.batchDrawCommandsBuffer = batch.drawTrianglesBatchArgsBuffer;
 
-	StaticMeshIndirectBatchDrawParams drawParams;
-	drawParams.batchDrawCommandsBuffer = batch.drawTrianglesBatchArgsBuffer;
+		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
 
-	const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
+								rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS)),
+								std::tie(drawParams),
+								[drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									recorder.BindGraphicsPipeline(forwadOpaqueShadingPipeline);
 
-	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-							rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS)),
-							std::tie(drawParams),
-							[drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							{
-								recorder.BindGraphicsPipeline(forwadOpaqueShadingPipeline);
+									const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 
-								const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
+									recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
+									recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
-
-								const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
-								recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshIndirectDrawCallData), 1);
-							});
+									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
+									recorder.DrawIndirect(drawsBufferView, 0, sizeof(StaticMeshIndirectDrawCallData), 1);
+								});
+	}
 }
 
 } // spt::rsc
