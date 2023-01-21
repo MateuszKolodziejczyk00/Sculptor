@@ -229,26 +229,29 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	const StaticMeshBatch batch = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 
-	StaticMeshBatchesViewData viewBatchesData;
+	lib::DynamicArray<StaticMeshBatchRenderingData> batches;
 
 	if (batch.IsValid())
 	{
 		const StaticMeshBatchRenderingData batchRenderingData = utils::CreateBatchRenderingData(graphBuilder, renderScene, batch);
-		viewBatchesData.batches.emplace_back(batchRenderingData);
+		batches.emplace_back(batchRenderingData);
 	}
 
-	if (!viewBatchesData.batches.empty())
+	if (!batches.empty())
 	{
+		StaticMeshBatchesViewData& viewBatches = viewSpec.GetData().Create<StaticMeshBatchesViewData>();
+		viewBatches.batches = std::move(batches);
+
 		const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
 		viewDS->u_sceneView = viewSpec.GetRenderView().GenerateViewData();
+		
+		viewBatches.viewDS = viewDS;
 	
 		const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 																   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																						  renderScene.GetRenderSceneDS(),
 																						  viewDS));
-		viewBatchesData.viewDS = viewDS;
 
-		StaticMeshBatchesViewData& viewBatches = viewSpec.GetData().Create<StaticMeshBatchesViewData>(std::move(viewBatchesData));
 
 		for (const StaticMeshBatchRenderingData& batchRenderingData : viewBatches.batches)
 		{
