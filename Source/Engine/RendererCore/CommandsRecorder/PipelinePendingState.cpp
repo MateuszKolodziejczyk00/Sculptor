@@ -223,6 +223,12 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		if (dirtyDescriptorSets[dsIdx])
 		{
 			const SizeType dsTypeHash = metaData->GetDescriptorSetStateTypeHash(static_cast<Uint32>(dsIdx));
+			if (dsTypeHash == idxNone<SizeType>)
+			{
+				// This is unused set idx
+				continue;
+			}
+
 			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsTypeHash);
 			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}", pipeline->GetRHI().GetName().GetData(), dsIdx);
 			

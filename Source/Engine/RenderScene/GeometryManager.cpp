@@ -44,7 +44,7 @@ GeometryManager::GeometryManager()
 	m_geometryBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("UnifiedGeometryBuffer"), ugbDef, ugbAllocationInfo);
 
 	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"), rdr::EDescriptorSetStateFlags::Persistent);
-	m_geometryDSState->geometryData = m_geometryBuffer->CreateFullView();
+	m_geometryDSState->u_geometryData = m_geometryBuffer->CreateFullView();
 	
 	// This is singleton object so we can capture this safely
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]

@@ -22,6 +22,9 @@ struct BarrierTextureTransitionDefinition;
 namespace spt::rg
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Descriptor Sets Helpers =======================================================================
+
 template<typename... TDescriptorSetStates>
 auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 {
@@ -36,6 +39,8 @@ inline decltype(auto) EmptyDescriptorSets()
 	return empty;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Render Graph ==================================================================================
 
 class RENDER_GRAPH_API RenderGraphBuilder
 {
@@ -281,6 +286,11 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 		subpass->BindDSState(dsState);
 	}
 
+	for (const lib::SharedRef<rdr::DescriptorSetState>& dsState : m_boundDSStates)
+	{
+		subpass->BindDSState(dsState);
+	}
+	
 	lastRenderPass->AppendSubpass(subpass);
 
 	RGDependeciesContainer subpassDependencies;
@@ -362,5 +372,37 @@ void RenderGraphBuilder::BuildParametersStructDependencies(const TParameters& pa
 											   dependenciesBuilder.AddTextureAccess(texture, access, pipelineStages);
 										   }));
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Render Graph Utilities ========================================================================
+
+template<typename TDSRange>
+class BindDescriptorSetsScope
+{
+public:
+
+	BindDescriptorSetsScope(RenderGraphBuilder& graphBuilder, const TDSRange& descriptorSets)
+		: m_graphBuilder(graphBuilder)
+		, m_descriptorSets(descriptorSets)
+	{
+		for (const lib::SharedRef<rdr::DescriptorSetState>& ds : m_descriptorSets)
+		{
+			m_graphBuilder.BindDescriptorSetState(ds);
+		}
+	}
+
+	~BindDescriptorSetsScope()
+	{
+		for (const lib::SharedRef<rdr::DescriptorSetState>& ds : m_descriptorSets)
+		{
+			m_graphBuilder.UnbindDescriptorSetState(ds);
+		}
+	}
+
+private:
+
+	RenderGraphBuilder& m_graphBuilder;
+	TDSRange m_descriptorSets;
+};
 
 } // spt::rg

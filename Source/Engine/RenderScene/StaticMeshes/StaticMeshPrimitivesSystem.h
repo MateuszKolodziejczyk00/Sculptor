@@ -19,7 +19,7 @@ struct StaticMeshInstanceRenderData
 
 
 BEGIN_SHADER_STRUCT(, StaticMeshBatchElement)
-	SHADER_STRUCT_FIELD(Uint32, instanceIdx)
+	SHADER_STRUCT_FIELD(Uint32, entityIdx)
 	SHADER_STRUCT_FIELD(Uint32, staticMeshIdx)
 END_SHADER_STRUCT();
 

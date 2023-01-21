@@ -76,10 +76,10 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	gfx::UploadDataToBuffer(lib::Ref(m_staticMeshesBuffer),	staticMeshSuballocation.GetOffset(),	reinterpret_cast<const Byte*>(&staticMesh),			staticMeshDataSize);
 
 	StaticMeshGeometryData geometryData;
-	geometryData.staticMeshSuballocation = staticMeshSuballocation;
-	geometryData.submeshesSuballocation = submeshesSuballocation;
-	geometryData.meshletsSuballocation = meshletsSuballocation;
-	geometryData.geometrySuballocation = geometryDataSuballocation;
+	geometryData.staticMeshSuballocation	= staticMeshSuballocation;
+	geometryData.submeshesSuballocation		= submeshesSuballocation;
+	geometryData.meshletsSuballocation		= meshletsSuballocation;
+	geometryData.geometrySuballocation		= geometryDataSuballocation;
 
 	return geometryData;
 }
@@ -106,9 +106,9 @@ StaticMeshUnifiedData::StaticMeshUnifiedData()
 	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
 
 	m_unifiedDataDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshUnifiedDataDS>(RENDERER_RESOURCE_NAME("Static Mesh Unified Data DS"), rdr::EDescriptorSetStateFlags::Persistent);
-	m_unifiedDataDS->staticMeshes	= m_staticMeshesBuffer->CreateFullView();
-	m_unifiedDataDS->submeshes		= m_submeshesBuffer->CreateFullView();
-	m_unifiedDataDS->meshlets		= m_meshletsBuffer->CreateFullView();
+	m_unifiedDataDS->u_staticMeshes	= m_staticMeshesBuffer->CreateFullView();
+	m_unifiedDataDS->u_submeshes	= m_submeshesBuffer->CreateFullView();
+	m_unifiedDataDS->u_meshlets		= m_meshletsBuffer->CreateFullView();
 
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{

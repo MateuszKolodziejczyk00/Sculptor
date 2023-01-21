@@ -3,9 +3,11 @@
 #include "Utils/Wave.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(StaticMeshBatchDS, 1)]]
+[[descriptor_set(RenderSceneDS, 1)]]
+[[descriptor_set(StaticMeshBatchDS, 2)]]
+//[[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
-[[descriptor_set(StaticMeshSubmeshesWorkloadsDS, 2)]]
+[[descriptor_set(SMCullSubmeshesDS, 4)]]
 
 
 struct CS_INPUT
@@ -21,9 +23,9 @@ void CullSubmeshesCS(CS_INPUT input)
 {
     const uint batchElementIdx = input.groupID.x;
 
-    const uint meshIdx = batchElements[batchElementIdx].staticMeshIdx;
+    const uint meshIdx = u_batchElements[batchElementIdx].staticMeshIdx;
     
-    const StaticMeshGPUData staticMesh = staticMeshes[meshIdx];
+    const StaticMeshGPUData staticMesh = u_staticMeshes[meshIdx];
     
     for (uint idx = input.localID.x; idx < staticMesh.submeshesNum; idx += WORKLOAD_SIZE)
     {
@@ -40,19 +42,19 @@ void CullSubmeshesCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(indirectDispatchSubmeshesParams[0], visibleSubmeshesNum, outputBufferIdx);
+                InterlockedAdd(u_dispatchSubmeshesParams[0], visibleSubmeshesNum, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
 
             const GPUWorkloadID submeshWorkload = PackSubmeshWorkload(batchElementIdx, globalSubmeshIdx);
-            submeshesWorkloads[outputBufferIdx] = submeshWorkload;
+            u_submeshWorkloads[outputBufferIdx] = submeshWorkload;
         }
     }
 
     if(input.globalID.x == 0)
     {
-        indirectDispatchSubmeshesParams[1] = 1;
-        indirectDispatchSubmeshesParams[2] = 1;
+        u_dispatchSubmeshesParams[1] = 1;
+        u_dispatchSubmeshesParams[2] = 1;
     }
 }

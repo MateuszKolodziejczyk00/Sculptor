@@ -3,12 +3,13 @@
 #include "Utils/Wave.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(StaticMeshBatchDS, 1)]]
+[[descriptor_set(RenderSceneDS, 1)]]
+[[descriptor_set(StaticMeshBatchDS, 2)]]
+//[[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
-[[descriptor_set(GeometryDS, 2)]]
+[[descriptor_set(GeometryDS, 4)]]
 
-[[descriptor_set(StaticMeshMeshletsWorkloadsDS, 3)]]
-[[descriptor_set(StaticMeshTrianglesWorkloadsDS, 4)]]
+[[descriptor_set(SMCullTrianglesDS, 5)]]
 
 
 struct CS_INPUT
@@ -25,12 +26,12 @@ void CullTrianglesCS(CS_INPUT input)
     uint batchElementIdx;
     uint submeshIdx;
     uint localMeshletIdx;
-    UnpackMeshletWorkload(meshletsWorkloads[input.groupID.x], batchElementIdx, submeshIdx, localMeshletIdx);
+    UnpackMeshletWorkload(u_meshletWorkloads[input.groupID.x], batchElementIdx, submeshIdx, localMeshletIdx);
 
-    const SubmeshGPUData submesh = submeshes[submeshIdx];
+    const SubmeshGPUData submesh = u_submeshes[submeshIdx];
     const uint meshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
 
-    const MeshletGPUData meshlet = meshlets[meshletIdx];
+    const MeshletGPUData meshlet = u_meshlets[meshletIdx];
  
     const uint triangleIdx = input.localID.x;
 
@@ -47,19 +48,19 @@ void CullTrianglesCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(indirectDrawCommandParams[0].vertexCount, visibleTrianglesNum * 3, outputBufferIdx);
+                InterlockedAdd(u_drawTrianglesParams[0].vertexCount, visibleTrianglesNum * 3, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx / 3) + GetCompactedIndex(trianglesVisibleBallot, WaveGetLaneIndex());
 
-            trianglesWorkloads[outputBufferIdx] = PackTriangleWorkload(batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
+            u_triangleWorkloads[outputBufferIdx] = PackTriangleWorkload(batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
         }
     }
 
     if(input.globalID.x == 0)
     {
-        indirectDrawCommandParams[0].instanceCount    = 1;
-        indirectDrawCommandParams[0].firstVertex      = 0;
-        indirectDrawCommandParams[0].firstInstance    = 0;
+        u_drawTrianglesParams[0].instanceCount    = 1;
+        u_drawTrianglesParams[0].firstVertex      = 0;
+        u_drawTrianglesParams[0].firstInstance    = 0;
     }
 }

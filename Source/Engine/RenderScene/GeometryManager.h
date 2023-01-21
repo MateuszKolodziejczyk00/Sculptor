@@ -11,7 +11,7 @@ namespace spt::rsc
 {
 
 DS_BEGIN(, GeometryDS, rg::RGDescriptorSetState<GeometryDS>, rhi::EShaderStageFlags::Vertex)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),	geometryData)
+	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),	u_geometryData)
 DS_END();
 
 

@@ -24,7 +24,7 @@ StaticMeshBatch StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& 
 		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
 
 		StaticMeshBatchElement batchElement;
-		batchElement.instanceIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
+		batchElement.entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
 		batchElement.staticMeshIdx = meshRenderingDef.staticMeshIdx;
 		batch.batchElements.emplace_back(batchElement);
 

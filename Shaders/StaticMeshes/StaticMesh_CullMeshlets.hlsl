@@ -3,10 +3,11 @@
 #include "Utils/Wave.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
-[[descriptor_set(StaticMeshBatchDS, 1)]]
+[[descriptor_set(RenderSceneDS, 1)]]
+[[descriptor_set(StaticMeshBatchDS, 2)]]
+//[[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
-[[descriptor_set(StaticMeshSubmeshesWorkloadsDS, 2)]]
-[[descriptor_set(StaticMeshMeshletsWorkloadsDS, 3)]]
+[[descriptor_set(SMCullMeshletsDS, 4)]]
 
 
 struct CS_INPUT
@@ -22,9 +23,9 @@ void CullMeshletsCS(CS_INPUT input)
 {
     uint batchElementIdx;
     uint submeshIdx;
-    UnpackSubmeshWorkload(submeshesWorkloads[input.groupID.x], batchElementIdx, submeshIdx);
+    UnpackSubmeshWorkload(u_submeshWorkloads[input.groupID.x], batchElementIdx, submeshIdx);
 
-    const SubmeshGPUData submesh = submeshes[submeshIdx];
+    const SubmeshGPUData submesh = u_submeshes[submeshIdx];
     
     for (uint localMeshletIdx = input.localID.x; localMeshletIdx < submesh.meshletsNum; localMeshletIdx += WORKLOAD_SIZE)
     {
@@ -41,18 +42,18 @@ void CullMeshletsCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(indirectDispatchMeshletsParams[0], visibleMeshletsNum, outputBufferIdx);
+                InterlockedAdd(u_dispatchMeshletsParams[0], visibleMeshletsNum, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
 
-            meshletsWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, submeshIdx, localMeshletIdx);
+            u_meshletWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, submeshIdx, localMeshletIdx);
         }
     }
 
     if(input.globalID.x == 0)
     {
-        indirectDispatchMeshletsParams[1] = 1;
-        indirectDispatchMeshletsParams[2] = 1;
+        u_dispatchMeshletsParams[1] = 1;
+        u_dispatchMeshletsParams[2] = 1;
     }
 }
