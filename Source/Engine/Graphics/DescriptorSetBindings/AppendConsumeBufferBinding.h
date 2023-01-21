@@ -33,27 +33,14 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite, GetShaderStageFlags());
-		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite, GetShaderStageFlags());
+		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite);
+		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite);
 	}
 
 	// We need to take two bindings - first for buffer and second for count (storage buffer)
 	static constexpr Uint32 GetBindingIdxDelta()
 	{
 		return 2;
-	}
-
-	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
-	{
-		// buffer
-		smd::GenericShaderBinding& bufferBindingMetaData = bindingsMetaData.emplace_back();
-		bufferBindingMetaData.Set(smd::BufferBindingData(1, GetBindingFlags()));
-
-		// count
-		smd::BufferBindingData countBufferData(1, smd::EBindingFlags::Storage);
-		countBufferData.SetSize(sizeof(Int32));
-		smd::GenericShaderBinding& countBindingMetaData = bindingsMetaData.emplace_back();
-		countBindingMetaData.Set(countBufferData);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)

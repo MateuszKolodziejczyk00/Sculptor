@@ -29,7 +29,7 @@ BEGIN_ALIGNED_SHADER_STRUCT(, 64, RenderEntityGPUData)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(, RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Compute))
+DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>), u_renderEntitiesData)
 DS_END();
 

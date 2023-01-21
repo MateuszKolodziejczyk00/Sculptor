@@ -40,14 +40,17 @@ struct RGDependencyStages
 {
 	RGDependencyStages()
 		: pipelineStages(rhi::EPipelineStage::None)
+		, shouldUseDefaultStages(true)
 	{ }
 	
 	RGDependencyStages(rhi::EPipelineStage inStages)
 		: pipelineStages(inStages)
+		, shouldUseDefaultStages(false)
 	{ }
 	
 	RGDependencyStages(rhi::EShaderStageFlags shaderStages)
 		: pipelineStages(rhi::EPipelineStage::None)
+		, shouldUseDefaultStages(false)
 	{
 		if (lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::Vertex))
 		{
@@ -64,6 +67,8 @@ struct RGDependencyStages
 	}
 
 	rhi::EPipelineStage pipelineStages;
+
+	Bool shouldUseDefaultStages;
 };
 
 
@@ -71,7 +76,7 @@ class RENDER_GRAPH_API RGDependenciesBuilder
 {
 public:
 
-	explicit RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies);
+	explicit RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies, rhi::EPipelineStage defaultStages = rhi::EPipelineStage::None);
 
 	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
@@ -83,6 +88,8 @@ private:
 
 	RenderGraphBuilder& m_graphBuilder;
 	RGDependeciesContainer& m_dependeciesRef;
+
+	rhi::EPipelineStage m_defaultStages;
 };
 
 } // spt::rg

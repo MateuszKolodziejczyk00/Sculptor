@@ -31,13 +31,7 @@ public:
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, accessType, GetShaderStageFlags());
-	}
-
-	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
-	{
-		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
-		newBindingMetaData.Set(smd::BufferBindingData(1, GetBindingFlags()));
+		m_boundBuffer.AddRGDependency(builder, accessType);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
@@ -56,9 +50,7 @@ public:
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		smd::EBindingFlags flags = smd::EBindingFlags::Storage;
-		lib::AddFlags(flags, smd::EBindingFlags::Unbound);
-		return flags;
+		return lib::Union(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound);
 	}
 
 	static constexpr Bool IsByteBuffer()

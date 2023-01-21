@@ -30,37 +30,37 @@ BEGIN_SHADER_STRUCT(, GPUWorkloadID)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(, SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>, DS_STAGES(rhi::EShaderStageFlags::Compute, rhi::EShaderStageFlags::Fragment))
+DS_BEGIN(SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),		u_sceneView)
 DS_END();
 
 
-DS_BEGIN(, StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>, DS_STAGES(rhi::EShaderStageFlags::Vertex, rhi::EShaderStageFlags::Fragment, rhi::EShaderStage::Compute))
+DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_batchElements)
 DS_END();
 
 
-DS_BEGIN(, SMCullSubmeshesDS, rg::RGDescriptorSetState<SMCullSubmeshesDS>, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(SMCullSubmeshesDS, rg::RGDescriptorSetState<SMCullSubmeshesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),		u_submeshWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			u_dispatchSubmeshesParams)
 DS_END();
 
 
-DS_BEGIN(, SMCullMeshletsDS, rg::RGDescriptorSetState<SMCullMeshletsDS>, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(SMCullMeshletsDS, rg::RGDescriptorSetState<SMCullMeshletsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GPUWorkloadID>),		u_submeshWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),		u_meshletWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),			u_dispatchMeshletsParams)
 DS_END();
 
 
-DS_BEGIN(, SMCullTrianglesDS, rg::RGDescriptorSetState<SMCullTrianglesDS>, rhi::EShaderStageFlags::Compute)
+DS_BEGIN(SMCullTrianglesDS, rg::RGDescriptorSetState<SMCullTrianglesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GPUWorkloadID>),						u_meshletWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUWorkloadID>),						u_triangleWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshIndirectDrawCallData>),	u_drawTrianglesParams)
 DS_END();
 
 
-DS_BEGIN(, SMIndirectRenderTrianglesDS, rg::RGDescriptorSetState<SMIndirectRenderTrianglesDS>, rhi::EShaderStageFlags::Vertex)
+DS_BEGIN(SMIndirectRenderTrianglesDS, rg::RGDescriptorSetState<SMIndirectRenderTrianglesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GPUWorkloadID>),		u_triangleWorkloads)
 DS_END();
 

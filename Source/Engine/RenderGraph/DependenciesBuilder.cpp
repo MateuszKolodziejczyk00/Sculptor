@@ -4,14 +4,16 @@
 namespace spt::rg
 {
 
-RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies) 
+RGDependenciesBuilder::RGDependenciesBuilder(RenderGraphBuilder& graphBuilder, RGDependeciesContainer& dependecies, rhi::EPipelineStage defaultStages /*= rhi::EPipelineStage::None*/) 
 	: m_graphBuilder(graphBuilder)
 	, m_dependeciesRef(dependecies)
+	, m_defaultStages(defaultStages)
 { }
 
 void RGDependenciesBuilder::AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, dependencyStages.pipelineStages });
+	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
+	m_dependeciesRef.textureAccesses.emplace_back(RGTextureAccessDef{ texture, access, accessStages });
 }
 
 void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
@@ -22,7 +24,8 @@ void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureVi
 
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
-	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, dependencyStages.pipelineStages });
+	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
+	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, accessStages });
 }
 
 void RGDependenciesBuilder::AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)

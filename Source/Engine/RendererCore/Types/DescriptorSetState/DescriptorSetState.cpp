@@ -122,12 +122,6 @@ void DescriptorSetBinding::SetOwningDSState(DescriptorSetState& state)
 	m_owningState = &state;
 }
 
-rhi::EShaderStageFlags DescriptorSetBinding::GetShaderStageFlags() const
-{
-	SPT_CHECK(!!m_owningState);
-	return m_owningState->GetShaderStages();
-}
-
 void DescriptorSetBinding::MarkAsDirty()
 {
 	SPT_CHECK(!!m_owningState);
@@ -137,11 +131,10 @@ void DescriptorSetBinding::MarkAsDirty()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags, rhi::EShaderStageFlags shaderStages)
+DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags)
 	: m_id(utils::GenerateStateID())
 	, m_isDirty(false)
 	, m_flags(flags)
-	, m_shaderStages(shaderStages)
 	, m_descriptorSetHash(idxNone<SizeType>)
 	, m_name(name)
 { }
@@ -169,16 +162,6 @@ void DescriptorSetState::ClearDirtyFlag()
 EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
 {
 	return m_flags;
-}
-
-rhi::EShaderStageFlags DescriptorSetState::GetShaderStages() const
-{
-	return m_shaderStages;
-}
-
-const lib::DynamicArray<lib::HashedString>& DescriptorSetState::GetBindingNames() const
-{
-	return m_bindingNames;
 }
 
 SizeType DescriptorSetState::GetDescriptorSetHash() const
@@ -211,11 +194,6 @@ SizeType DescriptorSetState::GetDynamicOffsetsNum() const
 const lib::HashedString& DescriptorSetState::GetName() const
 {
 	return m_name.Get();
-}
-
-void DescriptorSetState::SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames)
-{
-	m_bindingNames = std::move(inBindingNames);
 }
 
 void DescriptorSetState::SetDescriptorSetHash(SizeType hash)

@@ -107,12 +107,12 @@ protected:
 	{
 		if (m_renderGraphTexture.IsValid())
 		{
-			builder.AddTextureAccess(m_renderGraphTexture, access, GetShaderStageFlags());
+			builder.AddTextureAccess(m_renderGraphTexture, access);
 		}
 		else
 		{
 			SPT_CHECK(!!m_textureInstance);
-			builder.AddTextureAccess(lib::Ref(m_textureInstance), access, GetShaderStageFlags());
+			builder.AddTextureAccess(lib::Ref(m_textureInstance), access);
 		}
 	}
 

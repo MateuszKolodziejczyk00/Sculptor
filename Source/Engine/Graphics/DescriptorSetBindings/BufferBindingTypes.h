@@ -40,17 +40,17 @@ public:
 						  m_buffer);
 	}
 
-	void AddRGDependency(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access, rhi::EShaderStageFlags shaderStages) const
+	void AddRGDependency(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access) const
 	{
 		std::visit(lib::Overload
 				   {
-				       [&builder, access, shaderStages](const rdr::BufferView& buffer)
+				       [&builder, access](const rdr::BufferView& buffer)
 				       {
-				           builder.AddBufferAccess(buffer, access, shaderStages);
+				           builder.AddBufferAccess(buffer, access);
 				       },
-				       [&builder, access, shaderStages](rg::RGBufferViewHandle buffer)
+				       [&builder, access](rg::RGBufferViewHandle buffer)
 				       {
-				           builder.AddBufferAccess(buffer, access, shaderStages);
+				           builder.AddBufferAccess(buffer, access);
 				       }
 				   },
 				   m_buffer);

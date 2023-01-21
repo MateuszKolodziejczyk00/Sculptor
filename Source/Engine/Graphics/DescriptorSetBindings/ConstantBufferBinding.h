@@ -58,15 +58,6 @@ public:
 		context.UpdateBuffer(GetName(), m_buffer->CreateFullView());
 	}
 
-	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
-	{
-		smd::BufferBindingData bindingData(1, GetBindingFlags());
-		bindingData.SetSize(sizeof(TStruct));
-		
-		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
-		newBindingMetaData.Set(bindingData);
-	}
-
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		return rdr::shader_translator::DefineType<TStruct>() + '\n' +

@@ -25,12 +25,6 @@ public:
 		// Do nothing
 	}
 
-	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData)
-	{
-		smd::GenericShaderBinding& newBindingMetaData = bindingsMetaData.emplace_back();
-		newBindingMetaData.Set(smd::TextureBindingData(1, GetBindingFlags()));
-	}
-
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		return BuildBindingVariableCode(lib::String("SamplerState ") + name, bindingIdx);

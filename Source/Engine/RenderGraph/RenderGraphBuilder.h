@@ -205,7 +205,7 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
-	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
 	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
@@ -229,7 +229,7 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
-	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
 	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
 
@@ -251,7 +251,7 @@ void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, 
 	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
-	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
 	renderPassDef.BuildDependencies(dependenciesBuilder);
 	BuildParametersDependencies(parameters, dependenciesBuilder);
@@ -294,7 +294,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	lastRenderPass->AppendSubpass(subpass);
 
 	RGDependeciesContainer subpassDependencies;
-	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies);
+	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
 

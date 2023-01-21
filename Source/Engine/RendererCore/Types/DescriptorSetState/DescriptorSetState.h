@@ -71,15 +71,11 @@ public:
 	// These functions are not virtual, but can be reimplemented in child classes
 	void Initialize(DescriptorSetState& owningState) {}
 
-	static void CreateBindingMetaData(INOUT lib::DynamicArray<smd::GenericShaderBinding>& bindingsMetaData) {}
-
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
 	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
 	static constexpr Uint32 GetBindingIdxDelta() { return 1; }
 
 	void SetOwningDSState(DescriptorSetState& state);
-
-	rhi::EShaderStageFlags GetShaderStageFlags() const;
 
 protected:
 
@@ -108,7 +104,7 @@ class RENDERER_CORE_API DescriptorSetState abstract
 {
 public:
 
-	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags, rhi::EShaderStageFlags shaderStages);
+	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags);
 	virtual ~DescriptorSetState() = default;
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
@@ -121,10 +117,6 @@ public:
 
 	EDescriptorSetStateFlags GetFlags() const;
 
-	rhi::EShaderStageFlags GetShaderStages() const;
-
-	const lib::DynamicArray<lib::HashedString>& GetBindingNames() const;
-
 	SizeType GetDescriptorSetHash() const;
 
 	Uint32*								AddDynamicOffset();
@@ -135,7 +127,6 @@ public:
 
 protected:
 
-	void SetBindingNames(lib::DynamicArray<lib::HashedString> inBindingNames);
 	void SetDescriptorSetHash(SizeType hash);
 
 	void InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
@@ -148,12 +139,9 @@ private:
 
 	EDescriptorSetStateFlags m_flags;
 
-	rhi::EShaderStageFlags m_shaderStages;
-
 	lib::DynamicArray<Uint32> m_dynamicOffsets;
 
-	lib::DynamicArray<lib::HashedString>	m_bindingNames;
-	SizeType								m_descriptorSetHash;
+	SizeType m_descriptorSetHash;
 
 	RendererResourceName m_name;
 };
@@ -317,33 +305,32 @@ public:
 };
 
 
-#define DS_BEGIN(api, className, parentClass, stages)																			\
-	class api className : public parentClass																					\
+#define DS_BEGIN(className, parentClass)																						\
+	class className : public parentClass																						\
 	{																															\
 	public:																														\
 	using ThisClass = className;																								\
 	using Super = parentClass;																									\
 	className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
-		: Super(name, flags, stages)																							\
+		: Super(name, flags)																									\
 	{																															\
-		const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef<ReflHeadBindingType>(GetShaderStages());	\
-		SetBindingNames(rdr::bindings_refl::GetBindingNames<ReflHeadBindingType>());											\
-		SetDescriptorSetHash(GetStaticHash());																					\
-		InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum(bindingsDef));											\
+		SetDescriptorSetHash(GetTypeHash());																					\
+		InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum<typename ReflHeadBindingType>());						\
 		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 	}																															\
 	static lib::HashedString GetDescriptorSetName()																				\
 	{																															\
 		return #className;																										\
 	}																															\
-	static rhi::EShaderStageFlags GetShaderStages()																				\
-	{																															\
-		return stages;																											\
-	}																															\
 	template<typename TBindingType>																								\
 	TBindingType* ReflGetBindingImpl()																							\
 	{																															\
 		return nullptr;																											\
+	}																															\
+	static SizeType GetTypeHash()																								\
+	{																															\
+		static lib::HashedString staticName(#className);																		\
+		return staticName.GetKey();																								\
 	}																															\
 	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
@@ -375,19 +362,7 @@ public:
 															   binding.UpdateDescriptors(context);													\
 														   });																						\
 					}																																\
-					static SizeType GetStaticHash()																									\
-					{																																\
-						static SizeType hash = GenerateStaticHash();																				\
-						return hash;																												\
-					}																																\
 					private:																														\
-					static SizeType GenerateStaticHash()																							\
-					{																																\
-						const auto bindingsNames = rdr::bindings_refl::GetBindingNames<ReflHeadBindingType>();										\
-						const auto bindingsDef = rdr::bindings_refl::CreateDescriptorSetBindingsDef<ReflHeadBindingType>(GetShaderStages());		\
-						return rdr::bindings_refl::HashDescriptorSetState(bindingsDef, bindingsNames);												\
-																																					\
-					}																																\
 					inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;								\
 					};
 
@@ -458,74 +433,21 @@ constexpr void ForEachBinding(TCallable callable)
 }
 
 template<typename TBindingHandle>
-lib::DynamicArray<lib::HashedString> GetBindingNames()
+constexpr SizeType GetDynamicOffsetsNum()
 {
-	SPT_PROFILER_FUNCTION();
+	SizeType dynamicOffsetsNum = 0;
 
-	constexpr SizeType bindingsNum = GetBindingsNum<TBindingHandle>();
-
-	lib::DynamicArray<lib::HashedString> bindingNames;
-	bindingNames.reserve(bindingsNum);
-
-	ForEachBinding<TBindingHandle>([&bindingNames]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&dynamicOffsetsNum]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		const SizeType currentBindingIdx = bindingNames.size();
-		
-		const Uint32 bindingIdxDelta = CurrentBindingType::GetBindingIdxDelta();
-		bindingNames.resize(bindingNames.size() + static_cast<SizeType>(bindingIdxDelta));
-
-		bindingNames[currentBindingIdx] = TCurrentBindingHandle::GetName();
-	});
-
-	return bindingNames;
-}
-
-template<typename TBindingHandle>
-lib::DynamicArray<smd::GenericShaderBinding> CreateDescriptorSetBindingsDef(rhi::EShaderStageFlags stageFlags)
-{
-	SPT_PROFILER_FUNCTION();
 	
-	lib::DynamicArray<smd::GenericShaderBinding> bindingsMetaData;
-	bindingsMetaData.reserve(GetBindingsNum<TBindingHandle>());
-
-	ForEachBinding<TBindingHandle>([&bindingsMetaData]<typename TCurrentBindingHandle>() mutable
-	{
-		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		CurrentBindingType::CreateBindingMetaData(bindingsMetaData);
+		if (lib::HasAnyFlag(CurrentBindingType::GetBindingFlags(), smd::EBindingFlags::DynamicOffset))
+		{
+			++dynamicOffsetsNum;
+		}
 	});
 
-	for (smd::GenericShaderBinding& bindingMetaData : bindingsMetaData)
-	{
-		bindingMetaData.AddShaderStages(stageFlags);
-		bindingMetaData.PostInitialize();
-	}
-
-	return bindingsMetaData;
-}
-
-inline SizeType HashDescriptorSetState(const lib::DynamicArray<smd::GenericShaderBinding>& bindingsDef, const lib::DynamicArray<lib::HashedString>& bindingNames)
-{
-	SPT_PROFILER_FUNCTION();
-
-	SizeType hash = 0;
-	for (SizeType bindingIdx = 0; bindingIdx < bindingsDef.size(); ++bindingIdx)
-	{
-		lib::HashCombine(hash, smd::HashDescriptorSetBinding(bindingsDef[bindingIdx], bindingNames[bindingIdx]));
-	}
-
-	return hash;
-}
-
-inline SizeType GetDynamicOffsetsNum(const lib::DynamicArray<smd::GenericShaderBinding>& bindingsDef)
-{
-	SPT_PROFILER_FUNCTION();
-
-	return std::count_if(std::cbegin(bindingsDef), std::cend(bindingsDef),
-						 [](const smd::GenericShaderBinding& binding)
-						 {
-							 return lib::HasAnyFlag(binding.GetFlags(), smd::EBindingFlags::DynamicOffset);
-						 });
+	return dynamicOffsetsNum;
 }
 
 template<typename TBindingHandle>
@@ -593,7 +515,7 @@ sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 		metaData.bindingsFlags.emplace_back(CurrentBindingType::GetBindingFlags());
 	});
 
-	metaData.hash = TDSType::GetStaticHash();
+	metaData.hash = TDSType::GetTypeHash();
 
 	return metaData;
 }
