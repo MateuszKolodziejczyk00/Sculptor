@@ -112,7 +112,7 @@ SceneViewCullingData SceneView::GenerateCullingData(const SceneViewData& viewDat
 	cullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
 	cullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
 
-	// normalize planes (we need normals to compare with bounding spheres radius
+	// normalize planes (we need normals to compare with bounding spheres radius)
 	for (math::Vector4f& cullingPlane : cullingData.cullingPlanes)
 	{
 		const Real32 norm = cullingPlane.head<3>().norm();

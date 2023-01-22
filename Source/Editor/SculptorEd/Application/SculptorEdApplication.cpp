@@ -176,7 +176,7 @@ void SculptorEdApplication::OnShutdown()
 void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 {
 	SPT_PROFILER_FUNCTION();
-	rdr::Renderer::WaitIdle();
+
 	const auto onSwapchainOutOfDateBeforeRendering = [this]()
 	{
 		rdr::Renderer::WaitIdle();

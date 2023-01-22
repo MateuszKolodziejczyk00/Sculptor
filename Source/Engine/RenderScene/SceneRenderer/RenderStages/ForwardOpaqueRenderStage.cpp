@@ -69,7 +69,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
 
-	graphBuilder.RenderPass(RG_DEBUG_NAME("GBuffer Generation Render Pass"),
+	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),
 							[](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) {});
