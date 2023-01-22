@@ -3,14 +3,18 @@
 #include "MeshBuilder.h"
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+#include "RenderingDataRegistry.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
+
+// TEMP
+#define TINYGLTF_NO_EXTERNAL_IMAGE 
+
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
-#include "RenderingDataRegistry.h"
 #pragma warning(pop)
 
 namespace spt::rsc
@@ -218,7 +222,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
 		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
 		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
-		transform *= remappedScale;
+		transform = remappedScale * transform;
 	}
 
 	if (!node.rotation.empty())
@@ -226,7 +230,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		SPT_CHECK(node.rotation.size() == 4);
 		const math::Vector4f nodeQuaternion = math::Map<const math::Vector4d>(node.rotation.data()).cast<float>();
 		const math::Quaternionf remappedQuaternion(math::Vector4f(nodeQuaternion.z(), nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.w()));
-		transform *= remappedQuaternion.matrix();
+		transform = remappedQuaternion.matrix() * transform;
 	}
 	
 	if (!node.translation.empty())
@@ -234,7 +238,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		SPT_CHECK(node.translation.size() == 3);
 		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
 		const math::Translation3f remappedTranslation(nodeTranslation.z(), nodeTranslation.x(), nodeTranslation.y());
-		transform *= remappedTranslation;
+		transform = remappedTranslation * transform;
 	}
 
 	return transform;

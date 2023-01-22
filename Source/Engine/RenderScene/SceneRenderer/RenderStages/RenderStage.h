@@ -61,5 +61,4 @@ inline RenderStageEntries& RenderStage<TRenderStageType, stage>::GetStageEntries
 	return viewSpec.GetRenderStageEntries(stage);
 }
 
-
 } // spt::rsc

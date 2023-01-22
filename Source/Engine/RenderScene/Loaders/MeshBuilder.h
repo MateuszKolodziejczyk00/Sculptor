@@ -40,12 +40,30 @@ protected:
 
 private:
 	
+	template<typename TType>
+	const TType* GetGeometryData(Uint32 offset) const
+	{
+		return reinterpret_cast<const TType*>(&m_geometryData[offset]);
+	}
+
+	template<typename TType>
+	TType* GetGeometryDataMutable(Uint32 offset)
+	{
+		return reinterpret_cast<TType*>(&m_geometryData[offset]);
+	}
+	
 #if SPT_DEBUG
-	void ValidateSubmesh(const SubmeshBuildData& submeshBuildData);
+	void ValidateSubmesh(const SubmeshBuildData& submeshBuildData) const;
 #endif // SPT_DEBUG
+
+	void ComputeBoundingSphere(SubmeshBuildData& submeshBuildData) const;
 
 	void OptimizeSubmesh(SubmeshBuildData& submeshBuildData);
 	void BuildMeshlets(SubmeshBuildData& submeshBuildData);
+
+	void BuildMeshletsCullingData(SubmeshBuildData& submeshBuildData);
+
+	void ComputeMeshBoundingSphere();
 
 	Byte* AppendData(Uint64 appendSize);
 
@@ -53,6 +71,9 @@ private:
 	
 	lib::DynamicArray<SubmeshBuildData> m_submeshes;
 	lib::DynamicArray<MeshletGPUData> m_meshlets;
+
+	math::Vector3f boundingSphereCenter;
+	Real32 boundingSphereRadius;
 };
 
 

@@ -41,7 +41,9 @@ BEGIN_SHADER_STRUCT(, StaticMeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
-	SHADER_STRUCT_FIELD(Uint32, padding1)
+	/* 1 empty byte */
+	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
+	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
 END_SHADER_STRUCT();
 
 
@@ -56,8 +58,9 @@ BEGIN_SHADER_STRUCT(, SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, meshletsVerticesDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, meshletsBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, meshletsNum)
-	SHADER_STRUCT_FIELD(Uint32, padding0)
-	SHADER_STRUCT_FIELD(Uint32, padding1)
+	/* 2 empty bytes */
+	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
+	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
 END_SHADER_STRUCT();
 
 
@@ -65,7 +68,9 @@ BEGIN_SHADER_STRUCT(, MeshletGPUData)
 	SHADER_STRUCT_FIELD(Uint32, triangleCount)
 	SHADER_STRUCT_FIELD(Uint32, meshletPrimitivesOffset)
 	SHADER_STRUCT_FIELD(Uint32, meshletVerticesOffset)
-	SHADER_STRUCT_FIELD(Uint32, padding)
+	SHADER_STRUCT_FIELD(Uint32, packedConeAxisAndCutoff) /* {[uint8 cone cutoff][3 x uint8 cone axis]} */
+	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
+	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
 END_SHADER_STRUCT();
 
 
