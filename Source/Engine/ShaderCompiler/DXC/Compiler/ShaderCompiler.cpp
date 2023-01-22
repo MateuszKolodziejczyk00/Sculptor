@@ -293,6 +293,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	args.Append(L"-enable-16bit-types");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
 	args.Append(lib::WString(L"-I"), absoluteShadersPath);
+	args.Append(lib::WString(L"-I"), absoluteShadersPath + L"/Sculptor");
 
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{

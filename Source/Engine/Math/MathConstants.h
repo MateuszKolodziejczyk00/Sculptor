@@ -11,4 +11,7 @@ constexpr TType Pi = static_cast<TType>(3.14159265359);
 template<typename TType>
 constexpr TType InvPI = static_cast<TType>(0.31830988618379067154);
 
+template<typename TType>
+constexpr TType smallNumber = static_cast<TType>(0.00001);
+
 } // spt::math

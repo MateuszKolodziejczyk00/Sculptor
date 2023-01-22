@@ -53,6 +53,20 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 	RenderEntityGPUData entityGPUData;
 	entityGPUData.transform = instanceData.transfrom.matrix();
 
+	const math::Matrix3f& transformTopLeft = instanceData.transfrom.matrix().topLeftCorner<3, 3>();
+
+#if DO_CHECKS
+	// Currently we support only uniform scale
+	const Real32 scaleX2 = transformTopLeft.row(0).squaredNorm();
+	const Real32 scaleY2 = transformTopLeft.row(1).squaredNorm();
+	const Real32 scaleZ2 = transformTopLeft.row(2).squaredNorm();
+	SPT_CHECK(math::Utils::AreNearlyEqual(scaleX2, scaleY2));
+	SPT_CHECK(math::Utils::AreNearlyEqual(scaleX2, scaleZ2));
+#endif // DO_CHECKS
+
+	const Real32 scaleX = transformTopLeft.row(0).norm();
+	entityGPUData.uniformScale = scaleX;
+
 	const Byte* entityDataPtr = reinterpret_cast<const Byte*>(&entityGPUData);
 	gfx::UploadDataToBuffer(m_renderEntitiesBuffer, entityGPUDataSuballocation.GetOffset(), entityDataPtr, sizeof(RenderEntityGPUData));
 

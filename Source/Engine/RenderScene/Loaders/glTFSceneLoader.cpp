@@ -219,6 +219,11 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);
+
+		// Ensure uniform scale
+		SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[1]));
+		SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[2]));
+
 		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
 		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
 		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());

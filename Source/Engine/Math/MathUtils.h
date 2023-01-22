@@ -85,6 +85,17 @@ public:
 		return val * val;
 	}
 
+	template<typename TType> requires std::is_floating_point_v<TType>
+	static constexpr TType IsNearlyZero(TType value, TType epsilon = smallNumber<TType>)
+	{
+		return std::abs(value) < epsilon;
+	}
+
+	template<typename TType> requires std::is_floating_point_v<TType>
+	static constexpr TType AreNearlyEqual(TType v1, TType v2, TType epsilon = smallNumber<TType>)
+	{
+		return IsNearlyZero(v1 - v2, epsilon);
+	}
 };
 
 } // spt::math

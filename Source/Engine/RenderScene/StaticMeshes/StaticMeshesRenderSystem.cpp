@@ -223,28 +223,28 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullInstancesCS"));
-		const rdr::ShaderID cullInstancesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullInstances.hlsl", compilationSettings);
+		const rdr::ShaderID cullInstancesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullInstances.hlsl", compilationSettings);
 		cullInstancesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullInstancesPipeline"), cullInstancesShader);
 	}
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"));
-		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullSubmeshes.hlsl", compilationSettings);
+		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullSubmeshes.hlsl", compilationSettings);
 		cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullSubmeshesPipeline"), cullSubmeshesShader);
 	}
 	
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullMeshletsCS"));
-		const rdr::ShaderID cullMeshletsShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullMeshlets.hlsl", compilationSettings);
+		const rdr::ShaderID cullMeshletsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullMeshlets.hlsl", compilationSettings);
 		cullMeshletsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullMeshletsPipeline"), cullMeshletsShader);
 	}
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullTrianglesCS"));
-		const rdr::ShaderID cullTrianglesShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_CullTriangles.hlsl", compilationSettings);
+		const rdr::ShaderID cullTrianglesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullTriangles.hlsl", compilationSettings);
 		cullTrianglesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullTrianglesPipeline"), cullTrianglesShader);
 	}
 
@@ -254,7 +254,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
-		const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
+		const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
 
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;

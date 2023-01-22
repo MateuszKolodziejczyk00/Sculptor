@@ -41,7 +41,7 @@ BEGIN_SHADER_STRUCT(, StaticMeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
-	/* 1 empty byte */
+	/* 4 empty bytes */
 	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
 	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
 END_SHADER_STRUCT();
@@ -58,7 +58,7 @@ BEGIN_SHADER_STRUCT(, SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, meshletsVerticesDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, meshletsBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, meshletsNum)
-	/* 2 empty bytes */
+	/* 8 empty bytes */
 	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
 	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
 END_SHADER_STRUCT();

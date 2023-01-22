@@ -26,10 +26,11 @@ void CullInstancesCS(CS_INPUT input)
         const StaticMeshGPUData staticMesh = u_staticMeshes[meshIdx];
 
         const uint entityIdx = u_batchElements[batchElementIdx].entityIdx;
-        const float4x4 entityTransform = u_renderEntitiesData[entityIdx].transform;
+        const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
+        const float4x4 entityTransform = entityData.transform;
 
         const float3 boundingSphereCenter = mul(entityTransform, float4(staticMesh.boundingSphereCenter, 1.f)).xyz;
-        const float boundingSphereRadius = staticMesh.boundingSphereRadius;
+        const float boundingSphereRadius = staticMesh.boundingSphereRadius * entityData.uniformScale;
 
         bool isInstanceVisible = true;
         for(int planeIdx = 0; planeIdx < 4; ++planeIdx)
