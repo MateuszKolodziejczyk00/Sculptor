@@ -18,4 +18,7 @@
 
 #define SPT_SCOPE_NAME(name) SPT_SCOPE_NAME_EVAL(name, __LINE__)
 
+/** Macro that can be used to send argument which contains commas to other macro */
+#define SPT_SINGLE_ARG(...) __VA_ARGS__
+
 

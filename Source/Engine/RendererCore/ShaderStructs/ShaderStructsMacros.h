@@ -11,6 +11,34 @@ namespace spt::rdr
 namespace priv
 {
 
+template<typename TType>
+struct ShaderStructMemberElementsNum
+{
+	static constexpr SizeType value = 1;
+};
+
+
+template<typename TType, SizeType elementsNum>
+struct ShaderStructMemberElementsNum<lib::StaticArray<TType, elementsNum>>
+{
+	static constexpr SizeType value = elementsNum;
+};
+
+
+template<typename TType>
+struct ShaderStructMemberElementType
+{
+	using Type = TType;
+};
+
+
+template<typename TType, SizeType elementsNum>
+struct ShaderStructMemberElementType<lib::StaticArray<TType, elementsNum>>
+{
+	using Type = TType;
+};
+
+
 template<typename TPrev, typename TType, lib::Literal name>
 struct ShaderStructMemberMetaData
 {
@@ -42,7 +70,7 @@ public:
 
 	static constexpr lib::String GetTypeName()
 	{
-		return shader_translator::GetShaderTypeName<UnderlyingType>();
+		return shader_translator::GetTypeName<typename ShaderStructMemberElementType<UnderlyingType>::Type>();
 	}
 
 	static constexpr const char* GetVariableName()
@@ -52,7 +80,21 @@ public:
 
 	static constexpr lib::String GetVariableLineString()
 	{
-		return lib::String(GetTypeName()) + ' ' + GetVariableName() + ";\n";
+		constexpr SizeType elementsNum = ShaderStructMemberElementsNum<UnderlyingType>::value;
+
+		lib::String line(GetTypeName() + ' ' + GetVariableName());
+		if constexpr (elementsNum > 1)
+		{
+			line += '[';
+			// quick way to support int to string constexpr conversion (as currently std::to_string is not constexpr and we don't need anything more)
+			SPT_STATIC_CHECK(elementsNum <= 9);
+			const char elementsNumChar = '0' + static_cast<char>(elementsNum);
+			line += elementsNumChar;
+			line += ']';
+		}
+		line += ";\n";
+
+		return line;
 	}
 };
 
