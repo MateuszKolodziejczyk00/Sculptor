@@ -72,8 +72,8 @@ private:
 	lib::DynamicArray<SubmeshBuildData> m_submeshes;
 	lib::DynamicArray<MeshletGPUData> m_meshlets;
 
-	math::Vector3f boundingSphereCenter;
-	Real32 boundingSphereRadius;
+	math::Vector3f m_boundingSphereCenter;
+	Real32 m_boundingSphereRadius;
 };
 
 

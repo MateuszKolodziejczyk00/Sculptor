@@ -37,7 +37,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),		u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),			u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),	u_cullingData)
 DS_END();
 
 
@@ -277,6 +278,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	const StaticMeshBatch batch = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 
+	// We don't need array here right now, but it's made for future use, as we'll for sure want to have more than one batch
 	lib::DynamicArray<StaticMeshBatchRenderingData> batches;
 
 	if (batch.IsValid())
@@ -290,8 +292,11 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		StaticMeshBatchesViewData& viewBatches = viewSpec.GetData().Create<StaticMeshBatchesViewData>();
 		viewBatches.batches = std::move(batches);
 
+		const RenderView& renderView = viewSpec.GetRenderView();
+
 		const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
-		viewDS->u_sceneView = viewSpec.GetRenderView().GenerateViewData();
+		viewDS->u_sceneView		= renderView.GenerateViewData();
+		viewDS->u_cullingData	= renderView.GenerateCullingData(viewDS->u_sceneView.Get());
 		
 		viewBatches.viewDS = viewDS;
 	

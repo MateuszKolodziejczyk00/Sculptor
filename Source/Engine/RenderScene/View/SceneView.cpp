@@ -101,4 +101,25 @@ SceneViewData SceneView::GenerateViewData() const
 	return data;
 }
 
+SceneViewCullingData SceneView::GenerateCullingData(const SceneViewData& viewData) const
+{
+	SceneViewCullingData cullingData;
+
+	const math::Matrix4f& viewProjection = viewData.viewProjectionMatrix;
+
+	cullingData.cullingPlanes[0] = viewProjection.row(3) + viewProjection.row(0);	// right plane:		 x < w  ---> w + x > 0
+	cullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		-x < w  ---> w - x > 0
+	cullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
+	cullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
+
+	// normalize planes (we need normals to compare with bounding spheres radius
+	for (math::Vector4f& cullingPlane : cullingData.cullingPlanes)
+	{
+		const Real32 norm = cullingPlane.head<3>().norm();
+		cullingPlane /= norm;
+	}
+
+	return cullingData;
+}
+
 } // spt::rsc

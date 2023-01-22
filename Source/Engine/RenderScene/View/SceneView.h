@@ -13,6 +13,12 @@ BEGIN_SHADER_STRUCT(, SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
 END_SHADER_STRUCT();
 
+
+BEGIN_SHADER_STRUCT(, SceneViewCullingData)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 4>), cullingPlanes)
+END_SHADER_STRUCT();
+
+
 class RENDER_SCENE_API SceneView
 {
 public:
@@ -34,6 +40,8 @@ public:
 	math::Matrix4f GenerateViewMatrix() const;
 
 	SceneViewData GenerateViewData() const;
+
+	SceneViewCullingData GenerateCullingData(const SceneViewData& viewData) const;
 
 private:
 

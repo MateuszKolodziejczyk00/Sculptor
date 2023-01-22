@@ -4,7 +4,7 @@
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(StaticMeshBatchDS, 2)]]
-//[[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
 [[descriptor_set(SMCullInstancesDS, 4)]]
 
@@ -23,10 +23,19 @@ void CullInstancesCS(CS_INPUT input)
     if(batchElementIdx < u_batchData.elementsNum)
     {
         const uint meshIdx = u_batchElements[batchElementIdx].staticMeshIdx;
-    
         const StaticMeshGPUData staticMesh = u_staticMeshes[meshIdx];
 
-        const bool isInstanceVisible = true;
+        const uint entityIdx = u_batchElements[batchElementIdx].entityIdx;
+        const float4x4 entityTransform = u_renderEntitiesData[entityIdx].transform;
+
+        const float3 boundingSphereCenter = mul(entityTransform, float4(staticMesh.boundingSphereCenter, 1.f)).xyz;
+        const float boundingSphereRadius = staticMesh.boundingSphereRadius;
+
+        bool isInstanceVisible = true;
+        for(int planeIdx = 0; planeIdx < 4; ++planeIdx)
+        {
+            isInstanceVisible = isInstanceVisible && dot(u_cullingData.cullingPlanes[planeIdx], float4(boundingSphereCenter, 1.f)) > -boundingSphereRadius;
+        }
 
         if (isInstanceVisible)
         {

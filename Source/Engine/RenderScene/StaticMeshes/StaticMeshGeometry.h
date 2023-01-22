@@ -81,13 +81,20 @@ DS_BEGIN(StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedData
 DS_END();
 
 
+struct StaticMeshBuildData
+{
+	math::Vector3f boundingSphereCenter;
+	Real32 boundingSphereRadius;
+};
+
+
 class StaticMeshUnifiedData
 {
 public:
 
 	static StaticMeshUnifiedData& Get();
 
-	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
+	StaticMeshGeometryData BuildStaticMeshData(const StaticMeshBuildData& buildData, lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
 
 	const lib::SharedPtr<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 

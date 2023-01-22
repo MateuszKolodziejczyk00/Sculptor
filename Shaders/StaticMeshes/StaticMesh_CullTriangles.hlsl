@@ -5,7 +5,7 @@
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(StaticMeshBatchDS, 2)]]
-//[[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
 [[descriptor_set(GeometryDS, 4)]]
 

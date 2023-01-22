@@ -13,7 +13,7 @@ StaticMeshUnifiedData& StaticMeshUnifiedData::Get()
 	return instance;
 }
 
-StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation)
+StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(const StaticMeshBuildData& buildData, lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -67,6 +67,8 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	staticMesh.geometryDataOffset	= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
 	staticMesh.submeshesBeginIdx	= static_cast<Uint32>(submeshesAllocationStartIdx);
 	staticMesh.submeshesNum			= static_cast<Uint32>(submeshes.size());
+	staticMesh.boundingSphereCenter = buildData.boundingSphereCenter;
+	staticMesh.boundingSphereRadius = buildData.boundingSphereRadius;
 	
 	const rhi::SuballocationDefinition staticMeshSuballocationDef(staticMeshDataSize, sizeof(StaticMeshGPUData), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
 	const rhi::RHISuballocation staticMeshSuballocation = m_staticMeshesBuffer->GetRHI().CreateSuballocation(staticMeshSuballocationDef);

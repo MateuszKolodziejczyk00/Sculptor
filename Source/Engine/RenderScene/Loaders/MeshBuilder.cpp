@@ -9,8 +9,8 @@ namespace spt::rsc
 SPT_DEFINE_LOG_CATEGORY(LogMeshBuilder, true);
 
 MeshBuilder::MeshBuilder()
-	: boundingSphereCenter(math::Vector3f::Zero())
-	, boundingSphereRadius(0.f)
+	: m_boundingSphereCenter(math::Vector3f::Zero())
+	, m_boundingSphereRadius(0.f)
 {
 	m_geometryData.reserve(1024 * 1024 * 8);
 }
@@ -53,7 +53,11 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	const Uint32 trianglesNum = indicesNum / 3;
 
-	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
+	StaticMeshBuildData buildData;
+	buildData.boundingSphereCenter = m_boundingSphereCenter;
+	buildData.boundingSphereRadius = m_boundingSphereRadius;
+
+	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(buildData, submeshesData, m_meshlets, geometrySuballocation);
 
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
 	staticMeshRenderingDef.staticMeshIdx	= static_cast<Uint32>(staticMeshGeometryData.staticMeshSuballocation.GetOffset() / sizeof(StaticMeshGPUData));
@@ -302,8 +306,8 @@ void MeshBuilder::ComputeMeshBoundingSphere()
 		radius = std::max(radius, distToSubmesh + submeshBD.submesh.boundingSphereRadius);
 	}
 
-	boundingSphereCenter = center;
-	boundingSphereRadius = radius;
+	m_boundingSphereCenter = center;
+	m_boundingSphereRadius = radius;
 }
 
 Byte* MeshBuilder::AppendData(Uint64 appendSize)
