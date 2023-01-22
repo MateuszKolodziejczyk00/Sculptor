@@ -40,11 +40,13 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	features.features.sampleRateShading = VK_TRUE;
 	features.features.independentBlend	= VK_TRUE;
 	features.features.fillModeNonSolid	= VK_TRUE;
+	features.features.shaderInt16		= VK_TRUE;
 
 	deviceInfoLinkedData.Append(features);
 
 	VkPhysicalDeviceVulkan11Features vulkan11Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
-    vulkan11Features.shaderDrawParameters = VK_TRUE;
+    vulkan11Features.shaderDrawParameters				= VK_TRUE;
+    vulkan11Features.storageBuffer16BitAccess			= VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan11Features);
 
@@ -52,6 +54,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.bufferDeviceAddress	= VK_TRUE;
 	vulkan12Features.timelineSemaphore		= VK_TRUE;
 	vulkan12Features.drawIndirectCount		= VK_TRUE;
+	vulkan12Features.shaderFloat16			= VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan12Features);
 
