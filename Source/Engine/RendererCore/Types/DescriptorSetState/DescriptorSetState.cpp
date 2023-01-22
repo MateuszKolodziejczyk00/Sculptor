@@ -191,6 +191,24 @@ SizeType DescriptorSetState::GetDynamicOffsetsNum() const
 	return m_dynamicOffsets.size();
 }
 
+lib::DynamicArray<Uint32> DescriptorSetState::GetDynamicOffsetsForShader(const lib::DynamicArray<Uint32>& cachedOffsets, const smd::ShaderMetaData& shaderMetaData, Uint32 dsIdx) const
+{
+	SPT_CHECK(m_dynamicOffsets.size() == cachedOffsets.size());
+
+	lib::DynamicArray<Uint32> outOffsets;
+	outOffsets.reserve(m_dynamicOffsets.size());
+
+	for (const DynamicOffsetDef& offsetDef : m_dynamicOffsetDefs)
+	{
+		if (shaderMetaData.ContainsBinding(dsIdx, offsetDef.bindingIdx))
+		{
+			outOffsets.emplace_back(cachedOffsets[offsetDef.offsetIdx]);
+		}
+	}
+
+	return outOffsets;
+}
+
 const lib::HashedString& DescriptorSetState::GetName() const
 {
 	return m_name.Get();
@@ -201,9 +219,14 @@ void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
 	m_descriptorSetHash = hash;
 }
 
-void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
+void DescriptorSetState::AddDynamicOffsetDefinition(Uint32 bindingIdx)
 {
-	m_dynamicOffsets.reserve(dynamicOffsetsNum);
+	m_dynamicOffsetDefs.emplace_back(DynamicOffsetDef{ bindingIdx, m_dynamicOffsetDefs.size() });
+}
+
+void DescriptorSetState::InitDynamicOffsetsArray()
+{
+	m_dynamicOffsets.reserve(m_dynamicOffsetDefs.size());
 }
 
 } // spt::rdr

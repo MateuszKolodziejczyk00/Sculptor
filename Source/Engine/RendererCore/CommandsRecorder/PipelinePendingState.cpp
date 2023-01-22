@@ -237,7 +237,9 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			if (lib::HasAnyFlag(stateInstance->GetFlags(), EDescriptorSetStateFlags::Persistent))
 			{
 				const rhi::RHIDescriptorSet descriptorSet = dsManager.GetOrCreateDescriptorSet(pipeline, static_cast<Uint32>(dsIdx), stateInstance);
-				descriptorSetsToBind.persistentDSBinds.emplace_back(PersistentDSBindCommand(static_cast<Uint32>(dsIdx), descriptorSet, foundState->dynamicOffsets));
+				
+				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, *metaData, static_cast<Uint32>(dsIdx));
+				descriptorSetsToBind.persistentDSBinds.emplace_back(PersistentDSBindCommand(static_cast<Uint32>(dsIdx), descriptorSet, std::move(dynamicOffsets)));
 
 				// this check must be after getting descriptor set, as this call may clear dirty flag if that's first descriptor created using given state
 				SPT_CHECK(!stateInstance->IsDirty());
@@ -252,7 +254,9 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 					m_dynamicDescriptorSetInfos.emplace_back(DynamicDescriptorSetInfo(pipeline, static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, stateInstance));
 					m_cachedDynamicDescriptorSets.emplace(stateAndPipelineDSHash);
 				}
-				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, foundState->dynamicOffsets));
+
+				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, *metaData, static_cast<Uint32>(dsIdx));
+				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, std::move(dynamicOffsets)));
 			}
 		}
 	}

@@ -123,13 +123,16 @@ public:
 	const lib::DynamicArray<Uint32>&	GetDynamicOffsets() const;
 	SizeType							GetDynamicOffsetsNum() const;
 
+	lib::DynamicArray<Uint32>			GetDynamicOffsetsForShader(const lib::DynamicArray<Uint32>& cachedOffsets, const smd::ShaderMetaData& shaderMetaData, Uint32 dsIdx) const;
+
 	const lib::HashedString& GetName() const;
 
 protected:
 
 	void SetDescriptorSetHash(SizeType hash);
 
-	void InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
+	void AddDynamicOffsetDefinition(Uint32 bindingIdx);
+	void InitDynamicOffsetsArray();
 
 private:
 
@@ -139,7 +142,14 @@ private:
 
 	EDescriptorSetStateFlags m_flags;
 
-	lib::DynamicArray<Uint32> m_dynamicOffsets;
+	struct DynamicOffsetDef
+	{
+		Uint32 bindingIdx;
+		SizeType offsetIdx;
+	};
+
+	lib::DynamicArray<Uint32>			m_dynamicOffsets;
+	lib::DynamicArray<DynamicOffsetDef>	m_dynamicOffsetDefs;
 
 	SizeType m_descriptorSetHash;
 
@@ -315,7 +325,11 @@ public:
 		: Super(name, flags)																									\
 	{																															\
 		SetDescriptorSetHash(GetTypeHash());																					\
-		InitDynamicOffsetsArray(rdr::bindings_refl::GetDynamicOffsetsNum<typename ReflHeadBindingType>());						\
+		rdr::bindings_refl::ForEachBindingWithDynamicOffset<ReflHeadBindingType>([this](Uint32 bindingIdx)						\
+																				  {												\
+																				      AddDynamicOffsetDefinition(bindingIdx);	\
+																				  });											\
+		InitDynamicOffsetsArray();																								\
 		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 	}																															\
 	static lib::HashedString GetDescriptorSetName()																				\
@@ -432,22 +446,22 @@ constexpr void ForEachBinding(TCallable callable)
 	}
 }
 
-template<typename TBindingHandle>
-constexpr SizeType GetDynamicOffsetsNum()
+template<typename TBindingHandle, typename TCallable>
+void ForEachBindingWithDynamicOffset(TCallable callable)
 {
-	SizeType dynamicOffsetsNum = 0;
+	SPT_PROFILER_FUNCTION();
 
-	ForEachBinding<TBindingHandle>([&dynamicOffsetsNum]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&callable, bindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
 	
 		if (lib::HasAnyFlag(CurrentBindingType::GetBindingFlags(), smd::EBindingFlags::DynamicOffset))
 		{
-			++dynamicOffsetsNum;
+			callable(bindingIdx);
 		}
-	});
 
-	return dynamicOffsetsNum;
+		bindingIdx += CurrentBindingType::GetBindingIdxDelta();
+	});
 }
 
 template<typename TBindingHandle>
