@@ -21,7 +21,7 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
-    const uint batchElementIdx = input.groupID.x;
+    const uint batchElementIdx = uint(u_visibleInstancesIndices[input.groupID.x]);
 
     const uint meshIdx = u_batchElements[batchElementIdx].staticMeshIdx;
     

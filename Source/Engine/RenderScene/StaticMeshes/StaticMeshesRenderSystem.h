@@ -24,6 +24,7 @@ private:
 
 	void RenderMeshesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
+	rdr::PipelineStateID cullInstancesPipeline;
 	rdr::PipelineStateID cullSubmeshesPipeline;
 	rdr::PipelineStateID cullMeshletsPipeline;
 	rdr::PipelineStateID cullTrianglesPipeline;
