@@ -67,7 +67,7 @@ public:
 
 	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
-	static void									WaitIdle();
+	static void									WaitIdle(Bool releaseRuntimeResources = true);
 
 	static Uint64								GetCurrentFrameIdx();
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();

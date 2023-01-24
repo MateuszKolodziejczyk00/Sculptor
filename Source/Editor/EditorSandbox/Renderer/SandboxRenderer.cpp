@@ -20,6 +20,7 @@
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
+#include "Transfers/TransfersManager.h"
 
 namespace spt::ed
 {
@@ -94,10 +95,10 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 															});
 
-	js::JobWithResult flushPendingBufferUploads = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedPtr<rdr::Semaphore>
-															 {
-																 return gfx::FlushPendingUploads();
-															 });
+	js::Job flushPendingBufferUploads = js::Launch(SPT_GENERIC_JOB_NAME, []()
+												   {
+													   return gfx::FlushPendingUploads();
+												   });
 
 	UpdateSceneUITextureForView(*m_renderView);
 
@@ -118,14 +119,13 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	graphBuilder.ReleaseTextureWithTransition(sceneUItextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
 
 	rdr::SemaphoresArray waitSemaphores;
+#if !WITH_NSIGHT_CRASH_FIX
 	// Wait for previous frame as we're reusing resources
 	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_COMMANDS);
+#endif // !WITH_NSIGHT_CRASH_FIX
 	
-	const lib::SharedPtr<rdr::Semaphore> finishPendingUploadsSemaphore = flushPendingBufferUploads.Await();
-	if (finishPendingUploadsSemaphore)
-	{
-		waitSemaphores.AddBinarySemaphore(finishPendingUploadsSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
-	}
+	flushPendingBufferUploads.Wait();
+	gfx::TransfersManager::WaitForTransfersFinished(waitSemaphores);
 
 	const lib::SharedRef<rdr::Semaphore> finishSemaphore = createFinishSemaphoreJob.Await();
 	rdr::SemaphoresArray signalSemaphores;

@@ -174,13 +174,16 @@ void Renderer::PresentTexture(const lib::SharedRef<Window>& window, const lib::D
 	window->PresentTexture(waitSemaphores);
 }
 
-void Renderer::WaitIdle()
+void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 {
 	SPT_PROFILER_FUNCTION();
 
 	rhi::RHI::WaitIdle();
 
-	CurrentFrameContext::ReleaseAllResources();
+	if (releaseRuntimeResources)
+	{
+		CurrentFrameContext::ReleaseAllResources();
+	}
 }
 
 Uint64 Renderer::GetCurrentFrameIdx()

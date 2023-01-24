@@ -177,6 +177,10 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 {
 	SPT_PROFILER_FUNCTION();
 
+#if WITH_NSIGHT_CRASH_FIX
+	rdr::Renderer::WaitIdle();
+#endif // WITH_NSIGHT_CRASH_FIX
+
 	const auto onSwapchainOutOfDateBeforeRendering = [this]()
 	{
 		rdr::Renderer::WaitIdle();
