@@ -96,6 +96,12 @@ public:
 	{
 		return IsNearlyZero(v1 - v2, epsilon);
 	}
+
+	template<typename TType>
+	static constexpr TType FirstSetBit(TType value)
+	{
+		return value & -value;
+	}
 };
 
 } // spt::math

@@ -613,6 +613,7 @@ public:
 		, m_size(size)
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
+		, m_earliestStageReadAfterLastWrite(rhi::EPipelineStage::BottomOfPipe)
 		, m_hasValidInstance(false)
 	{
 		SPT_CHECK(m_buffer.IsValid());
@@ -625,6 +626,7 @@ public:
 		, m_size(bufferView.GetSize())
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
+		, m_earliestStageReadAfterLastWrite(rhi::EPipelineStage::BottomOfPipe)
 		, m_bufferViewInstance(bufferView)
 		, m_hasValidInstance(true)
 	{
@@ -705,6 +707,16 @@ public:
 	{
 		m_lastAccessPipelineStages = stages;
 	}
+	
+	void SetEarliestStageReadAfterLastWrite(rhi::EPipelineStage stage)
+	{
+		m_earliestStageReadAfterLastWrite = stage;
+	}
+
+	rhi::EPipelineStage GetEarliestStageReadAfterLastWrite() const
+	{
+		return m_earliestStageReadAfterLastWrite;
+	}
 
 private:
 
@@ -716,6 +728,8 @@ private:
 	RGNodeHandle			m_lastAccessNode;
 	ERGBufferAccess			m_lastAccess;
 	rhi::EPipelineStage		m_lastAccessPipelineStages;
+
+	rhi::EPipelineStage		m_earliestStageReadAfterLastWrite;
 
 	mutable lib::TypeStorage<rdr::BufferView>	m_bufferViewInstance;
 	mutable Bool								m_hasValidInstance;
