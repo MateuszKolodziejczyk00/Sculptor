@@ -34,12 +34,18 @@ private:
 	void CullForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void RenderForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
-	rdr::PipelineStateID cullInstancesPipeline;
-	rdr::PipelineStateID cullSubmeshesPipeline;
-	rdr::PipelineStateID cullMeshletsPipeline;
-	rdr::PipelineStateID cullTrianglesPipeline;
-	
-	rdr::PipelineStateID forwadOpaqueShadingPipeline;
+	// Depth Prepass
+
+	rdr::PipelineStateID m_buildDrawCommandsPipeline;
+
+	// Forward Opaque
+
+	rdr::PipelineStateID m_cullInstancesPipeline;
+	rdr::PipelineStateID m_cullSubmeshesPipeline;
+	rdr::PipelineStateID m_cullMeshletsPipeline;
+	rdr::PipelineStateID m_cullTrianglesPipeline;
+
+	rdr::PipelineStateID m_forwadOpaqueShadingPipeline;
 };
 
 } // spt::rsc

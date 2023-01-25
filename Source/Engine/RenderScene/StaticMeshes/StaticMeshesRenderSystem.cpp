@@ -145,7 +145,7 @@ struct SMOpaqueForwardBatches
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DepthPrepass ==================================================================================
 
-BEGIN_SHADER_STRUCT(, SMDepthPrepasDrawCallData)
+BEGIN_SHADER_STRUCT(, SMDepthPrepassDrawCallData)
 	/* Vulkan command data */
 	SHADER_STRUCT_FIELD(Uint32, vertexCount)
 	SHADER_STRUCT_FIELD(Uint32, instanceCount)
@@ -154,20 +154,21 @@ BEGIN_SHADER_STRUCT(, SMDepthPrepasDrawCallData)
 	
 	/* Custom Data */
 	SHADER_STRUCT_FIELD(Uint32, batchElementIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshIdx)
+	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
 	SHADER_STRUCT_FIELD(Uint32, padding0)
 	SHADER_STRUCT_FIELD(Uint32, padding1)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(SMDepthPrepassCullInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassCullInstancesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMIndirectDrawCallData>),	u_drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),							u_drawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthPrepassDrawCallData>),	u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),						u_drawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),							u_validBatchElementsNum)
 DS_END();
 
 
 DS_BEGIN(SMDepthPrepassDrawInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassDrawInstancesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMIndirectDrawCallData>),	u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMDepthPrepassDrawCallData>),	u_drawCommands)
 DS_END();
 
 
@@ -175,7 +176,10 @@ struct SMDepthPrepassBatch
 {
 	rg::RGBufferViewHandle visibleInstancesDrawParamsBuffer;
 	
-	lib::SharedPtr<StaticMeshBatchDS> cullInstancesDS;
+	lib::SharedPtr<StaticMeshBatchDS>				batchDS;
+	
+	lib::SharedPtr<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
+	lib::SharedPtr<SMDepthPrepassDrawInstancesDS>	drawInstancesDS;
 
 	Uint32 batchedInstancesNum;
 };
@@ -312,6 +316,45 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 
 	SMDepthPrepassBatch batch;
 
+	// Create batch info
+	
+	batch.visibleInstancesDrawParamsBuffer = graphBuilder.AcquireExternalBufferView(instances.instancesDispatchParamsBuffer->CreateFullView());
+
+	SMGPUBatchData batchData;
+	batchData.elementsNum = instances.maxInstancesNum;
+
+	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("DepthPrepassBatchDS"));
+	batchDS->u_batchElements = instances.instancesBuffer->CreateFullView();
+	batchDS->u_batchData = batchData;
+
+	batch.batchDS = batchDS;
+	batch.batchedInstancesNum = instances.maxInstancesNum;
+
+	// Create buffers
+
+	const rhi::RHIAllocationInfo batchBuffersAllocInfo(rhi::EMemoryUsage::GPUOnly);
+
+	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthPrepassDrawCallData) * instances.maxSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMDepthPrepassIndirectCommands"), commandsBufferDef, batchBuffersAllocInfo);
+
+	const Uint64 indirectDrawsCountSize = sizeof(Uint32);
+	const rhi::BufferDefinition indirectDrawCountBufferDef(indirectDrawsCountSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+	const rg::RGBufferViewHandle indirectDrawCountBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMDepthPrepassIndirectCommandsCount"), indirectDrawCountBufferDef, batchBuffersAllocInfo);
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetSMDepthPrepassIndirectCommandsDefaultCount"), indirectDrawCountBuffer, 0, indirectDrawsCountSize, 0);
+
+	// Create Descriptor Sets
+	
+	const lib::SharedRef<SMDepthPrepassCullInstancesDS> cullInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassCullInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassCullInstancesDS"));
+	cullInstancesDS->u_drawCommands				= drawCommandsBuffer;
+	cullInstancesDS->u_drawsCount				= indirectDrawCountBuffer;
+	cullInstancesDS->u_validBatchElementsNum	= rdr::BufferView(lib::Ref(instances.instancesDispatchParamsBuffer), 0, sizeof(Uint32));
+
+	const lib::SharedRef<SMDepthPrepassDrawInstancesDS> drawInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassDrawInstancesDS"));
+	drawInstancesDS->u_drawCommands = drawCommandsBuffer;
+
+	batch.cullInstancesDS = cullInstancesDS;
+	batch.drawInstancesDS = drawInstancesDS;
+
 	return batch;
 }
 
@@ -326,30 +369,37 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildDrawCommandsCS"));
+		const rdr::ShaderID buildDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_BuildDepthPrepassDrawCommands.hlsl", compilationSettings);
+		m_buildDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_BuildDepthPrepassDrawCommands"), buildDrawCommandsShader);
+	}
+
+	{
+		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullInstancesCS"));
 		const rdr::ShaderID cullInstancesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullInstances.hlsl", compilationSettings);
-		cullInstancesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullInstancesPipeline"), cullInstancesShader);
+		m_cullInstancesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullInstancesPipeline"), cullInstancesShader);
 	}
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"));
 		const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullSubmeshes.hlsl", compilationSettings);
-		cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullSubmeshesPipeline"), cullSubmeshesShader);
+		m_cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullSubmeshesPipeline"), cullSubmeshesShader);
 	}
 	
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullMeshletsCS"));
 		const rdr::ShaderID cullMeshletsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullMeshlets.hlsl", compilationSettings);
-		cullMeshletsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullMeshletsPipeline"), cullMeshletsShader);
+		m_cullMeshletsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullMeshletsPipeline"), cullMeshletsShader);
 	}
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullTrianglesCS"));
 		const rdr::ShaderID cullTrianglesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullTriangles.hlsl", compilationSettings);
-		cullTrianglesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullTrianglesPipeline"), cullTrianglesShader);
+		m_cullTrianglesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullTrianglesPipeline"), cullTrianglesShader);
 	}
 
 	{
@@ -368,7 +418,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
 		}
 
-		forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, generateGBufferShader);
+		m_forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, generateGBufferShader);
 	}
 }
 
@@ -445,7 +495,28 @@ Bool StaticMeshesRenderSystem::BuildDepthPrepassBatchesPerView(rg::RenderGraphBu
 
 void StaticMeshesRenderSystem::CullDepthPrepassPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
+	SPT_PROFILER_FUNCTION();
 
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+
+	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+
+	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
+															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+																					  renderScene.GetRenderSceneDS(),
+																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
+
+	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
+	{
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+
+		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedInstancesNum, 64) / 64;
+
+		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull And Build Draw Commands"),
+							  m_buildDrawCommandsPipeline,
+							  math::Vector3u(dispatchGroupsNum, 1, 1),
+							  rg::BindDescriptorSets(lib::Ref(batch.cullInstancesDS)));
+	}
 }
 
 void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
@@ -525,7 +596,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedInstancesNum, 64) / 64;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Instances"),
-							  cullInstancesPipeline,
+							  m_cullInstancesPipeline,
 							  math::Vector3u(dispatchGroupsNum, 1, 1),
 							  rg::BindDescriptorSets(lib::Ref(batch.cullInstancesDS)));
 	}
@@ -535,7 +606,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Submeshes"),
-									  cullSubmeshesPipeline,
+									  m_cullSubmeshesPipeline,
 									  batch.visibleInstancesDispatchParamsRGBuffer,
 									  0,
 									  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS)));
@@ -546,7 +617,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
-									  cullMeshletsPipeline,
+									  m_cullMeshletsPipeline,
 									  batch.submeshesWorkloadsDispatchArgsBuffer,
 									  0,
 									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS)));
@@ -557,7 +628,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Triangles"),
-									  cullTrianglesPipeline,
+									  m_cullTrianglesPipeline,
 									  batch.meshletsWorkloadsDispatchArgsBuffer,
 									  0,
 									  rg::BindDescriptorSets(lib::Ref(batch.cullTrianglesDS),
@@ -593,7 +664,7 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 								std::tie(drawParams),
 								[drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
-									recorder.BindGraphicsPipeline(forwadOpaqueShadingPipeline);
+									recorder.BindGraphicsPipeline(m_forwadOpaqueShadingPipeline);
 
 									const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 
