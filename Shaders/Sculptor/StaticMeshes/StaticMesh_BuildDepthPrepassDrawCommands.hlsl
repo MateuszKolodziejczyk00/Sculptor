@@ -47,25 +47,30 @@ void BuildDrawCommandsCS(CS_INPUT input)
                 
                 const bool isSubmeshVisible = true;
 
-                const uint2 submeshVisibleBallot = WaveActiveBallot(isSubmeshVisible).xy;
-                
-                const uint visibleSubmeshesNum = countbits(submeshVisibleBallot.x) + countbits(submeshVisibleBallot.y);
-
-                uint outputBufferIdx = 0;
-                if (WaveIsFirstLane())
+                if (isSubmeshVisible)
                 {
-                    InterlockedAdd(u_drawsCount[0], visibleSubmeshesNum, outputBufferIdx);
+                    const uint2 submeshVisibleBallot = WaveActiveBallot(isSubmeshVisible).xy;
+                
+                    const uint visibleSubmeshesNum = countbits(submeshVisibleBallot.x) + countbits(submeshVisibleBallot.y);
+
+                    uint outputBufferIdx = 0;
+                    if (WaveIsFirstLane())
+                    {
+                        InterlockedAdd(u_drawsCount[0], visibleSubmeshesNum, outputBufferIdx);
+                    }
+
+                    outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
+
+                    u_drawCommands[outputBufferIdx].vertexCount     = submesh.indicesNum;
+                    u_drawCommands[outputBufferIdx].instanceCount   = 1;
+                    u_drawCommands[outputBufferIdx].firstVertex     = 0;
+                    u_drawCommands[outputBufferIdx].firstInstance   = 0;
+
+                    u_drawCommands[outputBufferIdx].batchElementIdx     = batchElementIdx;
+                    u_drawCommands[outputBufferIdx].submeshGlobalIdx    = submeshGlobalIdx;
+                    u_drawCommands[outputBufferIdx].padding0            = 0;
+                    u_drawCommands[outputBufferIdx].padding1            = 0;
                 }
-
-                outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(visibleSubmeshesNum, WaveGetLaneIndex());
-
-                u_drawCommands[outputBufferIdx].vertexCount     = submesh.indicesNum;
-                u_drawCommands[outputBufferIdx].instanceCount   = 1;
-                u_drawCommands[outputBufferIdx].firstVertex     = 0;
-                u_drawCommands[outputBufferIdx].firstInstance   = 0;
-
-                u_drawCommands[outputBufferIdx].batchElementIdx     = batchElementIdx;
-                u_drawCommands[outputBufferIdx].submeshGlobalIdx    = submeshGlobalIdx;
             }
         }
     }

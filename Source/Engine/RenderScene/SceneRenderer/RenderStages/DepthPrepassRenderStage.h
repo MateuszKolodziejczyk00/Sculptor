@@ -11,6 +11,8 @@ class DepthPrepassRenderStage : public RenderStage<DepthPrepassRenderStage, ERen
 {
 public:
 
+	static rhi::EFragmentFormat GetDepthFormat();
+
 	DepthPrepassRenderStage();
 
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);

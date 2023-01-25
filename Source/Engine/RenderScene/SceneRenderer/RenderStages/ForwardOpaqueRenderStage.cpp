@@ -3,6 +3,7 @@
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
+#include "DepthPrepassRenderStage.h"
 
 namespace spt::rsc
 {
@@ -12,7 +13,7 @@ RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 	RenderTargetFormatsDef formats;
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
-	formats.depthRTFormat = rhi::EFragmentFormat::D32_S_Float;
+	formats.depthRTFormat = DepthPrepassRenderStage::GetDepthFormat();
 
 	return formats;
 }

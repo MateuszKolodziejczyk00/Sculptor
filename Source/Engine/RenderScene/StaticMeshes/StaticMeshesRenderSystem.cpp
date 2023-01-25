@@ -13,6 +13,7 @@
 #include "StaticMeshGeometry.h"
 #include "BufferUtilities.h"
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
+#include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
 
 namespace spt::rsc
 {
@@ -97,9 +98,9 @@ DS_END();
 
 
 DS_BEGIN(SMCullTrianglesDS, rg::RGDescriptorSetState<SMCullTrianglesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),				u_visibleInstances)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMGPUWorkloadID>),						u_meshletWorkloads)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMGPUWorkloadID>),					u_triangleWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),		u_visibleInstances)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMGPUWorkloadID>),				u_meshletWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMGPUWorkloadID>),			u_triangleWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMIndirectDrawCallData>),	u_drawTrianglesParams)
 DS_END();
 
@@ -110,7 +111,7 @@ DS_BEGIN(SMIndirectRenderTrianglesDS, rg::RGDescriptorSetState<SMIndirectRenderT
 DS_END();
 
 
-BEGIN_RG_NODE_PARAMETERS_STRUCT(StaticMeshIndirectBatchDrawParams)
+BEGIN_RG_NODE_PARAMETERS_STRUCT(SMIndirectTrianglesBatchDrawParams)
 	RG_BUFFER_VIEW(batchDrawCommandsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 END_RG_NODE_PARAMETERS_STRUCT();
 
@@ -172,6 +173,12 @@ DS_BEGIN(SMDepthPrepassDrawInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassD
 DS_END();
 
 
+BEGIN_RG_NODE_PARAMETERS_STRUCT(SMIndirectDepthPrepassCommandsParameters)
+	RG_BUFFER_VIEW(batchDrawCommandsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+	RG_BUFFER_VIEW(batchDrawCommandsCountBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+END_RG_NODE_PARAMETERS_STRUCT();
+
+
 struct SMDepthPrepassBatch
 {
 	rg::RGBufferViewHandle visibleInstancesDrawParamsBuffer;
@@ -181,7 +188,11 @@ struct SMDepthPrepassBatch
 	lib::SharedPtr<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
 	lib::SharedPtr<SMDepthPrepassDrawInstancesDS>	drawInstancesDS;
 
+	rg::RGBufferViewHandle drawCommandsBuffer;
+	rg::RGBufferViewHandle indirectDrawCountBuffer;
+
 	Uint32 batchedInstancesNum;
+	Uint32 maxSubmeshesNum;
 };
 
 
@@ -329,6 +340,7 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 
 	batch.batchDS = batchDS;
 	batch.batchedInstancesNum = instances.maxInstancesNum;
+	batch.maxSubmeshesNum = instances.maxSubmeshesNum;
 
 	// Create buffers
 
@@ -355,6 +367,9 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 	batch.cullInstancesDS = cullInstancesDS;
 	batch.drawInstancesDS = drawInstancesDS;
 
+	batch.drawCommandsBuffer = drawCommandsBuffer;
+	batch.indirectDrawCountBuffer = indirectDrawCountBuffer;
+
 	return batch;
 }
 
@@ -372,6 +387,18 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildDrawCommandsCS"));
 		const rdr::ShaderID buildDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_BuildDepthPrepassDrawCommands.hlsl", compilationSettings);
 		m_buildDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_BuildDepthPrepassDrawCommands"), buildDrawCommandsShader);
+	}
+
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthPrepassVS"));
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthPrepassFS"));
+		const rdr::ShaderID depthPrepassShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepthPrepass.hlsl", compilationSettings);
+
+		rhi::GraphicsPipelineDefinition pipelineDef;
+		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
+		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), pipelineDef, depthPrepassShader);
 	}
 
 	{
@@ -413,6 +440,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = forwardOpaqueRTFormats.depthRTFormat;
+		pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::EDepthCompareOperation::GreaterOrEqual;
 		for (const rhi::EFragmentFormat format : forwardOpaqueRTFormats.colorRTFormats)
 		{
 			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
@@ -521,7 +549,47 @@ void StaticMeshesRenderSystem::CullDepthPrepassPerView(rg::RenderGraphBuilder& g
 
 void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
+	SPT_PROFILER_FUNCTION();
 
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+
+	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+
+	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
+																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+																						renderScene.GetRenderSceneDS(),
+																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
+																						lib::Ref(staticMeshRenderingViewData.viewDS)));
+
+	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
+	{
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+
+		SMIndirectDepthPrepassCommandsParameters drawParams;
+		drawParams.batchDrawCommandsBuffer = batch.drawCommandsBuffer;
+		drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountBuffer;
+
+		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
+
+		const Uint32 maxDrawCallsNum = batch.maxSubmeshesNum;
+
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
+								rg::BindDescriptorSets(lib::Ref(batch.drawInstancesDS)),
+								std::tie(drawParams),
+								[maxDrawCallsNum, drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									recorder.BindGraphicsPipeline(m_depthPrepassRenderingPipeline);
+
+									const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
+
+									recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
+									recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
+
+									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
+									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetBufferViewInstance();
+									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthPrepassDrawCallData), drawCountBufferView, 0, maxDrawCallsNum);
+								});
+	}
 }
 
 Bool StaticMeshesRenderSystem::BuildForwardOpaueBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -654,7 +722,7 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 	{
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
-		StaticMeshIndirectBatchDrawParams drawParams;
+		SMIndirectTrianglesBatchDrawParams drawParams;
 		drawParams.batchDrawCommandsBuffer = batch.drawTrianglesBatchArgsBuffer;
 
 		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());

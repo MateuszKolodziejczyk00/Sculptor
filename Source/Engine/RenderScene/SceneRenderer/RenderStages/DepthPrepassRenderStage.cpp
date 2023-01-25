@@ -7,10 +7,13 @@
 namespace spt::rsc
 {
 
-DepthPrepassRenderStage::DepthPrepassRenderStage()
+rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
 {
-
+	return rhi::EFragmentFormat::D32_S_Float;
 }
+
+DepthPrepassRenderStage::DepthPrepassRenderStage()
+{ }
 
 void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
@@ -26,7 +29,7 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	rhi::TextureDefinition depthDef;
 	depthDef.resolution = texturesRes;
 	depthDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
-	depthDef.format = rhi::EFragmentFormat::D32_S_Float;
+	depthDef.format = GetDepthFormat();
 	depthPrepassResult.depth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DepthTexture"), depthDef, depthTextureAllocationInfo);
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);

@@ -38,6 +38,8 @@ private:
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 
+	rdr::PipelineStateID m_depthPrepassRenderingPipeline;
+
 	// Forward Opaque
 
 	rdr::PipelineStateID m_cullInstancesPipeline;
