@@ -1,5 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "Utils/Wave.hlsli"
+#include "Utils/Culling.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -32,11 +33,7 @@ void CullInstancesCS(CS_INPUT input)
         const float3 boundingSphereCenter = mul(entityTransform, float4(staticMesh.boundingSphereCenter, 1.f)).xyz;
         const float boundingSphereRadius = staticMesh.boundingSphereRadius * entityData.uniformScale;
 
-        bool isInstanceVisible = true;
-        for(int planeIdx = 0; planeIdx < 4; ++planeIdx)
-        {
-            isInstanceVisible = isInstanceVisible && dot(u_cullingData.cullingPlanes[planeIdx], float4(boundingSphereCenter, 1.f)) > -boundingSphereRadius;
-        }
+        const bool isInstanceVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, boundingSphereCenter, boundingSphereRadius);
 
         if (isInstanceVisible)
         {

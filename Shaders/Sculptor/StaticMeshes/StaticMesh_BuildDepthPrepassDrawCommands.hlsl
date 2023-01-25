@@ -1,5 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "Utils/Wave.hlsli"
+#include "Utils/Culling.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -29,14 +30,10 @@ void BuildDrawCommandsCS(CS_INPUT input)
         const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
         const float4x4 entityTransform = entityData.transform;
 
-        const float3 boundingSphereCenter = mul(entityTransform, float4(staticMesh.boundingSphereCenter, 1.f)).xyz;
-        const float boundingSphereRadius = staticMesh.boundingSphereRadius * entityData.uniformScale;
+        const float3 instanceBoundingSphereCenter = mul(entityTransform, float4(staticMesh.boundingSphereCenter, 1.f)).xyz;
+        const float instanceBoundingSphereRadius = staticMesh.boundingSphereRadius * entityData.uniformScale;
 
-        bool isInstanceVisible = true;
-        for(uint planeIdx = 0; planeIdx < 4; ++planeIdx)
-        {
-            isInstanceVisible = isInstanceVisible && dot(u_cullingData.cullingPlanes[planeIdx], float4(boundingSphereCenter, 1.f)) > -boundingSphereRadius;
-        }
+        const bool isInstanceVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, instanceBoundingSphereCenter, instanceBoundingSphereRadius);
 
         if (isInstanceVisible)
         {
@@ -44,8 +41,11 @@ void BuildDrawCommandsCS(CS_INPUT input)
             {
                 const uint submeshGlobalIdx = staticMesh.submeshesBeginIdx + submeshIdx;
                 const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
+
+                const float3 submeshBoundingSphereCenter = mul(entityTransform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
+                const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;
                 
-                const bool isSubmeshVisible = true;
+                const bool isSubmeshVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, submeshBoundingSphereCenter, submeshBoundingSphereRadius);
 
                 if (isSubmeshVisible)
                 {
