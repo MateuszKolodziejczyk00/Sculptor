@@ -21,9 +21,9 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
-    const uint batchElementIdx = uint(u_visibleInstancesIndices[input.groupID.x]);
+    const uint batchElementIdx = input.groupID.x;
 
-    const uint meshIdx = u_batchElements[batchElementIdx].staticMeshIdx;
+    const uint meshIdx = u_visibleInstances[batchElementIdx].staticMeshIdx;
     
     const StaticMeshGPUData staticMesh = u_staticMeshes[meshIdx];
     
@@ -47,7 +47,7 @@ void CullSubmeshesCS(CS_INPUT input)
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
 
-            const GPUWorkloadID submeshWorkload = PackSubmeshWorkload(batchElementIdx, globalSubmeshIdx);
+            const SMGPUWorkloadID submeshWorkload = PackSubmeshWorkload(batchElementIdx, globalSubmeshIdx);
             u_submeshWorkloads[outputBufferIdx] = submeshWorkload;
         }
     }

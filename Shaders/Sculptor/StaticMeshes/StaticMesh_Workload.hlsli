@@ -1,7 +1,7 @@
 
 #define WORKLOAD_SIZE 64
 
-[[shader_struct(GPUWorkloadID)]]
+[[shader_struct(SMGPUWorkloadID)]]
 
 #define BATCH_ELEM_IDX_MASK 0x00001fff
 #define LOCAL_MESHLET_IDX_MASK 0x00001fff
@@ -15,16 +15,16 @@
  * workload.data2 = {[32bits - global submesh idx]}
  */
 
-GPUWorkloadID PackSubmeshWorkload(uint batchElementIdx, uint globalSubmeshIdx)
+SMGPUWorkloadID PackSubmeshWorkload(uint batchElementIdx, uint globalSubmeshIdx)
 {
-    GPUWorkloadID workload;
+    SMGPUWorkloadID workload;
     workload.data1 = batchElementIdx & BATCH_ELEM_IDX_MASK;
     workload.data2 = globalSubmeshIdx;
     return workload;
 }
 
 
-void UnpackSubmeshWorkload(GPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx)
+void UnpackSubmeshWorkload(SMGPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx)
 {
     batchElementIdx = workload.data1 & BATCH_ELEM_IDX_MASK;
     globalSubmeshIdx = workload.data2;
@@ -38,9 +38,9 @@ void UnpackSubmeshWorkload(GPUWorkloadID workload, out uint batchElementIdx, out
  * workload.data2 = {[32bits - global submesh idx]}
  */
 
-GPUWorkloadID PackMeshletWorkload(uint batchElementIdx, uint globalSubmeshIdx, uint localMeshletIdx)
+SMGPUWorkloadID PackMeshletWorkload(uint batchElementIdx, uint globalSubmeshIdx, uint localMeshletIdx)
 {
-    GPUWorkloadID workload;
+    SMGPUWorkloadID workload;
     workload.data1 = (batchElementIdx & BATCH_ELEM_IDX_MASK) +
                     ((localMeshletIdx & LOCAL_MESHLET_IDX_MASK) << 13);
     
@@ -49,7 +49,7 @@ GPUWorkloadID PackMeshletWorkload(uint batchElementIdx, uint globalSubmeshIdx, u
 }
 
 
-void UnpackMeshletWorkload(GPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx, out uint localMeshletIdx)
+void UnpackMeshletWorkload(SMGPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx, out uint localMeshletIdx)
 {
     batchElementIdx = workload.data1 & BATCH_ELEM_IDX_MASK;
     localMeshletIdx = (workload.data1 >> 13) & LOCAL_MESHLET_IDX_MASK;
@@ -65,9 +65,9 @@ void UnpackMeshletWorkload(GPUWorkloadID workload, out uint batchElementIdx, out
  * workload.data2 = {[32bits - global submesh idx]}
  */
 
-GPUWorkloadID PackTriangleWorkload(uint batchElementIdx, uint globalSubmeshIdx, uint localMeshletIdx, uint meshletTriangleIdx)
+SMGPUWorkloadID PackTriangleWorkload(uint batchElementIdx, uint globalSubmeshIdx, uint localMeshletIdx, uint meshletTriangleIdx)
 {
-    GPUWorkloadID workload;
+    SMGPUWorkloadID workload;
 
     workload.data1 = (batchElementIdx & BATCH_ELEM_IDX_MASK) +
                     ((localMeshletIdx & LOCAL_MESHLET_IDX_MASK) << 13) +
@@ -78,7 +78,7 @@ GPUWorkloadID PackTriangleWorkload(uint batchElementIdx, uint globalSubmeshIdx, 
 }
 
 
-void UnpackTriangleWorkload(GPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx, out uint localMeshletIdx, out uint meshletTriangleIdx)
+void UnpackTriangleWorkload(SMGPUWorkloadID workload, out uint batchElementIdx, out uint globalSubmeshIdx, out uint localMeshletIdx, out uint meshletTriangleIdx)
 {
     batchElementIdx = workload.data1 & BATCH_ELEM_IDX_MASK;
     localMeshletIdx = (workload.data1 >> 13) & LOCAL_MESHLET_IDX_MASK;

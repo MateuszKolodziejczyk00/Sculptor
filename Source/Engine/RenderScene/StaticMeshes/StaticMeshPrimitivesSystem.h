@@ -24,9 +24,9 @@ BEGIN_SHADER_STRUCT(, StaticMeshBatchElement)
 END_SHADER_STRUCT();
 
 
-struct StaticMeshBatch
+struct StaticMeshBatchDefinition
 {
-	StaticMeshBatch()
+	StaticMeshBatchDefinition()
 		: maxSubmeshesNum(0)
 		, maxMeshletsNum(0)
 		, maxTrianglesNum(0)
@@ -54,7 +54,7 @@ public:
 
 	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
 
-	StaticMeshBatch BuildBatchForView(const RenderView& view) const;
+	StaticMeshBatchDefinition BuildBatchForView(const RenderView& view) const;
 };
 
 } // spt::rsc

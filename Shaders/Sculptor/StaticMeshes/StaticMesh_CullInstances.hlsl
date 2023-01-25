@@ -52,7 +52,7 @@ void CullInstancesCS(CS_INPUT input)
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(instanceVisibleBallot, WaveGetLaneIndex());
 
-            u_visibleInstancesIndices[outputBufferIdx] = uint16_t(batchElementIdx);
+            u_visibleInstances[outputBufferIdx] = u_batchElements[batchElementIdx];
         }
     }
     

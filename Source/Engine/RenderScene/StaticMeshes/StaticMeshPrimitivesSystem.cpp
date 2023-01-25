@@ -10,11 +10,11 @@ StaticMeshPrimitivesSystem::StaticMeshPrimitivesSystem(RenderScene& owningScene)
 	: Super(owningScene)
 { }
 
-StaticMeshBatch StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& view) const
+StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	StaticMeshBatch batch;
+	StaticMeshBatchDefinition batch;
 
 	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityGPUDataHandle>();
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
