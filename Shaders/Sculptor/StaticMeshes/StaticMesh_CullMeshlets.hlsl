@@ -23,7 +23,6 @@ void UnpackConeAxisAndCutoff(uint packedData, out float3 coneAxis, out float con
     coneAxis.x = float(ToInt8Value(packedData >> 16)) / 127.f;
     coneAxis.y = float(ToInt8Value(packedData >>  8)) / 127.f;
     coneAxis.z = float(ToInt8Value(packedData      )) / 127.f;
-    coneAxis = normalize(coneAxis);
 }
 
 
@@ -53,6 +52,8 @@ void CullMeshletsCS(CS_INPUT input)
         const uint globalMeshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
 
         const MeshletGPUData meshlet = u_meshlets[globalMeshletIdx];
+ 
+        bool isMeshletVisible = true;
 
         const float3 meshletBoundingSphereCenter = mul(entityTransform, float4(meshlet.boundingSphereCenter, 1.f)).xyz;
         const float meshletBoundingSphereRadius = meshlet.boundingSphereRadius * entityData.uniformScale;
@@ -62,10 +63,16 @@ void CullMeshletsCS(CS_INPUT input)
         UnpackConeAxisAndCutoff(meshlet.packedConeAxisAndCutoff, coneAxis, coneCutoff);
 
         const float3x3 entityRotationAndScale = float3x3(entityTransform[0].xyz, entityTransform[1].xyz, entityTransform[2].xyz);
-        coneAxis = normalize(mul(entityRotationAndScale, coneAxis));
+        
+        // In some cases axis is set to 0 vector (for example sometimes with planes)
+        // we cannot normalize vertor then, and in most of those cases meshlet is visible anyway, so we don't do culling then
+        if(any(coneAxis != 0.f))
+        {
+            coneAxis = normalize(mul(entityRotationAndScale, coneAxis));
 
-        bool isMeshletVisible = true; //IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
-        isMeshletVisible = isMeshletVisible && IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
+            isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
+            isMeshletVisible = isMeshletVisible && IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
+        }
 
         if(isMeshletVisible)
         {
