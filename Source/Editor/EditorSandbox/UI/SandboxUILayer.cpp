@@ -82,6 +82,12 @@ void SandboxUILayer::DrawRendererSettings()
 	{
 		m_renderer->SetFov(fov);
 	}
+	
+	Real32 cameraSpeed = m_renderer->GetCameraSpeed();
+	if (ImGui::SliderFloat("CameraSpeed", &cameraSpeed, 0.1f, 100.f))
+	{
+		m_renderer->SetCameraSpeed(cameraSpeed);
+	}
 }
 
 void SandboxUILayer::DrawJobSystemTestsUI()

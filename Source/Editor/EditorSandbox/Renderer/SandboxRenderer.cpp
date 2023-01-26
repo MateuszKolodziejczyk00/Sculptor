@@ -25,10 +25,13 @@
 namespace spt::ed
 {
 
+SPT_DEFINE_LOG_CATEGORY(Sandbox, true)
+
 SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	: m_window(std::move(owningWindow))
 	, m_fovDegrees(80.f)
 	, m_nearPlane(1.f)
+	, m_cameraSpeed(5.f)
 {
 
 	InitializeRenderScene();
@@ -44,31 +47,29 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32 cameraSpeed = 5.f;
-
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
 	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * math::Vector3f::UnitX()));
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX()));
 	}
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
 	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * -math::Vector3f::UnitX()));
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX()));
 	}
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
 	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * math::Vector3f::UnitY()));
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY()));
 	}
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
 	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * cameraSpeed * -math::Vector3f::UnitY()));
+		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY()));
 	}
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
 	{
-		m_renderView->Move(deltaTime * cameraSpeed * math::Vector3f::UnitZ());
+		m_renderView->Move(deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
 	}
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
 	{
-		m_renderView->Move(deltaTime * cameraSpeed * -math::Vector3f::UnitZ());
+		m_renderView->Move(deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
 	}
 
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
@@ -180,6 +181,16 @@ void SandboxRenderer::SetFov(Real32 fovDegrees)
 Real32 SandboxRenderer::GetFov()
 {
 	return m_fovDegrees;
+}
+
+void SandboxRenderer::SetCameraSpeed(Real32 speed)
+{
+	m_cameraSpeed = speed;
+}
+
+Real32 SandboxRenderer::GetCameraSpeed()
+{
+	return m_cameraSpeed;
 }
 
 void SandboxRenderer::InitializeRenderScene()
