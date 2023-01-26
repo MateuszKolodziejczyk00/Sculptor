@@ -1,6 +1,7 @@
 #include "SculptorShader.hlsli"
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
 #include "Utils/Wave.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -20,6 +21,49 @@ struct CS_INPUT
 };
 
 
+uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint verticesOffset, uint meshletTriangleIdx)
+{
+    const uint triangleStride = 3;
+    const uint primitiveOffset = meshletPrimitivesOffset + meshletTriangleIdx * triangleStride;
+
+    // Load multiple of 4
+    const uint primitiveOffsetToLoad = primitiveOffset & 0xfffffffc;
+
+    // Load uint2 to be sure that we will have all 3 indices
+    const uint2 meshletPrimitivesIndices = u_geometryData.Load<uint2>(primitiveOffsetToLoad);
+
+    uint primitiveIndicesByteOffset = primitiveOffset - primitiveOffsetToLoad;
+
+    uint3 traingleIndices;
+
+    for (int idx = 0; idx < 3; ++idx, ++primitiveIndicesByteOffset)
+    {
+        uint indices4;
+        uint offset;
+        
+        if(primitiveIndicesByteOffset >= 4)
+        {
+            indices4 = meshletPrimitivesIndices[1];
+            offset = primitiveIndicesByteOffset - 4;
+        }
+        else
+        {
+            indices4 = meshletPrimitivesIndices[0];
+            offset = primitiveIndicesByteOffset;
+        }
+
+        traingleIndices[idx] = (indices4 >> (offset * 8)) & 0x000000ff;
+    }
+
+    for (int idx = 0; idx < 3; ++idx, ++primitiveIndicesByteOffset)
+    {
+        traingleIndices[idx] = u_geometryData.Load<uint>(verticesOffset + (traingleIndices[idx] * 4));
+    }
+    
+    return traingleIndices;
+}
+
+
 [numthreads(64, 1, 1)]
 void CullTrianglesCS(CS_INPUT input)
 {
@@ -27,6 +71,10 @@ void CullTrianglesCS(CS_INPUT input)
     uint submeshIdx;
     uint localMeshletIdx;
     UnpackMeshletWorkload(u_meshletWorkloads[input.groupID.x], batchElementIdx, submeshIdx, localMeshletIdx);
+
+    const uint entityIdx = u_visibleInstances[batchElementIdx].entityIdx;
+    const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
+    const float4x4 entityTransform = entityData.transform;
 
     const SubmeshGPUData submesh = u_submeshes[submeshIdx];
     const uint meshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
@@ -37,7 +85,40 @@ void CullTrianglesCS(CS_INPUT input)
 
     if(triangleIdx < meshlet.triangleCount)
     {
-        const bool isTriangleVisible = true;
+        const uint primitiveIndicesOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset;
+        const uint verticesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
+        const uint locationsOffset = submesh.locationsOffset;
+
+        bool isTriangleVisible = true;
+
+        const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
+
+        const uint3 triangleVertexIndices = LoadTriangleVertexIndices(primitiveIndicesOffset, verticesOffset, triangleIdx);
+        
+        bool isInFrontOfPerspectivePlane = true;
+
+        float4 triangleVerticesClip[3];
+        for (int idx = 0; idx < 3; ++idx)
+        {
+            const float3 vertexLocation = u_geometryData.Load<float3>(locationsOffset + triangleVertexIndices[idx] * 12);
+            triangleVerticesClip[idx] = mul(u_sceneView.viewProjectionMatrix, mul(entityTransform, float4(vertexLocation, 1.f)));
+            isInFrontOfPerspectivePlane = isInFrontOfPerspectivePlane && triangleVerticesClip[idx].z > nearPlane;
+        }
+
+        // currently we're not handling case when some vertices are in front of near plane, so we just pass those triangles as visible
+        if(isInFrontOfPerspectivePlane)
+        {
+            // Perspective division
+            for (int idx = 0; idx < 3; ++idx)
+            {
+                triangleVerticesClip[idx] = triangleVerticesClip[idx] / triangleVerticesClip[idx].w;
+            }
+
+            const float2 ca = triangleVerticesClip[1].xy - triangleVerticesClip[0].xy;
+            const float2 cb = triangleVerticesClip[2].xy - triangleVerticesClip[0].xy;
+
+            const bool isTriangleVisible = (ca.x * cb.y <= ca.y * cb.x);
+        }
 
         if(isTriangleVisible)
         {

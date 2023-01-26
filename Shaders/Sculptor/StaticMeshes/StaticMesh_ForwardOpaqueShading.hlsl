@@ -30,7 +30,7 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     VS_OUTPUT output;
 
     const uint workloadIdx = input.index / 3;
-    const uint trianglePrimIdx = input.index - workloadIdx * 3;
+    const uint triangleVertexIdx = input.index - workloadIdx * 3;
 
     uint batchElementIdx;
     uint submeshIdx;
@@ -47,18 +47,20 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const MeshletGPUData meshlet = u_meshlets[meshletIdx];
 
     const uint triangleStride = 3;
-    const uint primitiveOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset + triangleIdx * triangleStride + trianglePrimIdx;
+    const uint primitiveOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset + triangleIdx * triangleStride + triangleVertexIdx;
 
+    // Load multiple of 4
     const uint primitiveOffsetToLoad = primitiveOffset & 0xfffffffc;
 
     const uint meshletPrimitiveData = u_geometryData.Load<uint>(primitiveOffsetToLoad);
 
+    // Load proper byte
     const uint primitiveIdxMask = 0x000000ff;
     const uint primIdx = (meshletPrimitiveData >> ((primitiveOffset - primitiveOffsetToLoad) << 3)) & primitiveIdxMask;
     
     const uint verticesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
 
-    const uint vertexIdx = u_geometryData.Load<uint>(verticesOffset + (primIdx << 2));
+    const uint vertexIdx = u_geometryData.Load<uint>(verticesOffset + (primIdx * 4));
 
     const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + vertexIdx * 12);
     const float3 vertexNormal = u_geometryData.Load<float3>(submesh.normalsOffset + vertexIdx * 12);
