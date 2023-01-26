@@ -3,7 +3,6 @@
 #include "ShadersCache/CompiledShadersCache.h"
 #include "ShaderFileReader.h"
 #include "Compiler/ShaderCompiler.h"
-#include "SPIRVOptimizer.h"
 #include "MetaData/ShaderMetaDataBuilderTypes.h"
 #include "MetaData/ShaderMetaDataBuilder.h"
 
@@ -61,12 +60,6 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shad
 		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, stageCompilationDef, settings, paramsMetaData);
 
 		success &= compiledShader.IsValid();
-
-		if (success)
-		{
-			//CompiledShader::Binary optimizedBinary = SPIRVOptimizer::OptimizeBinary(compiledShader.GetBinary());
-			//compiledShader.SetBinary(std::move(optimizedBinary));
-		}
 
 		if (compiledShader.IsValid())
 		{

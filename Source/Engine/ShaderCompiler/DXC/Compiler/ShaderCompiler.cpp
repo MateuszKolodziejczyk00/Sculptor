@@ -299,7 +299,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	{
 		args.Append(lib::WString(L"-Zi"));
 		args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
-		args.Append(lib::WString(L"-O0"));
+		args.Append(lib::WString(L"-O1"));
 	}
 
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
