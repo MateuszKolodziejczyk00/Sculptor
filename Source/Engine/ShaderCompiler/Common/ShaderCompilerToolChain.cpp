@@ -64,8 +64,8 @@ Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shad
 
 		if (success)
 		{
-			CompiledShader::Binary optimizedBinary = SPIRVOptimizer::OptimizeBinary(compiledShader.GetBinary());
-			compiledShader.SetBinary(std::move(optimizedBinary));
+			//CompiledShader::Binary optimizedBinary = SPIRVOptimizer::OptimizeBinary(compiledShader.GetBinary());
+			//compiledShader.SetBinary(std::move(optimizedBinary));
 		}
 
 		if (compiledShader.IsValid())
