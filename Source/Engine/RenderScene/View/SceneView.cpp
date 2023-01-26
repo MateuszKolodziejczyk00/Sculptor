@@ -97,6 +97,7 @@ SceneViewData SceneView::GenerateViewData() const
 	data.viewMatrix = GenerateViewMatrix();
 	data.viewProjectionMatrix = m_projectionMatrix * data.viewMatrix;
 	data.projectionMatrix = m_projectionMatrix;
+	data.viewLocation = m_viewLocation;
 
 	return data;
 }

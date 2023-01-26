@@ -11,6 +11,7 @@ BEGIN_SHADER_STRUCT(, SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, projectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
+	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
 END_SHADER_STRUCT();
 
 

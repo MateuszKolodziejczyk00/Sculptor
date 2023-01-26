@@ -271,10 +271,13 @@ void MeshBuilder::BuildMeshletsCullingData(SubmeshBuildData& submeshBuildData)
 		meshlet.boundingSphereCenter = math::Map<const math::Vector3f>(meshletBounds.center);
 		meshlet.boundingSphereRadius = meshletBounds.radius;
 
-		const Uint32 packedConeAxis = (static_cast<Uint32>(meshletBounds.cone_axis_s8[0]) << 16)
-									| (static_cast<Uint32>(meshletBounds.cone_axis_s8[1]) << 8)
-									| (static_cast<Uint32>(meshletBounds.cone_axis_s8[2]));
-		meshlet.packedConeAxisAndCutoff = packedConeAxis | (static_cast<Uint32>(meshletBounds.cone_cutoff_s8) << 24);
+		Int8 packedConeAxis[4];
+		packedConeAxis[0] = meshletBounds.cone_axis_s8[2];
+		packedConeAxis[1] = meshletBounds.cone_axis_s8[1];
+		packedConeAxis[2] = meshletBounds.cone_axis_s8[0];
+		packedConeAxis[3] = meshletBounds.cone_cutoff_s8;
+		
+		std::memcpy(&meshlet.packedConeAxisAndCutoff, &packedConeAxis, sizeof(Uint32));
 	}
 }
 
