@@ -69,11 +69,17 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	normalsRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
+	
+	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),
-							[](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) {});
+							[renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							{
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
+							});
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 }

@@ -576,14 +576,9 @@ void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder&
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(lib::Ref(batch.drawInstancesDS)),
 								std::tie(drawParams),
-								[maxDrawCallsNum, drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									recorder.BindGraphicsPipeline(m_depthPrepassRenderingPipeline);
-
-									const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
-
-									recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
-									recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 
 									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
 									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetBufferViewInstance();
@@ -730,14 +725,9 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS)),
 								std::tie(drawParams),
-								[drawParams, &viewSpec, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									recorder.BindGraphicsPipeline(m_forwadOpaqueShadingPipeline);
-
-									const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
-
-									recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
-									recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 
 									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
 									recorder.DrawIndirect(drawsBufferView, 0, sizeof(SMIndirectDrawCallData), 1);
