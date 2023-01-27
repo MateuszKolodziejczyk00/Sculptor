@@ -42,8 +42,7 @@ RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPt
 
 	SPT_CHECK(!!textureView);
 
-	const lib::SharedPtr<rdr::Texture>& texture = textureView->GetTexture();
-	SPT_CHECK(!!texture);
+	const lib::SharedRef<rdr::Texture>& texture = textureView->GetTexture();
 
 	const RGTextureHandle textureHandle = AcquireExternalTexture(texture);
 
@@ -263,8 +262,8 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 		SPT_CHECK(!!sourceView);
 		SPT_CHECK(!!destView);
 
-		const lib::SharedPtr<rdr::Texture> sourceTextureInstance = sourceView->GetTexture();
-		const lib::SharedPtr<rdr::Texture> destTextureInstance = destView->GetTexture();
+		const lib::SharedRef<rdr::Texture>& sourceTextureInstance = sourceView->GetTexture();
+		const lib::SharedRef<rdr::Texture>& destTextureInstance = destView->GetTexture();
 
 		const rhi::TextureSubresourceRange& sourceSubresource = sourceRGTextureView->GetSubresourceRange();
 		const rhi::TextureSubresourceRange& destSubresource = destRGTextureView->GetSubresourceRange();
@@ -283,7 +282,7 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 		const rhi::TextureCopyRange sourceCopyRange = createCopyRange(sourceSubresource, sourceTextureInstance->GetRHI().GetDefinition(), sourceOffset);
 		const rhi::TextureCopyRange destCopyRange = createCopyRange(destSubresource, destTextureInstance->GetRHI().GetDefinition(), destOffset);
 
-		recorder.CopyTexture(lib::Ref(std::move(sourceTextureInstance)), sourceCopyRange, lib::Ref(std::move(destTextureInstance)), destCopyRange, copyExtent);
+		recorder.CopyTexture(sourceTextureInstance, sourceCopyRange, destTextureInstance, destCopyRange, copyExtent);
 	};
 	
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
