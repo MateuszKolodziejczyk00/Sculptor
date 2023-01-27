@@ -9,14 +9,15 @@
 namespace spt::gfx
 {
 
+namespace priv
+{
+
 template<typename TType>
 concept CInstanceOrRGBufferView = requires
 {
 	requires std::is_same_v<TType, rdr::BufferView> || std::is_same_v<TType, rg::RGBufferViewHandle>;
 };
 
-namespace priv
-{
 
 class BoundBufferVariant
 {

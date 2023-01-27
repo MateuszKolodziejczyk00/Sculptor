@@ -79,7 +79,7 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 	}
 }
 
-void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture) const
+void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex /*= 0*/) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -91,7 +91,7 @@ void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, co
 
 		rhi::WriteDescriptorDefinition writeDefinition;
 		writeDefinition.bindingIdx		= textureParam.bindingIdx;
-		writeDefinition.arrayElement	= 0;
+		writeDefinition.arrayElement	= arrayIndex;
 		writeDefinition.descriptorType	= binding.GetDescriptorType();
 
 		m_writer.WriteTexture(m_descriptorSet, writeDefinition, texture);

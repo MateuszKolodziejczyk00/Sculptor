@@ -58,7 +58,7 @@ public:
 		return std::is_same_v<TStruct, Byte>;
 	}
 
-	template<CInstanceOrRGBufferView TType>
+	template<priv::CInstanceOrRGBufferView TType>
 	void Set(lib::AsConstParameter<TType> buffer)
 	{
 		if (m_boundBuffer != buffer)
@@ -68,7 +68,7 @@ public:
 		}
 	}
 
-	template<CInstanceOrRGBufferView TType>
+	template<priv::CInstanceOrRGBufferView TType>
 	RWGenericBufferBinding& operator=(const TType& buffer)
 	{
 		Set<TType>(buffer);
@@ -80,7 +80,7 @@ public:
 		m_boundBuffer.Reset();
 	}
 
-	template<CInstanceOrRGBufferView TType> 
+	template<priv::CInstanceOrRGBufferView TType> 
 	lib::AsConstParameter<TType> GetAs() const
 	{
 		return m_boundBuffer.GetAs<TType>();

@@ -45,7 +45,7 @@ public:
 
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const;
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const;
-	void UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture) const;
+	void UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex = 0) const;
 
 	const smd::ShaderMetaData& GetMetaData() const;
 
