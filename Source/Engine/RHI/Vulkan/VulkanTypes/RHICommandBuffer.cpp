@@ -405,6 +405,44 @@ void RHICommandBuffer::FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64
 	vkCmdFillBuffer(m_cmdBufferHandle, buffer.GetBufferHandle(), offset, range, data);
 }
 
+void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(buffer.IsValid());
+	SPT_CHECK(texture.IsValid());
+
+	const rhi::TextureDefinition& textureDefinition = texture.GetDefinition();
+	const math::Vector3u textureResolution = textureDefinition.resolution;
+
+	const VkImageLayout layout = VulkanRHI::GetLayoutsManager().GetSubresourceLayout(m_cmdBufferHandle, texture.GetHandle(), mipLevel, arrayLayer);
+
+	VkImageSubresourceLayers imageSubresource;
+    imageSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(aspect);
+    imageSubresource.mipLevel		= mipLevel;
+    imageSubresource.baseArrayLayer	= arrayLayer;
+    imageSubresource.layerCount		= 1;
+
+	VkBufferImageCopy2 copyRegion{ VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+    copyRegion.bufferOffset			= bufferOffset;
+    copyRegion.bufferRowLength		= 0;
+    copyRegion.bufferImageHeight	= 0;
+    copyRegion.imageSubresource		= imageSubresource;
+
+	math::Map<math::Vector3i>((Int32*)&copyRegion.imageOffset) = copyOffset.cast<Int32>();
+	math::Map<math::Vector3i>((Int32*)&copyRegion.imageExtent) = copyExtent.cast<Int32>();
+
+	VkCopyBufferToImageInfo2 copyInfo{ VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+    copyInfo.srcBuffer		= buffer.GetBufferHandle();
+    copyInfo.dstImage		= texture.GetHandle();
+	copyInfo.dstImageLayout = layout;
+    copyInfo.regionCount	= 1;
+    copyInfo.pRegions		= &copyRegion;
+
+	vkCmdCopyBufferToImage2(m_cmdBufferHandle, &copyInfo);
+}
+
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
 #if RHI_DEBUG

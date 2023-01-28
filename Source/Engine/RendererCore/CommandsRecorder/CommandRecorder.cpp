@@ -339,6 +339,18 @@ void CommandRecorder::FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 of
 						 });
 }
 
+void CommandRecorder::CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("CopyBufferToTexture Command");
+
+							 cmdBuffer->GetRHI().CopyBufferToTexture(buffer->GetRHI(), bufferOffset, texture->GetRHI(), aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
+						 });
+}
+
 #if WITH_GPU_CRASH_DUMPS
 void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 {
