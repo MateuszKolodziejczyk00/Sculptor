@@ -4,6 +4,8 @@
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "RenderingDataRegistry.h"
+#include "ResourcesManager.h"
+#include "Types/Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -257,6 +259,68 @@ static RenderingDataEntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tiny
 	builder.BuildMesh(mesh, model);
 
 	return builder.EmitMeshGeometry();
+}
+
+static rhi::EFragmentFormat GetImageFormat(const tinygltf::Image& image)
+{
+	if (image.component == 1)
+	{
+		switch (image.pixel_type)
+		{
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::R8_UN_Float;
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::R16_UN_Float; 
+		}
+	}
+	else if (image.component == 2)
+	{
+		switch (image.pixel_type)
+		{
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::RG8_UN_Float;
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::RG16_UN_Float; 
+		}
+	}
+	else if (image.component == 3)
+	{
+		switch (image.pixel_type)
+		{
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::RGB8_UN_Float;
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::RGB16_UN_Float; 
+		}
+	}
+	else if (image.component == 4)
+	{
+		switch (image.pixel_type)
+		{
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:		return rhi::EFragmentFormat::RGBA8_UN_Float;
+		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:	return rhi::EFragmentFormat::RGBA16_UN_Float; 
+		}
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return rhi::EFragmentFormat::None;
+}
+
+/*static*/ lib::SharedRef<rdr::Texture> LoadImage(const tinygltf::Image& image)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RHIAllocationInfo allocationInfo(rhi::EMemoryUsage::GPUOnly);
+
+	const Uint8 mipLevels = 1 + static_cast<Uint8>(std::floor(std::log2(std::max(image.width, image.height))));
+
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution		= math::Vector3u(static_cast<Uint32>(image.width), static_cast<Uint32>(image.height), 1);
+	textureDef.usage			= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
+	textureDef.format			= GetImageFormat(image);
+	textureDef.samples			= 1;
+	textureDef.mipLevels		= mipLevels;
+	textureDef.arrayLayers		= 1;
+
+	const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("image.name"), textureDef, allocationInfo);
+
+	//gfx::UploadDataToBuffer()
+
+	return texture;
 }
 
 void LoadScene(RenderScene& scene, lib::StringView path)
