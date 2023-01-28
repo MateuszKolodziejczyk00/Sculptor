@@ -37,15 +37,14 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullMeshletsCS(CS_INPUT input)
 {
-    uint batchElementIdx;
-    uint submeshIdx;
-    UnpackSubmeshWorkload(u_submeshWorkloads[input.groupID.x], batchElementIdx, submeshIdx);
+    uint batchElementIdx = input.groupID.x;
+    uint submeshGlobalIdx = u_visibleBatchElements[batchElementIdx].submeshGlobalIdx;
 
-    const uint entityIdx = u_visibleInstances[batchElementIdx].entityIdx;
+    const uint entityIdx = u_visibleBatchElements[batchElementIdx].entityIdx;
     const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
     const float4x4 entityTransform = entityData.transform;
 
-    const SubmeshGPUData submesh = u_submeshes[submeshIdx];
+    const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
     
     for (uint localMeshletIdx = input.localID.x; localMeshletIdx < submesh.meshletsNum; localMeshletIdx += WORKLOAD_SIZE)
     {
@@ -88,7 +87,7 @@ void CullMeshletsCS(CS_INPUT input)
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
 
-            u_meshletWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, submeshIdx, localMeshletIdx);
+            u_meshletWorkloads[outputBufferIdx] = PackMeshletWorkload(batchElementIdx, localMeshletIdx);
         }
     }
 

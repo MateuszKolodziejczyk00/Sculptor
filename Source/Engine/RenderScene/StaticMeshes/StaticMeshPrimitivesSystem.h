@@ -20,15 +20,14 @@ struct StaticMeshInstanceRenderData
 
 BEGIN_SHADER_STRUCT(, StaticMeshBatchElement)
 	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, staticMeshIdx)
+	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
 END_SHADER_STRUCT();
 
 
 struct StaticMeshBatchDefinition
 {
 	StaticMeshBatchDefinition()
-		: maxSubmeshesNum(0)
-		, maxMeshletsNum(0)
+		: maxMeshletsNum(0)
 		, maxTrianglesNum(0)
 	{ }
 
@@ -38,7 +37,6 @@ struct StaticMeshBatchDefinition
 	}
 
 	lib::DynamicArray<StaticMeshBatchElement> batchElements;
-	Uint32 maxSubmeshesNum;
 	Uint32 maxMeshletsNum;
 	Uint32 maxTrianglesNum;
 };

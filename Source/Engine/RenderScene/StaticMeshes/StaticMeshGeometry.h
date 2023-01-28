@@ -11,7 +11,6 @@ namespace spt::rsc
 
 struct StaticMeshGeometryData
 {
-	rhi::RHISuballocation staticMeshSuballocation;
 	rhi::RHISuballocation submeshesSuballocation;
 	rhi::RHISuballocation meshletsSuballocation;
 	rhi::RHISuballocation geometrySuballocation;
@@ -21,15 +20,22 @@ struct StaticMeshGeometryData
 struct StaticMeshRenderingDefinition
 {
 	StaticMeshRenderingDefinition()
-		: staticMeshIdx(0)
-		, maxSubmeshesNum(0)
+		: geometryDataOffset(0)
+		, submeshesBeginIdx(0)
+		, submeshesNum(0)
+		, boundingSphereCenter(math::Vector3f::Zero())
+		, boundingSphereRadius(0.f)
 		, maxMeshletsNum(0)
 		, maxTrianglesNum(0)
 	{ }
+	
+	Uint32 geometryDataOffset;
+	Uint32 submeshesBeginIdx;
+	Uint32 submeshesNum;
+	
+	math::Vector3f boundingSphereCenter;
+	Real32 boundingSphereRadius;
 
-	Uint32 staticMeshIdx;
-	// Submeshes of first LOD
-	Uint32 maxSubmeshesNum;
 	// Meshlets of first LOD
 	Uint32 maxMeshletsNum;
 	// Triangles of first LOD
@@ -37,7 +43,7 @@ struct StaticMeshRenderingDefinition
 };
 
 
-BEGIN_SHADER_STRUCT(, StaticMeshGPUData)
+BEGIN_SHADER_STRUCT(, WtaticMeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
@@ -75,17 +81,9 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(StaticMeshUnifiedDataDS, rg::RGDescriptorSetState<StaticMeshUnifiedDataDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshGPUData>),	u_staticMeshes)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SubmeshGPUData>),		u_submeshes)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<MeshletGPUData>),		u_meshlets)
 DS_END();
-
-
-struct StaticMeshBuildData
-{
-	math::Vector3f boundingSphereCenter;
-	Real32 boundingSphereRadius;
-};
 
 
 class StaticMeshUnifiedData
@@ -94,7 +92,7 @@ public:
 
 	static StaticMeshUnifiedData& Get();
 
-	StaticMeshGeometryData BuildStaticMeshData(const StaticMeshBuildData& buildData, lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
+	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
 
 	const lib::SharedPtr<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 
@@ -103,7 +101,6 @@ private:
 	StaticMeshUnifiedData();
 	void DestroyResources();
 
-	lib::SharedPtr<rdr::Buffer> m_staticMeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_submeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletsBuffer;
 

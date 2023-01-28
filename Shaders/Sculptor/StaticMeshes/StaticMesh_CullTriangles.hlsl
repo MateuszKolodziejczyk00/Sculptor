@@ -68,11 +68,12 @@ uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint verticesOffse
 void CullTrianglesCS(CS_INPUT input)
 {
     uint batchElementIdx;
-    uint submeshIdx;
     uint localMeshletIdx;
-    UnpackMeshletWorkload(u_meshletWorkloads[input.groupID.x], batchElementIdx, submeshIdx, localMeshletIdx);
+    UnpackMeshletWorkload(u_meshletWorkloads[input.groupID.x], batchElementIdx, localMeshletIdx);
 
-    const uint entityIdx = u_visibleInstances[batchElementIdx].entityIdx;
+    uint submeshIdx = u_visibleBatchElements[batchElementIdx].submeshGlobalIdx;
+
+    const uint entityIdx = u_visibleBatchElements[batchElementIdx].entityIdx;
     const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
     const float4x4 entityTransform = entityData.transform;
 
@@ -134,7 +135,7 @@ void CullTrianglesCS(CS_INPUT input)
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx / 3) + GetCompactedIndex(trianglesVisibleBallot, WaveGetLaneIndex());
 
-            u_triangleWorkloads[outputBufferIdx] = PackTriangleWorkload(batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
+            u_triangleWorkloads[outputBufferIdx] = PackTriangleWorkload(batchElementIdx, localMeshletIdx, triangleIdx);
         }
     }
 

@@ -31,7 +31,6 @@ END_SHADER_STRUCT();
 
 BEGIN_SHADER_STRUCT(, SMGPUWorkloadID)
 	SHADER_STRUCT_FIELD(Uint32, data1)
-	SHADER_STRUCT_FIELD(Uint32, data2)
 END_SHADER_STRUCT();
 
 
@@ -60,45 +59,36 @@ struct SMRenderingViewData
 
 struct StaticMeshesVisibleLastFrame
 {
-	struct InstancesInfo
+	struct BatchElementsInfo
 	{
-		lib::SharedPtr<rdr::Buffer> instancesBuffer;
-		lib::SharedPtr<rdr::Buffer> instancesDispatchParamsBuffer;
+		lib::SharedPtr<rdr::Buffer> visibleBatchElementsBuffer;
+		lib::SharedPtr<rdr::Buffer> batchElementsDispatchParamsBuffer;
 
-		Uint32 maxInstancesNum;
-		Uint32 maxSubmeshesNum;
+		Uint32 batchedSubmeshesNum;
 	};
 
-	lib::DynamicArray<InstancesInfo> visibleInstances;
+	lib::DynamicArray<BatchElementsInfo> visibleInstances;
 };
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Opaque Forward ================================================================================
 
-DS_BEGIN(SMCullInstancesDS, rg::RGDescriptorSetState<SMCullInstancesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshBatchElement>),	u_visibleInstances)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_dispatchInstancesParams)
-DS_END();
-
-
 DS_BEGIN(SMCullSubmeshesDS, rg::RGDescriptorSetState<SMCullSubmeshesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_visibleInstances)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMGPUWorkloadID>),		u_submeshWorkloads)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),				u_dispatchSubmeshesParams)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshBatchElement>),	u_visibleBatchElements)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_dispatchVisibleBatchElemsParams)
 DS_END();
 
 
 DS_BEGIN(SMCullMeshletsDS, rg::RGDescriptorSetState<SMCullMeshletsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_visibleInstances)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMGPUWorkloadID>),			u_submeshWorkloads)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_visibleBatchElements)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMGPUWorkloadID>),		u_meshletWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),				u_dispatchMeshletsParams)
 DS_END();
 
 
 DS_BEGIN(SMCullTrianglesDS, rg::RGDescriptorSetState<SMCullTrianglesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),		u_visibleInstances)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),		u_visibleBatchElements)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMGPUWorkloadID>),				u_meshletWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMGPUWorkloadID>),			u_triangleWorkloads)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMIndirectDrawCallData>),	u_drawTrianglesParams)
@@ -106,7 +96,7 @@ DS_END();
 
 
 DS_BEGIN(SMIndirectRenderTrianglesDS, rg::RGDescriptorSetState<SMIndirectRenderTrianglesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_visibleInstances)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_visibleBatchElements)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMGPUWorkloadID>),			u_triangleWorkloads)
 DS_END();
 
@@ -115,25 +105,23 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(SMIndirectTrianglesBatchDrawParams)
 	RG_BUFFER_VIEW(batchDrawCommandsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 END_RG_NODE_PARAMETERS_STRUCT();
 
+
 struct SMForwardOpaqueBatch
 {
-	lib::SharedPtr<rdr::Buffer> visibleInstancesBuffer;
-	lib::SharedPtr<rdr::Buffer> visibleInstancesDispatchParamsBuffer;
+	lib::SharedPtr<rdr::Buffer> visibleBatchElementsBufferInstance;
+	lib::SharedPtr<rdr::Buffer> dispatchVisibleBatchElemsParamsBufferInstance;
 
-	rg::RGBufferViewHandle visibleInstancesDispatchParamsRGBuffer;
-	rg::RGBufferViewHandle submeshesWorkloadsDispatchArgsBuffer;
+	rg::RGBufferViewHandle visibleBatchElementsDispatchParamsBuffer;
 	rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer;
 	rg::RGBufferViewHandle drawTrianglesBatchArgsBuffer;
 	
 	lib::SharedPtr<StaticMeshBatchDS>			batchDS;
 	
-	lib::SharedPtr<SMCullInstancesDS>			cullInstancesDS;
 	lib::SharedPtr<SMCullSubmeshesDS>			cullSubmeshesDS;
 	lib::SharedPtr<SMCullMeshletsDS>			cullMeshletsDS;
 	lib::SharedPtr<SMCullTrianglesDS>			cullTrianglesDS;
 	lib::SharedPtr<SMIndirectRenderTrianglesDS>	indirectRenderTrianglesDS;
 
-	Uint32 batchedInstancesNum;
 	Uint32 batchedSubmeshesNum;
 };
 
@@ -155,9 +143,9 @@ BEGIN_SHADER_STRUCT(, SMDepthPrepassDrawCallData)
 	
 	/* Custom Data */
 	SHADER_STRUCT_FIELD(Uint32, batchElementIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
 	SHADER_STRUCT_FIELD(Uint32, padding0)
 	SHADER_STRUCT_FIELD(Uint32, padding1)
+	SHADER_STRUCT_FIELD(Uint32, padding2)
 END_SHADER_STRUCT();
 
 
@@ -181,8 +169,6 @@ END_RG_NODE_PARAMETERS_STRUCT();
 
 struct SMDepthPrepassBatch
 {
-	rg::RGBufferViewHandle visibleInstancesDrawParamsBuffer;
-	
 	lib::SharedPtr<StaticMeshBatchDS>				batchDS;
 	
 	lib::SharedPtr<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
@@ -191,8 +177,7 @@ struct SMDepthPrepassBatch
 	rg::RGBufferViewHandle drawCommandsBuffer;
 	rg::RGBufferViewHandle indirectDrawCountBuffer;
 
-	Uint32 batchedInstancesNum;
-	Uint32 maxSubmeshesNum;
+	Uint32 batchedSubmeshesNum;
 };
 
 
@@ -231,21 +216,17 @@ SMForwardOpaqueBatch CreateForwardOpaqueBatch(rg::RenderGraphBuilder& graphBuild
 	batch.batchDS->u_batchElements = batchBuffer->CreateFullView();
 	batch.batchDS->u_batchData = gpuBatchData;
 
-	batch.batchedInstancesNum = static_cast<Uint32>(batchDef.batchElements.size());
-	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.maxSubmeshesNum);
+	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
 
 	const rhi::EBufferUsage indirectBuffersUsageFlags = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
 	const rhi::RHIAllocationInfo batchBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
 	
 	// Create workloads buffers
 
-	// visible instances buffer is not created using render graph because it's lifetime must be longer than 1 frame
+	// visible batch elements buffer is not created using render graph because it's lifetime must be longer than 1 frame
 	// That's because we will use this buffer to render depth prepass next frame
 	const rhi::BufferDefinition visibleInstancesBufferDef(sizeof(StaticMeshBatchElement) * batchDef.batchElements.size(), rhi::EBufferUsage::Storage);
-	const lib::SharedRef<rdr::Buffer> visibleInstancesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SMVisibleInstances"), visibleInstancesBufferDef, batchBuffersAllocation);
-
-	const rhi::BufferDefinition submeshWorkloadsBufferDef(sizeof(SMGPUWorkloadID) * batchDef.maxSubmeshesNum, rhi::EBufferUsage::Storage);
-	const rg::RGBufferViewHandle submeshWorkloadsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMSubmeshWorkloads"), submeshWorkloadsBufferDef, batchBuffersAllocation);
+	const lib::SharedRef<rdr::Buffer> visibleBatchElementsBufferInstance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SMVisibleBatchElements"), visibleInstancesBufferDef, batchBuffersAllocation);
 
 	const rhi::BufferDefinition meshletWorkloadsBufferDef(sizeof(SMGPUWorkloadID) * batchDef.maxMeshletsNum, rhi::EBufferUsage::Storage);
 	const rg::RGBufferViewHandle meshletWorkloadsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMMeshletWorkloads"), meshletWorkloadsBufferDef, batchBuffersAllocation);
@@ -261,9 +242,6 @@ SMForwardOpaqueBatch CreateForwardOpaqueBatch(rg::RenderGraphBuilder& graphBuild
 	const rhi::BufferDefinition indirectDispatchesParamsBufferDef(indirectDispatchParamsSize, indirectBuffersUsageFlags);
 	const rhi::BufferDefinition indirectDrawsParamsBufferDef(indirectDrawParamsSize, indirectBuffersUsageFlags);
 
-	const rg::RGBufferViewHandle dispatchSubmeshesParamsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("DispatchSubmeshesParams"), indirectDispatchesParamsBufferDef, batchBuffersAllocation);
-	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDispatchSubmeshesParams"), dispatchSubmeshesParamsBuffer, 0, indirectDispatchParamsSize, 0);
-
 	const rg::RGBufferViewHandle dispatchMeshletsParamsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("DispatchMeshletsParams"), indirectDispatchesParamsBufferDef, batchBuffersAllocation);
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDispatchMeshletsParams"), dispatchMeshletsParamsBuffer, 0, indirectDispatchParamsSize, 0);
 
@@ -271,48 +249,40 @@ SMForwardOpaqueBatch CreateForwardOpaqueBatch(rg::RenderGraphBuilder& graphBuild
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDrawTrianglesParams"), drawTrianglesBatchParamsBuffer, 0, indirectDrawParamsSize, 0);
 
 	// This also lives longer than frame, so it's not created using render graph
-	const lib::SharedRef<rdr::Buffer> visibleInstancesDispatchParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("DispatchInstancesParams"), indirectDispatchesParamsBufferDef, batchBuffersAllocation);
-	const rg::RGBufferViewHandle dispatchInstancesParamsBuffer = graphBuilder.AcquireExternalBufferView(visibleInstancesDispatchParamsBuffer->CreateFullView());
-	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDrawTrianglesParams"), dispatchInstancesParamsBuffer, 0, indirectDispatchParamsSize, 0);
+	const lib::SharedRef<rdr::Buffer> dispatchVisibleBatchElemsParamsBufferInstance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("DispatchVisibleBatchElementsParams"), indirectDispatchesParamsBufferDef, batchBuffersAllocation);
+	const rg::RGBufferViewHandle dispatchVisibleBatchElemsParamsBuffer = graphBuilder.AcquireExternalBufferView(dispatchVisibleBatchElemsParamsBufferInstance->CreateFullView());
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("SetDefaultDrawTrianglesParams"), dispatchVisibleBatchElemsParamsBuffer, 0, indirectDispatchParamsSize, 0);
 
-	batch.visibleInstancesBuffer					= visibleInstancesBuffer;
-	batch.visibleInstancesDispatchParamsBuffer		= visibleInstancesDispatchParamsBuffer;
+	batch.visibleBatchElementsBufferInstance				= visibleBatchElementsBufferInstance;
+	batch.dispatchVisibleBatchElemsParamsBufferInstance		= dispatchVisibleBatchElemsParamsBufferInstance;
 
-	batch.visibleInstancesDispatchParamsRGBuffer	= dispatchInstancesParamsBuffer;
-	batch.submeshesWorkloadsDispatchArgsBuffer		= dispatchSubmeshesParamsBuffer;
+	batch.visibleBatchElementsDispatchParamsBuffer	= dispatchVisibleBatchElemsParamsBuffer;
 	batch.meshletsWorkloadsDispatchArgsBuffer		= dispatchMeshletsParamsBuffer;
 	batch.drawTrianglesBatchArgsBuffer				= drawTrianglesBatchParamsBuffer;
 
-	const rg::RGBufferViewHandle visibleInstancesRGBuffer = graphBuilder.AcquireExternalBufferView(visibleInstancesBuffer->CreateFullView());
+	const rg::RGBufferViewHandle visibleBatchElements = graphBuilder.AcquireExternalBufferView(visibleBatchElementsBufferInstance->CreateFullView());
 
 	// Create descriptor set states
 
-	const lib::SharedRef<SMCullInstancesDS> cullInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullInstancesDS>(RENDERER_RESOURCE_NAME("BatchCullInstancesDS"));
-	cullInstancesDS->u_visibleInstances			= visibleInstancesRGBuffer;
-	cullInstancesDS->u_dispatchInstancesParams	= dispatchInstancesParamsBuffer;
-
 	const lib::SharedRef<SMCullSubmeshesDS> cullSubmeshesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullSubmeshesDS>(RENDERER_RESOURCE_NAME("BatchCullSubmeshesDS"));
-	cullSubmeshesDS->u_visibleInstances			= visibleInstancesRGBuffer;
-	cullSubmeshesDS->u_submeshWorkloads			= submeshWorkloadsBuffer;
-	cullSubmeshesDS->u_dispatchSubmeshesParams	= dispatchSubmeshesParamsBuffer;
+	cullSubmeshesDS->u_visibleBatchElements				= visibleBatchElements;
+	cullSubmeshesDS->u_dispatchVisibleBatchElemsParams	= dispatchVisibleBatchElemsParamsBuffer;
 
 	const lib::SharedRef<SMCullMeshletsDS> cullMeshletsDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullMeshletsDS>(RENDERER_RESOURCE_NAME("BatchCullMeshletsDS"));
-	cullMeshletsDS->u_visibleInstances			= visibleInstancesRGBuffer;
-	cullMeshletsDS->u_submeshWorkloads			= submeshWorkloadsBuffer;
+	cullMeshletsDS->u_visibleBatchElements		= visibleBatchElements;
 	cullMeshletsDS->u_meshletWorkloads			= meshletWorkloadsBuffer;
 	cullMeshletsDS->u_dispatchMeshletsParams	= dispatchMeshletsParamsBuffer;
 
 	const lib::SharedRef<SMCullTrianglesDS> cullTrianglesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullTrianglesDS>(RENDERER_RESOURCE_NAME("BatchCullTrianglesDS"));
-	cullTrianglesDS->u_visibleInstances			= visibleInstancesRGBuffer;
+	cullTrianglesDS->u_visibleBatchElements		= visibleBatchElements;
 	cullTrianglesDS->u_meshletWorkloads			= meshletWorkloadsBuffer;
 	cullTrianglesDS->u_triangleWorkloads		= triangleWorkloadsBuffer;
 	cullTrianglesDS->u_drawTrianglesParams		= drawTrianglesBatchParamsBuffer;
 
 	const lib::SharedRef<SMIndirectRenderTrianglesDS> indirectRenderTrianglesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMIndirectRenderTrianglesDS>(RENDERER_RESOURCE_NAME("BatchIndirectRenderTrianglesDS"));
-	indirectRenderTrianglesDS->u_visibleInstances	= visibleInstancesRGBuffer;
-	indirectRenderTrianglesDS->u_triangleWorkloads	= triangleWorkloadsBuffer;
+	indirectRenderTrianglesDS->u_visibleBatchElements	= visibleBatchElements;
+	indirectRenderTrianglesDS->u_triangleWorkloads		= triangleWorkloadsBuffer;
 
-	batch.cullInstancesDS				= cullInstancesDS;
 	batch.cullSubmeshesDS				= cullSubmeshesDS;
 	batch.cullMeshletsDS				= cullMeshletsDS;
 	batch.cullTrianglesDS				= cullTrianglesDS;
@@ -321,7 +291,7 @@ SMForwardOpaqueBatch CreateForwardOpaqueBatch(rg::RenderGraphBuilder& graphBuild
 	return batch;
 }
 
-SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshesVisibleLastFrame::InstancesInfo& instances)
+SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshesVisibleLastFrame::BatchElementsInfo& batchElements)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -329,24 +299,21 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 
 	// Create batch info
 	
-	batch.visibleInstancesDrawParamsBuffer = graphBuilder.AcquireExternalBufferView(instances.instancesDispatchParamsBuffer->CreateFullView());
-
 	SMGPUBatchData batchData;
-	batchData.elementsNum = instances.maxInstancesNum;
+	batchData.elementsNum = batchElements.batchedSubmeshesNum;
 
 	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("DepthPrepassBatchDS"));
-	batchDS->u_batchElements = instances.instancesBuffer->CreateFullView();
+	batchDS->u_batchElements = batchElements.visibleBatchElementsBuffer->CreateFullView();
 	batchDS->u_batchData = batchData;
 
 	batch.batchDS = batchDS;
-	batch.batchedInstancesNum = instances.maxInstancesNum;
-	batch.maxSubmeshesNum = instances.maxSubmeshesNum;
+	batch.batchedSubmeshesNum = batchElements.batchedSubmeshesNum;
 
 	// Create buffers
 
 	const rhi::RHIAllocationInfo batchBuffersAllocInfo(rhi::EMemoryUsage::GPUOnly);
 
-	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthPrepassDrawCallData) * instances.maxSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthPrepassDrawCallData) * batchElements.batchedSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 	const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMDepthPrepassIndirectCommands"), commandsBufferDef, batchBuffersAllocInfo);
 
 	const Uint64 indirectDrawsCountSize = sizeof(Uint32);
@@ -359,7 +326,7 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 	const lib::SharedRef<SMDepthPrepassCullInstancesDS> cullInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassCullInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassCullInstancesDS"));
 	cullInstancesDS->u_drawCommands				= drawCommandsBuffer;
 	cullInstancesDS->u_drawsCount				= indirectDrawCountBuffer;
-	cullInstancesDS->u_validBatchElementsNum	= rdr::BufferView(lib::Ref(instances.instancesDispatchParamsBuffer), 0, sizeof(Uint32));
+	cullInstancesDS->u_validBatchElementsNum	= rdr::BufferView(lib::Ref(batchElements.batchElementsDispatchParamsBuffer), 0, sizeof(Uint32));
 
 	const lib::SharedRef<SMDepthPrepassDrawInstancesDS> drawInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassDrawInstancesDS"));
 	drawInstancesDS->u_drawCommands = drawCommandsBuffer;
@@ -399,13 +366,6 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
 		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), pipelineDef, depthPrepassShader);
-	}
-
-	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullInstancesCS"));
-		const rdr::ShaderID cullInstancesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullInstances.hlsl", compilationSettings);
-		m_cullInstancesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullInstancesPipeline"), cullInstancesShader);
 	}
 
 	{
@@ -504,7 +464,7 @@ Bool StaticMeshesRenderSystem::BuildDepthPrepassBatchesPerView(rg::RenderGraphBu
 	{
 		lib::DynamicArray<SMDepthPrepassBatch> batches;
 
-		for (const StaticMeshesVisibleLastFrame::InstancesInfo& instances : visibleInstances->visibleInstances)
+		for (const StaticMeshesVisibleLastFrame::BatchElementsInfo& instances : visibleInstances->visibleInstances)
 		{
 			batches.emplace_back(utils::CreateDepthPrepassBatch(graphBuilder, renderScene, instances));
 		}
@@ -538,7 +498,7 @@ void StaticMeshesRenderSystem::CullDepthPrepassPerView(rg::RenderGraphBuilder& g
 	{
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
-		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedInstancesNum, 64) / 64;
+		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedSubmeshesNum, 64) / 64;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull And Build Draw Commands"),
 							  m_buildDrawCommandsPipeline,
@@ -571,7 +531,7 @@ void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder&
 
 		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
 
-		const Uint32 maxDrawCallsNum = batch.maxSubmeshesNum;
+		const Uint32 maxDrawCallsNum = batch.batchedSubmeshesNum;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(lib::Ref(batch.drawInstancesDS)),
@@ -620,11 +580,10 @@ Bool StaticMeshesRenderSystem::BuildForwardOpaueBatchesPerView(rg::RenderGraphBu
 						   std::back_inserter(visibleInstances.visibleInstances),
 						   [](const SMForwardOpaqueBatch& batchData)
 						   {
-							   StaticMeshesVisibleLastFrame::InstancesInfo instances;
-							   instances.instancesBuffer = batchData.visibleInstancesBuffer;
-							   instances.instancesDispatchParamsBuffer = batchData.visibleInstancesDispatchParamsBuffer;
-							   instances.maxInstancesNum = batchData.batchedInstancesNum;
-							   instances.maxSubmeshesNum = batchData.batchedSubmeshesNum;
+							   StaticMeshesVisibleLastFrame::BatchElementsInfo instances;
+							   instances.visibleBatchElementsBuffer			= batchData.visibleBatchElementsBufferInstance;
+							   instances.batchElementsDispatchParamsBuffer	= batchData.dispatchVisibleBatchElemsParamsBufferInstance;
+							   instances.batchedSubmeshesNum				= batchData.batchedSubmeshesNum;
 							   return instances;
 						   });
 		}
@@ -651,27 +610,15 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 																					  renderScene.GetRenderSceneDS(),
 																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
 
-
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
 
-		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedInstancesNum, 64) / 64;
+		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedSubmeshesNum, 64) / 64;
 
-		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Instances"),
-							  m_cullInstancesPipeline,
-							  math::Vector3u(dispatchGroupsNum, 1, 1),
-							  rg::BindDescriptorSets(lib::Ref(batch.cullInstancesDS)));
-	}
-
-	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
-	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
-
-		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Submeshes"),
+		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
 									  m_cullSubmeshesPipeline,
-									  batch.visibleInstancesDispatchParamsRGBuffer,
-									  0,
+									  math::Vector3u(dispatchGroupsNum, 1, 1),
 									  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS)));
 	}
 
@@ -681,7 +628,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
 									  m_cullMeshletsPipeline,
-									  batch.submeshesWorkloadsDispatchArgsBuffer,
+									  batch.visibleBatchElementsDispatchParamsBuffer,
 									  0,
 									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS)));
 	}

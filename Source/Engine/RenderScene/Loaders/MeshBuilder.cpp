@@ -53,17 +53,16 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	const Uint32 trianglesNum = indicesNum / 3;
 
-	StaticMeshBuildData buildData;
-	buildData.boundingSphereCenter = m_boundingSphereCenter;
-	buildData.boundingSphereRadius = m_boundingSphereRadius;
-
-	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(buildData, submeshesData, m_meshlets, geometrySuballocation);
+	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
-	staticMeshRenderingDef.staticMeshIdx	= static_cast<Uint32>(staticMeshGeometryData.staticMeshSuballocation.GetOffset() / sizeof(StaticMeshGPUData));
-	staticMeshRenderingDef.maxSubmeshesNum	= static_cast<Uint32>(submeshesData.size());
-	staticMeshRenderingDef.maxMeshletsNum	= static_cast<Uint32>(m_meshlets.size());
-	staticMeshRenderingDef.maxTrianglesNum	= trianglesNum;
+	staticMeshRenderingDef.geometryDataOffset	= static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
+	staticMeshRenderingDef.submeshesBeginIdx	= static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(SubmeshGPUData));
+	staticMeshRenderingDef.submeshesNum			= static_cast<Uint32>(submeshesData.size());
+	staticMeshRenderingDef.boundingSphereCenter = m_boundingSphereCenter;
+	staticMeshRenderingDef.boundingSphereRadius = m_boundingSphereRadius;
+	staticMeshRenderingDef.maxMeshletsNum		= static_cast<Uint32>(m_meshlets.size());
+	staticMeshRenderingDef.maxTrianglesNum		= trianglesNum;
 
 	RenderingDataRegistry& renderingDataRegistry = RenderingData::Get();
 	const RenderingDataEntity staticMeshEntity = renderingDataRegistry.create();

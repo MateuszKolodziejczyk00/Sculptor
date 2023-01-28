@@ -23,12 +23,16 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const Re
 
 		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
 
-		StaticMeshBatchElement batchElement;
-		batchElement.entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
-		batchElement.staticMeshIdx = meshRenderingDef.staticMeshIdx;
-		batch.batchElements.emplace_back(batchElement);
+		for (Uint32 idx = 0; idx < meshRenderingDef.submeshesNum; ++idx)
+		{
+			const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
 
-		batch.maxSubmeshesNum	+= meshRenderingDef.maxSubmeshesNum;
+			StaticMeshBatchElement batchElement;
+			batchElement.entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
+			batchElement.submeshGlobalIdx = globalSubmeshIdx;
+			batch.batchElements.emplace_back(batchElement);
+		}
+
 		batch.maxMeshletsNum	+= meshRenderingDef.maxMeshletsNum;
 		batch.maxTrianglesNum	+= meshRenderingDef.maxTrianglesNum;
 	}

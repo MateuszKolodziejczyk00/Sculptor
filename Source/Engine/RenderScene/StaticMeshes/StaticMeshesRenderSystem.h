@@ -42,7 +42,6 @@ private:
 
 	// Forward Opaque
 
-	rdr::PipelineStateID m_cullInstancesPipeline;
 	rdr::PipelineStateID m_cullSubmeshesPipeline;
 	rdr::PipelineStateID m_cullMeshletsPipeline;
 	rdr::PipelineStateID m_cullTrianglesPipeline;

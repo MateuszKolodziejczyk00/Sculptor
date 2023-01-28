@@ -33,15 +33,14 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const uint triangleVertexIdx = input.index - workloadIdx * 3;
 
     uint batchElementIdx;
-    uint submeshIdx;
     uint localMeshletIdx;
     uint triangleIdx;
-    UnpackTriangleWorkload(u_triangleWorkloads[workloadIdx], batchElementIdx, submeshIdx, localMeshletIdx, triangleIdx);
+    UnpackTriangleWorkload(u_triangleWorkloads[workloadIdx], batchElementIdx, localMeshletIdx, triangleIdx);
     
-    const RenderEntityGPUData entityData = u_renderEntitiesData[u_visibleInstances[batchElementIdx].entityIdx];
+    const RenderEntityGPUData entityData = u_renderEntitiesData[u_visibleBatchElements[batchElementIdx].entityIdx];
     const float4x4 instanceTransform = entityData.transform;
 
-    const SubmeshGPUData submesh = u_submeshes[submeshIdx];
+    const SubmeshGPUData submesh = u_submeshes[u_visibleBatchElements[batchElementIdx].submeshGlobalIdx];
     
     const uint meshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
     const MeshletGPUData meshlet = u_meshlets[meshletIdx];

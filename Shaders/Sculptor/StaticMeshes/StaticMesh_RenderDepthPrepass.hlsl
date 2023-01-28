@@ -35,11 +35,12 @@ VS_OUTPUT StaticMesh_DepthPrepassVS(VS_INPUT input)
     const SMDepthPrepassDrawCallData drawCall = u_drawCommands[input.drawIndex];
 
     const uint renderEntityIdx = u_batchElements[drawCall.batchElementIdx].entityIdx;
+    const uint submeshGlobalIdx = u_batchElements[drawCall.batchElementIdx].submeshGlobalIdx;
 
     const RenderEntityGPUData entityData = u_renderEntitiesData[renderEntityIdx];
     const float4x4 instanceTransform = entityData.transform;
 
-    const SubmeshGPUData submesh = u_submeshes[drawCall.submeshGlobalIdx];
+    const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
     
     const uint vertexIdx = u_geometryData.Load<uint>(submesh.indicesOffset + input.index * 4);
 

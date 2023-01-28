@@ -22,20 +22,17 @@ struct CS_INPUT
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
-    const uint batchElementIdx = input.groupID.x;
+    const uint batchElementIdx = input.globalID.x;
 
-    const uint meshIdx = u_visibleInstances[batchElementIdx].staticMeshIdx;
-
-    const uint entityIdx = u_visibleInstances[batchElementIdx].entityIdx;
-    const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
-    const float4x4 entityTransform = entityData.transform;
-    
-    const StaticMeshGPUData staticMesh = u_staticMeshes[meshIdx];
-    
-    for (uint idx = input.localID.x; idx < staticMesh.submeshesNum; idx += WORKLOAD_SIZE)
+    if(batchElementIdx < u_batchData.elementsNum)
     {
-        const uint globalSubmeshIdx = staticMesh.submeshesBeginIdx + idx;
-        const SubmeshGPUData submesh = u_submeshes[globalSubmeshIdx];
+        const uint submeshGlobalIdx = u_batchElements[batchElementIdx].submeshGlobalIdx;
+
+        const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
+        
+        const uint entityIdx = u_batchElements[batchElementIdx].entityIdx;
+        const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
+        const float4x4 entityTransform = entityData.transform;
 
         const float3 submeshBoundingSphereCenter = mul(entityTransform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
         const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;
@@ -51,19 +48,18 @@ void CullSubmeshesCS(CS_INPUT input)
             uint outputBufferIdx = 0;
             if (WaveIsFirstLane())
             {
-                InterlockedAdd(u_dispatchSubmeshesParams[0], visibleSubmeshesNum, outputBufferIdx);
+                InterlockedAdd(u_dispatchVisibleBatchElemsParams[0], visibleSubmeshesNum, outputBufferIdx);
             }
 
             outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
 
-            const SMGPUWorkloadID submeshWorkload = PackSubmeshWorkload(batchElementIdx, globalSubmeshIdx);
-            u_submeshWorkloads[outputBufferIdx] = submeshWorkload;
+            u_visibleBatchElements[outputBufferIdx] = u_batchElements[batchElementIdx];
         }
     }
 
     if(input.globalID.x == 0)
     {
-        u_dispatchSubmeshesParams[1] = 1;
-        u_dispatchSubmeshesParams[2] = 1;
+        u_dispatchVisibleBatchElemsParams[1] = 1;
+        u_dispatchVisibleBatchElemsParams[2] = 1;
     }
 }
