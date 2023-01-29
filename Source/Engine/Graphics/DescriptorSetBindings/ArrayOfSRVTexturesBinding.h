@@ -22,7 +22,9 @@ public:
 
 	explicit ArrayOfSRVTexturesBinding(const lib::HashedString& name)
 		: Super(name)
-	{ }
+	{
+		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [i = 0]() mutable { return i++; });
+	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{

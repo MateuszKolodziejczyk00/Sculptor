@@ -1,10 +1,16 @@
 #include "MaterialsUnifiedData.h"
 #include "ResourcesManager.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "Renderer.h"
 
 namespace spt::rsc
 {
+
+MaterialsUnifiedData& MaterialsUnifiedData::Get()
+{
+	static MaterialsUnifiedData instance;
+	return instance;
+}
 
 Uint32 MaterialsUnifiedData::AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& textureView)
 {

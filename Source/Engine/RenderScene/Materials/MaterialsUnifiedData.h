@@ -20,6 +20,8 @@ class MaterialsUnifiedData
 {
 public:
 
+	static MaterialsUnifiedData& Get();
+
 	Uint32 AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& texture);
 
 	rhi::RHISuballocation CreateMaterialDataSuballocation(Uint32 dataSize);
