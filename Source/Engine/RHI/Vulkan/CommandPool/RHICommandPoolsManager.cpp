@@ -45,6 +45,18 @@ void CommandPoolsSet::Reset()
 {
 	SPT_PROFILER_FUNCTION();
 
+	constexpr SizeType maxPoolsToStore = 2;
+
+	if (m_pools.size() > maxPoolsToStore)
+	{
+		for (SizeType idx = maxPoolsToStore; idx < m_pools.size(); ++idx)
+		{
+			m_pools[idx].ReleaseRHI();
+		}
+
+		m_pools.resize(maxPoolsToStore);
+	}
+
 	for (RHICommandPool& cmdPool : m_pools)
 	{
 		cmdPool.ResetCommandPool();
