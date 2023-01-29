@@ -309,6 +309,43 @@ void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uin
 	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetBufferHandle(), indirectArgsOffset);
 }
 
+void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(source.IsValid());
+	SPT_CHECK(dest.IsValid());
+
+	const math::Vector3u sourceResolution	= source.GetMipResolution(sourceMipLevel);
+	const math::Vector3u destResolution		= dest.GetMipResolution(destMipLevel);
+
+	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
+	const VkImageLayout sourceLayout	= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, source.GetHandle(), sourceMipLevel, sourceArrayLayer);
+	const VkImageLayout destLayout		= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, dest.GetHandle(), destMipLevel, destArrayLayer);
+
+	const VkImageAspectFlags vulkanAspect = RHIToVulkan::GetAspectFlags(aspect);
+
+	VkImageBlit2 blitRegion{ VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+	blitRegion.srcSubresource = VkImageSubresourceLayers{ vulkanAspect, sourceMipLevel, sourceArrayLayer, 1 };
+	math::Map<math::Vector3i>(&blitRegion.srcOffsets[0].x) = math::Vector3i::Zero();
+	math::Map<math::Vector3i>(&blitRegion.srcOffsets[1].x) = sourceResolution.cast<Int32>();
+    blitRegion.dstSubresource = VkImageSubresourceLayers{ vulkanAspect, destMipLevel, destArrayLayer, 1 };
+	math::Map<math::Vector3i>(&blitRegion.dstOffsets[0].x) = math::Vector3i::Zero();
+	math::Map<math::Vector3i>(&blitRegion.dstOffsets[1].x) = destResolution.cast<Int32>();
+
+	VkBlitImageInfo2 blitInfo{ VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
+    blitInfo.srcImage		= source.GetHandle();
+    blitInfo.srcImageLayout	= sourceLayout;
+    blitInfo.dstImage		= dest.GetHandle();
+	blitInfo.dstImageLayout	= destLayout;
+    blitInfo.regionCount	= 1;
+	blitInfo.pRegions		= &blitRegion;
+    blitInfo.filter			= RHIToVulkan::GetSamplerFilterType(filterMode);
+
+	vkCmdBlitImage2(m_cmdBufferHandle, &blitInfo);
+}
+
 void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();

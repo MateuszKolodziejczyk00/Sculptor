@@ -7,6 +7,7 @@
 
 #include "RHICore/Commands/RHIRenderingDefinition.h"
 #include "RHICore/Commands/RHICopyDefinition.h"
+#include "RHICore/RHISamplerTypes.h"
 
 namespace spt::vulkan
 {
@@ -63,11 +64,13 @@ public:
 
 	// Transfer =============================================
 
+	void	BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode);
+
 	void	CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent);
 	void	CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size);
 	void	FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64 range, Uint32 data);
 	
-	 void	CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset = math::Vector3u::Zero(),  Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
+	void	CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset = math::Vector3u::Zero(),  Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
 
 	// Debug ============================================
 

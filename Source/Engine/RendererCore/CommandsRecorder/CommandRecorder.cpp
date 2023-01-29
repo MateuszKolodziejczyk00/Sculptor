@@ -303,6 +303,18 @@ void CommandRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSe
 	m_pipelineState.UnbindDescriptorSetState(state);
 }
 
+void CommandRecorder::BlitTexture(const lib::SharedRef<Texture>& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const lib::SharedRef<Texture>& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("BlitTexture Command");
+
+							 cmdBuffer->GetRHI().BlitTexture(source->GetRHI(), sourceMipLevel, sourceArrayLayer, dest->GetRHI(), destMipLevel, destArrayLayer, aspect, filterMode);
+						 });
+}
+
 void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();
