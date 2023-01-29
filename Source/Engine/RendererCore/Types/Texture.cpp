@@ -35,7 +35,7 @@ const rhi::TextureDefinition& Texture::GetDefinition() const
 
 const math::Vector3u& Texture::GetResolution() const
 {
-	return GetDefinition().resolution;
+	return GetRHI().GetResolution();
 }
 
 math::Vector2u Texture::GetResolution2D() const

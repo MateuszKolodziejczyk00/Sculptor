@@ -24,6 +24,9 @@ public:
 	Bool							IsValid() const;
 
 	const rhi::TextureDefinition&	GetDefinition() const;
+
+	const math::Vector3u&			GetResolution() const;
+	math::Vector3u					GetMipResolution(Uint32 mipLevel) const;
 	
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 

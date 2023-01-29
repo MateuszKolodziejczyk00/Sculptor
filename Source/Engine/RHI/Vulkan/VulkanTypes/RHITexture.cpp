@@ -332,6 +332,23 @@ const rhi::TextureDefinition& RHITexture::GetDefinition() const
     return m_definition;
 }
 
+const math::Vector3u& RHITexture::GetResolution() const
+{
+    return GetDefinition().resolution;
+}
+
+math::Vector3u RHITexture::GetMipResolution(Uint32 mipLevel) const
+{
+    SPT_CHECK(mipLevel < static_cast<Uint32>(GetDefinition().mipLevels));
+
+    math::Vector3u resolution = GetResolution();
+    resolution.x() = std::max<Uint32>(resolution.x() >> mipLevel, 1);
+    resolution.y() = std::max<Uint32>(resolution.y() >> mipLevel, 1);
+    resolution.z() = std::max<Uint32>(resolution.z() >> mipLevel, 1);
+
+    return resolution;
+}
+
 const rhi::RHIAllocationInfo& RHITexture::GetAllocationInfo() const
 {
     return m_allocationInfo;
