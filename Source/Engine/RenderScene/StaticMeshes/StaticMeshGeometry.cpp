@@ -1,5 +1,5 @@
 #include "StaticMeshGeometry.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "RendererUtils.h"
 #include "ResourcesManager.h"
 #include "Renderer.h"

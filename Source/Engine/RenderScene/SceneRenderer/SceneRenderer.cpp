@@ -1,7 +1,7 @@
 #include "SceneRenderer.h"
 #include "RenderScene.h"
 #include "RenderSystem.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
 #include "RenderGraphBuilder.h"

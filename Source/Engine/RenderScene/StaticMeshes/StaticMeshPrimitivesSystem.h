@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PrimitivesSystem.h"
-#include "RenderInstancesList.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderSceneRegistry.h"
 #include "RenderingDataRegistry.h"

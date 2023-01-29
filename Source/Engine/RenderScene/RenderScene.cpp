@@ -1,6 +1,6 @@
 #include "RenderScene.h"
 #include "ResourcesManager.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "JobSystem/JobSystem.h"
 
 namespace spt::rsc

@@ -1,5 +1,5 @@
 #include "GeometryManager.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "ResourcesManager.h"
 #include "Renderer.h"
 

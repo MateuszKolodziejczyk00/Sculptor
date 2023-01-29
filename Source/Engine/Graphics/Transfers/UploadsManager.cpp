@@ -6,7 +6,7 @@
 #include "TransfersManager.h"
 #include "ResourcesManager.h"
 #include "MathUtils.h"
-#include "BufferUtilities.h"
+#include "UploadUtils.h"
 #include "RHIBridge/RHILimitsImpl.h"
 
 namespace spt::gfx
@@ -92,7 +92,7 @@ void UploadsManager::EnqueUploadToTexture(const Byte* data, Uint64 dataSize, con
 
 Bool UploadsManager::HasPendingUploads() const
 {
-	return !m_bufferCommands.empty();
+	return !m_bufferCommands.empty() || !m_copyToTextureCommands.empty();
 }
 
 void UploadsManager::FlushPendingUploads()
@@ -242,6 +242,12 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 		}
 	}
 
+	for (const CopyToTextureCommand& command : m_copyToTextureCommands)
+	{
+		const lib::SharedRef<rdr::Buffer> stagingBuffer = lib::Ref(m_stagingBuffers[command.stagingBufferIdx].buffer);
+		recorder->CopyBufferToTexture(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destTexture), command.aspect, command.copyExtent, command.copyOffset, command.mipLevel, command.arrayLayer);
+	}
+
 	const Uint64 transferFinishedSingalValue = TransfersManager::RecordAndSubmitTransfers(context, std::move(recorder));
 
 	for (SizeType stagingBufferIdx : m_stagingBuffersPendingFlush)
@@ -250,6 +256,7 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 	}
 
 	m_bufferCommands.clear();
+	m_copyToTextureCommands.clear();
 	m_stagingBuffersPendingFlush.clear();
 }
 

@@ -11,7 +11,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "GeometryManager.h"
 #include "StaticMeshGeometry.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 #include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
 

@@ -1,4 +1,4 @@
-#include "BufferUtilities.h"
+#include "UploadUtils.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
 #include "Transfers/UploadsManager.h"
@@ -67,6 +67,13 @@ void UploadDataToBufferOnCPU(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint
 	std::memcpy(bufferMemoryPtr + bufferOffset, sourceData, dataSize);
 
 	rhiBuffer.UnmapBufferMemory();
+}
+
+void GRAPHICS_API UploadDataToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	UploadsManager::Get().EnqueUploadToTexture(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
 }
 
 void FlushPendingUploads()

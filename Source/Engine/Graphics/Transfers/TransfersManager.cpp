@@ -76,7 +76,7 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 }
 
 TransfersManager::TransfersManager()
-	: m_transferFinishedSemaphore(rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("TransferFinishedSemaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline)))
+	: m_transferFinishedSemaphore(rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("TransferFinishedSemaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline)))
 	, m_lastSubmitCountValue(0)
 {
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
