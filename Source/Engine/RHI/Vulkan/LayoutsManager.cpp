@@ -72,7 +72,7 @@ void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 
 
 	SPT_CHECK(mipLevel < m_mipsNum && arrayLayer < m_arrayLayersNum);
 
-	if (!AreAllSubresourcesInSameLayout())
+	if (AreAllSubresourcesInSameLayout())
 	{
 		TransitionToPerSubresourceLayout();
 	}
@@ -429,7 +429,7 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 		{
 			SPT_CHECK(layoutData.AreAllSubresourcesInSameLayout());
 
-			SetFullImageLayout(cmdBuffer, image, layoutData.GetFullImageLayout());
+			SetGlobalFullImageLayout(image, layoutData.GetFullImageLayout());
 		}
 	}
 }
@@ -458,6 +458,11 @@ const CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBu
 
 	const CommandBufferLayoutsManager& cmdBufferLayouts = *cmdBufferLayoutManager->second;
 	return cmdBufferLayouts;
+}
+
+void LayoutsManager::SetGlobalFullImageLayout(VkImage image, VkImageLayout layout)
+{
+	m_imageLayouts.at(image).fullImageLayout = layout;
 }
 
 VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const

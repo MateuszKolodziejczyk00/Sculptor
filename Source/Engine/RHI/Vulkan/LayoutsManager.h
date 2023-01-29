@@ -154,6 +154,7 @@ private:
 	CommandBufferLayoutsManager&				GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer);
 	const CommandBufferLayoutsManager&			GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer) const;
 
+	void										SetGlobalFullImageLayout(VkImage image, VkImageLayout layout);
 	VkImageLayout								GetGlobalFullImageLayout(VkImage image) const;
 
 	lib::HashMap<VkImage, ImageLayoutData>		m_imageLayouts;
