@@ -44,7 +44,7 @@ lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceNa
 	return lib::MakeShared<Texture>(name, textureDefinition, allocationInfo);
 }
 
-lib::SharedRef<Semaphore> ResourcesManager::CreateSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
+lib::SharedRef<Semaphore> ResourcesManager::CreateRenderSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
 {
 	return lib::MakeShared<Semaphore>(name, definition);
 }

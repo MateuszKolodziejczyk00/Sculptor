@@ -154,13 +154,32 @@ void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib:
 
 		rhiSubmitBatch.waitSemaphores = &submitBatch.waitSemaphores.GetRHISemaphores();
 		rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
-		std::transform(	submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
-						std::back_inserter(rhiSubmitBatch.commandBuffers),
-						[](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
-						{
-							return &recorder->GetCommandBuffer()->GetRHI();
-						});
+		std::transform(submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
+					   std::back_inserter(rhiSubmitBatch.commandBuffers),
+					   [](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
+					   {
+						   return &recorder->GetCommandBuffer()->GetRHI();
+					   });
 	}
+
+	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
+}
+
+void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, CommandsSubmitBatch submitBatch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::DynamicArray<rhi::SubmitBatchData> rhiSubmitBatches(1);
+
+	rhi::SubmitBatchData& rhiSubmitBatch = rhiSubmitBatches[0];
+	rhiSubmitBatch.waitSemaphores = &submitBatch.waitSemaphores.GetRHISemaphores();
+	rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
+	std::transform(submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
+				   std::back_inserter(rhiSubmitBatch.commandBuffers),
+				   [](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
+				   {
+					   return &recorder->GetCommandBuffer()->GetRHI();
+				   });
 
 	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }

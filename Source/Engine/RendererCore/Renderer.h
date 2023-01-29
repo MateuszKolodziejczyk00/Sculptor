@@ -64,6 +64,7 @@ public:
 	static lib::UniquePtr<CommandRecorder>		StartRecordingCommands();
 
 	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
+	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, CommandsSubmitBatch submitBatch);
 
 	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 

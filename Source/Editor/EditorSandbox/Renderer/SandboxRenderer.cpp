@@ -15,7 +15,7 @@
 #include "Engine.h"
 #include "Loaders/glTFSceneLoader.h"
 #include "Paths.h"
-#include "BufferUtilities.h"
+#include "Transfers/UploadUtils.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
@@ -93,7 +93,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	js::JobWithResult createFinishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
 															{
 																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-																return rdr::ResourcesManager::CreateSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
+																return rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
 															});
 
 	js::Job flushPendingBufferUploads = js::Launch(SPT_GENERIC_JOB_NAME, []()

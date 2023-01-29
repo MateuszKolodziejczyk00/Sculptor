@@ -1,18 +1,23 @@
 #include "glTFSceneLoader.h"
+#include "ResourcesManager.h"
 #include "Paths.h"
 #include "MeshBuilder.h"
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "RenderingDataRegistry.h"
-#include "ResourcesManager.h"
 #include "Types/Texture.h"
+#include "Types/RenderContext.h"
+#include "CommandsRecorder/CommandRecorder.h"
+#include "Types/Semaphore.h"
+#include "Renderer.h"
+#include "Transfers/UploadUtils.h"
+#include "Transfers/TransfersManager.h"
+#include "TextureUtils.h"
+#include "Materials/MaterialsUnifiedData.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
-
-// TEMP
-#define TINYGLTF_NO_EXTERNAL_IMAGE 
 
 #pragma warning(push)
 #pragma warning(disable: 4996)
@@ -300,7 +305,7 @@ static rhi::EFragmentFormat GetImageFormat(const tinygltf::Image& image)
 	return rhi::EFragmentFormat::None;
 }
 
-/*static*/ lib::SharedRef<rdr::Texture> LoadImage(const tinygltf::Image& image)
+static lib::SharedRef<rdr::Texture> CreateImage(const tinygltf::Image& image)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -310,17 +315,100 @@ static rhi::EFragmentFormat GetImageFormat(const tinygltf::Image& image)
 
 	rhi::TextureDefinition textureDef;
 	textureDef.resolution		= math::Vector3u(static_cast<Uint32>(image.width), static_cast<Uint32>(image.height), 1);
-	textureDef.usage			= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
+	textureDef.usage			= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource);
 	textureDef.format			= GetImageFormat(image);
 	textureDef.samples			= 1;
 	textureDef.mipLevels		= mipLevels;
 	textureDef.arrayLayers		= 1;
 
-	const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("image.name"), textureDef, allocationInfo);
+	return rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(image.name), textureDef, allocationInfo);
+}
 
-	//gfx::UploadDataToBuffer()
+static void LoadImages(const tinygltf::Model& model)
+{
+	SPT_PROFILER_FUNCTION();
 
-	return texture;
+	lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("LoadedImageBarriersContext"), rhi::ContextDefinition());
+
+	const SizeType imagesNum = model.images.size();
+
+	lib::DynamicArray<lib::SharedRef<rdr::Texture>> textures;
+	textures.reserve(imagesNum);
+
+	// Create all textures
+	for (const tinygltf::Image& image : model.images)
+	{
+		textures.emplace_back(CreateImage(image));
+	}
+
+	// Transition barrier to transfer dst
+	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Timeline);
+	const lib::SharedRef<rdr::Semaphore> readyForTransferSemaphore = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("ReadyForTransferSemaphore"), semaphoreDef);
+
+	{
+		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
+
+		rhi::RHIDependency preTransferDependency;
+		for (const auto& texture : textures)
+		{
+			const SizeType dependencyIdx = preTransferDependency.AddTextureDependency(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
+			preTransferDependency.SetLayoutTransition(dependencyIdx, rhi::TextureTransition::TransferDest);
+		}
+		commandRecorder->ExecuteBarrier(std::move(preTransferDependency));
+
+		rdr::CommandsRecordingInfo recordingInfo;
+		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PreTransferDependencyCmdBuffer");
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		rdr::CommandsSubmitBatch submitBatch;
+		submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
+		submitBatch.signalSemaphores.AddTimelineSemaphore(readyForTransferSemaphore, 1, rhi::EPipelineStage::BottomOfPipe);
+		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+	}
+
+	readyForTransferSemaphore->GetRHI().Wait(1);
+
+	// Upload data to textures
+	for (Uint32 imageIdx = 0; imageIdx < imagesNum; ++imageIdx)
+	{
+		const tinygltf::Image& image = model.images[imageIdx];
+
+		const lib::SharedRef<rdr::Texture>& texture = textures[imageIdx];
+		const math::Vector3u& resolution = texture->GetResolution();
+
+		gfx::UploadDataToTexture(reinterpret_cast<const Byte*>(image.image.data()), image.image.size(), textures[imageIdx], rhi::ETextureAspect::Color, resolution);
+	}
+
+	gfx::FlushPendingUploads();
+
+	// Transition barrier to shader read only
+	{
+		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
+
+		for (const auto& texture : textures)
+		{
+			gfx::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ReadOnly);
+		}
+
+		rdr::CommandsRecordingInfo recordingInfo;
+		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PostTransferDependencyCmdBuffer");
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+		commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		rdr::CommandsSubmitBatch submitBatch;
+		submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
+		gfx::TransfersManager::WaitForTransfersFinished(submitBatch.waitSemaphores);
+		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+	}
+
+	for (const auto& texture : textures)
+	{
+		rhi::TextureViewDefinition viewDef;
+		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
+		lib::SharedRef<rdr::TextureView> textureView = texture->CreateView(RENDERER_RESOURCE_NAME(texture->GetRHI().GetName().ToString() + "View"), viewDef);
+		MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView));
+	}
 }
 
 void LoadScene(RenderScene& scene, lib::StringView path)
@@ -357,6 +445,8 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
+		LoadImages(model);
+
 		lib::DynamicArray<RenderingDataEntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
