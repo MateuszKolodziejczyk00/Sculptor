@@ -14,6 +14,7 @@ class RenderView;
 struct StaticMeshInstanceRenderData
 {
 	RenderingDataEntityHandle staticMesh;
+	lib::DynamicArray<RenderingDataEntityHandle> materials;
 };
 
 

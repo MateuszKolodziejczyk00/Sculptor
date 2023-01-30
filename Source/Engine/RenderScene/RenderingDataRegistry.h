@@ -29,6 +29,8 @@ public:
 
 	static RenderingDataRegistry& Get();
 
+	static RenderingDataEntityHandle CreateEntity();
+
 private:
 
 	static RenderingData& GetInstance();

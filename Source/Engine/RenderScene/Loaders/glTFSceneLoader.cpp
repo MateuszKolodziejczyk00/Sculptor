@@ -14,6 +14,7 @@
 #include "Transfers/TransfersManager.h"
 #include "TextureUtils.h"
 #include "Materials/MaterialsUnifiedData.h"
+#include "Materials/MaterialTypes.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -324,7 +325,7 @@ static lib::SharedRef<rdr::Texture> CreateImage(const tinygltf::Image& image)
 	return rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(image.name), textureDef, allocationInfo);
 }
 
-static void LoadImages(const tinygltf::Model& model)
+static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -402,13 +403,52 @@ static void LoadImages(const tinygltf::Model& model)
 		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
 	}
 
+	lib::DynamicArray<Uint32> textureIndicesInMaterialDS;
+	textureIndicesInMaterialDS.reserve(textures.size());
+
 	for (const auto& texture : textures)
 	{
 		rhi::TextureViewDefinition viewDef;
 		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
 		lib::SharedRef<rdr::TextureView> textureView = texture->CreateView(RENDERER_RESOURCE_NAME(texture->GetRHI().GetName().ToString() + "View"), viewDef);
-		MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView));
+		textureIndicesInMaterialDS.emplace_back(MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView)));
 	}
+
+	return textureIndicesInMaterialDS;
+}
+
+static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
+{
+	const auto getLoadedTextureIndex = [&textureIndicesInMaterialDS](int modelTextureIdx)
+	{
+		return modelTextureIdx != -1 ? textureIndicesInMaterialDS[modelTextureIdx] : idxNone<Uint32>;
+	};
+
+	lib::DynamicArray<RenderingDataEntityHandle> materials;
+	materials.reserve(model.materials.size());
+
+	for (const tinygltf::Material& materialDef : model.materials)
+	{
+		const RenderingDataEntityHandle materialDataHandle = RenderingData::CreateEntity();
+
+		const tinygltf::PbrMetallicRoughness& pbrDef = materialDef.pbrMetallicRoughness;
+
+		MaterialPBRData pbrData;
+		pbrData.baseColorFactor				= math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
+		pbrData.metallicFactor				= static_cast<Real32>(pbrDef.metallicFactor);
+		pbrData.roughnessFactor				= static_cast<Real32>(pbrDef.roughnessFactor);
+		pbrData.baseColorTextureIdx			= getLoadedTextureIndex(pbrDef.baseColorTexture.index);
+		pbrData.metallicRoughnessTextureIdx	= getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
+		pbrData.normalsTextureIdx			= getLoadedTextureIndex(materialDef.normalTexture.index);
+
+		const rhi::RHISuballocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(reinterpret_cast<const Byte*>(&pbrData), sizeof(MaterialPBRData));
+
+		materialDataHandle.emplace<MaterialCommonData>(MaterialCommonData{ materialDataSuballocation });
+
+		materials.emplace_back(materialDataHandle);
+	}
+
+	return materials;
 }
 
 void LoadScene(RenderScene& scene, lib::StringView path)
@@ -445,7 +485,8 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
-		LoadImages(model);
+		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
+		const lib::DynamicArray<RenderingDataEntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
 
 		lib::DynamicArray<RenderingDataEntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
@@ -461,12 +502,22 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 			{
 				SPT_CHECK(static_cast<SizeType>(node.mesh) < loadedMeshes.size());
 
+				const tinygltf::Mesh& mesh = model.meshes[node.mesh];
+
 				RenderInstanceData instanceData;
 				instanceData.transfrom = GetNodeTransform(node);
-				const RenderSceneEntityHandle meshEntity = scene.CreateEntity(instanceData);
+				const RenderSceneEntityHandle meshSceneEntity = scene.CreateEntity(instanceData);
+
 				StaticMeshInstanceRenderData entityStaticMeshData;
 				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
-				meshEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
+
+				entityStaticMeshData.materials.reserve(mesh.primitives.size());
+				for (const tinygltf::Primitive& prim : mesh.primitives)
+				{
+					entityStaticMeshData.materials.emplace_back(materials[prim.material]);
+				}
+
+				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
 			}
 		}
 	}
