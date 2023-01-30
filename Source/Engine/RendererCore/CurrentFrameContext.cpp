@@ -49,7 +49,9 @@ void CurrentFrameContext::BeginFrame()
 
 	++priv::currentFrameIdx;
 
-	if (priv::currentFrameIdx > priv::framesInFlightNum)
+	const Bool shouldWaitForFrameFinished = priv::currentFrameIdx > priv::framesInFlightNum;
+
+	if (shouldWaitForFrameFinished)
 	{
 		const Uint64 releasedFrameIdx = priv::currentFrameIdx - static_cast<Uint64>(priv::framesInFlightNum);
 		const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(releasedFrameIdx);
@@ -57,7 +59,12 @@ void CurrentFrameContext::BeginFrame()
 	}
 
 	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
-	FlushCurrentFrameReleases();
+
+	// flush releases only if we were wating for finishing frame. Otherwise we may remove resources that are in use (for example resources used for loading or initialization)
+	if (shouldWaitForFrameFinished)
+	{
+		FlushCurrentFrameReleases();
+	}
 }
 
 void CurrentFrameContext::EndFrame()
