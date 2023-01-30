@@ -42,12 +42,17 @@ public:
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		const lib::String arraySizeNumber = IsUnbound() ? lib::String() : lib::StringUtils::ToString<arraySize>();
-		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>() + name + '[' + arraySizeNumber + ']', bindingIdx);
+		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>() + ' ' + name + '[' + arraySizeNumber + ']', bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		return IsUnbound() ? smd::EBindingFlags::Unbound : smd::EBindingFlags::None;
+		smd::EBindingFlags flags = smd::EBindingFlags::PartiallyBound;
+		if (IsUnbound())
+		{
+			lib::AddFlag(flags, smd::EBindingFlags::Unbound);
+		}
+		return flags;
 	}
 
 	static constexpr Bool IsUnbound()

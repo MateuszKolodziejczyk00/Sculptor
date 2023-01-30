@@ -31,6 +31,8 @@ enum class EBindingFlags : Flags32
 	DynamicOffset		= BIT(2),
 	TexelBuffer			= BIT(3),
 	Storage				= BIT(4),
+	
+	PartiallyBound		= BIT(5),
 
 	// Immutable samplers
 	ImmutableSampler	= BIT(11),

@@ -2,6 +2,7 @@
 #include "RendererUtils.h"
 #include "RenderScene.h"
 #include "StaticMeshGeometry.h"
+#include "Materials/MaterialTypes.h"
 
 namespace spt::rsc
 {
@@ -25,11 +26,15 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const Re
 
 		for (Uint32 idx = 0; idx < meshRenderingDef.submeshesNum; ++idx)
 		{
+			const RenderingDataEntityHandle material = staticMeshRenderData.materials[idx];
+			const MaterialCommonData& materialData = material.get<MaterialCommonData>();
+
 			const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
 
 			StaticMeshBatchElement batchElement;
-			batchElement.entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
-			batchElement.submeshGlobalIdx = globalSubmeshIdx;
+			batchElement.entityIdx			= static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
+			batchElement.submeshGlobalIdx	= globalSubmeshIdx;
+			batchElement.materialDataOffset	= static_cast<Uint32>(materialData.materialDataSuballocation.GetOffset());
 			batch.batchElements.emplace_back(batchElement);
 		}
 

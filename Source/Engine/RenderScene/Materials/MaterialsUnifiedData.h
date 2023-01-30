@@ -5,14 +5,16 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
+#include "DescriptorSetBindings/SamplerBinding.h"
 
 
 namespace spt::rsc
 {
 
 DS_BEGIN(MaterialsDS, rg::RGDescriptorSetState<MaterialsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),					u_materialsData)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<1024>),	u_materialsTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),										u_materialsData)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<1024>),						u_materialsTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearRepeat>),	u_materialTexturesSampler)
 DS_END();
 
 

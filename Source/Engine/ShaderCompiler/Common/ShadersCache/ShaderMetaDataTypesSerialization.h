@@ -74,6 +74,17 @@ struct TypeSerializer<smd::BufferBindingData>
 	}
 };
 
+// smd::SamplerBindingData =========================================================
+
+template<>
+struct TypeSerializer<smd::SamplerBindingData>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		SerializeType<smd::CommonBindingData>(serializer, data);
+	}
+};
 // smd::GenericShaderBinding =======================================================
 
 template<>
@@ -98,6 +109,11 @@ struct TypeSerializer<smd::GenericShaderBinding>
 			{
 				serializer.Serialize("TypeIdx", 2);
 				serializer.Serialize("Data", data.As<smd::BufferBindingData>());
+			}
+			else if (data.Contains<smd::SamplerBindingData>())
+			{
+				serializer.Serialize("TypeIdx", 3);
+				serializer.Serialize("Data", data.As<smd::SamplerBindingData>());
 			}
 			else
 			{
@@ -125,6 +141,12 @@ struct TypeSerializer<smd::GenericShaderBinding>
 			else if (typeIdx == 2)
 			{
 				smd::BufferBindingData bindingData;
+				serializer.Serialize("Data", bindingData);
+				data.Set(bindingData);
+			}
+			else if (typeIdx == 3)
+			{
+				smd::SamplerBindingData bindingData;
 				serializer.Serialize("Data", bindingData);
 				data.Set(bindingData);
 			}
@@ -290,6 +312,7 @@ SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::CommonBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::TextureBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::CombinedTextureSamplerBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::BufferBindingData)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::SamplerBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::GenericShaderBinding)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderTextureParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderCombinedTextureSamplerParamEntry)

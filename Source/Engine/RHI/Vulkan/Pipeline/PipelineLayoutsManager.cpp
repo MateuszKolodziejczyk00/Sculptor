@@ -85,6 +85,23 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 	bindingsInfos.reserve(dsDef.bindings.size());
 	bindingsFlags.reserve(dsDef.bindings.size());
 
+	const SizeType samplersNum = std::accumulate(std::cbegin(dsDef.bindings), std::cend(dsDef.bindings), SizeType(0),
+												 [](SizeType value, const rhi::DescriptorSetBindingDefinition& bindingDef)
+												 {
+													 SizeType samplersInBinding = 0;
+													 if(bindingDef.descriptorType == rhi::EDescriptorType::Sampler || bindingDef.descriptorType == rhi::EDescriptorType::CombinedTextureSampler)
+													 {
+														 SPT_CHECK_MSG(bindingDef.descriptorCount == 1, "Currently only one immutable sampler per binding is supported");
+														 samplersInBinding = static_cast<SizeType>(bindingDef.descriptorCount);
+													 }
+													 return value + samplersInBinding;
+												 });
+
+	lib::DynamicArray<VkSampler> samplers;
+	samplers.reserve(samplersNum);
+
+	Bool hasUpdateAfterBindBindings = false;
+
 	for (const rhi::DescriptorSetBindingDefinition& bindingDef : dsDef.bindings)
 	{
 		if (bindingDef.descriptorType == rhi::EDescriptorType::None)
@@ -92,16 +109,22 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 			continue;
 		}
 
-		const VkSampler immutableSampler = bindingDef.immutableSampler.IsValid() ? bindingDef.immutableSampler.GetHandle() : VK_NULL_HANDLE;
+		const Bool hasImmutableSampler = bindingDef.immutableSampler.IsValid();
+		if (hasImmutableSampler)
+		{
+			samplers.emplace_back(bindingDef.immutableSampler.GetHandle());
+		}
 
 		VkDescriptorSetLayoutBinding bindingInfo{};
 		bindingInfo.binding				= bindingDef.bindingIdx;
 		bindingInfo.descriptorType		= RHIToVulkan::GetDescriptorType(bindingDef.descriptorType);
 		bindingInfo.descriptorCount		= bindingDef.descriptorCount;
 		bindingInfo.stageFlags			= RHIToVulkan::GetShaderStages(bindingDef.shaderStages);
-		bindingInfo.pImmutableSamplers = immutableSampler ? &immutableSampler : VK_NULL_HANDLE;
+		bindingInfo.pImmutableSamplers	= hasImmutableSampler ? &samplers.back() : VK_NULL_HANDLE;
 
 		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
+
+		hasUpdateAfterBindBindings |= lib::HasAnyFlag(bindingDef.flags, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
 
 		bindingsInfos.emplace_back(bindingInfo);
 		bindingsFlags.emplace_back(bindingFlags);
@@ -116,6 +139,11 @@ VkDescriptorSetLayout PipelineLayoutsManager::CreateDSLayout(const rhi::Descript
 	layoutInfo.flags		= RHIToVulkan::GetDescriptorSetFlags(dsDef.flags);
     layoutInfo.bindingCount	= static_cast<Uint32>(bindingsInfos.size());
     layoutInfo.pBindings	= bindingsInfos.data();
+
+	if (hasUpdateAfterBindBindings)
+	{
+		layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+	}
 
 	VkDescriptorSetLayout layoutHandle = VK_NULL_HANDLE;
 	SPT_VK_CHECK(vkCreateDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), &layoutInfo, VulkanRHI::GetAllocationCallbacks(), &layoutHandle));

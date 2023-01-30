@@ -239,6 +239,30 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
+static void AddSampledTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, textureResource);
+	
+	smd::TextureBindingData textureBinding;
+
+	const spirv_cross::SPIRType& resourceType = compiler.get_type(textureResource.type_id);
+	// Not sure if this is fully correct
+	if (resourceType.array.size() > 0)
+	{
+		textureBinding.elementsNum = resourceType.array[0];
+	}
+
+	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+
+	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, textureBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
+
+	const smd::ShaderTextureParamEntry paramEntry(setIdx, bindingIdx);
+	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
+}
+
 static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
@@ -286,6 +310,18 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 		[&](const spirv_cross::Resource& texture)
 		{
 			AddStorageTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+		});
+
+	std::for_each(std::cbegin(resources.sampled_images), std::cend(resources.sampled_images),
+		[&](const spirv_cross::Resource& texture)
+		{
+			AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+		});
+
+	std::for_each(std::cbegin(resources.separate_images), std::cend(resources.separate_images),
+		[&](const spirv_cross::Resource& texture)
+		{
+			AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
 		});
 
 	std::for_each(std::cbegin(resources.separate_samplers), std::cend(resources.separate_samplers),

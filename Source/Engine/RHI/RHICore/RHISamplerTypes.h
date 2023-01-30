@@ -111,6 +111,12 @@ struct SamplerDefinition
 	Bool unnormalizedCoords;
 };
 
+
+struct SamplerState
+{
+	static constexpr SamplerDefinition LinearRepeat = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::Repeat);
+};
+
 } // spt::rhi
 
 

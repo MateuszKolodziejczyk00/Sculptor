@@ -419,9 +419,15 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 
 static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
 {
-	const auto getLoadedTextureIndex = [&textureIndicesInMaterialDS](int modelTextureIdx)
+	const auto getLoadedTextureIndex = [&model, &textureIndicesInMaterialDS](int modelTextureIdx)
 	{
-		return modelTextureIdx != -1 ? textureIndicesInMaterialDS[modelTextureIdx] : idxNone<Uint32>;
+		Uint32 loadedTextureIdx = idxNone<Uint32>;
+		if (modelTextureIdx != -1)
+		{
+			const SizeType imageIdx = model.textures[modelTextureIdx].source;
+			loadedTextureIdx = static_cast<Uint32>(textureIndicesInMaterialDS[imageIdx]);
+		}
+		return loadedTextureIdx;
 	};
 
 	lib::DynamicArray<RenderingDataEntityHandle> materials;

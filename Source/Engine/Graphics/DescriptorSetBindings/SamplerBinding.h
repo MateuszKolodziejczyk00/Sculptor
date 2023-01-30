@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "RHICore/RHISamplerTypes.h"
 
 
 namespace spt::gfx
@@ -38,35 +39,35 @@ public:
 
 		constexpr rhi::EAxisAddressingMode addressingMode = definition.addressingModeU;
 
-		if (addressingMode == rhi::EAxisAddressingMode::ClampToEdge || addressingMode == rhi::EAxisAddressingMode::ClampToBorder)
+		if constexpr (addressingMode == rhi::EAxisAddressingMode::ClampToEdge || addressingMode == rhi::EAxisAddressingMode::ClampToBorder)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::ClampAddressing);
-			if (addressingMode == rhi::EAxisAddressingMode::ClampToBorder)
+			if constexpr (addressingMode == rhi::EAxisAddressingMode::ClampToBorder)
 			{
 				lib::AddFlag(flags, smd::EBindingFlags::ClampToBorder);
 			}
 		}
 		else // repeat
 		{
-			if(addressingMode == rhi::EAxisAddressingMode::MirroredRepeat)
+			if constexpr (addressingMode == rhi::EAxisAddressingMode::MirroredRepeat)
 			{
 
 				lib::AddFlag(flags, smd::EBindingFlags::MirroredAddressing);
 			}
 		}
 
-		if (definition.mipMapAdressingMode == rhi::EMipMapAddressingMode::Linear)
+		if constexpr (definition.mipMapAdressingMode == rhi::EMipMapAddressingMode::Linear)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::MipMapsLinear);
 		}
 
 		SPT_STATIC_CHECK(definition.magnificationFilter == definition.minificationFilter);
-		if (definition.magnificationFilter == rhi::EMipMapAddressingMode::Linear)
+		if constexpr (definition.magnificationFilter == rhi::ESamplerFilterType::Linear)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::FilterLinear);
 		}
 
-		if (definition.enableAnisotropy)
+		if constexpr (definition.enableAnisotropy)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::EnableAnisotropy);
 		}
@@ -82,17 +83,17 @@ public:
 		constexpr Bool transparentBorder = borderColor == rhi::EBorderColor::FloatTransparentBlack
 										|| borderColor == rhi::EBorderColor::IntTransparentBlack;
 
-		if (intBorder)
+		if constexpr (intBorder)
 		{
 			lib::AddFlags(flags, smd::EBindingFlags::IntBorder);
 		}
 
-		if (whiteBorder)
+		if constexpr (whiteBorder)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::WhiteBorder);
 		}
 
-		if (transparentBorder)
+		if constexpr (transparentBorder)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::TransparentBorder);
 		}

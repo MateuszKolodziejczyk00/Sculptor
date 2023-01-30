@@ -96,42 +96,28 @@ static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::CommonBi
 
 static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::GenericShaderBinding& bindingMetaData, rhi::DescriptorSetBindingDefinition& rhiBindingDef)
 {
-	constexpr static Uint32 unboundDescriptorSetNum = 1024;
-
 	std::visit(
 		lib::Overload
 		{
 			[&rhiBindingDef](const smd::TextureBindingData& textureBinding)
 			{
-				if (lib::HasAnyFlag(textureBinding.flags, smd::EBindingFlags::Unbound))
+				if (lib::HasAnyFlag(textureBinding.flags, smd::EBindingFlags::PartiallyBound))
 				{
 					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
-					rhiBindingDef.descriptorCount = unboundDescriptorSetNum;
-				}
-				else
-				{
-					rhiBindingDef.descriptorCount = 1;
 				}
 			},
 			[&rhiBindingDef](const smd::CombinedTextureSamplerBindingData& combinedTextureSamplerBinding)
 			{
-				if (lib::HasAnyFlag(combinedTextureSamplerBinding.flags, smd::EBindingFlags::Unbound))
+				if (lib::HasAnyFlag(combinedTextureSamplerBinding.flags, smd::EBindingFlags::PartiallyBound))
 				{
 					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
-					rhiBindingDef.descriptorCount = unboundDescriptorSetNum;
-				}
-				else
-				{
-					rhiBindingDef.descriptorCount = 1;
 				}
 			},
 			[&rhiBindingDef](const smd::BufferBindingData& bufferBinding)
 			{
-				rhiBindingDef.descriptorCount = 1;
 			},
 			[&rhiBindingDef](const smd::SamplerBindingData& samplerBinding)
 			{
-				rhiBindingDef.descriptorCount = 1;
 			}
 		},
 		bindingMetaData.GetBindingData());
@@ -139,13 +125,15 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 	std::visit([&rhiBindingDef](const smd::CommonBindingData& commonBindingData)
 			   {
 				   rhiBindingDef.descriptorType = commonBindingData.GetDescriptorType();
-
-					rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
+ 
+				   rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
 					
-					if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
-					{
+				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
+				   {
 					   rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(commonBindingData)->GetRHI();
-					}
+				   }
+
+				   rhiBindingDef.descriptorCount = commonBindingData.elementsNum;
 			   },
 			   bindingMetaData.GetBindingData());
 

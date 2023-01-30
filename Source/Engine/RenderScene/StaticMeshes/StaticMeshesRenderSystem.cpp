@@ -14,6 +14,7 @@
 #include "Transfers/UploadUtils.h"
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 #include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
+#include "Materials/MaterialsUnifiedData.h"
 
 namespace spt::rsc
 {
@@ -670,7 +671,8 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-								rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS)),
+								rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS),
+													   MaterialsUnifiedData::Get().GetMaterialsDS()),
 								std::tie(drawParams),
 								[drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
