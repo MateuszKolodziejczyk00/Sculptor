@@ -52,6 +52,8 @@ void SandboxUILayer::DrawUI()
 	ImGui::Separator();
 	DrawJobSystemTestsUI();
 	ImGui::Separator();
+	DrawDebugSceneRenderer();
+	ImGui::Separator();
 
 	ImGui::Text("Shaders");
 #if WITH_SHADERS_HOT_RELOAD
@@ -146,6 +148,16 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 					   SPT_LOG_TRACE(SandboxUI, "5");
 				   });
 	}
+}
+
+void SandboxUILayer::DrawDebugSceneRenderer()
+{
+	SPT_PROFILER_FUNCTION();
+
+	rsc::SceneRenderer& sceneRenderer = m_renderer->GetSceneRenderer();
+	rsc::SceneRendererDebugSettings& debugSettings = sceneRenderer.GetDebugSettings();
+
+	ImGui::Checkbox("Show Debug Meshlets", &debugSettings.showDebugMeshlets);
 }
 
 } // spt::ed

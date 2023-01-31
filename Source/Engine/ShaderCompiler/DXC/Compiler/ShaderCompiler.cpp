@@ -301,6 +301,10 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 		args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
 		args.Append(lib::WString(L"-O1"));
 	}
+	else
+	{
+		args.Append(lib::WString(L"-O3"));
+	}
 
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
@@ -314,6 +318,15 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 				   });
 
 	macrosAsWideString.emplace_back(priv::GetShaderStageMacro(stageCompilationDef.stage));
+
+	if (ShaderCompilationEnvironment::ShouldCompileWithDebugs())
+	{
+		macrosAsWideString.emplace_back(L"WITH_DEBUGS=1");
+	}
+	else
+	{
+		macrosAsWideString.emplace_back(L"WITH_DEBUGS=0");
+	}
 
 	for(const lib::WString& macro : macrosAsWideString)
 	{

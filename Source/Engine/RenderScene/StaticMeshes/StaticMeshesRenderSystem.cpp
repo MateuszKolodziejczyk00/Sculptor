@@ -492,7 +492,6 @@ void StaticMeshesRenderSystem::CullDepthPrepassPerView(rg::RenderGraphBuilder& g
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  renderScene.GetRenderSceneDS(),
 																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
@@ -518,7 +517,6 @@ void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder&
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																						renderScene.GetRenderSceneDS(),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
 																						lib::Ref(staticMeshRenderingViewData.viewDS)));
 
@@ -608,7 +606,6 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  renderScene.GetRenderSceneDS(),
 																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
@@ -657,7 +654,6 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																						renderScene.GetRenderSceneDS(),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
 																						lib::Ref(staticMeshRenderingViewData.viewDS)));
 

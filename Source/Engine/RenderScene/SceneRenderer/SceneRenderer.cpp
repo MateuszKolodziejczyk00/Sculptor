@@ -31,12 +31,16 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 
 } // renderer_utils
 
+
 SceneRenderer::SceneRenderer()
+	: m_debugDS(CreateDebugDS())
 { }
 
 rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(m_debugDS, scene.GetRenderSceneDS()));
 
 	scene.Update();
 
@@ -78,6 +82,11 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	return mainViewOFResult.radiance;
 }
 
+SceneRendererDebugSettings& SceneRenderer::GetDebugSettings() const
+{
+	return m_debugDS->u_rendererDebugSettings.GetMutable();
+}
+
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const
 {
 	SPT_PROFILER_FUNCTION();
@@ -113,6 +122,11 @@ lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::Rend
 	SPT_CHECK(mainViewIdx != idxNone<SizeType>);
 
 	return viewsEntryPoints;
+}
+
+lib::SharedRef<SceneRendererDebugDS> SceneRenderer::CreateDebugDS()
+{
+	return rdr::ResourcesManager::CreateDescriptorSetState<SceneRendererDebugDS>(RENDERER_RESOURCE_NAME("SceneRendererDebugDS"), rdr::EDescriptorSetStateFlags::Persistent);
 }
 
 } // spt::rsc

@@ -10,6 +10,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RenderScene.h"
 #include "View/RenderView.h"
+#include "SceneRenderer/SceneRenderer.h"
 
 namespace spt::rdr
 {
@@ -20,22 +21,6 @@ class Semaphore;
 
 namespace spt::ed
 {
-
-BEGIN_SHADER_STRUCT(TestViewInfo)
-	SHADER_STRUCT_FIELD(math::Vector4f, test1)
-	SHADER_STRUCT_FIELD(math::Vector3f, test2)
-	SHADER_STRUCT_FIELD(math::Vector4f, test3)
-	SHADER_STRUCT_FIELD(Real32, test4)
-	SHADER_STRUCT_FIELD(math::Vector2f, test5)
-	SHADER_STRUCT_FIELD(math::Vector4f, color)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(TestDS, rg::RGDescriptorSetState<TestDS>)
-	DS_BINDING(gfx::RWTexture2DBinding<math::Vector4f>, u_texture)
-	DS_BINDING(gfx::ConstantBufferBinding<TestViewInfo>, u_viewInfo)
-DS_END()
-
 
 class EDITOR_SANDBOX_API SandboxRenderer
 {
@@ -53,6 +38,8 @@ public:
 	const lib::SharedPtr<rdr::Window>& GetWindow() const;
 
 	rsc::RenderView& GetRenderView() const;
+
+	rsc::SceneRenderer& GetSceneRenderer();
 
 	void SetImageSize(const math::Vector2u& imageSize);
 
@@ -80,6 +67,8 @@ private:
 
 	rsc::RenderScene					m_renderScene;
 	lib::UniquePtr<rsc::RenderView>		m_renderView;
+
+	rsc::SceneRenderer					m_sceneRenderer;
 
 	/** Default FOV value used when		scene image have same width as window */
 	Real32								m_fovDegrees;

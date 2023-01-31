@@ -14,6 +14,7 @@ struct CompilationEnvironmentDef
 	CompilationEnvironmentDef()
 		: targetEnvironment(ETargetEnvironment::None)
 		, generateDebugInfo(false)
+		, compileWithDebugs(false)
 		, useCompiledShadersCache(true)
 		, cacheSeparateSpvFile(false)
 	{ }
@@ -21,6 +22,8 @@ struct CompilationEnvironmentDef
 	ETargetEnvironment		targetEnvironment;
 
 	Bool					generateDebugInfo;
+
+	Bool					compileWithDebugs;
 
 	Bool					useCompiledShadersCache;
 
@@ -44,6 +47,8 @@ public:
 	static Bool						CanCompile();
 
 	static Bool						ShouldGenerateDebugInfo();
+
+	static Bool						ShouldCompileWithDebugs();
 
 	static Bool						ShouldUseCompiledShadersCache();
 

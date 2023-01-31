@@ -33,6 +33,11 @@ Bool ShaderCompilationEnvironment::ShouldGenerateDebugInfo()
 	return priv::g_environmentDef.generateDebugInfo;
 }
 
+Bool ShaderCompilationEnvironment::ShouldCompileWithDebugs()
+{
+	return priv::g_environmentDef.compileWithDebugs;
+}
+
 Bool ShaderCompilationEnvironment::ShouldUseCompiledShadersCache()
 {
 	return priv::g_environmentDef.useCompiledShadersCache;

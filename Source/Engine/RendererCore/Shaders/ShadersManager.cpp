@@ -24,6 +24,7 @@ struct TypeSerializer<sc::CompilationEnvironmentDef>
 	{
 		serializer.SerializeEnum("Environment", data.targetEnvironment);
 		serializer.Serialize("GenerateDebugInfo", data.generateDebugInfo);
+		serializer.Serialize("CompileWithDebugs", data.compileWithDebugs);
 		serializer.Serialize("UseCompiledShadersCache", data.useCompiledShadersCache);
 		serializer.Serialize("CacheSeparateSpvFile", data.cacheSeparateSpvFile);
 		serializer.Serialize("ShadersPath", data.shadersPath);

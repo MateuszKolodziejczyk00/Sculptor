@@ -105,8 +105,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 	rg::RenderGraphBuilder graphBuilder;
 
-	rsc::SceneRenderer sceneRenderer;
-	const rg::RGTextureViewHandle sceneRenderingResultTextureView = sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
+	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(m_sceneUITextureView);
@@ -145,6 +144,11 @@ ui::TextureID SandboxRenderer::GetUITextureID() const
 const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
 {
 	return m_window;
+}
+
+rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
+{
+	return m_sceneRenderer;
 }
 
 void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)

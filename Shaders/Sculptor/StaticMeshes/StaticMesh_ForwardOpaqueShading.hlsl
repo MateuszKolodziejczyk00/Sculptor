@@ -13,6 +13,10 @@
 
 [[descriptor_set(MaterialsDS, 6)]]
 
+#if WITH_DEBUGS
+[[descriptor_set(SceneRendererDebugDS, 7)]]
+#endif // WITH_DEBUGS
+
 [[shader_struct(MaterialPBRData)]]
 
 
@@ -31,6 +35,10 @@ struct VS_OUTPUT
     bool    hasTangent          : VERTEX_HAS_TANGENT;
     float3  bitangent           : VERTEX_BITANGENT;
     float2  uv                  : VERTEX_UV;
+
+#if WITH_DEBUGS
+    uint    meshletIdx          : MESHLET_IDX;
+#endif // WITH_DEBUGS
 };
 
 
@@ -74,6 +82,14 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
 
+#if WITH_DEBUGS
+    if(u_rendererDebugSettings.showDebugMeshlets)
+    {
+        output.meshletIdx = meshletIdx;
+        return output;
+    }
+#endif // WITH_DEBUGS
+
     output.hasTangent = false;
     if(submesh.normalsOffset != IDX_NONE_32)
     {
@@ -104,8 +120,16 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     FO_PS_OUTPUT output;
 
-    //const uint meshletHash = HashPCG(localMeshletIdx);
-    //const float3 color = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
+#if WITH_DEBUGS
+    if(u_rendererDebugSettings.showDebugMeshlets)
+    {
+        const uint meshletHash = HashPCG(vertexInput.meshletIdx);
+        output.radiance.xyz = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
+        output.radiance.w = 1.f;
+        output.normal = 0.f;
+        return output;
+    }
+#endif // WITH_DEBUGS
     
     float3 color = 1.f;
     

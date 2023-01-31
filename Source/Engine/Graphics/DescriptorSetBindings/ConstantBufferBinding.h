@@ -86,17 +86,14 @@ public:
 	template<typename TSetter> requires requires (TSetter& setter) { setter(std::declval<TStruct&>()); }
 	void Set(TSetter&& setter)
 	{
-		const TStruct& oldValue = GetImpl();
-		SwitchBufferOffsetIfNecessary();
-		TStruct& newValue = GetImpl();
-		
-		// If struct offset was changed and we're using other copy, copy prev instance to new, so that changes to value will be incremental
-		if (&newValue != &oldValue)
-		{
-			memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
-		}
+		SwitchBufferOffsetPreservingData();
+		setter(GetImpl());
+	}
 
-		setter(newValue);
+	TStruct& GetMutable()
+	{
+		SwitchBufferOffsetPreservingData();
+		return GetImpl();
 	}
 
 	const TStruct& Get() const
@@ -124,6 +121,19 @@ private:
 			m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
 		}
 		return *m_offset;
+	}
+
+	void SwitchBufferOffsetPreservingData()
+	{
+		const TStruct& oldValue = GetImpl();
+		SwitchBufferOffsetIfNecessary();
+		TStruct& newValue = GetImpl();
+		
+		// If struct offset was changed and we're using other copy, copy prev instance to new, so that changes to value will be incremental
+		if (&newValue != &oldValue)
+		{
+			memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
+		}
 	}
 	
 	TStruct& GetImpl() const
