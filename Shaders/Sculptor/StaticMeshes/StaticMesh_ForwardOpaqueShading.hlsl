@@ -26,6 +26,10 @@ struct VS_OUTPUT
 {
     float4  clipSpace           : SV_POSITION;
     uint    materialDataOffset  : MATERIAL_DATA;
+    float3  normal              : VERTEX_NORMAL;
+    float3  tangent             : VERTEX_TANGENT;
+    bool    hasTangent          : VERTEX_HAS_TANGENT;
+    float3  bitangent           : VERTEX_BITANGENT;
     float2  uv                  : VERTEX_UV;
 };
 
@@ -67,18 +71,30 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     const uint vertexIdx = u_geometryData.Load<uint>(verticesOffset + (primIdx * 4));
 
     const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + vertexIdx * 12);
-    const float3 vertexNormal = u_geometryData.Load<float3>(submesh.normalsOffset + vertexIdx * 12);
-    const float2 vertexUV = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
-    
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
-    const float3 vertexWorldNormal = mul(instanceTransform, float4(vertexNormal, 0.f)).xyz;
-
-    const uint materialDataOffset = u_visibleBatchElements[batchElementIdx].materialDataOffset;
-
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
-    output.uv = vertexUV;
-    output.materialDataOffset = materialDataOffset;
-    //output.vertexNormal = vertexNormal;
+
+    output.hasTangent = false;
+    if(submesh.normalsOffset != IDX_NONE_32)
+    {
+        const float3 vertexNormal = u_geometryData.Load<float3>(submesh.normalsOffset + vertexIdx * 12);
+        output.normal = normalize(mul(instanceTransform, float4(vertexNormal, 0.f)).xyz);
+        
+        if(submesh.tangentsOffset != IDX_NONE_32)
+        {
+            const float4 vertexTangent = u_geometryData.Load<float4>(submesh.tangentsOffset + vertexIdx * 16);
+            output.tangent = normalize(mul(instanceTransform, float4(vertexTangent.xyz, 0.f)).xyz);
+            output.bitangent = cross(output.normal, output.tangent) * vertexTangent.w;
+            output.hasTangent = true;
+        }
+    }
+    
+    if(submesh.uvsOffset != IDX_NONE_32)
+    {
+        output.uv = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
+    }
+
+    output.materialDataOffset = u_visibleBatchElements[batchElementIdx].materialDataOffset;
 
     return output;
 }
@@ -97,11 +113,27 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
         color = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+        color = pow(color, 2.2f);
     }
 
     color *= material.baseColorFactor;
 
     output.radiance = float4(color, 1.f);
-    output.normals = 0.f;
+
+    float3 normal;
+    if(vertexInput.hasTangent && material.normalsTextureIdx != IDX_NONE_32)
+    {
+        float3 textureNormal = u_materialsTextures[material.normalsTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+        textureNormal = textureNormal * 2.f - 1.f;
+        const float3x3 TBN = transpose(float3x3(normalize(vertexInput.tangent), normalize(vertexInput.bitangent), normalize(vertexInput.normal)));
+        normal = normalize(mul(TBN, textureNormal));
+    }
+    else
+    {
+        normal = normalize(vertexInput.normal);
+    }
+
+    output.normal = float4(normal * 0.5f + 0.5f, 1.f);
+    
     return output;
 }
