@@ -22,7 +22,7 @@ namespace spt::rsc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Common Data ===================================================================================
 
-BEGIN_SHADER_STRUCT(, SMIndirectDrawCallData)
+BEGIN_SHADER_STRUCT(SMIndirectDrawCallData)
 	SHADER_STRUCT_FIELD(Uint32, vertexCount)
 	SHADER_STRUCT_FIELD(Uint32, instanceCount)
 	SHADER_STRUCT_FIELD(Uint32, firstVertex)
@@ -30,12 +30,12 @@ BEGIN_SHADER_STRUCT(, SMIndirectDrawCallData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(, SMGPUWorkloadID)
+BEGIN_SHADER_STRUCT(SMGPUWorkloadID)
 	SHADER_STRUCT_FIELD(Uint32, data1)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(, SMGPUBatchData)
+BEGIN_SHADER_STRUCT(SMGPUBatchData)
 	SHADER_STRUCT_FIELD(Uint32, elementsNum)
 END_SHADER_STRUCT();
 
@@ -135,7 +135,7 @@ struct SMOpaqueForwardBatches
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DepthPrepass ==================================================================================
 
-BEGIN_SHADER_STRUCT(, SMDepthPrepassDrawCallData)
+BEGIN_SHADER_STRUCT(SMDepthPrepassDrawCallData)
 	/* Vulkan command data */
 	SHADER_STRUCT_FIELD(Uint32, vertexCount)
 	SHADER_STRUCT_FIELD(Uint32, instanceCount)
@@ -396,7 +396,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 		sc::ShaderCompilationSettings compilationSettings;
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
-		const rdr::ShaderID generateGBufferShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
+		const rdr::ShaderID forwardOpaqueShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
 
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
@@ -407,7 +407,7 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
 		}
 
-		m_forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, generateGBufferShader);
+		m_forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, forwardOpaqueShader);
 	}
 }
 

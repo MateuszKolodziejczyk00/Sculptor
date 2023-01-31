@@ -43,7 +43,7 @@ struct StaticMeshRenderingDefinition
 };
 
 
-BEGIN_SHADER_STRUCT(, WtaticMeshGPUData)
+BEGIN_SHADER_STRUCT(WtaticMeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)
 	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
@@ -53,7 +53,7 @@ BEGIN_SHADER_STRUCT(, WtaticMeshGPUData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(, SubmeshGPUData)
+BEGIN_SHADER_STRUCT(SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, indicesOffset)
 	SHADER_STRUCT_FIELD(Uint32, indicesNum)
 	SHADER_STRUCT_FIELD(Uint32, locationsOffset)
@@ -70,7 +70,7 @@ BEGIN_SHADER_STRUCT(, SubmeshGPUData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(, MeshletGPUData)
+BEGIN_SHADER_STRUCT(MeshletGPUData)
 	SHADER_STRUCT_FIELD(Uint32, triangleCount)
 	SHADER_STRUCT_FIELD(Uint32, meshletPrimitivesOffset)
 	SHADER_STRUCT_FIELD(Uint32, meshletVerticesOffset)

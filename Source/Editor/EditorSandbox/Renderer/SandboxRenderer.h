@@ -21,7 +21,7 @@ class Semaphore;
 namespace spt::ed
 {
 
-BEGIN_SHADER_STRUCT(, TestViewInfo)
+BEGIN_SHADER_STRUCT(TestViewInfo)
 	SHADER_STRUCT_FIELD(math::Vector4f, test1)
 	SHADER_STRUCT_FIELD(math::Vector3f, test2)
 	SHADER_STRUCT_FIELD(math::Vector4f, test3)

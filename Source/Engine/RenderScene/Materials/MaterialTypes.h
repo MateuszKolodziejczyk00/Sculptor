@@ -19,7 +19,7 @@ struct MaterialCommonData
 };
 
 
-BEGIN_ALIGNED_SHADER_STRUCT(, 16, MaterialPBRData)
+BEGIN_ALIGNED_SHADER_STRUCT(16, MaterialPBRData)
 	SHADER_STRUCT_FIELD(Uint32, baseColorTextureIdx)
 	SHADER_STRUCT_FIELD(Uint32, metallicRoughnessTextureIdx)
 	SHADER_STRUCT_FIELD(Uint32, normalsTextureIdx)

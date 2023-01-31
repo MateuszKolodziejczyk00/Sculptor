@@ -7,7 +7,7 @@
 namespace spt::rsc
 {
 
-BEGIN_SHADER_STRUCT(, SceneViewData)
+BEGIN_SHADER_STRUCT(SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, projectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
@@ -15,7 +15,7 @@ BEGIN_SHADER_STRUCT(, SceneViewData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(, SceneViewCullingData)
+BEGIN_SHADER_STRUCT(SceneViewCullingData)
 	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 4>), cullingPlanes)
 END_SHADER_STRUCT();
 

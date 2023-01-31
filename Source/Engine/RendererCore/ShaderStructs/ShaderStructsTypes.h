@@ -19,6 +19,12 @@ constexpr lib::String GetShaderTypeName()
 }
 
 template<>
+constexpr lib::String GetShaderTypeName<Bool>()
+{
+	return lib::String("bool");
+}
+
+template<>
 constexpr lib::String GetShaderTypeName<Int16>()
 {
 	return lib::String("int16_t");

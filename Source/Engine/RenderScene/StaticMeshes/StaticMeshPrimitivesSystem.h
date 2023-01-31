@@ -18,7 +18,7 @@ struct StaticMeshInstanceRenderData
 };
 
 
-BEGIN_SHADER_STRUCT(, StaticMeshBatchElement)
+BEGIN_SHADER_STRUCT(StaticMeshBatchElement)
 	SHADER_STRUCT_FIELD(Uint32, entityIdx)
 	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
 	SHADER_STRUCT_FIELD(Uint32, materialDataOffset)

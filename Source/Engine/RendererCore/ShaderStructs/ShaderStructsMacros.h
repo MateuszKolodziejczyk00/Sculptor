@@ -112,8 +112,8 @@ public:
 
 } // priv
 
-#define BEGIN_ALIGNED_SHADER_STRUCT(api, alignment, name) \
-struct api name \
+#define BEGIN_ALIGNED_SHADER_STRUCT(alignment, name) \
+struct name \
 { \
 private: \
 	using ThisClass = name; \
@@ -126,7 +126,7 @@ public: \
 
 
 // Use 4 as default alignment (it can be still greater if any of members will have greater alignment)
-#define BEGIN_SHADER_STRUCT(api, name) BEGIN_ALIGNED_SHADER_STRUCT(api, 4, name)
+#define BEGIN_SHADER_STRUCT(name) BEGIN_ALIGNED_SHADER_STRUCT(4, name)
 
 
 #define SHADER_STRUCT_FIELD(type, name) \
