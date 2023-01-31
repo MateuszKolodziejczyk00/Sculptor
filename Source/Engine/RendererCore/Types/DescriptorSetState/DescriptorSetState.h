@@ -31,6 +31,12 @@ using DSStateID = Uint64;
 enum class EDescriptorSetStateFlags
 {
 	None			= 0,
+
+	/**
+	 * Persistent descriptor sets are more costly to create (require lock, not batched), but are cached between frames
+	 * Also they are updated only once per frame
+	 * This makes them good candidates for data that frequently used, but not frequently updated and shared between views/render stages e.g. meshes data, meterials data
+	 */
 	Persistent		= BIT(0),
 
 	Default = None

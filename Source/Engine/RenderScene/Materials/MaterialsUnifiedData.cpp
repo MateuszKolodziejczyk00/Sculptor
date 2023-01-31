@@ -67,7 +67,7 @@ lib::SharedRef<rdr::Buffer> MaterialsUnifiedData::CreateMaterialsUnifiedBuffer()
 
 lib::SharedRef<MaterialsDS> MaterialsUnifiedData::CreateMaterialsDS() const
 {
-	const lib::SharedRef<MaterialsDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<MaterialsDS>(RENDERER_RESOURCE_NAME("MaterialsDS"));
+	const lib::SharedRef<MaterialsDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<MaterialsDS>(RENDERER_RESOURCE_NAME("MaterialsDS"), rdr::EDescriptorSetStateFlags::Persistent);
 
 	ds->u_materialsData = m_materialsUnifiedBuffer->CreateFullView();
 

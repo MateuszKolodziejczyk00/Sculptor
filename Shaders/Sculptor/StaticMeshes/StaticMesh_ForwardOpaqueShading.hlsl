@@ -91,8 +91,15 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     //const uint meshletHash = HashPCG(localMeshletIdx);
     //const float3 color = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
     
+    float3 color = 1.f;
+    
     const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(vertexInput.materialDataOffset);
-    const float3 color = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+    if(material.baseColorTextureIdx != IDX_NONE_32)
+    {
+        color = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+    }
+
+    color *= material.baseColorFactor;
 
     output.radiance = float4(color, 1.f);
     output.normals = 0.f;
