@@ -21,6 +21,9 @@ public:
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
 	// End RenderSystem overrides
 
+private:
+
+	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 };
 
 } // spt::rsc

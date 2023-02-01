@@ -18,6 +18,7 @@
 #include "Transfers/UploadUtils.h"
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
+#include "Lights/LightsRenderSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
 #include "Transfers/TransfersManager.h"
@@ -201,6 +202,7 @@ void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
+	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();
 
 	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
 	if (scenePath.IsValid())

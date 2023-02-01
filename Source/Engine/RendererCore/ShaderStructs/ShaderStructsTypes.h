@@ -78,6 +78,24 @@ constexpr lib::String GetShaderTypeName<math::Matrix4f>()
 	return lib::String("float4x4");
 }
 
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector2u>()
+{
+	return lib::String("uint2");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector3u>()
+{
+	return lib::String("uint3");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector4u>()
+{
+	return lib::String("uint4");
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utilities =====================================================================================
 
