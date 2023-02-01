@@ -11,12 +11,12 @@ RenderScene::RenderScene()
 	, m_renderSceneDS(CreateRenderSceneDS())
 { }
 
-ecs::Registry& RenderScene::GetRegistry()
+RenderSceneRegistry& RenderScene::GetRegistry()
 {
 	return m_registry;
 }
 
-const ecs::Registry& RenderScene::GetRegistry() const
+const RenderSceneRegistry& RenderScene::GetRegistry() const
 {
 	return m_registry;
 }

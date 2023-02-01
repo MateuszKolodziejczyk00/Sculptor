@@ -202,8 +202,8 @@ public:
 
 	RenderScene();
 
-	ecs::Registry& GetRegistry();
-	const ecs::Registry& GetRegistry() const;
+	RenderSceneRegistry& GetRegistry();
+	const RenderSceneRegistry& GetRegistry() const;
 
 	void Update();
 
