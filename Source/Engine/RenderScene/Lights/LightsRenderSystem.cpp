@@ -6,24 +6,41 @@
 #include "ResourcesManager.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "Transfers/UploadUtils.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 namespace spt::rsc
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// LightsRenderSystem ============================================================================
+// Lights Rendering Common =======================================================================
 
 BEGIN_SHADER_STRUCT(SceneLightsInfo)
 	SHADER_STRUCT_FIELD(Uint32, localLightsNum)
 	SHADER_STRUCT_FIELD(Uint32, localLights32Num)
 	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
+	SHADER_STRUCT_FIELD(Real32, zClusterLength)
+	SHADER_STRUCT_FIELD(Uint32, zClustersNum)
 END_SHADER_STRUCT();
+
+
+DS_BEGIN(BuildLightZClustersDS, rg::RGDescriptorSetState<BuildLightZClustersDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector2f>),	u_localLightsRanges)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneLightsInfo>),	u_sceneLightsInfo)
+DS_END();
+
+
+DS_BEGIN(BuildLightTilesDS, rg::RGDescriptorSetState<BuildLightTilesDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),	u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneLightsInfo>),		u_sceneLightsInfo)
+DS_END();
 
 
 struct LightsRenderingDataPerView
 {
-	lib::SharedPtr<rdr::Buffer> localLightsBuffer;
-	lib::SharedPtr<rdr::Buffer> lightRangesBuffer;
+	lib::SharedPtr<BuildLightZClustersDS>	buildZClustersDS;
+	lib::SharedPtr<BuildLightTilesDS>		buildTilesDS;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,14 +99,32 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	const rhi::RHIAllocationInfo lightsBuffersAllocationInfo(rhi::EMemoryUsage::CPUToGPU);
 
 	const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(PointLightGPUData), rhi::EBufferUsage::Storage);
-	lightsData.localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLightsBuffer"), lightsBufferDefinition, lightsBuffersAllocationInfo);
+	const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLightsBuffer"), lightsBufferDefinition, lightsBuffersAllocationInfo);
 
-	gfx::UploadDataToBufferOnCPU(lib::Ref(lightsData.localLightsBuffer), 0, reinterpret_cast<const Byte*>(pointLights.data()), pointLights.size() * sizeof(PointLightGPUData));
+	gfx::UploadDataToBufferOnCPU(localLightsBuffer, 0, reinterpret_cast<const Byte*>(pointLights.data()), pointLights.size() * sizeof(PointLightGPUData));
 
 	const rhi::BufferDefinition lightRangesBufferDefinition(pointLightsZRanges.size() * sizeof(math::Vector2f), rhi::EBufferUsage::Storage);
-	lightsData.lightRangesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLightRangesBuffer"), lightsBufferDefinition, lightsBuffersAllocationInfo);
+	const lib::SharedRef<rdr::Buffer> lightRangesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLightRangesBuffer"), lightsBufferDefinition, lightsBuffersAllocationInfo);
 
-	gfx::UploadDataToBufferOnCPU(lib::Ref(lightsData.lightRangesBuffer), 0, reinterpret_cast<const Byte*>(pointLightsZRanges.data()), pointLightsZRanges.size() * sizeof(math::Vector2f));
+	gfx::UploadDataToBufferOnCPU(lightRangesBuffer, 0, reinterpret_cast<const Byte*>(pointLightsZRanges.data()), pointLightsZRanges.size() * sizeof(math::Vector2f));
+
+	SceneLightsInfo lightsInfo;
+	lightsInfo.localLightsNum		= static_cast<Uint32>(pointLights.size());
+	lightsInfo.localLights32Num		= static_cast<Uint32>((pointLights.size() - 1) / 32 + 1);
+	lightsInfo.directionalLightsNum = 0;
+	lightsInfo.zClusterLength		= 20.f;
+	lightsInfo.zClustersNum			= 8;
+
+	const lib::SharedRef<BuildLightZClustersDS> buildZClusters = rdr::ResourcesManager::CreateDescriptorSetState<BuildLightZClustersDS>(RENDERER_RESOURCE_NAME("BuildLightZClustersDS"));
+	buildZClusters->u_localLightsRanges	= lightRangesBuffer->CreateFullView();
+	buildZClusters->u_sceneLightsInfo	= lightsInfo;
+	
+	const lib::SharedRef<BuildLightTilesDS> buildTiles = rdr::ResourcesManager::CreateDescriptorSetState<BuildLightTilesDS>(RENDERER_RESOURCE_NAME("BuildLightTilesDS"));
+	buildTiles->u_localLights		= localLightsBuffer->CreateFullView();
+	buildTiles->u_sceneLightsInfo	= lightsInfo;
+
+	lightsData.buildZClustersDS = buildZClusters;
+	lightsData.buildTilesDS		= buildTiles;
 
 	return lightsData;
 }
