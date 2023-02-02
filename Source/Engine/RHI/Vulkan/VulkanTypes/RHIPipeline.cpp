@@ -83,7 +83,7 @@ static VkPipelineInputAssemblyStateCreateInfo BuildInputAssemblyInfo(const Graph
 	return assemblyState;
 }
 
-static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef)
+static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const GraphicsPipelineBuildDefinition& pipelineBuildDef, VkPipelineRasterizationConservativeStateCreateInfoEXT& outConservativeRasterizationState)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -95,6 +95,17 @@ static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const 
 	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
     rasterizationState.frontFace				= VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizationState.lineWidth				= 1.f;
+
+	if (rasterizationDefinition.rasterizationType != rhi::ERasterizationType::Default)
+	{
+		const VkConservativeRasterizationModeEXT mode = rasterizationDefinition.rasterizationType == rhi::ERasterizationType::ConservativeOverestimate
+													  ? VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT
+													  : VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT;
+		outConservativeRasterizationState = VkPipelineRasterizationConservativeStateCreateInfoEXT{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
+		outConservativeRasterizationState.conservativeRasterizationMode = mode;
+
+		rasterizationState.pNext = &outConservativeRasterizationState;
+	}
 
 	return rasterizationState;
 }
@@ -251,9 +262,11 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 {
 	SPT_PROFILER_FUNCTION();
 
+	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRasterizationState{};
+
 	const lib::DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages	= BuildShaderInfos(pipelineBuildDef);
 	const VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateInfo		= BuildInputAssemblyInfo(pipelineBuildDef);
-	const VkPipelineRasterizationStateCreateInfo rasterizationStateInfo		= BuildRasterizationStateInfo(pipelineBuildDef);
+	const VkPipelineRasterizationStateCreateInfo rasterizationStateInfo		= BuildRasterizationStateInfo(pipelineBuildDef, OUT conservativeRasterizationState);
 	const VkPipelineMultisampleStateCreateInfo multisampleStateInfo			= BuildMultisampleStateInfo(pipelineBuildDef);
 	const VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo		= BuildDepthStencilStateInfo(pipelineBuildDef);
 	const VkPipelineVertexInputStateCreateInfo vertexInputState				= BuildVertexInputState(pipelineBuildDef);

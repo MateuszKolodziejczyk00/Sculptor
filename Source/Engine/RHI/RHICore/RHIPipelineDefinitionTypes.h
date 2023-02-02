@@ -45,15 +45,25 @@ enum class ECullMode
 };
 
 
+enum class ERasterizationType
+{
+	Default,
+	ConservativeOverestimate,
+	ConservativeUnderestimate
+};
+
+
 struct PipelineRasterizationDefinition
 {
-	explicit PipelineRasterizationDefinition(EPolygonMode inPolygonMode = EPolygonMode::Fill, ECullMode inCullMode = ECullMode::Back)
+	explicit PipelineRasterizationDefinition(EPolygonMode inPolygonMode = EPolygonMode::Fill, ECullMode inCullMode = ECullMode::Back, ERasterizationType inRasterizationType = ERasterizationType::Default)
 		: polygonMode(inPolygonMode)
 		, cullMode(inCullMode)
+		, rasterizationType(inRasterizationType)
 	{ }
 
 	EPolygonMode		polygonMode;
 	ECullMode			cullMode;
+	ERasterizationType	rasterizationType;
 };
 
 
