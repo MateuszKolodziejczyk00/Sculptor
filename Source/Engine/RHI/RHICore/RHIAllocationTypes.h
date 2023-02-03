@@ -30,7 +30,7 @@ struct RHIAllocationInfo
 		, allocationFlags(EAllocationFlags::None)
 	{ }
 	
-	explicit RHIAllocationInfo(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
+	RHIAllocationInfo(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
 		: memoryUsage(inMemoryUsage)
 		, allocationFlags(inAllocationFlags)
 	{ }

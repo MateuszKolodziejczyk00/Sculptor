@@ -24,6 +24,7 @@ public:
 private:
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
+	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
 };
 
 } // spt::rsc

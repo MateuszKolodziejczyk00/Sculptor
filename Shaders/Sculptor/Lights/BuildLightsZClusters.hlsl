@@ -24,7 +24,7 @@ void BuildLightsZClustersCS(CS_INPUT input)
 
     for (uint lightIdx = input.localID.x; lightIdx < u_sceneLightsInfo.localLightsNum; lightIdx += 32)
     {
-        const float2 lightRange = u_localLightsRanges[lightIdx];
+        const float2 lightRange = u_localLightsZRanges[lightIdx];
         bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
 
         if(isInRange)
@@ -44,7 +44,7 @@ void BuildLightsZClustersCS(CS_INPUT input)
         for (uint idx = input.localID.x; idx < u_sceneLightsInfo.localLightsNum; idx += 32)
         {
             const uint lightIdx = u_sceneLightsInfo.localLightsNum - lightIdx - 1;
-            const float2 lightRange = u_localLightsRanges[lightIdx];
+            const float2 lightRange = u_localLightsZRanges[lightIdx];
             bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
 
             if (isInRange)
