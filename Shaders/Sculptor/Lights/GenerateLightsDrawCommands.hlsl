@@ -18,7 +18,7 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 {
     const uint lightIdx = input.globalID.x;
     
-    if(lightIdx < u_sceneLightsInfo.localLightsNum)
+    if(lightIdx < u_lightsPassInfo.localLightsNum)
     {
 
         const PointLightGPUData pointLight = u_localLights[lightIdx];

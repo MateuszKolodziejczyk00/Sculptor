@@ -22,9 +22,13 @@ public:
 	// End RenderSystem overrides
 
 private:
+	
+	void RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
+	
+	rdr::PipelineStateID m_buildLightsTilesPipeline;
 };
 
 } // spt::rsc
