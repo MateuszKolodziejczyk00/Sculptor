@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MathCore.h"
+#include <concepts>
 
 
 namespace spt::math
@@ -101,6 +102,12 @@ public:
 	static constexpr TType FirstSetBit(TType value)
 	{
 		return value & -value;
+	}
+
+	template<std::unsigned_integral TType>
+	static constexpr TType DivideCeil(TType numerator, TType denominator)
+	{
+		return ((numerator - 1) / denominator) + 1;
 	}
 };
 

@@ -5,6 +5,12 @@
 [[descriptor_set(BuildLightTilesDS, 0)]]
 
 
+uint GetTileDataOffset(uint2 tile, uint2 tilesNum, uint lights32PerTile, uint lightIdx)
+{
+    return (tile.y * tilesNum.x + tile.x) * lights32PerTile + (lightIdx / 32) * 4;
+}
+
+
 struct VS_INPUT
 {
     [[vk::builtin("DrawIndex")]] uint drawIndex : DRAW_INDEX;
@@ -17,6 +23,8 @@ struct VS_OUTPUT
     float4  clipSpace           : SV_POSITION;
     
     float4  fragmentClipSpace   : CLIP_SPACE;
+    
+    uint    lightIdx            : LIGHT_IDX;
 };
 
 
@@ -33,6 +41,7 @@ VS_OUTPUT BuildLightsTilesVS(VS_INPUT input)
 
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(lightProxyVertLocation, 1.f));
     output.fragmentClipSpace = output.clipSpace;
+    output.lightIdx = lightIdx;
 
     return output;
 }
@@ -43,4 +52,8 @@ void BuildLightsTilesPS(VS_OUTPUT vertexInput)
     const float2 uv = vertexInput.fragmentClipSpace.xy / vertexInput.fragmentClipSpace.w * 0.5f + 0.5f;
 
     const uint2 tileCoords = uint2(uv / float2(u_lightsPassInfo.tileSizeX, u_lightsPassInfo.tileSizeY));
+
+    const uint tileLights32Offset = GetTileDataOffset(tileCoords, uint2(u_lightsPassInfo.tilesNumX, u_lightsPassInfo.tilesNumY), u_lightsPassInfo.localLights32Num, vertexInput.lightIdx);
+    const uint lightMask = 1 << (vertexInput.lightIdx % 32);
+    InterlockedOr(u_tilesLightsMask[tileLights32Offset], lightMask);
 }
