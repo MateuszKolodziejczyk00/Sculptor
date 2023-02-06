@@ -13,8 +13,10 @@
 
 [[descriptor_set(MaterialsDS, 6)]]
 
+[[descriptor_set(ViewShadingDS, 7)]]
+
 #if WITH_DEBUGS
-[[descriptor_set(SceneRendererDebugDS, 7)]]
+[[descriptor_set(SceneRendererDebugDS, 8)]]
 #endif // WITH_DEBUGS
 
 [[shader_struct(MaterialPBRData)]]

@@ -68,6 +68,13 @@ DS_BEGIN(BuildLightTilesDS, rg::RGDescriptorSetState<BuildLightTilesDS>)
 DS_END();
 
 
+DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsPassInfo>),				u_lightsPassInfo)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),			u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_tilesLightsMask)
+DS_END();
+
+
 BEGIN_RG_NODE_PARAMETERS_STRUCT(LightTilesIndirectDrawCommandsParameters)
 	RG_BUFFER_VIEW(lightDrawCommandsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 	RG_BUFFER_VIEW(lightDrawCommandsCountBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
@@ -94,6 +101,7 @@ struct LightsRenderingDataPerView
 	lib::SharedPtr<BuildLightZClustersDS>			buildZClustersDS;
 	lib::SharedPtr<GenerateLightsDrawCommnadsDS>	generateLightsDrawCommnadsDS;
 	lib::SharedPtr<BuildLightTilesDS>				buildLightTilesDS;
+	lib::SharedPtr<ViewShadingDS>					viewShadingDS;
 
 	rg::RGBufferViewHandle	lightDrawCommandsBuffer;
 	rg::RGBufferViewHandle	lightDrawCommandsCountBuffer;
@@ -222,9 +230,15 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		buildLightTilesDS->u_lightsPassInfo		= lightsInfo;
 		buildLightTilesDS->u_tilesLightsMask	= tilesLightsMask;
 
+		const lib::SharedRef<ViewShadingDS> viewShadingDS = rdr::ResourcesManager::CreateDescriptorSetState<ViewShadingDS>(RENDERER_RESOURCE_NAME("ViewShadingDS"));
+		viewShadingDS->u_lightsPassInfo		= lightsInfo;
+		viewShadingDS->u_localLights		= localLightsRGBuffer;
+		viewShadingDS->u_tilesLightsMask	= tilesLightsMask;
+
 		lightsData.buildZClustersDS				= buildZClusters;
 		lightsData.generateLightsDrawCommnadsDS	= generateLightsDrawCommnadsDS;
 		lightsData.buildLightTilesDS			= buildLightTilesDS;
+		lightsData.viewShadingDS				= viewShadingDS;
 
 		lightsData.lightDrawCommandsBuffer		= lightDrawCommands;
 		lightsData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
@@ -326,6 +340,8 @@ void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& g
 								const rdr::BufferView& drawCountBufferView = passIndirectParams.lightDrawCommandsCountBuffer->GetBufferViewInstance();
 								recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(LightIndirectDrawCommand), drawCountBufferView, 0, maxLightDrawsCount);
 							});
+
+	graphBuilder.BindDescriptorSetState(lib::Ref(lightsRenderingData.viewShadingDS));
 }
 
 } // spt::rsc
