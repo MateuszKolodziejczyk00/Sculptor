@@ -1,6 +1,6 @@
 #include "Lights/LightProxyVerticesInfo.hlsli"
 
-float3 pointLightSphereLocations[POINT_LIGHT_PROXY_VERTICES_NUM] =
+static const float3 pointLightSphereLocations[POINT_LIGHT_PROXY_VERTICES_NUM] =
 {
     float3(0.634456, 0.634456, 0.634456),
     float3(0.773488, 0.000000, 0.773488),

@@ -37,12 +37,17 @@ void RenderScene::Update()
 						js::EJobFlags::Inline);
 }
 
+RenderSceneEntityHandle RenderScene::CreateEntity()
+{
+	const RenderSceneEntity entityID = m_registry.create();
+	return RenderSceneEntityHandle(m_registry, entityID);
+}
+
 RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& instanceData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderSceneEntity entityID = m_registry.create();
-	const RenderSceneEntityHandle entity(m_registry, entityID);
+	const RenderSceneEntityHandle entity = CreateEntity();
 
 	const rhi::SuballocationDefinition suballocationDef(sizeof(RenderEntityGPUData), sizeof(RenderEntityGPUData), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
 	const rhi::RHISuballocation entityGPUDataSuballocation = m_renderEntitiesBuffer->GetRHI().CreateSuballocation(suballocationDef);
@@ -91,12 +96,6 @@ Uint64 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
 const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSystems() const
 {
 	return m_renderSystems.GetRenderSystems();
-}
-
-RenderSceneEntityHandle RenderScene::CreateViewEntity()
-{
-	const RenderSceneEntity entityID = m_registry.create();
-	return RenderSceneEntityHandle(m_registry, entityID);
 }
 
 const lib::SharedRef<rdr::Buffer>& RenderScene::GetRenderEntitiesBuffer() const

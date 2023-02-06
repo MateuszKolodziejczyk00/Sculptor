@@ -7,7 +7,7 @@
 
 uint GetTileDataOffset(uint2 tile, uint2 tilesNum, uint lights32PerTile, uint lightIdx)
 {
-    return (tile.y * tilesNum.x + tile.x) * lights32PerTile + (lightIdx / 32) * 4;
+    return (tile.y * tilesNum.x + tile.x) * lights32PerTile + (lightIdx / 32);
 }
 
 
@@ -37,7 +37,7 @@ VS_OUTPUT BuildLightsTilesVS(VS_INPUT input)
 
     const PointLightGPUData pointLight = u_localLights[lightIdx];
 
-    const float3 lightProxyVertLocation = pointLight.location + pointLightSphereLocations[vertexIdx];
+    const float3 lightProxyVertLocation = pointLight.location + pointLightSphereLocations[vertexIdx] * pointLight.radius;
 
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(lightProxyVertLocation, 1.f));
     output.fragmentClipSpace = output.clipSpace;

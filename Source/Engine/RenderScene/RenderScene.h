@@ -209,12 +209,11 @@ public:
 
 	// Entities =============================================================
 
+	RenderSceneEntityHandle CreateEntity();
 	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
 	Uint64 GetEntityIdx(RenderSceneEntityHandle entity) const;
-
-	RenderSceneEntityHandle CreateViewEntity();
 
 	// Rendering ============================================================
 

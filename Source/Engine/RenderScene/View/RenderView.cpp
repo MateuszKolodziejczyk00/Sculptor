@@ -8,7 +8,7 @@ RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
 {
-	m_viewEntity = renderScene.CreateViewEntity();
+	m_viewEntity = renderScene.CreateEntity();
 }
 
 RenderView::~RenderView()

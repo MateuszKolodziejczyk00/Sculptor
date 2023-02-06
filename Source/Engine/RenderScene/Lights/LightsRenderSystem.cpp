@@ -138,7 +138,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		for (const auto& [entity, pointLight] : pointLightsView.each())
 		{
 			const PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
-			const Real32 lightViewSpaceZ = getViewSpaceZ(pointLights.back());
+			const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
 
 			if (lightViewSpaceZ + gpuLightData.radius > 0.f)
 			{
@@ -191,12 +191,12 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLights.size() * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 		
-		const rhi::BufferDefinition lightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+		const rhi::BufferDefinition lightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
 		const rg::RGBufferViewHandle lightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommandsCount"), lightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeLightDrawCommandsCount"), lightDrawCommandsCount, 0, sizeof(Uint32), 0);
 
 		const Uint32 tilesLightsMaskBufferSize = tilesNum.x() * tilesNum.y() * lightsInfo.localLights32Num * sizeof(Uint32);
-		const rhi::BufferDefinition tilesLightsMaskDefinition(tilesLightsMaskBufferSize, rhi::EBufferUsage::Storage);
+		const rhi::BufferDefinition tilesLightsMaskDefinition(tilesLightsMaskBufferSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 		const rg::RGBufferViewHandle tilesLightsMask = graphBuilder.CreateBufferView(RG_DEBUG_NAME("TilesLightsMask"), tilesLightsMaskDefinition, rhi::EMemoryUsage::GPUOnly);
 
 		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeTilesLightsMask"), tilesLightsMask, 0, static_cast<Uint64>(tilesLightsMaskBufferSize), 0);
@@ -311,14 +311,16 @@ void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& g
 
 	const Uint32 maxLightDrawsCount = lightsRenderingData.localLightsNum;
 
-	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
+	graphBuilder.RenderPass(RG_DEBUG_NAME("Build Lights Tiles"),
 							lightsTilesRenderPassDef,
-							rg::EmptyDescriptorSets(),
+							rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildLightTilesDS)),
 							std::tie(passIndirectParams),
-							[passIndirectParams, maxLightDrawsCount, renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							[this, passIndirectParams, maxLightDrawsCount, renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
 								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
+
+								recorder.BindGraphicsPipeline(m_buildLightsTilesPipeline);
 
 								const rdr::BufferView& drawsBufferView = passIndirectParams.lightDrawCommandsBuffer->GetBufferViewInstance();
 								const rdr::BufferView& drawCountBufferView = passIndirectParams.lightDrawCommandsCountBuffer->GetBufferViewInstance();
