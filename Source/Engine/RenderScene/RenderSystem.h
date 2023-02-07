@@ -25,7 +25,7 @@ public:
 	RenderSystem();
 	virtual ~RenderSystem() = default;
 
-	void Initialize(RenderScene& renderScene, RenderSceneEntityHandle systemEntity);
+	void Initialize(RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) {};
@@ -36,21 +36,13 @@ public:
 	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
 
 	ERenderStage GetSupportedStages() const;
-	
-	RenderSceneEntityHandle GetSystemEntity() const;
 
 protected:
 
 	virtual void OnInitialize(RenderScene& renderScene);
 	virtual void OnDeinitialize(RenderScene& renderScene);
 
-	Bool m_wantsCallUpdate;
-
 	ERenderStage m_supportedStages;
-
-private:
-
-	RenderSceneEntityHandle m_systemEntity;
 };
 
 } // spt::rsc

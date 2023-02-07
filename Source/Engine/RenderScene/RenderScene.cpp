@@ -134,13 +134,13 @@ void RenderScene::InitializeRenderSystem(RenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderSceneEntity systemEntity = m_registry.create();
-	system.Initialize(*this, RenderSceneEntityHandle(m_registry, systemEntity));
+	system.Initialize(*this);
 }
 
 void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
 {
-	m_registry.destroy(system.GetSystemEntity());
+	SPT_PROFILER_FUNCTION();
+
 	system.Deinitialize(*this);
 }
 

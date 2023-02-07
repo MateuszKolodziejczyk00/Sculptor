@@ -4,8 +4,31 @@
 #include "Pipelines/PipelineState.h"
 
 
+namespace spt::rdr
+{
+class Buffer;
+} // spt::rdr
+
+
 namespace spt::rsc
 {
+
+struct DirectionalLightRuntimeData
+{
+	DirectionalLightRuntimeData()
+		: directionalLightsNum(0)
+	{ }
+
+	void Reset()
+	{
+		directionalLightsNum = 0;
+		directionalLightsBuffer.reset();
+	}
+
+	Uint32 directionalLightsNum;
+	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
+};
+
 
 class RENDER_SCENE_API LightsRenderSystem : public RenderSystem
 {
@@ -18,17 +41,23 @@ public:
 	LightsRenderSystem();
 
 	// Begin RenderSystem overrides
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
+	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	// End RenderSystem overrides
 
 private:
 	
+	void CacheDirectionalLights(const RenderScene& renderScene);
+
 	void RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
 	
 	rdr::PipelineStateID m_buildLightsTilesPipeline;
+
+	DirectionalLightRuntimeData m_directionalLightsData;
 };
 
 } // spt::rsc

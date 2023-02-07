@@ -69,8 +69,8 @@ DS_END();
 DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),				u_lightsData)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),		u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),				u_tilesLightsMask)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
 DS_END();
 
 
@@ -119,7 +119,7 @@ struct LightsRenderingDataPerView
 namespace utils
 {
 
-static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DirectionalLightRuntimeData& sceneDirectionalLights)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -247,31 +247,13 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsRenderingData.lightDrawCommandsBuffer			= lightDrawCommands;
 		lightsRenderingData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
 	}
-
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
-	const SizeType directionalLightsNum = directionalLightsView.size();
 	
-	lightsRenderingData.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
-
-	if (lightsRenderingData.HasAnyDirectionalLightsToRender())
+	if (sceneDirectionalLights.directionalLightsNum > 0)
 	{
-		lightsData.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+		SPT_CHECK(!!sceneDirectionalLights.directionalLightsBuffer);
 
-		lib::DynamicArray<DirectionalLightGPUData> directionalLightsData;
-		directionalLightsData.reserve(directionalLightsNum);
-
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
-		{
-			directionalLightsData.emplace_back(directionalLight.GenerateGPUData());
-		}
-
-		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);
-		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
-		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneDirectionalLights"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-
-		gfx::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
-
-		viewShadingDS->u_directionalLights = directionalLightsBuffer->CreateFullView();
+		lightsData.directionalLightsNum = sceneDirectionalLights.directionalLightsNum;
+		viewShadingDS->u_directionalLights = sceneDirectionalLights.directionalLightsBuffer->CreateFullView();
 	}
 	
 	viewShadingDS->u_lightsData			= lightsData;
@@ -320,15 +302,61 @@ LightsRenderSystem::LightsRenderSystem()
 	}
 }
 
+void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+{
+	Super::RenderPerFrame(graphBuilder, renderScene);
+
+	CacheDirectionalLights(renderScene);
+}
+
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec);
+	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
+
+	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec, m_directionalLightsData);
 	viewSpec.GetData().Create<LightsRenderingDataPerView>(lightsRenderingData);
 		
 	RenderStageEntries& forwardOpaqueEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
 	forwardOpaqueEntries.GetPreRenderStageDelegate().AddRawMember(this, &LightsRenderSystem::RenderPreForwardOpaquePerView);
+}
+
+void LightsRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+{
+	Super::FinishRenderingFrame(graphBuilder, renderScene);
+
+	m_directionalLightsData.Reset();
+}
+
+void LightsRenderSystem::CacheDirectionalLights(const RenderScene& renderScene)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
+
+	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
+	const SizeType directionalLightsNum = directionalLightsView.size();
+
+	if (directionalLightsNum > 0)
+	{
+		lib::DynamicArray<DirectionalLightGPUData> directionalLightsData;
+		directionalLightsData.reserve(directionalLightsNum);
+
+		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		{
+			directionalLightsData.emplace_back(directionalLight.GenerateGPUData());
+		}
+
+		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);
+		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
+		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneDirectionalLights"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
+
+		gfx::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
+	
+		m_directionalLightsData.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+		m_directionalLightsData.directionalLightsBuffer = directionalLightsBuffer;
+	}
 }
 
 void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
