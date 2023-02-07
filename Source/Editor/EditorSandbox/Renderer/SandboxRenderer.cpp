@@ -22,6 +22,7 @@
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
 #include "Transfers/TransfersManager.h"
+#include "Lights/LightTypes.h"
 
 namespace spt::ed
 {
@@ -209,6 +210,18 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
 		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
+
+		const Uint32 lightsNum = 1024;
+		for (Uint32 idx = 0; idx < lightsNum; ++idx)
+		{
+			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
+			rsc::PointLightData pointLightData;
+			pointLightData.color		= math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
+			pointLightData.intensity	= lib::rnd::Random<Real32>(0.1f, 10.f);
+			pointLightData.location		= math::Vector3f::Random() * 10.f;
+			pointLightData.radius		= lib::rnd::Random<Real32>(1.0f, 2.f);
+			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+		}
 	}
 
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
