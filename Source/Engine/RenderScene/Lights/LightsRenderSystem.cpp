@@ -24,11 +24,9 @@ BEGIN_SHADER_STRUCT(LightsPassInfo)
 	SHADER_STRUCT_FIELD(Uint32, localLights32Num)
 	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
 	SHADER_STRUCT_FIELD(Real32, zClusterLength)
+	SHADER_STRUCT_FIELD(math::Vector2u, tilesNum)
+	SHADER_STRUCT_FIELD(math::Vector2f, tileSize)
 	SHADER_STRUCT_FIELD(Uint32, zClustersNum)
-	SHADER_STRUCT_FIELD(Uint32, tilesNumX)
-	SHADER_STRUCT_FIELD(Uint32, tilesNumY)
-	SHADER_STRUCT_FIELD(Real32, tileSizeX)
-	SHADER_STRUCT_FIELD(Real32, tileSizeY)
 END_SHADER_STRUCT();
 
 
@@ -176,10 +174,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsInfo.directionalLightsNum = 0;
 		lightsInfo.zClusterLength		= 20.f;
 		lightsInfo.zClustersNum			= zClustersNum;
-		lightsInfo.tilesNumX			= tilesNum.x();
-		lightsInfo.tilesNumY			= tilesNum.y();
-		lightsInfo.tileSizeX			= tileSize.x();
-		lightsInfo.tileSizeY			= tileSize.y();
+		lightsInfo.tilesNum				= tilesNum;
+		lightsInfo.tileSize				= tileSize;
 
 		const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(PointLightGPUData), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLights"), lightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
@@ -243,7 +239,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsData.lightDrawCommandsBuffer		= lightDrawCommands;
 		lightsData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
 
-		lightsData.tilesNum		= math::Vector2u(lightsInfo.tilesNumX, lightsInfo.tilesNumY);
+		lightsData.tilesNum		= lightsInfo.tilesNum;
 		lightsData.zClustersNum	= lightsInfo.zClustersNum;
 	}
 
@@ -281,6 +277,7 @@ LightsRenderSystem::LightsRenderSystem()
 
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::Front;
 		pipelineDef.rasterizationDefinition.rasterizationType = rhi::ERasterizationType::ConservativeOverestimate;
 
 		m_buildLightsTilesPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("BuildLightsTilesPipeline"), pipelineDef, buildLightsTilesShader);

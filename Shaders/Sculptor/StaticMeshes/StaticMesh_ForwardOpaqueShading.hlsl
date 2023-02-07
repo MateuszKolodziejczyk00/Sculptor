@@ -21,6 +21,8 @@
 
 [[shader_struct(MaterialPBRData)]]
 
+#include "Lights/Lighting.hlsli"
+
 
 struct VS_INPUT
 {
@@ -31,12 +33,16 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4  clipSpace           : SV_POSITION;
+
     uint    materialDataOffset  : MATERIAL_DATA;
     float3  normal              : VERTEX_NORMAL;
     float3  tangent             : VERTEX_TANGENT;
     bool    hasTangent          : VERTEX_HAS_TANGENT;
     float3  bitangent           : VERTEX_BITANGENT;
     float2  uv                  : VERTEX_UV;
+    
+    float3  worldLocation       : WORLD_LOCATION;
+    float3  clipSpaceXYW        : CLIP_SPACE_XYW;
 
 #if WITH_DEBUGS
     uint    meshletIdx          : MESHLET_IDX;
@@ -114,6 +120,9 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
 
     output.materialDataOffset = u_visibleBatchElements[batchElementIdx].materialDataOffset;
 
+    output.worldLocation = vertexWorldLocation;
+    output.clipSpaceXYW = output.clipSpace.xyw;
+
     return output;
 }
 
@@ -133,18 +142,29 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     }
 #endif // WITH_DEBUGS
     
-    float3 color = 1.f;
+    float3 baseColor = 1.f;
     
     const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(vertexInput.materialDataOffset);
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
-        color = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
-        color = pow(color, 2.2f);
+        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+        baseColor = pow(baseColor, 2.2f);
     }
 
-    color *= material.baseColorFactor;
+    baseColor *= material.baseColorFactor;
 
-    output.radiance = float4(color, 1.f);
+    float metallic = material.metallicFactor;
+    float roughness = material.roughnessFactor;
+    
+    if(material.metallicRoughnessTextureIdx != IDX_NONE_32)
+    {
+        const float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xy;
+        metallic *= metallicRoughness.x;
+        roughness *= metallicRoughness.y;
+    }
+
+    const float3 specularColor = baseColor * metallic;
+    const float3 diffuseColor = baseColor - specularColor;
 
     float3 normal;
     if(vertexInput.hasTangent && material.normalsTextureIdx != IDX_NONE_32)
@@ -159,7 +179,20 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
         normal = normalize(vertexInput.normal);
     }
 
-    output.normal = float4(normal * 0.5f + 0.5f, 1.f);
+    ShadedSurface surface;
+    surface.location = vertexInput.worldLocation;
+    surface.normal = normal;
+    surface.specularColor = specularColor;
+    surface.diffuseColor = diffuseColor;
+    surface.roughness = roughness;
+
+    const float2 screenUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z * 0.5f + 0.5f;
+
+    const float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation, screenUV);
+
+    output.radiance = float4(radiance, 1.f);
     
+    output.normal = float4(normal * 0.5f + 0.5f, 1.f);
+
     return output;
 }
