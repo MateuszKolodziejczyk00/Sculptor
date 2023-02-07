@@ -46,9 +46,9 @@ void BuildLightsTilesPS(VS_OUTPUT vertexInput)
 {
     const float2 uv = vertexInput.fragmentClipSpace.xy / vertexInput.fragmentClipSpace.w * 0.5f + 0.5f;
 
-    const uint2 tileCoords = GetLightsTile(uv, u_lightsPassInfo.tileSize);
+    const uint2 tileCoords = GetLightsTile(uv, u_lightsData.tileSize);
 
-    const uint tileLights32Offset = GetLightsTileDataOffsetForLight(tileCoords, u_lightsPassInfo.tilesNum, u_lightsPassInfo.localLights32Num, vertexInput.lightIdx);
+    const uint tileLights32Offset = GetLightsTileDataOffsetForLight(tileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num, vertexInput.lightIdx);
     const uint lightMask = 1 << (vertexInput.lightIdx % 32);
     InterlockedOr(u_tilesLightsMask[tileLights32Offset], lightMask);
 }

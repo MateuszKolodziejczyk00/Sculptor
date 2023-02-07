@@ -96,22 +96,15 @@ static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::CommonBi
 
 static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::GenericShaderBinding& bindingMetaData, rhi::DescriptorSetBindingDefinition& rhiBindingDef)
 {
+	// Optional per type initialization
 	std::visit(
 		lib::Overload
 		{
 			[&rhiBindingDef](const smd::TextureBindingData& textureBinding)
 			{
-				if (lib::HasAnyFlag(textureBinding.flags, smd::EBindingFlags::PartiallyBound))
-				{
-					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
-				}
 			},
 			[&rhiBindingDef](const smd::CombinedTextureSamplerBindingData& combinedTextureSamplerBinding)
 			{
-				if (lib::HasAnyFlag(combinedTextureSamplerBinding.flags, smd::EBindingFlags::PartiallyBound))
-				{
-					lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
-				}
 			},
 			[&rhiBindingDef](const smd::BufferBindingData& bufferBinding)
 			{
@@ -127,10 +120,15 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 				   rhiBindingDef.descriptorType = commonBindingData.GetDescriptorType();
  
 				   rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
-					
+				    
 				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
 				   {
-					   rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(commonBindingData)->GetRHI();
+				       rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(commonBindingData)->GetRHI();
+				   }
+
+				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::PartiallyBound))
+				   {
+					   lib::AddFlags(rhiBindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
 				   }
 
 				   rhiBindingDef.descriptorCount = commonBindingData.elementsNum;

@@ -17,12 +17,12 @@ void BuildLightsZClustersCS(CS_INPUT input)
 {
     const uint clusterIdx = input.groupID.x;
 
-    const float clusterRangeMin = clusterIdx * u_lightsPassInfo.zClusterLength;
-    const float clusterRangeMax = (clusterIdx + 1) * u_lightsPassInfo.zClusterLength;
+    const float clusterRangeMin = clusterIdx * u_lightsData.zClusterLength;
+    const float clusterRangeMax = (clusterIdx + 1) * u_lightsData.zClusterLength;
 
     uint lightMinIdx = 0xffffffff;
 
-    for (uint lightIdx = input.localID.x; lightIdx < u_lightsPassInfo.localLightsNum; lightIdx += 32)
+    for (uint lightIdx = input.localID.x; lightIdx < u_lightsData.localLightsNum; lightIdx += 32)
     {
         const float2 lightRange = u_localLightsZRanges[lightIdx];
         bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
@@ -41,9 +41,9 @@ void BuildLightsZClustersCS(CS_INPUT input)
 
     if(lightMinIdx != 0xffffffff)
     {
-        for (uint idx = input.localID.x; idx < u_lightsPassInfo.localLightsNum; idx += 32)
+        for (uint idx = input.localID.x; idx < u_lightsData.localLightsNum; idx += 32)
         {
-            const uint lightIdx = u_lightsPassInfo.localLightsNum - lightIdx - 1;
+            const uint lightIdx = u_lightsData.localLightsNum - lightIdx - 1;
             const float2 lightRange = u_localLightsZRanges[lightIdx];
             bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
 

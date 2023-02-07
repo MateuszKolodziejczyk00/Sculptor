@@ -11,7 +11,7 @@
 namespace spt::gfx
 {
 
-template<typename TStruct, rg::ERGBufferAccess accessType>
+template<typename TStruct, rg::ERGBufferAccess accessType, Bool isOptional>
 class RWGenericBufferBinding : public rdr::DescriptorSetBinding
 {
 protected:
@@ -26,12 +26,18 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
+		if (IsValid())
+		{
+			context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
+		}
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, accessType);
+		if (IsValid())
+		{
+			m_boundBuffer.AddRGDependency(builder, accessType);
+		}
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
@@ -50,7 +56,14 @@ public:
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		return lib::Union(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound);
+		smd::EBindingFlags flags = lib::Union(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound);
+
+		if constexpr (isOptional)
+		{
+			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
+		}
+
+		return flags;
 	}
 
 	static constexpr Bool IsByteBuffer()
@@ -98,13 +111,23 @@ private:
 
 
 template<typename TStruct>
-using RWStructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::ReadWrite>;
+using RWStructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::ReadWrite, false>;
 
 template<typename TStruct>
-using StructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::Read>;
+using StructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::Read, false>;
 
-using RWByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::ReadWrite>;
-using ByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::Read>;
+using RWByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::ReadWrite, false>;
+using ByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::Read, false>;
+
+
+template<typename TStruct>
+using OptionalRWStructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::ReadWrite, true>;
+
+template<typename TStruct>
+using OptionalStructuredBufferBinding = RWGenericBufferBinding<TStruct, rg::ERGBufferAccess::Read, true>;
+
+using RWByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::ReadWrite, false>;
+using ByteAddressBuffer = RWGenericBufferBinding<Byte, rg::ERGBufferAccess::Read, false>;
 
 } // spt::gfx
 

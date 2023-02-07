@@ -23,14 +23,14 @@ float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, floa
 
 float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 screenUV)
 {
-    const uint2 lightsTileCoords = GetLightsTile(screenUV, u_lightsPassInfo.tileSize);
-    const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsPassInfo.tilesNum, u_lightsPassInfo.localLights32Num);
+    const uint2 lightsTileCoords = GetLightsTile(screenUV, u_lightsData.tileSize);
+    const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
 
     float3 radiance = 0.f;
 
     const float3 viewDir = normalize(surface.location - viewLocation);
 
-    for(uint i = 0; i < u_lightsPassInfo.localLights32Num; ++i)
+    for(uint i = 0; i < u_lightsData.localLights32Num; ++i)
     {
         uint lightsMask = u_tilesLightsMask[tileLightsDataOffset + i];
 
