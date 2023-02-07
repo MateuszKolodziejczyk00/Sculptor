@@ -22,9 +22,9 @@ BEGIN_SHADER_STRUCT(PointLightGPUData)
 END_SHADER_STRUCT();
 
 
-struct DirectionalLight
+struct DirectionalLightData
 {
-	DirectionalLight()
+	DirectionalLightData()
 		: color(math::Vector3f::Ones())
 		, intensity(1.f)
 		, direction(-math::Vector3f::UnitZ())

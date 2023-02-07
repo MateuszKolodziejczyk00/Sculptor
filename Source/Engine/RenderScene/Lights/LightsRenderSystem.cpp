@@ -67,9 +67,10 @@ DS_END();
 
 
 DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),			u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),	u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),			u_tilesLightsMask)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),				u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),		u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),				u_tilesLightsMask)
 DS_END();
 
 
@@ -92,7 +93,7 @@ struct LightsRenderingDataPerView
 		return localLightsNum > 0;
 	}
 
-	Bool HasAnyDirectionalLights() const
+	Bool HasAnyDirectionalLightsToRender() const
 	{
 		return directionalLightsNum > 0;
 	}
@@ -125,6 +126,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	constexpr Uint32 zClustersNum = 8;
 
 	LightsRenderingDataPerView lightsRenderingData;
+
+	LightsRenderingData lightsData;
 	
 	const auto getViewSpaceZ = [viewMatrix = viewSpec.GetRenderView().GenerateViewMatrix()](const PointLightGPUData& pointLight)
 	{
@@ -140,8 +143,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	const SizeType pointLightsNum = pointLightsView.size();
 
 	lightsRenderingData.localLightsNum = static_cast<Uint32>(pointLightsNum);
-
-	LightsRenderingData lightsData;
 
 	const lib::SharedRef<ViewShadingDS> viewShadingDS = rdr::ResourcesManager::CreateDescriptorSetState<ViewShadingDS>(RENDERER_RESOURCE_NAME("ViewShadingDS"));
 	lightsRenderingData.viewShadingDS = viewShadingDS;
@@ -182,7 +183,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		lightsData.localLightsNum		= static_cast<Uint32>(pointLights.size());
 		lightsData.localLights32Num		= static_cast<Uint32>((pointLights.size() - 1) / 32 + 1);
-		lightsData.directionalLightsNum = 0;
 		lightsData.zClusterLength		= 20.f;
 		lightsData.zClustersNum			= zClustersNum;
 		lightsData.tilesNum				= tilesNum;
@@ -246,6 +246,32 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		lightsRenderingData.lightDrawCommandsBuffer			= lightDrawCommands;
 		lightsRenderingData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
+	}
+
+	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
+	const SizeType directionalLightsNum = directionalLightsView.size();
+	
+	lightsRenderingData.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+
+	if (lightsRenderingData.HasAnyDirectionalLightsToRender())
+	{
+		lightsData.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+
+		lib::DynamicArray<DirectionalLightGPUData> directionalLightsData;
+		directionalLightsData.reserve(directionalLightsNum);
+
+		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		{
+			directionalLightsData.emplace_back(directionalLight.GenerateGPUData());
+		}
+
+		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);
+		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
+		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneDirectionalLights"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
+
+		gfx::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
+
+		viewShadingDS->u_directionalLights = directionalLightsBuffer->CreateFullView();
 	}
 	
 	viewShadingDS->u_lightsData			= lightsData;

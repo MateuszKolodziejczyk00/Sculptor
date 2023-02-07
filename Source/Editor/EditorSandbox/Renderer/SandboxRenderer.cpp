@@ -222,6 +222,16 @@ void SandboxRenderer::InitializeRenderScene()
 			pointLightData.radius		= lib::rnd::Random<Real32>(1.0f, 2.f);
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
+
+		{
+			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
+			rsc::DirectionalLightData directionalLightData;
+			directionalLightData.color		= math::Vector3f::Ones();
+			directionalLightData.intensity	= 3.f;
+			directionalLightData.direction	= -math::Vector3f::UnitZ();
+			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
+		}
+
 	}
 
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
