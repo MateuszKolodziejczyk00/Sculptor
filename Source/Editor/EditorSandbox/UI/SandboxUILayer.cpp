@@ -90,6 +90,12 @@ void SandboxUILayer::DrawRendererSettings()
 	{
 		m_renderer->SetCameraSpeed(cameraSpeed);
 	}
+
+	Real32 nearPlane = m_renderer->GetNearPlane();
+	if (ImGui::SliderFloat("NearPlane", &nearPlane, 0.01f, 10.f))
+	{
+		m_renderer->SetNearPlane(nearPlane);
+	}
 }
 
 void SandboxUILayer::DrawJobSystemTestsUI()

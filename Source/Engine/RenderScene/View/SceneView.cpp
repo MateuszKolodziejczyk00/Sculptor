@@ -18,8 +18,8 @@ void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real3
 
 	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	0.f},
 										{0.f,	0.f,	b,		0.f},
-										{0.f,	0.f,	0.f,    1.f},
-										{near,	0.f,	0.f,	0.f} };
+										{0.f,	0.f,	0.f,    near},
+										{1.f,	0.f,	0.f,	0.f} };
 }
 
 void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)

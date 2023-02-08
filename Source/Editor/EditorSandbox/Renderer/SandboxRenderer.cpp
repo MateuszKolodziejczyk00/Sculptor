@@ -189,6 +189,16 @@ Real32 SandboxRenderer::GetFov()
 	return m_fovDegrees;
 }
 
+void SandboxRenderer::SetNearPlane(Real32 nearPlane)
+{
+	m_nearPlane = nearPlane;
+}
+
+Real32 SandboxRenderer::GetNearPlane()
+{
+	return m_nearPlane;
+}
+
 void SandboxRenderer::SetCameraSpeed(Real32 speed)
 {
 	m_cameraSpeed = speed;
