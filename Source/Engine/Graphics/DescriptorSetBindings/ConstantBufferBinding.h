@@ -12,7 +12,10 @@
 namespace spt::gfx
 {
 
-template<typename TStruct>
+namespace priv
+{
+
+template<typename TStruct, Bool isImmutable>
 class ConstantBufferBinding : public rdr::DescriptorSetBinding 
 {
 protected:
@@ -25,7 +28,7 @@ public:
 		: Super(name)
 		, m_bufferMappedPtr(nullptr)
 		, m_structsStride(0)
-		, m_lastDynamicOffsetChangeFrameIdx(0)
+		, m_lastDynamicOffsetChangeFrameIdx(rdr::Renderer::GetCurrentFrameIdx())
 		, m_offset(nullptr)
 	{ }
 
@@ -46,8 +49,11 @@ public:
 
 		InitResources(owningState);
 
-		m_offset = owningState.AddDynamicOffset();
-		*m_offset = 0;
+		if constexpr (!isImmutable)
+		{
+			m_offset = owningState.AddDynamicOffset();
+			*m_offset = 0;
+		}
 
 		// construct default value
 		new (&GetImpl()) TStruct();
@@ -66,7 +72,14 @@ public:
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		return smd::EBindingFlags::DynamicOffset;
+		smd::EBindingFlags flags = smd::EBindingFlags::None;
+
+		if (!isImmutable)
+		{
+			lib::AddFlag(flags, smd::EBindingFlags::DynamicOffset);
+		}
+
+		return flags;
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
@@ -110,17 +123,26 @@ private:
 
 	Uint64 SwitchBufferOffsetIfNecessary()
 	{
-		if (ShouldSwitchBufferOffsetOnChange())
+		if constexpr (isImmutable)
 		{
-			SPT_CHECK(m_structsStride != 0);
-			*m_offset += m_structsStride;
-			if (*m_offset >= m_buffer->GetRHI().GetSize())
-			{
-				*m_offset = 0;
-			}
-			m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+			SPT_CHECK_MSG(rdr::Renderer::GetCurrentFrameIdx() == m_lastDynamicOffsetChangeFrameIdx, "Immutable constant buffers can be changed only during same frame when they were created");
+			return 0;
 		}
-		return *m_offset;
+		else
+		{
+			SPT_CHECK(!!m_offset);
+			if (ShouldSwitchBufferOffsetOnChange())
+			{
+				SPT_CHECK(m_structsStride != 0);
+				*m_offset += m_structsStride;
+				if (*m_offset >= m_buffer->GetRHI().GetSize())
+				{
+					*m_offset = 0;
+				}
+				m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+			}
+			return *m_offset;
+		}
 	}
 
 	void SwitchBufferOffsetPreservingData()
@@ -139,7 +161,8 @@ private:
 	TStruct& GetImpl() const
 	{
 		SPT_CHECK(!!m_bufferMappedPtr);
-		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + *m_offset);
+		const Uint64 offset = m_offset ? *m_offset : 0;
+		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + offset);
 	}
 
 	void InitResources(rdr::DescriptorSetState& owningState)
@@ -148,7 +171,7 @@ private:
 
 		constexpr Uint64 structSize = sizeof(TStruct);
 
-		const Bool isPersistent = lib::HasAnyFlag(owningState.GetFlags(), rdr::EDescriptorSetStateFlags::Persistent);
+		const Bool isPersistent = lib::HasAnyFlag(owningState.GetFlags(), rdr::EDescriptorSetStateFlags::Persistent) || isImmutable;
 		const Uint32 structsCopiesNum = isPersistent ? rdr::RendererSettings::Get().framesInFlight : 1;
 
 		Uint64 bufferSize = 0;
@@ -190,5 +213,14 @@ private:
 	// Dynamic Offset value ptr
 	Uint32*							m_offset;
 };
+
+} // priv
+
+
+template<typename TStruct>
+using ConstantBufferBinding = priv::ConstantBufferBinding<TStruct, false>;
+
+template<typename TStruct>
+using ImmutableConstantBufferBinding = priv::ConstantBufferBinding<TStruct, true>;
 
 } // spt::gfx

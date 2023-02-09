@@ -56,6 +56,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.drawIndirectCount		= VK_TRUE;
 	vulkan12Features.shaderFloat16			= VK_TRUE;
 	vulkan12Features.descriptorBindingSampledImageUpdateAfterBind	= VK_TRUE;
+	vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingPartiallyBound				= VK_TRUE;
 	
 

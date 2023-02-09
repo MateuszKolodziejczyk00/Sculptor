@@ -11,7 +11,7 @@ namespace spt::gfx
 {
 
 template<priv::EBindingTextureDimensions dimensions, typename TPixelFormatType>
-class TextureBinding : public gfx::priv::TextureBindingBase
+class SRVTextureBinding : public gfx::priv::TextureBindingBase
 {
 protected:
 
@@ -19,7 +19,7 @@ protected:
 
 public:
 
-	explicit TextureBinding(const lib::HashedString& name)
+	explicit SRVTextureBinding(const lib::HashedString& name)
 		: Super(name)
 	{ }
 
@@ -61,12 +61,12 @@ private:
 
 
 template<typename TPixelFormatType>
-using Texture1DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType>;
+using SRVTexture1DBinding = SRVTextureBinding<priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType>;
 
 template<typename TPixelFormatType>
-using Texture2DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType>;
+using SRVTexture2DBinding = SRVTextureBinding<priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType>;
 
 template<typename TPixelFormatType>
-using Texture3DBinding = TextureBinding<priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType>;
+using SRVTexture3DBinding = SRVTextureBinding<priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType>;
 
 } // spt::gfx

@@ -67,7 +67,7 @@ DS_END();
 
 
 DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),				u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LightsRenderingData>),		u_lightsData)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),		u_localLights)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),				u_tilesLightsMask)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
