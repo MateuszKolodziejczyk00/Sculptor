@@ -115,6 +115,8 @@ struct SamplerDefinition
 struct SamplerState
 {
 	static constexpr SamplerDefinition LinearRepeat = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::Repeat);
+	
+	static constexpr SamplerDefinition NearestClampToBorder = SamplerDefinition(ESamplerFilterType::Nearest, EMipMapAddressingMode::Nearest, EAxisAddressingMode::ClampToBorder);
 };
 
 } // spt::rhi

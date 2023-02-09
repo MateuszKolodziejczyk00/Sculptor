@@ -41,9 +41,7 @@ lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const Rend
 		const rhi::TextureDefinition& textureDef			= rhiTexture.GetDefinition();
 		const rhi::RHIAllocationInfo& textureAllocationInfo	= rhiTexture.GetAllocationInfo();
 
-		return textureDef.resolution.x() >= definition.resolution.x()
-			&& textureDef.resolution.y() >= definition.resolution.y()
-			&& textureDef.resolution.z() >= definition.resolution.z()
+		return textureDef.resolution == definition.resolution
 			&& lib::HasAllFlags(textureDef.usage, definition.usage)
 			&& textureDef.format == definition.format
 			&& textureDef.samples == definition.samples

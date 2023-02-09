@@ -108,7 +108,7 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
         {
             const float4 vertexTangent = u_geometryData.Load<float4>(submesh.tangentsOffset + vertexIdx * 16);
             output.tangent = normalize(mul(instanceTransform, float4(vertexTangent.xyz, 0.f)).xyz);
-            output.bitangent = cross(output.normal, output.tangent) * vertexTangent.w;
+            output.bitangent = normalize(cross(output.normal, output.tangent)) * vertexTangent.w;
             output.hasTangent = true;
         }
     }
@@ -148,7 +148,6 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
         baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
-        baseColor = pow(baseColor, 2.2f);
     }
 
     baseColor *= material.baseColorFactor;
@@ -158,7 +157,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     
     if(material.metallicRoughnessTextureIdx != IDX_NONE_32)
     {
-        const float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xy;
+        float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xy;
         metallic *= metallicRoughness.x;
         roughness *= metallicRoughness.y;
     }
@@ -171,6 +170,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     {
         float3 textureNormal = u_materialsTextures[material.normalsTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
         textureNormal = textureNormal * 2.f - 1.f;
+        textureNormal.z = sqrt(1.f - saturate(Pow2(textureNormal.x) + Pow2(textureNormal.y)));
         const float3x3 TBN = transpose(float3x3(normalize(vertexInput.tangent), normalize(vertexInput.bitangent), normalize(vertexInput.normal)));
         normal = normalize(mul(TBN, textureNormal));
     }

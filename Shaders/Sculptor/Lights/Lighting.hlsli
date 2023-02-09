@@ -25,7 +25,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
 {
     float3 radiance = 0.f;
 
-    const float3 viewDir = normalize(surface.location - viewLocation);
+    const float3 viewDir = normalize(viewLocation - surface.location);
 
     // Directional Lights
 

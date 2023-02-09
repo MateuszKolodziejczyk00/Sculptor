@@ -79,7 +79,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
 	const ForwardOpaquePassResult& mainViewOFResult = mainViewSpec.GetData().Get<ForwardOpaquePassResult>();
-	return mainViewOFResult.radiance;
+	return mainViewOFResult.tonamappedTexture;
 }
 
 SceneRendererDebugSettings& SceneRenderer::GetDebugSettings() const

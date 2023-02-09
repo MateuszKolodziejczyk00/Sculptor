@@ -18,6 +18,7 @@ struct ForwardOpaquePassResult
 {
 	rg::RGTextureViewHandle radiance;
 	rg::RGTextureViewHandle normals;
+	rg::RGTextureViewHandle tonamappedTexture;
 };
 
 
