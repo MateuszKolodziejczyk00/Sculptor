@@ -4,6 +4,7 @@
 #include "Transfers/UploadUtils.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
+#include "RenderStages/HDRResolveRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
 
@@ -71,6 +72,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
+	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs);
+
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
@@ -78,8 +81,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
-	const ForwardOpaquePassResult& mainViewOFResult = mainViewSpec.GetData().Get<ForwardOpaquePassResult>();
-	return mainViewOFResult.tonamappedTexture;
+	const HDRResolvePassData& mainViewRenderingResult = mainViewSpec.GetData().Get<HDRResolvePassData>();
+	return mainViewRenderingResult.tonemappedTexture;
 }
 
 SceneRendererDebugSettings& SceneRenderer::GetDebugSettings() const

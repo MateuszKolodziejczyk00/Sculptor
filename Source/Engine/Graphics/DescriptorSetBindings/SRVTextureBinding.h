@@ -49,6 +49,13 @@ public:
 		return smd::EBindingFlags::None;
 	}
 
+	template<priv::CTextureInstanceOrRGTextureView TType>
+	SRVTextureBinding& operator=(const TType& value)
+	{
+		Set(value);
+		return *this;
+	}
+
 private:
 
 	void ValidateTexture(const lib::SharedRef<rdr::TextureView>& textureView) const

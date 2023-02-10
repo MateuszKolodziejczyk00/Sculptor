@@ -38,6 +38,13 @@ constexpr lib::String GetTextureDimSuffix()
 }
 
 
+template<typename TType>
+concept CTextureInstanceOrRGTextureView = requires
+{
+	requires std::is_same_v<TType, lib::SharedPtr<rdr::TextureView>> || std::is_same_v<TType, rg::RGTextureViewHandle>;
+};
+
+
 class TextureBindingBase abstract : public rdr::DescriptorSetBinding
 {
 protected:

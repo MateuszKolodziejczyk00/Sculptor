@@ -24,7 +24,7 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	const rhi::RHIAllocationInfo depthTextureAllocationInfo(rhi::EMemoryUsage::GPUOnly);
 
-	DepthPrepassResult& depthPrepassResult = viewSpec.GetData().Create<DepthPrepassResult>();
+	DepthPrepassData& depthPrepassResult = viewSpec.GetData().Create<DepthPrepassData>();
 	
 	rhi::TextureDefinition depthDef;
 	depthDef.resolution = texturesRes;

@@ -109,6 +109,22 @@ public:
 	{
 		return ((numerator - 1) / denominator) + 1;
 	}
+
+	template<std::unsigned_integral TType, int rows, int cols>
+	static constexpr math::Matrix<TType, rows, cols> DivideCeil(const math::Matrix<TType, rows, cols>& numerator, const math::Matrix<TType, rows, cols>& denominator)
+	{
+		math::Matrix<TType, rows, cols> result;
+		
+		for (int row = 0; row < rows; ++row)
+		{
+			for (int col = 0; col < cols; ++col)
+			{
+				result.coeff(col, row) = DivideCeil(numerator.coeff(0, 0), denominator.coeff(0, 0));
+			}
+		}
+
+		return result;;
+	}
 };
 
 } // spt::math

@@ -8,17 +8,22 @@
 namespace spt::rsc
 {
 
-struct DepthPrepassResult
+struct DepthPrepassData
 {
 	rg::RGTextureViewHandle depth;
 };
 
 
-struct ForwardOpaquePassResult
+struct ShadingData
 {
 	rg::RGTextureViewHandle radiance;
 	rg::RGTextureViewHandle normals;
-	rg::RGTextureViewHandle tonamappedTexture;
+};
+
+
+struct HDRResolvePassData
+{
+	rg::RGTextureViewHandle tonemappedTexture;
 };
 
 
