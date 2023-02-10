@@ -7,9 +7,17 @@
 #include "RenderStages/HDRResolveRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
+#include "Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Parameters ====================================================================================
+
+RendererBoolParameter showMeshlets("Show Meshlets", { "Geometry" }, false);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Utils =========================================================================================
 
 namespace renderer_utils
 {
@@ -32,6 +40,8 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 
 } // renderer_utils
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// SceneRenderer =================================================================================
 
 SceneRenderer::SceneRenderer()
 	: m_debugDS(CreateDebugDS())
@@ -40,6 +50,12 @@ SceneRenderer::SceneRenderer()
 rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
 {
 	SPT_PROFILER_FUNCTION();
+
+	// Update parameters
+	m_debugDS->u_rendererDebugSettings.Set([](SceneRendererDebugSettings& settings)
+										   {
+											   settings.showDebugMeshlets = showMeshlets;
+										   });
 
 	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(m_debugDS, scene.GetRenderSceneDS()));
 
@@ -83,11 +99,6 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	const HDRResolvePassData& mainViewRenderingResult = mainViewSpec.GetData().Get<HDRResolvePassData>();
 	return mainViewRenderingResult.tonemappedTexture;
-}
-
-SceneRendererDebugSettings& SceneRenderer::GetDebugSettings() const
-{
-	return m_debugDS->u_rendererDebugSettings.GetMutable();
 }
 
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const

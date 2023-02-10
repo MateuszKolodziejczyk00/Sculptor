@@ -7,6 +7,7 @@
 #include "Types/Window.h"
 #include "Renderer.h"
 #include "Shaders/ShaderTypes.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::ed
 {
@@ -160,10 +161,7 @@ void SandboxUILayer::DrawDebugSceneRenderer()
 {
 	SPT_PROFILER_FUNCTION();
 
-	rsc::SceneRenderer& sceneRenderer = m_renderer->GetSceneRenderer();
-	rsc::SceneRendererDebugSettings& debugSettings = sceneRenderer.GetDebugSettings();
-
-	ImGui::Checkbox("Show Debug Meshlets", &debugSettings.showDebugMeshlets);
+	rsc::RendererParamsRegistry::DrawParametersUI();
 }
 
 } // spt::ed

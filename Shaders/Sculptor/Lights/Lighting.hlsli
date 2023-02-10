@@ -66,7 +66,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
     }
 
     // ambient
-    radiance += surface.diffuseColor * 0.1f;
+    radiance += surface.diffuseColor * u_lightsData.ambientLightIntensity;
 
     return radiance;
 }

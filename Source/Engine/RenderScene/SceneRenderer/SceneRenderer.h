@@ -34,8 +34,6 @@ public:
 
 	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view);
 
-	SceneRendererDebugSettings& GetDebugSettings() const;
-
 private:
 
 	lib::DynamicArray<ViewRenderingSpec*> CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const;

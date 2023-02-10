@@ -12,9 +12,14 @@
 #include "RGResources/RGResourceHandles.h"
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Parameters ====================================================================================
+
+RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.1f, 0.f, 1.f);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Lights Rendering Common =======================================================================
@@ -27,6 +32,7 @@ BEGIN_SHADER_STRUCT(LightsRenderingData)
 	SHADER_STRUCT_FIELD(math::Vector2u, tilesNum)
 	SHADER_STRUCT_FIELD(math::Vector2f, tileSize)
 	SHADER_STRUCT_FIELD(Uint32, zClustersNum)
+	SHADER_STRUCT_FIELD(Real32, ambientLightIntensity)
 END_SHADER_STRUCT();
 
 
@@ -181,12 +187,13 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const math::Vector2u tilesNum = (renderingRes - math::Vector2u(1, 1)) / 8 + math::Vector2u(1, 1);
 		const math::Vector2f tileSize = math::Vector2f(1.f / static_cast<Real32>(tilesNum.x()), 1.f / static_cast<Real32>(tilesNum.y()));
 
-		lightsData.localLightsNum		= static_cast<Uint32>(pointLights.size());
-		lightsData.localLights32Num		= static_cast<Uint32>((pointLights.size() - 1) / 32 + 1);
-		lightsData.zClusterLength		= 20.f;
-		lightsData.zClustersNum			= zClustersNum;
-		lightsData.tilesNum				= tilesNum;
-		lightsData.tileSize				= tileSize;
+		lightsData.localLightsNum			= static_cast<Uint32>(pointLights.size());
+		lightsData.localLights32Num			= static_cast<Uint32>((pointLights.size() - 1) / 32 + 1);
+		lightsData.zClusterLength			= 20.f;
+		lightsData.zClustersNum				= zClustersNum;
+		lightsData.tilesNum					= tilesNum;
+		lightsData.tileSize					= tileSize;
+		lightsData.ambientLightIntensity	= ambientLightIntensity;
 
 		const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(PointLightGPUData), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLights"), lightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
