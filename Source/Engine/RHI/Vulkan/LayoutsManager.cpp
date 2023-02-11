@@ -108,13 +108,16 @@ void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceR
 	}
 	else
 	{
-		if (!AreAllSubresourcesInSameLayout())
+		if (AreAllSubresourcesInSameLayout())
 		{
 			TransitionToPerSubresourceLayout();
 		}
 
-		const Uint32 endMipLevel = range.baseMipLevel + range.mipLevelsNum;
-		const Uint32 endArrayLayer = range.baseArrayLayer + range.arrayLayersNum;
+		const Uint32 mipsNum = range.mipLevelsNum == rhi::constants::allRemainingMips ? m_mipsNum : range.mipLevelsNum;
+		const Uint32 layersNum = range.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? m_arrayLayersNum : range.arrayLayersNum;
+
+		const Uint32 endMipLevel = range.baseMipLevel + mipsNum;
+		const Uint32 endArrayLayer = range.baseArrayLayer + layersNum;
 
 		for (Uint32 mipLevel = range.baseMipLevel; mipLevel < endMipLevel; ++mipLevel)
 		{

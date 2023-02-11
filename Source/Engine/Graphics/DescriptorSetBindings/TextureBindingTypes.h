@@ -104,7 +104,7 @@ protected:
 	{
 		SPT_CHECK(!m_textureInstance || !m_renderGraphTexture.IsValid()); // only one of these textures can be valid
 		
-		lib::SharedPtr<rdr::TextureView> textureView = m_textureInstance ? m_textureInstance : m_renderGraphTexture->GetViewInstance();
+		lib::SharedPtr<rdr::TextureView> textureView = m_textureInstance ? m_textureInstance : m_renderGraphTexture->GetResource(false);
 		SPT_CHECK(!!textureView);
 
 		return lib::Ref(textureView);

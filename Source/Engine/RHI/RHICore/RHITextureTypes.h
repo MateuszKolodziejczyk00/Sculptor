@@ -108,8 +108,8 @@ struct TextureDefinition
 	ETextureUsage		usage;
 	EFragmentFormat		format;
 	Uint8				samples;
-	Uint8				mipLevels;
-	Uint8				arrayLayers;
+	Uint32				mipLevels;
+	Uint32				arrayLayers;
 	ETextureFlags		flags;
 };
 

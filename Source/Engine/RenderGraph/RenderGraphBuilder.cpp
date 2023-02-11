@@ -257,8 +257,8 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 
 	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
-		const lib::SharedPtr<rdr::TextureView> sourceView = sourceRGTextureView->GetViewInstance();
-		const lib::SharedPtr<rdr::TextureView> destView = destRGTextureView->GetViewInstance();
+		const lib::SharedPtr<rdr::TextureView> sourceView = sourceRGTextureView->GetResource();
+		const lib::SharedPtr<rdr::TextureView> destView = destRGTextureView->GetResource();
 		SPT_CHECK(!!sourceView);
 		SPT_CHECK(!!destView);
 
@@ -352,6 +352,11 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		{
 			node.AddTextureToAcquire(accessedTexture);
 		}
+		
+		if (!accessedTextureView->IsExternal() && !accessedTextureView->HasAcquireNode())
+		{
+			node.AddTextureViewToAcquire(accessedTextureView);
+		}
 
 		const rhi::BarrierTextureTransitionDefinition& transitionTarget = GetTransitionDefForAccess(&node, textureAccessDef.access);
 
@@ -366,7 +371,7 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 {
 	RGTextureAccessState& textureAccessState = accessedTexture->GetAccessState();
 
-	if (textureAccessState.IsFullResource())
+	if (textureAccessState.IsFullResource() && textureAccessState.RangeContainsFullResource(accessedSubresourceRange))
 	{
 		const RGTextureSubresourceAccessState& sourceAccessState = textureAccessState.GetForFullResource();
 		const rhi::BarrierTextureTransitionDefinition& transitionSource = GetTransitionDefForAccess(sourceAccessState.lastAccessNode, sourceAccessState.lastAccessType);
@@ -556,8 +561,8 @@ void RenderGraphBuilder::GetSynchronizationParamsForBuffer(ERGBufferAccess lastA
 
 Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget) const
 {
-	const Bool prevAccessIsWrite = transitionSource.accessType == rhi::EAccessType::Write;
-	const Bool newAccessIsWrite = transitionTarget.accessType == rhi::EAccessType::Write;
+	const Bool prevAccessIsWrite = lib::HasAnyFlag(transitionSource.accessType, rhi::EAccessType::Write);
+	const Bool newAccessIsWrite = lib::HasAnyFlag(transitionTarget.accessType, rhi::EAccessType::Write);
 
 	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
 		|| transitionSource.layout != transitionTarget.layout
@@ -649,6 +654,19 @@ void RenderGraphBuilder::AddReleaseResourcesNode()
 			const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
 
 			AppendTextureTransitionToNode(barrierNode, texture, transitionRange, *transitionTarget);
+		}
+		else
+		{
+			RGTextureAccessState& accessState = texture->GetAccessState();
+			if (!accessState.IsFullResource())
+			{
+				// This transition may result in disabling resource reuse (last access will be at the end of render graph
+				// Alternative is to add this barrier immediately after last use, but this might decrease performance on GPU
+				const rhi::EFragmentFormat textureFormat = texture->GetTextureDefinition().format;
+				const rhi::TextureSubresourceRange transitionRange(rhi::GetFullAspectForFormat(textureFormat));
+				AppendTextureTransitionToNode(barrierNode, texture, transitionRange, rhi::TextureTransition::FragmentGeneral);
+				accessState.SetSubresourcesAccess(RGTextureSubresourceAccessState(ERGTextureAccess::StorageWriteTexture, &barrierNode), transitionRange);
+			}
 		}
 	}
 }

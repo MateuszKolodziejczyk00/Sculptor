@@ -12,44 +12,11 @@
 #include "RHICore/RHISynchronizationTypes.h"
 #include "RHICore/RHIShaderTypes.h"
 #include "Utility/Templates/TypeStorage.h"
+#include "RGResourceTypes.h"
 
 
 namespace spt::rg
 {
-
-enum class ERGTextureAccess
-{
-	Unknown,
-
-	ColorRenderTarget,
-	DepthRenderTarget,
-	StencilRenderTarget,
-
-	StorageWriteTexture,
-
-	SampledTexture,
-
-	TransferSource,
-	TransferDest
-};
-
-
-enum class ERGBufferAccess
-{
-	Unknown,
-	Read,
-	Write,
-	ReadWrite
-};
-
-
-enum class ERGResourceFlags : Flags32
-{
-	None = 0,
-	External	= BIT(0),
-
-	Default = None
-};
 
 
 struct RGResourceDef
@@ -129,165 +96,6 @@ private:
 };
 
 
-struct RGTextureSubresourceAccessState
-{
-	RGTextureSubresourceAccessState()
-		: lastAccessType(ERGTextureAccess::Unknown)
-	{ }
-	RGTextureSubresourceAccessState(ERGTextureAccess inLastAccessType, RGNodeHandle inLastAccessNode)
-		: lastAccessType(inLastAccessType)
-		, lastAccessNode(inLastAccessNode)
-	{ }
-
-	ERGTextureAccess		lastAccessType;
-	RGNodeHandle	lastAccessNode;
-};
-
-
-struct RGTextureSubresource
-{
-	explicit RGTextureSubresource(Uint32 inArrayLayerIdx, Uint32 inMipMapIdx)
-		: arrayLayerIdx(inArrayLayerIdx)
-		, mipMapIdx(inMipMapIdx)
-	{ }
-
-	Uint32 arrayLayerIdx;
-	Uint32 mipMapIdx;
-};
-
-
-class RGTextureAccessState
-{
-public:
-
-	RGTextureAccessState(Uint32 textureMipsNum, Uint32 textureLayersNum)
-		: m_textureMipsNum(textureMipsNum)
-		, m_textureLayersNum(textureLayersNum)
-	{
-		m_subresourcesAccesses.resize(1);
-		m_subresourcesAccesses[0] = RGTextureSubresourceAccessState(ERGTextureAccess::Unknown, nullptr);
-	}
-
-	Bool IsFullResource() const
-	{
-		return m_subresourcesAccesses.size() == 1;
-	}
-
-	RGTextureSubresourceAccessState& GetForFullResource()
-	{
-		SPT_CHECK(IsFullResource());
-		return m_subresourcesAccesses[0];
-	}
-
-	RGTextureSubresourceAccessState& GetForSubresource(RGTextureSubresource subresource)
-	{
-		return GetForSubresource(subresource.arrayLayerIdx, subresource.mipMapIdx);
-	}
-
-	RGTextureSubresourceAccessState& GetForSubresource(Uint32 layerIdx, Uint32 mipMapIdx)
-	{
-		SPT_CHECK(mipMapIdx < m_textureMipsNum && layerIdx < m_textureLayersNum);
-
-		if (IsFullResource())
-		{
-			return GetForFullResource();
-		}
-
-		return m_subresourcesAccesses[GetSubresourceIdx(layerIdx, mipMapIdx)];
-	}
-
-	template<typename TCallable>
-	void ForEachSubresource(const rhi::TextureSubresourceRange& range, TCallable&& callable)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		const Uint32 lastLayerIdx = range.baseArrayLayer + range.arrayLayersNum;
-		const Uint32 lastMipIdx = range.baseMipLevel + range.mipLevelsNum;
-
-		for (Uint32 layerIdx = range.baseArrayLayer; layerIdx < lastLayerIdx; ++layerIdx)
-		{
-			for (Uint32 mipIdx = range.baseMipLevel; mipIdx < lastMipIdx; ++mipIdx)
-			{
-				callable(RGTextureSubresource(layerIdx, mipIdx));
-			}
-		}
-	}
-
-	template<typename TCallable>
-	void ForEachSubresource(TCallable&& callable)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		for (Uint32 layerIdx = 0; layerIdx < m_textureLayersNum; ++layerIdx)
-		{
-			for (Uint32 mipIdx = 0; mipIdx < m_textureMipsNum; ++mipIdx)
-			{
-				callable(RGTextureSubresource(layerIdx, mipIdx));
-			}
-		}
-	}
-
-	void SetSubresourcesAccess(const RGTextureSubresourceAccessState& access, const rhi::TextureSubresourceRange& range)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		if (RangeContainsFullResource(range))
-		{
-			MergeTo(access);
-			return;
-		}
-
-		if (IsFullResource())
-		{
-			BreakIntoSubresources();
-		}
-
-		ForEachSubresource(range,
-						   [this, &access](RGTextureSubresource subresource)
-						   {
-							   GetForSubresource(subresource) = access;
-						   });
-	}
-
-	Bool RangeContainsFullResource(const rhi::TextureSubresourceRange& range)
-	{
-		return range.baseMipLevel == 0
-			&& range.baseArrayLayer == 0
-			&& (range.mipLevelsNum == m_textureLayersNum || range.mipLevelsNum == rhi::constants::allRemainingMips)
-			&& (range.arrayLayersNum == m_textureMipsNum || range.arrayLayersNum == rhi::constants::allRemainingArrayLayers);
-	}
-
-	void MergeTo(const RGTextureSubresourceAccessState& access)
-	{
-		m_subresourcesAccesses.resize(1);
-		m_subresourcesAccesses[0] = access;
-	}
-
-	void BreakIntoSubresources()
-	{
-		if (IsFullResource())
-		{
-			const RGTextureSubresourceAccessState state = m_subresourcesAccesses[0];
-			m_subresourcesAccesses.resize(m_textureLayersNum * m_textureMipsNum);
-			std::fill(std::begin(m_subresourcesAccesses), std::end(m_subresourcesAccesses), state);
-		}
-	}
-
-private:
-
-	inline SizeType GetSubresourceIdx(Uint32 layerIdx, Uint32 mipMapIdx) const
-	{
-		return static_cast<SizeType>(layerIdx * m_textureMipsNum + mipMapIdx);
-	}
-
-	Uint32 m_textureMipsNum;
-	Uint32 m_textureLayersNum;
-
-	// For now we don't support different access masks
-	lib::DynamicArray<RGTextureSubresourceAccessState> m_subresourcesAccesses;
-};
-
-
 class RGTexture : public RGResource
 {
 public:
@@ -296,6 +104,7 @@ public:
 		: RGResource(resourceDefinition)
 		, m_textureDefinition(textureDefinition)
 		, m_allocationInfo(allocationInfo)
+		, m_isAcquired(false)
 		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
 		, m_extractionDest(nullptr)
 		, m_releaseTransitionTarget(nullptr)
@@ -305,6 +114,7 @@ public:
 		: RGResource(resourceDefinition)
 		, m_textureDefinition(texture->GetRHI().GetDefinition())
 		, m_allocationInfo(texture->GetRHI().GetAllocationInfo())
+		, m_isAcquired(true)
 		, m_texture(texture)
 		, m_accessState(texture->GetRHI().GetDefinition().mipLevels, texture->GetRHI().GetDefinition().arrayLayers)
 		, m_extractionDest(nullptr)
@@ -339,12 +149,12 @@ public:
 
 	Bool IsAcquired() const
 	{
-		return !!m_texture;
+		return m_isAcquired;
 	}
 	
-	const lib::SharedPtr<rdr::Texture>& GetResource() const
+	const lib::SharedPtr<rdr::Texture>& GetResource(Bool onlyIfAcquired = true) const
 	{
-		SPT_CHECK(IsAcquired());
+		SPT_CHECK(!onlyIfAcquired || IsAcquired());
 		return m_texture;
 	}
 
@@ -352,13 +162,13 @@ public:
 	{
 		SPT_CHECK(!IsAcquired());
 		m_texture = std::move(texture);
+		m_isAcquired = true;
 	}
 
 	lib::SharedPtr<rdr::Texture> ReleaseResource()
 	{
-		lib::SharedPtr<rdr::Texture> texture = std::move(m_texture);
-		SPT_CHECK(!m_texture);
-		return texture;
+		m_isAcquired = false;
+		return m_texture;
 	}
 
 	// Extraction ==========================================================
@@ -404,6 +214,8 @@ private:
 
 	rhi::TextureDefinition m_textureDefinition;
 	rhi::RHIAllocationInfo m_allocationInfo;
+
+	Bool m_isAcquired;
 
 	lib::SharedPtr<rdr::Texture> m_texture;
 
@@ -459,6 +271,26 @@ public:
 		return m_textureView;
 	}
 
+	// Texture Resource ====================================================
+
+	Bool IsAcquired() const
+	{
+		return m_textureView && m_texture->IsAcquired();
+	}
+	
+	const lib::SharedPtr<rdr::TextureView>& GetResource(Bool onlyIfAcquired = true) const
+	{
+		SPT_CHECK(!onlyIfAcquired || IsAcquired());
+		return m_textureView;
+	}
+
+	void AcquireResource()
+	{
+		// texture views are not reused so they don't need to be released after acquire
+		SPT_CHECK(!IsAcquired());
+		m_textureView = CreateView();
+	}
+
 private:
 
 	lib::SharedPtr<rdr::TextureView> CreateView() const
@@ -493,11 +325,13 @@ public:
 		: RGResource(resourceDefinition)
 		, m_bufferDef(definition)
 		, m_allocationInfo(allocationInfo)
+		, m_isAcquired(false)
 		, m_extractionDest(nullptr)
 	{ }
 
 	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Buffer> bufferInstance)
 		: RGResource(resourceDefinition)
+		, m_isAcquired(true)
 		, m_bufferInstance(std::move(bufferInstance))
 		, m_extractionDest(nullptr)
 	{
@@ -545,17 +379,18 @@ public:
 	{
 		SPT_CHECK(!m_bufferInstance);
 		m_bufferInstance = std::move(buffer);
+		m_isAcquired = true;
 	}
 
 	lib::SharedPtr<rdr::Buffer> ReleaseResource()
 	{
-		lib::SharedPtr<rdr::Buffer> resource = std::move(m_bufferInstance);
-		SPT_CHECK(m_bufferInstance);
-		return resource;
+		m_isAcquired = false;
+		return m_bufferInstance;
 	}
 
-	const lib::SharedPtr<rdr::Buffer>& GetResource() const
+	const lib::SharedPtr<rdr::Buffer>& GetResource(Bool onlyIfAcquired = true) const
 	{
+		SPT_CHECK(!onlyIfAcquired || IsAcquired());
 		return m_bufferInstance;
 	}
 
@@ -593,6 +428,8 @@ private:
 
 	rhi::BufferDefinition	m_bufferDef;
 	rhi::RHIAllocationInfo	m_allocationInfo;
+
+	Bool m_isAcquired;
 
 	RGNodeHandle			m_lastAccessNode;
 
@@ -662,8 +499,9 @@ public:
 		return m_buffer->AllowsHostWrites();
 	}
 
-	const rdr::BufferView& GetBufferViewInstance() const
+	const rdr::BufferView& GetBufferViewInstance(Bool onlyIfAcquired = true) const
 	{
+		SPT_CHECK(!onlyIfAcquired || m_buffer->IsAcquired());
 		if (!m_hasValidInstance)
 		{
 			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource();

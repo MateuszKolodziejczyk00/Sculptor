@@ -98,11 +98,11 @@ rdr::RTDefinition RGRenderPassDefinition::CreateRTDefinition(const RGRenderTarge
 
 	rdr::RTDefinition def;
 
-	def.textureView = rgDef.textureView->GetViewInstance();
+	def.textureView = rgDef.textureView->GetResource();
 
 	if (rgDef.resolveTextureView.IsValid())
 	{
-		def.resolveTextureView = rgDef.resolveTextureView->GetViewInstance();
+		def.resolveTextureView = rgDef.resolveTextureView->GetResource();
 	}
 
 	def.loadOperation	= rgDef.loadOperation;

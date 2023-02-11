@@ -4,6 +4,7 @@
 #include "RenderGraphResourcesPool.h"
 #include "GPUDiagnose/Diagnose.h"
 #include "ResourcesManager.h"
+#include "RGResources.h"
 
 namespace spt::rg
 {
@@ -38,8 +39,8 @@ void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(texture.IsValid());
-
 	SPT_CHECK(!texture->GetAcquireNode().IsValid());
+
 	texture->SetAcquireNode(this);
 	m_texturesToAcquire.emplace_back(texture);
 }
@@ -49,10 +50,21 @@ void RGNode::AddTextureToRelease(RGTextureHandle texture)
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(texture.IsValid());
-
 	SPT_CHECK(!texture->GetReleaseNode().IsValid());
+
 	texture->SetReleaseNode(this);
 	m_texturesToRelease.emplace_back(texture);
+}
+
+void RGNode::AddTextureViewToAcquire(RGTextureViewHandle textureView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(textureView.IsValid());
+	SPT_CHECK(!textureView->GetAcquireNode().IsValid());
+
+	textureView->SetAcquireNode(this);
+	m_textureViewsToAcquire.emplace_back(textureView);
 }
 
 void RGNode::AddBufferToAcquire(RGBufferHandle buffer)
@@ -60,8 +72,8 @@ void RGNode::AddBufferToAcquire(RGBufferHandle buffer)
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(buffer.IsValid());
-
 	SPT_CHECK(!buffer->GetAcquireNode().IsValid());
+
 	buffer->SetAcquireNode(this);
 	m_buffersToAcquire.emplace_back(buffer);
 }
@@ -71,8 +83,8 @@ void RGNode::AddBufferToRelease(RGBufferHandle buffer)
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(buffer.IsValid());
-
 	SPT_CHECK(!buffer->GetReleaseNode().IsValid());
+
 	buffer->SetReleaseNode(this);
 	m_buffersToRelease.emplace_back(buffer);
 }
@@ -126,7 +138,7 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 
 	SPT_CHECK(!m_executed);
 
-	CreateResources();
+	AcquireResources();
 
 	PreExecuteBarrier(recorder);
 
@@ -139,12 +151,13 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	m_executed = true;
 }
 
-void RGNode::CreateResources()
+void RGNode::AcquireResources()
 {
 	SPT_PROFILER_FUNCTION();
 	
-	CreateTextures();
-	CreateBuffers();
+	AcquireTextures();
+	AcquireTextureViews();
+	AcquireBuffers();
 }
 
 void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
@@ -194,7 +207,7 @@ void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
 	recorder.UnbindDescriptorSetStates(m_dsStates);
 }
 
-void RGNode::CreateTextures()
+void RGNode::AcquireTextures()
 {
 	RenderGraphResourcesPool& resourcesPool = RenderGraphResourcesPool::Get();
 
@@ -217,7 +230,15 @@ void RGNode::ReleaseTextures()
 	}
 }
 
-void RGNode::CreateBuffers()
+void RGNode::AcquireTextureViews()
+{
+	for (RGTextureViewHandle textureViewToAcquire : m_textureViewsToAcquire)
+	{
+		textureViewToAcquire->AcquireResource();
+	}
+}
+
+void RGNode::AcquireBuffers()
 {
 	for (RGBufferHandle buffer : m_buffersToAcquire)
 	{

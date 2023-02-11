@@ -23,4 +23,4 @@ void CommandBuffer::FinishRecording()
 	GetRHI().StopRecording();
 }
 
-}
+} // spt::rdr

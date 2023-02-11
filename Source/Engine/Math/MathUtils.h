@@ -125,6 +125,11 @@ public:
 
 		return result;;
 	}
+
+	static Uint32 ComputeMipLevelsNunForResolution(math::Vector2u resolution)
+	{
+		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
+	}
 };
 
 } // spt::math

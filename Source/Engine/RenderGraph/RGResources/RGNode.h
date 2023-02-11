@@ -3,9 +3,10 @@
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGTrackedObject.h"
-#include "RGResources/RGResources.h"
+#include "RGResourceHandles.h"
 #include "RGRenderPassDefinition.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "RenderGraphTypes.h"
 
 
 namespace spt::rhi
@@ -40,6 +41,9 @@ public:
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
 
+	// texture views are not reused so they don't need to be released after acquire
+	void AddTextureViewToAcquire(RGTextureViewHandle textureView);
+
 	void AddBufferToAcquire(RGBufferHandle buffer);
 	void AddBufferToRelease(RGBufferHandle buffer);
 
@@ -60,7 +64,7 @@ private:
 
 	// Node Execution ===================================================
 
-	void CreateResources();
+	void AcquireResources();
 	void PreExecuteBarrier(rdr::CommandRecorder& recorder);
 	void ReleaseResources();
 
@@ -69,10 +73,12 @@ private:
 
 	// Execution Helpers ================================================
 
-	void CreateTextures();
+	void AcquireTextures();
 	void ReleaseTextures();
+
+	void AcquireTextureViews();
 	
-	void CreateBuffers();
+	void AcquireBuffers();
 	void ReleaseBuffers();
 
 	struct TextureTransitionDef
@@ -127,6 +133,8 @@ private:
 
 	lib::DynamicArray<RGBufferHandle> m_buffersToAcquire;
 	lib::DynamicArray<RGBufferHandle> m_buffersToRelease;
+	
+	lib::DynamicArray<RGTextureViewHandle> m_textureViewsToAcquire;
 
 	lib::DynamicArray<TextureTransitionDef>	m_preExecuteTextureTransitions;
 	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;

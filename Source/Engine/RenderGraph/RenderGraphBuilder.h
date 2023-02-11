@@ -163,6 +163,7 @@ private:
 
 	void ResolveResourceReleases();
 	void ResolveTextureReleases();
+	void ResolveTextureViewReleases();
 	void ResolveBufferReleases();
 
 	lib::DynamicArray<RGTextureHandle> m_textures;

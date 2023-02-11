@@ -312,7 +312,7 @@ static lib::SharedRef<rdr::Texture> CreateImage(const tinygltf::Image& image)
 
 	const rhi::RHIAllocationInfo allocationInfo(rhi::EMemoryUsage::GPUOnly);
 
-	const Uint8 mipLevels = 1 + static_cast<Uint8>(std::floor(std::log2(std::max(image.width, image.height))));
+	const Uint32 mipLevels = math::Utils::ComputeMipLevelsNunForResolution(math::Vector2u(image.width, image.height));
 
 	rhi::TextureDefinition textureDef;
 	textureDef.resolution		= math::Vector3u(static_cast<Uint32>(image.width), static_cast<Uint32>(image.height), 1);
