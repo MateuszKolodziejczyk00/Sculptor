@@ -121,7 +121,7 @@ void RendererParamsRegistry::DrawParametersUI()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererFloatParameter ========================================================================
 
-RendererFloatParameter::RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, std::optional<Real32> inMin /*= std::nullopt*/, std::optional<Real32> inMax /*= std::nullopt*/)
+RendererFloatParameter::RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, Real32 inMin, Real32 inMax)
 	: Super(name, category, defaultValue)
 	, min(inMin)
 	, max(inMax)
@@ -129,7 +129,7 @@ RendererFloatParameter::RendererFloatParameter(const lib::HashedString& name, co
 
 void RendererFloatParameter::DrawUI(const lib::HashedString& name, Real32& value)
 {
-	ImGui::SliderFloat(name.GetData(), &value, min.value_or(minValue<Real32>), max.value_or(maxValue<Real32>));
+	ImGui::SliderFloat(name.GetData(), &value, min, max);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

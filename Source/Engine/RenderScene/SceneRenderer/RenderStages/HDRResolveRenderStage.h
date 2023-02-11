@@ -6,7 +6,7 @@
 namespace spt::rsc
 {
 
-class HDRResolveRenderStage : public RenderStage<HDRResolveRenderStage, ERenderStage::ForwardOpaque>
+class HDRResolveRenderStage : public RenderStage<HDRResolveRenderStage, ERenderStage::HDRResolve>
 {
 public:
 

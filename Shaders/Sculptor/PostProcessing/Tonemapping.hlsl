@@ -57,6 +57,31 @@ float3 ACESFitted(float3 color)
     return color;
 }
 
+// Source https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf page 85
+
+float ComputeEV100FromAvgLuminance(float avgLuminance)
+{
+    // We later use the middle gray at 12.7% in order to have
+    // a middle gray at 18% with a sqrt (2) room for specular highlights
+    // But here we deal with the spot meter measuring the middle gray
+    // which is fixed at 12.5 for matching standard camera
+    // constructor settings (i.e. calibration constant K = 12.5)
+    // Reference : http://en.wikipedia.org/wiki/Film_speed
+    return log2(avgLuminance * 100.f / 12.5f);
+}
+
+float ConvertEV100ToExposure(float EV100)
+{
+    // Compute the maximum luminance possible with H_sbs sensitivity
+    // maxLum = 78 / ( S * q ) * N^2 / t
+    // = 78 / ( S * q ) * 2^ EV_100
+    // = 78 / (100 * 0.65) * 2^ EV_100
+    // = 1.2 * 2^ EV
+    // Reference : http://en.wikipedia.org/wiki/Film_speed
+    const float maxLuminance = 1.2f * exp2(EV100);
+    return 1.f / maxLuminance;
+}
+
 
 struct CS_INPUT
 {
@@ -71,8 +96,12 @@ void TonemappingCS(CS_INPUT input)
 
     if(pixel.x < u_tonemappingSettings.textureSize.x && pixel.y < u_tonemappingSettings.textureSize.y)
     {
+        const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
+        const float exposure = ConvertEV100ToExposure(EV100);
+  
         const float2 uv = pixel * u_tonemappingSettings.invTextureSize;
         float3 color = u_radianceTexture.SampleLevel(u_sampler, uv, 0).xyz;
+        color *= exposure;
 
         color = LinearTosRGB(ACESFitted(color));
 

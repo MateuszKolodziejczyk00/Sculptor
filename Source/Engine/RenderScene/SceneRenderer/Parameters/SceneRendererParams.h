@@ -74,14 +74,14 @@ protected:
 
 public:
 
-	RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, std::optional<Real32> inMin = std::nullopt, std::optional<Real32> inMax = std::nullopt);
+	RendererFloatParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Real32 defaultValue, Real32 inMin, Real32 inMax);
 
 	void DrawUI(const lib::HashedString& name, Real32& value);
 
 private:
 
-	std::optional<Real32> min;
-	std::optional<Real32> max;
+	Real32 min;
+	Real32 max;
 };
 
 

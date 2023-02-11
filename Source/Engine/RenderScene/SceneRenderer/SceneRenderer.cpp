@@ -14,7 +14,12 @@ namespace spt::rsc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Parameters ====================================================================================
 
+namespace params
+{
+
 RendererBoolParameter showMeshlets("Show Meshlets", { "Geometry" }, false);
+
+} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utils =========================================================================================
@@ -54,7 +59,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	// Update parameters
 	m_debugDS->u_rendererDebugSettings.Set([](SceneRendererDebugSettings& settings)
 										   {
-											   settings.showDebugMeshlets = showMeshlets;
+											   settings.showDebugMeshlets = params::showMeshlets;
 										   });
 
 	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(m_debugDS, scene.GetRenderSceneDS()));

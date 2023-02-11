@@ -19,7 +19,12 @@ namespace spt::rsc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Parameters ====================================================================================
 
+namespace params
+{
+
 RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.1f, 0.f, 1.f);
+
+} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Lights Rendering Common =======================================================================
@@ -193,7 +198,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsData.zClustersNum				= zClustersNum;
 		lightsData.tilesNum					= tilesNum;
 		lightsData.tileSize					= tileSize;
-		lightsData.ambientLightIntensity	= ambientLightIntensity;
+		lightsData.ambientLightIntensity	= params::ambientLightIntensity;
 
 		const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(PointLightGPUData), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLights"), lightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);

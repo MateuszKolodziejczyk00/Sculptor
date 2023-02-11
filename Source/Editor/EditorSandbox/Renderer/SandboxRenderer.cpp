@@ -227,7 +227,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color		= math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
-			pointLightData.intensity	= lib::rnd::Random<Real32>(0.1f, 10.f);
+			pointLightData.intensity	= lib::rnd::Random<Real32>(0.1f, 10.f) * 35.f;
 			pointLightData.location		= math::Vector3f::Random() * 10.f;
 			pointLightData.radius		= lib::rnd::Random<Real32>(1.0f, 2.f);
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
