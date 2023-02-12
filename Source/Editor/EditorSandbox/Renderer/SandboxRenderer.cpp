@@ -221,25 +221,17 @@ void SandboxRenderer::InitializeRenderScene()
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
 		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
 
-		const Uint32 lightsNum = 1024;
+		const Uint32 lightsNum = 2048;
 		for (Uint32 idx = 0; idx < lightsNum; ++idx)
 		{
+			const Real32 random = lib::rnd::Random<Real32>();
+
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color		= math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
-			pointLightData.intensity	= lib::rnd::Random<Real32>(5.f, 25.f);
+			pointLightData.intensity	= std::clamp(1.f - random, 18.f, 220.f);
 			pointLightData.location		= math::Vector3f::Random() * 10.f;
-			pointLightData.radius		= lib::rnd::Random<Real32>(1.0f, 2.f);
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
-		
-		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color		= math::Vector3f(0.1f, 0.9f, 0.9f);
-			pointLightData.intensity	= 35.f;
-			pointLightData.location		= math::Vector3f(0.f, 0.f, 1.f);
-			pointLightData.radius		= 5.f;
+			pointLightData.radius		= std::clamp(random, 0.7f, 3.f);
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
@@ -251,7 +243,6 @@ void SandboxRenderer::InitializeRenderScene()
 			directionalLightData.direction	= math::Vector3f(0.f, 1.f, -2.f).normalized();
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
-
 	}
 
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
