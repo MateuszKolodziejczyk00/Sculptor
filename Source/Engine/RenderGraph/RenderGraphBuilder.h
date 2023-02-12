@@ -220,7 +220,7 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
-		recorder.DispatchIndirect(indirectArgsBuffer->GetBufferViewInstance(), indirectArgsOffset);
+		recorder.DispatchIndirect(indirectArgsBuffer->GetResource(), indirectArgsOffset);
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;

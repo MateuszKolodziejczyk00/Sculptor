@@ -499,12 +499,12 @@ public:
 		return m_buffer->AllowsHostWrites();
 	}
 
-	const rdr::BufferView& GetBufferViewInstance(Bool onlyIfAcquired = true) const
+	const rdr::BufferView& GetResource(Bool onlyIfAcquired = true) const
 	{
 		SPT_CHECK(!onlyIfAcquired || m_buffer->IsAcquired());
 		if (!m_hasValidInstance)
 		{
-			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource();
+			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource(onlyIfAcquired);
 			SPT_CHECK(!!owningBufferInstance);
 
 			m_bufferViewInstance.Construct(lib::Ref(owningBufferInstance), m_offset, m_size);

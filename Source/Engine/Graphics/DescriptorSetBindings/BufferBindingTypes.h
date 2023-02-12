@@ -35,7 +35,7 @@ public:
 							  },
 							  [](const rg::RGBufferViewHandle buffer) -> const rdr::BufferView&
 							  {
-								  return buffer->GetBufferViewInstance(false);
+								  return buffer->GetResource(false);
 							  }
 						  },
 						  m_buffer);

@@ -28,6 +28,10 @@ RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 1.f, 
 RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
 
+RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
+RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 4.f, 0.f, 20.f);
+RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 1.f, 0.f, 20.f);
+
 } // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +42,7 @@ namespace exposure
 
 BEGIN_SHADER_STRUCT(ExposureSettings)
 	SHADER_STRUCT_FIELD(math::Vector2u, textureSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, invTextureSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 	SHADER_STRUCT_FIELD(Real32, deltaTime)
 	SHADER_STRUCT_FIELD(Real32, minLogLuminance)
 	SHADER_STRUCT_FIELD(Real32, maxLogLuminance)
@@ -148,6 +152,195 @@ rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuil
 } // exposure
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// Bloom =========================================================================================
+
+namespace bloom
+{
+
+BEGIN_SHADER_STRUCT(BloomPassInfo)
+	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
+	SHADER_STRUCT_FIELD(Real32, bloomEC)
+	SHADER_STRUCT_FIELD(Real32, thresholdValue)
+	SHADER_STRUCT_FIELD(Bool, prefilterInput)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(BloomPassDS, rg::RGDescriptorSetState<BloomPassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomPassInfo>),					u_bloomInfo)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inputSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<Real32>),							u_adaptedLuminance)
+DS_END();
+
+
+static rdr::PipelineStateID CompileBloomDownsamplePipeline()
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomDownsampleCS"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomDownsamplePipeline"), shader);
+}
+
+
+static rdr::PipelineStateID CompileBloomUpsamplePipeline()
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomUpsampleCS"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomUpsamplePipeline"), shader);
+}
+
+static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, const lib::DynamicArray<rg::RGTextureViewHandle>& bloomTextureMips, rg::RGTextureViewHandle inputTexture)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+
+	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
+
+	static const rdr::PipelineStateID downsamplePipeline = CompileBloomDownsamplePipeline();
+
+	rg::RGTextureViewHandle inputTextureView = inputTexture;
+
+	for (Int32 passIdx = 0; passIdx < bloomPassesNum; ++passIdx)
+	{
+		const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> passIdx, renderingRes.y() >> passIdx);
+		const math::Vector2u outputRes = math::Vector2u(renderingRes.x() >> (passIdx + 1), renderingRes.y() >> (passIdx + 1));
+
+		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
+
+		BloomPassInfo passInfo;
+		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
+		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
+		passInfo.bloomEC			= params::bloomEC;
+		passInfo.thresholdValue		= params::bloomThreshold;
+		passInfo.prefilterInput		= passIdx == 0;
+
+		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomDownsampleDS(%d)", passIdx)));
+		bloomPassDS->u_bloomInfo		= passInfo;
+		bloomPassDS->u_inputTexture		= inputTextureView;
+		bloomPassDS->u_outputTexture	= outputTextureView;
+
+		if (passInfo.prefilterInput)
+		{
+			bloomPassDS->u_adaptedLuminance = adaptedLuminance;
+		}
+
+		const math::Vector3u groupCount(math::Utils::DivideCeil(outputRes.x(), 8u), math::Utils::DivideCeil(outputRes.y(), 8u), 1u);
+		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Bloom Downsample [{}, {}] -> [{}, {}]", inputRes.x(), inputRes.y(), outputRes.x(), outputRes.y())),
+							  downsamplePipeline, 
+							  groupCount,
+							  rg::BindDescriptorSets(bloomPassDS));
+
+		inputTextureView = outputTextureView;
+	}
+}
+
+static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const lib::DynamicArray<rg::RGTextureViewHandle>& bloomTextureMips)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+
+	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
+
+	static const rdr::PipelineStateID upsamplePipeline = CompileBloomUpsamplePipeline();
+
+	rg::RGTextureViewHandle inputTextureView = bloomTextureMips.back();
+
+	// Upsample passes
+	for (Int32 passIdx = static_cast<Int32>(bloomPassesNum) - 2; passIdx >= 0; --passIdx)
+	{
+		const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> (passIdx + 2), renderingRes.y() >> (passIdx + 2));
+		const math::Vector2u outputRes = math::Vector2u(renderingRes.x() >> (passIdx + 1), renderingRes.y() >> (passIdx + 1));
+
+		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
+
+		BloomPassInfo passInfo;
+		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
+		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
+		passInfo.prefilterInput		= false;
+
+		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomUpsampleDS(%d)", passIdx)));
+		bloomPassDS->u_bloomInfo		= passInfo;
+		bloomPassDS->u_inputTexture		= inputTextureView;
+		bloomPassDS->u_outputTexture	= outputTextureView;
+
+		const math::Vector3u groupCount(math::Utils::DivideCeil(outputRes.x(), 8u), math::Utils::DivideCeil(outputRes.y(), 8u), 1u);
+		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Bloom Upsample [{}, {}] -> [{}, {}]", inputRes.x(), inputRes.y(), outputRes.x(), outputRes.y())),
+							  upsamplePipeline, 
+							  groupCount,
+							  rg::BindDescriptorSets(bloomPassDS));
+
+		inputTextureView = outputTextureView;
+	}
+}
+
+static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle bloomTextureMip0, rg::RGTextureViewHandle outputTexture)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+
+	static const rdr::PipelineStateID upsamplePipeline = CompileBloomUpsamplePipeline();
+
+	BloomPassInfo passInfo;
+	passInfo.inputPixelSize		= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x() >> 1), 1.f / static_cast<Real32>(renderingRes.y() >> 1));
+	passInfo.outputPixelSize	= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
+	passInfo.prefilterInput		= false;
+
+	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
+	bloomPassDS->u_bloomInfo		= passInfo;
+	bloomPassDS->u_inputTexture		= bloomTextureMip0;
+	bloomPassDS->u_outputTexture	= outputTexture;
+
+	const math::Vector3u groupCount(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
+						  upsamplePipeline, 
+						  groupCount,
+						  rg::BindDescriptorSets(bloomPassDS));
+}
+
+static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, rg::RGTextureViewHandle radianceTexture)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNunForResolution(renderingRes) - 3, 1u);
+
+	rhi::TextureDefinition bloomTextureDef;
+	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
+	bloomTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+	bloomTextureDef.format		= rhi::EFragmentFormat::B10G11B11_U_Float;
+	bloomTextureDef.samples		= 1;
+	bloomTextureDef.mipLevels	= bloomPassesNum;
+	bloomTextureDef.arrayLayers	= 1;
+	const rg::RGTextureHandle bloomTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("Bloom Downsample Texture"), bloomTextureDef, rhi::EMemoryUsage::GPUOnly);
+
+	lib::DynamicArray<rg::RGTextureViewHandle> bloomTextureMips;
+	bloomTextureMips.reserve(static_cast<SizeType>(bloomPassesNum));
+	for (SizeType mipIdx = 0; mipIdx < bloomPassesNum; ++mipIdx)
+	{
+		rhi::TextureViewDefinition viewInfo;
+		viewInfo.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, static_cast<Uint32>(mipIdx), 1);
+
+		bloomTextureMips.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("Bloom Texture Mip {}", mipIdx)), bloomTexture, viewInfo));
+	}
+
+	BloomDownsample(graphBuilder, viewSpec, adaptedLuminance, bloomTextureMips, radianceTexture);
+
+	BloomUpsample(graphBuilder, viewSpec, bloomTextureMips);
+
+	BloomComposite(graphBuilder, viewSpec, bloomTextureMips[0], radianceTexture);
+}
+
+} // bloom
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // Tonemapping ===================================================================================
 
 namespace tonemapping
@@ -155,7 +348,7 @@ namespace tonemapping
 
 BEGIN_SHADER_STRUCT(TonemappingSettings)
 	SHADER_STRUCT_FIELD(math::Vector2u, textureSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, invTextureSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 END_SHADER_STRUCT();
 
 
@@ -211,7 +404,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const math::Vector3u textureRes(renderingRes.x(), renderingRes.y(), 1);
-	const math::Vector2f invTextureRes = math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
+	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
 	
 	rhi::TextureDefinition tonemappedTextureDef;
 	tonemappedTextureDef.resolution = textureRes;
@@ -221,7 +414,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 
 	exposure::ExposureSettings exposureSettings;
 	exposureSettings.textureSize				= renderingRes;
-	exposureSettings.invTextureSize				= invTextureRes;
+	exposureSettings.inputPixelSize				= inputPixelSize;
 	exposureSettings.deltaTime					= engn::Engine::Get().GetEngineTimer().GetDeltaTime();
 	exposureSettings.minLogLuminance			= params::minLogLuminance;
 	exposureSettings.maxLogLuminance			= params::maxLogLuminance;
@@ -230,12 +423,16 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	exposureSettings.adaptationSpeed			= params::adaptationSpeed;
 
 	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, shadingData.radiance);
-
 	const rg::RGBufferViewHandle adaptedLuminance = exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram);
+
+	if (params::enableBloom)
+	{
+		bloom::ApplyBloom(graphBuilder, viewSpec, adaptedLuminance, shadingData.radiance);
+	}
 
 	tonemapping::TonemappingSettings tonemappingSettings;
 	tonemappingSettings.textureSize		= renderingRes;
-	tonemappingSettings.invTextureSize	= invTextureRes;
+	tonemappingSettings.inputPixelSize	= inputPixelSize;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, shadingData.radiance, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
 	

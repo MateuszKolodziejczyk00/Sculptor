@@ -45,7 +45,7 @@ void LuminanceHistogramCS(CS_INPUT input)
 
     if(pixel.x < u_exposureSettings.textureSize.x && pixel.y < u_exposureSettings.textureSize.y)
     {
-        const float2 uv = pixel * u_exposureSettings.invTextureSize;
+        const float2 uv = pixel * u_exposureSettings.inputPixelSize + u_exposureSettings.inputPixelSize * 0.5f;
         const float3 radiance = u_radianceTexture.SampleLevel(u_sampler, uv, 0).xyz;
 
         const float3 luminance = Luminance(radiance);

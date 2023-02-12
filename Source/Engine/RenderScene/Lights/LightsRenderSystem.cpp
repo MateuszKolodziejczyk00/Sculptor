@@ -407,8 +407,8 @@ void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& g
 
 									recorder.BindGraphicsPipeline(m_buildLightsTilesPipeline);
 
-									const rdr::BufferView& drawsBufferView = passIndirectParams.lightDrawCommandsBuffer->GetBufferViewInstance();
-									const rdr::BufferView& drawCountBufferView = passIndirectParams.lightDrawCommandsCountBuffer->GetBufferViewInstance();
+									const rdr::BufferView& drawsBufferView = passIndirectParams.lightDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawCountBufferView = passIndirectParams.lightDrawCommandsCountBuffer->GetResource();
 									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(LightIndirectDrawCommand), drawCountBufferView, 0, maxLightDrawsCount);
 								});
 	}

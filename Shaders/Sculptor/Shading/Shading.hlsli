@@ -42,9 +42,9 @@ float GGXVisibility(in float a2, in float dotNL, in float dotNV)
 
 float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in float3 l)
 {
-    float dotNH = saturate(dot(n, h));
-    float dotNL = saturate(dot(n, l));
-    float dotNV = saturate(dot(n, v));
+    float dotNH = clamp(dot(n, h), 0.001f, 1.f);
+    float dotNL = clamp(dot(n, l), 0.001f, 1.f);
+    float dotNV = clamp(dot(n, v), 0.001f, 1.f);
 
     float a2 = Pow2(roughness);
 

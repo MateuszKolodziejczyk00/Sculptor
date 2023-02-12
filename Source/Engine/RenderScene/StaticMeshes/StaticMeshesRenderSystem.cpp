@@ -539,8 +539,8 @@ void StaticMeshesRenderSystem::RenderDepthPrepassPerView(rg::RenderGraphBuilder&
 								{
 									recorder.BindGraphicsPipeline(m_depthPrepassRenderingPipeline);
 
-									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
-									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetBufferViewInstance();
+									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
 									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthPrepassDrawCallData), drawCountBufferView, 0, maxDrawCallsNum);
 								});
 	}
@@ -674,7 +674,7 @@ void StaticMeshesRenderSystem::RenderForwardOpaquePerView(rg::RenderGraphBuilder
 								{
 									recorder.BindGraphicsPipeline(m_forwadOpaqueShadingPipeline);
 
-									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetBufferViewInstance();
+									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
 									recorder.DrawIndirect(drawsBufferView, 0, sizeof(SMIndirectDrawCallData), 1);
 								});
 	}
