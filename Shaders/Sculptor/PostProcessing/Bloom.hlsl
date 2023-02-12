@@ -70,7 +70,7 @@ void BloomDownsampleCS(CS_INPUT input)
     uint2 outputRes;
     u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
 
-    if(pixel.x < outputRes.x && pixel.y < outputRes.y)
+    if (pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
         const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
         const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
@@ -79,14 +79,19 @@ void BloomDownsampleCS(CS_INPUT input)
         
         float3 input = DownsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
         
-        if(u_bloomInfo.prefilterInput)
+        if (u_bloomInfo.prefilterInput)
         {
             const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
+            const float maxLuminance = ConvertEV100ToMaxLuminance(EV100 + u_bloomInfo.bloomEC);
 
-            const float bloomEV = EV100 + u_bloomInfo.bloomEC;
+            const float bloomLuminanceThreshold = maxLuminance;
 
-            input = max(input - u_bloomInfo.thresholdValue, 0.f);
-            input = input * exp2(bloomEV - 3.f);
+            float inputLuminance = Luminance(input);
+            if(inputLuminance > 0.001f)
+            {
+                const float bloomLum = max(inputLuminance - bloomLuminanceThreshold, 0.f);
+                input = (bloomLum / inputLuminance) * input;
+            }
         }
        
         u_outputTexture[pixel] = float4(input, 1.f);
@@ -109,10 +114,17 @@ void BloomUpsampleCS(CS_INPUT input)
 
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
-        const float3 input = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
+        float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
+            
+        if(u_bloomInfo.upsampleIsComposite)
+        {
+            const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
+            const float bloomEV = EV100 + u_bloomInfo.bloomEC;
+            bloom = bloom * exp2(bloomEV - 3.f);
+        }
 
         const float3 existing = u_outputTexture[pixel].xyz;
 
-        u_outputTexture[pixel] = float4(existing + input, 1.f);
+        u_outputTexture[pixel] = float4(existing + bloom, 1.f);
     }
 }

@@ -17,8 +17,14 @@ RGTextureSubresourceAccessState::RGTextureSubresourceAccessState(ERGTextureAcces
 
 Bool RGTextureSubresourceAccessState::CanMergeWith(const RGTextureSubresourceAccessState& other) const
 {
-	return lastAccessType == other.lastAccessType
-		&& lastAccessNode->GetType() == other.lastAccessNode->GetType();
+	if (lastAccessType != other.lastAccessType)
+	{
+		return false;
+	}
+	
+	return lastAccessNode.IsValid()
+		? other.lastAccessNode.IsValid() && lastAccessNode->GetType() == other.lastAccessNode->GetType()
+		: !other.lastAccessNode.IsValid();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

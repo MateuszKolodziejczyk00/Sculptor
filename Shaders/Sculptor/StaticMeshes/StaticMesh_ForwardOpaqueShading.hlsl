@@ -109,7 +109,11 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
             const float4 vertexTangent = u_geometryData.Load<float4>(submesh.tangentsOffset + vertexIdx * 16);
             output.tangent = normalize(mul(instanceTransform, float4(vertexTangent.xyz, 0.f)).xyz);
             output.bitangent = normalize(cross(output.normal, output.tangent)) * vertexTangent.w;
-            output.hasTangent = true;
+
+            if (!any(isnan(output.bitangent)))
+            {
+                output.hasTangent = true;
+            }
         }
     }
     

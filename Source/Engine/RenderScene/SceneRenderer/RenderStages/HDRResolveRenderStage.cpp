@@ -24,13 +24,12 @@ namespace spt::rsc
 namespace params
 {
 
-RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 1.f, 0.f, 20.f);
+RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.4f, 0.f, 1.f);
 RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
-RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 4.f, 0.f, 20.f);
-RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 1.f, 0.f, 20.f);
+RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 4.f, -20.f, 20.f);
 
 } // params
 
@@ -110,6 +109,7 @@ struct ViewLuminanceData
 	lib::SharedPtr<rdr::Buffer> adaptedLuminance;
 };
 
+
 static rdr::PipelineStateID CompileAdaptedLuminancePipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
@@ -160,9 +160,9 @@ namespace bloom
 BEGIN_SHADER_STRUCT(BloomPassInfo)
 	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
-	SHADER_STRUCT_FIELD(Real32, bloomEC)
-	SHADER_STRUCT_FIELD(Real32, thresholdValue)
 	SHADER_STRUCT_FIELD(Bool, prefilterInput)
+	SHADER_STRUCT_FIELD(Bool, upsampleIsComposite)
+	SHADER_STRUCT_FIELD(Real32, bloomEC)
 END_SHADER_STRUCT();
 
 
@@ -216,15 +216,12 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 		BloomPassInfo passInfo;
 		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
 		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
-		passInfo.bloomEC			= params::bloomEC;
-		passInfo.thresholdValue		= params::bloomThreshold;
 		passInfo.prefilterInput		= passIdx == 0;
 
 		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomDownsampleDS(%d)", passIdx)));
 		bloomPassDS->u_bloomInfo		= passInfo;
 		bloomPassDS->u_inputTexture		= inputTextureView;
 		bloomPassDS->u_outputTexture	= outputTextureView;
-
 		if (passInfo.prefilterInput)
 		{
 			bloomPassDS->u_adaptedLuminance = adaptedLuminance;
@@ -280,7 +277,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 	}
 }
 
-static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle bloomTextureMip0, rg::RGTextureViewHandle outputTexture)
+static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, rg::RGTextureViewHandle bloomTextureMip0, rg::RGTextureViewHandle outputTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -289,14 +286,16 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	static const rdr::PipelineStateID upsamplePipeline = CompileBloomUpsamplePipeline();
 
 	BloomPassInfo passInfo;
-	passInfo.inputPixelSize		= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x() >> 1), 1.f / static_cast<Real32>(renderingRes.y() >> 1));
-	passInfo.outputPixelSize	= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
-	passInfo.prefilterInput		= false;
+	passInfo.inputPixelSize			= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x() >> 1), 1.f / static_cast<Real32>(renderingRes.y() >> 1));
+	passInfo.outputPixelSize		= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
+	passInfo.bloomEC				= params::bloomEC;
+	passInfo.upsampleIsComposite	= true;
 
 	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
 	bloomPassDS->u_bloomInfo		= passInfo;
 	bloomPassDS->u_inputTexture		= bloomTextureMip0;
 	bloomPassDS->u_outputTexture	= outputTexture;
+	bloomPassDS->u_adaptedLuminance = adaptedLuminance;
 
 	const math::Vector3u groupCount(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
@@ -308,6 +307,8 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, rg::RGTextureViewHandle radianceTexture)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(adaptedLuminance.IsValid())
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNunForResolution(renderingRes) - 3, 1u);
@@ -335,7 +336,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 
 	BloomUpsample(graphBuilder, viewSpec, bloomTextureMips);
 
-	BloomComposite(graphBuilder, viewSpec, bloomTextureMips[0], radianceTexture);
+	BloomComposite(graphBuilder, viewSpec, adaptedLuminance, bloomTextureMips[0], radianceTexture);
 }
 
 } // bloom

@@ -64,7 +64,7 @@ public:
 		else
 		{
 			constexpr Uint32 thisMemberSize = GetSize();
-			return math::Utils::RoundUpToPowerOf2(thisMemberSize);
+			return thisMemberSize <= 4u ? 4u : math::Utils::RoundUpToPowerOf2(thisMemberSize);
 		}
 	}
 
