@@ -13,84 +13,14 @@ namespace spt::rdr
 namespace priv
 {
 
-static rhi::EBorderColor GetBorderColor(smd::EBindingFlags bindingFlags)
-{
-	const Bool intBorder			= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::IntBorder);
-	const Bool whiteBorder			= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::WhiteBorder);
-	const Bool transparentBorder	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::TransparentBorder);
-
-	if (intBorder)
-	{
-		if (whiteBorder)
-		{
-			SPT_CHECK(!transparentBorder);
-			return rhi::EBorderColor::IntOpaqueWhite;
-		}
-		else
-		{
-			return transparentBorder ? rhi::EBorderColor::IntTransparentBlack : rhi::EBorderColor::IntOpaqueBlack;
-		}
-	}
-	else
-	{
-		if (whiteBorder)
-		{
-			SPT_CHECK(!transparentBorder);
-			return rhi::EBorderColor::FloatOpaqueWhite;
-		}
-		else
-		{
-			return transparentBorder ? rhi::EBorderColor::FloatTransparentBlack : rhi::EBorderColor::FloatOpaqueBlack;
-		}
-	}
-}
-
-static rhi::EAxisAddressingMode GetAxisAddressingMode(smd::EBindingFlags bindingFlags)
-{
-	if (lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::ClampAddressing))
-	{
-		if (lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::ClampToBorder))
-		{
-			return rhi::EAxisAddressingMode::ClampToBorder;
-		}
-		else
-		{
-			return rhi::EAxisAddressingMode::ClampToEdge;
-		}
-	}
-	else
-	{
-		if (lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::MirroredAddressing))
-		{
-			return rhi::EAxisAddressingMode::MirroredRepeat;
-		}
-		else
-		{
-			return rhi::EAxisAddressingMode::Repeat;
-		}
-	}
-}
-
-static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::CommonBindingData& bindingMetaData)
+static lib::SharedRef<Sampler> GetImmutableSamplerForBinding(const smd::SamplerBindingData& bindingMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const smd::EBindingFlags bindingFlags = bindingMetaData.flags;
-
 	SPT_CHECK(lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::ImmutableSampler));
 
-	rhi::SamplerDefinition samplerDef;
-	samplerDef.minificationFilter	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::FilterLinear) ? rhi::ESamplerFilterType::Linear : rhi::ESamplerFilterType::Nearest;
-	samplerDef.magnificationFilter	= samplerDef.minificationFilter;
-	samplerDef.mipMapAdressingMode	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::MipMapsLinear) ? rhi::EMipMapAddressingMode::Linear : rhi::EMipMapAddressingMode::Nearest;
-	samplerDef.addressingModeU		= GetAxisAddressingMode(bindingFlags);
-	samplerDef.addressingModeV		= samplerDef.addressingModeW = samplerDef.addressingModeU;
-	samplerDef.enableAnisotropy		= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::EnableAnisotropy);
-	samplerDef.maxAnisotropy		= samplerDef.enableAnisotropy ? 16.f : 0.f;
-	samplerDef.unnormalizedCoords	= lib::HasAnyFlag(bindingFlags, smd::EBindingFlags::UnnormalizedCoords);
-	samplerDef.borderColor			= GetBorderColor(bindingFlags);
-	samplerDef.maxLod				= samplerDef.enableAnisotropy ? rhi::SamplerDefinition::infiniteMaxLod : 0.f;
-
+	const rhi::SamplerDefinition& samplerDef = bindingMetaData.GetImmutableSamplerDefinition();
 	return ResourcesManager::CreateSampler(samplerDef);
 }
 
@@ -111,6 +41,10 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 			},
 			[&rhiBindingDef](const smd::SamplerBindingData& samplerBinding)
 			{
+				if (samplerBinding.IsImmutable())
+				{
+				    rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(samplerBinding)->GetRHI();
+				}
 			}
 		},
 		bindingMetaData.GetBindingData());
@@ -120,11 +54,6 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 				   rhiBindingDef.descriptorType = commonBindingData.GetDescriptorType();
  
 				   rhiBindingDef.shaderStages = commonBindingData.GetShaderStages();
-				    
-				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::ImmutableSampler))
-				   {
-				       rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(commonBindingData)->GetRHI();
-				   }
 
 				   if (lib::HasAnyFlag(commonBindingData.flags, smd::EBindingFlags::PartiallyBound))
 				   {

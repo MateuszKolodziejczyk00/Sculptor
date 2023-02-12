@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHI/RHICore/RHIShaderTypes.h"
 #include "RHI/RHICore/RHIDescriptorTypes.h"
+#include "RHI/RHICore/RHISamplerTypes.h"
 
 #include <variant>
 
@@ -34,18 +35,7 @@ enum class EBindingFlags : Flags32
 	
 	PartiallyBound		= BIT(5),
 
-	// Immutable samplers
-	ImmutableSampler	= BIT(11),
-	ClampAddressing		= BIT(12), // if 1 clamp addressing, otherwise repeat
-	MirroredAddressing	= BIT(13), // if 1 and ClampAdressing is 0 mirrored repeat
-	ClampToBorder		= MirroredAddressing, // if 1 and ClampAdressing is 1 clamp to Border
-	MipMapsLinear		= BIT(14), // if 1 linear mip maps, otherwise nearest
-	FilterLinear		= BIT(15), // if 1 linear filter, otherwise nearest
-	EnableAnisotropy	= BIT(16), // if 1 anisotropy x16, otherwise disabled
-	WhiteBorder			= BIT(17), // if 1 white border, otherwise black
-	TransparentBorder	= BIT(18), // if 1 transparent border, otherwise opaque
-	IntBorder			= BIT(19), // if 1 int border, otherwise float
-	UnnormalizedCoords	= BIT(20), // if 1 enable unnormalized coordinates
+	ImmutableSampler	= BIT(6),
 
 	// Shader stages
 	VertexShader		= BIT(21),
@@ -298,7 +288,6 @@ public:
 		: CommonBindingData(inElementsNum, inFlags)
 	{ }
 
-
 	void PostInitialize()
 	{
 		bindingDescriptorType = rhi::EDescriptorType::Sampler;
@@ -308,6 +297,20 @@ public:
 	{
 		return lib::HasAnyFlag(flags, EBindingFlags::ImmutableSampler);
 	}
+
+	void SetImmutableSamplerDefinition(const rhi::SamplerDefinition& samplerDef)
+	{
+		m_immutableSamplerDefinition = samplerDef;
+	}
+	
+	const rhi::SamplerDefinition& GetImmutableSamplerDefinition() const
+	{
+		return m_immutableSamplerDefinition;
+	}
+
+private:
+
+	rhi::SamplerDefinition m_immutableSamplerDefinition;
 };
 
 

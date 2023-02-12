@@ -97,6 +97,14 @@ public:
 		}
 	}
 
+	const rhi::SamplerDefinition& GetImmutableSamplerDefinition(Uint32 descriptorSetIdx, Uint32 bindingIdx) const
+	{
+		const SizeType properDSIdx = static_cast<SizeType>(descriptorSetIdx);
+
+		SPT_CHECK(properDSIdx < m_dsMetaData.size());
+		return m_dsMetaData[properDSIdx].bindingToImmutableSampler.at(bindingIdx);
+	}
+
 private:
 
 	lib::HashMap<lib::HashedString, ShaderParamMetaData> m_paramsMetaData;

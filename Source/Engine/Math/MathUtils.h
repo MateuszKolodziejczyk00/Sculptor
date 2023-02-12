@@ -46,6 +46,13 @@ public:
 		return value;
 	}
 	
+	template<typename TType> requires std::is_integral_v<TType>
+	static constexpr TType PreviousPowerOf2(TType value)
+	{
+		return RoundUpToPowerOf2(value) - 1;
+	}
+
+	
 	/** Based on Paul R answer: https://stackoverflow.com/questions/2679815/previous-power-of-2 */
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType RoundDownToPowerOf2(TType value)

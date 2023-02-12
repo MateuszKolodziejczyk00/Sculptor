@@ -83,6 +83,18 @@ struct TypeSerializer<smd::SamplerBindingData>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
 		SerializeType<smd::CommonBindingData>(serializer, data);
+		
+		if constexpr (Serializer::IsSaving())
+		{
+			const srl::Binary immutableSamplerDef(reinterpret_cast<const unsigned char*>(&data.GetImmutableSamplerDefinition()), sizeof(rhi::SamplerDefinition));
+			serializer.Serialize("ImmutableSamplerDef", immutableSamplerDef);
+		}
+		else
+		{
+			srl::Binary immutableSamplerDef;
+			serializer.Serialize("ImmutableSamplerDef", immutableSamplerDef);
+			data.SetImmutableSamplerDefinition(*reinterpret_cast<const rhi::SamplerDefinition*>(immutableSamplerDef.data()));
+		}
 	}
 };
 // smd::GenericShaderBinding =======================================================

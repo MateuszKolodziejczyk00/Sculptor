@@ -272,14 +272,18 @@ static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross:
 	smd::SamplerBindingData samplerBinding;
 	helper::InitializeBinding(samplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
 
-	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, samplerBinding);
-	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
-
 	if (!samplerBinding.IsImmutable())
 	{
 		const smd::ShaderSamplerParamEntry paramEntry(setIdx, bindingIdx);
 		outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 	}
+	else
+	{
+		samplerBinding.SetImmutableSamplerDefinition(parametersMetaData.GetImmutableSamplerDefinition(setIdx, bindingIdx));
+	}
+
+	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, samplerBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 }
 
 static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)

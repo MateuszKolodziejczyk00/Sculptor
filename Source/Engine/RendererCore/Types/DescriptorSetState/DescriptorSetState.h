@@ -80,6 +80,7 @@ public:
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
 	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
 	static constexpr Uint32 GetBindingIdxDelta() { return 1; }
+	static constexpr std::optional<rhi::SamplerDefinition> GetImmutableSamplerDef() { return std::nullopt; }
 
 	void SetOwningDSState(DescriptorSetState& state);
 
@@ -529,10 +530,24 @@ sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 
 	using HeadBindingHandle = typename TDSType::ReflHeadBindingType;
 
-	ForEachBinding<HeadBindingHandle>([&metaData]<typename TCurrentBindingHandle>()
+	ForEachBinding<HeadBindingHandle>([bindingIdx = 0u, &metaData]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		metaData.bindingsFlags.emplace_back(CurrentBindingType::GetBindingFlags());
+
+		const Uint32 bindingEndIdx = bindingIdx + CurrentBindingType::GetBindingIdxDelta();
+			
+		smd::EBindingFlags flags = CurrentBindingType::GetBindingFlags();
+		std::optional<rhi::SamplerDefinition> immutableSamplerDef = CurrentBindingType::GetImmutableSamplerDef();
+
+		for (; bindingIdx < bindingEndIdx; ++bindingIdx)
+		{
+			metaData.bindingsFlags.emplace_back(flags);
+
+			if (immutableSamplerDef)
+			{
+				metaData.bindingToImmutableSampler.emplace(bindingIdx, *immutableSamplerDef);
+			}
+		}
 	});
 
 	metaData.hash = TDSType::GetTypeHash();
