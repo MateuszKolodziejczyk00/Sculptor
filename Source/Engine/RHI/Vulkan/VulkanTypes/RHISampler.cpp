@@ -15,7 +15,7 @@ void RHISampler::InitializeRHI(const rhi::SamplerDefinition& def)
 
 	SPT_CHECK(!IsValid());
 
-    const VkSamplerCreateInfo samplerInfo
+    VkSamplerCreateInfo samplerInfo
     {
         .sType                      = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .flags                      = RHIToVulkan::GetSamplerCreateFlags(def.flags),
@@ -35,6 +35,11 @@ void RHISampler::InitializeRHI(const rhi::SamplerDefinition& def)
         .borderColor                = RHIToVulkan::GetBorderColor(def.borderColor),
         .unnormalizedCoordinates    = def.unnormalizedCoords
 	};
+
+    VkSamplerReductionModeCreateInfo reductionModeInfo{ VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
+    reductionModeInfo.reductionMode = RHIToVulkan::GetSamplerReductionMode(def.reductionMode);
+
+    samplerInfo.pNext = &reductionModeInfo;
 
 	SPT_VK_CHECK(vkCreateSampler(VulkanRHI::GetDeviceHandle(), &samplerInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 }

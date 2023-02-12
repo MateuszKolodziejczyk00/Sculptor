@@ -66,6 +66,8 @@ public:
 
 	static VkSamplerAddressMode				GetAxisAddressingMode(rhi::EAxisAddressingMode mode);
 
+	static VkSamplerReductionMode			GetSamplerReductionMode(rhi::ESamplerReductionMode mode);
+
 	static VkBorderColor					GetBorderColor(rhi::EBorderColor color);
 
 	static VkEventCreateFlags				GetEventFlags(rhi::EEventFlags eventFlags);

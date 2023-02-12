@@ -93,6 +93,7 @@ struct TypeSerializer<smd::SamplerBindingData>
 		{
 			srl::Binary immutableSamplerDef;
 			serializer.Serialize("ImmutableSamplerDef", immutableSamplerDef);
+			SPT_CHECK(immutableSamplerDef.size() == sizeof(rhi::SamplerDefinition));
 			data.SetImmutableSamplerDefinition(*reinterpret_cast<const rhi::SamplerDefinition*>(immutableSamplerDef.data()));
 		}
 	}

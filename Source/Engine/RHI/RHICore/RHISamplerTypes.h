@@ -13,6 +13,14 @@ enum class ESamplerFilterType
 };
 
 
+enum class ESamplerReductionMode
+{
+	WeightedAverage,
+	Min,
+	Max
+};
+
+
 enum class EAxisAddressingMode
 {
 	Repeat,
@@ -61,6 +69,7 @@ struct SamplerDefinition
 		, addressingModeU(EAxisAddressingMode::Repeat)
 		, addressingModeV(EAxisAddressingMode::Repeat)
 		, addressingModeW(EAxisAddressingMode::Repeat)
+		, reductionMode(ESamplerReductionMode::WeightedAverage)
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
@@ -70,7 +79,7 @@ struct SamplerDefinition
 		, unnormalizedCoords(false)
 	{ }
 
-	constexpr SamplerDefinition(ESamplerFilterType filterType, EMipMapAddressingMode mipsAddressingMode, EAxisAddressingMode axisAddressingMode)
+	constexpr SamplerDefinition(ESamplerFilterType filterType, EMipMapAddressingMode mipsAddressingMode, EAxisAddressingMode axisAddressingMode, ESamplerReductionMode reduction = ESamplerReductionMode::WeightedAverage)
 		: flags(ESamplerFlags::None)
 		, minificationFilter(filterType)
 		, magnificationFilter(filterType)
@@ -78,6 +87,7 @@ struct SamplerDefinition
 		, addressingModeU(axisAddressingMode)
 		, addressingModeV(axisAddressingMode)
 		, addressingModeW(axisAddressingMode)
+		, reductionMode(reduction)
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
@@ -97,6 +107,8 @@ struct SamplerDefinition
 	EAxisAddressingMode addressingModeU;
 	EAxisAddressingMode addressingModeV;
 	EAxisAddressingMode addressingModeW;
+
+	ESamplerReductionMode reductionMode;
 
 	Real32	mipLodBias;
 

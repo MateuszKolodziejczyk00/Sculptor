@@ -557,6 +557,21 @@ VkSamplerAddressMode RHIToVulkan::GetAxisAddressingMode(rhi::EAxisAddressingMode
 	}
 }
 
+VkSamplerReductionMode RHIToVulkan::GetSamplerReductionMode(rhi::ESamplerReductionMode mode)
+{
+	switch (mode)
+	{
+	case spt::rhi::ESamplerReductionMode::WeightedAverage:		return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+	case spt::rhi::ESamplerReductionMode::Min:					return VK_SAMPLER_REDUCTION_MODE_MIN;
+	case spt::rhi::ESamplerReductionMode::Max:					return VK_SAMPLER_REDUCTION_MODE_MAX;
+
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return VK_SAMPLER_REDUCTION_MODE_MAX_ENUM;
+	}
+}
+
 VkBorderColor RHIToVulkan::GetBorderColor(rhi::EBorderColor color)
 {
 	switch (color)
@@ -586,7 +601,6 @@ VkEventCreateFlags RHIToVulkan::GetEventFlags(rhi::EEventFlags eventFlags)
 
 	return flags;
 }
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 
