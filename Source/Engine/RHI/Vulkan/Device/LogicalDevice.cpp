@@ -45,8 +45,8 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(features);
 
 	VkPhysicalDeviceVulkan11Features vulkan11Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
-    vulkan11Features.shaderDrawParameters				= VK_TRUE;
-    vulkan11Features.storageBuffer16BitAccess			= VK_TRUE;
+    vulkan11Features.shaderDrawParameters		= VK_TRUE;
+    vulkan11Features.storageBuffer16BitAccess	= VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan11Features);
 
@@ -57,9 +57,10 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.shaderFloat16			= VK_TRUE;
 	vulkan12Features.descriptorBindingSampledImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind	= VK_TRUE;
+	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingPartiallyBound				= VK_TRUE;
+	vulkan12Features.samplerFilterMinmax	= VK_TRUE;
 	
-
 	deviceInfoLinkedData.Append(vulkan12Features);
 
 	VkPhysicalDeviceVulkan13Features vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };

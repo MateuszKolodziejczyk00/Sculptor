@@ -49,7 +49,7 @@ public:
 	template<typename TType> requires std::is_integral_v<TType>
 	static constexpr TType PreviousPowerOf2(TType value)
 	{
-		return RoundUpToPowerOf2(value) - 1;
+		return RoundUpToPowerOf2(value) >> 1;
 	}
 
 	
@@ -133,7 +133,7 @@ public:
 		return result;;
 	}
 
-	static Uint32 ComputeMipLevelsNunForResolution(math::Vector2u resolution)
+	static Uint32 ComputeMipLevelsNumForResolution(math::Vector2u resolution)
 	{
 		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
 	}

@@ -311,7 +311,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 	SPT_CHECK(adaptedLuminance.IsValid())
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
-	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNunForResolution(renderingRes) - 3, 1u);
+	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes) - 3, 1u);
 
 	rhi::TextureDefinition bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
