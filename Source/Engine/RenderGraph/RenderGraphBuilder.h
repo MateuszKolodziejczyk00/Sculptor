@@ -115,8 +115,8 @@ public:
 
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
 
-	void BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
-	void UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
+	void BindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState);
+	void UnbindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState);
 
 	void Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
 
@@ -177,7 +177,8 @@ private:
 
 	lib::DynamicArray<RGNodeHandle> m_nodes;
 
-	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_boundDSStates;
+	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStates;
+	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStatesWithDependencies;
 
 	RGAllocator m_allocator;
 };
@@ -348,6 +349,11 @@ void RenderGraphBuilder::BuildDescriptorSetDependencies(const TDescriptorSetStat
 	{
 		stateToBind->BuildRGDependencies(dependenciesBuilder);
 	}
+	
+	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : m_boundDSStatesWithDependencies)
+	{
+		stateToBind->BuildRGDependencies(dependenciesBuilder);
+	}
 }
 
 template<typename TParametersTuple>
@@ -386,7 +392,7 @@ public:
 		: m_graphBuilder(graphBuilder)
 		, m_descriptorSets(descriptorSets)
 	{
-		for (const lib::SharedRef<rdr::DescriptorSetState>& ds : m_descriptorSets)
+		for (const lib::SharedRef<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
 			m_graphBuilder.BindDescriptorSetState(ds);
 		}
@@ -394,7 +400,7 @@ public:
 
 	~BindDescriptorSetsScope()
 	{
-		for (const lib::SharedRef<rdr::DescriptorSetState>& ds : m_descriptorSets)
+		for (const lib::SharedRef<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
 			m_graphBuilder.UnbindDescriptorSetState(ds);
 		}

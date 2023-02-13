@@ -47,7 +47,11 @@ public:
 				   {
 				       [&builder, access](const rdr::BufferView& buffer)
 				       {
-				           builder.AddBufferAccess(buffer, access);
+					       // If we're only reading from external buffer, we don't need to have any dependency
+						   if (access == rg::ERGBufferAccess::Write || access == rg::ERGBufferAccess::ReadWrite)
+						   {
+						       builder.AddBufferAccess(buffer, access);
+						   }
 				       },
 				       [&builder, access](rg::RGBufferViewHandle buffer)
 				       {

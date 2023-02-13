@@ -298,21 +298,39 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 	AddNodeInternal(node, dependencies);
 }
 
-void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
+void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_boundDSStates.emplace_back(dsState);
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dsState->BuildRGDependencies(dependenciesBuilder);
+
+	if (dependencies.HasAnyDependencies())
+	{
+		m_boundDSStatesWithDependencies.emplace_back(dsState);
+	}
 }
 
-void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
+void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
-	if (foundDS != std::cend(m_boundDSStates))
 	{
-		m_boundDSStates.erase(foundDS);
+		const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
+		if (foundDS != std::cend(m_boundDSStates))
+		{
+			m_boundDSStates.erase(foundDS);
+		}
+	}
+	{
+		const auto foundDS = std::find(std::cbegin(m_boundDSStatesWithDependencies), std::cend(m_boundDSStatesWithDependencies), dsState);
+		if (foundDS != std::cend(m_boundDSStatesWithDependencies))
+		{
+			m_boundDSStatesWithDependencies.erase(foundDS);
+		}
 	}
 }
 

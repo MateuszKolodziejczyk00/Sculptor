@@ -642,7 +642,8 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
+																					  lib::Ref(staticMeshRenderingViewData.viewDS),
+																					  depthCullingDS));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
@@ -651,9 +652,9 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedSubmeshesNum, 64) / 64;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
-									  m_cullSubmeshesPipeline,
-									  math::Vector3u(dispatchGroupsNum, 1, 1),
-									  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS), depthCullingDS));
+							  m_cullSubmeshesPipeline,
+							  math::Vector3u(dispatchGroupsNum, 1, 1),
+							  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS)));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
@@ -664,7 +665,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 									  m_cullMeshletsPipeline,
 									  batch.visibleBatchElementsDispatchParamsBuffer,
 									  0,
-									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS), depthCullingDS));
+									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS)));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)

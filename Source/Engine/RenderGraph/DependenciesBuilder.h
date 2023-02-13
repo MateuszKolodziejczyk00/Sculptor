@@ -31,6 +31,13 @@ struct RGBufferAccessDef
 
 struct RGDependeciesContainer
 {
+	RGDependeciesContainer() = default;
+
+	Bool HasAnyDependencies() const
+	{
+		return !textureAccesses.empty() || !bufferAccesses.empty();
+	}
+
 	lib::DynamicArray<RGTextureAccessDef> textureAccesses;
 	lib::DynamicArray<RGBufferAccessDef>  bufferAccesses;
 };

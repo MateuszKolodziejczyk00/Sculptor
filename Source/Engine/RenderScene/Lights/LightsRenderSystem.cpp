@@ -71,7 +71,7 @@ DS_END();
 DS_BEGIN(BuildLightTilesDS, rg::RGDescriptorSetState<BuildLightTilesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),			u_localLights)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),					u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<LightIndirectDrawCommand>),	u_lightDraws)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LightIndirectDrawCommand>),	u_lightDraws)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),			u_lightsData)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_tilesLightsMask)
 DS_END();
@@ -80,7 +80,7 @@ DS_END();
 DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LightsRenderingData>),		u_lightsData)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),		u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),				u_tilesLightsMask)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<Uint32>),					u_tilesLightsMask)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
 DS_END();
 
