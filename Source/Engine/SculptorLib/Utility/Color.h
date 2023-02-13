@@ -32,6 +32,13 @@ public:
 		, a(color.w())
 	{ }
 
+	explicit Color(Uint32 hash)
+		: r((hash & 255) / 255.f)
+		, g(((hash >> 8) & 255) / 255.f)
+		, b(((hash >> 16) & 255) / 255.f)
+		, a(1.f)
+	{ }
+
 	Real32		r;
 	Real32		g;
 	Real32		b;

@@ -134,7 +134,7 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	SPT_PROFILER_FUNCTION();
 
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
-	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
+	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
 
 	SPT_CHECK(!m_executed);
 

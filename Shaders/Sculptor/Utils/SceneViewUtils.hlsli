@@ -1,7 +1,9 @@
+#ifndef SCENE_VIEW_UTILS_H
+#define SCENE_VIEW_UTILS_H
 
 float GetNearPlane(float4x4 projectionMatrix)
 {
-    return projectionMatrix[3][0];
+    return projectionMatrix[2][3];
 }
 
 
@@ -17,12 +19,12 @@ bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, f
     float czr2 = viewSpaceCenter.x * viewSpaceCenter.x - radius * radius;
 
     float vx = sqrt(viewSpaceCenter.y * viewSpaceCenter.y + czr2);
-    float minx = (vx * viewSpaceCenter.y - cr.x) / (vx * viewSpaceCenter.x + cr.y);
-    float maxx = (vx * viewSpaceCenter.y + cr.x) / (vx * viewSpaceCenter.x - cr.y);
+    float maxx = (vx * viewSpaceCenter.y - cr.x) / (vx * viewSpaceCenter.x + cr.y);
+    float minx = (vx * viewSpaceCenter.y + cr.x) / (vx * viewSpaceCenter.x - cr.y);
 
     float vy = sqrt(viewSpaceCenter.z * viewSpaceCenter.z + czr2);
-    float miny = (vy * viewSpaceCenter.z - cr.x) / (vy * viewSpaceCenter.x + cr.z);
-    float maxy = (vy * viewSpaceCenter.z + cr.x) / (vy * viewSpaceCenter.x - cr.z);
+    float maxy = (vy * viewSpaceCenter.z - cr.x) / (vy * viewSpaceCenter.x + cr.z);
+    float miny = (vy * viewSpaceCenter.z + cr.x) / (vy * viewSpaceCenter.x - cr.z);
 
     aabb = float4(minx * P01, miny * P12, maxx * P01, maxy * P12);
     // clip space -> uv space
@@ -30,3 +32,5 @@ bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, f
 
     return true;
 }
+
+#endif // SCENE_VIEW_UTILS_H

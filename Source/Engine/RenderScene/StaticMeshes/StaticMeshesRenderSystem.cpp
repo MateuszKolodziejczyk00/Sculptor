@@ -5,9 +5,10 @@
 #include "View/ViewRenderingSpec.h"
 #include "View/RenderView.h"
 #include "RenderScene.h"
-#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "Common/ShaderCompilationInput.h"
 #include "GeometryManager.h"
 #include "StaticMeshGeometry.h"
@@ -15,9 +16,21 @@
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 #include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
 #include "Materials/MaterialsUnifiedData.h"
+#include "SceneRenderer/SceneRendererTypes.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Parameters ====================================================================================
+
+namespace params
+{
+
+RendererBoolParameter enableDepthCulling("Enable Depth Culling", { "Geometry", "Static Mesh", "Culling" }, true);
+
+} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Common Data ===================================================================================
@@ -74,6 +87,18 @@ struct StaticMeshesVisibleLastFrame
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Opaque Forward ================================================================================
+
+BEGIN_SHADER_STRUCT(SMDepthCullingParams)
+	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(SMDepthCullingDS, rg::RGDescriptorSetState<SMDepthCullingDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_hiZTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_hiZSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMDepthCullingParams>),				u_depthCullingParams)
+DS_END();
+
 
 DS_BEGIN(SMCullSubmeshesDS, rg::RGDescriptorSetState<SMCullSubmeshesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshBatchElement>),	u_visibleBatchElements)
@@ -433,8 +458,8 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		{
 			CullDepthPrepassPerView(graphBuilder, renderScene, viewSpec);
 
-			RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-			basePassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderDepthPrepassPerView);
+			RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+			depthPrepassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderDepthPrepassPerView);
 		}
 	}
 
@@ -444,7 +469,8 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 		if (hasAnyBatches)
 		{
-			CullForwardOpaquePerView(graphBuilder, renderScene, viewSpec);
+			RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+			depthPrepassStageEntries.GetPostRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::CullForwardOpaquePerView);
 
 			RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
 			basePassStageEntries.GetOnRenderStage().AddRawMember(this, &StaticMeshesRenderSystem::RenderForwardOpaquePerView);
@@ -596,9 +622,19 @@ Bool StaticMeshesRenderSystem::BuildForwardOpaueBatchesPerView(rg::RenderGraphBu
 	return false;
 }
 
-void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const DepthPrepassData& prepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	SPT_CHECK(prepassData.hiZ.IsValid());
+
+	SMDepthCullingParams depthCullingParams;
+	depthCullingParams.hiZResolution = prepassData.hiZ->GetResolution().head<2>().cast<Real32>();
+
+	const lib::SharedRef<SMDepthCullingDS> depthCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthCullingDS>(RENDERER_RESOURCE_NAME("SMDepthCullingDS"));
+	depthCullingDS->u_hiZTexture			= prepassData.hiZ;
+	depthCullingDS->u_depthCullingParams	= depthCullingParams;
 
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
@@ -617,7 +653,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
 									  m_cullSubmeshesPipeline,
 									  math::Vector3u(dispatchGroupsNum, 1, 1),
-									  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS)));
+									  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS), depthCullingDS));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
@@ -628,7 +664,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 									  m_cullMeshletsPipeline,
 									  batch.visibleBatchElementsDispatchParamsBuffer,
 									  0,
-									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS)));
+									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS), depthCullingDS));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)

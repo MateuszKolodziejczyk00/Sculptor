@@ -73,8 +73,8 @@ struct SamplerDefinition
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
-		, minLod(0)
-		, maxLod(0)
+		, minLod(0.f)
+		, maxLod(-1.f)
 		, borderColor(EBorderColor::FloatTransparentBlack)
 		, unnormalizedCoords(false)
 	{ }
@@ -92,7 +92,7 @@ struct SamplerDefinition
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
 		, minLod(0.f)
-		, maxLod(0.f)
+		, maxLod(-1.f)
 		, borderColor(EBorderColor::FloatTransparentBlack)
 		, unnormalizedCoords(false)
 	{ }

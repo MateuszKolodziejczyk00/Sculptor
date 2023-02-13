@@ -2,13 +2,15 @@
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(StaticMeshBatchDS, 2)]]
 [[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(SMDepthCullingDS, 4)]]
 
-[[descriptor_set(SMCullMeshletsDS, 4)]]
+[[descriptor_set(SMCullMeshletsDS, 5)]]
 
 
 int ToInt8Value(uint bits)
@@ -71,6 +73,21 @@ void CullMeshletsCS(CS_INPUT input)
 
             isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
             isMeshletVisible = isMeshletVisible && IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
+        }
+        
+        if(isMeshletVisible)
+        {
+            const float3 meshletCenterVS = mul(u_sceneView.viewMatrix, float4(meshletBoundingSphereCenter, 1.f)).xyz;
+
+            if(meshletCenterVS.x - meshletBoundingSphereRadius > 0.001f)
+            {
+                const float near = GetNearPlane(u_sceneView.projectionMatrix);
+                const float p01 = u_sceneView.projectionMatrix[0][1];
+                const float p12 = u_sceneView.projectionMatrix[1][2];
+
+                const float2 hiZRes = u_depthCullingParams.hiZResolution;
+                isMeshletVisible = !IsSphereBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, meshletCenterVS, meshletBoundingSphereRadius, near, p01, p12);
+            }
         }
 
         if(isMeshletVisible)

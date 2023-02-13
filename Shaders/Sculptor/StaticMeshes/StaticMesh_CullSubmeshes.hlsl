@@ -7,8 +7,9 @@
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(StaticMeshBatchDS, 2)]]
 [[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(SMDepthCullingDS, 4)]]
 
-[[descriptor_set(SMCullSubmeshesDS, 4)]]
+[[descriptor_set(SMCullSubmeshesDS, 5)]]
 
 
 struct CS_INPUT
@@ -37,7 +38,22 @@ void CullSubmeshesCS(CS_INPUT input)
         const float3 submeshBoundingSphereCenter = mul(entityTransform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
         const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;
         
-        const bool isSubmeshVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, submeshBoundingSphereCenter, submeshBoundingSphereRadius);
+        bool isSubmeshVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, submeshBoundingSphereCenter, submeshBoundingSphereRadius);
+        
+        if(isSubmeshVisible)
+        {
+            const float3 submeshCenterVS = mul(u_sceneView.viewMatrix, float4(submeshBoundingSphereCenter, 1.f)).xyz;
+
+            if(submeshCenterVS.x - submeshBoundingSphereRadius > 0.001f)
+            {
+                const float near = GetNearPlane(u_sceneView.projectionMatrix);
+                const float p01 = u_sceneView.projectionMatrix[0][1];
+                const float p12 = u_sceneView.projectionMatrix[1][2];
+
+                const float2 hiZRes = u_depthCullingParams.hiZResolution;
+                isSubmeshVisible = !IsSphereBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, submeshCenterVS, submeshBoundingSphereRadius, near, p01, p12);
+            }
+        }
       
         if(isSubmeshVisible)
         {

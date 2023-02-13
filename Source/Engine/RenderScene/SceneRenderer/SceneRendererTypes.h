@@ -11,6 +11,7 @@ namespace spt::rsc
 struct DepthPrepassData
 {
 	rg::RGTextureViewHandle depth;
+	rg::RGTextureViewHandle hiZ;
 };
 
 
