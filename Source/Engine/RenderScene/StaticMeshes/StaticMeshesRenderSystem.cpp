@@ -23,16 +23,6 @@ namespace spt::rsc
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Parameters ====================================================================================
-
-namespace params
-{
-
-RendererBoolParameter enableDepthCulling("Enable Depth Culling", { "Geometry", "Static Mesh", "Culling" }, true);
-
-} // params
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // Common Data ===================================================================================
 
 BEGIN_SHADER_STRUCT(SMIndirectDrawCallData)
@@ -53,9 +43,15 @@ BEGIN_SHADER_STRUCT(SMGPUBatchData)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(SMViewRenderingParameters)
+	SHADER_STRUCT_FIELD(math::Vector2u, rtResolution)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),			u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),	u_cullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),				u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),		u_cullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMViewRenderingParameters>),	u_viewRenderingParams)
 DS_END();
 
 
@@ -444,9 +440,13 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
+	SMViewRenderingParameters viewRenderingParams;
+	viewRenderingParams.rtResolution = viewSpec.GetRenderView().GetRenderingResolution();
+
 	const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
-	viewDS->u_sceneView		= renderView.GenerateViewData();
-	viewDS->u_cullingData	= renderView.GenerateCullingData(viewDS->u_sceneView.Get());
+	viewDS->u_sceneView				= renderView.GenerateViewData();
+	viewDS->u_cullingData			= renderView.GenerateCullingData(viewDS->u_sceneView.Get());
+	viewDS->u_viewRenderingParams	= viewRenderingParams;
 
 	viewSpec.GetData().Create<SMRenderingViewData>(SMRenderingViewData{ std::move(viewDS) });
 	
