@@ -33,6 +33,7 @@ SPT_DEFINE_LOG_CATEGORY(AppLog, true)
 
 
 SculptorEdApplication::SculptorEdApplication()
+	: isSwapchainValid(true)
 { }
 
 void SculptorEdApplication::OnInit(int argc, char** argv)
@@ -184,7 +185,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	const auto onSwapchainOutOfDateBeforeRendering = [this]()
 	{
 		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
+		isSwapchainValid = m_window->RebuildSwapchain();
 		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
 	};
 
@@ -192,6 +193,11 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	if (m_window->IsSwapchainOutOfDate())
 	{
 		onSwapchainOutOfDateBeforeRendering();
+		return;
+	}
+
+	if (!isSwapchainValid)
+	{
 		return;
 	}
 
@@ -306,7 +312,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	if (m_window->IsSwapchainOutOfDate())
 	{
 		rdr::Renderer::WaitIdle();
-		m_window->RebuildSwapchain();
+		isSwapchainValid = m_window->RebuildSwapchain();
 	}
 }
 

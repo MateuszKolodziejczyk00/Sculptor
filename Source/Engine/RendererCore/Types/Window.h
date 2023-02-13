@@ -36,7 +36,7 @@ public:
 	void						PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	Bool						IsSwapchainOutOfDate() const;
-	void						RebuildSwapchain();
+	Bool						RebuildSwapchain();
 
 	void						InitializeUI(ui::UIContext context);
 	void						UninitializeUI();

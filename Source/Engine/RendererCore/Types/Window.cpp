@@ -73,15 +73,21 @@ Bool Window::IsSwapchainOutOfDate() const
 	return GetRHI().IsSwapchainOutOfDate();
 }
 
-void Window::RebuildSwapchain()
+Bool Window::RebuildSwapchain()
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsSwapchainOutOfDate());
 
 	const math::Vector2u framebufferSize = m_platformWindow->GetFramebufferSize();
+	const Bool isValidSwapchainSize = framebufferSize.x() > 0 && framebufferSize.y() > 0;
 
-	GetRHI().RebuildSwapchain(framebufferSize);
+	if (isValidSwapchainSize)
+	{
+		GetRHI().RebuildSwapchain(framebufferSize);
+	}
+
+	return isValidSwapchainSize;
 }
 
 void Window::InitializeUI(ui::UIContext context)

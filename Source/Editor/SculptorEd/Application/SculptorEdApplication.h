@@ -35,6 +35,8 @@ private:
 	void RenderFrame(SandboxRenderer& renderer);
 
 	lib::SharedPtr<rdr::Window> m_window;
+
+	Bool isSwapchainValid;
 };
 
 }
