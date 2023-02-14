@@ -9,15 +9,10 @@ namespace spt::rsc
 enum class ERenderStage
 {
 	None					= 0,
-	DepthPrepass			= BIT(0),
-	ForwardOpaque			= BIT(1),
-	HDRResolve				= BIT(2)
-};
-
-
-struct SceneRenderContext
-{
-	// For future use
+	ShadowMap				= BIT(0),
+	DepthPrepass			= BIT(1),
+	ForwardOpaque			= BIT(2),
+	HDRResolve				= BIT(3)
 };
 
 } // spt::rsc

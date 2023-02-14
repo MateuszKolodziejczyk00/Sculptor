@@ -275,9 +275,9 @@ public:
 
 	ViewRenderingSpec();
 
-	void Initialize(const RenderView& renderView);
+	void Initialize(RenderView& renderView);
 	
-	const RenderView& GetRenderView() const;
+	RenderView& GetRenderView() const;
 	ERenderStage GetSupportedStages() const;
 	Bool SupportsStage(ERenderStage stage) const;
 
@@ -293,7 +293,7 @@ private:
 
 	ViewRenderingDataContainer m_viewRenderingData;
 
-	const RenderView* m_renderView;
+	RenderView* m_renderView;
 };
 
 } // spt::rsc

@@ -28,6 +28,9 @@ public:
 	void Initialize(RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 
+	Bool WantsUpdate() const;
+	virtual void Update(RenderScene& renderScene) {};
+
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) {};
 
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
@@ -43,6 +46,7 @@ protected:
 	virtual void OnDeinitialize(RenderScene& renderScene);
 
 	ERenderStage m_supportedStages;
+	Bool m_wantsUpdate;
 };
 
 } // spt::rsc

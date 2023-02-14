@@ -1,6 +1,7 @@
 #include "SceneRenderer.h"
 #include "RenderScene.h"
 #include "RenderSystem.h"
+#include "View/RenderView.h"
 #include "Transfers/UploadUtils.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
@@ -68,6 +69,12 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	SizeType mainViewIdx = idxNone<SizeType>;
 	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view, OUT mainViewIdx);
+
+	// Update all relevant views data
+	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
+	{
+		viewSpec->GetRenderView().UpdateViewCachedData();
+	}
 
 	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
 	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)

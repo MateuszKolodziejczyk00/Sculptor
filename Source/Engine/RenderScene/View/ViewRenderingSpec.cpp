@@ -32,7 +32,7 @@ ViewRenderingSpec::ViewRenderingSpec()
 	: m_renderView(nullptr)
 { }
 
-void ViewRenderingSpec::Initialize(const RenderView& renderView)
+void ViewRenderingSpec::Initialize(RenderView& renderView)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -50,7 +50,7 @@ void ViewRenderingSpec::Initialize(const RenderView& renderView)
 	}
 }
 
-const RenderView& ViewRenderingSpec::GetRenderView() const
+RenderView& ViewRenderingSpec::GetRenderView() const
 {
 	SPT_CHECK(!!m_renderView);
 	return *m_renderView;

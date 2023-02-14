@@ -22,6 +22,22 @@ void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real3
 										{1.f,	0.f,	0.f,	0.f} };
 }
 
+void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
+{
+	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
+
+	const Real32 a = h;
+	const Real32 b = h * aspect;
+
+	const Real32 c = -near / (far - near);
+	const Real32 d = -far * c;
+
+	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	0.f},
+										{0.f,	0.f,	b,		0.f},
+										{c,		0.f,	0.f,    d  },
+										{1.f,	0.f,	0.f,	0.f} };
+}
+
 void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)
 {
 	const Real32 a = 2.f / (right - left);
@@ -73,6 +89,49 @@ const math::Quaternionf& SceneView::GetRotation() const
 	return m_rotation;
 }
 
+const SceneViewData& SceneView::GetViewRenderingData() const
+{
+	return m_viewRenderingData;
+}
+
+const SceneViewCullingData& SceneView::GetCullingData() const
+{
+	return m_viewCullingData;
+}
+
+void SceneView::UpdateViewCachedData()
+{
+	SPT_PROFILER_FUNCTION();
+
+	UpdateViewRenderingData();
+	UpdateCullingData();
+}
+
+void SceneView::UpdateViewRenderingData()
+{
+	m_viewRenderingData.viewMatrix = GenerateViewMatrix();
+	m_viewRenderingData.viewProjectionMatrix = m_projectionMatrix * m_viewRenderingData.viewMatrix;
+	m_viewRenderingData.projectionMatrix = m_projectionMatrix;
+	m_viewRenderingData.viewLocation = m_viewLocation;
+}
+
+void SceneView::UpdateCullingData()
+{
+	const math::Matrix4f& viewProjection = m_viewRenderingData.viewProjectionMatrix;
+
+	m_viewCullingData.cullingPlanes[0] = viewProjection.row(3) + viewProjection.row(0);	// right plane:		 x < w  ---> w + x > 0
+	m_viewCullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		-x < w  ---> w - x > 0
+	m_viewCullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
+	m_viewCullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
+
+	// normalize planes (we need normals to compare with bounding spheres radius)
+	for (math::Vector4f& cullingPlane : m_viewCullingData.cullingPlanes)
+	{
+		const Real32 norm = cullingPlane.head<3>().norm();
+		cullingPlane /= norm;
+	}
+}
+
 math::Matrix4f SceneView::GenerateViewMatrix() const
 {
 	const math::Vector3f forward = m_rotation * math::Vector3f::UnitX();
@@ -87,40 +146,6 @@ math::Matrix4f SceneView::GenerateViewMatrix() const
 	viewMatrix(3, 3) = 1.f;
 
 	return viewMatrix;
-}
-
-SceneViewData SceneView::GenerateViewData() const
-{
-	SPT_PROFILER_FUNCTION();
-
-	SceneViewData data;
-	data.viewMatrix = GenerateViewMatrix();
-	data.viewProjectionMatrix = m_projectionMatrix * data.viewMatrix;
-	data.projectionMatrix = m_projectionMatrix;
-	data.viewLocation = m_viewLocation;
-
-	return data;
-}
-
-SceneViewCullingData SceneView::GenerateCullingData(const SceneViewData& viewData) const
-{
-	SceneViewCullingData cullingData;
-
-	const math::Matrix4f& viewProjection = viewData.viewProjectionMatrix;
-
-	cullingData.cullingPlanes[0] = viewProjection.row(3) + viewProjection.row(0);	// right plane:		 x < w  ---> w + x > 0
-	cullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		-x < w  ---> w - x > 0
-	cullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
-	cullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
-
-	// normalize planes (we need normals to compare with bounding spheres radius)
-	for (math::Vector4f& cullingPlane : cullingData.cullingPlanes)
-	{
-		const Real32 norm = cullingPlane.head<3>().norm();
-		cullingPlane /= norm;
-	}
-
-	return cullingData;
 }
 
 } // spt::rsc

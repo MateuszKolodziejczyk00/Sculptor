@@ -444,8 +444,8 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	viewRenderingParams.rtResolution = viewSpec.GetRenderView().GetRenderingResolution();
 
 	const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
-	viewDS->u_sceneView				= renderView.GenerateViewData();
-	viewDS->u_cullingData			= renderView.GenerateCullingData(viewDS->u_sceneView.Get());
+	viewDS->u_sceneView				= renderView.GetViewRenderingData();
+	viewDS->u_cullingData			= renderView.GetCullingData();
 	viewDS->u_viewRenderingParams	= viewRenderingParams;
 
 	viewSpec.GetData().Create<SMRenderingViewData>(SMRenderingViewData{ std::move(viewDS) });

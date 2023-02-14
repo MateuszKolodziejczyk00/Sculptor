@@ -25,16 +25,29 @@ void RenderScene::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto& systems = m_primitiveSystems.GetSystems();
+	const auto& primitiveSystems = m_primitiveSystems.GetSystems();
 
-	js::ParallelForEach("Update Render Systems",
-						systems,
+	js::ParallelForEach("Update Primitive Systems",
+						primitiveSystems,
 						[](const lib::UniquePtr<PrimitivesSystem>& system)
 						{
 							system->Update();
 						},
 						js::EJobPriority::High,
 						js::EJobFlags::Inline);
+
+	const lib::DynamicArray<RenderSystem*>& renderSystemsWithUpdate = m_renderSystems.GetRenderSystemsWithUpdate();
+	if (!renderSystemsWithUpdate.empty())
+	{
+		js::ParallelForEach("Update Render Systems",
+							renderSystemsWithUpdate,
+							[this](RenderSystem* system)
+							{
+								system->Update(*this);
+							},
+							js::EJobPriority::High,
+							js::EJobFlags::Inline);
+	}
 }
 
 RenderSceneEntityHandle RenderScene::CreateEntity()
@@ -49,6 +62,8 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 
 	const RenderSceneEntityHandle entity = CreateEntity();
 
+	const TransformComponent& transformComp = entity.emplace<TransformComponent>(instanceData.transformComp);
+
 	const rhi::SuballocationDefinition suballocationDef(sizeof(RenderEntityGPUData), sizeof(RenderEntityGPUData), rhi::EBufferSuballocationFlags::PreferFasterAllocation);
 	const rhi::RHISuballocation entityGPUDataSuballocation = m_renderEntitiesBuffer->GetRHI().CreateSuballocation(suballocationDef);
 	SPT_CHECK_MSG(entityGPUDataSuballocation.IsValid(), "Failed to allocate data for instance!");
@@ -56,9 +71,9 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 	entity.emplace<EntityGPUDataHandle>(entityGPUDataSuballocation);
 
 	RenderEntityGPUData entityGPUData;
-	entityGPUData.transform = instanceData.transfrom.matrix();
+	entityGPUData.transform = transformComp.transform.matrix();
 
-	const math::Matrix3f& transformTopLeft = instanceData.transfrom.matrix().topLeftCorner<3, 3>();
+	const math::Matrix3f& transformTopLeft = transformComp.transform.matrix().topLeftCorner<3, 3>();
 
 #if DO_CHECKS
 	// Currently we support only uniform scale

@@ -27,6 +27,7 @@ public:
 	SceneView();
 
 	void					SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near);
+	void					SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far);
 	void					SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right);
 	const math::Matrix4f&	GetProjectionMatrix() const;
 
@@ -38,17 +39,24 @@ public:
 	void						SetRotation(const math::Quaternionf& newRotation);
 	const math::Quaternionf&	GetRotation() const;
 
-	math::Matrix4f GenerateViewMatrix() const;
+	const SceneViewData& GetViewRenderingData() const;
+	const SceneViewCullingData& GetCullingData() const;
 
-	SceneViewData GenerateViewData() const;
-
-	SceneViewCullingData GenerateCullingData(const SceneViewData& viewData) const;
+	void UpdateViewCachedData();
 
 private:
+
+	void UpdateViewRenderingData();
+	void UpdateCullingData();
+
+	math::Matrix4f GenerateViewMatrix() const;
 
 	math::Matrix4f		m_projectionMatrix;
 	math::Vector3f		m_viewLocation;
 	math::Quaternionf	m_rotation;
+
+	SceneViewData			m_viewRenderingData;
+	SceneViewCullingData	m_viewCullingData;
 };
 
 } // spt::rsc

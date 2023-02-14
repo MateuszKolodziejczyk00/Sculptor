@@ -140,7 +140,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	LightsRenderingData lightsData;
 	
-	const auto getViewSpaceZ = [viewMatrix = viewSpec.GetRenderView().GenerateViewMatrix()](const PointLightGPUData& pointLight)
+	const auto getViewSpaceZ = [viewMatrix = viewSpec.GetRenderView().GetViewRenderingData().viewMatrix](const PointLightGPUData& pointLight)
 	{
 		math::Vector4f pointLightLocation = math::Vector4f::UnitW();
 		pointLightLocation.head<3>() = pointLight.location;
@@ -233,7 +233,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		buildZClusters->u_lightsData			= lightsData;
 		buildZClusters->u_clustersRanges		= clustersRanges;
 
-		const SceneViewData sceneViewData = viewSpec.GetRenderView().GenerateViewData();
+		const SceneViewData sceneViewData = viewSpec.GetRenderView().GetViewRenderingData();
 
 		const lib::SharedRef<GenerateLightsDrawCommnadsDS> generateLightsDrawCommnadsDS = rdr::ResourcesManager::CreateDescriptorSetState<GenerateLightsDrawCommnadsDS>(RENDERER_RESOURCE_NAME("GenerateLightsDrawCommnadsDS"));
 		generateLightsDrawCommnadsDS->u_localLights		= localLightsRGBuffer;

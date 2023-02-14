@@ -511,7 +511,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
 				RenderInstanceData instanceData;
-				instanceData.transfrom = GetNodeTransform(node);
+				instanceData.transformComp.transform = GetNodeTransform(node);
 				const RenderSceneEntityHandle meshSceneEntity = scene.CreateEntity(instanceData);
 
 				StaticMeshInstanceRenderData entityStaticMeshData;

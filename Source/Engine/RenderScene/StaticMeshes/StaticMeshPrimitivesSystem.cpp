@@ -17,8 +17,8 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const Re
 
 	StaticMeshBatchDefinition batch;
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityGPUDataHandle>();
-	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
+	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle>();
+	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
 	{
 		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
