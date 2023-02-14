@@ -3,6 +3,7 @@
 #include "RenderScene.h"
 #include "StaticMeshGeometry.h"
 #include "Materials/MaterialTypes.h"
+#include "View/RenderView.h"
 
 namespace spt::rsc
 {
@@ -23,6 +24,14 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const Re
 		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
 		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
+
+		const math::Vector3f boundingSphereCenterWS = transformComp.GetTransform() * meshRenderingDef.boundingSphereCenter;
+		const Real32 radius = meshRenderingDef.boundingSphereRadius * transformComp.GetUniformScale();
+
+		if (!view.IsSphereOverlappingFrustum(boundingSphereCenterWS, radius))
+		{
+			continue;
+		}
 
 		for (Uint32 idx = 0; idx < meshRenderingDef.submeshesNum; ++idx)
 		{

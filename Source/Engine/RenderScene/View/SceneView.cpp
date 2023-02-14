@@ -148,4 +148,20 @@ math::Matrix4f SceneView::GenerateViewMatrix() const
 	return viewMatrix;
 }
 
+Bool SceneView::IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const
+{
+	math::Vector4f center4 = math::Vector4f::Ones();
+	center4.head<3>() = center;
+
+    for(Uint32 planeIdx = 0; planeIdx < 4; ++planeIdx)
+    {
+		if (m_viewCullingData.cullingPlanes[planeIdx].dot(center4) < -radius)
+		{
+			return false;
+		}
+    }
+
+	return true;
+}
+
 } // spt::rsc

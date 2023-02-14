@@ -18,7 +18,18 @@ class RenderScene;
 
 struct TransformComponent
 {
-	math::Affine3f transform;
+	TransformComponent();
+	TransformComponent(const math::Affine3f& transform);
+
+	void SetTransform(const math::Affine3f& newTransform);
+	const math::Affine3f& GetTransform() const;
+
+	Real32 GetUniformScale() const;
+
+private:
+
+	math::Affine3f m_transform;
+	Real32 m_uniformScale;
 };
 
 

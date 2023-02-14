@@ -6,6 +6,46 @@
 namespace spt::rsc
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// TransformComponent ============================================================================
+
+TransformComponent::TransformComponent()
+	: m_transform(math::Affine3f::Identity())
+	, m_uniformScale(1.f)
+{ }
+
+TransformComponent::TransformComponent(const math::Affine3f& transform)
+{
+	SetTransform(transform);
+}
+
+void TransformComponent::SetTransform(const math::Affine3f& newTransform)
+{
+	m_transform = newTransform;
+
+	const math::Matrix4f& transformMatrix = m_transform.matrix();
+
+	const Real32 scaleX2 = transformMatrix.row(0).head<3>().squaredNorm();
+	const Real32 scaleY2 = transformMatrix.row(1).head<3>().squaredNorm();
+	const Real32 scaleZ2 = transformMatrix.row(2).head<3>().squaredNorm();
+
+	const Real32 maxScale = std::max(std::max(scaleX2, scaleY2), scaleZ2);
+	m_uniformScale = std::sqrt(maxScale);
+}
+
+const math::Affine3f& TransformComponent::GetTransform() const
+{
+	return m_transform;
+}
+
+Real32 TransformComponent::GetUniformScale() const
+{
+	return m_uniformScale;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RenderScene ===================================================================================
+
 RenderScene::RenderScene()
 	: m_renderEntitiesBuffer(CreateInstancesBuffer())
 	, m_renderSceneDS(CreateRenderSceneDS())
@@ -71,21 +111,8 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 	entity.emplace<EntityGPUDataHandle>(entityGPUDataSuballocation);
 
 	RenderEntityGPUData entityGPUData;
-	entityGPUData.transform = transformComp.transform.matrix();
-
-	const math::Matrix3f& transformTopLeft = transformComp.transform.matrix().topLeftCorner<3, 3>();
-
-#if DO_CHECKS
-	// Currently we support only uniform scale
-	const Real32 scaleX2 = transformTopLeft.row(0).squaredNorm();
-	const Real32 scaleY2 = transformTopLeft.row(1).squaredNorm();
-	const Real32 scaleZ2 = transformTopLeft.row(2).squaredNorm();
-	SPT_CHECK(math::Utils::AreNearlyEqual(scaleX2, scaleY2));
-	SPT_CHECK(math::Utils::AreNearlyEqual(scaleX2, scaleZ2));
-#endif // DO_CHECKS
-
-	const Real32 scaleX = transformTopLeft.row(0).norm();
-	entityGPUData.uniformScale = scaleX;
+	entityGPUData.transform		= transformComp.GetTransform().matrix();
+	entityGPUData.uniformScale	= transformComp.GetUniformScale();
 
 	const Byte* entityDataPtr = reinterpret_cast<const Byte*>(&entityGPUData);
 	gfx::UploadDataToBuffer(m_renderEntitiesBuffer, entityGPUDataSuballocation.GetOffset(), entityDataPtr, sizeof(RenderEntityGPUData));

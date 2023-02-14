@@ -44,6 +44,8 @@ public:
 
 	void UpdateViewCachedData();
 
+	Bool IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const;
+
 private:
 
 	void UpdateViewRenderingData();
