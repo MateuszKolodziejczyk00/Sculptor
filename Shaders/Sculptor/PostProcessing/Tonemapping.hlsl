@@ -1,5 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "Utils/Exposure.hlsli"
+#include "Utils/TonemappingOperators.hlsli"
 
 [[descriptor_set(TonemappingDS, 0)]]
 
@@ -79,7 +80,8 @@ void TonemappingCS(CS_INPUT input)
         float3 color = u_radianceTexture.SampleLevel(u_sampler, uv, 0).xyz;
         color *= exposure;
 
-        color = LinearTosRGB(ACESFitted(color));
+        //color = LinearTosRGB(ACESFitted(color));
+        color = LinearTosRGB(TonemapACES(color));
 
         u_LDRTexture[pixel] = float4(color, 1.f);
     }

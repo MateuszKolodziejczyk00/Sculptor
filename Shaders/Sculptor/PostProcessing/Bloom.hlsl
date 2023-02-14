@@ -1,5 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "Utils/Exposure.hlsli"
+#include "Utils/TonemappingOperators.hlsli"
 
 [[descriptor_set(BloomPassDS, 0)]]
 
@@ -82,16 +83,10 @@ void BloomDownsampleCS(CS_INPUT input)
         if (u_bloomInfo.prefilterInput)
         {
             const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
-            const float maxLuminance = ConvertEV100ToMaxLuminance(EV100 + u_bloomInfo.bloomEC);
-
-            const float bloomLuminanceThreshold = maxLuminance;
-
-            float inputLuminance = Luminance(input);
-            if(inputLuminance > 0.001f)
-            {
-                const float bloomLum = max(inputLuminance - bloomLuminanceThreshold, 0.f);
-                input = (bloomLum / inputLuminance) * input;
-            }
+            const float bloomEV = EV100 + u_bloomInfo.bloomEC - 3.f;
+            const float bloomExposure = ConvertEV100ToExposure(bloomEV);
+            
+            input = max(input * bloomExposure - InverseTonemapACES(u_bloomInfo.bloomThreshold), 0.f);
         }
        
         u_outputTexture[pixel] = float4(input, 1.f);
@@ -114,14 +109,7 @@ void BloomUpsampleCS(CS_INPUT input)
 
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
-        float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
-            
-        if(u_bloomInfo.upsampleIsComposite)
-        {
-            const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
-            const float bloomEV = EV100 + u_bloomInfo.bloomEC;
-            bloom = bloom * exp2(bloomEV - 3.f);
-        }
+        const float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
 
         const float3 existing = u_outputTexture[pixel].xyz;
 
