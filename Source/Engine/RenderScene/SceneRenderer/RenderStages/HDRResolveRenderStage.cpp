@@ -29,8 +29,8 @@ RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
-RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 2.f, 0.f, 10.f);
-RendererFloatParameter bloomScale("Bloom Scale", { "Bloom" }, 2.f, 0.f, 5.f);
+RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 1.f, -10.f, 10.f);
+RendererFloatParameter bloomScale("Bloom Scale", { "Bloom" }, 1.f, 0.f, 5.f);
 RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 0.95f, 0.f, 1.f);
 
 } // params
@@ -216,7 +216,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
 
 		BloomPassInfo passInfo;
-		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse() * params::bloomScale;
+		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
 		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
 		passInfo.prefilterInput		= passIdx == 0;
 		passInfo.bloomEC			= params::bloomEC;
@@ -262,7 +262,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
 
 		BloomPassInfo passInfo;
-		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
+		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse() * params::bloomScale;
 		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
 		passInfo.prefilterInput		= false;
 
@@ -313,7 +313,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 	SPT_CHECK(adaptedLuminance.IsValid())
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
-	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes) - 3, 1u);
+	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
 
 	rhi::TextureDefinition bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
