@@ -105,7 +105,7 @@ void CullTrianglesCS(CS_INPUT input)
             const float4 vertexView = mul(u_sceneView.viewMatrix, mul(entityTransform, float4(vertexLocation, 1.f)));
             const float4 vertexClip = mul(u_sceneView.projectionMatrix, vertexView);
             isInFrontOfPerspectivePlane = isInFrontOfPerspectivePlane && vertexView.x > nearPlane;
-            triangleVerticesClip[idx] = float3((vertexClip.xy * 0.5f + 0.5f) * u_viewRenderingParams.rtResolution, vertexClip.w);
+            triangleVerticesClip[idx] = vertexClip.xyw;
         }
 
         // currently we're not handling case when some vertices are in front of near plane, so we just pass those triangles as visible
@@ -117,15 +117,18 @@ void CullTrianglesCS(CS_INPUT input)
                 triangleVerticesClip[idx] = triangleVerticesClip[idx] / triangleVerticesClip[idx].z;
             }
 
-            const float2 ca = triangleVerticesClip[1].xy - triangleVerticesClip[0].xy;
-            const float2 cb = triangleVerticesClip[2].xy - triangleVerticesClip[0].xy;
+            const float2 ca = triangleVerticesClip[1] - triangleVerticesClip[0];
+            const float2 cb = triangleVerticesClip[2] - triangleVerticesClip[0];
 
             // bacface culling
             isTriangleVisible = isTriangleVisible && (ca.x * cb.y <= ca.y * cb.x);
-
+        }
+        
+        if(isTriangleVisible && isInFrontOfPerspectivePlane)
+        {
             float4 aabb;
-            aabb.xy = min(triangleVerticesClip[0].xy, min(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy));
-            aabb.zw = max(triangleVerticesClip[0].xy, max(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy));
+            aabb.xy = min(triangleVerticesClip[0].xy, min(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) * u_viewRenderingParams.rtResolution;
+            aabb.zw = max(triangleVerticesClip[0].xy, max(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) * u_viewRenderingParams.rtResolution;
 
             // This is based on Niagara renderer created by Arseny Kapoulkine
             // Source: https://github.com/zeux/niagara/blob/master/src/shaders/meshlet.mesh.glsl
@@ -134,7 +137,7 @@ void CullTrianglesCS(CS_INPUT input)
 
             // small primitive culling
             // Original comment: "this is slightly imprecise (doesn't fully match hw behavior and is both too loose and too strict)"
-            isTriangleVisible = isTriangleVisible && round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y - subpixelPrecision) != round(aabb.w);
+            isTriangleVisible = isTriangleVisible && (round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y - subpixelPrecision) != round(aabb.w));
         }
 
         if(isTriangleVisible)
