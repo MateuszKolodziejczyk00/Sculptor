@@ -29,7 +29,9 @@ RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
-RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 4.f, -20.f, 20.f);
+RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 2.f, 0.f, 10.f);
+RendererFloatParameter bloomScale("Bloom Scale", { "Bloom" }, 2.f, 0.f, 5.f);
+RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 0.95f, 0.f, 1.f);
 
 } // params
 
@@ -161,8 +163,8 @@ BEGIN_SHADER_STRUCT(BloomPassInfo)
 	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
 	SHADER_STRUCT_FIELD(Bool, prefilterInput)
-	SHADER_STRUCT_FIELD(Bool, upsampleIsComposite)
 	SHADER_STRUCT_FIELD(Real32, bloomEC)
+	SHADER_STRUCT_FIELD(Real32, bloomThreshold)
 END_SHADER_STRUCT();
 
 
@@ -214,9 +216,11 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
 
 		BloomPassInfo passInfo;
-		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse();
+		passInfo.inputPixelSize		= inputRes.cast<Real32>().cwiseInverse() * params::bloomScale;
 		passInfo.outputPixelSize	= outputRes.cast<Real32>().cwiseInverse();
 		passInfo.prefilterInput		= passIdx == 0;
+		passInfo.bloomEC			= params::bloomEC;
+		passInfo.bloomThreshold		= params::bloomThreshold;
 
 		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomDownsampleDS(%d)", passIdx)));
 		bloomPassDS->u_bloomInfo		= passInfo;
@@ -286,10 +290,8 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	static const rdr::PipelineStateID upsamplePipeline = CompileBloomUpsamplePipeline();
 
 	BloomPassInfo passInfo;
-	passInfo.inputPixelSize			= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x() >> 1), 1.f / static_cast<Real32>(renderingRes.y() >> 1));
+	passInfo.inputPixelSize			= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x() >> 1), 1.f / static_cast<Real32>(renderingRes.y() >> 1)) * params::bloomScale;
 	passInfo.outputPixelSize		= math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
-	passInfo.bloomEC				= params::bloomEC;
-	passInfo.upsampleIsComposite	= true;
 
 	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
 	bloomPassDS->u_bloomInfo		= passInfo;
