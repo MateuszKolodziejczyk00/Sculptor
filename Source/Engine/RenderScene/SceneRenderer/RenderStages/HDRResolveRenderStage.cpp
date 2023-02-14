@@ -29,7 +29,7 @@ RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
-RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 1.f, -10.f, 10.f);
+RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 1.6f, -10.f, 10.f);
 RendererFloatParameter bloomScale("Bloom Scale", { "Bloom" }, 1.f, 0.f, 5.f);
 RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 0.95f, 0.f, 1.f);
 

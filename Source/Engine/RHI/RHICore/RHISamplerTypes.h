@@ -153,6 +153,7 @@ struct hash<spt::rhi::SamplerDefinition>
 									 samplerDef.addressingModeU,
 									 samplerDef.addressingModeV,
 									 samplerDef.addressingModeW,
+									 samplerDef.reductionMode,
 									 samplerDef.mipLodBias,
 									 samplerDef.enableAnisotropy,
 									 samplerDef.maxAnisotropy,
