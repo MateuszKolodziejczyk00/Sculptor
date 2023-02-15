@@ -51,6 +51,8 @@ private:
 	void CacheDirectionalLights(const RenderScene& renderScene);
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+	
+	void ReadbackVisibleLightsAreas(const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;

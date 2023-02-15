@@ -21,22 +21,22 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
     
     if(lightIdx < u_lightsData.localLightsNum)
     {
+        float4 aabbOnScreen = 0.f;
+
         const PointLightGPUData pointLight = u_localLights[lightIdx];
 
         bool isLightVisible = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, pointLight.location, pointLight.radius);
 
         if(isLightVisible)
         {
-            const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(pointLight.location, 1.f));
-            
-            float4 aabb;
+            const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(pointLight.location, 1.f)).xyz;
 
             const float near = GetNearPlane(u_sceneView.projectionMatrix);
             const float p01 = u_sceneView.projectionMatrix[0][1];
             const float p12 = u_sceneView.projectionMatrix[1][2];
 
             const float2 hiZRes = u_depthCullingParams.hiZResolution;
-            isLightVisible = !IsSphereBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, pointLightCenterVS, pointLight.radius, near, p01, p12, aabb);
+            isLightVisible = !IsSphereBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, pointLightCenterVS, pointLight.radius, near, p01, p12, aabbOnScreen);
         }
         
         if(isLightVisible)
@@ -61,6 +61,15 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
             lightDrawCommand.localLightIdx  = lightIdx;
 
             u_lightDraws[outputBufferIdx] = lightDrawCommand;
+
+            const float4 aabbInScreenBounds = saturate(aabbOnScreen);
+            const float lightAreaOnScreen = (aabbInScreenBounds.z - aabbInScreenBounds.x) * (aabbInScreenBounds.w - aabbInScreenBounds.y);
+
+            LocalLightAreaInfo areaInfo;
+            areaInfo.lightEntityID      = pointLight.entityID;
+            areaInfo.lightAreaOnScreen  = lightAreaOnScreen;
+            areaInfo.lightAreaOnScreen  = lightAreaOnScreen;
+            u_visibleLightsAreas[outputBufferIdx] = areaInfo;
         }
     }
 }

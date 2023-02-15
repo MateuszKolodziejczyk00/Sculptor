@@ -92,8 +92,11 @@ public:
 	void				Unbind(DelegateHandle handle);
 
 	void				Reset();
+	
+	Bool				IsBound() const;
 
 	void				Broadcast(TArgs... arguments);
+	void				ResetAndBroadcast(TArgs... arguments);
 
 private:
 
@@ -172,7 +175,17 @@ void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Unbind(Delegate
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Reset()
 {
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	m_delegates.clear();
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+Bool MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::IsBound() const
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	return !m_delegates.empty();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +197,23 @@ void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Broadcast(TArgs
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
 	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
+	{
+		delegateInfo.delegate.ExecuteIfBound(arguments...);
+	}
+}
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::ResetAndBroadcast(TArgs... arguments)
+{
+	lib::DynamicArray<DelegateInfo> localDelegates;
+
+	{
+		SPT_MAYBE_UNUSED
+		const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+		localDelegates = std::move(m_delegates);
+	}
+
+	for (const ThisType::DelegateInfo& delegateInfo : localDelegates)
 	{
 		delegateInfo.delegate.ExecuteIfBound(arguments...);
 	}

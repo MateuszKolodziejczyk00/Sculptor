@@ -19,6 +19,7 @@ BEGIN_SHADER_STRUCT(PointLightGPUData)
 	SHADER_STRUCT_FIELD(Real32, intensity)
 	SHADER_STRUCT_FIELD(math::Vector3f, location)
 	SHADER_STRUCT_FIELD(Real32, radius)
+	SHADER_STRUCT_FIELD(Uint32, entityID)
 END_SHADER_STRUCT();
 
 

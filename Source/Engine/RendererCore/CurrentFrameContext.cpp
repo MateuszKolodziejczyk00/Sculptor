@@ -58,9 +58,9 @@ void CurrentFrameContext::BeginFrame()
 		SPT_CHECK(released);
 	}
 
-	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
+	AdvanceCurrentDelegateIdx();
 
-	// flush releases only if we were wating for finishing frame. Otherwise we may remove resources that are in use (for example resources used for loading or initialization)
+	// flush releases only if we were waiting for finishing frame. Otherwise we may remove resources that are in use (for example resources used for loading or initialization)
 	if (shouldWaitForFrameFinished)
 	{
 		FlushCurrentFrameReleases();
@@ -81,10 +81,12 @@ void CurrentFrameContext::ReleaseAllResources()
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (Uint32 i = 0; i < priv::framesInFlightNum; ++i)
+	Uint32 releasedFrames = 0;
+	while (releasedFrames < priv::framesInFlightNum || GetCurrentFrameCleanupDelegate().IsBound())
 	{
-		priv::cleanupDelegates[i].Broadcast();
-		priv::cleanupDelegates[i].Reset();
+		AdvanceCurrentDelegateIdx();
+		FlushCurrentFrameReleases();
+		++releasedFrames;
 	}
 }
 
@@ -98,12 +100,16 @@ const lib::SharedPtr<Semaphore>& CurrentFrameContext::GetReleaseFrameSemaphore()
 	return priv::releaseFrameSemaphore;
 }
 
+void CurrentFrameContext::AdvanceCurrentDelegateIdx()
+{
+	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
+}
+
 void CurrentFrameContext::FlushCurrentFrameReleases()
 {
 	SPT_PROFILER_FUNCTION();
 
-	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Broadcast();
-	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].Reset();
+	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].ResetAndBroadcast();
 }
 
-}
+} // spt::rdr

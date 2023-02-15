@@ -14,6 +14,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/SceneRendererTypes.h"
+#include "Readback.h"
 
 namespace spt::rsc
 {
@@ -29,6 +30,12 @@ RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Light
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Lights Rendering Common =======================================================================
+
+BEGIN_SHADER_STRUCT(LocalLightAreaInfo)
+	SHADER_STRUCT_FIELD(Uint32, lightEntityID)
+	SHADER_STRUCT_FIELD(Real32, lightAreaOnScreen)
+END_SHADER_STRUCT();
+
 
 BEGIN_SHADER_STRUCT(LightsRenderingData)
 	SHADER_STRUCT_FIELD(Uint32, localLightsNum)
@@ -66,6 +73,7 @@ DS_BEGIN(GenerateLightsDrawCommnadsDS, rg::RGDescriptorSetState<GenerateLightsDr
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),			u_sceneViewCullingData)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<LightIndirectDrawCommand>),	u_lightDraws)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_lightDrawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<LocalLightAreaInfo>),		u_visibleLightsAreas)
 DS_END();
 
 
@@ -123,6 +131,8 @@ struct LightsRenderingDataPerView
 
 	rg::RGBufferViewHandle	lightDrawCommandsBuffer;
 	rg::RGBufferViewHandle	lightDrawCommandsCountBuffer;
+
+	lib::SharedPtr<rdr::Buffer> visibleLightsAreas;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +178,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		for (const auto& [entity, pointLight] : pointLightsView.each())
 		{
-			const PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
+			PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
+			gpuLightData.entityID = static_cast<Uint32>(entity);
 			const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
 
 			if (lightViewSpaceZ + gpuLightData.radius > 0.f)
@@ -223,6 +234,12 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const rg::RGBufferViewHandle lightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommandsCount"), lightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeLightDrawCommandsCount"), lightDrawCommandsCount, 0, sizeof(Uint32), 0);
 
+		const Uint64 visibleLightsAreasBufferSize = sizeof(LocalLightAreaInfo) * pointLights.size();
+		const rhi::BufferDefinition visibleLightsAreasBufferDef(visibleLightsAreasBufferSize, rhi::EBufferUsage::Storage);
+		const lib::SharedRef<rdr::Buffer> visibleLightsAreas = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("VisibleLightsAreas"), visibleLightsAreasBufferDef, rhi::EMemoryUsage::CPUToGPU);
+		gfx::FillBuffer(visibleLightsAreas, 0, visibleLightsAreasBufferSize, idxNone<Uint32>);
+		rg::RGBufferViewHandle rgVisibleLightsAreas = graphBuilder.AcquireExternalBufferView(visibleLightsAreas->CreateFullView());
+
 		const Uint32 tilesLightsMaskBufferSize = tilesNum.x() * tilesNum.y() * lightsData.localLights32Num * sizeof(Uint32);
 		const rhi::BufferDefinition tilesLightsMaskDefinition(tilesLightsMaskBufferSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 		const rg::RGBufferViewHandle tilesLightsMask = graphBuilder.CreateBufferView(RG_DEBUG_NAME("TilesLightsMask"), tilesLightsMaskDefinition, rhi::EMemoryUsage::GPUOnly);
@@ -244,6 +261,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		generateLightsDrawCommnadsDS->u_sceneViewCullingData	= cullingData;
 		generateLightsDrawCommnadsDS->u_lightDraws				= lightDrawCommands;
 		generateLightsDrawCommnadsDS->u_lightDrawsCount			= lightDrawCommandsCount;
+		generateLightsDrawCommnadsDS->u_visibleLightsAreas		= rgVisibleLightsAreas;
 
 		const lib::SharedRef<BuildLightTilesDS> buildLightTilesDS = rdr::ResourcesManager::CreateDescriptorSetState<BuildLightTilesDS>(RENDERER_RESOURCE_NAME("BuildLightTilesDS"));
 		buildLightTilesDS->u_localLights		= localLightsRGBuffer;
@@ -261,6 +279,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		lightsRenderingData.lightDrawCommandsBuffer			= lightDrawCommands;
 		lightsRenderingData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
+
+		lightsRenderingData.visibleLightsAreas = visibleLightsAreas;
 	}
 	
 	if (sceneDirectionalLights.directionalLightsNum > 0)
@@ -337,6 +357,14 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 		
 	RenderStageEntries& depthPrepassbEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
 	depthPrepassbEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+
+	if (lightsRenderingData.localLightsNum > 0)
+	{
+		SPT_CHECK(!!lightsRenderingData.visibleLightsAreas);
+		gfx::Readback::Delegate readbackDelegate;
+		readbackDelegate.BindRawMember(this, &LightsRenderSystem::ReadbackVisibleLightsAreas, lightsRenderingData.visibleLightsAreas, lightsRenderingData.localLightsNum);
+		gfx::Readback::ScheduleReadback(std::move(readbackDelegate));
+	}
 }
 
 void LightsRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
@@ -428,6 +456,26 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	}
 
 	graphBuilder.BindDescriptorSetState(lib::Ref(lightsRenderingData.viewShadingDS));
+}
+
+void LightsRenderSystem::ReadbackVisibleLightsAreas(const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const LocalLightAreaInfo* visibleLightsAreas = reinterpret_cast<const LocalLightAreaInfo*>(visibleLightsAreasBuffer->GetRHI().MapBufferMemory());
+	SPT_CHECK(!!visibleLightsAreas);
+	Uint32 lightsCount = 0;
+	for (Uint32 areaInfoIdx = 0; areaInfoIdx < maxLightsNum; ++areaInfoIdx, ++lightsCount)
+	{
+		if(visibleLightsAreas[areaInfoIdx].lightEntityID == idxNone<Uint32>)
+		{
+			break;
+		}
+	}
+
+	// ...
+
+	visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
 }
 
 } // spt::rsc

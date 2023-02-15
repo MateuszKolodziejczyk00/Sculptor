@@ -32,7 +32,8 @@ public:
 
 private:
 
-	static void									FlushCurrentFrameReleases();
+	static void	AdvanceCurrentDelegateIdx();
+	static void	FlushCurrentFrameReleases();
 };
 
 }

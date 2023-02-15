@@ -37,8 +37,9 @@ public:
 	
 	using PayloadType = std::tuple<TPayload...>;
 
-	explicit DelegateBindingWithPayload(TPayload&&... payload)
-		: m_payload(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	explicit DelegateBindingWithPayload(TInputPayload&&... payload)
+		: m_payload(std::forward<TInputPayload>(payload)...)
 	{ }
 
 protected:
@@ -66,8 +67,9 @@ protected:
 
 public:
 
-	explicit RawFunctionBinding(TFuncType function, TPayload&&... payload)
-		: Super(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	explicit RawFunctionBinding(TFuncType function, TInputPayload&&... payload)
+		: Super(std::forward<TInputPayload>(payload)...)
 		, m_function(function)
 	{ }
 
@@ -105,8 +107,9 @@ protected:
 
 public:
 
-	explicit RawMemberFunctionBinding(TObjectType* object, TFuncType function, TPayload&&... payload)
-		: Super(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	explicit RawMemberFunctionBinding(TObjectType* object, TFuncType function, TInputPayload&&... payload)
+		: Super(std::forward<TInputPayload>(payload)...)
 		, m_object(object)
 		, m_function(function)
 	{
@@ -147,8 +150,9 @@ protected:
 
 public:
 
-	SharedMemberFunctionBinding(lib::SharedPtr<TObjectType> object, TFuncType function, TPayload&&... payload)
-		: Super(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	SharedMemberFunctionBinding(lib::SharedPtr<TObjectType> object, TFuncType function, TInputPayload&&... payload)
+		: Super(std::forward<TInputPayload>(payload)...)
 		, m_object(std::move(object))
 		, m_function(function)
 	{ }
@@ -188,8 +192,9 @@ protected:
 
 public:
 
-	WeakMemberFunctionBinding(const lib::SharedPtr<TObjectType>& object, TFuncType function, TPayload&&... payload)
-		: Super(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	WeakMemberFunctionBinding(const lib::SharedPtr<TObjectType>& object, TFuncType function, TInputPayload&&... payload)
+		: Super(std::forward<TInputPayload>(payload)...)
 		, m_object(object)
 		, m_function(function)
 	{ }
@@ -229,8 +234,9 @@ protected:
 
 public:
 
-	explicit LambdaBinding(TCallable&& callable, TPayload&&... payload)
-		: Super(std::forward<TPayload>(payload)...)
+	template<typename... TInputPayload>
+	explicit LambdaBinding(TCallable&& callable, TInputPayload&&... payload)
+		: Super(std::forward<TInputPayload>(payload)...)
 		, m_callable(std::forward<TCallable>(callable))
 	{ }
 
