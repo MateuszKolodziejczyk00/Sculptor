@@ -81,6 +81,8 @@ enum class EFragmentFormat : Uint32
 	RGBA16_UN_Float,
 
 	RGBA32_S_Float,
+	
+	D16_UN_Float,
 	D32_S_Float
 };
 
@@ -208,6 +210,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 {
 	switch (format)
 	{
+	case EFragmentFormat::D16_UN_Float:
 	case EFragmentFormat::D32_S_Float:
 		return ETextureAspect::Depth;
 

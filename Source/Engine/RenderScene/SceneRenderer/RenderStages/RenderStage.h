@@ -48,7 +48,7 @@ inline void RenderStage<TRenderStageType, stage>::Render(rg::RenderGraphBuilder&
 
 	RenderStageExecutionContext stageContext(stage);
 
-	viewStageEntries.GetPreRenderStageDelegate().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	viewStageEntries.GetPreRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 
 	reinterpret_cast<TRenderStageType*>(this)->OnRender(graphBuilder, renderScene, viewSpec, stageContext);
 	

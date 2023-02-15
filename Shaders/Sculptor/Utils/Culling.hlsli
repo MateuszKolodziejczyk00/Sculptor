@@ -21,9 +21,13 @@ bool IsConeVisible(float3 center, float radius, float3 coneAxis, float coneCutof
 }
 
 
-bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12)
+bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12, out float4 aabb)
 {
-    float4 aabb;
+    if(sphereCenterVS.x - sphereRadius - near <= 0.001f)
+    {
+        return false;
+    }
+
     if (GetProjectedSphereAABB(sphereCenterVS, sphereRadius, near, p01, p12, aabb))
     {
         const float width = (aabb.z - aabb.x) * hiZResolution.x;
@@ -42,6 +46,13 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
     }
 
     return false;
+}
+
+
+bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZResolution, float3 sphereCenterVS, float sphereRadius, float near, float p01, float p12)
+{
+    float4 aabb;
+    return IsSphereBehindHiZ(hiZ, hiZSampler, hiZResolution, sphereCenterVS, sphereRadius, near, p01, p12, aabb);
 }
 
 #endif // CULLING_H

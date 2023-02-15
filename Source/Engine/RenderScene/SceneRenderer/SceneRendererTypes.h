@@ -3,15 +3,33 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "DescriptorSetBindings/SamplerBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc
 {
 
+BEGIN_SHADER_STRUCT(DepthCullingParams)
+	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(DepthCullingDS, rg::RGDescriptorSetState<DepthCullingDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_hiZTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_hiZSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DepthCullingParams>),				u_depthCullingParams)
+DS_END();
+
+
 struct DepthPrepassData
 {
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle hiZ;
+
+	lib::SharedPtr<DepthCullingDS> depthCullingDS;
 };
 
 

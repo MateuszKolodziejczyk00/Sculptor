@@ -138,7 +138,7 @@ void CullTrianglesCS(CS_INPUT input)
 
             // small primitive culling
             // Original comment: "this is slightly imprecise (doesn't fully match hw behavior and is both too loose and too strict)"
-            isTriangleVisible = isTriangleVisible && (round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y - subpixelPrecision) != round(aabb.w));
+            //isTriangleVisible = isTriangleVisible && (round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y - subpixelPrecision) != round(aabb.w));
         }
 
         if(isTriangleVisible)

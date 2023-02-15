@@ -257,7 +257,7 @@ public:
 
 	RenderStageEntries();
 
-	PreRenderStageDelegate&		GetPreRenderStageDelegate();
+	PreRenderStageDelegate&		GetPreRenderStage();
 	OnRenderStageDelegate&		GetOnRenderStage();
 	PostRenderStageDelegate&	GetPostRenderStage();
 

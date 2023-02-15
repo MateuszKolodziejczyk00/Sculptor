@@ -10,7 +10,7 @@ namespace spt::rsc
 RenderStageEntries::RenderStageEntries()
 { }
 
-RenderStageEntries::PreRenderStageDelegate& RenderStageEntries::GetPreRenderStageDelegate()
+RenderStageEntries::PreRenderStageDelegate& RenderStageEntries::GetPreRenderStage()
 {
 	return m_preRenderStage;
 }

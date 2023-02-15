@@ -5,6 +5,7 @@
 
 
 [[descriptor_set(GenerateLightsDrawCommnadsDS, 0)]]
+[[descriptor_set(DepthCullingDS, 1)]]
 
 
 struct CS_INPUT
@@ -20,14 +21,27 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
     
     if(lightIdx < u_lightsData.localLightsNum)
     {
-
         const PointLightGPUData pointLight = u_localLights[lightIdx];
 
-        const bool isLightInFrustum = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, pointLight.location, pointLight.radius);
-        
-        if(isLightInFrustum)
+        bool isLightVisible = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, pointLight.location, pointLight.radius);
+
+        if(isLightVisible)
         {
-            const uint2 visibleLightsBallot = WaveActiveBallot(isLightInFrustum).xy;
+            const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(pointLight.location, 1.f));
+            
+            float4 aabb;
+
+            const float near = GetNearPlane(u_sceneView.projectionMatrix);
+            const float p01 = u_sceneView.projectionMatrix[0][1];
+            const float p12 = u_sceneView.projectionMatrix[1][2];
+
+            const float2 hiZRes = u_depthCullingParams.hiZResolution;
+            isLightVisible = !IsSphereBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, pointLightCenterVS, pointLight.radius, near, p01, p12, aabb);
+        }
+        
+        if(isLightVisible)
+        {
+            const uint2 visibleLightsBallot = WaveActiveBallot(isLightVisible).xy;
         
             const uint visibleLightsNum = countbits(visibleLightsBallot.x) + countbits(visibleLightsBallot.y);
 

@@ -5,10 +5,14 @@
 #include "RenderSceneRegistry.h"
 #include "RenderingDataRegistry.h"
 
+
 namespace spt::rsc
 {
 
 class RenderView;
+struct PointLightData;
+struct StaticMeshRenderingDefinition;
+struct StaticMeshInstanceRenderData;
 
 
 struct StaticMeshInstanceRenderData
@@ -54,6 +58,11 @@ public:
 	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
 
 	StaticMeshBatchDefinition BuildBatchForView(const RenderView& view) const;
+	StaticMeshBatchDefinition BuildBatchForPointLight(const PointLightData& pointLight) const;
+
+private:
+
+	void AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef) const;
 };
 
 } // spt::rsc

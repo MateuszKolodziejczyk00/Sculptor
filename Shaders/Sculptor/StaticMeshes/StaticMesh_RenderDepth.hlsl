@@ -28,7 +28,7 @@ struct PS_OUTPUT
 };
 
 
-VS_OUTPUT StaticMesh_DepthPrepassVS(VS_INPUT input)
+VS_OUTPUT StaticMesh_DepthVS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
@@ -53,7 +53,7 @@ VS_OUTPUT StaticMesh_DepthPrepassVS(VS_INPUT input)
 }
 
 
-PS_OUTPUT StaticMesh_DepthPrepassFS(VS_OUTPUT vertexInput)
+PS_OUTPUT StaticMesh_DepthFS(VS_OUTPUT vertexInput)
 {
     PS_OUTPUT output;
     return output;

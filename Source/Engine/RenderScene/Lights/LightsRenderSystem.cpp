@@ -13,6 +13,7 @@
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "SceneRenderer/SceneRendererTypes.h"
 
 namespace spt::rsc
 {
@@ -233,14 +234,16 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		buildZClusters->u_lightsData			= lightsData;
 		buildZClusters->u_clustersRanges		= clustersRanges;
 
-		const SceneViewData sceneViewData = viewSpec.GetRenderView().GetViewRenderingData();
+		const SceneViewData& sceneViewData		= viewSpec.GetRenderView().GetViewRenderingData();
+		const SceneViewCullingData& cullingData	= viewSpec.GetRenderView().GetCullingData();
 
 		const lib::SharedRef<GenerateLightsDrawCommnadsDS> generateLightsDrawCommnadsDS = rdr::ResourcesManager::CreateDescriptorSetState<GenerateLightsDrawCommnadsDS>(RENDERER_RESOURCE_NAME("GenerateLightsDrawCommnadsDS"));
-		generateLightsDrawCommnadsDS->u_localLights		= localLightsRGBuffer;
-		generateLightsDrawCommnadsDS->u_lightsData		= lightsData;
-		generateLightsDrawCommnadsDS->u_sceneView		= sceneViewData;
-		generateLightsDrawCommnadsDS->u_lightDraws		= lightDrawCommands;
-		generateLightsDrawCommnadsDS->u_lightDrawsCount	= lightDrawCommandsCount;
+		generateLightsDrawCommnadsDS->u_localLights				= localLightsRGBuffer;
+		generateLightsDrawCommnadsDS->u_lightsData				= lightsData;
+		generateLightsDrawCommnadsDS->u_sceneView				= sceneViewData;
+		generateLightsDrawCommnadsDS->u_sceneViewCullingData	= cullingData;
+		generateLightsDrawCommnadsDS->u_lightDraws				= lightDrawCommands;
+		generateLightsDrawCommnadsDS->u_lightDrawsCount			= lightDrawCommandsCount;
 
 		const lib::SharedRef<BuildLightTilesDS> buildLightTilesDS = rdr::ResourcesManager::CreateDescriptorSetState<BuildLightTilesDS>(RENDERER_RESOURCE_NAME("BuildLightTilesDS"));
 		buildLightTilesDS->u_localLights		= localLightsRGBuffer;
@@ -327,11 +330,13 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
+	SPT_CHECK(viewSpec.SupportsStage(ERenderStage::DepthPrepass));
+
 	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec, m_directionalLightsData);
 	viewSpec.GetData().Create<LightsRenderingDataPerView>(lightsRenderingData);
 		
-	RenderStageEntries& forwardOpaqueEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
-	forwardOpaqueEntries.GetPreRenderStageDelegate().AddRawMember(this, &LightsRenderSystem::RenderPreForwardOpaquePerView);
+	RenderStageEntries& depthPrepassbEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+	depthPrepassbEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
 }
 
 void LightsRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
@@ -371,7 +376,7 @@ void LightsRenderSystem::CacheDirectionalLights(const RenderScene& renderScene)
 	}
 }
 
-void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -379,11 +384,20 @@ void LightsRenderSystem::RenderPreForwardOpaquePerView(rg::RenderGraphBuilder& g
 
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
+		const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
+		SPT_CHECK(!!depthPrepassData.depthCullingDS);
+
 		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
-		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"), m_buildLightsZClustersPipeline, dispatchZClustersGroupsNum, rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildZClustersDS)));
+		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
+							  m_buildLightsZClustersPipeline,
+							  dispatchZClustersGroupsNum,
+							  rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildZClustersDS)));
 
 		const math::Vector3u dispatchLightsGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.localLightsNum, 32), 1, 1);
-		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"), m_generateLightsDrawCommandsPipeline, dispatchLightsGroupsNum, rg::BindDescriptorSets(lib::Ref(lightsRenderingData.generateLightsDrawCommnadsDS)));
+		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
+							  m_generateLightsDrawCommandsPipeline,
+							  dispatchLightsGroupsNum,
+							  rg::BindDescriptorSets(lib::Ref(lightsRenderingData.generateLightsDrawCommnadsDS), lib::Ref(depthPrepassData.depthCullingDS)));
 
 		const math::Vector2u renderingArea = lightsRenderingData.tilesNum;
 

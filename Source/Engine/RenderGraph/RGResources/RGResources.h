@@ -260,6 +260,11 @@ public:
 		return GetTexture()->GetResolution();
 	}
 
+	math::Vector2u GetResolution2D() const
+	{
+		return GetResolution().head<2>();
+	}
+
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
 	{
 		if (!m_textureView)

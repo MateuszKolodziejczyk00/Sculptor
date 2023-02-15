@@ -15,6 +15,7 @@
 #include "Transfers/UploadUtils.h"
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 #include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
+#include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "Materials/MaterialsUnifiedData.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
@@ -83,18 +84,6 @@ struct StaticMeshesVisibleLastFrame
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Opaque Forward ================================================================================
-
-BEGIN_SHADER_STRUCT(SMDepthCullingParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(SMDepthCullingDS, rg::RGDescriptorSetState<SMDepthCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_hiZTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_hiZSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMDepthCullingParams>),				u_depthCullingParams)
-DS_END();
-
 
 DS_BEGIN(SMCullSubmeshesDS, rg::RGDescriptorSetState<SMCullSubmeshesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<StaticMeshBatchElement>),	u_visibleBatchElements)
@@ -369,7 +358,7 @@ SMDepthPrepassBatch CreateDepthPrepassBatch(rg::RenderGraphBuilder& graphBuilder
 
 StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
-	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass);
+	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
@@ -380,14 +369,19 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 
 	{
 		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthPrepassVS"));
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthPrepassFS"));
-		const rdr::ShaderID depthPrepassShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepthPrepass.hlsl", compilationSettings);
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthVS"));
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthFS"));
+		const rdr::ShaderID depthShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", compilationSettings);
 
-		rhi::GraphicsPipelineDefinition pipelineDef;
-		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
-		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), pipelineDef, depthPrepassShader);
+		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
+		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
+		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), depthPrepassPipelineDef, depthShader);
+
+		rhi::GraphicsPipelineDefinition shadowMapPipelineDef;
+		shadowMapPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		shadowMapPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetDepthFormat();
+		m_shadowMapRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), shadowMapPipelineDef, depthShader);
 	}
 
 	{
@@ -627,14 +621,6 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 	SPT_PROFILER_FUNCTION();
 
 	const DepthPrepassData& prepassData = viewSpec.GetData().Get<DepthPrepassData>();
-	SPT_CHECK(prepassData.hiZ.IsValid());
-
-	SMDepthCullingParams depthCullingParams;
-	depthCullingParams.hiZResolution = prepassData.hiZ->GetResolution().head<2>().cast<Real32>();
-
-	const lib::SharedRef<SMDepthCullingDS> depthCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthCullingDS>(RENDERER_RESOURCE_NAME("SMDepthCullingDS"));
-	depthCullingDS->u_hiZTexture			= prepassData.hiZ;
-	depthCullingDS->u_depthCullingParams	= depthCullingParams;
 
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
@@ -643,7 +629,7 @@ void StaticMeshesRenderSystem::CullForwardOpaquePerView(rg::RenderGraphBuilder& 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																					  lib::Ref(staticMeshRenderingViewData.viewDS),
-																					  depthCullingDS));
+																					  lib::Ref(prepassData.depthCullingDS)));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{

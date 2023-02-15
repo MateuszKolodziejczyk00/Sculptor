@@ -171,6 +171,15 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 
 	depthPrepassData.hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, depthPrepassData.depth, rhi::EFragmentFormat::R32_S_Float);
+
+	DepthCullingParams depthCullingParams;
+	depthCullingParams.hiZResolution = depthPrepassData.hiZ->GetResolution2D().cast<Real32>();
+
+	const lib::SharedRef<DepthCullingDS> depthCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
+	depthCullingDS->u_hiZTexture			= depthPrepassData.hiZ;
+	depthCullingDS->u_depthCullingParams	= depthCullingParams;
+
+	depthPrepassData.depthCullingDS = depthCullingDS;
 }
 
 } // spt::rsc

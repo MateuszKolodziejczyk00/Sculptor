@@ -34,6 +34,10 @@ private:
 	void CullForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	void RenderForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
+	// Shadow Maps
+	
+	rdr::PipelineStateID m_shadowMapRenderingPipeline;
+
 	// Depth Prepass
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
