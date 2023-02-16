@@ -135,7 +135,7 @@ Uint64 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
 	return entityDataHandle.GetEntityIdx();
 }
 
-const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& RenderScene::GetRenderSystems() const
+const lib::DynamicArray<lib::SharedRef<RenderSystem>>& RenderScene::GetRenderSystems() const
 {
 	return m_renderSystems.GetRenderSystems();
 }

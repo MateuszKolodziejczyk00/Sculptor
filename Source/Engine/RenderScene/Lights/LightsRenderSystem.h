@@ -52,7 +52,7 @@ private:
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	
-	void ReadbackVisibleLightsAreas(const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum);
+	void ReadbackVisibleLightsAreas(const RenderScene& scene, const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;

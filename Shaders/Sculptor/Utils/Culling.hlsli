@@ -25,6 +25,7 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
 {
     if(sphereCenterVS.x - sphereRadius - near <= 0.001f)
     {
+        aabb = float4(0.f, 0.f, 1.f, 1.f);
         return false;
     }
 
@@ -43,6 +44,10 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
         // if max depth of meshlet (closest point) is smaller than min depth of scene (furthest point)
         // it means that meshlet must behind furthest point in scene
         return sphereMaxDepth < sceneMinDepth;
+    }
+    else
+    {
+        aabb = float4(0.f, 0.f, 1.f, 1.f);
     }
 
     return false;

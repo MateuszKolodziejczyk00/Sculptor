@@ -19,6 +19,7 @@
 #include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Lights/LightsRenderSystem.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
 #include "Transfers/TransfersManager.h"
@@ -212,6 +213,7 @@ Real32 SandboxRenderer::GetCameraSpeed()
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
+	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>();
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();
 

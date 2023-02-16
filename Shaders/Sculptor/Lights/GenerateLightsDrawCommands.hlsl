@@ -68,7 +68,6 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
             LocalLightAreaInfo areaInfo;
             areaInfo.lightEntityID      = pointLight.entityID;
             areaInfo.lightAreaOnScreen  = lightAreaOnScreen;
-            areaInfo.lightAreaOnScreen  = lightAreaOnScreen;
             u_visibleLightsAreas[outputBufferIdx] = areaInfo;
         }
     }

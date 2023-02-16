@@ -78,7 +78,7 @@ public:
 
 	RenderSystemsRegistry() = default;
 
-	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& GetRenderSystems() const
+	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& GetRenderSystems() const
 	{
 		return m_renderSystems;
 	}
@@ -101,7 +101,7 @@ public:
 
 			if (std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID) == std::cend(m_renderSystemsID))
 			{
-				addedSystem = m_renderSystems.emplace_back(std::make_unique<TSystemType>()).get();
+				addedSystem = m_renderSystems.emplace_back(lib::MakeShared<TSystemType>()).Get();
 				m_renderSystemsID.emplace_back(typeID);
 
 				if (addedSystem->WantsUpdate())
@@ -115,13 +115,13 @@ public:
 	}
 
 	template<typename TSystemType>
-	lib::UniquePtr<RenderSystem> RemoveRenderSystem()
+	lib::SharedPtr<RenderSystem> RemoveRenderSystem()
 	{
 		SPT_PROFILER_FUNCTION();
 
 		const RenderSystemTypeID typeID = ecs::type_id<TSystemType>();
 		
-		lib::UniquePtr<RenderSystem> removedSystem;
+		lib::SharedPtr<RenderSystem> removedSystem;
 		{
 			const lib::LockGuard lockGuard(m_lock);
 
@@ -129,7 +129,7 @@ public:
 			if (foundSystem != std::cend(m_renderSystems))
 			{
 				const SizeType systemIdx = std::distance(std::cbegin(m_renderSystemsID), foundSystem);
-				removedSystem = std::move(m_renderSystems[systemIdx]);
+				removedSystem = m_renderSystems[systemIdx];
 
 				m_renderSystems.erase(std::begin(m_renderSystems) + systemIdx);
 				m_renderSystemsID.erase(std::begin(m_renderSystemsID) + systemIdx);
@@ -152,7 +152,7 @@ private:
 
 	lib::Lock m_lock;
 	// These to arrays must match - m_systemsID[i] is id of system m_renderSystems[i]
-	lib::DynamicArray<lib::UniquePtr<RenderSystem>> m_renderSystems;
+	lib::DynamicArray<lib::SharedRef<RenderSystem>> m_renderSystems;
 	lib::DynamicArray<RenderSystemTypeID>			m_renderSystemsID;
 	
 	lib::DynamicArray<RenderSystem*>				m_renderSystemsWithUpdate;
@@ -171,7 +171,7 @@ public:
 	}
 
 	template<typename TPrimitiveSystem>
-	const TPrimitiveSystem* GetSystem() const
+	TPrimitiveSystem* GetSystem() const
 	{
 		const PrimitiveSystemTypeID typeID = ecs::type_id<TPrimitiveSystem>();
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
@@ -259,7 +259,7 @@ public:
 	
 	// Render Systems =======================================================
 
-	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& GetRenderSystems() const;
+	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& GetRenderSystems() const;
 
 	template<typename TSystemType>
 	void AddRenderSystem()
@@ -274,7 +274,7 @@ public:
 	template<typename TSystemType>
 	void RemoveRenderSystem()
 	{
-		lib::UniquePtr<RenderSystem> removedSystem = m_renderSystems.RemoveRenderSystem<TSystemType>();
+		lib::SharedPtr<RenderSystem> removedSystem = m_renderSystems.RemoveRenderSystem<TSystemType>();
 		if (removedSystem)
 		{
 			DeinitializeRenderSystem(*removedSystem);
@@ -296,15 +296,15 @@ public:
 	}
 
 	template<typename TPrimitivesSystem>
-	const TPrimitivesSystem* GetPrimitivesSystem() const
+	TPrimitivesSystem* GetPrimitivesSystem() const
 	{
 		return m_primitiveSystems.GetSystem<TPrimitivesSystem>();
 	}
 	
 	template<typename TPrimitivesSystem>
-	const TPrimitivesSystem& GetPrimitivesSystemChecked() const
+	TPrimitivesSystem& GetPrimitivesSystemChecked() const
 	{
-		const TPrimitivesSystem* system = GetPrimitivesSystem<TPrimitivesSystem>();
+		TPrimitivesSystem* system = GetPrimitivesSystem<TPrimitivesSystem>();
 		SPT_CHECK(!!system);
 		return *system;
 	}

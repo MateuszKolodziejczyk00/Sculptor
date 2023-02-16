@@ -15,6 +15,7 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Readback.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 
 namespace spt::rsc
 {
@@ -361,8 +362,11 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 	if (lightsRenderingData.localLightsNum > 0)
 	{
 		SPT_CHECK(!!lightsRenderingData.visibleLightsAreas);
+
+		const lib::SharedPtr<LightsRenderSystem> thisAsShared = std::reinterpret_pointer_cast<LightsRenderSystem>(shared_from_this());
+
 		gfx::Readback::Delegate readbackDelegate;
-		readbackDelegate.BindRawMember(this, &LightsRenderSystem::ReadbackVisibleLightsAreas, lightsRenderingData.visibleLightsAreas, lightsRenderingData.localLightsNum);
+		readbackDelegate.BindWeakMember(thisAsShared, &LightsRenderSystem::ReadbackVisibleLightsAreas, std::ref(renderScene), lightsRenderingData.visibleLightsAreas, lightsRenderingData.localLightsNum);
 		gfx::Readback::ScheduleReadback(std::move(readbackDelegate));
 	}
 }
@@ -458,24 +462,34 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	graphBuilder.BindDescriptorSetState(lib::Ref(lightsRenderingData.viewShadingDS));
 }
 
-void LightsRenderSystem::ReadbackVisibleLightsAreas(const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum)
+void LightsRenderSystem::ReadbackVisibleLightsAreas(const RenderScene& scene, const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const LocalLightAreaInfo* visibleLightsAreas = reinterpret_cast<const LocalLightAreaInfo*>(visibleLightsAreasBuffer->GetRHI().MapBufferMemory());
-	SPT_CHECK(!!visibleLightsAreas);
-	Uint32 lightsCount = 0;
-	for (Uint32 areaInfoIdx = 0; areaInfoIdx < maxLightsNum; ++areaInfoIdx, ++lightsCount)
+	ShadowMapsManagerSystem* shadowMapsManager = scene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
+	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
 	{
-		if(visibleLightsAreas[areaInfoIdx].lightEntityID == idxNone<Uint32>)
+		lib::DynamicArray<VisibleLightEntityInfo> visibleLights;
+		visibleLights.reserve(maxLightsNum >> 3);
+
+		const LocalLightAreaInfo* visibleLightsAreas = reinterpret_cast<const LocalLightAreaInfo*>(visibleLightsAreasBuffer->GetRHI().MapBufferMemory());
+		SPT_CHECK(!!visibleLightsAreas);
+		Uint32 lightsCount = 0;
+		for (Uint32 areaInfoIdx = 0; areaInfoIdx < maxLightsNum; ++areaInfoIdx, ++lightsCount)
 		{
-			break;
+			const LocalLightAreaInfo& visibleLightInfo = visibleLightsAreas[areaInfoIdx];
+			if (visibleLightInfo.lightEntityID == idxNone<Uint32>)
+			{
+				break;
+			}
+
+			visibleLights.emplace_back(VisibleLightEntityInfo{ static_cast<RenderSceneEntity>(visibleLightInfo.lightEntityID), visibleLightInfo.lightAreaOnScreen });
 		}
+
+		shadowMapsManager->UpdateVisibleLights(visibleLights);
+
+		visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
 	}
-
-	// ...
-
-	visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
 }
 
 } // spt::rsc

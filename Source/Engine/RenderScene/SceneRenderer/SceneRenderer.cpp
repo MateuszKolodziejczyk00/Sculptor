@@ -76,13 +76,13 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 		viewSpec->GetRenderView().UpdateViewCachedData();
 	}
 
-	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
-	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
+	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& renderSystems = scene.GetRenderSystems();
+	for (const lib::SharedRef<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->RenderPerFrame(graphBuilder, scene);
 	}
 	
-	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
+	for (const lib::SharedRef<RenderSystem>& renderSystem : renderSystems)
 	{
 		for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 		{
@@ -102,7 +102,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
-	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
+	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
@@ -123,8 +123,8 @@ lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::Rend
 	views.reserve(4);
 	views.emplace_back(&view);
 
-	const lib::DynamicArray<lib::UniquePtr<RenderSystem>>& renderSystems = scene.GetRenderSystems();
-	for (const lib::UniquePtr<RenderSystem>& renderSystem : renderSystems)
+	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& renderSystems = scene.GetRenderSystems();
+	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->CollectRenderViews(scene, view, INOUT views);
 	}

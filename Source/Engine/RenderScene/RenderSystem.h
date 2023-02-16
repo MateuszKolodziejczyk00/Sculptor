@@ -18,7 +18,7 @@ class RenderScene;
 class RenderView;
 
 
-class RENDER_SCENE_API RenderSystem
+class RENDER_SCENE_API RenderSystem : public std::enable_shared_from_this<RenderSystem>
 {
 public:
 
