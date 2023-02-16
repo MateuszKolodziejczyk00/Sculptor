@@ -144,4 +144,18 @@ void RendererBoolParameter::DrawUI(const lib::HashedString& name, Bool& value)
 	ImGui::Checkbox(name.GetData(), &value);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RendererIntParameter ==========================================================================
+
+RendererIntParameter::RendererIntParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Int32 defaultValue, Int32 inMin, Int32 inMax)
+	: Super(name, category, defaultValue)
+	, min(inMin)
+	, max(inMax)
+{ }
+
+void RendererIntParameter::DrawUI(const lib::HashedString& name, Int32& value)
+{
+	ImGui::SliderInt(name.GetData(), &value, min, max);
+}
+
 } // spt::rsc

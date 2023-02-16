@@ -181,6 +181,13 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		{
 			PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
 			gpuLightData.entityID = static_cast<Uint32>(entity);
+			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
+			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
+			{
+				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
+				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
+			}
+
 			const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
 
 			if (lightViewSpaceZ + gpuLightData.radius > 0.f)

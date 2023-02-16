@@ -4,13 +4,23 @@
 #include "Types/Texture.h"
 #include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "RenderScene.h"
-
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
 
+namespace params
+{
+
+RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 3, 0, 10);
+RendererIntParameter maxShadowMapsRenderedPerFrame("Max ShadowMaps Rendered Per Frame", { "Lighting", "Shadows" }, 5, 0, 10);
+
+} // params
+
 ShadowMapsManagerSystem::ShadowMapsManagerSystem(RenderScene& owningScene)
 	: Super(owningScene)
+	, highQualityShadowMapsMaxIdx(0)
+	, mediumQualityShadowMapsMaxIdx(0)
 {
 	CreateShadowMaps();
 }
@@ -35,14 +45,14 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	std::nth_element(std::begin(visibleLights), std::begin(visibleLights) + shadowMapsInUse, std::end(visibleLights), compareOp);
 	std::sort(std::begin(visibleLights), std::begin(visibleLights) + shadowMapsInUse, compareOp);
 
-	lib::DynamicArray<std::pair<RenderSceneEntity, EShadowMapQuality>> shadowMapsToAcquire;
+	lib::DynamicArray<std::pair<RenderSceneEntity, EShadowMapQuality>> shadowMapsToUpgrade;
 
 	struct ShadowMapReleaseInfo
 	{
 		RenderSceneEntity entity;
 		EShadowMapQuality desiredQualityToAcquire;
 	};
-	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToRelease;
+	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToDowngrade;
 
 	const lib::HashMap<RenderSceneEntity, EShadowMapQuality> pointLightsWithAssignedShadowMapsPrevFrame = std::move(m_pointLightsWithAssignedShadowMaps);
 
@@ -61,16 +71,24 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 
 		if (static_cast<Uint32>(currentQuality) < static_cast<Uint32>(desiredQuality))
 		{
-			if (currentQuality != EShadowMapQuality::None)
+			if (shadowMapsToUpgrade.size() < static_cast<SizeType>(params::maxShadowMapsUpgradedPerFrame.GetValue()))
 			{
-				ReleaseShadowMap(currentQuality, ResetPointLightShadowMap(lightEntity));
+				if (currentQuality != EShadowMapQuality::None)
+				{
+					ReleaseShadowMap(currentQuality, ResetPointLightShadowMap(lightEntity));
+				}
+
+				shadowMapsToUpgrade.emplace_back(std::make_pair(lightEntity, desiredQuality));
+			}
+			else
+			{
+				m_pointLightsWithAssignedShadowMaps[lightEntity] = currentQuality;
 			}
 
-			shadowMapsToAcquire.emplace_back(std::make_pair(lightEntity, desiredQuality));
 		}
 		else if (static_cast<Uint32>(currentQuality) > static_cast<Uint32>(desiredQuality))
 		{
-			shadowMapsToRelease[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
+			shadowMapsToDowngrade[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
 		}
 		else
 		{
@@ -86,17 +104,17 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 		}
 	}
 
-	std::reverse(std::begin(shadowMapsToAcquire), std::end(shadowMapsToAcquire));
+	std::reverse(std::begin(shadowMapsToUpgrade), std::end(shadowMapsToUpgrade));
 
-	while (!shadowMapsToAcquire.empty())
+	while (!shadowMapsToUpgrade.empty())
 	{
-		const auto [acquireLightEntity, acquireDesiredQuality] = shadowMapsToAcquire.back();
-		shadowMapsToAcquire.pop_back();
+		const auto [acquireLightEntity, acquireDesiredQuality] = shadowMapsToUpgrade.back();
+		shadowMapsToUpgrade.pop_back();
 
 		Uint32 shadowMapIdx = AcquireAvaialableShadowMap(acquireDesiredQuality);
 		if (shadowMapIdx == idxNone<Uint32>)
 		{
-			lib::DynamicArray<ShadowMapReleaseInfo>& shadowMapsOfQualityToRelease = shadowMapsToRelease[acquireDesiredQuality];
+			lib::DynamicArray<ShadowMapReleaseInfo>& shadowMapsOfQualityToRelease = shadowMapsToDowngrade[acquireDesiredQuality];
 			const ShadowMapReleaseInfo releaseInfo = shadowMapsOfQualityToRelease.back();
 			shadowMapsOfQualityToRelease.pop_back();
 
@@ -104,12 +122,23 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 
 			if (releaseInfo.desiredQualityToAcquire != EShadowMapQuality::None)
 			{
-				shadowMapsToAcquire.emplace_back(std::make_pair(releaseInfo.entity, releaseInfo.desiredQualityToAcquire));
+				shadowMapsToUpgrade.emplace_back(std::make_pair(releaseInfo.entity, releaseInfo.desiredQualityToAcquire));
 			}
 		}
 	
 		SetPointLightShadowMapsBeginIdx(acquireLightEntity, shadowMapIdx);
 		m_pointLightsWithAssignedShadowMaps[acquireLightEntity] = acquireDesiredQuality;
+	}
+
+	for (const auto [releasedQuality, releaseInfos] : shadowMapsToDowngrade)
+	{
+		for (const ShadowMapReleaseInfo& releaseInfo : releaseInfos)
+		{
+			if (lightsVisibleCurrentFrame.contains(releaseInfo.entity))
+			{
+				m_pointLightsWithAssignedShadowMaps[releaseInfo.entity] = releasedQuality;
+			}
+		}
 	}
 }
 
@@ -121,24 +150,25 @@ void ShadowMapsManagerSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity 
 
 Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity) const
 {
+	Uint32 shadowMapFirstFaceIdx = idxNone<Uint32>;
+
 	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
 	const PointLightShadowMapComponent* shadowMapComp = registry.try_get<PointLightShadowMapComponent>(pointLightEntity);
 	if (shadowMapComp)
 	{
+		shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
 		registry.remove<PointLightShadowMapComponent>(pointLightEntity);
-		return shadowMapComp->shadowMapIdxBegin;
 	}
-	return idxNone<Uint32>;
+	return shadowMapFirstFaceIdx;
 }
 
 EShadowMapQuality ShadowMapsManagerSystem::GetShadowMapQuality(SizeType pointLightIdx) const
 {
-	// TODO make it parameterizable
-	if (pointLightIdx < 8)
+	if (pointLightIdx < highQualityShadowMapsMaxIdx)
 	{
 		return EShadowMapQuality::High;
 	}
-	else if (pointLightIdx < 24)
+	else if (pointLightIdx < mediumQualityShadowMapsMaxIdx)
 	{
 		return EShadowMapQuality::Medium;
 	}
@@ -177,8 +207,9 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 	{
 		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMapViews.size());
 
-		m_shadowMapViews.reserve(m_shadowMapViews.size() + shadowMapsNum);
-		for (Uint32 i = 0; i < shadowMapsNum; ++i)
+		const SizeType shadowMapTexturesToCreate = shadowMapsNum * 6;
+		m_shadowMapViews.reserve(m_shadowMapViews.size() + shadowMapTexturesToCreate);
+		for (Uint32 i = 0; i < shadowMapTexturesToCreate; ++i)
 		{
 			rhi::TextureDefinition textureDef;
 			textureDef.resolution.head<2>()	= resolution;
@@ -199,9 +230,16 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 		}
 	};
 
-	CreateShadowMapsHelper(math::Vector2u::Constant(1024), 8 * 6, EShadowMapQuality::High);
-	CreateShadowMapsHelper(math::Vector2u::Constant(512), 16 * 6, EShadowMapQuality::Medium);
-	CreateShadowMapsHelper(math::Vector2u::Constant(256), 64 * 6, EShadowMapQuality::Low);
+	const SizeType highQualityShadowMaps	= 8;
+	const SizeType mediumQualityShadowMaps	= 16;
+	const SizeType lowQualityShadowMaps		= 64;
+
+	CreateShadowMapsHelper(math::Vector2u::Constant(1024),	highQualityShadowMaps,		EShadowMapQuality::High);
+	CreateShadowMapsHelper(math::Vector2u::Constant(512),	mediumQualityShadowMaps,	EShadowMapQuality::Medium);
+	CreateShadowMapsHelper(math::Vector2u::Constant(256),	lowQualityShadowMaps,		EShadowMapQuality::Low);
+
+	highQualityShadowMapsMaxIdx		= static_cast<Uint32>(highQualityShadowMaps);
+	mediumQualityShadowMapsMaxIdx	= static_cast<Uint32>(highQualityShadowMaps + mediumQualityShadowMaps);
 }
 
 } // spt::rsc

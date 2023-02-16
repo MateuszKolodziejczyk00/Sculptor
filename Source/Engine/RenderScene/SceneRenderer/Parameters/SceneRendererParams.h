@@ -98,4 +98,23 @@ public:
 	void DrawUI(const lib::HashedString& name, Bool& value);
 };
 
+
+class RendererIntParameter : public RendererParameter<RendererIntParameter, Int32>
+{
+protected:
+
+	using Super = RendererParameter<RendererIntParameter, Int32>;
+
+public:
+
+	RendererIntParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Int32 defaultValue, Int32 inMin, Int32 inMax);
+
+	void DrawUI(const lib::HashedString& name, Int32& value);
+
+private:
+
+	Int32 min;
+	Int32 max;
+};
+
 } // spt::rsc

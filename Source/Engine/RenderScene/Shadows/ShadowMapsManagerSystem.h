@@ -28,7 +28,7 @@ struct PointLightShadowMapComponent
 {
 	// Idx of first shadow map view used for this point lights
 	// Shadow maps for different sides of point lights must be continuous
-	Uint32 shadowMapIdxBegin;
+	Uint32 shadowMapFirstFaceIdx;
 };
 
 
@@ -70,6 +70,9 @@ private:
 	lib::HashMap<RenderSceneEntity, EShadowMapQuality> m_pointLightsWithAssignedShadowMaps;
 	
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<Uint32>> m_availableShadowMaps;
+
+	Uint32 highQualityShadowMapsMaxIdx;
+	Uint32 mediumQualityShadowMapsMaxIdx;
 };
 
 } // spt::rsc
