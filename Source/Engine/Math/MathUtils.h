@@ -137,6 +137,16 @@ public:
 	{
 		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
 	}
+
+	static Quaternionf EulerToQuaternionRadians(Real32 pitch, Real32 yaw, Real32 roll)
+	{
+		return AngleAxisf(roll, Vector3f::UnitX()) * AngleAxisf(pitch, Vector3f::UnitY()) * AngleAxisf(yaw, Vector3f::UnitZ());
+	}
+
+	static Quaternionf EulerToQuaternionDegrees(Real32 pitch, Real32 yaw, Real32 roll)
+	{
+		return EulerToQuaternionRadians(DegreesToRadians(pitch), DegreesToRadians(yaw), DegreesToRadians(roll));
+	}
 };
 
 } // spt::math

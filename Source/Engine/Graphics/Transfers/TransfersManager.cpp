@@ -60,7 +60,7 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 	recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
 	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
+	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back();
 	submitBatch.recordedCommands.emplace_back(std::move(recorder));
 
 	const lib::SharedRef<rdr::Semaphore> transfersSemaphoresRef = lib::Ref(instance.m_transferFinishedSemaphore);

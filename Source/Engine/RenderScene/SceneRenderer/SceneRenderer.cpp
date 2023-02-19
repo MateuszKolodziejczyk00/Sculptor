@@ -6,6 +6,7 @@
 #include "RenderStages/ForwardOpaqueRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
 #include "RenderStages/HDRResolveRenderStage.h"
+#include "RenderStages/ShadowMapRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
 #include "Parameters/SceneRendererParams.h"
@@ -95,6 +96,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
+	
+	renderer_utils::ProcessRenderStage<ShadowMapRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
 	renderer_utils::ProcessRenderStage<DepthPrepassRenderStage>(graphBuilder, scene, renderViewsSpecs);
 

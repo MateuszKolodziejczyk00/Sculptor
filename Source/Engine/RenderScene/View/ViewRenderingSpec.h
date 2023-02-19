@@ -4,6 +4,7 @@
 #include "SceneRenderingTypes.h"
 #include "SculptorECS.h"
 #include "RGResources/RGTrackedObject.h"
+#include "RenderView.h"
 
 namespace spt::rg
 {

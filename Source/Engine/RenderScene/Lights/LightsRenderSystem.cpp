@@ -345,6 +345,19 @@ LightsRenderSystem::LightsRenderSystem()
 	}
 }
 
+void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews)
+{
+	SPT_PROFILER_FUNCTION();
+
+	Super::CollectRenderViews(renderScene, mainRenderView, outViews);
+
+	if (const ShadowMapsManagerSystem* shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
+	{
+		const lib::DynamicArray<RenderView*> shadowMapViewsToRender = shadowMapsManager->GetShadowMapViewsToUpdate();
+		std::copy(std::cbegin(shadowMapViewsToRender), std::cend(shadowMapViewsToRender), std::back_inserter(outViews));
+	}
+}
+
 void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
 {
 	Super::RenderPerFrame(graphBuilder, renderScene);

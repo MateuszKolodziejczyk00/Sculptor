@@ -5,6 +5,8 @@
 #include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
 #include "RenderScene.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "Lights/LightTypes.h"
+#include "ShadowsRenderingTypes.h"
 
 namespace spt::rsc
 {
@@ -13,7 +15,6 @@ namespace params
 {
 
 RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 3, 0, 10);
-RendererIntParameter maxShadowMapsRenderedPerFrame("Max ShadowMaps Rendered Per Frame", { "Lighting", "Shadows" }, 5, 0, 10);
 
 } // params
 
@@ -23,6 +24,24 @@ ShadowMapsManagerSystem::ShadowMapsManagerSystem(RenderScene& owningScene)
 	, mediumQualityShadowMapsMaxIdx(0)
 {
 	CreateShadowMaps();
+}
+
+void ShadowMapsManagerSystem::Update()
+{
+	SPT_PROFILER_FUNCTION();
+
+	Super::Update();
+
+	RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
+
+	lib::DynamicArray<lib::UniquePtr<RenderView>> shadowMapViws;
+	for (const RenderSceneEntity lightEntity : GetLightsWithShadowMapsToUpdate())
+	{
+		const PointLightData& pointLightData					= sceneRegistry.get<PointLightData>(lightEntity);
+		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(lightEntity);
+
+		UpdateShadowMapRenderViews(lightEntity, pointLightData, pointLightShadowMap.shadowMapFirstFaceIdx);
+	}
 }
 
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
@@ -36,6 +55,8 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 
 	SPT_CHECK(CanRenderShadows());
 	SPT_CHECK(m_shadowMapViews.size() % 6 == 0);
+
+	m_lightsWithUpdatedShadowMaps.clear();
 
 	const SizeType availableShadowMapsNum = m_shadowMapViews.size() / 6;
 	const SizeType shadowMapsInUse = std::min(availableShadowMapsNum, visibleLights.size());
@@ -142,10 +163,40 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	}
 }
 
-void ShadowMapsManagerSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx) const
+const lib::DynamicArray<RenderSceneEntity>& ShadowMapsManagerSystem::GetLightsWithShadowMapsToUpdate() const
+{
+	return m_lightsWithUpdatedShadowMaps;
+}
+
+lib::DynamicArray<RenderView*> ShadowMapsManagerSystem::GetShadowMapViewsToUpdate() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
+
+	const lib::DynamicArray<RenderSceneEntity>& lightsToUpdate = GetLightsWithShadowMapsToUpdate();
+
+	lib::DynamicArray<RenderView*> renderViewsToUpdate;
+	renderViewsToUpdate.reserve(lightsToUpdate.size() * 6);
+
+	for (RenderSceneEntity light : lightsToUpdate)
+	{
+		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(light);
+		
+		for (SizeType sideIdx = 0; sideIdx < 6; ++sideIdx)
+		{
+			renderViewsToUpdate.emplace_back(m_shadowMapsRenderViews[static_cast<SizeType>(pointLightShadowMap.shadowMapFirstFaceIdx) + sideIdx].get());
+		}
+	}
+
+	return renderViewsToUpdate;
+}
+
+void ShadowMapsManagerSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx)
 {
 	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
 	registry.emplace<PointLightShadowMapComponent>(pointLightEntity, PointLightShadowMapComponent{ shadowMapBeginIdx });
+	m_lightsWithUpdatedShadowMaps.emplace_back(pointLightEntity);
 }
 
 Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity) const
@@ -240,6 +291,60 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 
 	highQualityShadowMapsMaxIdx		= static_cast<Uint32>(highQualityShadowMaps);
 	mediumQualityShadowMapsMaxIdx	= static_cast<Uint32>(highQualityShadowMaps + mediumQualityShadowMaps);
+
+	CreateShadowMapsRenderViews();
+}
+
+void ShadowMapsManagerSystem::CreateShadowMapsRenderViews()
+{
+	SPT_PROFILER_FUNCTION();
+	
+	m_shadowMapsRenderViews.reserve(m_shadowMapViews.size());
+
+	for (SizeType idx = 0; idx < m_shadowMapViews.size(); ++idx)
+	{
+		lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews.emplace_back();
+		renderView = std::make_unique<RenderView>(GetOwningScene());
+		renderView->SetRenderStages(ERenderStage::ShadowMap);
+	}
+}
+
+void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::StaticArray<math::Quaternionf, 6> sideRotations =
+	{
+		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	0.f),	// +X
+		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	180.f),	// -X
+		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	90.f),	// +Y
+		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	-90.f),	// -Y
+		math::Utils::EulerToQuaternionDegrees(0.f,		90.f,	0.f),	// +Z
+		math::Utils::EulerToQuaternionDegrees(0.f,		-90.f,	0.f),	// -Z
+	};
+
+	for (SizeType sideIdx = 0; sideIdx < sideRotations.size(); ++sideIdx)
+	{
+		const SizeType renderViewIdx = static_cast<SizeType>(shadowMapBeginIdx) + sideIdx;
+
+		const lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews[renderViewIdx];
+		const RenderSceneEntityHandle renderViewEntity = renderView->GetViewEntity();
+
+		const lib::SharedRef<rdr::TextureView>& shadowMapTextureView = m_shadowMapViews[renderViewIdx];
+		const math::Vector2u shadowMapResolution = shadowMapTextureView->GetTexture()->GetResolution2D();
+
+		ShadowMapViewComponent shadowMapViewComp;
+		shadowMapViewComp.shadowMapView	= shadowMapTextureView;
+		shadowMapViewComp.owningLight	= owningLight;
+		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
+
+		constexpr Real32 nearPlane = 0.01f;
+		renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, nearPlane, pointLight.radius);
+		renderView->SetLocation(pointLight.location);
+		renderView->SetRotation(sideRotations[sideIdx]);
+
+		renderView->SetRenderingResolution(shadowMapResolution);
+	}
 }
 
 } // spt::rsc
