@@ -1,7 +1,8 @@
 #pragma once
 
 #include "RenderSystem.h"
-#include "Pipelines/PipelineState.h"
+#include "StaticMeshDepthPrepassRenderer.h"
+#include "StaticMeshForwardOpaqueRenderer.h"
 
 namespace spt::rsc
 {
@@ -17,40 +18,15 @@ public:
 	StaticMeshesRenderSystem();
 
 	// Begin RenderSystem overrides
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
 	// End RenderSystem overrides
 
 private:
 
-	// Depth Prepass =================================
-
-	Bool BuildDepthPrepassBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
-	void CullDepthPrepassPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
-	void RenderDepthPrepassPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-
-	// Forward Opaque ================================
-
-	Bool BuildForwardOpaueBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
-	void CullForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-	void RenderForwardOpaquePerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-
-	// Shadow Maps
+	StaticMeshDepthPrepassRenderer m_depthPrepassRenderer;
 	
-	rdr::PipelineStateID m_shadowMapRenderingPipeline;
-
-	// Depth Prepass
-
-	rdr::PipelineStateID m_buildDrawCommandsPipeline;
-
-	rdr::PipelineStateID m_depthPrepassRenderingPipeline;
-
-	// Forward Opaque
-
-	rdr::PipelineStateID m_cullSubmeshesPipeline;
-	rdr::PipelineStateID m_cullMeshletsPipeline;
-	rdr::PipelineStateID m_cullTrianglesPipeline;
-
-	rdr::PipelineStateID m_forwadOpaqueShadingPipeline;
+	StaticMeshForwardOpaqueRenderer m_forwardOpaqueRenderer;
 };
 
 } // spt::rsc

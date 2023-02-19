@@ -64,7 +64,7 @@ public:
 	
 	void UpdateVisibleLights(lib::DynamicArray<VisibleLightEntityInfo>& visibleLights);
 
-	const lib::DynamicArray<RenderSceneEntity>& GetLightsWithShadowMapsToUpdate() const;
+	const lib::DynamicArray<RenderSceneEntity>& GetPointLightsWithShadowMapsToUpdate() const;
 	
 	lib::DynamicArray<RenderView*> GetShadowMapViewsToUpdate() const;
 

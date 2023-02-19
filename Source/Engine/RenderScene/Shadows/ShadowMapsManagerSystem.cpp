@@ -35,7 +35,7 @@ void ShadowMapsManagerSystem::Update()
 	RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
 
 	lib::DynamicArray<lib::UniquePtr<RenderView>> shadowMapViws;
-	for (const RenderSceneEntity lightEntity : GetLightsWithShadowMapsToUpdate())
+	for (const RenderSceneEntity lightEntity : GetPointLightsWithShadowMapsToUpdate())
 	{
 		const PointLightData& pointLightData					= sceneRegistry.get<PointLightData>(lightEntity);
 		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(lightEntity);
@@ -163,7 +163,7 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	}
 }
 
-const lib::DynamicArray<RenderSceneEntity>& ShadowMapsManagerSystem::GetLightsWithShadowMapsToUpdate() const
+const lib::DynamicArray<RenderSceneEntity>& ShadowMapsManagerSystem::GetPointLightsWithShadowMapsToUpdate() const
 {
 	return m_lightsWithUpdatedShadowMaps;
 }
@@ -174,7 +174,7 @@ lib::DynamicArray<RenderView*> ShadowMapsManagerSystem::GetShadowMapViewsToUpdat
 
 	const RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
 
-	const lib::DynamicArray<RenderSceneEntity>& lightsToUpdate = GetLightsWithShadowMapsToUpdate();
+	const lib::DynamicArray<RenderSceneEntity>& lightsToUpdate = GetPointLightsWithShadowMapsToUpdate();
 
 	lib::DynamicArray<RenderView*> renderViewsToUpdate;
 	renderViewsToUpdate.reserve(lightsToUpdate.size() * 6);

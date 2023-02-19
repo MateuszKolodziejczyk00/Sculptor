@@ -4,6 +4,11 @@
 namespace spt::rsc
 {
 
+namespace constants
+{
+static constexpr Real32 indentationValue = 24.f;
+} // constants
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ParametersContainer ===========================================================================
 
@@ -75,6 +80,7 @@ private:
 	
 	void DrawNodeUI(const Node& node) const
 	{
+		ImGui::Indent(constants::indentationValue);
 		if (ImGui::CollapsingHeader(node.categoryName.GetData()))
 		{
 
@@ -88,6 +94,7 @@ private:
 				param->DrawUI();
 			}
 		}
+		ImGui::Unindent(constants::indentationValue);
 	}
 
 	lib::DynamicArray<Node> m_nodes;
