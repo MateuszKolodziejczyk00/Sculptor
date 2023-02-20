@@ -68,6 +68,8 @@ public:
 	
 	lib::DynamicArray<RenderView*> GetShadowMapViewsToUpdate() const;
 
+	lib::DynamicArray<RenderView*> GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const;
+
 private:
 
 	void SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx);

@@ -183,13 +183,28 @@ lib::DynamicArray<RenderView*> ShadowMapsManagerSystem::GetShadowMapViewsToUpdat
 	{
 		const PointLightShadowMapComponent& pointLightShadowMap	= sceneRegistry.get<PointLightShadowMapComponent>(light);
 		
-		for (SizeType sideIdx = 0; sideIdx < 6; ++sideIdx)
+		for (SizeType faceIdx = 0; faceIdx < 6; ++faceIdx)
 		{
-			renderViewsToUpdate.emplace_back(m_shadowMapsRenderViews[static_cast<SizeType>(pointLightShadowMap.shadowMapFirstFaceIdx) + sideIdx].get());
+			renderViewsToUpdate.emplace_back(m_shadowMapsRenderViews[static_cast<SizeType>(pointLightShadowMap.shadowMapFirstFaceIdx) + faceIdx].get());
 		}
 	}
 
 	return renderViewsToUpdate;
+}
+
+lib::DynamicArray<RenderView*> ShadowMapsManagerSystem::GetPointLightShadowMapViews(const PointLightShadowMapComponent& pointLightShadowMap) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::DynamicArray<RenderView*> views;
+	views.reserve(6);
+
+	for (SizeType faceIdx = 0; faceIdx < 6; ++faceIdx)
+	{
+		views.emplace_back(m_shadowMapsRenderViews[static_cast<SizeType>(pointLightShadowMap.shadowMapFirstFaceIdx) + faceIdx].get());
+	}
+
+	return views;
 }
 
 void ShadowMapsManagerSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx)
@@ -313,7 +328,7 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::StaticArray<math::Quaternionf, 6> sideRotations =
+	const lib::StaticArray<math::Quaternionf, 6> faceRotations =
 	{
 		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	0.f),	// +X
 		math::Utils::EulerToQuaternionDegrees(0.f,		0.f,	180.f),	// -X
@@ -323,9 +338,9 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 		math::Utils::EulerToQuaternionDegrees(0.f,		-90.f,	0.f),	// -Z
 	};
 
-	for (SizeType sideIdx = 0; sideIdx < sideRotations.size(); ++sideIdx)
+	for (SizeType faceIdx = 0; faceIdx < faceRotations.size(); ++faceIdx)
 	{
-		const SizeType renderViewIdx = static_cast<SizeType>(shadowMapBeginIdx) + sideIdx;
+		const SizeType renderViewIdx = static_cast<SizeType>(shadowMapBeginIdx) + faceIdx;
 
 		const lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews[renderViewIdx];
 		const RenderSceneEntityHandle renderViewEntity = renderView->GetViewEntity();
@@ -341,7 +356,7 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 		constexpr Real32 nearPlane = 0.01f;
 		renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, nearPlane, pointLight.radius);
 		renderView->SetLocation(pointLight.location);
-		renderView->SetRotation(sideRotations[sideIdx]);
+		renderView->SetRotation(faceRotations[faceIdx]);
 
 		renderView->SetRenderingResolution(shadowMapResolution);
 	}

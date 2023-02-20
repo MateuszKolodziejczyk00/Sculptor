@@ -6,30 +6,10 @@
 namespace spt::rsc
 {
 
-BEGIN_SHADER_STRUCT(SMDepthPrepassDrawCallData)
-	/* Vulkan command data */
-	SHADER_STRUCT_FIELD(Uint32, vertexCount)
-	SHADER_STRUCT_FIELD(Uint32, instanceCount)
-	SHADER_STRUCT_FIELD(Uint32, firstVertex)
-	SHADER_STRUCT_FIELD(Uint32, firstInstance)
-	
-	/* Custom Data */
-	SHADER_STRUCT_FIELD(Uint32, batchElementIdx)
-	SHADER_STRUCT_FIELD(Uint32, padding0)
-	SHADER_STRUCT_FIELD(Uint32, padding1)
-	SHADER_STRUCT_FIELD(Uint32, padding2)
-END_SHADER_STRUCT();
-
-
 DS_BEGIN(SMDepthPrepassCullInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassCullInstancesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthPrepassDrawCallData>),	u_drawCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),						u_drawsCount)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),							u_validBatchElementsNum)
-DS_END();
-
-
-DS_BEGIN(SMDepthPrepassDrawInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassDrawInstancesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMDepthPrepassDrawCallData>),	u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_drawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),						u_validBatchElementsNum)
 DS_END();
 
 
@@ -44,7 +24,7 @@ struct SMDepthPrepassBatch
 	lib::SharedPtr<StaticMeshBatchDS>				batchDS;
 	
 	lib::SharedPtr<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
-	lib::SharedPtr<SMDepthPrepassDrawInstancesDS>	drawInstancesDS;
+	lib::SharedPtr<SMDepthOnlyDrawInstancesDS>		drawInstancesDS;
 
 	rg::RGBufferViewHandle drawCommandsBuffer;
 	rg::RGBufferViewHandle indirectDrawCountBuffer;
@@ -71,7 +51,7 @@ public:
 
 private:
 
-	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshesVisibleLastFrame::BatchElementsInfo& batchElements);
+	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshesVisibleLastFrame::BatchElementsInfo& batchElements) const;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 

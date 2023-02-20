@@ -3,27 +3,6 @@
 namespace spt::rsc
 {
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Shadow Map ====================================================================================
-
-BEGIN_RG_NODE_PARAMETERS_STRUCT(SMIndirectShadowMapCommandsParameters)
-	RG_BUFFER_VIEW(batchDrawCommandsBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
-	RG_BUFFER_VIEW(batchDrawCommandsCountBuffer, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
-END_RG_NODE_PARAMETERS_STRUCT();
-
-
-struct SMShadowMapBatch
-{
-	lib::SharedPtr<StaticMeshBatchDS>	batchDS;
-
-	lib::DynamicArray<rg::RGBufferViewHandle> drawCommandsBuffersPerSide;
-	lib::DynamicArray<rg::RGBufferViewHandle> indirectDrawCountBuffersPerSide;
-
-};
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// StaticMeshesRenderSystem ======================================================================
-
 StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 {
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
@@ -31,27 +10,9 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 
 void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
 {
-	SPT_PROFILER_FUNCTION();
-
 	Super::RenderPerFrame(graphBuilder, renderScene);
 
-	//if (const ShadowMapsManagerSystem* shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
-	//{
-	//	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
-
-	//	const lib::DynamicArray<RenderSceneEntity>& pointLightsToUpdate = shadowMapsManager->GetPointLightsWithShadowMapsToUpdate();
-
-	//	for (const RenderSceneEntity pointLight : pointLightsToUpdate)
-	//	{
-	//		const PointLightData& pointLightData = sceneRegistry.get<PointLightData>(pointLight);
-
-	//		const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
-	//		SPT_MAYBE_UNUSED
-	//		const StaticMeshBatchDefinition batchDef = staticMeshPrimsSystem.BuildBatchForPointLight(pointLightData);
-	//		
-	//		// TODO...
-	//	}
-	//}
+	m_shadowMapRenderer.RenderPerFrame(graphBuilder, renderScene);
 }
 
 void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)

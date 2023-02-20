@@ -64,6 +64,26 @@ DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 DS_END();
 
 
+BEGIN_SHADER_STRUCT(SMDepthOnlyDrawCallData)
+	/* Vulkan command data */
+	SHADER_STRUCT_FIELD(Uint32, vertexCount)
+	SHADER_STRUCT_FIELD(Uint32, instanceCount)
+	SHADER_STRUCT_FIELD(Uint32, firstVertex)
+	SHADER_STRUCT_FIELD(Uint32, firstInstance)
+	
+	/* Custom Data */
+	SHADER_STRUCT_FIELD(Uint32, batchElementIdx)
+	SHADER_STRUCT_FIELD(Uint32, padding0)
+	SHADER_STRUCT_FIELD(Uint32, padding1)
+	SHADER_STRUCT_FIELD(Uint32, padding2)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(SMDepthOnlyDrawInstancesDS, rg::RGDescriptorSetState<SMDepthOnlyDrawInstancesDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommands)
+DS_END();
+
+
 struct SMRenderingViewData
 {
 	lib::SharedPtr<SMProcessBatchForViewDS> viewDS;

@@ -3,6 +3,7 @@
 #include "RenderSystem.h"
 #include "StaticMeshDepthPrepassRenderer.h"
 #include "StaticMeshForwardOpaqueRenderer.h"
+#include "StaticMeshShadowMapRenderer.h"
 
 namespace spt::rsc
 {
@@ -23,6 +24,8 @@ public:
 	// End RenderSystem overrides
 
 private:
+
+	StaticMeshShadowMapRenderer m_shadowMapRenderer;
 
 	StaticMeshDepthPrepassRenderer m_depthPrepassRenderer;
 	

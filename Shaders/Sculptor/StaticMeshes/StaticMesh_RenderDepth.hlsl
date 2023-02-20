@@ -7,7 +7,7 @@
 [[descriptor_set(SMProcessBatchForViewDS, 3)]]
 
 [[descriptor_set(StaticMeshBatchDS, 4)]]
-[[descriptor_set(SMDepthPrepassDrawInstancesDS, 5)]]
+[[descriptor_set(SMDepthOnlyDrawInstancesDS, 5)]]
 
 
 struct VS_INPUT
@@ -32,7 +32,7 @@ VS_OUTPUT StaticMesh_DepthVS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    const SMDepthPrepassDrawCallData drawCall = u_drawCommands[input.drawIndex];
+    const SMDepthOnlyDrawCallData drawCall = u_drawCommands[input.drawIndex];
 
     const uint renderEntityIdx = u_batchElements[drawCall.batchElementIdx].entityIdx;
     const uint submeshGlobalIdx = u_batchElements[drawCall.batchElementIdx].submeshGlobalIdx;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StaticMeshRenderingCommon.h"
+#include "RGNodeParametersStruct.h"
 
 
 namespace spt::rsc
@@ -76,7 +77,7 @@ public:
 
 private:
 
-	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef);
+	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
 
 	rdr::PipelineStateID m_cullSubmeshesPipeline;
 	rdr::PipelineStateID m_cullMeshletsPipeline;
