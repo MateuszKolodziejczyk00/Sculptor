@@ -17,6 +17,7 @@ struct ShadowMapViewComponent
 {
 	lib::SharedPtr<rdr::TextureView>	shadowMapView;
 	RenderSceneEntity					owningLight;
+	Uint32								faceIdx;
 };
 
 } // spt::rsc

@@ -4,13 +4,34 @@
 #include "Lights/LightTypes.h"
 #include "RenderGraphBuilder.h"
 #include "Transfers/UploadUtils.h"
+#include "SceneRenderer/RenderStages/ShadowMapRenderStage.h"
+#include "Shadows/ShadowsRenderingTypes.h"
+#include "StaticMeshGeometry.h"
+#include "Common/ShaderCompilationInput.h"
 
 namespace spt::rsc
 {
 
 StaticMeshShadowMapRenderer::StaticMeshShadowMapRenderer()
 {
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildDrawCommandsCS"));
+		const rdr::ShaderID buildDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_BuildShadowMapDrawCommands.hlsl", compilationSettings);
+		m_buildDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_BuildShadowMapDrawCommands"), buildDrawCommandsShader);
+	}
 
+	{
+		sc::ShaderCompilationSettings compilationSettings;
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthVS"));
+		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthFS"));
+		const rdr::ShaderID depthShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", compilationSettings);
+
+		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
+		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetDepthFormat();
+		m_shadowMapRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ShadowMapPipeline"), depthPrepassPipelineDef, depthShader);
+	}
 }
 
 void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
@@ -37,9 +58,18 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);
 			
-			m_pointLightBatches.emplace(pointLight, CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef));
+			const SMShadowMapBatch batch = CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef);
+			BuildBatchDrawCommands(graphBuilder, batch);
+			m_pointLightBatches.emplace(pointLight, batch);
 		}
 	}
+}
+
+void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	
 }
 
 SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshBatchDefinition& batchDef) const
@@ -64,6 +94,8 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 	batch.batchDS->u_batchElements	= batchBuffer->CreateFullView();
 	batch.batchDS->u_batchData		= gpuBatchData;
 
+	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
+
 	// Create indirect draw counts buffer
 
 	const Uint64 indirectDrawCountsBuffersSize = batchedViews.size() * sizeof(Uint32);
@@ -74,7 +106,14 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 	batch.indirectDrawCountsBuffer = indirectDrawCountsBuffer;
 
-	// Create culling resources per shadow map face
+	// Create draw commands buffers per shadow map face
+
+	const Uint32 facesNum = static_cast<Uint32>(batchedViews.size());
+	SPT_CHECK(facesNum > 0 && facesNum <= 6);
+
+	const rhi::BufferDefinition viewsCullingDataBufferDef(sizeof(SceneViewCullingData) * static_cast<Uint64>(facesNum), rhi::EBufferUsage::Storage);
+	const lib::SharedRef<rdr::Buffer> viewsCullingDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("ViewsCullingData"), viewsCullingDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	SceneViewCullingData* cullingDataBufferPtr = reinterpret_cast<SceneViewCullingData*>(viewsCullingDataBuffer->GetRHI().MapBufferMemory());
 
 	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batchDef.batchElements.size(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 
@@ -86,25 +125,67 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 		const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ShadowMapDrawCommandsBuffer"), commandsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
-		SMShadowMapDataPerView shadowMapDataPerView;
-		shadowMapDataPerView.faceIdx = static_cast<Uint32>(faceIdx);
-
-		const lib::SharedRef<SMShadowMapCullingDS> cullingDS = rdr::ResourcesManager::CreateDescriptorSetState<SMShadowMapCullingDS>(RENDERER_RESOURCE_NAME("SMShadowMapCullingDS"));
-		cullingDS->u_cullingData		= batchedViews[faceIdx]->GetCullingData();
-		cullingDS->u_shadowMapViewData	= shadowMapDataPerView;
-		cullingDS->u_drawCommands		= drawCommandsBuffer;
-		cullingDS->u_drawsCount			= indirectDrawCountsBuffer;
-
 		const lib::SharedRef<SMDepthOnlyDrawInstancesDS> drawDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMShadowMapDrawInstancesDS"));
 		drawDS->u_drawCommands = drawCommandsBuffer;
 
-		faceData.cullingDS	= cullingDS;
-		faceData.drawDS		= drawDS;
+		faceData.drawDS	= drawDS;
+		faceData.drawCommandsBuffer = drawCommandsBuffer;
 
 		batch.perFaceData.emplace_back(faceData);
+
+		cullingDataBufferPtr[faceIdx] = batchedViews[faceIdx]->GetCullingData();
 	}
 
+	viewsCullingDataBuffer->GetRHI().UnmapBufferMemory();
+
+	// Create culling resources
+
+	SMLightShadowMapsData lightShadowMapsData;
+	lightShadowMapsData.facesNum = facesNum;
+
+	const lib::SharedRef<SMShadowMapCullingDS> cullingDS = rdr::ResourcesManager::CreateDescriptorSetState<SMShadowMapCullingDS>(RENDERER_RESOURCE_NAME("SMShadowMapCullingDS"));
+	cullingDS->u_shadowMapsData = lightShadowMapsData;
+	cullingDS->u_viewsCullingData = viewsCullingDataBuffer->CreateFullView();
+	cullingDS->u_drawsCount = indirectDrawCountsBuffer;
+	cullingDS->u_drawCommandsFace0 = batch.perFaceData[0].drawCommandsBuffer;
+	if (facesNum > 1)
+	{
+		cullingDS->u_drawCommandsFace1 = batch.perFaceData[1].drawCommandsBuffer;
+	}
+	if (facesNum > 2)
+	{
+		cullingDS->u_drawCommandsFace2 = batch.perFaceData[2].drawCommandsBuffer;
+	}
+	if (facesNum > 3)
+	{
+		cullingDS->u_drawCommandsFace3 = batch.perFaceData[3].drawCommandsBuffer;
+	}
+	if (facesNum > 4)
+	{
+		cullingDS->u_drawCommandsFace4 = batch.perFaceData[4].drawCommandsBuffer;
+	}
+	if (facesNum > 1)
+	{
+		cullingDS->u_drawCommandsFace5 = batch.perFaceData[5].drawCommandsBuffer;
+	}
+
+	batch.cullingDS = cullingDS;
+
 	return batch;
+}
+
+void StaticMeshShadowMapRenderer::BuildBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const SMShadowMapBatch& batch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Uint32 groupsCount = math::Utils::DivideCeil(batch.batchedSubmeshesNum, 64u);
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Shadow Maps SM Draw Commands"),
+						  m_buildDrawCommandsPipeline,
+						  math::Vector3u(groupsCount, 1, 1),
+						  rg::BindDescriptorSets(lib::Ref(batch.batchDS),
+												 lib::Ref(batch.cullingDS),
+												 lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS())));
 }
 
 } // spt::rsc

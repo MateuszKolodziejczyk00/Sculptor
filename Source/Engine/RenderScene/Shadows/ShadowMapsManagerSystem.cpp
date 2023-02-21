@@ -351,6 +351,7 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 		ShadowMapViewComponent shadowMapViewComp;
 		shadowMapViewComp.shadowMapView	= shadowMapTextureView;
 		shadowMapViewComp.owningLight	= owningLight;
+		shadowMapViewComp.faceIdx		= static_cast<Uint32>(faceIdx);
 		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
 
 		constexpr Real32 nearPlane = 0.01f;
