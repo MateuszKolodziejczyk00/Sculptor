@@ -8,6 +8,7 @@
 #include "Shadows/ShadowsRenderingTypes.h"
 #include "StaticMeshGeometry.h"
 #include "Common/ShaderCompilationInput.h"
+#include "GeometryManager.h"
 
 namespace spt::rsc
 {
@@ -69,7 +70,32 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 {
 	SPT_PROFILER_FUNCTION();
 
-	
+	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+
+	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
+	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
+
+	const SMShadowMapBatch& batch = m_pointLightBatches[viewShadowMapData.owningLight];
+
+	SMIndirectShadowMapCommandsParameters drawParams;
+	drawParams.batchDrawCommandsBuffer = batch.perFaceData[viewShadowMapData.faceIdx].drawCommandsBuffer;
+	drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountsBuffer;
+
+	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
+							rg::BindDescriptorSets(lib::Ref(batch.batchDS),
+												   lib::Ref(batch.perFaceData[viewShadowMapData.faceIdx].drawDS),
+												   lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
+												   lib::Ref(GeometryManager::Get().GetGeometryDSState()),
+												   lib::Ref(staticMeshRenderingViewData.viewDS)),
+							std::tie(drawParams),
+							[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							{
+								recorder.BindGraphicsPipeline(m_shadowMapRenderingPipeline);
+
+								const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
+								const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
+								recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, faceIdx * sizeof(Uint32), maxDrawCallsNum);
+							});
 }
 
 SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshBatchDefinition& batchDef) const
