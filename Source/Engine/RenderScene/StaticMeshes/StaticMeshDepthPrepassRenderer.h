@@ -39,7 +39,7 @@ struct SMDepthPrepassBatches
 };
 
 
-class StaticMeshDepthPrepassRenderer
+class RENDER_SCENE_API StaticMeshDepthPrepassRenderer
 {
 public:
 

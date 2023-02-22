@@ -31,7 +31,7 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 	depthRTDef.textureView		= shadowMapTextureView;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	depthRTDef.clearColor		= rhi::ClearColor(1.f);
+	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Shadow Map"),

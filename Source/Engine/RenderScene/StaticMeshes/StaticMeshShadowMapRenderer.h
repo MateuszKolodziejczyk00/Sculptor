@@ -55,7 +55,7 @@ struct SMShadowMapBatch
 };
 
 
-class StaticMeshShadowMapRenderer
+class RENDER_SCENE_API StaticMeshShadowMapRenderer
 {
 public:
 

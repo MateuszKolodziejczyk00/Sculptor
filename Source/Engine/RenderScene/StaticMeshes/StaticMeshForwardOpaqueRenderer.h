@@ -65,7 +65,7 @@ struct SMOpaqueForwardBatches
 };
 
 
-class StaticMeshForwardOpaqueRenderer
+class RENDER_SCENE_API StaticMeshForwardOpaqueRenderer
 {
 public:
 
