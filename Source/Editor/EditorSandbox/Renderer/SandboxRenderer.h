@@ -51,6 +51,9 @@ public:
 	void	SetNearPlane(Real32 nearPlane);
 	Real32	GetNearPlane();
 	
+	void	SetFarPlane(Real32 farPlane);
+	Real32	GetFarPlane();
+	
 	void	SetCameraSpeed(Real32 speed);
 	Real32	GetCameraSpeed();
 
@@ -73,6 +76,7 @@ private:
 	/** Default FOV value used when		scene image have same width as window */
 	Real32								m_fovDegrees;
 	Real32								m_nearPlane;
+	Real32								m_farPlane;
 	
 	Real32								m_cameraSpeed;
 };

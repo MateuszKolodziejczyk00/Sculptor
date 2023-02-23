@@ -7,6 +7,8 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Lights/LightTypes.h"
 #include "ShadowsRenderingTypes.h"
+#include "EngineTimer.h"
+#include "Engine.h"
 
 namespace spt::rsc
 {
@@ -14,7 +16,8 @@ namespace spt::rsc
 namespace params
 {
 
-RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 3, 0, 10);
+RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 2, 0, 10);
+RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows" }, 6, 0, 10);
 
 } // params
 
@@ -32,6 +35,8 @@ void ShadowMapsManagerSystem::Update()
 
 	Super::Update();
 
+	UpdateShadowMaps();
+
 	RenderSceneRegistry& sceneRegistry = GetOwningScene().GetRegistry();
 
 	lib::DynamicArray<lib::UniquePtr<RenderView>> shadowMapViws;
@@ -46,7 +51,7 @@ void ShadowMapsManagerSystem::Update()
 
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
 {
-	return !m_shadowMapViews.empty();
+	return !m_shadowMaps.empty();
 }
 
 void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLightEntityInfo>& visibleLights)
@@ -54,11 +59,11 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(CanRenderShadows());
-	SPT_CHECK(m_shadowMapViews.size() % 6 == 0);
+	SPT_CHECK(m_shadowMaps.size() % 6 == 0);
 
 	m_lightsWithUpdatedShadowMaps.clear();
 
-	const SizeType availableShadowMapsNum = m_shadowMapViews.size() / 6;
+	const SizeType availableShadowMapsNum = m_shadowMaps.size() / 6;
 	const SizeType shadowMapsInUse = std::min(availableShadowMapsNum, visibleLights.size());
 		
 	const auto compareOp = [](const VisibleLightEntityInfo& lhs, const VisibleLightEntityInfo& rhs) { return lhs.areaOnScreen > rhs.areaOnScreen; };
@@ -104,10 +109,14 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 				{
 					ReleaseShadowMap(currentQuality, ResetPointLightShadowMap(lightEntity));
 				}
+				else
+				{
+					m_updatePriorities.emplace_back(LightUpdatePriority{ lightEntity, 0.f });
+				}
 
 				shadowMapsToUpgrade.emplace_back(std::make_pair(lightEntity, desiredQuality));
 			}
-			else
+			else if (currentQuality != EShadowMapQuality::None)
 			{
 				// We cannot upgrade this shadow, so just leave it as it is
 				m_pointLightsWithAssignedShadowMaps[lightEntity] = currentQuality;
@@ -281,16 +290,16 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(m_shadowMapViews.empty());
+	SPT_CHECK(m_shadowMaps.empty());
 
 	const rhi::EFragmentFormat shadowMapsFormat = ShadowMapRenderStage::GetDepthFormat();
 
 	const auto CreateShadowMapsHelper = [this, shadowMapsFormat](math::Vector2u resolution, SizeType shadowMapsNum, EShadowMapQuality quality)
 	{
-		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMapViews.size());
+		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMaps.size());
 
 		const SizeType shadowMapTexturesToCreate = shadowMapsNum * 6;
-		m_shadowMapViews.reserve(m_shadowMapViews.size() + shadowMapTexturesToCreate);
+		m_shadowMaps.reserve(m_shadowMaps.size() + shadowMapTexturesToCreate);
 		for (Uint32 i = 0; i < shadowMapTexturesToCreate; ++i)
 		{
 			rhi::TextureDefinition textureDef;
@@ -299,14 +308,11 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 			textureDef.usage				= lib::Flags(rhi::ETextureUsage::DepthSetncilRT, rhi::ETextureUsage::SampledTexture);
 			textureDef.format				= shadowMapsFormat;
 			const lib::SharedRef<rdr::Texture> shadowMap = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Shadow Map"), textureDef, rhi::EMemoryUsage::GPUOnly);
-	
-			rhi::TextureViewDefinition shadowMapViewDef;
-			shadowMapViewDef.subresourceRange.aspect = rhi::ETextureAspect::Depth;
-			m_shadowMapViews.emplace_back(shadowMap->CreateView(RENDERER_RESOURCE_NAME("Shadow Map View"), shadowMapViewDef));
+			m_shadowMaps.emplace_back(shadowMap);
 		}
 
 		lib::DynamicArray<Uint32>& shadowMapsOfQuality = m_availableShadowMaps[quality];
-		for (SizeType idx = prevShadowMapsNum; idx < m_shadowMapViews.size(); idx += 6)
+		for (SizeType idx = prevShadowMapsNum; idx < m_shadowMaps.size(); idx += 6)
 		{
 			shadowMapsOfQuality.emplace_back(static_cast<Uint32>(idx));
 		}
@@ -330,9 +336,9 @@ void ShadowMapsManagerSystem::CreateShadowMapsRenderViews()
 {
 	SPT_PROFILER_FUNCTION();
 	
-	m_shadowMapsRenderViews.reserve(m_shadowMapViews.size());
+	m_shadowMapsRenderViews.reserve(m_shadowMaps.size());
 
-	for (SizeType idx = 0; idx < m_shadowMapViews.size(); ++idx)
+	for (SizeType idx = 0; idx < m_shadowMaps.size(); ++idx)
 	{
 		lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews.emplace_back();
 		renderView = std::make_unique<RenderView>(GetOwningScene());
@@ -361,21 +367,81 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 		const lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews[renderViewIdx];
 		const RenderSceneEntityHandle renderViewEntity = renderView->GetViewEntity();
 
-		const lib::SharedRef<rdr::TextureView>& shadowMapTextureView = m_shadowMapViews[renderViewIdx];
-		const math::Vector2u shadowMapResolution = shadowMapTextureView->GetTexture()->GetResolution2D();
+		const lib::SharedRef<rdr::Texture>& shadowMapTexture = m_shadowMaps[renderViewIdx];
+		const math::Vector2u shadowMapResolution = shadowMapTexture->GetResolution2D();
 
 		ShadowMapViewComponent shadowMapViewComp;
-		shadowMapViewComp.shadowMapView	= shadowMapTextureView;
+		shadowMapViewComp.shadowMap		= shadowMapTexture;
 		shadowMapViewComp.owningLight	= owningLight;
 		shadowMapViewComp.faceIdx		= static_cast<Uint32>(faceIdx);
 		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
 
-		constexpr Real32 nearPlane = 0.01f;
-		renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, nearPlane/*, pointLight.radius*/);
+		constexpr Real32 nearPlane = 0.1f;
+		renderView->SetShadowPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, nearPlane, pointLight.radius);
 		renderView->SetLocation(pointLight.location);
 		renderView->SetRotation(faceRotations[faceIdx]);
 
 		renderView->SetRenderingResolution(shadowMapResolution);
+	}
+}
+
+void ShadowMapsManagerSystem::UpdateShadowMaps()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Real32 deltaTime = engn::Engine::Get().GetEngineTimer().GetDeltaTime();
+
+	const auto GetPriorityMultiplierForQuality = [](EShadowMapQuality quality)
+	{
+		switch (quality)
+		{
+		case rsc::EShadowMapQuality::Low:		return 0.5f;
+		case rsc::EShadowMapQuality::Medium:	return 1.f;
+		case rsc::EShadowMapQuality::High:		return 2.f;
+
+		default:
+
+			SPT_CHECK_NO_ENTRY();
+			return 0.f;
+		}
+	};
+
+	// Create hash set of lights that are already scheduled for update to be able to filter them faster
+	lib::HashSet<RenderSceneEntity> lightsToUpdate;
+	lightsToUpdate.reserve(m_lightsWithUpdatedShadowMaps.size());
+	std::copy(std::cbegin(m_lightsWithUpdatedShadowMaps), std::cend(m_lightsWithUpdatedShadowMaps), std::inserter(lightsToUpdate, std::begin(lightsToUpdate)));
+
+	// Update priorities
+	for (LightUpdatePriority& lightUpdatePriority : m_updatePriorities)
+	{
+		if (lightsToUpdate.contains(lightUpdatePriority.light))
+		{
+			lightUpdatePriority.updatePriority = 0.f;
+		}
+		else
+		{
+			lightUpdatePriority.updatePriority += deltaTime * GetPriorityMultiplierForQuality(m_pointLightsWithAssignedShadowMaps[lightUpdatePriority.light]);
+		}
+	}
+
+	if (m_lightsWithUpdatedShadowMaps.size() < params::maxShadowMapsUpdatedPerFrame)
+	{
+		std::sort(std::begin(m_updatePriorities), std::end(m_updatePriorities),
+				  [](const LightUpdatePriority& lhs, const LightUpdatePriority& rhs)
+				  {
+					  return lhs.updatePriority > rhs.updatePriority;
+				  });
+
+		// Add lights that have greatest update priority
+		for (SizeType idx = 0; idx < m_updatePriorities.size() && m_lightsWithUpdatedShadowMaps.size() < params::maxShadowMapsUpdatedPerFrame; ++idx)
+		{
+			const RenderSceneEntity light = m_updatePriorities[idx].light;
+			if (!lightsToUpdate.contains(light))
+			{
+				m_lightsWithUpdatedShadowMaps.emplace_back(light);
+				m_updatePriorities[idx].updatePriority = 0.f;
+			}
+		}
 	}
 }
 

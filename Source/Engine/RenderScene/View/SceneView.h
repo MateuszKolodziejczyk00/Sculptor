@@ -16,7 +16,7 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(SceneViewCullingData)
-	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 4>), cullingPlanes)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 5>), cullingPlanes)
 END_SHADER_STRUCT();
 
 
@@ -26,8 +26,8 @@ public:
 
 	SceneView();
 
-	void					SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near);
 	void					SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far);
+	void					SetShadowPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far);
 	void					SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right);
 	const math::Matrix4f&	GetProjectionMatrix() const;
 
@@ -39,6 +39,9 @@ public:
 	void						SetRotation(const math::Quaternionf& newRotation);
 	const math::Quaternionf&	GetRotation() const;
 
+	Real32					GetNearPlane() const;
+	std::optional<Real32>	GetFarPlane() const;
+
 	const SceneViewData& GetViewRenderingData() const;
 	const SceneViewCullingData& GetCullingData() const;
 
@@ -48,6 +51,8 @@ public:
 
 private:
 
+	Bool IsPerspectiveMatrix() const;
+
 	void UpdateViewRenderingData();
 	void UpdateCullingData();
 
@@ -56,6 +61,9 @@ private:
 	math::Matrix4f		m_projectionMatrix;
 	math::Vector3f		m_viewLocation;
 	math::Quaternionf	m_rotation;
+
+	Real32					m_nearPlane;
+	Real32					m_farPlane;
 
 	SceneViewData			m_viewRenderingData;
 	SceneViewCullingData	m_viewCullingData;

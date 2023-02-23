@@ -7,9 +7,11 @@ SceneView::SceneView()
 	: m_projectionMatrix{}
 	, m_viewLocation(math::Vector3f::Zero())
 	, m_rotation(math::Quaternionf::Identity())
+	, m_nearPlane(0.f)
+	, m_farPlane(0.f)
 { }
 
-void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near)
+void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
 {
 	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
 
@@ -20,14 +22,17 @@ void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real3
 										{0.f,	0.f,	b,		0.f},
 										{0.f,	0.f,	0.f,    near},
 										{1.f,	0.f,	0.f,	0.f} };
+
+	m_nearPlane	= near;
+	m_farPlane	= far;
 }
 
-void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
+void SceneView::SetShadowPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
 {
 	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
 
-	const Real32 a = h;
-	const Real32 b = h * aspect;
+	const Real32 a = -h;
+	const Real32 b = -h * aspect;
 
 	const Real32 c = -near / (far - near);
 	const Real32 d = -far * c;
@@ -36,6 +41,9 @@ void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real3
 										{0.f,	0.f,	b,		0.f},
 										{c,		0.f,	0.f,    d  },
 										{1.f,	0.f,	0.f,	0.f} };
+
+	m_nearPlane	= near;
+	m_farPlane	= far;
 }
 
 void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)
@@ -48,10 +56,13 @@ void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 botto
 	const Real32 y = -(top + bottom) / (top - bottom);
 	const Real32 z = -(far + near) / (far - near);
 
-	m_projectionMatrix = math::Matrix4f{{a,		0.f,	0.f,	x	},
-										{0.f,	b,		0.f,	y	},
-										{0.f,	0.f,	c,		z	},
+	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	x	},
+										{0.f,	0.f,	b,		y	},
+										{c,		0.f,	0.f,	z	},
 										{0.f,	0.f,	0.f,	1.f	} };
+
+	m_nearPlane	= near;
+	m_farPlane	= far;
 }
 
 const math::Matrix4f& SceneView::GetProjectionMatrix() const
@@ -89,6 +100,16 @@ const math::Quaternionf& SceneView::GetRotation() const
 	return m_rotation;
 }
 
+Real32 SceneView::GetNearPlane() const
+{
+	return m_nearPlane;
+}
+
+std::optional<Real32> SceneView::GetFarPlane() const
+{
+	return m_farPlane;
+}
+
 const SceneViewData& SceneView::GetViewRenderingData() const
 {
 	return m_viewRenderingData;
@@ -107,6 +128,11 @@ void SceneView::UpdateViewCachedData()
 	UpdateCullingData();
 }
 
+Bool SceneView::IsPerspectiveMatrix() const
+{
+	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));
+}
+
 void SceneView::UpdateViewRenderingData()
 {
 	m_viewRenderingData.viewMatrix = GenerateViewMatrix();
@@ -123,6 +149,16 @@ void SceneView::UpdateCullingData()
 	m_viewCullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		-x < w  ---> w - x > 0
 	m_viewCullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
 	m_viewCullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
+	
+	if (IsPerspectiveMatrix())
+	{
+		// Far plane culling. For this one we use cached far plane value because we may not have far plane culling in projection matrix (as we're using infinite far in some cases)
+		m_viewCullingData.cullingPlanes[4] = -viewProjection.row(3) + math::RowVector4f(0.f, 0.f, 0.f, m_farPlane);
+	}
+	else
+	{
+		m_viewCullingData.cullingPlanes[4] = viewProjection.row(3) + viewProjection.row(2);	// far plane:	z < w  ---> w + z > 0
+	}
 
 	// normalize planes (we need normals to compare with bounding spheres radius)
 	for (math::Vector4f& cullingPlane : m_viewCullingData.cullingPlanes)

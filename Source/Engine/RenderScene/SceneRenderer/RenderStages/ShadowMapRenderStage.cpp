@@ -23,7 +23,11 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 	const RenderSceneEntityHandle& viewEntity = viewSpec.GetRenderView().GetViewEntity();
 	const ShadowMapViewComponent& shadowMapViewData = viewEntity.get<ShadowMapViewComponent>();
 
-	const rg::RGTextureViewHandle shadowMapTextureView = graphBuilder.AcquireExternalTextureView(shadowMapViewData.shadowMapView);
+	const rg::RGTextureHandle shadowMapTexture = graphBuilder.AcquireExternalTexture(shadowMapViewData.shadowMap);
+
+	rhi::TextureViewDefinition shadowMapViewDef;
+	shadowMapViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Depth);
+	const rg::RGTextureViewHandle shadowMapTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shadow Map RT View"), shadowMapTexture, shadowMapViewDef);
 	
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 

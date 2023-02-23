@@ -33,7 +33,8 @@ SPT_DEFINE_LOG_CATEGORY(Sandbox, true)
 SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	: m_window(std::move(owningWindow))
 	, m_fovDegrees(80.f)
-	, m_nearPlane(1.f)
+	, m_nearPlane(0.1f)
+	, m_farPlane(50.f)
 	, m_cameraSpeed(5.f)
 {
 
@@ -167,7 +168,7 @@ void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
 	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
 	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
 
-	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane);
+	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane, m_farPlane);
 }
 
 math::Vector2u SandboxRenderer::GetDisplayTextureResolution() const
@@ -198,6 +199,16 @@ void SandboxRenderer::SetNearPlane(Real32 nearPlane)
 Real32 SandboxRenderer::GetNearPlane()
 {
 	return m_nearPlane;
+}
+
+void SandboxRenderer::SetFarPlane(Real32 farPlane)
+{
+	m_farPlane = farPlane;
+}
+
+Real32 SandboxRenderer::GetFarPlane()
+{
+	return m_farPlane;
 }
 
 void SandboxRenderer::SetCameraSpeed(Real32 speed)
@@ -250,7 +261,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
 	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve));
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
-	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane);
+	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 }
 
 void SandboxRenderer::UpdateSceneUITextureForView(const rsc::RenderView& renderView)

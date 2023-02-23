@@ -6,7 +6,7 @@
 
 namespace spt::rdr
 {
-class TextureView;
+class Texture;
 } // spt::rdr
 
 
@@ -15,7 +15,7 @@ namespace spt::rsc
 
 struct ShadowMapViewComponent
 {
-	lib::SharedPtr<rdr::TextureView>	shadowMapView;
+	lib::SharedPtr<rdr::Texture>		shadowMap;
 	RenderSceneEntity					owningLight;
 	Uint32								faceIdx;
 };

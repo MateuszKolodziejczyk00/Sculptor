@@ -87,15 +87,21 @@ void SandboxUILayer::DrawRendererSettings()
 	}
 	
 	Real32 cameraSpeed = m_renderer->GetCameraSpeed();
-	if (ImGui::SliderFloat("CameraSpeed", &cameraSpeed, 0.1f, 100.f))
+	if (ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.1f, 100.f))
 	{
 		m_renderer->SetCameraSpeed(cameraSpeed);
 	}
 
 	Real32 nearPlane = m_renderer->GetNearPlane();
-	if (ImGui::SliderFloat("NearPlane", &nearPlane, 0.01f, 10.f))
+	if (ImGui::SliderFloat("Near Plane", &nearPlane, 0.01f, 10.f))
 	{
 		m_renderer->SetNearPlane(nearPlane);
+	}
+
+	Real32 farPlane = m_renderer->GetFarPlane();
+	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 100.f))
+	{
+		m_renderer->SetFarPlane(farPlane);
 	}
 }
 

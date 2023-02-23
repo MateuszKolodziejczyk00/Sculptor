@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
-#include "RenderStages/ForwardOpaque.hlsli"
+#include "RenderStages/ForwardOpaque/ForwardOpaque.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]

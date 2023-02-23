@@ -9,7 +9,7 @@
 
 namespace spt::rdr
 {
-class TextureView;
+class Texture;
 } // spt::rdr
 
 
@@ -85,15 +85,25 @@ private:
 
 	void UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx);
 
-	lib::DynamicArray<lib::SharedRef<rdr::TextureView>> m_shadowMapViews;
-	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
+	void UpdateShadowMaps();
 
-	lib::HashMap<RenderSceneEntity, EShadowMapQuality> m_pointLightsWithAssignedShadowMaps;
+	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
+	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
 	
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<Uint32>> m_availableShadowMaps;
 
 	Uint32 highQualityShadowMapsMaxIdx;
 	Uint32 mediumQualityShadowMapsMaxIdx;
+
+	lib::HashMap<RenderSceneEntity, EShadowMapQuality> m_pointLightsWithAssignedShadowMaps;
+
+	struct LightUpdatePriority
+	{
+		RenderSceneEntity	light;
+		Real32				updatePriority;
+	};
+
+	lib::DynamicArray<LightUpdatePriority> m_updatePriorities;
 
 	lib::DynamicArray<RenderSceneEntity> m_lightsWithUpdatedShadowMaps;
 };
