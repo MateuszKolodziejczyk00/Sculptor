@@ -9,6 +9,46 @@
 #include "ShadowsRenderingTypes.h"
 #include "EngineTimer.h"
 #include "Engine.h"
+#include "YAMLSerializerHelper.h"
+#include "ConfigUtils.h"
+
+namespace spt::rsc
+{
+
+struct ShadowMapsSettings
+{
+	ShadowMapsSettings()
+		: highQualityShadowMaps(0)
+		, mediumQualityShadowMaps(0)
+		, lowQualityShadowMaps(0)
+	{ }
+
+	Uint32 highQualityShadowMaps;
+	Uint32 mediumQualityShadowMaps;
+	Uint32 lowQualityShadowMaps;
+};
+
+} // spt::rsc
+
+namespace spt::srl
+{
+
+template<>
+struct TypeSerializer<rsc::ShadowMapsSettings>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("HighQualityShadowMaps", data.highQualityShadowMaps);
+		serializer.Serialize("MediumQualityShadowMaps", data.mediumQualityShadowMaps);
+		serializer.Serialize("LowQualityShadowMaps", data.lowQualityShadowMaps);
+	}
+};
+
+} // spt::srl
+
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ShadowMapsSettings)
+
 
 namespace spt::rsc
 {
@@ -20,6 +60,7 @@ RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per 
 RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows" }, 6, 0, 10);
 
 } // params
+
 
 ShadowMapsManagerSystem::ShadowMapsManagerSystem(RenderScene& owningScene)
 	: Super(owningScene)
@@ -239,7 +280,7 @@ void ShadowMapsManagerSystem::SetPointLightShadowMapsBeginIdx(RenderSceneEntity 
 	m_lightsWithUpdatedShadowMaps.emplace_back(pointLightEntity);
 }
 
-Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity) const
+Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity pointLightEntity)
 {
 	Uint32 shadowMapFirstFaceIdx = idxNone<Uint32>;
 
@@ -249,6 +290,15 @@ Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity point
 	{
 		shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
 		registry.remove<PointLightShadowMapComponent>(pointLightEntity);
+
+		const auto foundUpdatePriority = std::find_if(std::cbegin(m_updatePriorities), std::cend(m_updatePriorities),
+													  [pointLightEntity](const LightUpdatePriority& updatePriority)
+													  {
+														  return updatePriority.light == pointLightEntity;
+													  });
+
+		SPT_CHECK(foundUpdatePriority != std::cend(m_updatePriorities));
+		m_updatePriorities.erase(foundUpdatePriority);
 	}
 	return shadowMapFirstFaceIdx;
 }
@@ -318,16 +368,16 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 		}
 	};
 
-	const SizeType highQualityShadowMaps	= 8;
-	const SizeType mediumQualityShadowMaps	= 16;
-	const SizeType lowQualityShadowMaps		= 64;
+	ShadowMapsSettings shadowMapsSettings;
+	const Bool loaded = engn::ConfigUtils::LoadConfigData(shadowMapsSettings, "ShadowMapsSettings.yaml");
+	SPT_CHECK(loaded);
 
-	CreateShadowMapsHelper(math::Vector2u::Constant(1024),	highQualityShadowMaps,		EShadowMapQuality::High);
-	CreateShadowMapsHelper(math::Vector2u::Constant(512),	mediumQualityShadowMaps,	EShadowMapQuality::Medium);
-	CreateShadowMapsHelper(math::Vector2u::Constant(256),	lowQualityShadowMaps,		EShadowMapQuality::Low);
+	CreateShadowMapsHelper(math::Vector2u::Constant(1024),	shadowMapsSettings.highQualityShadowMaps,	EShadowMapQuality::High);
+	CreateShadowMapsHelper(math::Vector2u::Constant(512),	shadowMapsSettings.mediumQualityShadowMaps,	EShadowMapQuality::Medium);
+	CreateShadowMapsHelper(math::Vector2u::Constant(256),	shadowMapsSettings.lowQualityShadowMaps,	EShadowMapQuality::Low);
 
-	highQualityShadowMapsMaxIdx		= static_cast<Uint32>(highQualityShadowMaps);
-	mediumQualityShadowMapsMaxIdx	= static_cast<Uint32>(highQualityShadowMaps + mediumQualityShadowMaps);
+	highQualityShadowMapsMaxIdx		= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps);
+	mediumQualityShadowMapsMaxIdx	= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps + shadowMapsSettings.mediumQualityShadowMaps);
 
 	CreateShadowMapsRenderViews();
 }
@@ -420,7 +470,7 @@ void ShadowMapsManagerSystem::UpdateShadowMaps()
 		}
 		else
 		{
-			lightUpdatePriority.updatePriority += deltaTime * GetPriorityMultiplierForQuality(m_pointLightsWithAssignedShadowMaps[lightUpdatePriority.light]);
+			lightUpdatePriority.updatePriority += deltaTime * GetPriorityMultiplierForQuality(m_pointLightsWithAssignedShadowMaps.at(lightUpdatePriority.light));
 		}
 	}
 

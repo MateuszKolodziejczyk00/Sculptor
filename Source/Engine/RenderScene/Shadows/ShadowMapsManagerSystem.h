@@ -73,7 +73,7 @@ public:
 private:
 
 	void SetPointLightShadowMapsBeginIdx(RenderSceneEntity pointLightEntity, Uint32 shadowMapBeginIdx);
-	Uint32 ResetPointLightShadowMap(RenderSceneEntity pointLightEntity) const;
+	Uint32 ResetPointLightShadowMap(RenderSceneEntity pointLightEntity);
 
 	EShadowMapQuality GetShadowMapQuality(SizeType pointLightIdx) const;
 
