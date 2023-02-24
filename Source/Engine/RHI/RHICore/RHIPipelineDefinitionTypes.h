@@ -121,9 +121,9 @@ struct DepthRenderTargetDefinition
 		, enableDepthWrite(inEnableDepthWrite)
 	{ }
 
-	EFragmentFormat			format;
-	ECompareOp	depthCompareOp;
-	Bool					enableDepthWrite;
+	EFragmentFormat		format;
+	ECompareOp			depthCompareOp;
+	Bool				enableDepthWrite;
 };
 
 

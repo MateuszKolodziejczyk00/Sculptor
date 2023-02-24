@@ -242,27 +242,17 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color		= math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
-			pointLightData.intensity	= std::clamp(1.f - random, 18.f, 160.f);
+			pointLightData.intensity	= std::clamp(1.f - random, 28.f, 160.f);
 			pointLightData.location		= math::Vector3f::Random() * 10.f;
+			pointLightData.location.z() = pointLightData.location.z() * 0.5f + 5.f;
 			pointLightData.radius		= std::clamp(random, 2.2f, 3.5f);
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
-		}
-
-		{
-			//const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
-			//rsc::PointLightData pointLightData;
-			//pointLightData.color		= math::Vector3f::Ones();
-			//pointLightData.intensity	= 10.f;
-			//pointLightData.location		= math::Vector3f::UnitZ() * 1.f;
-			//pointLightData.radius		= 4.f;
-			//lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
 		{
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color		= math::Vector3f::Ones();
-			//directionalLightData.intensity	= 3.f;
 			directionalLightData.intensity	= 2.f;
 			directionalLightData.direction	= math::Vector3f(0.f, 1.f, -2.f).normalized();
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);

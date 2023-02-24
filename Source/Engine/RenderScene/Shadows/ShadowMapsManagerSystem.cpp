@@ -138,7 +138,7 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	};
 	
 	// current quality -> release info
-	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToDowngrade;
+	lib::HashMap<EShadowMapQuality, lib::DynamicArray<ShadowMapReleaseInfo>> shadowMapsToRelease;
 
 	const lib::HashMap<RenderSceneEntity, EShadowMapQuality> pointLightsWithAssignedShadowMapsPrevFrame = std::move(m_pointLightsWithAssignedShadowMaps);
 
@@ -171,15 +171,16 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 			}
 			else if (currentQuality != EShadowMapQuality::None)
 			{
-				// We cannot upgrade this shadow, so just leave it as it is
-				m_pointLightsWithAssignedShadowMaps[lightEntity] = currentQuality;
+				// this shadow map should be upgraded but we're out of update budget
+				// Because of that we're just marking this shadow map as "shadowMapsToRelease"
+				// This will allow using this shadow map for other lights if necessary, and if not, it will stay with same quality
+				shadowMapsToRelease[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
 			}
-
 		}
 		else if (static_cast<Uint32>(currentQuality) > static_cast<Uint32>(desiredQuality))
 		{
 			// This shadow map should be downgraded
-			shadowMapsToDowngrade[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
+			shadowMapsToRelease[currentQuality].emplace_back(ShadowMapReleaseInfo{ lightEntity, desiredQuality });
 		}
 		else
 		{
@@ -188,12 +189,21 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 		}
 	}
 
+	SPT_MAYBE_UNUSED
+	const auto smToUpgradeCopy = shadowMapsToUpgrade;
+
+	SPT_MAYBE_UNUSED
+	const auto smToDowngradeCopy = shadowMapsToRelease;
+
+	lib::DynamicArray<RenderSceneEntity> releasedShadowMaps;
+
 	// release all shadow maps that are not visible
 	for (const auto [entity, quality] : pointLightsWithAssignedShadowMapsPrevFrame)
 	{
 		if (!lightsVisibleCurrentFrame.contains(entity))
 		{
 			ReleaseShadowMap(quality, ResetPointLightShadowMap(entity));
+			releasedShadowMaps.emplace_back(entity);
 		}
 	}
 
@@ -209,7 +219,7 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 		if (shadowMapIdx == idxNone<Uint32>)
 		{
 			// We don't have any available shadow map - try downgrade another light to use its shadow map
-			lib::DynamicArray<ShadowMapReleaseInfo>& shadowMapsOfQualityToRelease = shadowMapsToDowngrade[acquireDesiredQuality];
+			lib::DynamicArray<ShadowMapReleaseInfo>& shadowMapsOfQualityToRelease = shadowMapsToRelease[acquireDesiredQuality];
 			const ShadowMapReleaseInfo releaseInfo = shadowMapsOfQualityToRelease.back();
 			shadowMapsOfQualityToRelease.pop_back();
 
@@ -229,7 +239,7 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	// Some lights had shadow maps that should be downgraded but there were no other lights to acquire their shadow maps
 	// In this case we just leave shadow maps that they currently use, event though quality is too high
 	// As these lights were not assigned to any shadow map this frame, we need to do this here, when we're sure that this light will still use same shadow map
-	for (const auto [releasedQuality, releaseInfos] : shadowMapsToDowngrade)
+	for (const auto [releasedQuality, releaseInfos] : shadowMapsToRelease)
 	{
 		for (const ShadowMapReleaseInfo& releaseInfo : releaseInfos)
 		{
