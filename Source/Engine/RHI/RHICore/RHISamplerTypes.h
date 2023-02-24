@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHICommonTypes.h"
 
 
 namespace spt::rhi
@@ -73,6 +74,7 @@ struct SamplerDefinition
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
+		, compareOp(ECompareOp::None)
 		, minLod(0.f)
 		, maxLod(-1.f)
 		, borderColor(EBorderColor::FloatTransparentBlack)
@@ -91,6 +93,7 @@ struct SamplerDefinition
 		, mipLodBias(0.f)
 		, enableAnisotropy(true)
 		, maxAnisotropy(8.f)
+		, compareOp(ECompareOp::None)
 		, minLod(0.f)
 		, maxLod(-1.f)
 		, borderColor(EBorderColor::FloatTransparentBlack)
@@ -114,6 +117,8 @@ struct SamplerDefinition
 
 	Bool	enableAnisotropy;
 	Real32	maxAnisotropy;
+
+	ECompareOp compareOp;
 
 	Real32	minLod;
 	Real32	maxLod;
@@ -157,6 +162,7 @@ struct hash<spt::rhi::SamplerDefinition>
 									 samplerDef.mipLodBias,
 									 samplerDef.enableAnisotropy,
 									 samplerDef.maxAnisotropy,
+									 samplerDef.compareOp,
 									 samplerDef.minLod,
 									 samplerDef.maxLod,
 									 samplerDef.borderColor,

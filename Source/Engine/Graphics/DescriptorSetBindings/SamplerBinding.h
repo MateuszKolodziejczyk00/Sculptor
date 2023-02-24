@@ -28,7 +28,7 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return BuildBindingVariableCode(lib::String("SamplerState ") + name, bindingIdx);
+		return BuildBindingVariableCode(GetSamplerTypeName() + " " + name, bindingIdx);
 	}
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
@@ -39,6 +39,20 @@ public:
 	static constexpr std::optional<rhi::SamplerDefinition> GetImmutableSamplerDef()
 	{
 		return std::make_optional(samplerDefinition);
+	}
+
+private:
+
+	static constexpr lib::String GetSamplerTypeName()
+	{
+		if constexpr (samplerDefinition.compareOp == rhi::ECompareOp::None)
+		{
+			return lib::String("SamplerState");
+		}
+		else
+		{
+			return lib::String("SamplerComparisonState");
+		}
 	}
 };
 

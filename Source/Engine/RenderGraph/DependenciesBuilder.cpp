@@ -22,6 +22,15 @@ void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureVi
 	AddTextureAccess(rgTextureView, access, dependencyStages.pipelineStages);
 }
 
+void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+{
+	if (m_graphBuilder.IsTextureAcquired(texture->GetTexture()))
+	{
+		const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
+		AddTextureAccess(rgTextureView, access, dependencyStages.pipelineStages);
+	}
+}
+
 void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;

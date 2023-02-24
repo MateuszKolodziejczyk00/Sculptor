@@ -128,6 +128,11 @@ void SceneView::UpdateViewCachedData()
 	UpdateCullingData();
 }
 
+math::Matrix4f SceneView::GenerateViewProjectionMatrix() const
+{
+	return m_projectionMatrix * GenerateViewMatrix();
+}
+
 Bool SceneView::IsPerspectiveMatrix() const
 {
 	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));

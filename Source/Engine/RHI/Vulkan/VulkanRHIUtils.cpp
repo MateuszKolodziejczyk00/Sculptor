@@ -456,18 +456,18 @@ VkSampleCountFlagBits RHIToVulkan::GetSampleCount(Uint32 samplesNum)
 	}
 }
 
-VkCompareOp RHIToVulkan::GetCompareOp(rhi::EDepthCompareOperation compareOperation)
+VkCompareOp RHIToVulkan::GetCompareOp(rhi::ECompareOp compareOperation)
 {
 	switch (compareOperation)
 	{
-	case rhi::EDepthCompareOperation::Less:					return VK_COMPARE_OP_LESS;
-	case rhi::EDepthCompareOperation::LessOrEqual:			return VK_COMPARE_OP_LESS_OR_EQUAL;
-	case rhi::EDepthCompareOperation::Greater:				return VK_COMPARE_OP_GREATER;
-	case rhi::EDepthCompareOperation::GreaterOrEqual:		return VK_COMPARE_OP_GREATER_OR_EQUAL;
-	case rhi::EDepthCompareOperation::Equal:				return VK_COMPARE_OP_EQUAL;
-	case rhi::EDepthCompareOperation::NotEqual:				return VK_COMPARE_OP_NOT_EQUAL;
-	case rhi::EDepthCompareOperation::Always:				return VK_COMPARE_OP_ALWAYS;
-	case rhi::EDepthCompareOperation::Never:				return VK_COMPARE_OP_NEVER;
+	case rhi::ECompareOp::Less:					return VK_COMPARE_OP_LESS;
+	case rhi::ECompareOp::LessOrEqual:			return VK_COMPARE_OP_LESS_OR_EQUAL;
+	case rhi::ECompareOp::Greater:				return VK_COMPARE_OP_GREATER;
+	case rhi::ECompareOp::GreaterOrEqual:		return VK_COMPARE_OP_GREATER_OR_EQUAL;
+	case rhi::ECompareOp::Equal:				return VK_COMPARE_OP_EQUAL;
+	case rhi::ECompareOp::NotEqual:				return VK_COMPARE_OP_NOT_EQUAL;
+	case rhi::ECompareOp::Always:				return VK_COMPARE_OP_ALWAYS;
+	case rhi::ECompareOp::Never:				return VK_COMPARE_OP_NEVER;
 
 	default:
 

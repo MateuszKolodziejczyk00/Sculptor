@@ -15,26 +15,27 @@ void RHISampler::InitializeRHI(const rhi::SamplerDefinition& def)
 
 	SPT_CHECK(!IsValid());
 
-    VkSamplerCreateInfo samplerInfo
+    VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    samplerInfo.flags                      = RHIToVulkan::GetSamplerCreateFlags(def.flags);
+    samplerInfo.magFilter                  = RHIToVulkan::GetSamplerFilterType(def.magnificationFilter);
+    samplerInfo.minFilter                  = RHIToVulkan::GetSamplerFilterType(def.minificationFilter);
+    samplerInfo.mipmapMode                 = RHIToVulkan::GetMipMapAddressingMode(def.mipMapAdressingMode);
+    samplerInfo.addressModeU               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeU);
+    samplerInfo.addressModeV               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeV);
+    samplerInfo.addressModeW               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeW);
+    samplerInfo.mipLodBias                 = def.mipLodBias;
+    samplerInfo.anisotropyEnable           = def.enableAnisotropy;
+    samplerInfo.maxAnisotropy              = def.maxAnisotropy;
+    samplerInfo.minLod                     = def.minLod;
+    samplerInfo.maxLod                     = def.maxLod < 0.f ? VK_LOD_CLAMP_NONE : def.maxLod;
+    samplerInfo.borderColor                = RHIToVulkan::GetBorderColor(def.borderColor);
+    samplerInfo.unnormalizedCoordinates    = def.unnormalizedCoords;
+    
+    if (def.compareOp != rhi::ECompareOp::None)
     {
-        .sType                      = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .flags                      = RHIToVulkan::GetSamplerCreateFlags(def.flags),
-        .magFilter                  = RHIToVulkan::GetSamplerFilterType(def.magnificationFilter),
-        .minFilter                  = RHIToVulkan::GetSamplerFilterType(def.minificationFilter),
-        .mipmapMode                 = RHIToVulkan::GetMipMapAddressingMode(def.mipMapAdressingMode),
-        .addressModeU               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeU),
-        .addressModeV               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeV),
-        .addressModeW               = RHIToVulkan::GetAxisAddressingMode(def.addressingModeW),
-        .mipLodBias                 = def.mipLodBias,
-        .anisotropyEnable           = def.enableAnisotropy,
-        .maxAnisotropy              = def.maxAnisotropy,
-        .compareEnable              = VK_FALSE,
-        .compareOp                  = VK_COMPARE_OP_MAX_ENUM,
-        .minLod                     = def.minLod,
-        .maxLod                     = def.maxLod < 0.f ? VK_LOD_CLAMP_NONE : def.maxLod,
-        .borderColor                = RHIToVulkan::GetBorderColor(def.borderColor),
-        .unnormalizedCoordinates    = def.unnormalizedCoords
-	};
+        samplerInfo.compareEnable   = VK_TRUE;
+        samplerInfo.compareOp       = RHIToVulkan::GetCompareOp(def.compareOp);
+    }
 
     VkSamplerReductionModeCreateInfo reductionModeInfo{ VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
     reductionModeInfo.reductionMode = RHIToVulkan::GetSamplerReductionMode(def.reductionMode);

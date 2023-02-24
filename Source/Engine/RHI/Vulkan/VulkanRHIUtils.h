@@ -51,7 +51,7 @@ public:
 
 	static VkSampleCountFlagBits			GetSampleCount(Uint32 samplesNum);
 
-	static VkCompareOp						GetCompareOp(rhi::EDepthCompareOperation compareOperation);
+	static VkCompareOp						GetCompareOp(rhi::ECompareOp compareOperation);
 
 	static VkColorComponentFlags			GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
 

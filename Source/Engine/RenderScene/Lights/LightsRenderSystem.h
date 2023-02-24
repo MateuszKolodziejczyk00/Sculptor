@@ -13,6 +13,9 @@ class Buffer;
 namespace spt::rsc
 {
 
+class ShadowMapsDS;
+
+
 struct DirectionalLightRuntimeData
 {
 	DirectionalLightRuntimeData()
@@ -55,12 +58,16 @@ private:
 	
 	void ReadbackVisibleLightsAreas(const RenderScene& scene, const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum);
 
+	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
+
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
 	
 	rdr::PipelineStateID m_buildLightsTilesPipeline;
 
 	DirectionalLightRuntimeData m_directionalLightsData;
+
+	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
 };
 
 } // spt::rsc

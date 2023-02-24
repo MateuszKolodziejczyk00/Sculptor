@@ -363,6 +363,8 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 	Super::RenderPerFrame(graphBuilder, renderScene);
 
 	CacheDirectionalLights(renderScene);
+
+	CacheShadowMapsDS(graphBuilder, renderScene);
 }
 
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -389,6 +391,10 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 		readbackDelegate.BindWeakMember(thisAsShared, &LightsRenderSystem::ReadbackVisibleLightsAreas, std::ref(renderScene), lightsRenderingData.visibleLightsAreas, lightsRenderingData.localLightsNum);
 		gfx::Readback::ScheduleReadback(std::move(readbackDelegate));
 	}
+
+	ShadowMapsRenderingData shadowMapsRenderingData;
+	shadowMapsRenderingData.shadowMapsDS = m_shadowMapsDS;
+	viewSpec.GetData().Create<ShadowMapsRenderingData>(shadowMapsRenderingData);
 }
 
 void LightsRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
@@ -509,6 +515,19 @@ void LightsRenderSystem::ReadbackVisibleLightsAreas(const RenderScene& scene, co
 		shadowMapsManager->UpdateVisibleLights(visibleLights);
 
 		visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
+	}
+}
+
+void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+{
+	ShadowMapsManagerSystem* shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
+	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
+	{
+		m_shadowMapsDS = shadowMapsManager->GetShadowMapsDS();
+	}
+	else
+	{
+		m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
 	}
 }
 

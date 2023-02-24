@@ -10,6 +10,7 @@
 #include "View/ViewRenderingSpec.h"
 #include "RenderScene.h"
 #include "SceneRenderer/SceneRendererTypes.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 
 namespace spt::rsc
 {
@@ -48,7 +49,7 @@ StaticMeshForwardOpaqueRenderer::StaticMeshForwardOpaqueRenderer()
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = forwardOpaqueRTFormats.depthRTFormat;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::EDepthCompareOperation::GreaterOrEqual;
+		pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
 		for (const rhi::EFragmentFormat format : forwardOpaqueRTFormats.colorRTFormats)
 		{
 			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
@@ -167,10 +168,13 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 
 	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
 
+	const ShadowMapsRenderingData& shadowMapsRenderingData = viewSpec.GetData().Get<ShadowMapsRenderingData>();
+
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						lib::Ref(staticMeshRenderingViewData.viewDS)));
+																						lib::Ref(staticMeshRenderingViewData.viewDS),
+																						lib::Ref(shadowMapsRenderingData.shadowMapsDS)));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{

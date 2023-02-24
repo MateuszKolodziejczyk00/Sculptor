@@ -49,6 +49,8 @@ public:
 
 	Bool IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const;
 
+	math::Matrix4f GenerateViewProjectionMatrix() const;
+
 private:
 
 	Bool IsPerspectiveMatrix() const;

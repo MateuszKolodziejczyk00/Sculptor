@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHICommonTypes.h"
 #include "RHIPipelineTypes.h"
 #include "RHITextureTypes.h"
 #include "RHIBridge/RHIShaderModuleImpl.h"
@@ -77,20 +78,6 @@ struct MultisamplingDefinition
 };
 
 
-enum class EDepthCompareOperation
-{
-	None,
-	Less,
-	LessOrEqual,
-	Greater,
-	GreaterOrEqual,
-	Equal,
-	NotEqual,
-	Always,
-	Never
-};
-
-
 enum class ERenderTargetBlendType
 {
 	Copy,
@@ -128,14 +115,14 @@ struct ColorRenderTargetDefinition
 
 struct DepthRenderTargetDefinition
 {
-	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, EDepthCompareOperation inDepthCompareOp = EDepthCompareOperation::Greater, Bool inEnableDepthWrite = true)
+	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, ECompareOp inDepthCompareOp = ECompareOp::Greater, Bool inEnableDepthWrite = true)
 		: format(inFormat)
 		, depthCompareOp(inDepthCompareOp)
 		, enableDepthWrite(inEnableDepthWrite)
 	{ }
 
 	EFragmentFormat			format;
-	EDepthCompareOperation	depthCompareOp;
+	ECompareOp	depthCompareOp;
 	Bool					enableDepthWrite;
 };
 

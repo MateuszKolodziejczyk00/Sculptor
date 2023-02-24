@@ -50,6 +50,8 @@ public:
 
 	// Textures ===============================================
 
+	Bool IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const;
+
 	RGTextureHandle AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture);
 
 	RGTextureViewHandle AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);

@@ -1,5 +1,6 @@
 #include "Shading/Shading.hlsli"
 #include "Lights/LightsTiles.hlsli"
+#include "Lights/Shadows.hlsli"
 
 
 float GetPointLightAttenuationAtLocation(PointLightGPUData pointLight, float3 location)
@@ -58,7 +59,17 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
             {
                 const float3 lightDir = normalize(toLight);
                 const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
-                radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity);
+
+                float shadow = 1.f;
+                if(pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                {
+                    shadow = EvaluatePointLightShadows(surface.location, pointLight.location, pointLight.shadowMapFirstFaceIdx);
+                }
+                
+                if(shadow > 0.f)
+                {
+                    radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * shadow;
+                }
             }
 
             lightsMask &= ~(1u << maskBitIdx);

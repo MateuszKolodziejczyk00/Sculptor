@@ -12,6 +12,11 @@ namespace spt::rg
 RenderGraphBuilder::RenderGraphBuilder()
 { }
 
+Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const
+{
+	return m_externalTextures.contains(texture);
+}
+
 RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture)
 {
 	SPT_PROFILER_FUNCTION();

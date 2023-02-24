@@ -5,6 +5,12 @@
 #include "PrimitivesSystem.h"
 #include "RenderSceneRegistry.h"
 #include "View/RenderView.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "RHICore/RHISamplerTypes.h"
+#include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
+#include "DescriptorSetBindings/SamplerBinding.h"
 
 
 namespace spt::rdr
@@ -43,6 +49,31 @@ struct VisibleLightEntityInfo
 };
 
 
+constexpr rhi::SamplerDefinition CreateShadowsSamplerDef()
+{
+	rhi::SamplerDefinition definition(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
+	definition.compareOp = rhi::ECompareOp::Less;
+	return definition;
+}
+
+
+BEGIN_SHADER_STRUCT(ShadowMapViewData)
+	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
+END_SHADER_STRUCT();
+
+DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),			u_shadowMapViews)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateShadowsSamplerDef()>),	u_shadowSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),				u_shadowMaps)
+DS_END();
+
+
+struct ShadowMapsRenderingData
+{
+	lib::SharedPtr<ShadowMapsDS> shadowMapsDS;
+};
+
+
 class RENDER_SCENE_API ShadowMapsManagerSystem : public PrimitivesSystem
 {
 protected:
@@ -61,6 +92,8 @@ public:
 	// End PrimitivesSystem overrides
 
 	Bool CanRenderShadows() const;
+
+	const lib::SharedPtr<ShadowMapsDS>& GetShadowMapsDS() const;
 	
 	void UpdateVisibleLights(lib::DynamicArray<VisibleLightEntityInfo>& visibleLights);
 
@@ -87,6 +120,9 @@ private:
 
 	void UpdateShadowMaps();
 
+	void CreateShadowMapsDescriptorSet();
+	void UpdateShadowMapsDSViewsData();
+
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
 	
@@ -106,6 +142,11 @@ private:
 	lib::DynamicArray<LightUpdatePriority> m_updatePriorities;
 
 	lib::DynamicArray<RenderSceneEntity> m_lightsWithUpdatedShadowMaps;
+
+	lib::DynamicArray<ShadowMapViewData> m_shadowMapViewsData;
+	lib::DynamicArray<lib::SharedPtr<rdr::Buffer>> m_shadowMapViewsBuffers;
+
+	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
 };
 
 } // spt::rsc

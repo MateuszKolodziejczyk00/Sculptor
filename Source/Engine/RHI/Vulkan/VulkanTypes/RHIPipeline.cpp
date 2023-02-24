@@ -129,7 +129,7 @@ static VkPipelineDepthStencilStateCreateInfo BuildDepthStencilStateInfo(const Gr
 	const rhi::PipelineRenderTargetsDefinition& renderTargetsDefinition = pipelineBuildDef.pipelineDefinition.renderTargetsDefinition;
 	const rhi::DepthRenderTargetDefinition& depthRTDef = renderTargetsDefinition.depthRTDefinition;
 
-	const Bool enableCompare = depthRTDef.depthCompareOp != rhi::EDepthCompareOperation::None;
+	const Bool enableCompare = depthRTDef.depthCompareOp != rhi::ECompareOp::None;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     depthStencilState.depthTestEnable = enableCompare;

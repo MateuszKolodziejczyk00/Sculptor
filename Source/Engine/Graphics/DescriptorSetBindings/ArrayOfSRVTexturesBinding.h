@@ -9,7 +9,7 @@
 namespace spt::gfx
 {
 
-template<priv::EBindingTextureDimensions dimensions, SizeType arraySize>
+template<priv::EBindingTextureDimensions dimensions, SizeType arraySize, Bool trackInRenderGraph>
 class ArrayOfSRVTexturesBinding : public rdr::DescriptorSetBinding
 {
 protected:
@@ -23,7 +23,7 @@ public:
 	explicit ArrayOfSRVTexturesBinding(const lib::HashedString& name)
 		: Super(name)
 	{
-		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [i = 0]() mutable { return i++; });
+		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [i = static_cast<Uint32>(arraySize)]() mutable { return --i; });
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
@@ -34,10 +34,16 @@ public:
 		}
 	}
 	
-	// No dependencies by design
-	// this binding should store only constant textures, so we don't need barriers etc.
 	void BuildRGDependencies(class rg::RGDependenciesBuilder& builder) const
-	{ }
+	{
+		if constexpr (trackInRenderGraph)
+		{
+			for (const BoundTexture& texture : m_boundTextures)
+			{
+				builder.AddTextureAccessIfAcquired(texture.texture, rg::ERGTextureAccess::SampledTexture);
+			}
+		}
+	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
@@ -47,12 +53,7 @@ public:
 
 	static constexpr smd::EBindingFlags GetBindingFlags()
 	{
-		smd::EBindingFlags flags = smd::EBindingFlags::PartiallyBound;
-		if (IsUnbound())
-		{
-			lib::AddFlag(flags, smd::EBindingFlags::Unbound);
-		}
-		return flags;
+		return lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound);
 	}
 
 	static constexpr Bool IsUnbound()
@@ -104,11 +105,11 @@ private:
 };
 
 
-template<SizeType arraySize>
-using ArrayOfSRVTextures1DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_1D, arraySize>;
+template<SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTextures1DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_1D, arraySize, trackInRenderGraph>;
 
 
-template<SizeType arraySize>
-using ArrayOfSRVTextures2DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_2D, arraySize>;
+template<SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTextures2DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_2D, arraySize, trackInRenderGraph>;
 
 } // spt::gfx
