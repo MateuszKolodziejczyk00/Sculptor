@@ -172,7 +172,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     validationFeatures.enabledValidationFeatureCount = static_cast<Uint32>(enabledValidationFeatures.size());
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
 
-    if (GetSettings().IsValidationEnabled())
+    if (GetSettings().IsStrictValidationEnabled())
     {
         instanceInfoLinkedList.Append(validationFeatures);
     }

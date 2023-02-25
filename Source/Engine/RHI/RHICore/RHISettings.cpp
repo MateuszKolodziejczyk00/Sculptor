@@ -13,7 +13,10 @@ void RHISettings::Initialize()
 
 	const engn::CommandLineArguments& cmdLineArgs = engn::Engine::Get().GetCmdLineArgs();
 
-	enableValidation	= cmdLineArgs.Contains(enableValidationCmdArgName);
+	enableValidation		= cmdLineArgs.Contains(enableValidationCmdArgName);
+	enableStrictValidation	= cmdLineArgs.Contains(enableStrictValidationCmdArgName);
+	enableValidation |= enableStrictValidation;
+
 	enableGPUCrashDumps	= cmdLineArgs.Contains(enableGPUCrashDumpsCmdArgName);
 }
 

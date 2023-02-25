@@ -14,7 +14,7 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddDebugArgument("-EngineRelativePath=../../../")
 
 	if configuration <= EConfiguration.Development then
-		self:AddDebugArgument("-EnableValidation")
+		self:AddDebugArgument("-EnableStrictValidation")
 	end
 end
 
