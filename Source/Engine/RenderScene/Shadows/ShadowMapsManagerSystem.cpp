@@ -72,6 +72,8 @@ const math::Vector2u highQualitySMResolution	= math::Vector2u::Constant(1024);
 const math::Vector2u mediumQualitySMResolution	= math::Vector2u::Constant(512);
 const math::Vector2u lowQualitySMResolution		= math::Vector2u::Constant(256);
 
+const Real32 projectionNearPlane = 0.05f;
+
 } // constants
 
 
@@ -114,7 +116,7 @@ void ShadowMapsManagerSystem::Update()
 
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
 {
-	return !m_shadowMaps.empty();
+	return !m_shadowMaps.empty() && params::enableShadows;
 }
 
 const lib::SharedPtr<ShadowMapsDS>& ShadowMapsManagerSystem::GetShadowMapsDS() const
@@ -479,8 +481,7 @@ void ShadowMapsManagerSystem::UpdateShadowMapRenderViews(RenderSceneEntity ownin
 		shadowMapViewComp.faceIdx		= static_cast<Uint32>(faceIdx);
 		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
 
-		constexpr Real32 nearPlane = 0.1f;
-		renderView->SetShadowPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, nearPlane, pointLight.radius);
+		renderView->SetShadowPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, constants::projectionNearPlane, pointLight.radius);
 		renderView->SetLocation(pointLight.location);
 		renderView->SetRotation(faceRotations[faceIdx]);
 
@@ -576,6 +577,7 @@ void ShadowMapsManagerSystem::CreateShadowMapsDescriptorSet()
 	shadowsSettings.mediumQualitySMEndIdx		= m_mediumQualityShadowMapsLightEndIdx * 6;
 	shadowsSettings.highQualitySMPixelSize		= constants::highQualitySMResolution.cast<Real32>().cwiseInverse();
 	shadowsSettings.mediumQualitySMPixelSize	= constants::mediumQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.shadowViewsNearPlane		= constants::projectionNearPlane;
 	m_shadowMapsDS->u_shadowsSettings = shadowsSettings;
 }
 

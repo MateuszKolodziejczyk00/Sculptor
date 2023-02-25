@@ -135,6 +135,7 @@ struct SamplerState
 	static constexpr SamplerDefinition LinearClampToEdge = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::ClampToEdge);
 	
 	static constexpr SamplerDefinition LinearMinClampToEdge = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::ClampToEdge, ESamplerReductionMode::Min);
+	static constexpr SamplerDefinition LinearMaxClampToEdge = SamplerDefinition(ESamplerFilterType::Linear, EMipMapAddressingMode::Linear, EAxisAddressingMode::ClampToEdge, ESamplerReductionMode::Max);
 	
 	static constexpr SamplerDefinition NearestClampToBorder = SamplerDefinition(ESamplerFilterType::Nearest, EMipMapAddressingMode::Nearest, EAxisAddressingMode::ClampToBorder);
 	static constexpr SamplerDefinition NearestClampToEdge = SamplerDefinition(ESamplerFilterType::Nearest, EMipMapAddressingMode::Nearest, EAxisAddressingMode::ClampToEdge);

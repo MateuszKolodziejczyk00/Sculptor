@@ -63,7 +63,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
                 float shadow = 1.f;
                 if(pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
                 {
-                    shadow = EvaluatePointLightShadows(surface.location, pointLight.location, pointLight.shadowMapFirstFaceIdx);
+                    shadow = EvaluatePointLightShadows(surface.location, surface.normal, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
                 }
                 
                 if(shadow > 0.f)
