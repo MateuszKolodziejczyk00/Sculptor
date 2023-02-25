@@ -54,7 +54,7 @@ float EvaluatePointLightShadows(float3 surfaceLocation, float3 pointLightLocatio
 
     const float bias = 0.001f;
 
-    const float shadowValue = 1.f - u_shadowMaps[shadowMapIdx].SampleCmp(u_shadowSampler, shadowMapUV, surfaceShadowNDC.z + bias);
+    const float shadowValue = u_shadowMaps[shadowMapIdx].SampleCmp(u_shadowSampler, shadowMapUV, surfaceShadowNDC.z + bias);
 
     return shadowValue;
 }

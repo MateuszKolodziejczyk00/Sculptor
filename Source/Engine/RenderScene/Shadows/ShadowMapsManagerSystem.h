@@ -11,6 +11,7 @@
 #include "RHICore/RHISamplerTypes.h"
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rdr
@@ -52,19 +53,30 @@ struct VisibleLightEntityInfo
 constexpr rhi::SamplerDefinition CreateShadowsSamplerDef()
 {
 	rhi::SamplerDefinition definition(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
-	definition.compareOp = rhi::ECompareOp::Less;
+	definition.compareOp = rhi::ECompareOp::Greater;
 	return definition;
 }
+
+
+BEGIN_SHADER_STRUCT(ShadowsSettings)
+	SHADER_STRUCT_FIELD(Uint32, highQualitySMEndIdx)
+	SHADER_STRUCT_FIELD(Uint32, mediumQualitySMEndIdx)
+	SHADER_STRUCT_FIELD(math::Vector2f, highQualitySMPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, mediumQualitySMPixelSize)
+END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(ShadowMapViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
 END_SHADER_STRUCT();
 
+
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),			u_shadowMapViews)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateShadowsSamplerDef()>),	u_shadowSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),				u_shadowMaps)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),						u_shadowMapViews)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_occluderSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateShadowsSamplerDef()>),				u_shadowSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)
 DS_END();
 
 
@@ -120,6 +132,8 @@ private:
 
 	void UpdateShadowMaps();
 
+	void ReleaseAllShadowMaps();
+
 	void CreateShadowMapsDescriptorSet();
 	void UpdateShadowMapsDSViewsData();
 
@@ -128,8 +142,8 @@ private:
 	
 	lib::HashMap<EShadowMapQuality, lib::DynamicArray<Uint32>> m_availableShadowMaps;
 
-	Uint32 highQualityShadowMapsMaxIdx;
-	Uint32 mediumQualityShadowMapsMaxIdx;
+	Uint32 m_highQualityShadowMapLightEndIdx;
+	Uint32 m_mediumQualityShadowMapsLightEndIdx;
 
 	lib::HashMap<RenderSceneEntity, EShadowMapQuality> m_pointLightsWithAssignedShadowMaps;
 

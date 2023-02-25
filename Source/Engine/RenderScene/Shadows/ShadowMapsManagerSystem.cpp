@@ -58,16 +58,27 @@ namespace spt::rsc
 namespace params
 {
 
+RendererBoolParameter enableShadows("Enable Shadows", { "Lighting", "Shadows" }, true);
 RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 1, 0, 10);
 RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows" }, 3, 0, 10);
 
 } // params
 
 
+namespace constants
+{
+
+const math::Vector2u highQualitySMResolution	= math::Vector2u::Constant(1024);
+const math::Vector2u mediumQualitySMResolution	= math::Vector2u::Constant(512);
+const math::Vector2u lowQualitySMResolution		= math::Vector2u::Constant(256);
+
+} // constants
+
+
 ShadowMapsManagerSystem::ShadowMapsManagerSystem(RenderScene& owningScene)
 	: Super(owningScene)
-	, highQualityShadowMapsMaxIdx(0)
-	, mediumQualityShadowMapsMaxIdx(0)
+	, m_highQualityShadowMapLightEndIdx(0)
+	, m_mediumQualityShadowMapsLightEndIdx(0)
 {
 	CreateShadowMaps();
 
@@ -119,6 +130,12 @@ void ShadowMapsManagerSystem::UpdateVisibleLights(lib::DynamicArray<VisibleLight
 	SPT_CHECK(m_shadowMaps.size() % 6 == 0);
 
 	m_lightsWithUpdatedShadowMaps.clear();
+
+	if (!params::enableShadows)
+	{
+		ReleaseAllShadowMaps();
+		return;
+	}
 
 	const SizeType availableShadowMapsNum = m_shadowMaps.size() / 6;
 	const SizeType shadowMapsInUse = std::min(availableShadowMapsNum, visibleLights.size());
@@ -328,11 +345,11 @@ Uint32 ShadowMapsManagerSystem::ResetPointLightShadowMap(RenderSceneEntity point
 
 EShadowMapQuality ShadowMapsManagerSystem::GetShadowMapQuality(SizeType pointLightIdx) const
 {
-	if (pointLightIdx < highQualityShadowMapsMaxIdx)
+	if (pointLightIdx < m_highQualityShadowMapLightEndIdx)
 	{
 		return EShadowMapQuality::High;
 	}
-	else if (pointLightIdx < mediumQualityShadowMapsMaxIdx)
+	else if (pointLightIdx < m_mediumQualityShadowMapsLightEndIdx)
 	{
 		return EShadowMapQuality::Medium;
 	}
@@ -395,12 +412,12 @@ void ShadowMapsManagerSystem::CreateShadowMaps()
 	const Bool loaded = engn::ConfigUtils::LoadConfigData(shadowMapsSettings, "ShadowMapsSettings.yaml");
 	SPT_CHECK(loaded);
 
-	CreateShadowMapsHelper(math::Vector2u::Constant(1024),	shadowMapsSettings.highQualityShadowMaps,	EShadowMapQuality::High);
-	CreateShadowMapsHelper(math::Vector2u::Constant(512),	shadowMapsSettings.mediumQualityShadowMaps,	EShadowMapQuality::Medium);
-	CreateShadowMapsHelper(math::Vector2u::Constant(256),	shadowMapsSettings.lowQualityShadowMaps,	EShadowMapQuality::Low);
+	CreateShadowMapsHelper(constants::highQualitySMResolution,		shadowMapsSettings.highQualityShadowMaps,	EShadowMapQuality::High);
+	CreateShadowMapsHelper(constants::mediumQualitySMResolution,	shadowMapsSettings.mediumQualityShadowMaps,	EShadowMapQuality::Medium);
+	CreateShadowMapsHelper(constants::lowQualitySMResolution,		shadowMapsSettings.lowQualityShadowMaps,	EShadowMapQuality::Low);
 
-	highQualityShadowMapsMaxIdx		= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps);
-	mediumQualityShadowMapsMaxIdx	= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps + shadowMapsSettings.mediumQualityShadowMaps);
+	m_highQualityShadowMapLightEndIdx		= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps);
+	m_mediumQualityShadowMapsLightEndIdx	= static_cast<Uint32>(shadowMapsSettings.highQualityShadowMaps + shadowMapsSettings.mediumQualityShadowMaps);
 
 	CreateShadowMapsRenderViews();
 
@@ -533,6 +550,15 @@ void ShadowMapsManagerSystem::UpdateShadowMaps()
 	}
 }
 
+void ShadowMapsManagerSystem::ReleaseAllShadowMaps()
+{
+	for (const auto [entity, quality] : m_pointLightsWithAssignedShadowMaps)
+	{
+		ReleaseShadowMap(quality, ResetPointLightShadowMap(entity));
+	}
+	m_pointLightsWithAssignedShadowMaps.clear();
+}
+
 void ShadowMapsManagerSystem::CreateShadowMapsDescriptorSet()
 {
 	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
@@ -544,6 +570,13 @@ void ShadowMapsManagerSystem::CreateShadowMapsDescriptorSet()
 	}
 
 	UpdateShadowMapsDSViewsData();
+
+	ShadowsSettings shadowsSettings;
+	shadowsSettings.highQualitySMEndIdx			= m_highQualityShadowMapLightEndIdx * 6;
+	shadowsSettings.mediumQualitySMEndIdx		= m_mediumQualityShadowMapsLightEndIdx * 6;
+	shadowsSettings.highQualitySMPixelSize		= constants::highQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.mediumQualitySMPixelSize	= constants::mediumQualitySMResolution.cast<Real32>().cwiseInverse();
+	m_shadowMapsDS->u_shadowsSettings = shadowsSettings;
 }
 
 void ShadowMapsManagerSystem::UpdateShadowMapsDSViewsData()
