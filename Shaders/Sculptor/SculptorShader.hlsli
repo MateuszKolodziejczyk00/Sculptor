@@ -60,3 +60,10 @@ float2x2 InterleavedGradientNoiseRotation(float2 uv)
 {
     return NoiseRotation(InterleavedGradientNoise(uv));
 }
+
+
+float S_Curve(float x, float steepness)
+{
+    const float val = x * 2.f - 1.f;
+    return saturate((atan(val * steepness) / atan(steepness)) * 0.5f + 0.5f);
+}
