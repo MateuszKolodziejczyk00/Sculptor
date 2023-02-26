@@ -170,34 +170,37 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     const float3 specularColor = baseColor * metallic;
     const float3 diffuseColor = baseColor - specularColor;
 
-    float3 normal;
+    float3 shadingNormal;
+    const float3 geometryNormal = normalize(vertexInput.normal);
     if(vertexInput.hasTangent && material.normalsTextureIdx != IDX_NONE_32)
     {
         float3 textureNormal = u_materialsTextures[material.normalsTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
         textureNormal = textureNormal * 2.f - 1.f;
         textureNormal.z = sqrt(1.f - saturate(Pow2(textureNormal.x) + Pow2(textureNormal.y)));
-        const float3x3 TBN = transpose(float3x3(normalize(vertexInput.tangent), normalize(vertexInput.bitangent), normalize(vertexInput.normal)));
-        normal = normalize(mul(TBN, textureNormal));
+        const float3x3 TBN = transpose(float3x3(normalize(vertexInput.tangent), normalize(vertexInput.bitangent), geometryNormal));
+        shadingNormal = normalize(mul(TBN, textureNormal));
     }
     else
     {
-        normal = normalize(vertexInput.normal);
+        shadingNormal = normalize(vertexInput.normal);
     }
-
-    ShadedSurface surface;
-    surface.location = vertexInput.worldLocation;
-    surface.normal = normal;
-    surface.specularColor = specularColor;
-    surface.diffuseColor = diffuseColor;
-    surface.roughness = roughness;
 
     const float2 screenUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z * 0.5f + 0.5f;
 
-    const float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation, screenUV);
+    ShadedSurface surface;
+    surface.location        = vertexInput.worldLocation;
+    surface.shadingNormal   = shadingNormal;
+    surface.geometryNormal  = geometryNormal;
+    surface.specularColor   = specularColor;
+    surface.diffuseColor    = diffuseColor;
+    surface.roughness       = roughness;
+    surface.uv              = screenUV;
+
+    const float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
 
     output.radiance = float4(radiance, 1.f);
     
-    output.normal = float4(normal * 0.5f + 0.5f, 1.f);
+    output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
 
     return output;
 }

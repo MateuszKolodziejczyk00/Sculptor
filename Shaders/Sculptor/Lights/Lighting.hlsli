@@ -22,7 +22,7 @@ float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, floa
 }
 
 
-float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 screenUV)
+float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
 {
     float3 radiance = 0.f;
 
@@ -39,7 +39,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
     }
 
     // Point lights
-    const uint2 lightsTileCoords = GetLightsTile(screenUV, u_lightsData.tileSize);
+    const uint2 lightsTileCoords = GetLightsTile(surface.uv, u_lightsData.tileSize);
     const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
     
     for(uint i = 0; i < u_lightsData.localLights32Num; ++i)
@@ -55,20 +55,25 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation, float2 
           
             const float3 toLight = pointLight.location - surface.location;
 
-            if(dot(toLight, surface.normal) > 0.f)
+            if(dot(toLight, surface.shadingNormal) > 0.f && dot(toLight, surface.geometryNormal) > 0.f)
             {
-                const float3 lightDir = normalize(toLight);
-                const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
+                const float distToLight = length(toLight);
 
-                float shadow = 1.f;
-                if(pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                if(distToLight < pointLight.radius)
                 {
-                    shadow = EvaluatePointLightShadows(surface.location, surface.normal, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
-                }
+                    const float3 lightDir = toLight / distToLight;
+                    const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
+
+                    float visibility = 1.f;
+                    if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                    {
+                        visibility = EvaluatePointLightShadows(surface, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+                    }
                 
-                if(shadow > 0.f)
-                {
-                    radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * shadow;
+                    if (visibility > 0.f)
+                    {
+                        radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * visibility;
+                    }
                 }
             }
 

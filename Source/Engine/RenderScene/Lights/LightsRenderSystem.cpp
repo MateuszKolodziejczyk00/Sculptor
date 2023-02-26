@@ -511,10 +511,9 @@ void LightsRenderSystem::ReadbackVisibleLightsAreas(const RenderScene& scene, co
 
 			visibleLights.emplace_back(VisibleLightEntityInfo{ static_cast<RenderSceneEntity>(visibleLightInfo.lightEntityID), visibleLightInfo.lightAreaOnScreen });
 		}
+		visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
 
 		shadowMapsManager->UpdateVisibleLights(visibleLights);
-
-		visibleLightsAreasBuffer->GetRHI().UnmapBufferMemory();
 	}
 }
 

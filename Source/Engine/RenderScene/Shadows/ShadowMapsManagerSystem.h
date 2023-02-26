@@ -63,6 +63,7 @@ BEGIN_SHADER_STRUCT(ShadowsSettings)
 	SHADER_STRUCT_FIELD(Uint32, mediumQualitySMEndIdx)
 	SHADER_STRUCT_FIELD(math::Vector2f, highQualitySMPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, mediumQualitySMPixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, lowQualitySMPixelSize)
 	SHADER_STRUCT_FIELD(Real32, shadowViewsNearPlane)
 END_SHADER_STRUCT();
 

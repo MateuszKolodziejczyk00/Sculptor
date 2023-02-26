@@ -72,7 +72,7 @@ const math::Vector2u highQualitySMResolution	= math::Vector2u::Constant(1024);
 const math::Vector2u mediumQualitySMResolution	= math::Vector2u::Constant(512);
 const math::Vector2u lowQualitySMResolution		= math::Vector2u::Constant(256);
 
-const Real32 projectionNearPlane = 0.05f;
+const Real32 projectionNearPlane = 0.04f;
 
 } // constants
 
@@ -116,7 +116,7 @@ void ShadowMapsManagerSystem::Update()
 
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
 {
-	return !m_shadowMaps.empty() && params::enableShadows;
+	return !m_shadowMaps.empty();
 }
 
 const lib::SharedPtr<ShadowMapsDS>& ShadowMapsManagerSystem::GetShadowMapsDS() const
@@ -577,6 +577,7 @@ void ShadowMapsManagerSystem::CreateShadowMapsDescriptorSet()
 	shadowsSettings.mediumQualitySMEndIdx		= m_mediumQualityShadowMapsLightEndIdx * 6;
 	shadowsSettings.highQualitySMPixelSize		= constants::highQualitySMResolution.cast<Real32>().cwiseInverse();
 	shadowsSettings.mediumQualitySMPixelSize	= constants::mediumQualitySMResolution.cast<Real32>().cwiseInverse();
+	shadowsSettings.lowQualitySMPixelSize		= constants::lowQualitySMResolution.cast<Real32>().cwiseInverse();
 	shadowsSettings.shadowViewsNearPlane		= constants::projectionNearPlane;
 	m_shadowMapsDS->u_shadowsSettings = shadowsSettings;
 }
