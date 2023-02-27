@@ -69,7 +69,7 @@ private:
 	lib::SharedPtr<rdr::TextureView>	m_sceneUITextureView;
 
 	rsc::RenderScene					m_renderScene;
-	lib::UniquePtr<rsc::RenderView>		m_renderView;
+	lib::SharedPtr<rsc::RenderView>		m_renderView;
 
 	rsc::SceneRenderer					m_sceneRenderer;
 

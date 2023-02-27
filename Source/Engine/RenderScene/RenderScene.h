@@ -179,8 +179,8 @@ public:
 	}
 
 
-	template<typename TPrimitiveSystem>
-	void AddSystem(RenderScene& scene)
+	template<typename TPrimitiveSystem, typename... TArgs>
+	void AddSystem(RenderScene& scene, TArgs&&... args)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -191,7 +191,7 @@ public:
 		PrimitivesSystem*& system = m_typeIDToSystem[typeID];
 		if (!system)
 		{
-			m_systems.emplace_back(std::make_unique<TPrimitiveSystem>(scene));
+			m_systems.emplace_back(std::make_unique<TPrimitiveSystem>(scene, std::forward<TArgs>(args)...));
 			system = m_systems.back().get();
 		}
 	}
@@ -283,10 +283,10 @@ public:
 	
 	// Primitives Systems ===================================================
 
-	template<typename TPrimitivesSystem>
-	void AddPrimitivesSystem()
+	template<typename TPrimitivesSystem, typename... TArgs>
+	void AddPrimitivesSystem(TArgs&&... args)
 	{
-		m_primitiveSystems.AddSystem<TPrimitivesSystem>(*this);
+		m_primitiveSystems.AddSystem<TPrimitivesSystem>(*this, std::forward<TArgs>(args)...);
 	}
 
 	template<typename TPrimitivesSystem>

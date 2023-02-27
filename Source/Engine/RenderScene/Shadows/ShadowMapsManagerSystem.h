@@ -96,7 +96,7 @@ protected:
 
 public:
 
-	explicit ShadowMapsManagerSystem(RenderScene& owningScene);
+	explicit ShadowMapsManagerSystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView);
 
 	ShadowMapsManagerSystem(const ShadowMapsManagerSystem& rhs) = delete;
 	ShadowMapsManagerSystem& operator=(const ShadowMapsManagerSystem& rhs) = delete;
@@ -108,8 +108,6 @@ public:
 	Bool CanRenderShadows() const;
 
 	const lib::SharedPtr<ShadowMapsDS>& GetShadowMapsDS() const;
-	
-	void UpdateVisibleLights(lib::DynamicArray<VisibleLightEntityInfo>& visibleLights);
 
 	const lib::DynamicArray<RenderSceneEntity>& GetPointLightsWithShadowMapsToUpdate() const;
 	
@@ -123,12 +121,15 @@ private:
 	Uint32 ResetPointLightShadowMap(RenderSceneEntity pointLightEntity);
 
 	EShadowMapQuality GetShadowMapQuality(SizeType pointLightIdx) const;
+	EShadowMapQuality GetShadowMapQuality(RenderSceneEntity light) const;
 
 	void ReleaseShadowMap(EShadowMapQuality quality, Uint32 shadowMapIdx);
 	Uint32 AcquireAvaialableShadowMap(EShadowMapQuality quality);
 
 	void CreateShadowMaps();
 	void CreateShadowMapsRenderViews();
+	
+	void AssignShadowMaps();
 
 	void UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx);
 
@@ -138,6 +139,8 @@ private:
 
 	void CreateShadowMapsDescriptorSet();
 	void UpdateShadowMapsDSViewsData();
+
+	Real32 ComputeLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
 
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
@@ -163,6 +166,8 @@ private:
 	lib::DynamicArray<lib::SharedPtr<rdr::Buffer>> m_shadowMapViewsBuffers;
 
 	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
+
+	lib::WeakPtr<RenderView> m_mainView;
 };
 
 } // spt::rsc

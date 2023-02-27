@@ -223,8 +223,13 @@ Real32 SandboxRenderer::GetCameraSpeed()
 
 void SandboxRenderer::InitializeRenderScene()
 {
+	m_renderView = lib::MakeShared<rsc::RenderView>(m_renderScene);
+	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve));
+	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
+	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
+
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
-	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>();
+	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>(m_renderView);
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();
 
@@ -234,35 +239,41 @@ void SandboxRenderer::InitializeRenderScene()
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
 		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
 
-		const Uint32 lightsNum = 128;
-		for (Uint32 idx = 0; idx < lightsNum; ++idx)
+		for (Int32 x = -1; x <= 1; ++x)
 		{
-			const Real32 random = lib::rnd::Random<Real32>();
+			for(Int32 y = -3; y <= 3; ++y)
+			{
+				for (Int32 z = 0; z <= 1; ++z)
+				{
+					const Real32 random = lib::rnd::Random<Real32>();
 
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
-			rsc::PointLightData pointLightData;
-			pointLightData.color		= math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
-			pointLightData.intensity	= std::clamp(1.f - random, 28.f, 160.f);
-			pointLightData.location		= math::Vector3f::Random() * 10.f;
-			pointLightData.location.z() = pointLightData.location.z() * 0.5f + 5.f;
-			pointLightData.radius		= std::clamp(random, 2.2f, 3.5f);
-			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+					const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
+					rsc::PointLightData pointLightData;
+					pointLightData.color = math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
+					pointLightData.intensity = std::clamp(1.f - random, 8.f, 80.f);
+					pointLightData.location = math::Vector3f(x * 3.1f, y * 2.6f, 0.9f + z * 4.6f);
+					pointLightData.radius = 4.f;
+
+					// bloom test
+					if (x == -1 && y == 3 && z == 0)
+					{
+						pointLightData.intensity *= 12.f;
+					}
+					
+					lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+				}
+			}
 		}
 
 		{
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color		= math::Vector3f::Ones();
-			directionalLightData.intensity	= 2.f;
+			directionalLightData.intensity	= 0.5f;
 			directionalLightData.direction	= math::Vector3f(0.f, 1.f, -2.f).normalized();
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}
-
-	m_renderView = std::make_unique<rsc::RenderView>(m_renderScene);
-	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve));
-	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
-	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 }
 
 void SandboxRenderer::UpdateSceneUITextureForView(const rsc::RenderView& renderView)

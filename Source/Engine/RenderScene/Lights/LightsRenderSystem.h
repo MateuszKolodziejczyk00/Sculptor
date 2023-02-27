@@ -55,8 +55,6 @@ private:
 	void CacheDirectionalLights(const RenderScene& renderScene);
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-	
-	void ReadbackVisibleLightsAreas(const RenderScene& scene, const lib::SharedPtr<rdr::Buffer>& visibleLightsAreasBuffer, Uint32 maxLightsNum);
 
 	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 

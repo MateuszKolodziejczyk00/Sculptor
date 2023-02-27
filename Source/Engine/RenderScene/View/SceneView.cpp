@@ -100,6 +100,11 @@ const math::Quaternionf& SceneView::GetRotation() const
 	return m_rotation;
 }
 
+const spt::math::Vector3f SceneView::GetForwardVector() const
+{
+	return m_rotation * math::Vector3f::UnitX();
+}
+
 Real32 SceneView::GetNearPlane() const
 {
 	return m_nearPlane;

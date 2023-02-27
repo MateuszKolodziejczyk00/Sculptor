@@ -39,6 +39,8 @@ public:
 	void						SetRotation(const math::Quaternionf& newRotation);
 	const math::Quaternionf&	GetRotation() const;
 
+	const math::Vector3f		GetForwardVector() const;
+
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
 
