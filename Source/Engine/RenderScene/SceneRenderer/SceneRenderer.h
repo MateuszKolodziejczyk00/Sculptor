@@ -40,6 +40,8 @@ private:
 
 	lib::SharedRef<SceneRendererDebugDS> CreateDebugDS();
 
+	Bool HasEnabledDebug() const;
+
 	lib::SharedRef<SceneRendererDebugDS> m_debugDS;
 };
 

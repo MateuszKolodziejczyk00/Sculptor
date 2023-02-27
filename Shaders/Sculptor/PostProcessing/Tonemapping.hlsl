@@ -5,22 +5,6 @@
 [[descriptor_set(TonemappingDS, 0)]]
 
 
-// Source: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab
-
-float3 LinearTosRGB(in float3 color)
-{
-    float3 x = color * 12.92f;
-    float3 y = 1.055f * pow(saturate(color), 1.0f / 2.4f) - 0.055f;
-
-    float3 clr = color;
-    clr.r = color.r < 0.0031308f ? x.r : y.r;
-    clr.g = color.g < 0.0031308f ? x.g : y.g;
-    clr.b = color.b < 0.0031308f ? x.b : y.b;
-
-    return clr;
-}
-
-
 struct CS_INPUT
 {
     uint3 globalID : SV_DispatchThreadID;

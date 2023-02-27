@@ -13,6 +13,9 @@ RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 	RenderTargetFormatsDef formats;
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::B10G11B11_U_Float);
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
+#if RENDERER_DEBUG
+	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
+#endif // RENDERER_DEBUG
 	formats.depthRTFormat = DepthPrepassRenderStage::GetDepthFormat();
 
 	return formats;
@@ -47,6 +50,14 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	normalsDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float;
 	passData.normals = graphBuilder.CreateTextureView(RG_DEBUG_NAME("ViewNormalsTexture"), normalsDef, rhi::EMemoryUsage::GPUOnly);
 
+#if RENDERER_DEBUG
+	rhi::TextureDefinition debugDef;
+	debugDef.resolution	= texturesRes;
+	debugDef.usage		= passTexturesUsage;
+	debugDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
+	passData.debug = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DebugTexture"), debugDef, rhi::EMemoryUsage::GPUOnly);
+#endif // RENDERER_DEBUG
+
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
 	rg::RGRenderTargetDef depthRTDef;
@@ -68,6 +79,15 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	normalsRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
+
+#if RENDERER_DEBUG
+	rg::RGRenderTargetDef debugRTDef;
+	debugRTDef.textureView		= passData.debug;
+	debugRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
+	debugRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
+	debugRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
+	renderPassDef.AddColorRenderTarget(debugRTDef);
+#endif // RENDERER_DEBUG
 	
 	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 

@@ -37,12 +37,20 @@ struct ShadingData
 {
 	rg::RGTextureViewHandle radiance;
 	rg::RGTextureViewHandle normals;
+	
+#if RENDERER_DEBUG
+	rg::RGTextureViewHandle debug;
+#endif // RENDERER_DEBUG
 };
 
 
 struct HDRResolvePassData
 {
 	rg::RGTextureViewHandle tonemappedTexture;
+
+#if RENDERER_DEBUG
+	rg::RGTextureViewHandle debug;
+#endif // RENDERER_DEBUG
 };
 
 

@@ -95,7 +95,6 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     if(u_rendererDebugSettings.showDebugMeshlets)
     {
         output.meshletIdx = meshletIdx;
-        return output;
     }
 #endif // WITH_DEBUGS
 
@@ -135,17 +134,6 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
 FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     FO_PS_OUTPUT output;
-
-#if WITH_DEBUGS
-    if(u_rendererDebugSettings.showDebugMeshlets)
-    {
-        const uint meshletHash = HashPCG(vertexInput.meshletIdx);
-        output.radiance.xyz = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
-        output.radiance.w = 1.f;
-        output.normal = 0.f;
-        return output;
-    }
-#endif // WITH_DEBUGS
     
     float3 baseColor = 1.f;
     
@@ -201,6 +189,16 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     output.radiance = float4(radiance, 1.f);
     
     output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
+
+#if WITH_DEBUGS
+    float3 debug = 1.f;
+    if(u_rendererDebugSettings.showDebugMeshlets)
+    {
+        const uint meshletHash = HashPCG(vertexInput.meshletIdx);
+        debug = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
+    }
+    output.debug = float4(debug, 1.f);
+#endif // WITH_DEBUGS
 
     return output;
 }

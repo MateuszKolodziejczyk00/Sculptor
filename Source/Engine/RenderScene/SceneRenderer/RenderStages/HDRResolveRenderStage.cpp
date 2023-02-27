@@ -393,6 +393,42 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 } // tonemapping
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// gamma =========================================================================================
+
+namespace gamma
+{
+
+DS_BEGIN(GammaCorrectionDS, rg::RGDescriptorSetState<GammaCorrectionDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>), u_texture)
+DS_END();
+
+
+rdr::PipelineStateID CompileGammaCorrectionPipeline()
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GammaCorrectionCS"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/GammaCorrection.hlsl", compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GammaCorrectionPipeline"), shader);
+}
+
+void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle texture)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	const lib::SharedRef<GammaCorrectionDS> gammaCorrectionCS = rdr::ResourcesManager::CreateDescriptorSetState<GammaCorrectionDS>(RENDERER_RESOURCE_NAME("GammaCorrectionDS"));
+	gammaCorrectionCS->u_texture = texture;
+
+	static const rdr::PipelineStateID pipelineState = CompileGammaCorrectionPipeline();
+
+	const math::Vector2u textureRes = texture->GetResolution2D();
+	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 8u), math::Utils::DivideCeil(textureRes.y(), 8u), 1);
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Gamma Correction"), pipelineState, dispatchGroupsNum, rg::BindDescriptorSets(gammaCorrectionCS));
+}
+
+} // gamma
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // HDRResolveRenderStage =========================================================================
 
 HDRResolveRenderStage::HDRResolveRenderStage()
@@ -438,6 +474,11 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingSettings.inputPixelSize	= inputPixelSize;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, shadingData.radiance, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
+
+#if RENDERER_DEBUG
+	gamma::DoGammaCorrection(graphBuilder, shadingData.debug);
+	passData.debug = shadingData.debug;
+#endif // RENDERER_DEBUG
 	
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 }

@@ -113,7 +113,17 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
 	const HDRResolvePassData& mainViewRenderingResult = mainViewSpec.GetData().Get<HDRResolvePassData>();
-	return mainViewRenderingResult.tonemappedTexture;
+
+	rg::RGTextureViewHandle output = mainViewRenderingResult.tonemappedTexture;
+
+#if RENDERER_DEBUG
+	if (HasEnabledDebug())
+	{
+		output = mainViewRenderingResult.debug;
+	}
+#endif // RENDERER_DEBUG
+
+	return output;
 }
 
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const
@@ -156,6 +166,13 @@ lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::Rend
 lib::SharedRef<SceneRendererDebugDS> SceneRenderer::CreateDebugDS()
 {
 	return rdr::ResourcesManager::CreateDescriptorSetState<SceneRendererDebugDS>(RENDERER_RESOURCE_NAME("SceneRendererDebugDS"), rdr::EDescriptorSetStateFlags::Persistent);
+}
+
+Bool SceneRenderer::HasEnabledDebug() const
+{
+	const SceneRendererDebugSettings& debugSettings = m_debugDS->u_rendererDebugSettings.Get();
+
+	return debugSettings.showDebugMeshlets;
 }
 
 } // spt::rsc
