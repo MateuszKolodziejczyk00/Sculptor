@@ -20,6 +20,7 @@ static lib::String	g_configsPath;
 static lib::String	g_tracesPath;
 static lib::String	g_gpuCrashDumpsPath;
 static lib::String	g_contentPath;
+static lib::String	g_imGuiConfigPath;
 
 } // priv
 
@@ -31,6 +32,7 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 	priv::g_tracesPath = Combine(priv::g_enginePath, "Saved/Traces");
 	priv::g_gpuCrashDumpsPath = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
 	priv::g_contentPath = Combine(priv::g_enginePath, "Content");
+	priv::g_imGuiConfigPath = Combine(priv::g_configsPath, "ImGuiConfig.ini");
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -53,9 +55,14 @@ const lib::String& Paths::GetGPUCrashDumpsPath()
 	return priv::g_gpuCrashDumpsPath;
 }
 
-const spt::lib::String& Paths::GetContentPath()
+const lib::String& Paths::GetContentPath()
 {
 	return priv::g_contentPath;
+}
+
+const lib::String& Paths::GetImGuiConfigPath()
+{
+	return priv::g_imGuiConfigPath;
 }
 
 const lib::StringView Paths::GetExtension(lib::StringView path)

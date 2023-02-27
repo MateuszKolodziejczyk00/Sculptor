@@ -10,12 +10,8 @@
 #include "Profiler.h"
 #include "GPUDiagnose/Diagnose.h"
 #include "Engine.h"
-#include "Types/DescriptorSetState/DescriptorSetState.h"
-#include "Common/ShaderCompilationInput.h"
 #include "ImGui/SculptorImGui.h"
 #include "Types/Sampler.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
-#include "Containers/DynamicInlineArray.h"
 #include "JobSystem/JobSystem.h"
 #include "UIElements/UIWindow.h"
 #include "UIElements/ApplicationUI.h"
@@ -24,6 +20,7 @@
 #include "UIUtils.h"
 #include "ProfilerUILayer.h"
 #include "RenderGraphManager.h"
+#include "Paths.h"
 
 
 namespace spt::ed
@@ -73,6 +70,7 @@ void SculptorEdApplication::OnRun()
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	imGuiIO.IniFilename = engn::Paths::GetImGuiConfigPath().data();
 
 	m_window->InitializeUI(context);
 

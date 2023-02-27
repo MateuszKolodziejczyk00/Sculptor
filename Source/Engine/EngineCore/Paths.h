@@ -28,6 +28,8 @@ public:
 
 	static const lib::String&		GetContentPath();
 
+	static const lib::String&		GetImGuiConfigPath();
+
 	static const lib::StringView	GetExtension(lib::StringView path);
 
 	// Utils =============================================

@@ -18,7 +18,7 @@ function RendererCore:SetupConfiguration(configuration, platform)
     
     -- It seams that Nsight Graphics crashes while capturing frame in frame debugger if renderer waits for timeline sempahore
     -- This macro replaces all timeline semaphore waits with wait idle calls
-    self:AddPublicDefine("WITH_NSIGHT_CRASH_FIX=1")
+    self:AddPublicDefine("WITH_NSIGHT_CRASH_FIX=0")
 end
 
 RendererCore:SetupProject()

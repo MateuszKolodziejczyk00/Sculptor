@@ -13,9 +13,7 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 
 	self:AddDebugArgument("-EngineRelativePath=../../../")
 
-	if configuration <= EConfiguration.Development then
-		self:AddDebugArgument("-EnableStrictValidation")
-	end
+	self:AddDebugArgument("-Scene=Sponza/glTF/Sponza.gltf")
 end
 
 SculptorEd:SetupProject()
