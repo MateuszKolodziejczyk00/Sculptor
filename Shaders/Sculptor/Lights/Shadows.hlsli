@@ -4,31 +4,30 @@
 
 static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
 {
-    float2(0.957701, 0.866634),
-    float2(0.482099, -0.993775),
-    float2(-0.315592, 0.184849),
-    float2(-0.56096, -0.925292),
-    float2(-0.988587, 0.936888),
-    float2(0.98761, 0.0751681),
-    float2(0.0485548, 0.970642),
-    float2(-0.977234, 0.765648),
-    float2(0.308878, 0.746603),
-    float2(0.276101, 0.438703),
-    float2(-0.239478, 0.59621),
-    float2(0.913267, 0.51326),
-    float2(-0.902157, 0.370404),
-    float2(-0.059846, -0.99115),
-    float2(-0.407574, 0.64159),
-    float2(0.527512, 0.97528),
-    float2(0.93701, -0.987079),
-    float2(0.691214, 0.522812),
-    float2(-0.995178, -0.804682),
-    float2(0.151342, -0.68749),
-    float2(-0.681326, -0.588),
-    float2(0.606494, -0.587366),
-    float2(-0.733634, 0.660268),
-    float2(0.0101013, 0.993012)
-};
+    float2(0.f, 0.f),
+    float2(-0.080782, 0.604663),
+    float2(0.393353, -0.362956),
+    float2(0.964293, 0.982422),
+    float2(-0.742702, -0.803949),
+    float2(-0.904988, 0.934018),
+    float2(-0.994019, 0.077852),
+    float2(0.925961, -0.958982),
+    float2(0.980102, 0.134069),
+    float2(-0.293495, 0.270247),
+    float2(0.218238, -0.980224),
+    float2(0.536546, 0.548205),
+    float2(0.364359, 0.080905),
+    float2(-0.460982, 0.249306),
+    float2(-0.853267, -0.329570),
+    float2(0.849603, -0.507252),
+    float2(-0.277445, -0.944334),
+    float2(0.229224, 0.960632),
+    float2(0.009186, -0.607045),
+    float2(-0.360952, 0.952514),
+    float2(-0.926329, 0.509752),
+    float2(0.534226, -0.686352),
+    float2(0.534226, -0.686352),
+    float2(-0.551160, 0.599598)};
 
 
 #define PCF_SHADOW_SAMPLES_NUM 13
@@ -36,18 +35,18 @@ static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
 
 static const float2 pcfShadowSamples[PCF_SHADOW_SAMPLES_NUM] = {
     float2(0.f, 0.f),
-    float2(0.576159, 0.355388),
-    float2(0.998016, 0.827601),
-    float2(0.353679, 0.953093),
-    float2(0.00155644, 0.210852),
-    float2(0.968444, 0.0202033),
-    float2(0.0916776, 0.677786),
-    float2(0.968902, 0.437696),
-    float2(0.360179, 0.0148625),
-    float2(0.645192, 0.927671),
-    float2(0.252235, 0.344371),
-    float2(0.00134281, 0.980987),
-    float2(0.468856, 0.691794)
+    float2(-0.847682, -0.289223),
+    float2(0.996032, 0.655202),
+    float2(-0.292642, 0.906186),
+    float2(-0.996887, -0.578296),
+    float2(0.936888, -0.959595),
+    float2(-0.816645, 0.355573),
+    float2(0.937804, -0.124607),
+    float2(-0.279643, -0.970275),
+    float2(0.290383, 0.855342),
+    float2(-0.495529, -0.311257),
+    float2(-0.997315, 0.961975),
+    float2(-0.062288, 0.383587)
 };
 
 
@@ -297,13 +296,13 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     float p20, p23;
     ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
 
+    const uint shadowMapQuality = GetShadowMapQuality(shadowMapIdx);
+
     const float bias = ComputeBias(surface.geometryNormal, normalize(pointLightLocation - surface.location));
-    const float ndcMinBias = 0.00024f;
+    const float ndcMinBias = shadowMapQuality == SM_QUALITY_LOW ? 0.00034f : 0.00024f;
     const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceShadowNDC.z, p20, p23);
     float surfaceNDCDepth = ComputeShadowNDCDepth(surfaceLinearDepth - bias, p20, p23);
     surfaceNDCDepth = max(surfaceShadowNDC.z + ndcMinBias, surfaceNDCDepth);
-
-    const uint shadowMapQuality = GetShadowMapQuality(shadowMapIdx);
     
     const float2 shadowMapPixelSize = GetShadowMapPixelSize(shadowMapQuality);
 
@@ -323,7 +322,7 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     else // if(shadowMapQuality == SM_QUALITY_HIGH)
     {
         // PCSS shadows
-        const float noise = InterleavedGradientNoise(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
+        const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
 
         const float avgOccluderDepth = FindAverageOccluderDepth(u_shadowMaps[shadowMapIdx], u_occludersSampler, shadowMapPixelSize, shadowMapUV, surfaceNDCDepth, p20, p23);
 

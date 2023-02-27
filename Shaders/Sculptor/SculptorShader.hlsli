@@ -37,7 +37,7 @@ float Luminance(float3 color)
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
 }
 
-// Source "NEXT GENERATION POST PROCESSING IN CALL OF DUTY: ADVANCED WARFARE"
+// Source: "NEXT GENERATION POST PROCESSING IN CALL OF DUTY: ADVANCED WARFARE"
 float InterleavedGradientNoise(float2 uv)
 {
 	const float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
@@ -59,6 +59,12 @@ float2x2 NoiseRotation(float noise)
 float2x2 InterleavedGradientNoiseRotation(float2 uv)
 {
     return NoiseRotation(InterleavedGradientNoise(uv));
+}
+
+
+float Random(float2 seed)
+{
+    return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
 }
 
 
