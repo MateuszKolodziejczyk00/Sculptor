@@ -121,7 +121,7 @@ void CullTrianglesCS(CS_INPUT input)
             const float2 cb = triangleVerticesClip[2] - triangleVerticesClip[0];
 
             // bacface culling
-            isTriangleVisible = isTriangleVisible && (ca.x * cb.y <= ca.y * cb.x);
+            isTriangleVisible = isTriangleVisible && (ca.x * cb.y >= ca.y * cb.x);
         }
         
         if(isTriangleVisible && isInFrontOfPerspectivePlane)

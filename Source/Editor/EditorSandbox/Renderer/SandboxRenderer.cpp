@@ -59,11 +59,11 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 	{
 		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX()));
 	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
 	{
 		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY()));
 	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
+	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
 	{
 		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY()));
 	}
@@ -84,7 +84,7 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 			const Real32 rotationSpeed = 0.0045f;
 			const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
 
-			m_renderView->Rotate(math::AngleAxisf(-rotationDelta.x(), math::Vector3f::UnitZ()));
+			m_renderView->Rotate(math::AngleAxisf(rotationDelta.x(), math::Vector3f::UnitZ()));
 			m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
 		}
 	}

@@ -93,7 +93,7 @@ static VkPipelineRasterizationStateCreateInfo BuildRasterizationStateInfo(const 
     rasterizationState.depthClampEnable			= VK_FALSE;
 	rasterizationState.polygonMode				= RHIToVulkan::GetPolygonMode(rasterizationDefinition.polygonMode);
 	rasterizationState.cullMode					= RHIToVulkan::GetCullMode(rasterizationDefinition.cullMode);
-    rasterizationState.frontFace				= VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizationState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
     rasterizationState.lineWidth				= 1.f;
 
 	if (rasterizationDefinition.rasterizationType != rhi::ERasterizationType::Default)

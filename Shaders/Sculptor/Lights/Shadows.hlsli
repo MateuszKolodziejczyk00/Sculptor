@@ -140,7 +140,7 @@ void GetPointShadowMapViewAxis(uint faceIdx, out float3 rightVector, out float3 
         float3(-1.f, 0.f, 0.f),
         float3(1.f, 0.f, 0.f),
         float3(0.f, 1.f, 0.f),
-        float3(0.f, -1.f, 0.f),
+        float3(0.f, 1.f, 0.f),
     };
     
     const float3 upVectors[6] =

@@ -19,8 +19,8 @@ bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, f
     float czr2 = viewSpaceCenter.x * viewSpaceCenter.x - radius * radius;
 
     float vx = sqrt(viewSpaceCenter.y * viewSpaceCenter.y + czr2);
-    float maxx = (vx * viewSpaceCenter.y - cr.x) / (vx * viewSpaceCenter.x + cr.y);
-    float minx = (vx * viewSpaceCenter.y + cr.x) / (vx * viewSpaceCenter.x - cr.y);
+    float maxx = (vx * viewSpaceCenter.y + cr.x) / (vx * viewSpaceCenter.x + cr.y);
+    float minx = (vx * viewSpaceCenter.y - cr.x) / (vx * viewSpaceCenter.x - cr.y);
 
     float vy = sqrt(viewSpaceCenter.z * viewSpaceCenter.z + czr2);
     float maxy = (vy * viewSpaceCenter.z - cr.x) / (vy * viewSpaceCenter.x + cr.z);

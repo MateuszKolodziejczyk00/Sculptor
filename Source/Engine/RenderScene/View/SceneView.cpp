@@ -15,7 +15,7 @@ void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real3
 {
 	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
 
-	const Real32 a = -h;
+	const Real32 a = h;
 	const Real32 b = -h * aspect;
 
 	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	0.f},
@@ -31,7 +31,7 @@ void SceneView::SetShadowPerspectiveProjection(Real32 fovRadians, Real32 aspect,
 {
 	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
 
-	const Real32 a = -h;
+	const Real32 a = h;
 	const Real32 b = -h * aspect;
 
 	const Real32 c = -near / (far - near);
