@@ -8,17 +8,18 @@ namespace spt::rhi
 
 enum class EBufferUsage : Flags32
 {
-	None					= 0,
-	TransferSrc				= BIT(0),
-	TransferDst				= BIT(1),
-	UniformTexel			= BIT(2),
-	StorageTexel			= BIT(3),
-	Uniform					= BIT(4),
-	Storage					= BIT(5),
-	Index					= BIT(6),
-	Vertex					= BIT(7),
-	Indirect				= BIT(8),
-	DeviceAddress			= BIT(9),
+	None							= 0,
+	TransferSrc						= BIT(0),
+	TransferDst						= BIT(1),
+	UniformTexel					= BIT(2),
+	StorageTexel					= BIT(3),
+	Uniform							= BIT(4),
+	Storage							= BIT(5),
+	Index							= BIT(6),
+	Vertex							= BIT(7),
+	Indirect						= BIT(8),
+	DeviceAddress					= BIT(9),
+	AccelerationStructureStorage	= BIT(10),
 	LAST
 };
 

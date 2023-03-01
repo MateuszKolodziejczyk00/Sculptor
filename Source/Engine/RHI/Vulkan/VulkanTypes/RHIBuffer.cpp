@@ -53,6 +53,10 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	{
 		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	}
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::AccelerationStructureStorage))
+	{
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	}
 
 	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
 

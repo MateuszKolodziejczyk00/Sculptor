@@ -16,6 +16,7 @@ public:
 
 	Bool IsValidationEnabled() const { return enableValidation; }
 	Bool IsStrictValidationEnabled() const { return enableStrictValidation; }
+	Bool IsRayTracingEnabled() const { return enableStrictValidation; }
 	Bool AreGPUCrashDumpsEnabled() const { return enableGPUCrashDumps; }
 
 private:
@@ -25,6 +26,9 @@ private:
 	
 	static inline const lib::HashedString enableStrictValidationCmdArgName = "-EnableStrictValidation";
 	Bool enableStrictValidation = false;
+	
+	static inline const lib::HashedString enableRayTracingCmdArgName = "-EnableRayTracing";
+	Bool enableRayTracing = false;
 
 	static inline const lib::HashedString enableGPUCrashDumpsCmdArgName = "-EnableGPUCrashDumps";
 	Bool enableGPUCrashDumps = false;

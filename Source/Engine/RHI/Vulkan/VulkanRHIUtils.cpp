@@ -604,6 +604,19 @@ VkEventCreateFlags RHIToVulkan::GetEventFlags(rhi::EEventFlags eventFlags)
 
 	return flags;
 }
+
+VkGeometryFlagsKHR RHIToVulkan::GetGeometryFlags(rhi::EGeometryFlags geometryFlags)
+{
+	VkGeometryFlagsKHR flags = 0;
+
+	if (lib::HasAnyFlag(geometryFlags, rhi::EGeometryFlags::Opaque))
+	{
+		lib::AddFlag(flags, VK_GEOMETRY_OPAQUE_BIT_KHR);
+	}
+
+	return flags;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 

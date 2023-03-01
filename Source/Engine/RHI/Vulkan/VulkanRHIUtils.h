@@ -9,6 +9,7 @@
 #include "RHICore/RHIPipelineDefinitionTypes.h"
 #include "RHICore/RHISamplerTypes.h"
 #include "RHICore/RHISynchronizationTypes.h"
+#include "RHICore/RHIAccelerationStructureTypes.h"
 
 
 namespace spt::vulkan
@@ -71,6 +72,8 @@ public:
 	static VkBorderColor					GetBorderColor(rhi::EBorderColor color);
 
 	static VkEventCreateFlags				GetEventFlags(rhi::EEventFlags eventFlags);
+
+	static VkGeometryFlagsKHR				GetGeometryFlags(rhi::EGeometryFlags geometryFlags);
 };
 
 struct VulkanToRHI

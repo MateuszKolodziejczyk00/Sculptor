@@ -83,6 +83,31 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	}
 #endif // WITH_NSIGHT_AFTERMATH
 
+	const Bool rayTracingEnabled = VulkanRHI::GetSettings().IsRayTracingEnabled();
+
+	VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+	if (rayTracingEnabled)
+	{
+		accelerationStructureFeatures.accelerationStructure = VK_TRUE;
+		deviceInfoLinkedData.Append(accelerationStructureFeatures);
+	}
+
+	VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+	if (rayTracingEnabled)
+	{
+		rayTracingPipelineFeatures.rayTracingPipeline					= VK_TRUE;
+		rayTracingPipelineFeatures.rayTracingPipelineTraceRaysIndirect	= VK_TRUE;
+		rayTracingPipelineFeatures.rayTraversalPrimitiveCulling			= VK_TRUE;
+		deviceInfoLinkedData.Append(rayTracingPipelineFeatures);
+	}
+
+	VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+	if (rayTracingEnabled)
+	{
+		rayQueryFeatures.rayQuery = VK_TRUE;
+		deviceInfoLinkedData.Append(rayQueryFeatures);
+	}
+
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
 	VkDeviceQueueInfo2 gfxQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };

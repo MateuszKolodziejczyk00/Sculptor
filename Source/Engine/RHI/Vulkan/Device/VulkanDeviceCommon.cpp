@@ -25,6 +25,14 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 
 #endif // WITH_NSIGHT_AFTERMATH
 
+    if (VulkanRHI::GetSettings().IsRayTracingEnabled())
+    {
+        requiredExtensions.emplace_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        requiredExtensions.emplace_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        requiredExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        requiredExtensions.emplace_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    }
+
     return requiredExtensions;
 }
 
