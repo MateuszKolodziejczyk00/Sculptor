@@ -55,4 +55,45 @@ struct BLASDefinition
 	};
 };
 
+
+enum class ETLASInstanceFlags
+{
+	None			= 0,
+	ForceOpaque		= BIT(0),
+	ForceNoOpaque	= BIT(1),
+
+	Default			= None
+};
+
+
+struct TLASInstanceDefinition
+{
+	using TransformMatrix = math::Matrix<Real32, 3, 4>;
+
+	TLASInstanceDefinition()
+		: transform(TransformMatrix::Identity())
+		, customIdx(0)
+		, mask(0xFF)
+		, sbtRecordOffset(0)
+		, flags(ETLASInstanceFlags::Default)
+		, blasAddress(0)
+	{ }
+
+	TransformMatrix		transform;
+	Uint32				customIdx;
+	Uint32				mask : 8;
+	Uint32				sbtRecordOffset : 24;
+	ETLASInstanceFlags	flags;
+	Uint64				blasAddress;
+};
+
+
+struct TLASDefinition
+{
+	TLASDefinition()
+	{ }
+
+	lib::DynamicArray<TLASInstanceDefinition> instances;
+};
+
 } // spt::rhi

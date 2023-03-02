@@ -20,6 +20,8 @@ enum class EBufferUsage : Flags32
 	Indirect						= BIT(8),
 	DeviceAddress					= BIT(9),
 	AccelerationStructureStorage	= BIT(10),
+	ASBuildInputReadOnly			= BIT(11),
+
 	LAST
 };
 

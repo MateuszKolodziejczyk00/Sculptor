@@ -140,7 +140,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 	const rhi::BufferDefinition viewsCullingDataBufferDef(sizeof(SceneViewCullingData) * static_cast<Uint64>(facesNum), rhi::EBufferUsage::Storage);
 	const lib::SharedRef<rdr::Buffer> viewsCullingDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("ViewsCullingData"), viewsCullingDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-	SceneViewCullingData* cullingDataBufferPtr = reinterpret_cast<SceneViewCullingData*>(viewsCullingDataBuffer->GetRHI().MapBufferMemory());
+	SceneViewCullingData* cullingDataBufferPtr = reinterpret_cast<SceneViewCullingData*>(viewsCullingDataBuffer->GetRHI().MapPtr());
 
 	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batchDef.batchElements.size(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 
@@ -163,7 +163,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 		cullingDataBufferPtr[faceIdx] = batchedViews[faceIdx]->GetCullingData();
 	}
 
-	viewsCullingDataBuffer->GetRHI().UnmapBufferMemory();
+	viewsCullingDataBuffer->GetRHI().Unmap();
 
 	// Create culling resources
 

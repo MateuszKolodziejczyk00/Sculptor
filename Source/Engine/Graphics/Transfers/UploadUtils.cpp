@@ -16,12 +16,12 @@ void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffs
 	const Bool isBufferHostAccessible = rhiBuffer.CanMapMemory();
 	if (isBufferHostAccessible)
 	{
-		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+		Byte* bufferMemoryPtr = rhiBuffer.MapPtr();
 		SPT_CHECK(!!bufferMemoryPtr);
 		
 		memset(bufferMemoryPtr + bufferOffset, static_cast<int>(data), range);
 
-		rhiBuffer.UnmapBufferMemory();
+		rhiBuffer.Unmap();
 	}
 	else
 	{
@@ -39,12 +39,12 @@ void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bu
 	const Bool isBufferHostAccessible = rhiBuffer.CanMapMemory();
 	if (isBufferHostAccessible)
 	{
-		Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+		Byte* bufferMemoryPtr = rhiBuffer.MapPtr();
 		SPT_CHECK(!!bufferMemoryPtr);
 		
 		std::memcpy(bufferMemoryPtr + bufferOffset, sourceData, dataSize);
 
-		rhiBuffer.UnmapBufferMemory();
+		rhiBuffer.Unmap();
 	}
 	else
 	{
@@ -61,12 +61,12 @@ void UploadDataToBufferOnCPU(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint
 	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
 	SPT_CHECK(bufferOffset + dataSize <= rhiBuffer.GetSize());
 
-	Byte* bufferMemoryPtr = rhiBuffer.MapBufferMemory();
+	Byte* bufferMemoryPtr = rhiBuffer.MapPtr();
 	SPT_CHECK(!!bufferMemoryPtr);
 	
 	std::memcpy(bufferMemoryPtr + bufferOffset, sourceData, dataSize);
 
-	rhiBuffer.UnmapBufferMemory();
+	rhiBuffer.Unmap();
 }
 
 void GRAPHICS_API UploadDataToTexture(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)

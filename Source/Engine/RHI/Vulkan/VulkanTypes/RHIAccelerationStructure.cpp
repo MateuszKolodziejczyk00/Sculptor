@@ -124,4 +124,50 @@ VkAccelerationStructureGeometryKHR RHIBottomLevelAS::CreateGeometryData() const
 	return geometry;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHITopLevelAS =================================================================================
+
+RHITopLevelAS::RHITopLevelAS()
+{ }
+
+void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsValid());
+
+	RHIBuffer instancesBuffer;
+	const Uint32 instancesNum = static_cast<Uint32>(definition.instances.size());
+	const Uint64 instancesBufferSize = instancesNum * sizeof(VkAccelerationStructureInstanceKHR);
+
+	const rhi::BufferDefinition instancesBufferDef(instancesBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
+	instancesBuffer.InitializeRHI(instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	RHIMappedBuffer<VkAccelerationStructureInstanceKHR> instancesMappedBuffer(instancesBuffer);
+
+	for(SizeType instanceIdx = 0; instanceIdx < definition.instances.size(); ++instanceIdx)
+	{
+		// convert TLASInstanceDefinition to VkAccelerationStructureInstanceKHR
+		using TransformMatrix = rhi::TLASInstanceDefinition::TransformMatrix;
+
+		const rhi::TLASInstanceDefinition& instance = definition.instances[instanceIdx];
+
+		VkAccelerationStructureInstanceKHR& instanceData = instancesMappedBuffer[instanceIdx];
+		math::Map<TransformMatrix>(reinterpret_cast<Real32*>(&instanceData.transform))	= instance.transform;
+		instanceData.instanceCustomIndex												= instance.customIdx;
+		instanceData.mask																= instance.mask;
+		instanceData.instanceShaderBindingTableRecordOffset								= instance.sbtRecordOffset;
+		instanceData.flags																= RHIToVulkan::GetGeometryInstanceFlags(instance.flags);
+		instanceData.accelerationStructureReference										= instance.blasAddress;
+	}
+
+	//if (!accelerationStructureBuffer.IsValid())
+	//{
+	//	const rhi::BufferDefinition tlasBufferDef(instancesDataSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
+	//	accelerationStructureBuffer.InitializeRHI(tlasBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	//}
+
+	//SPT_CHECK(accelerationStructureBuffer.IsValid());
+
+}
+
 } // spt::vulkan

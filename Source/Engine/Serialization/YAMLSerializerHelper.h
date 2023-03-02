@@ -251,39 +251,6 @@ private:
 };
 
 
-class YAMLSerializeHelper
-{
-public:
-
-	template<typename Type>
-	static YAML::Node Write(const Type& data)
-	{
-		YAML::Node node;
-		SerializerWrapper<YAMLWriter> serializer(node);
-		TypeSerializer<Type>::Serialize(serializer, data);
-		return node;
-	}
-
-	template<typename Type>
-	static Bool Load(const YAML::Node& node, Type& data)
-	{
-		SerializerWrapper<YAMLLoader> serializer(node);
-		TypeSerializer<Type>::Serialize(serializer, data);
-		return true;
-	}
-
-	template<typename Type>
-	static void Emit(YAML::Emitter& emitter, const Type& data)
-	{
-		emitter << YAML::BeginMap;
-		SerializerWrapper<YAMLEmitter> serializer(emitter);
-		TypeSerializer<Type>::Serialize(serializer, data);
-		serializer.Get().EndEmitting();
-		emitter << YAML::EndMap;
-	}
-};
-
-
 template<typename Type>
 struct TypeSerializer
 {
@@ -301,6 +268,39 @@ void SerializeType(SerializerWrapper<Serializer>& serializer, Param& data)
 {
 	TypeSerializer<SerializedType>::Serialize(serializer, data);
 }
+
+
+class YAMLSerializeHelper
+{
+public:
+
+	template<typename Type>
+	static YAML::Node Write(const Type& data)
+	{
+		YAML::Node node;
+		SerializerWrapper<YAMLWriter> serializer(node);
+		SerializeType<Type>(serializer, data);
+		return node;
+	}
+
+	template<typename Type>
+	static Bool Load(const YAML::Node& node, Type& data)
+	{
+		SerializerWrapper<YAMLLoader> serializer(node);
+		SerializeType<Type>(serializer, data);
+		return true;
+	}
+
+	template<typename Type>
+	static void Emit(YAML::Emitter& emitter, const Type& data)
+	{
+		emitter << YAML::BeginMap;
+		SerializerWrapper<YAMLEmitter> serializer(emitter);
+		SerializeType<Type>(serializer, data);
+		serializer.Get().EndEmitting();
+		emitter << YAML::EndMap;
+	}
+};
 
 } // spt::srl
 

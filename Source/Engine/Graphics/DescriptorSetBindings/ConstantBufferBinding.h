@@ -38,7 +38,7 @@ public:
 		{
 			SPT_CHECK(!!m_buffer);
 		
-			m_buffer->GetRHI().UnmapBufferMemory();
+			m_buffer->GetRHI().Unmap();
 			m_bufferMappedPtr = nullptr;
 		}
 	}
@@ -198,7 +198,7 @@ private:
 		m_buffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
 												  bufferDef, allocationInfo);
 
-		m_bufferMappedPtr = m_buffer->GetRHI().MapBufferMemory();
+		m_bufferMappedPtr = m_buffer->GetRHI().MapPtr();
 	}
 
 	lib::SharedPtr<rdr::Buffer>		m_buffer;

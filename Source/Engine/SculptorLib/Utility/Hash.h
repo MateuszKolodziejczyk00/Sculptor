@@ -61,6 +61,14 @@ constexpr SizeType HashRange(const TIterator begin, const TIterator end, THasher
 }
 
 
+template<typename TType>
+constexpr SizeType GetHash(const TType& value)
+{
+	std::hash<TType> hasher;
+	return hasher(value);
+}
+
+
 template<typename... TArgs>
 constexpr SizeType HashCombine(TArgs... args)
 {
@@ -89,14 +97,6 @@ constexpr void HashCombine(THash& seed, THash hash)
 {
 	constexpr THash magicNumber = 0x9e3889b9;
 	seed ^= hash + magicNumber + (seed << 6) + (seed >> 2);
-}
-
-
-template<typename TType>
-constexpr SizeType GetHash(const TType& value)
-{
-	std::hash<TType> hasher;
-	return hasher(value);
 }
 
 } // spt::lib

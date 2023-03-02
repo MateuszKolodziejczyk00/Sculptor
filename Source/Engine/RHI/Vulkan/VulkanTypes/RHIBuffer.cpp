@@ -6,6 +6,9 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Priv ==========================================================================================
+
 namespace priv
 {
 
@@ -57,6 +60,10 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	{
 		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 	}
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ASBuildInputReadOnly))
+	{
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+	}
 
 	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
 
@@ -88,6 +95,43 @@ VmaVirtualAllocationCreateFlags GetVMAVirtualAllocationFlags(rhi::EBufferSuballo
 }
 
 } // priv
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIMappedBufferBase ===========================================================================
+
+RHIMappedBufferBase::RHIMappedBufferBase(const RHIBuffer& buffer)
+	: m_buffer(buffer)
+{
+	m_mappedPointer = m_buffer.MapPtr();
+}
+
+RHIMappedBufferBase::~RHIMappedBufferBase()
+{
+	if (m_mappedPointer)
+	{
+		m_buffer.Unmap();
+	}
+}
+
+RHIMappedBufferBase::RHIMappedBufferBase(RHIMappedBufferBase&& other)
+	: m_buffer(other.m_buffer)
+	, m_mappedPointer(other.m_mappedPointer)
+{
+	other.m_mappedPointer = nullptr;
+}
+
+Byte* RHIMappedBufferBase::GetPtr() const
+{
+	return m_mappedPointer;
+}
+
+Uint64 RHIMappedBufferBase::GetSize() const
+{
+	return m_buffer.GetSize();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIBuffer =====================================================================================
 
 RHIBuffer::RHIBuffer()
 	: m_bufferHandle(VK_NULL_HANDLE)
@@ -175,7 +219,7 @@ Bool RHIBuffer::CanMapMemory() const
 	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
 }
 
-Byte* RHIBuffer::MapBufferMemory() const
+Byte* RHIBuffer::MapPtr() const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -195,7 +239,7 @@ Byte* RHIBuffer::MapBufferMemory() const
 	}
 }
 
-void RHIBuffer::UnmapBufferMemory() const
+void RHIBuffer::Unmap() const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -261,6 +305,13 @@ void RHIBuffer::DestroySuballocation(rhi::RHISuballocation suballocation)
 void RHIBuffer::SetName(const lib::HashedString& name)
 {
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
+	
+#if RHI_DEBUG
+	if (m_allocation)
+	{
+		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), m_allocation, name.GetData());
+	}
+#endif // RHI_DEBUG
 }
 
 const lib::HashedString& RHIBuffer::GetName() const

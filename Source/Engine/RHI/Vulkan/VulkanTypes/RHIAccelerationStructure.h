@@ -55,4 +55,14 @@ private:
 	VkGeometryFlagsKHR		m_geometryFlags;
 };
 
+
+class RHI_API RHITopLevelAS : public RHIAccelerationStructure
+{
+public:
+
+	RHITopLevelAS();
+
+	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
+};
+
 } // spt::vulkan

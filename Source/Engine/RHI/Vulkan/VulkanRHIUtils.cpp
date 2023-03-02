@@ -617,6 +617,22 @@ VkGeometryFlagsKHR RHIToVulkan::GetGeometryFlags(rhi::EGeometryFlags geometryFla
 	return flags;
 }
 
+VkGeometryInstanceFlagsKHR RHIToVulkan::GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags)
+{
+	VkGeometryInstanceFlagsKHR flags = 0;
+
+	if (lib::HasAnyFlag(instanceFlags, rhi::ETLASInstanceFlags::ForceNoOpaque))
+	{
+		lib::AddFlag(flags, VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(instanceFlags, rhi::ETLASInstanceFlags::ForceOpaque))
+	{
+		lib::AddFlag(flags, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR);
+	}
+
+	return flags;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 

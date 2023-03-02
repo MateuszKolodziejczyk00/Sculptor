@@ -16,6 +16,64 @@ struct RHIAllocationInfo;
 namespace spt::vulkan
 {
 
+class RHIBuffer;
+
+
+class RHIMappedBufferBase
+{
+public:
+
+	explicit RHIMappedBufferBase(const RHIBuffer& buffer);
+
+	~RHIMappedBufferBase();
+
+	RHIMappedBufferBase(const RHIMappedBufferBase&) = delete;
+	RHIMappedBufferBase& operator=(const RHIMappedBufferBase&) = delete;
+
+	RHIMappedBufferBase(RHIMappedBufferBase&& other);
+	RHIMappedBufferBase& operator=(RHIMappedBufferBase&& other) = delete;
+
+	Byte* GetPtr() const;
+
+	Uint64 GetSize() const;
+
+private:
+
+	const RHIBuffer&	m_buffer;
+	Byte*				m_mappedPointer;
+};
+
+
+template<typename TDataType>
+class RHIMappedBuffer : public RHIMappedBufferBase
+{
+protected:
+
+	using Super = RHIMappedBufferBase;
+
+public:
+
+	explicit RHIMappedBuffer(const RHIBuffer& buffer)
+		: Super(buffer)
+	{ }
+
+	TDataType* Get() const
+	{
+		return reinterpret_cast<TDataType*>(Super::GetPtr());
+	}
+
+	TDataType& operator[](Uint64 idx) const
+	{
+		return Get()[idx];
+	}
+
+	Uint64 GetElementsNum() const
+	{
+		return Super::GetSize() / sizeof(TDataType);
+	}
+};
+
+
 class RHI_API RHIBuffer
 {
 public:
@@ -31,8 +89,8 @@ public:
 	rhi::EBufferUsage			GetUsage() const;
 
 	Bool						CanMapMemory() const;
-	Byte*						MapBufferMemory() const;
-	void						UnmapBufferMemory() const;
+	Byte*						MapPtr() const;
+	void						Unmap() const;
 
 	DeviceAddress				GetDeviceAddress() const;
 

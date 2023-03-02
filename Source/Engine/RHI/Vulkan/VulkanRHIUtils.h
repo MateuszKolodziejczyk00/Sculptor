@@ -74,6 +74,8 @@ public:
 	static VkEventCreateFlags				GetEventFlags(rhi::EEventFlags eventFlags);
 
 	static VkGeometryFlagsKHR				GetGeometryFlags(rhi::EGeometryFlags geometryFlags);
+
+	static VkGeometryInstanceFlagsKHR		GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags);
 };
 
 struct VulkanToRHI

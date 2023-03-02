@@ -118,7 +118,7 @@ private:
 			m_dataPtr = new TDataType(std::forward<TArgs>(args)...);
 		}
 
-		if constexpr (!std::is_pod_v<TDataType>)
+		if constexpr (!std::is_trivial_v<TDataType>)
 		{
 			m_deleter = [](void* data) { reinterpret_cast<TDataType*>(data)->~TDataType(); };
 		}
