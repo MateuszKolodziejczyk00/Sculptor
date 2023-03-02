@@ -638,6 +638,7 @@ Real32 ShadowMapsManagerSystem::ComputeLightShadowMapPriority(const SceneView& v
 	const Real32 maxDistanceToLight	= 15.f;
 	const Real32 maxRadius			= 5.f;
 	const Real32 maxZDifference		= 7.f;
+	const Real32 maxIntensity		= 100.f;
 
 	const Real32 distanceToLight				= (pointLightData.location - (viewLocation + viewForward * 3.f)).norm();
 	const math::Vector3f viewToLightDirection	= (pointLightData.location - viewLocation).normalized();
@@ -650,6 +651,7 @@ Real32 ShadowMapsManagerSystem::ComputeLightShadowMapPriority(const SceneView& v
 	const Real32 distanceMutliplier			= 1.7f;
 	const Real32 radiusMutliplier			= 0.6f;
 	const Real32 zDifferenceMutliplier		= 1.6f;
+	const Real32 intensityMultiplier		= 0.7f;
 
 	const EShadowMapQuality currentQuality = GetShadowMapQuality(light);
 
@@ -660,6 +662,7 @@ Real32 ShadowMapsManagerSystem::ComputeLightShadowMapPriority(const SceneView& v
 	priority += (1.f - std::clamp(zDifference / maxZDifference, 0.f, 1.f)) * zDifferenceMutliplier;
 	priority += getLightCurrentQualityPriority(currentQuality) * currentQualityMutliplier;
 	priority += std::clamp(pointLightData.radius / maxRadius, 0.f, 1.f) * radiusMutliplier;
+	priority += std::clamp(pointLightData.intensity / maxIntensity, 0.f, 1.f) * intensityMultiplier;
 
 	return priority;
 }
