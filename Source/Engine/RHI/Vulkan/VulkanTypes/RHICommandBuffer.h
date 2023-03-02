@@ -17,6 +17,9 @@ class RHIPipeline;
 class RHIDescriptorSet;
 class RHITexture;
 class RHIBuffer;
+class RHIAccelerationStructure;
+class RHIBottomLevelAS;
+class RHITopLevelAS;
 
 
 class RHI_API RHICommandBuffer
@@ -62,6 +65,11 @@ public:
 	void	Dispatch(const math::Vector3u& groupCount);
 	void	DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
 
+	// Acceleration Structures ==============================
+
+	void	BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+	void	BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+
 	// Transfer =============================================
 
 	void	BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode);
@@ -94,6 +102,8 @@ private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
 	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
+
+	void BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
 
 	VkCommandBuffer					m_cmdBufferHandle;
 

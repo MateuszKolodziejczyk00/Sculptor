@@ -26,11 +26,16 @@ public:
 
 	Uint64 GetBuildScratchSize() const;
 
+	VkAccelerationStructureBuildRangeInfoKHR CreateBuildRangeInfo() const;
+
 protected:
+
+	void OnReleaseRHI();
 
 	VkAccelerationStructureKHR m_handle;
 
 	Uint64 m_buildScratchSize;
+	Uint32 m_primitivesCount;
 
 	DebugName m_name;
 };

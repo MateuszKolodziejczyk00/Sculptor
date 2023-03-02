@@ -12,6 +12,7 @@ namespace spt::vulkan
 RHIAccelerationStructure::RHIAccelerationStructure()
 	: m_handle(VK_NULL_HANDLE)
 	, m_buildScratchSize(0)
+	, m_primitivesCount(0)
 { }
 
 Bool RHIAccelerationStructure::IsValid() const
@@ -39,6 +40,32 @@ Uint64 RHIAccelerationStructure::GetBuildScratchSize() const
 	return m_buildScratchSize;
 }
 
+VkAccelerationStructureBuildRangeInfoKHR RHIAccelerationStructure::CreateBuildRangeInfo() const
+{
+	VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo{};
+	buildRangeInfo.primitiveCount	= m_primitivesCount;
+	buildRangeInfo.primitiveOffset	= 0;
+	buildRangeInfo.firstVertex		= 0;
+	buildRangeInfo.transformOffset	= 0;
+
+	return buildRangeInfo;
+}
+
+void RHIAccelerationStructure::OnReleaseRHI()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (IsValid())
+	{
+		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), m_handle, nullptr);
+		m_handle = VK_NULL_HANDLE;
+		m_name.Reset();
+
+		m_buildScratchSize	= 0;
+		m_primitivesCount	= 0;
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIBottomLevelAS ==============================================================================
 
@@ -59,7 +86,6 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 
 	m_locationsDeviceAddress	= definition.trianglesGeometry.vertexLocationsAddress;
 	m_maxVerticesNum			= definition.trianglesGeometry.maxVerticesNum;
-	m_indicesNum				= definition.trianglesGeometry.indicesNum;
 	m_indicesDeviceAddress		= definition.trianglesGeometry.indicesAddress;
 	m_geometryFlags				= RHIToVulkan::GetGeometryFlags(definition.geometryFlags);
 	
@@ -67,10 +93,10 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry);
 
 	SPT_CHECK(m_indicesNum % 3 == 0 && m_indicesNum > 0);
-	const Uint32 primitivesCount = m_indicesNum / 3;
+	m_primitivesCount = definition.trianglesGeometry.indicesNum / 3;
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &primitivesCount, &buildSizeInfo);
+	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);
 
 	const Uint64 accelerationStructureSize = buildSizeInfo.accelerationStructureSize;
 
@@ -100,19 +126,12 @@ void RHIBottomLevelAS::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (IsValid())
-	{
-		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
-		m_handle = VK_NULL_HANDLE;
-		m_name.Reset();
+	OnReleaseRHI();
 
-		m_locationsDeviceAddress	= 0;
-		m_maxVerticesNum			= 0;
-		m_indicesNum				= 0;
-		m_indicesDeviceAddress		= 0;
-		m_geometryFlags				= 0;
-		m_buildScratchSize			= 0;
-	}
+	m_locationsDeviceAddress	= 0;
+	m_maxVerticesNum			= 0;
+	m_indicesDeviceAddress		= 0;
+	m_geometryFlags				= 0;
 }
 
 VkAccelerationStructureBuildGeometryInfoKHR RHIBottomLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const
@@ -163,6 +182,8 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	const Uint32 instancesNum = static_cast<Uint32>(definition.instances.size());
 	const Uint64 instancesBufferSize = instancesNum * sizeof(VkAccelerationStructureInstanceKHR);
 
+	m_primitivesCount = static_cast<Uint32>(instancesNum);
+
 	const rhi::BufferDefinition instancesBufferDef(instancesBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
 	m_instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
 	
@@ -189,10 +210,8 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	VkAccelerationStructureGeometryKHR geometry;
 	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry);
 
-	const Uint32 maxPrimitivesCount = static_cast<Uint32>(definition.instances.size());
-
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &maxPrimitivesCount, &buildSizeInfo);
+	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);
 
 	const Uint64 accelerationStructureSize = buildSizeInfo.accelerationStructureSize;
 
@@ -219,14 +238,7 @@ void RHITopLevelAS::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (IsValid())
-	{
-		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
-		m_handle = VK_NULL_HANDLE;
-		m_name.Reset();
-	}
-
-	m_buildScratchSize = 0;
+	OnReleaseRHI();
 
 	ClearInstancesBuildBuffer();
 }

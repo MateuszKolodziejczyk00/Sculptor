@@ -8,6 +8,7 @@
 #include "RHIPipeline.h"
 #include "RHIDescriptorSet.h"
 #include "RHIRenderContext.h"
+#include "RHIAccelerationStructure.h"
 
 namespace spt::vulkan
 {
@@ -309,6 +310,22 @@ void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uin
 	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetHandle(), indirectArgsOffset);
 }
 
+void RHICommandBuffer::BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	VkAccelerationStructureGeometryKHR geometry;
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = blas.CreateBuildGeometryInfo(OUT geometry);
+
+	BuildASImpl(blas, buildInfo, scratchBuffer, scratchBufferOffset);
+}
+
+void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	VkAccelerationStructureGeometryKHR geometry;
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = tlas.CreateBuildGeometryInfo(OUT geometry);
+
+	BuildASImpl(tlas, buildInfo, scratchBuffer, scratchBufferOffset);
+}
+
 void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
 {
 	SPT_PROFILER_FUNCTION();
@@ -551,6 +568,25 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	VkDescriptorSet dsHandle = ds.GetHandle();
 
 	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, dynamicOffsetsNum, dynamicOffsets);
+}
+
+void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(as.IsValid());
+	SPT_CHECK(scratchBuffer.IsValid());
+
+	SPT_CHECK(scratchBufferOffset + as.GetBuildScratchSize() <= scratchBuffer.GetSize());
+
+	buildInfo.dstAccelerationStructure	= as.GetHandle();
+	buildInfo.scratchData.deviceAddress	= scratchBuffer.GetDeviceAddress() + scratchBufferOffset;
+
+	const VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo = as.CreateBuildRangeInfo();
+	const VkAccelerationStructureBuildRangeInfoKHR* buildRanges = &buildRangeInfo;
+
+	vkCmdBuildAccelerationStructuresKHR(m_cmdBufferHandle, 1, &buildInfo, &buildRanges);
 }
 
 } // spt::vulkan
