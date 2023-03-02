@@ -254,7 +254,7 @@ void RHICommandBuffer::DrawIndirectCount(const RHIBuffer& drawsBuffer, Uint64 dr
 	SPT_CHECK(countBuffer.IsValid());
 	SPT_CHECK(countOffset + sizeof(Uint32) <= drawsBuffer.GetSize());
 
-	vkCmdDrawIndirectCount(m_cmdBufferHandle, drawsBuffer.GetBufferHandle(), drawsOffset, countBuffer.GetBufferHandle(), countOffset, maxDrawsCount, drawsStride);
+	vkCmdDrawIndirectCount(m_cmdBufferHandle, drawsBuffer.GetHandle(), drawsOffset, countBuffer.GetHandle(), countOffset, maxDrawsCount, drawsStride);
 }
 
 void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
@@ -265,7 +265,7 @@ void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOf
 	SPT_CHECK(drawsBuffer.IsValid());
 	SPT_CHECK(drawsOffset + drawsStride * drawsCount <= drawsBuffer.GetSize());
 
-	vkCmdDrawIndirect(m_cmdBufferHandle, drawsBuffer.GetBufferHandle(), drawsOffset, drawsCount, drawsStride);
+	vkCmdDrawIndirect(m_cmdBufferHandle, drawsBuffer.GetHandle(), drawsOffset, drawsCount, drawsStride);
 }
 
 void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
@@ -306,7 +306,7 @@ void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uin
 	SPT_CHECK(indirectArgsBuffer.IsValid());
 	SPT_CHECK(indirectArgsOffset + sizeof(Uint32) * 3 <= indirectArgsBuffer.GetSize());
 
-	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetBufferHandle(), indirectArgsOffset);
+	vkCmdDispatchIndirect(m_cmdBufferHandle, indirectArgsBuffer.GetHandle(), indirectArgsOffset);
 }
 
 void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
@@ -423,8 +423,8 @@ void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOf
     copyRegion.size = size;
 
 	VkCopyBufferInfo2 copyInfo{ VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    copyInfo.srcBuffer = sourceBuffer.GetBufferHandle();
-    copyInfo.dstBuffer = destBuffer.GetBufferHandle();
+    copyInfo.srcBuffer = sourceBuffer.GetHandle();
+    copyInfo.dstBuffer = destBuffer.GetHandle();
     copyInfo.regionCount = 1;
     copyInfo.pRegions = &copyRegion;
 
@@ -439,7 +439,7 @@ void RHICommandBuffer::FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(offset + range <= buffer.GetSize());
 
-	vkCmdFillBuffer(m_cmdBufferHandle, buffer.GetBufferHandle(), offset, range, data);
+	vkCmdFillBuffer(m_cmdBufferHandle, buffer.GetHandle(), offset, range, data);
 }
 
 void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
@@ -471,7 +471,7 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
 	math::Map<math::Vector3i>((Int32*)&copyRegion.imageExtent) = copyExtent.cast<Int32>();
 
 	VkCopyBufferToImageInfo2 copyInfo{ VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    copyInfo.srcBuffer		= buffer.GetBufferHandle();
+    copyInfo.srcBuffer		= buffer.GetHandle();
     copyInfo.dstImage		= texture.GetHandle();
 	copyInfo.dstImageLayout = layout;
     copyInfo.regionCount	= 1;

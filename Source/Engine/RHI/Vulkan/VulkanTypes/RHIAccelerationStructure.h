@@ -5,21 +5,17 @@
 #include "RHICore/RHIAccelerationStructureTypes.h"
 #include "Vulkan/VulkanCore.h"
 #include "Vulkan/Debug/DebugUtils.h"
+#include "RHIBuffer.h"
 
 
 namespace spt::vulkan
 {
-
-class RHIBuffer;
-
 
 class RHI_API RHIAccelerationStructure
 {
 public:
 
 	RHIAccelerationStructure();
-
-	void ReleaseRHI();
 
 	Bool IsValid() const;
 
@@ -28,9 +24,13 @@ public:
 
 	VkAccelerationStructureKHR GetHandle() const;
 
+	Uint64 GetBuildScratchSize() const;
+
 protected:
 
 	VkAccelerationStructureKHR m_handle;
+
+	Uint64 m_buildScratchSize;
 
 	DebugName m_name;
 };
@@ -43,6 +43,9 @@ public:
 	RHIBottomLevelAS();
 
 	void InitializeRHI(const rhi::BLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
+	void ReleaseRHI();
+
+	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
 
 private:
 
@@ -63,6 +66,17 @@ public:
 	RHITopLevelAS();
 
 	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
+	void ReleaseRHI();
+
+	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
+
+	void ClearInstancesBuildBuffer();
+
+private:
+
+	VkAccelerationStructureGeometryKHR CreateGeometryData() const;
+	
+	RHIBuffer m_instancesBuildBuffer;
 };
 
 } // spt::vulkan

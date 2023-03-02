@@ -319,7 +319,7 @@ const lib::HashedString& RHIBuffer::GetName() const
 	return m_name.Get();
 }
 
-VkBuffer RHIBuffer::GetBufferHandle() const
+VkBuffer RHIBuffer::GetHandle() const
 {
 	return m_bufferHandle;
 }

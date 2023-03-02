@@ -114,7 +114,7 @@ void RHIDescriptorSetWriter::WriteBuffer(const RHIDescriptorSet& set, const rhi:
 
 	const VkDescriptorBufferInfo bufferInfo
 	{
-		.buffer	= buffer.GetBufferHandle(),
+		.buffer	= buffer.GetHandle(),
 		.offset	= static_cast<VkDeviceSize>(offset),
 		.range	= static_cast<VkDeviceSize>(range)
 	};

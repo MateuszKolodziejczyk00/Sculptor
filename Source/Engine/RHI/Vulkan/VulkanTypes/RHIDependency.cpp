@@ -285,7 +285,7 @@ SizeType RHIDependency::AddBufferDependency(const RHIBuffer& buffer, SizeType of
     barrier.srcAccessMask		= 0;
     barrier.dstStageMask		= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
     barrier.dstAccessMask		=  0;
-	barrier.buffer				= buffer.GetBufferHandle();
+	barrier.buffer				= buffer.GetHandle();
 	barrier.offset				= offset;
 	barrier.size				= size;
     barrier.srcQueueFamilyIndex	= VK_QUEUE_FAMILY_IGNORED;

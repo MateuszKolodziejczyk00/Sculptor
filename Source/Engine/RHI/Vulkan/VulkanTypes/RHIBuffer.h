@@ -103,7 +103,7 @@ public:
 
 	// Vulkan =======================================================================
 
-	VkBuffer					GetBufferHandle() const;
+	VkBuffer					GetHandle() const;
 	VmaAllocation				GetAllocation() const;
 
 private:
