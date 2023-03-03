@@ -28,6 +28,7 @@ protected:
 public:
 
 	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
+	Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBufferInstance);
 
 	BufferView CreateFullView() const;
 };

@@ -70,18 +70,14 @@ public:
 
 	RHITopLevelAS();
 
-	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
+	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset, OUT RHIBuffer& instancesBuildBuffer);
 	void ReleaseRHI();
 
-	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
-
-	void ClearInstancesBuildBuffer();
+	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const;
 
 private:
 
-	VkAccelerationStructureGeometryKHR CreateGeometryData() const;
-	
-	RHIBuffer m_instancesBuildBuffer;
+	VkAccelerationStructureGeometryKHR CreateGeometryData(const RHIBuffer& instancesBuildBuffer) const;
 };
 
 } // spt::vulkan

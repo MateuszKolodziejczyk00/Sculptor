@@ -68,7 +68,7 @@ public:
 	// Acceleration Structures ==============================
 
 	void	BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
-	void	BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
+	void	BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset, const RHIBuffer& instancesBuildDataBuffer);
 
 	// Transfer =============================================
 

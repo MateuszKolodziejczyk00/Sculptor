@@ -39,6 +39,11 @@ lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName
 	return lib::MakeShared<Buffer>(name, definition, allocationInfo);
 }
 
+lib::SharedRef<rdr::Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance)
+{
+	return lib::MakeShared<Buffer>(name, bufferInstance);
+}
+
 lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	return lib::MakeShared<Texture>(name, textureDefinition, allocationInfo);

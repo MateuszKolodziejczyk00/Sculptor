@@ -229,9 +229,9 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 			rhi::RHIBuffer& rhiBuffer = bufferInstance->GetRHI();
 
 			SPT_CHECK(rhiBuffer.CanMapMemory());
-			Byte* bufferData = rhiBuffer.MapPtr();
-			SPT_CHECK(!!bufferData);
-			std::memset(bufferData + writeOffset, static_cast<int>(data), range);
+
+			const rhi::RHIMappedByteBuffer mappedBuffer(rhiBuffer);
+			std::memset(mappedBuffer.GetPtr() + writeOffset, static_cast<int>(data), range);
 			rhiBuffer.Unmap();
 		}
 		else

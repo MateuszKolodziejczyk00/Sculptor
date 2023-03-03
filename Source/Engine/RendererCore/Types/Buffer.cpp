@@ -14,6 +14,14 @@ Buffer::Buffer(const RendererResourceName& name, const rhi::BufferDefinition& de
 	GetRHI().SetName(name.Get());
 }
 
+Buffer::Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBufferInstance)
+{
+	SPT_CHECK_MSG(rhiBufferInstance.IsValid(), "Invalid RHI buffer instance");
+
+	GetRHI() = rhiBufferInstance;
+	GetRHI().SetName(name.Get());
+}
+
 BufferView Buffer::CreateFullView() const
 {
 	return BufferView(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), 0, GetRHI().GetSize());

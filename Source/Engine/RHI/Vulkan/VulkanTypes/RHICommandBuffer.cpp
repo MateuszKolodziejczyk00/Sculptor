@@ -318,10 +318,10 @@ void RHICommandBuffer::BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& 
 	BuildASImpl(blas, buildInfo, scratchBuffer, scratchBufferOffset);
 }
 
-void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
+void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset, const RHIBuffer& instancesBuildDataBuffer)
 {
 	VkAccelerationStructureGeometryKHR geometry;
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = tlas.CreateBuildGeometryInfo(OUT geometry);
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = tlas.CreateBuildGeometryInfo(instancesBuildDataBuffer, OUT geometry);
 
 	BuildASImpl(tlas, buildInfo, scratchBuffer, scratchBufferOffset);
 }

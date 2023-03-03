@@ -19,19 +19,19 @@ namespace spt::vulkan
 class RHIBuffer;
 
 
-class RHIMappedBufferBase
+class RHI_API RHIMappedByteBuffer
 {
 public:
 
-	explicit RHIMappedBufferBase(const RHIBuffer& buffer);
+	explicit RHIMappedByteBuffer(const RHIBuffer& buffer);
 
-	~RHIMappedBufferBase();
+	~RHIMappedByteBuffer();
 
-	RHIMappedBufferBase(const RHIMappedBufferBase&) = delete;
-	RHIMappedBufferBase& operator=(const RHIMappedBufferBase&) = delete;
+	RHIMappedByteBuffer(const RHIMappedByteBuffer&) = delete;
+	RHIMappedByteBuffer& operator=(const RHIMappedByteBuffer&) = delete;
 
-	RHIMappedBufferBase(RHIMappedBufferBase&& other);
-	RHIMappedBufferBase& operator=(RHIMappedBufferBase&& other) = delete;
+	RHIMappedByteBuffer(RHIMappedByteBuffer&& other);
+	RHIMappedByteBuffer& operator=(RHIMappedByteBuffer&& other) = delete;
 
 	Byte* GetPtr() const;
 
@@ -45,11 +45,11 @@ private:
 
 
 template<typename TDataType>
-class RHIMappedBuffer : public RHIMappedBufferBase
+class RHIMappedBuffer : public RHIMappedByteBuffer
 {
 protected:
 
-	using Super = RHIMappedBufferBase;
+	using Super = RHIMappedByteBuffer;
 
 public:
 

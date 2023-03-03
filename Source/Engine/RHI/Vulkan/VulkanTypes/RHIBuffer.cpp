@@ -99,13 +99,14 @@ VmaVirtualAllocationCreateFlags GetVMAVirtualAllocationFlags(rhi::EBufferSuballo
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIMappedBufferBase ===========================================================================
 
-RHIMappedBufferBase::RHIMappedBufferBase(const RHIBuffer& buffer)
+RHIMappedByteBuffer::RHIMappedByteBuffer(const RHIBuffer& buffer)
 	: m_buffer(buffer)
 {
 	m_mappedPointer = m_buffer.MapPtr();
+	SPT_CHECK_MSG(!!m_mappedPointer, "Cannot Map buffer {0}", buffer.GetName().GetData());
 }
 
-RHIMappedBufferBase::~RHIMappedBufferBase()
+RHIMappedByteBuffer::~RHIMappedByteBuffer()
 {
 	if (m_mappedPointer)
 	{
@@ -113,19 +114,19 @@ RHIMappedBufferBase::~RHIMappedBufferBase()
 	}
 }
 
-RHIMappedBufferBase::RHIMappedBufferBase(RHIMappedBufferBase&& other)
+RHIMappedByteBuffer::RHIMappedByteBuffer(RHIMappedByteBuffer&& other)
 	: m_buffer(other.m_buffer)
 	, m_mappedPointer(other.m_mappedPointer)
 {
 	other.m_mappedPointer = nullptr;
 }
 
-Byte* RHIMappedBufferBase::GetPtr() const
+Byte* RHIMappedByteBuffer::GetPtr() const
 {
 	return m_mappedPointer;
 }
 
-Uint64 RHIMappedBufferBase::GetSize() const
+Uint64 RHIMappedByteBuffer::GetSize() const
 {
 	return m_buffer.GetSize();
 }

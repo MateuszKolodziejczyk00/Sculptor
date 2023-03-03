@@ -172,12 +172,12 @@ VkAccelerationStructureGeometryKHR RHIBottomLevelAS::CreateGeometryData() const
 RHITopLevelAS::RHITopLevelAS()
 { }
 
-void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset)
+void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset, OUT RHIBuffer& instancesBuildBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
-	SPT_CHECK(!m_instancesBuildBuffer.IsValid());
+	SPT_CHECK(!instancesBuildBuffer.IsValid());
 
 	const Uint32 instancesNum = static_cast<Uint32>(definition.instances.size());
 	const Uint64 instancesBufferSize = instancesNum * sizeof(VkAccelerationStructureInstanceKHR);
@@ -185,11 +185,11 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	m_primitivesCount = static_cast<Uint32>(instancesNum);
 
 	const rhi::BufferDefinition instancesBufferDef(instancesBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
-	m_instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
+	instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::EMemoryUsage::CPUToGPU);
 	
 	// Init buffer of VkAccelerationStructureInstanceKHR from TLASInstanceDefinitions
 	{
-		const RHIMappedBuffer<VkAccelerationStructureInstanceKHR> instancesMappedBuffer(m_instancesBuildBuffer);
+		const RHIMappedBuffer<VkAccelerationStructureInstanceKHR> instancesMappedBuffer(instancesBuildBuffer);
 
 		for(SizeType instanceIdx = 0; instanceIdx < definition.instances.size(); ++instanceIdx)
 		{
@@ -208,7 +208,7 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	}
 
 	VkAccelerationStructureGeometryKHR geometry;
-	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry);
+	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(instancesBuildBuffer, OUT geometry);
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
 	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);
@@ -239,13 +239,11 @@ void RHITopLevelAS::ReleaseRHI()
 	SPT_PROFILER_FUNCTION();
 
 	OnReleaseRHI();
-
-	ClearInstancesBuildBuffer();
 }
 
-VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const
+VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const
 {
-	geometry = CreateGeometryData();
+	geometry = CreateGeometryData(instancesBuildBuffer);
 
 	VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
 	buildGeometryInfo.flags			= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
@@ -257,20 +255,12 @@ VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryIn
 	return buildGeometryInfo;
 }
 
-void RHITopLevelAS::ClearInstancesBuildBuffer()
+VkAccelerationStructureGeometryKHR RHITopLevelAS::CreateGeometryData(const RHIBuffer& instancesBuildBuffer) const
 {
-	if (m_instancesBuildBuffer.IsValid())
-	{
-		m_instancesBuildBuffer.ReleaseRHI();
-	}
-}
-
-VkAccelerationStructureGeometryKHR RHITopLevelAS::CreateGeometryData() const
-{
-	SPT_CHECK(m_instancesBuildBuffer.IsValid());
+	SPT_CHECK(instancesBuildBuffer.IsValid());
 
 	VkAccelerationStructureGeometryInstancesDataKHR instancesData{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR };
-	instancesData.data.deviceAddress = m_instancesBuildBuffer.GetDeviceAddress();
+	instancesData.data.deviceAddress = instancesBuildBuffer.GetDeviceAddress();
 
 	VkAccelerationStructureGeometryKHR geometry{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
 	geometry.geometryType		= VK_GEOMETRY_TYPE_INSTANCES_KHR;
