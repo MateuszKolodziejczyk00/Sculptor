@@ -11,6 +11,7 @@
 #include "Types/CommandBuffer.h"
 #include "Types/UIBackend.h"
 #include "Types/Shader.h"
+#include "Types/AccelerationStructure.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Event.h"
@@ -67,6 +68,16 @@ ShaderID ResourcesManager::CreateShader(const lib::String& shaderRelativePath, c
 lib::SharedRef<Shader> ResourcesManager::GetShaderObject(ShaderID shaderID)
 {
 	return Renderer::GetShadersManager().GetShader(shaderID);
+}
+
+lib::SharedRef<BottomLevelAS> ResourcesManager::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition)
+{
+	return lib::MakeShared<BottomLevelAS>(name, definition);
+}
+
+lib::SharedRef<TopLevelAS> ResourcesManager::CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition)
+{
+	return lib::MakeShared<TopLevelAS>(name, definition);
 }
 
 DescriptorSetWriter ResourcesManager::CreateDescriptorSetWriter()

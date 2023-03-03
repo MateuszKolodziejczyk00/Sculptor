@@ -203,6 +203,11 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 		{
 			lib::AddFlag(result, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 		}
+		
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::ASBuild))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+		}
 
 		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::Host))
 		{

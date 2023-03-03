@@ -9,6 +9,7 @@
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Event.h"
 #include "Types/Buffer.h"
+#include "Types/AccelerationStructure.h"
 
 namespace spt::rdr
 {
@@ -96,6 +97,30 @@ void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDepe
 							 SPT_PROFILER_SCOPE("WaitEvent Command");
 							
 							 localDependency.WaitEvent(cmdBuffer->GetRHI(), event->GetRHI());
+						 });
+}
+
+void CommandRecorder::BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+						 {
+							 SPT_PROFILER_SCOPE("BuildBLAS Command");
+							
+							 cmdBuffer->GetRHI().BuildBLAS(blas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset);
+						 });
+}
+
+void CommandRecorder::BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
+						 {
+							 SPT_PROFILER_SCOPE("BuildTLAS Command");
+							
+							 cmdBuffer->GetRHI().BuildTLAS(tlas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset, instancesBuildDataBuffer->GetRHI());
 						 });
 }
 

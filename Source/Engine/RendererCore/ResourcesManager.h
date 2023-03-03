@@ -26,6 +26,8 @@ struct ShaderModuleDefinition;
 struct SamplerDefinition;
 struct EventDefinition;
 struct RHIWindowInitializationInfo;
+struct BLASDefinition;
+struct TLASDefinition;
 } // spt::rhi
 
 
@@ -55,6 +57,8 @@ class Shader;
 class GraphicsPipeline;
 class ComputePipeline;
 class Sampler;
+class BottomLevelAS;
+class TopLevelAS;
 
 
 class RENDERER_CORE_API ResourcesManager
@@ -84,6 +88,9 @@ public:
 	
 	SPT_NODISCARD static lib::SharedRef<GraphicsPipeline>	GetGraphicsPipeline(PipelineStateID id);
 	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	GetComputePipeline(PipelineStateID id);
+	
+	SPT_NODISCARD static lib::SharedRef<BottomLevelAS>		CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
+	SPT_NODISCARD static lib::SharedRef<TopLevelAS>			CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 
 	SPT_NODISCARD static DescriptorSetWriter				CreateDescriptorSetWriter();
 

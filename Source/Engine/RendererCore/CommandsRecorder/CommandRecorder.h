@@ -22,6 +22,8 @@ class Texture;
 class Buffer;
 class BufferView;
 class Event;
+class TopLevelAS;
+class BottomLevelAS;
 
 
 struct CommandsRecordingInfo
@@ -61,6 +63,9 @@ public:
 
 	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
 	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
+
+	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
+	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer);
 
 	void									BeginRendering(const RenderingDefinition& definition);
 	void									EndRendering();

@@ -134,6 +134,14 @@ void RHIBottomLevelAS::ReleaseRHI()
 	m_geometryFlags				= 0;
 }
 
+Uint64 RHIBottomLevelAS::GetDeviceAddress() const
+{
+	VkAccelerationStructureDeviceAddressInfoKHR asDeviceAddressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
+	asDeviceAddressInfo.accelerationStructure = m_handle;
+
+	return vkGetAccelerationStructureDeviceAddressKHR(VulkanRHI::GetDeviceHandle(), &asDeviceAddressInfo);
+}
+
 VkAccelerationStructureBuildGeometryInfoKHR RHIBottomLevelAS::CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const
 {
 	geometry = CreateGeometryData();

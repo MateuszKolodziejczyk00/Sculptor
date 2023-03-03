@@ -71,6 +71,10 @@ VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
 	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ASBuild))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
+	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Host))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_HOST_BIT);
@@ -150,6 +154,10 @@ VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EPipelineStage flags)
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::IndexInput))
 	{
 		SPT_CHECK_NO_ENTRY(); // No corresponding legacy flag
+	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ASBuild))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Host))
 	{

@@ -10,6 +10,7 @@ namespace spt::rdr
 {
 
 class Buffer;
+class CommandRecorder;
 
 
 class RENDERER_CORE_API BottomLevelAS : public RendererResource<rhi::RHIBottomLevelAS>
@@ -49,6 +50,22 @@ private:
 	Uint64 m_accelerationStructureOffset;
 
 	lib::SharedPtr<Buffer> m_instancesBuildDataBuffer;
+};
+
+
+class RENDERER_CORE_API BLASBuilder
+{
+public:
+
+	BLASBuilder();
+
+	lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
+
+	void Build(CommandRecorder& recorder);
+
+private:
+
+	lib::DynamicArray<lib::SharedRef<BottomLevelAS>> m_blases;
 };
 
 } // spt::rdr

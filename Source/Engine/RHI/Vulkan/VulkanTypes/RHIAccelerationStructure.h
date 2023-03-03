@@ -50,6 +50,8 @@ public:
 	void InitializeRHI(const rhi::BLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
 	void ReleaseRHI();
 
+	Uint64 GetDeviceAddress() const;
+
 	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(OUT VkAccelerationStructureGeometryKHR& geometry) const;
 
 private:
