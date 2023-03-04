@@ -339,6 +339,16 @@ void VulkanRHI::WaitIdle()
     priv::g_data.device.WaitIdle();
 }
 
+const rhi::RHISettings& VulkanRHI::GetSettings()
+{
+    return priv::g_data.rhiSettings;
+}
+
+Bool VulkanRHI::IsRayTracingEnabled()
+{
+    return GetSettings().IsRayTracingEnabled();
+}
+
 #if RHI_DEBUG
 
 void VulkanRHI::EnableValidationWarnings(Bool enable)
@@ -406,11 +416,6 @@ void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()
 {
     return nullptr;
-}
-
-const rhi::RHISettings& VulkanRHI::GetSettings()
-{
-    return priv::g_data.rhiSettings;
 }
 
 } // spt::vulkan

@@ -17,6 +17,8 @@ void RHISettings::Initialize()
 	enableStrictValidation	= cmdLineArgs.Contains(enableStrictValidationCmdArgName);
 	enableValidation |= enableStrictValidation;
 
+	enableRayTracing	= cmdLineArgs.Contains(enableRayTracingCmdArgName);
+
 	enableGPUCrashDumps	= cmdLineArgs.Contains(enableGPUCrashDumpsCmdArgName);
 }
 

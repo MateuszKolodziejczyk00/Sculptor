@@ -60,7 +60,6 @@ private:
 
 	Uint64					m_locationsDeviceAddress;
 	Uint32					m_maxVerticesNum;
-	Uint32					m_indicesNum;
 	Uint64					m_indicesDeviceAddress;
 	VkGeometryFlagsKHR		m_geometryFlags;
 };

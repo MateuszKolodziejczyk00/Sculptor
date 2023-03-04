@@ -56,18 +56,30 @@ void TopLevelAS::ReleaseInstancesBuildData()
 BLASBuilder::BLASBuilder()
 { }
 
+Bool BLASBuilder::IsEmpty() const
+{
+	return m_blases.empty();
+}
+
 lib::SharedRef<BottomLevelAS> BLASBuilder::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition)
 {
 	const lib::SharedRef<BottomLevelAS> blas = ResourcesManager::CreateBLAS(name, definition);
 
-	m_blases.push_back(blas);
+	m_blases.emplace_back(blas);
 
 	return blas;
 }
 
-void BLASBuilder::Build(CommandRecorder& recorder)
+void BLASBuilder::AddBLASToBuild(const lib::SharedRef<BottomLevelAS>& blas)
+{
+	m_blases.emplace_back(blas);
+}
+
+void BLASBuilder::Build(CommandRecorder& recorder) const
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsEmpty());
 
 	const Uint64 scratchBufferSize = std::accumulate(std::cbegin(m_blases), std::cend(m_blases), Uint64(0),
 													 [](Uint64 value, const lib::SharedRef<BottomLevelAS>& blas)

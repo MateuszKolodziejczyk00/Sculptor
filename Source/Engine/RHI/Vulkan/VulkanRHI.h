@@ -47,6 +47,9 @@ public:
 
 	static void				WaitIdle();
 
+	static const rhi::RHISettings&	GetSettings();
+	static Bool						IsRayTracingEnabled();
+
 #if RHI_DEBUG
 
 	static void				EnableValidationWarnings(Bool enable);
@@ -89,8 +92,6 @@ public:
 	static void								SetSurfaceHandle(VkSurfaceKHR surface);
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
-
-	static const rhi::RHISettings&			GetSettings();
 };
 
 

@@ -35,7 +35,7 @@ struct BLASTrianglesGeometryDefinition
 	Uint32 vertexLocationsStride;
 	Uint32 maxVerticesNum;
 
-	Uint32 indicesAddress;
+	Uint64 indicesAddress;
 	Uint32 indicesNum;
 };
 

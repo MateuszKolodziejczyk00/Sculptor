@@ -6,8 +6,27 @@
 #include "RenderingDataRegistry.h"
 
 
+namespace spt::rdr
+{
+class BLASBuilder;
+} // spt::rdr
+
+
 namespace spt::rsc
 {
+
+struct MeshBuildParameters
+{
+	MeshBuildParameters()
+		: optimizeMesh(true)
+		, blasBuilder(nullptr)
+	{ }
+
+	Bool optimizeMesh;
+
+	rdr::BLASBuilder* blasBuilder;
+};
+
 
 struct SubmeshBuildData
 {
@@ -24,11 +43,13 @@ class MeshBuilder abstract
 {
 public:
 
-	MeshBuilder();
+	MeshBuilder(const MeshBuildParameters& parameters);
 
 	RenderingDataEntityHandle EmitMeshGeometry();
 
 protected:
+
+	const MeshBuildParameters& GetParameters() const;
 
 	void BeginNewSubmesh();
 	SubmeshBuildData& GetBuiltSubmesh();
@@ -74,6 +95,8 @@ private:
 
 	math::Vector3f m_boundingSphereCenter;
 	Real32 m_boundingSphereRadius;
+
+	MeshBuildParameters m_parameters;
 };
 
 

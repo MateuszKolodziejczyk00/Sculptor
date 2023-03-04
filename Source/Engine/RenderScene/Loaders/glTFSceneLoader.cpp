@@ -23,6 +23,7 @@
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
+#include "Types/AccelerationStructure.h"
 #pragma warning(pop)
 
 namespace spt::rsc
@@ -35,9 +36,13 @@ SPT_DEFINE_LOG_CATEGORY(LogGLTFLoader, true);
 
 class GLTFMeshBuilder : public MeshBuilder
 {
+protected:
+
+	using Super = MeshBuilder;
+
 public:
 
-	GLTFMeshBuilder();
+	GLTFMeshBuilder(const MeshBuildParameters& parameters);
 
 	void BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model);
 
@@ -55,7 +60,8 @@ private:
 	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model, const lib::DynamicArray<SizeType>& remapping = lib::DynamicArray<SizeType>{});
 };
 
-GLTFMeshBuilder::GLTFMeshBuilder()
+GLTFMeshBuilder::GLTFMeshBuilder(const MeshBuildParameters& parameters)
+	: Super(parameters)
 { }
 
 void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
@@ -257,11 +263,11 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	return transform;
 }
 
-static RenderingDataEntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model)
+static RenderingDataEntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model, const MeshBuildParameters& parameters)
 {
 	SPT_PROFILER_FUNCTION();
 
-	GLTFMeshBuilder builder;
+	GLTFMeshBuilder builder(parameters);
 	builder.BuildMesh(mesh, model);
 
 	return builder.EmitMeshGeometry();
@@ -457,6 +463,28 @@ static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygl
 	return materials;
 }
 
+void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (!builder.IsEmpty())
+	{
+		lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition());
+		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+		builder.Build(*recorder);
+
+		rdr::CommandsRecordingInfo recordingInfo;
+		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("BuildBLASesCmdBuffer");
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+		recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+		rdr::CommandsSubmitBatch submitBatch;
+		submitBatch.recordedCommands.emplace_back(std::move(recorder));
+		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+	}
+}
+
 void LoadScene(RenderScene& scene, lib::StringView path)
 {
 	SPT_PROFILER_FUNCTION();
@@ -491,15 +519,25 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
+		const Bool withRayTracing = rhi::RHI::IsRayTracingEnabled();
+
 		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
 		const lib::DynamicArray<RenderingDataEntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
 
 		lib::DynamicArray<RenderingDataEntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
+		rdr::BLASBuilder blasBuilder;
+
+		MeshBuildParameters meshBuildParams;
+		if (withRayTracing)
+		{
+			meshBuildParams.blasBuilder = &blasBuilder;
+		}
+
 		for (const tinygltf::Mesh& mesh : model.meshes)
 		{
-			loadedMeshes.emplace_back(LoadMesh(mesh, model));
+			loadedMeshes.emplace_back(LoadMesh(mesh, model, meshBuildParams));
 		}
 
 		for (const tinygltf::Node& node : model.nodes)
@@ -525,6 +563,11 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
 			}
+		}
+
+		if (withRayTracing)
+		{
+			BuildAccelerationStructures(blasBuilder);
 		}
 	}
 }

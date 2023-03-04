@@ -1,16 +1,20 @@
 #include "MeshBuilder.h"
+#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+#include "RHICore/RHIAccelerationStructureTypes.h"
+#include "ResourcesManager.h"
+#include "Types/AccelerationStructure.h"
 
 #include "meshoptimizer.h"
-#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
 
 namespace spt::rsc
 {
 
 SPT_DEFINE_LOG_CATEGORY(LogMeshBuilder, true);
 
-MeshBuilder::MeshBuilder()
+MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
 	: m_boundingSphereCenter(math::Vector3f::Zero())
 	, m_boundingSphereRadius(0.f)
+	, m_parameters(parameters)
 {
 	m_geometryData.reserve(1024 * 1024 * 8);
 }
@@ -24,7 +28,12 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 #if SPT_DEBUG
 		ValidateSubmesh(submeshBD);
 #endif // SPT_DEBUG
-		OptimizeSubmesh(submeshBD);
+
+		if (GetParameters().optimizeMesh)
+		{
+			OptimizeSubmesh(submeshBD);
+		}
+
 		BuildMeshlets(submeshBD);
 
 		ComputeBoundingSphere(submeshBD);
@@ -71,7 +80,33 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 	staticMeshDataHandle.emplace<StaticMeshGeometryData>(staticMeshGeometryData);
 	staticMeshDataHandle.emplace<StaticMeshRenderingDefinition>(staticMeshRenderingDef);
 
+	const Uint64 geometryDataDeviceAddress = GeometryManager::Get().GetGeometryBufferDeviceAddress();
+
+	if (GetParameters().blasBuilder)
+	{
+		// Create BLAS for each submesh
+		lib::DynamicArray<lib::SharedRef<rdr::BottomLevelAS>> submeshesBLASes;
+		submeshesBLASes.reserve(m_submeshes.size());
+
+		for (const SubmeshBuildData& submeshBD : m_submeshes)
+		{
+			rhi::BLASDefinition submeshBLAS;
+			submeshBLAS.trianglesGeometry.vertexLocationsAddress = geometryDataDeviceAddress + static_cast<Uint64>(submeshBD.submesh.locationsOffset);
+			submeshBLAS.trianglesGeometry.vertexLocationsStride = sizeof(math::Vector3f);
+			submeshBLAS.trianglesGeometry.maxVerticesNum = submeshBD.vertexCount;
+			submeshBLAS.trianglesGeometry.indicesAddress = geometryDataDeviceAddress + static_cast<Uint64>(submeshBD.submesh.indicesOffset);
+			submeshBLAS.trianglesGeometry.indicesNum = submeshBD.submesh.indicesNum;
+
+			GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
+		}
+	}
+
 	return staticMeshDataHandle;
+}
+
+const MeshBuildParameters& MeshBuilder::GetParameters() const
+{
+	return m_parameters;
 }
 
 void MeshBuilder::BeginNewSubmesh()

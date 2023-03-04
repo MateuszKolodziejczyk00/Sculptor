@@ -36,7 +36,7 @@ rhi::RHISuballocation GeometryManager::CreateGeometry(Uint64 dataSize)
 
 GeometryManager::GeometryManager()
 {
-	const rhi::EBufferUsage ugbUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage);
+	const rhi::EBufferUsage ugbUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage, rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly);
 	const rhi::EBufferFlags ugbFlags = rhi::EBufferFlags::WithVirtualSuballocations;
 
 	const rhi::RHIAllocationInfo ugbAllocationInfo(rhi::EMemoryUsage::GPUOnly);
@@ -51,6 +51,11 @@ GeometryManager::GeometryManager()
 															{
 																DestroyResources();
 															});
+}
+
+Uint64 GeometryManager::GetGeometryBufferDeviceAddress() const
+{
+	return m_geometryBuffer->GetRHI().GetDeviceAddress();
 }
 
 const lib::SharedPtr<GeometryDS>& GeometryManager::GetGeometryDSState() const

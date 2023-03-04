@@ -16,7 +16,7 @@ public:
 
 	Bool IsValidationEnabled() const { return enableValidation; }
 	Bool IsStrictValidationEnabled() const { return enableStrictValidation; }
-	Bool IsRayTracingEnabled() const { return enableStrictValidation; }
+	Bool IsRayTracingEnabled() const { return enableRayTracing; }
 	Bool AreGPUCrashDumpsEnabled() const { return enableGPUCrashDumps; }
 
 private:

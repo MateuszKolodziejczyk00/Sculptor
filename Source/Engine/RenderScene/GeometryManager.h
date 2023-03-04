@@ -26,6 +26,8 @@ public:
 
 	const lib::SharedPtr<GeometryDS>& GetGeometryDSState() const;
 
+	Uint64 GetGeometryBufferDeviceAddress() const;
+
 private:
 
 	GeometryManager();

@@ -72,7 +72,6 @@ void RHIAccelerationStructure::OnReleaseRHI()
 RHIBottomLevelAS::RHIBottomLevelAS()
 	: m_locationsDeviceAddress(0)
 	, m_maxVerticesNum(0)
-	, m_indicesNum(0)
 	, m_indicesDeviceAddress(0)
 	, m_geometryFlags(0)
 { }
@@ -92,8 +91,9 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 	VkAccelerationStructureGeometryKHR geometry;
 	const VkAccelerationStructureBuildGeometryInfoKHR buildGeometryInfo = CreateBuildGeometryInfo(OUT geometry);
 
-	SPT_CHECK(m_indicesNum % 3 == 0 && m_indicesNum > 0);
-	m_primitivesCount = definition.trianglesGeometry.indicesNum / 3;
+	const Uint32 indicesNum = definition.trianglesGeometry.indicesNum;
+	SPT_CHECK(indicesNum % 3 == 0 && indicesNum > 0);
+	m_primitivesCount = indicesNum / 3;
 
 	VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
 	vkGetAccelerationStructureBuildSizesKHR(VulkanRHI::GetDeviceHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildGeometryInfo, &m_primitivesCount, &buildSizeInfo);

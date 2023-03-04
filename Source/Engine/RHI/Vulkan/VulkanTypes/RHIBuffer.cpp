@@ -148,6 +148,8 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK_MSG(definition.size > 0, "Buffer size must be greater than 0");
+
 	m_bufferSize = definition.size;
 	m_usageFlags = definition.usage;
 

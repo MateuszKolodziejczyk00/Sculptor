@@ -59,9 +59,13 @@ public:
 
 	BLASBuilder();
 
-	lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
+	Bool IsEmpty() const;
 
-	void Build(CommandRecorder& recorder);
+	lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
+	
+	void AddBLASToBuild(const lib::SharedRef<BottomLevelAS>& blas);
+
+	void Build(CommandRecorder& recorder) const;
 
 private:
 
