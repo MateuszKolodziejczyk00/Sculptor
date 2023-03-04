@@ -43,7 +43,7 @@ class MeshBuilder abstract
 {
 public:
 
-	MeshBuilder(const MeshBuildParameters& parameters);
+	explicit MeshBuilder(const MeshBuildParameters& parameters);
 
 	RenderingDataEntityHandle EmitMeshGeometry();
 

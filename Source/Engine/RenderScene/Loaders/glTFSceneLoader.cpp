@@ -42,7 +42,7 @@ protected:
 
 public:
 
-	GLTFMeshBuilder(const MeshBuildParameters& parameters);
+	explicit GLTFMeshBuilder(const MeshBuildParameters& parameters);
 
 	void BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model);
 
