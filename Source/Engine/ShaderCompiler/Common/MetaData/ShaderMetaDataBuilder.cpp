@@ -286,6 +286,22 @@ static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross:
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 }
 
+static void AddAccelerationStructure(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, samplerResource);
+
+	smd::AccelerationStructureBindingData asBinding;
+	helper::InitializeBinding(asBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+
+	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, asBinding);
+	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
+
+	const smd::ShaderAccelerationStructureParamEntry paramEntry(setIdx, bindingIdx);
+	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
+}
+
 static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
@@ -293,46 +309,52 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 	const spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 	std::for_each(std::cbegin(resources.uniform_buffers), std::cend(resources.uniform_buffers),
-		[&](const spirv_cross::Resource& uniformBuffer)
-		{
-			AddUniformBuffer(compiler, uniformBuffer, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& uniformBuffer)
+				  {
+					  AddUniformBuffer(compiler, uniformBuffer, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.storage_buffers), std::cend(resources.storage_buffers),
-		[&](const spirv_cross::Resource& storageBuffer)
-		{
-			AddStorageBuffer(compiler, storageBuffer, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& storageBuffer)
+				  {
+					  AddStorageBuffer(compiler, storageBuffer, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.sampled_images), std::cend(resources.sampled_images),
-		[&](const spirv_cross::Resource& combinedTextureSampler)
-		{
-			AddCombinedTextureSampler(compiler, combinedTextureSampler, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& combinedTextureSampler)
+				  {
+					  AddCombinedTextureSampler(compiler, combinedTextureSampler, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.storage_images), std::cend(resources.storage_images),
-		[&](const spirv_cross::Resource& texture)
-		{
-			AddStorageTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& texture)
+				  {
+					  AddStorageTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.sampled_images), std::cend(resources.sampled_images),
-		[&](const spirv_cross::Resource& texture)
-		{
-			AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& texture)
+				  {
+					  AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.separate_images), std::cend(resources.separate_images),
-		[&](const spirv_cross::Resource& texture)
-		{
-			AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& texture)
+				  {
+					  AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 
 	std::for_each(std::cbegin(resources.separate_samplers), std::cend(resources.separate_samplers),
-		[&](const spirv_cross::Resource& sampler)
-		{
-			AddSampler(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
-		});
+				  [&](const spirv_cross::Resource& sampler)
+				  {
+					  AddSampler(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
+
+	std::for_each(std::cbegin(resources.acceleration_structures), std::cend(resources.acceleration_structures),
+				  [&](const spirv_cross::Resource& sampler)
+				  {
+					  AddAccelerationStructure(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
+				  });
 	
 	const Uint32 descriptorSetsNum = outShaderMetaData.GetDescriptorSetsNum();
 	for (Uint32 dsIdx = 0; dsIdx < descriptorSetsNum; ++dsIdx)

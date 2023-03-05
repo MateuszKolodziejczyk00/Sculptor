@@ -45,6 +45,9 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 				{
 				    rhiBindingDef.immutableSampler = GetImmutableSamplerForBinding(samplerBinding)->GetRHI();
 				}
+			},
+			[&rhiBindingDef](const smd::AccelerationStructureBindingData& bufferBinding)
+			{
 			}
 		},
 		bindingMetaData.GetBindingData());

@@ -98,6 +98,19 @@ struct TypeSerializer<smd::SamplerBindingData>
 		}
 	}
 };
+
+// smd::AccelerationStructureBindingData ===========================================
+
+template<>
+struct TypeSerializer<smd::AccelerationStructureBindingData>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		SerializeType<smd::CommonBindingData>(serializer, data);
+	}
+};
+
 // smd::GenericShaderBinding =======================================================
 
 template<>
@@ -127,6 +140,11 @@ struct TypeSerializer<smd::GenericShaderBinding>
 			{
 				serializer.Serialize("TypeIdx", 3);
 				serializer.Serialize("Data", data.As<smd::SamplerBindingData>());
+			}
+			else if (data.Contains<smd::AccelerationStructureBindingData>())
+			{
+				serializer.Serialize("TypeIdx", 4);
+				serializer.Serialize("Data", data.As<smd::AccelerationStructureBindingData>());
 			}
 			else
 			{
@@ -160,6 +178,12 @@ struct TypeSerializer<smd::GenericShaderBinding>
 			else if (typeIdx == 3)
 			{
 				smd::SamplerBindingData bindingData;
+				serializer.Serialize("Data", bindingData);
+				data.Set(bindingData);
+			}
+			else if (typeIdx == 4)
+			{
+				smd::AccelerationStructureBindingData bindingData;
 				serializer.Serialize("Data", bindingData);
 				data.Set(bindingData);
 			}
@@ -220,6 +244,18 @@ struct TypeSerializer<smd::ShaderBufferParamEntry>
 	}
 };
 
+// smd::ShaderAccelerationStructureParamEntry ======================================
+
+template<>
+struct TypeSerializer<smd::ShaderAccelerationStructureParamEntry>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		SerializeType<smd::ShaderParamEntryCommon>(serializer, data);
+	}
+};
+
 // smd::GenericShaderParamEntry ====================================================
 
 template<>
@@ -244,6 +280,11 @@ struct TypeSerializer<smd::GenericShaderParamEntry>
 			{
 				serializer.Serialize("TypeIdx", 2);
 				serializer.Serialize("Data", data.As<smd::ShaderBufferParamEntry>());
+			}
+			else if (data.Contains<smd::ShaderAccelerationStructureParamEntry>())
+			{
+				serializer.Serialize("TypeIdx", 3);
+				serializer.Serialize("Data", data.As<smd::ShaderAccelerationStructureParamEntry>());
 			}
 			else
 			{
@@ -271,6 +312,12 @@ struct TypeSerializer<smd::GenericShaderParamEntry>
 			else if (typeIdx == 2)
 			{
 				smd::ShaderBufferParamEntry paramEntry;
+				serializer.Serialize("Data", paramEntry);
+				data.Set(paramEntry);
+			}
+			else if (typeIdx == 3)
+			{
+				smd::ShaderAccelerationStructureParamEntry paramEntry;
 				serializer.Serialize("Data", paramEntry);
 				data.Set(paramEntry);
 			}
@@ -326,11 +373,13 @@ SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::TextureBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::CombinedTextureSamplerBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::BufferBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::SamplerBindingData)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::AccelerationStructureBindingData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::GenericShaderBinding)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderTextureParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderCombinedTextureSamplerParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderDataParam)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderBufferParamEntry)
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderAccelerationStructureParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::GenericShaderParamEntry)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderDescriptorSet)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::smd::ShaderMetaData)

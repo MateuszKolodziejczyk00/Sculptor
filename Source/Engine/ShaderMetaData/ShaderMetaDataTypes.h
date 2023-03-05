@@ -18,6 +18,7 @@ enum class EBindingType : Uint32
 	CombinedTextureSampler,
 	Buffer,
 	Sampler,
+	AccelerationStructure,
 
 	NUM
 };
@@ -314,11 +315,27 @@ private:
 };
 
 
+struct AccelerationStructureBindingData : public CommonBindingData
+{
+public:
+
+	explicit AccelerationStructureBindingData(Uint32 inElementsNum = 1, EBindingFlags inFlags = priv::defaultBindingFlags)
+		: CommonBindingData(inElementsNum, inFlags)
+	{ }
+
+	void PostInitialize()
+	{
+		bindingDescriptorType = rhi::EDescriptorType::AccelerationStructure;
+	}
+};
+
+
 // should be in the same order as EBindingType
 using BindingDataVariant = std::variant<TextureBindingData,
 										CombinedTextureSamplerBindingData,
 										BufferBindingData,
-										SamplerBindingData>;
+										SamplerBindingData,
+										AccelerationStructureBindingData>;
 
 
 struct GenericShaderBinding
@@ -573,10 +590,23 @@ struct ShaderSamplerParamEntry : public ShaderParamEntryCommon
 };
 
 
+struct ShaderAccelerationStructureParamEntry : public ShaderParamEntryCommon
+{
+	ShaderAccelerationStructureParamEntry() = default;
+
+	explicit ShaderAccelerationStructureParamEntry(Uint32 inSetIdx, Uint32 inBindingIdx)
+		: ShaderParamEntryCommon(inSetIdx, inBindingIdx)
+	{ }
+
+	// No additional data for now
+};
+
+
 using ShaderParamEntryVariant = std::variant<ShaderTextureParamEntry,
 											 ShaderCombinedTextureSamplerParamEntry,
 											 ShaderBufferParamEntry,
-											 ShaderSamplerParamEntry>;
+											 ShaderSamplerParamEntry,
+											 ShaderAccelerationStructureParamEntry>;
 
 
 struct GenericShaderParamEntry
