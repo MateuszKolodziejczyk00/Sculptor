@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanRHI.h"
 #include "RHIBuffer.h"
 #include "RHITexture.h"
+#include "RHIAccelerationStructure.h"
 
 namespace spt::vulkan
 {
@@ -171,6 +172,42 @@ void RHIDescriptorSetWriter::WriteTexture(const RHIDescriptorSet& set, const rhi
 	m_images.emplace_back(imageInfo);
 }
 
+void RHIDescriptorSetWriter::WriteAccelerationStructure(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITopLevelAS& tlas)
+{
+	SPT_CHECK(set.IsValid());
+	SPT_CHECK(tlas.IsValid());
+
+	const VkWriteDescriptorSet write
+	{
+		.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		// store idx, as address may change during array reallocation
+		// later this idx will be resolved before descriptor is updated
+		// we have to add 1 to proper idx, to differentiate valid pointers from nullptrs
+		.pNext				= reinterpret_cast<const VkDescriptorImageInfo*>(m_accelerationStructures.size() + 1),
+		.dstSet				= set.GetHandle(),
+		.dstBinding			= writeDef.bindingIdx,
+		.dstArrayElement	= writeDef.arrayElement,
+		.descriptorCount	= 1,
+		.descriptorType		= RHIToVulkan::GetDescriptorType(writeDef.descriptorType),
+		.pImageInfo			= nullptr,
+		.pBufferInfo		= nullptr,
+		.pTexelBufferView	= nullptr
+	};
+
+	m_writes.emplace_back(write);
+
+	const VkAccelerationStructureKHR tlasHandle = tlas.GetHandle();
+
+	const VkWriteDescriptorSetAccelerationStructureKHR writeAccelerationStructure
+	{
+		.sType						= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+		.accelerationStructureCount	= 1,
+		.pAccelerationStructures	= &tlasHandle
+	};
+
+	m_accelerationStructures.emplace_back(writeAccelerationStructure);
+}
+
 void RHIDescriptorSetWriter::Reserve(SizeType writesNum)
 {
 	SPT_PROFILER_FUNCTION();
@@ -204,6 +241,11 @@ void RHIDescriptorSetWriter::ResolveReferences()
 		{
 			const SizeType imageInfoIdx = reinterpret_cast<SizeType>(write.pImageInfo) - 1;
 			write.pImageInfo = &m_images[imageInfoIdx];
+		}
+		if (write.pNext)
+		{
+			const SizeType accelerationStructureIdx = reinterpret_cast<SizeType>(write.pNext) - 1;
+			write.pNext = &m_accelerationStructures[accelerationStructureIdx];
 		}
 	}
 }

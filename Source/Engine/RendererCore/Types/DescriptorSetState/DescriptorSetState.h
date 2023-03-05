@@ -23,6 +23,7 @@ class DescriptorSetWriter;
 class DescriptorSetState;
 class BufferView;
 class TextureView;
+class TopLevelAS;
 
 
 using DSStateID = Uint64;
@@ -52,6 +53,7 @@ public:
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const;
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const;
 	void UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex = 0) const;
+	void UpdateAccelerationStructure(const lib::HashedString& name, const lib::SharedRef<TopLevelAS>& tlas) const;
 
 	const smd::ShaderMetaData& GetMetaData() const;
 

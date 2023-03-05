@@ -17,6 +17,7 @@ namespace spt::vulkan
 
 class RHIBuffer;
 class RHITextureView;
+class RHITopLevelAS;
 
 
 /**
@@ -61,6 +62,7 @@ public:
 	void WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range);
 	void WriteBuffer(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHIBuffer& buffer, Uint64 offset, Uint64 range, const RHIBuffer& countBuffer, Uint64 countBufferOffset);
 	void WriteTexture(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITextureView& textureView);
+	void WriteAccelerationStructure(const RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const RHITopLevelAS& tlas);
 
 	void Reserve(SizeType writesNum);
 	void Flush();
@@ -71,9 +73,10 @@ private:
 	void SubmitWrites();
 	void Reset();
 
-	lib::DynamicArray<VkWriteDescriptorSet>		m_writes;
-	lib::DynamicArray<VkDescriptorBufferInfo>	m_buffers;
-	lib::DynamicArray<VkDescriptorImageInfo>	m_images;
+	lib::DynamicArray<VkWriteDescriptorSet>							m_writes;
+	lib::DynamicArray<VkDescriptorBufferInfo>						m_buffers;
+	lib::DynamicArray<VkDescriptorImageInfo>						m_images;
+	lib::DynamicArray<VkWriteDescriptorSetAccelerationStructureKHR>	m_accelerationStructures;
 };
 
 } // spt::vulkan

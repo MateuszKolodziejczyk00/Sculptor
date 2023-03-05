@@ -33,11 +33,11 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 {
 	SPT_PROFILER_FUNCTION();
 
-	const smd::ShaderBufferParamEntry bufferParam = m_metaData->FindParamEntry<smd::ShaderBufferParamEntry>(name);
+	const smd::ShaderBufferParamEntry bufferParam = GetMetaData().FindParamEntry<smd::ShaderBufferParamEntry>(name);
 	
 	if (bufferParam.IsValid())
 	{
-		const smd::GenericShaderBinding binding = m_metaData->GetBindingData(bufferParam);
+		const smd::GenericShaderBinding binding = GetMetaData().GetBindingData(bufferParam);
 		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
 
 		rhi::WriteDescriptorDefinition writeDefinition;
@@ -58,11 +58,11 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 {
 	SPT_PROFILER_FUNCTION();
 
-	const smd::ShaderBufferParamEntry bufferParam = m_metaData->FindParamEntry<smd::ShaderBufferParamEntry>(name);
+	const smd::ShaderBufferParamEntry bufferParam = GetMetaData().FindParamEntry<smd::ShaderBufferParamEntry>(name);
 	
 	if (bufferParam.IsValid())
 	{
-		const smd::GenericShaderBinding binding = m_metaData->GetBindingData(bufferParam);
+		const smd::GenericShaderBinding binding = GetMetaData().GetBindingData(bufferParam);
 		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
 
 		rhi::WriteDescriptorDefinition writeDefinition;
@@ -83,11 +83,11 @@ void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, co
 {
 	SPT_PROFILER_FUNCTION();
 
-	const smd::ShaderTextureParamEntry textureParam = m_metaData->FindParamEntry<smd::ShaderTextureParamEntry>(name);
+	const smd::ShaderTextureParamEntry textureParam = GetMetaData().FindParamEntry<smd::ShaderTextureParamEntry>(name);
 
 	if (textureParam.IsValid())
 	{
-		const smd::GenericShaderBinding& binding = m_metaData->GetBindingData(textureParam);
+		const smd::GenericShaderBinding& binding = GetMetaData().GetBindingData(textureParam);
 
 		rhi::WriteDescriptorDefinition writeDefinition;
 		writeDefinition.bindingIdx		= textureParam.bindingIdx;
@@ -95,6 +95,25 @@ void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, co
 		writeDefinition.descriptorType	= binding.GetDescriptorType();
 
 		m_writer.WriteTexture(m_descriptorSet, writeDefinition, texture);
+	}
+}
+
+void DescriptorSetUpdateContext::UpdateAccelerationStructure(const lib::HashedString& name, const lib::SharedRef<TopLevelAS>& tlas) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const smd::ShaderAccelerationStructureParamEntry accelerationStructureParam = GetMetaData().FindParamEntry<smd::ShaderAccelerationStructureParamEntry>(name);
+
+	if (accelerationStructureParam.IsValid())
+	{
+		const smd::GenericShaderBinding& binding = GetMetaData().GetBindingData(accelerationStructureParam);
+
+		rhi::WriteDescriptorDefinition writeDefinition;
+		writeDefinition.bindingIdx		= accelerationStructureParam.bindingIdx;
+		writeDefinition.arrayElement	= 0;
+		writeDefinition.descriptorType	= binding.GetDescriptorType();
+
+		m_writer.WriteAccelerationStructure(m_descriptorSet, writeDefinition, tlas);
 	}
 }
 
