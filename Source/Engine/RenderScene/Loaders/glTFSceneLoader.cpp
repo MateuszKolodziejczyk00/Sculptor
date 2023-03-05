@@ -15,6 +15,8 @@
 #include "TextureUtils.h"
 #include "Materials/MaterialsUnifiedData.h"
 #include "Materials/MaterialTypes.h"
+#include "Types/AccelerationStructure.h"
+#include "RayTracing/RayTracingSceneTypes.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -23,7 +25,6 @@
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
-#include "Types/AccelerationStructure.h"
 #pragma warning(pop)
 
 namespace spt::rsc
@@ -469,7 +470,7 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 
 	if (!builder.IsEmpty())
 	{
-		lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition());
+		lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("BuildBLASesContext"), rhi::ContextDefinition());
 		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
 		builder.Build(*recorder);
@@ -562,6 +563,13 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				}
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
+
+				if (withRayTracing)
+				{
+					BLASesProviderComponent blasesProviderComp;
+					blasesProviderComp.entity = loadedMeshes[node.mesh];
+					meshSceneEntity.emplace<BLASesProviderComponent>(blasesProviderComp);
+				}
 			}
 		}
 

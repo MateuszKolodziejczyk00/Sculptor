@@ -21,6 +21,7 @@
 #include "ProfilerUILayer.h"
 #include "RenderGraphManager.h"
 #include "Paths.h"
+#include "RenderingDataRegistry.h"
 
 
 namespace spt::ed
@@ -158,6 +159,8 @@ void SculptorEdApplication::OnRun()
 void SculptorEdApplication::OnShutdown()
 {
 	Super::OnShutdown();
+
+	rsc::RenderingData::Get().clear();
 	
 	rdr::UIBackend::Uninitialize();
 

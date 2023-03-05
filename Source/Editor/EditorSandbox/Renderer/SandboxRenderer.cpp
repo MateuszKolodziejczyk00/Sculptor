@@ -24,6 +24,7 @@
 #include "InputManager.h"
 #include "Transfers/TransfersManager.h"
 #include "Lights/LightTypes.h"
+#include "RayTracing/RayTracingSceneSystem.h"
 
 namespace spt::ed
 {
@@ -37,7 +38,6 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	, m_farPlane(50.f)
 	, m_cameraSpeed(5.f)
 {
-
 	InitializeRenderScene();
 }
 
@@ -230,6 +230,10 @@ void SandboxRenderer::InitializeRenderScene()
 
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
 	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>(m_renderView);
+	if (rhi::RHI::IsRayTracingEnabled())
+	{
+		m_renderScene.AddPrimitivesSystem<rsc::RayTracingSceneSystem>();
+	}
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();
 

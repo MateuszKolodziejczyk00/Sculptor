@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderSceneMacros.h"
 #include "SculptorECS.h"
 
 
@@ -23,7 +24,7 @@ using RenderingDataEntityHandle = ecs::basic_handle<RenderingDataRegistry>;
 using ConstRenderingDataEntityHandle = ecs::basic_handle<const RenderingDataRegistry>;
 
 
-class RenderingData
+class RENDER_SCENE_API RenderingData
 {
 public:
 

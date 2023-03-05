@@ -5,6 +5,7 @@
 #include "Types/AccelerationStructure.h"
 
 #include "meshoptimizer.h"
+#include "RayTracing/RayTracingSceneTypes.h"
 
 namespace spt::rsc
 {
@@ -84,6 +85,9 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	if (GetParameters().blasBuilder)
 	{
+		BLASesComponent blasesComp;
+		blasesComp.blases.reserve(m_submeshes.size());
+
 		// Create BLAS for each submesh
 		lib::DynamicArray<lib::SharedRef<rdr::BottomLevelAS>> submeshesBLASes;
 		submeshesBLASes.reserve(m_submeshes.size());
@@ -97,8 +101,10 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 			submeshBLAS.trianglesGeometry.indicesAddress = geometryDataDeviceAddress + static_cast<Uint64>(submeshBD.submesh.indicesOffset);
 			submeshBLAS.trianglesGeometry.indicesNum = submeshBD.submesh.indicesNum;
 
-			GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
+			blasesComp.blases.emplace_back(GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS));
 		}
+
+		staticMeshDataHandle.emplace<BLASesComponent>(std::move(blasesComp));
 	}
 
 	return staticMeshDataHandle;
