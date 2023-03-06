@@ -71,6 +71,14 @@ struct RGDependencyStages
 		{
 			lib::AddFlag(pipelineStages, rhi::EPipelineStage::ComputeShader);
 		}
+		if (   lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::RTGeneration)
+			|| lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::RTAnyHit)
+			|| lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::RTClosestHit)
+			|| lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::RTMiss)
+			|| lib::HasAnyFlag(shaderStages, rhi::EShaderStageFlags::RTIntersection))
+		{
+			lib::AddFlag(pipelineStages, rhi::EPipelineStage::RayTracingShader);
+		}
 	}
 
 	rhi::EPipelineStage pipelineStages;

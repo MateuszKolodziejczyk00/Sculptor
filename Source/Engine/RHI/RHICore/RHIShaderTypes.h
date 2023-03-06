@@ -12,7 +12,13 @@ enum class EShaderStageFlags : Flags32
 	None			= 0,
 	Vertex			= BIT(0),
 	Fragment		= BIT(1),
-	Compute			= BIT(2)
+	Compute			= BIT(2),
+
+	RTGeneration	= BIT(3),
+	RTAnyHit		= BIT(4),
+	RTClosestHit	= BIT(5),
+	RTMiss			= BIT(6),
+	RTIntersection	= BIT(7)
 };
 
 
@@ -22,7 +28,12 @@ enum class EShaderStage : Flags32
 	None,
 	Vertex,
 	Fragment,
-	Compute
+	Compute,
+	RTGeneration,
+	RTAnyHit,
+	RTClosestHit,
+	RTMiss,
+	RTIntersection
 };
 
 
@@ -36,7 +47,8 @@ enum class EPipelineType : Flags32
 {
 	None,
 	Graphics,
-	Compute
+	Compute,
+	RayTracing
 };
 
 
@@ -44,10 +56,17 @@ inline EPipelineType GetPipelineTypeForShaderStage(EShaderStage stage)
 {
 	switch (stage)
 	{
-	case EShaderStage::None:		return EPipelineType::None;
-	case EShaderStage::Vertex:		return EPipelineType::Graphics;
-	case EShaderStage::Fragment:	return EPipelineType::Graphics;
-	case EShaderStage::Compute:		return EPipelineType::Compute;
+	case EShaderStage::None:			return EPipelineType::None;
+	case EShaderStage::Vertex:			return EPipelineType::Graphics;
+	case EShaderStage::Fragment:		return EPipelineType::Graphics;
+
+	case EShaderStage::Compute:			return EPipelineType::Compute;
+
+	case EShaderStage::RTGeneration:	return EPipelineType::RayTracing;
+	case EShaderStage::RTAnyHit:		return EPipelineType::RayTracing;
+	case EShaderStage::RTClosestHit:	return EPipelineType::RayTracing;
+	case EShaderStage::RTMiss:			return EPipelineType::RayTracing;
+	case EShaderStage::RTIntersection:	return EPipelineType::RayTracing;
 
 	default:
 

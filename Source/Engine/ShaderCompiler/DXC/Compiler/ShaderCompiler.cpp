@@ -46,6 +46,11 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 	case rhi::EShaderStage::Vertex:			return L"vs_6_4";
 	case rhi::EShaderStage::Fragment:		return L"ps_6_4";
 	case rhi::EShaderStage::Compute:		return L"cs_6_4";
+	case rhi::EShaderStage::RTGeneration:	return L"raygeneration_6_4";
+	case rhi::EShaderStage::RTAnyHit:		return L"anyhit_6_4";
+	case rhi::EShaderStage::RTClosestHit:	return L"closesthit_6_4";
+	case rhi::EShaderStage::RTMiss:			return L"miss_6_4";
+	case rhi::EShaderStage::RTIntersection:	return L"intersection_6_4";
 
 	default:
 
@@ -66,6 +71,21 @@ lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
 
 	case rhi::EShaderStage::Compute:
 		return lib::WString(L"COMPUTE_SHADER");
+
+	case rhi::EShaderStage::RTGeneration:
+		return lib::WString(L"RT_GENERATION_SHADER");
+
+	case rhi::EShaderStage::RTAnyHit:
+		return lib::WString(L"RT_ANY_HIT_SHADER");
+
+	case rhi::EShaderStage::RTClosestHit:
+		return lib::WString(L"RT_CLOSEST_HIT_SHADER");
+
+	case rhi::EShaderStage::RTMiss:
+		return lib::WString(L"RT_MISS_SHADER");
+
+	case rhi::EShaderStage::RTIntersection:
+		return lib::WString(L"RT_INTERSECTION_SHADER");
 
 	default:
 		SPT_CHECK_NO_ENTRY();

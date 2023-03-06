@@ -25,6 +25,8 @@ enum class EPipelineStage : Flags64
 
 	ASBuild							= BIT64(14),
 
+	RayTracingShader				= BIT64(15),
+
 	Host							= BIT64(15),
 
 	ALL_GRAPHICS_SHADERS			= VertexShader | FragmentShader,

@@ -75,6 +75,10 @@ VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
 	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::RayTracingShader))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR);
+	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Host))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_HOST_BIT);
@@ -158,6 +162,10 @@ VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EPipelineStage flags)
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ASBuild))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::RayTracingShader))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
 	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Host))
 	{
@@ -365,11 +373,16 @@ VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
-	case spt::rhi::EShaderStage::None:		return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-	case spt::rhi::EShaderStage::Vertex:	return VK_SHADER_STAGE_VERTEX_BIT;
-	case spt::rhi::EShaderStage::Fragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
-	case spt::rhi::EShaderStage::Compute:	return VK_SHADER_STAGE_COMPUTE_BIT;
-		
+	case rhi::EShaderStage::None:			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	case rhi::EShaderStage::Vertex:			return VK_SHADER_STAGE_VERTEX_BIT;
+	case rhi::EShaderStage::Fragment:		return VK_SHADER_STAGE_FRAGMENT_BIT;
+	case rhi::EShaderStage::Compute:		return VK_SHADER_STAGE_COMPUTE_BIT;
+	case rhi::EShaderStage::RTGeneration:	return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+	case rhi::EShaderStage::RTAnyHit:		return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+	case  rhi::EShaderStage::RTClosestHit:	return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+	case  rhi::EShaderStage::RTMiss:		return VK_SHADER_STAGE_MISS_BIT_KHR;
+	case rhi::EShaderStage::RTIntersection:	return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+
 	default:
 
 		SPT_CHECK_NO_ENTRY();
@@ -392,6 +405,26 @@ VkShaderStageFlags RHIToVulkan::GetShaderStages(rhi::EShaderStageFlags stages)
 	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Compute))
 	{
 		lib::AddFlag(flags, VK_SHADER_STAGE_COMPUTE_BIT);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::RTGeneration))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::RTAnyHit))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::RTClosestHit))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::RTMiss))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_MISS_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::RTIntersection))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 	}
 
 	return flags;

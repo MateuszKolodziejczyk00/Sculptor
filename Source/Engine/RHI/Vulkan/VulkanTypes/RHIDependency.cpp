@@ -186,6 +186,12 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 		{
 			lib::AddFlag(result, VK_ACCESS_2_HOST_READ_BIT_KHR);
 		}
+
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::RayTracingShader))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_SHADER_READ_BIT);
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
+		}
 	}
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Write))
 	{
@@ -207,6 +213,12 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::ASBuild))
 		{
 			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+		}
+		
+		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::RayTracingShader))
+		{
+			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+			lib::AddFlag(result, VK_ACCESS_2_SHADER_WRITE_BIT);
 		}
 
 		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::Host))

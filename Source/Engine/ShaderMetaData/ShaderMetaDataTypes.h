@@ -42,8 +42,13 @@ enum class EBindingFlags : Flags32
 	VertexShader		= BIT(21),
 	FragmentShader		= BIT(22),
 	ComputeShader		= BIT(23),
+	RTGeneration		= BIT(24),
+	RTAnyHit			= BIT(25),
+	RTClosestHit		= BIT(26),
+	RTMiss				= BIT(27),
+	RTIntersection		= BIT(28),
 
-	AllShaders			= VertexShader | FragmentShader | ComputeShader
+	AllShaders			= VertexShader | FragmentShader | ComputeShader | RTGeneration | RTAnyHit | RTClosestHit | RTMiss | RTIntersection
 };
 
 
@@ -68,6 +73,26 @@ constexpr rhi::EShaderStageFlags BindingFlagsToShaderStageFlags(EBindingFlags bi
 	{
 		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::Compute);
 	}
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::RTGeneration))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::RTGeneration);
+	}
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::RTAnyHit))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::RTAnyHit);
+	}
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::RTClosestHit))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::RTClosestHit);
+	}
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::RTMiss))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::RTMiss);
+	}
+	if (lib::HasAnyFlag(bindingFlags, EBindingFlags::RTIntersection))
+	{
+		lib::AddFlag(shaderStageFlags, rhi::EShaderStageFlags::RTIntersection);
+	}
 
 	return shaderStageFlags;
 }
@@ -76,9 +101,14 @@ constexpr EBindingFlags ShaderStageToBindingFlag(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
-	case rhi::EShaderStage::Vertex:		return EBindingFlags::VertexShader;
-	case rhi::EShaderStage::Fragment:	return EBindingFlags::FragmentShader;
-	case rhi::EShaderStage::Compute:	return EBindingFlags::ComputeShader;
+	case rhi::EShaderStage::Vertex:			return EBindingFlags::VertexShader;
+	case rhi::EShaderStage::Fragment:		return EBindingFlags::FragmentShader;
+	case rhi::EShaderStage::Compute:		return EBindingFlags::ComputeShader;
+	case rhi::EShaderStage::RTGeneration:	return EBindingFlags::RTGeneration;
+	case rhi::EShaderStage::RTAnyHit:		return EBindingFlags::RTAnyHit;
+	case rhi::EShaderStage::RTClosestHit:	return EBindingFlags::RTClosestHit;
+	case rhi::EShaderStage::RTMiss:			return EBindingFlags::RTMiss;
+	case rhi::EShaderStage::RTIntersection:	return EBindingFlags::RTIntersection;
 	}
 
 	return EBindingFlags::None;
@@ -99,6 +129,26 @@ constexpr EBindingFlags ShaderStageFlagsToBindingFlags(rhi::EShaderStageFlags fl
 	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::Compute))
 	{
 		lib::AddFlag(bindingFlags, EBindingFlags::ComputeShader);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::RTGeneration))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::RTGeneration);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::RTAnyHit))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::RTAnyHit);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::RTClosestHit))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::RTClosestHit);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::RTMiss))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::RTMiss);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EShaderStageFlags::RTIntersection))
+	{
+		lib::AddFlag(bindingFlags, EBindingFlags::RTIntersection);
 	}
 
 	return bindingFlags;
