@@ -20,6 +20,7 @@ class RHIBuffer;
 class RHIAccelerationStructure;
 class RHIBottomLevelAS;
 class RHITopLevelAS;
+class RHIShaderBindingTable;
 
 
 class RHI_API RHICommandBuffer
@@ -69,6 +70,14 @@ public:
 
 	void	BuildBLAS(const RHIBottomLevelAS& blas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
 	void	BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset, const RHIBuffer& instancesBuildDataBuffer);
+	
+	// Ray Tracing ==========================================
+
+	void	BindRayTracingPipeline(const RHIPipeline& pipeline);
+
+	void 	BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
+
+	void 	TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount);
 
 	// Transfer =============================================
 

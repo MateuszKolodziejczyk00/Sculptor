@@ -268,4 +268,14 @@ struct hash<spt::rhi::GraphicsPipelineDefinition>
 	}
 };
 
+
+template<>
+struct hash<spt::rhi::RayTracingPipelineDefinition>
+{
+	constexpr size_t operator()(const spt::rhi::RayTracingPipelineDefinition& pipelineDef) const
+	{
+		return spt::lib::GetHash(pipelineDef.maxRayRecursionDepth);
+	}
+};
+
 } // std

@@ -13,6 +13,7 @@ namespace spt::rdr
 
 class GraphicsPipeline;
 class ComputePipeline;
+class RayTracingPipeline;
 class Pipeline;
 class DescriptorSetState;
 class CommandQueue;
@@ -40,6 +41,14 @@ public:
 	const lib::SharedPtr<ComputePipeline>&	GetBoundComputePipeline() const;
 
 	void									EnqueueFlushDirtyDSForComputePipeline(CommandQueue& cmdQueue);
+
+	// Ray Tracing Pipeline =============================================
+	
+	void										BindRayTracingPipeline(const lib::SharedRef<RayTracingPipeline>& pipeline);
+	void										UnbindRayTracingPipeline();
+	const lib::SharedPtr<RayTracingPipeline>&	GetBoundRayTracingPipeline() const;
+
+	void										EnqueueFlushDirtyDSForRayTracingPipeline(CommandQueue& cmdQueue);
 	
 	// Descriptor Set States ============================================
 	
@@ -90,13 +99,15 @@ private:
 
 	const BoundDescriptorSetState* GetBoundDescriptorSetState(SizeType dsTypeHash) const;
 
-	lib::SharedPtr<GraphicsPipeline> m_boundGfxPipeline;
-	lib::SharedPtr<ComputePipeline> m_boundComputePipeline;
+	lib::SharedPtr<GraphicsPipeline>	m_boundGfxPipeline;
+	lib::SharedPtr<ComputePipeline>		m_boundComputePipeline;
+	lib::SharedPtr<RayTracingPipeline>	m_boundRayTracingPipeline;
 
 	lib::DynamicArray<BoundDescriptorSetState> m_boundDescriptorSetStates;
 
 	lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
 	lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
+	lib::DynamicArray<Bool> m_dirtyRayTracingDescriptorSets;
 
 	// Dynamic descriptor sets that were bound to the pipeline. Later, used to batch and initialize all of them at once
 	lib::DynamicArray<DynamicDescriptorSetInfo>		m_dynamicDescriptorSetInfos;

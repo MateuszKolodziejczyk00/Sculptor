@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
+#include "Types/Pipeline/RayTracingPipeline.h"
 #include "PipelineState.h"
 
 
@@ -24,9 +25,11 @@ public:
 
 	SPT_NODISCARD PipelineStateID GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
 	SPT_NODISCARD PipelineStateID GetOrCreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	SPT_NODISCARD PipelineStateID GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const rhi::RayTracingPipelineDefinition pipelineDef, const ShaderID& shader);
 	
-	SPT_NODISCARD lib::SharedRef<GraphicsPipeline> GetGraphicsPipeline(PipelineStateID id) const;
-	SPT_NODISCARD lib::SharedRef<ComputePipeline> GetComputePipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedRef<GraphicsPipeline>		GetGraphicsPipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedRef<ComputePipeline>		GetComputePipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedRef<RayTracingPipeline>	GetRayTracingPipeline(PipelineStateID id) const;
 
 	void FlushCreatedPipelines();
 
@@ -44,6 +47,7 @@ private:
 
 	PipelineStateID GetStateID(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader) const;
 	PipelineStateID GetStateID(const ShaderID& shader) const;
+	PipelineStateID GetStateID(const rhi::RayTracingPipelineDefinition& pipelineDef, const ShaderID& shader) const;
 
 	template<typename TPipelineType>
 	SPT_NODISCARD lib::SharedRef<TPipelineType> GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const;
@@ -60,8 +64,9 @@ private:
 	 * They can be modified only during FlushCreatedPipelines, which shouldn't be called async with rendering threads
 	 * Because of that it provides fast, threadsafe access without locks during recording command buffers
 	 */
-	PipelinesMap<GraphicsPipeline>	m_cachedGraphicsPipelines;
-	PipelinesMap<ComputePipeline>	m_cachedComputePipelines;
+	PipelinesMap<GraphicsPipeline>		m_cachedGraphicsPipelines;
+	PipelinesMap<ComputePipeline>		m_cachedComputePipelines;
+	PipelinesMap<RayTracingPipeline>	m_cachedRayTracingPipelines;
 
 	/**
 	 * These are pipelines created during current frame
@@ -74,10 +79,14 @@ private:
 	PipelinesMap<ComputePipeline>	m_computePipelinesPendingFlush;
 	mutable lib::Lock				m_computePipelinesPendingFlushLock;
 
+	PipelinesMap<RayTracingPipeline>	m_rayTracingPipelinesPendingFlush;
+	mutable lib::Lock					m_rayTracingPipelinesPendingFlushLock;
+
 #if WITH_SHADERS_HOT_RELOAD
-	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>		m_shaderToPipelineStates;
-	lib::HashMap<PipelineStateID, rhi::GraphicsPipelineDefinition>	m_graphicsPipelineDefinitions;
-	mutable lib::ReadWriteLock										m_hotReloadLock;
+	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>			m_shaderToPipelineStates;
+	lib::HashMap<PipelineStateID, rhi::GraphicsPipelineDefinition>		m_graphicsPipelineDefinitions;
+	lib::HashMap<PipelineStateID, rhi::RayTracingPipelineDefinition>	m_rayTracingPipelineDefinitions;
+	mutable lib::ReadWriteLock											m_hotReloadLock;
 	
 	lib::DynamicArray<ShaderID>	m_invalidatedShaders;
 	mutable lib::Lock			m_invalidatedShadersLock;

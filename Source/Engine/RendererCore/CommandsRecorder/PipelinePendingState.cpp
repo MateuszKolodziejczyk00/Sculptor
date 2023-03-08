@@ -3,6 +3,7 @@
 #include "DescriptorSets/DescriptorSetsManager.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
+#include "Types/Pipeline/RayTracingPipeline.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/CommandBuffer.h"
 #include "Types/RenderContext.h"
@@ -124,6 +125,61 @@ void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& c
 							 {
 								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsHash);
 								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
+							 }
+						 });
+	}
+}
+
+void PipelinePendingState::BindRayTracingPipeline(const lib::SharedRef<RayTracingPipeline>& pipeline)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (m_boundRayTracingPipeline == pipeline.ToSharedPtr())
+	{
+		return;
+	}
+
+	const lib::SharedPtr<RayTracingPipeline> prevPipeline = std::move(m_boundRayTracingPipeline);
+		
+	m_boundRayTracingPipeline = pipeline.ToSharedPtr();
+
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
+}
+
+void PipelinePendingState::UnbindRayTracingPipeline()
+{
+	m_boundRayTracingPipeline.reset();
+	m_dirtyRayTracingDescriptorSets.clear();
+}
+
+const lib::SharedPtr<rdr::RayTracingPipeline>& PipelinePendingState::GetBoundRayTracingPipeline() const
+{
+	return m_boundRayTracingPipeline;
+}
+
+void PipelinePendingState::EnqueueFlushDirtyDSForRayTracingPipeline(CommandQueue& cmdQueue)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!m_boundRayTracingPipeline);
+
+	DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
+
+	if (!descriptorSetsToBind.persistentDSBinds.empty() || !descriptorSetsToBind.dynamicDSBinds.empty())
+	{
+		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundRayTracingPipeline]
+						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 for (const PersistentDSBindCommand& bindCommand : pendingDescriptors.persistentDSBinds)
+							 {
+								 cmdBuffer->GetRHI().BindRayTracingDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
+							 }
+							
+							 RenderContext& renderContext = executionContext.GetRenderContext();
+							 for (const DynamicDSBindCommand& bindCommand : pendingDescriptors.dynamicDSBinds)
+							 {
+								 const rhi::RHIDescriptorSet ds = renderContext.GetDescriptorSet(bindCommand.dsHash);
+								 cmdBuffer->GetRHI().BindRayTracingDescriptorSet(pipeline->GetRHI(), ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 							 }
 						 });
 	}

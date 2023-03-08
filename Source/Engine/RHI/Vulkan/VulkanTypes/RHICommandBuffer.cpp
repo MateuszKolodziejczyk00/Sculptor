@@ -9,6 +9,7 @@
 #include "RHIDescriptorSet.h"
 #include "RHIRenderContext.h"
 #include "RHIAccelerationStructure.h"
+#include "RHIShaderBindingTable.h"
 
 namespace spt::vulkan
 {
@@ -324,6 +325,33 @@ void RHICommandBuffer::BuildTLAS(const RHITopLevelAS& tlas, const RHIBuffer& scr
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo = tlas.CreateBuildGeometryInfo(instancesBuildDataBuffer, OUT geometry);
 
 	BuildASImpl(tlas, buildInfo, scratchBuffer, scratchBufferOffset);
+}
+
+void RHICommandBuffer::BindRayTracingPipeline(const RHIPipeline& pipeline)
+{
+	BindPipelineImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline);
+}
+
+void RHICommandBuffer::BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
+{
+	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
+}
+
+void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(traceCount.x() > 0 && traceCount.y() > 0 && traceCount.z() > 0);
+
+	const VkStridedDeviceAddressRegionKHR callableRegion = {};
+
+	vkCmdTraceRaysKHR(m_cmdBufferHandle,
+					  &sbt.GetRayGenRegion(),
+					  &sbt.GetMissRegion(),
+					  &sbt.GetClosestHitRegion(),
+					  &callableRegion,
+					  traceCount.x(), traceCount.y(), traceCount.z());
 }
 
 void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)

@@ -277,6 +277,23 @@ void CommandRecorder::BindComputePipeline(const ShaderID& shader)
 	BindComputePipeline(pipelineID);
 }
 
+void CommandRecorder::BindRayTracingPipeline(PipelineStateID pipelineID)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::SharedPtr<RayTracingPipeline> pipeline = Renderer::GetPipelinesLibrary().GetRayTracingPipeline(pipelineID);
+	SPT_CHECK(!!pipeline);
+
+	m_pipelineState.BindRayTracingPipeline(lib::Ref(pipeline));
+
+	EnqueueRenderCommand([ pipeline ](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("BindRayTracingPipeline Command");
+
+							 cmdBuffer->GetRHI().BindRayTracingPipeline(pipeline->GetRHI());
+						 });
+}
+
 void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 {
 	SPT_PROFILER_FUNCTION();
@@ -312,6 +329,23 @@ void CommandRecorder::DispatchIndirect(const lib::SharedRef<Buffer>& indirectArg
 void CommandRecorder::DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset)
 {
 	DispatchIndirect(indirectArgsBufferView.GetBuffer(), indirectArgsBufferView.GetOffset() + indirectArgsOffset);
+}
+
+void CommandRecorder::TraceRays(const math::Vector3u& traceCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::SharedPtr<RayTracingPipeline>& boundPipeline = m_pipelineState.GetBoundRayTracingPipeline();
+	SPT_CHECK(!!boundPipeline);
+
+	m_pipelineState.EnqueueFlushDirtyDSForRayTracingPipeline(m_commandQueue);
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("TraceRays Command");
+
+							 cmdBuffer->GetRHI().TraceRays(boundPipeline->GetShaderBindingTable(), traceCount);
+						 });
 }
 
 void CommandRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)

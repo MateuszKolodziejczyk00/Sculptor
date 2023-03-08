@@ -88,10 +88,14 @@ public:
 	void									BindComputePipeline(PipelineStateID pipelineID);
 	void									BindComputePipeline(const ShaderID& shader);
 
+	void									BindRayTracingPipeline(PipelineStateID pipelineID);
+
 	void									Dispatch(const math::Vector3u& groupCount);
 
 	void									DispatchIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset);
 	void									DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset);
+
+	void									TraceRays(const math::Vector3u& traceCount);
 
 	void									BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
