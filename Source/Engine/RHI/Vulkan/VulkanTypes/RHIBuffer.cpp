@@ -64,6 +64,10 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	{
 		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
 	}
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ShaderBindingTable))
+	{
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR);
+	}
 
 	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
 

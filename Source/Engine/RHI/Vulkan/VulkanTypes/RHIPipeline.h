@@ -23,6 +23,9 @@ public:
 	/** Initialize compute pipeline */
 	void InitializeRHI(const rhi::RHIShaderModule& computeShaderModule, const rhi::PipelineLayoutDefinition& layoutDefinition);
 
+	/** Initialize ray tracing pipeline */
+	void InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const rhi::PipelineLayoutDefinition& layoutDefinition);
+
 	void ReleaseRHI();
 
 	SPT_NODISCARD Bool IsValid() const;
@@ -47,7 +50,8 @@ private:
 
 	void InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout);
 	void InitializeComputePipeline(const rhi::RHIShaderModule& computeShaderModule, const PipelineLayout& layout);
-
+	void InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const PipelineLayout& layout);
+	
 	VkPipeline						m_handle;
 
 	lib::SharedPtr<PipelineLayout>	m_layout;

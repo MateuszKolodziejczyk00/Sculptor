@@ -60,9 +60,12 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);
 			
-			const SMShadowMapBatch batch = CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef);
-			BuildBatchDrawCommands(graphBuilder, batch);
-			m_pointLightBatches.emplace(pointLight, batch);
+			if (!batchDef.batchElements.empty())
+			{
+				const SMShadowMapBatch batch = CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef);
+				BuildBatchDrawCommands(graphBuilder, batch);
+				m_pointLightBatches.emplace(pointLight, batch);
+			}
 		}
 	}
 }
@@ -76,7 +79,13 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
 	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
 
-	const SMShadowMapBatch& batch = m_pointLightBatches[viewShadowMapData.owningLight];
+	const auto foundBatch = m_pointLightBatches.find(viewShadowMapData.owningLight);
+	if (foundBatch == std::cend(m_pointLightBatches))
+	{
+		return;
+	}
+
+	const SMShadowMapBatch& batch = foundBatch->second;
 
 	SMIndirectShadowMapCommandsParameters drawParams;
 	drawParams.batchDrawCommandsBuffer = batch.perFaceData[viewShadowMapData.faceIdx].drawCommandsBuffer;

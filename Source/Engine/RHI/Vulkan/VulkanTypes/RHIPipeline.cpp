@@ -362,6 +362,107 @@ static VkPipeline BuildComputePipeline(const ComputePipelineBuildDefinition& pip
 
 } // compute
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Ray Tracing ===================================================================================
+ 
+namespace ray_tracing
+{
+
+struct RayTracingPipelineBuildDefinition
+{
+	RayTracingPipelineBuildDefinition(const rhi::RayTracingShadersDefinition& inShadersDef, const rhi::RayTracingPipelineDefinition& inPipelineDefintion, const PipelineLayout& inPipelineLayout)
+		: shadersDef(inShadersDef)
+		, pipelineDefinition(inPipelineDefintion)
+		, layout(inPipelineLayout)
+	{ }
+
+	const rhi::RayTracingShadersDefinition&		shadersDef;
+	const rhi::RayTracingPipelineDefinition&	pipelineDefinition;
+	const PipelineLayout&						layout;
+};
+
+static void AppendShaderStageInfos(INOUT lib::DynamicArray<VkPipelineShaderStageCreateInfo>& stageInfos, const lib::DynamicArray<RHIShaderModule>& shaderModules)
+{
+	for (const RHIShaderModule& module : shaderModules)
+	{
+		stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(module));
+	}
+}
+
+static VkRayTracingShaderGroupCreateInfoKHR CreateGeneralShaderGroup(Uint32 generalShaderIdx)
+{
+	VkRayTracingShaderGroupCreateInfoKHR group{ VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
+	group.type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+	group.generalShader			= generalShaderIdx;
+	group.closestHitShader		= VK_SHADER_UNUSED_KHR;
+	group.anyHitShader			= VK_SHADER_UNUSED_KHR;
+	group.intersectionShader	= VK_SHADER_UNUSED_KHR;
+
+	return group;
+}
+
+static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinition& pipelineBuildDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rhi::RayTracingPipelineDefinition& pipelineDef	= pipelineBuildDef.pipelineDefinition;
+	const rhi::RayTracingShadersDefinition& shadersDef		= pipelineBuildDef.shadersDef;
+
+	SPT_CHECK(shadersDef.rayGenerationModule.IsValid());
+	
+	// We need to add 1 because of the ray generation shader
+	const SizeType shadersNum = shadersDef.closestHitModules.size() + shadersDef.missModules.size() + 1;
+
+	lib::DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages;
+	shaderStages.reserve(shadersNum);
+	shaderStages.emplace_back(helpers::BuildPipelineShaderStageInfo(shadersDef.rayGenerationModule));
+	AppendShaderStageInfos(shaderStages, shadersDef.closestHitModules);
+	AppendShaderStageInfos(shaderStages, shadersDef.missModules);
+
+	Uint32 shaderIdx = 0;
+
+	lib::DynamicArray<VkRayTracingShaderGroupCreateInfoKHR>	shaderGroups;
+	shaderGroups.reserve(shadersNum);
+
+	// Ray generation shader group
+	shaderGroups.emplace_back(CreateGeneralShaderGroup(shaderIdx++));
+
+	// Closest hit shader groups
+	std::generate_n(std::back_inserter(shaderGroups), shadersDef.closestHitModules.size(),
+					[&shaderIdx]
+					{
+						VkRayTracingShaderGroupCreateInfoKHR group{ VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
+						group.type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+						group.generalShader			= VK_SHADER_UNUSED_KHR;
+						group.closestHitShader		= shaderIdx++;
+						group.anyHitShader			= VK_SHADER_UNUSED_KHR;
+						group.intersectionShader	= VK_SHADER_UNUSED_KHR;
+	
+						return group;
+					});
+
+	// Miss shader groups
+	std::generate_n(std::back_inserter(shaderGroups), shadersDef.closestHitModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
+
+	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
+	pipelineInfo.stageCount						= static_cast<Uint32>(shaderStages.size());
+	pipelineInfo.pStages						= shaderStages.data();
+	pipelineInfo.groupCount						= static_cast<Uint32>(shaderGroups.size());
+	pipelineInfo.pGroups						= shaderGroups.data();
+	pipelineInfo.maxPipelineRayRecursionDepth	= pipelineDef.maxRayRecursionDepth;
+	pipelineInfo.layout							= pipelineBuildDef.layout.GetHandle();
+
+	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
+
+	VkPipeline pipelineHandle = VK_NULL_HANDLE;
+
+	SPT_VK_CHECK(vkCreateRayTracingPipelinesKHR(VulkanRHI::GetDeviceHandle(), VK_NULL_HANDLE, pipelineCache, 1, &pipelineInfo, VulkanRHI::GetAllocationCallbacks(), &pipelineHandle));
+	
+	return pipelineHandle;
+}
+
+} // ray_tracing
+
 } // helpers
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -396,6 +497,19 @@ void RHIPipeline::InitializeRHI(const rhi::RHIShaderModule& computeShaderModule,
 	SPT_CHECK(!!m_layout);
 
 	InitializeComputePipeline(computeShaderModule, *m_layout);
+}
+
+void RHIPipeline::InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const rhi::PipelineLayoutDefinition& layoutDefinition)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsValid());
+
+	InitializePipelineLayout(layoutDefinition);
+
+	SPT_CHECK(!!m_layout);
+
+	InitializeRayTracingPipeline(shadersDef, pipelineDef, *m_layout);
 }
 
 void RHIPipeline::ReleaseRHI()
@@ -482,6 +596,16 @@ void RHIPipeline::InitializeComputePipeline(const rhi::RHIShaderModule& computeS
 	m_handle = helpers::compute::BuildComputePipeline(pipelineBuildDefinition);
 
 	m_pipelineType = rhi::EPipelineType::Compute;
+}
+
+void RHIPipeline::InitializeRayTracingPipeline(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const PipelineLayout& layout)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const helpers::ray_tracing::RayTracingPipelineBuildDefinition pipelineBuildDefinition(shadersDef, pipelineDef, layout);
+	m_handle = helpers::ray_tracing::BuildRayTracingPipeline(pipelineBuildDefinition);
+
+	m_pipelineType = rhi::EPipelineType::RayTracing;
 }
 
 } // spt::vulkan

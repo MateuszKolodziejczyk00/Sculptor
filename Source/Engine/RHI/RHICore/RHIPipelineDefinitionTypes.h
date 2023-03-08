@@ -160,6 +160,27 @@ struct GraphicsPipelineDefinition
 	PipelineRenderTargetsDefinition		renderTargetsDefinition;
 };
 
+
+struct RayTracingShadersDefinition
+{
+	RayTracingShadersDefinition()
+	{ }
+
+	RHIShaderModule rayGenerationModule;
+	lib::DynamicArray<RHIShaderModule> closestHitModules;
+	lib::DynamicArray<RHIShaderModule> missModules;
+};
+
+
+struct RayTracingPipelineDefinition
+{
+	RayTracingPipelineDefinition()
+		: maxRayRecursionDepth(1)
+	{ }
+
+	Uint32 maxRayRecursionDepth;
+};
+
 } //spt::rhi
 
 

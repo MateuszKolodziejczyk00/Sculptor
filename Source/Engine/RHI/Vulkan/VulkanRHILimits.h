@@ -21,6 +21,12 @@ public:
 
 	static Uint64 GetOptimalBufferCopyOffsetAlignment();
 
+	// Vulkan only =========================================
+
+	static const VkPhysicalDeviceProperties2& GetProperties();
+
+	static const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& GetRayTracingPipelineProperties();
+
 private:
 
 	VulkanRHILimits() = default;

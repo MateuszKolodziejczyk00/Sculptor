@@ -16,10 +16,15 @@ lib::String getShaderStageName(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
-	case rhi::EShaderStage::None:		return "None";
-	case rhi::EShaderStage::Vertex:		return "Vertex";
-	case rhi::EShaderStage::Fragment:	return "Fragment";
-	case rhi::EShaderStage::Compute:	return "Compute";
+	case rhi::EShaderStage::None:			return "None";
+	case rhi::EShaderStage::Vertex:			return "Vertex";
+	case rhi::EShaderStage::Fragment:		return "Fragment";
+	case rhi::EShaderStage::Compute:		return "Compute";
+	case rhi::EShaderStage::RTGeneration:	return "RTGeneration";
+	case rhi::EShaderStage::RTAnyHit:		return "RTAnyHit";
+	case rhi::EShaderStage::RTClosestHit:	return "RTClosestHit";
+	case rhi::EShaderStage::RTMiss:			return "RTMiss";
+	case rhi::EShaderStage::RTIntersection:	return "RTIntersection";
 	}
 
 	SPT_CHECK_NO_ENTRY(); // Invalid shader type

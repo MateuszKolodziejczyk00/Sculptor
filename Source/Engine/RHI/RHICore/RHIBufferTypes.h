@@ -21,6 +21,7 @@ enum class EBufferUsage : Flags32
 	DeviceAddress					= BIT(9),
 	AccelerationStructureStorage	= BIT(10),
 	ASBuildInputReadOnly			= BIT(11),
+	ShaderBindingTable				= BIT(12),
 
 	LAST
 };

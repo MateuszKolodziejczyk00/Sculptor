@@ -27,6 +27,7 @@ class RHIDescriptorSet;
 class RHISampler;
 class RHITopLevelAS;
 class RHIBottomLevelAS;
+class RHIShaderBindingTable;
 
 }
 
