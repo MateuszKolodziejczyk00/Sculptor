@@ -72,8 +72,9 @@ void CullMeshletsCS(CS_INPUT input)
             coneAxis = normalize(mul(entityRotationAndScale, coneAxis));
 
             isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
-            isMeshletVisible = isMeshletVisible && IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
         }
+
+        isMeshletVisible = isMeshletVisible && IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
         
         if(isMeshletVisible)
         {
