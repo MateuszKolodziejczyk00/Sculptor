@@ -113,6 +113,9 @@ public:
 	template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
+	template<typename TDescriptorSetStatesRange>
+	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const math::Vector3u& traceCount, TDescriptorSetStatesRange&& dsStatesRange);
+
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
@@ -303,6 +306,30 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
 
 	ResolveNodeDependecies(*lastRenderPass, subpassDependencies);
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const math::Vector3u& traceCount, TDescriptorSetStatesRange&& dsStatesRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const auto executeLambda = [ rayTracingPipelineID, traceCount, dsStatesRange ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		recorder.BindRayTracingPipeline(rayTracingPipelineID);
+		recorder.TraceRays(traceCount);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(traceName, ERenderGraphNodeType::TraceRays, std::move(executeLambda));
+	AddDescriptorSetStatesToNode(&node, dsStatesRange);
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
+	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+
+	AddNodeInternal(node, dependencies);
 }
 
 template<typename TNodeType, typename... TArgs>

@@ -11,6 +11,7 @@ enum class ERenderGraphNodeType
 	None,
 	RenderPass,
 	Dispatch,
+	TraceRays,
 	Transfer
 };
 
