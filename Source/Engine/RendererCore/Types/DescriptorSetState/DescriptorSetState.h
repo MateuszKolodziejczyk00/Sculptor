@@ -122,7 +122,6 @@ public:
 
 	Bool IsDirty() const;
 	void SetDirty();
-	void ClearDirtyFlag();
 
 	EDescriptorSetStateFlags GetFlags() const;
 
@@ -147,7 +146,7 @@ private:
 
 	const DSStateID	m_id;
 
-	Bool m_isDirty;
+	Uint64 m_lastFrameDirty;
 
 	EDescriptorSetStateFlags m_flags;
 

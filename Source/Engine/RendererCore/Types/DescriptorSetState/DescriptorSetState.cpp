@@ -2,6 +2,7 @@
 #include "ShaderMetaData.h"
 #include "Types/DescriptorSetWriter.h"
 #include "Types/Buffer.h"
+#include "Renderer.h"
 
 namespace spt::rdr
 {
@@ -152,7 +153,7 @@ void DescriptorSetBinding::MarkAsDirty()
 
 DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags)
 	: m_id(utils::GenerateStateID())
-	, m_isDirty(false)
+	, m_lastFrameDirty(0)
 	, m_flags(flags)
 	, m_descriptorSetHash(idxNone<SizeType>)
 	, m_name(name)
@@ -165,17 +166,13 @@ DSStateID DescriptorSetState::GetID() const
 
 Bool DescriptorSetState::IsDirty() const
 {
-	return m_isDirty;
+	return m_lastFrameDirty >= rdr::Renderer::GetCurrentFrameIdx();
 }
 
 void DescriptorSetState::SetDirty()
 {
-	m_isDirty = true;
-}
-
-void DescriptorSetState::ClearDirtyFlag()
-{
-	m_isDirty = false;
+	// +1 because we want to mark it as dirty for the next frame (because we are in the middle of the current frame and persistent ds updates will be at the beginning of next frame)
+	m_lastFrameDirty = rdr::Renderer::GetCurrentFrameIdx() + 1;
 }
 
 EDescriptorSetStateFlags DescriptorSetState::GetFlags() const

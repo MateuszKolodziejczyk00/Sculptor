@@ -4,6 +4,7 @@
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/Pipeline/Pipeline.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "Renderer.h"
 
 namespace spt::rdr
 {
@@ -71,18 +72,16 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 		createdDS.SetName(state->GetName());
 
 		PersistentDSData newDSData;
-		newDSData.id = state->GetID();
-		newDSData.metaData = pipeline->GetMetaData();
-		newDSData.state = state.ToSharedPtr();
+		newDSData.hash				= dsHash;
+		newDSData.metaData			= pipeline->GetMetaData();
+		newDSData.state				= state.ToSharedPtr();
+		newDSData.lastUpdateFrame	= rdr::Renderer::GetCurrentFrameIdx() + 1;
 		m_dsData.emplace_back(newDSData);
 
 		DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
 		DescriptorSetUpdateContext updateContext(createdDS, writer, pipeline->GetMetaData());
 		state->UpdateDescriptors(updateContext);
 		writer.Flush();
-
-		// clear flag if that's first time when state is used
-		state->ClearDirtyFlag();
 	}
 
 	return createdDS;
@@ -111,11 +110,11 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 	std::for_each(removedBegin, std::end(m_dsData),
 				  [this](const PersistentDSData& dsData)
 				  {
-					  const rhi::RHIDescriptorSet dsSet = m_cachedDescriptorSets.at(dsData.id);
+					  const rhi::RHIDescriptorSet dsSet = m_cachedDescriptorSets.at(dsData.hash);
 
 					  SPT_CHECK_NO_ENTRY(); // destroy set (need to add option for renderer (currently only in rhi)
 
-					  m_cachedDescriptorSets.erase(dsData.id);
+					  m_cachedDescriptorSets.erase(dsData.hash);
 				  });
 
 	m_dsData.erase(removedBegin, std::cend(m_dsData));
@@ -125,32 +124,30 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 {
 	SPT_PROFILER_FUNCTION();
 
+	const Uint64 currentFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+
 	lib::DynamicArray<lib::SharedPtr<DescriptorSetState>> dirtyStates;
 	dirtyStates.reserve(64);
 
 	DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
 
-	for (const PersistentDSData& ds : m_dsData)
+	for (PersistentDSData& ds : m_dsData)
 	{
 		lib::SharedPtr<DescriptorSetState> state = ds.state.lock();
 		SPT_CHECK(!!state);
 
-		if (state->IsDirty())
+		if (state->IsDirty() && ds.lastUpdateFrame < currentFrameIdx)
 		{
-			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.id), writer, lib::Ref(ds.metaData));
+			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.hash), writer, lib::Ref(ds.metaData));
 			state->UpdateDescriptors(updateContext);
 
 			dirtyStates.emplace_back(std::move(state));
+
+			ds.lastUpdateFrame = currentFrameIdx;
 		}
 	}
 
 	writer.Flush();
-
-	for_each(std::begin(dirtyStates), std::end(dirtyStates),
-			 [](const lib::SharedPtr<DescriptorSetState>& state)
-			 {
-				 state->ClearDirtyFlag();
-			 });
 }
 
 PersistentDescriptorSetsManager::PersistentDSHash PersistentDescriptorSetsManager::HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const

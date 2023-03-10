@@ -63,13 +63,14 @@ private:
 	struct PersistentDSData
 	{
 		PersistentDSData()
-			: id(idxNone<DSStateID>)
+			: hash(idxNone<PersistentDSHash>)
+			, lastUpdateFrame(0)
 		{ }
 
-		// cached id from state (we need to cache it because otherwise after state is removed we wouldn't know which descriptor should be deleted)
-		DSStateID							id;
+		PersistentDSHash					hash;
 		lib::SharedPtr<smd::ShaderMetaData>	metaData;
 		lib::WeakPtr<DescriptorSetState>	state;
+		Uint64								lastUpdateFrame;
 	};
 
 	lib::DynamicArray<PersistentDSData> m_dsData;
