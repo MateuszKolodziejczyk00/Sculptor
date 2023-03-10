@@ -52,15 +52,15 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),				u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),		u_cullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMViewRenderingParameters>),	u_viewRenderingParams)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>),				u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewCullingData>),			u_cullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMViewRenderingParameters>),	u_viewRenderingParams)
 DS_END();
 
 
 DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_batchElements)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMGPUBatchData>),			u_batchData)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMGPUBatchData>),	u_batchData)
 DS_END();
 
 

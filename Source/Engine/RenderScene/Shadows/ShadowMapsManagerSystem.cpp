@@ -346,7 +346,7 @@ void ShadowMapsManagerSystem::AssignShadowMaps()
 
 	for (const auto& [lightEntity, pointLightData] : pointLightsView.each())
 	{
-		lightPriorities.emplace_back(std::make_pair(lightEntity, ComputeLightShadowMapPriority(view, lightEntity)));
+		lightPriorities.emplace_back(std::make_pair(lightEntity, ComputeLocalLightShadowMapPriority(view, lightEntity)));
 	}
 		
 	const auto compareOp = [](const auto& lhs, const auto& rhs) { return lhs.second > rhs.second; };
@@ -614,7 +614,7 @@ void ShadowMapsManagerSystem::UpdateShadowMapsDSViewsData()
 	m_shadowMapViewsBuffers.erase(std::cbegin(m_shadowMapViewsBuffers));
 }
 
-Real32 ShadowMapsManagerSystem::ComputeLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
+Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
 	{

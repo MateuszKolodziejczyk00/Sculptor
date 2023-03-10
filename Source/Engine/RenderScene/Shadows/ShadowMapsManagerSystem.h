@@ -140,7 +140,7 @@ private:
 	void CreateShadowMapsDescriptorSet();
 	void UpdateShadowMapsDSViewsData();
 
-	Real32 ComputeLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
+	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
 
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;

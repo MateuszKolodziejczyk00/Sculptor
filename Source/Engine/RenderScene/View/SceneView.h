@@ -44,10 +44,12 @@ public:
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
 
-	const SceneViewData& GetViewRenderingData() const;
-	const SceneViewCullingData& GetCullingData() const;
+	const SceneViewData&		GetViewRenderingData() const;
+	const SceneViewCullingData&	GetCullingData() const;
 
-	void UpdateViewCachedData();
+	const SceneViewData&		GetPrevFrameRenderingData() const;
+
+	void OnBeginRendering();
 
 	Bool IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const;
 
@@ -71,6 +73,8 @@ private:
 
 	SceneViewData			m_viewRenderingData;
 	SceneViewCullingData	m_viewCullingData;
+
+	SceneViewData			m_prevFrameRenderingData;
 };
 
 } // spt::rsc

@@ -125,9 +125,16 @@ const SceneViewCullingData& SceneView::GetCullingData() const
 	return m_viewCullingData;
 }
 
-void SceneView::UpdateViewCachedData()
+const SceneViewData& SceneView::GetPrevFrameRenderingData() const
+{
+	return m_prevFrameRenderingData;
+}
+
+void SceneView::OnBeginRendering()
 {
 	SPT_PROFILER_FUNCTION();
+
+	m_prevFrameRenderingData = m_viewRenderingData;
 
 	UpdateViewRenderingData();
 	UpdateCullingData();

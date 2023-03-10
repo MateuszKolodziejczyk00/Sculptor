@@ -74,7 +74,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	// Update all relevant views data
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		viewSpec->GetRenderView().UpdateViewCachedData();
+		viewSpec->GetRenderView().OnBeginRendering();
 	}
 
 	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& renderSystems = scene.GetRenderSystems();
