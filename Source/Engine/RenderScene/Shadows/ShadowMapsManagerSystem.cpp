@@ -86,6 +86,14 @@ ShadowMapsManagerSystem::ShadowMapsManagerSystem(RenderScene& owningScene, const
 	CreateShadowMaps();
 
 	CreateShadowMapsDescriptorSet();
+
+	// Currently directional lights shadows require ray tracing
+	if (rdr::Renderer::IsRayTracingEnabled())
+	{
+		RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
+		registry.on_construct<DirectionalLightData>().connect<&RenderSceneRegistry::emplace<DirectionalLightShadowsData>>();
+		registry.on_destroy<DirectionalLightData>().connect<&RenderSceneRegistry::remove<DirectionalLightShadowsData>>();
+	}
 }
 
 void ShadowMapsManagerSystem::Update()
@@ -115,6 +123,8 @@ void ShadowMapsManagerSystem::Update()
 	{
 		UpdateShadowMapsDSViewsData();
 	}
+
+	UpdateDirectionalLightShadowMaps();
 }
 
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
@@ -665,6 +675,52 @@ Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneVi
 	priority += std::clamp(pointLightData.intensity / maxIntensity, 0.f, 1.f) * intensityMultiplier;
 
 	return priority;
+}
+
+void ShadowMapsManagerSystem::UpdateDirectionalLightShadowMaps() const
+{
+	SPT_PROFILER_FUNCTION();
+	
+	const lib::SharedPtr<RenderView> renderView = m_mainView.lock();
+	if (!renderView)
+	{
+		return;
+	}
+
+	const math::Vector2u viewRenderingRes = renderView->GetRenderingResolution();
+
+	auto& registry = GetOwningScene().GetRegistry();
+
+	const auto directionalLights = registry.view<DirectionalLightShadowsData>();
+	
+	for (auto entity : directionalLights)
+	{
+		DirectionalLightShadowsData& shadowsData = directionalLights.get<DirectionalLightShadowsData>(entity);
+
+		shadowsData.AdvanceFrame();
+
+		DirectionalLightShadowsData::ShadowMask& shadowMask = shadowsData.GetCurrentFrameShadowMask();
+
+		lib::SharedPtr<rdr::TextureView>& view = shadowMask.shadowMaskView;
+
+		if (!view || view->GetTexture()->GetResolution2D() != viewRenderingRes)
+		{
+			if (shadowMask.shadowMaskIdx != idxNone<Uint32>)
+			{
+				m_shadowMapsDS->u_shadowMaps.UnbindTexture(shadowMask.shadowMaskIdx);
+			}
+
+			rhi::TextureDefinition shadowMaskDef;
+			shadowMaskDef.resolution	= math::Vector3u(viewRenderingRes.x(), viewRenderingRes.y(), 1);
+			shadowMaskDef.usage			= rhi::ETextureUsage::StorageTexture;
+			shadowMaskDef.format		= rhi::EFragmentFormat::R8_UN_Float;
+			const lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
+	
+			rhi::TextureViewDefinition viewDefinition;
+			viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+			shadowMask.shadowMaskView = shadowMaskTexture->CreateView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), viewDefinition);
+		}
+	}
 }
 
 } // spt::rsc

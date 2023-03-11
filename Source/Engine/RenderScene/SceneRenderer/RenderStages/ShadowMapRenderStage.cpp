@@ -2,6 +2,10 @@
 #include "View/ViewRenderingSpec.h"
 #include "Shadows/ShadowsRenderingTypes.h"
 #include "RenderGraphBuilder.h"
+#include "Renderer.h"
+#include "RenderScene.h"
+#include "Lights/LightTypes.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 
 namespace spt::rsc
 {

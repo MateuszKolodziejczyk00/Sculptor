@@ -63,6 +63,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView		= depthPrepassData.depth;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
+	depthRTDef.storeOperation	= rhi::ERTStoreOperation::DontCare;
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 

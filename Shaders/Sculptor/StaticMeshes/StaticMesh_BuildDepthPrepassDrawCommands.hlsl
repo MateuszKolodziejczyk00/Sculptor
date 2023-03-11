@@ -21,7 +21,7 @@ void BuildDrawCommandsCS(CS_INPUT input)
 {
     const uint batchElementIdx = input.globalID.x;
 
-    if(batchElementIdx < u_validBatchElementsNum[0])
+    if(batchElementIdx < u_batchData.elementsNum)
     {
         const uint entityIdx = u_batchElements[batchElementIdx].entityIdx;
         const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];

@@ -89,18 +89,4 @@ struct SMRenderingViewData
 	lib::SharedPtr<SMProcessBatchForViewDS> viewDS;
 };
 
-
-struct StaticMeshesVisibleLastFrame
-{
-	struct BatchElementsInfo
-	{
-		lib::SharedPtr<rdr::Buffer> visibleBatchElementsBuffer;
-		lib::SharedPtr<rdr::Buffer> batchElementsDispatchParamsBuffer;
-
-		Uint32 batchedSubmeshesNum;
-	};
-
-	lib::DynamicArray<BatchElementsInfo> visibleInstances;
-};
-
 } // spt::rsc

@@ -25,6 +25,8 @@ public:
 
 	virtual void Update() override;
 
+	const lib::SharedPtr<rdr::TopLevelAS>& GetSceneTLAS() const { return m_tlas; }
+
 private:
 
 	void UpdateTLAS();

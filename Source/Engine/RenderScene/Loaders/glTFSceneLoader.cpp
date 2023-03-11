@@ -520,7 +520,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 	if (loaded)
 	{
-		const Bool withRayTracing = rhi::RHI::IsRayTracingEnabled();
+		const Bool withRayTracing = rdr::Renderer::IsRayTracingEnabled();
 
 		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
 		const lib::DynamicArray<RenderingDataEntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);

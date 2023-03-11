@@ -85,9 +85,7 @@ public:
 
 	SPT_NODISCARD static PipelineStateID					CreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
 	SPT_NODISCARD static PipelineStateID					CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	
-	SPT_NODISCARD static lib::SharedRef<GraphicsPipeline>	GetGraphicsPipeline(PipelineStateID id);
-	SPT_NODISCARD static lib::SharedRef<ComputePipeline>	GetComputePipeline(PipelineStateID id);
+	SPT_NODISCARD static PipelineStateID					CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader, const rhi::RayTracingPipelineDefinition& definition);
 	
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS>		CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>			CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);

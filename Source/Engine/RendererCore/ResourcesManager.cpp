@@ -80,9 +80,9 @@ lib::SharedRef<TopLevelAS> ResourcesManager::CreateTLAS(const RendererResourceNa
 	return lib::MakeShared<TopLevelAS>(name, definition);
 }
 
-DescriptorSetWriter ResourcesManager::CreateDescriptorSetWriter()
+PipelineStateID ResourcesManager::CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader)
 {
-	return DescriptorSetWriter();
+	return Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(nameInNotCached, shader);
 }
 
 PipelineStateID ResourcesManager::CreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
@@ -90,24 +90,19 @@ PipelineStateID ResourcesManager::CreateGfxPipeline(const RendererResourceName& 
 	return Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(nameInNotCached, pipelineDef, shader);
 }
 
-PipelineStateID ResourcesManager::CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader)
+PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader, const rhi::RayTracingPipelineDefinition& definition)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(nameInNotCached, shader);
-}
-
-lib::SharedRef<GraphicsPipeline> ResourcesManager::GetGraphicsPipeline(PipelineStateID id)
-{
-	return Renderer::GetPipelinesLibrary().GetGraphicsPipeline(id);
-}
-
-lib::SharedRef<ComputePipeline> ResourcesManager::GetComputePipeline(PipelineStateID id)
-{
-	return Renderer::GetPipelinesLibrary().GetComputePipeline(id);
+	return Renderer::GetPipelinesLibrary().GetOrCreateRayTracingPipeline(nameInNotCached, definition, shader);
 }
 
 lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)
 {
 	return Renderer::GetSamplersCache().GetOrCreateSampler(def);
+}
+
+DescriptorSetWriter ResourcesManager::CreateDescriptorSetWriter()
+{
+	return DescriptorSetWriter();
 }
 
 } // spt::rdr

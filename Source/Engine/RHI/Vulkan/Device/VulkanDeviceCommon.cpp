@@ -31,6 +31,7 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
         requiredExtensions.emplace_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
         requiredExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         requiredExtensions.emplace_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        requiredExtensions.emplace_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
     }
 
     return requiredExtensions;

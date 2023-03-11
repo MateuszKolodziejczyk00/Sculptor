@@ -77,6 +77,7 @@ private:
 	lib::DynamicArray<VkDescriptorBufferInfo>						m_buffers;
 	lib::DynamicArray<VkDescriptorImageInfo>						m_images;
 	lib::DynamicArray<VkWriteDescriptorSetAccelerationStructureKHR>	m_accelerationStructures;
+	lib::DynamicArray<VkAccelerationStructureKHR>					m_accelerationStructureHandles;
 };
 
 } // spt::vulkan

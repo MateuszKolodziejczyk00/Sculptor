@@ -63,12 +63,17 @@ public:
 	void AddMacroDefinition(MacroDefinition macro);
 	const lib::DynamicArray<lib::HashedString>& GetMacros() const;
 
+	void DisableGeneratingDebugSource();
+	Bool ShouldGenerateDebugSource() const;
+
 	SizeType Hash() const;
 
 private:
 
 	lib::DynamicArray<lib::HashedString> m_macros;
 	lib::DynamicArray<ShaderStageCompilationDef> m_stagesToCompile;
+	
+	Bool m_generateDebugSource;
 };
 
 

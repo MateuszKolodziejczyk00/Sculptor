@@ -522,6 +522,10 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		{
 			return rhi::TextureTransition::ComputeGeneral;
 		}
+		else if (nodeType == ERenderGraphNodeType::TraceRays)
+		{
+			return rhi::TextureTransition::RayTracingGeneral;
+		}
 		else
 		{
 			SPT_CHECK_NO_ENTRY();
@@ -536,6 +540,10 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		else if (nodeType == ERenderGraphNodeType::Dispatch)
 		{
 			return rhi::TextureTransition::ComputeReadOnly;
+		}
+		else if (nodeType == ERenderGraphNodeType::TraceRays)
+		{
+			return rhi::TextureTransition::RayTracingReadOnly;
 		}
 		else
 		{

@@ -196,16 +196,17 @@ void RHIDescriptorSetWriter::WriteAccelerationStructure(const RHIDescriptorSet& 
 
 	m_writes.emplace_back(write);
 
-	const VkAccelerationStructureKHR tlasHandle = tlas.GetHandle();
-
 	const VkWriteDescriptorSetAccelerationStructureKHR writeAccelerationStructure
 	{
 		.sType						= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
 		.accelerationStructureCount	= 1,
-		.pAccelerationStructures	= &tlasHandle
+		.pAccelerationStructures	= VK_NULL_HANDLE // This handle will be resolved later
 	};
 
+	m_accelerationStructureHandles.emplace_back(tlas.GetHandle());
 	m_accelerationStructures.emplace_back(writeAccelerationStructure);
+
+	SPT_CHECK(m_accelerationStructureHandles.size() == m_accelerationStructures.size());
 }
 
 void RHIDescriptorSetWriter::Reserve(SizeType writesNum)
@@ -247,6 +248,11 @@ void RHIDescriptorSetWriter::ResolveReferences()
 			const SizeType accelerationStructureIdx = reinterpret_cast<SizeType>(write.pNext) - 1;
 			write.pNext = &m_accelerationStructures[accelerationStructureIdx];
 		}
+	}
+
+	for (SizeType asIdx = 0; asIdx < m_accelerationStructures.size(); ++asIdx)
+	{
+		m_accelerationStructures[asIdx].pAccelerationStructures = &m_accelerationStructureHandles[asIdx];
 	}
 }
 

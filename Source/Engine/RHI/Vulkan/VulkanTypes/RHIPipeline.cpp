@@ -442,7 +442,7 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 					});
 
 	// Miss shader groups
-	std::generate_n(std::back_inserter(shaderGroups), shadersDef.closestHitModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
+	std::generate_n(std::back_inserter(shaderGroups), shadersDef.missModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
 
 	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
 	pipelineInfo.stageCount						= static_cast<Uint32>(shaderStages.size());

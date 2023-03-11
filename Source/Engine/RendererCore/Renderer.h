@@ -77,6 +77,8 @@ public:
 
 	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
 
+	static Bool IsRayTracingEnabled();
+
 #if WITH_SHADERS_HOT_RELOAD
 	static void HotReloadShaders();
 #endif // WITH_SHADERS_HOT_RELOAD

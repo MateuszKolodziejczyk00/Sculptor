@@ -32,31 +32,26 @@ StaticMeshDepthPrepassRenderer::StaticMeshDepthPrepassRenderer()
 	}
 }
 
-Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS)
 {
 	SPT_PROFILER_FUNCTION();
 	
 	const RenderView& renderView = viewSpec.GetRenderView();
 	RenderSceneEntityHandle viewEntityHandle = renderView.GetViewEntity();
 	
-	// Get instances visible last frame
-	const StaticMeshesVisibleLastFrame* visibleInstances = viewEntityHandle.try_get<StaticMeshesVisibleLastFrame>();
-	if (visibleInstances)
+	lib::DynamicArray<SMDepthPrepassBatch> batches;
+
+	if (batchDefinition.IsValid())
 	{
-		lib::DynamicArray<SMDepthPrepassBatch> batches;
+		batches.emplace_back(CreateBatch(graphBuilder, renderScene, batchDefinition, batchDS));
+	}
 
-		for (const StaticMeshesVisibleLastFrame::BatchElementsInfo& instances : visibleInstances->visibleInstances)
-		{
-			batches.emplace_back(CreateBatch(graphBuilder, renderScene, instances));
-		}
+	if (!batches.empty())
+	{
+		SMDepthPrepassBatches& viewBatches = viewSpec.GetData().Create<SMDepthPrepassBatches>();
+		viewBatches.batches = std::move(batches);
 
-		if (!batches.empty())
-		{
-			SMDepthPrepassBatches& viewBatches = viewSpec.GetData().Create<SMDepthPrepassBatches>();
-			viewBatches.batches = std::move(batches);
-
-			return true;
-		}
+		return true;
 	}
 
 	return false;
@@ -126,29 +121,22 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 	}
 }
 
-SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshesVisibleLastFrame::BatchElementsInfo& batchElements) const
+SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	SMDepthPrepassBatch batch;
 
 	// Create batch info
-	
-	SMGPUBatchData batchData;
-	batchData.elementsNum = batchElements.batchedSubmeshesNum;
-
-	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("DepthPrepassBatchDS"));
-	batchDS->u_batchElements = batchElements.visibleBatchElementsBuffer->CreateFullView();
-	batchDS->u_batchData = batchData;
 
 	batch.batchDS = batchDS;
-	batch.batchedSubmeshesNum = batchElements.batchedSubmeshesNum;
+	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
 
 	// Create buffers
 
 	const rhi::RHIAllocationInfo batchBuffersAllocInfo(rhi::EMemoryUsage::GPUOnly);
 
-	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batchElements.batchedSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batch.batchedSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 	const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMDepthPrepassIndirectCommands"), commandsBufferDef, batchBuffersAllocInfo);
 
 	const Uint64 indirectDrawsCountSize = sizeof(Uint32);
@@ -161,7 +149,6 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 	const lib::SharedRef<SMDepthPrepassCullInstancesDS> cullInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassCullInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassCullInstancesDS"));
 	cullInstancesDS->u_drawCommands				= drawCommandsBuffer;
 	cullInstancesDS->u_drawsCount				= indirectDrawCountBuffer;
-	cullInstancesDS->u_validBatchElementsNum	= rdr::BufferView(lib::Ref(batchElements.batchElementsDispatchParamsBuffer), 0, sizeof(Uint32));
 
 	const lib::SharedRef<SMDepthOnlyDrawInstancesDS> drawInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassDrawInstancesDS"));
 	drawInstancesDS->u_drawCommands = drawCommandsBuffer;

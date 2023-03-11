@@ -152,10 +152,11 @@ Bool SceneView::IsPerspectiveMatrix() const
 
 void SceneView::UpdateViewRenderingData()
 {
-	m_viewRenderingData.viewMatrix = GenerateViewMatrix();
-	m_viewRenderingData.viewProjectionMatrix = m_projectionMatrix * m_viewRenderingData.viewMatrix;
-	m_viewRenderingData.projectionMatrix = m_projectionMatrix;
-	m_viewRenderingData.viewLocation = m_viewLocation;
+	m_viewRenderingData.viewMatrix				= GenerateViewMatrix();
+	m_viewRenderingData.viewProjectionMatrix	= m_projectionMatrix * m_viewRenderingData.viewMatrix;
+	m_viewRenderingData.projectionMatrix		= m_projectionMatrix;
+	m_viewRenderingData.viewLocation			= m_viewLocation;
+	m_viewRenderingData.inverseViewProjection	= m_viewRenderingData.viewProjectionMatrix.inverse();
 }
 
 void SceneView::UpdateCullingData()

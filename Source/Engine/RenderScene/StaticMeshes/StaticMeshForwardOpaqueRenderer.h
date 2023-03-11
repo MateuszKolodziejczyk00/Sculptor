@@ -41,9 +41,6 @@ END_RG_NODE_PARAMETERS_STRUCT();
 
 struct SMForwardOpaqueBatch
 {
-	lib::SharedPtr<rdr::Buffer> visibleBatchElementsBufferInstance;
-	lib::SharedPtr<rdr::Buffer> dispatchVisibleBatchElemsParamsBufferInstance;
-
 	rg::RGBufferViewHandle visibleBatchElementsDispatchParamsBuffer;
 	rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer;
 	rg::RGBufferViewHandle drawTrianglesBatchArgsBuffer;
@@ -71,13 +68,13 @@ public:
 
 	StaticMeshForwardOpaqueRenderer();
 
-	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS);
 	void CullPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 private:
 
-	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
+	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const;
 
 	rdr::PipelineStateID m_cullSubmeshesPipeline;
 	rdr::PipelineStateID m_cullMeshletsPipeline;

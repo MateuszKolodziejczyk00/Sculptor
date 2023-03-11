@@ -1,4 +1,7 @@
 #include "StaticMeshesRenderSystem.h"
+#include "RenderScene.h"
+#include "StaticMeshPrimitivesSystem.h"
+#include "Transfers/UploadUtils.h"
 
 namespace spt::rsc
 {
@@ -38,33 +41,68 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		RenderStageEntries& shadowMapStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ShadowMap);
 		shadowMapStageEntries.GetOnRenderStage().AddRawMember(&m_shadowMapRenderer, &StaticMeshShadowMapRenderer::RenderPerView);
 	}
-	
-	if (viewSpec.SupportsStage(ERenderStage::DepthPrepass))
+
+	const Bool supportsDepthPrepass		= viewSpec.SupportsStage(ERenderStage::DepthPrepass);
+	const Bool supportsForwardOpaque	= viewSpec.SupportsStage(ERenderStage::ForwardOpaque);
+
+	if (supportsDepthPrepass || supportsForwardOpaque)
 	{
-		const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec);
+		const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
+		const StaticMeshBatchDefinition batchDefinition = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
+		lib::SharedRef<StaticMeshBatchDS> batchDS = CreateBatchDS(batchDefinition);
 
-		if (hasAnyBatches)
+		if (supportsDepthPrepass)
 		{
-			m_depthPrepassRenderer.CullPerView(graphBuilder, renderScene, viewSpec);
+			const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
 
-			RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-			depthPrepassStageEntries.GetOnRenderStage().AddRawMember(&m_depthPrepassRenderer, &StaticMeshDepthPrepassRenderer::RenderPerView);
+			if (hasAnyBatches)
+			{
+				m_depthPrepassRenderer.CullPerView(graphBuilder, renderScene, viewSpec);
+
+				RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+				depthPrepassStageEntries.GetOnRenderStage().AddRawMember(&m_depthPrepassRenderer, &StaticMeshDepthPrepassRenderer::RenderPerView);
+			}
+		}
+
+		if (supportsForwardOpaque)
+		{
+			const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
+
+			if (hasAnyBatches)
+			{
+				RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+				depthPrepassStageEntries.GetPostRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::CullPerView);
+
+				RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
+				basePassStageEntries.GetOnRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::RenderPerView);
+			}
 		}
 	}
+}
 
-	if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
-	{
-		const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec);
+lib::SharedRef<StaticMeshBatchDS> StaticMeshesRenderSystem::CreateBatchDS(const StaticMeshBatchDefinition& batchDef) const
+{
+	SPT_PROFILER_FUNCTION();
 
-		if (hasAnyBatches)
-		{
-			RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-			depthPrepassStageEntries.GetPostRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::CullPerView);
+	// Create GPU batch data
 
-			RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
-			basePassStageEntries.GetOnRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::RenderPerView);
-		}
-	}
+	SMGPUBatchData gpuBatchData;
+	gpuBatchData.elementsNum = static_cast<Uint32>(batchDef.batchElements.size());
+
+	// Create Batch elements buffer
+
+	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batchDef.batchElements.size();
+	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
+	const rhi::RHIAllocationInfo batchBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
+	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatch"), batchBufferDef, batchBufferAllocation);
+
+	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchDef.batchElements.data()), batchDataSize);
+
+	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
+	batchDS->u_batchElements	= batchBuffer->CreateFullView();
+	batchDS->u_batchData		= gpuBatchData;
+
+	return batchDS;
 }
 
 } // spt::rsc

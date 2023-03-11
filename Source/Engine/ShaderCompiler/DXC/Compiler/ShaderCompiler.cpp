@@ -46,11 +46,13 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 	case rhi::EShaderStage::Vertex:			return L"vs_6_4";
 	case rhi::EShaderStage::Fragment:		return L"ps_6_4";
 	case rhi::EShaderStage::Compute:		return L"cs_6_4";
-	case rhi::EShaderStage::RTGeneration:	return L"raygeneration_6_4";
-	case rhi::EShaderStage::RTAnyHit:		return L"anyhit_6_4";
-	case rhi::EShaderStage::RTClosestHit:	return L"closesthit_6_4";
-	case rhi::EShaderStage::RTMiss:			return L"miss_6_4";
-	case rhi::EShaderStage::RTIntersection:	return L"intersection_6_4";
+	
+	case rhi::EShaderStage::RTGeneration:	
+	case rhi::EShaderStage::RTAnyHit:		
+	case rhi::EShaderStage::RTClosestHit:	
+	case rhi::EShaderStage::RTMiss:			
+	case rhi::EShaderStage::RTIntersection:	
+		return L"lib_6_4";
 
 	default:
 
@@ -318,8 +320,12 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
 	{
 		args.Append(lib::WString(L"-Zi"));
-		args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
 		args.Append(lib::WString(L"-O0"));
+
+		if (compilationSettings.ShouldGenerateDebugSource())
+		{
+			args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
+		}
 	}
 	else
 	{

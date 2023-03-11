@@ -223,17 +223,22 @@ void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
 	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
 }
 
+OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
+{
+	return priv::g_data.cleanupDelegate;
+}
+
+Bool Renderer::IsRayTracingEnabled()
+{
+	return rhi::RHI::IsRayTracingEnabled();
+}
+
 #if WITH_SHADERS_HOT_RELOAD
 void Renderer::HotReloadShaders()
 {
 	SPT_PROFILER_FUNCTION();
 
 	GetShadersManager().HotReloadShaders();
-}
-
-OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
-{
-	return priv::g_data.cleanupDelegate;
 }
 
 #endif // WITH_SHADERS_HOT_RELOAD

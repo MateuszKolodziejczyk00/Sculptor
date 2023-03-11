@@ -66,6 +66,7 @@ SizeType ShaderSourceCode::Hash() const
 // ShaderCompilationSettings =====================================================================
 
 ShaderCompilationSettings::ShaderCompilationSettings()
+	: m_generateDebugSource(true)
 { }
 
 void ShaderCompilationSettings::AddShaderToCompile(const ShaderStageCompilationDef& stageCompilationDef)
@@ -91,6 +92,16 @@ void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 const lib::DynamicArray<lib::HashedString>& ShaderCompilationSettings::GetMacros() const
 {
 	return m_macros;
+}
+
+Bool ShaderCompilationSettings::ShouldGenerateDebugSource() const
+{
+	return m_generateDebugSource;
+}
+
+void ShaderCompilationSettings::DisableGeneratingDebugSource()
+{
+	m_generateDebugSource = false;
 }
 
 SizeType ShaderCompilationSettings::Hash() const

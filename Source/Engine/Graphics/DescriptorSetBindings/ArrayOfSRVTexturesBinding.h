@@ -90,7 +90,7 @@ public:
 	void UnbindTexture(Uint32 textureArrayIdx)
 	{
 		SPT_CHECK(textureArrayIdx != idxNone<Uint32>);
-		SPT_CHECK(std::find(std::cbegin(m_availableArrayIndices), std::cend(m_availableArrayIndices), textureArrayIdx) == std::cend(m_availableArrayIndices));
+		SPT_CHECK(std::find_if(std::cbegin(m_availableArrayIndices), std::cend(m_availableArrayIndices), [textureArrayIdx](const AvailableIndex& idx) { return idx.arrayIndex == textureArrayIdx; }) == std::cend(m_availableArrayIndices));
 		
 		m_availableArrayIndices.emplace_back(AvailableIndex{ textureArrayIdx, rdr::Renderer::GetCurrentFrameIdx() });
 
