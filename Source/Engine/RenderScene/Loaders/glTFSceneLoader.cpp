@@ -482,6 +482,7 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 
 		rdr::CommandsSubmitBatch submitBatch;
 		submitBatch.recordedCommands.emplace_back(std::move(recorder));
+		gfx::TransfersManager::WaitForTransfersFinished(submitBatch.waitSemaphores);
 		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
 	}
 }
@@ -575,6 +576,8 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 		if (withRayTracing)
 		{
+			gfx::FlushPendingUploads();
+
 			BuildAccelerationStructures(blasBuilder);
 		}
 	}

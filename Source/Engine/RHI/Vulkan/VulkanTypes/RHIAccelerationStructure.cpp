@@ -201,12 +201,12 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 
 		for(SizeType instanceIdx = 0; instanceIdx < definition.instances.size(); ++instanceIdx)
 		{
-			using TransformMatrix = rhi::TLASInstanceDefinition::TransformMatrix;
-
 			const rhi::TLASInstanceDefinition& instance = definition.instances[instanceIdx];
+			// We need to transpose matrix because VkTransformMatrixKHR stores transform in row-major order
+			const math::Matrix<Real32, 4, 3> transposedMatrix = instance.transform.transpose();
 
 			VkAccelerationStructureInstanceKHR& instanceData = instancesMappedBuffer[instanceIdx];
-			math::Map<TransformMatrix>(reinterpret_cast<Real32*>(&instanceData.transform))	= instance.transform;
+			std::memcpy(instanceData.transform.matrix, transposedMatrix.data(), sizeof(VkTransformMatrixKHR));
 			instanceData.instanceCustomIndex												= instance.customIdx;
 			instanceData.mask																= instance.mask;
 			instanceData.instanceShaderBindingTableRecordOffset								= instance.sbtRecordOffset;

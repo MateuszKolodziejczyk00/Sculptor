@@ -397,7 +397,17 @@ void LightsRenderSystem::CacheDirectionalLights(const RenderScene& renderScene)
 
 		for (const auto& [entity, directionalLight] : directionalLightsView.each())
 		{
-			directionalLightsData.emplace_back(directionalLight.GenerateGPUData());
+			DirectionalLightGPUData lightGPUData = directionalLight.GenerateGPUData();
+			if (const DirectionalLightShadowsData* shadowsData = sceneRegistry.try_get<DirectionalLightShadowsData>(entity))
+			{
+				lightGPUData.shadowMaskIdx = shadowsData->GetCurrentFrameShadowMask().shadowMaskIdx;
+			}
+			else
+			{
+				lightGPUData.shadowMaskIdx = idxNone<Uint32>;
+			}
+			
+			directionalLightsData.emplace_back(lightGPUData);
 		}
 
 		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);

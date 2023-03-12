@@ -58,9 +58,9 @@ namespace spt::rsc
 namespace params
 {
 
-RendererBoolParameter enableShadows("Enable Shadows", { "Lighting", "Shadows" }, true);
-RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows" }, 1, 0, 10);
-RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows" }, 3, 0, 10);
+RendererBoolParameter enableShadows("Enable Shadows", { "Lighting", "Shadows", "Local" }, true);
+RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows", "Local" }, 1, 0, 10);
+RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows", "Local" }, 3, 0, 10);
 
 } // params
 
@@ -712,13 +712,15 @@ void ShadowMapsManagerSystem::UpdateDirectionalLightShadowMaps() const
 
 			rhi::TextureDefinition shadowMaskDef;
 			shadowMaskDef.resolution	= math::Vector3u(viewRenderingRes.x(), viewRenderingRes.y(), 1);
-			shadowMaskDef.usage			= rhi::ETextureUsage::StorageTexture;
+			shadowMaskDef.usage			= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
 			shadowMaskDef.format		= rhi::EFragmentFormat::R8_UN_Float;
 			const lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
 	
 			rhi::TextureViewDefinition viewDefinition;
 			viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
 			shadowMask.shadowMaskView = shadowMaskTexture->CreateView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), viewDefinition);
+
+			shadowMask.shadowMaskIdx = m_shadowMapsDS->u_shadowMaps.BindTexture(lib::Ref(shadowMask.shadowMaskView));
 		}
 	}
 }

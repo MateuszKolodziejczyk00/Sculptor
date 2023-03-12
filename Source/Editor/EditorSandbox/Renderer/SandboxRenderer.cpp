@@ -277,8 +277,8 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color		= math::Vector3f::Ones();
-			directionalLightData.intensity	= 0.5f;
-			directionalLightData.direction	= math::Vector3f(0.f, 1.f, -2.f).normalized();
+			directionalLightData.intensity	= 5.f;
+			directionalLightData.direction	= math::Vector3f(0.5f, 1.f, -2.7f).normalized();
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}

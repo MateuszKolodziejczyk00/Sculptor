@@ -14,11 +14,16 @@ struct ShadowRayPayload
 [shader("raygeneration")]
 void GenerateShadowRaysRTG()
 {
-    const float3 lightDirection = float3(0.f, 0.f, -1.f);
-    
-    const float3 shadowRayDirection = -lightDirection;
+    const float3 shadowRayDirection = -u_params.lightDirection;
 
     const uint2 pixel = DispatchRaysIndex().xy;
+
+    if(!u_params.enableShadows)
+    {
+        u_shadowMask[pixel] = 1.f;
+        return;
+    }
+    
     const float2 uv = pixel / float2(DispatchRaysDimensions().xy);
 
     const float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
@@ -31,8 +36,8 @@ void GenerateShadowRaysRTG()
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView.inverseViewProjection);
 
         RayDesc rayDesc;
-        rayDesc.TMin        = 0.01f;
-        rayDesc.TMax        = 100.f;
+        rayDesc.TMin        = u_params.minTraceDistance;
+        rayDesc.TMax        = u_params.maxTraceDistance;
         rayDesc.Origin      = worldLocation;
         rayDesc.Direction   = shadowRayDirection;
 

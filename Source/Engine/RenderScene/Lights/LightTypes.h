@@ -11,6 +11,7 @@ BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, color)
 	SHADER_STRUCT_FIELD(Real32, intensity)
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
+	SHADER_STRUCT_FIELD(Uint32, shadowMaskIdx)
 END_SHADER_STRUCT();
 
 

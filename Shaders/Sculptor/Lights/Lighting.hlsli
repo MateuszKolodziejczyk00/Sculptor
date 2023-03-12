@@ -35,7 +35,20 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
         const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
         const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
-        radiance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIntensity);
+
+        if (any(lightIntensity > 0.f) || dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+        {
+            float visibility = 0.f;
+            if(directionalLight.shadowMaskIdx != IDX_NONE_32)
+            {
+                visibility = u_shadowMaps[directionalLight.shadowMaskIdx].SampleLevel(u_shadowMaskSampler, surface.uv, 0);
+            }
+
+            if(visibility > 0.f)
+            {
+                radiance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIntensity) * visibility;
+            }
+        }
     }
 
     // Point lights

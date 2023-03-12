@@ -15,9 +15,28 @@
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Lights/LightTypes.h"
 #include "Shadows/ShadowMapsManagerSystem.h"
+#include "Engine.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
+
+namespace params
+{
+
+RendererBoolParameter directionalLightEnableShadows("Enable Shadows", { "Lighting", "Shadows", "Directional"}, true);
+RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
+RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 10.f, 0.f, 100.f);
+
+} // params
+
+BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
+	SHADER_STRUCT_FIELD(math::Vector3f, lightDirection)
+	SHADER_STRUCT_FIELD(Real32,			minTraceDistance)
+	SHADER_STRUCT_FIELD(Real32,			maxTraceDistance)
+	SHADER_STRUCT_FIELD(Real32,			time)
+	SHADER_STRUCT_FIELD(Bool,			enableShadows)
+END_SHADER_STRUCT();
 
 DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_worldAccelerationStructure)
@@ -28,7 +47,8 @@ DS_END();
 
 
 DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLightShadowMaskDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>), u_shadowMask)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),											u_shadowMask)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DirectionalLightShadowUpdateParams>),	u_params)
 DS_END();
 
 
@@ -75,8 +95,16 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	{
 		const DirectionalLightShadowsData::ShadowMask& shadowMask = shadowsData.GetCurrentFrameShadowMask();
 
+		DirectionalLightShadowUpdateParams params;
+		params.lightDirection	= directionalLight.direction;
+		params.minTraceDistance = params::directionalLightMinShadowTraceDist;
+		params.maxTraceDistance = params::directionalLightMaxShadowTraceDist;
+		params.time				= engn::Engine::Get().GetTime();
+		params.enableShadows	= params::directionalLightEnableShadows;
+
 		const lib::SharedRef<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = rdr::ResourcesManager::CreateDescriptorSetState<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
-		directionalLightShadowMaskDS->u_shadowMask = shadowMask.shadowMaskView;
+		directionalLightShadowMaskDS->u_shadowMask	= shadowMask.shadowMaskView;
+		directionalLightShadowMaskDS->u_params		= params;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Lights Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,

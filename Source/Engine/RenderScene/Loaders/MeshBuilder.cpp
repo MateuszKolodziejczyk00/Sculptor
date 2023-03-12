@@ -92,14 +92,14 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 		lib::DynamicArray<lib::SharedRef<rdr::BottomLevelAS>> submeshesBLASes;
 		submeshesBLASes.reserve(m_submeshes.size());
 
-		for (const SubmeshBuildData& submeshBD : m_submeshes)
+		for(SizeType submeshIdx = 0; submeshIdx < m_submeshes.size(); ++submeshIdx)
 		{
 			rhi::BLASDefinition submeshBLAS;
-			submeshBLAS.trianglesGeometry.vertexLocationsAddress = geometryDataDeviceAddress + static_cast<Uint64>(submeshBD.submesh.locationsOffset);
-			submeshBLAS.trianglesGeometry.vertexLocationsStride = sizeof(math::Vector3f);
-			submeshBLAS.trianglesGeometry.maxVerticesNum = submeshBD.vertexCount;
-			submeshBLAS.trianglesGeometry.indicesAddress = geometryDataDeviceAddress + static_cast<Uint64>(submeshBD.submesh.indicesOffset);
-			submeshBLAS.trianglesGeometry.indicesNum = submeshBD.submesh.indicesNum;
+			submeshBLAS.trianglesGeometry.vertexLocationsAddress	= geometryDataDeviceAddress + static_cast<Uint64>(submeshesData[submeshIdx].locationsOffset);
+			submeshBLAS.trianglesGeometry.vertexLocationsStride		= sizeof(math::Vector3f);
+			submeshBLAS.trianglesGeometry.maxVerticesNum			= m_submeshes[submeshIdx].vertexCount;
+			submeshBLAS.trianglesGeometry.indicesAddress			= geometryDataDeviceAddress + static_cast<Uint64>(submeshesData[submeshIdx].indicesOffset);
+			submeshBLAS.trianglesGeometry.indicesNum				= submeshesData[submeshIdx].indicesNum;
 
 			blasesComp.blases.emplace_back(GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS));
 		}

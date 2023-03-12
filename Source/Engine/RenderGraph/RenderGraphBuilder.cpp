@@ -418,7 +418,6 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 												  subresourceRange.arrayLayersNum	= 1;
 												  subresourceRange.baseMipLevel		= subresource.mipMapIdx;
 												  subresourceRange.mipLevelsNum		= 1;
-
 		
 												  if (RequiresSynchronization(transitionSource, transitionTarget))
 												  {
