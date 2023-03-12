@@ -87,3 +87,22 @@ float3 LinearTosRGB(in float3 color)
 
     return clr;
 }
+
+
+float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
+{
+    // Compute the basis vectors for the cone
+    const float3 u = normalize(cross(coneDir, float3(0.f, 1.f, 0.f)));
+    const float3 v = normalize(cross(coneDir, u));
+    
+    // Compute the angle and radius of the cone
+    const float radius = tan(coneHalfAngleRad);
+    const float r = sqrt(random.x * radius * radius);
+    const float phi = 2.f * PI * random.y;
+    
+    // Compute the random vector in spherical coordinates
+    const float3 randomVector = r * (cos(phi) * u + sin(phi) * v) + sqrt(1.f - r * r) * coneDir;
+    
+    // Normalize the vector and return it
+    return normalize(randomVector);
+}

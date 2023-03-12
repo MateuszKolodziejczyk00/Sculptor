@@ -74,7 +74,7 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 {
 	SPT_PROFILER_FUNCTION();
 
-	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
 	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
@@ -96,7 +96,7 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 												   lib::Ref(batch.perFaceData[viewShadowMapData.faceIdx].drawDS),
 												   lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 												   lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-												   lib::Ref(staticMeshRenderingViewData.viewDS)),
+												   renderView.GetRenderViewDSRef()),
 							std::tie(drawParams),
 							[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{

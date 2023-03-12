@@ -11,6 +11,7 @@ class DepthPrepassRenderStage : public RenderStage<DepthPrepassRenderStage, ERen
 {
 public:
 
+	static rhi::EFragmentFormat GetVelocityFormat();
 	static rhi::EFragmentFormat GetDepthFormat();
 
 	DepthPrepassRenderStage();

@@ -87,15 +87,15 @@ void StaticMeshForwardOpaqueRenderer::CullPerView(rg::RenderGraphBuilder& graphB
 {
 	SPT_PROFILER_FUNCTION();
 
+	const RenderView& renderView = viewSpec.GetRenderView();
+
 	const DepthPrepassData& prepassData = viewSpec.GetData().Get<DepthPrepassData>();
 
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
-	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
-
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  lib::Ref(staticMeshRenderingViewData.viewDS),
+																					  renderView.GetRenderViewDSRef(),
 																					  lib::Ref(prepassData.depthCullingDS)));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
@@ -138,16 +138,16 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 {
 	SPT_PROFILER_FUNCTION();
 
-	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
+	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
 	const ShadowMapsRenderingData& shadowMapsRenderingData = viewSpec.GetData().Get<ShadowMapsRenderingData>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						lib::Ref(staticMeshRenderingViewData.viewDS),
+																						renderView.GetRenderViewDSRef(),
 																						lib::Ref(shadowMapsRenderingData.shadowMapsDS)));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)

@@ -27,6 +27,7 @@ StaticMeshDepthPrepassRenderer::StaticMeshDepthPrepassRenderer()
 
 		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
 		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+		depthPrepassPipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(DepthPrepassRenderStage::GetVelocityFormat());
 		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
 		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), depthPrepassPipelineDef, depthShader);
 	}
@@ -61,13 +62,13 @@ void StaticMeshDepthPrepassRenderer::CullPerView(rg::RenderGraphBuilder& graphBu
 {
 	SPT_PROFILER_FUNCTION();
 
-	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  lib::Ref(staticMeshRenderingViewData.viewDS)));
+																					  renderView.GetRenderViewDSRef()));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
 	{
@@ -86,14 +87,14 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 {
 	SPT_PROFILER_FUNCTION();
 
-	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMRenderingViewData& staticMeshRenderingViewData = viewSpec.GetData().Get<SMRenderingViewData>();
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						lib::Ref(staticMeshRenderingViewData.viewDS)));
+																						renderView.GetRenderViewDSRef()));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
 	{

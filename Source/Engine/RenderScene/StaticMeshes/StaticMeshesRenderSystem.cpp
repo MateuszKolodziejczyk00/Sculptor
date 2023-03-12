@@ -23,18 +23,6 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	SPT_PROFILER_FUNCTION();
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
-
-	const RenderView& renderView = viewSpec.GetRenderView();
-
-	SMViewRenderingParameters viewRenderingParams;
-	viewRenderingParams.rtResolution = viewSpec.GetRenderView().GetRenderingResolution();
-
-	const lib::SharedRef<SMProcessBatchForViewDS> viewDS = rdr::ResourcesManager::CreateDescriptorSetState<SMProcessBatchForViewDS>(RENDERER_RESOURCE_NAME("SMViewDS"));
-	viewDS->u_sceneView				= renderView.GetViewRenderingData();
-	viewDS->u_cullingData			= renderView.GetCullingData();
-	viewDS->u_viewRenderingParams	= viewRenderingParams;
-
-	viewSpec.GetData().Create<SMRenderingViewData>(SMRenderingViewData{ std::move(viewDS) });
 	
 	if (viewSpec.SupportsStage(ERenderStage::ShadowMap))
 	{
@@ -49,32 +37,36 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	{
 		const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
 		const StaticMeshBatchDefinition batchDefinition = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
-		lib::SharedRef<StaticMeshBatchDS> batchDS = CreateBatchDS(batchDefinition);
-
-		if (supportsDepthPrepass)
+		
+		if (batchDefinition.IsValid())
 		{
-			const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
+			const lib::SharedRef<StaticMeshBatchDS> batchDS = CreateBatchDS(batchDefinition);
 
-			if (hasAnyBatches)
+			if (supportsDepthPrepass)
 			{
-				m_depthPrepassRenderer.CullPerView(graphBuilder, renderScene, viewSpec);
+				const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
 
-				RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-				depthPrepassStageEntries.GetOnRenderStage().AddRawMember(&m_depthPrepassRenderer, &StaticMeshDepthPrepassRenderer::RenderPerView);
+				if (hasAnyBatches)
+				{
+					m_depthPrepassRenderer.CullPerView(graphBuilder, renderScene, viewSpec);
+
+					RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+					depthPrepassStageEntries.GetOnRenderStage().AddRawMember(&m_depthPrepassRenderer, &StaticMeshDepthPrepassRenderer::RenderPerView);
+				}
 			}
-		}
 
-		if (supportsForwardOpaque)
-		{
-			const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
-
-			if (hasAnyBatches)
+			if (supportsForwardOpaque)
 			{
-				RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-				depthPrepassStageEntries.GetPostRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::CullPerView);
+				const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
 
-				RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
-				basePassStageEntries.GetOnRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::RenderPerView);
+				if (hasAnyBatches)
+				{
+					RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
+					depthPrepassStageEntries.GetPostRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::CullPerView);
+
+					RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
+					basePassStageEntries.GetOnRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::RenderPerView);
+				}
 			}
 		}
 	}

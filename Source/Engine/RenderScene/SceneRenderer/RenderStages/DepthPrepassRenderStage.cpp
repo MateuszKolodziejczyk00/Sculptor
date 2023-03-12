@@ -121,6 +121,17 @@ static rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graph
 
 } // HiZ
 
+
+DS_BEGIN(PrevFrameViewInfoDS, rg::RGDescriptorSetState<PrevFrameViewInfoDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>), u_prevFrameSceneView)
+DS_END();
+
+
+rhi::EFragmentFormat DepthPrepassRenderStage::GetVelocityFormat()
+{
+	return rhi::EFragmentFormat::RG16_SN_Float;
+}
+
 rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
 {
 	return rhi::EFragmentFormat::D32_S_Float;
@@ -136,8 +147,6 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 
-	const rhi::RHIAllocationInfo depthTextureAllocationInfo(rhi::EMemoryUsage::GPUOnly);
-
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
 
 	const rhi::EFragmentFormat depthFormat = GetDepthFormat();
@@ -146,9 +155,22 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	depthDef.resolution	= texturesRes;
 	depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
 	depthDef.format		= depthFormat;
-	depthPrepassData.depth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DepthTexture"), depthDef, depthTextureAllocationInfo);
+	depthPrepassData.depth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DepthTexture"), depthDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureDefinition velocityDef;
+	velocityDef.resolution	= texturesRes;
+	velocityDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::ColorRT);
+	velocityDef.format		= GetVelocityFormat();
+	depthPrepassData.velocity = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VelocityTexture"), velocityDef, rhi::EMemoryUsage::GPUOnly);
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
+
+	rg::RGRenderTargetDef velocityRTDef;
+	velocityRTDef.textureView		= depthPrepassData.velocity;
+	velocityRTDef.loadOperation		= rhi::ERTLoadOperation::Clear;
+	velocityRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
+	velocityRTDef.clearColor		= rhi::ClearColor(0.f);
+	renderPassDef.AddColorRenderTarget(velocityRTDef);
 
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView		= depthPrepassData.depth;
@@ -158,7 +180,7 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 	
 	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
-
+	
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Depth Prepass"),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),

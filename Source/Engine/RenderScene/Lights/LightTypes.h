@@ -31,6 +31,7 @@ struct DirectionalLightData
 		: color(math::Vector3f::Ones())
 		, intensity(1.f)
 		, direction(-math::Vector3f::UnitZ())
+		, lightConeAngle(0.f)
 	{ }
 
 	DirectionalLightGPUData GenerateGPUData() const
@@ -46,6 +47,7 @@ struct DirectionalLightData
 	math::Vector3f	color;
 	Real32			intensity;
 	math::Vector3f	direction;
+	Real32			lightConeAngle;
 };
 
 

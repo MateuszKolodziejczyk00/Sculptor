@@ -6,7 +6,7 @@
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(GeometryDS, 2)]]
 
-[[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(RenderViewDS, 3)]]
 
 [[descriptor_set(StaticMeshBatchDS, 4)]]
 [[descriptor_set(SMIndirectRenderTrianglesDS, 5)]]

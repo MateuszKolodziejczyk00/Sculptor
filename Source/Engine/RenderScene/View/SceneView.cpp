@@ -130,16 +130,6 @@ const SceneViewData& SceneView::GetPrevFrameRenderingData() const
 	return m_prevFrameRenderingData;
 }
 
-void SceneView::OnBeginRendering()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_prevFrameRenderingData = m_viewRenderingData;
-
-	UpdateViewRenderingData();
-	UpdateCullingData();
-}
-
 math::Matrix4f SceneView::GenerateViewProjectionMatrix() const
 {
 	return m_projectionMatrix * GenerateViewMatrix();
@@ -148,6 +138,11 @@ math::Matrix4f SceneView::GenerateViewProjectionMatrix() const
 Bool SceneView::IsPerspectiveMatrix() const
 {
 	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));
+}
+
+void SceneView::CachePrevFrameRenderingData()
+{
+	m_prevFrameRenderingData = m_viewRenderingData;
 }
 
 void SceneView::UpdateViewRenderingData()

@@ -46,18 +46,6 @@ BEGIN_SHADER_STRUCT(SMGPUBatchData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(SMViewRenderingParameters)
-	SHADER_STRUCT_FIELD(math::Vector2u, rtResolution)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(SMProcessBatchForViewDS, rg::RGDescriptorSetState<SMProcessBatchForViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>),				u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewCullingData>),			u_cullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMViewRenderingParameters>),	u_viewRenderingParams)
-DS_END();
-
-
 DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_batchElements)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMGPUBatchData>),	u_batchData)
@@ -82,11 +70,5 @@ END_SHADER_STRUCT();
 DS_BEGIN(SMDepthOnlyDrawInstancesDS, rg::RGDescriptorSetState<SMDepthOnlyDrawInstancesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommands)
 DS_END();
-
-
-struct SMRenderingViewData
-{
-	lib::SharedPtr<SMProcessBatchForViewDS> viewDS;
-};
 
 } // spt::rsc

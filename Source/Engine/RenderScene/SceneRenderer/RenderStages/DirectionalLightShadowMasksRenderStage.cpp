@@ -35,6 +35,7 @@ BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
 	SHADER_STRUCT_FIELD(Real32,			minTraceDistance)
 	SHADER_STRUCT_FIELD(Real32,			maxTraceDistance)
 	SHADER_STRUCT_FIELD(Real32,			time)
+	SHADER_STRUCT_FIELD(Real32,			shadowRayConeAngle)
 	SHADER_STRUCT_FIELD(Bool,			enableShadows)
 END_SHADER_STRUCT();
 
@@ -95,16 +96,17 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	{
 		const DirectionalLightShadowsData::ShadowMask& shadowMask = shadowsData.GetCurrentFrameShadowMask();
 
-		DirectionalLightShadowUpdateParams params;
-		params.lightDirection	= directionalLight.direction;
-		params.minTraceDistance = params::directionalLightMinShadowTraceDist;
-		params.maxTraceDistance = params::directionalLightMaxShadowTraceDist;
-		params.time				= engn::Engine::Get().GetTime();
-		params.enableShadows	= params::directionalLightEnableShadows;
+		DirectionalLightShadowUpdateParams updateParams;
+		updateParams.lightDirection		= directionalLight.direction;
+		updateParams.minTraceDistance	= params::directionalLightMinShadowTraceDist;
+		updateParams.maxTraceDistance	= params::directionalLightMaxShadowTraceDist;
+		updateParams.time				= engn::Engine::Get().GetTime();
+		updateParams.shadowRayConeAngle	= directionalLight.lightConeAngle;
+		updateParams.enableShadows		= params::directionalLightEnableShadows;
 
 		const lib::SharedRef<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = rdr::ResourcesManager::CreateDescriptorSetState<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
 		directionalLightShadowMaskDS->u_shadowMask	= shadowMask.shadowMaskView;
-		directionalLightShadowMaskDS->u_params		= params;
+		directionalLightShadowMaskDS->u_params		= updateParams;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Lights Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,

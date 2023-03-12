@@ -1,10 +1,11 @@
 #include "SculptorShader.hlsli"
+#include "RenderStages/DepthPrepass/DepthPrepass.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
 [[descriptor_set(GeometryDS, 2)]]
 
-[[descriptor_set(SMProcessBatchForViewDS, 3)]]
+[[descriptor_set(RenderViewDS, 3)]]
 
 [[descriptor_set(StaticMeshBatchDS, 4)]]
 [[descriptor_set(SMDepthOnlyDrawInstancesDS, 5)]]
@@ -19,12 +20,9 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-    float4 clipSpace    : SV_POSITION;
-};
-
-
-struct PS_OUTPUT
-{
+    float4 clipSpace                : SV_POSITION;
+    float3 clipSpaceXYW             : CLIP_SPACE_XYW;
+    float3 prevFrameclipSpaceXYW    : PREV_CLIP_SPACE_XYW;
 };
 
 
@@ -47,14 +45,24 @@ VS_OUTPUT StaticMesh_DepthVS(VS_INPUT input)
     const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + vertexIdx * 12);
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
 
-    output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
+    const float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
+
+    output.clipSpace                = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
+    output.clipSpaceXYW             = output.clipSpace.xyw;
+    output.prevFrameclipSpaceXYW    = prevFrameClipSpace.xyw;
     
     return output;
 }
 
 
-PS_OUTPUT StaticMesh_DepthFS(VS_OUTPUT vertexInput)
+DP_PS_OUTPUT StaticMesh_DepthFS(VS_OUTPUT vertexInput)
 {
-    PS_OUTPUT output;
+    DP_PS_OUTPUT output;
+
+    const float2 currentUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z;
+    const float2 prevFrameUV = vertexInput.prevFrameclipSpaceXYW.xy / vertexInput.prevFrameclipSpaceXYW.z;
+    
+    output.velocity = currentUV - prevFrameUV;
+
     return output;
 }

@@ -50,20 +50,21 @@ public:
 
 	const SceneViewData&		GetPrevFrameRenderingData() const;
 
-	void OnBeginRendering();
-
 	Bool IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const;
 
 	math::Matrix4f GenerateViewProjectionMatrix() const;
 
-private:
+protected:
 
 	Bool IsPerspectiveMatrix() const;
 
+	void CachePrevFrameRenderingData();
 	void UpdateViewRenderingData();
 	void UpdateCullingData();
 
 	math::Matrix4f GenerateViewMatrix() const;
+
+private:
 
 	math::Matrix4f		m_projectionMatrix;
 	math::Vector3f		m_viewLocation;

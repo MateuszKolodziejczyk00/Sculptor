@@ -14,8 +14,6 @@ struct ShadowRayPayload
 [shader("raygeneration")]
 void GenerateShadowRaysRTG()
 {
-    const float3 shadowRayDirection = -u_params.lightDirection;
-
     const uint2 pixel = DispatchRaysIndex().xy;
 
     if(!u_params.enableShadows)
@@ -25,13 +23,15 @@ void GenerateShadowRaysRTG()
     }
     
     const float2 uv = pixel / float2(DispatchRaysDimensions().xy);
-
     const float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
 
     ShadowRayPayload payload = { true };
 
     if(depth > 0.f)
     {
+        const float2 noise = Random(uv + u_params.time);
+        const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, u_params.shadowRayConeAngle, noise);
+
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView.inverseViewProjection);
 

@@ -1,5 +1,6 @@
 #include "RenderView.h"
 #include "RenderScene.h"
+#include "ResourcesManager.h"
 
 namespace spt::rsc
 {
@@ -49,6 +50,42 @@ const math::Vector2u& RenderView::GetRenderingResolution() const
 const RenderSceneEntityHandle& RenderView::GetViewEntity() const
 {
 	return m_viewEntity;
+}
+
+const lib::SharedPtr<RenderViewDS>& RenderView::GetRenderViewDS() const
+{
+	return m_renderViewDS;
+}
+
+lib::SharedRef<RenderViewDS> RenderView::GetRenderViewDSRef() const
+{
+	SPT_CHECK(!!GetRenderViewDS());
+	return lib::Ref(GetRenderViewDS());
+}
+
+void RenderView::OnBeginRendering()
+{
+	SPT_PROFILER_FUNCTION();
+
+	CachePrevFrameRenderingData();
+	UpdateViewRenderingData();
+	UpdateCullingData();
+
+	CreateRenderViewDS();
+}
+
+void RenderView::CreateRenderViewDS()
+{
+	SPT_PROFILER_FUNCTION();
+
+	RenderViewData renderViewData;
+	renderViewData.renderingResolution = GetRenderingResolution();
+
+	m_renderViewDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
+	m_renderViewDS->u_prevFrameSceneView	= GetPrevFrameRenderingData();
+	m_renderViewDS->u_sceneView				= GetViewRenderingData();
+	m_renderViewDS->u_cullingData			= GetCullingData();
+	m_renderViewDS->u_viewRenderingParams	= renderViewData;
 }
 
 } // spt::rsc

@@ -26,6 +26,7 @@ DS_END();
 
 struct DepthPrepassData
 {
+	rg::RGTextureViewHandle velocity;
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle hiZ;
 
