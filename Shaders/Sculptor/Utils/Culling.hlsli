@@ -34,7 +34,7 @@ bool IsSphereCenterBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, floa
         const float width = (aabb.z - aabb.x) * hiZResolution.x;
         const float height = (aabb.w - aabb.y) * hiZResolution.y;
 
-        const float level = floor(log2(max(width, height)));
+        const float level = ceil(log2(max(width, height)));
 
         const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
         const float sceneMinDepth = hiZ.SampleLevel(hiZSampler, uv, level).x;
@@ -67,7 +67,7 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
         const float width = (aabb.z - aabb.x) * hiZResolution.x;
         const float height = (aabb.w - aabb.y) * hiZResolution.y;
 
-        const float level = floor(log2(max(width, height)));
+        const float level = ceil(log2(max(width, height)));
 
         const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
         const float sceneMinDepth = hiZ.SampleLevel(hiZSampler, uv, level).x;

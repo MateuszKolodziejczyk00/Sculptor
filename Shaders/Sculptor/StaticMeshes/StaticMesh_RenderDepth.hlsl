@@ -62,7 +62,7 @@ DP_PS_OUTPUT StaticMesh_DepthFS(VS_OUTPUT vertexInput)
     const float2 currentUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z;
     const float2 prevFrameUV = vertexInput.prevFrameclipSpaceXYW.xy / vertexInput.prevFrameclipSpaceXYW.z;
     
-    output.velocity = currentUV - prevFrameUV;
+    output.velocity = (currentUV - prevFrameUV) * 0.5f;
 
     return output;
 }

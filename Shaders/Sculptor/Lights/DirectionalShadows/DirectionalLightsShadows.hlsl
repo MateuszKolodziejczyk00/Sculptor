@@ -29,7 +29,7 @@ void GenerateShadowRaysRTG()
 
     if(depth > 0.f)
     {
-        const float2 noise = Random(uv + u_params.time);
+        const float2 noise = float2(Random(uv + u_params.time), Random(0.5f - uv - u_params.time * 0.9f));
         const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, u_params.shadowRayConeAngle, noise);
 
         const float3 ndc = float3(uv * 2.f - 1.f, depth);

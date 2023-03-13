@@ -3,6 +3,13 @@
 #include "SculptorCoreTypes.h"
 #include "RenderStage.h"
 
+
+namespace spt::rdr
+{
+class TextureView;
+} // spt::rdr
+
+
 namespace spt::rsc
 {
 

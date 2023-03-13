@@ -7,6 +7,12 @@ float GetNearPlane(float4x4 projectionMatrix)
 }
 
 
+float ComputeLinearDepth(float depth, float nearPlane)
+{
+    return nearPlane / depth;
+}
+
+
 // Based on: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, float P01, float P12, out float4 aabb)
 {

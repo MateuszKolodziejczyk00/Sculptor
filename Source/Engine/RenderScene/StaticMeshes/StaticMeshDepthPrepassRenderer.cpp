@@ -37,9 +37,6 @@ Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder&
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const RenderView& renderView = viewSpec.GetRenderView();
-	RenderSceneEntityHandle viewEntityHandle = renderView.GetViewEntity();
-	
 	lib::DynamicArray<SMDepthPrepassBatch> batches;
 
 	if (batchDefinition.IsValid())

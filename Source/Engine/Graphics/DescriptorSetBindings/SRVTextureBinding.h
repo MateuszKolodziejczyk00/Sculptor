@@ -26,7 +26,10 @@ public:
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
 		const Bool isBound = IsValid();
-		SPT_CHECK(isOptional || isBound);
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK(isBound);
+		}
 
 		if (isBound)
 		{
@@ -42,7 +45,10 @@ public:
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		const Bool isBound = IsValid();
-		SPT_CHECK(isOptional || isBound);
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK(isBound);
+		}
 
 		if (isBound)
 		{

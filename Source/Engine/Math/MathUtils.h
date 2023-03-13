@@ -126,7 +126,7 @@ public:
 		{
 			for (int col = 0; col < cols; ++col)
 			{
-				result.coeff(col, row) = DivideCeil(numerator.coeff(0, 0), denominator.coeff(0, 0));
+				result(row, col) = DivideCeil(numerator.coeff(row, col), denominator.coeff(row, col));
 			}
 		}
 

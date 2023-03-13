@@ -144,7 +144,9 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const RenderView& renderView = viewSpec.GetRenderView();
+
+	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
