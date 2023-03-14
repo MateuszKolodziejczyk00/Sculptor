@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
+#include "RenderScene.h"
 
 namespace spt::rsc
 {
@@ -37,7 +38,7 @@ static rdr::PipelineStateID CompileBuildHiZPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildHiZCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/DepthPrepass/BuildHiZ.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/DepthPrepass/BuildHiZ.hlsl", compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BuildHiZPipeline"), shader);
 }
@@ -122,6 +123,13 @@ static rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graph
 } // HiZ
 
 
+struct SceneViewDepthDataComponent
+{
+	lib::SharedPtr<rdr::TextureView> currentDepthTexture;
+	lib::SharedPtr<rdr::TextureView> prevFrameDepthTexture;
+};
+
+
 DS_BEGIN(PrevFrameViewInfoDS, rg::RGDescriptorSetState<PrevFrameViewInfoDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>), u_prevFrameSceneView)
 DS_END();
@@ -145,34 +153,43 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
+	const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
+
+	SceneViewDepthDataComponent* viewDepthData = viewEntity.try_get<SceneViewDepthDataComponent>();
+	if (!viewDepthData)
+	{
+		viewDepthData = &viewEntity.emplace<SceneViewDepthDataComponent>();
+	}
+	SPT_CHECK(!!viewDepthData);
+
+	std::swap(viewDepthData->currentDepthTexture, viewDepthData->prevFrameDepthTexture);
 
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 
+	if (!viewDepthData->currentDepthTexture || viewDepthData->currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
+	{
+		rhi::TextureDefinition depthDef;
+		depthDef.resolution	= texturesRes;
+		depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
+		depthDef.format		= GetDepthFormat();
+		const lib::SharedRef<rdr::Texture> depthTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Depth Texture"), depthDef, rhi::EMemoryUsage::GPUOnly);
+
+		rhi::TextureViewDefinition viewDefinition;
+		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Depth);
+		viewDepthData->currentDepthTexture = depthTexture->CreateView(RENDERER_RESOURCE_NAME("Depth Texture View"), viewDefinition);
+	}
+
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
 
-	const rhi::EFragmentFormat depthFormat = GetDepthFormat();
+	depthPrepassData.depth = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
 
-	rhi::TextureDefinition depthDef;
-	depthDef.resolution	= texturesRes;
-	depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
-	depthDef.format		= depthFormat;
-	depthPrepassData.depth = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DepthTexture"), depthDef, rhi::EMemoryUsage::GPUOnly);
-
-	rhi::TextureDefinition velocityDef;
-	velocityDef.resolution	= texturesRes;
-	velocityDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::ColorRT);
-	velocityDef.format		= GetVelocityFormat();
-	depthPrepassData.velocity = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VelocityTexture"), velocityDef, rhi::EMemoryUsage::GPUOnly);
+	if (viewDepthData->prevFrameDepthTexture)
+	{
+		depthPrepassData.prevFrameDepth = graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTexture);
+	}
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
-
-	rg::RGRenderTargetDef velocityRTDef;
-	velocityRTDef.textureView		= depthPrepassData.velocity;
-	velocityRTDef.loadOperation		= rhi::ERTLoadOperation::Clear;
-	velocityRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	velocityRTDef.clearColor		= rhi::ClearColor(0.f);
-	renderPassDef.AddColorRenderTarget(velocityRTDef);
 
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView		= depthPrepassData.depth;

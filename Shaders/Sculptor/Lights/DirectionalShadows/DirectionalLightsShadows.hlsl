@@ -22,7 +22,7 @@ void GenerateShadowRaysRTG()
         return;
     }
     
-    const float2 uv = pixel / float2(DispatchRaysDimensions().xy);
+    const float2 uv = (pixel + 0.5f) / float2(DispatchRaysDimensions().xy);
     const float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
 
     ShadowRayPayload payload = { true };

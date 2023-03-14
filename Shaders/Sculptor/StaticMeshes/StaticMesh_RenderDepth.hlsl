@@ -21,8 +21,6 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 clipSpace                : SV_POSITION;
-    float3 clipSpaceXYW             : CLIP_SPACE_XYW;
-    float3 prevFrameclipSpaceXYW    : PREV_CLIP_SPACE_XYW;
 };
 
 
@@ -45,11 +43,7 @@ VS_OUTPUT StaticMesh_DepthVS(VS_INPUT input)
     const float3 vertexLocation = u_geometryData.Load<float3>(submesh.locationsOffset + vertexIdx * 12);
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
 
-    const float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
-
-    output.clipSpace                = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
-    output.clipSpaceXYW             = output.clipSpace.xyw;
-    output.prevFrameclipSpaceXYW    = prevFrameClipSpace.xyw;
+    output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
     
     return output;
 }
@@ -58,11 +52,6 @@ VS_OUTPUT StaticMesh_DepthVS(VS_INPUT input)
 DP_PS_OUTPUT StaticMesh_DepthFS(VS_OUTPUT vertexInput)
 {
     DP_PS_OUTPUT output;
-
-    const float2 currentUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z;
-    const float2 prevFrameUV = vertexInput.prevFrameclipSpaceXYW.xy / vertexInput.prevFrameclipSpaceXYW.z;
-    
-    output.velocity = (currentUV - prevFrameUV) * 0.5f;
 
     return output;
 }

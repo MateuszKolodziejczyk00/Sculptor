@@ -14,7 +14,7 @@ struct CS_INPUT
 };
 
 
-static const float kernel[7] = { 0.0060, 0.0606, 0.2417, 0.3829, 0.2417, 0.0606, 0.0060 };
+static const float kernel[7] = { 0.1, 0.1, 0.2, 0.2, 0.2, 0.1, 0.1 };
 
 
 [numthreads(8, 8, 1)]
@@ -39,7 +39,7 @@ void ShadowsBilateralBlurCS(CS_INPUT input)
         const float sampleLinearDepth = ComputeLinearDepth(sampleDepth, nearPlane);
 
         float shadowSum = 0.f;
-        float samplesNum = 0.f;
+        float samplesWeightSum = 0.f;
 
         for (int i = -3; i <= 3; ++i)
         {
@@ -52,10 +52,10 @@ void ShadowsBilateralBlurCS(CS_INPUT input)
             {
                 const float weight = kernel[i + 3];
                 shadowSum += u_inputTexture.SampleLevel(u_inputSampler, inputUV, 0) * weight;
-                samplesNum += weight;
+                samplesWeightSum += weight;
             }
         }
 
-        u_outputTexture[pixel] = (shadowSum / samplesNum);
+        u_outputTexture[pixel] = (shadowSum / samplesWeightSum);
     }
 }

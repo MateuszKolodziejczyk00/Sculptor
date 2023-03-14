@@ -26,12 +26,18 @@ DS_END();
 
 struct DepthPrepassData
 {
-	rg::RGTextureViewHandle velocity;
+	rg::RGTextureViewHandle prevFrameDepth;
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle hiZ;
 
 	lib::SharedPtr<DepthCullingDS> depthCullingDS;
 };
+
+
+struct MotionData
+{
+	rg::RGTextureViewHandle motion;
+};;
 
 
 struct ShadingData
