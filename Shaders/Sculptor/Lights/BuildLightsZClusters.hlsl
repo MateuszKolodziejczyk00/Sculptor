@@ -15,48 +15,43 @@ struct CS_INPUT
 [numthreads(32, 1, 1)]
 void BuildLightsZClustersCS(CS_INPUT input)
 {
-    const uint clusterIdx = input.groupID.x;
+    const uint clusterIdx = input.localID.x;
 
-    const float clusterRangeMin = clusterIdx * u_lightsData.zClusterLength;
-    const float clusterRangeMax = (clusterIdx + 1) * u_lightsData.zClusterLength;
-
-    uint lightMinIdx = 0xffffffff;
-
-    for (uint lightIdx = input.localID.x; lightIdx < u_lightsData.localLightsNum; lightIdx += 32)
+    if(clusterIdx < u_lightsData.zClustersNum)
     {
-        const float2 lightRange = u_localLightsZRanges[lightIdx];
-        bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
+        const float clusterRangeMin = clusterIdx * u_lightsData.zClusterLength;
+        const float clusterRangeMax = (clusterIdx + 1) * u_lightsData.zClusterLength;
 
-        if(isInRange)
+        uint lightMinIdx = 0xffffffff;
+
+        for (uint lightIdx = 0; lightIdx < u_lightsData.localLightsNum; lightIdx += 1)
         {
-            if (WaveIsFirstLane())
+            const float2 lightRange = u_localLightsZRanges[lightIdx];
+            const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
+            if (isInRange)
             {
                 lightMinIdx = lightIdx;
                 break;
             }
         }
-    }
 
-    uint lightMaxIdx = 0;
+        uint lightMaxIdx = 0;
 
-    if(lightMinIdx != 0xffffffff)
-    {
-        for (uint idx = input.localID.x; idx < u_lightsData.localLightsNum; idx += 32)
+        if (lightMinIdx != 0xffffffff)
         {
-            const uint lightIdx = u_lightsData.localLightsNum - lightIdx - 1;
-            const float2 lightRange = u_localLightsZRanges[lightIdx];
-            bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
-
-            if (isInRange)
+            for (uint idx = 0; idx < u_lightsData.localLightsNum; idx += 1)
             {
-                if (WaveIsFirstLane())
+                const uint lightIdx = u_lightsData.localLightsNum - idx - 1;
+                const float2 lightRange = u_localLightsZRanges[lightIdx];
+                const bool isInRange = lightRange.x < clusterRangeMax && lightRange.y > clusterRangeMin;
+                if (isInRange)
                 {
                     lightMaxIdx = lightIdx;
                     break;
                 }
             }
         }
-    }
 
-    u_clustersRanges[clusterIdx] = uint2(lightMinIdx, lightMaxIdx);
+        u_clustersRanges[clusterIdx] = uint2(lightMinIdx, lightMaxIdx);
+    }
 }

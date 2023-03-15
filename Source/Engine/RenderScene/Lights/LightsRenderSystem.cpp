@@ -25,7 +25,8 @@ namespace spt::rsc
 namespace params
 {
 
-RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.1f, 0.f, 1.f);
+RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.02f, 0.f, 1.f);
+RendererFloatParameter localLightsZClustersLength("Z Clusters Length", { "Lighting", "Local" }, 2.f, 1.f, 10.f);
 
 } // params
 
@@ -103,14 +104,14 @@ END_RG_NODE_PARAMETERS_STRUCT();
 struct LightsRenderingDataPerView
 {
 	LightsRenderingDataPerView()
-		: localLightsNum(0)
+		: localLightsToRenderNum(0)
 		, directionalLightsNum(0)
 		, zClustersNum(0)
 	{ }
 
 	Bool HasAnyLocalLightsToRender() const
 	{
-		return localLightsNum > 0;
+		return localLightsToRenderNum > 0;
 	}
 
 	Bool HasAnyDirectionalLightsToRender() const
@@ -118,7 +119,7 @@ struct LightsRenderingDataPerView
 		return directionalLightsNum > 0;
 	}
 
-	Uint32 localLightsNum;
+	Uint32 localLightsToRenderNum;
 	Uint32 directionalLightsNum;
 
 	math::Vector2u	tilesNum;
@@ -143,7 +144,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
-	constexpr Uint32 zClustersNum = 8;
+	constexpr Uint32 zClustersNum = 32;
 
 	LightsRenderingDataPerView lightsRenderingData;
 
@@ -153,7 +154,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	{
 		math::Vector4f pointLightLocation = math::Vector4f::UnitW();
 		pointLightLocation.head<3>() = pointLight.location;
-		const Real32 viewSpaceZ = viewMatrix.row(3).dot(pointLightLocation);
+		const Real32 viewSpaceZ = viewMatrix.row(0).dot(pointLightLocation);
 		return viewSpaceZ;
 	};
 
@@ -162,41 +163,41 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
 	const SizeType pointLightsNum = pointLightsView.size();
 
-	lightsRenderingData.localLightsNum = static_cast<Uint32>(pointLightsNum);
-
 	const lib::SharedRef<ViewShadingDS> viewShadingDS = rdr::ResourcesManager::CreateDescriptorSetState<ViewShadingDS>(RENDERER_RESOURCE_NAME("ViewShadingDS"));
 	lightsRenderingData.viewShadingDS = viewShadingDS;
 
-	if (lightsRenderingData.HasAnyLocalLightsToRender())
+	lib::DynamicArray<PointLightGPUData> pointLights;
+	lib::DynamicArray<Real32> pointLightsViewSpaceZ;
+	pointLights.reserve(pointLightsNum);
+	pointLightsViewSpaceZ.reserve(pointLightsNum);
+
+	for (const auto& [entity, pointLight] : pointLightsView.each())
 	{
-		lib::DynamicArray<PointLightGPUData> pointLights;
-		lib::DynamicArray<Real32> pointLightsViewSpaceZ;
-		pointLights.reserve(pointLightsNum);
-		pointLightsViewSpaceZ.reserve(pointLightsNum);
-
-		for (const auto& [entity, pointLight] : pointLightsView.each())
+		PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
+		gpuLightData.entityID = static_cast<Uint32>(entity);
+		gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
+		if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
 		{
-			PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
-			gpuLightData.entityID = static_cast<Uint32>(entity);
-			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
-			{
-				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
-			}
-
-			const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
-
-			if (lightViewSpaceZ + gpuLightData.radius > 0.f)
-			{
-				const auto emplaceIt = std::upper_bound(std::cbegin(pointLightsViewSpaceZ), std::cend(pointLightsViewSpaceZ), lightViewSpaceZ);
-				const SizeType emplaceIdx = std::distance(std::cbegin(pointLightsViewSpaceZ), emplaceIt);
-
-				pointLightsViewSpaceZ.emplace(emplaceIt, lightViewSpaceZ);
-				pointLights.emplace(std::cbegin(pointLights) + emplaceIdx, gpuLightData);
-			}
+			gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
+			SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
 		}
 
+		const Real32 lightViewSpaceZ = getViewSpaceZ(gpuLightData);
+
+		if (lightViewSpaceZ + gpuLightData.radius > 0.f)
+		{
+			const auto emplaceIt = std::upper_bound(std::cbegin(pointLightsViewSpaceZ), std::cend(pointLightsViewSpaceZ), lightViewSpaceZ);
+			const SizeType emplaceIdx = std::distance(std::cbegin(pointLightsViewSpaceZ), emplaceIt);
+
+			pointLightsViewSpaceZ.emplace(emplaceIt, lightViewSpaceZ);
+			pointLights.emplace(std::cbegin(pointLights) + emplaceIdx, gpuLightData);
+		}
+	}
+	
+	lightsRenderingData.localLightsToRenderNum = static_cast<Uint32>(pointLights.size());
+
+	if (lightsRenderingData.HasAnyLocalLightsToRender())
+	{
 		lib::DynamicArray<math::Vector2f> pointLightsZRanges;
 		pointLightsZRanges.reserve(pointLights.size());
 
@@ -211,7 +212,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		lightsData.localLightsNum			= static_cast<Uint32>(pointLights.size());
 		lightsData.localLights32Num			= static_cast<Uint32>((pointLights.size() - 1) / 32 + 1);
-		lightsData.zClusterLength			= 20.f;
+		lightsData.zClusterLength			= params::localLightsZClustersLength;
 		lightsData.zClustersNum				= zClustersNum;
 		lightsData.tilesNum					= tilesNum;
 		lightsData.tileSize					= tileSize;
@@ -234,7 +235,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLights.size() * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
-		
+
 		const rhi::BufferDefinition lightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
 		const rg::RGBufferViewHandle lightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommandsCount"), lightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 		graphBuilder.FillBuffer(RG_DEBUG_NAME("InitializeLightDrawCommandsCount"), lightDrawCommandsCount, 0, sizeof(Uint32), 0);
@@ -364,6 +365,7 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 	SPT_CHECK(viewSpec.SupportsStage(ERenderStage::DepthPrepass));
 
 	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec, m_directionalLightsData);
+
 	viewSpec.GetData().Create<LightsRenderingDataPerView>(lightsRenderingData);
 		
 	RenderStageEntries& depthPrepassbEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
@@ -438,7 +440,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 							  dispatchZClustersGroupsNum,
 							  rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildZClustersDS)));
 
-		const math::Vector3u dispatchLightsGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.localLightsNum, 32), 1, 1);
+		const math::Vector3u dispatchLightsGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.localLightsToRenderNum, 32), 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
 							  m_generateLightsDrawCommandsPipeline,
 							  dispatchLightsGroupsNum,
@@ -453,7 +455,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		passIndirectParams.lightDrawCommandsBuffer = lightsRenderingData.lightDrawCommandsBuffer;
 		passIndirectParams.lightDrawCommandsCountBuffer = lightsRenderingData.lightDrawCommandsCountBuffer;
 
-		const Uint32 maxLightDrawsCount = lightsRenderingData.localLightsNum;
+		const Uint32 maxLightDrawsCount = lightsRenderingData.localLightsToRenderNum;
 
 		graphBuilder.RenderPass(RG_DEBUG_NAME("Build Lights Tiles"),
 								lightsTilesRenderPassDef,
