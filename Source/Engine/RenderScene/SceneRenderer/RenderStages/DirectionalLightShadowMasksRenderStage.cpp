@@ -29,7 +29,8 @@ RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Dist
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
 RendererBoolParameter directionalLightAccumulateShadows("Accumulate Shadows", { "Lighting", "Shadows", "Directional", "Accumulation"}, true);
 RendererFloatParameter directionalLightAccumulationMaxDepthDiff("Max Depth Diff", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.05f, 0.f, 1.f);
-RendererFloatParameter directionalLightAccumulationAlpha("Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.1f, 0.f, 1.f);
+RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.1f, 0.f, 1.f);
+RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.28f, 0.f, 1.f);
 RendererBoolParameter directionalLightApplyShadowsBlur("Shadows Blur", { "Lighting", "Shadows", "Directional"}, true);
 
 } // params
@@ -59,13 +60,14 @@ DS_END();
 
 BEGIN_SHADER_STRUCT(DirShadowsAccumulationParams)
 	SHADER_STRUCT_FIELD(Real32, maxDepthDifference)
-	SHADER_STRUCT_FIELD(Real32, exponentialAverageAlpha)
+	SHADER_STRUCT_FIELD(Real32, minExponentialAverageAlpha)
+	SHADER_STRUCT_FIELD(Real32, maxExponentialAverageAlpha)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(DirShadowsAccumulationMasksDS, rg::RGDescriptorSetState<DirShadowsAccumulationMasksDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_prevShadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_shadowMaskSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_shadowMaskSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_shadowMask)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_depth)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_prevDepth)
@@ -190,8 +192,9 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 			if (canAccumulateShadows)
 			{
 				DirShadowsAccumulationParams accumulationParams;
-				accumulationParams.maxDepthDifference		= params::directionalLightAccumulationMaxDepthDiff;
-				accumulationParams.exponentialAverageAlpha	= params::directionalLightAccumulationAlpha;
+				accumulationParams.maxDepthDifference			= params::directionalLightAccumulationMaxDepthDiff;
+				accumulationParams.minExponentialAverageAlpha	= params::directionalLightMinAccumulationAlpha;
+				accumulationParams.maxExponentialAverageAlpha	= params::directionalLightMaxAccumulationAlpha;
 
 				const lib::SharedRef<DirShadowsAccumulationMasksDS> dirShadowsAccumulationMasksDS = rdr::ResourcesManager::CreateDescriptorSetState<DirShadowsAccumulationMasksDS>(RENDERER_RESOURCE_NAME("Dir Shadows Accumulation Masks DS"));
 				dirShadowsAccumulationMasksDS->u_prevShadowMask = prevShadowMask.shadowMaskView;

@@ -14,7 +14,7 @@ struct CS_INPUT
 };
 
 
-static const float kernel[7] = { 0.1, 0.1, 0.2, 0.2, 0.2, 0.1, 0.1 };
+static const float kernel[7] = { 0.0060, 0.0606, 0.2417, 0.3829, 0.2417, 0.0606, 0.0060 };
 
 
 [numthreads(8, 8, 1)]
@@ -29,7 +29,7 @@ void ShadowsBilateralBlurCS(CS_INPUT input)
     {
         const float2 pixelSize = rcp(float2(outputRes));
 
-        const float2 uv = pixel * pixelSize + pixelSize * 0.5f;
+        const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
         
         const float2 direction = u_params.isHorizontal ? float2(pixelSize.x, 0) : float2(0, pixelSize.y);
 

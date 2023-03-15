@@ -50,14 +50,6 @@ struct VisibleLightEntityInfo
 };
 
 
-constexpr rhi::SamplerDefinition CreateShadowsSamplerDef()
-{
-	rhi::SamplerDefinition definition(rhi::ESamplerFilterType::Linear, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToEdge);
-	definition.compareOp = rhi::ECompareOp::Greater;
-	return definition;
-}
-
-
 BEGIN_SHADER_STRUCT(ShadowsSettings)
 	SHADER_STRUCT_FIELD(Uint32, highQualitySMEndIdx)
 	SHADER_STRUCT_FIELD(Uint32, mediumQualitySMEndIdx)
@@ -75,8 +67,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),						u_shadowMapViews)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_occludersSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateShadowsSamplerDef()>),				u_shadowSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_shadowMapSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_shadowMaskSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)

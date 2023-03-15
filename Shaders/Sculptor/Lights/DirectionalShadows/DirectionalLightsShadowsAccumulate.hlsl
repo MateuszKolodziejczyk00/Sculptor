@@ -44,11 +44,19 @@ void AccumulateShadowsCS(CS_INPUT input)
             const bool canAccumulateSample = abs(prevFrameDepthLinear - prevFrameRenderedDepthLinear) < u_params.maxDepthDifference;
             if (canAccumulateSample)
             {
+                const float2 cameraMotion = uv - prevFrameUV;
+                
                 const float prevAccumulatedShadow = u_prevShadowMask.SampleLevel(u_shadowMaskSampler, prevFrameUV, 0);
         
                 const float currentFrameShadow = u_shadowMask[pixel];
 
-                const float exponentialAverageAlpha = u_params.exponentialAverageAlpha;
+                // Scale accumulation alpha based on depth difference between current and previous frame
+                // this is to avoid accumulation of noise caused by under/over sampling
+                const float currentLinearDepth = ComputeLinearDepth(currentDepth, nearPlane);
+                const float depthDiff = abs(currentLinearDepth - prevFrameDepthLinear);
+                const float maxDepthDiff = 0.1f;
+                const float exponentialAverageAlpha = lerp(u_params.minExponentialAverageAlpha, u_params.maxExponentialAverageAlpha, saturate(depthDiff / maxDepthDiff));
+
                 const float accumulatedShadow = exponentialAverageAlpha * currentFrameShadow + (1.f - exponentialAverageAlpha) * prevAccumulatedShadow;
                 u_shadowMask[pixel] = accumulatedShadow;
             }

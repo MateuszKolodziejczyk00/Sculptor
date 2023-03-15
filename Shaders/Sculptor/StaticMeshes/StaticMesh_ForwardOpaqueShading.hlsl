@@ -141,6 +141,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
         baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
+        baseColor = pow(baseColor, 2.2f);
     }
 
     baseColor *= material.baseColorFactor;

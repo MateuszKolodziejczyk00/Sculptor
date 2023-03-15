@@ -179,8 +179,8 @@ float ComputeShadowNDCDepth(float linearDepth, float p20, float p23)
 
 float ComputeBias(float3 surfaceNormal, float3 surfaceToLight)
 {
-    const float biasFactor = 0.012f;
-    return min(biasFactor * tan(acos(dot(surfaceNormal, surfaceToLight))) + 0.0017f, 0.15f);
+    const float biasFactor = 0.008f;
+    return min(biasFactor * tan(acos(dot(surfaceNormal, surfaceToLight))) + 0.001f, 0.15f);
 }
 
 
@@ -218,7 +218,7 @@ float FindAverageOccluderDepth(Texture2D shadowMap, SamplerState occludersSample
 float2 ComputePenumbraSize(float surfaceDepth, float occluderDepth, float lightRadius, float nearPlane, float2 shadowMapPixelSize)
 {
     const float minPenumbraPixelsNum = 2.f;
-    const float maxPenumbraPixelsNum = 4.f;
+    const float maxPenumbraPixelsNum = 6.f;
     
     if(occluderDepth > 0.f)
     {
@@ -275,6 +275,52 @@ float EvaluateShadowsPCF(Texture2D shadowMap, SamplerComparisonState shadowSampl
 }
 
 
+/** Based on "Shadows of Cold War" by Kevin Meyers, Treyarch */ 
+float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float2 shadowMapUV, float linearDepth, float2 penumbraSize, float p20, float p23, float noise)
+{
+    const float2x2 samplesRotation = NoiseRotation(noise);
+
+    float occluders = 0.f;
+    float occludersDistSum = 0.f;
+    
+    for (uint i = 0; i < PCF_SHADOW_SAMPLES_NUM; ++i)
+    {
+        float2 offset = pcfShadowSamples[i] * penumbraSize;
+        offset = mul(samplesRotation, offset);
+        const float2 uv = shadowMapUV + offset;
+        
+        const float4 depths = shadowMap.Gather(shadowSampler, uv);
+
+        [[unroll]]
+        for (uint depthIdx = 0; depthIdx < 4; ++depthIdx)
+        {
+            const float occluderLinearDepth = ComputeShadowLinearDepth(depths[depthIdx], p20, p23);
+            const float distDiff = -occluderLinearDepth + linearDepth;
+            const float occluder = step(0.f, distDiff);
+
+            occluders += occluder;
+            occludersDistSum += occluderLinearDepth * occluder;
+        }
+    }
+
+    const float occluderAvgDist = occludersDistSum * rcp(occluders);
+    const float pcfWeight = saturate(occluderAvgDist * 0.25f);
+
+    float percentageOccluded = occluders * rcp(PCF_SHADOW_SAMPLES_NUM * 4.f);
+
+    percentageOccluded = 2.f * percentageOccluded - 1.f;
+    float occludedSign = sign(percentageOccluded);
+    percentageOccluded = 1.f - occludedSign * percentageOccluded;
+    
+    percentageOccluded = lerp(Pow3(percentageOccluded), percentageOccluded, pcfWeight);
+    percentageOccluded = 1.f - percentageOccluded;
+    percentageOccluded *= occludedSign;
+    percentageOccluded = 0.5f * percentageOccluded + 0.5f;
+
+    return 1.f - percentageOccluded;
+}
+
+
 float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation, float pointLightAttenuationRadius, uint shadowMapFirstFaceIdx)
 {
     const uint shadowMapFaceIdx = GetShadowMapFaceIndex(surface.location - pointLightLocation);
@@ -296,41 +342,11 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     float p20, p23;
     ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
 
-    const uint shadowMapQuality = GetShadowMapQuality(shadowMapIdx);
-
-    const float bias = ComputeBias(surface.geometryNormal, normalize(pointLightLocation - surface.location));
-    const float ndcMinBias = shadowMapQuality == SM_QUALITY_LOW ? 0.00034f : 0.00024f;
-    const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceShadowNDC.z, p20, p23);
-    float surfaceNDCDepth = ComputeShadowNDCDepth(surfaceLinearDepth - bias, p20, p23);
-    surfaceNDCDepth = max(surfaceShadowNDC.z + ndcMinBias, surfaceNDCDepth);
+    const float bias = 0.0003f;
+    const float surfaceNDCDepth = surfaceShadowNDC.z + bias;
+    const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
     
-    const float2 shadowMapPixelSize = GetShadowMapPixelSize(shadowMapQuality);
-
-    if(shadowMapQuality == SM_QUALITY_LOW)
-    {
-        // 1 tap shadow
-        return u_shadowMaps[shadowMapIdx].SampleCmp(u_shadowSampler, shadowMapUV, surfaceNDCDepth);
-    }
-    else if(shadowMapQuality == SM_QUALITY_MEDIUM)
-    {
-        // PCF shadows
-        const float noise = InterleavedGradientNoise(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
-        
-        const float2 penumbraSize = 1.f * shadowMapPixelSize;
-        return EvaluateShadowsPCF(u_shadowMaps[shadowMapIdx], u_shadowSampler, shadowMapUV, surfaceNDCDepth, penumbraSize, noise);
-    }
-    else // if(shadowMapQuality == SM_QUALITY_HIGH)
-    {
-        // PCSS shadows
-        const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
-
-        const float avgOccluderDepth = FindAverageOccluderDepth(u_shadowMaps[shadowMapIdx], u_occludersSampler, shadowMapPixelSize, shadowMapUV, surfaceNDCDepth, p20, p23);
-
-        const float lightArea = 0.15f;
-        const float2 penumbraSize = ComputePenumbraSize(surfaceLinearDepth, avgOccluderDepth, lightArea, nearPlane, shadowMapPixelSize) * kernelScale;
-
-        const float shadow = EvaluateShadowsPCSS(u_shadowMaps[shadowMapIdx], u_shadowSampler, shadowMapUV, surfaceNDCDepth, penumbraSize, noise);
-    
-        return shadow;
-    }
+    const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
+    const float2 penumbraSize = rcp(256.f);
+    return EvaluateShadowsDPCF(u_shadowMaps[shadowMapIdx], u_shadowMapSampler, shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
 }

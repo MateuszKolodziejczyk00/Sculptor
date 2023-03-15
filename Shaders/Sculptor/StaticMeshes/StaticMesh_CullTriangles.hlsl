@@ -127,9 +127,9 @@ void CullTrianglesCS(CS_INPUT input)
         if(isTriangleVisible && isInFrontOfPerspectivePlane)
         {
             float4 aabb;
-            // We need to multiply min and max times 0.5 because clip corrds are in range [-1, 1] and screen coords are in range [0, 1 * resolution]
-            aabb.xy = min(triangleVerticesClip[0].xy, min(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) * 0.5f * u_viewRenderingParams.renderingResolution;
-            aabb.zw = max(triangleVerticesClip[0].xy, max(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) * 0.5f * u_viewRenderingParams.renderingResolution;
+            // Transform [-1, 1] to [0, resolution]
+            aabb.xy = (min(triangleVerticesClip[0].xy, min(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) + 1.f) * 0.5f * u_viewRenderingParams.renderingResolution;
+            aabb.zw = (max(triangleVerticesClip[0].xy, max(triangleVerticesClip[1].xy, triangleVerticesClip[2].xy)) + 1.f) * 0.5f * u_viewRenderingParams.renderingResolution;
 
             // This is based on Niagara renderer created by Arseny Kapoulkine
             // Source: https://github.com/zeux/niagara/blob/master/src/shaders/meshlet.mesh.glsl
@@ -138,7 +138,7 @@ void CullTrianglesCS(CS_INPUT input)
 
             // small primitive culling
             // Original comment: "this is slightly imprecise (doesn't fully match hw behavior and is both too loose and too strict)"
-            //isTriangleVisible = isTriangleVisible && (round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y - subpixelPrecision) != round(aabb.w));
+            isTriangleVisible = isTriangleVisible && (round(aabb.x - subpixelPrecision) != round(aabb.z) && round(aabb.y) != round(aabb.w + subpixelPrecision));
         }
 
         if(isTriangleVisible)
