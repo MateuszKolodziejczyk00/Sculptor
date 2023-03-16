@@ -2,6 +2,7 @@
 
 #include "ProfilerMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Delegates/MulticastDelegate.h"
 
 
 namespace spt::prf
@@ -18,11 +19,9 @@ public:
 	// Captures ===================================================
 
 	void StartCapture();
-	void StopCapture();
+	void StopAndSaveCapture();
 
 	Bool StartedCapture() const;
-
-	Bool SaveCapture();
 
 	// Frame Time =================================================
 
@@ -42,6 +41,8 @@ private:
 	SizeType						m_recentFrameTimesNum;
 	SizeType						m_oldestFrameTimeIdx;
 	Real32							m_recentFrameTimesSum;
+
+	lib::DelegateHandle				m_captureDelegateHandle;
 };
 
 } // spt::prf

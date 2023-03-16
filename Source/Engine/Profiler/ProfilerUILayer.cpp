@@ -50,8 +50,7 @@ void ProfilerUILayer::DrawUI()
 	{
 		if (ImGui::Button("Stop Trace"))
 		{
-			prf::Profiler::Get().StopCapture();
-			prf::Profiler::Get().SaveCapture();
+			prf::Profiler::Get().StopAndSaveCapture();
 		}
 	}
 	else

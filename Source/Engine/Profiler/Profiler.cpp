@@ -141,24 +141,28 @@ void Profiler::Initialize()
 
 void Profiler::StartCapture()
 {
-	impl::ProfilerBackend::StartCapture();
-	m_startedCapture = true;
+	m_captureDelegateHandle = engn::Engine::Get().GetOnBeginFrameDelegate().AddLambda([ this ]
+																					  {
+																						  impl::ProfilerBackend::StartCapture();
+																						  m_startedCapture = true;
+																						  engn::Engine::Get().GetOnBeginFrameDelegate().Unbind(m_captureDelegateHandle);
+																					  });
 }
 
-void Profiler::StopCapture()
+void Profiler::StopAndSaveCapture()
 {
-	impl::ProfilerBackend::StopCapture();
-	m_startedCapture = false;
+	m_captureDelegateHandle = engn::Engine::Get().GetOnBeginFrameDelegate().AddLambda([ this ]
+																					  {
+																						  impl::ProfilerBackend::StopCapture();
+																						  impl::ProfilerBackend::SaveCapture();
+																						  m_startedCapture = false;
+																						  engn::Engine::Get().GetOnBeginFrameDelegate().Unbind(m_captureDelegateHandle);
+																					  });
 }
 
 Bool Profiler::StartedCapture() const
 {
 	return m_startedCapture;
-}
-
-Bool Profiler::SaveCapture()
-{
-	return impl::ProfilerBackend::SaveCapture();
 }
 
 Real32 Profiler::GetFrameTime(SizeType idx) const
