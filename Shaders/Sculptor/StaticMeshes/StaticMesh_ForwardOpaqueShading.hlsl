@@ -1,6 +1,7 @@
 #include "SculptorShader.hlsli"
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
 #include "RenderStages/ForwardOpaque/ForwardOpaque.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -35,15 +36,16 @@ struct VS_OUTPUT
 {
     float4  clipSpace           : SV_POSITION;
 
-    uint    materialDataOffset  : MATERIAL_DATA;
     float3  normal              : VERTEX_NORMAL;
+    uint    materialDataOffset  : MATERIAL_DATA;
     float3  tangent             : VERTEX_TANGENT;
     bool    hasTangent          : VERTEX_HAS_TANGENT;
     float3  bitangent           : VERTEX_BITANGENT;
     float2  uv                  : VERTEX_UV;
     
     float3  worldLocation       : WORLD_LOCATION;
-    float3  clipSpaceXYW        : CLIP_SPACE_XYW;
+    float4  pixelClipSpace      : CLIP_SPACE;
+
 
 #if WITH_DEBUGS
     uint    meshletIdx          : MESHLET_IDX;
@@ -125,7 +127,7 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     output.materialDataOffset = u_visibleBatchElements[batchElementIdx].materialDataOffset;
 
     output.worldLocation = vertexWorldLocation;
-    output.clipSpaceXYW = output.clipSpace.xyw;
+    output.pixelClipSpace = output.clipSpace;
 
     return output;
 }
@@ -174,7 +176,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
         shadingNormal = normalize(vertexInput.normal);
     }
 
-    const float2 screenUV = vertexInput.clipSpaceXYW.xy / vertexInput.clipSpaceXYW.z * 0.5f + 0.5f;
+    const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
 
     ShadedSurface surface;
     surface.location        = vertexInput.worldLocation;
@@ -184,6 +186,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     surface.diffuseColor    = diffuseColor;
     surface.roughness       = roughness;
     surface.uv              = screenUV;
+    surface.linearDepth     = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
 
     const float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
 

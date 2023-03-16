@@ -51,6 +51,11 @@ void BuildLightsZClustersCS(CS_INPUT input)
                 }
             }
         }
+        else
+        {
+            lightMinIdx = 0;
+            lightMaxIdx = 0;
+        }
 
         u_clustersRanges[clusterIdx] = uint2(lightMinIdx, lightMaxIdx);
     }

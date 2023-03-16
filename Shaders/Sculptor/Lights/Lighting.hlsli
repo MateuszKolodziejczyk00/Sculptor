@@ -3,6 +3,18 @@
 #include "Lights/Shadows.hlsli"
 
 
+// Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
+uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
+{
+	range.x = clamp(range.x, startIdx, startIdx + 32u);
+	range.y = clamp(range.y + 1u, range.x, startIdx + 32u);
+
+	const uint numBits = range.y - range.x;
+	const uint rangeMask = numBits == 32 ? 0xffffffffu : ((1u << numBits) - 1u) << (range.x - startIdx);
+	return mask & uint(rangeMask);
+}
+
+
 float GetPointLightAttenuationAtLocation(PointLightGPUData pointLight, float3 location)
 {
     const float distAlpha = saturate(1.f - length(pointLight.location - location) / pointLight.radius);
@@ -55,9 +67,13 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
     const uint2 lightsTileCoords = GetLightsTile(surface.uv, u_lightsData.tileSize);
     const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
     
+    const uint clusterIdx = surface.linearDepth / u_lightsData.zClusterLength;
+    const uint2 clusterRange = clusterIdx < u_lightsData.zClustersNum ? u_clustersRanges[clusterIdx] : uint2(0u, 0u);
+    
     for(uint i = 0; i < u_lightsData.localLights32Num; ++i)
     {
         uint lightsMask = u_tilesLightsMask[tileLightsDataOffset + i];
+        lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
 
         while(lightsMask)
         {
