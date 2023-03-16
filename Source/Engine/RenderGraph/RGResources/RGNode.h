@@ -19,6 +19,7 @@ namespace spt::rdr
 {
 class RenderContext;
 class CommandRecorder;
+class GPUStatisticsCollector;
 } // spt::rdr
 
 
@@ -26,6 +27,12 @@ namespace spt::rg
 {
 
 using RGNodeID = SizeType;
+
+
+struct RGExecutionContext
+{
+	lib::SharedPtr<rdr::GPUStatisticsCollector> statisticsCollector;
+};
 
 
 class RENDER_GRAPH_API RGNode : public RGTrackedObject
@@ -54,11 +61,11 @@ public:
 
 	void AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
 
-	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
+	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context) = 0;
 
 private:
 
@@ -163,7 +170,7 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context) override
 	{
 		m_callable(renderContext, recorder);
 	}
@@ -184,7 +191,7 @@ public:
 
 	void BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds);
 
-	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder);
+	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
 protected:
 
@@ -239,7 +246,7 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) final;
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context) final;
 
 	virtual void ExecuteRenderPass(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) = 0;
 
@@ -294,7 +301,7 @@ public:
 
 protected:
 
-	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder) override
+	virtual void OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context) override
 	{ }
 };
 

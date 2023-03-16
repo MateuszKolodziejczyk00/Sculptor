@@ -5,6 +5,7 @@
 #include "GPUDiagnose/Diagnose.h"
 #include "ResourcesManager.h"
 #include "RGResources.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 
 namespace spt::rg
 {
@@ -129,12 +130,13 @@ void RGNode::AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>
 	m_dsStates.emplace_back(dsState);
 }
 
-void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
+	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
 
 	SPT_CHECK(!m_executed);
 
@@ -143,7 +145,7 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	PreExecuteBarrier(recorder);
 
 	BindDescriptorSetStates(recorder);
-	OnExecute(renderContext, recorder);
+	OnExecute(renderContext, recorder, context);
 	UnbindDescriptorSetStates(recorder);
 
 	ReleaseResources();
@@ -272,12 +274,13 @@ void RGSubpass::BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds)
 	m_dsStatesToBind.emplace_back(std::move(ds));
 }
 
-void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
+	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
 
 	for(const lib::SharedRef<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
 	{
@@ -302,7 +305,7 @@ void RGRenderPassNodeBase::AppendSubpass(RGSubpassHandle subpass)
 	m_subpasses.emplace_back(subpass);
 }
 
-void RGRenderPassNodeBase::OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+void RGRenderPassNodeBase::OnExecute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
 {
 	const rdr::RenderingDefinition renderingDefinition = m_renderPassDef.CreateRenderingDefinition();
 
@@ -312,7 +315,7 @@ void RGRenderPassNodeBase::OnExecute(const lib::SharedRef<rdr::RenderContext>& r
 
 	for (RGSubpassHandle subpass : m_subpasses)
 	{
-		subpass->Execute(renderContext, recorder);
+		subpass->Execute(renderContext, recorder, context);
 	}
 
 	recorder.EndRendering();

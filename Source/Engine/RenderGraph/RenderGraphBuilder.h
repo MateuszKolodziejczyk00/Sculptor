@@ -48,6 +48,10 @@ public:
 
 	RenderGraphBuilder();
 
+	// Utility ================================================
+
+	void BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector);
+
 	// Textures ===============================================
 
 	Bool IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const;
@@ -184,6 +188,8 @@ private:
 
 	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStates;
 	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStatesWithDependencies;
+
+	lib::SharedPtr<rdr::GPUStatisticsCollector> m_statisticsCollector;
 
 	RGAllocator m_allocator;
 };

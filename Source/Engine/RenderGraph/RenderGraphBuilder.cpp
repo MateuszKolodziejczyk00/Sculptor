@@ -12,6 +12,11 @@ namespace spt::rg
 RenderGraphBuilder::RenderGraphBuilder()
 { }
 
+void RenderGraphBuilder::BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector)
+{
+	m_statisticsCollector = collector;
+}
+
 Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const
 {
 	return m_externalTextures.contains(texture);
@@ -645,13 +650,16 @@ void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores
 {
 	SPT_PROFILER_FUNCTION();
 
-	rhi::ContextDefinition contextDefinition;
-	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("Render Graph Context"), contextDefinition);
+	RGExecutionContext graphExecutionContext;
+	graphExecutionContext.statisticsCollector = m_statisticsCollector;
+
+	rhi::ContextDefinition renderContextDefinition;
+	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("Render Graph Context"), renderContextDefinition);
 	lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
 
 	for (const RGNodeHandle node : m_nodes)
 	{
-		node->Execute(renderContext, *commandRecorder);
+		node->Execute(renderContext, *commandRecorder, graphExecutionContext);
 	}
 
 	rdr::CommandsRecordingInfo recordingInfo;
