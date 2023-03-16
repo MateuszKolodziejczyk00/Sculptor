@@ -312,20 +312,19 @@ void RHITexture::ReleaseRHI()
 
     SPT_CHECK(!!IsValid());
 
+    PreImageReleased();
+
     if (m_allocation)
     {
+		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle));
         vmaDestroyImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, m_allocation);
     }
-
-    PreImageReleased();
 
     m_imageHandle   = VK_NULL_HANDLE;
     m_allocation    = VK_NULL_HANDLE;
 
     m_definition        = rhi::TextureDefinition();
     m_allocationInfo    = rhi::RHIAllocationInfo();
-
-    m_name.Reset();
 }
 
 Bool RHITexture::IsValid() const
@@ -449,11 +448,12 @@ void RHITextureView::ReleaseRHI()
 
     SPT_CHECK(!!m_viewHandle);
 
+	m_name.Reset(reinterpret_cast<Uint64>(m_viewHandle));
+
     vkDestroyImageView(VulkanRHI::GetDeviceHandle(), m_viewHandle, VulkanRHI::GetAllocationCallbacks());
 
     m_viewHandle = VK_NULL_HANDLE;
     m_texture = nullptr;
-    m_name.Reset();
 }
 
 Bool RHITextureView::IsValid() const

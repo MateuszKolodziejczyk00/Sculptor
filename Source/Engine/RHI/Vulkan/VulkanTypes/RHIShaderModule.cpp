@@ -28,6 +28,8 @@ void RHIShaderModule::ReleaseRHI()
 
 	SPT_CHECK(IsValid());
 
+	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_SHADER_MODULE);
+
 	vkDestroyShaderModule(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
 	
 	m_stage = rhi::EShaderStage::None;

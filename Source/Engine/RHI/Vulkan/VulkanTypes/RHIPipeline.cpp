@@ -518,13 +518,12 @@ void RHIPipeline::ReleaseRHI()
 
 	SPT_CHECK(IsValid());
 
+	m_debugName.Reset(reinterpret_cast<Uint64>(m_handle));
 	helpers::ReleasePipelineResource(m_handle);
 	m_handle = VK_NULL_HANDLE;
 	m_pipelineType = rhi::EPipelineType::None;
 
 	m_layout.reset();
-
-	m_debugName.Reset();
 }
 
 Bool RHIPipeline::IsValid() const

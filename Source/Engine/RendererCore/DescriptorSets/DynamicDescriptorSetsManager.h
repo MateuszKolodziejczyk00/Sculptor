@@ -18,6 +18,7 @@ class DynamicDescriptorSetsManager
 public:
 
 	DynamicDescriptorSetsManager();
+	~DynamicDescriptorSetsManager();
 
 	void BuildDescriptorSets(RenderContext& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos);
 

@@ -34,6 +34,7 @@ public:
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
+	void						ResetName();
 
 	Bool IsValid() const;
 

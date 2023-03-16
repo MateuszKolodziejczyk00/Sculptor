@@ -78,13 +78,18 @@ Bool DebugName::HasName() const
 #endif // RHI_DEBUG
 }
 
-void DebugName::Reset()
+void DebugName::Reset(Uint64 object /*= 0*/, VkObjectType objectType /*= VK_OBJECT_TYPE_UNKNOWN*/)
 {
 #if RHI_DEBUG
 
+    if (HasName() && object != 0)
+    {
+        DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, nullptr);
+    }
+    
     m_name.Reset();
 
 #endif // RHI_DEBUG
 }
 
-}
+} // spt::vulkan

@@ -10,6 +10,19 @@ namespace spt::rdr
 DynamicDescriptorSetsManager::DynamicDescriptorSetsManager()
 { }
 
+DynamicDescriptorSetsManager::~DynamicDescriptorSetsManager()
+{
+#if RENDERER_VALIDATION
+	rdr::CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda([ descriptorSets = std::move(m_descriptorSets) ]() mutable
+																		 {
+																			 for (auto& [dsStateID, ds] : descriptorSets)
+																			 {
+																				 ds.ResetName();
+																			 }
+																		 });
+#endif // RENDERER_VALIDATION
+}
+
 void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderContext, const lib::DynamicArray<DynamicDescriptorSetInfo>& dsInfos)
 {
 	SPT_PROFILER_FUNCTION();

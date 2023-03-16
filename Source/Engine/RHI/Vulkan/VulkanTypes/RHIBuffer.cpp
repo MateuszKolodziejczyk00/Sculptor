@@ -188,19 +188,20 @@ void RHIBuffer::ReleaseRHI()
 		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
 	}
 
-	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
-
 	if (m_allocatorVirtualBlock != VK_NULL_HANDLE)
 	{
 		vmaClearVirtualBlock(m_allocatorVirtualBlock);
 		vmaDestroyVirtualBlock(m_allocatorVirtualBlock);
 	}
+	
+	m_name.Reset(reinterpret_cast<Uint64>(m_bufferHandle));
+
+	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
 
 	m_bufferHandle = VK_NULL_HANDLE;
 	m_allocation = VK_NULL_HANDLE;
 	m_bufferSize = 0;
 	m_usageFlags = rhi::EBufferUsage::None;
-	m_name.Reset();
 	m_mappingStrategy = EMappingStrategy::CannotBeMapped;
 	m_mappedPointer = nullptr;
 	m_allocatorVirtualBlock = VK_NULL_HANDLE;

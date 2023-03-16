@@ -158,8 +158,6 @@ void SculptorEdApplication::OnRun()
 
 void SculptorEdApplication::OnShutdown()
 {
-	Super::OnShutdown();
-
 	rsc::RenderingData::Get().clear();
 	
 	rdr::UIBackend::Uninitialize();
@@ -173,6 +171,8 @@ void SculptorEdApplication::OnShutdown()
 	rdr::Renderer::Uninitialize();
 
 	js::JobSystem::Shutdown();
+
+	Super::OnShutdown();
 }
 
 void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)

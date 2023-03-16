@@ -57,9 +57,10 @@ void RHIAccelerationStructure::OnReleaseRHI()
 
 	if (IsValid())
 	{
+		m_name.Reset(reinterpret_cast<Uint64>(m_handle));
+
 		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), m_handle, nullptr);
 		m_handle = VK_NULL_HANDLE;
-		m_name.Reset();
 
 		m_buildScratchSize	= 0;
 		m_primitivesCount	= 0;
