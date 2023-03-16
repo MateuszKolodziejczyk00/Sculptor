@@ -3,6 +3,8 @@
 
 #include "SculptorCoreTypes.h"
 #include "Delegate.h"
+#include "Utility/ValueGuard.h"
+
 #include <vector>
 
 
@@ -104,6 +106,8 @@ private:
 
 	lib::DynamicArray<DelegateInfo>		m_delegates;
 	DelegateIDType						m_handleCounter;
+
+	Bool								m_deferRemovals;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +173,21 @@ void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Unbind(Delegate
 {
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	std::erase(std::remove_if(m_delegates.begin(), m_delegates.end(), [handle](const DelegateInfo& delegate) { return delegate.Handle == handle; }));
+	if (m_deferRemovals)
+	{
+		for (DelegateInfo& delegate : m_delegates)
+		{
+			if (delegate.handle == handle)
+			{
+				delegate.delegate.Unbind();
+				break;
+			}
+		}	
+	}
+	else
+	{
+		m_delegates.erase(std::remove_if(std::begin(m_delegates), std::end(m_delegates), [ handle ](const DelegateInfo& delegate) { return delegate.handle == handle; }), std::end(m_delegates));
+	}
 }
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
@@ -194,11 +212,31 @@ Bool MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::IsBound() const
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 void MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Broadcast(TArgs... arguments)
 {
+	Bool foundInvalid = false;
+
 	SPT_MAYBE_UNUSED
 	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
-	for (const ThisType::DelegateInfo& delegateInfo : m_delegates)
+
+	const ValueGuard broadcastingGuard(m_deferRemovals, true);
+
+	for (SizeType idx = 0; idx < m_delegates.size(); ++idx)
 	{
-		delegateInfo.delegate.ExecuteIfBound(arguments...);
+		if (!m_delegates[idx].delegate.IsBound())
+		{
+			foundInvalid = true;
+			continue;
+		}
+		m_delegates[idx].delegate.ExecuteIfBound(arguments...);
+	}
+
+	if (foundInvalid)
+	{
+		m_delegates.erase(std::remove_if(std::begin(m_delegates), std::end(m_delegates),
+										 [](const DelegateInfo& info)
+										 {
+											 return !info.delegate.IsBound();
+										 }),
+						  std::end(m_delegates));
 	}
 }
 

@@ -27,7 +27,7 @@ class DelegateConditionalThreadSafeData<true>
 {
 protected:
 
-	using LockType = lib::LockGuard<lib::Lock>;
+	using LockType = lib::LockGuard<lib::RecursiveLock>;
 
 	SPT_NODISCARD LockType LockIfNecessary() const
 	{
@@ -36,7 +36,7 @@ protected:
 
 private:
 
-	mutable lib::Lock m_lock;
+	mutable lib::RecursiveLock m_lock;
 };
 
 

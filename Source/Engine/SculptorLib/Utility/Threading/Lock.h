@@ -8,6 +8,7 @@ namespace spt::lib
 {
 
 using Lock = std::mutex;
+using RecursiveLock = std::recursive_mutex;
 
 template<typename TLockType>
 using LockGuard = std::lock_guard<TLockType>;
