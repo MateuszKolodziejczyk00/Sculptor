@@ -18,6 +18,7 @@ public:
 	Bool IsStrictValidationEnabled() const { return enableStrictValidation; }
 	Bool IsRayTracingEnabled() const { return enableRayTracing; }
 	Bool AreGPUCrashDumpsEnabled() const { return enableGPUCrashDumps; }
+	Bool ArePersistentDebugNamesEnabled() const { return enablePersistentDebugNames; }
 
 private:
 
@@ -32,6 +33,13 @@ private:
 
 	static inline const lib::HashedString enableGPUCrashDumpsCmdArgName = "-EnableGPUCrashDumps";
 	Bool enableGPUCrashDumps = false;
+
+	/** 
+	 * If it's set, rhi objects debug names won't be reset. This allows to see the names in the debugger (f.e. Renderdoc).
+	 * @Warning: It will cause memory leaks
+	 */
+	static inline const lib::HashedString enablePersistentDebugNamesCmdArgName = "-RHIPersistentNames";
+	Bool enablePersistentDebugNames = false;
 };
 
 } // spt::rhi

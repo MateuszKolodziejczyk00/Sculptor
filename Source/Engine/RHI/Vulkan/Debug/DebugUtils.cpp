@@ -84,7 +84,10 @@ void DebugName::Reset(Uint64 object /*= 0*/, VkObjectType objectType /*= VK_OBJE
 
     if (HasName() && object != 0)
     {
-        DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, nullptr);
+        if (!VulkanRHI::GetSettings().ArePersistentDebugNamesEnabled())
+        {
+            DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, nullptr);
+        }
     }
     
     m_name.Reset();

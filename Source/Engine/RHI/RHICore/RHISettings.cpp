@@ -20,6 +20,8 @@ void RHISettings::Initialize()
 	enableRayTracing	= cmdLineArgs.Contains(enableRayTracingCmdArgName);
 
 	enableGPUCrashDumps	= cmdLineArgs.Contains(enableGPUCrashDumpsCmdArgName);
+	
+	enablePersistentDebugNames = cmdLineArgs.Contains(enablePersistentDebugNamesCmdArgName);
 }
 
 } // spt::rhi
