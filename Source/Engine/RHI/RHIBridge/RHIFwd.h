@@ -28,6 +28,7 @@ class RHISampler;
 class RHITopLevelAS;
 class RHIBottomLevelAS;
 class RHIShaderBindingTable;
+class RHIQueryPool;
 
 }
 

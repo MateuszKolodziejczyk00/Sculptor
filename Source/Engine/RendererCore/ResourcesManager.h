@@ -28,6 +28,7 @@ struct EventDefinition;
 struct RHIWindowInitializationInfo;
 struct BLASDefinition;
 struct TLASDefinition;
+struct QueryPoolDefinition;
 } // spt::rhi
 
 
@@ -59,6 +60,7 @@ class ComputePipeline;
 class Sampler;
 class BottomLevelAS;
 class TopLevelAS;
+class QueryPool;
 
 
 class RENDERER_CORE_API ResourcesManager
@@ -96,6 +98,8 @@ public:
 
 	template<typename TDSState>
 	SPT_NODISCARD static lib::SharedRef<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::Default);
+	
+	SPT_NODISCARD static lib::SharedRef<QueryPool>			CreateQueryPool(const rhi::QueryPoolDefinition& def);
 
 private:
 

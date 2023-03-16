@@ -21,6 +21,7 @@ class RHIAccelerationStructure;
 class RHIBottomLevelAS;
 class RHITopLevelAS;
 class RHIShaderBindingTable;
+class RHIQueryPool;
 
 
 class RHI_API RHICommandBuffer
@@ -97,6 +98,8 @@ public:
 #if WITH_GPU_CRASH_DUMPS
 	void	SetDebugCheckpoint(const void* markerPtr);
 #endif // WITH_GPU_CRASH_DUMPS
+	
+	void	WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 
 	// Vulkan specific ======================================
 

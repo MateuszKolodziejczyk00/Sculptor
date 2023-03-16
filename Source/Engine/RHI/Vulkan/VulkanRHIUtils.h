@@ -10,6 +10,7 @@
 #include "RHICore/RHISamplerTypes.h"
 #include "RHICore/RHISynchronizationTypes.h"
 #include "RHICore/RHIAccelerationStructureTypes.h"
+#include "RHICore/RHIQueryTypes.h"
 
 
 namespace spt::vulkan
@@ -76,6 +77,8 @@ public:
 	static VkGeometryFlagsKHR				GetGeometryFlags(rhi::EGeometryFlags geometryFlags);
 
 	static VkGeometryInstanceFlagsKHR		GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags);
+
+	static VkQueryType						GetQueryType(rhi::EQueryType queryType);
 };
 
 struct VulkanToRHI

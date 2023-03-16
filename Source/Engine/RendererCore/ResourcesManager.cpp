@@ -15,6 +15,7 @@
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Event.h"
+#include "Types/QueryPool.h"
 
 
 namespace spt::rdr
@@ -103,6 +104,11 @@ lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefini
 DescriptorSetWriter ResourcesManager::CreateDescriptorSetWriter()
 {
 	return DescriptorSetWriter();
+}
+
+lib::SharedRef<QueryPool> ResourcesManager::CreateQueryPool(const rhi::QueryPoolDefinition& def)
+{
+	return lib::MakeShared<QueryPool>(def);
 }
 
 } // spt::rdr

@@ -10,6 +10,7 @@
 #include "RHIRenderContext.h"
 #include "RHIAccelerationStructure.h"
 #include "RHIShaderBindingTable.h"
+#include "RHIQueryPool.h"
 
 namespace spt::vulkan
 {
@@ -571,6 +572,16 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 	}
 }
 #endif // WITH_GPU_CRASH_DUMPS
+
+void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(queryPool.IsValid());
+
+	vkCmdWriteTimestamp2(m_cmdBufferHandle, RHIToVulkan::GetStageFlags(stage), queryPool.GetHandle(), queryIdx);
+}
 
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
 {

@@ -10,6 +10,7 @@
 #include "Types/Event.h"
 #include "Types/Buffer.h"
 #include "Types/AccelerationStructure.h"
+#include "Types/QueryPool.h"
 
 namespace spt::rdr
 {
@@ -422,20 +423,6 @@ void CommandRecorder::CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, 
 						 });
 }
 
-#if WITH_GPU_CRASH_DUMPS
-void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
-{
-	SPT_PROFILER_FUNCTION();
-
-	EnqueueRenderCommand([marker](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("SetDebugCheckpoint Command");
-
-							 cmdBuffer->GetRHI().SetDebugCheckpoint(reinterpret_cast<const void*>(marker.GetKey()));
-						 });
-}
-#endif // WITH_GPU_CRASH_DUMPS
-
 void CommandRecorder::InitializeUIFonts()
 {
 	SPT_PROFILER_FUNCTION();
@@ -481,6 +468,33 @@ void CommandRecorder::EndDebugRegion()
 							 SPT_PROFILER_SCOPE("EndDebugRegion Command");
 
 							 cmdBuffer->GetRHI().EndDebugRegion();
+						 });
+}
+
+#if WITH_GPU_CRASH_DUMPS
+void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([marker](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("SetDebugCheckpoint Command");
+
+							 cmdBuffer->GetRHI().SetDebugCheckpoint(reinterpret_cast<const void*>(marker.GetKey()));
+						 });
+}
+
+#endif // WITH_GPU_CRASH_DUMPS
+
+void CommandRecorder::WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("WriteTimestamp Command");
+
+							 cmdBuffer->GetRHI().WriteTimestamp(queryPool->GetRHI(), queryIdx, stage);
 						 });
 }
 

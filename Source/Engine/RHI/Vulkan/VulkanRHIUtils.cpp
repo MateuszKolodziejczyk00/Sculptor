@@ -675,6 +675,18 @@ VkGeometryInstanceFlagsKHR RHIToVulkan::GetGeometryInstanceFlags(rhi::ETLASInsta
 	return flags;
 }
 
+VkQueryType RHIToVulkan::GetQueryType(rhi::EQueryType queryType)
+{
+	switch (queryType)
+	{
+	case rhi::EQueryType::Timestamp:	return VK_QUERY_TYPE_TIMESTAMP;
+	
+	default:
+		SPT_CHECK_NO_ENTRY();
+		return VK_QUERY_TYPE_MAX_ENUM;
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // VulkanToRHI ===================================================================================
 

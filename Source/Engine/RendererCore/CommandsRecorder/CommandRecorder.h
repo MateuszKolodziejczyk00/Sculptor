@@ -24,6 +24,7 @@ class BufferView;
 class Event;
 class TopLevelAS;
 class BottomLevelAS;
+class QueryPool;
 
 
 struct CommandsRecordingInfo
@@ -114,10 +115,6 @@ public:
 	 
 	void									CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset = math::Vector3u::Zero(),  Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
 
-#if WITH_GPU_CRASH_DUMPS
-	void									SetDebugCheckpoint(const lib::HashedString& marker);
-#endif // WITH_GPU_CRASH_DUMPS
-
 	void									InitializeUIFonts();
 
 	void									RenderUI();
@@ -126,6 +123,12 @@ public:
 
 	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
 	void	EndDebugRegion();
+
+#if WITH_GPU_CRASH_DUMPS
+	void	SetDebugCheckpoint(const lib::HashedString& marker);
+#endif // WITH_GPU_CRASH_DUMPS
+
+	void	WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 
 private:
 
