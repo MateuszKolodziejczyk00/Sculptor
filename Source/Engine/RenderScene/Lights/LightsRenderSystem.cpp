@@ -89,6 +89,7 @@ DS_END();
 
 DS_BEGIN(ViewShadingDS, rg::RGDescriptorSetState<ViewShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LightsRenderingData>),		u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector2u>),				u_clustersRanges)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),		u_localLights)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<Uint32>),					u_tilesLightsMask)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),	u_directionalLights)
@@ -271,6 +272,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		viewShadingDS->u_localLights		= localLightsRGBuffer;
 		viewShadingDS->u_tilesLightsMask	= tilesLightsMask;
+		viewShadingDS->u_clustersRanges		= clustersRanges;
 
 		lightsRenderingData.buildZClustersDS				= buildZClusters;
 		lightsRenderingData.generateLightsDrawCommnadsDS	= generateLightsDrawCommnadsDS;
@@ -368,8 +370,8 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 
 	viewSpec.GetData().Create<LightsRenderingDataPerView>(lightsRenderingData);
 		
-	RenderStageEntries& depthPrepassbEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-	depthPrepassbEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+	RenderStageEntries& motionAndDepthEntries = viewSpec.GetRenderStageEntries(ERenderStage::MotionAndDepth);
+	motionAndDepthEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
 
 	ShadowMapsRenderingData shadowMapsRenderingData;
 	shadowMapsRenderingData.shadowMapsDS = m_shadowMapsDS;

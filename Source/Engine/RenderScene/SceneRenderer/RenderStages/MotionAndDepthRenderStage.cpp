@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
+#include "Utils/hiZRenderer.h"
 
 
 namespace spt::rsc
@@ -75,7 +76,7 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 
-	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
 
 	MotionData& motionData = viewSpec.GetData().Create<MotionData>();
 
@@ -116,6 +117,17 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 							});
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+
+	depthPrepassData.hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, depthPrepassData.depth, rhi::EFragmentFormat::R32_S_Float);
+
+	DepthCullingParams depthCullingParams;
+	depthCullingParams.hiZResolution = depthPrepassData.hiZ->GetResolution2D().cast<Real32>();
+
+	const lib::SharedRef<DepthCullingDS> depthCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
+	depthCullingDS->u_hiZTexture			= depthPrepassData.hiZ;
+	depthCullingDS->u_depthCullingParams	= depthCullingParams;
+
+	depthPrepassData.depthCullingDS = depthCullingDS;
 }
 
 } // spt::rsc
