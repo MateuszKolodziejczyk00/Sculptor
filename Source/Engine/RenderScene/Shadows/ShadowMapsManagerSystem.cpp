@@ -657,15 +657,21 @@ Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneVi
 	const Real32 zDifference = (pointLightData.location.z() - viewLocation.z());
 
 	const Real32 currentQualityMutliplier	= 0.5f;
-	const Real32 dotMutliplier				= 2.4f;
+	const Real32 dotMutliplier				= 4.0f;
 	const Real32 distanceMutliplier			= 1.7f;
 	const Real32 radiusMutliplier			= 0.6f;
-	const Real32 zDifferenceMutliplier		= 1.6f;
+	const Real32 zDifferenceMutliplier		= 0.7f;
 	const Real32 intensityMultiplier		= 0.7f;
+	const Real32 inRadiusPriority			= 10.f;
 
 	const EShadowMapQuality currentQuality = GetShadowMapQuality(light);
 
 	Real32 priority = 0.f;
+
+	if (distanceToLight < pointLightData.radius)
+	{
+		priority += inRadiusPriority;
+	}
 
 	priority += (1.f - std::clamp(distanceToLight / maxDistanceToLight, 0.f, 1.f)) * distanceMutliplier;
 	priority += (viewAndLightDot * 0.5f + 0.5f) * dotMutliplier;
