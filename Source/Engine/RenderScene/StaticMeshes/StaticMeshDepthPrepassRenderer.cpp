@@ -27,7 +27,6 @@ StaticMeshDepthPrepassRenderer::StaticMeshDepthPrepassRenderer()
 
 		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
 		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		depthPrepassPipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(DepthPrepassRenderStage::GetVelocityFormat());
 		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
 		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), depthPrepassPipelineDef, depthShader);
 	}

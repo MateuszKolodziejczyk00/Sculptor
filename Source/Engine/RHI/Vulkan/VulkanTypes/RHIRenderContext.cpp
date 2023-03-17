@@ -50,7 +50,7 @@ void RHIRenderContext::ReleaseRHI()
 		VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
 	}
 
-	m_name.Reset(0);
+	m_name.Reset(0, VK_OBJECT_TYPE_UNKNOWN);
 }
 
 Bool RHIRenderContext::IsValid() const

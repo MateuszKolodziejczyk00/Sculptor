@@ -55,7 +55,7 @@ void RHISemaphore::ReleaseRHI()
 
 	if (m_semaphore)
 	{
-		m_name.Reset(reinterpret_cast<Uint64>(m_semaphore));
+		m_name.Reset(reinterpret_cast<Uint64>(m_semaphore), VK_OBJECT_TYPE_SEMAPHORE);
 		vkDestroySemaphore(VulkanRHI::GetDeviceHandle(), m_semaphore, VulkanRHI::GetAllocationCallbacks());
 		m_semaphore = VK_NULL_HANDLE;
 	}
@@ -69,8 +69,8 @@ Bool RHISemaphore::IsValid() const
 Uint64 RHISemaphore::GetValue() const
 {
 	SPT_PROFILER_FUNCTION();
+	
 	SPT_CHECK(IsValid());
-
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
 	Uint64 value = 0;
@@ -81,8 +81,8 @@ Uint64 RHISemaphore::GetValue() const
 Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) const
 {
 	SPT_PROFILER_FUNCTION();
+	
 	SPT_CHECK(IsValid());
-
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
 	VkSemaphoreWaitInfo waitInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
@@ -98,8 +98,8 @@ Bool RHISemaphore::Wait(Uint64 value, Uint64 timeout /*= maxValue<Uint64>*/) con
 void RHISemaphore::Signal(Uint64 value)
 {
 	SPT_PROFILER_FUNCTION();
+	
 	SPT_CHECK(IsValid());
-
 	SPT_CHECK(m_type == rhi::ESemaphoreType::Timeline);
 
 	VkSemaphoreSignalInfo signalInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO };

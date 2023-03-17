@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Window.h"
 #include "Types/UIBackend.h"
+#include "EngineFrame.h"
 
 
 namespace spt::ed
@@ -34,7 +35,13 @@ private:
 
 	void RenderFrame(SandboxRenderer& renderer);
 
+	void ExecuteSimulationFrame(engn::FrameContext& context);
+	void ExecuteRenderingFrame(engn::FrameContext& context);
+
 	lib::SharedPtr<rdr::Window> m_window;
+	lib::UniquePtr<SandboxRenderer> m_renderer;
+
+	ui::UIContext uiContext;
 
 	Bool isSwapchainValid;
 };

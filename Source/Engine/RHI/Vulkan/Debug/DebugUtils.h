@@ -28,13 +28,13 @@ public:
 	void						Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType);
 
 	void						SetWithoutObject(const lib::HashedString& name);
-	void						SetToObject(Uint64 object, VkObjectType objectType = VK_OBJECT_TYPE_UNKNOWN) const;
+	void						SetToObject(Uint64 object, VkObjectType objectType) const;
 
 	const lib::HashedString&	Get() const;
 
 	Bool						HasName() const;
 
-	void						Reset(Uint64 object, VkObjectType objectType = VK_OBJECT_TYPE_UNKNOWN);
+	void						Reset(Uint64 object, VkObjectType objectType);
 
 private:
 

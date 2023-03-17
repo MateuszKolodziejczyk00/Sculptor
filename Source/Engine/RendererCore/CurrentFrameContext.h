@@ -15,25 +15,22 @@ class RENDERER_CORE_API CurrentFrameContext
 {
 public:
 
-	static void									Initialize(Uint32 framesInFlightNum);
-	static void									Shutdown();
+	static void Initialize(Uint32 framesInFlightNum);
+	static void Shutdown();
 
-	static void									BeginFrame();
-	static void									EndFrame();
+	static void	WaitForFrameRendered(Uint64 frameIdx);
 
 	using CleanupDelegate						= lib::ThreadSafeMulticastDelegate<void()>;
 	static CleanupDelegate&						GetCurrentFrameCleanupDelegate();
 
 	static void									ReleaseAllResources();
 
-	static Uint64								GetCurrentFrameIdx();
-
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
 private:
 
-	static void	AdvanceCurrentDelegateIdx();
-	static void	FlushCurrentFrameReleases();
+	static CleanupDelegate& GetDelegateForFrame(Uint64 frameIdx);
+	static void FlushFrameReleases(Uint64 frameIdx);
 };
 
 }

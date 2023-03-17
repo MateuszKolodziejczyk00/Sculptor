@@ -15,6 +15,7 @@
 #include "RHICore/RHISubmitTypes.h"
 #include "RHIBridge/RHISemaphoreImpl.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
+#include "EngineFrame.h"
 
 
 namespace spt::rdr
@@ -91,8 +92,6 @@ void Renderer::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();
 	
-	CurrentFrameContext::BeginFrame();
-
 	rhi::RHI::BeginFrame();
 
 	GetDescriptorSetsManager().BeginFrame();
@@ -102,13 +101,9 @@ void Renderer::BeginFrame()
 	GetPipelinesLibrary().FlushCreatedPipelines();
 }
 
-void Renderer::EndFrame()
+void Renderer::WaitForFrameRendered(Uint64 frameIdx)
 {
-	SPT_PROFILER_FUNCTION();
-
-	rhi::RHI::EndFrame();
-
-	CurrentFrameContext::EndFrame();
+	CurrentFrameContext::WaitForFrameRendered(frameIdx);
 }
 
 ShadersManager& Renderer::GetShadersManager()
@@ -207,7 +202,7 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 
 Uint64 Renderer::GetCurrentFrameIdx()
 {
-	return CurrentFrameContext::GetCurrentFrameIdx();
+	return engn::GetRenderingFrame().GetFrameIdx();
 }
 
 const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
@@ -215,12 +210,12 @@ const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
 	return CurrentFrameContext::GetReleaseFrameSemaphore();
 }
 
-void Renderer::IncrementReleaseSemaphoreToCurrentFrame()
+void Renderer::IncrementFrameReleaseSemaphore(Uint64 frameIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
-	releaseFrameSemaphore->GetRHI().Signal(GetCurrentFrameIdx());
+	releaseFrameSemaphore->GetRHI().Signal(frameIdx);
 }
 
 OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
@@ -240,7 +235,6 @@ void Renderer::HotReloadShaders()
 
 	GetShadersManager().HotReloadShaders();
 }
-
 #endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

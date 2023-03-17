@@ -13,6 +13,7 @@
 #include "ConfigUtils.h"
 #include "RendererSettings.h"
 #include "Transfers/UploadUtils.h"
+#include "EngineFrame.h"
 
 namespace spt::rsc
 {
@@ -524,7 +525,7 @@ void ShadowMapsManagerSystem::UpdateShadowMaps()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32 deltaTime = engn::Engine::Get().GetEngineTimer().GetDeltaTime();
+	const Real32 deltaTime = engn::GetRenderingFrame().GetDeltaTime();
 
 	const auto GetPriorityMultiplierForQuality = [](EShadowMapQuality quality)
 	{

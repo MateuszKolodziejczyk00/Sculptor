@@ -518,7 +518,7 @@ void RHIPipeline::ReleaseRHI()
 
 	SPT_CHECK(IsValid());
 
-	m_debugName.Reset(reinterpret_cast<Uint64>(m_handle));
+	m_debugName.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_PIPELINE);
 	helpers::ReleasePipelineResource(m_handle);
 	m_handle = VK_NULL_HANDLE;
 	m_pipelineType = rhi::EPipelineType::None;

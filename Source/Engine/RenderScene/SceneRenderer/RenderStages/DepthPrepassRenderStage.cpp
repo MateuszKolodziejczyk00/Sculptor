@@ -14,11 +14,6 @@ struct SceneViewDepthDataComponent
 };
 
 
-rhi::EFragmentFormat DepthPrepassRenderStage::GetVelocityFormat()
-{
-	return rhi::EFragmentFormat::RG16_SN_Float;
-}
-
 rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
 {
 	return rhi::EFragmentFormat::D32_S_Float;

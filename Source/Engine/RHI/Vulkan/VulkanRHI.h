@@ -39,7 +39,6 @@ public:
 	static void				Uninitialize();
 
 	static void				BeginFrame();
-	static void				EndFrame();
 
 	static rhi::ERHIType	GetRHIType();
 

@@ -316,7 +316,7 @@ void RHITexture::ReleaseRHI()
 
     if (m_allocation)
     {
-		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle));
+		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
         vmaDestroyImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, m_allocation);
     }
 
@@ -448,7 +448,7 @@ void RHITextureView::ReleaseRHI()
 
     SPT_CHECK(!!m_viewHandle);
 
-	m_name.Reset(reinterpret_cast<Uint64>(m_viewHandle));
+	m_name.Reset(reinterpret_cast<Uint64>(m_viewHandle), VK_OBJECT_TYPE_IMAGE_VIEW);
 
     vkDestroyImageView(VulkanRHI::GetDeviceHandle(), m_viewHandle, VulkanRHI::GetAllocationCallbacks());
 

@@ -78,7 +78,7 @@ Bool DebugName::HasName() const
 #endif // RHI_DEBUG
 }
 
-void DebugName::Reset(Uint64 object /*= 0*/, VkObjectType objectType /*= VK_OBJECT_TYPE_UNKNOWN*/)
+void DebugName::Reset(Uint64 object, VkObjectType objectType)
 {
 #if RHI_DEBUG
 

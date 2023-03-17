@@ -2,6 +2,7 @@
 #include "ResourcesManager.h"
 #include "Types/Semaphore.h"
 #include "Renderer.h"
+#include "EngineFrame.h"
 
 
 namespace spt::rdr
@@ -12,13 +13,11 @@ namespace spt::rdr
 
 namespace priv
 {
-static CurrentFrameContext::CleanupDelegate*					cleanupDelegates;
+static CurrentFrameContext::CleanupDelegate*	cleanupDelegates;
 
-static Uint32													framesInFlightNum = 0;
-static Uint32													currentCleanupDelegateIdx = 0;
-static Uint64													currentFrameIdx = 0;
+static Uint32									framesInFlightNum = 0;
 
-static lib::SharedPtr<Semaphore>								releaseFrameSemaphore;
+static lib::SharedPtr<Semaphore>				releaseFrameSemaphore;
 
 }
 
@@ -43,73 +42,52 @@ void CurrentFrameContext::Shutdown()
 	delete[] priv::cleanupDelegates;
 }
 
-void CurrentFrameContext::BeginFrame()
+void CurrentFrameContext::WaitForFrameRendered(Uint64 frameIdx)
 {
-	SPT_PROFILER_FUNCTION();
+	const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(frameIdx, 500000000);
+	SPT_CHECK_MSG(released, "Failed to release GPU resources");
 
-	++priv::currentFrameIdx;
-
-	const Bool shouldWaitForFrameFinished = priv::currentFrameIdx > priv::framesInFlightNum;
-
-	if (shouldWaitForFrameFinished)
-	{
-		const Uint64 releasedFrameIdx = priv::currentFrameIdx - static_cast<Uint64>(priv::framesInFlightNum);
-		const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(releasedFrameIdx);
-		SPT_CHECK(released);
-	}
-
-	AdvanceCurrentDelegateIdx();
-
-	// flush releases only if we were waiting for finishing frame. Otherwise we may remove resources that are in use (for example resources used for loading or initialization)
-	if (shouldWaitForFrameFinished)
-	{
-		FlushCurrentFrameReleases();
-	}
-}
-
-void CurrentFrameContext::EndFrame()
-{
-
+	FlushFrameReleases(frameIdx);
 }
 
 CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetCurrentFrameCleanupDelegate()
 {
-	return priv::cleanupDelegates[priv::currentCleanupDelegateIdx];
+	const engn::FrameContext& context = engn::EngineFramesManager::GetRenderingFrame();
+	return GetDelegateForFrame(context.GetFrameIdx());
 }
 
 void CurrentFrameContext::ReleaseAllResources()
 {
 	SPT_PROFILER_FUNCTION();
 
-	Uint32 releasedFrames = 0;
-	while (releasedFrames < priv::framesInFlightNum || GetCurrentFrameCleanupDelegate().IsBound())
+	for (SizeType delegateIdx = 0; delegateIdx < priv::framesInFlightNum; ++delegateIdx)
 	{
-		AdvanceCurrentDelegateIdx();
-		FlushCurrentFrameReleases();
-		++releasedFrames;
+		priv::cleanupDelegates[delegateIdx].ResetAndBroadcast();
+	}
+	
+	CleanupDelegate& currentFrameDelegate = GetCurrentFrameCleanupDelegate();
+
+	while (currentFrameDelegate.IsBound())
+	{
+		currentFrameDelegate.ResetAndBroadcast();
 	}
 }
 
-Uint64 CurrentFrameContext::GetCurrentFrameIdx()
+void CurrentFrameContext::FlushFrameReleases(Uint64 frameIdx)
 {
-	return priv::currentFrameIdx;
+	SPT_PROFILER_FUNCTION();
+
+	GetDelegateForFrame(frameIdx).ResetAndBroadcast();
+}
+
+CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetDelegateForFrame(Uint64 frameIdx)
+{
+	return priv::cleanupDelegates[frameIdx % priv::framesInFlightNum];
 }
 
 const lib::SharedPtr<Semaphore>& CurrentFrameContext::GetReleaseFrameSemaphore()
 {
 	return priv::releaseFrameSemaphore;
-}
-
-void CurrentFrameContext::AdvanceCurrentDelegateIdx()
-{
-	priv::currentCleanupDelegateIdx = (priv::currentCleanupDelegateIdx + 1) % priv::framesInFlightNum;
-}
-
-void CurrentFrameContext::FlushCurrentFrameReleases()
-{
-	SPT_PROFILER_FUNCTION();
-
-	priv::cleanupDelegates[priv::currentCleanupDelegateIdx].ResetAndBroadcast();
 }
 
 } // spt::rdr

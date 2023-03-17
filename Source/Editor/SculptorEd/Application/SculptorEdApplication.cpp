@@ -66,20 +66,27 @@ void SculptorEdApplication::OnRun()
 	Super::OnRun();
 
 	IMGUI_CHECKVERSION();
-	const ui::UIContext context = ImGui::CreateContext();
+	uiContext = ImGui::CreateContext();
 
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	imGuiIO.IniFilename = engn::Paths::GetImGuiConfigPath().data();
 
-	m_window->InitializeUI(context);
+	m_window->InitializeUI(uiContext);
 
-	ui::UIContextManager::SetGlobalContext(context);
+	ui::UIContextManager::SetGlobalContext(uiContext);
 
-	rdr::UIBackend::Initialize(context, lib::Ref(m_window));
+	rdr::UIBackend::Initialize(uiContext, lib::Ref(m_window));
 
-	ImGui::SetCurrentContext(context.GetHandle());
+	engn::FramesManagerInitializationInfo framesManagerInitInfo;
+	framesManagerInitInfo.executeSimulationFrame.BindRawMember(this, &SculptorEdApplication::ExecuteSimulationFrame);
+	framesManagerInitInfo.executeRenderingFrame.BindRawMember(this, &SculptorEdApplication::ExecuteRenderingFrame);
+	engn::EngineFramesManager::Initialize(framesManagerInitInfo);
+
+	rdr::Renderer::IncrementFrameReleaseSemaphore(engn::GetGPUFrame().GetFrameIdx());
+
+	ImGui::SetCurrentContext(uiContext.GetHandle());
 
 	{
 		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
@@ -104,11 +111,11 @@ void SculptorEdApplication::OnRun()
 		rdr::UIBackend::DestroyFontsTemporaryObjects();
 	}
 
-	SandboxRenderer renderer(m_window);
+	m_renderer = std::make_unique<SandboxRenderer>(m_window);
 
 	scui::LayerDefinition sandboxLayerDef;
 	sandboxLayerDef.name = "SandboxLayer";
-	scui::ApplicationUI::OpenWindowWithLayer<SandboxUILayer>("SandboxWindow", sandboxLayerDef, renderer);
+	scui::ApplicationUI::OpenWindowWithLayer<SandboxUILayer>("SandboxWindow", sandboxLayerDef, *m_renderer);
 	
 	scui::LayerDefinition profilerLayerDef;
 	profilerLayerDef.name = "ProfilerLayer";
@@ -118,46 +125,23 @@ void SculptorEdApplication::OnRun()
 	{
 		SPT_PROFILER_FRAME("EditorFrame");
 
-		const Real32 deltaTime = engn::Engine::Get().BeginFrame();
-
-		m_window->Update(deltaTime);
+		m_window->Update(engn::GetSimulationFrame().GetDeltaTime());
 
 		if (m_window->ShouldClose())
 		{
 			break;
 		}
 
-		rdr::Renderer::BeginFrame();
-
-		rg::RenderGraphManager::OnBeginFrame();
-
 		m_window->BeginFrame();
 
-		rdr::UIBackend::BeginFrame();
-
-		ImGui::NewFrame();
-
-		renderer.Tick(deltaTime);
-
-		scui::ApplicationUI::Draw(context);
-		ImGui::Render();
-		
-		RenderFrame(renderer);
-
-		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-		    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-		    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-		 	ImGui::UpdatePlatformWindows();
-		    ImGui::RenderPlatformWindowsDefault();
-		}
-	
-		rdr::Renderer::EndFrame();
+		engn::EngineFramesManager::ExecuteFrame();
 	}
 }
 
 void SculptorEdApplication::OnShutdown()
 {
+	m_renderer.reset();
+
 	rsc::RenderingData::Get().clear();
 	
 	rdr::UIBackend::Uninitialize();
@@ -187,7 +171,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	{
 		rdr::Renderer::WaitIdle();
 		isSwapchainValid = m_window->RebuildSwapchain();
-		rdr::Renderer::IncrementReleaseSemaphoreToCurrentFrame();
+		rdr::Renderer::IncrementFrameReleaseSemaphore(engn::EngineFramesManager::GetRenderingFrame().GetFrameIdx());
 	};
 
 	// Additional check in case of changing swapchain settings in application
@@ -304,7 +288,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	submitUIBatch.recordedCommands.emplace_back(std::move(recorder));
 	submitUIBatch.waitSemaphores.AddBinarySemaphore(rendererWaitSemaphore.Await(), rhi::EPipelineStage::ALL_COMMANDS);
 	submitUIBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
-	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
+	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetRenderingFrame().GetFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
 
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
 
@@ -314,6 +298,45 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	{
 		rdr::Renderer::WaitIdle();
 		isSwapchainValid = m_window->RebuildSwapchain();
+	}
+}
+
+void SculptorEdApplication::ExecuteSimulationFrame(engn::FrameContext& context)
+{
+
+}
+
+void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	context.AddFinalizeGPUDelegate(engn::FinalizeGPU::Delegate::CreateLambda([](engn::FrameContext& context)
+																			 {
+																				 rdr::Renderer::WaitForFrameRendered(context.GetFrameIdx());
+																			 }));
+
+	const Real32 deltaTime = context.GetDeltaTime();
+
+	rg::RenderGraphManager::OnBeginFrame();
+
+	rdr::UIBackend::BeginFrame();
+
+	ImGui::NewFrame();
+
+	m_renderer->Tick(deltaTime);
+
+	scui::ApplicationUI::Draw(uiContext);
+	ImGui::Render();
+	
+	RenderFrame(*m_renderer);
+
+	ImGuiIO& imGuiIO = ImGui::GetIO();
+	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+	    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
+	    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
+	 	ImGui::UpdatePlatformWindows();
+	    ImGui::RenderPlatformWindowsDefault();
 	}
 }
 

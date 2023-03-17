@@ -14,6 +14,8 @@
 #include "View/RenderView.h"
 #include "Engine.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "Transfers/UploadUtils.h"
+#include "EngineFrame.h"
 
 namespace spt::rsc
 {
@@ -135,6 +137,8 @@ rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuil
 		const Uint64 adaptedLuminanceBufferSize = sizeof(Real32);
 		rhi::BufferDefinition adaptedLuminanceDef(adaptedLuminanceBufferSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 		viewLuminanceData.adaptedLuminance = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("AdaptedLuminanceBuffer"), adaptedLuminanceDef, rhi::EMemoryUsage::GPUOnly);
+		constexpr Real32 defaultAadptedLuminance = 0.18f;
+		gfx::FillBuffer(lib::Ref(viewLuminanceData.adaptedLuminance), 0, sizeof(Real32), *reinterpret_cast<const Uint32*>(&defaultAadptedLuminance));
 	}
 
 	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->CreateFullView());
@@ -454,7 +458,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	exposure::ExposureSettings exposureSettings;
 	exposureSettings.textureSize				= renderingRes;
 	exposureSettings.inputPixelSize				= inputPixelSize;
-	exposureSettings.deltaTime					= engn::Engine::Get().GetEngineTimer().GetDeltaTime();
+	exposureSettings.deltaTime					= engn::GetRenderingFrame().GetDeltaTime();
 	exposureSettings.minLogLuminance			= params::minLogLuminance;
 	exposureSettings.maxLogLuminance			= params::maxLogLuminance;
 	exposureSettings.logLuminanceRange			= exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;

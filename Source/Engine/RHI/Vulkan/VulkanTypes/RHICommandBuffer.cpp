@@ -65,7 +65,7 @@ void RHICommandBuffer::ReleaseRHI()
 
 	SPT_CHECK(!!IsValid());
 
-	m_name.Reset(reinterpret_cast<Uint64>(m_cmdBufferHandle));
+	m_name.Reset(reinterpret_cast<Uint64>(m_cmdBufferHandle), VK_OBJECT_TYPE_COMMAND_BUFFER);
 	m_cmdBufferHandle = VK_NULL_HANDLE;
 }
 

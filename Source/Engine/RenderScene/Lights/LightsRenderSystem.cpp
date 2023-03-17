@@ -388,7 +388,7 @@ void LightsRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuild
 void LightsRenderSystem::CacheDirectionalLights(const RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
-	
+
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
 
 	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();

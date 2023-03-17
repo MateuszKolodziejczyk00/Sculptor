@@ -25,6 +25,8 @@
 #include "Transfers/TransfersManager.h"
 #include "Lights/LightTypes.h"
 #include "RayTracing/RayTracingSceneSystem.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
+#include "EngineFrame.h"
 
 namespace spt::ed
 {
@@ -125,7 +127,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	rdr::SemaphoresArray waitSemaphores;
 #if !WITH_NSIGHT_CRASH_FIX
 	// Wait for previous frame as we're reusing resources
-	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_COMMANDS);
+	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetGPUFrame().GetFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
 #endif // !WITH_NSIGHT_CRASH_FIX
 	
 	flushPendingBufferUploads.Wait();

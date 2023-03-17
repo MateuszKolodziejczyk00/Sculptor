@@ -23,7 +23,7 @@ void RHIEvent::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_name.Reset(reinterpret_cast<Uint64>(m_handle));
+	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_EVENT);
 	vkDestroyEvent(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
 	m_handle = VK_NULL_HANDLE;
 }

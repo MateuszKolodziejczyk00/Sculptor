@@ -64,7 +64,7 @@ const lib::HashedString& RHIDescriptorSet::GetName() const
 
 void RHIDescriptorSet::ResetName()
 {
-	m_name.Reset(reinterpret_cast<Uint64>(m_handle));
+	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_DESCRIPTOR_SET);
 }
 
 Bool RHIDescriptorSet::IsValid() const

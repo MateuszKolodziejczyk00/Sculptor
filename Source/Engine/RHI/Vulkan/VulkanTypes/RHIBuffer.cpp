@@ -194,7 +194,7 @@ void RHIBuffer::ReleaseRHI()
 		vmaDestroyVirtualBlock(m_allocatorVirtualBlock);
 	}
 	
-	m_name.Reset(reinterpret_cast<Uint64>(m_bufferHandle));
+	m_name.Reset(reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
 
 	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
 

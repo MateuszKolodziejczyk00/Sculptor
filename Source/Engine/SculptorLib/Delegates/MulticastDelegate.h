@@ -47,6 +47,12 @@ class MulticastDelegateBase {};
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 class MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)> : private DelegateConditionalThreadSafeData<isThreadSafe>
 {
+public:
+
+	using Delegate = DelegateBase<false, TReturnType(TArgs...)>;
+
+private:
+
 	struct DelegateInfo
 	{
 		DelegateInfo()
@@ -56,8 +62,8 @@ class MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)> : private Deleg
 			: handle(inHandle)
 		{}
 
-		DelegateBase<false, TReturnType(TArgs...)>	delegate;
-		DelegateHandle								handle;
+		Delegate		delegate;
+		DelegateHandle	handle;
 	};
 
 public:
@@ -75,6 +81,8 @@ public:
 	ThisType& operator=(ThisType&& rhs) = default;
 
 	~MulticastDelegateBase() = default;
+
+	DelegateHandle		Add(Delegate delegate);
 
 	template<typename TFuncType, typename... TPayload>
 	DelegateHandle		AddRaw(TFuncType function, TPayload&&... payload);
@@ -112,6 +120,16 @@ private:
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Binds =========================================================================================
+
+template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
+DelegateHandle MulticastDelegateBase<isThreadSafe, TReturnType(TArgs...)>::Add(Delegate delegate)
+{
+	SPT_MAYBE_UNUSED
+	const typename ThreadSafeUtils::LockType lock = ThreadSafeUtils::LockIfNecessary();
+	const DelegateHandle handle = m_handleCounter++;
+	m_delegates.emplace_back(std::move(DelegateInfo(handle))).delegate = std::move(delegate);
+	return handle;
+}
 
 template<Bool isThreadSafe, typename TReturnType, typename... TArgs>
 template<typename TFuncType, typename... TPayload>

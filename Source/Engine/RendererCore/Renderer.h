@@ -51,7 +51,7 @@ public:
 	static void									Uninitialize();
 
 	static void									BeginFrame();
-	static void									EndFrame();
+	static void									WaitForFrameRendered(Uint64 frameIdx);
 
 	static ShadersManager&						GetShadersManager();
 
@@ -69,11 +69,12 @@ public:
 	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);
-
+	
 	static Uint64								GetCurrentFrameIdx();
+
 	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
 
-	static void									IncrementReleaseSemaphoreToCurrentFrame();
+	static void									IncrementFrameReleaseSemaphore(Uint64 frameIdx);
 
 	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
 
