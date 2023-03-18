@@ -140,6 +140,8 @@ void SculptorEdApplication::OnRun()
 
 void SculptorEdApplication::OnShutdown()
 {
+	engn::EngineFramesManager::Shutdown();
+
 	m_renderer.reset();
 
 	rsc::RenderingData::Get().clear();

@@ -12,18 +12,15 @@ namespace spt::rdr
 GPUStatisticsCollector::GPUStatisticsCollector()
 	: m_timestampsQueryPool(CreateQueryPool(rhi::EQueryType::Timestamp, 1024))
 	, m_timestampsQueryPoolIndex(0)
-{ }
+{
+	m_timestampsQueryPool->Reset();
+}
 
 void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::HashedString& scopeName, EQueryFlags queryFlags)
 {
 	lib::DynamicArray<GPUStatisticsScopeDefinition>& currentLevelScopes = !m_scopesInProgressStack.empty() ? m_scopesInProgressStack.back()->children : m_scopeDefinitions;
 	
 	const Uint32 beginTimestampIndex = m_timestampsQueryPoolIndex++;
-
-	if (beginTimestampIndex == 0)
-	{
-		recoder.ResetQueryPool(m_timestampsQueryPool, 0, m_timestampsQueryPool->GetRHI().GetQueryCount());
-	}
 
 	recoder.WriteTimestamp(m_timestampsQueryPool, beginTimestampIndex, rhi::EPipelineStage::TopOfPipe);
 

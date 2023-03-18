@@ -83,7 +83,8 @@ void CurrentFrameContext::FlushFrameReleases(Uint64 frameIdx)
 			   [ delegate = std::move(localDelegate) ]() mutable
 			   {
 				   delegate.ResetAndBroadcast();
-			   });
+			   },
+			   js::EJobPriority::High);
 }
 
 CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetDelegateForFrame(Uint64 frameIdx)

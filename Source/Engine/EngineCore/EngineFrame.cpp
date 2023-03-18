@@ -18,6 +18,36 @@ static lib::UniquePtr<EngineFramesManager> g_engineFramesManager;
 FrameContext::FrameContext()
 { }
 
+void FrameContext::AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate)
+{
+	m_finalizeSimulation.Add(std::move(delegate));
+}
+
+void FrameContext::AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegate delegate)
+{
+	m_onSimulationFinished.Add(std::move(delegate));
+}
+
+void FrameContext::AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate)
+{
+	m_finalizeRendering.Add(std::move(delegate));
+}
+
+void FrameContext::AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate delegate)
+{
+	m_onRenderingFinished.Add(std::move(delegate));
+}
+
+void FrameContext::AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate)
+{
+	m_finalizeGPU.Add(std::move(delegate));
+}
+
+void FrameContext::AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate)
+{
+	m_onGPUFinished.Add(std::move(delegate));
+}
+
 void FrameContext::BeginFrame(const FrameDefinition& definition)
 {
 	m_frameDefinition = definition;
@@ -69,34 +99,14 @@ void FrameContext::EndFrame()
 {
 }
 
-void FrameContext::AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate)
+void FrameContext::Reset()
 {
-	m_finalizeSimulation.Add(std::move(delegate));
-}
-
-void FrameContext::AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegate delegate)
-{
-	m_onSimulationFinished.Add(std::move(delegate));
-}
-
-void FrameContext::AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate)
-{
-	m_finalizeRendering.Add(std::move(delegate));
-}
-
-void FrameContext::AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate delegate)
-{
-	m_onRenderingFinished.Add(std::move(delegate));
-}
-
-void FrameContext::AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate)
-{
-	m_finalizeGPU.Add(std::move(delegate));
-}
-
-void FrameContext::AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate)
-{
-	m_onGPUFinished.Add(std::move(delegate));
+	m_finalizeSimulation.Reset();
+	m_onSimulationFinished.Reset();
+	m_finalizeRendering.Reset();
+	m_onRenderingFinished.Reset();
+	m_finalizeGPU.Reset();
+	m_onGPUFinished.Reset();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +116,11 @@ void EngineFramesManager::Initialize(FramesManagerInitializationInfo& info)
 {
 	globals::g_engineFramesManager.reset(new EngineFramesManager());
 	globals::g_engineFramesManager->InitializeImpl(info);
+}
+
+void EngineFramesManager::Shutdown()
+{
+	GetInstance().ShutdownImpl();
 }
 
 EngineFramesManager& EngineFramesManager::GetInstance()
@@ -173,6 +188,20 @@ void EngineFramesManager::InitializeImpl(FramesManagerInitializationInfo& info)
 	m_frameCounter = 4;
 }
 
+void EngineFramesManager::ShutdownImpl()
+{
+	SPT_PROFILER_FUNCTION();
+
+	// We need to flush GPU frame before shutting down
+	// to make sure that all resources can be safely released
+	m_gpuFrame->FinalizeGPU();
+	m_gpuFrame->EndFrame();
+	
+	m_simulationFrame->Reset();
+	m_renderingFrame->Reset();
+	m_gpuFrame->Reset();
+}
+
 void EngineFramesManager::ExecuteFrameImpl()
 {
 	SPT_PROFILER_FUNCTION();
@@ -237,8 +266,8 @@ void EngineFramesManager::ExecuteFrameImpl()
 			   js::EJobFlags::Inline);
 
 	FrameDefinition frameDef;
-	frameDef.deltaTime		= Engine::Get().BeginFrame();
-	frameDef.time			= Engine::Get().GetEngineTimer().GetTime();
+	frameDef.deltaTime	= Engine::Get().BeginFrame();
+	frameDef.time		= Engine::Get().GetEngineTimer().GetTime();
 	frameDef.frameIdx	= m_frameCounter;
 
 	m_gpuFrame			= m_renderingFrame;

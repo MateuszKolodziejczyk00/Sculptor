@@ -60,6 +60,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingPartiallyBound				= VK_TRUE;
 	vulkan12Features.samplerFilterMinmax	= VK_TRUE;
+	vulkan12Features.hostQueryReset			= VK_TRUE;
 	
 	deviceInfoLinkedData.Append(vulkan12Features);
 

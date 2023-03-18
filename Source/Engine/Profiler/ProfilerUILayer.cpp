@@ -63,7 +63,62 @@ void ProfilerUILayer::DrawUI()
 
 	ImGui::Separator();
 
+	DrawGPUProfilerUI();
+
 	ImGui::End();
+}
+
+void ProfilerUILayer::DrawGPUProfilerUI()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (ImGui::CollapsingHeader("GPU Stats"))
+	{
+		const rdr::GPUStatisticsScopeResult& gpuFrameStatistics = prf::Profiler::Get().GetGPUFrameStatistics();
+
+		if (gpuFrameStatistics.IsValid())
+		{
+			DrawGPUScopeStatistics(gpuFrameStatistics, gpuFrameStatistics.durationInMs);
+		}
+	}
+}
+
+void ProfilerUILayer::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration)
+{
+	const Real32 scopeIndentVal = 16.f;
+
+	const Real32 width = ImGui::GetColumnWidth();
+	ImGui::Columns(2);
+	ImGui::SetColumnWidth(0, width * 0.8f);
+	{
+		ImGui::Text(scopeStats.name.GetData());
+
+		ImGui::NextColumn();
+
+		ImGui::Text("%fms", scopeStats.durationInMs);
+	}
+	ImGui::EndColumns();
+
+	const Real32 framePercent = frameDuration > 0.f ? scopeStats.durationInMs / frameDuration : 0.f;
+	ImGui::ProgressBar(framePercent);
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text(scopeStats.name.GetData());
+		ImGui::Text("%fms", scopeStats.durationInMs);
+		ImGui::EndTooltip();
+	}
+
+	{
+		ImGui::Indent(scopeIndentVal);
+		for (const rdr::GPUStatisticsScopeResult& scope : scopeStats.children)
+		{
+			DrawGPUScopeStatistics(scope, frameDuration);
+		}
+		ImGui::Unindent(scopeIndentVal);
+	}
+
+	ImGui::Separator();
 }
 
 } // spt::prf

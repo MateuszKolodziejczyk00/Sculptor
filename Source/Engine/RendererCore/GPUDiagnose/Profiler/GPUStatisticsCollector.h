@@ -32,6 +32,11 @@ struct GPUStatisticsScopeResult
 		: durationInMs(0.0f)
 	{ }
 
+	Bool IsValid() const
+	{
+		return name.IsValid();
+	}
+
 	lib::HashedString name;
 	Real32 durationInMs;
 
@@ -122,7 +127,7 @@ private:
 	GPUStatisticsCollector* m_collector;
 };
 
-#if RENDERER_VALIDATION
+#if ENABLE_PROFILER
 
 #define SPT_GPU_STATISTICS_SCOPE_NAME SPT_SCOPE_NAME(_gpu_statistics_scope_)
 
@@ -134,6 +139,6 @@ private:
 #define SPT_GPU_STATISTICS_SCOPE_FLAGS(recorderRef, collector, name, flags)
 #define SPT_GPU_STATISTICS_SCOPE(recorderRef, collector, name)
 
-#endif // RENDERER_VALIDATION
+#endif // ENABLE_PROFILER
 
 } // spt::rdr

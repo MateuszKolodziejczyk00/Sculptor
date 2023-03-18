@@ -27,6 +27,8 @@
 #include "RayTracing/RayTracingSceneSystem.h"
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 #include "EngineFrame.h"
+#include "Profiler/Profiler.h"
+#include "Vulkan/VulkanTypes/RHIQueryPool.h"
 
 namespace spt::ed
 {
@@ -109,7 +111,15 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 	UpdateSceneUITextureForView(*m_renderView);
 
+	const lib::SharedRef<rdr::GPUStatisticsCollector> gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>();
+
 	rg::RenderGraphBuilder graphBuilder;
+	graphBuilder.BindGPUStatisticsCollector(gpuStatisticsCollector);
+
+	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ gpuStatisticsCollector ](engn::FrameContext& context)
+																								   {
+																									   prf::Profiler::Get().SetGPUFrameStatistics(gpuStatisticsCollector->CollectStatistics());
+																								   }));
 
 	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());

@@ -89,6 +89,8 @@ private:
 
 	void EndFrame();
 
+	void Reset();
+
 	FrameDefinition			m_frameDefinition;
 
 	OnFinalizeSimulation	m_finalizeSimulation;
@@ -121,6 +123,8 @@ public:
 
 	static void Initialize(FramesManagerInitializationInfo& info);
 
+	static void Shutdown();
+
 	static EngineFramesManager& GetInstance();
 
 	static FrameContext& GetSimulationFrame();
@@ -136,6 +140,8 @@ private:
 	EngineFramesManager();
 
 	void InitializeImpl(FramesManagerInitializationInfo& info);
+
+	void ShutdownImpl();
 
 	void ExecuteFrameImpl();
 

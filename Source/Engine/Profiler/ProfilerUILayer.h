@@ -4,6 +4,12 @@
 #include "UILayers/UILayer.h"
 
 
+namespace spt::rdr
+{
+struct GPUStatisticsScopeResult;
+} // spt::rdr
+
+
 namespace spt::prf
 {
 
@@ -24,6 +30,10 @@ protected:
 	//~ End  UILayer overrides
 
 private:
+
+	void DrawGPUProfilerUI();
+
+	void DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration);
 
 	lib::StaticArray<float, 64>	m_lastFrameTimes;
 	SizeType					m_oldestFrameTimeIdx;
