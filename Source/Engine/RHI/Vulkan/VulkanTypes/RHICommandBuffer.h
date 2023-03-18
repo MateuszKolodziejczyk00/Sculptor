@@ -98,6 +98,8 @@ public:
 #if WITH_GPU_CRASH_DUMPS
 	void	SetDebugCheckpoint(const void* markerPtr);
 #endif // WITH_GPU_CRASH_DUMPS
+
+	void	ResetQueryPool(const RHIQueryPool& queryPool, Uint32 firstQueryIdx, Uint32 queryCount);
 	
 	void	WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 

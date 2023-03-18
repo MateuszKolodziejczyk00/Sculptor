@@ -19,6 +19,12 @@ void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::Has
 	lib::DynamicArray<GPUStatisticsScopeDefinition>& currentLevelScopes = !m_scopesInProgressStack.empty() ? m_scopesInProgressStack.back()->children : m_scopeDefinitions;
 	
 	const Uint32 beginTimestampIndex = m_timestampsQueryPoolIndex++;
+
+	if (beginTimestampIndex == 0)
+	{
+		recoder.ResetQueryPool(m_timestampsQueryPool, 0, m_timestampsQueryPool->GetRHI().GetQueryCount());
+	}
+
 	recoder.WriteTimestamp(m_timestampsQueryPool, beginTimestampIndex, rhi::EPipelineStage::TopOfPipe);
 
 	GPUStatisticsScopeDefinition& newScope = currentLevelScopes.emplace_back(GPUStatisticsScopeDefinition(scopeName, beginTimestampIndex));
@@ -40,29 +46,38 @@ void GPUStatisticsCollector::EndScope(CommandRecorder& recoder)
 	m_scopesInProgressStack.pop_back();
 }
 
-lib::DynamicArray<GPUStatisticsScopeResult> GPUStatisticsCollector::CollectStatistics()
+GPUStatisticsScopeResult GPUStatisticsCollector::CollectStatistics()
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(m_scopesInProgressStack.empty());
 
-	lib::DynamicArray<GPUStatisticsScopeResult> results;
+	GPUStatisticsScopeResult result;
 
 	StatisticsContext context;
 	context.timestamps = m_timestampsQueryPool->GetRHI().GetResults(m_timestampsQueryPoolIndex);
 
 	if (!context.timestamps.empty())
 	{
-		results.reserve(m_scopeDefinitions.size());
+		result.children.reserve(m_scopeDefinitions.size());
 		std::transform(std::cbegin(m_scopeDefinitions), std::cend(m_scopeDefinitions),
-					   std::back_inserter(results),
+					   std::back_inserter(result.children),
 					   [ &context ](const GPUStatisticsScopeDefinition& scopeDef)
 					   {
 						   return scopeDef.EmitScopeResult(context);
 					   });
+
+		result.name = "GPU Frame";
+		
+		result.durationInMs = std::accumulate(std::cbegin(result.children), std::cend(result.children),
+											  0.f,
+											  [](Real32 currentTime, const GPUStatisticsScopeResult& scopeResult)
+											  {
+												  return currentTime + scopeResult.durationInMs;
+											  });
 	}
 
-	return results;
+	return result;
 }
 
 lib::SharedRef<QueryPool> GPUStatisticsCollector::CreateQueryPool(rhi::EQueryType type, Uint32 queryCount) const

@@ -573,6 +573,16 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 }
 #endif // WITH_GPU_CRASH_DUMPS
 
+void RHICommandBuffer::ResetQueryPool(const RHIQueryPool& queryPool, Uint32 firstQueryIdx, Uint32 queryCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(queryPool.IsValid());
+
+	vkCmdResetQueryPool(m_cmdBufferHandle, queryPool.GetHandle(), firstQueryIdx, queryCount);
+}
+
 void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
 {
 	SPT_PROFILER_FUNCTION();

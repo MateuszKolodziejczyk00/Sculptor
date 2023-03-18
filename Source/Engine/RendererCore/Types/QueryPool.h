@@ -18,6 +18,8 @@ protected:
 public:
 
 	explicit QueryPool(const rhi::QueryPoolDefinition& definition);
+
+	void Reset();
 };
 
 } // spt::rdr

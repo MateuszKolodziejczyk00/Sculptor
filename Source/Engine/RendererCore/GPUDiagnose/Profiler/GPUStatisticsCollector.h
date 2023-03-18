@@ -94,7 +94,7 @@ public:
 	void BeginScope(CommandRecorder& recoder, const lib::HashedString& scopeName, EQueryFlags queryFlags);
 	void EndScope(CommandRecorder& recoder);
 
-	lib::DynamicArray<GPUStatisticsScopeResult> CollectStatistics();
+	GPUStatisticsScopeResult CollectStatistics();
 
 private:
 

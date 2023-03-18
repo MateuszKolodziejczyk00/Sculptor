@@ -7,6 +7,7 @@ namespace spt::vulkan
 
 RHIQueryPool::RHIQueryPool()
 	: m_handle(VK_NULL_HANDLE)
+	, m_queryCount(0)
 { }
 
 void RHIQueryPool::InitializeRHI(const rhi::QueryPoolDefinition& definition)
@@ -20,6 +21,8 @@ void RHIQueryPool::InitializeRHI(const rhi::QueryPoolDefinition& definition)
 	queryPoolInfo.queryCount	= definition.queryCount;
 
 	SPT_VK_CHECK(vkCreateQueryPool(VulkanRHI::GetDeviceHandle(), &queryPoolInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
+
+	m_queryCount = definition.queryCount;
 }
 
 void RHIQueryPool::ReleaseRHI()
@@ -29,7 +32,8 @@ void RHIQueryPool::ReleaseRHI()
 	SPT_CHECK(IsValid());
 
 	vkDestroyQueryPool(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
-	m_handle = VK_NULL_HANDLE;
+	m_handle		= VK_NULL_HANDLE;
+	m_queryCount	= 0;
 }
 
 Bool RHIQueryPool::IsValid() const
@@ -40,6 +44,20 @@ Bool RHIQueryPool::IsValid() const
 VkQueryPool RHIQueryPool::GetHandle() const
 {
 	return m_handle;
+}
+
+Uint32 RHIQueryPool::GetQueryCount() const
+{
+	return m_queryCount;
+}
+
+void RHIQueryPool::Reset(Uint32 firstQuery, Uint32 queryCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	vkResetQueryPool(VulkanRHI::GetDeviceHandle(), m_handle, firstQuery, queryCount);
 }
 
 lib::DynamicArray<Uint64> RHIQueryPool::GetResults(Uint32 queryCount) const
