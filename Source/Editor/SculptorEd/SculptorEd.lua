@@ -14,6 +14,8 @@ function SculptorEd:SetupConfiguration(configuration, platform)
 	self:AddDebugArgument("-EngineRelativePath=../../../")
 
 	self:AddDebugArgument("-Scene=Sponza/glTF/Sponza.gltf")
+	
+	self:AddDebugArgument("-EnableRayTracing")
 end
 
 SculptorEd:SetupProject()
