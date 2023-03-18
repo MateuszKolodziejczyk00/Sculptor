@@ -1,10 +1,10 @@
 #include "Profiler.h"
 #include "Paths.h"
 #include "FileSystem/File.h"
+#include "Engine.h"
 
 #include <ctime>
 #include <iomanip>
-#include "Engine.h"
 
 namespace spt::prf
 {
@@ -181,6 +181,16 @@ SizeType Profiler::GetCollectedFrameTimesNum() const
 Real32 Profiler::GetAverageFrameTime() const
 {
 	return m_recentFrameTimesNum > 0 ? m_recentFrameTimesSum / static_cast<Real32>(m_recentFrameTimesNum) : 0.f;
+}
+
+void Profiler::SetGPUFrameStatistics(rdr::GPUStatisticsScopeResult frameStatistics)
+{
+	m_gpuFrameStatistics = std::move(frameStatistics);
+}
+
+const rdr::GPUStatisticsScopeResult& Profiler::GetGPUFrameStatistics() const
+{
+	return m_gpuFrameStatistics;
 }
 
 Profiler::Profiler()

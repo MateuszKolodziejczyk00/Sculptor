@@ -486,6 +486,18 @@ void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 
 #endif // WITH_GPU_CRASH_DUMPS
 
+void CommandRecorder::ResetQueryPool(const lib::SharedRef<QueryPool>& queryPool, Uint32 firstQueryIdx, Uint32 queryCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("ResetQueryPool Command");
+
+							 cmdBuffer->GetRHI().ResetQueryPool(queryPool->GetRHI(), firstQueryIdx, queryCount);
+						 });
+}
+
 void CommandRecorder::WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
 {
 	SPT_PROFILER_FUNCTION();

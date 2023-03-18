@@ -61,7 +61,7 @@ namespace params
 
 RendererBoolParameter enableShadows("Enable Local Shadows", { "Lighting", "Shadows", "Local" }, true);
 RendererIntParameter maxShadowMapsUpgradedPerFrame("Max ShadowMaps Upgraded Per Frame", { "Lighting", "Shadows", "Local" }, 1, 0, 10);
-RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows", "Local" }, 3, 0, 10);
+RendererIntParameter maxShadowMapsUpdatedPerFrame("Max ShadowMaps Updated Per Frame", { "Lighting", "Shadows", "Local" }, 0, 0, 10);
 
 } // params
 

@@ -3,6 +3,7 @@
 #include "Types/Semaphore.h"
 #include "Renderer.h"
 #include "EngineFrame.h"
+#include "JobSystem.h"
 
 
 namespace spt::rdr
@@ -44,7 +45,7 @@ void CurrentFrameContext::Shutdown()
 
 void CurrentFrameContext::WaitForFrameRendered(Uint64 frameIdx)
 {
-	const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(frameIdx, 500000000);
+	const Bool released = priv::releaseFrameSemaphore->GetRHI().Wait(frameIdx/*, 500000000*/);
 	SPT_CHECK_MSG(released, "Failed to release GPU resources");
 
 	FlushFrameReleases(frameIdx);
@@ -77,7 +78,12 @@ void CurrentFrameContext::FlushFrameReleases(Uint64 frameIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
-	GetDelegateForFrame(frameIdx).ResetAndBroadcast();
+	lib::MulticastDelegate<void()> localDelegate = std::move(GetDelegateForFrame(frameIdx));
+	js::Launch("Cleanup Frame Resources",
+			   [ delegate = std::move(localDelegate) ]() mutable
+			   {
+				   delegate.ResetAndBroadcast();
+			   });
 }
 
 CurrentFrameContext::CleanupDelegate& CurrentFrameContext::GetDelegateForFrame(Uint64 frameIdx)

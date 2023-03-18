@@ -310,10 +310,10 @@ void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	context.AddFinalizeGPUDelegate(engn::FinalizeGPU::Delegate::CreateLambda([](engn::FrameContext& context)
-																			 {
-																				 rdr::Renderer::WaitForFrameRendered(context.GetFrameIdx());
-																			 }));
+	context.AddFinalizeGPUDelegate(engn::OnFinalizeGPU::Delegate::CreateLambda([](engn::FrameContext& context)
+																			   {
+																				   rdr::Renderer::WaitForFrameRendered(context.GetFrameIdx());
+																			   }));
 
 	const Real32 deltaTime = context.GetDeltaTime();
 

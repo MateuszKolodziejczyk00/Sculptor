@@ -3,6 +3,13 @@
 #include "ProfilerMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
+
+
+namespace spt::rdr
+{
+class GPUStatisticsCollector;
+} // spt::rdr
 
 
 namespace spt::prf
@@ -29,6 +36,11 @@ public:
 	SizeType GetCollectedFrameTimesNum() const;
 	Real32 GetAverageFrameTime() const;
 
+	// GPU ========================================================
+
+	void SetGPUFrameStatistics(rdr::GPUStatisticsScopeResult frameStatistics);
+	const rdr::GPUStatisticsScopeResult& GetGPUFrameStatistics() const;
+
 private:
 
 	Profiler();
@@ -43,6 +55,8 @@ private:
 	Real32							m_recentFrameTimesSum;
 
 	lib::DelegateHandle				m_captureDelegateHandle;
+
+	rdr::GPUStatisticsScopeResult	m_gpuFrameStatistics;
 };
 
 } // spt::prf

@@ -23,29 +23,44 @@ void FrameContext::BeginFrame(const FrameDefinition& definition)
 	m_frameDefinition = definition;
 }
 
-void FrameContext::EndSimulation()
+void FrameContext::FinalizeSimulation()
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_finalizeSimulation.ResetAndBroadcast(*this);
+}
+
+void FrameContext::EndSimulation()
+{
+	SPT_PROFILER_FUNCTION();
 
 	m_onSimulationFinished.ResetAndBroadcast(*this);
+}
+
+void FrameContext::FinalizeRendering()
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_finalizeRendering.ResetAndBroadcast(*this);
 }
 
 void FrameContext::EndRendering()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_finalizeRendering.ResetAndBroadcast(*this);
-
 	m_onRenderingFinished.ResetAndBroadcast(*this);
+}
+
+void FrameContext::FinalizeGPU()
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_finalizeGPU.ResetAndBroadcast(*this);
 }
 
 void FrameContext::EndGPU()
 {
 	SPT_PROFILER_FUNCTION();
-
-	m_finalizeGPU.ResetAndBroadcast(*this);
 
 	m_onGPUFinished.ResetAndBroadcast(*this);
 }
@@ -54,7 +69,7 @@ void FrameContext::EndFrame()
 {
 }
 
-void FrameContext::AddFinalizeSimulationDelegate(FinalizeSimulation::Delegate delegate)
+void FrameContext::AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate)
 {
 	m_finalizeSimulation.Add(std::move(delegate));
 }
@@ -64,7 +79,7 @@ void FrameContext::AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegat
 	m_onSimulationFinished.Add(std::move(delegate));
 }
 
-void FrameContext::AddFinalizeRenderingDelegate(FinalizeRendering::Delegate delegate)
+void FrameContext::AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate)
 {
 	m_finalizeRendering.Add(std::move(delegate));
 }
@@ -74,7 +89,7 @@ void FrameContext::AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate 
 	m_onRenderingFinished.Add(std::move(delegate));
 }
 
-void FrameContext::AddFinalizeGPUDelegate(FinalizeGPU::Delegate delegate)
+void FrameContext::AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate)
 {
 	m_finalizeGPU.Add(std::move(delegate));
 }
@@ -161,40 +176,65 @@ void EngineFramesManager::InitializeImpl(FramesManagerInitializationInfo& info)
 void EngineFramesManager::ExecuteFrameImpl()
 {
 	SPT_PROFILER_FUNCTION();
+	
+	js::Launch("Execute Frame",
+			   [ this ]
+			   {
+				   js::AddNested("Execute Simulation",
+								 [this]
+								 {
+									 m_executeSimulationFrame.ExecuteIfBound(*m_simulationFrame);
+								     m_simulationFrame->FinalizeSimulation();
+								 },
+								 js::EJobPriority::High);
 
-	js::Job simulationJob = js::Launch(SPT_GENERIC_JOB_NAME,
-									   [ this ]
-									   {
-										   if (m_executeSimulationFrame.IsBound())
-										   {
-											   m_executeSimulationFrame.ExecuteIfBound(*m_simulationFrame);
-										   }
-										   m_simulationFrame->EndSimulation();
-									   },
-									   js::EJobPriority::High);
+				   js::AddNested("Execute Rendering",
+								 [this]
+								 {
+									 m_executeRenderingFrame.ExecuteIfBound(*m_renderingFrame);
+								     m_renderingFrame->FinalizeRendering();
+								 },
+								 js::EJobPriority::High);
 
-	js::Job renderingJob = js::Launch(SPT_GENERIC_JOB_NAME,
-									  [ this ]
-									  {
-										  if (m_executeRenderingFrame.IsBound())
-										  {
-											  m_executeRenderingFrame.ExecuteIfBound(*m_renderingFrame);
-										  }
-										  m_renderingFrame->EndRendering();
-									  },
-									  js::EJobPriority::High);
+				   js::AddNested("Execute GPU",
+								 [this]
+								 {
+									 m_gpuFrame->FinalizeGPU();
+								 },
+								 js::EJobPriority::High);
 
-	js::Job gpuJob = js::Launch(SPT_GENERIC_JOB_NAME,
-								[ gpuFrame = m_gpuFrame ]
-								{
-									gpuFrame->EndGPU();
-									gpuFrame->EndFrame();
-								},
-								js::EJobPriority::High);
+			   },
+			   js::EJobPriority::Default,
+			   js::EJobFlags::Inline);
 
-	simulationJob.Wait();
-	renderingJob.Wait();
-	gpuJob.Wait();
+	js::Launch("End Frame",
+			   [ this ]
+			   {
+				   js::AddNested("End Simulation",
+								 [this]
+								 {
+									 m_simulationFrame->EndSimulation();
+								 },
+								 js::EJobPriority::High);
+
+				   js::AddNested("End Rendering",
+								 [this]
+								 {
+									 m_renderingFrame->EndRendering();
+								 },
+								 js::EJobPriority::High);
+
+				   js::AddNested("End GPU",
+								 [this]
+								 {
+									 m_gpuFrame->EndGPU();
+									 m_gpuFrame->EndFrame();
+								 },
+								 js::EJobPriority::High);
+
+			   },
+			   js::EJobPriority::Default,
+			   js::EJobFlags::Inline);
 
 	FrameDefinition frameDef;
 	frameDef.deltaTime		= Engine::Get().BeginFrame();

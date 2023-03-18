@@ -24,13 +24,13 @@ enum class EFrameState
  * OnFinished delegates are called when We're sure that current state is finished and next state can be started
  */
 
-using FinalizeSimulation	= lib::MulticastDelegate<void(FrameContext& context)>;
+using OnFinalizeSimulation	= lib::MulticastDelegate<void(FrameContext& context)>;
 using OnSimulationFinished	= lib::MulticastDelegate<void(FrameContext& context)>;
 
-using FinalizeRendering		= lib::MulticastDelegate<void(FrameContext& context)>;
+using OnFinalizeRendering	= lib::MulticastDelegate<void(FrameContext& context)>;
 using OnRenderingFinished	= lib::MulticastDelegate<void(FrameContext& context)>;
 
-using FinalizeGPU			= lib::MulticastDelegate<void(FrameContext& context)>;
+using OnFinalizeGPU			= lib::MulticastDelegate<void(FrameContext& context)>;
 using OnGPUFinished			= lib::MulticastDelegate<void(FrameContext& context)>;
 
 
@@ -55,23 +55,15 @@ public:
 
 	FrameContext();
 
-	// Frame Flow =====================================================
-
-	void BeginFrame(const FrameDefinition& definition);
-	void EndSimulation();
-	void EndRendering();
-	void EndGPU();
-	void EndFrame();
-
 	// Frame Delegates ================================================
 
-	void AddFinalizeSimulationDelegate(FinalizeSimulation::Delegate delegate);
+	void AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate);
 	void AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegate delegate);
 
-	void AddFinalizeRenderingDelegate(FinalizeRendering::Delegate delegate);
+	void AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate);
 	void AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate delegate);
 
-	void AddFinalizeGPUDelegate(FinalizeGPU::Delegate delegate);
+	void AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate);
 	void AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate);
 
 	// Frame Data =====================================================
@@ -82,16 +74,33 @@ public:
 
 private:
 
+	// Frame Flow =====================================================
+
+	void BeginFrame(const FrameDefinition& definition);
+
+	void FinalizeSimulation();
+	void EndSimulation();
+
+	void FinalizeRendering();
+	void EndRendering();
+
+	void FinalizeGPU();
+	void EndGPU();
+
+	void EndFrame();
+
 	FrameDefinition			m_frameDefinition;
 
-	FinalizeSimulation		m_finalizeSimulation;
+	OnFinalizeSimulation	m_finalizeSimulation;
 	OnSimulationFinished	m_onSimulationFinished;
 	
-	FinalizeRendering		m_finalizeRendering;
+	OnFinalizeRendering		m_finalizeRendering;
 	OnRenderingFinished		m_onRenderingFinished;
 
-	FinalizeGPU				m_finalizeGPU;
+	OnFinalizeGPU			m_finalizeGPU;
 	OnGPUFinished			m_onGPUFinished;
+
+	friend class EngineFramesManager;
 };
 
 

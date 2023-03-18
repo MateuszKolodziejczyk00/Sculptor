@@ -128,6 +128,8 @@ public:
 	void	SetDebugCheckpoint(const lib::HashedString& marker);
 #endif // WITH_GPU_CRASH_DUMPS
 
+	void	ResetQueryPool(const lib::SharedRef<QueryPool>& queryPool, Uint32 firstQueryIdx, Uint32 queryCount);
+
 	void	WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 
 private:
