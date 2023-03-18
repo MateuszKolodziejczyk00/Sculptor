@@ -601,7 +601,8 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 
 	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
 		|| transitionSource.layout != transitionTarget.layout
-		|| prevAccessIsWrite || newAccessIsWrite; // read -> write, write -> read, write -> write
+		|| prevAccessIsWrite || newAccessIsWrite // read -> write, write -> read, write -> write
+		|| math::Utils::FirstSetBit(static_cast<Int32>(transitionTarget.stage)) < math::Utils::FirstSetBit(static_cast<Int32>(transitionSource.stage)); // read -> read, but target stage is earlier than source stage
 }
 
 Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess, rhi::EPipelineStage nextAccessStage, rhi::EPipelineStage earliestReadAfterLastWriteStage) const

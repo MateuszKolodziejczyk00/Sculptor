@@ -27,7 +27,7 @@ void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr:
 	if (m_graphBuilder.IsTextureAcquired(texture->GetTexture()))
 	{
 		const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
-		AddTextureAccess(rgTextureView, access, dependencyStages.pipelineStages);
+		AddTextureAccess(rgTextureView, access, dependencyStages);
 	}
 }
 
