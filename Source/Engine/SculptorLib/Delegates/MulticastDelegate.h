@@ -40,6 +40,26 @@ public:
 };
 
 
+namespace priv
+{
+
+template<typename TDelegate>
+struct DelegateInfo
+{
+	DelegateInfo()
+	{}
+
+	explicit DelegateInfo(DelegateHandle inHandle)
+		: handle(inHandle)
+	{}
+
+	TDelegate		delegate;
+	DelegateHandle	handle;
+};
+
+} // priv
+
+
 template<Bool isThreadSafe, typename... TArgs>
 class MulticastDelegateBase {};
 
@@ -53,18 +73,7 @@ public:
 
 private:
 
-	struct DelegateInfo
-	{
-		DelegateInfo()
-		{}
-
-		explicit DelegateInfo(DelegateHandle inHandle)
-			: handle(inHandle)
-		{}
-
-		Delegate		delegate;
-		DelegateHandle	handle;
-	};
+	using DelegateInfo = priv::DelegateInfo<Delegate>;
 
 public:
 
@@ -79,6 +88,21 @@ public:
 
 	MulticastDelegateBase(ThisType&& rhs) = default;
 	ThisType& operator=(ThisType&& rhs) = default;
+
+	MulticastDelegateBase(MulticastDelegateBase<true, TReturnType(TArgs...)>&& rhs) requires !isThreadSafe
+	{
+		const auto lock = rhs.LockIfNecessary();
+		m_delegates = std::move(rhs.m_delegates);
+		m_handleCounter = rhs.m_handleCounter;
+	}
+
+	MulticastDelegateBase& operator=(MulticastDelegateBase<true, TReturnType(TArgs...)>&& rhs) requires !isThreadSafe
+	{
+		const auto lock = rhs.LockIfNecessary();
+		m_delegates = std::move(rhs.m_delegates);
+		m_handleCounter = std::max(rhs.m_handleCounter, m_handleCounter);
+		return *this;
+	}
 
 	~MulticastDelegateBase() = default;
 
@@ -116,6 +140,8 @@ private:
 	DelegateIDType						m_handleCounter;
 
 	Bool								m_deferRemovals;
+
+	friend MulticastDelegateBase<!isThreadSafe, TReturnType(TArgs...)>;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
