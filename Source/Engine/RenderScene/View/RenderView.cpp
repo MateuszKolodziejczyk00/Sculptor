@@ -68,7 +68,7 @@ void RenderView::OnBeginRendering()
 	SPT_PROFILER_FUNCTION();
 
 	CachePrevFrameRenderingData();
-	UpdateViewRenderingData();
+	UpdateViewRenderingData(GetRenderingResolution());
 	UpdateCullingData();
 
 	CreateRenderViewDS();

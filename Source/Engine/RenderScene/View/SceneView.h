@@ -10,9 +10,12 @@ namespace spt::rsc
 BEGIN_SHADER_STRUCT(SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, projectionMatrix)
+	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrixNoJitter)
+	SHADER_STRUCT_FIELD(math::Matrix4f, projectionMatrixNoJitter)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
-	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjection)
+	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjectionNoJitter)
+	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
 END_SHADER_STRUCT();
 
 
@@ -45,6 +48,9 @@ public:
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
 
+	void SetJittering(Bool enableJittering);
+	Bool IsJittering() const;
+
 	const SceneViewData&		GetViewRenderingData() const;
 	const SceneViewCullingData&	GetCullingData() const;
 
@@ -59,7 +65,7 @@ protected:
 	Bool IsPerspectiveMatrix() const;
 
 	void CachePrevFrameRenderingData();
-	void UpdateViewRenderingData();
+	void UpdateViewRenderingData(math::Vector2u resolution);
 	void UpdateCullingData();
 
 	math::Matrix4f GenerateViewMatrix() const;
@@ -77,6 +83,8 @@ private:
 	SceneViewCullingData	m_viewCullingData;
 
 	SceneViewData			m_prevFrameRenderingData;
+
+	Bool m_wantsJitter;
 };
 
 } // spt::rsc
