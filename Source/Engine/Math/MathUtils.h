@@ -111,6 +111,20 @@ public:
 		return value & -value;
 	}
 
+	template<std::integral TType>
+	static constexpr Uint32 CountSetBits(TType value)
+	{
+		Uint32 count = 0;
+
+		while (value != 0)
+		{
+			count += (value & 1);
+			value >>= 1;
+		}
+
+		return count;
+	}
+
 	template<std::unsigned_integral TType>
 	static constexpr TType DivideCeil(TType numerator, TType denominator)
 	{

@@ -32,7 +32,7 @@ private:
 
 	VkQueryPool m_handle;
 
-	Uint32		m_queryCount;
+	rhi::QueryPoolDefinition m_definition;
 };
 
 } // spt::vulkan

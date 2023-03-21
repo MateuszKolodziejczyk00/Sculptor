@@ -74,11 +74,6 @@ Bool RHICommandBuffer::IsValid() const
 	return m_cmdBufferHandle != VK_NULL_HANDLE;
 }
 
-VkCommandBuffer RHICommandBuffer::GetHandle() const
-{
-	return m_cmdBufferHandle;
-}
-
 rhi::ECommandBufferQueueType RHICommandBuffer::GetQueueType() const
 {
 	return m_queueType;
@@ -591,6 +586,31 @@ void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 quer
 	SPT_CHECK(queryPool.IsValid());
 
 	vkCmdWriteTimestamp2(m_cmdBufferHandle, RHIToVulkan::GetStageFlags(stage), queryPool.GetHandle(), queryIdx);
+}
+
+void RHICommandBuffer::BeginQuery(const RHIQueryPool& queryPool, Uint32 queryIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(queryPool.IsValid());
+
+	vkCmdBeginQuery(m_cmdBufferHandle, queryPool.GetHandle(), queryIdx, 0);
+}
+
+void RHICommandBuffer::EndQuery(const RHIQueryPool& queryPool, Uint32 queryIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(queryPool.IsValid());
+
+	vkCmdEndQuery(m_cmdBufferHandle, queryPool.GetHandle(), queryIdx);
+}
+
+VkCommandBuffer RHICommandBuffer::GetHandle() const
+{
+	return m_cmdBufferHandle;
 }
 
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)

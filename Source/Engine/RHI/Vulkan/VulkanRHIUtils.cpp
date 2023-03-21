@@ -680,11 +680,41 @@ VkQueryType RHIToVulkan::GetQueryType(rhi::EQueryType queryType)
 	switch (queryType)
 	{
 	case rhi::EQueryType::Timestamp:	return VK_QUERY_TYPE_TIMESTAMP;
-	
+	case rhi::EQueryType::Statistics:	return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+
 	default:
+
 		SPT_CHECK_NO_ENTRY();
 		return VK_QUERY_TYPE_MAX_ENUM;
 	}
+}
+
+VkQueryPipelineStatisticFlags RHIToVulkan::GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType)
+{
+	VkQueryPipelineStatisticFlags flags = 0;
+
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::IAVertices))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::IAPrimitives))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::VSInvocations))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::FSInvocations))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT);
+	}
+	if (lib::HasAnyFlag(statisticsType, rhi::EQueryStatisticsType::CSInvocations))
+	{
+		lib::AddFlag(flags, VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT);
+	}
+
+	return flags;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

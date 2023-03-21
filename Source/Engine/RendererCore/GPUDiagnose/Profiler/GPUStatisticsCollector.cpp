@@ -12,8 +12,12 @@ namespace spt::rdr
 GPUStatisticsCollector::GPUStatisticsCollector()
 	: m_timestampsQueryPool(CreateQueryPool(rhi::EQueryType::Timestamp, 1024))
 	, m_timestampsQueryPoolIndex(0)
+	, m_pipelineStatsQueryPool(CreateQueryPool(rhi::EQueryType::Statistics, 1024, rhi::EQueryStatisticsType::All))
+	, m_pipelineStatsQueryPoolIndex(0)
+
 {
 	m_timestampsQueryPool->Reset();
+	m_pipelineStatsQueryPool->Reset();
 }
 
 void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::HashedString& scopeName, EQueryFlags queryFlags)
@@ -25,6 +29,29 @@ void GPUStatisticsCollector::BeginScope(CommandRecorder& recoder, const lib::Has
 	recoder.WriteTimestamp(m_timestampsQueryPool, beginTimestampIndex, rhi::EPipelineStage::TopOfPipe);
 
 	GPUStatisticsScopeDefinition& newScope = currentLevelScopes.emplace_back(GPUStatisticsScopeDefinition(scopeName, beginTimestampIndex));
+
+	if (queryFlags != EQueryFlags::None)
+	{
+		constexpr Uint32 statisticsNum = 5;
+		
+		const Uint32 statisticsBeginIndex = m_pipelineStatsQueryPoolIndex * statisticsNum;
+		recoder.BeginQuery(m_pipelineStatsQueryPool, m_pipelineStatsQueryPoolIndex);
+
+		newScope.pipelineStatisticsQueryIdx = m_pipelineStatsQueryPoolIndex++;
+
+		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Rasterization))
+		{
+			newScope.inputAsseblyVerticesIdx		= statisticsBeginIndex;
+			newScope.inputAsseblyPrimitivesIdx		= statisticsBeginIndex + 1;
+			newScope.vertexShaderInvocationsIdx		= statisticsBeginIndex + 2;
+			newScope.fragmentShaderInvocationsIdx	= statisticsBeginIndex + 3;
+		}
+
+		if (lib::HasAnyFlag(queryFlags, EQueryFlags::Compute))
+		{
+			newScope.computeShaderInvocationsIdx = statisticsBeginIndex + 4;
+		}
+	}
 
 	m_scopesInProgressStack.emplace_back(&newScope);
 }
@@ -40,6 +67,11 @@ void GPUStatisticsCollector::EndScope(CommandRecorder& recoder)
 
 	currentScope.endTimestampIndex = endTimestampIndex;
 
+	if (currentScope.pipelineStatisticsQueryIdx.has_value())
+	{
+		recoder.EndQuery(m_pipelineStatsQueryPool, currentScope.pipelineStatisticsQueryIdx.value());
+	}
+
 	m_scopesInProgressStack.pop_back();
 }
 
@@ -52,7 +84,8 @@ GPUStatisticsScopeResult GPUStatisticsCollector::CollectStatistics()
 	GPUStatisticsScopeResult result;
 
 	StatisticsContext context;
-	context.timestamps = m_timestampsQueryPool->GetRHI().GetResults(m_timestampsQueryPoolIndex);
+	context.timestamps			= m_timestampsQueryPool->GetRHI().GetResults(m_timestampsQueryPoolIndex);
+	context.pipelineStatistics	= m_pipelineStatsQueryPool->GetRHI().GetResults(m_pipelineStatsQueryPoolIndex);
 
 	if (!context.timestamps.empty())
 	{
@@ -77,11 +110,12 @@ GPUStatisticsScopeResult GPUStatisticsCollector::CollectStatistics()
 	return result;
 }
 
-lib::SharedRef<QueryPool> GPUStatisticsCollector::CreateQueryPool(rhi::EQueryType type, Uint32 queryCount) const
+lib::SharedRef<QueryPool> GPUStatisticsCollector::CreateQueryPool(rhi::EQueryType type, Uint32 queryCount, rhi::EQueryStatisticsType statisticsType /*= rhi::EQueryStatisticsType::None*/) const
 {
 	rhi::QueryPoolDefinition queryPoolDef;
-	queryPoolDef.queryCount = queryCount;
-	queryPoolDef.queryType	= type;
+	queryPoolDef.queryCount		= queryCount;
+	queryPoolDef.queryType		= type;
+	queryPoolDef.statisticsType	= statisticsType;
 	return rdr::ResourcesManager::CreateQueryPool(queryPoolDef);
 }
 

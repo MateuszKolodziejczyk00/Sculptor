@@ -132,6 +132,9 @@ public:
 
 	void	WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 
+	void	BeginQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx);
+	void	EndQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx);
+
 private:
 
 	template<CRenderCommand RenderCommand>

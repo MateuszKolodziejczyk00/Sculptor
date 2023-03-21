@@ -510,4 +510,28 @@ void CommandRecorder::WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool,
 						 });
 }
 
+void CommandRecorder::BeginQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("BeginQuery Command");
+
+							 cmdBuffer->GetRHI().BeginQuery(queryPool->GetRHI(), queryIdx);
+						 });
+}
+
+void CommandRecorder::EndQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("EndQuery Command");
+
+							 cmdBuffer->GetRHI().EndQuery(queryPool->GetRHI(), queryIdx);
+						 });
+}
+
 } // spt::rdr

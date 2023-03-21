@@ -79,6 +79,8 @@ public:
 	static VkGeometryInstanceFlagsKHR		GetGeometryInstanceFlags(rhi::ETLASInstanceFlags instanceFlags);
 
 	static VkQueryType						GetQueryType(rhi::EQueryType queryType);
+
+	static VkQueryPipelineStatisticFlags	GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType);
 };
 
 struct VulkanToRHI

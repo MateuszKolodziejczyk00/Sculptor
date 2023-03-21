@@ -103,6 +103,9 @@ public:
 	
 	void	WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage);
 
+	void	BeginQuery(const RHIQueryPool& queryPool, Uint32 queryIdx);
+	void	EndQuery(const RHIQueryPool& queryPool, Uint32 queryIdx);
+
 	// Vulkan specific ======================================
 
 	VkCommandBuffer	 GetHandle() const;

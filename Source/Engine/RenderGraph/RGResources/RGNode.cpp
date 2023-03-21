@@ -10,6 +10,24 @@
 namespace spt::rg
 {
 
+namespace helpers
+{
+
+rdr::EQueryFlags GetQueryFlags(ERenderGraphNodeType nodeType)
+{
+	switch (nodeType)
+	{
+	case rg::ERenderGraphNodeType::RenderPass:	return rdr::EQueryFlags::Rasterization;
+	case rg::ERenderGraphNodeType::Dispatch:	return rdr::EQueryFlags::Compute;
+
+	default:
+
+		return rdr::EQueryFlags::None;
+	}
+}
+
+} // helpers
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RGNode ========================================================================================
 
@@ -136,7 +154,7 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 
 	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
-	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
+	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().Get().GetData(), helpers::GetQueryFlags(GetType()));
 
 	SPT_CHECK(!m_executed);
 
