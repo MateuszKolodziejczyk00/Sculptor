@@ -60,10 +60,4 @@ struct HDRResolvePassData
 #endif // RENDERER_DEBUG
 };
 
-
-BEGIN_ALIGNED_SHADER_STRUCT(16, SceneRendererDebugSettings)
-	SHADER_STRUCT_FIELD(Bool, showDebugMeshlets)
-	SHADER_STRUCT_FIELD(math::Vector3f, padding)
-END_SHADER_STRUCT();
-
 } // spt::rsc

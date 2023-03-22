@@ -14,7 +14,8 @@ enum class ERenderStage
 	MotionAndDepth					= BIT(2),
 	DirectionalLightsShadowMasks	= BIT(3),
 	ForwardOpaque					= BIT(4),
-	HDRResolve						= BIT(5)
+	AnitAliasing					= BIT(5),
+	HDRResolve						= BIT(6)
 };
 
 } // spt::rsc

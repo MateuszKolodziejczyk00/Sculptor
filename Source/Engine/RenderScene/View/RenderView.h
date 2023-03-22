@@ -14,8 +14,23 @@ namespace spt::rsc
 class RenderScene;
 
 
+namespace EDebugFeature
+{
+enum Type
+{
+	None = 0,
+	ShowMeshlets,
+
+	NUM
+};
+} // EDebugFeature
+
+
 BEGIN_SHADER_STRUCT(RenderViewData)
 	SHADER_STRUCT_FIELD(math::Vector2u, renderingResolution)
+#if RENDERER_DEBUG
+	SHADER_STRUCT_FIELD(Uint32, debugFeatureIndex)
+#endif // RENDERER_DEBUG
 END_SHADER_STRUCT();
 
 
@@ -52,6 +67,16 @@ public:
 	const lib::SharedPtr<RenderViewDS>& GetRenderViewDS() const;
 	lib::SharedRef<RenderViewDS> GetRenderViewDSRef() const;
 
+	void SetTemporalAAEnabled(Bool enable);
+	Bool IsTemporalAAEnabled() const;
+
+#if RENDERER_DEBUG
+	void SetDebugFeature(EDebugFeature::Type debugFeature);
+	EDebugFeature::Type GetDebugFeature() const;
+
+	Bool IsAnyDebugFeatureEnabled() const;
+#endif // RENDERER_DEBUG
+
 	void OnBeginRendering();
 
 private:
@@ -65,6 +90,14 @@ private:
 	RenderSceneEntityHandle m_viewEntity;
 
 	lib::SharedPtr<RenderViewDS> m_renderViewDS;
+	
+	// Rendering settings
+
+	Bool m_enableTemporalAA;
+
+#if RENDERER_DEBUG
+	EDebugFeature::Type m_debugFeature;
+#endif // RENDERER_DEBUG
 };
 
 } // spt::rsc

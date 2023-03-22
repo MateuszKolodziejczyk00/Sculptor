@@ -103,6 +103,28 @@ void SandboxUILayer::DrawRendererSettings()
 	{
 		m_renderer->SetFarPlane(farPlane);
 	}
+
+	ImGui::Separator();
+
+	ImGui::Text("Render View Settings");
+	{
+		rsc::RenderView& renderView = m_renderer->GetRenderView();
+
+		Bool isTAAEnabled = renderView.IsTemporalAAEnabled();
+		if (ImGui::Checkbox("Enable TAA", &isTAAEnabled))
+		{
+			renderView.SetTemporalAAEnabled(isTAAEnabled);
+		}
+
+
+		const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets" };
+
+		int selectedDebugFeature = renderView.GetDebugFeature();
+		if (ImGui::Combo("Debug Feature", &selectedDebugFeature, debugFeatures, SPT_ARRAY_SIZE(debugFeatures)))
+		{
+			renderView.SetDebugFeature(static_cast<rsc::EDebugFeature::Type>(selectedDebugFeature));
+		}
+	}
 }
 
 void SandboxUILayer::DrawJobSystemTestsUI()

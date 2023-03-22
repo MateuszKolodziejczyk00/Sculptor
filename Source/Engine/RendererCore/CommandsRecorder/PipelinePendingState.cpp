@@ -286,7 +286,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			}
 
 			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsTypeHash);
-			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}", pipeline->GetRHI().GetName().GetData(), dsIdx);
+			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}\nTry removing Saved/Shaders/Cache directory", pipeline->GetRHI().GetName().GetData(), dsIdx);
 			
 			const lib::SharedRef<DescriptorSetState> stateInstance = lib::Ref(foundState->instance);
 

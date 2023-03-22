@@ -9,21 +9,13 @@
 #include "RenderStages/ShadowMapRenderStage.h"
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
+#include "RenderStages/AntiAliasingRenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
 #include "Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
 {
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Parameters ====================================================================================
-
-namespace params
-{
-
-RendererBoolParameter showMeshlets("Show Meshlets", { "Geometry" }, false);
-
-} // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utils =========================================================================================
@@ -53,22 +45,15 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 // SceneRenderer =================================================================================
 
 SceneRenderer::SceneRenderer()
-	: m_debugDS(CreateDebugDS())
 { }
 
 rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
 {
 	SPT_PROFILER_FUNCTION();
 
-	// Update parameters
-	m_debugDS->u_rendererDebugSettings.Set([](SceneRendererDebugSettings& settings)
-										   {
-											   settings.showDebugMeshlets = params::showMeshlets;
-										   });
-
-	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(m_debugDS, scene.GetRenderSceneDS()));
-
 	scene.Update();
+	
+	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(scene.GetRenderSceneDS()));
 
 	SizeType mainViewIdx = idxNone<SizeType>;
 	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view, OUT mainViewIdx);
@@ -109,6 +94,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
+	renderer_utils::ProcessRenderStage<AntiAliasingRenderStage>(graphBuilder, scene, renderViewsSpecs);
+
 	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs);
 
 	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
@@ -123,7 +110,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	rg::RGTextureViewHandle output = mainViewRenderingResult.tonemappedTexture;
 
 #if RENDERER_DEBUG
-	if (HasEnabledDebug())
+	if (view.IsAnyDebugFeatureEnabled())
 	{
 		output = mainViewRenderingResult.debug;
 	}
@@ -167,18 +154,6 @@ lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::Rend
 	SPT_CHECK(mainViewIdx != idxNone<SizeType>);
 
 	return viewsEntryPoints;
-}
-
-lib::SharedRef<SceneRendererDebugDS> SceneRenderer::CreateDebugDS()
-{
-	return rdr::ResourcesManager::CreateDescriptorSetState<SceneRendererDebugDS>(RENDERER_RESOURCE_NAME("SceneRendererDebugDS"), rdr::EDescriptorSetStateFlags::Persistent);
-}
-
-Bool SceneRenderer::HasEnabledDebug() const
-{
-	const SceneRendererDebugSettings& debugSettings = m_debugDS->u_rendererDebugSettings.Get();
-
-	return debugSettings.showDebugMeshlets;
 }
 
 } // spt::rsc

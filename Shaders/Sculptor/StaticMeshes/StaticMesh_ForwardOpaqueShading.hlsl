@@ -17,10 +17,6 @@
 [[descriptor_set(ViewShadingDS, 7)]]
 [[descriptor_set(ShadowMapsDS, 8)]]
 
-#if WITH_DEBUGS
-[[descriptor_set(SceneRendererDebugDS, 9)]]
-#endif // WITH_DEBUGS
-
 [[shader_struct(MaterialPBRData)]]
 
 #include "Lights/Lighting.hlsli"
@@ -94,7 +90,7 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
 
 #if WITH_DEBUGS
-    if(u_rendererDebugSettings.showDebugMeshlets)
+    if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_MESHLETS)
     {
         output.meshletIdx = meshletIdx;
     }
@@ -196,7 +192,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
 #if WITH_DEBUGS
     float3 debug = 1.f;
-    if(u_rendererDebugSettings.showDebugMeshlets)
+    if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_MESHLETS)
     {
         const uint meshletHash = HashPCG(vertexInput.meshletIdx);
         debug = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;

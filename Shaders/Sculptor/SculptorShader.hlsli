@@ -1,4 +1,5 @@
 #include "Hashing.hlsli"
+#include "DebugFeatures.hlsli"
 
 #define IDX_NONE_32 0xffffffff
 

@@ -24,9 +24,9 @@ void CameraMotionCS(CS_INPUT input)
         const float2 uv = float2(pixel) / float2(outputRes);
         
         const float depth = u_depth.SampleLevel(u_depthSampler, uv, 0);
-        const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), u_sceneView.inverseViewProjection);
+        const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), u_sceneView.inverseViewProjectionNoJitter);
         
-        const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrix, float4(worldLocation, 1.f));
+        const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(worldLocation, 1.f));
         const float2 prevFrameUV = (prevFrameClip.xy / prevFrameClip.w) * 0.5f + 0.5f;
 
         const float2 motion = uv - prevFrameUV;

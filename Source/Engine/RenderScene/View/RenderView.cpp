@@ -8,6 +8,10 @@ namespace spt::rsc
 RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
+	, m_enableTemporalAA(false)
+#if RENDERER_DEBUG
+	, m_debugFeature(EDebugFeature::None)
+#endif // RENDERER_DEBUG
 {
 	m_viewEntity = renderScene.CreateEntity();
 }
@@ -63,6 +67,33 @@ lib::SharedRef<RenderViewDS> RenderView::GetRenderViewDSRef() const
 	return lib::Ref(GetRenderViewDS());
 }
 
+void RenderView::SetTemporalAAEnabled(Bool enable)
+{
+	m_enableTemporalAA = enable;
+}
+
+Bool RenderView::IsTemporalAAEnabled() const
+{
+	return m_enableTemporalAA;
+}
+
+#if RENDERER_DEBUG
+void RenderView::SetDebugFeature(EDebugFeature::Type debugFeature)
+{
+	m_debugFeature = debugFeature;
+}
+
+EDebugFeature::Type RenderView::GetDebugFeature() const
+{
+	return m_debugFeature;
+}
+
+Bool RenderView::IsAnyDebugFeatureEnabled() const
+{
+	return m_debugFeature != EDebugFeature::None;
+}
+#endif // RENDERER_DEBUG
+
 void RenderView::OnBeginRendering()
 {
 	SPT_PROFILER_FUNCTION();
@@ -80,6 +111,10 @@ void RenderView::CreateRenderViewDS()
 
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingResolution();
+
+#if RENDERER_DEBUG
+	renderViewData.debugFeatureIndex = GetDebugFeature();
+#endif // RENDERER_DEBUG
 
 	m_renderViewDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
 	m_renderViewDS->u_prevFrameSceneView	= GetPrevFrameRenderingData();
