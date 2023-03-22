@@ -133,8 +133,16 @@ void SculptorEdApplication::OnRun()
 		}
 
 		m_window->BeginFrame();
-
+	
 		engn::EngineFramesManager::ExecuteFrame();
+
+		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+		    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
+		    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
+		 	ImGui::UpdatePlatformWindows();
+		    ImGui::RenderPlatformWindowsDefault();
+		}
 	}
 }
 
@@ -278,6 +286,8 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 	}
 
+	ImGui::Render();
+
 	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
@@ -325,21 +335,11 @@ void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
 
 	ImGui::NewFrame();
 
+	scui::ApplicationUI::Draw(uiContext);
+
 	m_renderer->Tick(deltaTime);
 
-	scui::ApplicationUI::Draw(uiContext);
-	ImGui::Render();
-	
 	RenderFrame(*m_renderer);
-
-	ImGuiIO& imGuiIO = ImGui::GetIO();
-	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-	    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-	    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-	 	ImGui::UpdatePlatformWindows();
-	    ImGui::RenderPlatformWindowsDefault();
-	}
 }
 
 } // spt::ed
