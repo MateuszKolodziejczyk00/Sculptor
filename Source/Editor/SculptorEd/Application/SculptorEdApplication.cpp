@@ -329,6 +329,8 @@ void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
 
 	const Real32 deltaTime = context.GetDeltaTime();
 
+	rdr::Renderer::BeginFrame();
+
 	rg::RenderGraphManager::OnBeginFrame();
 
 	rdr::UIBackend::BeginFrame();
