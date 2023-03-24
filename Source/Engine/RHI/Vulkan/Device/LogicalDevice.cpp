@@ -42,6 +42,8 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	features.features.fillModeNonSolid			= VK_TRUE;
 	features.features.shaderInt16				= VK_TRUE;
 	features.features.pipelineStatisticsQuery	= VK_TRUE;
+	features.features.shaderStorageImageReadWithoutFormat	= VK_TRUE;
+	features.features.shaderStorageImageWriteWithoutFormat	= VK_TRUE;
 
 	deviceInfoLinkedData.Append(features);
 
