@@ -145,6 +145,11 @@ public:
 		return GetTextureDefinition().resolution;
 	}
 
+	rhi::EFragmentFormat GetFormat() const
+	{
+		return GetTextureDefinition().format;
+	}
+
 	// Texture Resource ====================================================
 
 	Bool IsAcquired() const
@@ -263,6 +268,11 @@ public:
 	math::Vector2u GetResolution2D() const
 	{
 		return GetResolution().head<2>();
+	}
+
+	rhi::EFragmentFormat GetFormat() const
+	{
+		return GetTexture()->GetFormat();
 	}
 
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const

@@ -8,7 +8,7 @@ namespace spt::rsc
 RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
-	, m_enableTemporalAA(false)
+	, m_aaMode(EAntiAliasingMode::None)
 #if RENDERER_DEBUG
 	, m_debugFeature(EDebugFeature::None)
 #endif // RENDERER_DEBUG
@@ -51,6 +51,11 @@ const math::Vector2u& RenderView::GetRenderingResolution() const
 	return m_renderingResolution;
 }
 
+math::Vector3u RenderView::GetRenderingResolution3D() const
+{
+	return math::Vector3u(m_renderingResolution.x(), m_renderingResolution.y(), 1u);
+}
+
 const RenderSceneEntityHandle& RenderView::GetViewEntity() const
 {
 	return m_viewEntity;
@@ -67,14 +72,15 @@ lib::SharedRef<RenderViewDS> RenderView::GetRenderViewDSRef() const
 	return lib::Ref(GetRenderViewDS());
 }
 
-void RenderView::SetTemporalAAEnabled(Bool enable)
+void RenderView::SetAntiAliasingMode(EAntiAliasingMode::Type mode)
 {
-	m_enableTemporalAA = enable;
+	m_aaMode = mode;
+	SetJittering(m_aaMode == EAntiAliasingMode::TemporalAA);
 }
 
-Bool RenderView::IsTemporalAAEnabled() const
+EAntiAliasingMode::Type RenderView::GetAnitAliasingMode() const
 {
-	return m_enableTemporalAA;
+	return m_aaMode;
 }
 
 #if RENDERER_DEBUG

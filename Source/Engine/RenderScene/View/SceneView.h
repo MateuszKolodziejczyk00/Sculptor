@@ -47,8 +47,6 @@ public:
 
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
-
-	void SetJittering(Bool enableJittering);
 	Bool IsJittering() const;
 
 	const SceneViewData&		GetViewRenderingData() const;
@@ -61,6 +59,8 @@ public:
 	math::Matrix4f GenerateViewProjectionMatrix() const;
 
 protected:
+
+	void SetJittering(Bool enableJittering);
 
 	Bool IsPerspectiveMatrix() const;
 

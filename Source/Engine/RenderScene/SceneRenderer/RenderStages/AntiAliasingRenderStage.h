@@ -6,7 +6,7 @@
 namespace spt::rsc
 {
 
-class AntiAliasingRenderStage : public RenderStage<AntiAliasingRenderStage, ERenderStage::AnitAliasing>
+class AntiAliasingRenderStage : public RenderStage<AntiAliasingRenderStage, ERenderStage::AntiAliasing>
 {
 public:
 

@@ -26,6 +26,18 @@ enum Type
 } // EDebugFeature
 
 
+namespace EAntiAliasingMode
+{
+enum Type
+{
+	None = 0,
+	TemporalAA,
+
+	NUM
+};
+} // EAntiAliasingMode
+
+
 BEGIN_SHADER_STRUCT(RenderViewData)
 	SHADER_STRUCT_FIELD(math::Vector2u, renderingResolution)
 #if RENDERER_DEBUG
@@ -61,14 +73,15 @@ public:
 
 	void SetRenderingResolution(const math::Vector2u& resolution);
 	const math::Vector2u& GetRenderingResolution() const;
+	math::Vector3u GetRenderingResolution3D() const;
 
 	const RenderSceneEntityHandle& GetViewEntity() const;
 
 	const lib::SharedPtr<RenderViewDS>& GetRenderViewDS() const;
 	lib::SharedRef<RenderViewDS> GetRenderViewDSRef() const;
 
-	void SetTemporalAAEnabled(Bool enable);
-	Bool IsTemporalAAEnabled() const;
+	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
+	EAntiAliasingMode::Type GetAnitAliasingMode() const;
 
 #if RENDERER_DEBUG
 	void SetDebugFeature(EDebugFeature::Type debugFeature);
@@ -93,7 +106,7 @@ private:
 	
 	// Rendering settings
 
-	Bool m_enableTemporalAA;
+	EAntiAliasingMode::Type m_aaMode;
 
 #if RENDERER_DEBUG
 	EDebugFeature::Type m_debugFeature;

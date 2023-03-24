@@ -21,7 +21,7 @@ void CameraMotionCS(CS_INPUT input)
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
-        const float2 uv = float2(pixel) / float2(outputRes);
+        const float2 uv = (float2(pixel) + 0.5f) / float2(outputRes);
         
         const float depth = u_depth.SampleLevel(u_depthSampler, uv, 0);
         const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, depth), u_sceneView.inverseViewProjectionNoJitter);

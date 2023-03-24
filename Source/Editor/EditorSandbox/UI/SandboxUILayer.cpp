@@ -110,12 +110,13 @@ void SandboxUILayer::DrawRendererSettings()
 	{
 		rsc::RenderView& renderView = m_renderer->GetRenderView();
 
-		Bool isTAAEnabled = renderView.IsTemporalAAEnabled();
-		if (ImGui::Checkbox("Enable TAA", &isTAAEnabled))
-		{
-			renderView.SetTemporalAAEnabled(isTAAEnabled);
-		}
+		const char* aaModes[rsc::EAntiAliasingMode::NUM] = { "None", "TAA" };
 
+		int aaMode = renderView.GetAnitAliasingMode();
+		if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
+		{
+			renderView.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));
+		}
 
 		const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets" };
 

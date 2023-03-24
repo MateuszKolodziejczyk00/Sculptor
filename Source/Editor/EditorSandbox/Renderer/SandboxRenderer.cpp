@@ -236,13 +236,14 @@ Real32 SandboxRenderer::GetCameraSpeed()
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderView = lib::MakeShared<rsc::RenderView>(m_renderScene);
-	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve));
+	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve, rsc::ERenderStage::AntiAliasing));
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::DirectionalLightsShadowMasks);
 	}
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
+	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
 	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
 	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>(m_renderView);

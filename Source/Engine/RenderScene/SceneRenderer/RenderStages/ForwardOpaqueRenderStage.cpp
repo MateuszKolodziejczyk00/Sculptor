@@ -40,7 +40,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	
 	rhi::TextureDefinition radianceDef;
 	radianceDef.resolution	= texturesRes;
-	radianceDef.usage		= passTexturesUsage;
+	radianceDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
 	radianceDef.format		= rhi::EFragmentFormat::B10G11B11_U_Float;
 	passData.radiance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("ViewRadianceTexture"), radianceDef, rhi::EMemoryUsage::GPUOnly);
 	

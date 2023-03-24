@@ -45,6 +45,21 @@ float InterleavedGradientNoise(float2 uv)
 	return frac(magic.z * frac(dot(uv, magic.xy)));
 }
 
+float3 RGBToYCoCg(float3 rgb)
+{
+    const float Y = rgb.r * 0.25f + rgb.g * 0.5f + rgb.b * 0.25f;
+    const float Co = rgb.r * 0.5f + rgb.b * -0.5f;
+    const float Cg = rgb.r * -0.25f + rgb.g * 0.5f + rgb.b * -0.25f;
+    return float3(Y, Co, Cg);
+}
+
+float3 YCoCgToRGB(float3 ycocg)
+{
+    const float r = ycocg.x + ycocg.y - ycocg.z;
+    const float g = ycocg.x + ycocg.z;
+    const float b = ycocg.x - ycocg.y - ycocg.z;
+    return float3(r, g, b);
+}
 
 float2x2 NoiseRotation(float noise)
 {

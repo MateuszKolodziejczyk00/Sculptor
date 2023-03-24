@@ -14,7 +14,7 @@ enum class ERenderStage
 	MotionAndDepth					= BIT(2),
 	DirectionalLightsShadowMasks	= BIT(3),
 	ForwardOpaque					= BIT(4),
-	AnitAliasing					= BIT(5),
+	AntiAliasing					= BIT(5),
 	HDRResolve						= BIT(6)
 };
 

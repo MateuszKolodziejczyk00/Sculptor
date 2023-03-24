@@ -15,7 +15,7 @@ static math::Vector2f GetJitter(Uint64 frameIdx, math::Vector2u resolution)
 
 	const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx % 8);
 	const math::Vector2f sequenceVal = math::Vector2f(math::Sequences::Halton<Real32>(sequenceIdx, 2), math::Sequences::Halton<Real32>(sequenceIdx, 3));
-	return (sequenceVal - math::Vector2f::Constant(1.f)).cwiseProduct(resolution.cast<Real32>().cwiseInverse());
+	return (sequenceVal * 2.f - math::Vector2f::Constant(1.f)).cwiseProduct(resolution.cast<Real32>().cwiseInverse());
 }
 
 } // jitter
@@ -133,11 +133,6 @@ std::optional<Real32> SceneView::GetFarPlane() const
 	return m_farPlane;
 }
 
-void SceneView::SetJittering(Bool enableJittering)
-{
-	m_wantsJitter = enableJittering;
-}
-
 Bool SceneView::IsJittering() const
 {
 	return m_wantsJitter;
@@ -163,6 +158,11 @@ math::Matrix4f SceneView::GenerateViewProjectionMatrix() const
 	return m_projectionMatrix * GenerateViewMatrix();
 }
 
+void SceneView::SetJittering(Bool enableJittering)
+{
+	m_wantsJitter = enableJittering;
+}
+
 Bool SceneView::IsPerspectiveMatrix() const
 {
 	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));
@@ -179,13 +179,13 @@ void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 
 	const math::Vector2f jitter = IsJittering() ? jitter::GetJitter(currentFrameIdx, resolution) : math::Vector2f::Zero();
 
-	math::Matrix4f projectionMatrix = m_projectionMatrix;
-	projectionMatrix(0, 0) += jitter.x();
-	projectionMatrix(1, 0) += jitter.y();
+	math::Matrix4f projectionMatrixWithJitter = m_projectionMatrix;
+	projectionMatrixWithJitter(0, 0) += jitter.x();
+	projectionMatrixWithJitter(1, 0) += jitter.y();
 
 	m_viewRenderingData.viewMatrix						= GenerateViewMatrix();
-	m_viewRenderingData.viewProjectionMatrix			= projectionMatrix * m_viewRenderingData.viewMatrix;
-	m_viewRenderingData.projectionMatrix				= projectionMatrix;
+	m_viewRenderingData.viewProjectionMatrix			= projectionMatrixWithJitter * m_viewRenderingData.viewMatrix;
+	m_viewRenderingData.projectionMatrix				= projectionMatrixWithJitter;
 	m_viewRenderingData.viewProjectionMatrixNoJitter	= m_projectionMatrix * m_viewRenderingData.viewMatrix;
 	m_viewRenderingData.projectionMatrixNoJitter		= m_projectionMatrix;
 	m_viewRenderingData.viewLocation					= m_viewLocation;

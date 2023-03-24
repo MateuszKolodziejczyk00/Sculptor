@@ -51,6 +51,12 @@ struct ShadingData
 };
 
 
+struct AntiAliasingData
+{
+	rg::RGTextureViewHandle outputTexture;
+};
+
+
 struct HDRResolvePassData
 {
 	rg::RGTextureViewHandle tonemappedTexture;
