@@ -69,6 +69,7 @@ public:
 	// Frame Data =====================================================
 
 	Real32 GetDeltaTime() const { return m_frameDefinition.deltaTime; }
+	Real32 GetTime() const { return m_frameDefinition.time; }
 
 	Uint64 GetFrameIdx() const { return m_frameDefinition.frameIdx; }
 

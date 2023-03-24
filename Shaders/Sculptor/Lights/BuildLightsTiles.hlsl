@@ -3,7 +3,8 @@
 #include "Lights/LightsTiles.hlsli"
 
 
-[[descriptor_set(BuildLightTilesDS, 0)]]
+[[descriptor_set(RenderViewDS, 0)]]
+[[descriptor_set(BuildLightTilesDS, 1)]]
 
 
 struct VS_INPUT

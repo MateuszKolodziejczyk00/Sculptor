@@ -128,6 +128,37 @@ void ShadowMapsManagerSystem::Update()
 	UpdateDirectionalLightShadowMaps();
 }
 
+void ShadowMapsManagerSystem::UpdateVisibleLocalLights(const lib::SharedPtr<rdr::Buffer>& visibleLightsBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!!visibleLightsBuffer);
+
+	m_visibleLocalLightsSet.clear();
+	
+	const rhi::RHIBuffer& rhiBuffer = visibleLightsBuffer->GetRHI();
+	const rhi::RHIMappedBuffer<RenderSceneEntity> visibleLightsData(rhiBuffer);
+
+	const SizeType maxVisibleLights = visibleLightsData.GetElementsNum();
+	m_visibleLocalLightsSet.reserve(maxVisibleLights);
+
+	for (SizeType idx = 0; idx < maxVisibleLights; ++idx)
+	{
+		const RenderSceneEntity lightEntityID = visibleLightsData[idx];
+		if (lightEntityID == idxNone<RenderSceneEntity>)
+		{
+			break;
+		}
+
+		m_visibleLocalLightsSet.emplace(lightEntityID);
+	}
+}
+
+Bool ShadowMapsManagerSystem::IsMainView(const RenderView& renderView) const
+{
+	return m_mainView.lock().get() == &renderView;
+}
+
 Bool ShadowMapsManagerSystem::CanRenderShadows() const
 {
 	return !m_shadowMaps.empty();
@@ -346,7 +377,7 @@ void ShadowMapsManagerSystem::AssignShadowMaps()
 	const auto pointLightsView = registry.view<PointLightData>();
 
 	const SizeType shadowMapsInUse = std::min(availableShadowMapsNum, pointLightsView.size());
-
+		
 	lib::DynamicArray<std::pair<RenderSceneEntity, Real32>> lightPriorities;
 	lightPriorities.reserve(pointLightsView.size());
 
@@ -359,7 +390,7 @@ void ShadowMapsManagerSystem::AssignShadowMaps()
 	{
 		lightPriorities.emplace_back(std::make_pair(lightEntity, ComputeLocalLightShadowMapPriority(view, lightEntity)));
 	}
-		
+
 	const auto compareOp = [](const auto& lhs, const auto& rhs) { return lhs.second > rhs.second; };
 
 	std::nth_element(std::begin(lightPriorities), std::begin(lightPriorities) + shadowMapsInUse, std::end(lightPriorities), compareOp);
@@ -625,6 +656,11 @@ void ShadowMapsManagerSystem::UpdateShadowMapsDSViewsData()
 	m_shadowMapViewsBuffers.erase(std::cbegin(m_shadowMapViewsBuffers));
 }
 
+Bool ShadowMapsManagerSystem::IsLocalLightVisible(RenderSceneEntity light) const
+{
+	return m_visibleLocalLightsSet.contains(light);
+}
+
 Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
@@ -664,6 +700,7 @@ Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneVi
 	const Real32 zDifferenceMutliplier		= 0.7f;
 	const Real32 intensityMultiplier		= 0.7f;
 	const Real32 inRadiusPriority			= 10.f;
+	const Real32 visibilityPriority			= 20.f;
 
 	const EShadowMapQuality currentQuality = GetShadowMapQuality(light);
 
@@ -680,6 +717,7 @@ Real32 ShadowMapsManagerSystem::ComputeLocalLightShadowMapPriority(const SceneVi
 	priority += getLightCurrentQualityPriority(currentQuality) * currentQualityMutliplier;
 	priority += std::clamp(pointLightData.radius / maxRadius, 0.f, 1.f) * radiusMutliplier;
 	priority += std::clamp(pointLightData.intensity / maxIntensity, 0.f, 1.f) * intensityMultiplier;
+	priority += IsLocalLightVisible(light) ? visibilityPriority : 0.f;
 
 	return priority;
 }

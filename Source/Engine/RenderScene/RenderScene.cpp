@@ -69,7 +69,7 @@ void RenderScene::Update()
 
 	js::ParallelForEach("Update Primitive Systems",
 						primitiveSystems,
-						[](const lib::UniquePtr<PrimitivesSystem>& system)
+						[](const lib::SharedPtr<PrimitivesSystem>& system)
 						{
 							system->Update();
 						},

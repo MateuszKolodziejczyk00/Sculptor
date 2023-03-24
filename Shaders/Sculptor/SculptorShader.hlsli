@@ -104,7 +104,6 @@ float3 LinearTosRGB(in float3 color)
     return clr;
 }
 
-
 float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
 {
     // Compute the basis vectors for the cone

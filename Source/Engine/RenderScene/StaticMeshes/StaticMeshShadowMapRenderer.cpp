@@ -42,7 +42,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 	m_pointLightBatches.clear();
 
-	if (const ShadowMapsManagerSystem* shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
+	if (const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
 	{
 		const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 

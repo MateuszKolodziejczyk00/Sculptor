@@ -4,8 +4,9 @@
 #include "Lights/LightProxyVerticesInfo.hlsli"
 
 
-[[descriptor_set(GenerateLightsDrawCommnadsDS, 0)]]
-[[descriptor_set(DepthCullingDS, 1)]]
+[[descriptor_set(RenderViewDS, 0)]]
+[[descriptor_set(GenerateLightsDrawCommnadsDS, 1)]]
+[[descriptor_set(DepthCullingDS, 2)]]
 
 
 struct CS_INPUT
@@ -61,6 +62,8 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
             lightDrawCommand.localLightIdx  = lightIdx;
 
             u_lightDraws[outputBufferIdx] = lightDrawCommand;
+
+            u_visibleLightsReadbackBuffer[outputBufferIdx] = pointLight.entityID;
         }
     }
 }

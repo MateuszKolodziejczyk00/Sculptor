@@ -15,7 +15,7 @@
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Lights/LightTypes.h"
 #include "Shadows/ShadowMapsManagerSystem.h"
-#include "Engine.h"
+#include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
@@ -48,7 +48,6 @@ DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_worldAccelerationStructure)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>),					u_sceneView)
 DS_END();
 
 
@@ -137,7 +136,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
 	
-	const RayTracingSceneSystem* rayTracingSceneSystem = renderScene.GetPrimitivesSystem<RayTracingSceneSystem>();
+	const lib::SharedPtr<RayTracingSceneSystem> rayTracingSceneSystem = renderScene.GetPrimitivesSystem<RayTracingSceneSystem>();
 	SPT_CHECK(!!rayTracingSceneSystem);
 
 	// Do ray tracing to create shadow mask for each directional light
@@ -145,7 +144,6 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const lib::SharedRef<TraceShadowRaysDS> traceShadowRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSystem->GetSceneTLAS());
 	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depth;
-	traceShadowRaysDS->u_sceneView					= renderView.GetViewRenderingData();
 
 	static const rdr::PipelineStateID shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline();
 
@@ -160,7 +158,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		updateParams.lightDirection		= directionalLight.direction;
 		updateParams.minTraceDistance	= params::directionalLightMinShadowTraceDist;
 		updateParams.maxTraceDistance	= params::directionalLightMaxShadowTraceDist;
-		updateParams.time				= engn::Engine::Get().GetTime();
+		updateParams.time				= engn::GetRenderingFrame().GetTime();
 		updateParams.shadowRayConeAngle = directionalLight.lightConeAngle;
 		updateParams.enableShadows		= params::directionalLightEnableShadows;
 
@@ -171,7 +169,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,
 							   math::Vector3u(renderingRes.x(), renderingRes.y(), 1),
-							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS));
+							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDSRef()));
 	}
 
 	const math::Vector3u postProcessDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(8, 8, 1));
@@ -236,7 +234,6 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 				temporaryTextureDef.format = shadowMaskTexture->GetRHI().GetDefinition().format;
 				blurTemporaryTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Shadow Mask Blur Temporary Texture"), temporaryTextureDef, rhi::EMemoryUsage::GPUOnly);
 			}
-
 
 			{
 				ShadowsBilateralBlurParams horizontalBlurParams;

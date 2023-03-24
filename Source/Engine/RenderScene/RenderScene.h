@@ -165,19 +165,18 @@ public:
 
 	PrimitiveSystemsRegistry() = default;
 
-	const lib::DynamicArray<lib::UniquePtr<PrimitivesSystem>>& GetSystems() const
+	const lib::DynamicArray<lib::SharedPtr<PrimitivesSystem>>& GetSystems() const
 	{
 		return m_systems;
 	}
 
 	template<typename TPrimitiveSystem>
-	TPrimitiveSystem* GetSystem() const
+	lib::SharedPtr<TPrimitiveSystem> GetSystem() const
 	{
 		const PrimitiveSystemTypeID typeID = ecs::type_id<TPrimitiveSystem>();
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
-		return foundSystem != std::cend(m_typeIDToSystem) ? static_cast<TPrimitiveSystem*>(foundSystem->second) : nullptr;
+		return foundSystem != std::cend(m_typeIDToSystem) ?  std::static_pointer_cast<TPrimitiveSystem>(foundSystem->second) : nullptr;
 	}
-
 
 	template<typename TPrimitiveSystem, typename... TArgs>
 	void AddSystem(RenderScene& scene, TArgs&&... args)
@@ -188,11 +187,12 @@ public:
 
 		const lib::LockGuard lockGuard(m_lock);
 
-		PrimitivesSystem*& system = m_typeIDToSystem[typeID];
+		lib::SharedPtr<PrimitivesSystem>& system = m_typeIDToSystem[typeID];
 		if (!system)
 		{
-			m_systems.emplace_back(std::make_unique<TPrimitiveSystem>(scene, std::forward<TArgs>(args)...));
-			system = m_systems.back().get();
+			const lib::SharedPtr<TPrimitiveSystem> systemInstance = lib::MakeShared<TPrimitiveSystem>(scene, std::forward<TArgs>(args)...);
+			m_systems.emplace_back(systemInstance);
+			system = m_systems.back();
 		}
 	}
 
@@ -208,11 +208,11 @@ public:
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
 		if (foundSystem != std::cend(m_typeIDToSystem))
 		{
-			const PrimitivesSystem* systemToRemove = foundSystem->second;
+			const lib::SharedPtr<PrimitivesSystem> systemToRemove = foundSystem->second;
 			const auto systemInstanceIt = std::find_if(std::cbegin(m_systems), std::cend(m_systems),
-													   [systemToRemove](const lib::UniquePtr<PrimitivesSystem>& system)
+													   [&systemToRemove](const lib::SharedPtr<PrimitivesSystem>& system)
 													   {
-														   return system.get() == systemToRemove;
+														   return system == systemToRemove;
 													   });
 
 			SPT_CHECK(systemInstanceIt != std::cend(m_systems));
@@ -227,8 +227,9 @@ private:
 
 	lib::Lock m_lock;
 
-	lib::DynamicArray<lib::UniquePtr<PrimitivesSystem>> m_systems;
-	lib::HashMap<PrimitiveSystemTypeID, PrimitivesSystem*> m_typeIDToSystem;
+	// Store both containers to allow fast iterations during update and fast lookup by type for getting systems
+	lib::DynamicArray<lib::SharedPtr<PrimitivesSystem>> m_systems;
+	lib::HashMap<PrimitiveSystemTypeID, lib::SharedPtr<PrimitivesSystem>> m_typeIDToSystem;
 };
 
 
@@ -296,7 +297,7 @@ public:
 	}
 
 	template<typename TPrimitivesSystem>
-	TPrimitivesSystem* GetPrimitivesSystem() const
+	lib::SharedPtr<TPrimitivesSystem> GetPrimitivesSystem() const
 	{
 		return m_primitiveSystems.GetSystem<TPrimitivesSystem>();
 	}
@@ -304,7 +305,7 @@ public:
 	template<typename TPrimitivesSystem>
 	TPrimitivesSystem& GetPrimitivesSystemChecked() const
 	{
-		TPrimitivesSystem* system = GetPrimitivesSystem<TPrimitivesSystem>();
+		const lib::SharedPtr<TPrimitivesSystem> system = GetPrimitivesSystem<TPrimitivesSystem>();
 		SPT_CHECK(!!system);
 		return *system;
 	}

@@ -132,6 +132,11 @@ public:
 	virtual void Update() override;
 	// End PrimitivesSystem overrides
 
+	void UpdateVisibleLocalLights(const lib::SharedPtr<rdr::Buffer>& visibleLightsBuffer);
+
+	/** Returns true only for view that is detemining which lights should cast shadows */
+	Bool IsMainView(const RenderView& renderView) const;
+
 	Bool CanRenderShadows() const;
 
 	const lib::SharedPtr<ShadowMapsDS>& GetShadowMapsDS() const;
@@ -167,6 +172,8 @@ private:
 	void CreateShadowMapsDescriptorSet();
 	void UpdateShadowMapsDSViewsData();
 
+	Bool IsLocalLightVisible(RenderSceneEntity light) const;
+
 	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
 
 	// Directional lights ========================================================
@@ -199,6 +206,8 @@ private:
 	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
 
 	lib::WeakPtr<RenderView> m_mainView;
+
+	lib::HashSet<RenderSceneEntity> m_visibleLocalLightsSet;
 };
 
 } // spt::rsc

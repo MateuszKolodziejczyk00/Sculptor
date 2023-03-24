@@ -3,6 +3,7 @@
 
 [[descriptor_set(TraceShadowRaysDS, 0)]]
 [[descriptor_set(DirectionalLightShadowMaskDS, 1)]]
+[[descriptor_set(RenderViewDS, 2)]]
 
 
 struct ShadowRayPayload
