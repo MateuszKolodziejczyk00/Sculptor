@@ -36,9 +36,9 @@ void BuildDrawCommandsCS(CS_INPUT input)
         { \
             const bool isSubmeshVisible = IsSphereInFrustum(u_viewsCullingData[idx].cullingPlanes, submeshBoundingSphereCenter, submeshBoundingSphereRadius); \
 \
-            if (isSubmeshVisible) \ 
-            { \ 
-                const uint2 submeshVisibleBallot = WaveActiveBallot(isSubmeshVisible).xy; \ 
+            if (isSubmeshVisible) \
+            { \
+                const uint2 submeshVisibleBallot = WaveActiveBallot(isSubmeshVisible).xy; \
 \
                 const uint visibleSubmeshesNum = countbits(submeshVisibleBallot.x) + countbits(submeshVisibleBallot.y); \
 \

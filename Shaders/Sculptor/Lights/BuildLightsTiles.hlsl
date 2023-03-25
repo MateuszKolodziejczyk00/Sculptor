@@ -50,6 +50,6 @@ void BuildLightsTilesPS(VS_OUTPUT vertexInput)
     const uint2 tileCoords = GetLightsTile(uv, u_lightsData.tileSize);
 
     const uint tileLights32Offset = GetLightsTileDataOffsetForLight(tileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num, vertexInput.lightIdx);
-    const uint lightMask = 1 << (vertexInput.lightIdx % 32);
+    const uint lightMask = 1u << (vertexInput.lightIdx % 32);
     InterlockedOr(u_tilesLightsMask[tileLights32Offset], lightMask);
 }

@@ -261,8 +261,8 @@ void TemporalAACS(CS_INPUT input)
             historySample = ClipAABB(minc, maxc, clampedhistorySample);
 
             float3 temporalWeight = clamp(abs(neighborhoodMax - neighborhoodMin) / currentSample, 0.f, 1.f);
-            float historyWeight = clamp(lerp(0.25f, 0.85f, temporalWeight), 0.f , 1.f);
-            float currentWeight = 1.f - historyWeight;
+            float3 historyWeight = clamp(lerp(0.25f, 0.85f, temporalWeight), 0.f , 1.f);
+            float3 currentWeight = 1.f - historyWeight;
 
             const float3 compressedCurrent = currentSample / (max(max(currentSample.x, currentSample.y), currentSample.z) + 1.f);
             const float3 compressedHistory = historySample / (max(max(historySample.x, historySample.y), historySample.z) + 1.f);

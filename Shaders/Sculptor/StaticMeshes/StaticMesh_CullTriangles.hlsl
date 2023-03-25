@@ -117,8 +117,8 @@ void CullTrianglesCS(CS_INPUT input)
                 triangleVerticesClip[idx] = triangleVerticesClip[idx] / triangleVerticesClip[idx].z;
             }
 
-            const float2 ca = triangleVerticesClip[1] - triangleVerticesClip[0];
-            const float2 cb = triangleVerticesClip[2] - triangleVerticesClip[0];
+            const float2 ca = triangleVerticesClip[1].xy - triangleVerticesClip[0].xy;
+            const float2 cb = triangleVerticesClip[2].xy - triangleVerticesClip[0].xy;
 
             // bacface culling
             isTriangleVisible = isTriangleVisible && (ca.x * cb.y >= ca.y * cb.x);
