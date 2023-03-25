@@ -19,6 +19,7 @@ Toy vulkan renderer made for learning purposes.
 - Bloom
 - Film tonemapper
 - Luminance histogram and automatic exposure
+- Temporal AA
 - Shaders hot reloading
 - Bindless resources
 - Physically based shading
