@@ -198,6 +198,9 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	
 	lightsRenderingData.localLightsToRenderNum = static_cast<Uint32>(pointLights.size());
 
+	const rhi::BufferDefinition clustersRangesBufferDefinition(zClustersNum * sizeof(math::Vector2u), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
+	const rg::RGBufferViewHandle clustersRanges = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
 		lib::DynamicArray<math::Vector2f> pointLightsZRanges;
@@ -231,9 +234,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const lib::SharedRef<rdr::Buffer> lightZRangesBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLightZRanges"), lightZRangesBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
 
 		gfx::UploadDataToBuffer(lightZRangesBuffer, 0, reinterpret_cast<const Byte*>(pointLightsZRanges.data()), pointLightsZRanges.size() * sizeof(math::Vector2f));
-
-		const rhi::BufferDefinition clustersRangesBufferDefinition(zClustersNum * sizeof(math::Vector2u), rhi::EBufferUsage::Storage);
-		const rg::RGBufferViewHandle clustersRanges = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 
 		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLights.size() * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
@@ -277,7 +277,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 		viewShadingDS->u_localLights		= localLightsRGBuffer;
 		viewShadingDS->u_tilesLightsMask	= tilesLightsMask;
-		viewShadingDS->u_clustersRanges		= clustersRanges;
 
 		lightsRenderingData.buildZClustersDS				= buildZClusters;
 		lightsRenderingData.generateLightsDrawCommnadsDS	= generateLightsDrawCommnadsDS;
@@ -286,6 +285,14 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsRenderingData.lightDrawCommandsBuffer			= lightDrawCommands;
 		lightsRenderingData.lightDrawCommandsCountBuffer	= lightDrawCommandsCount;
 		lightsRenderingData.visibleLightsReadbackBuffer		= visibleLightsReadbackBufferInstance;
+	}
+	else
+	{
+		graphBuilder.FillBuffer(RG_DEBUG_NAME("Set Clusters Ranges"),
+								clustersRanges,
+								0,
+								clustersRanges->GetSize(),
+								0);
 	}
 	
 	if (sceneDirectionalLights.directionalLightsNum > 0)
@@ -296,7 +303,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		viewShadingDS->u_directionalLights = sceneDirectionalLights.directionalLightsBuffer->CreateFullView();
 	}
 	
-	viewShadingDS->u_lightsData			= lightsData;
+	viewShadingDS->u_lightsData		= lightsData;
+	viewShadingDS->u_clustersRanges	= clustersRanges;
 	
 	lightsRenderingData.tilesNum		= lightsData.tilesNum;
 	lightsRenderingData.zClustersNum	= lightsData.zClustersNum;
