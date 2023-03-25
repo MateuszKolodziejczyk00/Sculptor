@@ -374,22 +374,26 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 
 	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec, m_directionalLightsData);
 
+	if (lightsRenderingData.HasAnyLocalLightsToRender())
+	{
+		const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
+		if (shadowMapsSystem->IsMainView(viewSpec.GetRenderView()))
+		{
+			const lib::WeakPtr<ShadowMapsManagerSystem> weakShadowMapsSystem = shadowMapsSystem;
+			engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ weakShadowMapsSystem, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer ](engn::FrameContext& context)
+																										   {
+																											   const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = weakShadowMapsSystem.lock();
+																											   if (shadowMapsSystem)
+																											   {
+																												   shadowMapsSystem->UpdateVisibleLocalLights(visibleLightsBuffer);
+																											   }
+																										   }));
+		}
+	}
+
+	// We need to do thsese callbacks even if we don't have any light to create valid descriptor sets for other render systems
 	viewSpec.GetData().Create<LightsRenderingDataPerView>(lightsRenderingData);
 
-	const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
-	if (shadowMapsSystem->IsMainView(viewSpec.GetRenderView()))
-	{
-		const lib::WeakPtr<ShadowMapsManagerSystem> weakShadowMapsSystem = shadowMapsSystem;
-		engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ weakShadowMapsSystem, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer ](engn::FrameContext& context)
-																									   {
-																										   const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = weakShadowMapsSystem.lock();
-																										   if (shadowMapsSystem)
-																										   {
-																											   shadowMapsSystem->UpdateVisibleLocalLights(visibleLightsBuffer);
-																										   }
-																									   }));
-	}
-		
 	RenderStageEntries& motionAndDepthEntries = viewSpec.GetRenderStageEntries(ERenderStage::MotionAndDepth);
 	motionAndDepthEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
 

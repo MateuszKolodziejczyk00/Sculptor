@@ -261,10 +261,19 @@ void TemporalAACS(CS_INPUT input)
             historySample = ClipAABB(minc, maxc, clampedhistorySample);
 
             float3 temporalWeight = clamp(abs(neighborhoodMax - neighborhoodMin) / currentSample, 0.f, 1.f);
-            const float historyWeight = clamp(lerp(0.25f, 0.85f, temporalWeight), 0.f , 1.f);
-            const float currentWeight = 1.f - historyWeight;
+            float historyWeight = clamp(lerp(0.25f, 0.85f, temporalWeight), 0.f , 1.f);
+            float currentWeight = 1.f - historyWeight;
+
+            const float3 compressedCurrent = currentSample / (max(max(currentSample.x, currentSample.y), currentSample.z) + 1.f);
+            const float3 compressedHistory = historySample / (max(max(historySample.x, historySample.y), historySample.z) + 1.f);
+
+            const float currentLuminance = u_params.useYCoCg ? compressedCurrent.r : Luminance(compressedCurrent);
+            const float historyLuminance = u_params.useYCoCg ? compressedHistory.r : Luminance(compressedHistory);
+
+            historyWeight *= 1.f / (1.f + currentLuminance);
+            currentWeight *= 1.f / (1.f + historyLuminance);
             
-            float3 outputColor = historyWeight * historySample + currentWeight * currentSample;
+            float3 outputColor = (historyWeight * historySample + currentWeight * currentSample) / max(historyWeight + currentWeight, 0.0001f);
 
             if(u_params.useYCoCg)
             {
