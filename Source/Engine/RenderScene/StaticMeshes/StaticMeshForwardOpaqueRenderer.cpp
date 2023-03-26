@@ -142,13 +142,10 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
-	const ShadowMapsRenderingData& shadowMapsRenderingData = viewSpec.GetData().Get<ShadowMapsRenderingData>();
-
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
 																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						renderView.GetRenderViewDSRef(),
-																						lib::Ref(shadowMapsRenderingData.shadowMapsDS)));
+																						renderView.GetRenderViewDSRef()));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{

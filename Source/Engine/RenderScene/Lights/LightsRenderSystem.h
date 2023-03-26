@@ -47,12 +47,9 @@ public:
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) override;
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
-	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	// End RenderSystem overrides
 
 private:
-	
-	void CacheDirectionalLights(const RenderScene& renderScene);
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
@@ -62,8 +59,6 @@ private:
 	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
 	
 	rdr::PipelineStateID m_buildLightsTilesPipeline;
-
-	DirectionalLightRuntimeData m_directionalLightsData;
 
 	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
 };

@@ -4,6 +4,8 @@
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "DepthPrepassRenderStage.h"
+#include "Lights/ViewShadingInput.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 
 namespace spt::rsc
 {
@@ -92,9 +94,11 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	
 	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 
+	const ViewSpecShadingData& shadingData = viewSpec.GetData().Get<ViewSpecShadingData>();
+
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,
-							rg::EmptyDescriptorSets(),
+							rg::BindDescriptorSets(lib::Ref(shadingData.shadingInputDS), lib::Ref(shadingData.shadowMapsDS)),
 							[renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);

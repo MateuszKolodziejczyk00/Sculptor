@@ -14,7 +14,7 @@
 
 [[descriptor_set(MaterialsDS, 6)]]
 
-[[descriptor_set(ViewShadingDS, 7)]]
+[[descriptor_set(ViewShadingInputDS, 7)]]
 [[descriptor_set(ShadowMapsDS, 8)]]
 
 [[shader_struct(MaterialPBRData)]]

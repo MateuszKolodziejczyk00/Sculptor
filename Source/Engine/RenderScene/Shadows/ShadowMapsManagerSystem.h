@@ -68,51 +68,9 @@ END_SHADER_STRUCT();
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),						u_shadowMapViews)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_shadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_shadowMaskSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)
 DS_END();
-
-
-struct ShadowMapsRenderingData
-{
-	lib::SharedPtr<ShadowMapsDS> shadowMapsDS;
-};
-
-
-struct DirectionalLightShadowsData
-{
-	DirectionalLightShadowsData() = default;
-
-	struct ShadowMask
-	{
-		lib::SharedPtr<rdr::TextureView> shadowMaskView;
-		Uint32 shadowMaskIdx = idxNone<Uint32>;
-	};
-
-	void AdvanceFrame()
-	{
-		currentFrameShadowMaskIdx = currentFrameShadowMaskIdx == 0 ? 1 : 0;
-	}
-
-	ShadowMask& GetCurrentFrameShadowMask() {
-		return shadowMasks[currentFrameShadowMaskIdx];
-	}
-
-	const ShadowMask& GetCurrentFrameShadowMask() const
-	{
-		return shadowMasks[currentFrameShadowMaskIdx];
-	}
-
-	const ShadowMask& GetPreviousFrameShadowMask() const
-	{
-		return shadowMasks[currentFrameShadowMaskIdx == 0 ? 1 : 0];
-	}
-
-	ShadowMask shadowMasks[2];
-
-	Uint32 currentFrameShadowMaskIdx;
-};
 
 
 class RENDER_SCENE_API ShadowMapsManagerSystem : public PrimitivesSystem
@@ -175,10 +133,6 @@ private:
 	Bool IsLocalLightVisible(RenderSceneEntity light) const;
 
 	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
-
-	// Directional lights ========================================================
-
-	void UpdateDirectionalLightShadowMaps() const;
 
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;

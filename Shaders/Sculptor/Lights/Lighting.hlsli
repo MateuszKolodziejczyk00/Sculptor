@@ -53,7 +53,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
             float visibility = 0.f;
             if(directionalLight.shadowMaskIdx != IDX_NONE_32)
             {
-                visibility = u_shadowMaps[directionalLight.shadowMaskIdx].SampleLevel(u_shadowMaskSampler, surface.uv, 0).x;
+                visibility = u_shadowMasks[directionalLight.shadowMaskIdx].SampleLevel(u_shadowMaskSampler, surface.uv, 0).x;
             }
 
             if(visibility > 0.f)
