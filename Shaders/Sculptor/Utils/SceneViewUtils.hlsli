@@ -46,4 +46,24 @@ float3 NDCToWorldSpace(float3 ndc, float4x4 inverseViewProjection)
     return world.xyz / world.w;
 }
 
+
+void ComputeShadowProjectionParams(float near, float far, out float p20, out float p23)
+{
+    p20 = -near / (far - near);
+    p23 = -far * p20;
+}
+
+
+float ComputeShadowLinearDepth(float ndcDepth, float p20, float p23)
+{
+    return p23 / (ndcDepth - p20);
+}
+
+
+float ComputeShadowNDCDepth(float linearDepth, float p20, float p23)
+{
+    return (p20 * linearDepth + p23) / linearDepth;
+}
+
+
 #endif // SCENE_VIEW_UTILS_H

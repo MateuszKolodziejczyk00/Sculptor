@@ -7,7 +7,7 @@ Toy vulkan renderer made for learning purposes.
 - Open solution and set SculptorEd as startup project
 # Features
 - Clustered Forward Renderer (based on “Rendering of Call of Duty Infinite Warfare” by Michal Drobot)
-- DPCF point lights shadows (based on “Shadows of Cold War” by Kevin Myers) (Also implemented standard PCF and PCSS), also dynamically selecting which lights should cast shadows
+- DPCF point lights shadows based on “Shadows of Cold War” by Kevin Myers (Also implemented MSM, standard PCF and PCSS), and dynamically selecting which lights should cast shadows
 - Ray traced directional lights shadows
 - Render Graph
 - Depth Prepass

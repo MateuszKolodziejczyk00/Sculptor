@@ -35,6 +35,14 @@ enum class EShadowMapQuality
 };
 
 
+enum class EShadowMappingTechnique
+{
+	None,
+	DPCF,
+	MSM
+};
+
+
 struct PointLightShadowMapComponent
 {
 	// Idx of first shadow map view used for this point lights
@@ -57,6 +65,7 @@ BEGIN_SHADER_STRUCT(ShadowsSettings)
 	SHADER_STRUCT_FIELD(math::Vector2f, mediumQualitySMPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, lowQualitySMPixelSize)
 	SHADER_STRUCT_FIELD(Real32, shadowViewsNearPlane)
+	SHADER_STRUCT_FIELD(Uint32, shadowMappingTechnique)
 END_SHADER_STRUCT();
 
 
@@ -66,8 +75,9 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<ShadowMapViewData>),						u_shadowMapViews)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),				u_shadowMapViews)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_shadowMapSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_momentShadowMapSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)
 DS_END();
@@ -89,6 +99,9 @@ public:
 	// Begin PrimitivesSystem overrides
 	virtual void Update() override;
 	// End PrimitivesSystem overrides
+
+	void SetShadowMappingTechnique(EShadowMappingTechnique newTechnique);
+	EShadowMappingTechnique GetShadowMappingTechnique() const;
 
 	void UpdateVisibleLocalLights(const lib::SharedPtr<rdr::Buffer>& visibleLightsBuffer);
 
@@ -123,7 +136,7 @@ private:
 
 	void UpdateShadowMapRenderViews(RenderSceneEntity owningLight, const PointLightData& pointLight, Uint32 shadowMapBeginIdx);
 
-	void UpdateShadowMaps();
+	void FindShadowMapsToUpdate();
 
 	void ReleaseAllShadowMaps();
 
@@ -133,6 +146,12 @@ private:
 	Bool IsLocalLightVisible(RenderSceneEntity light) const;
 
 	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
+
+	void RecreateShadowMaps();
+
+	const rhi::EFragmentFormat GetShadowMapFormat() const;
+	const rhi::ETextureUsage GetShadowMapUsage() const;
+	const Uint32 GetShadowMapMipsNum() const;
 
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;
@@ -152,7 +171,7 @@ private:
 
 	lib::DynamicArray<LightUpdatePriority> m_updatePriorities;
 
-	lib::DynamicArray<RenderSceneEntity> m_lightsWithUpdatedShadowMaps;
+	lib::DynamicArray<RenderSceneEntity> m_lightsWithShadowMapsToUpdate;
 
 	lib::DynamicArray<ShadowMapViewData> m_shadowMapViewsData;
 	lib::DynamicArray<lib::SharedPtr<rdr::Buffer>> m_shadowMapViewsBuffers;
@@ -162,6 +181,8 @@ private:
 	lib::WeakPtr<RenderView> m_mainView;
 
 	lib::HashSet<RenderSceneEntity> m_visibleLocalLightsSet;
+
+	EShadowMappingTechnique m_shadowMapTechnique;
 };
 
 } // spt::rsc

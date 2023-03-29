@@ -1,5 +1,12 @@
 
+#include "Utils/SceneViewUtils.hlsli"
+
 #define PCSS_SHADOW_SAMPLES_NUM 24
+
+
+#define SPT_SHADOWS_TECHNIQUE_NONE   0
+#define SPT_SHADOWS_TECHNIQUE_DPCF   1
+#define SPT_SHADOWS_TECHNIQUE_MSM    2
 
 
 static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
@@ -158,25 +165,6 @@ void GetPointShadowMapViewAxis(uint faceIdx, out float3 rightVector, out float3 
 }
 
 
-void ComputeShadowProjectionParams(float near, float far, out float p20, out float p23)
-{
-    p20 = -near / (far - near);
-    p23 = -far * p20;
-}
-
-
-float ComputeShadowLinearDepth(float ndcDepth, float p20, float p23)
-{
-    return p23 / (ndcDepth - p20);
-}
-
-
-float ComputeShadowNDCDepth(float linearDepth, float p20, float p23)
-{
-    return (p20 * linearDepth + p23) / linearDepth;
-}
-
-
 float ComputeBias(float3 surfaceNormal, float3 surfaceToLight)
 {
     const float biasFactor = 0.008f;
@@ -320,6 +308,74 @@ float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float
     return 1.f - percentageOccluded;
 }
 
+// Based on MJP implementation: https://github.com/TheRealMJP/Shadows/blob/master/Shadows/MSM.hlsl
+float4 ConvertOptimizedMoments(in float4 optimizedMoments)
+{
+    optimizedMoments[0] -= 0.035955884801f;
+    return mul(optimizedMoments, float4x4(0.2227744146f, 0.1549679261f, 0.1451988946f, 0.163127443f,
+                                          0.0771972861f, 0.1394629426f, 0.2120202157f, 0.2591432266f,
+                                          0.7926986636f, 0.7963415838f, 0.7258694464f, 0.6539092497f,
+                                          0.0319417555f,-0.1722823173f,-0.2758014811f,-0.3376131734f));
+}
+
+// Based on MJP implementation: https://github.com/TheRealMJP/Shadows/blob/master/Shadows/MSM.hlsl
+float ComputeMSMHamburger(in float4 moments, in float fragmentDepth , in float depthBias, in float momentBias)
+{
+    // Bias input data to avoid artifacts
+    float4 b = lerp(moments, float4(0.5f, 0.5f, 0.5f, 0.5f), momentBias);
+    float3 z;
+    z[0] = fragmentDepth - depthBias;
+
+    // Compute a Cholesky factorization of the Hankel matrix B storing only non-
+    // trivial entries or related products
+    float L32D22 = mad(-b[0], b[1], b[2]);
+    float D22 = mad(-b[0], b[0], b[1]);
+    float squaredDepthVariance = mad(-b[1], b[1], b[3]);
+    float D33D22 = dot(float2(squaredDepthVariance, -L32D22), float2(D22, L32D22));
+    float InvD22 = 1.0f / D22;
+    float L32 = L32D22 * InvD22;
+
+    // Obtain a scaled inverse image of bz = (1,z[0],z[0]*z[0])^T
+    float3 c = float3(1.0f, z[0], z[0] * z[0]);
+
+    // Forward substitution to solve L*c1=bz
+    c[1] -= b.x;
+    c[2] -= b.y + L32 * c[1];
+
+    // Scaling to solve D*c2=c1
+    c[1] *= InvD22;
+    c[2] *= D22 / D33D22;
+
+    // Backward substitution to solve L^T*c3=c2
+    c[1] -= L32 * c[2];
+    c[0] -= dot(c.yz, b.xy);
+
+    // Solve the quadratic equation c[0]+c[1]*z+c[2]*z^2 to obtain solutions
+    // z[1] and z[2]
+    float p = c[1] / c[2];
+    float q = c[0] / c[2];
+    float D = (p * p * 0.25f) - q;
+    float r = sqrt(D);
+    z[1] =- p * 0.5f - r;
+    z[2] =- p * 0.5f + r;
+
+    // Compute the shadow intensity by summing the appropriate weights
+    float4 switchVal = (z[2] < z[0]) ? float4(z[1], z[0], 1.0f, 1.0f) :
+                      ((z[1] < z[0]) ? float4(z[0], z[1], 0.0f, 1.0f) :
+                      float4(0.0f,0.0f,0.0f,0.0f));
+    float quotient = (switchVal[0] * z[2] - b[0] * (switchVal[0] + z[2]) + b[1])/((z[2] - switchVal[1]) * (z[0] - z[1]));
+    float shadowIntensity = switchVal[2] + switchVal[3] * quotient;
+    return 1.0f - saturate(shadowIntensity);
+}
+
+
+float EvaluateShadowsMSM(Texture2D shadowMap, SamplerState shadowSampler, float2 shadowMapUV, float linearDepth, float farPlane)
+{
+    float4 moments = shadowMap.Sample(shadowSampler, shadowMapUV);
+    moments = ConvertOptimizedMoments(moments);
+    return ComputeMSMHamburger(moments, linearDepth / farPlane, 0.f, 0.000003f);
+}
+
 
 float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation, float pointLightAttenuationRadius, uint shadowMapFirstFaceIdx)
 {
@@ -342,11 +398,20 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     float p20, p23;
     ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
 
-    const float bias = 0.0003f;
+    const float bias = 0.0006f;
     const float surfaceNDCDepth = surfaceShadowNDC.z + bias;
     const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
-    
-    const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z));
-    const float2 penumbraSize = rcp(256.f);
-    return EvaluateShadowsDPCF(u_shadowMaps[shadowMapIdx], u_shadowMapSampler, shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
+
+    if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_DPCF)
+    {
+        const float noise = Random(float2(surface.location.x - surface.location.z, surface.location.y + surface.location.z) + float2(u_gpuSceneFrameConstants.time * 0.3f, u_gpuSceneFrameConstants.time * -0.4f));
+        const float2 penumbraSize = rcp(256.f);
+        return EvaluateShadowsDPCF(u_shadowMaps[shadowMapIdx], u_shadowMapSampler, shadowMapUV, surfaceLinearDepth, penumbraSize, p20, p23, noise);
+    }
+    else if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_MSM)
+    {
+        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_momentShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
+    }
+
+    return 1.f;
 }

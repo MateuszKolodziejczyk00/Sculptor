@@ -27,7 +27,7 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 	
-		macro = lib::String(name.GetView()) + " " + lib::String(value.GetView());
+		macro = lib::String(name.GetView()) + "=" + lib::String(value.GetView());
 	}
 
 	Bool IsValid() const

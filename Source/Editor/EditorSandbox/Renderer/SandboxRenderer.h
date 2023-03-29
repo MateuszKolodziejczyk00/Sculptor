@@ -41,6 +41,8 @@ public:
 
 	rsc::SceneRenderer& GetSceneRenderer();
 
+	rsc::RenderScene& GetRenderScene();
+
 	void SetImageSize(const math::Vector2u& imageSize);
 
 	math::Vector2u GetDisplayTextureResolution() const;

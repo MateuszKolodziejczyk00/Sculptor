@@ -50,8 +50,15 @@ BEGIN_ALIGNED_SHADER_STRUCT(64, RenderEntityGPUData)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(GPUSceneFrameData)
+	SHADER_STRUCT_FIELD(Real32, time)
+	SHADER_STRUCT_FIELD(Real32, deltaTime)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>), u_renderEntitiesData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GPUSceneFrameData>),		u_gpuSceneFrameConstants)
 DS_END();
 
 

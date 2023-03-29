@@ -145,6 +145,11 @@ public:
 		return GetTextureDefinition().resolution;
 	}
 
+	math::Vector2u GetResolution2D() const
+	{
+		return GetResolution().head<2>();
+	}
+
 	rhi::EFragmentFormat GetFormat() const
 	{
 		return GetTextureDefinition().format;

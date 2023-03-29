@@ -2,6 +2,7 @@
 #include "ResourcesManager.h"
 #include "Transfers/UploadUtils.h"
 #include "JobSystem/JobSystem.h"
+#include "EngineFrame.h"
 
 namespace spt::rsc
 {
@@ -88,6 +89,11 @@ void RenderScene::Update()
 							js::EJobPriority::High,
 							js::EJobFlags::Inline);
 	}
+
+	GPUSceneFrameData frameData;
+	frameData.deltaTime	= engn::GetRenderingFrame().GetDeltaTime();
+	frameData.time		= engn::GetRenderingFrame().GetTime();
+	m_renderSceneDS->u_gpuSceneFrameConstants = frameData;
 }
 
 RenderSceneEntityHandle RenderScene::CreateEntity()

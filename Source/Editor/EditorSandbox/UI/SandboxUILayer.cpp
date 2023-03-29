@@ -8,6 +8,7 @@
 #include "Renderer.h"
 #include "Shaders/ShaderTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "Shadows/ShadowMapsManagerSystem.h"
 
 namespace spt::ed
 {
@@ -102,6 +103,18 @@ void SandboxUILayer::DrawRendererSettings()
 	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 100.f))
 	{
 		m_renderer->SetFarPlane(farPlane);
+	}
+
+	const rsc::RenderScene& renderScene = m_renderer->GetRenderScene();
+	if (lib::SharedPtr<rsc::ShadowMapsManagerSystem> shadowMapsManger = renderScene.GetPrimitivesSystem<rsc::ShadowMapsManagerSystem>())
+	{
+		const char* shadowMappingTechniques[3] = { "None", "DPCF", "MSM" };
+
+		int currentTechnique = static_cast<int>(shadowMapsManger->GetShadowMappingTechnique());
+		if (ImGui::Combo("Point Lights Shadow Mapping Technique", &currentTechnique, shadowMappingTechniques, SPT_ARRAY_SIZE(shadowMappingTechniques)))
+		{
+			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
+		}
 	}
 
 	ImGui::Separator();

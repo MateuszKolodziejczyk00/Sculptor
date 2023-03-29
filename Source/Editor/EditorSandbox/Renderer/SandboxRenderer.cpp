@@ -167,6 +167,11 @@ rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
 	return m_sceneRenderer;
 }
 
+rsc::RenderScene& SandboxRenderer::GetRenderScene()
+{
+	return m_renderScene;
+}
+
 void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
 {
 	math::Vector2u renderingResolution = imageSize;

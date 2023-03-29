@@ -31,7 +31,7 @@ StaticMeshShadowMapRenderer::StaticMeshShadowMapRenderer()
 		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
 		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		depthPrepassPipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetDepthFormat();
+		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetRenderedDepthFormat();
 		m_shadowMapRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ShadowMapPipeline"), depthPrepassPipelineDef, depthShader);
 	}
 }
