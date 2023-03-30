@@ -1,4 +1,4 @@
-#include "RayTracingSceneSystem.h"
+#include "RayTracingRenderSceneSubsystem.h"
 #include "RenderScene.h"
 #include "RayTracingSceneTypes.h"
 #include "Types/AccelerationStructure.h"
@@ -10,11 +10,11 @@
 namespace spt::rsc
 {
 
-RayTracingSceneSystem::RayTracingSceneSystem(RenderScene& owningScene)
+RayTracingRenderSceneSubsystem::RayTracingRenderSceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
 { }
 
-void RayTracingSceneSystem::Update()
+void RayTracingRenderSceneSubsystem::Update()
 {
 	Super::Update();
 
@@ -27,7 +27,7 @@ void RayTracingSceneSystem::Update()
 	}
 }
 
-void RayTracingSceneSystem::UpdateTLAS()
+void RayTracingRenderSceneSubsystem::UpdateTLAS()
 {
 	SPT_PROFILER_FUNCTION();
 

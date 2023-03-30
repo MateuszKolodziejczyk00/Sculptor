@@ -1,6 +1,6 @@
 #include "StaticMeshShadowMapRenderer.h"
 #include "RenderScene.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/LightTypes.h"
 #include "RenderGraphBuilder.h"
 #include "Transfers/UploadUtils.h"
@@ -42,7 +42,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 
 	m_pointLightBatches.clear();
 
-	if (const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
+	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
 	{
 		const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 
@@ -55,7 +55,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 			const PointLightData& pointLightData = sceneRegistry.get<PointLightData>(pointLight);
 			const PointLightShadowMapComponent& pointLightShadowMap = sceneRegistry.get<PointLightShadowMapComponent>(pointLight);
 
-			const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
+			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
 			const StaticMeshBatchDefinition batchDef = staticMeshPrimsSystem.BuildBatchForPointLight(pointLightData);
 
 			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);

@@ -1,4 +1,4 @@
-#include "StaticMeshPrimitivesSystem.h"
+#include "StaticMeshRenderSceneSubsystem.h"
 #include "RendererUtils.h"
 #include "RenderScene.h"
 #include "StaticMeshGeometry.h"
@@ -9,11 +9,11 @@
 namespace spt::rsc
 {
 
-StaticMeshPrimitivesSystem::StaticMeshPrimitivesSystem(RenderScene& owningScene)
+StaticMeshRenderSceneSubsystem::StaticMeshRenderSceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
 { }
 
-StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const RenderView& view) const
+StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForView(const RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -39,7 +39,7 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForView(const Re
 	return batch;
 }
 
-StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForPointLight(const PointLightData& pointLight) const
+StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForPointLight(const PointLightData& pointLight) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -65,7 +65,7 @@ StaticMeshBatchDefinition StaticMeshPrimitivesSystem::BuildBatchForPointLight(co
 	return batch;
 }
 
-void StaticMeshPrimitivesSystem::AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef) const
+void StaticMeshRenderSceneSubsystem::AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef) const
 {
 	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesNum; ++idx)
 	{

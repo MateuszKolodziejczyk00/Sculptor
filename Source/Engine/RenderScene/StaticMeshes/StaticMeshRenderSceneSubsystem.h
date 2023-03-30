@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PrimitivesSystem.h"
+#include "RenderSceneSubsystem.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderSceneRegistry.h"
 #include "RenderingDataRegistry.h"
@@ -47,15 +47,15 @@ struct StaticMeshBatchDefinition
 };
 
 
-class RENDER_SCENE_API StaticMeshPrimitivesSystem : public PrimitivesSystem
+class RENDER_SCENE_API StaticMeshRenderSceneSubsystem : public RenderSceneSubsystem
 {
 protected:
 
-	using Super = PrimitivesSystem;
+	using Super = RenderSceneSubsystem;
 
 public:
 
-	explicit StaticMeshPrimitivesSystem(RenderScene& owningScene);
+	explicit StaticMeshRenderSceneSubsystem(RenderScene& owningScene);
 
 	StaticMeshBatchDefinition BuildBatchForView(const RenderView& view) const;
 	StaticMeshBatchDefinition BuildBatchForPointLight(const PointLightData& pointLight) const;

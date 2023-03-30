@@ -10,12 +10,12 @@ namespace spt::rsc
 class RenderScene;
 
 
-class RENDER_SCENE_API PrimitivesSystem
+class RENDER_SCENE_API RenderSceneSubsystem
 {
 public:
 
-	explicit PrimitivesSystem(RenderScene& owningScene);
-	virtual ~PrimitivesSystem() = default;
+	explicit RenderSceneSubsystem(RenderScene& owningScene);
+	virtual ~RenderSceneSubsystem() = default;
 
 	virtual void Update() {};
 

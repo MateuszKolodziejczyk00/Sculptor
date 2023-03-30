@@ -3,7 +3,7 @@
 #include "Paths.h"
 #include "MeshBuilder.h"
 #include "RenderScene.h"
-#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "RenderingDataRegistry.h"
 #include "Types/Texture.h"
 #include "Types/RenderContext.h"

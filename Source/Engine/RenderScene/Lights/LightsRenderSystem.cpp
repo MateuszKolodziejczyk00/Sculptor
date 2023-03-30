@@ -14,7 +14,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/SceneRendererTypes.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "EngineFrame.h"
 #include "ViewShadingInput.h"
 #include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
@@ -387,7 +387,7 @@ void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, cons
 
 	Super::CollectRenderViews(renderScene, mainRenderView, outViews);
 
-	if (const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>())
+	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
 	{
 		const lib::DynamicArray<RenderView*> shadowMapViewsToRender = shadowMapsManager->GetShadowMapViewsToUpdate();
 		std::copy(std::cbegin(shadowMapViewsToRender), std::cend(shadowMapViewsToRender), std::back_inserter(outViews));
@@ -426,16 +426,16 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	if (lightsRenderingData.HasAnyLocalLightsToRender())
 	{
 		// Schedule visible lights read back
-		const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
+		const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsSystem = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
 		if (shadowMapsSystem->IsMainView(viewSpec.GetRenderView()))
 		{
-			const lib::WeakPtr<ShadowMapsManagerSystem> weakShadowMapsSystem = shadowMapsSystem;
-			engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ weakShadowMapsSystem, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer ](engn::FrameContext& context)
+			const lib::WeakPtr<ShadowMapsManagerSubsystem> weakShadowMapsManager = shadowMapsSystem;
+			engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ weakShadowMapsManager, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer ](engn::FrameContext& context)
 																										   {
-																											   const lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsSystem = weakShadowMapsSystem.lock();
-																											   if (shadowMapsSystem)
+																											   const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = weakShadowMapsManager.lock();
+																											   if (shadowMapsManager)
 																											   {
-																												   shadowMapsSystem->UpdateVisibleLocalLights(visibleLightsBuffer);
+																												   shadowMapsManager->UpdateVisibleLocalLights(visibleLightsBuffer);
 																											   }
 																										   }));
 		}
@@ -493,7 +493,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
 {
-	lib::SharedPtr<ShadowMapsManagerSystem> shadowMapsManager = renderScene.GetPrimitivesSystem<ShadowMapsManagerSystem>();
+	lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
 	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
 	{
 		m_shadowMapsDS = shadowMapsManager->GetShadowMapsDS();

@@ -10,7 +10,7 @@
 #include "View/ViewRenderingSpec.h"
 #include "RenderScene.h"
 #include "SceneRenderer/SceneRendererTypes.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 
 namespace spt::rsc
 {

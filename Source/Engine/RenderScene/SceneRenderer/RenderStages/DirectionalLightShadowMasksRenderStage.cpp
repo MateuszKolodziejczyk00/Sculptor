@@ -11,10 +11,9 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "RayTracing/RayTracingSceneSystem.h"
+#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Lights/LightTypes.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 
@@ -208,13 +207,12 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
 	
-	const lib::SharedPtr<RayTracingSceneSystem> rayTracingSceneSystem = renderScene.GetPrimitivesSystem<RayTracingSceneSystem>();
-	SPT_CHECK(!!rayTracingSceneSystem);
+	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
 	// Do ray tracing to create shadow mask for each directional light
 
 	const lib::SharedRef<TraceShadowRaysDS> traceShadowRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
-	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSystem->GetSceneTLAS());
+	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
 	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depth;
 
 	static const rdr::PipelineStateID shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline();

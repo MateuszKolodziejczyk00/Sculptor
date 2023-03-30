@@ -16,15 +16,15 @@
 #include "Loaders/glTFSceneLoader.h"
 #include "Paths.h"
 #include "Transfers/UploadUtils.h"
-#include "StaticMeshes/StaticMeshPrimitivesSystem.h"
+#include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "StaticMeshes/StaticMeshesRenderSystem.h"
 #include "Lights/LightsRenderSystem.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "SceneRenderer/SceneRenderer.h"
 #include "InputManager.h"
 #include "Transfers/TransfersManager.h"
 #include "Lights/LightTypes.h"
-#include "RayTracing/RayTracingSceneSystem.h"
+#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
 #include "EngineFrame.h"
 #include "Profiler/Profiler.h"
@@ -250,11 +250,11 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
-	m_renderScene.AddPrimitivesSystem<rsc::StaticMeshPrimitivesSystem>();
-	m_renderScene.AddPrimitivesSystem<rsc::ShadowMapsManagerSystem>(m_renderView);
+	m_renderScene.AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
+	m_renderScene.AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
-		m_renderScene.AddPrimitivesSystem<rsc::RayTracingSceneSystem>();
+		m_renderScene.AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
 	}
 	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();

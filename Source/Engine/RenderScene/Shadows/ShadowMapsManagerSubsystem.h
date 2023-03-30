@@ -2,7 +2,7 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
-#include "PrimitivesSystem.h"
+#include "RenderSceneSubsystem.h"
 #include "RenderSceneRegistry.h"
 #include "View/RenderView.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
@@ -83,18 +83,18 @@ DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
 DS_END();
 
 
-class RENDER_SCENE_API ShadowMapsManagerSystem : public PrimitivesSystem
+class RENDER_SCENE_API ShadowMapsManagerSubsystem : public RenderSceneSubsystem
 {
 protected:
 
-	using Super = PrimitivesSystem;
+	using Super = RenderSceneSubsystem;
 
 public:
 
-	explicit ShadowMapsManagerSystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView);
+	explicit ShadowMapsManagerSubsystem(RenderScene& owningScene, const lib::SharedPtr<RenderView>& inMainView);
 
-	ShadowMapsManagerSystem(const ShadowMapsManagerSystem& rhs) = delete;
-	ShadowMapsManagerSystem& operator=(const ShadowMapsManagerSystem& rhs) = delete;
+	ShadowMapsManagerSubsystem(const ShadowMapsManagerSubsystem& rhs) = delete;
+	ShadowMapsManagerSubsystem& operator=(const ShadowMapsManagerSubsystem& rhs) = delete;
 
 	// Begin PrimitivesSystem overrides
 	virtual void Update() override;

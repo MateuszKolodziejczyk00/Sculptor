@@ -1,6 +1,6 @@
 #include "StaticMeshesRenderSystem.h"
 #include "RenderScene.h"
-#include "StaticMeshPrimitivesSystem.h"
+#include "StaticMeshRenderSceneSubsystem.h"
 #include "Transfers/UploadUtils.h"
 
 namespace spt::rsc
@@ -35,7 +35,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	if (supportsDepthPrepass || supportsForwardOpaque)
 	{
-		const StaticMeshPrimitivesSystem& staticMeshPrimsSystem = renderScene.GetPrimitivesSystemChecked<StaticMeshPrimitivesSystem>();
+		const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
 		const StaticMeshBatchDefinition batchDefinition = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView());
 		
 		if (batchDefinition.IsValid())

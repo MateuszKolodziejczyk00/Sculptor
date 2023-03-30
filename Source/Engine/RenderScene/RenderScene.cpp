@@ -66,11 +66,11 @@ void RenderScene::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto& primitiveSystems = m_primitiveSystems.GetSystems();
+	const auto& sceneSubsystems = m_renderSceneSubsystems.GetSystems();
 
-	js::ParallelForEach("Update Primitive Systems",
-						primitiveSystems,
-						[](const lib::SharedPtr<PrimitivesSystem>& system)
+	js::ParallelForEach("Update Render Scene Subsystems",
+						sceneSubsystems,
+						[](const lib::SharedPtr<RenderSceneSubsystem>& system)
 						{
 							system->Update();
 						},

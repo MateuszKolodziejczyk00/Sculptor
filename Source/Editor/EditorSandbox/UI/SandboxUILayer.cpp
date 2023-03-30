@@ -8,7 +8,7 @@
 #include "Renderer.h"
 #include "Shaders/ShaderTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 
 namespace spt::ed
 {
@@ -106,7 +106,7 @@ void SandboxUILayer::DrawRendererSettings()
 	}
 
 	const rsc::RenderScene& renderScene = m_renderer->GetRenderScene();
-	if (lib::SharedPtr<rsc::ShadowMapsManagerSystem> shadowMapsManger = renderScene.GetPrimitivesSystem<rsc::ShadowMapsManagerSystem>())
+	if (lib::SharedPtr<rsc::ShadowMapsManagerSubsystem> shadowMapsManger = renderScene.GetSceneSubsystem<rsc::ShadowMapsManagerSubsystem>())
 	{
 		const char* shadowMappingTechniques[3] = { "None", "DPCF", "MSM" };
 

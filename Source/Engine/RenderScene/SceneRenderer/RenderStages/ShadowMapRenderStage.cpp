@@ -5,7 +5,7 @@
 #include "Renderer.h"
 #include "RenderScene.h"
 #include "Lights/LightTypes.h"
-#include "Shadows/ShadowMapsManagerSystem.h"
+#include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "ResourcesManager.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
@@ -69,7 +69,7 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ShadowMapsManagerSystem& shadowMapsManager = renderScene.GetPrimitivesSystemChecked<ShadowMapsManagerSystem>();
+	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
 	const EShadowMappingTechnique technique = shadowMapsManager.GetShadowMappingTechnique();
 
 	const RenderSceneEntityHandle& viewEntity = viewSpec.GetRenderView().GetViewEntity();

@@ -10,7 +10,7 @@
 #include "Types/Buffer.h"
 #include "Pipelines/PipelineState.h"
 #include "View/SceneView.h"
-#include "StaticMeshPrimitivesSystem.h"
+#include "StaticMeshRenderSceneSubsystem.h"
 
 
 namespace spt::rg

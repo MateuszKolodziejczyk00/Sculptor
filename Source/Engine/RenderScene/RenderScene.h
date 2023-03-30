@@ -5,7 +5,7 @@
 #include "Types/Buffer.h"
 #include "RenderSceneRegistry.h"
 #include "RenderSystem.h"
-#include "PrimitivesSystem.h"
+#include "RenderSceneSubsystem.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
@@ -166,13 +166,13 @@ private:
 };
 
 
-class PrimitiveSystemsRegistry
+class RenderSceneSubsystemsRegistry
 {
 public:
 
-	PrimitiveSystemsRegistry() = default;
+	RenderSceneSubsystemsRegistry() = default;
 
-	const lib::DynamicArray<lib::SharedPtr<PrimitivesSystem>>& GetSystems() const
+	const lib::DynamicArray<lib::SharedPtr<RenderSceneSubsystem>>& GetSystems() const
 	{
 		return m_systems;
 	}
@@ -194,7 +194,7 @@ public:
 
 		const lib::LockGuard lockGuard(m_lock);
 
-		lib::SharedPtr<PrimitivesSystem>& system = m_typeIDToSystem[typeID];
+		lib::SharedPtr<RenderSceneSubsystem>& system = m_typeIDToSystem[typeID];
 		if (!system)
 		{
 			const lib::SharedPtr<TPrimitiveSystem> systemInstance = lib::MakeShared<TPrimitiveSystem>(scene, std::forward<TArgs>(args)...);
@@ -215,9 +215,9 @@ public:
 		const auto foundSystem = m_typeIDToSystem.find(typeID);
 		if (foundSystem != std::cend(m_typeIDToSystem))
 		{
-			const lib::SharedPtr<PrimitivesSystem> systemToRemove = foundSystem->second;
+			const lib::SharedPtr<RenderSceneSubsystem> systemToRemove = foundSystem->second;
 			const auto systemInstanceIt = std::find_if(std::cbegin(m_systems), std::cend(m_systems),
-													   [&systemToRemove](const lib::SharedPtr<PrimitivesSystem>& system)
+													   [&systemToRemove](const lib::SharedPtr<RenderSceneSubsystem>& system)
 													   {
 														   return system == systemToRemove;
 													   });
@@ -235,8 +235,8 @@ private:
 	lib::Lock m_lock;
 
 	// Store both containers to allow fast iterations during update and fast lookup by type for getting systems
-	lib::DynamicArray<lib::SharedPtr<PrimitivesSystem>> m_systems;
-	lib::HashMap<PrimitiveSystemTypeID, lib::SharedPtr<PrimitivesSystem>> m_typeIDToSystem;
+	lib::DynamicArray<lib::SharedPtr<RenderSceneSubsystem>> m_systems;
+	lib::HashMap<PrimitiveSystemTypeID, lib::SharedPtr<RenderSceneSubsystem>> m_typeIDToSystem;
 };
 
 
@@ -289,32 +289,32 @@ public:
 		}
 	}
 	
-	// Primitives Systems ===================================================
+	// Render Scene Subsystems ==============================================
 
-	template<typename TPrimitivesSystem, typename... TArgs>
-	void AddPrimitivesSystem(TArgs&&... args)
+	template<typename TSubsystem, typename... TArgs>
+	void AddSceneSubsystem(TArgs&&... args)
 	{
-		m_primitiveSystems.AddSystem<TPrimitivesSystem>(*this, std::forward<TArgs>(args)...);
+		m_renderSceneSubsystems.AddSystem<TSubsystem>(*this, std::forward<TArgs>(args)...);
 	}
 
-	template<typename TPrimitivesSystem>
-	void RemovePrimitivesSystem()
+	template<typename TSubsystem>
+	void RemoveSceneSubsystem()
 	{
-		m_primitiveSystems.RemoveSystem<TPrimitivesSystem>();
+		m_renderSceneSubsystems.RemoveSystem<TSubsystem>();
 	}
 
-	template<typename TPrimitivesSystem>
-	lib::SharedPtr<TPrimitivesSystem> GetPrimitivesSystem() const
+	template<typename TSubsystem>
+	lib::SharedPtr<TSubsystem> GetSceneSubsystem() const
 	{
-		return m_primitiveSystems.GetSystem<TPrimitivesSystem>();
+		return m_renderSceneSubsystems.GetSystem<TSubsystem>();
 	}
 	
-	template<typename TPrimitivesSystem>
-	TPrimitivesSystem& GetPrimitivesSystemChecked() const
+	template<typename TSubsystem>
+	TSubsystem& GetSceneSubsystemChecked() const
 	{
-		const lib::SharedPtr<TPrimitivesSystem> system = GetPrimitivesSystem<TPrimitivesSystem>();
-		SPT_CHECK(!!system);
-		return *system;
+		const lib::SharedPtr<TSubsystem> subsystem = GetSceneSubsystem<TSubsystem>();
+		SPT_CHECK(!!subsystem);
+		return *subsystem;
 	}
 
 private:
@@ -331,7 +331,7 @@ private:
 
 	lib::SharedRef<RenderSceneDS> m_renderSceneDS;
 
-	PrimitiveSystemsRegistry m_primitiveSystems;
+	RenderSceneSubsystemsRegistry m_renderSceneSubsystems;
 
 	RenderSystemsRegistry m_renderSystems;
 };
