@@ -1,21 +1,20 @@
-#include "ProfilerUILayer.h"
+#include "ProfilerUIView.h"
 #include "ImGui/SculptorImGui.h"
 #include "Profiler.h"
-#include "UIElements/UIWindow.h"
 
 namespace spt::prf
 {
 
-ProfilerUILayer::ProfilerUILayer(const scui::LayerDefinition& definition)
+ProfilerUIView::ProfilerUIView(const scui::ViewDefinition& definition)
 	: Super(definition)
 { }
 
-void ProfilerUILayer::DrawUI()
+void ProfilerUIView::DrawUI()
 {
 	Super::DrawUI();
 	
 	ImGuiWindowClass windowsClass;
-	windowsClass.ClassId = scui::CurrentWindowBuildingContext::GetCurrentWindowDockspaceID();
+	windowsClass.ClassId = scui::CurrentViewBuildingContext::GetCurrentViewDockspaceID();
 
 	ImGui::SetNextWindowClass(&windowsClass);
 
@@ -68,7 +67,7 @@ void ProfilerUILayer::DrawUI()
 	ImGui::End();
 }
 
-void ProfilerUILayer::DrawGPUProfilerUI()
+void ProfilerUIView::DrawGPUProfilerUI()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -83,7 +82,7 @@ void ProfilerUILayer::DrawGPUProfilerUI()
 	}
 }
 
-void ProfilerUILayer::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration)
+void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration)
 {
 	const Real32 scopeIndentVal = 16.f;
 

@@ -1,9 +1,8 @@
-#include "UI/SandboxUILayer.h"
+#include "UI/SandboxUIView.h"
 #include "ImGui/SculptorImGui.h"
 #include "UIUtils.h"
 #include "Renderer/SandboxRenderer.h"
 #include "JobSystem.h"
-#include "UIElements/UIWindowTypes.h"
 #include "Types/Window.h"
 #include "Renderer.h"
 #include "Shaders/ShaderTypes.h"
@@ -15,17 +14,17 @@ namespace spt::ed
 
 SPT_DEFINE_LOG_CATEGORY(SandboxUI, true);
 
-SandboxUILayer::SandboxUILayer(const scui::LayerDefinition& definition, SandboxRenderer& renderer)
+SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer)
 	: Super(definition)
 	, m_renderer(&renderer)
 { }
 
-void SandboxUILayer::DrawUI()
+void SandboxUIView::DrawUI()
 {
 	Super::DrawUI();
 
 	ImGuiWindowClass windowsClass;
-	windowsClass.ClassId = scui::CurrentWindowBuildingContext::GetCurrentWindowDockspaceID();
+	windowsClass.ClassId = scui::CurrentViewBuildingContext::GetCurrentViewDockspaceID();
 
 	ImGui::SetNextWindowClass(&windowsClass);
 	
@@ -69,7 +68,7 @@ void SandboxUILayer::DrawUI()
 	ImGui::End();
 }
 
-void SandboxUILayer::DrawRendererSettings()
+void SandboxUIView::DrawRendererSettings()
 {
 	ImGui::Text("Renderer Settings");
 
@@ -124,7 +123,6 @@ void SandboxUILayer::DrawRendererSettings()
 		rsc::RenderView& renderView = m_renderer->GetRenderView();
 
 		const char* aaModes[rsc::EAntiAliasingMode::NUM] = { "None", "TAA" };
-
 		int aaMode = renderView.GetAnitAliasingMode();
 		if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
 		{
@@ -132,7 +130,6 @@ void SandboxUILayer::DrawRendererSettings()
 		}
 
 		const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets" };
-
 		int selectedDebugFeature = renderView.GetDebugFeature();
 		if (ImGui::Combo("Debug Feature", &selectedDebugFeature, debugFeatures, SPT_ARRAY_SIZE(debugFeatures)))
 		{
@@ -141,7 +138,7 @@ void SandboxUILayer::DrawRendererSettings()
 	}
 }
 
-void SandboxUILayer::DrawJobSystemTestsUI()
+void SandboxUIView::DrawJobSystemTestsUI()
 {
 	ImGui::Text("Job System");;
 		
@@ -199,7 +196,7 @@ void SandboxUILayer::DrawJobSystemTestsUI()
 	}
 }
 
-void SandboxUILayer::DrawDebugSceneRenderer()
+void SandboxUIView::DrawDebugSceneRenderer()
 {
 	SPT_PROFILER_FUNCTION();
 

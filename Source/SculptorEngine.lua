@@ -33,9 +33,10 @@ IncludeProject("RendererCore")
 IncludeProject("RenderGraph")
 IncludeProject("Graphics")
 
+SetProjectsSubgroupName("Scene")
+IncludeProject("RenderScene")
+
 SetProjectsSubgroupName("Tools")
 IncludeProject("ScUI")
 IncludeProject("Profiler")
-
-SetProjectsSubgroupName("Scene")
-IncludeProject("RenderScene")
+IncludeProject("RenderSceneTools")

@@ -13,12 +13,11 @@
 #include "ImGui/SculptorImGui.h"
 #include "Types/Sampler.h"
 #include "JobSystem/JobSystem.h"
-#include "UIElements/UIWindow.h"
 #include "UIElements/ApplicationUI.h"
-#include "UI/SandboxUILayer.h"
+#include "UI/SandboxUIView.h"
 #include "Renderer/SandboxRenderer.h"
 #include "UIUtils.h"
-#include "ProfilerUILayer.h"
+#include "ProfilerUIView.h"
 #include "RenderGraphManager.h"
 #include "Paths.h"
 #include "RenderingDataRegistry.h"
@@ -113,13 +112,13 @@ void SculptorEdApplication::OnRun()
 
 	m_renderer = std::make_unique<SandboxRenderer>(m_window);
 
-	scui::LayerDefinition sandboxLayerDef;
-	sandboxLayerDef.name = "SandboxLayer";
-	scui::ApplicationUI::OpenWindowWithLayer<SandboxUILayer>("SandboxWindow", sandboxLayerDef, *m_renderer);
-	
-	scui::LayerDefinition profilerLayerDef;
-	profilerLayerDef.name = "ProfilerLayer";
-	scui::ApplicationUI::OpenWindowWithLayer<prf::ProfilerUILayer>("ProfilerWindow", profilerLayerDef);
+	scui::ViewDefinition sandboxViewDef;
+	sandboxViewDef.name = "SandboxView";
+	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef, *m_renderer);
+
+	scui::ViewDefinition profilerViewDef;
+	profilerViewDef.name = "ProfilerView";
+	view->AddChild(lib::MakeShared<prf::ProfilerUIView>(profilerViewDef));
 
 	while (true)
 	{

@@ -55,7 +55,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 #if RENDERER_DEBUG
 	rhi::TextureDefinition debugDef;
 	debugDef.resolution	= texturesRes;
-	debugDef.usage		= passTexturesUsage;
+	debugDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource);
 	debugDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
 	passData.debug = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DebugTexture"), debugDef, rhi::EMemoryUsage::GPUOnly);
 #endif // RENDERER_DEBUG

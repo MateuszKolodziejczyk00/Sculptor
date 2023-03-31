@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ProfilerMacros.h"
-#include "UILayers/UILayer.h"
+#include "UILayers/UIView.h"
 
 
 namespace spt::rdr
@@ -13,21 +13,21 @@ struct GPUStatisticsScopeResult;
 namespace spt::prf
 {
 
-class PROFILER_API ProfilerUILayer : public scui::UILayer
+class PROFILER_API ProfilerUIView : public scui::UIView
 {
 protected:
 
-	using Super = scui::UILayer;
+	using Super = scui::UIView;
 
 public:
 
-	explicit ProfilerUILayer(const scui::LayerDefinition& definition);
+	explicit ProfilerUIView(const scui::ViewDefinition& definition);
 
 protected:
 
-	//~ Begin  UILayer overrides
+	//~ Begin  UIView overrides
 	virtual void DrawUI() override;
-	//~ End  UILayer overrides
+	//~ End  UIView overrides
 
 private:
 

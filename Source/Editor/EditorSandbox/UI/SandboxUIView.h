@@ -1,7 +1,7 @@
 #pragma once
 
 #include "EditorSandboxMacros.h"
-#include "UILayers/UILayer.h"
+#include "UILayers/UIView.h"
 
 
 namespace spt::ed
@@ -10,21 +10,21 @@ namespace spt::ed
 class SandboxRenderer;
 
 
-class EDITOR_SANDBOX_API SandboxUILayer : public scui::UILayer
+class EDITOR_SANDBOX_API SandboxUIView : public scui::UIView
 {
 protected:
 
-	using Super = scui::UILayer;
+	using Super = scui::UIView;
 
 public:
 
-	explicit SandboxUILayer(const scui::LayerDefinition& definition, SandboxRenderer& renderer);
+	explicit SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer);
 
 protected:
 
-	//~ Begin  UILayer overrides
+	//~ Begin  UIView overrides
 	virtual void DrawUI() override;
-	//~ End  UILayer overrides
+	//~ End  UIView overrides
 
 private:
 
