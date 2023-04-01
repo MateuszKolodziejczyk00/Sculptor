@@ -33,12 +33,15 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 	ImGui::Begin(m_name.GetData(), &isOpen);
 	{
 		const ImGuiID dockspaceID = ImGui::GetID(m_name.GetData());
+
+		ImGui::PushID(dockspaceID);
+
 		ImGuiWindowClass contentClass;
 		contentClass.ClassId = dockspaceID;
 
 		ImGui::DockSpace(dockspaceID, ui::UIUtils::GetWindowContentSize(), 0, &contentClass);
 
-		const ViewBuildingScope scope(dockspaceID);
+		const ViewBuildingScope scope(contentClass);
 
 		UIViewDrawParams childDrawParams;
 		childDrawParams.parentClass = contentClass;
@@ -46,6 +49,8 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 		m_children.DrawViews(childDrawParams);
 
 		DrawUI();
+
+		ImGui::PopID();
 	}
 	ImGui::End();
 

@@ -13,10 +13,7 @@ void ProfilerUIView::DrawUI()
 {
 	Super::DrawUI();
 	
-	ImGuiWindowClass windowsClass;
-	windowsClass.ClassId = scui::CurrentViewBuildingContext::GetCurrentViewDockspaceID();
-
-	ImGui::SetNextWindowClass(&windowsClass);
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 
 	ImGui::Begin("Profiler");
 

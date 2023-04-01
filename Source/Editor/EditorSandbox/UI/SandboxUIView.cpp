@@ -6,8 +6,8 @@
 #include "Types/Window.h"
 #include "Renderer.h"
 #include "Shaders/ShaderTypes.h"
-#include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "RenderView/RenderViewSettingsUIView.h"
+#include "RenderScene/RenderSceneSettingsUIView.h"
 
 namespace spt::ed
 {
@@ -17,16 +17,16 @@ SPT_DEFINE_LOG_CATEGORY(SandboxUI, true);
 SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer)
 	: Super(definition)
 	, m_renderer(&renderer)
-{ }
+{
+	AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), renderer.GetRenderView()));
+	AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), renderer.GetRenderScene()));
+}
 
 void SandboxUIView::DrawUI()
 {
 	Super::DrawUI();
 
-	ImGuiWindowClass windowsClass;
-	windowsClass.ClassId = scui::CurrentViewBuildingContext::GetCurrentViewDockspaceID();
-
-	ImGui::SetNextWindowClass(&windowsClass);
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	
 	ImGui::Begin("Scene");
 
@@ -44,7 +44,7 @@ void SandboxUIView::DrawUI()
 
 	ImGui::End();
 
-	ImGui::SetNextWindowClass(&windowsClass);
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 
 	ImGui::Begin("SandboxUI");
 
@@ -52,8 +52,6 @@ void SandboxUIView::DrawUI()
 	DrawRendererSettings();
 	ImGui::Separator();
 	DrawJobSystemTestsUI();
-	ImGui::Separator();
-	DrawDebugSceneRenderer();
 	ImGui::Separator();
 
 	ImGui::Text("Shaders");
@@ -63,8 +61,6 @@ void SandboxUIView::DrawUI()
 		rdr::Renderer::HotReloadShaders();
 	}
 #endif WITH_SHADERS_HOT_RELOAD
-	ImGui::Separator();
-
 	ImGui::End();
 }
 
@@ -104,38 +100,6 @@ void SandboxUIView::DrawRendererSettings()
 		m_renderer->SetFarPlane(farPlane);
 	}
 
-	const rsc::RenderScene& renderScene = m_renderer->GetRenderScene();
-	if (lib::SharedPtr<rsc::ShadowMapsManagerSubsystem> shadowMapsManger = renderScene.GetSceneSubsystem<rsc::ShadowMapsManagerSubsystem>())
-	{
-		const char* shadowMappingTechniques[3] = { "None", "DPCF", "MSM" };
-
-		int currentTechnique = static_cast<int>(shadowMapsManger->GetShadowMappingTechnique());
-		if (ImGui::Combo("Point Lights Shadow Mapping Technique", &currentTechnique, shadowMappingTechniques, SPT_ARRAY_SIZE(shadowMappingTechniques)))
-		{
-			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
-		}
-	}
-
-	ImGui::Separator();
-
-	ImGui::Text("Render View Settings");
-	{
-		rsc::RenderView& renderView = m_renderer->GetRenderView();
-
-		const char* aaModes[rsc::EAntiAliasingMode::NUM] = { "None", "TAA" };
-		int aaMode = renderView.GetAnitAliasingMode();
-		if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
-		{
-			renderView.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));
-		}
-
-		const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets" };
-		int selectedDebugFeature = renderView.GetDebugFeature();
-		if (ImGui::Combo("Debug Feature", &selectedDebugFeature, debugFeatures, SPT_ARRAY_SIZE(debugFeatures)))
-		{
-			renderView.SetDebugFeature(static_cast<rsc::EDebugFeature::Type>(selectedDebugFeature));
-		}
-	}
 }
 
 void SandboxUIView::DrawJobSystemTestsUI()
@@ -194,13 +158,6 @@ void SandboxUIView::DrawJobSystemTestsUI()
 					   SPT_LOG_TRACE(SandboxUI, "5");
 				   });
 	}
-}
-
-void SandboxUIView::DrawDebugSceneRenderer()
-{
-	SPT_PROFILER_FUNCTION();
-
-	rsc::RendererParamsRegistry::DrawParametersUI();
 }
 
 } // spt::ed

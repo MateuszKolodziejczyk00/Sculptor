@@ -37,11 +37,11 @@ public:
 
 	const lib::SharedPtr<rdr::Window>& GetWindow() const;
 
-	rsc::RenderView& GetRenderView() const;
+	const lib::SharedPtr<rsc::RenderView>& GetRenderView() const;
+
+	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
 
 	rsc::SceneRenderer& GetSceneRenderer();
-
-	rsc::RenderScene& GetRenderScene();
 
 	void SetImageSize(const math::Vector2u& imageSize);
 
@@ -70,7 +70,7 @@ private:
 	lib::SharedPtr<rdr::Texture>		m_sceneUITexture;
 	lib::SharedPtr<rdr::TextureView>	m_sceneUITextureView;
 
-	rsc::RenderScene					m_renderScene;
+	lib::SharedPtr<rsc::RenderScene>	m_renderScene;
 	lib::SharedPtr<rsc::RenderView>		m_renderView;
 
 	rsc::SceneRenderer					m_sceneRenderer;

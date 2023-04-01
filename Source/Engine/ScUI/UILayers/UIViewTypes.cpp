@@ -10,16 +10,16 @@ UIViewID UIViewID::GenerateID()
 	return UIViewID(id++);
 }
 
-ImGuiID CurrentViewBuildingContext::s_currentWindowDockspaceID = 0;
+ImGuiWindowClass CurrentViewBuildingContext::s_currentViewContentClass{};
 
-void CurrentViewBuildingContext::SetCurrentViewDockspaceID(ImGuiID inDockspaceID)
+void CurrentViewBuildingContext::SetCurrentViewContentClass(const ImGuiWindowClass& inClass)
 {
-	s_currentWindowDockspaceID = inDockspaceID;
+	s_currentViewContentClass = inClass;
 }
 
-ImGuiID CurrentViewBuildingContext::GetCurrentViewDockspaceID()
+const ImGuiWindowClass& CurrentViewBuildingContext::GetCurrentViewContentClass()
 {
-	return s_currentWindowDockspaceID;
+	return s_currentViewContentClass;
 }
 
 void UIViewsContainer::AddView(lib::SharedRef<class UIView> view)

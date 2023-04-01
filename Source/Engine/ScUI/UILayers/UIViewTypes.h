@@ -53,14 +53,14 @@ class SCUI_API CurrentViewBuildingContext
 {
 public:
 
-	static void		SetCurrentViewDockspaceID(ImGuiID inDockspaceID);
-	static ImGuiID	GetCurrentViewDockspaceID();
+	static void						SetCurrentViewContentClass(const ImGuiWindowClass& inClass);
+	static const ImGuiWindowClass&	GetCurrentViewContentClass();
 
 private:
 
 	CurrentViewBuildingContext() = delete;
 
-	static ImGuiID s_currentWindowDockspaceID;
+	static ImGuiWindowClass s_currentViewContentClass;
 };
 
 
@@ -68,20 +68,20 @@ class ViewBuildingScope
 {
 public:
 
-	explicit ViewBuildingScope(ImGuiID id)
-		: m_prevDockspaceID(CurrentViewBuildingContext::GetCurrentViewDockspaceID())
+	explicit ViewBuildingScope(const ImGuiWindowClass& inClass)
+		: m_preViewContentClass(CurrentViewBuildingContext::GetCurrentViewContentClass())
 	{
-		CurrentViewBuildingContext::SetCurrentViewDockspaceID(id);
+		CurrentViewBuildingContext::SetCurrentViewContentClass(inClass);
 	}
 
 	~ViewBuildingScope()
 	{
-		CurrentViewBuildingContext::SetCurrentViewDockspaceID(m_prevDockspaceID);
+		CurrentViewBuildingContext::SetCurrentViewContentClass(m_preViewContentClass);
 	}
 
 private:
 
-	ImGuiID m_prevDockspaceID;
+	ImGuiWindowClass m_preViewContentClass;
 };
 
 

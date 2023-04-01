@@ -32,8 +32,6 @@ private:
 
 	void DrawJobSystemTestsUI();
 
-	void DrawDebugSceneRenderer();
-
 	SandboxRenderer* m_renderer;
 };
 

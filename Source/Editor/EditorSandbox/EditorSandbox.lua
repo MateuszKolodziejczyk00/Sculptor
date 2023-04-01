@@ -9,6 +9,7 @@ function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPrivateDependency("Profiler")
 	
 	self:AddPublicDependency("RenderScene")
+	self:AddPublicDependency("RenderSceneTools")
 end
 
 EditorSandbox:SetupProject()

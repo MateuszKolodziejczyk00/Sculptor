@@ -41,6 +41,7 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	, m_nearPlane(0.1f)
 	, m_farPlane(50.f)
 	, m_cameraSpeed(5.f)
+	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
 {
 	InitializeRenderScene();
 }
@@ -121,7 +122,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 																									   prf::Profiler::Get().SetGPUFrameStatistics(gpuStatisticsCollector->CollectStatistics());
 																								   }));
 
-	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, m_renderScene, *m_renderView);
+	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView);
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(m_sceneUITextureView);
@@ -167,7 +168,7 @@ rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
 	return m_sceneRenderer;
 }
 
-rsc::RenderScene& SandboxRenderer::GetRenderScene()
+const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 {
 	return m_renderScene;
 }
@@ -193,9 +194,9 @@ math::Vector2u SandboxRenderer::GetDisplayTextureResolution() const
 	return m_sceneUITexture->GetResolution().head<2>();
 }
 
-rsc::RenderView& SandboxRenderer::GetRenderView() const
+const lib::SharedPtr<rsc::RenderView>& SandboxRenderer::GetRenderView() const
 {
-	return *m_renderView;
+	return m_renderView;
 }
 
 void SandboxRenderer::SetFov(Real32 fovDegrees)
@@ -240,7 +241,7 @@ Real32 SandboxRenderer::GetCameraSpeed()
 
 void SandboxRenderer::InitializeRenderScene()
 {
-	m_renderView = lib::MakeShared<rsc::RenderView>(m_renderScene);
+	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
 	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve, rsc::ERenderStage::AntiAliasing));
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
@@ -250,20 +251,20 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
-	m_renderScene.AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
-	m_renderScene.AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
+	m_renderScene->AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
+	m_renderScene->AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
-		m_renderScene.AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
+		m_renderScene->AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
 	}
-	m_renderScene.AddRenderSystem<rsc::StaticMeshesRenderSystem>();
-	m_renderScene.AddRenderSystem<rsc::LightsRenderSystem>();
+	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
+	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
 
 	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
 	if (scenePath.IsValid())
 	{
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
-		rsc::glTFLoader::LoadScene(m_renderScene, finalPath);
+		rsc::glTFLoader::LoadScene(*m_renderScene, finalPath);
 
 		for (Int32 x = -1; x <= 1; ++x)
 		{
@@ -273,7 +274,7 @@ void SandboxRenderer::InitializeRenderScene()
 				{
 					const Real32 random = lib::rnd::Random<Real32>();
 
-					const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
+					const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 					rsc::PointLightData pointLightData;
 					pointLightData.color = math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
 					pointLightData.intensity = std::clamp(1.f - random, 8.f, 80.f);
@@ -292,7 +293,7 @@ void SandboxRenderer::InitializeRenderScene()
 		}
 
 		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene.CreateEntity();
+			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color			= math::Vector3f::Ones();
 			directionalLightData.intensity		= 5.f;
