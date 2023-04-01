@@ -28,8 +28,8 @@ RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Dist
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
 RendererBoolParameter directionalLightAccumulateShadows("Accumulate Shadows", { "Lighting", "Shadows", "Directional", "Accumulation"}, true);
 RendererFloatParameter directionalLightAccumulationMaxDepthDiff("Max Depth Diff", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.05f, 0.f, 1.f);
-RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.1f, 0.f, 1.f);
-RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.28f, 0.f, 1.f);
+RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.05f, 0.f, 1.f);
+RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.15f, 0.f, 1.f);
 RendererBoolParameter directionalLightApplyShadowsBlur("Shadows Blur", { "Lighting", "Shadows", "Directional"}, true);
 
 } // params
