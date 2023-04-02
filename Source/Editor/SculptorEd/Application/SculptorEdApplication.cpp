@@ -178,6 +178,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 	const auto onSwapchainOutOfDateBeforeRendering = [this]()
 	{
+		ImGui::EndFrame();
 		rdr::Renderer::WaitIdle();
 		isSwapchainValid = m_window->RebuildSwapchain();
 		rdr::Renderer::IncrementFrameReleaseSemaphore(engn::EngineFramesManager::GetRenderingFrame().GetFrameIdx());
