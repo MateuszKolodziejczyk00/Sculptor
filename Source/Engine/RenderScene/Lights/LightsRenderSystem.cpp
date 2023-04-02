@@ -485,10 +485,10 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 								});
 	}
 
-	ViewSpecShadingData shadingData;
-	shadingData.shadingInputDS	= lightsRenderingData.shadingInputDS;
-	shadingData.shadowMapsDS	= m_shadowMapsDS;
-	viewSpec.GetData().Create<ViewSpecShadingData>(shadingData);
+	ViewSpecShadingParameters shadingParams;
+	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;
+	shadingParams.shadowMapsDS	= m_shadowMapsDS;
+	viewSpec.GetData().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
 void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)

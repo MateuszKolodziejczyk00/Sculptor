@@ -398,7 +398,7 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     float p20, p23;
     ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
 
-    const float bias = 0.0006f;
+    const float bias = 0.0004f;
     const float surfaceNDCDepth = surfaceShadowNDC.z + bias;
     const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
 
@@ -414,4 +414,27 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     }
 
     return 1.f;
+}
+
+
+float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 pointLightLocation, in float pointLightAttenuationRadius, in uint shadowMapFirstFaceIdx)
+{
+    const uint shadowMapFaceIdx = GetShadowMapFaceIndex(worldLocation - pointLightLocation);
+    const uint shadowMapIdx = shadowMapFirstFaceIdx + shadowMapFaceIdx;
+
+    float3 shadowMapRight;
+    float3 shadowMapUp;
+    GetPointShadowMapViewAxis(shadowMapFaceIdx, shadowMapRight, shadowMapUp);
+
+    const float4 sampleShadowCS = mul(u_shadowMapViews[shadowMapIdx].viewProjectionMatrix, float4(worldLocation, 1.f));
+    const float3 sampleShadowNDC = sampleShadowCS.xyz / sampleShadowCS.w;
+
+    const float2 shadowMapUV = sampleShadowNDC.xy * 0.5f + 0.5f;
+
+    const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
+
+    // We need larger bias here, because volumetric textures which use this function are much more sensitive to leaking because of low resolution and temporal supersampling which moves samples significantly
+    const float bias = 0.001f;
+    
+    return step(shadowMapDepth + bias, sampleShadowNDC.z);
 }

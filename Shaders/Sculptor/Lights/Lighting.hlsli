@@ -3,6 +3,21 @@
 #include "Lights/Shadows.hlsli"
 
 
+float HenyeyGreensteinPhaseFunction(in float g, in float cosTheta)
+{
+    const float numerator = 1.f - g * g;
+    const float denominator = 4.f * PI * pow(1.f + g * g - 2.f * g * cosTheta, 1.5f);
+    return numerator / denominator;
+}
+
+
+float PhaseFunction(in float3 toView, in float3 fromLight, float g)
+{
+    const float cosTheta = dot(toView, fromLight);
+    return HenyeyGreensteinPhaseFunction(g, cosTheta);
+}
+
+
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
 uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 {
@@ -48,9 +63,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
 
         const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
 
-        if (any(lightIntensity > 0.f) || dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+        if (any(lightIntensity > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
         {
-            float visibility = 0.f;
+            float visibility = 1.f;
             if(directionalLight.shadowMaskIdx != IDX_NONE_32)
             {
                 visibility = u_shadowMasks[directionalLight.shadowMaskIdx].SampleLevel(u_shadowMaskSampler, surface.uv, 0).x;
@@ -84,24 +99,27 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
           
             const float3 toLight = pointLight.location - surface.location;
 
-            if(dot(toLight, surface.shadingNormal) > 0.f && dot(toLight, surface.geometryNormal) > 0.f)
+            if (dot(toLight, surface.shadingNormal) > 0.f)
             {
                 const float distToLight = length(toLight);
 
-                if(distToLight < pointLight.radius)
+                if (distToLight < pointLight.radius)
                 {
                     const float3 lightDir = toLight / distToLight;
                     const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
 
-                    float visibility = 1.f;
-                    if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                    if(any(lightIntensity > 0.f))
                     {
-                        visibility = EvaluatePointLightShadows(surface, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
-                    }
+                        float visibility = 1.f;
+                        if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                        {
+                            visibility = EvaluatePointLightShadows(surface, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+                        }
                 
-                    if (visibility > 0.f)
-                    {
-                        radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * visibility;
+                        if (visibility > 0.f)
+                        {
+                            radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * visibility;
+                        }
                     }
                 }
             }
@@ -114,4 +132,96 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
     radiance += surface.diffuseColor * u_lightsData.ambientLightIntensity;
 
     return radiance;
+}
+
+
+struct InScatteringParams
+{
+    float2 uv;
+    float linearDepth;
+    
+    float3 worldLocation;
+
+    float3 toViewNormal;
+
+    float phaseFunctionAnisotrophy;
+
+    float3 inScatteringColor;
+};
+
+
+float3 ComputeInScattering(in InScatteringParams params)
+{
+    float3 inScattering = 0.f;
+    
+    // Directional Lights
+    for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
+    {
+        const DirectionalLightGPUData directionalLight = u_directionalLights[i];
+
+        const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
+
+        if (any(lightIntensity > 0.f))
+        {
+            float visibility = 1.f;
+
+            // TODO shadows here
+
+            if(visibility > 0.f)
+            {
+                //inScattering += lightIntensity * visibility * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+            }
+        }
+    }
+
+    // Point lights
+    const uint2 lightsTileCoords = GetLightsTile(params.uv, u_lightsData.tileSize);
+    const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
+    
+    const uint clusterIdx = params.linearDepth / u_lightsData.zClusterLength;
+    const uint2 clusterRange = clusterIdx < u_lightsData.zClustersNum ? u_clustersRanges[clusterIdx] : uint2(0u, 0u);
+    
+    for(uint i = 0; i < u_lightsData.localLights32Num; ++i)
+    {
+        uint lightsMask = u_tilesLightsMask[tileLightsDataOffset + i];
+        lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
+
+        while(lightsMask)
+        {
+            const uint maskBitIdx = firstbitlow(lightsMask);
+
+            const uint lightIdx = i * 32 + maskBitIdx;
+            const PointLightGPUData pointLight = u_localLights[lightIdx];
+          
+            const float3 toLight = pointLight.location - params.worldLocation;
+
+            const float distToLight = length(toLight);
+
+            if(distToLight < pointLight.radius)
+            {
+                const float3 lightDir = toLight / distToLight;
+                const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, params.worldLocation);
+
+                if (any(lightIntensity > 0.f))
+                {
+                    float visibility = 1.f;
+                    if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                    {
+                        visibility = EvaluatePointLightShadowsAtLocation(params.worldLocation, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+                    }
+            
+                    if (visibility > 0.f)
+                    {
+                        inScattering += lightIntensity * visibility * PhaseFunction(params.toViewNormal, -lightDir, params.phaseFunctionAnisotrophy);
+                    }
+                }
+            }
+
+            lightsMask &= ~(1u << maskBitIdx);
+        }
+    }
+
+    inScattering *= params.inScatteringColor;
+    
+    return inScattering;
 }

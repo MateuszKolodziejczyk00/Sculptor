@@ -242,7 +242,7 @@ Real32 SandboxRenderer::GetCameraSpeed()
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
-	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve, rsc::ERenderStage::AntiAliasing));
+	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve, rsc::ERenderStage::AntiAliasing, rsc::ERenderStage::VolumetricFog));
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::DirectionalLightsShadowMasks);
@@ -277,9 +277,9 @@ void SandboxRenderer::InitializeRenderScene()
 					const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 					rsc::PointLightData pointLightData;
 					pointLightData.color = math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
-					pointLightData.intensity = std::clamp(1.f - random, 8.f, 80.f);
+					pointLightData.intensity = x != 0 ? std::clamp(1.f - random, 8.f, 80.f) : 1.f;
 					pointLightData.location = math::Vector3f(x * 3.1f, y * 2.6f, 0.9f + z * 4.6f);
-					pointLightData.radius = 4.f;
+					pointLightData.radius = 6.f;
 
 					// bloom test
 					if (x == -1 && y == 3 && z == 0)

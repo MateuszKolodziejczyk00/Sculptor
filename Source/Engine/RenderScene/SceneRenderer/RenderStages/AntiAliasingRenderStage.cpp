@@ -62,7 +62,7 @@ static rdr::PipelineStateID GetTemporalAAPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TemporalAACS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/AntiAliasing/TemporalAA.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AntiAliasing/TemporalAA.hlsl", compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TemporalAAPipeline"), shader);
 }

@@ -9,6 +9,11 @@
 #define TWO_PI 6.28318530718
 
 
+#define IN
+#define OUT
+#define INOUT
+
+
 template<typename TType>
 TType Pow2(TType val)
 {

@@ -38,7 +38,7 @@ DS_BEGIN(ViewShadingInputDS, rg::RGDescriptorSetState<ViewShadingInputDS>)
 DS_END();
 
 
-struct ViewSpecShadingData
+struct ViewSpecShadingParameters
 {
 	lib::SharedPtr<ViewShadingInputDS>	shadingInputDS;
 	lib::SharedPtr<ShadowMapsDS>		shadowMapsDS;

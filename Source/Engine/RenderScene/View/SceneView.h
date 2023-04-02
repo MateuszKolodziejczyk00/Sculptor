@@ -16,6 +16,7 @@ BEGIN_SHADER_STRUCT(SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjection)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjectionNoJitter)
 	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
+	SHADER_STRUCT_FIELD(math::Vector3f, viewForward)
 END_SHADER_STRUCT();
 
 

@@ -65,7 +65,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView		= depthPrepassData.depth;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
-	depthRTDef.storeOperation	= rhi::ERTStoreOperation::DontCare;
+	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
@@ -94,11 +94,11 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	
 	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
 
-	const ViewSpecShadingData& shadingData = viewSpec.GetData().Get<ViewSpecShadingData>();
+	const ViewSpecShadingParameters& shadingParams = viewSpec.GetData().Get<ViewSpecShadingParameters>();
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(lib::Ref(shadingData.shadingInputDS), lib::Ref(shadingData.shadowMapsDS)),
+							rg::BindDescriptorSets(lib::Ref(shadingParams.shadingInputDS), lib::Ref(shadingParams.shadowMapsDS)),
 							[renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
