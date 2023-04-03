@@ -121,15 +121,24 @@ SizeType RGTextureAccessState::GetSubresourceIdx(Uint32 layerIdx, Uint32 mipMapI
 
 Bool RGTextureAccessState::TryMergeAccessState()
 {
+	RGNodeHandle lastAccessNode = m_subresourcesAccesses[0].lastAccessNode;
 	for (SizeType subressourceIdx = 1; subressourceIdx < m_subresourcesAccesses.size(); ++subressourceIdx)
 	{
 		if (!m_subresourcesAccesses[0].CanMergeWith(m_subresourcesAccesses[subressourceIdx]))
 		{
 			return false;
 		}
+
+		const RGNodeHandle subresourceLastAccessNode = m_subresourcesAccesses[subressourceIdx].lastAccessNode;
+		if (!lastAccessNode.IsValid() || (subresourceLastAccessNode.IsValid() && subresourceLastAccessNode->GetID() > lastAccessNode->GetID()))
+		{
+			lastAccessNode = subresourceLastAccessNode;
+		}
 	}
 
 	m_subresourcesAccesses.resize(1);
+	m_subresourcesAccesses[0].lastAccessNode = lastAccessNode;
+
 	return true;
 }
 

@@ -467,9 +467,8 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 
 		const ERGBufferAccess prevAccess							= accessedBufferView->GetLastAccessType();
 		const rhi::EPipelineStage prevAccessStages					= accessedBufferView->GetLastAccessPipelineStages();
-		const rhi::EPipelineStage earliestReadAfterLastWriteStage	= accessedBufferView->GetEarliestStageReadAfterLastWrite();
 
-		if (RequiresSynchronization(accessedBuffer, prevAccess, nextAccess, nextAccessStages, earliestReadAfterLastWriteStage))
+		if (RequiresSynchronization(accessedBuffer, prevAccessStages, prevAccess, nextAccess, nextAccessStages))
 		{
 			rhi::EAccessType sourceAccessType = rhi::EAccessType::None;
 			GetSynchronizationParamsForBuffer(prevAccess, sourceAccessType);
@@ -478,17 +477,6 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
 
 			node.AddBufferSynchronization(accessedBuffer, offset, size, prevAccessStages, sourceAccessType, nextAccessStages, destAccessType);
-
-			if (lib::HasAnyFlag(destAccessType, rhi::EAccessType::Read))
-			{
-				// this has to be the earliest stage - otherwise we woudln't require synchronization
-				const Int32 earliestStage = math::Utils::FirstSetBit(static_cast<Int32>(nextAccessStages));
-				accessedBufferView->SetEarliestStageReadAfterLastWrite(static_cast<rhi::EPipelineStage>(earliestStage));
-			}
-			else
-			{
-				accessedBufferView->SetEarliestStageReadAfterLastWrite(rhi::EPipelineStage::BottomOfPipe);
-			}
 		}
 		
 		accessedBuffer->SetLastAccessNode(&node);
@@ -602,10 +590,10 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 	return transitionSource.layout == rhi::ETextureLayout::Auto // always do transition from "auto" state
 		|| transitionSource.layout != transitionTarget.layout
 		|| prevAccessIsWrite || newAccessIsWrite // read -> write, write -> read, write -> write
-		|| math::Utils::FirstSetBit(static_cast<Int32>(transitionTarget.stage)) < math::Utils::FirstSetBit(static_cast<Int32>(transitionSource.stage)); // read -> read, but target stage is earlier than source stage
+		|| transitionTarget.stage != transitionSource.stage; // read -> read, but target stage is earlier than source stage (it's not necessary in some cases (f.e. vertex shader -> fragment shader) but in practice we don't have such cases
 }
 
-Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess, rhi::EPipelineStage nextAccessStage, rhi::EPipelineStage earliestReadAfterLastWriteStage) const
+Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, rhi::EPipelineStage prevAccessStage, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess, rhi::EPipelineStage nextAccessStage) const
 {
 	// Assume that we don't need synchronization for buffers that were not used before in this render graph and host cannot write to them
 	// This type of buffers should be already properly synchronized using semaphores if wrote on GPU
@@ -628,9 +616,7 @@ Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, ERGBuffe
 		return true;
 	}
 
-	// Both are read - we need to synchronize if this access is "before" dst access in last write->read barrier 
-	const Int32 nextEarliestStage = math::Utils::FirstSetBit(static_cast<Int32>(nextAccessStage));
-	if (nextEarliestStage < static_cast<Int32>(earliestReadAfterLastWriteStage))
+	if (prevAccessStage != nextAccessStage)
 	{
 		return true;
 	}
