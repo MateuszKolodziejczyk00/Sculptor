@@ -43,6 +43,8 @@ struct VolumetricFogParams
 
 	rg::RGTextureViewHandle inScatteringHistoryTextureView;
 
+	rg::RGTextureViewHandle depthTextureView;
+
 	math::Vector3u volumetricFogResolution;
 
 	math::Vector3f fogJitter;
@@ -132,6 +134,8 @@ DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),						u_inScatteringHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inScatteringHistorySampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<VolumetricFogInScatteringParams>),	u_inScatteringParams)
 DS_END();
 
@@ -165,6 +169,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	computeInScatteringDS->u_participatingMediaTexture	= fogParams.participatingMediaTextureView;
 	computeInScatteringDS->u_inScatteringTexture		= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_inScatteringHistoryTexture	= fogParams.inScatteringHistoryTextureView;
+	computeInScatteringDS->u_depthTexture				= fogParams.depthTextureView;
 	computeInScatteringDS->u_inScatteringParams			= inScatteringParams;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
@@ -194,6 +199,8 @@ DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScattering
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inScatteringSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<IntegrateInScatteringParams>),		u_integrateInScatteringParams)
 DS_END();
 
@@ -220,6 +227,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const lib::SharedRef<IntegrateInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
 	computeInScatteringDS->u_inScatteringTexture			= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
+	computeInScatteringDS->u_depthTexture					= fogParams.depthTextureView;
 	computeInScatteringDS->u_integrateInScatteringParams	= params;
 
 	const math::Vector3u dispatchElements = math::Vector3u(fogParams.volumetricFogResolution.x(), fogParams.volumetricFogResolution.y(), 1u);
@@ -247,8 +255,8 @@ DS_BEGIN(ApplyVolumetricFogDS, rg::RGDescriptorSetState<ApplyVolumetricFogDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_integratedInScatteringSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_radianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ApplyVolumetricFogParams>),			u_applyVolumetricFogParams)
 DS_END();
 
@@ -293,6 +301,23 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 } // apply_volumetric_fog
 
+rg::RGTextureViewHandle CreateHiZProperMipViewForVolumetricFog(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, Uint32 volumetricTileSize)
+{
+	SPT_CHECK(math::Utils::IsPowerOf2(volumetricTileSize));
+
+	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	SPT_CHECK(depthPrepassData.hiZ.IsValid());
+
+	const rg::RGTextureHandle hiZTexture = depthPrepassData.hiZ->GetTexture();
+
+	const Uint32 depthPyramidMipIdx = math::Utils::LowestSetBitIdx(volumetricTileSize);
+
+	rhi::TextureViewDefinition hiZProperMipViewDef;
+	hiZProperMipViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, depthPyramidMipIdx, 1, 0, 1);
+	
+	return graphBuilder.CreateTextureView(RG_DEBUG_NAME("HiZ Volumetric Fog View"), hiZTexture, hiZProperMipViewDef);
+}
+
 SceneViewVolumetricDataComponent& GetVolumetricDataForView(RenderSceneEntityHandle viewEntity, const math::Vector3u& volumetricFogResolution)
 {
 	SceneViewVolumetricDataComponent* volumetricDataComp = viewEntity.try_get<SceneViewVolumetricDataComponent>();
@@ -326,8 +351,10 @@ void VolumetricFogRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	const rsc::RenderView& renderView = viewSpec.GetRenderView();
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
+	
+	const Uint32 volumetricTileSize = 8u;
 
-	const math::Vector2u volumetricTileRes(8u, 8u);
+	const math::Vector2u volumetricTileRes(volumetricTileSize, volumetricTileSize);
 	const math::Vector2u volumetricTilesNum = math::Utils::DivideCeil(renderingRes, volumetricTileRes);
 
 	const Uint32 volumetricFogZRes = 128u;
@@ -372,6 +399,7 @@ void VolumetricFogRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	fogParams.inScatteringTextureView				= inScatteringTextureView;
 	fogParams.integratedInScatteringTextureView		= integratedInScatteringTextureView;
 	fogParams.inScatteringHistoryTextureView		= inScatteringHistoryTextureView;
+	fogParams.depthTextureView						= CreateHiZProperMipViewForVolumetricFog(graphBuilder, viewSpec, volumetricTileSize);
 	fogParams.volumetricFogResolution				= volumetricFogRes;
 	fogParams.fogJitter								= jitter;
 	fogParams.nearPlane								= renderView.GetNearPlane();

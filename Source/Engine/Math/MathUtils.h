@@ -111,6 +111,12 @@ public:
 		return value & -value;
 	}
 
+	template<std::unsigned_integral TType>
+	static constexpr TType LowestSetBitIdx(TType value)
+	{
+		return std::countr_zero(value);
+	}
+
 	template<std::integral TType>
 	static constexpr Uint32 CountSetBits(TType value)
 	{

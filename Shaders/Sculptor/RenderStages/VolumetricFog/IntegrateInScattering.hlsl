@@ -22,20 +22,22 @@ void IntegrateInScatteringCS(CS_INPUT input)
 
     if (all(input.globalID.xy < volumetricFogResolution.xy))
     {
+        const float2 uv = (input.globalID.xy + 0.5f) * rcpFogResolution.xy;
+        
         const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
+        const float geometryLinearDepth = ComputeLinearDepth(u_depthTexture.SampleLevel(u_depthSampler, uv, 0).x, nearPlane);
         
         float currentZ = 0.f;
 
         float3 integratedScattering = 0.f;
         float integratedTransmittance = 1.f;
 
-        for (uint z = 0; z < volumetricFogResolution.z; ++z)
+        for (uint z = 0; z < volumetricFogResolution.z && currentZ <= geometryLinearDepth; ++z)
         {
-
             const float fogFroxelDepth = (z + 0.5f) * rcpFogResolution.z;
             const float nextZ = ComputeFogFroxelLinearDepth(fogFroxelDepth, u_integrateInScatteringParams.fogNearPlane, u_integrateInScatteringParams.fogFarPlane);
             
-            const float4 inScatteringExtinction = u_inScatteringTexture.SampleLevel(u_inScatteringSampler, float3(input.globalID.xy, z) * rcpFogResolution, 0);
+            const float4 inScatteringExtinction = u_inScatteringTexture.SampleLevel(u_inScatteringSampler, float3(uv, z * rcpFogResolution.z), 0);
 
             const float3 inScattering = inScatteringExtinction.rgb;
             const float extinction = inScatteringExtinction.a;

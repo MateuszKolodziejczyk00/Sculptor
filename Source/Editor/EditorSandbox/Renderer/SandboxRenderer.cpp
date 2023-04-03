@@ -279,7 +279,7 @@ void SandboxRenderer::InitializeRenderScene()
 					pointLightData.color = math::Vector3f::Random() * 0.4f + math::Vector3f::Constant(0.6f);
 					pointLightData.intensity = x != 0 ? std::clamp(1.f - random, 8.f, 80.f) : 1.f;
 					pointLightData.location = math::Vector3f(x * 3.1f, y * 2.6f, 0.9f + z * 4.6f);
-					pointLightData.radius = 6.f;
+					pointLightData.radius = 4.f;
 
 					// bloom test
 					if (x == -1 && y == 3 && z == 0)

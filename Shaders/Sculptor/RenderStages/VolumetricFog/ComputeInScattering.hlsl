@@ -24,11 +24,26 @@ void ComputeInScatteringCS(CS_INPUT input)
 
     if (all(input.globalID < volumetricFogResolution))
     {
+        const float3 fogResolutionRcp = rcp(float3(volumetricFogResolution));
+        const float3 fogFroxelUVW = (float3(input.globalID) + 0.5f) * fogResolutionRcp;
+
+        const float projectionNearPlane = GetNearPlane(u_sceneView.projectionMatrix);
+
+        const float geometryDepth = u_depthTexture.SampleLevel(u_depthSampler, fogFroxelUVW.xy, 0);
+        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, projectionNearPlane);
+        
         const float fogNearPlane = u_inScatteringParams.fogNearPlane;
         const float fogFarPlane = u_inScatteringParams.fogFarPlane;
 
-        const float3 fogResolutionRcp = rcp(float3(volumetricFogResolution));
-        const float3 fogFroxelUVW = (float3(input.globalID) + 0.5f) * fogResolutionRcp;
+        const float nextFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z + fogResolutionRcp.z, fogNearPlane, fogFarPlane);
+
+        // We need some bias to avoid artifacts when new geometry is unoccluded
+        const float bias = 3.f;
+        if(nextFogFroxelLinearDepth > geometryLinearDepth + bias)
+        {
+            u_inScatteringTexture[input.globalID] = 0.f;
+            return;
+        }
         
         const float4 scatteringExtinction = u_participatingMediaTexture.SampleLevel(u_participatingMediaSampler, fogFroxelUVW, 0);
 
@@ -58,7 +73,7 @@ void ComputeInScatteringCS(CS_INPUT input)
             const float fogFroxelDepthNoJitter = fogFroxelUVW.z;
             const float fogFroxelLinearDepthNoJitter = ComputeFogFroxelLinearDepth(fogFroxelDepthNoJitter, fogNearPlane, fogFarPlane);
 
-            const float3 fogFroxelNDCNoJitter = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepthNoJitter, GetNearPlane(u_sceneView.projectionMatrixNoJitter));
+            const float3 fogFroxelNDCNoJitter = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepthNoJitter, projectionNearPlane);
             const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpace(fogFroxelNDCNoJitter, u_sceneView.inverseViewProjectionNoJitter);
 
             float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(fogFroxelWorldLocationNoJitter, 1.0f));
