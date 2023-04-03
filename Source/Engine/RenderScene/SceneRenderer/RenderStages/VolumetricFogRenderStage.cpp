@@ -199,8 +199,6 @@ DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScattering
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inScatteringSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<IntegrateInScatteringParams>),		u_integrateInScatteringParams)
 DS_END();
 
@@ -227,7 +225,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const lib::SharedRef<IntegrateInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
 	computeInScatteringDS->u_inScatteringTexture			= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
-	computeInScatteringDS->u_depthTexture					= fogParams.depthTextureView;
 	computeInScatteringDS->u_integrateInScatteringParams	= params;
 
 	const math::Vector3u dispatchElements = math::Vector3u(fogParams.volumetricFogResolution.x(), fogParams.volumetricFogResolution.y(), 1u);
