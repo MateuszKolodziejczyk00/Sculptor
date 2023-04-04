@@ -433,8 +433,5 @@ float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 poi
 
     const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
 
-    // We need larger bias here, because volumetric textures which use this function are much more sensitive to leaking because of low resolution and temporal supersampling which moves samples significantly
-    const float bias = 0.001f;
-    
-    return step(shadowMapDepth + bias, sampleShadowNDC.z);
+    return step(shadowMapDepth, sampleShadowNDC.z);
 }
