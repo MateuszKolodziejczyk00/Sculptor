@@ -150,30 +150,10 @@ struct InScatteringParams
 };
 
 
-float3 ComputeInScattering(in InScatteringParams params)
+float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 {
     float3 inScattering = 0.f;
     
-    // Directional Lights
-    for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
-    {
-        const DirectionalLightGPUData directionalLight = u_directionalLights[i];
-
-        const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
-
-        if (any(lightIntensity > 0.f))
-        {
-            float visibility = 1.f;
-
-            // TODO shadows here
-
-            if(visibility > 0.f)
-            {
-                //inScattering += lightIntensity * visibility * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
-            }
-        }
-    }
-
     // Point lights
     const uint2 lightsTileCoords = GetLightsTile(params.uv, u_lightsData.tileSize);
     const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);

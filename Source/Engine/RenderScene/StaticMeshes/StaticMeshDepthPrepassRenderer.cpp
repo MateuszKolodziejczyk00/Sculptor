@@ -63,19 +63,19 @@ void StaticMeshDepthPrepassRenderer::CullPerView(rg::RenderGraphBuilder& graphBu
 	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
-															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  renderView.GetRenderViewDSRef()));
+															   rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																					  renderView.GetRenderViewDS()));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedSubmeshesNum, 64) / 64;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull And Build Draw Commands"),
 							  m_buildDrawCommandsPipeline,
 							  math::Vector3u(dispatchGroupsNum, 1, 1),
-							  rg::BindDescriptorSets(lib::Ref(batch.cullInstancesDS)));
+							  rg::BindDescriptorSets(batch.cullInstancesDS));
 	}
 }
 
@@ -88,13 +88,13 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
-																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						renderView.GetRenderViewDSRef()));
+																 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																						GeometryManager::Get().GetGeometryDSState(),
+																						renderView.GetRenderViewDS()));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		SMIndirectDepthPrepassCommandsParameters drawParams;
 		drawParams.batchDrawCommandsBuffer = batch.drawCommandsBuffer;
@@ -105,7 +105,7 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 		const Uint32 maxDrawCallsNum = batch.batchedSubmeshesNum;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-								rg::BindDescriptorSets(lib::Ref(batch.drawInstancesDS)),
+								rg::BindDescriptorSets(batch.drawInstancesDS),
 								std::tie(drawParams),
 								[maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{

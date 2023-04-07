@@ -92,11 +92,11 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 	drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountsBuffer;
 
 	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-							rg::BindDescriptorSets(lib::Ref(batch.batchDS),
-												   lib::Ref(batch.perFaceData[viewShadowMapData.faceIdx].drawDS),
-												   lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-												   lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-												   renderView.GetRenderViewDSRef()),
+							rg::BindDescriptorSets(batch.batchDS,
+												   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
+												   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+												   GeometryManager::Get().GetGeometryDSState(),
+												   renderView.GetRenderViewDS()),
 							std::tie(drawParams),
 							[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
@@ -219,9 +219,9 @@ void StaticMeshShadowMapRenderer::BuildBatchDrawCommands(rg::RenderGraphBuilder&
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Build Shadow Maps SM Draw Commands"),
 						  m_buildDrawCommandsPipeline,
 						  math::Vector3u(groupsCount, 1, 1),
-						  rg::BindDescriptorSets(lib::Ref(batch.batchDS),
-												 lib::Ref(batch.cullingDS),
-												 lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS())));
+						  rg::BindDescriptorSets(batch.batchDS,
+												 batch.cullingDS,
+												 StaticMeshUnifiedData::Get().GetUnifiedDataDS()));
 }
 
 } // spt::rsc

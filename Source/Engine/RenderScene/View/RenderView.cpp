@@ -66,12 +66,6 @@ const lib::SharedPtr<RenderViewDS>& RenderView::GetRenderViewDS() const
 	return m_renderViewDS;
 }
 
-lib::SharedRef<RenderViewDS> RenderView::GetRenderViewDSRef() const
-{
-	SPT_CHECK(!!GetRenderViewDS());
-	return lib::Ref(GetRenderViewDS());
-}
-
 void RenderView::SetAntiAliasingMode(EAntiAliasingMode::Type mode)
 {
 	m_aaMode = mode;

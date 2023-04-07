@@ -94,43 +94,43 @@ void StaticMeshForwardOpaqueRenderer::CullPerView(rg::RenderGraphBuilder& graphB
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
-															   rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																					  renderView.GetRenderViewDSRef(),
-																					  lib::Ref(prepassData.depthCullingDS)));
+															   rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																					  renderView.GetRenderViewDS(),
+																					  prepassData.depthCullingDS));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		const Uint32 dispatchGroupsNum = math::Utils::RoundUp<Uint32>(batch.batchedSubmeshesNum, 64) / 64;
 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("SM Cull Submeshes"),
 							  m_cullSubmeshesPipeline,
 							  math::Vector3u(dispatchGroupsNum, 1, 1),
-							  rg::BindDescriptorSets(lib::Ref(batch.cullSubmeshesDS)));
+							  rg::BindDescriptorSets(batch.cullSubmeshesDS));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Meshlets"),
 									  m_cullMeshletsPipeline,
 									  batch.visibleBatchElementsDispatchParamsBuffer,
 									  0,
-									  rg::BindDescriptorSets(lib::Ref(batch.cullMeshletsDS)));
+									  rg::BindDescriptorSets(batch.cullMeshletsDS));
 	}
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		graphBuilder.DispatchIndirect(RG_DEBUG_NAME("SM Cull Triangles"),
 									  m_cullTrianglesPipeline,
 									  batch.meshletsWorkloadsDispatchArgsBuffer,
 									  0,
-									  rg::BindDescriptorSets(lib::Ref(batch.cullTrianglesDS),
-															 lib::Ref(GeometryManager::Get().GetGeometryDSState())));
+									  rg::BindDescriptorSets(batch.cullTrianglesDS,
+															 GeometryManager::Get().GetGeometryDSState()));
 	}
 }
 
@@ -143,21 +143,19 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
-																 rg::BindDescriptorSets(lib::Ref(StaticMeshUnifiedData::Get().GetUnifiedDataDS()),
-																						lib::Ref(GeometryManager::Get().GetGeometryDSState()),
-																						renderView.GetRenderViewDSRef()));
+																 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																						GeometryManager::Get().GetGeometryDSState(),
+																						renderView.GetRenderViewDS()));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(lib::Ref(batch.batchDS)));
+		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
 
 		SMIndirectTrianglesBatchDrawParams drawParams;
 		drawParams.batchDrawCommandsBuffer = batch.drawTrianglesBatchArgsBuffer;
 
-		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
-
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-								rg::BindDescriptorSets(lib::Ref(batch.indirectRenderTrianglesDS),
+								rg::BindDescriptorSets(batch.indirectRenderTrianglesDS,
 													   MaterialsUnifiedData::Get().GetMaterialsDS()),
 								std::tie(drawParams),
 								[drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)

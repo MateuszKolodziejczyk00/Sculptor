@@ -7,11 +7,14 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "DescriptorSetBindings/AccelerationStructureBinding.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "EngineFrame.h"
 #include "Sequences.h"
+#include "RenderScene.h"
 
 namespace spt::rsc
 {
@@ -24,6 +27,9 @@ RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" 
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.15f, 0.f, 1.f);
 
 RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 20.f, 1.f, 50.f);
+
+RendererBoolParameter enableDirectionalLightsInScattering("Enable Directional Lights Scattering", { "Volumetric Fog" }, true);
+RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directional Lights Volumetric RT Shadows", { "Volumetric Fog" }, true);
 
 } // parameters
 
@@ -111,7 +117,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Participating Media"),
 						  renderParticipatingMediaPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(participatingMediaDS, renderView.GetRenderViewDSRef()));
+						  rg::BindDescriptorSets(participatingMediaDS, renderView.GetRenderViewDS()));
 }
 
 } // participating_media
@@ -126,7 +132,9 @@ BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
 	SHADER_STRUCT_FIELD(Real32,			fogFarPlane)
 	SHADER_STRUCT_FIELD(Bool,			hasValidHistory)
 	SHADER_STRUCT_FIELD(Real32,			accumulationCurrentFrameWeight)
+	SHADER_STRUCT_FIELD(Real32,			enableDirectionalLightsInScattering)
 END_SHADER_STRUCT();
+
 
 DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_participatingMediaTexture)
@@ -140,9 +148,31 @@ DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
 DS_END();
 
 
+BEGIN_SHADER_STRUCT(VolumetricRayTracedShadowsParams)
+	SHADER_STRUCT_FIELD(Real32,	shadowRayMinT)
+	SHADER_STRUCT_FIELD(Real32, shadowRayMaxT)
+	SHADER_STRUCT_FIELD(Bool,	enableDirectionalLightsVolumetricRTShadows)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(InScatteringAccelerationStructureDS, rg::RGDescriptorSetState<InScatteringAccelerationStructureDS>)
+	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),											u_sceneAccelerationStructure)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<VolumetricRayTracedShadowsParams>),		u_volumetricRayTracedShadowsParams)
+DS_END();
+
+
 static rdr::PipelineStateID CompileComputeInScatteringPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
+	if (rdr::Renderer::IsRayTracingEnabled())
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_RAY_TRACING", "1"));
+		compilationSettings.DisableGeneratingDebugSource();
+	}
+	else
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_RAY_TRACING", "0"));
+	}
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeInScatteringCS"));
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/VolumetricFog/ComputeInScattering.hlsl", compilationSettings);
 
@@ -158,12 +188,13 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetData().Get<ViewSpecShadingParameters>();
 
 	VolumetricFogInScatteringParams inScatteringParams;
-	inScatteringParams.jitter							= fogParams.fogJitter;
-	inScatteringParams.phaseFunctionAnisotrophy			= parameters::phaseFunctionAnisotrophy;
-	inScatteringParams.hasValidHistory					= fogParams.inScatteringHistoryTextureView.IsValid();
-	inScatteringParams.accumulationCurrentFrameWeight	= 0.05f;
-	inScatteringParams.fogNearPlane						= fogParams.nearPlane;
-	inScatteringParams.fogFarPlane						= fogParams.farPlane;
+	inScatteringParams.jitter								= fogParams.fogJitter;
+	inScatteringParams.phaseFunctionAnisotrophy				= parameters::phaseFunctionAnisotrophy;
+	inScatteringParams.hasValidHistory						= fogParams.inScatteringHistoryTextureView.IsValid();
+	inScatteringParams.accumulationCurrentFrameWeight		= 0.05f;
+	inScatteringParams.enableDirectionalLightsInScattering	= parameters::enableDirectionalLightsInScattering;
+	inScatteringParams.fogNearPlane							= fogParams.nearPlane;
+	inScatteringParams.fogFarPlane							= fogParams.farPlane;
 
 	const lib::SharedRef<ComputeInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<ComputeInScatteringDS>(RENDERER_RESOURCE_NAME("ComputeInScatteringDS"));
 	computeInScatteringDS->u_participatingMediaTexture	= fogParams.participatingMediaTextureView;
@@ -171,6 +202,21 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	computeInScatteringDS->u_inScatteringHistoryTexture	= fogParams.inScatteringHistoryTextureView;
 	computeInScatteringDS->u_depthTexture				= fogParams.depthTextureView;
 	computeInScatteringDS->u_inScatteringParams			= inScatteringParams;
+
+	lib::SharedPtr<InScatteringAccelerationStructureDS> accelerationStructureDS;
+	if (rdr::Renderer::IsRayTracingEnabled())
+	{
+		RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
+
+		VolumetricRayTracedShadowsParams volumetricRayTracedShadowsParams;
+		volumetricRayTracedShadowsParams.shadowRayMinT								= 0.04f;
+		volumetricRayTracedShadowsParams.shadowRayMaxT								= 30.f;
+		volumetricRayTracedShadowsParams.enableDirectionalLightsVolumetricRTShadows	= parameters::enableDirectionalLightsVolumetricRTShadows;
+
+		accelerationStructureDS = rdr::ResourcesManager::CreateDescriptorSetState<InScatteringAccelerationStructureDS>(RENDERER_RESOURCE_NAME("InScatteringAccelerationStructureDS"));
+		accelerationStructureDS->u_sceneAccelerationStructure		= lib::Ref(rayTracingSubsystem.GetSceneTLAS());
+		accelerationStructureDS->u_volumetricRayTracedShadowsParams	= volumetricRayTracedShadowsParams;
+	}
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
@@ -180,9 +226,10 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  computeInScatteringPipeline,
 						  dispatchSize,
 						  rg::BindDescriptorSets(computeInScatteringDS,
-												 renderView.GetRenderViewDSRef(),
-												 lib::Ref(shadingParams.shadingInputDS),
-												 lib::Ref(shadingParams.shadowMapsDS)));
+												 renderView.GetRenderViewDS(),
+												 shadingParams.shadingInputDS,
+												 shadingParams.shadowMapsDS,
+												 accelerationStructureDS));
 }
 
 } // in_scattering
@@ -235,7 +282,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Integrate In-Scattering"),
 						  computeInScatteringPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(computeInScatteringDS, renderView.GetRenderViewDSRef()));
+						  rg::BindDescriptorSets(computeInScatteringDS, renderView.GetRenderViewDS()));
 }
 
 } // integrate_in_scattering
@@ -293,7 +340,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Volumetric Fog"),
 						  applyVolumetricFogPipeline,
 						  dispatchSize,
-						  rg::BindDescriptorSets(applyVolumetricFogDS, renderView.GetRenderViewDSRef()));
+						  rg::BindDescriptorSets(applyVolumetricFogDS, renderView.GetRenderViewDS()));
 }
 
 } // apply_volumetric_fog

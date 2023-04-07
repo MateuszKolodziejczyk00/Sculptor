@@ -241,7 +241,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,
 							   math::Vector3u(renderingRes.x(), renderingRes.y(), 1),
-							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDSRef()));
+							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDS()));
 	}
 
 	const math::Vector3u postProcessDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(8, 8, 1));
@@ -278,7 +278,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Accumulate Shadows"),
 									  accumulateShadowsPipeline,
 									  postProcessDispatchGroups,
-									  rg::BindDescriptorSets(renderView.GetRenderViewDSRef(), dirShadowsAccumulationMasksDS));
+									  rg::BindDescriptorSets(renderView.GetRenderViewDS(), dirShadowsAccumulationMasksDS));
 			}
 		}
 	}
@@ -324,7 +324,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Horizontal Bilateral Blur"),
 									  shadowsBilateralBlurPipeline,
 									  postProcessDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralHorizontalBlurDS, renderView.GetRenderViewDSRef()));
+									  rg::BindDescriptorSets(shadowsBilateralHorizontalBlurDS, renderView.GetRenderViewDS()));
 			}
 
 			{
@@ -340,7 +340,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Vertical Bilateral Blur"),
 									  shadowsBilateralBlurPipeline,
 									  postProcessDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralVerticalBlurDS, renderView.GetRenderViewDSRef()));
+									  rg::BindDescriptorSets(shadowsBilateralVerticalBlurDS, renderView.GetRenderViewDS()));
 			}
 		}
 	}

@@ -91,7 +91,8 @@ public:
 		return m_storage.get();
 	}
 
-	SPT_NODISCARD operator SharedPtr<TType>() const
+	template<typename TOtherType> requires std::is_base_of_v<TOtherType, TType>
+	SPT_NODISCARD operator SharedPtr<TOtherType>() const
 	{
 		return ToSharedPtr();
 	}

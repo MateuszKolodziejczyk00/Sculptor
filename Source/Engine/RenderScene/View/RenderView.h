@@ -78,7 +78,6 @@ public:
 	const RenderSceneEntityHandle& GetViewEntity() const;
 
 	const lib::SharedPtr<RenderViewDS>& GetRenderViewDS() const;
-	lib::SharedRef<RenderViewDS> GetRenderViewDSRef() const;
 
 	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
 	EAntiAliasingMode::Type GetAnitAliasingMode() const;

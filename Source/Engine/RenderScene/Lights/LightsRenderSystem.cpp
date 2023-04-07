@@ -449,13 +449,13 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
 							  m_buildLightsZClustersPipeline,
 							  dispatchZClustersGroupsNum,
-							  rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildZClustersDS)));
+							  rg::BindDescriptorSets(lightsRenderingData.buildZClustersDS));
 
 		const math::Vector3u dispatchLightsGroupsNum = math::Vector3u(math::Utils::DivideCeil<Uint32>(lightsRenderingData.localLightsToRenderNum, 32), 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
 							  m_generateLightsDrawCommandsPipeline,
 							  dispatchLightsGroupsNum,
-							  rg::BindDescriptorSets(lib::Ref(lightsRenderingData.generateLightsDrawCommnadsDS), lib::Ref(depthPrepassData.depthCullingDS), renderView.GetRenderViewDSRef()));
+							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, depthPrepassData.depthCullingDS, renderView.GetRenderViewDS()));
 
 		const math::Vector2u renderingArea = lightsRenderingData.tilesNum;
 
@@ -470,7 +470,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 		graphBuilder.RenderPass(RG_DEBUG_NAME("Build Lights Tiles"),
 								lightsTilesRenderPassDef,
-								rg::BindDescriptorSets(lib::Ref(lightsRenderingData.buildLightTilesDS), renderView.GetRenderViewDSRef()),
+								rg::BindDescriptorSets(lightsRenderingData.buildLightTilesDS, renderView.GetRenderViewDS()),
 								std::tie(passIndirectParams),
 								[this, passIndirectParams, maxLightDrawsCount, renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{

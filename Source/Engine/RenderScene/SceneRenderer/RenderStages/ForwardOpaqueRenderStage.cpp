@@ -98,7 +98,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,
-							rg::BindDescriptorSets(lib::Ref(shadingParams.shadingInputDS), lib::Ref(shadingParams.shadowMapsDS)),
+							rg::BindDescriptorSets(shadingParams.shadingInputDS, shadingParams.shadowMapsDS),
 							[renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);

@@ -20,7 +20,7 @@ Toy vulkan renderer made for learning purposes.
 - Film tonemapper
 - Luminance histogram and automatic exposure
 - Temporal AA
-- Volumetric Fog (Currently without directional lights)
+- Volumetric Fog
 - Shaders hot reloading
 - Bindless resources
 - Physically based shading

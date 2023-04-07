@@ -29,13 +29,13 @@ template<typename... TDescriptorSetStates>
 auto BindDescriptorSets(TDescriptorSetStates&&... descriptorSetStates)
 {
 	constexpr SizeType size = lib::ParameterPackSize<TDescriptorSetStates...>::Count;
-	return lib::StaticArray<lib::SharedRef<rg::RGDescriptorSetStateBase>, size>{ descriptorSetStates... };
+	return lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetStateBase>, size>{ lib::SharedPtr<rg::RGDescriptorSetStateBase>(std::forward<TDescriptorSetStates>(descriptorSetStates))... };
 }
 
 
 inline decltype(auto) EmptyDescriptorSets()
 {
-	static lib::StaticArray<lib::SharedRef<rg::RGDescriptorSetStateBase>, 0> empty;
+	static lib::StaticArray<lib::SharedPtr<rg::RGDescriptorSetStateBase>, 0> empty;
 	return empty;
 }
 
@@ -138,7 +138,7 @@ private:
 	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
 	template<typename TDescriptorSetStatesRange>
-	void AddDescriptorSetStatesToNode(RGNodeHandle node, const TDescriptorSetStatesRange& dsStatesRange);
+	void AddDescriptorSetStatesToNode(RGNodeHandle node, TDescriptorSetStatesRange&& dsStatesRange);
 
 	template<typename TDescriptorSetStatesRange>
 	void BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const;
@@ -294,9 +294,12 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	using SubpassType	= RGLambdaSubpass<CallableType>;
 	RGSubpassHandle subpass = m_allocator.Allocate<SubpassType>(subpassName, std::forward<TCallable>(callable));
 
-	for (const lib::SharedRef<rdr::DescriptorSetState>& dsState : dsStatesRange)
+	for (const lib::SharedPtr<rdr::DescriptorSetState>& dsState : dsStatesRange)
 	{
-		subpass->BindDSState(dsState);
+		if (dsState)
+		{
+			subpass->BindDSState(lib::Ref(dsState));
+		}
 	}
 
 	for (const lib::SharedRef<rdr::DescriptorSetState>& dsState : m_boundDSStates)
@@ -361,14 +364,18 @@ RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugN
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::AddDescriptorSetStatesToNode(RGNodeHandle node, const TDescriptorSetStatesRange& dsStatesRange)
+void RenderGraphBuilder::AddDescriptorSetStatesToNode(RGNodeHandle node, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (const lib::SharedRef<rdr::DescriptorSetState>& state : dsStatesRange)
+	for (const lib::SharedPtr<rdr::DescriptorSetState>& state : dsStatesRange)
 	{
-		node->AddDescriptorSetState(state);
+		if (state)
+		{
+			node->AddDescriptorSetState(lib::Ref(state));
+		}
 	}
+
 	for (const lib::SharedRef<rdr::DescriptorSetState>& state : m_boundDSStates)
 	{
 		node->AddDescriptorSetState(state);
@@ -382,7 +389,10 @@ void RenderGraphBuilder::BuildDescriptorSetDependencies(const TDescriptorSetStat
 
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
 	{
-		stateToBind->BuildRGDependencies(dependenciesBuilder);
+		if (stateToBind)
+		{
+			stateToBind->BuildRGDependencies(dependenciesBuilder);
+		}
 	}
 	
 	for (const lib::SharedPtr<RGDescriptorSetStateBase>& stateToBind : m_boundDSStatesWithDependencies)
@@ -427,17 +437,23 @@ public:
 		: m_graphBuilder(graphBuilder)
 		, m_descriptorSets(descriptorSets)
 	{
-		for (const lib::SharedRef<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
+		for (const lib::SharedPtr<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
-			m_graphBuilder.BindDescriptorSetState(ds);
+			if (ds)
+			{
+				m_graphBuilder.BindDescriptorSetState(lib::Ref(ds));
+			}
 		}
 	}
 
 	~BindDescriptorSetsScope()
 	{
-		for (const lib::SharedRef<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
+		for (const lib::SharedPtr<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
-			m_graphBuilder.UnbindDescriptorSetState(ds);
+			if (ds)
+			{
+				m_graphBuilder.UnbindDescriptorSetState(lib::Ref(ds));
+			}
 		}
 	}
 
