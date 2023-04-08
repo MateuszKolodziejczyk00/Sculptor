@@ -37,25 +37,20 @@ static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
     float2(-0.551160, 0.599598)};
 
 
-#define PCF_SHADOW_SAMPLES_NUM 13
+#define PCF_SHADOW_SAMPLES_NUM 9 
 
 
 static const float2 pcfShadowSamples[PCF_SHADOW_SAMPLES_NUM] = {
-    float2(0.f, 0.f),
-    float2(-0.847682, -0.289223),
-    float2(0.996032, 0.655202),
-    float2(-0.292642, 0.906186),
-    float2(-0.996887, -0.578296),
-    float2(0.936888, -0.959595),
-    float2(-0.816645, 0.355573),
-    float2(0.937804, -0.124607),
-    float2(-0.279643, -0.970275),
-    float2(0.290383, 0.855342),
-    float2(-0.495529, -0.311257),
-    float2(-0.997315, 0.961975),
-    float2(-0.062288, 0.383587)
+    float2(-0.474, 0.054),
+    float2(0.650, -0.644),
+    float2(0.136, 0.580),
+    float2(0.914, 0.802),
+    float2(-0.753, -0.732),
+    float2(-0.216, -0.448),
+    float2(0.368, -0.864),
+    float2(-0.522, 0.742),
+    float2(0.484, 0.006)
 };
-
 
 
 #define SM_QUALITY_LOW 0
@@ -279,7 +274,7 @@ float EvaluateShadowsDPCF(Texture2D shadowMap, SamplerState shadowSampler, float
         
         const float4 depths = shadowMap.Gather(shadowSampler, uv);
 
-        [[unroll]]
+        [unroll]
         for (uint depthIdx = 0; depthIdx < 4; ++depthIdx)
         {
             const float occluderLinearDepth = ComputeShadowLinearDepth(depths[depthIdx], p20, p23);

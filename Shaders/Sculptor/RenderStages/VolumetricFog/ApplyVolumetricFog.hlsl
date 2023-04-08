@@ -53,7 +53,7 @@ void ApplyVolumetricFogCS(CS_INPUT input)
             [unroll]
             for (int j = -1; j <= 1; ++j)
             {
-                const float2 currentSampleUV = uv + float2(i, j) * pixelSize * 4.f;
+                const float2 currentSampleUV = uv + float2(i, j) * pixelSize * u_applyVolumetricFogParams.blendPixelsOffset;
 
                 const float sampleDepth = u_depthTexture.SampleLevel(u_depthSampler, currentSampleUV, 0);
 

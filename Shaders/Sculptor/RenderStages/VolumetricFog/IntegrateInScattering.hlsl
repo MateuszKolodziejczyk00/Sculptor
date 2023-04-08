@@ -18,11 +18,13 @@ void IntegrateInScatteringCS(CS_INPUT input)
     uint3 volumetricFogResolution;
     u_integratedInScatteringTexture.GetDimensions(volumetricFogResolution.x, volumetricFogResolution.y, volumetricFogResolution.z);
 
-    const float3 rcpFogResolution = rcp(float3(volumetricFogResolution));
-
     if (all(input.globalID.xy < volumetricFogResolution.xy))
     {
+        const float3 rcpFogResolution = rcp(float3(volumetricFogResolution));
         const float2 uv = (input.globalID.xy + 0.5f) * rcpFogResolution.xy;
+
+        const float geometryDepth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
+        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, GetNearPlane(u_sceneView.projectionMatrix));
         
         float currentZ = 0.f;
 
@@ -46,7 +48,7 @@ void IntegrateInScatteringCS(CS_INPUT input)
             const float3 scattering = (inScattering * (1.f - transmittance)) / clampedExtinction;
 
             integratedScattering += scattering * integratedTransmittance;
-            integratedTransmittance *= transmittance;
+            integratedTransmittance *= max(transmittance, 0.f);
 
             currentZ = nextZ;
         

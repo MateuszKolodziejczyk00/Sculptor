@@ -22,9 +22,10 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.17f, 0.f, 1.f);
+RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.03f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 1.f, 0.f, 1.f);
-RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.15f, 0.f, 1.f);
+RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
+RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.85f, 0.f, 1.f);
 
 RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 20.f, 1.f, 50.f);
 
@@ -100,7 +101,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	RenderParticipatingMediaParams pariticipatingMediaParams;
-	pariticipatingMediaParams.constantFogColor		= math::Vector3f::Constant(0.5f);
+	pariticipatingMediaParams.constantFogColor		= math::Vector3f::Constant(1.0f);
 	pariticipatingMediaParams.constantFogDensity	= parameters::fogDensity;
 	pariticipatingMediaParams.scatteringFactor		= parameters::scatteringFactor;
 	pariticipatingMediaParams.fogNearPlane			= fogParams.nearPlane;
@@ -127,7 +128,8 @@ namespace in_scattering
 
 BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
 	SHADER_STRUCT_FIELD(math::Vector3f,	jitter)
-	SHADER_STRUCT_FIELD(Real32,			phaseFunctionAnisotrophy)
+	SHADER_STRUCT_FIELD(Real32,			localLightsPhaseFunctionAnisotrophy)
+	SHADER_STRUCT_FIELD(Real32,			dirLightsPhaseFunctionAnisotrophy)
 	SHADER_STRUCT_FIELD(Real32,			fogNearPlane)
 	SHADER_STRUCT_FIELD(Real32,			fogFarPlane)
 	SHADER_STRUCT_FIELD(Bool,			hasValidHistory)
@@ -189,7 +191,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	VolumetricFogInScatteringParams inScatteringParams;
 	inScatteringParams.jitter								= fogParams.fogJitter;
-	inScatteringParams.phaseFunctionAnisotrophy				= parameters::phaseFunctionAnisotrophy;
+	inScatteringParams.localLightsPhaseFunctionAnisotrophy	= parameters::localLightsPhaseFunctionAnisotrophy;
+	inScatteringParams.dirLightsPhaseFunctionAnisotrophy	= parameters::dirLightsPhaseFunctionAnisotrophy;
 	inScatteringParams.hasValidHistory						= fogParams.inScatteringHistoryTextureView.IsValid();
 	inScatteringParams.accumulationCurrentFrameWeight		= 0.05f;
 	inScatteringParams.enableDirectionalLightsInScattering	= parameters::enableDirectionalLightsInScattering;
@@ -246,6 +249,8 @@ DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScattering
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inScatteringSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<IntegrateInScatteringParams>),		u_integrateInScatteringParams)
 DS_END();
 
@@ -272,6 +277,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const lib::SharedRef<IntegrateInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
 	computeInScatteringDS->u_inScatteringTexture			= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
+	computeInScatteringDS->u_depthTexture					= fogParams.depthTextureView;
 	computeInScatteringDS->u_integrateInScatteringParams	= params;
 
 	const math::Vector3u dispatchElements = math::Vector3u(fogParams.volumetricFogResolution.x(), fogParams.volumetricFogResolution.y(), 1u);
@@ -293,6 +299,7 @@ namespace apply_volumetric_fog
 BEGIN_SHADER_STRUCT(ApplyVolumetricFogParams)
 	SHADER_STRUCT_FIELD(Real32, fogNearPlane)
 	SHADER_STRUCT_FIELD(Real32, fogFarPlane)
+	SHADER_STRUCT_FIELD(Real32, blendPixelsOffset)
 END_SHADER_STRUCT();
 
 DS_BEGIN(ApplyVolumetricFogDS, rg::RGDescriptorSetState<ApplyVolumetricFogDS>)
@@ -324,8 +331,10 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const ShadingData& shadingData				= viewSpec.GetData().Get<ShadingData>();
 
 	ApplyVolumetricFogParams params;
-	params.fogNearPlane	= fogParams.nearPlane;
-	params.fogFarPlane	= fogParams.farPlane;
+	params.fogNearPlane			= fogParams.nearPlane;
+	params.fogFarPlane			= fogParams.farPlane;
+	params.blendPixelsOffset	= 4.f;
+
 
 	const lib::SharedRef<ApplyVolumetricFogDS> applyVolumetricFogDS = rdr::ResourcesManager::CreateDescriptorSetState<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
 	applyVolumetricFogDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
@@ -354,7 +363,10 @@ rg::RGTextureViewHandle CreateHiZProperMipViewForVolumetricFog(rg::RenderGraphBu
 
 	const rg::RGTextureHandle hiZTexture = depthPrepassData.hiZ->GetTexture();
 
-	const Uint32 depthPyramidMipIdx = math::Utils::LowestSetBitIdx(volumetricTileSize);
+	// We need to use greater mip to avoid artifacts with blending.
+	// The reason is that we use linear filtering for integrated in scattering texture, so we may access neighbor froxels that are occluded
+	// This still may not be enough and we may have lower scattering and transmittance values near occluded froxels but it's acceptable
+	const Uint32 depthPyramidMipIdx = math::Utils::LowestSetBitIdx(volumetricTileSize) + 1;
 
 	rhi::TextureViewDefinition hiZProperMipViewDef;
 	hiZProperMipViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, depthPyramidMipIdx, 1, 0, 1);

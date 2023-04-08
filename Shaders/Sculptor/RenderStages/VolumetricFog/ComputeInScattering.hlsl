@@ -91,13 +91,11 @@ void ComputeInScatteringCS(CS_INPUT input)
         const float fogNearPlane = u_inScatteringParams.fogNearPlane;
         const float fogFarPlane = u_inScatteringParams.fogFarPlane;
 
-        const float nextFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z + fogResolutionRcp.z, fogNearPlane, fogFarPlane);
-
-        // We need some bias to avoid artifacts when new geometry is unoccluded
-        const float bias = 4.f;
-        if(nextFogFroxelLinearDepth > geometryLinearDepth + bias)
+        const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z - fogResolutionRcp.z, fogNearPlane, fogFarPlane);
+        
+        if(prevFogFroxelLinearDepth > geometryLinearDepth)
         {
-            u_inScatteringTexture[input.globalID] = 0.f;
+            u_inScatteringTexture[input.globalID] = float4(0.f, 0.f, 0.f, -0.1f);
             return;
         }
         
@@ -117,13 +115,14 @@ void ComputeInScatteringCS(CS_INPUT input)
         params.linearDepth              = fogFroxelLinearDepth;
         params.worldLocation            = fogFroxelWorldLocation;
         params.toViewNormal             = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
-        params.phaseFunctionAnisotrophy = u_inScatteringParams.phaseFunctionAnisotrophy;
+        params.phaseFunctionAnisotrophy = u_inScatteringParams.localLightsPhaseFunctionAnisotrophy;
         params.inScatteringColor        = scatteringExtinction.rgb;
 
         float3 inScattering = ComputeLocalLightsInScattering(params);
 
         if(u_inScatteringParams.enableDirectionalLightsInScattering)
         {
+            params.phaseFunctionAnisotrophy = u_inScatteringParams.dirLightsPhaseFunctionAnisotrophy;
             inScattering += ComputeDirectionalLightsInScattering(params);
         }
 
@@ -148,7 +147,10 @@ void ComputeInScatteringCS(CS_INPUT input)
 
                 const float4 inScatteringExtinctionHistory = u_inScatteringHistoryTexture.SampleLevel(u_inScatteringHistorySampler, prevFrameFogFroxelUVW, 0);
 
-                inScatteringExtinction = lerp(inScatteringExtinctionHistory, inScatteringExtinction, u_inScatteringParams.accumulationCurrentFrameWeight);
+                if (inScatteringExtinctionHistory.w > 0.f)
+                {
+                    inScatteringExtinction = lerp(inScatteringExtinctionHistory, inScatteringExtinction, u_inScatteringParams.accumulationCurrentFrameWeight);
+                }
             }
         }
 
