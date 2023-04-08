@@ -366,7 +366,11 @@ float ComputeMSMHamburger(in float4 moments, in float fragmentDepth , in float d
 
 float EvaluateShadowsMSM(Texture2D shadowMap, SamplerState shadowSampler, float2 shadowMapUV, float linearDepth, float farPlane)
 {
+#ifdef FRAGMENT_SHADER
     float4 moments = shadowMap.Sample(shadowSampler, shadowMapUV);
+#else
+    float4 moments = shadowMap.SampleLevel(shadowSampler, shadowMapUV, 0);
+#endif // FRAGMENT_SHADER
     moments = ConvertOptimizedMoments(moments);
     return ComputeMSMHamburger(moments, linearDepth / farPlane, 0.f, 0.000003f);
 }
@@ -426,7 +430,25 @@ float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 poi
 
     const float2 shadowMapUV = sampleShadowNDC.xy * 0.5f + 0.5f;
 
-    const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
+    if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_DPCF)
+    {
+        const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
+        return step(shadowMapDepth, sampleShadowNDC.z);
+    }
+    else if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_MSM)
+    {
+        const float nearPlane = u_shadowsSettings.shadowViewsNearPlane;
+        const float farPlane = pointLightAttenuationRadius;
+       
+        const float surfaceNDCDepth = sampleShadowNDC.z;
 
-    return step(shadowMapDepth, sampleShadowNDC.z);
+        float p20, p23;
+        ComputeShadowProjectionParams(nearPlane, farPlane, p20, p23);
+
+        const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
+
+        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_momentShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
+    }
+
+    return 1.f;
 }
