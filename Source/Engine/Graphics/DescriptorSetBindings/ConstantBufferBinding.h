@@ -169,7 +169,7 @@ private:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		constexpr Uint64 structSize = sizeof(TStruct);
+		constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
 
 		const Bool isPersistent = lib::HasAnyFlag(owningState.GetFlags(), rdr::EDescriptorSetStateFlags::Persistent) || isImmutable;
 		const Uint32 structsCopiesNum = isPersistent ? rdr::RendererSettings::Get().framesInFlight : 1;

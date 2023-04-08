@@ -15,17 +15,27 @@ struct CS_INPUT
 void TonemappingCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
+    
+    uint2 outputRes;
+    u_LDRTexture.GetDimensions(outputRes.x, outputRes.y);
 
-    if(pixel.x < u_tonemappingSettings.textureSize.x && pixel.y < u_tonemappingSettings.textureSize.y)
+    if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
         const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
         const float exposure = ConvertEV100ToExposure(EV100);
+
+        const float2 pixelSize = rcp(float2(outputRes));
   
-        const float2 uv = pixel * u_tonemappingSettings.inputPixelSize + u_tonemappingSettings.inputPixelSize * 0.5f;
+        const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
         float3 color = u_radianceTexture.SampleLevel(u_sampler, uv, 0).xyz;
         color *= exposure;
 
         color = LinearTosRGB(TonemapACES(color));
+
+        if(u_tonemappingSettings.enableColorDithering)
+        {
+            color += Random(pixel) * rcp(255.f);
+        }
 
         u_LDRTexture[pixel] = float4(color, 1.f);
     }

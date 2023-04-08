@@ -35,6 +35,8 @@ RendererFloatParameter bloomEC("BloomEC", { "Bloom" }, 2.1f, -10.f, 10.f);
 RendererFloatParameter bloomScale("Bloom Scale", { "Bloom" }, 1.f, 0.f, 5.f);
 RendererFloatParameter bloomThreshold("Bloom Threshold", { "Bloom" }, 0.95f, 0.f, 1.f);
 
+RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
+
 } // params
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,9 +355,8 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 namespace tonemapping
 {
 
-BEGIN_SHADER_STRUCT(TonemappingSettings)
-	SHADER_STRUCT_FIELD(math::Vector2u, textureSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
+BEGIN_SHADER_STRUCT(TonemappingPassSettings)
+	SHADER_STRUCT_FIELD(Bool, enableColorDithering)
 END_SHADER_STRUCT();
 
 
@@ -363,7 +364,7 @@ DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_radianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_sampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_LDRTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingSettings>),						u_tonemappingSettings)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassSettings>),					u_tonemappingSettings)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Real32>),									u_adaptedLuminance)
 DS_END();
 
@@ -377,7 +378,7 @@ static rdr::PipelineStateID CompileTonemappingPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TonemappingPipeline"), shader);
 }
 
-static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle radianceTexture, const TonemappingSettings& tonemappingSettings, rg::RGTextureViewHandle ldrTexture, rg::RGBufferViewHandle adaptedLuminance)
+static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle radianceTexture, const TonemappingPassSettings& tonemappingSettings, rg::RGTextureViewHandle ldrTexture, rg::RGBufferViewHandle adaptedLuminance)
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -389,8 +390,9 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
 
-	const math::Vector2u textureRes = tonemappingSettings.textureSize;
-	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 8u), math::Utils::DivideCeil(textureRes.y(), 8u), 1);
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+
+	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"), pipelineState, dispatchGroupsNum, rg::BindDescriptorSets(tonemappingDS));
 }
 
@@ -473,9 +475,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 		bloom::ApplyBloom(graphBuilder, viewSpec, adaptedLuminance, shadingData.radiance);
 	}
 
-	tonemapping::TonemappingSettings tonemappingSettings;
-	tonemappingSettings.textureSize		= renderingRes;
-	tonemappingSettings.inputPixelSize	= inputPixelSize;
+	tonemapping::TonemappingPassSettings tonemappingSettings;
+	tonemappingSettings.enableColorDithering = params::enableColorDithering;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, shadingData.radiance, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
 
