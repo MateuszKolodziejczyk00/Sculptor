@@ -27,14 +27,14 @@ void AccumulateShadowsCS(CS_INPUT input)
 
         const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, currentDepth), u_sceneView.inverseViewProjection);
 
-        const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrix, float4(worldLocation, 1.f));
+        const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(worldLocation, 1.f));
         const float2 prevFrameUV = (prevFrameClip.xy / prevFrameClip.w) * 0.5f + 0.5f;
 
         if (all(prevFrameUV >= 0.f) && all(prevFrameUV <= 1.f))
         {
             const float prevFrameDepth = prevFrameClip.z / prevFrameClip.w;
 
-            const float prevFrameRenderedDepth = u_prevDepth.SampleLevel(u_depthSampler, prevFrameUV, 0);
+            const float prevFrameRenderedDepth = u_prevDepth.SampleLevel(u_prevDepthSampler, prevFrameUV, 0);
 
             const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
 
@@ -54,8 +54,8 @@ void AccumulateShadowsCS(CS_INPUT input)
                 // this is to avoid accumulation of noise caused by under/over sampling
                 const float currentLinearDepth = ComputeLinearDepth(currentDepth, nearPlane);
                 const float depthDiff = abs(currentLinearDepth - prevFrameDepthLinear);
-                const float maxDepthDiff = 0.1f;
-                const float exponentialAverageAlpha = lerp(u_params.minExponentialAverageAlpha, u_params.maxExponentialAverageAlpha, saturate(depthDiff / maxDepthDiff));
+                const float depthDiffRequiredForMaxWeight = 0.1f;
+                const float exponentialAverageAlpha = lerp(u_params.minExponentialAverageAlpha, u_params.maxExponentialAverageAlpha, saturate(depthDiff / depthDiffRequiredForMaxWeight));
 
                 const float accumulatedShadow = exponentialAverageAlpha * currentFrameShadow + (1.f - exponentialAverageAlpha) * prevAccumulatedShadow;
                 u_shadowMask[pixel] = accumulatedShadow;

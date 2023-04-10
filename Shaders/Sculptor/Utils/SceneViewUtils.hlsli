@@ -40,6 +40,13 @@ bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, f
 }
 
 
+float3 NDCToViewSpace(float3 ndc, float4x4 inverseProjection)
+{
+    const float4 viewSpace = mul(inverseProjection, float4(ndc, 1.f));
+    return viewSpace.xyz / viewSpace.w;
+}
+
+
 float3 NDCToWorldSpace(float3 ndc, float4x4 inverseViewProjection)
 {
     const float4 world = mul(inverseViewProjection, float4(ndc, 1.f));

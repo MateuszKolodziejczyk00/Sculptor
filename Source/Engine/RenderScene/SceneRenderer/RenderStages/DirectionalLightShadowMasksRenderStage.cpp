@@ -27,9 +27,9 @@ RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows"
 RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
 RendererBoolParameter directionalLightAccumulateShadows("Accumulate Shadows", { "Lighting", "Shadows", "Directional", "Accumulation"}, true);
-RendererFloatParameter directionalLightAccumulationMaxDepthDiff("Max Depth Diff", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.05f, 0.f, 1.f);
-RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.05f, 0.f, 1.f);
-RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.15f, 0.f, 1.f);
+RendererFloatParameter directionalLightAccumulationMaxDepthDiff("Max Depth Diff", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.18f, 0.f, 1.f);
+RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.1f, 0.f, 1.f);
+RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.9f, 0.f, 1.f);
 RendererBoolParameter directionalLightApplyShadowsBlur("Shadows Blur", { "Lighting", "Shadows", "Directional"}, true);
 
 } // params
@@ -70,20 +70,15 @@ DS_BEGIN(DirShadowsAccumulationMasksDS, rg::RGDescriptorSetState<DirShadowsAccum
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_depth)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_prevDepth)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_prevDepthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DirShadowsAccumulationParams>),		u_params)
 DS_END();
-
-
-BEGIN_SHADER_STRUCT(ShadowsBilateralBlurParams)
-	SHADER_STRUCT_FIELD(Bool,	isHorizontal)
-END_SHADER_STRUCT();
 
 
 DS_BEGIN(ShadowsBilateralBlurDS, rg::RGDescriptorSetState<ShadowsBilateralBlurDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inputSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsBilateralBlurParams>),		u_params)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depth)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 DS_END()
@@ -111,10 +106,18 @@ static rdr::PipelineStateID CreateAccumulateShadowsPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AccumulateShadowsPipeline"), shader);
 }
 
-static rdr::PipelineStateID CreateeShadowsBilateralBlurPipeline()
+static rdr::PipelineStateID CreateeShadowsBilateralBlurPipeline(Bool isHorizontal)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ShadowsBilateralBlurCS"));
+	if (isHorizontal)
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "1"));
+	}
+	else
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "0"));
+	}
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/ShadowsBilateralBlur.hlsl", compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ShadowsBilateralBlurPipeline"), shader);
@@ -244,12 +247,63 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDS()));
 	}
 
-	const math::Vector3u postProcessDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(8, 8, 1));
+	if (params::directionalLightApplyShadowsBlur)
+	{
+		// Bilateral blur
+		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		{
+			const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+
+			const lib::SharedPtr<rdr::TextureView>& shadowMask		= shadowsData.GetCurrentFrameShadowMask();
+			const lib::SharedRef<rdr::Texture>& shadowMaskTexture	= shadowMask->GetTexture();
+
+			rhi::TextureDefinition temporaryTextureDef;
+			temporaryTextureDef.resolution	= shadowMaskTexture->GetResolution();
+			temporaryTextureDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+			temporaryTextureDef.format		= shadowMaskTexture->GetRHI().GetDefinition().format;
+			const rg::RGTextureViewHandle blurTemporaryTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Shadow Mask Blur Temporary Texture"), temporaryTextureDef, rhi::EMemoryUsage::GPUOnly);
+
+			{
+
+				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralHorizontalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Horizontal Bilateral Blur DS"));
+				shadowsBilateralHorizontalBlurDS->u_inputTexture = shadowMask;
+				shadowsBilateralHorizontalBlurDS->u_outputTexture = blurTemporaryTexture;
+				shadowsBilateralHorizontalBlurDS->u_depth = depthPrepassData.depth;
+			
+				static const rdr::PipelineStateID shadowsHorizontalBilateralBlurPipeline = CreateeShadowsBilateralBlurPipeline(true);
+
+				const math::Vector3u horizontalBlurDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(128, 1, 1));
+
+				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Horizontal Bilateral Blur"),
+									  shadowsHorizontalBilateralBlurPipeline,
+									  horizontalBlurDispatchGroups,
+									  rg::BindDescriptorSets(shadowsBilateralHorizontalBlurDS, renderView.GetRenderViewDS()));
+			}
+
+			{
+				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralVerticalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Vertical Bilateral Blur DS"));
+				shadowsBilateralVerticalBlurDS->u_inputTexture = blurTemporaryTexture;
+				shadowsBilateralVerticalBlurDS->u_outputTexture = shadowMask;
+				shadowsBilateralVerticalBlurDS->u_depth = depthPrepassData.depth;
+			
+				static const rdr::PipelineStateID shadowsVerticalBilateralBlurPipeline = CreateeShadowsBilateralBlurPipeline(false);
+
+				const math::Vector3u verticalBlurDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.y(), renderingRes.x(), 1), math::Vector3u(128, 1, 1));
+
+				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Vertical Bilateral Blur"),
+									  shadowsVerticalBilateralBlurPipeline,
+									  verticalBlurDispatchGroups,
+									  rg::BindDescriptorSets(shadowsBilateralVerticalBlurDS, renderView.GetRenderViewDS()));
+			}
+		}
+	}
 	
 	// Temporal accumulate shadow data
 
 	if (depthPrepassData.prevFrameDepth.IsValid() && params::directionalLightAccumulateShadows)
 	{
+		const math::Vector3u accumulationDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(8, 8, 1));
+
 		static const rdr::PipelineStateID accumulateShadowsPipeline = CreateAccumulateShadowsPipeline();
 
 		for (const auto& [entity, directionalLight] : directionalLightsView.each())
@@ -277,70 +331,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Accumulate Shadows"),
 									  accumulateShadowsPipeline,
-									  postProcessDispatchGroups,
+									  accumulationDispatchGroups,
 									  rg::BindDescriptorSets(renderView.GetRenderViewDS(), dirShadowsAccumulationMasksDS));
-			}
-		}
-	}
-
-	if (params::directionalLightApplyShadowsBlur)
-	{
-		static const rdr::PipelineStateID shadowsBilateralBlurPipeline = CreateeShadowsBilateralBlurPipeline();
-
-		// Bilateral blur
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
-		{
-			const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
-
-			const lib::SharedPtr<rdr::TextureView>& prevShadowMask	= shadowsData.GetPreviousFrameShadowMask();
-			const lib::SharedPtr<rdr::TextureView>& shadowMask		= shadowsData.GetCurrentFrameShadowMask();
-
-			rg::RGTextureViewHandle blurTemporaryTexture;
-			if (!!prevShadowMask && prevShadowMask->GetResolution() == shadowMask->GetResolution())
-			{
-				blurTemporaryTexture = graphBuilder.AcquireExternalTextureView(prevShadowMask);
-			}
-			else
-			{
-				const lib::SharedRef<rdr::Texture>& shadowMaskTexture = shadowMask->GetTexture();
-
-				rhi::TextureDefinition temporaryTextureDef;
-				temporaryTextureDef.resolution = shadowMaskTexture->GetResolution();
-				temporaryTextureDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-				temporaryTextureDef.format = shadowMaskTexture->GetRHI().GetDefinition().format;
-				blurTemporaryTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Shadow Mask Blur Temporary Texture"), temporaryTextureDef, rhi::EMemoryUsage::GPUOnly);
-			}
-
-			{
-				ShadowsBilateralBlurParams horizontalBlurParams;
-				horizontalBlurParams.isHorizontal = true;
-
-				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralHorizontalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Horizontal Bilateral Blur DS"));
-				shadowsBilateralHorizontalBlurDS->u_inputTexture = shadowMask;
-				shadowsBilateralHorizontalBlurDS->u_outputTexture = blurTemporaryTexture;
-				shadowsBilateralHorizontalBlurDS->u_params = horizontalBlurParams;
-				shadowsBilateralHorizontalBlurDS->u_depth = depthPrepassData.depth;
-
-				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Horizontal Bilateral Blur"),
-									  shadowsBilateralBlurPipeline,
-									  postProcessDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralHorizontalBlurDS, renderView.GetRenderViewDS()));
-			}
-
-			{
-				ShadowsBilateralBlurParams verticalBlurParams;
-				verticalBlurParams.isHorizontal = false;
-
-				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralVerticalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Vertical Bilateral Blur DS"));
-				shadowsBilateralVerticalBlurDS->u_inputTexture = blurTemporaryTexture;
-				shadowsBilateralVerticalBlurDS->u_outputTexture = shadowMask;
-				shadowsBilateralVerticalBlurDS->u_params = verticalBlurParams;
-				shadowsBilateralVerticalBlurDS->u_depth = depthPrepassData.depth;
-
-				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Vertical Bilateral Blur"),
-									  shadowsBilateralBlurPipeline,
-									  postProcessDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralVerticalBlurDS, renderView.GetRenderViewDS()));
 			}
 		}
 	}

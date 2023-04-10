@@ -408,13 +408,9 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
-	SPT_CHECK(viewSpec.SupportsStage(ERenderStage::MotionAndDepth));
-
-	const Bool viewSupportsDirectionalShadowMasks = viewSpec.SupportsStage(ERenderStage::DirectionalLightsShadowMasks);
-
 	// if this view supports directional shadow masks, we need to render them before creating shading input to properly cache shadow masks
-	RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(viewSupportsDirectionalShadowMasks ? ERenderStage::DirectionalLightsShadowMasks : ERenderStage::MotionAndDepth);
-	stageEntries.GetPostRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+	RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
+	stageEntries.GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
 }
 
 void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
@@ -487,7 +483,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 	ViewSpecShadingParameters shadingParams;
 	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;
-	shadingParams.shadowMapsDS	= m_shadowMapsDS;
+	shadingParams.shadowMapsDS		= m_shadowMapsDS;
 	viewSpec.GetData().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
