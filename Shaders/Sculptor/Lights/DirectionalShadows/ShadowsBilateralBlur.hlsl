@@ -38,7 +38,11 @@ void BlurPlane(in int baseSampleIdx, in float3 baseSampleData, in int direction,
 
     const float dPos = abs(sample1.x - sample2.x);
     
-    if(dPos != 0.f)
+    const float maxDistToPlane = 0.15f;
+    // sample2 here gives much better results than sample1
+    const float distToPlane = abs(sample2.y - baseSampleData.y);
+
+    if (dPos != 0.f && distToPlane <= maxDistToPlane)
     {
         const float dDepth = abs(sample1.y - sample2.y) / dPos;
 
