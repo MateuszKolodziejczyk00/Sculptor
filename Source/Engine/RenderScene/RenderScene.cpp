@@ -77,19 +77,6 @@ void RenderScene::Update()
 						js::EJobPriority::High,
 						js::EJobFlags::Inline);
 
-	const lib::DynamicArray<RenderSystem*>& renderSystemsWithUpdate = m_renderSystems.GetRenderSystemsWithUpdate();
-	if (!renderSystemsWithUpdate.empty())
-	{
-		js::ParallelForEach("Update Render Systems",
-							renderSystemsWithUpdate,
-							[this](RenderSystem* system)
-							{
-								system->Update(*this);
-							},
-							js::EJobPriority::High,
-							js::EJobFlags::Inline);
-	}
-
 	GPUSceneFrameData frameData;
 	frameData.deltaTime	= engn::GetRenderingFrame().GetDeltaTime();
 	frameData.time		= engn::GetRenderingFrame().GetTime();

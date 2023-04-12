@@ -5,7 +5,6 @@ namespace spt::rsc
 
 RenderSystem::RenderSystem()
 	: m_supportedStages(ERenderStage::None)
-	, m_wantsUpdate(false)
 { }
 
 void RenderSystem::Initialize(RenderScene& renderScene)
@@ -33,11 +32,6 @@ void RenderSystem::OnInitialize(RenderScene& renderScene)
 
 void RenderSystem::OnDeinitialize(RenderScene& renderScene)
 {
-}
-
-Bool RenderSystem::WantsUpdate() const
-{
-	return m_wantsUpdate;
 }
 
 } // spt::rsc

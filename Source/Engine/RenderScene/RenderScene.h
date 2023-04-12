@@ -90,11 +90,6 @@ public:
 		return m_renderSystems;
 	}
 
-	const lib::DynamicArray<RenderSystem*>& GetRenderSystemsWithUpdate() const
-	{
-		return m_renderSystemsWithUpdate;
-	}
-
 	template<typename TSystemType>
 	RenderSystem* AddRenderSystem()
 	{
@@ -110,11 +105,6 @@ public:
 			{
 				addedSystem = m_renderSystems.emplace_back(lib::MakeShared<TSystemType>()).Get();
 				m_renderSystemsID.emplace_back(typeID);
-
-				if (addedSystem->WantsUpdate())
-				{
-					m_renderSystemsWithUpdate.emplace_back(addedSystem);
-				}
 			}
 		}
 		
@@ -140,13 +130,6 @@ public:
 
 				m_renderSystems.erase(std::begin(m_renderSystems) + systemIdx);
 				m_renderSystemsID.erase(std::begin(m_renderSystemsID) + systemIdx);
-
-				if (removedSystem->WantsUpdate())
-				{
-					const auto renderSystemWithUpdateIt = std::find(std::cbegin(m_renderSystemsWithUpdate), std::cend(m_renderSystemsWithUpdate), removedSystem.get());
-					SPT_CHECK(renderSystemWithUpdateIt != std::cend(m_renderSystemsWithUpdate));
-					m_renderSystemsWithUpdate.erase(renderSystemWithUpdateIt);
-				}
 			}
 		}
 
@@ -161,8 +144,6 @@ private:
 	// These to arrays must match - m_systemsID[i] is id of system m_renderSystems[i]
 	lib::DynamicArray<lib::SharedRef<RenderSystem>> m_renderSystems;
 	lib::DynamicArray<RenderSystemTypeID>			m_renderSystemsID;
-	
-	lib::DynamicArray<RenderSystem*>				m_renderSystemsWithUpdate;
 };
 
 
