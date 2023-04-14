@@ -12,13 +12,12 @@ namespace spt::rsc
 class RenderView;
 struct PointLightData;
 struct StaticMeshRenderingDefinition;
-struct StaticMeshInstanceRenderData;
+struct MaterialsDataComponent;
 
 
 struct StaticMeshInstanceRenderData
 {
 	RenderingDataEntityHandle staticMesh;
-	lib::DynamicArray<RenderingDataEntityHandle> materials;
 };
 
 
@@ -62,7 +61,7 @@ public:
 
 private:
 
-	void AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef) const;
+	void AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const MaterialsDataComponent& materialsData) const;
 };
 
 } // spt::rsc

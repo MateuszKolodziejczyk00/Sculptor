@@ -120,7 +120,7 @@ void RenderScene::DestroyEntity(RenderSceneEntityHandle entity)
 	SPT_CHECK_NO_ENTRY_MSG("TODO");
 }
 
-Uint64 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
+Uint32 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
 {
 	SPT_PROFILER_FUNCTION();
 

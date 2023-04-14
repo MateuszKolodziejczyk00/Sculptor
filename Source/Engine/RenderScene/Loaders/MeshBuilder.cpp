@@ -65,9 +65,11 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
+	const Uint32 submeshesBeginIdx = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(SubmeshGPUData));
+
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
 	staticMeshRenderingDef.geometryDataOffset	= static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
-	staticMeshRenderingDef.submeshesBeginIdx	= static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(SubmeshGPUData));
+	staticMeshRenderingDef.submeshesBeginIdx	= submeshesBeginIdx;
 	staticMeshRenderingDef.submeshesNum			= static_cast<Uint32>(submeshesData.size());
 	staticMeshRenderingDef.boundingSphereCenter = m_boundingSphereCenter;
 	staticMeshRenderingDef.boundingSphereRadius = m_boundingSphereRadius;
@@ -85,8 +87,8 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 
 	if (GetParameters().blasBuilder)
 	{
-		BLASesComponent blasesComp;
-		blasesComp.blases.reserve(m_submeshes.size());
+		RayTracingGeometryComponent rtGeoComponent;
+		rtGeoComponent.geometries.reserve(m_submeshes.size());
 
 		// Create BLAS for each submesh
 		lib::DynamicArray<lib::SharedRef<rdr::BottomLevelAS>> submeshesBLASes;
@@ -101,10 +103,12 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 			submeshBLAS.trianglesGeometry.indicesAddress			= geometryDataDeviceAddress + static_cast<Uint64>(submeshesData[submeshIdx].indicesOffset);
 			submeshBLAS.trianglesGeometry.indicesNum				= submeshesData[submeshIdx].indicesNum;
 
-			blasesComp.blases.emplace_back(GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS));
+			RayTracingGeometryDefinition& rtGeoDef = rtGeoComponent.geometries.emplace_back();
+			rtGeoDef.blas			= GetParameters().blasBuilder->CreateBLAS(RENDERER_RESOURCE_NAME("Temp BLAS Name"), submeshBLAS);
+			rtGeoDef.geometryDataID	= submeshesBeginIdx + static_cast<Uint32>(submeshIdx);
 		}
 
-		staticMeshDataHandle.emplace<BLASesComponent>(std::move(blasesComp));
+		staticMeshDataHandle.emplace<RayTracingGeometryComponent >(std::move(rtGeoComponent));
 	}
 
 	return staticMeshDataHandle;

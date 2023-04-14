@@ -12,16 +12,28 @@ class BottomLevelAS;
 namespace spt::rsc
 {
 
-struct BLASesProviderComponent
+struct RayTracingGeometryProviderComponent
 {
-	// Entity that contains BLASesComponent
+	// Entity that contains RayTracingGeometryComponent
 	RenderingDataEntityHandle entity;
 };
 
 
-struct BLASesComponent
+struct RayTracingGeometryDefinition
 {
-	lib::DynamicArray<lib::SharedPtr<rdr::BottomLevelAS>> blases;
+	lib::SharedPtr<rdr::BottomLevelAS> blas;
+
+	/** 
+	 * Identifier which allows get geometry definition. Type of this definition may vary depending on geometry type
+	 * For example for static meshes we can use submeshes and store submesh index in this field
+	 */
+	Uint32 geometryDataID;
+};
+
+
+struct RayTracingGeometryComponent
+{
+	lib::DynamicArray<RayTracingGeometryDefinition> geometries;
 };
 
 } // spt::rsc

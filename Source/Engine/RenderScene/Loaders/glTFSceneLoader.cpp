@@ -557,19 +557,22 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				StaticMeshInstanceRenderData entityStaticMeshData;
 				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
 
-				entityStaticMeshData.materials.reserve(mesh.primitives.size());
+				MaterialsDataComponent materialsDataComp;
+
+				materialsDataComp.materials.reserve(mesh.primitives.size());
 				for (const tinygltf::Primitive& prim : mesh.primitives)
 				{
-					entityStaticMeshData.materials.emplace_back(materials[prim.material]);
+					materialsDataComp.materials.emplace_back(materials[prim.material]);
 				}
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
+				meshSceneEntity.emplace<MaterialsDataComponent>(std::move(materialsDataComp));
 
 				if (withRayTracing)
 				{
-					BLASesProviderComponent blasesProviderComp;
-					blasesProviderComp.entity = loadedMeshes[node.mesh];
-					meshSceneEntity.emplace<BLASesProviderComponent>(blasesProviderComp);
+					RayTracingGeometryProviderComponent rtGeoProvider;
+					rtGeoProvider.entity = loadedMeshes[node.mesh];
+					meshSceneEntity.emplace<RayTracingGeometryProviderComponent>(rtGeoProvider);
 				}
 			}
 		}

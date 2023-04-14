@@ -6,6 +6,7 @@
 #include "Renderer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
+#include "Materials/MaterialTypes.h"
 
 namespace spt::rsc
 {
@@ -27,6 +28,11 @@ void RayTracingRenderSceneSubsystem::Update()
 	}
 }
 
+const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSceneSubsystem::GetRTInstancesDataBuffer() const
+{
+	return m_rtInstancesDataBuffer;
+}
+
 void RayTracingRenderSceneSubsystem::UpdateTLAS()
 {
 	SPT_PROFILER_FUNCTION();
@@ -35,23 +41,40 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	rhi::TLASDefinition tlasDefinition;
 
-	const auto rayTracedObjectsEntities = sceneRegistry.view<TransformComponent, BLASesProviderComponent>();
+	const auto rayTracedObjectsEntities = sceneRegistry.view<EntityGPUDataHandle, TransformComponent, MaterialsDataComponent, RayTracingGeometryProviderComponent>();
 	const SizeType rayTracedEntitiesNum = static_cast<SizeType>(rayTracedObjectsEntities.size_hint() * 2.2f);
 	tlasDefinition.instances.reserve(rayTracedEntitiesNum);
 
-	for (const auto& [entity, transform, blasesProvider] : rayTracedObjectsEntities.each())
+	lib::DynamicArray<RTInstanceData> rtInstances;
+	rtInstances.reserve(rayTracedObjectsEntities.size_hint());
+
+	for (const auto& [entity, gpuEntity, transform, materialsData, rtGeoProvider] : rayTracedObjectsEntities.each())
 	{
-		const BLASesComponent& blasesComp = blasesProvider.entity.get<BLASesComponent>();
+		const RayTracingGeometryComponent& rayTracingGeoComp = rtGeoProvider.entity.get<RayTracingGeometryComponent>();
 
 		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.GetTransform().matrix().topLeftCorner<3, 4>();
 
-		for (const lib::SharedPtr<rdr::BottomLevelAS>& blas : blasesComp.blases)
+		SPT_CHECK(rayTracingGeoComp.geometries.size() == materialsData.materials.size());
+		
+		for(SizeType idx = 0; idx < rayTracingGeoComp.geometries.size(); ++idx)
 		{
+			const RayTracingGeometryDefinition& rtGeometry	= rayTracingGeoComp.geometries[idx];
+			const RenderingDataEntityHandle material		= materialsData.materials[idx];
+			const MaterialCommonData& materialData			= material.get<MaterialCommonData>();
+
+			RTInstanceData& rtInstance = rtInstances.emplace_back();
+			rtInstance.entityIdx				= gpuEntity.GetEntityIdx();
+			rtInstance.materialDataOffset		= static_cast<Uint32>(materialData.materialDataSuballocation.GetOffset());
+			rtInstance.geometryDataID			= rtGeometry.geometryDataID;
+
 			rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
 			tlasInstance.transform		= transformMatrix;
-			tlasInstance.blasAddress	= blas->GetRHI().GetDeviceAddress();
+			tlasInstance.blasAddress	= rtGeometry.blas->GetRHI().GetDeviceAddress();
+			tlasInstance.customIdx		= static_cast<Uint32>(rtInstances.size() - 1);
 		}
 	}
+
+	m_rtInstancesDataBuffer = BuildRTInstancesBuffer(rtInstances);
 
 	if (!tlasDefinition.instances.empty())
 	{
@@ -77,6 +100,29 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 		m_tlas->ReleaseInstancesBuildData();
 	}
+}
+
+lib::SharedPtr<rdr::Buffer> RayTracingRenderSceneSubsystem::BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const
+{
+	if (instances.empty())
+	{
+		return lib::SharedPtr<rdr::Buffer>();
+	}
+
+	rhi::BufferDefinition bufferDef;
+	bufferDef.size	= instances.size() * sizeof(RTInstanceData);
+	bufferDef.usage	= rhi::EBufferUsage::Storage;
+
+	lib::SharedPtr<rdr::Buffer> instancesDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("RT Instances Data"), bufferDef, rhi::EMemoryUsage::CPUToGPU);
+
+	rhi::RHIMappedBuffer<RTInstanceData> mappedInstancesData(instancesDataBuffer->GetRHI());
+
+	for (SizeType instanceIdx = 0; instanceIdx < instances.size(); ++instanceIdx)
+	{
+		mappedInstancesData[instanceIdx] = instances[instanceIdx];
+	}
+
+	return instancesDataBuffer;
 }
 
 } // spt::rsc

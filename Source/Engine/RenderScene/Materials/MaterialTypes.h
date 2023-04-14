@@ -7,6 +7,11 @@
 namespace spt::rsc
 {
 
+struct MaterialsDataComponent
+{
+	lib::DynamicArray<RenderingDataEntityHandle> materials;
+};
+
 struct MaterialCommonData
 {
 	MaterialCommonData() = default;

@@ -19,8 +19,8 @@ StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForView(cons
 
 	StaticMeshBatchDefinition batch;
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle>();
-	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
+	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, MaterialsDataComponent>();
+	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle, materialsData] : meshesView.each())
 	{
 		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
@@ -31,8 +31,8 @@ StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForView(cons
 
 		if (view.IsSphereOverlappingFrustum(boundingSphereCenterWS, boundingSphereRadius))
 		{
-			const Uint32 entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
-			AppendMeshToBatch(batch, entityIdx, staticMeshRenderData, meshRenderingDef);
+			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
+			AppendMeshToBatch(batch, entityIdx, staticMeshRenderData, meshRenderingDef, materialsData);
 		}
 	}
 
@@ -45,8 +45,8 @@ StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForPointLigh
 
 	StaticMeshBatchDefinition batch;
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle>();
-	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle] : meshesView.each())
+	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, MaterialsDataComponent>();
+	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle, materialsData] : meshesView.each())
 	{
 		const RenderingDataEntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
@@ -57,19 +57,19 @@ StaticMeshBatchDefinition StaticMeshRenderSceneSubsystem::BuildBatchForPointLigh
 
 		if ((boundingSphereCenterWS - pointLight.location).squaredNorm() < math::Utils::Square(pointLight.radius + boundingSphereRadius))
 		{
-			const Uint32 entityIdx = static_cast<Uint32>(entityGPUDataHandle.GetEntityIdx());
-			AppendMeshToBatch(batch, entityIdx, staticMeshRenderData, meshRenderingDef);
+			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
+			AppendMeshToBatch(batch, entityIdx, staticMeshRenderData, meshRenderingDef, materialsData);
 		}
 	}
 
 	return batch;
 }
 
-void StaticMeshRenderSceneSubsystem::AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef) const
+void StaticMeshRenderSceneSubsystem::AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const MaterialsDataComponent& materialsData) const
 {
 	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesNum; ++idx)
 	{
-		const RenderingDataEntityHandle material = instanceRenderData.materials[idx];
+		const RenderingDataEntityHandle material = materialsData.materials[idx];
 		const MaterialCommonData& materialData = material.get<MaterialCommonData>();
 
 		const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;

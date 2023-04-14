@@ -70,9 +70,9 @@ struct EntityGPUDataHandle
 		: transformSuballocation(inSuballocation)
 	{ }
 
-	Uint64 GetEntityIdx() const
+	Uint32 GetEntityIdx() const
 	{
-		return transformSuballocation.GetOffset() / sizeof(RenderEntityGPUData);
+		return static_cast<Uint32>(transformSuballocation.GetOffset() / sizeof(RenderEntityGPUData));
 	}
 
 	rhi::RHISuballocation transformSuballocation;
@@ -238,7 +238,7 @@ public:
 	RenderSceneEntityHandle CreateEntity(const RenderInstanceData& instanceData);
 	void DestroyEntity(RenderSceneEntityHandle entity);
 
-	Uint64 GetEntityIdx(RenderSceneEntityHandle entity) const;
+	Uint32 GetEntityIdx(RenderSceneEntityHandle entity) const;
 
 	// Rendering ============================================================
 
