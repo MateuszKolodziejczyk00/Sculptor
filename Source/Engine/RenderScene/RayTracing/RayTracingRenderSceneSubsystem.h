@@ -21,6 +21,7 @@ BEGIN_ALIGNED_SHADER_STRUCT(16, RTInstanceData)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataID)
 END_SHADER_STRUCT();
 
+
 class RENDER_SCENE_API RayTracingRenderSceneSubsystem : public RenderSceneSubsystem
 {
 protected:

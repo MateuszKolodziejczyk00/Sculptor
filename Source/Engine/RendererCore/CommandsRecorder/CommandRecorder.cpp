@@ -215,6 +215,20 @@ void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 dra
 	DrawIndirect(drawsBufferView.GetBuffer(), drawsBufferView.GetOffset() + drawsOffset, drawsStride, drawsCount);
 }
 
+void CommandRecorder::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex /*= 0*/, Uint32 firstInstance /*= 0*/)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_pipelineState.EnqueueFlushDirtyDSForGraphicsPipeline(m_commandQueue);
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("DrawInstances Command");
+
+							 cmdBuffer->GetRHI().DrawInstances(verticesNum, instancesNum, firstVertex, firstInstance);
+						 });
+}
+
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();

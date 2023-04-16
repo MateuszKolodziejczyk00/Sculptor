@@ -12,7 +12,7 @@
 #include "Renderer.h"
 #include "Transfers/UploadUtils.h"
 #include "Transfers/TransfersManager.h"
-#include "TextureUtils.h"
+#include "Utils/TextureUtils.h"
 #include "Materials/MaterialsUnifiedData.h"
 #include "Materials/MaterialTypes.h"
 #include "Types/AccelerationStructure.h"
@@ -396,7 +396,7 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 
 		for (const auto& texture : textures)
 		{
-			gfx::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ReadOnly);
+			rdr::utils::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ReadOnly);
 		}
 
 		rdr::CommandsRecordingInfo recordingInfo;

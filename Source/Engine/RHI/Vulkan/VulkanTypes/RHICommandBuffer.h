@@ -54,6 +54,8 @@ public:
 	void	DrawIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
 	void	DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount);
 
+	void	DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex, Uint32 firstInstance);
+
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
 	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);

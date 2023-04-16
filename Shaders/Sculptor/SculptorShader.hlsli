@@ -9,6 +9,9 @@
 #define TWO_PI 6.28318530718
 
 
+#define SMALL_NUMBER 1.e-6f
+
+
 #define IN
 #define OUT
 #define INOUT
@@ -109,6 +112,7 @@ float3 LinearTosRGB(in float3 color)
     return clr;
 }
 
+
 float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
 {
     // Compute the basis vectors for the cone
@@ -127,4 +131,57 @@ float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
     
     // Normalize the vector and return it
     return normalize(randomVector);
+}
+
+
+float3 FibbonaciSphereDistribution(in int i, in int num)
+{
+	float k = float(i) + 0.5f;
+	
+	const float phi = acos(1.f - 2.f * k / num);
+	const float theta = PI * (1.f + sqrt(5.f)) * k;
+	
+	const float x = cos(theta) * sin(phi);
+	const float y = sin(theta) * sin(phi);
+	const float z = cos(phi);
+	
+	return float3(x, y, z);
+}
+
+// Octahedron mapping =========================================================================
+
+float SignNotZero(float v)
+{
+    return (v >= 0.f) ? 1.f : -1.f;
+}
+
+
+float2 SignNotZero(float2 v)
+{
+    return float2(SignNotZero(v.x), SignNotZero(v.y));
+}
+
+
+float2 OctahedronEncode(in float3 direction)
+{
+    const float l1norm = abs(direction.x) + abs(direction.y) + abs(direction.z);
+    float2 uv = direction.xy * (1.f / l1norm);
+    if (direction.z < 0.f)
+    {
+        uv = (1.f - abs(uv.yx)) * SignNotZero(uv.xy);
+    }
+    return uv * 0.5f + 0.5f;
+}
+
+ 
+float3 OctahedronDecode(in float2 coords)
+{
+    coords = coords * 2.f - 1.f;
+
+    float3 direction = float3(coords.x, coords.y, 1.f - abs(coords.x) - abs(coords.y));
+    if (direction.z < 0.f)
+    {
+        direction.xy = (1.f - abs(direction.yx)) * SignNotZero(direction.xy);
+    }
+    return normalize(direction);
 }

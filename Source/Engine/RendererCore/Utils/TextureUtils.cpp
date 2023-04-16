@@ -2,7 +2,10 @@
 #include "Types/Texture.h"
 #include "CommandsRecorder/CommandRecorder.h"
 
-namespace spt::gfx
+namespace spt::rdr
+{
+
+namespace utils
 {
 
 void GenerateMipMaps(rdr::CommandRecorder& recorder, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, Uint32 arrayLayer, const rhi::BarrierTextureTransitionDefinition& destTransition)
@@ -51,4 +54,6 @@ void GenerateMipMaps(rdr::CommandRecorder& recorder, const lib::SharedRef<rdr::T
 	recorder.ExecuteBarrier(destDependency);
 }
 
-} // spt::gfx
+} // utils
+
+} // spt::rdr

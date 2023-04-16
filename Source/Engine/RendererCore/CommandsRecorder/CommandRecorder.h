@@ -79,6 +79,8 @@ public:
 
 	void									DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount);
 	void									DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount);
+	
+	void									DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex = 0, Uint32 firstInstance = 0);
 
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);
 	void									BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);

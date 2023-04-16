@@ -266,6 +266,13 @@ void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOf
 	vkCmdDrawIndirect(m_cmdBufferHandle, drawsBuffer.GetHandle(), drawsOffset, drawsCount, drawsStride);
 }
 
+void RHICommandBuffer::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex, Uint32 firstInstance)
+{
+	SPT_PROFILER_FUNCTION();
+
+	vkCmdDraw(m_cmdBufferHandle, verticesNum, instancesNum, firstVertex, firstInstance);
+}
+
 void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
