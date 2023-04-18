@@ -5,6 +5,7 @@
 #include "SculptorECS.h"
 #include "RGResources/RGTrackedObject.h"
 #include "RenderView.h"
+#include "RGResources/RGResourceHandles.h"
 
 namespace spt::rg
 {
@@ -270,6 +271,30 @@ private:
 };
 
 
+struct RenderViewEntryContext
+{
+	RenderViewEntryContext()
+		: texture(nullptr)
+		, buffer(nullptr)
+	{ }
+
+	rg::RGTextureViewHandle texture;
+	rg::RGBufferViewHandle buffer;
+};
+
+
+using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderViewEntryContext& /*context*/)>;
+
+
+namespace RenderViewEntryDelegates
+{
+
+/** Delegate for rendering objects onto view final texture after applying all post processes */
+inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
+
+} // RenderViewEntryDelegates
+
+
 class ViewRenderingSpec : public rg::RGTrackedObject
 {
 public:
@@ -288,9 +313,13 @@ public:
 	const RenderStageEntries&	GetRenderStageEntries(ERenderStage stage) const;
 	RenderStageEntries&			GetRenderStageEntries(ERenderStage stage);
 
+	RenderViewEntryDelegate&	GetRenderViewEntry(const lib::HashedString& name);
+
 private:
 
 	lib::HashMap<SizeType, RenderStageEntries> m_stagesEntries;
+
+	lib::HashMap<lib::HashedString, RenderViewEntryDelegate> m_viewEntries;
 
 	ViewRenderingDataContainer m_viewRenderingData;
 

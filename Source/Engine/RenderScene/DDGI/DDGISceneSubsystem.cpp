@@ -7,6 +7,7 @@ namespace spt::rsc
 
 DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
+	, m_probesDebugMode(EDDDGIProbesDebugMode::None)
 {
 	InitializeDDGIParameters();
 
@@ -43,9 +44,14 @@ const DDGIGPUParams& DDGISceneSubsystem::GetDDGIParams() const
 	return m_ddgiParams;
 }
 
-EDDDGIProbesDebugType DDGISceneSubsystem::GetProbesDebugType() const
+void DDGISceneSubsystem::SetProbesDebugMode(EDDDGIProbesDebugMode::Type mode)
 {
-	return EDDDGIProbesDebugType::Irradiance;
+	m_probesDebugMode = mode;
+}
+
+EDDDGIProbesDebugMode::Type DDGISceneSubsystem::GetProbesDebugMode() const
+{
+	return m_probesDebugMode;
 }
 
 Uint32 DDGISceneSubsystem::GetRaysNumPerProbe() const
@@ -140,7 +146,7 @@ void DDGISceneSubsystem::InitializeTextures()
 	rhi::TextureDefinition probesDistanceTextureDef;
 	probesDistanceTextureDef.resolution	= math::Vector3u{ probesTextureWidth * distancePerProbeRes.x(), probesTextureHeight * distancePerProbeRes.y(), 1u };
 	probesDistanceTextureDef.usage		= texturesUsage;
-	probesDistanceTextureDef.format		= rhi::EFragmentFormat::RG16_UN_Float;
+	probesDistanceTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float;
 	const lib::SharedRef<rdr::Texture> probesDistanceTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Probes Distance"), probesDistanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 	rhi::TextureViewDefinition probesDistanceViewDefinition;

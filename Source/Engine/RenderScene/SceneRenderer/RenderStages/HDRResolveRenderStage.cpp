@@ -453,7 +453,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	
 	rhi::TextureDefinition tonemappedTextureDef;
 	tonemappedTextureDef.resolution = textureRes;
-	tonemappedTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
+	tonemappedTextureDef.usage		= lib::Flags(rhi::ETextureUsage::ColorRT, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
 	tonemappedTextureDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
 	passData.tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), tonemappedTextureDef, rhi::EMemoryUsage::GPUOnly);
 
@@ -486,6 +486,10 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 #endif // RENDERER_DEBUG
 	
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	
+	RenderViewEntryContext context;
+	context.texture = passData.tonemappedTexture;
+	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).Broadcast(graphBuilder, renderScene, viewSpec, context);
 }
 
 } // spt::rsc

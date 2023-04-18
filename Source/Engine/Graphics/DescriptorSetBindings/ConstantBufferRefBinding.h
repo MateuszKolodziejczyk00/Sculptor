@@ -76,7 +76,6 @@ public:
 private:
 
 	priv::BoundBufferVariant m_boundBuffer;
-
 };
 
 } // spt::gfx

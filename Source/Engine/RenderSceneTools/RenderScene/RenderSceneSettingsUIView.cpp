@@ -2,6 +2,7 @@
 #include "RenderScene.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "DDGI/DDGISceneSubsystem.h"
 
 namespace spt::rsc
 {
@@ -40,6 +41,16 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 		if (ImGui::Combo("Point Lights Shadow Mapping Technique", &currentTechnique, shadowMappingTechniques, SPT_ARRAY_SIZE(shadowMappingTechniques)))
 		{
 			shadowMapsManger->SetShadowMappingTechnique(static_cast<rsc::EShadowMappingTechnique>(currentTechnique));
+		}
+	}
+
+	if (lib::SharedPtr<rsc::DDGISceneSubsystem> ddgiSubsystem = scene.GetSceneSubsystem<rsc::DDGISceneSubsystem>())
+	{
+		const char* ddgiDebugModes[rsc::EDDDGIProbesDebugMode::NUM] = { "None", "Irradiance", "Hit Distance" };
+		int ddgiDebugMode = ddgiSubsystem->GetProbesDebugMode();
+		if (ImGui::Combo("Anti Aliasing Mode", &ddgiDebugMode, ddgiDebugModes, SPT_ARRAY_SIZE(ddgiDebugModes)))
+		{
+			ddgiSubsystem->SetProbesDebugMode(static_cast<rsc::EDDDGIProbesDebugMode::Type>(ddgiDebugMode));
 		}
 	}
 }

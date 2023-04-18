@@ -31,9 +31,10 @@ public:
 	
 	const DDGIGPUParams& GetDDGIParams() const;
 
-	// Settings ==================================================================
+	void SetProbesDebugMode(EDDDGIProbesDebugMode::Type mode);
+	EDDDGIProbesDebugMode::Type GetProbesDebugMode() const;
 
-	EDDDGIProbesDebugType GetProbesDebugType() const;
+	// Settings ==================================================================
 
 	Uint32 GetRaysNumPerProbe() const;
 
@@ -57,6 +58,8 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_probesHitDistanceTextureView;
 
 	DDGIGPUParams m_ddgiParams;
+
+	EDDDGIProbesDebugMode::Type m_probesDebugMode;
 };
 
 } // spt::rsc

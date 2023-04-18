@@ -90,4 +90,9 @@ RenderStageEntries& ViewRenderingSpec::GetRenderStageEntries(ERenderStage stage)
 	return m_stagesEntries.at(static_cast<SizeType>(stage));
 }
 
+RenderViewEntryDelegate& ViewRenderingSpec::GetRenderViewEntry(const lib::HashedString& name)
+{
+	return m_viewEntries[name];
+}
+
 } // spt::rsc

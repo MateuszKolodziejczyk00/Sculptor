@@ -129,7 +129,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #endif // DDGI_BLEND_TYPE
     
-        float weightSum;
+        float weightSum = 0.f;
 
         const uint maxBackfaces = 0.1f * RAYS_NUM_PER_PROBE;
         uint backfacesNum = 0;
@@ -175,7 +175,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-            weightSum = pow(weight, 2.5f);
+            weight = pow(weight, 2.5f);
 
             if(weight > WEIGHT_EPSILON)
             {

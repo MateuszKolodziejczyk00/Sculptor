@@ -47,11 +47,16 @@ BEGIN_SHADER_STRUCT(DDGIUpdateProbesGPUParams)
 END_SHADER_STRUCT();
 
 
-enum class EDDDGIProbesDebugType
+namespace EDDDGIProbesDebugMode
+{
+enum Type
 {
 	None,
 	Irradiance,
-	HitDistance
+	HitDistance,
+
+	NUM
 };
+} // EDDDGIProbesDebugMode
 
 } // spt::rsc

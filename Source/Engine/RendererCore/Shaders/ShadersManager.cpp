@@ -194,7 +194,6 @@ lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRe
 				return rhi::ShaderModuleDefinition(shaderBinary.GetBinary(), shaderBinary.GetStage(), shaderBinary.GetEntryPoint());
 			});
 
-
 		const lib::SharedRef<smd::ShaderMetaData> metaData = lib::MakeShared<smd::ShaderMetaData>(compiledShader.metaData);
 		shader = lib::MakeShared<Shader>(RENDERER_RESOURCE_NAME(shaderName), moduleDefinitions, metaData);
 	}
