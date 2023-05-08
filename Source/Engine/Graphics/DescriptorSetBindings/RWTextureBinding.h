@@ -52,7 +52,8 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return BuildBindingVariableCode(lib::String("RWTexture") + priv::GetTextureDimSuffix<dimensions>()
+		const lib::String formatString = lib::String("[[vk::image_format(\"") + GetTextureFormatString() + "\")]]\n";
+		return BuildBindingVariableCode(formatString + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
 										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
 	}
 
@@ -82,6 +83,29 @@ private:
 		const lib::SharedPtr<rdr::Texture> texture = textureView->GetTexture();
 		SPT_CHECK(!!texture);
 		SPT_CHECK(lib::HasAnyFlag(texture->GetRHI().GetDefinition().usage, rhi::ETextureUsage::StorageTexture));
+	}
+
+	static constexpr lib::String GetTextureFormatString()
+	{
+		if constexpr (std::is_same_v<TPixelFormatType, math::Vector4f>)
+		{
+			return "rgba32f";
+		}
+		else if constexpr (std::is_same_v<TPixelFormatType, math::Vector3f>)
+		{
+			return "r11g11b10f";
+		}
+		else if constexpr (std::is_same_v<TPixelFormatType, math::Vector2f>)
+		{
+			return "rg32f";
+		}
+		else if constexpr (std::is_same_v<TPixelFormatType, Real32>)
+		{
+			return "r32f";
+		}
+
+		SPT_CHECK_NO_ENTRY_MSG("Unspecified format for pixel type");
+		return lib::String();
 	}
 };
 
