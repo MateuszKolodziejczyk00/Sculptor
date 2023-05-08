@@ -57,14 +57,19 @@ auto AddNested(const char* name, TCallable&& callable, EJobPriority::Type priori
 	SPT_CHECK(!!currentJob);
 	
 	lib::SharedRef<JobInstance> instance = JobInstanceBuilder::Build(name, std::move(callable), priority, flags);
-	currentJob->AddNested(instance);
+	// Nested job may be already done if it's inline.
+	// in this case we don't need to add it to current job
+	if (!instance->IsFinished())
+	{
+		currentJob->AddNested(instance);
+	}
 }
 
 template<typename TRange, typename TCallable>
-auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags flags = EJobFlags::Default)
+auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJobPriority::Type priority = EJobPriority::Default, EJobFlags enclosingJobFlags = EJobFlags::Default, EJobFlags iterationJobFlags = EJobFlags::Default)
 {
 	return Launch(name,
-				  [name, &range, priority, flags, localCallable = std::forward<TCallable>(callable)]
+				  [name, &range, priority, iterationJobFlags, localCallable = std::forward<TCallable>(callable)]
 				  {
 					  lib::DynamicArray<js::Job> parallelJobs;
 
@@ -76,11 +81,11 @@ auto ParallelForEach(const char* name, TRange&& range, TCallable&& callable, EJo
 										localCallable(elem);
 									},
 									priority,
-									EJobFlags::Default); // we don't want to use flags from args as they should be applied only to enclosing job
+									iterationJobFlags);
 					  }
 				  },
 				  priority,
-				  flags);
+				  enclosingJobFlags);
 }
 
 } // spt::js

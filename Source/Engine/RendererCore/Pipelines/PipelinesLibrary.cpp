@@ -103,6 +103,10 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 		{
 			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
 			pendingPipeline = lib::MakeShared<RayTracingPipeline>(nameInNotCached, shaderObject, pipelineDef);
+#if WITH_SHADERS_HOT_RELOAD
+			m_shaderToPipelineStates[shader].emplace_back(stateID);
+			m_rayTracingPipelineDefinitions[stateID] = pipelineDef;
+#endif // WITH_SHADERS_HOT_RELOAD
 		}
 	}
 

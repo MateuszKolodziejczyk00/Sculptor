@@ -134,10 +134,10 @@ void ShadersManager::HotReloadShaders()
 							{
 								const lib::WriteLockGuard lockGuard(m_lock);
 								m_cachedShaders[params.shaderHash] = shader;
+								
+								const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
+								Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
 							}
-
-							const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
-							Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
 						});
 
 }
