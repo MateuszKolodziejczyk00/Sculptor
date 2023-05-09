@@ -270,7 +270,7 @@ ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const lib::String& sourceCode,
 	sourceBuffer.Encoding = 0;
 
 	DxcArguments preprocessorArgs = args;
-	preprocessorArgs.Append(L"-P");
+	preprocessorArgs.Append(L"-P", L"Preprocessed");
 
 	const auto [argsPtr, argsNum] = preprocessorArgs.GetArgs();
 

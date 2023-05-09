@@ -1,5 +1,5 @@
 Environment: 1
-GenerateDebugInfo: true
+GenerateDebugInfo: false
 CompileWithDebugs: true
 UseCompiledShadersCache: true
 CacheSeparateSpvFile: false
