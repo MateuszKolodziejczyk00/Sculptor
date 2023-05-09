@@ -35,6 +35,38 @@ namespace priv
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers =======================================================================================
+
+#if VULKAN_RHI
+
+static RequiredExtensionsInfo GetRequiredExtensions()
+{
+	RequiredExtensionsInfo extensionsInfo;
+	extensionsInfo.extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.extensionsNum);
+	return extensionsInfo;
+}
+
+static void InitializeRHIWindow(GLFWwindow* windowHandle)
+{
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
+	glfwCreateWindowSurface(rhi::RHI::GetInstanceHandle(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
+	SPT_CHECK(!!surface);
+
+	rhi::RHI::SetSurfaceHandle(surface);
+}
+
+#else
+
+#error Only Vulkan is supported
+
+#endif // VULKAN_RHI
+
+static void InitializeRHISurface(GLFWwindow* windowHandle)
+{
+	InitializeRHIWindow(windowHandle);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // Callbacks =====================================================================================
 
 static void OnErrorCallback(int errorCode, const char* description)
@@ -48,6 +80,8 @@ static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
+
+	InitializeRHIWindow(window);
 
 	windowData->onResized.Broadcast(static_cast<Uint32>(newWidth), static_cast<Uint32>(newHeight));
 }
@@ -82,38 +116,6 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 	SPT_CHECK(!!windowData);
 
 	windowData->inputAdapter.OnMousePositionChanged(newX, newY);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Helpers =======================================================================================
-
-#if VULKAN_RHI
-
-static RequiredExtensionsInfo GetRequiredExtensions()
-{
-	RequiredExtensionsInfo extensionsInfo;
-	extensionsInfo.extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.extensionsNum);
-	return extensionsInfo;
-}
-
-static void InitializeRHIWindow(GLFWwindow* windowHandle)
-{
-	VkSurfaceKHR surface = VK_NULL_HANDLE;
-	glfwCreateWindowSurface(rhi::RHI::GetInstanceHandle(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
-	SPT_CHECK(!!surface);
-
-	rhi::RHI::SetSurfaceHandle(surface);
-}
-
-#else
-
-#error Only Vulkan is supported
-
-#endif // VULKAN_RHI
-
-static void InitializeRHISurface(GLFWwindow* windowHandle)
-{
-	InitializeRHIWindow(windowHandle);
 }
 
 } // priv

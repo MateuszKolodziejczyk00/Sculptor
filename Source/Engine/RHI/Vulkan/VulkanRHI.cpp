@@ -228,12 +228,6 @@ void VulkanRHI::Uninitialize()
 
     priv::g_data.pipelineLayoutsManager.ReleaseRHI();
 
-    if (priv::g_data.surface)
-    {
-        vkDestroySurfaceKHR(priv::g_data.instance, priv::g_data.surface, GetAllocationCallbacks());
-        priv::g_data.surface = VK_NULL_HANDLE;
-    }
-
     if (priv::g_data.memoryManager.IsValid())
     {
         priv::g_data.memoryManager.Destroy();

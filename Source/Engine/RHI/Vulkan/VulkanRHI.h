@@ -51,7 +51,7 @@ public:
 
 #if RHI_DEBUG
 
-	static void				EnableValidationWarnings(Bool enable);
+	static void EnableValidationWarnings(Bool enable);
 
 	struct DisableValidationWarningsScope
 	{
