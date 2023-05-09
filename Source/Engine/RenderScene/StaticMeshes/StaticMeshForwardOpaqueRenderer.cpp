@@ -11,6 +11,7 @@
 #include "RenderScene.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "DDGI/DDGISceneSubsystem.h"
 
 namespace spt::rsc
 {
@@ -36,26 +37,6 @@ StaticMeshForwardOpaqueRenderer::StaticMeshForwardOpaqueRenderer()
 		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullTrianglesCS"));
 		const rdr::ShaderID cullTrianglesShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_CullTriangles.hlsl", compilationSettings);
 		m_cullTrianglesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_CullTrianglesPipeline"), cullTrianglesShader);
-	}
-
-	{
-		const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats();
-
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
-		const rdr::ShaderID forwardOpaqueShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
-
-		rhi::GraphicsPipelineDefinition pipelineDef;
-		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.format = forwardOpaqueRTFormats.depthRTFormat;
-		pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
-		for (const rhi::EFragmentFormat format : forwardOpaqueRTFormats.colorRTFormats)
-		{
-			pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
-		}
-
-		m_forwadOpaqueShadingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, forwardOpaqueShader);
 	}
 }
 
@@ -147,6 +128,9 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 																						GeometryManager::Get().GetGeometryDSState(),
 																						renderView.GetRenderViewDS()));
 
+	const lib::SharedPtr<DDGISceneSubsystem> ddgiSceneSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
+	const lib::SharedPtr<DDGIDS> ddgiDS = ddgiSceneSubsystem ? ddgiSceneSubsystem->GetDDGIDS() : nullptr;
+
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
 		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
@@ -156,11 +140,12 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(batch.indirectRenderTrianglesDS,
-													   MaterialsUnifiedData::Get().GetMaterialsDS()),
+													   MaterialsUnifiedData::Get().GetMaterialsDS(),
+													   ddgiDS),
 								std::tie(drawParams),
-								[drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[drawParams, this, pipeline = GetShadingPipeline(renderScene, viewSpec)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
-									recorder.BindGraphicsPipeline(m_forwadOpaqueShadingPipeline);
+									recorder.BindGraphicsPipeline(pipeline);
 
 									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
 									recorder.DrawIndirect(drawsBufferView, 0, sizeof(SMIndirectDrawCallData), 1);
@@ -240,6 +225,34 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 	batch.indirectRenderTrianglesDS		= indirectRenderTrianglesDS;
 
 	return batch;
+}
+
+rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const
+{
+	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats();
+
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"));
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"));
+
+	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
+	if (ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled())
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_DDGI", "1"));
+	}
+
+	const rdr::ShaderID forwardOpaqueShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", compilationSettings);
+
+	rhi::GraphicsPipelineDefinition pipelineDef;
+	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+	pipelineDef.renderTargetsDefinition.depthRTDefinition.format = forwardOpaqueRTFormats.depthRTFormat;
+	pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
+	for (const rhi::EFragmentFormat format : forwardOpaqueRTFormats.colorRTFormats)
+	{
+		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
+	}
+
+	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineDef, forwardOpaqueShader);
 }
 
 } // spt::rsc

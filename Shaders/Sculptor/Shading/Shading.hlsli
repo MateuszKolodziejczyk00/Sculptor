@@ -10,6 +10,13 @@ struct ShadedSurface
     float   linearDepth;
 };
 
+
+void ComputeSurfaceColor(in float3 baseColor, in float metallic, out float3 diffuseColor, out float3 specularColor)
+{
+    diffuseColor = baseColor * (1.0f - metallic);
+    specularColor = lerp(0.08f, baseColor, metallic);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Diffuse =======================================================================================
 
@@ -61,14 +68,16 @@ float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in
 
 float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIrradiance)
 {
+    const float a = max(surface.roughness, 0.01f);
+
     const float dotNL = saturate(dot(surface.shadingNormal, lightDir));
-    const float3 h = normalize(surface.shadingNormal + viewDir);
+    const float3 h = normalize(viewDir + lightDir);
     const float dotVH = dot(viewDir, h);
 
     const float3 fresnel = F_Schlick(surface.specularColor, dotVH);
     
     const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
-    const float3 specular = GGX_Specular(surface.roughness, surface.shadingNormal, h, viewDir, lightDir);
+    const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
 
     return (diffuse + specular * fresnel) * dotNL * peakIrradiance;
 }

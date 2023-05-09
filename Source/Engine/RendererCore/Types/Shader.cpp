@@ -17,34 +17,7 @@ Shader::Shader(const RendererResourceName& name, const lib::DynamicArray<rhi::Sh
 		{
 			rhi::RHIShaderModule rhiShaderModule;
 			rhiShaderModule.InitializeRHI(moduleDef);
-
-#if RENDERER_VALIDATION
-			const lib::HashedString moduleName = std::invoke(
-				[&](const rhi::EShaderStage stage)
-				{
-					switch (stage)
-					{
-					case rhi::EShaderStage::Vertex:			return name.Get().ToString() + "_Vertex";
-					case rhi::EShaderStage::Fragment:		return name.Get().ToString() + "_Fragment";
-
-					case rhi::EShaderStage::Compute:		return name.Get().ToString() + "_Compute";
-
-					case rhi::EShaderStage::RTGeneration:	return name.Get().ToString() + "_RTGeneration";
-					case rhi::EShaderStage::RTIntersection:	return name.Get().ToString() + "_RTIntersection";
-					case rhi::EShaderStage::RTAnyHit:		return name.Get().ToString() + "_RTAnyHit";
-					case rhi::EShaderStage::RTClosestHit:	return name.Get().ToString() + "_RTClosestHit";
-					case rhi::EShaderStage::RTMiss:			return name.Get().ToString() + "_RTMiss";
-
-					default:
-
-						SPT_CHECK_NO_ENTRY();
-						return lib::String();
-					}
-				}, moduleDef.stage);
-			
-			rhiShaderModule.SetName(moduleName);
-
-#endif // RENDERER_VALIDATION
+			rhiShaderModule.SetName(name.Get().ToString() + moduleDef.entryPoint.GetData());
 
 			return rhiShaderModule;
 		});

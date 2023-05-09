@@ -17,6 +17,14 @@
 [[descriptor_set(ViewShadingInputDS, 7)]]
 [[descriptor_set(ShadowMapsDS, 8)]]
 
+#ifdef ENABLE_DDGI
+
+[[descriptor_set(DDGIDS, 9)]]
+
+#include "DDGI/DDGITypes.hlsli"
+
+#endif // ENABLE_DDGI
+
 [[shader_struct(MaterialPBRData)]]
 
 #include "Lights/Lighting.hlsli"
@@ -133,16 +141,16 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     FO_PS_OUTPUT output;
     
-    float3 baseColor = 1.f;
+    float4 baseColor = 1.f;
     
     const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(vertexInput.materialDataOffset);
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
-        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
-        baseColor = pow(baseColor, 2.2f);
+        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv);
+        baseColor.rgb = pow(baseColor.rgb, 2.2f);
     }
 
-    baseColor *= material.baseColorFactor;
+    baseColor.rgb *= material.baseColorFactor;
 
     float metallic = material.metallicFactor;
     float roughness = material.roughnessFactor;
@@ -153,9 +161,6 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
         metallic *= metallicRoughness.x;
         roughness *= metallicRoughness.y;
     }
-
-    const float3 specularColor = baseColor * metallic;
-    const float3 diffuseColor = baseColor - specularColor;
 
     float3 shadingNormal;
     const float3 geometryNormal = normalize(vertexInput.normal);
@@ -172,21 +177,48 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
         shadingNormal = normalize(vertexInput.normal);
     }
 
-    const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
+#if WITH_DEBUGS
+    float3 indirectLighting = 0.f;
+#endif // WITH_DEBUGS
 
-    ShadedSurface surface;
-    surface.location        = vertexInput.worldLocation;
-    surface.shadingNormal   = shadingNormal;
-    surface.geometryNormal  = geometryNormal;
-    surface.specularColor   = specularColor;
-    surface.diffuseColor    = diffuseColor;
-    surface.roughness       = roughness;
-    surface.uv              = screenUV;
-    surface.linearDepth     = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
+    if(baseColor.a > 0.9f)
+    {
+        const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
 
-    const float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
+        ShadedSurface surface;
+        surface.location = vertexInput.worldLocation;
+        surface.shadingNormal = shadingNormal;
+        surface.geometryNormal = geometryNormal;
+        surface.roughness = roughness;
+        surface.uv = screenUV;
+        surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
 
-    output.radiance = float4(radiance, 1.f);
+        ComputeSurfaceColor(baseColor.rgb, metallic, surface.diffuseColor, surface.specularColor);
+
+        const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
+
+        float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
+
+        float3 indirect = 0.f;
+
+#ifdef ENABLE_DDGI
+
+        indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView);
+
+#endif // ENABLE_DDGI
+
+        radiance += surface.diffuseColor * indirect;
+
+#if WITH_DEBUGS
+        indirectLighting = indirect;
+#endif // WITH_DEBUGS
+
+        output.radiance = float4(radiance, 1.f);
+    }
+    else
+    {
+        output.radiance = 0.f;
+    }
     
     output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
 
@@ -196,6 +228,10 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     {
         const uint meshletHash = HashPCG(vertexInput.meshletIdx);
         debug = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
+    }
+    else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_INDIRECT_LIGHTING)
+    {
+        debug = indirectLighting;
     }
     output.debug = float4(debug, 1.f);
 #endif // WITH_DEBUGS

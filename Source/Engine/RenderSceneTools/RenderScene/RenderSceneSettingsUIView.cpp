@@ -48,7 +48,7 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 	{
 		const char* ddgiDebugModes[rsc::EDDDGIProbesDebugMode::NUM] = { "None", "Irradiance", "Hit Distance" };
 		int ddgiDebugMode = ddgiSubsystem->GetProbesDebugMode();
-		if (ImGui::Combo("Anti Aliasing Mode", &ddgiDebugMode, ddgiDebugModes, SPT_ARRAY_SIZE(ddgiDebugModes)))
+		if (ImGui::Combo("DDGI Probes Visualization", &ddgiDebugMode, ddgiDebugModes, SPT_ARRAY_SIZE(ddgiDebugModes)))
 		{
 			ddgiSubsystem->SetProbesDebugMode(static_cast<rsc::EDDDGIProbesDebugMode::Type>(ddgiDebugMode));
 		}

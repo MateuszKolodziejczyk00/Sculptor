@@ -11,10 +11,11 @@ BEGIN_SHADER_STRUCT(DDGIGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, probesOriginWorldLocation)
 	
 	SHADER_STRUCT_FIELD(math::Vector3f, probesSpacing)
+	SHADER_STRUCT_FIELD(math::Vector3f, rcpProbesSpacing)
 	SHADER_STRUCT_FIELD(Real32,			maxDistBetweenProbes)
 	
 	SHADER_STRUCT_FIELD(math::Vector3u, probesVolumeResolution)
-	SHADER_STRUCT_FIELD(math::Vector3u, probesWrapCoords)
+	SHADER_STRUCT_FIELD(math::Vector3i, probesWrapCoords)
 	
 	SHADER_STRUCT_FIELD(math::Vector2u, probesIrradianceTextureRes)
 	SHADER_STRUCT_FIELD(math::Vector2u, probesHitDistanceTextureRes)

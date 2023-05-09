@@ -4,6 +4,7 @@
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(DDGIDebugDrawProbesDS, 1)]]
+[[descriptor_set(DDGIDS, 2)]]
 
 #include "DDGI/DDGITypes.hlsli"
 

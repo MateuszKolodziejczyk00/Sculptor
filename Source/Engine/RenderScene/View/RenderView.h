@@ -20,6 +20,7 @@ enum Type
 {
 	None = 0,
 	ShowMeshlets,
+	ShowIndirectLighting,
 
 	NUM
 };

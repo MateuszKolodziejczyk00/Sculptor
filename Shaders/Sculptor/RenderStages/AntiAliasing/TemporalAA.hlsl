@@ -147,7 +147,7 @@ float SubsampleWeight(float distance)
 float3 ClipAABB(float3 aabbMin, float3 aabbMax, float3 historySample)
 {
     const float3 pClip = 0.5f * (aabbMax + aabbMin);
-    const float3 eClip = 0.5f * (aabbMax - aabbMin);
+    const float3 eClip = 0.5f * (aabbMax - aabbMin) + 0.000000001f;
 
     const float3 vClip = historySample - pClip;
     const float3 vUnit = vClip.xyz / eClip;
@@ -219,6 +219,7 @@ void TemporalAACS(CS_INPUT input)
                     }
 
                     const float subsampleDistance = length(float2(x, y));
+                    
                     const float subsampleWeight = SubsampleWeight(subsampleDistance);
 
                     currentSampleSum += neighborColor * subsampleWeight;
@@ -260,8 +261,7 @@ void TemporalAACS(CS_INPUT input)
             const float3 clampedhistorySample = clamp(historySample, neighborhoodMin, neighborhoodMax);
             historySample = ClipAABB(minc, maxc, clampedhistorySample);
 
-            float3 temporalWeight = clamp(abs(neighborhoodMax - neighborhoodMin) / currentSample, 0.f, 1.f);
-            float3 historyWeight = clamp(lerp(0.25f, 0.85f, temporalWeight), 0.f , 1.f);
+            float3 historyWeight = 0.85f;
             float3 currentWeight = 1.f - historyWeight;
 
             const float3 compressedCurrent = currentSample / (max(max(currentSample.x, currentSample.y), currentSample.z) + 1.f);
@@ -269,9 +269,9 @@ void TemporalAACS(CS_INPUT input)
 
             const float currentLuminance = u_params.useYCoCg ? compressedCurrent.r : Luminance(compressedCurrent);
             const float historyLuminance = u_params.useYCoCg ? compressedHistory.r : Luminance(compressedHistory);
-
-            historyWeight *= 1.f / (1.f + currentLuminance);
-            currentWeight *= 1.f / (1.f + historyLuminance);
+            
+            historyWeight /= (0.1f + max(historyLuminance - currentLuminance, 0.f));
+            currentWeight /= (0.1f + max(currentLuminance - historyLuminance, 0.f));
             
             float3 outputColor = (historyWeight * historySample + currentWeight * currentSample) / max(historyWeight + currentWeight, 0.0001f);
 

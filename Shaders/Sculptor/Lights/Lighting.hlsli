@@ -1,21 +1,6 @@
-#include "Shading/Shading.hlsli"
 #include "Lights/LightsTiles.hlsli"
+#include "Lights/LightingUtils.hlsli"
 #include "Lights/Shadows.hlsli"
-
-
-float HenyeyGreensteinPhaseFunction(in float g, in float cosTheta)
-{
-    const float numerator = 1.f - g * g;
-    const float denominator = 4.f * PI * pow(1.f + g * g - 2.f * g * cosTheta, 1.5f);
-    return numerator / denominator;
-}
-
-
-float PhaseFunction(in float3 toView, in float3 fromLight, float g)
-{
-    const float cosTheta = dot(toView, fromLight);
-    return HenyeyGreensteinPhaseFunction(g, cosTheta);
-}
 
 
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
@@ -28,26 +13,6 @@ uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 	const uint rangeMask = numBits == 32 ? 0xffffffffu : ((1u << numBits) - 1u) << (range.x - startIdx);
 	return mask & uint(rangeMask);
 }
-
-
-float GetPointLightAttenuationAtLocation(PointLightGPUData pointLight, float3 location)
-{
-    const float distAlpha = saturate(1.f - length(pointLight.location - location) / pointLight.radius);
-    return distAlpha * distAlpha;
-}
-
-
-float3 GetPointLightIntensityAtLocation(PointLightGPUData pointLight, float3 location)
-{
-    return GetPointLightAttenuationAtLocation(pointLight, location) * pointLight.intensity * pointLight.color;
-}
-
-
-float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIrradiance)
-{
-    return DoShading(surface, lightDir, viewDir, peakIrradiance);
-}
-
 
 float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
 {

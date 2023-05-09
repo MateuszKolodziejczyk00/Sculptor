@@ -7,6 +7,11 @@
 namespace spt::rsc
 {
 
+enum class EMaterialType
+{
+	Opaque
+};
+
 struct MaterialsDataComponent
 {
 	lib::DynamicArray<RenderingDataEntityHandle> materials;
@@ -18,9 +23,12 @@ struct MaterialCommonData
 	
 	explicit MaterialCommonData(rhi::RHISuballocation inMaterialDataSuballocation)
 		: materialDataSuballocation(inMaterialDataSuballocation)
+		, materialType(EMaterialType::Opaque)
 	{ }
 
 	rhi::RHISuballocation materialDataSuballocation;
+
+	EMaterialType materialType;
 };
 
 

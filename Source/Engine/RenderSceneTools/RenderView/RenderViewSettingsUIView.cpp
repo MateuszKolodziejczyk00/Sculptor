@@ -43,7 +43,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		view.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));
 	}
 
-	const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets" };
+	const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets", "Show Indirect Lighting"};
 	int selectedDebugFeature = view.GetDebugFeature();
 	if (ImGui::Combo("Debug Feature", &selectedDebugFeature, debugFeatures, SPT_ARRAY_SIZE(debugFeatures)))
 	{

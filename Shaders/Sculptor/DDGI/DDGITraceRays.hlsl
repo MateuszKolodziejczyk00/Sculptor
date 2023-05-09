@@ -11,15 +11,22 @@
 
 [[descriptor_set(MaterialsDS, 4)]]
 
+[[descriptor_set(DDGILightsDS, 5)]]
+
+[[descriptor_set(ShadowMapsDS, 6)]]
+
 [[shader_struct(MaterialPBRData)]]
 
 #include "DDGI/DDGITypes.hlsli"
+#include "DDGI/DDGILighting.hlsli"
 
 
 struct DDGIRayPayload
 {
-    float3 radiance;
-    float hitDstance;
+    half3 normal;
+    half roughness;
+    uint baseColorMetallic;
+    float hitDistance;
 };
 
 
@@ -34,11 +41,9 @@ void DDGIProbeRaysRTG()
 
     const float3 rayDirection = FibbonaciSphereDistribution(rayIdx, u_updateProbesParams.raysNumPerProbe);
 
-    const float3 probeWorldLocation = GetProbeWorldLocation(u_ddgiParams, probeWrappedCoords);
+    const float3 probeWorldLocation = GetProbeWorldLocation(u_ddgiParams, probeCoords);
 
     DDGIRayPayload payload;
-    payload.radiance = 1.f;
-    payload.hitDstance = 0.f;
 
     RayDesc rayDesc;
     rayDesc.TMin        = u_updateProbesParams.probeRaysMinT;
@@ -55,9 +60,36 @@ void DDGIProbeRaysRTG()
              rayDesc,
              payload);
 
-    const float dist = max(dot(rayDirection, float3(0.f, 0.f, 1.f)), 0.f);
-    const float3 color = dist;
-    u_traceRaysResultTexture[dispatchIdx] = float4(payload.radiance, payload.hitDstance);
+    float3 radiance = 0.f;
+
+    if(payload.hitDistance > 0.01f)
+    {
+        float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
+
+        const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance;
+        //const float3 worldLocation = rayDesc.Origin + rayDesc.Direction * payload.hitDistance;
+        
+        ShadedSurface surface;
+        surface.location        = worldLocation;
+        surface.shadingNormal   = payload.normal;
+        surface.geometryNormal  = payload.normal;
+        surface.roughness       = payload.roughness;
+        ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
+        
+        radiance = CalcReflectedRadiance(surface, -rayDirection);
+
+        radiance += SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection) * INV_PI;
+    }
+    else if (payload.hitDistance >= -0.0001f)
+    {
+        // sky color
+        if (u_lightsParams.directionalLightsNum > 0)
+        {
+            radiance = u_directionalLights[0].color * u_directionalLights[0].intensity;
+        }
+    }
+
+    u_traceRaysResultTexture[dispatchIdx] = float4(radiance, payload.hitDistance);
 }
 
 
@@ -66,8 +98,7 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
 {
     if (HitKind() == HIT_KIND_TRIANGLE_BACK_FACE)
     {
-        payload.radiance = 0.f;
-        payload.hitDstance = -RayTCurrent();
+        payload.hitDistance = -RayTCurrent();
         return;
     }
     
@@ -91,7 +122,7 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
     for (uint idx = 0; idx < 3; ++idx)
     {
         const uint offset = indices[idx] * 12;
-        normal += u_geometryData.Load<float3>(submesh.normalsOffset + offset) * barycentricCoords[triangleIdx];
+        normal += u_geometryData.Load<float3>(submesh.normalsOffset + offset) * barycentricCoords[idx];
     }
     normal = mul(u_renderEntitiesData[instanceData.entityIdx].transform, float4(normal, 0.f)).xyz;
     normal = normalize(normal);
@@ -101,7 +132,7 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
     for (uint idx = 0; idx < 3; ++idx)
     {
         const uint offset = indices[idx] * 8;
-        uv += u_geometryData.Load<float2>(submesh.uvsOffset + offset) * barycentricCoords[triangleIdx];
+        uv += u_geometryData.Load<float2>(submesh.uvsOffset + offset) * barycentricCoords[idx];
     }
     
     const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(instanceData.materialDataOffset);
@@ -124,14 +155,25 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
         roughness *= metallicRoughness.y;
     }
 
-    payload.radiance = baseColor;
-    payload.hitDstance = RayTCurrent();
+    payload.normal              = half3(normal);
+    payload.roughness           = half(roughness);
+    payload.baseColorMetallic   = PackFloat4x8(float4(baseColor, metallic));
+    payload.hitDistance         = RayTCurrent();
 }
 
 
 [shader("miss")]
 void DDGIProbeRaysRTM(inout DDGIRayPayload payload)
 {
-    payload.radiance = float3(0.f, 0.2f, 0.7f);
-    payload.hitDstance = 9999.f;
+    payload.normal              = 0.f;
+    payload.roughness           = 0.f;
+    payload.baseColorMetallic   = PackFloat4x8(float4(0.f, 0.5f, 1.f, 0.f));
+    payload.hitDistance         = 0.f;
+}
+
+
+[shader("miss")]
+void DDGIShadowRaysRTM(inout DDGIShadowRayPayload payload)
+{
+    payload.isShadowed = false;
 }

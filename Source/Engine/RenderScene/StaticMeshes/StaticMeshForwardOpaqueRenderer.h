@@ -76,11 +76,11 @@ private:
 
 	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const;
 
+	rdr::PipelineStateID GetShadingPipeline(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const;
+
 	rdr::PipelineStateID m_cullSubmeshesPipeline;
 	rdr::PipelineStateID m_cullMeshletsPipeline;
 	rdr::PipelineStateID m_cullTrianglesPipeline;
-
-	rdr::PipelineStateID m_forwadOpaqueShadingPipeline;
 };
 
 } // spt::rsc

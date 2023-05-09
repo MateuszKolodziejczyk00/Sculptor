@@ -71,6 +71,11 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 			tlasInstance.transform		= transformMatrix;
 			tlasInstance.blasAddress	= rtGeometry.blas->GetRHI().GetDeviceAddress();
 			tlasInstance.customIdx		= static_cast<Uint32>(rtInstances.size() - 1);
+
+			if (materialData.materialType == EMaterialType::Opaque)
+			{
+				lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
+			}
 		}
 	}
 

@@ -2,6 +2,10 @@
 
 #include "RenderSceneSubsystem.h"
 #include "DDGITypes.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "DescriptorSetBindings/SamplerBinding.h"
 
 
 namespace spt::rdr
@@ -12,6 +16,14 @@ class TextureView;
 
 namespace spt::rsc
 {
+
+DS_BEGIN(DDGIDS, rg::RGDescriptorSetState<DDGIDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIGPUParams>),					u_ddgiParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIrradianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_probesDataSampler)
+DS_END();
+
 
 class RENDER_SCENE_API DDGISceneSubsystem : public RenderSceneSubsystem
 {
@@ -33,6 +45,10 @@ public:
 
 	void SetProbesDebugMode(EDDDGIProbesDebugMode::Type mode);
 	EDDDGIProbesDebugMode::Type GetProbesDebugMode() const;
+
+	const lib::SharedPtr<DDGIDS>& GetDDGIDS() const;
+
+	bool IsDDGIEnabled() const;
 
 	// Settings ==================================================================
 
@@ -60,6 +76,8 @@ private:
 	DDGIGPUParams m_ddgiParams;
 
 	EDDDGIProbesDebugMode::Type m_probesDebugMode;
+
+	lib::SharedPtr<DDGIDS> m_ddgiDS;
 };
 
 } // spt::rsc

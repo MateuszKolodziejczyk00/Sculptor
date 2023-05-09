@@ -27,7 +27,7 @@ namespace spt::rsc
 namespace params
 {
 
-RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.02f, 0.f, 1.f);
+RendererFloatParameter ambientLightIntensity("Ambient Light Intensity", { "Lighting" }, 0.0f, 0.f, 1.f);
 RendererFloatParameter localLightsZClustersLength("Z Clusters Length", { "Lighting", "Local" }, 2.f, 1.f, 10.f);
 
 } // params

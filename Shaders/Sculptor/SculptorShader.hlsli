@@ -185,3 +185,18 @@ float3 OctahedronDecode(in float2 coords)
     }
     return normalize(direction);
 }
+
+// Packing
+
+uint PackFloat4x8(float4 value)
+{
+    const uint4 asUints = value * 255.f;
+    return (asUints.r << 24) | (asUints.g << 16) | (asUints.b << 8) | asUints.a;
+}
+
+
+float4 UnpackFloat4x8(uint value)
+{
+    const uint4 asUints = uint4((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
+    return asUints / 255.f;
+}

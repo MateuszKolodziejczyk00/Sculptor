@@ -456,7 +456,9 @@ static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygl
 
 		const rhi::RHISuballocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(reinterpret_cast<const Byte*>(&pbrData), sizeof(MaterialPBRData));
 
-		materialDataHandle.emplace<MaterialCommonData>(MaterialCommonData{ materialDataSuballocation });
+		MaterialCommonData materialCommonData(materialDataSuballocation);
+		materialCommonData.materialType = EMaterialType::Opaque;
+		materialDataHandle.emplace<MaterialCommonData>(materialCommonData);
 
 		materials.emplace_back(materialDataHandle);
 	}
