@@ -39,7 +39,8 @@ void DDGIProbeRaysRTG()
     const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, u_updateProbesParams.probesToUpdateCoords, u_updateProbesParams.probesToUpdateCount);
     const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_ddgiParams, probeCoords);
 
-    const float3 rayDirection = FibbonaciSphereDistribution(rayIdx, u_updateProbesParams.raysNumPerProbe);
+    float3 rayDirection = GetProbeRayDirection(rayIdx, u_updateProbesParams.raysNumPerProbe);
+    rayDirection = mul(u_updateProbesParams.raysRotation, float4(rayDirection, 0.f)).xyz;
 
     const float3 probeWorldLocation = GetProbeWorldLocation(u_ddgiParams, probeCoords);
 
@@ -67,7 +68,6 @@ void DDGIProbeRaysRTG()
         float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
 
         const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance;
-        //const float3 worldLocation = rayDesc.Origin + rayDesc.Direction * payload.hitDistance;
         
         ShadedSurface surface;
         surface.location        = worldLocation;
@@ -78,15 +78,17 @@ void DDGIProbeRaysRTG()
         
         radiance = CalcReflectedRadiance(surface, -rayDirection);
 
-        radiance += SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection) * INV_PI;
+        if (u_updateProbesParams.hasValidHistory)
+        {
+            const float3 irradiance = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
+
+            radiance += Diffuse_Lambert(irradiance) * min(surface.diffuseColor, 0.9f);
+        }
     }
     else if (payload.hitDistance >= -0.0001f)
     {
-        // sky color
-        if (u_lightsParams.directionalLightsNum > 0)
-        {
-            radiance = u_directionalLights[0].color * u_directionalLights[0].intensity;
-        }
+        radiance = lerp(u_updateProbesParams.groundIrradiance, u_updateProbesParams.skyIrradiance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f)) * 0.2f;
+        radiance = float3(0.52f, 0.81f, 0.92f) * 0.05f;
     }
 
     u_traceRaysResultTexture[dispatchIdx] = float4(radiance, payload.hitDistance);
@@ -140,7 +142,7 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
     float3 baseColor = 1.f;
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
-        baseColor = u_materialsTextures[material.baseColorTextureIdx].SampleLevel(u_materialTexturesSampler, uv, 0).xyz;
+        baseColor = u_materialsTextures[material.baseColorTextureIdx].SampleLevel(u_materialTexturesSampler, uv, 3).xyz;
         baseColor = pow(baseColor, 2.2f);
     }
     baseColor *= material.baseColorFactor;
@@ -150,14 +152,14 @@ void DDGIProbeRaysStaticMeshRTCH(inout DDGIRayPayload payload, in BuiltInTriangl
     
     if(material.metallicRoughnessTextureIdx != IDX_NONE_32)
     {
-        float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].SampleLevel(u_materialTexturesSampler, uv, 0).xy;
+        float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].SampleLevel(u_materialTexturesSampler, uv, 3).xy;
         metallic *= metallicRoughness.x;
         roughness *= metallicRoughness.y;
     }
 
     payload.normal              = half3(normal);
     payload.roughness           = half(roughness);
-    payload.baseColorMetallic   = PackFloat4x8(float4(baseColor, metallic));
+    payload.baseColorMetallic   = PackFloat4x8(float4(baseColor.xyz, metallic));
     payload.hitDistance         = RayTCurrent();
 }
 

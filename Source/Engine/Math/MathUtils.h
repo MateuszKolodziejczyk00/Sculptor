@@ -153,6 +153,12 @@ public:
 		return result;;
 	}
 
+	template<std::floating_point TType>
+	static TType FractionalPart(TType value)
+	{
+		return value - std::floor(value);
+	}
+
 	static Uint32 ComputeMipLevelsNumForResolution(math::Vector2u resolution)
 	{
 		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
@@ -166,6 +172,16 @@ public:
 	static Quaternionf EulerToQuaternionDegrees(Real32 roll, Real32 pitch, Real32 yaw)
 	{
 		return EulerToQuaternionRadians(DegreesToRadians(roll), DegreesToRadians(pitch), DegreesToRadians(yaw));
+	}
+
+	static Matrix3f EulerToRotationMatrixRadians(Real32 roll, Real32 pitch, Real32 yaw)
+	{
+		return EulerToQuaternionRadians(roll, pitch, yaw).matrix();
+	}
+
+	static Matrix3f EulerToRotationMatrixDegrees(Real32 roll, Real32 pitch, Real32 yaw)
+	{
+		return EulerToRotationMatrixRadians(DegreesToRadians(roll), DegreesToRadians(pitch), DegreesToRadians(yaw));
 	}
 };
 

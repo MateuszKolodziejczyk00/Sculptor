@@ -424,6 +424,22 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 	return textureIndicesInMaterialDS;
 }
 
+static EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
+{
+	EMaterialType materialType = EMaterialType::Opaque;
+
+	if (materialDef.alphaMode == "MASK")
+	{
+		materialType = EMaterialType::AlphaMasked;
+	}
+	else if (materialDef.alphaMode == "BLEND")
+	{
+		materialType = EMaterialType::Transparent;
+	}
+
+	return materialType;
+}
+
 static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
 {
 	const auto getLoadedTextureIndex = [&model, &textureIndicesInMaterialDS](int modelTextureIdx)
@@ -457,7 +473,7 @@ static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygl
 		const rhi::RHISuballocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(reinterpret_cast<const Byte*>(&pbrData), sizeof(MaterialPBRData));
 
 		MaterialCommonData materialCommonData(materialDataSuballocation);
-		materialCommonData.materialType = EMaterialType::Opaque;
+		materialCommonData.materialType = GetMaterialType(materialDef);
 		materialDataHandle.emplace<MaterialCommonData>(materialCommonData);
 
 		materials.emplace_back(materialDataHandle);

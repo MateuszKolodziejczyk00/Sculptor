@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "RHICore/RHIBufferTypes.h"
 
 
 namespace spt::rsc
@@ -9,7 +10,9 @@ namespace spt::rsc
 
 enum class EMaterialType
 {
-	Opaque
+	Opaque,
+	AlphaMasked,
+	Transparent
 };
 
 struct MaterialsDataComponent
@@ -25,6 +28,11 @@ struct MaterialCommonData
 		: materialDataSuballocation(inMaterialDataSuballocation)
 		, materialType(EMaterialType::Opaque)
 	{ }
+
+	bool SupportsRayTracing() const
+	{
+		return materialType == EMaterialType::Opaque;
+	}
 
 	rhi::RHISuballocation materialDataSuballocation;
 

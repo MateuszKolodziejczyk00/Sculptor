@@ -324,7 +324,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 	rhi::TextureDefinition bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
 	bloomTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	bloomTextureDef.format		= rhi::EFragmentFormat::B10G11B11_U_Float;
+	bloomTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
 	bloomTextureDef.samples		= 1;
 	bloomTextureDef.mipLevels	= bloomPassesNum;
 	bloomTextureDef.arrayLayers	= 1;

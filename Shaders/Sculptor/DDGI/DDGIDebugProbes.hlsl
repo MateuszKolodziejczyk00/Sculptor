@@ -77,6 +77,8 @@ PS_OUTPUT DDGIDebugProbesPS(VS_OUTPUT vertexInput)
 
         // reverse perceptual encoding
         probeIrradiance = pow(probeIrradiance, 5.f);
+
+        probeIrradiance *= 10.f;
     
         output.color = float4(probeIrradiance / (probeIrradiance + 1.f), 1.f);
     }

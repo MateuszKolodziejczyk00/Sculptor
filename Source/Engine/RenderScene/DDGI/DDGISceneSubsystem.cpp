@@ -2,6 +2,7 @@
 #include "Types/Texture.h"
 #include "ResourcesManager.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "EngineFrame.h"
 
 namespace spt::rsc
 {
@@ -10,34 +11,55 @@ namespace parameters
 {
 
 RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
+RendererFloatParameter ddgiBlendHysteresis("DDGI Blend Hysteresis", { "DDGI" }, 0.95f, 0.f, 1.f);
 
 } // parameters
 
 DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
 	, m_probesDebugMode(EDDDGIProbesDebugMode::None)
+	, m_probesUpdatedPerFrame(math::Vector3u::Zero())
+	, m_hasValidHistory(false)
 {
 	InitializeDDGIParameters();
 
 	InitializeTextures();
 
 	m_ddgiDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDS>(RENDERER_RESOURCE_NAME("DDGIDS"), rdr::EDescriptorSetStateFlags::Persistent);
-	m_ddgiDS->u_ddgiParams				= GetDDGIParams();
-	m_ddgiDS->u_probesIrradianceTexture	= GetProbesIrradianceTexture();
+	m_ddgiDS->u_ddgiParams					= GetDDGIParams();
+	m_ddgiDS->u_probesIrradianceTexture		= GetProbesIrradianceTexture();
 	m_ddgiDS->u_probesHitDistanceTexture	= GetProbesHitDistanceTexture();
 }
 
 DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 {
+	const math::Vector3u blocksNum = math::Utils::DivideCeil(GetProbesVolumeResolution(), m_probesUpdatedPerFrame);
+
+	math::Vector3u updateCoords(lib::rnd::Random<Uint32>(0, blocksNum.x()),
+								lib::rnd::Random<Uint32>(0, blocksNum.y()),
+								lib::rnd::Random<Uint32>(0, blocksNum.z()));
+
+	updateCoords = updateCoords.cwiseProduct(m_probesUpdatedPerFrame);
+	updateCoords.x() = std::min(updateCoords.x(), GetProbesVolumeResolution().x() - m_probesUpdatedPerFrame.x());
+	updateCoords.y() = std::min(updateCoords.y(), GetProbesVolumeResolution().y() - m_probesUpdatedPerFrame.y());
+	updateCoords.z() = std::min(updateCoords.z(), GetProbesVolumeResolution().z() - m_probesUpdatedPerFrame.z());
+
 	DDGIUpdateProbesGPUParams params;
-	params.probesToUpdateCoords	= math::Vector3u::Zero();
-	params.probesToUpdateCount	= GetProbesVolumeResolution();
+	params.probesToUpdateCoords	= updateCoords;
+	params.probesToUpdateCount	= m_probesUpdatedPerFrame;
 	params.probeRaysMaxT		= 100.f;
 	params.probeRaysMinT		= 0.01f;
 	params.raysNumPerProbe		= GetRaysNumPerProbe();
 	params.probesNumToUpdate	= params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
 	params.rcpRaysNumPerProbe	= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate	= 1.f / static_cast<Real32>(params.probesNumToUpdate);
+	params.skyIrradiance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 0.05f;
+	params.groundIrradiance		= math::Vector3f::Constant(0.01f);
+	params.hasValidHistory		= m_hasValidHistory;
+	params.blendHysteresis		= m_hasValidHistory ? parameters::ddgiBlendHysteresis : 0.f;
+	
+	params.raysRotation							= math::Matrix4f::Identity();
+	params.raysRotation.topLeftCorner<3, 3>()	= lib::rnd::RandomRotationMatrix();
 
 	return params;
 }
@@ -77,6 +99,11 @@ bool DDGISceneSubsystem::IsDDGIEnabled() const
 	return parameters::ddgiEnabled;
 }
 
+void DDGISceneSubsystem::MarkHistoryAsValid()
+{
+	m_hasValidHistory = true;
+}
+
 Uint32 DDGISceneSubsystem::GetRaysNumPerProbe() const
 {
 	return 256;
@@ -114,13 +141,16 @@ math::Vector2u DDGISceneSubsystem::GetProbeDistancesDataWithBorderRes() const
 
 void DDGISceneSubsystem::InitializeDDGIParameters()
 {
-	const math::Vector3u probesVolumeRes = math::Vector3u(20u, 24u, 14u);
+	const math::Vector3u probesVolumeRes = math::Vector3u::Constant(22u);
+
+	m_probesUpdatedPerFrame = math::Vector3u::Constant(6u);
 
 	const Uint32 probesTextureWidth		= probesVolumeRes.x() * probesVolumeRes.z();
 	const Uint32 probesTextureHeight	= probesVolumeRes.y();
 
-	m_ddgiParams.probesOriginWorldLocation					= math::Vector3f(-10.f, -12.f, -0.5f);
-	m_ddgiParams.probesSpacing								= math::Vector3f::Ones();
+	m_ddgiParams.probesOriginWorldLocation					= math::Vector3f(-5.f, -11.f, -0.5f);
+	m_ddgiParams.probesSpacing								= math::Vector3f(0.5f, 1.f, 0.5f);
+	m_ddgiParams.probesEndWorldLocation						= m_ddgiParams.probesOriginWorldLocation + probesVolumeRes.cast<Real32>().cwiseProduct(m_ddgiParams.probesSpacing);
 	m_ddgiParams.rcpProbesSpacing							= m_ddgiParams.probesSpacing.cwiseInverse();
 	m_ddgiParams.probesVolumeResolution						= probesVolumeRes;
 	m_ddgiParams.probesWrapCoords							= math::Vector3i::Zero();
@@ -160,7 +190,7 @@ void DDGISceneSubsystem::InitializeTextures()
 	rhi::TextureDefinition probesIrradianceTextureDef;
 	probesIrradianceTextureDef.resolution	= math::Vector3u{ probesTextureWidth * irradiancePerProbeRes.x(), probesTextureHeight * irradiancePerProbeRes.y(), 1u };
 	probesIrradianceTextureDef.usage		= texturesUsage;
-	probesIrradianceTextureDef.format		= rhi::EFragmentFormat::B10G11B11_U_Float;
+	probesIrradianceTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
 	const lib::SharedRef<rdr::Texture> probesIrradianceTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Probes Irradiance"), probesIrradianceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 	rhi::TextureViewDefinition probesIrradianceViewDefinition;

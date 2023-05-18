@@ -136,16 +136,12 @@ float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
 
 float3 FibbonaciSphereDistribution(in int i, in int num)
 {
-	float k = float(i) + 0.5f;
-	
-	const float phi = acos(1.f - 2.f * k / num);
-	const float theta = PI * (1.f + sqrt(5.f)) * k;
-	
-	const float x = cos(theta) * sin(phi);
-	const float y = sin(theta) * sin(phi);
-	const float z = cos(phi);
-	
-	return float3(x, y, z);
+    const float b = (sqrt(5.f) * 0.5f + 0.5f) - 1.f;
+    float phi = 2.f * PI * frac(i * b);
+    float cosTheta = 1.f - (2.f * i + 1.f) * (1.f / num);
+    float sinTheta = sqrt(saturate(1.f - (cosTheta * cosTheta)));
+
+    return float3((cos(phi) * sinTheta), (sin(phi) * sinTheta), cosTheta);
 }
 
 // Octahedron mapping =========================================================================

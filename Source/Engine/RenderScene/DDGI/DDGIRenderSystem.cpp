@@ -255,6 +255,8 @@ void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, cons
 		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
 
 		UpdateProbes(graphBuilder, renderScene, updateParams);
+
+		ddgiSubsystem.MarkHistoryAsValid();
 	}
 }
 

@@ -1,7 +1,7 @@
 
 float3 GetProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
-    return FibbonaciSphereDistribution(rayIdx, raysNum);
+	return FibbonaciSphereDistribution(rayIdx, raysNum);
 }
 
 float2 GetProbeOctCoords(in float3 dir)
@@ -16,7 +16,7 @@ float3 GetProbeOctDirection(in float2 coords)
 }
 
 
-uint3 ComputeUpdatedProbeCoords(uint probeIdx, uint3 probesToUpdateCoords, uint3 probesToUpdateCount)
+uint3 ComputeUpdatedProbeCoords(in uint probeIdx, in uint3 probesToUpdateCoords, in uint3 probesToUpdateCount)
 {
     const uint probesPerPlane = probesToUpdateCount.x * probesToUpdateCount.y;
 
@@ -113,6 +113,11 @@ float2 SampleProbeHitDistance(in const DDGIGPUParams ddgiParams, Texture2D<float
 	return probesHitDistanceTexture.SampleLevel(distancesSampler, uv, 0);
 }
 
+bool IsInsideDDGIVolume(in const DDGIGPUParams ddgiParams, in float3 worldLocation)
+{
+	return all(worldLocation >= ddgiParams.probesOriginWorldLocation - ddgiParams.probesSpacing) && all(worldLocation <= ddgiParams.probesEndWorldLocation + ddgiParams.probesSpacing);
+}
+
 
 float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 						in Texture2D<float3> probesIrradianceTexture,
@@ -123,27 +128,33 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 						in float3 surfaceNormal,
 						in float3 viewNormal)
 {
-	const float3 biasVector = (surfaceNormal * 0.2f + viewNormal * 0.8f) * 0.75f * ddgiParams.probesSpacing * 0.4f;
+	if(!IsInsideDDGIVolume(ddgiParams, worldLocation))
+    {
+        return float3(0, 0, 0);
+    }
+	
+	const float3 biasVector = (surfaceNormal * 0.2f + viewNormal * 0.8f) * 0.75f * ddgiParams.probesSpacing;
 	const float3 biasedWorldLocation = worldLocation + biasVector;
 
 	const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(ddgiParams, biasedWorldLocation);
 	const float3 baseProbeWorldLocation = GetProbeWorldLocation(ddgiParams, baseProbeCoords);
 
-	const float3 baseProbeDistAlpha = saturate(biasedWorldLocation - baseProbeWorldLocation * ddgiParams.rcpProbesSpacing);
+    const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * ddgiParams.rcpProbesSpacing);
 
     float3 irradianceSum = 0.f;
     float weightSum = 0.f;
 	
     for (int i = 0; i < 8; ++i)
     {
-        const int3 probeOffset = int3(i, i >> 1, i >> 2) & 1;
+        const int3 probeOffset = int3(i, i >> 1, i >> 2) & int3(1, 1, 1);
 		const uint3 probeCoords = OffsetProbe(ddgiParams, baseProbeCoords, probeOffset);
 
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(ddgiParams, probeCoords);
 
 		const float3 probeWorldLocation = GetProbeWorldLocation(ddgiParams, probeCoords);
 
-        const float3 trilinearWeight = lerp(1.f - baseProbeDistAlpha, baseProbeDistAlpha, probeOffset);
+        const float3 trilinear = max(lerp(1.f - baseProbeDistAlpha, baseProbeDistAlpha, probeOffset), 0.001f);
+		const float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
         float weight = 1.f;
 		
 		const float3 dirToProbe = normalize(probeWorldLocation - worldLocation);
@@ -159,12 +170,17 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 		
 		const float2 hitDistances = SampleProbeHitDistance(ddgiParams, probesHitDistanceTexture, distancesSampler, probeWrappedCoords, hitDistOctCoords);
 
-		if(distToBiasedPoint > hitDistances.x)
+		if (hitDistances.x < 0.f)
+        {
+			// probe is inside geometry
+            weight = 0.0001f;
+        }
+		else if (distToBiasedPoint > hitDistances.x)
         {
             const float variance = abs(Pow2(hitDistances.x) - hitDistances.y);
 
 			const float distDiff = distToBiasedPoint - hitDistances.x;
-			float chebyshevWeight = (variance / (variance + Pow2(distDiff)));
+            float chebyshevWeight = (variance / (variance + Pow2(distDiff)));
 
             chebyshevWeight = max(Pow3(chebyshevWeight), 0.05f);
 
@@ -175,8 +191,10 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 		
 		if(weight < 0.2f)
         {
-            weight *= Pow2(weight) / (1.f / Pow2(0.2f));
+            weight *= Pow2(weight) / Pow2(0.2f);
         }
+
+        weight *= trilinearWeight;
 		
 		const float2 irradianceOctCoords = GetProbeOctCoords(surfaceNormal);
 
@@ -184,8 +202,6 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
 		// perceptual encoding
 		irradiance = pow(irradiance, 2.5f);
-
-        weight *= trilinearWeight.x * trilinearWeight.y * trilinearWeight.z + 0.001f;
 
         irradianceSum += irradiance * weight;
         weightSum += weight;
@@ -195,8 +211,8 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
 	// perceptual encoding
 	irradiance = Pow2(irradiance);
-
-    irradiance = 0.5f * PI * irradiance * 0.95f;
+	
+	irradiance = irradiance * 2.f * PI;
 
     return irradiance;
 }

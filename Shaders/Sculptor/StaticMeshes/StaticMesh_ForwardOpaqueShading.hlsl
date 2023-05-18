@@ -141,16 +141,16 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 {
     FO_PS_OUTPUT output;
     
-    float4 baseColor = 1.f;
+    float3 baseColor = 1.f;
     
     const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(vertexInput.materialDataOffset);
     if(material.baseColorTextureIdx != IDX_NONE_32)
     {
-        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv);
-        baseColor.rgb = pow(baseColor.rgb, 2.2f);
+        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).rgb;
+        baseColor = pow(baseColor, 2.2f);
     }
 
-    baseColor.rgb *= material.baseColorFactor;
+    baseColor *= material.baseColorFactor;
 
     float metallic = material.metallicFactor;
     float roughness = material.roughnessFactor;
@@ -181,44 +181,37 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     float3 indirectLighting = 0.f;
 #endif // WITH_DEBUGS
 
-    if(baseColor.a > 0.9f)
-    {
-        const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
+    const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
 
-        ShadedSurface surface;
-        surface.location = vertexInput.worldLocation;
-        surface.shadingNormal = shadingNormal;
-        surface.geometryNormal = geometryNormal;
-        surface.roughness = roughness;
-        surface.uv = screenUV;
-        surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
+    ShadedSurface surface;
+    surface.location = vertexInput.worldLocation;
+    surface.shadingNormal = shadingNormal;
+    surface.geometryNormal = geometryNormal;
+    surface.roughness = roughness;
+    surface.uv = screenUV;
+    surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
 
-        ComputeSurfaceColor(baseColor.rgb, metallic, surface.diffuseColor, surface.specularColor);
+    ComputeSurfaceColor(baseColor, metallic, surface.diffuseColor, surface.specularColor);
 
-        const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
+    const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
 
-        float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
+    float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
 
-        float3 indirect = 0.f;
+    float3 indirect = 0.f;
 
 #ifdef ENABLE_DDGI
 
-        indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView);
+    indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView);
 
 #endif // ENABLE_DDGI
 
-        radiance += surface.diffuseColor * indirect;
+    radiance += surface.diffuseColor * Diffuse_Lambert(indirect);
 
 #if WITH_DEBUGS
-        indirectLighting = indirect;
+    indirectLighting = indirect;
 #endif // WITH_DEBUGS
 
-        output.radiance = float4(radiance, 1.f);
-    }
-    else
-    {
-        output.radiance = 0.f;
-    }
+    output.radiance = float4(radiance, 1.f);
     
     output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
 

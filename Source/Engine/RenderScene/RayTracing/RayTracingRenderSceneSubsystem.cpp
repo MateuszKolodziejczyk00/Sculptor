@@ -62,19 +62,22 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 			const RenderingDataEntityHandle material		= materialsData.materials[idx];
 			const MaterialCommonData& materialData			= material.get<MaterialCommonData>();
 
-			RTInstanceData& rtInstance = rtInstances.emplace_back();
-			rtInstance.entityIdx				= gpuEntity.GetEntityIdx();
-			rtInstance.materialDataOffset		= static_cast<Uint32>(materialData.materialDataSuballocation.GetOffset());
-			rtInstance.geometryDataID			= rtGeometry.geometryDataID;
-
-			rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
-			tlasInstance.transform		= transformMatrix;
-			tlasInstance.blasAddress	= rtGeometry.blas->GetRHI().GetDeviceAddress();
-			tlasInstance.customIdx		= static_cast<Uint32>(rtInstances.size() - 1);
-
-			if (materialData.materialType == EMaterialType::Opaque)
+			if(materialData.SupportsRayTracing())
 			{
-				lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
+				RTInstanceData& rtInstance = rtInstances.emplace_back();
+				rtInstance.entityIdx				= gpuEntity.GetEntityIdx();
+				rtInstance.materialDataOffset		= static_cast<Uint32>(materialData.materialDataSuballocation.GetOffset());
+				rtInstance.geometryDataID			= rtGeometry.geometryDataID;
+
+				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
+				tlasInstance.transform		= transformMatrix;
+				tlasInstance.blasAddress	= rtGeometry.blas->GetRHI().GetDeviceAddress();
+				tlasInstance.customIdx		= static_cast<Uint32>(rtInstances.size() - 1);
+
+				if (materialData.materialType == EMaterialType::Opaque)
+				{
+					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
+				}
 			}
 		}
 	}

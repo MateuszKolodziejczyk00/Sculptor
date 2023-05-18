@@ -83,6 +83,7 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 #endif // DDGI_BLEND_TYPE
 
         rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
+        rayDirections[rayIdx] = mul(u_updateProbesParams.raysRotation, float4(rayDirections[rayIdx], 0.f)).xyz;
     }
 }
 
@@ -156,6 +157,15 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
                 if (backfacesNum >= maxBackfaces)
                 {
+#if DDGI_BLEND_TYPE == DDGI_BLEND_IRRADIANCE
+
+                    u_probesIrradianceTexture[probeDataOffset + localID] = 0.f;
+
+#elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
+
+                    u_probesHitDistanceTexture[probeDataOffset + localID] = -1.f;
+
+#endif // DDGI_BLEND_TYPE
                     return;
                 }
 
@@ -166,8 +176,8 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
             if(weight > WEIGHT_EPSILON)
             {
-                const float energyConservation = 0.95f;
-                rayRadiance *= energyConservation;
+                //const float energyConservation = 0.95f;
+                //rayRadiance *= energyConservation;
 
                 radianceSum += rayRadiance * weight;
                 weightSum += weight;
@@ -189,6 +199,8 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 #endif // DDGI_BLEND_TYPE
         }
 
+        const uint2 dataCoords = probeDataOffset + localID;
+
 #if DDGI_BLEND_TYPE == DDGI_BLEND_IRRADIANCE
 
         float3 result = 0.f;
@@ -199,8 +211,11 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
         // perceptual encoding
         result = pow(result, 0.2f);
+        
+        const float3 prevIrradiance = u_probesIrradianceTexture[dataCoords];
+        result = lerp(result, prevIrradiance, u_updateProbesParams.blendHysteresis);
 
-        u_probesIrradianceTexture[probeDataOffset + localID] = result;
+        u_probesIrradianceTexture[dataCoords] = result;
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
@@ -210,7 +225,10 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = float2(hitDistanceSum, hitDistanceSquaredSum) / weightSum;
         }
         
-        u_probesHitDistanceTexture[probeDataOffset + localID] = result;
+        const float2 prevHitDistance = u_probesHitDistanceTexture[dataCoords];
+        result = lerp(result, prevHitDistance, u_updateProbesParams.blendHysteresis);
+        
+        u_probesHitDistanceTexture[dataCoords] = result;
 
 #endif // DDGI_BLEND_TYPE
 

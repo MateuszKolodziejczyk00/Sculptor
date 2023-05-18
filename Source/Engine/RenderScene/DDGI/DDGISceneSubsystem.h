@@ -50,6 +50,8 @@ public:
 
 	bool IsDDGIEnabled() const;
 
+	void MarkHistoryAsValid();
+
 	// Settings ==================================================================
 
 	Uint32 GetRaysNumPerProbe() const;
@@ -78,6 +80,10 @@ private:
 	EDDDGIProbesDebugMode::Type m_probesDebugMode;
 
 	lib::SharedPtr<DDGIDS> m_ddgiDS;
+
+	math::Vector3u m_probesUpdatedPerFrame;
+
+	Bool m_hasValidHistory;
 };
 
 } // spt::rsc

@@ -4,6 +4,7 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderSceneRegistry.h"
 #include "RenderingDataRegistry.h"
+#include "Materials/MaterialTypes.h"
 
 
 namespace spt::rsc
@@ -56,12 +57,12 @@ public:
 
 	explicit StaticMeshRenderSceneSubsystem(RenderScene& owningScene);
 
-	StaticMeshBatchDefinition BuildBatchForView(const RenderView& view) const;
-	StaticMeshBatchDefinition BuildBatchForPointLight(const PointLightData& pointLight) const;
+	StaticMeshBatchDefinition BuildBatchForView(const RenderView& view, EMaterialType materialType) const;
+	StaticMeshBatchDefinition BuildBatchForPointLight(const PointLightData& pointLight, EMaterialType materialType) const;
 
 private:
 
-	void AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const MaterialsDataComponent& materialsData) const;
+	void AppendMeshToBatch(StaticMeshBatchDefinition& batch, Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const MaterialsDataComponent& materialsData, EMaterialType batchMaterialType) const;
 };
 
 } // spt::rsc
