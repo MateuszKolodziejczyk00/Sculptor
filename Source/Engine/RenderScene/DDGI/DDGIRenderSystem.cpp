@@ -252,11 +252,18 @@ void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, cons
 
 	if (ddgiSubsystem.IsDDGIEnabled())
 	{
+		if (ddgiSubsystem.RequiresClearingData())
+		{
+			const rg::RGTextureViewHandle probesIrradianceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIrradianceTexture());
+
+			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIrradianceTextureView, rhi::ClearColor());
+
+			ddgiSubsystem.PostClearingData();
+		}
+
 		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
 
 		UpdateProbes(graphBuilder, renderScene, updateParams);
-
-		ddgiSubsystem.MarkHistoryAsValid();
 	}
 }
 

@@ -34,6 +34,7 @@ BEGIN_SHADER_STRUCT(DDGIGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceTexturePixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceUVDeltaPerProbe)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceTextureUVPerProbeNoBorder)
+	SHADER_STRUCT_FIELD(Real32,			probeIrradianceEncodingGamma)
 END_SHADER_STRUCT();
 
 
@@ -50,7 +51,6 @@ BEGIN_SHADER_STRUCT(DDGIUpdateProbesGPUParams)
 	SHADER_STRUCT_FIELD(Real32,				blendHysteresis)
 	SHADER_STRUCT_FIELD(math::Vector3f,		groundIrradiance)
 	SHADER_STRUCT_FIELD(math::Matrix4f,		raysRotation)
-	SHADER_STRUCT_FIELD(Bool,				hasValidHistory)
 END_SHADER_STRUCT();
 
 

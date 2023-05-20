@@ -11,7 +11,7 @@ namespace parameters
 {
 
 RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
-RendererFloatParameter ddgiBlendHysteresis("DDGI Blend Hysteresis", { "DDGI" }, 0.95f, 0.f, 1.f);
+RendererFloatParameter ddgiBlendHysteresis("DDGI Blend Hysteresis", { "DDGI" }, 0.97f, 0.f, 1.f);
 
 } // parameters
 
@@ -19,7 +19,7 @@ DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
 	, m_probesDebugMode(EDDDGIProbesDebugMode::None)
 	, m_probesUpdatedPerFrame(math::Vector3u::Zero())
-	, m_hasValidHistory(false)
+	, m_requiresClearingData(false)
 {
 	InitializeDDGIParameters();
 
@@ -54,9 +54,8 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	params.rcpRaysNumPerProbe	= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate	= 1.f / static_cast<Real32>(params.probesNumToUpdate);
 	params.skyIrradiance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 0.05f;
-	params.groundIrradiance		= math::Vector3f::Constant(0.01f);
-	params.hasValidHistory		= m_hasValidHistory;
-	params.blendHysteresis		= m_hasValidHistory ? parameters::ddgiBlendHysteresis : 0.f;
+	params.groundIrradiance		= math::Vector3f::Constant(0.1f) * 0.05f;
+	params.blendHysteresis		= parameters::ddgiBlendHysteresis;
 	
 	params.raysRotation							= math::Matrix4f::Identity();
 	params.raysRotation.topLeftCorner<3, 3>()	= lib::rnd::RandomRotationMatrix();
@@ -94,14 +93,19 @@ const lib::SharedPtr<DDGIDS>& DDGISceneSubsystem::GetDDGIDS() const
 	return m_ddgiDS;
 }
 
-bool DDGISceneSubsystem::IsDDGIEnabled() const
+Bool DDGISceneSubsystem::IsDDGIEnabled() const
 {
 	return parameters::ddgiEnabled;
 }
 
-void DDGISceneSubsystem::MarkHistoryAsValid()
+Bool DDGISceneSubsystem::RequiresClearingData() const
 {
-	m_hasValidHistory = true;
+	return m_requiresClearingData;
+}
+
+void DDGISceneSubsystem::PostClearingData()
+{
+	m_requiresClearingData = false;
 }
 
 Uint32 DDGISceneSubsystem::GetRaysNumPerProbe() const
@@ -171,6 +175,8 @@ void DDGISceneSubsystem::InitializeDDGIParameters()
 	m_ddgiParams.probesHitDistanceTexturePixelSize			= m_ddgiParams.probesHitDistanceTextureRes.cast<Real32>().cwiseInverse();
 	m_ddgiParams.probesHitDistanceUVDeltaPerProbe			= m_ddgiParams.probesHitDistanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeHitDistanceDataWithBorderRes.cast<Real32>());
 	m_ddgiParams.probesHitDistanceTextureUVPerProbeNoBorder	= m_ddgiParams.probesHitDistanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeHitDistanceDataRes.cast<Real32>());
+	
+	m_ddgiParams.probeIrradianceEncodingGamma				= 1.f;
 }
 
 void DDGISceneSubsystem::InitializeTextures()

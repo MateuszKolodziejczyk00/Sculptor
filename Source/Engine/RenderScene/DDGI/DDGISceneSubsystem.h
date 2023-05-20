@@ -48,9 +48,10 @@ public:
 
 	const lib::SharedPtr<DDGIDS>& GetDDGIDS() const;
 
-	bool IsDDGIEnabled() const;
+	Bool IsDDGIEnabled() const;
 
-	void MarkHistoryAsValid();
+	Bool RequiresClearingData() const;
+	void PostClearingData();
 
 	// Settings ==================================================================
 
@@ -83,7 +84,7 @@ private:
 
 	math::Vector3u m_probesUpdatedPerFrame;
 
-	Bool m_hasValidHistory;
+	Bool m_requiresClearingData;
 };
 
 } // spt::rsc

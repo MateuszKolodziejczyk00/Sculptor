@@ -92,6 +92,12 @@ float Random(float2 seed)
 }
 
 
+float MaxComponent(in float3 value)
+{
+    return max(value.x, max(value.y, value.z));
+}
+
+
 float S_Curve(float x, float steepness)
 {
     const float val = x * 2.f - 1.f;

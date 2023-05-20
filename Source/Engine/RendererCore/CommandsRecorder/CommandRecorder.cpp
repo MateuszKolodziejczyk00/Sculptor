@@ -389,6 +389,18 @@ void CommandRecorder::BlitTexture(const lib::SharedRef<Texture>& source, Uint32 
 						 });
 }
 
+void CommandRecorder::ClearTexture(const lib::SharedRef<Texture>& texture, const rhi::ClearColor& clearColor, const rhi::TextureSubresourceRange& subresourceRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("ClearTexture Command");
+
+							 cmdBuffer->GetRHI().ClearTexture(texture->GetRHI(), clearColor, subresourceRange);
+						 });
+}
+
 void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();

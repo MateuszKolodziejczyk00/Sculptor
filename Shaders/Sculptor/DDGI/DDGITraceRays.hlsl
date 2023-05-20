@@ -78,17 +78,13 @@ void DDGIProbeRaysRTG()
         
         radiance = CalcReflectedRadiance(surface, -rayDirection);
 
-        if (u_updateProbesParams.hasValidHistory)
-        {
-            const float3 irradiance = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
+        const float3 irradiance = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
 
-            radiance += Diffuse_Lambert(irradiance) * min(surface.diffuseColor, 0.9f);
-        }
+        radiance += Diffuse_Lambert(irradiance) * min(surface.diffuseColor, 0.9f);
     }
     else if (payload.hitDistance >= -0.0001f)
     {
-        radiance = lerp(u_updateProbesParams.groundIrradiance, u_updateProbesParams.skyIrradiance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f)) * 0.2f;
-        radiance = float3(0.52f, 0.81f, 0.92f) * 0.05f;
+        radiance = lerp(u_updateProbesParams.groundIrradiance, u_updateProbesParams.skyIrradiance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f));
     }
 
     u_traceRaysResultTexture[dispatchIdx] = float4(radiance, payload.hitDistance);

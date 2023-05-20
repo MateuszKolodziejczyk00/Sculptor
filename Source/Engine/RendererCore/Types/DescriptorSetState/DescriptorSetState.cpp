@@ -46,7 +46,7 @@ void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, con
 		writeDefinition.arrayElement	= 0;
 		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
 
-		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize());
+		SPT_CHECK_MSG(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize(), "Invalid access to {} binding. Please Remove cached shaders from Saved/Shaders directory", name.GetData());
 
 		const Uint64 range = bufferBinding.IsUnbound() ? buffer.GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
 		SPT_CHECK(range > 0);

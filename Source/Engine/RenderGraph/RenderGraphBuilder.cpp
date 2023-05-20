@@ -308,6 +308,36 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 	AddNodeInternal(node, dependencies);
 }
 
+void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(textureView.IsValid());
+
+	const auto executeLambda = [ = ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::TextureView> textureViewInstance = textureView->GetResource();
+		SPT_CHECK(!!textureViewInstance);
+
+		const lib::SharedRef<rdr::Texture>& textureInstance = textureViewInstance->GetTexture();
+
+		const rhi::TextureSubresourceRange& textureSubresource = textureView->GetSubresourceRange();
+		
+		recorder.ClearTexture(textureInstance, clearColor, textureSubresource);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(clearName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddTextureAccess(textureView, ERGTextureAccess::TransferDest);
+
+	AddNodeInternal(node, dependencies);
+}
+
 void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();

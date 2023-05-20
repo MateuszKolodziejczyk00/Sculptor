@@ -75,8 +75,7 @@ PS_OUTPUT DDGIDebugProbesPS(VS_OUTPUT vertexInput)
     {
         float3 probeIrradiance = SampleProbeIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
 
-        // reverse perceptual encoding
-        probeIrradiance = pow(probeIrradiance, 5.f);
+        probeIrradiance = pow(probeIrradiance, u_ddgiParams.probeIrradianceEncodingGamma);
 
         probeIrradiance *= 10.f;
     

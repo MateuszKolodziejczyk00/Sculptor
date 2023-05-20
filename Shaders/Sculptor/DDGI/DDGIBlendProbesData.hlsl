@@ -176,9 +176,6 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
             if(weight > WEIGHT_EPSILON)
             {
-                //const float energyConservation = 0.95f;
-                //rayRadiance *= energyConservation;
-
                 radianceSum += rayRadiance * weight;
                 weightSum += weight;
             }
@@ -209,11 +206,27 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = radianceSum / weightSum;
         }
 
-        // perceptual encoding
-        result = pow(result, 0.2f);
+        const float exponent = 1.f / u_ddgiParams.probeIrradianceEncodingGamma;
+        result = pow(result, exponent);
         
         const float3 prevIrradiance = u_probesIrradianceTexture[dataCoords];
-        result = lerp(result, prevIrradiance, u_updateProbesParams.blendHysteresis);
+
+        float hysteresis = u_updateProbesParams.blendHysteresis;
+
+        if (all(prevIrradiance) < 0.0001f)
+        {
+            hysteresis = 0.f;
+        }
+
+        if (abs(MaxComponent(result - prevIrradiance)) > 0.2f)
+        {
+            hysteresis = max(hysteresis - 0.75f, 0.f);
+        }
+
+        float3 delta = result - prevIrradiance;
+
+        float3 deltaThisFrame = delta * (1.f - hysteresis);
+        result = prevIrradiance + deltaThisFrame;
 
         u_probesIrradianceTexture[dataCoords] = result;
 

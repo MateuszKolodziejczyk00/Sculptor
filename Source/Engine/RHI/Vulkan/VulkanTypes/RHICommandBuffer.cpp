@@ -394,6 +394,26 @@ void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLev
 	vkCmdBlitImage2(m_cmdBufferHandle, &blitInfo);
 }
 
+void RHICommandBuffer::ClearTexture(const RHITexture& texture, const rhi::ClearColor& clearColor, const rhi::TextureSubresourceRange& subresourceRange)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(texture.IsValid());
+	
+	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
+	const VkImageLayout textureLayout	= layoutsManager.GetSubresourcesSharedLayout(m_cmdBufferHandle, texture.GetHandle(), subresourceRange);
+
+	VkImageSubresourceRange vulkanSubresourceRange{};
+    vulkanSubresourceRange.aspectMask		= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
+    vulkanSubresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
+    vulkanSubresourceRange.levelCount		= subresourceRange.mipLevelsNum == rhi::constants::allRemainingMips ? VK_REMAINING_MIP_LEVELS : subresourceRange.mipLevelsNum;
+    vulkanSubresourceRange.baseArrayLayer	= subresourceRange.baseArrayLayer;
+    vulkanSubresourceRange.layerCount		= subresourceRange.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? VK_REMAINING_ARRAY_LAYERS : subresourceRange.arrayLayersNum;
+
+	vkCmdClearColorImage(m_cmdBufferHandle, texture.GetHandle(), textureLayout, reinterpret_cast<const VkClearColorValue*>(&clearColor), 1, &vulkanSubresourceRange);
+}
+
 void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();

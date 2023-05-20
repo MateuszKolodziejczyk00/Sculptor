@@ -200,8 +200,7 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
 		float3 irradiance = SampleProbeIrradiance(ddgiParams, probesIrradianceTexture, irradianceSampler, probeWrappedCoords, irradianceOctCoords);
 
-		// perceptual encoding
-		irradiance = pow(irradiance, 2.5f);
+		irradiance = pow(irradiance, ddgiParams.probeIrradianceEncodingGamma * 0.5f);
 
         irradianceSum += irradiance * weight;
         weightSum += weight;
@@ -209,7 +208,6 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
 	float3 irradiance = irradianceSum / weightSum;
 
-	// perceptual encoding
 	irradiance = Pow2(irradiance);
 	
 	irradiance = irradiance * 2.f * PI;

@@ -124,6 +124,8 @@ public:
 
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
 
+	void ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor);
+
 	void BindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState);
 	void UnbindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState);
 
