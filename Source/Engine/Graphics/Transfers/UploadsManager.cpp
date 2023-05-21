@@ -8,6 +8,7 @@
 #include "MathUtils.h"
 #include "UploadUtils.h"
 #include "RHIBridge/RHILimitsImpl.h"
+#include "Types/Texture.h"
 
 namespace spt::gfx
 {
@@ -135,7 +136,6 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 
 	SPT_CHECK(dataSize <= stagingBufferSize);
 
-	CopyCommand* command = nullptr;
 	lib::SharedPtr<rdr::Buffer> stagingBufferInstance;
 	SizeType stagingBufferIdx = idxNone<SizeType>;
 	Uint64 stagingBufferOffset = 0;
@@ -149,26 +149,27 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 		}
 
 		SPT_CHECK(m_currentStagingBufferOffset != idxNone<Uint64>);
-
-		command = &m_bufferCommands.emplace_back();
-
 		SPT_CHECK(!m_stagingBuffers.empty());
-		stagingBufferIdx = m_lastUsedStagingBufferIdx;
-		stagingBufferOffset = m_currentStagingBufferOffset;
-		stagingBufferInstance = m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+
+		stagingBufferIdx		= m_lastUsedStagingBufferIdx;
+		stagingBufferOffset		= m_currentStagingBufferOffset;
+		stagingBufferInstance	= m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+		
+		SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
+		SPT_CHECK(!!stagingBufferInstance);
+
+		CopyCommand command;
+		command.destBuffer			= destBuffer;
+		command.destBufferOffset	= bufferOffset;
+		command.stagingBufferIdx	= stagingBufferIdx;
+		command.stagingBufferOffset	= stagingBufferOffset;
+		command.dataSize			= dataSize;
+		
+		m_bufferCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
 		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
 	}
-
-	SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
-	SPT_CHECK(!!stagingBufferInstance);
-	
-	command->destBuffer = destBuffer;
-	command->destBufferOffset = bufferOffset;
-	command->stagingBufferIdx = stagingBufferIdx;
-	command->stagingBufferOffset = stagingBufferOffset;
-	command->dataSize = dataSize;
 
 	// upload data to staging buffer
 	UploadDataToBufferOnCPU(lib::Ref(stagingBufferInstance), stagingBufferOffset, sourceData, dataSize);
@@ -180,7 +181,6 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 
 	SPT_CHECK(dataSize <= stagingBufferSize);
 
-	CopyToTextureCommand* command = nullptr;
 	lib::SharedPtr<rdr::Buffer> stagingBufferInstance;
 	SizeType stagingBufferIdx = idxNone<SizeType>;
 	Uint64 stagingBufferOffset = 0;
@@ -194,29 +194,30 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 		}
 
 		SPT_CHECK(m_currentStagingBufferOffset != idxNone<Uint64>);
-
-		command = &m_copyToTextureCommands.emplace_back();
-
 		SPT_CHECK(!m_stagingBuffers.empty());
-		stagingBufferIdx = m_lastUsedStagingBufferIdx;
-		stagingBufferOffset = m_currentStagingBufferOffset;
-		stagingBufferInstance = m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+
+		stagingBufferIdx		= m_lastUsedStagingBufferIdx;
+		stagingBufferOffset		= m_currentStagingBufferOffset;
+		stagingBufferInstance	= m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+		
+		SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
+		SPT_CHECK(!!stagingBufferInstance);
+	
+		CopyToTextureCommand command;
+		command.destTexture			= texture;
+		command.copyExtent			= copyExtent;
+		command.copyOffset			= copyOffset;
+		command.aspect				= aspect;
+		command.mipLevel			= mipLevel;
+		command.arrayLayer			= arrayLayer;
+		command.stagingBufferIdx	= stagingBufferIdx;
+		command.stagingBufferOffset	= stagingBufferOffset;
+
+		m_copyToTextureCommands.emplace_back(command);
 	
 		m_currentStagingBufferOffset += dataSize;
 		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
 	}
-
-	SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
-	SPT_CHECK(!!stagingBufferInstance);
-	
-	command->destTexture			= texture;
-	command->copyExtent				= copyExtent;
-	command->copyOffset				= copyOffset;
-	command->aspect					= aspect;
-	command->mipLevel				= mipLevel;
-	command->arrayLayer				= arrayLayer;
-	command->stagingBufferIdx		= stagingBufferIdx;
-	command->stagingBufferOffset	= stagingBufferOffset;
 
 	// upload data to staging buffer
 	UploadDataToBufferOnCPU(lib::Ref(stagingBufferInstance), stagingBufferOffset, data, dataSize);
@@ -244,6 +245,12 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 
 	for (const CopyToTextureCommand& command : m_copyToTextureCommands)
 	{
+		rhi::RHIDependency dependency;
+		const SizeType barrierIdx = dependency.AddTextureDependency(command.destTexture->GetRHI(), rhi::TextureSubresourceRange(command.aspect));
+		dependency.SetLayoutTransition(barrierIdx, rhi::TextureTransition::TransferDest);
+
+		recorder->ExecuteBarrier(dependency);
+
 		const lib::SharedRef<rdr::Buffer> stagingBuffer = lib::Ref(m_stagingBuffers[command.stagingBufferIdx].buffer);
 		recorder->CopyBufferToTexture(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destTexture), command.aspect, command.copyExtent, command.copyOffset, command.mipLevel, command.arrayLayer);
 	}
