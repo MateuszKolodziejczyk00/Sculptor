@@ -1,6 +1,7 @@
 #include "RenderViewSettingsUIView.h"
 #include "View/RenderView.h"
 #include "ImGui/SculptorImGui.h"
+#include "Camera/CameraSettings.h"
 
 namespace spt::rsc
 {
@@ -41,6 +42,16 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 	if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
 	{
 		view.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));
+	}
+	
+	const RenderSceneEntityHandle viewEntity = view.GetViewEntity();
+	if (CameraLensSettingsComponent* lensSettings = viewEntity.try_get<CameraLensSettingsComponent>())
+	{
+		if (ImGui::CollapsingHeader("Lens Settings"))
+		{
+			ImGui::ColorEdit3("Lens Dirt Intensity", lensSettings->lensDirtIntensity.data());
+			ImGui::ColorEdit3("Lens Dirt Threshold", lensSettings->lensDirtThreshold.data());
+		}
 	}
 
 	const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets", "Show Indirect Lighting"};

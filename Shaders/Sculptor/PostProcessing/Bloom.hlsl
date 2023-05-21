@@ -80,7 +80,7 @@ void BloomDownsampleCS(CS_INPUT input)
 
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
-        float3 input = DownsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
+        float3 input = DownsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
        
         u_outputTexture[pixel] = float4(input, 1.f);
     }
@@ -102,7 +102,7 @@ void BloomUpsampleCS(CS_INPUT input)
 
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
-        const float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
+        const float3 bloom = UpsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
 
         const float3 existing = u_outputTexture[pixel].xyz;
 
@@ -126,10 +126,20 @@ void BloomCompositeCS(CS_INPUT input)
 
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
-        const float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize) * u_bloomInfo.bloomIntensity;
+        float3 bloom = UpsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize) * u_bloomInfo.bloomIntensity;
 
         const float3 imageColor = u_outputTexture[pixel].rgb;
+
+        bloom = lerp(imageColor, bloom, u_bloomInfo.bloomBlendFactor);
+
+        float3 lensDirt = 0.f;
+        if (u_bloomInfo.hasLensDirtTexture)
+        {
+            lensDirt = u_lensDirtTexture.SampleLevel(u_linearSampler, uv, 0).rgb * u_bloomInfo.lensDirtIntensity;
+        }
+
+        bloom += saturate(bloom - u_bloomInfo.lensDirtThreshold) * lensDirt;
         
-        u_outputTexture[pixel] = float4(lerp(imageColor, bloom, u_bloomInfo.bloomBlendFactor), 1.f);
+        u_outputTexture[pixel] = float4(bloom, 1.f);
     }
 }

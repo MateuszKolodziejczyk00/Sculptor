@@ -29,6 +29,10 @@
 #include "EngineFrame.h"
 #include "Profiler/Profiler.h"
 #include "Vulkan/VulkanTypes/RHIQueryPool.h"
+#include "DDGI/DDGISceneSubsystem.h"
+#include "DDGI/DDGIRenderSystem.h"
+#include "Camera/CameraSettings.h"
+#include "Loaders/TextureLoader.h"
 
 namespace spt::ed
 {
@@ -250,12 +254,26 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
+	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
+	
+	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))
+	{
+		rhi::TextureViewDefinition viewDef;
+		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+
+		rsc::CameraLensSettingsComponent cameraLensSettingsComponent;
+		cameraLensSettingsComponent.lensDirtTexture = lensDirtTexture->CreateView(RENDERER_RESOURCE_NAME("Lens Dirt View"), viewDef);
+		viewEntity.emplace<rsc::CameraLensSettingsComponent>(cameraLensSettingsComponent);
+	}
 
 	m_renderScene->AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
 	m_renderScene->AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderScene->AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
+		
+		m_renderScene->AddRenderSystem<rsc::DDGIRenderSystem>();
+		m_renderScene->AddSceneSubsystem<rsc::DDGISceneSubsystem>();
 	}
 	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
@@ -297,7 +315,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color			= math::Vector3f(0.9569f, 0.9137f, 0.6078f);
 			directionalLightData.intensity		= 1.6f;
-			directionalLightData.direction		= math::Vector3f(0.5f, 1.f, -2.7f).normalized();
+			directionalLightData.direction		= math::Vector3f(0.5f, 0.f, -1.7f).normalized();
 			directionalLightData.lightConeAngle = 0.0046f;
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}

@@ -16,6 +16,7 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Transfers/UploadUtils.h"
 #include "EngineFrame.h"
+#include "Camera/CameraSettings.h"
 
 namespace spt::rsc
 {
@@ -168,17 +169,21 @@ namespace bloom
 BEGIN_SHADER_STRUCT(BloomPassInfo)
 	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
-	SHADER_STRUCT_FIELD(Real32, bloomUpsampleBlendFactor)
-	SHADER_STRUCT_FIELD(Real32, bloomIntensity)
-	SHADER_STRUCT_FIELD(Real32, bloomBlendFactor)
+	SHADER_STRUCT_FIELD(Real32,			bloomUpsampleBlendFactor)
+	SHADER_STRUCT_FIELD(Real32,			bloomIntensity)
+	SHADER_STRUCT_FIELD(Real32,			bloomBlendFactor)
+	SHADER_STRUCT_FIELD(Bool,			hasLensDirtTexture)
+	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtThreshold)
+	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtIntensity)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(BloomPassDS, rg::RGDescriptorSetState<BloomPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomPassInfo>),					u_bloomInfo)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inputSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),						u_lensDirtTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 DS_END();
 
 
@@ -309,12 +314,22 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> 1, renderingRes.y() >> 1);
 	const math::Vector2u outputRes = math::Vector2u(renderingRes.x(), renderingRes.y());
 
-	const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
+	BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
 	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
-	bloomPassDS->u_bloomInfo		= passInfo;
 	bloomPassDS->u_inputTexture		= bloomTextureMip0;
 	bloomPassDS->u_outputTexture	= outputTexture;
+
+	const RenderSceneEntityHandle renderViewEntity = viewSpec.GetRenderView().GetViewEntity();
+	if (const CameraLensSettingsComponent* lensSettings = renderViewEntity.try_get<CameraLensSettingsComponent>())
+	{
+		bloomPassDS->u_lensDirtTexture = lensSettings->lensDirtTexture;
+		passInfo.hasLensDirtTexture = true;
+		passInfo.lensDirtThreshold	= lensSettings->lensDirtThreshold;
+		passInfo.lensDirtIntensity	= lensSettings->lensDirtIntensity;
+	}
+	
+	bloomPassDS->u_bloomInfo = passInfo;
 
 	const math::Vector3u groupCount(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
