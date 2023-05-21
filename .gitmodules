@@ -33,3 +33,6 @@
 [submodule "Source/ThirdParty/MeshOptimizer/MeshOptimizer"]
 	path = Source/ThirdParty/MeshOptimizer/MeshOptimizer
 	url = https://github.com/zeux/meshoptimizer
+[submodule "Source/ThirdParty/STB/STB"]
+	path = Source/ThirdParty/STB/STB
+	url = https://github.com/nothings/stb
