@@ -4,6 +4,8 @@
 
 [[descriptor_set(BloomPassDS, 0)]]
 
+// Based on https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/
+
 
 struct CS_INPUT
 {
@@ -79,15 +81,6 @@ void BloomDownsampleCS(CS_INPUT input)
         const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
         
         float3 input = DownsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize);
-        
-        if (u_bloomInfo.prefilterInput)
-        {
-            const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
-            const float bloomEV = EV100 + u_bloomInfo.bloomEC - 3.f;
-            const float bloomExposure = ConvertEV100ToExposure(bloomEV);
-            
-            input = max(input * bloomExposure - InverseTonemapACES(u_bloomInfo.bloomThreshold), 0.f);
-        }
        
         u_outputTexture[pixel] = float4(input, 1.f);
     }
@@ -113,6 +106,30 @@ void BloomUpsampleCS(CS_INPUT input)
 
         const float3 existing = u_outputTexture[pixel].xyz;
 
-        u_outputTexture[pixel] = float4(existing + bloom, 1.f);
+        u_outputTexture[pixel] = float4(lerp(existing, bloom, u_bloomInfo.bloomUpsampleBlendFactor), 1.f);
+    }
+}
+
+
+[numthreads(8, 8, 1)]
+void BloomCompositeCS(CS_INPUT input)
+{
+    const uint2 pixel = input.globalID.xy;
+
+    uint2 outputRes;
+    u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
+
+    if(pixel.x < outputRes.x && pixel.y < outputRes.y)
+    {
+        const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
+        const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
+
+        const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
+        
+        const float3 bloom = UpsampleFilter(u_inputTexture, u_inputSampler, uv, inputPixelSize) * u_bloomInfo.bloomIntensity;
+
+        const float3 imageColor = u_outputTexture[pixel].rgb;
+        
+        u_outputTexture[pixel] = float4(lerp(imageColor, bloom, u_bloomInfo.bloomBlendFactor), 1.f);
     }
 }
