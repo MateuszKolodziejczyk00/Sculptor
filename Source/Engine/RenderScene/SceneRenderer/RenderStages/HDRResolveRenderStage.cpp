@@ -36,6 +36,20 @@ RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f,
 RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f, 0.f, 1.f);
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.85f, 0.f, 1.f);
 
+
+RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
+RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.04f, 0.f, 1.f);
+RendererFloatParameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, 0.4f, 0.f, 10.f);
+
+RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 3, 0, 10);
+RendererFloatParameter lensFlaresGhostsDispersal("Lens Flares Ghosts Dispersal", { "Lens Flares", "Ghosts" }, 0.3f, 0.f, 1.f);
+RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 1.0f, 0.f, 3.f);
+RendererFloat3Parameter lensFlaresGhostsDistortion("Lens Flares Ghosts Distortion", { "Lens Flares", "Ghosts" }, math::Vector3f(0.f, 0.03f, 0.076f), 0.f, 1.f);
+
+RendererFloatParameter lensFlaresHaloIntensity("Lens Flares Halo Intensity", { "Lens Flares", "Halo" }, 1.0f, 0.f, 3.f);
+RendererFloat3Parameter lensFlaresHaloDistortion("Lens Flares Halo Distortion", { "Lens Flares", "Halo" }, math::Vector3f(0.f, 0.03f, 0.076f), 0.f, 1.f);
+RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Flares", "Halo" }, 0.42f, 0.f, 1.f);
+
 RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
 
 } // params
@@ -161,6 +175,130 @@ rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuil
 } // exposure
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// Lens Flares ===================================================================================
+
+namespace lens_flares
+{
+
+BEGIN_SHADER_STRUCT(LensFlaresParams)
+	SHADER_STRUCT_FIELD(math::Vector3f, ghostsDistortion)
+	SHADER_STRUCT_FIELD(Uint32,			ghostsNum)
+	SHADER_STRUCT_FIELD(math::Vector3f,	haloDistortion)
+	SHADER_STRUCT_FIELD(Real32,			ghostsInensity)
+	SHADER_STRUCT_FIELD(Real32,			ghostsDispersal)
+	SHADER_STRUCT_FIELD(Real32,			ghostsIntensity)
+	SHADER_STRUCT_FIELD(Real32,			haloIntensity)
+	SHADER_STRUCT_FIELD(Real32,			haloWidth)
+	SHADER_STRUCT_FIELD(Real32,			linearColorThreshold)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(LensFlaresPassDS, rg::RGDescriptorSetState<LensFlaresPassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LensFlaresParams>),					u_lensFlaresParams)
+DS_END();
+
+
+BEGIN_SHADER_STRUCT(LensFlaresBlurParams)
+	SHADER_STRUCT_FIELD(Uint32, isHorizontal)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(LensFlaresBlurDS, rg::RGDescriptorSetState<LensFlaresBlurDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inputSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LensFlaresBlurParams>),				u_blurParams)
+DS_END();
+
+
+static rdr::PipelineStateID CompileComputeLensFlaresPipeline()
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeLensFlaresCS"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlares.hlsl", compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ComputeLensFlaresPipeline"), shader);
+}
+
+
+static rdr::PipelineStateID CompileLensFlaresBlurPipeline()
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LensFlaresBlurCS"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlaresBlur.hlsl", compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LensFlaresBlurPipeline"), shader);
+}
+
+
+static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle bloomTexture)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector3u lensFlaresRes = bloomTexture->GetResolution();
+
+	rhi::TextureDefinition lensFlaresTextureDef;
+	lensFlaresTextureDef.resolution	= lensFlaresRes;
+	lensFlaresTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+	lensFlaresTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
+	const rg::RGTextureViewHandle lensFlaresTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture"), lensFlaresTextureDef, rhi::EMemoryUsage::GPUOnly);
+	
+	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture Temp"), lensFlaresTextureDef, rhi::EMemoryUsage::GPUOnly);
+
+	static const rdr::PipelineStateID computeLensFlaresPipeline = CompileComputeLensFlaresPipeline();
+
+	LensFlaresParams lensFlaresParams;
+	lensFlaresParams.ghostsDistortion		= params::lensFlaresGhostsDistortion;
+	lensFlaresParams.ghostsNum				= params::lensFlaresGhostsNum;
+	lensFlaresParams.haloDistortion			= params::lensFlaresHaloDistortion;
+	lensFlaresParams.ghostsInensity			= params::lensFlaresGhostsIntensity;
+	lensFlaresParams.ghostsDispersal		= params::lensFlaresGhostsDispersal;
+	lensFlaresParams.ghostsIntensity		= params::lensFlaresGhostsIntensity;
+	lensFlaresParams.haloIntensity			= params::lensFlaresHaloIntensity;
+	lensFlaresParams.haloWidth				= params::lensFlaresHaloWidth;
+	lensFlaresParams.linearColorThreshold	= params::lensFlaresLinearColorThreshold;
+
+	const lib::SharedRef<LensFlaresPassDS> lensFlaresPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresPassDS>(RENDERER_RESOURCE_NAME("LensFlaresPassDS"));
+	lensFlaresPassDS->u_inputTexture		= bloomTexture;
+	lensFlaresPassDS->u_outputTexture		= lensFlaresTexture;
+	lensFlaresPassDS->u_lensFlaresParams	= lensFlaresParams;
+	
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Lens Flares"),
+						  computeLensFlaresPipeline,
+						  math::Utils::DivideCeil(lensFlaresRes, math::Vector3u(8u, 8u, 1u)),
+						  rg::BindDescriptorSets(lensFlaresPassDS));
+
+	static const rdr::PipelineStateID lensFlaresBlurPipeline = CompileLensFlaresBlurPipeline();
+
+	const lib::SharedRef<LensFlaresBlurDS> blurHorizontalPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresHorizontalBlurDS"));
+	blurHorizontalPassDS->u_inputTexture	= lensFlaresTexture;
+	blurHorizontalPassDS->u_outputTexture	= tempTexture;
+	blurHorizontalPassDS->u_blurParams		= LensFlaresBlurParams{ 1u };
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Lens Flares Horizontal Blur"),
+						  lensFlaresBlurPipeline,
+						  math::Utils::DivideCeil(lensFlaresRes, math::Vector3u(256u, 1u, 1u)),
+						  rg::BindDescriptorSets(blurHorizontalPassDS));
+
+	const lib::SharedRef<LensFlaresBlurDS> blurVerticalPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresVericalBlurDS"));
+	blurVerticalPassDS->u_inputTexture		= tempTexture;
+	blurVerticalPassDS->u_outputTexture		= lensFlaresTexture;
+	blurVerticalPassDS->u_blurParams		= LensFlaresBlurParams{ 0u };
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Lens Flares Vertical Blur"),
+						  lensFlaresBlurPipeline,
+						  math::Utils::DivideCeil(math::Vector3u(lensFlaresRes.y(), lensFlaresRes.x(), lensFlaresRes.z()), math::Vector3u(256u, 1u, 1u)),
+						  rg::BindDescriptorSets(blurVerticalPassDS));
+
+	return lensFlaresTexture;
+}
+
+} // lens_flares
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // Bloom =========================================================================================
 
 namespace bloom
@@ -171,10 +309,6 @@ BEGIN_SHADER_STRUCT(BloomPassInfo)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
 	SHADER_STRUCT_FIELD(Real32,			bloomUpsampleBlendFactor)
 	SHADER_STRUCT_FIELD(Real32,			bloomIntensity)
-	SHADER_STRUCT_FIELD(Real32,			bloomBlendFactor)
-	SHADER_STRUCT_FIELD(Bool,			hasLensDirtTexture)
-	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtThreshold)
-	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtIntensity)
 END_SHADER_STRUCT();
 
 
@@ -182,8 +316,24 @@ DS_BEGIN(BloomPassDS, rg::RGDescriptorSetState<BloomPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomPassInfo>),					u_bloomInfo)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),						u_lensDirtTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+DS_END();
+
+
+BEGIN_SHADER_STRUCT(BloomCompositePassInfo)
+	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtThreshold)
+	SHADER_STRUCT_FIELD(Bool,			hasLensDirtTexture)
+	SHADER_STRUCT_FIELD(math::Vector3f,	lensDirtIntensity)
+	SHADER_STRUCT_FIELD(Real32,			bloomBlendFactor)
+	SHADER_STRUCT_FIELD(Real32,			lensFlaresIntensity)
+	SHADER_STRUCT_FIELD(Bool,			hasLensFlaresTexture)
+END_SHADER_STRUCT()
+
+
+DS_BEGIN(BloomCompositePassDS, rg::RGDescriptorSetState<BloomCompositePassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),				u_lensDirtTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),				u_lensFlaresTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomCompositePassInfo>),	u_bloomCompositeInfo)
 DS_END();
 
 
@@ -194,7 +344,6 @@ BloomPassInfo CreateBloomPassInfo(math::Vector2u inputRes, math::Vector2u output
 	passInfo.outputPixelSize			= outputRes.cast<Real32>().cwiseInverse();
 	passInfo.bloomUpsampleBlendFactor	= params::bloomUpsampleBlendFactor;
 	passInfo.bloomIntensity				= params::bloomIntensity;
-	passInfo.bloomBlendFactor			= params::bloomBlendFactor;
 
 	return passInfo;
 }
@@ -223,6 +372,7 @@ static rdr::PipelineStateID CompileBloomUpsamplePipeline()
 static rdr::PipelineStateID CompileBloomCompositePipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("BLOOM_COMPOSITE", "1"));
 	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomCompositeCS"));
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
 
@@ -230,7 +380,7 @@ static rdr::PipelineStateID CompileBloomCompositePipeline()
 }
 
 
-static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, const lib::DynamicArray<rg::RGTextureViewHandle>& bloomTextureMips, rg::RGTextureViewHandle inputTexture)
+static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const lib::DynamicArray<rg::RGTextureViewHandle>& bloomTextureMips, rg::RGTextureViewHandle inputTexture)
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -303,7 +453,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 	}
 }
 
-static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, rg::RGTextureViewHandle bloomTextureMip0, rg::RGTextureViewHandle outputTexture)
+static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle bloomTextureMip0, rg::RGTextureViewHandle lensFlaresTexture, rg::RGTextureViewHandle outputTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -314,35 +464,43 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> 1, renderingRes.y() >> 1);
 	const math::Vector2u outputRes = math::Vector2u(renderingRes.x(), renderingRes.y());
 
-	BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
+	const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
 	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
 	bloomPassDS->u_inputTexture		= bloomTextureMip0;
 	bloomPassDS->u_outputTexture	= outputTexture;
+	bloomPassDS->u_bloomInfo		= passInfo;
+
+	BloomCompositePassInfo compositePassInfo;
+	compositePassInfo.bloomBlendFactor		= params::bloomBlendFactor;
+	compositePassInfo.lensFlaresIntensity	= params::lensFlaresIntensity;
+
+	const lib::SharedRef<BloomCompositePassDS> bloomCompositePassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomCompositePassDS>(RENDERER_RESOURCE_NAME("BloomCombinePassDS"));
 
 	const RenderSceneEntityHandle renderViewEntity = viewSpec.GetRenderView().GetViewEntity();
 	if (const CameraLensSettingsComponent* lensSettings = renderViewEntity.try_get<CameraLensSettingsComponent>())
 	{
-		bloomPassDS->u_lensDirtTexture = lensSettings->lensDirtTexture;
-		passInfo.hasLensDirtTexture = true;
-		passInfo.lensDirtThreshold	= lensSettings->lensDirtThreshold;
-		passInfo.lensDirtIntensity	= lensSettings->lensDirtIntensity;
+		bloomCompositePassDS->u_lensDirtTexture = lensSettings->lensDirtTexture;
+		compositePassInfo.hasLensDirtTexture	= true;
+		compositePassInfo.lensDirtThreshold		= lensSettings->lensDirtThreshold;
+		compositePassInfo.lensDirtIntensity		= lensSettings->lensDirtIntensity;
 	}
-	
-	bloomPassDS->u_bloomInfo = passInfo;
+
+	bloomCompositePassDS->u_lensFlaresTexture	= lensFlaresTexture;
+	compositePassInfo.hasLensFlaresTexture = lensFlaresTexture.IsValid();
+
+	bloomCompositePassDS->u_bloomCompositeInfo = compositePassInfo;
 
 	const math::Vector3u groupCount(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
 						  combinePipeline, 
 						  groupCount,
-						  rg::BindDescriptorSets(bloomPassDS));
+						  rg::BindDescriptorSets(bloomPassDS, bloomCompositePassDS));
 }
 
-static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGBufferViewHandle adaptedLuminance, rg::RGTextureViewHandle radianceTexture)
+static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle radianceTexture)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(adaptedLuminance.IsValid())
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
@@ -366,11 +524,15 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 		bloomTextureMips.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("Bloom Texture Mip {}", mipIdx)), bloomTexture, viewInfo));
 	}
 
-	BloomDownsample(graphBuilder, viewSpec, adaptedLuminance, bloomTextureMips, radianceTexture);
+	BloomDownsample(graphBuilder, viewSpec, bloomTextureMips, radianceTexture);
 
 	BloomUpsample(graphBuilder, viewSpec, bloomTextureMips);
 
-	BloomComposite(graphBuilder, viewSpec, adaptedLuminance, bloomTextureMips[0], radianceTexture);
+	const rg::RGTextureViewHandle lensFlaresTexture = params::enableLensFlares
+													? lens_flares::ComputeLensFlares(graphBuilder, viewSpec, bloomTextureMips[0])
+													: rg::RGTextureViewHandle{};
+
+	BloomComposite(graphBuilder, viewSpec, bloomTextureMips[0], lensFlaresTexture, radianceTexture);
 }
 
 } // bloom
@@ -498,7 +660,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 
 	if (params::enableBloom)
 	{
-		bloom::ApplyBloom(graphBuilder, viewSpec, adaptedLuminance, shadingData.radiance);
+		bloom::ApplyBloom(graphBuilder, viewSpec, shadingData.radiance);
 	}
 
 	tonemapping::TonemappingPassSettings tonemappingSettings;

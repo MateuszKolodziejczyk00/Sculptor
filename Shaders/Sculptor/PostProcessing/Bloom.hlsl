@@ -4,6 +4,10 @@
 
 [[descriptor_set(BloomPassDS, 0)]]
 
+#ifdef BLOOM_COMPOSITE
+[[descriptor_set(BloomCompositePassDS, 1)]]
+#endif // BLOOM_COMPOSITE
+
 // Based on https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/
 
 
@@ -110,6 +114,7 @@ void BloomUpsampleCS(CS_INPUT input)
     }
 }
 
+#ifdef BLOOM_COMPOSITE
 
 [numthreads(8, 8, 1)]
 void BloomCompositeCS(CS_INPUT input)
@@ -130,16 +135,23 @@ void BloomCompositeCS(CS_INPUT input)
 
         const float3 imageColor = u_outputTexture[pixel].rgb;
 
-        bloom = lerp(imageColor, bloom, u_bloomInfo.bloomBlendFactor);
+        bloom = lerp(imageColor, bloom, u_bloomCompositeInfo.bloomBlendFactor);
 
         float3 lensDirt = 0.f;
-        if (u_bloomInfo.hasLensDirtTexture)
+        if (u_bloomCompositeInfo.hasLensDirtTexture)
         {
-            lensDirt = u_lensDirtTexture.SampleLevel(u_linearSampler, uv, 0).rgb * u_bloomInfo.lensDirtIntensity;
+            lensDirt = u_lensDirtTexture.SampleLevel(u_linearSampler, uv, 0).rgb * u_bloomCompositeInfo.lensDirtIntensity;
         }
 
-        bloom += saturate(bloom - u_bloomInfo.lensDirtThreshold) * lensDirt;
+        bloom += saturate(bloom - u_bloomCompositeInfo.lensDirtThreshold) * lensDirt;
+
+        if(u_bloomCompositeInfo.hasLensFlaresTexture)
+        {
+            bloom += UpsampleFilter(u_lensFlaresTexture, u_linearSampler, uv, inputPixelSize) * u_bloomCompositeInfo.lensFlaresIntensity;
+        }
         
         u_outputTexture[pixel] = float4(bloom, 1.f);
     }
 }
+
+#endif // BLOOM_COMPOSITE

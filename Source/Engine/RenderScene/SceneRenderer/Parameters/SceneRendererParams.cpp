@@ -140,6 +140,20 @@ void RendererFloatParameter::DrawUI(const lib::HashedString& name, Real32& value
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RendererFloat3Parameter =========================================================================
+
+RendererFloat3Parameter::RendererFloat3Parameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax)
+	: Super(name, category, defaultValue)
+	, min(inMin)
+	, max(inMax)
+{ }
+
+void RendererFloat3Parameter::DrawUI(const lib::HashedString& name, math::Vector3f& value)
+{
+	ImGui::SliderFloat3(name.GetData(), value.data(), min, max);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RendererBoolParameter =========================================================================
 
 RendererBoolParameter::RendererBoolParameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, Bool defaultValue)

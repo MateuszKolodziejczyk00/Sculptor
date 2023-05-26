@@ -85,6 +85,25 @@ private:
 };
 
 
+class RendererFloat3Parameter : public RendererParameter<RendererFloat3Parameter, math::Vector3f>
+{
+protected:
+
+	using Super = RendererParameter<RendererFloat3Parameter, math::Vector3f>;
+
+public:
+
+	RendererFloat3Parameter(const lib::HashedString& name, const lib::DynamicArray<lib::HashedString>& category, math::Vector3f defaultValue, Real32 inMin, Real32 inMax);
+
+	void DrawUI(const lib::HashedString& name, math::Vector3f& value);
+
+private:
+
+	Real32 min;
+	Real32 max;
+};
+
+
 class RendererBoolParameter : public RendererParameter<RendererBoolParameter, Bool>
 {
 protected:
