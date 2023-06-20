@@ -244,7 +244,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
 		transform = remappedScale * transform;
 	}
-
+	
 	if (!node.rotation.empty())
 	{
 		SPT_CHECK(node.rotation.size() == 4);

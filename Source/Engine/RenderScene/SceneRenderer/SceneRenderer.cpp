@@ -10,10 +10,11 @@
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
 #include "RenderStages/AntiAliasingRenderStage.h"
+#include "RenderStages/VolumetricFogRenderStage.h"
+#include "RenderStages/PostProcessPreAARenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRendererTypes.h"
 #include "Parameters/SceneRendererParams.h"
-#include "RenderStages/VolumetricFogRenderStage.h"
 
 namespace spt::rsc
 {
@@ -96,6 +97,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
 	renderer_utils::ProcessRenderStage<VolumetricFogRenderStage>(graphBuilder, scene, renderViewsSpecs);
+
+	renderer_utils::ProcessRenderStage<PostProcessPreAARenderStage>(graphBuilder, scene, renderViewsSpecs);
 
 	renderer_utils::ProcessRenderStage<AntiAliasingRenderStage>(graphBuilder, scene, renderViewsSpecs);
 

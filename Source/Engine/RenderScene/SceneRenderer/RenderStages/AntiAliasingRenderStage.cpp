@@ -159,7 +159,8 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	AntiAliasingData& aaData = viewSpec.GetData().Create<AntiAliasingData>();
+	AntiAliasingData& aaData		= viewSpec.GetData().Create<AntiAliasingData>();
+	const ShadingData& shadingData	= viewSpec.GetData().Get<ShadingData>();
 
 	switch (renderView.GetAnitAliasingMode())
 	{
@@ -169,7 +170,6 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	default:
 		
-		const ShadingData& shadingData = viewSpec.GetData().Get<ShadingData>();
 		aaData.outputTexture = shadingData.radiance;
 	}
 	

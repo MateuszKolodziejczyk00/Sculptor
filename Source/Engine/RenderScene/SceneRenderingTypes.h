@@ -15,8 +15,9 @@ enum class ERenderStage
 	DirectionalLightsShadowMasks	= BIT(3),
 	ForwardOpaque					= BIT(4),
 	VolumetricFog					= BIT(5),
-	AntiAliasing					= BIT(6),
-	HDRResolve						= BIT(7)
+	PostProcessPreAA				= BIT(6),
+	AntiAliasing					= BIT(7),
+	HDRResolve						= BIT(8)
 };
 
 } // spt::rsc
