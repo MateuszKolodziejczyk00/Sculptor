@@ -112,6 +112,16 @@ struct TextureDefinition
 		, flags(ETextureFlags::Default)
 	{ }
 
+	TextureDefinition(math::Vector3u inResolution, ETextureUsage inUsage, EFragmentFormat inFormat)
+		: resolution(inResolution)
+		, usage(inUsage)
+		, format(inFormat)
+		, samples(1)
+		, mipLevels(1)
+		, arrayLayers(1)
+		, flags(ETextureFlags::Default)
+	{ }
+
 	math::Vector3u		resolution;
 	ETextureUsage		usage;
 	EFragmentFormat		format;

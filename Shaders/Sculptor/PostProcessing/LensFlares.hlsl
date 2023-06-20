@@ -54,7 +54,7 @@ void ComputeLensFlaresCS(CS_INPUT input)
 
             const float2 haloSample = frac(inputUV + haloVector);
             float weight = length(haloSample - 0.5f) / maxDistToScreenCenter;
-            weight = pow(1.f - weight, 15.f);
+            weight = pow(1.f - weight, 10.f);
             float3 halo = 0.f;
             halo.r = max(u_inputTexture.SampleLevel(u_linearSampler, haloSample + haloVector * u_lensFlaresParams.haloDistortion.r, 0).r - threshold.r, 0.f);
             halo.g = max(u_inputTexture.SampleLevel(u_linearSampler, haloSample + haloVector * u_lensFlaresParams.haloDistortion.g, 0).g - threshold.g, 0.f);

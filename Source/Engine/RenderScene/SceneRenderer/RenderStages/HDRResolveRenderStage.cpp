@@ -37,7 +37,7 @@ RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.85f, 0.f, 1.f);
 
 
-RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
+RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, false);
 RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.04f, 0.f, 1.f);
 RendererFloatParameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, 0.4f, 0.f, 10.f);
 
@@ -139,6 +139,7 @@ static rdr::PipelineStateID CompileAdaptedLuminancePipeline()
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AdaptedLuminancePipeline"), shader);
 }
+
 
 rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGBufferViewHandle luminanceHistogram)
 {
@@ -632,8 +633,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ShadingData& shadingData	= viewSpec.GetData().Get<ShadingData>();
-	HDRResolvePassData& passData	= viewSpec.GetData().Create<HDRResolvePassData>();
+	const ShadingData& shadingData		= viewSpec.GetData().Get<ShadingData>();
+	HDRResolvePassData& passData		= viewSpec.GetData().Create<HDRResolvePassData>();
 	
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const math::Vector3u textureRes(renderingRes.x(), renderingRes.y(), 1);
@@ -658,15 +659,17 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, shadingData.radiance);
 	const rg::RGBufferViewHandle adaptedLuminance = exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram);
 
+	rg::RGTextureViewHandle linearColorTexture = shadingData.radiance;
+
 	if (params::enableBloom)
 	{
-		bloom::ApplyBloom(graphBuilder, viewSpec, shadingData.radiance);
+		bloom::ApplyBloom(graphBuilder, viewSpec, linearColorTexture);
 	}
 
 	tonemapping::TonemappingPassSettings tonemappingSettings;
 	tonemappingSettings.enableColorDithering = params::enableColorDithering;
 
-	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, shadingData.radiance, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
+	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, linearColorTexture, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
 
 #if RENDERER_DEBUG
 	gamma::DoGammaCorrection(graphBuilder, shadingData.debug);

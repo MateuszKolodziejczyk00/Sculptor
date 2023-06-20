@@ -46,6 +46,13 @@ void BlurPlane(in int baseSampleIdx, in float3 baseSampleData, in int direction,
     {
         const float dDepth = abs(sample1.y - sample2.y) / dPos;
 
+        const float dDepthThreshold = 0.3f;
+
+        if (dDepth > dDepthThreshold)
+        {
+            return;
+        }
+
         const float baseSampleDepthOnPlane = (baseSampleData.x - sample1.x) * dDepth + sample1.y;
 
         if(abs(baseSampleData.y - baseSampleDepthOnPlane) <= maxDistanceToBlurredPlane)
@@ -118,10 +125,10 @@ void ShadowsBilateralBlurCS(CS_INPUT input)
         float samplesNum = 1.f;
 
         // Left side
-        BlurPlane(baseSampleIdx, baseSampleData, 1, shadow, samplesNum);
+        BlurPlane(baseSampleIdx, baseSampleData, -1, shadow, samplesNum);
 
         // Right side
-        BlurPlane(baseSampleIdx, baseSampleData, -1, shadow, samplesNum);
+        BlurPlane(baseSampleIdx, baseSampleData, 1, shadow, samplesNum);
 
         u_outputTexture[pixel] = (shadow / samplesNum);
     }

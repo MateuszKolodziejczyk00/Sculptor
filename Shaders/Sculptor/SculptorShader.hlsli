@@ -202,3 +202,10 @@ float4 UnpackFloat4x8(uint value)
     const uint4 asUints = uint4((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
     return asUints / 255.f;
 }
+
+// Complex numbers
+
+float2 ComplexMultiply(in float2 rhs, in float2 lhs)
+{
+    return float2(rhs.x * lhs.x - rhs.y * lhs.y, rhs.x * lhs.y + rhs.y * lhs.x);
+}

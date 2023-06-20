@@ -27,7 +27,7 @@ void AdaptedLuminanceCS(CS_INPUT input)
     GroupMemoryBarrierWithGroupSync();
 
     // Weighted count of the luminance range
-    [[unroll]]
+    [unroll]
     for (uint cutoff = (GROUP_SIZE >> 1); cutoff > 0; cutoff >>= 1)
     {
         if (histogramLocalBinIdx < cutoff)
