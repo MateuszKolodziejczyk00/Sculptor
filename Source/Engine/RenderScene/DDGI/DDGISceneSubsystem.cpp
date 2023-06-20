@@ -29,6 +29,11 @@ DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	m_ddgiDS->u_ddgiParams					= GetDDGIParams();
 	m_ddgiDS->u_probesIrradianceTexture		= GetProbesIrradianceTexture();
 	m_ddgiDS->u_probesHitDistanceTexture	= GetProbesHitDistanceTexture();
+
+	for (SizeType idx = 0; idx < m_raysRotationMatrices.size(); ++idx)
+	{
+		m_raysRotationMatrices[idx] = lib::rnd::RandomRotationMatrix();
+	}
 }
 
 DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
@@ -53,12 +58,14 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	params.probesNumToUpdate	= params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
 	params.rcpRaysNumPerProbe	= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate	= 1.f / static_cast<Real32>(params.probesNumToUpdate);
-	params.skyIrradiance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 0.05f;
+	params.skyIrradiance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 20.55f;
 	params.groundIrradiance		= math::Vector3f::Constant(0.1f) * 0.05f;
 	params.blendHysteresis		= parameters::ddgiBlendHysteresis;
-	
+
+	const SizeType rotationsNum = m_raysRotationMatrices.size();
+
 	params.raysRotation							= math::Matrix4f::Identity();
-	params.raysRotation.topLeftCorner<3, 3>()	= lib::rnd::RandomRotationMatrix();
+	params.raysRotation.topLeftCorner<3, 3>()	= m_raysRotationMatrices[engn::GetRenderingFrame().GetFrameIdx() % rotationsNum];
 
 	return params;
 }

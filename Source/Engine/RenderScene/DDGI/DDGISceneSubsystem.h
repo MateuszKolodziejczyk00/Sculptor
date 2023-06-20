@@ -85,6 +85,8 @@ private:
 	math::Vector3u m_probesUpdatedPerFrame;
 
 	Bool m_requiresClearingData;
+
+	lib::StaticArray<math::Matrix3f, 12u> m_raysRotationMatrices;
 };
 
 } // spt::rsc

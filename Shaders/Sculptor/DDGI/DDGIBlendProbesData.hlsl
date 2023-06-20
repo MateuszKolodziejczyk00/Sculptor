@@ -218,7 +218,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             hysteresis = 0.f;
         }
 
-        if (abs(MaxComponent(result - prevIrradiance)) > 0.2f)
+        if (abs(MaxComponent(result - prevIrradiance)) > 20.2f)
         {
             hysteresis = max(hysteresis - 0.75f, 0.f);
         }
