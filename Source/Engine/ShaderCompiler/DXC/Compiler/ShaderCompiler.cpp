@@ -253,9 +253,9 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	lib::DynamicArray<Uint32> compiledBinary(blobSize);
 	memcpy_s(compiledBinary.data(), compiledBinary.size() * sizeof(Uint32), blobPtr, blobSize * sizeof(Uint32));
 
-	result.SetBinary(std::move(compiledBinary));
-	result.SetStage(stageCompilationDef.stage);
-	result.SetEntryPoint(stageCompilationDef.entryPoint);
+	result.binary		= std::move(compiledBinary);
+	result.stage		= stageCompilationDef.stage;
+	result.entryPoint	= stageCompilationDef.entryPoint;
 
 	return result;
 }

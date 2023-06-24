@@ -34,9 +34,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileBuildHiZPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildHiZCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/DepthPrepass/BuildHiZ.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/DepthPrepass/BuildHiZ.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildHiZCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BuildHiZPipeline"), shader);
 }

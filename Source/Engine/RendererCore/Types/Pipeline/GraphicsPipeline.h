@@ -8,11 +8,18 @@
 namespace spt::rdr
 {
 
+struct GraphicsPipelineShadersDefinition
+{
+	lib::SharedPtr<Shader> vertexShader;
+	lib::SharedPtr<Shader> fragmentShader;
+};
+
+
 class RENDERER_CORE_API GraphicsPipeline : public Pipeline
 {
 public:
 
-	GraphicsPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	GraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShadersDefinition& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
 };
 
 } // spt::rdr

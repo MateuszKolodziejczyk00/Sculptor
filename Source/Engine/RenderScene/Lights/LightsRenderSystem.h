@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderSystem.h"
-#include "Pipelines/PipelineState.h"
+#include "Pipelines/PipelineTypes.h"
 
 
 namespace spt::rdr

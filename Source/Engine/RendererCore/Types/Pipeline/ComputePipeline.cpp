@@ -5,19 +5,16 @@ namespace spt::rdr
 {
 
 ComputePipeline::ComputePipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader)
-	: Pipeline(shader)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::DynamicArray<rhi::RHIShaderModule>& shaderModules = shader->GetShaderModules();
-	SPT_CHECK(shaderModules.size() == 1); // compute shader must have only one module (compute)
+	SPT_CHECK(shader->GetStage() == rhi::EShaderStage::Compute);
 
-	const rhi::RHIShaderModule& computeShaderModule = shaderModules[0];
-	SPT_CHECK(computeShaderModule.GetStage() == rhi::EShaderStage::Compute);
+	AppendToPipelineMetaData(shader->GetMetaData());
 
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition(*GetMetaData());
+	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
 
-	GetRHI().InitializeRHI(computeShaderModule, pipelineLayoutDef);
+	GetRHI().InitializeRHI(shader->GetRHI(), pipelineLayoutDef);
 	GetRHI().SetName(name.Get());
 }
 

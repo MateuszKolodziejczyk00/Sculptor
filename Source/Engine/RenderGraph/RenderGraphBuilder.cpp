@@ -785,4 +785,11 @@ void RenderGraphBuilder::ResolveBufferReleases()
 	}
 }
 
+rdr::PipelineStateID RenderGraphBuilder::GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
+}
+
 } // spt::rg

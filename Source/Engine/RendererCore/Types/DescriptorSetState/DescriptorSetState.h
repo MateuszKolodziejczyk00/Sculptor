@@ -48,7 +48,7 @@ class RENDERER_CORE_API DescriptorSetUpdateContext
 {
 public:
 
-	DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const lib::SharedRef<smd::ShaderMetaData>& metaData);
+	DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const smd::ShaderMetaData& metaData);
 
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const;
 	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const;
@@ -59,9 +59,9 @@ public:
 
 private:
 
-	rhi::RHIDescriptorSet				m_descriptorSet;
-	DescriptorSetWriter&				m_writer;
-	lib::SharedRef<smd::ShaderMetaData> m_metaData;
+	rhi::RHIDescriptorSet		m_descriptorSet;
+	DescriptorSetWriter&		m_writer;
+	const smd::ShaderMetaData&	m_metaData;
 };
 
 

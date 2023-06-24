@@ -19,32 +19,10 @@ public:
 
 	Bool IsValid() const;
 
-	void SetBinary(Binary binary);
-	void SetStage(rhi::EShaderStage stage);
-	void SetEntryPoint(const lib::HashedString& entryPoint);
-	
-	const Binary&				GetBinary() const;
-	rhi::EShaderStage			GetStage() const;
-	const lib::HashedString&	GetEntryPoint() const;
-
-private:
-
-	Binary					m_binary;
-	rhi::EShaderStage		m_stage;
-	lib::HashedString		m_entryPoint;
-};
-
-
-struct SHADER_COMPILER_API CompiledShaderFile
-{
-public:
-
-	CompiledShaderFile();
-
-	Bool IsValid() const;
-
-	lib::DynamicArray<CompiledShader>	shaders;
-	smd::ShaderMetaData					metaData;
+	Binary					binary;
+	rhi::EShaderStage		stage;
+	lib::HashedString		entryPoint;
+	smd::ShaderMetaData		metaData;
 };
 
 } // spt::sc

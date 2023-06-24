@@ -73,7 +73,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 
 		PersistentDSData newDSData;
 		newDSData.hash				= dsHash;
-		newDSData.metaData			= pipeline->GetMetaData();
+		newDSData.pipeline			= pipeline.ToSharedPtr();
 		newDSData.state				= state.ToSharedPtr();
 		newDSData.lastUpdateFrame	= rdr::Renderer::GetCurrentFrameIdx() + 1;
 		m_dsData.emplace_back(newDSData);
@@ -103,7 +103,7 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 	const auto removedBegin = std::remove_if(std::begin(m_dsData), std::end(m_dsData),
 											 [](const PersistentDSData& ds)
 											 {
-												 return ds.state.expired();
+												 return ds.state.expired() || ds.pipeline.expired();
 											 });
 
 	// destroy descriptor sets
@@ -139,7 +139,8 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 
 		if (state->IsDirty() && ds.lastUpdateFrame < currentFrameIdx)
 		{
-			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.hash), writer, lib::Ref(ds.metaData));
+			lib::SharedPtr<Pipeline> pipeline = ds.pipeline.lock();
+			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.hash), writer, pipeline->GetMetaData());
 			state->UpdateDescriptors(updateContext);
 
 			dirtyStates.emplace_back(std::move(state));
@@ -153,7 +154,7 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 
 PersistentDescriptorSetsManager::PersistentDSHash PersistentDescriptorSetsManager::HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const
 {
-	const smd::ShaderMetaData& metaData = pipeline->GetMetaDataRef();
+	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 
 	return lib::HashCombine(metaData.GetDescriptorSetHash(descriptorSetIdx), state->GetID());
 }

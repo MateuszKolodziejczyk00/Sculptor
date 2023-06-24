@@ -82,9 +82,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LuminanceHistogramCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/CreateLuminanceHistogram.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/CreateLuminanceHistogram.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LuminanceHistogramCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LuminanceHistogramPipeline"), shader);
 }
@@ -133,9 +131,7 @@ struct ViewLuminanceData
 
 static rdr::PipelineStateID CompileAdaptedLuminancePipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AdaptedLuminanceCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/ComputeAdaptedLuminance.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/ComputeAdaptedLuminance.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AdaptedLuminanceCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AdaptedLuminancePipeline"), shader);
 }
@@ -217,9 +213,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileComputeLensFlaresPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeLensFlaresCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlares.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlares.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeLensFlaresCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ComputeLensFlaresPipeline"), shader);
 }
@@ -227,9 +221,7 @@ static rdr::PipelineStateID CompileComputeLensFlaresPipeline()
 
 static rdr::PipelineStateID CompileLensFlaresBlurPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LensFlaresBlurCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlaresBlur.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/LensFlaresBlur.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "LensFlaresBlurCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LensFlaresBlurPipeline"), shader);
 }
@@ -352,9 +344,7 @@ BloomPassInfo CreateBloomPassInfo(math::Vector2u inputRes, math::Vector2u output
 
 static rdr::PipelineStateID CompileBloomDownsamplePipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomDownsampleCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomDownsampleCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomDownsamplePipeline"), shader);
 }
@@ -362,9 +352,7 @@ static rdr::PipelineStateID CompileBloomDownsamplePipeline()
 
 static rdr::PipelineStateID CompileBloomUpsamplePipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomUpsampleCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomUpsampleCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomUpsamplePipeline"), shader);
 }
@@ -374,8 +362,7 @@ static rdr::PipelineStateID CompileBloomCompositePipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("BLOOM_COMPOSITE", "1"));
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomCompositeCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomCompositeCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomUpsamplePipeline"), shader);
 }
@@ -560,9 +547,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileTonemappingPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TonemappingCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Tonemapping.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Tonemapping.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TonemappingCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TonemappingPipeline"), shader);
 }
@@ -600,9 +585,7 @@ DS_END();
 
 rdr::PipelineStateID CompileGammaCorrectionPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GammaCorrectionCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/GammaCorrection.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/GammaCorrection.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GammaCorrectionCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GammaCorrectionPipeline"), shader);
 }

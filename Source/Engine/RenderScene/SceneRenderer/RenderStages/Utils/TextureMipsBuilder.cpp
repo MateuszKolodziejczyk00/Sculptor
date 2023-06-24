@@ -34,9 +34,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileBuildMipsPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildMipsCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Utils/BuildMips.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Utils/BuildMips.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildMipsCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BuildMipsPipeline"), shader);
 }

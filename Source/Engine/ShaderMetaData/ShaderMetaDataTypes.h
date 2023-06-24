@@ -246,6 +246,17 @@ struct CommonBindingData abstract
 		return bindingDescriptorType;
 	}
 
+	bool TryMergeWithOtherBinding(const CommonBindingData& other)
+	{
+		if (bindingDescriptorType == other.bindingDescriptorType && elementsNum == other.elementsNum)
+		{
+			lib::AddFlag(flags, other.flags);
+			return true;
+		}
+
+		return false;
+	}
+
 	SizeType Hash() const
 	{
 		return lib::HashCombine(elementsNum,
@@ -297,6 +308,16 @@ struct BufferBindingData : public CommonBindingData
 		bindingDescriptorType = priv::SelectBufferDescriptorType(flags);
 	}
 
+	bool TryMergeWithOtherBinding(const BufferBindingData& other)
+	{
+		if (m_size == other.m_size)
+		{
+			return CommonBindingData::TryMergeWithOtherBinding(other);
+		}
+
+		return false;
+	}
+
 	void SetSize(Uint32 size)
 	{
 		SPT_CHECK(!IsUnbound());
@@ -342,6 +363,19 @@ public:
 	void PostInitialize()
 	{
 		bindingDescriptorType = rhi::EDescriptorType::Sampler;
+	}
+
+	bool TryMergeWithOtherBinding(const SamplerBindingData& other)
+	{
+		if (IsImmutable() == other.IsImmutable())
+		{
+			if (!IsImmutable() || GetImmutableSamplerDefinition() == other.GetImmutableSamplerDefinition())
+			{
+				return CommonBindingData::TryMergeWithOtherBinding(other);
+			}
+		}
+
+		return false;
 	}
 
 	Bool IsImmutable() const
@@ -417,6 +451,27 @@ struct GenericShaderBinding
 	void Set(TBindingDataType data)
 	{
 		m_data = data;
+	}
+
+	bool TryMergeWith(const GenericShaderBinding& other)
+	{
+		if (!IsValid())
+		{
+			*this = other;
+			return true;
+		}
+
+		if (other.IsValid() && GetBindingType() == other.GetBindingType())
+		{
+			return std::visit([&other](auto& data)
+							  {
+								  using DataType = std::decay_t<decltype(data)>;
+								  return data.TryMergeWithOtherBinding(other.As<DataType>());
+							  },
+							  m_data);
+		}
+
+		return false;
 	}
 
 	void AddShaderStage(rhi::EShaderStage stage)
@@ -555,6 +610,20 @@ public:
 							  binding.PostInitialize();
 						  }
 					  });
+	}
+
+	void MergeWith(const ShaderDescriptorSet& other)
+	{
+		const SizeType bindingsNum = std::max(m_bindings.size(), other.m_bindings.size());
+		m_bindings.resize(bindingsNum);
+
+		for (SizeType bindingIdx = 0; bindingIdx < other.m_bindings.size(); ++bindingIdx)
+		{
+			if (!m_bindings[bindingIdx].TryMergeWith(other.m_bindings[bindingIdx]))
+			{
+				SPT_LOG_ERROR(DefaultLog, "Failed to merge shader descriptor set bindings");
+			}
+		}
 	}
 
 	lib::DynamicArray<GenericShaderBinding>& GetBindings()

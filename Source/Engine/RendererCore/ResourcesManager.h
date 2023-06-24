@@ -10,7 +10,8 @@
 #include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
-#include "Pipelines/PipelineState.h"
+#include "Pipelines/PipelineTypes.h"
+#include "Common/ShaderCompilationInput.h"
 
 
 namespace spt::rhi
@@ -36,12 +37,6 @@ namespace spt::smd
 {
 class ShaderMetaData;
 } // spt::smd
-
-
-namespace spt::sc
-{
-class ShaderCompilationSettings;
-} // spt::sc
 
 
 namespace spt::rdr
@@ -82,12 +77,12 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<CommandBuffer>		CreateCommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition); 
 
-	SPT_NODISCARD static ShaderID							CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+	SPT_NODISCARD static ShaderID							CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD static lib::SharedRef<Shader>				GetShaderObject(ShaderID shaderID);
 
-	SPT_NODISCARD static PipelineStateID					CreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
+	SPT_NODISCARD static PipelineStateID					CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
 	SPT_NODISCARD static PipelineStateID					CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	SPT_NODISCARD static PipelineStateID					CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader, const rhi::RayTracingPipelineDefinition& definition);
+	SPT_NODISCARD static PipelineStateID					CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS>		CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>			CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);

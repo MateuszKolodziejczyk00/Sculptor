@@ -16,11 +16,11 @@ class SHADER_COMPILER_API ShaderCompilerToolChain
 {
 public:
 
-	static Bool CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, EShaderCompilationFlags compilationFlags, CompiledShaderFile& outCompiledShaders); 
+	static CompiledShader CompileShader(const lib::String& shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings, EShaderCompilationFlags compilationFlags); 
 
 private:
 
-	static Bool CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders);
+	static CompiledShader CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings, const ShaderCompiler& compiler);
 };
 
 } // spt::sc

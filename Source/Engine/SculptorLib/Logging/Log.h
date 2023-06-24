@@ -10,3 +10,5 @@
 #endif
 
 #include "LogMacros.h"
+
+SPT_DEFINE_LOG_CATEGORY(DefaultLog, true)

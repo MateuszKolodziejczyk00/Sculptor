@@ -373,8 +373,8 @@ void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, co
 {
 	SPT_PROFILER_FUNCTION();
 
-	const spirv_cross::Compiler compiler(shader.GetBinary());
-	priv::BuildShaderMetaData(compiler, shader.GetStage(), parametersMetaData, outShaderMetaData);
+	const spirv_cross::Compiler compiler(shader.binary);
+	priv::BuildShaderMetaData(compiler, shader.stage, parametersMetaData, outShaderMetaData);
 }
 
 void ShaderMetaDataBuilder::FinishBuildingMetaData(smd::ShaderMetaData& outShaderMetaData)

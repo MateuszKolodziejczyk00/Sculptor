@@ -9,71 +9,59 @@
 namespace spt::sc
 {
 
-Bool ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderCompilationSettings& settings, EShaderCompilationFlags compilationFlags, CompiledShaderFile& outCompiledShaders)
+CompiledShader ShaderCompilerToolChain::CompileShader(const lib::String& shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings, EShaderCompilationFlags compilationFlags)
 {
 	SPT_PROFILER_FUNCTION();
-
-	Bool compilationResult = false;
 
 	const Bool shouldUseShadersCache = ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
 
 	const Bool updateOnly = lib::HasAnyFlag(compilationFlags, EShaderCompilationFlags::UpdateOnly);
 
+	CompiledShader outCompiledShader;
+
 	if (shouldUseShadersCache && !updateOnly)
 	{
-		outCompiledShaders = CompiledShadersCache::TryGetCachedShader(shaderRelativePath, settings);
-		compilationResult = outCompiledShaders.IsValid();
+		outCompiledShader = CompiledShadersCache::TryGetCachedShader(shaderRelativePath, shaderStageDef, compilationSettings);
 	}
 
 	// Early out. We don't want to compile shader if UpdateOnly is set to true and shader in cache is up to date
-	if (updateOnly && CompiledShadersCache::IsCachedShaderUpToDate(shaderRelativePath, settings))
+	if (updateOnly && CompiledShadersCache::IsCachedShaderUpToDate(shaderRelativePath, shaderStageDef, compilationSettings))
 	{
-		return compilationResult;
+		return outCompiledShader;
 	}
 
-	if(!compilationResult)
+	if(!outCompiledShader.IsValid())
 	{
 		const lib::String shaderCode = ShaderFileReader::ReadShaderFileRelative(shaderRelativePath);
 			
 		ShaderCompiler compiler;
 
-		compilationResult = CompilePreprocessedShaders(shaderRelativePath, shaderCode, settings, compiler, outCompiledShaders);
+		outCompiledShader = CompilePreprocessedShaders(shaderRelativePath, shaderCode, shaderStageDef, compilationSettings, compiler);
 
-		if (compilationResult && shouldUseShadersCache)
+		if (outCompiledShader.IsValid() && shouldUseShadersCache)
 		{
-			CompiledShadersCache::CacheShader(shaderRelativePath, settings, outCompiledShaders);
+			CompiledShadersCache::CacheShader(shaderRelativePath, shaderStageDef, compilationSettings, outCompiledShader);
 		}
 	}
 
-	return compilationResult;
+	return outCompiledShader;
 }
 
-Bool ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderCompilationSettings& settings, const ShaderCompiler& compiler, CompiledShaderFile& outCompiledShaders)
+CompiledShader ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::String& shaderRelativePath, const lib::String& shaderCode, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings, const ShaderCompiler& compiler)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Bool success = true;
+	ShaderParametersMetaData paramsMetaData;
+	CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, shaderStageDef, compilationSettings, paramsMetaData);
 
-	for(const ShaderStageCompilationDef& stageCompilationDef : settings.GetStagesToCompile())
+	if (compiledShader.IsValid())
 	{
-		ShaderParametersMetaData paramsMetaData;
-		CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, stageCompilationDef, settings, paramsMetaData);
-
-		success &= compiledShader.IsValid();
-
-		if (compiledShader.IsValid())
-		{
-			outCompiledShaders.shaders.emplace_back(compiledShader);
-			ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, outCompiledShaders.metaData);
-		}
+		ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShader.metaData);
+		
+		ShaderMetaDataBuilder::FinishBuildingMetaData(compiledShader.metaData);
 	}
 
-	if (success)
-	{
-		ShaderMetaDataBuilder::FinishBuildingMetaData(outCompiledShaders.metaData);
-	}
-
-	return success;
+	return compiledShader;
 }
 
 } // spt::sc

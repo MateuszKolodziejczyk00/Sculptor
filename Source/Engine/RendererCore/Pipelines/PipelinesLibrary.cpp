@@ -5,7 +5,11 @@
 namespace spt::rdr
 {
 
+#if WITH_SHADERS_HOT_RELOAD
 #define READ_LOCK_IF_WITH_HOT_RELOAD const lib::ReadLockGuard hotReloadLockGuard(m_hotReloadLock);
+#else
+#define READ_LOCK_IF_WITH_HOT_RELOAD
+#endif // WITH_SHADERS_HOT_RELOAD
 
 PipelinesLibrary::PipelinesLibrary() = default;
 
@@ -24,13 +28,11 @@ void PipelinesLibrary::Uninitialize()
 	ClearCachedPipelines();
 }
 
-PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
+PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(shader.IsValid());
-
-	const PipelineStateID stateID = GetStateID(pipelineDef, shader);
+	const PipelineStateID stateID = GetStateID(shaders, pipelineDef);
 
 	READ_LOCK_IF_WITH_HOT_RELOAD
 
@@ -42,11 +44,16 @@ PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceN
 
 		if (!pendingPipeline)
 		{
-			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-			pendingPipeline = lib::MakeShared<GraphicsPipeline>(nameInNotCached, shaderObject, pipelineDef);
+			pendingPipeline = CreateGfxPipelineObject(nameInNotCached, shaders, pipelineDef);
+
 #if WITH_SHADERS_HOT_RELOAD
-			m_shaderToPipelineStates[shader].emplace_back(stateID);
-			m_graphicsPipelineDefinitions[stateID] = pipelineDef;
+			GfxPipelineHotReloadData hotReloadData;
+			hotReloadData.shaders		= shaders;
+			hotReloadData.pipelineDef	= pipelineDef;
+			m_graphicsPipelineHotReloadData[stateID] = hotReloadData;
+
+			m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
+			m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
 #endif // WITH_SHADERS_HOT_RELOAD
 		}
 	}
@@ -72,8 +79,8 @@ PipelineStateID PipelinesLibrary::GetOrCreateComputePipeline(const RendererResou
 
 		if (!pendingPipeline)
 		{
-			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-			pendingPipeline = lib::MakeShared<ComputePipeline>(nameInNotCached, shaderObject);
+			pendingPipeline = CreateComputePipelineObject(nameInNotCached, shader);
+
 #if WITH_SHADERS_HOT_RELOAD
 			m_shaderToPipelineStates[shader].emplace_back(stateID);
 #endif // WITH_SHADERS_HOT_RELOAD
@@ -83,13 +90,11 @@ PipelineStateID PipelinesLibrary::GetOrCreateComputePipeline(const RendererResou
 	return stateID;
 }
 
-PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const rhi::RayTracingPipelineDefinition pipelineDef, const ShaderID& shader)
+PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(shader.IsValid());
-
-	const PipelineStateID stateID = GetStateID(pipelineDef, shader);
+	const PipelineStateID stateID = GetStateID(shaders, pipelineDef);
 
 	READ_LOCK_IF_WITH_HOT_RELOAD
 
@@ -101,11 +106,18 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 
 		if (!pendingPipeline)
 		{
-			lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
-			pendingPipeline = lib::MakeShared<RayTracingPipeline>(nameInNotCached, shaderObject, pipelineDef);
+			pendingPipeline = CreateRayTracingPipelineObject(nameInNotCached, shaders, pipelineDef);
+				 
 #if WITH_SHADERS_HOT_RELOAD
-			m_shaderToPipelineStates[shader].emplace_back(stateID);
-			m_rayTracingPipelineDefinitions[stateID] = pipelineDef;
+			RayTracingPipelineHotReloadData hotReloadData;
+			hotReloadData.shaders		= shaders;
+			hotReloadData.pipelineDef	= pipelineDef;
+			m_rayTracingPipelineHotReloadData[stateID] = hotReloadData;
+
+			for (ShaderID shaderID : shaders.shaders)
+			{
+				m_shaderToPipelineStates[shaderID].emplace_back(stateID);
+			}
 #endif // WITH_SHADERS_HOT_RELOAD
 		}
 	}
@@ -113,19 +125,19 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 	return stateID;
 }
 
-lib::SharedRef<GraphicsPipeline> PipelinesLibrary::GetGraphicsPipeline(PipelineStateID id) const
+lib::SharedPtr<GraphicsPipeline> PipelinesLibrary::GetGraphicsPipeline(PipelineStateID id) const
 {
 	READ_LOCK_IF_WITH_HOT_RELOAD
 
 	return GetPipelineImpl<GraphicsPipeline>(id, m_cachedGraphicsPipelines, m_graphicsPipelinesPendingFlush, m_graphicsPipelinesPendingFlushLock);
 }
 
-lib::SharedRef<ComputePipeline> PipelinesLibrary::GetComputePipeline(PipelineStateID id) const
+lib::SharedPtr<ComputePipeline> PipelinesLibrary::GetComputePipeline(PipelineStateID id) const
 {
 	return GetPipelineImpl<ComputePipeline>(id, m_cachedComputePipelines, m_computePipelinesPendingFlush, m_computePipelinesPendingFlushLock);
 }
 
-lib::SharedRef<RayTracingPipeline> PipelinesLibrary::GetRayTracingPipeline(PipelineStateID id) const
+lib::SharedPtr<RayTracingPipeline> PipelinesLibrary::GetRayTracingPipeline(PipelineStateID id) const
 {
 	return GetPipelineImpl<RayTracingPipeline>(id, m_cachedRayTracingPipelines, m_rayTracingPipelinesPendingFlush, m_rayTracingPipelinesPendingFlushLock);
 }
@@ -179,11 +191,11 @@ void PipelinesLibrary::InvalidatePipelinesUsingShader(ShaderID shader)
 }
 #endif // WITH_SHADERS_HOT_RELOAD
 
-PipelineStateID PipelinesLibrary::GetStateID(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader) const
+PipelineStateID PipelinesLibrary::GetStateID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return PipelineStateID(lib::HashCombine(pipelineDef, shader));
+	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef));
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const ShaderID& shader) const
@@ -193,11 +205,39 @@ PipelineStateID PipelinesLibrary::GetStateID(const ShaderID& shader) const
 	return PipelineStateID(lib::GetHash(shader));
 }
 
-PipelineStateID PipelinesLibrary::GetStateID(const rhi::RayTracingPipelineDefinition& pipelineDef, const ShaderID& shader) const
+PipelineStateID PipelinesLibrary::GetStateID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return PipelineStateID(lib::HashCombine(pipelineDef, shader));
+	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef));
+}
+
+lib::SharedRef<GraphicsPipeline> PipelinesLibrary::CreateGfxPipelineObject(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
+{
+	GraphicsPipelineShadersDefinition shadersDef;
+	shadersDef.vertexShader		= Renderer::GetShadersManager().GetShader(shaders.vertexShader);
+	shadersDef.fragmentShader	= Renderer::GetShadersManager().GetShader(shaders.fragmentShader);
+	return lib::MakeShared<GraphicsPipeline>(nameInNotCached, shadersDef, pipelineDef);
+}
+
+lib::SharedRef<ComputePipeline> PipelinesLibrary::CreateComputePipelineObject(const RendererResourceName& nameInNotCached, const ShaderID& shader)
+{
+	const lib::SharedRef<Shader> shaderObject = Renderer::GetShadersManager().GetShader(shader);
+	return lib::MakeShared<ComputePipeline>(nameInNotCached, shaderObject);
+}
+
+lib::SharedRef<RayTracingPipeline> PipelinesLibrary::CreateRayTracingPipelineObject(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
+{
+	lib::DynamicArray<lib::SharedRef<Shader>> shaderObjects;
+	shaderObjects.reserve(shaders.shaders.size());
+	std::transform(std::cbegin(shaders.shaders), std::cend(shaders.shaders),
+				   std::back_inserter(shaderObjects),
+				   [](ShaderID shaderID)
+				   {
+					   return Renderer::GetShadersManager().GetShader(shaderID);
+				   });
+
+	return lib::MakeShared<RayTracingPipeline>(nameInNotCached, shaderObjects, pipelineDef);
 }
 
 #if WITH_SHADERS_HOT_RELOAD
@@ -218,20 +258,25 @@ void PipelinesLibrary::FlushPipelinesHotReloads()
 				if (computePipelineIt != std::cend(m_cachedComputePipelines))
 				{
 					lib::SharedPtr<ComputePipeline>& computePipeline = computePipelineIt->second;
-					computePipeline = lib::MakeShared<ComputePipeline>(RENDERER_RESOURCE_NAME(computePipeline->GetRHI().GetName()), shaderObject);
+					computePipeline = CreateComputePipelineObject(RENDERER_RESOURCE_NAME(computePipeline->GetRHI().GetName()), shader);
+
 				}
 				else
 				{
 					const auto graphicsPipelineIt = m_cachedGraphicsPipelines.find(pipelineID);
 					if (graphicsPipelineIt != std::cend(m_cachedGraphicsPipelines))
 					{
+						const GfxPipelineHotReloadData& hotReloadData = m_graphicsPipelineHotReloadData[pipelineID];
+
 						lib::SharedPtr<GraphicsPipeline>& graphicsPipeline = graphicsPipelineIt->second;
-						graphicsPipeline = lib::MakeShared<GraphicsPipeline>(RENDERER_RESOURCE_NAME(graphicsPipeline->GetRHI().GetName()), shaderObject, m_graphicsPipelineDefinitions.at(pipelineID));
+						graphicsPipeline = CreateGfxPipelineObject(RENDERER_RESOURCE_NAME(graphicsPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
 					}
 					else
 					{
+						const RayTracingPipelineHotReloadData& hotReloadData = m_rayTracingPipelineHotReloadData[pipelineID];
+
 						lib::SharedPtr<RayTracingPipeline>& rayTracingPipeline = m_cachedRayTracingPipelines[pipelineID];
-						rayTracingPipeline = lib::MakeShared<RayTracingPipeline>(RENDERER_RESOURCE_NAME(rayTracingPipeline->GetRHI().GetName()), shaderObject, m_rayTracingPipelineDefinitions.at(pipelineID));
+						rayTracingPipeline = CreateRayTracingPipelineObject(RENDERER_RESOURCE_NAME(rayTracingPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
 					}
 				}
 			}

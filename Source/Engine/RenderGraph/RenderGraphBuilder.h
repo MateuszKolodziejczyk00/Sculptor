@@ -3,7 +3,7 @@
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
-#include "Pipelines/PipelineState.h"
+#include "Pipelines/PipelineTypes.h"
 #include "RGDescriptorSetState.h"
 #include "RGResources/RGResources.h"
 #include "RGResources/RGAllocator.h"
@@ -93,6 +93,10 @@ public:
 	
 	// Commands ===============================================
 
+	/** Calls dispatch command with given descriptor sets (this version automatically creates pipeline from shader */
+	template<typename TDescriptorSetStatesRange>
+	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
+
 	/** Calls dispatch command with given descriptor sets */
 	template<typename TDescriptorSetStatesRange>
 	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
@@ -177,6 +181,8 @@ private:
 	void ResolveTextureViewReleases();
 	void ResolveBufferReleases();
 
+	rdr::PipelineStateID GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const;
+
 	lib::DynamicArray<RGTextureHandle> m_textures;
 	lib::DynamicArray<RGBufferHandle> m_buffers;
 
@@ -200,6 +206,13 @@ template<typename TType, typename... TArgs>
 TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 {
 	return m_allocator.Allocate<TType>(std::forward<TArgs>(args)...);
+}
+
+template<typename TDescriptorSetStatesRange>
+void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
+{
+	const rdr::PipelineStateID pipelineStateID = GetOrCreateComputePipelineStateID(shader);
+	Dispatch(dispatchName, pipelineStateID, groupCount, std::forward<TDescriptorSetStatesRange>(dsStatesRange));
 }
 
 template<typename TDescriptorSetStatesRange>

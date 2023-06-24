@@ -38,9 +38,8 @@ DS_END();
 static rdr::PipelineStateID CompileHorizontalMSMFilterPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "FilterMSMShadowMapCS"));
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "1"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/FilterMSMShadows.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/FilterMSMShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "FilterMSMShadowMapCS"), compilationSettings);
 	
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("FilterMSMShadowsPipeline"), shader);
 }
@@ -48,9 +47,8 @@ static rdr::PipelineStateID CompileHorizontalMSMFilterPipeline()
 static rdr::PipelineStateID CompileVerticalMSMFilterPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "FilterMSMShadowMapCS"));
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "0"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/FilterMSMShadows.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/FilterMSMShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "FilterMSMShadowMapCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("FilterMSMShadowsPipeline"), shader);
 }

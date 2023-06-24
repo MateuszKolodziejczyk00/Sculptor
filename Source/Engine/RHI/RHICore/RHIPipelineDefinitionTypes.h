@@ -10,12 +10,10 @@
 namespace spt::rhi
 {
 
-struct PipelineShaderStagesDefinition
+struct GraphicsPipelineShadersDefinition
 {
-	PipelineShaderStagesDefinition()
-	{ }
-
-	lib::DynamicArray<RHIShaderModule> shaderModules;
+	RHIShaderModule vertexShader;
+	RHIShaderModule fragmentShader;
 };
 
 

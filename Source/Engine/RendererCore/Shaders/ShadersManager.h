@@ -22,7 +22,7 @@ public:
 
 	void		ClearCachedShaders();
 
-	SPT_NODISCARD ShaderID					CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags = EShaderFlags::None);
+	SPT_NODISCARD ShaderID					CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD lib::SharedRef<Shader>	GetShader(ShaderID shader) const;
 
 #if WITH_SHADERS_HOT_RELOAD
@@ -31,16 +31,16 @@ public:
 
 private:
 
-	ShaderHashType			HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings) const;
+	ShaderHashType			HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) const;
 
-	void					CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
+	void					CompileAndCacheShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags, ShaderHashType shaderHash);
 
-	lib::SharedPtr<Shader>	CompileShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags);
+	lib::SharedPtr<Shader>	CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags);
 
-	void					OnShaderCompiled(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
+	void					OnShaderCompiled(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags, ShaderHashType shaderHash);
 
 #if WITH_SHADERS_HOT_RELOAD
-	void CacheShaderHotReloadParams(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags, ShaderHashType shaderHash);
+	void CacheShaderHotReloadParams(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags, ShaderHashType shaderHash);
 #endif // WITH_SHADERS_HOT_RELOAD
 
 	lib::HashMap<ShaderHashType, lib::SharedPtr<Shader>> m_cachedShaders;
@@ -57,7 +57,8 @@ private:
 		{ }
 
 		lib::String shaderRelativePath;
-		sc::ShaderCompilationSettings settings;
+		sc::ShaderStageCompilationDef shaderStageDef;
+		sc::ShaderCompilationSettings compilationSettings;
 		EShaderFlags flags;
 		ShaderHashType shaderHash;
 	};

@@ -100,6 +100,8 @@ struct SamplerDefinition
 		, unnormalizedCoords(false)
 	{ }
 
+	bool operator==(const SamplerDefinition& rhs) const = default;
+
 	ESamplerFlags flags;
 
 	ESamplerFilterType minificationFilter;

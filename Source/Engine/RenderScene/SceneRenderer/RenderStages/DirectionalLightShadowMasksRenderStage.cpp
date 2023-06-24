@@ -88,20 +88,19 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"));
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", compilationSettings);
+
+	rdr::RayTracingPipelineShaders rtShaders;
+	rtShaders.shaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings));
+	rtShaders.shaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Directional Lights Shadows Ray Tracing Pipeline"), shader, pipelineDefinition);
+	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Directional Lights Shadows Ray Tracing Pipeline"), rtShaders, pipelineDefinition);
 }
 
 static rdr::PipelineStateID CreateAccumulateShadowsPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AccumulateShadowsCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadowsAccumulate.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadowsAccumulate.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AccumulateShadowsCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AccumulateShadowsPipeline"), shader);
 }
@@ -109,7 +108,6 @@ static rdr::PipelineStateID CreateAccumulateShadowsPipeline()
 static rdr::PipelineStateID CreateeShadowsBilateralBlurPipeline(Bool isHorizontal)
 {
 	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ShadowsBilateralBlurCS"));
 	if (isHorizontal)
 	{
 		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "1"));
@@ -118,7 +116,7 @@ static rdr::PipelineStateID CreateeShadowsBilateralBlurPipeline(Bool isHorizonta
 	{
 		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "0"));
 	}
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/ShadowsBilateralBlur.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/ShadowsBilateralBlur.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ShadowsBilateralBlurCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ShadowsBilateralBlurPipeline"), shader);
 }

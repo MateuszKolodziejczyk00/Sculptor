@@ -46,6 +46,12 @@ struct ShaderStageCompilationDef
 		, entryPoint(inEntryPoint)
 	{ }
 
+	SizeType Hash() const
+	{
+		return spt::lib::HashCombine(stage,
+									 entryPoint);
+	}
+
 	rhi::EShaderStage stage;
 	lib::HashedString entryPoint;
 };
@@ -56,9 +62,6 @@ class SHADER_COMPILER_API ShaderCompilationSettings
 public:
 
 	ShaderCompilationSettings();
-
-	void AddShaderToCompile(const ShaderStageCompilationDef& stageCompilationDef);
-	const lib::DynamicArray<ShaderStageCompilationDef>& GetStagesToCompile() const;
 
 	void AddMacroDefinition(MacroDefinition macro);
 	const lib::DynamicArray<lib::HashedString>& GetMacros() const;
@@ -71,7 +74,6 @@ public:
 private:
 
 	lib::DynamicArray<lib::HashedString> m_macros;
-	lib::DynamicArray<ShaderStageCompilationDef> m_stagesToCompile;
 	
 	Bool m_generateDebugSource;
 };
@@ -98,8 +100,7 @@ struct hash<spt::sc::ShaderStageCompilationDef>
 {
     size_t operator()(const spt::sc::ShaderStageCompilationDef& stageCompilation) const
     {
-		return spt::lib::HashCombine(stageCompilation.stage,
-									 stageCompilation.entryPoint);
+		return stageCompilation.Hash();
     }
 };
 

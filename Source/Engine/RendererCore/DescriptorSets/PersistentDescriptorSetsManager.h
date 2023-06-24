@@ -68,7 +68,7 @@ private:
 		{ }
 
 		PersistentDSHash					hash;
-		lib::SharedPtr<smd::ShaderMetaData>	metaData;
+		lib::WeakPtr<Pipeline>				pipeline;
 		lib::WeakPtr<DescriptorSetState>	state;
 		Uint64								lastUpdateFrame;
 	};

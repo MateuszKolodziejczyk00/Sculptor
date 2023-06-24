@@ -5,17 +5,18 @@
 namespace spt::rdr
 {
 
-RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::RayTracingPipelineDefinition& definition)
-	: Super(shader)
+RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const lib::DynamicArray<lib::SharedRef<Shader>>& shaders, const rhi::RayTracingPipelineDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::DynamicArray<rhi::RHIShaderModule>& shaderModules = shader->GetShaderModules();
-
 	rhi::RayTracingShadersDefinition rayTracingShaders;
 
-	for (const rhi::RHIShaderModule& shaderModule : shaderModules)
+	for (const lib::SharedRef<Shader>& shader : shaders)
 	{
+		AppendToPipelineMetaData(shader->GetMetaData());
+
+		const rhi::RHIShaderModule& shaderModule = shader->GetRHI();
+
 		switch (shaderModule.GetStage())
 		{
 		case rhi::EShaderStage::RTGeneration:
@@ -34,7 +35,7 @@ RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const l
 		}
 	}
 
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition(*GetMetaData());
+	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
 
 	rhi::RHIPipeline& rhiPipeline = GetRHI();
 

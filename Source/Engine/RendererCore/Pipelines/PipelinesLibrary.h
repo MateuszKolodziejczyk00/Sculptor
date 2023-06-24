@@ -5,7 +5,7 @@
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Pipeline/RayTracingPipeline.h"
-#include "PipelineState.h"
+#include "PipelineTypes.h"
 
 
 namespace spt::rdr
@@ -23,13 +23,13 @@ public:
 	void Initialize();
 	void Uninitialize();
 
-	SPT_NODISCARD PipelineStateID GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
+	SPT_NODISCARD PipelineStateID GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
 	SPT_NODISCARD PipelineStateID GetOrCreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	SPT_NODISCARD PipelineStateID GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const rhi::RayTracingPipelineDefinition pipelineDef, const ShaderID& shader);
+	SPT_NODISCARD PipelineStateID GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	
-	SPT_NODISCARD lib::SharedRef<GraphicsPipeline>		GetGraphicsPipeline(PipelineStateID id) const;
-	SPT_NODISCARD lib::SharedRef<ComputePipeline>		GetComputePipeline(PipelineStateID id) const;
-	SPT_NODISCARD lib::SharedRef<RayTracingPipeline>	GetRayTracingPipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedPtr<GraphicsPipeline>		GetGraphicsPipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedPtr<ComputePipeline>		GetComputePipeline(PipelineStateID id) const;
+	SPT_NODISCARD lib::SharedPtr<RayTracingPipeline>	GetRayTracingPipeline(PipelineStateID id) const;
 
 	void FlushCreatedPipelines();
 
@@ -45,12 +45,16 @@ private:
 	template<typename TPipelineType>
 	using PipelinesMap = lib::HashMap<PipelineStateID, lib::SharedPtr<TPipelineType>>;
 
-	PipelineStateID GetStateID(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader) const;
+	PipelineStateID GetStateID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) const;
 	PipelineStateID GetStateID(const ShaderID& shader) const;
-	PipelineStateID GetStateID(const rhi::RayTracingPipelineDefinition& pipelineDef, const ShaderID& shader) const;
+	PipelineStateID GetStateID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) const;
+
+	SPT_NODISCARD lib::SharedRef<GraphicsPipeline>		CreateGfxPipelineObject(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	SPT_NODISCARD lib::SharedRef<ComputePipeline>		CreateComputePipelineObject(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	SPT_NODISCARD lib::SharedRef<RayTracingPipeline>	CreateRayTracingPipelineObject(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 
 	template<typename TPipelineType>
-	SPT_NODISCARD lib::SharedRef<TPipelineType> GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const;
+	SPT_NODISCARD lib::SharedPtr<TPipelineType> GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const;
 
 	template<typename TPipelineType>
 	void FlushPipelinesImpl(PipelinesMap<TPipelineType>& cachedPipelines, PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock);
@@ -83,10 +87,22 @@ private:
 	mutable lib::Lock					m_rayTracingPipelinesPendingFlushLock;
 
 #if WITH_SHADERS_HOT_RELOAD
-	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>			m_shaderToPipelineStates;
-	lib::HashMap<PipelineStateID, rhi::GraphicsPipelineDefinition>		m_graphicsPipelineDefinitions;
-	lib::HashMap<PipelineStateID, rhi::RayTracingPipelineDefinition>	m_rayTracingPipelineDefinitions;
-	mutable lib::ReadWriteLock											m_hotReloadLock;
+	struct GfxPipelineHotReloadData
+	{
+		GraphicsPipelineShaders shaders;
+		rhi::GraphicsPipelineDefinition pipelineDef;
+	};
+
+	struct RayTracingPipelineHotReloadData
+	{
+		RayTracingPipelineShaders shaders;
+		rhi::RayTracingPipelineDefinition pipelineDef;
+	};
+
+	lib::HashMap<ShaderID, lib::DynamicArray<PipelineStateID>>		m_shaderToPipelineStates;
+	lib::HashMap<PipelineStateID, GfxPipelineHotReloadData>			m_graphicsPipelineHotReloadData;
+	lib::HashMap<PipelineStateID, RayTracingPipelineHotReloadData>	m_rayTracingPipelineHotReloadData;
+	mutable lib::ReadWriteLock										m_hotReloadLock;
 	
 	lib::DynamicArray<ShaderID>	m_invalidatedShaders;
 	mutable lib::Lock			m_invalidatedShadersLock;
@@ -95,7 +111,7 @@ private:
 
 
 template<typename TPipelineType>
-lib::SharedRef<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const
+lib::SharedPtr<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -104,16 +120,15 @@ lib::SharedRef<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID 
 	const auto foundCachedPipeline = cachedPipelines.find(id);
 	if (foundCachedPipeline != std::cend(cachedPipelines))
 	{
-		return lib::Ref(foundCachedPipeline->second);
+		return foundCachedPipeline->second;
 	}
 
 	//before we start searching for pipeline in pipelines pending flush, we need to get exclusive access
 	const lib::LockGuard lockGuard(lock);
 
 	const auto foundPendingPipeline = pipelinesPendingFlush.find(id);
-	SPT_CHECK(foundPendingPipeline != std::cend(pipelinesPendingFlush));
 
-	return lib::Ref(foundPendingPipeline->second);
+	return foundPendingPipeline != std::cend(pipelinesPendingFlush) ? foundPendingPipeline->second : nullptr;
 }
 
 template<typename TPipelineType>

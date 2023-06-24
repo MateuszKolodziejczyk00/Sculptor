@@ -8,7 +8,7 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGNodeParametersStruct.h"
 #include "Types/Buffer.h"
-#include "Pipelines/PipelineState.h"
+#include "Pipelines/PipelineTypes.h"
 #include "View/SceneView.h"
 #include "StaticMeshRenderSceneSubsystem.h"
 

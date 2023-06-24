@@ -353,31 +353,26 @@ LightsRenderSystem::LightsRenderSystem()
 	m_supportedStages = ERenderStage::ForwardOpaque;
 
 	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildLightsZClustersCS"));
-		const rdr::ShaderID buildLightsZClustersShaders = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsZClusters.hlsl", compilationSettings);
+		const rdr::ShaderID buildLightsZClustersShaders = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsZClusters.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildLightsZClustersCS"));
 		m_buildLightsZClustersPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BuildLightsZClusters"), buildLightsZClustersShaders);
 	}
 
 	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateLightsDrawCommandsCS"));
-		const rdr::ShaderID generateLightsDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/GenerateLightsDrawCommands.hlsl", compilationSettings);
+		const rdr::ShaderID generateLightsDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/GenerateLightsDrawCommands.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "GenerateLightsDrawCommandsCS"));
 		m_generateLightsDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateLightsDrawCommands"), generateLightsDrawCommandsShader);
 	}
 	
 	{
-		sc::ShaderCompilationSettings compilationSettings;
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "BuildLightsTilesVS"));
-		compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "BuildLightsTilesPS"));
-		const rdr::ShaderID buildLightsTilesShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsTiles.hlsl", compilationSettings);
+		rdr::GraphicsPipelineShaders shaders;
+		shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsTiles.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "BuildLightsTilesVS"));
+		shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsTiles.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "BuildLightsTilesPS"));
 
 		rhi::GraphicsPipelineDefinition pipelineDef;
 		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::Front;
 		pipelineDef.rasterizationDefinition.rasterizationType = rhi::ERasterizationType::ConservativeOverestimate;
 
-		m_buildLightsTilesPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("BuildLightsTilesPipeline"), pipelineDef, buildLightsTilesShader);
+		m_buildLightsTilesPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("BuildLightsTilesPipeline"), shaders, pipelineDef);
 	}
 }
 

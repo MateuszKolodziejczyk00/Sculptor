@@ -24,7 +24,7 @@ static DSStateID GenerateStateID()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetUpdateContext ====================================================================
 
-DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const lib::SharedRef<smd::ShaderMetaData>& metaData)
+DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const smd::ShaderMetaData& metaData)
 	: m_descriptorSet(descriptorSet)
 	, m_writer(writer)
 	, m_metaData(metaData)
@@ -120,7 +120,7 @@ void DescriptorSetUpdateContext::UpdateAccelerationStructure(const lib::HashedSt
 
 const smd::ShaderMetaData& DescriptorSetUpdateContext::GetMetaData() const
 {
-	return *m_metaData;
+	return m_metaData;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

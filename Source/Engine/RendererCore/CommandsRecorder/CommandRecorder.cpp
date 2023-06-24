@@ -246,27 +246,6 @@ void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 						 });
 }
 
-void CommandRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
-{
-	SPT_PROFILER_FUNCTION();
-
-	PipelineStateID pipelineID;
-	BindGraphicsPipeline(pipelineDef, shader, pipelineID);
-}
-
-void CommandRecorder::BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader, INOUT PipelineStateID& cachedPipelineID)
-{
-	SPT_PROFILER_FUNCTION();
-
-	if(!cachedPipelineID.IsValid())
-	{
-		cachedPipelineID = Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(RENDERER_RESOURCE_NAME(shader.GetName()), pipelineDef, shader);
-	}
-	SPT_CHECK(cachedPipelineID.IsValid());
-
-	BindGraphicsPipeline(cachedPipelineID);
-}
-
 void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();

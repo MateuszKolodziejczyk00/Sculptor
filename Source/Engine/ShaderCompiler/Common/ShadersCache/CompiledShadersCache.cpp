@@ -20,18 +20,15 @@ template<>
 struct TypeSerializer<sc::CompiledShader>
 {
 	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& shader)
 	{
 		using ShaderBinary			= typename Param::Binary;
 		using ShaderBinaryElement	= typename ShaderBinary::value_type;
 
 		if constexpr (Serializer::IsSaving())
 		{
-			const srl::Binary binary(reinterpret_cast<const unsigned char*>(data.GetBinary().data()), data.GetBinary().size() * sizeof(ShaderBinaryElement));
+			const srl::Binary binary(reinterpret_cast<const unsigned char*>(shader.binary.data()), shader.binary.size() * sizeof(ShaderBinaryElement));
 			serializer.Serialize("Binary", binary);
-
-			serializer.SerializeEnum("Stage", data.GetStage());
-			serializer.Serialize("EntryPoint", data.GetEntryPoint());
 		}
 		else
 		{
@@ -43,41 +40,24 @@ struct TypeSerializer<sc::CompiledShader>
 			ShaderBinary shaderBinary(binary.size() / sizeof(ShaderBinaryElement));
 			memcpy_s(shaderBinary.data(), binary.size(), binary.data(), binary.size());
 
-			data.SetBinary(shaderBinary);
-
-			rhi::EShaderStage stage = rhi::EShaderStage::None;
-			serializer.SerializeEnum("Stage", stage);
-			data.SetStage(stage);
-
-			lib::HashedString entryPoint;
-			serializer.Serialize("EntryPoint", entryPoint);
-			data.SetEntryPoint(entryPoint);
+			shader.binary = std::move(shaderBinary);
 		}
+		
+		serializer.SerializeEnum("Stage", shader.stage);
+		serializer.Serialize("EntryPoint", shader.entryPoint);
+			
+		serializer.Serialize("MetaData", shader.metaData);
 	}
 };
 
-// spt::sc::CompiledShaderFile ==========================================================
-
-template<>
-struct TypeSerializer<sc::CompiledShaderFile>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Shaders", data.shaders);
-		serializer.Serialize("MetaData", data.metaData);
-	}
-};
-
-}
+} // spt::srl
 
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShader)
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShaderFile)
 
 namespace spt::sc
 {
 
-Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -86,63 +66,60 @@ Bool CompiledShadersCache::HasCachedShader(lib::HashedString shaderRelativePath,
 		return false;
 	}
 
-	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
 	return lib::File::Exists(filePath);
 }
 
-CompiledShaderFile CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+CompiledShader CompiledShadersCache::TryGetCachedShader(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	CompiledShaderFile compiledShaderFile;
+	CompiledShader compiledShader;
 
 	if (CanUseShadersCache())
 	{
-		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
+		const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
 		const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath);
 
 		const Bool isCachedShaderUpToDate = IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath);
 
 		if (isCachedShaderUpToDate)
 		{
-			srl::SerializationHelper::LoadTextStructFromFile(compiledShaderFile, cachedShaderPath);
+			srl::SerializationHelper::LoadTextStructFromFile(compiledShader, cachedShaderPath);
 		}
 	}
 
-	return compiledShaderFile;
+	return compiledShader;
 }
 
-CompiledShaderFile CompiledShadersCache::GetCachedShaderChecked(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+CompiledShader CompiledShadersCache::GetCachedShaderChecked(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
-	CompiledShaderFile compiledShader = TryGetCachedShader(shaderRelativePath, compilationSettings);
+	CompiledShader compiledShader = TryGetCachedShader(shaderRelativePath, shaderStageDef, compilationSettings);
 	SPT_CHECK(compiledShader.IsValid());
 	return compiledShader;
 }
 
-void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings, const CompiledShaderFile& shaderFile)
+void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings, const CompiledShader& shader)
 {
 	SPT_PROFILER_FUNCTION();
 	
 	SPT_CHECK(CanUseShadersCache());
 
-	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, compilationSettings);
-	srl::SerializationHelper::SaveTextStructToFile(shaderFile, filePath);
+	const lib::String filePath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
+	srl::SerializationHelper::SaveTextStructToFile(shader, filePath);
 
 	if (ShaderCompilationEnvironment::ShouldCacheSeparateSpvFile())
 	{
-		for (const CompiledShader& shader : shaderFile.shaders)
-		{
-			const lib::String binaryPath = filePath + '_' + std::to_string(static_cast<Uint32>(shader.GetStage())) + ".spv";
-			const CompiledShader::Binary& bin = shader.GetBinary();
-			srl::SerializationHelper::SaveBinaryToFile(reinterpret_cast<const Byte*>(bin.data()), bin.size() * 4, binaryPath);
-		}
+		const lib::String binaryPath = filePath + '_' + std::to_string(static_cast<Uint32>(shader.stage)) + ".spv";
+		const CompiledShader::Binary& bin = shader.binary;
+		srl::SerializationHelper::SaveBinaryToFile(reinterpret_cast<const Byte*>(bin.data()), bin.size() * 4, binaryPath);
 	}
 }
 
-Bool CompiledShadersCache::IsCachedShaderUpToDate(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+Bool CompiledShadersCache::IsCachedShaderUpToDate(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	return CanUseShadersCache()
-		&& IsCachedShaderUpToDateImpl(CreateShaderFilePath(shaderRelativePath, compilationSettings), CreateShaderSourceCodeFilePath(shaderRelativePath));
+		&& IsCachedShaderUpToDateImpl(CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings), CreateShaderSourceCodeFilePath(shaderRelativePath));
 }
 
 Bool CompiledShadersCache::CanUseShadersCache()
@@ -150,11 +127,13 @@ Bool CompiledShadersCache::CanUseShadersCache()
 	return ShaderCompilationEnvironment::ShouldUseCompiledShadersCache();
 }
 
-CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+CompiledShadersCache::HashType CompiledShadersCache::HashShader(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	return shaderRelativePath.GetKey() ^ compilationSettings.Hash();
+	return lib::HashCombine(shaderRelativePath.GetKey(),
+						   shaderStageDef.Hash(),
+						   compilationSettings.Hash());
 }
 
 lib::String CompiledShadersCache::CreateShaderFileName(HashType hash)
@@ -172,11 +151,11 @@ lib::String CompiledShadersCache::CreateShaderSourceCodeFilePath(lib::HashedStri
 	return engn::Paths::Combine(ShaderCompilationEnvironment::GetShadersPath(), shaderRelativePath.GetView());;
 }
 
-lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderCompilationSettings& compilationSettings)
+lib::String CompiledShadersCache::CreateShaderFilePath(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const HashType hash = HashShader(shaderRelativePath, compilationSettings);
+	const HashType hash = HashShader(shaderRelativePath, shaderStageDef, compilationSettings);
 	return CreateShaderFilePath(hash);
 }
 

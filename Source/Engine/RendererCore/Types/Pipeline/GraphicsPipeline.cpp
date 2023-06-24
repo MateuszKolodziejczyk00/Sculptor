@@ -4,15 +4,21 @@
 namespace spt::rdr
 {
 
-GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::GraphicsPipelineDefinition& pipelineDef)
-	: Pipeline(shader)
+GraphicsPipeline::GraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShadersDefinition& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
 	SPT_PROFILER_FUNCTION();
 
-	rhi::PipelineShaderStagesDefinition shaderStagesDef;
-	shaderStagesDef.shaderModules = shader->GetShaderModules();
+	SPT_CHECK(!!shaders.vertexShader && shaders.vertexShader->GetStage() == rhi::EShaderStage::Vertex);
+	SPT_CHECK(!!shaders.fragmentShader && shaders.fragmentShader->GetStage() == rhi::EShaderStage::Fragment);
 
-	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition(*GetMetaData());
+	AppendToPipelineMetaData(shaders.vertexShader->GetMetaData());
+	AppendToPipelineMetaData(shaders.fragmentShader->GetMetaData());
+
+	rhi::GraphicsPipelineShadersDefinition shaderStagesDef;
+	shaderStagesDef.vertexShader	= shaders.vertexShader->GetRHI();
+	shaderStagesDef.fragmentShader	= shaders.fragmentShader->GetRHI();
+
+	const rhi::PipelineLayoutDefinition pipelineLayoutDef = CreateLayoutDefinition();
 
 	GetRHI().InitializeRHI(shaderStagesDef, pipelineDef, pipelineLayoutDef);
 	GetRHI().SetName(name.Get());

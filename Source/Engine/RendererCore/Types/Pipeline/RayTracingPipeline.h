@@ -16,7 +16,7 @@ protected:
 
 public:
 
-	RayTracingPipeline(const RendererResourceName& name, const lib::SharedRef<Shader>& shader, const rhi::RayTracingPipelineDefinition& definition);
+	RayTracingPipeline(const RendererResourceName& name, const lib::DynamicArray<lib::SharedRef<Shader>>& shaders, const rhi::RayTracingPipelineDefinition& definition);
 	~RayTracingPipeline();
 
 	const rhi::RHIShaderBindingTable& GetShaderBindingTable() const;

@@ -75,27 +75,28 @@ static void InitializeRHIBindingDefinition(Uint32 bindingIdx, const smd::Generic
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Pipeline ======================================================================================
 
-Pipeline::Pipeline(const lib::SharedRef<Shader>& shader)
-	: m_metaData(shader->GetMetaData())
+Pipeline::Pipeline()
 { }
 
-const lib::SharedRef<smd::ShaderMetaData>& Pipeline::GetMetaData() const
+const smd::ShaderMetaData& Pipeline::GetMetaData() const
 {
 	return m_metaData;
 }
 
-const smd::ShaderMetaData& Pipeline::GetMetaDataRef() const
+void Pipeline::AppendToPipelineMetaData(const smd::ShaderMetaData& shaderMetaData)
 {
-	return *m_metaData;
+	SPT_PROFILER_FUNCTION();
+
+	m_metaData.Append(shaderMetaData);
 }
 
-rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const
+rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 {
 	SPT_PROFILER_FUNCTION();
 
 	rhi::PipelineLayoutDefinition layoutDefinition;
 
-	const smd::ShaderMetaData::DescriptorSetArray& descriptorSetArray = m_metaData->GetDescriptorSets();
+	const smd::ShaderMetaData::DescriptorSetArray& descriptorSetArray = m_metaData.GetDescriptorSets();
 	std::transform(std::cbegin(descriptorSetArray), std::cend(descriptorSetArray), std::back_inserter(layoutDefinition.descriptorSets),
 		[](const smd::ShaderDescriptorSet& descriptorSetMetaData)
 		{

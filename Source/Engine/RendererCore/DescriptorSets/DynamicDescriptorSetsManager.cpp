@@ -76,7 +76,7 @@ void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderCont
 	for (SizeType idx = 0; idx < dsInfosToAllocate.size(); ++idx)
 	{
 		const lib::SharedPtr<Pipeline>& pipeline = dsInfosToAllocate[idx].pipeline;
-		const lib::SharedRef<smd::ShaderMetaData>& metaData = pipeline->GetMetaData();
+		const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 
 		DescriptorSetUpdateContext updateContext(allocatedDescriptorSets[idx], writer, metaData);
 		dsInfosToAllocate[idx].state->UpdateDescriptors(updateContext);

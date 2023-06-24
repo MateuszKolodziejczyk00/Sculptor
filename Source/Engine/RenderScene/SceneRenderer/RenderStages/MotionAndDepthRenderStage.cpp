@@ -27,9 +27,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileCameraMotionPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CameraMotionCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/MotionAndDepth/CameraMotion.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/MotionAndDepth/CameraMotion.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CameraMotionCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CameraMotionPipeline"), shader);
 }

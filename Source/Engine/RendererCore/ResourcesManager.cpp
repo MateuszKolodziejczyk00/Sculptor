@@ -61,9 +61,9 @@ lib::SharedRef<CommandBuffer> ResourcesManager::CreateCommandBuffer(const Render
 	return lib::MakeShared<CommandBuffer>(name, renderContext, definition);
 }
 
-ShaderID ResourcesManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderCompilationSettings& settings, EShaderFlags flags /*= EShaderFlags::None*/)
+ShaderID ResourcesManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings /*= sc::ShaderCompilationSettings()*/, EShaderFlags flags /*= EShaderFlags::None*/)
 {
-	return Renderer::GetShadersManager().CreateShader(shaderRelativePath, settings, flags);
+	return Renderer::GetShadersManager().CreateShader(shaderRelativePath, shaderStageDef, compilationSettings, flags);
 }
 
 lib::SharedRef<Shader> ResourcesManager::GetShaderObject(ShaderID shaderID)
@@ -86,14 +86,14 @@ PipelineStateID ResourcesManager::CreateComputePipeline(const RendererResourceNa
 	return Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(nameInNotCached, shader);
 }
 
-PipelineStateID ResourcesManager::CreateGfxPipeline(const RendererResourceName& nameInNotCached, const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader)
+PipelineStateID ResourcesManager::CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(nameInNotCached, pipelineDef, shader);
+	return Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(nameInNotCached, shaders, pipelineDef);
 }
 
-PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader, const rhi::RayTracingPipelineDefinition& definition)
+PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateRayTracingPipeline(nameInNotCached, definition, shader);
+	return Renderer::GetPipelinesLibrary().GetOrCreateRayTracingPipeline(nameInNotCached, shaders, pipelineDef);
 }
 
 lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)

@@ -42,7 +42,7 @@ namespace gfx
 
 struct GraphicsPipelineBuildDefinition
 {
-	GraphicsPipelineBuildDefinition(const rhi::PipelineShaderStagesDefinition&	inShaderStagesDef,
+	GraphicsPipelineBuildDefinition(const rhi::GraphicsPipelineShadersDefinition&	inShaderStagesDef,
 									const rhi::GraphicsPipelineDefinition&		inPipelineDefinition,
 									const PipelineLayout&						inLayout)
 		: shaderStagesDef(inShaderStagesDef)
@@ -50,7 +50,7 @@ struct GraphicsPipelineBuildDefinition
 		, layout(inLayout)
 	{ }
 	
-	const rhi::PipelineShaderStagesDefinition&	shaderStagesDef;
+	const rhi::GraphicsPipelineShadersDefinition&	shaderStagesDef;
 	const rhi::GraphicsPipelineDefinition&		pipelineDefinition;
 	const PipelineLayout&						layout;
 };
@@ -60,14 +60,13 @@ static lib::DynamicArray<VkPipelineShaderStageCreateInfo> BuildShaderInfos(const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::DynamicArray<RHIShaderModule>& shaderModules = pipelineBuildDef.shaderStagesDef.shaderModules;
+	const rhi::GraphicsPipelineShadersDefinition& shadersDef = pipelineBuildDef.shaderStagesDef;
 
 	lib::DynamicArray<VkPipelineShaderStageCreateInfo> outShaderStageInfos;
-	outShaderStageInfos.reserve(shaderModules.size());
+	outShaderStageInfos.reserve(2);
 
-	std::transform(std::cbegin(shaderModules), std::cend(shaderModules),
-				   std::back_inserter(outShaderStageInfos),
-				   &BuildPipelineShaderStageInfo);
+	outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.vertexShader));
+	outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.fragmentShader));
 
 	return outShaderStageInfos;
 }
@@ -473,7 +472,7 @@ RHIPipeline::RHIPipeline()
 	, m_pipelineType(rhi::EPipelineType::None)
 { }
 
-void RHIPipeline::InitializeRHI(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition)
+void RHIPipeline::InitializeRHI(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const rhi::PipelineLayoutDefinition& layoutDefinition)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -575,7 +574,7 @@ void RHIPipeline::InitializePipelineLayout(const rhi::PipelineLayoutDefinition& 
 	m_layout = VulkanRHI::GetPipelineLayoutsManager().GetOrCreatePipelineLayout(layoutDefinition);
 }
 
-void RHIPipeline::InitializeGraphicsPipeline(const rhi::PipelineShaderStagesDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout)
+void RHIPipeline::InitializeGraphicsPipeline(const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef, const rhi::GraphicsPipelineDefinition& pipelineDefinition, const PipelineLayout& layout)
 {
 	SPT_PROFILER_FUNCTION();
 

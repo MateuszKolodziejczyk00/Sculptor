@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
 #include "CommandQueue/CommandQueue.h"
-#include "Pipelines/PipelineState.h"
+#include "Pipelines/PipelineTypes.h"
 #include "PipelinePendingState.h"
 #include "RendererUtils.h"
 #include "RHIBridge/RHIDependencyImpl.h"
@@ -83,10 +83,6 @@ public:
 	void									DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex = 0, Uint32 firstInstance = 0);
 
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);
-	void									BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader);
-
-	/** This version lets us cache created pipeline. If doesn't attempt to create new pipeline if cached id is valid */
-	void									BindGraphicsPipeline(const rhi::GraphicsPipelineDefinition& pipelineDef, const ShaderID& shader, INOUT PipelineStateID& cachedPipelineID);
 
 	void									BindComputePipeline(PipelineStateID pipelineID);
 	void									BindComputePipeline(const ShaderID& shader);

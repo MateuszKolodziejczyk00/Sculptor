@@ -8,13 +8,30 @@
 namespace spt::rdr
 {
 
-struct GraphicsPipelineState
+struct GraphicsPipelineShaders
 {
-	GraphicsPipelineState() = default;
+	GraphicsPipelineShaders() = default;
 
-	rhi::EPrimitiveTopology					primitiveTopology;
-	rhi::PipelineRasterizationDefinition	rasterizationDefinition;
-	ShaderID								shader;
+	SizeType Hash() const
+	{
+		return lib::HashCombine(vertexShader.GetID(), fragmentShader.GetID());
+	}
+
+	ShaderID vertexShader;
+	ShaderID fragmentShader;
+};
+
+
+struct RayTracingPipelineShaders
+{
+	RayTracingPipelineShaders() = default;
+
+	SizeType Hash() const
+	{
+		return lib::HashRange(std::cbegin(shaders), std::cend(shaders));
+	}
+
+	lib::DynamicArray<ShaderID> shaders;
 };
 
 

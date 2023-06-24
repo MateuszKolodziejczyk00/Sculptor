@@ -39,9 +39,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileGenerateCoCPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFGenerateCoCCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFGenerateCoC.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFGenerateCoC.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFGenerateCoCCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateCoCPipeline"), shader);
 }
@@ -107,8 +105,6 @@ enum class ENearCoCBlurType
 static rdr::PipelineStateID CompileNearFieldCoCBlur(ENearCoCBlurType blurType)
 {
 	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFNearCoCBlurCS"));
-
 	switch (blurType)
 	{
 	case ENearCoCBlurType::Max:
@@ -119,7 +115,7 @@ static rdr::PipelineStateID CompileNearFieldCoCBlur(ENearCoCBlurType blurType)
 		break;
 	}
 
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFNearCoCBlur.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFNearCoCBlur.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFNearCoCBlurCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DOFNearCoCBlurPipeline"), shader);
 }
@@ -226,9 +222,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileDownsampleDOFPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFDownsampleCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFDownsample.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFDownsample.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFDownsampleCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DOFDownsamplePipeline"), shader);
 }
@@ -306,9 +300,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileDOFFillPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFFillCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFFill.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFFill.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFFillCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DOFFillPipeline"), shader);
 }
@@ -368,9 +360,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileDOFComputationPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFComputationCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFComputation.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFComputation.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFComputationCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DOFComputationPipeline"), shader);
 }
@@ -436,9 +426,7 @@ DS_END();
 
 static rdr::PipelineStateID CompileDOFCompositePipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddShaderToCompile(sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFCompositeCS"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFComposite.hlsl", compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/DOF/DOFComposite.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DOFCompositeCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DOFCompositePipeline"), shader);
 }

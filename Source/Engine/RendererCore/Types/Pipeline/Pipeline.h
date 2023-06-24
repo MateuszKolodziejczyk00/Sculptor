@@ -21,18 +21,19 @@ protected:
 
 public:
 
-	Pipeline(const lib::SharedRef<Shader>& shader);
+	Pipeline();
 
-	SPT_NODISCARD const lib::SharedRef<smd::ShaderMetaData>&	GetMetaData() const;
-	SPT_NODISCARD const smd::ShaderMetaData&					GetMetaDataRef() const;
+	const smd::ShaderMetaData& GetMetaData() const;
 
 protected:
 
-	SPT_NODISCARD rhi::PipelineLayoutDefinition CreateLayoutDefinition(const smd::ShaderMetaData& metaData) const;
+	void AppendToPipelineMetaData(const smd::ShaderMetaData& shaderMetaData);
+
+	SPT_NODISCARD rhi::PipelineLayoutDefinition CreateLayoutDefinition() const;
 
 private:
 
-	lib::SharedRef<smd::ShaderMetaData> m_metaData;
+	smd::ShaderMetaData m_metaData;
 };
 
 } // spt::rdr

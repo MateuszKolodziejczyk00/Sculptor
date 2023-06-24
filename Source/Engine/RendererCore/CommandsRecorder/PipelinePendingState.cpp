@@ -237,7 +237,7 @@ void PipelinePendingState::TryMarkAsDirtyImpl(const lib::SharedRef<DescriptorSet
 
 	if (pipeline)
 	{
-		const Uint32 boundIdx = pipeline->GetMetaData()->FindDescriptorSetWithHash(state->GetDescriptorSetHash());
+		const Uint32 boundIdx = pipeline->GetMetaData().FindDescriptorSetWithHash(state->GetDescriptorSetHash());
 		if (boundIdx != idxNone<Uint32>)
 		{
 			dirtyDescriptorSets[static_cast<SizeType>(boundIdx)] = true;
@@ -247,17 +247,17 @@ void PipelinePendingState::TryMarkAsDirtyImpl(const lib::SharedRef<DescriptorSet
 
 void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
 {
-	const lib::SharedRef<smd::ShaderMetaData> newMetaData = newPipeline->GetMetaData();
-	dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData->GetDescriptorSetsNum()), true);
+	const smd::ShaderMetaData& newMetaData = newPipeline->GetMetaData();
+	dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
 
 	if (prevPipeline)
 	{
-		const lib::SharedRef<smd::ShaderMetaData> prevMetaData = prevPipeline->GetMetaData();
+		const smd::ShaderMetaData& prevMetaData = prevPipeline->GetMetaData();
 
-		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData->GetDescriptorSetsNum(), newMetaData->GetDescriptorSetsNum());
+		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData.GetDescriptorSetsNum(), newMetaData.GetDescriptorSetsNum());
 		for (Uint32 dsIdx = 0; dsIdx < commonDescriptorSetsNum; ++dsIdx)
 		{
-			if (prevMetaData->GetDescriptorSetHash(dsIdx) != newMetaData->GetDescriptorSetHash(dsIdx))
+			if (prevMetaData.GetDescriptorSetHash(dsIdx) != newMetaData.GetDescriptorSetHash(dsIdx))
 			{
 				dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
 			}
@@ -270,7 +270,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 	SPT_PROFILER_FUNCTION();
 
 	DescriptorSetsManager& dsManager = Renderer::GetDescriptorSetsManager();
-	const lib::SharedRef<smd::ShaderMetaData> metaData = pipeline->GetMetaData();
+	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 
 	DSBindCommands descriptorSetsToBind;
 
@@ -278,7 +278,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 	{
 		if (dirtyDescriptorSets[dsIdx])
 		{
-			const SizeType dsTypeHash = metaData->GetDescriptorSetStateTypeHash(static_cast<Uint32>(dsIdx));
+			const SizeType dsTypeHash = metaData.GetDescriptorSetStateTypeHash(static_cast<Uint32>(dsIdx));
 			if (dsTypeHash == idxNone<SizeType>)
 			{
 				// This is unused set idx
@@ -294,21 +294,21 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			{
 				const rhi::RHIDescriptorSet descriptorSet = dsManager.GetOrCreateDescriptorSet(pipeline, static_cast<Uint32>(dsIdx), stateInstance);
 				
-				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, *metaData, static_cast<Uint32>(dsIdx));
+				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, metaData, static_cast<Uint32>(dsIdx));
 				descriptorSetsToBind.persistentDSBinds.emplace_back(PersistentDSBindCommand(static_cast<Uint32>(dsIdx), descriptorSet, std::move(dynamicOffsets)));
 			}
 			else
 			{
 				// This hash must contain descriptor set hash (not descriptor set type) from meta data, so that it will be different for different pipelines
 				// (f.e. if some uniform will be optimized away)
-				const SizeType stateAndPipelineDSHash = lib::HashCombine(metaData->GetDescriptorSetHash(static_cast<Uint32>(dsIdx)), stateInstance->GetID());
+				const SizeType stateAndPipelineDSHash = lib::HashCombine(metaData.GetDescriptorSetHash(static_cast<Uint32>(dsIdx)), stateInstance->GetID());
 				if (!m_cachedDynamicDescriptorSets.contains(stateAndPipelineDSHash))
 				{
 					m_dynamicDescriptorSetInfos.emplace_back(DynamicDescriptorSetInfo(pipeline, static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, stateInstance));
 					m_cachedDynamicDescriptorSets.emplace(stateAndPipelineDSHash);
 				}
 
-				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, *metaData, static_cast<Uint32>(dsIdx));
+				lib::DynamicArray<Uint32> dynamicOffsets = stateInstance->GetDynamicOffsetsForShader(foundState->dynamicOffsets, metaData, static_cast<Uint32>(dsIdx));
 				descriptorSetsToBind.dynamicDSBinds.emplace_back(DynamicDSBindCommand(static_cast<Uint32>(dsIdx), stateAndPipelineDSHash, std::move(dynamicOffsets)));
 			}
 		}
