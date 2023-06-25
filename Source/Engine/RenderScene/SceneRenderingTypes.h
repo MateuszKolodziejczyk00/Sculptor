@@ -17,7 +17,15 @@ enum class ERenderStage
 	VolumetricFog					= BIT(5),
 	PostProcessPreAA				= BIT(6),
 	AntiAliasing					= BIT(7),
-	HDRResolve						= BIT(8)
+	HDRResolve						= BIT(8),
+
+	DepthPrepassStages				= DepthPrepass | MotionAndDepth,
+	ForwardLightingStages			= DirectionalLightsShadowMasks | ForwardOpaque | VolumetricFog,
+	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
+
+	// Presets
+	ForwardRendererStages			= DepthPrepassStages | ForwardLightingStages | PostProcessStages,
+	ShadowMapRendererStages			= ShadowMap,
 };
 
 } // spt::rsc

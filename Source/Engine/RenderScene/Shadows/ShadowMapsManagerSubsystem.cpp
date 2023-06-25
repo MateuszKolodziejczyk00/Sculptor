@@ -361,7 +361,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMapsRenderViews()
 	{
 		lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews.emplace_back();
 		renderView = std::make_unique<RenderView>(GetOwningScene());
-		renderView->SetRenderStages(ERenderStage::ShadowMap);
+		renderView->SetRenderStages(ERenderStage::ShadowMapRendererStages);
 	}
 }
 

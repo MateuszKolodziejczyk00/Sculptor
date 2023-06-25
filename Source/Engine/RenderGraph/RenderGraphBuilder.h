@@ -3,7 +3,7 @@
 #include "RenderGraphMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
-#include "Pipelines/PipelineTypes.h"
+#include "Pipelines/PipelineState.h"
 #include "RGDescriptorSetState.h"
 #include "RGResources/RGResources.h"
 #include "RGResources/RGAllocator.h"

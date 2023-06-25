@@ -10,7 +10,7 @@
 #include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
-#include "Pipelines/PipelineTypes.h"
+#include "Pipelines/PipelineState.h"
 #include "Common/ShaderCompilationInput.h"
 
 

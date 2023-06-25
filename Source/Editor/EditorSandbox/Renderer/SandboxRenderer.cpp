@@ -246,7 +246,7 @@ Real32 SandboxRenderer::GetCameraSpeed()
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
-	m_renderView->AddRenderStages(lib::Flags(rsc::ERenderStage::DepthPrepass, rsc::ERenderStage::MotionAndDepth, rsc::ERenderStage::ForwardOpaque, rsc::ERenderStage::HDRResolve, rsc::ERenderStage::AntiAliasing, rsc::ERenderStage::VolumetricFog, rsc::ERenderStage::PostProcessPreAA));
+	m_renderView->AddRenderStages(rsc::ERenderStage::ForwardRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::DirectionalLightsShadowMasks);

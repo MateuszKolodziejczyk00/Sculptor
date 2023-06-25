@@ -5,7 +5,7 @@
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Pipeline/RayTracingPipeline.h"
-#include "PipelineTypes.h"
+#include "PipelineState.h"
 
 
 namespace spt::rdr

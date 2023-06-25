@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
 #include "CommandQueue/CommandQueue.h"
-#include "Pipelines/PipelineTypes.h"
+#include "Pipelines/PipelineState.h"
 #include "PipelinePendingState.h"
 #include "RendererUtils.h"
 #include "RHIBridge/RHIDependencyImpl.h"
