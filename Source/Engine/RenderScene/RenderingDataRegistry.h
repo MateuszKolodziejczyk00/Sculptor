@@ -1,13 +1,14 @@
 #pragma once
 
 #include "RenderSceneMacros.h"
+#include "SculptorAliases.h"
 #include "SculptorECS.h"
 
 
 namespace spt::rsc
 {
 
-using RenderingDataEntity = ecs::Entity;
+enum RenderingDataEntity : Uint32 {};
 
 class RenderingDataRegistry : public ecs::basic_registry<RenderingDataEntity>
 {

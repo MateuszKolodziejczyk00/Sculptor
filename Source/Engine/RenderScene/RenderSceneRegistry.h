@@ -6,7 +6,7 @@
 namespace spt::rsc
 {
 
-using RenderSceneEntity = ecs::Entity;
+enum RenderSceneEntity : Uint32 {};
 
 class RenderSceneRegistry : public ecs::basic_registry<RenderSceneEntity>
 {
