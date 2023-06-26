@@ -6,6 +6,8 @@
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHICore/RHITypes.h"
 #include "RHICore/RHISettings.h"
+#include "RHICore/RHIDescriptorTypes.h"
+#include "VulkanTypes/RHIDescriptorSet.h"
 
 
 namespace spt::rhi
@@ -48,6 +50,15 @@ public:
 
 	static const rhi::RHISettings&	GetSettings();
 	static Bool						IsRayTracingEnabled();
+
+	// Descriptor Sets =================================================================
+
+	SPT_NODISCARD static RHIDescriptorSet						AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID);
+	SPT_NODISCARD static lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
+	static void	FreeDescriptorSet(const RHIDescriptorSet& set);
+	static void	FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
+
+	// Debug ===========================================================================
 
 #if RHI_DEBUG
 

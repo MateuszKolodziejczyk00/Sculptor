@@ -19,9 +19,6 @@ public:
 
 	DescriptorSetsManager();
 
-	void Initialize();
-	void Uninitialize();
-
 	void BeginFrame();
 
 	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState) const;

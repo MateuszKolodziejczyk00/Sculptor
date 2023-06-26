@@ -19,7 +19,7 @@ void RHIDescriptorSetManager::InitializeRHI()
 	const Uint16 poolSetsNum16 = static_cast<Uint16>(m_poolSets.size());
 	for (Uint16 idx = 0; idx < poolSetsNum16; ++idx)
 	{
-		m_poolSets[idx].poolSet.Initialize(poolFlags, poolSetsNum16);
+		m_poolSets[idx].poolSet.Initialize(poolFlags, idx);
 	}
 }
 
@@ -63,6 +63,13 @@ lib::DynamicArray<RHIDescriptorSet> RHIDescriptorSetManager::AllocateDescriptorS
 	UnlockDescriptorPoolSet(poolData);
 
 	return descriptorSets;
+}
+
+void RHIDescriptorSetManager::FreeDescriptorSet(const RHIDescriptorSet& set)
+{
+	SPT_PROFILER_FUNCTION();
+
+	FreeDescriptorSets({ set });
 }
 
 void RHIDescriptorSetManager::FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets)

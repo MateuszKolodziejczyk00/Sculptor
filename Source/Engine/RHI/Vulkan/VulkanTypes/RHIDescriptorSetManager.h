@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHIDescriptorSet.h"
@@ -11,7 +10,7 @@
 namespace spt::vulkan
 {
 
-class RHI_API RHIDescriptorSetManager
+class RHIDescriptorSetManager
 {
 public:
 
@@ -22,6 +21,7 @@ public:
 
 	SPT_NODISCARD RHIDescriptorSet						AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID);
 	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
+	void												FreeDescriptorSet(const RHIDescriptorSet& set);
 	void												FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
 
 	// Dynamic descriptor pools ===================================

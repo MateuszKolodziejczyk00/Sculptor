@@ -68,7 +68,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 		SPT_PROFILER_SCOPE("CreateNewPersistentDescriptorSet");
 
 		const rhi::DescriptorSetLayoutID dsLayoutID = pipeline->GetRHI().GetDescriptorSetLayoutID(descriptorSetIdx);
-		createdDS = rhi::RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(dsLayoutID);
+		createdDS = rhi::RHI::AllocateDescriptorSet(dsLayoutID);
 		createdDS.SetName(state->GetName());
 
 		PersistentDSData newDSData;
@@ -110,10 +110,7 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 	std::for_each(removedBegin, std::end(m_dsData),
 				  [this](const PersistentDSData& dsData)
 				  {
-					  rhi::RHIDescriptorSet dsSet = m_cachedDescriptorSets.at(dsData.hash);
-					  dsSet.ResetName();
-
-					  SPT_CHECK_NO_ENTRY(); // destroy set (need to add option for renderer (currently only in rhi)
+					  rhi::RHI::FreeDescriptorSet(m_cachedDescriptorSets.at(dsData.hash));
 
 					  m_cachedDescriptorSets.erase(dsData.hash);
 				  });

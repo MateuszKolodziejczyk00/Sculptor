@@ -57,8 +57,6 @@ void Renderer::Initialize()
 
 	GetShadersManager().Initialize();
 
-	GetDescriptorSetsManager().Initialize();
-
 	GetSamplersCache().Initialize();
 }
 
@@ -78,8 +76,6 @@ void Renderer::Uninitialize()
 	GetSamplersCache().Uninitialize();
 
 	GetPipelinesLibrary().ClearCachedPipelines();
-
-	GetDescriptorSetsManager().Uninitialize();
 
 	GetShadersManager().Uninitialize();
 

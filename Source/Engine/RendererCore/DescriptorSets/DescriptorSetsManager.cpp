@@ -9,16 +9,6 @@ namespace spt::rdr
 DescriptorSetsManager::DescriptorSetsManager()
 { }
 
-void DescriptorSetsManager::Initialize()
-{
-	rhi::RHIDescriptorSetManager::GetInstance().InitializeRHI();
-}
-
-void DescriptorSetsManager::Uninitialize()
-{
-	rhi::RHIDescriptorSetManager::GetInstance().ReleaseRHI();
-}
-
 void DescriptorSetsManager::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();

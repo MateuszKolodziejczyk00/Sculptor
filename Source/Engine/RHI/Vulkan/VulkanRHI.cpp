@@ -10,6 +10,7 @@
 #include "VulkanUtils.h"
 #include "LayoutsManager.h"
 #include "Pipeline/PipelineLayoutsManager.h"
+#include "VulkanTypes/RHIDescriptorSetManager.h"
 #include "Engine.h"
 
 #include "RHICore/RHIInitialization.h"
@@ -220,10 +221,14 @@ void VulkanRHI::InitializeGPUForWindow()
     VulkanRHILimits::Initialize(GetLogicalDevice(), GetPhysicalDeviceHandle());
 
     priv::g_data.memoryManager.Initialize(priv::g_data.instance, priv::g_data.device.GetHandle(), priv::g_data.physicalDevice, GetAllocationCallbacks());
+
+	RHIDescriptorSetManager::GetInstance().InitializeRHI();
 }
 
 void VulkanRHI::Uninitialize()
 {
+	RHIDescriptorSetManager::GetInstance().ReleaseRHI();
+
     priv::g_data.commandPoolsManager.DestroyResources();
 
     priv::g_data.pipelineLayoutsManager.ReleaseRHI();
@@ -336,6 +341,26 @@ const rhi::RHISettings& VulkanRHI::GetSettings()
 Bool VulkanRHI::IsRayTracingEnabled()
 {
     return GetSettings().IsRayTracingEnabled();
+}
+
+RHIDescriptorSet VulkanRHI::AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID)
+{
+    return RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(layoutID);
+}
+
+lib::DynamicArray<RHIDescriptorSet> VulkanRHI::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
+{
+    return RHIDescriptorSetManager::GetInstance().AllocateDescriptorSets(layoutIDs, descriptorSetsNum);
+}
+
+void VulkanRHI::FreeDescriptorSet(const RHIDescriptorSet& set)
+{
+    RHIDescriptorSetManager::GetInstance().FreeDescriptorSet(set);
+}
+
+void VulkanRHI::FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets)
+{
+    RHIDescriptorSetManager::GetInstance().FreeDescriptorSets(sets);
 }
 
 #if RHI_DEBUG

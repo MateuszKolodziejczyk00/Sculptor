@@ -72,7 +72,7 @@ void DescriptorPoolSet::FreeDescriptorSets(const lib::DynamicArray<VkDescriptorS
 	SPT_PROFILER_FUNCTION();
 
 	const SizeType poolIdxST = static_cast<SizeType>(poolIdx);
-	SPT_CHECK(m_descriptorPools.size() < poolIdxST);
+	SPT_CHECK(poolIdxST < m_descriptorPools.size());
 
 	m_descriptorPools[poolIdxST].FreeDescriptorSets(dsSets);
 }
