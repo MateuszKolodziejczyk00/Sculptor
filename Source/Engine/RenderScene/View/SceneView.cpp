@@ -190,6 +190,7 @@ void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 	m_viewRenderingData.projectionMatrixNoJitter		= m_projectionMatrix;
 	m_viewRenderingData.viewLocation					= m_viewLocation;
 	m_viewRenderingData.viewForward						= GetForwardVector();
+	m_viewRenderingData.inverseView						= m_viewRenderingData.viewMatrix.inverse();
 	m_viewRenderingData.inverseProjection				= projectionMatrixWithJitter.inverse();
 	m_viewRenderingData.inverseViewProjection			= m_viewRenderingData.viewProjectionMatrix.inverse();
 	m_viewRenderingData.inverseViewProjectionNoJitter	= m_viewRenderingData.viewProjectionMatrixNoJitter.inverse();

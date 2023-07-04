@@ -12,15 +12,19 @@ enum class ERenderStage
 	ShadowMap						= BIT(0),
 	DepthPrepass					= BIT(1),
 	MotionAndDepth					= BIT(2),
-	DirectionalLightsShadowMasks	= BIT(3),
-	ForwardOpaque					= BIT(4),
-	VolumetricFog					= BIT(5),
-	PostProcessPreAA				= BIT(6),
-	AntiAliasing					= BIT(7),
-	HDRResolve						= BIT(8),
+	GenerateGeometryNormals			= BIT(3),
+	AmbientOcclusion				= BIT(4),
+	DirectionalLightsShadowMasks	= BIT(5),
+	ForwardOpaque					= BIT(6),
+	VolumetricFog					= BIT(7),
+	PostProcessPreAA				= BIT(8),
+	AntiAliasing					= BIT(9),
+	HDRResolve						= BIT(10),
+
+	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
 	DepthPrepassStages				= DepthPrepass | MotionAndDepth,
-	ForwardLightingStages			= DirectionalLightsShadowMasks | ForwardOpaque | VolumetricFog,
+	ForwardLightingStages			= GenerateGeometryNormals | AmbientOcclusion | ForwardOpaque | VolumetricFog,
 	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
 
 	// Presets

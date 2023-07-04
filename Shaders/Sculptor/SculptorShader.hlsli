@@ -17,6 +17,11 @@
 #define INOUT
 
 
+#define FORWARD_VECTOR  (float3(1.f, 0.f, 0.f))
+#define RIGHT_VECTOR    (float3(0.f, 1.f, 0.f))
+#define UP_VECTOR       (float3(0.f, 0.f, 1.f))
+
+
 template<typename TType>
 TType Pow2(TType val)
 {
@@ -140,6 +145,46 @@ float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
 }
 
 
+// Based on: Chapter 16.6.1 of "Ray Tracing Gems"
+float3 RandomVectorInCosineWeightedHemisphere(in float3x3 tangent, in float2 random, out float pdf)
+{
+    const float a2 = random.x;
+    const float a = sqrt(a2);
+    const float phi = 2.f * PI * random.y;
+    float sinPhi, cosPhi;
+    sincos(phi, OUT sinPhi, OUT cosPhi);
+
+    const float x = a * cosPhi;
+    const float y = a * sinPhi;
+    const float z = sqrt(1.f - a2);
+
+    const float3 direction = mul(tangent, float3(x, y, z));
+    pdf = z/ PI;
+
+    return direction;
+}
+
+
+// Based on: Chapter 16.6.2 of "Ray Tracing Gems"
+float3 RandomVectorInCosineWeightedHemisphere(in float3 direction, in float2 random, out float pdf)
+{
+    const float a = 1.f - 2.f * random.x;
+    const float b = sqrt(1.f - Pow2(a));
+    const float phi = 2.f * PI * random.y;
+
+    float sinPhi, cosPhi;
+    sincos(phi, OUT sinPhi, OUT cosPhi);
+
+    const float x = direction.x + b * cosPhi;
+    const float y = direction.y + b * sinPhi;
+    const float z = direction.z + a;
+
+    pdf = a / PI;
+
+    return float3(x, y, z);
+}
+
+
 float3 FibbonaciSphereDistribution(in int i, in int num)
 {
     const float b = (sqrt(5.f) * 0.5f + 0.5f) - 1.f;
@@ -208,4 +253,11 @@ float4 UnpackFloat4x8(uint value)
 float2 ComplexMultiply(in float2 rhs, in float2 lhs)
 {
     return float2(rhs.x * lhs.x - rhs.y * lhs.y, rhs.x * lhs.y + rhs.y * lhs.x);
+}
+
+
+float GaussianBlurWeight(int x, float sigma)
+{
+    const float sigmaSquared = Pow2(sigma);
+    return exp(-0.5f * Pow2(x) / sigmaSquared) / (sqrt(2.f * PI * sigmaSquared));
 }

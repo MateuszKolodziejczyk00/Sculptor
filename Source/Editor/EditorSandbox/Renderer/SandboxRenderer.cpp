@@ -249,7 +249,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->AddRenderStages(rsc::ERenderStage::ForwardRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
-		m_renderView->AddRenderStages(rsc::ERenderStage::DirectionalLightsShadowMasks);
+		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);
 	}
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
