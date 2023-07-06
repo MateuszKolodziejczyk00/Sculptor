@@ -57,8 +57,33 @@ void GenerateGeometryNormalsCS(CS_INPUT input)
         const float2 he = abs((2.f * horizontalDepth.xy - horizontalDepth.zw) - sampleDepth);
         const float2 ve = abs((2.f * verticalDepth.xy - verticalDepth.zw) - sampleDepth);
 
-        const float3 hDeriv = he.x < he.y ? leftSampleVL - sampleVL : rightSampleVL - sampleVL;
-        const float3 vDeriv = ve.x < ve.y ? downSampleVL - sampleVL : upSampleVL - sampleVL;
+        float3 hDeriv;
+        if(pixel.x == 0)
+        {
+            hDeriv = rightSampleVL - sampleVL;
+        }
+        else if(pixel.x == outputRes.x - 1)
+        {
+            hDeriv = leftSampleVL - sampleVL;
+        }
+        else
+        {
+            hDeriv = he.x < he.y ? leftSampleVL - sampleVL : rightSampleVL - sampleVL;
+        }
+
+        float3 vDeriv;
+        if(pixel.y == 0)
+        {
+            vDeriv = upSampleVL - sampleVL;
+        }
+        else if(pixel.y == outputRes.y - 1)
+        {
+            vDeriv = downSampleVL - sampleVL;
+        }
+        else
+        {
+            vDeriv = ve.x < ve.y ? downSampleVL - sampleVL : upSampleVL - sampleVL;
+        }
 
         float3 normalViewSpace = normalize(cross(hDeriv, vDeriv));
         if (dot(normalViewSpace, sampleVL) > 0.f)

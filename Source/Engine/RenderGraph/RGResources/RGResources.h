@@ -260,6 +260,12 @@ public:
 		return m_texture;
 	}
 
+	const rhi::TextureDefinition& GetTextureDefinition() const
+	{
+		SPT_CHECK(m_texture.IsValid());
+		return m_texture->GetTextureDefinition();
+	}
+
 	const rhi::TextureSubresourceRange& GetSubresourceRange() const
 	{
 		return IsExternal() ? m_textureView->GetRHI().GetSubresourceRange() : GetViewDefinition().subresourceRange;

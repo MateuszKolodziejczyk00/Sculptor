@@ -37,7 +37,16 @@ struct DepthPrepassData
 struct MotionData
 {
 	rg::RGTextureViewHandle motion;
-};;
+};
+
+
+struct ShadingInputData
+{
+	// Normals created from the depth buffer
+	rg::RGTextureViewHandle geometryNormals;
+
+	rg::RGTextureViewHandle ambientOcclusion;
+};
 
 
 struct ShadingData

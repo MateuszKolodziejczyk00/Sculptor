@@ -8,10 +8,10 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/AccelerationStructureBinding.h"
 #include "Pipelines/PipelineState.h"
-#include "Denoisers/VisibilityDataDenoiser.h"
 #include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "RenderScene.h"
 #include "Utility/Random.h"
+#include "Denoisers/AmbientOcclusionDenoiser.h"
 
 
 namespace spt::rsc
@@ -20,13 +20,28 @@ namespace spt::rsc
 namespace rtao
 {
 
+struct RTAOViewDataComponent
+{
+	lib::SharedPtr<rdr::TextureView> currentAOTexture;
+	lib::SharedPtr<rdr::TextureView> historyAOTexture;
+};
+
+
+struct RTAOViewRenderingData
+{
+	rg::RGTextureViewHandle currentAOTexture;
+	rg::RGTextureViewHandle historyAOTexture;
+};
+
+
 struct AORenderingContext
 {
 	const RenderScene& renderScene;
 	const RenderView& renderView;
 	rg::RGTextureViewHandle depthTexture;
-	rg::RGTextureViewHandle prevFrameDepthTexture;
+	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle geometryNormalsTexture;
+	rg::RGTextureViewHandle motionTexture;
 };
 
 namespace trace_rays
@@ -66,15 +81,11 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
 }
 
 
-static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, const AORenderingContext& context)
+static void TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, const AORenderingContext& context, const RTAOViewRenderingData& viewRenderingData)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector3u renderingResolution = context.renderView.GetRenderingResolution3D();
-
-	const rhi::EFragmentFormat aoTextureFormat = rhi::EFragmentFormat::R16_UN_Float;
-	const rhi::TextureDefinition aoTextureDef(renderingResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), aoTextureFormat);
-	const rg::RGTextureViewHandle aoTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("RTAO Trace Result"), aoTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const math::Vector3u renderingResolution = viewRenderingData.currentAOTexture->GetResolution();
 
 	const static rdr::PipelineStateID traceRaysPipeline = CreateShadowsRayTracingPipeline();
 
@@ -89,7 +100,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	lib::SharedPtr<RTAOTraceRaysDS> traceRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<RTAOTraceRaysDS>(RENDERER_RESOURCE_NAME("RTAOTraceRaysDS"));
 	traceRaysDS->u_depthTexture					= context.depthTexture;
 	traceRaysDS->u_geometryNormalsTexture		= context.geometryNormalsTexture;
-	traceRaysDS->u_ambientOcclusionTexture		= aoTextureView;
+	traceRaysDS->u_ambientOcclusionTexture		= viewRenderingData.currentAOTexture;
 	traceRaysDS->u_rtaoParams					= params;
 	traceRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
 
@@ -97,22 +108,69 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 						   traceRaysPipeline,
 						   renderingResolution,
 						   rg::BindDescriptorSets(traceRaysDS, context.renderView.GetRenderViewDS()));
-
-	return aoTextureView;
 }
 
-
 } // trace_rays
+
+static lib::SharedRef<rdr::TextureView> CreateAOTexture(const math::Vector3u& renderingResolution)
+{
+	const rhi::EFragmentFormat format = rhi::EFragmentFormat::R16_UN_Float;
+	const rhi::TextureDefinition textureDefinition(renderingResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), format);
+	const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("AO Temporal Texture"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureViewDefinition viewDefinition;
+	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+	return texture->CreateView(RENDERER_RESOURCE_NAME("AO Temporal Texture View"), viewDefinition);
+}
+
 
 static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, const AORenderingContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGTextureViewHandle aoTexture = trace_rays::TraceAmbientOcclusionRays(graphBuilder, context);
+	const RenderView& renderView = context.renderView;
+	const math::Vector3u renderingResolution = renderView.GetRenderingResolution3D();
 
-	// TODO: Denoise
+	const RenderSceneEntityHandle& viewEntity = renderView.GetViewEntity();
+	RTAOViewDataComponent* viewTemporalData = viewEntity.try_get<RTAOViewDataComponent>();
+	if (!viewTemporalData)
+	{
+		viewTemporalData = &viewEntity.emplace<RTAOViewDataComponent>();
+	}
 
-	return aoTexture;
+	lib::SharedPtr<rdr::TextureView>& historyTexture = viewTemporalData->historyAOTexture;
+	lib::SharedPtr<rdr::TextureView>& currentTexture = viewTemporalData->currentAOTexture;
+
+	const Bool hasValidHistory = historyTexture && historyTexture->GetResolution() == renderingResolution;
+
+	if (!currentTexture || currentTexture->GetResolution() != renderingResolution)
+	{
+		currentTexture = CreateAOTexture(renderingResolution);
+	}
+
+	if (!hasValidHistory)
+	{
+		historyTexture = CreateAOTexture(renderingResolution);
+	}
+
+	RTAOViewRenderingData viewAORenderingData;
+	viewAORenderingData.historyAOTexture = historyTexture ? graphBuilder.AcquireExternalTextureView(historyTexture) : nullptr;
+	viewAORenderingData.currentAOTexture = graphBuilder.AcquireExternalTextureView(currentTexture);
+
+	trace_rays::TraceAmbientOcclusionRays(graphBuilder, context, viewAORenderingData);
+
+	ao_denoiser::DenoiserParams denoiserParams(renderView);
+	denoiserParams.historyDepthTexture		= context.historyDepthTexture;
+	denoiserParams.currentDepthTexture		= context.depthTexture;
+	denoiserParams.motionTexture			= context.motionTexture;
+	denoiserParams.geometryNormalsTexture	= context.geometryNormalsTexture;
+	denoiserParams.currentAOTexture			= viewAORenderingData.currentAOTexture;
+	denoiserParams.historyAOTexture			= viewAORenderingData.historyAOTexture;
+	denoiserParams.hasValidHistory			= hasValidHistory;
+
+	ao_denoiser::Denoise(graphBuilder, denoiserParams);
+
+	return viewAORenderingData.currentAOTexture;
 }
 
 } // rtao
@@ -127,18 +185,25 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
 	SPT_CHECK(depthPrepassData.depth.IsValid());
 
+	const MotionData& motionData = viewSpec.GetData().Get<MotionData>();
+	SPT_CHECK(motionData.motion.IsValid());
+
 	ShadingInputData& shadingInputData = viewSpec.GetData().Get<ShadingInputData>();
 	SPT_CHECK(shadingInputData.geometryNormals.IsValid());
 
-	const RenderView& renderView = viewSpec.GetRenderView();
+	if (rdr::Renderer::IsRayTracingEnabled())
+	{
+		const RenderView& renderView = viewSpec.GetRenderView();
 
-	rtao::AORenderingContext aoContext{ renderScene, renderView };
-	aoContext.geometryNormalsTexture	= shadingInputData.geometryNormals;
-	aoContext.depthTexture				= depthPrepassData.depth;
-	aoContext.prevFrameDepthTexture		= depthPrepassData.depth;
+		rtao::AORenderingContext aoContext{ renderScene, renderView };
+		aoContext.geometryNormalsTexture = shadingInputData.geometryNormals;
+		aoContext.depthTexture = depthPrepassData.depth;
+		aoContext.historyDepthTexture = depthPrepassData.prevFrameDepth;
+		aoContext.motionTexture = motionData.motion;
 
-	const rg::RGTextureViewHandle aoTextureView = rtao::RenderAO(graphBuilder, aoContext);
-	shadingInputData.ambientOcclusion = aoTextureView;
+		const rg::RGTextureViewHandle aoTextureView = rtao::RenderAO(graphBuilder, aoContext);
+		shadingInputData.ambientOcclusion = aoTextureView;
+	}
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 }
