@@ -223,6 +223,8 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 
 rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const
 {
+	SPT_PROFILER_FUNCTION();
+
 	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats();
 
 	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
@@ -231,6 +233,11 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const R
 	if (ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled())
 	{
 		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_DDGI", "1"));
+	}
+
+	if (viewSpec.SupportsStage(ERenderStage::AmbientOcclusion))
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_AMBIENT_OCCLUSION", "1"));
 	}
 
 	rdr::GraphicsPipelineShaders shaders;

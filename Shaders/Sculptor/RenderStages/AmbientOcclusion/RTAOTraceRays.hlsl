@@ -55,7 +55,7 @@ void GenerateAmbientOcclusionRaysRTG()
                  rayDesc,
                  payload);
 
-        ao = payload.isMiss ? 0.f : 1.f;
+        ao = payload.isMiss ? 1.f : 0.f;
     }
 
     u_ambientOcclusionTexture[pixel] = ao;

@@ -199,9 +199,17 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
     float3 indirect = 0.f;
 
+    float ambientOcclusion = 1.f;
+   
+#ifdef ENABLE_AMBIENT_OCCLUSION
+
+    ambientOcclusion = u_ambientOcclusionTexture.SampleLevel(u_nearestSampler, screenUV, 0.f);
+
+#endif // ENABLE_AMBIENT_OCCLUSION
+
 #ifdef ENABLE_DDGI
 
-    indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView);
+    indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView) * ambientOcclusion;
 
 #endif // ENABLE_DDGI
 

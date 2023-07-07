@@ -321,6 +321,9 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		shadingInputDS->u_tilesLightsMask	= tilesLightsMask;
 		shadingInputDS->u_clustersRanges	= clustersRanges;
 
+		const ShadingInputData& viewShadingInputData = viewSpec.GetData().Get<ShadingInputData>();
+		shadingInputDS->u_ambientOcclusionTexture = viewShadingInputData.ambientOcclusion;
+
 		lightsRenderingDataPerView.buildZClustersDS				= buildZClusters;
 		lightsRenderingDataPerView.generateLightsDrawCommnadsDS	= generateLightsDrawCommnadsDS;
 		lightsRenderingDataPerView.buildLightTilesDS			= buildLightTilesDS;

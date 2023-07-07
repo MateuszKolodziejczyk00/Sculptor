@@ -7,6 +7,8 @@
 #include "RenderStages/DepthPrepassRenderStage.h"
 #include "RenderStages/HDRResolveRenderStage.h"
 #include "RenderStages/ShadowMapRenderStage.h"
+#include "RenderStages/GenerateGeometryNormalsRenderStage.h"
+#include "RenderStages/AmbientOcclusionRenderStage.h"
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
 #include "RenderStages/AntiAliasingRenderStage.h"
@@ -92,6 +94,10 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	
 	renderer_utils::ProcessRenderStage<MotionAndDepthRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
+	renderer_utils::ProcessRenderStage<GenerateGeometryNormalsRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	
+	renderer_utils::ProcessRenderStage<AmbientOcclusionRenderStage>(graphBuilder, scene, renderViewsSpecs);
+
 	renderer_utils::ProcessRenderStage<DirectionalLightShadowMasksRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
