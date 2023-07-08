@@ -53,7 +53,7 @@ PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceN
 			m_graphicsPipelineHotReloadData[stateID] = hotReloadData;
 
 			m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
-			m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
+			m_shaderToPipelineStates[shaders.fragmentShader].emplace_back(stateID);
 #endif // WITH_SHADERS_HOT_RELOAD
 		}
 	}
