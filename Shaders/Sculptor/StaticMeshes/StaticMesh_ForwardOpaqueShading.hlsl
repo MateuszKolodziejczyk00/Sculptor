@@ -189,7 +189,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     surface.geometryNormal = geometryNormal;
     surface.roughness = roughness;
     surface.uv = screenUV;
-    surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, GetNearPlane(u_sceneView.projectionMatrix));
+    surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, u_sceneView);
 
     ComputeSurfaceColor(baseColor, metallic, surface.diffuseColor, surface.specularColor);
 

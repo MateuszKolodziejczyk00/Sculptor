@@ -24,7 +24,7 @@ void DOFGenerateCoCCS(CS_INPUT input)
         const float2 uv = (pixel + 0.5f) / float2(outputRes);
         
         const float ndcDepth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.f);
-        const float linearDepth = ComputeLinearDepth(ndcDepth, GetNearPlane(u_sceneView.projectionMatrix));
+        const float linearDepth = ComputeLinearDepth(ndcDepth, u_sceneView);
 
         const float nearFieldCoC = linearDepth < u_params.nearFieldEnd ? 1.f - smoothstep(u_params.nearFieldBegin, u_params.nearFieldEnd, linearDepth) : 0.f;
         const float farFieldCoC = linearDepth > u_params.farFieldBegin ? smoothstep(u_params.farFieldBegin, u_params.farFieldEnd, linearDepth) : 0.f;

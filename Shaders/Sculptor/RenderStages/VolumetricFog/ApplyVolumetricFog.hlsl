@@ -31,7 +31,7 @@ void ApplyVolumetricFogCS(CS_INPUT input)
         float3 fogFroxelUVW = 0.f;
         if(depth > 0.000001f)
         {
-            const float linearDepth = ComputeLinearDepth(depth, GetNearPlane(u_sceneView.projectionMatrix));
+            const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
             fogFroxelUVW = ComputeFogFroxelUVW(uv, linearDepth, u_applyVolumetricFogParams.fogNearPlane, u_applyVolumetricFogParams.fogFarPlane);
 
             // We use froxel that is closer to avoid light leaking

@@ -80,7 +80,7 @@ void CullMeshletsCS(CS_INPUT input)
         {
             const float3 meshletCenterVS = mul(u_sceneView.viewMatrix, float4(meshletBoundingSphereCenter, 1.f)).xyz;
 
-            const float near = GetNearPlane(u_sceneView.projectionMatrix);
+            const float near = GetNearPlane(u_sceneView);
             const float p01 = u_sceneView.projectionMatrix[0][1];
             const float p12 = u_sceneView.projectionMatrix[1][2];
 

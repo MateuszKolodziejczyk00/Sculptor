@@ -190,7 +190,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
                 hitDistanceSum          += rayHitDistance * weight;
                 hitDistanceSquaredSum   += rayHitDistanceSquared * weight;
-                weightSum += weight;
+                weightSum               += weight;
             }
 
 #endif // DDGI_BLEND_TYPE

@@ -83,10 +83,10 @@ void ComputeInScatteringCS(CS_INPUT input)
         const float3 fogResolutionRcp = rcp(float3(volumetricFogResolution));
         const float3 fogFroxelUVW = (float3(input.globalID) + 0.5f) * fogResolutionRcp;
 
-        const float projectionNearPlane = GetNearPlane(u_sceneView.projectionMatrix);
+        const float projectionNearPlane = GetNearPlane(u_sceneView);
 
         const float geometryDepth = u_depthTexture.SampleLevel(u_depthSampler, fogFroxelUVW.xy, 0);
-        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, projectionNearPlane);
+        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, u_sceneView);
         
         const float fogNearPlane = u_inScatteringParams.fogNearPlane;
         const float fogFarPlane = u_inScatteringParams.fogFarPlane;
@@ -106,9 +106,9 @@ void ComputeInScatteringCS(CS_INPUT input)
         const float fogFroxelDepth = fogFroxelUVW.z + jitter.z;
         const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelDepth, fogNearPlane, fogFarPlane);
 
-        const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy + jitter.xy, fogFroxelLinearDepth, GetNearPlane(u_sceneView.projectionMatrix));
+        const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy + jitter.xy, fogFroxelLinearDepth, projectionNearPlane);
 
-        const float3 fogFroxelWorldLocation = NDCToWorldSpace(fogFroxelNDC, u_sceneView.inverseViewProjectionNoJitter);
+        const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, u_sceneView);
         
         InScatteringParams params;
         params.uv                       = fogFroxelUVW.xy;
@@ -134,14 +134,14 @@ void ComputeInScatteringCS(CS_INPUT input)
             const float fogFroxelLinearDepthNoJitter = ComputeFogFroxelLinearDepth(fogFroxelDepthNoJitter, fogNearPlane, fogFarPlane);
 
             const float3 fogFroxelNDCNoJitter = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepthNoJitter, projectionNearPlane);
-            const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpace(fogFroxelNDCNoJitter, u_sceneView.inverseViewProjectionNoJitter);
+            const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpaceNoJitter(fogFroxelNDCNoJitter, u_sceneView);
 
             float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(fogFroxelWorldLocationNoJitter, 1.0f));
             
             if (all(prevFrameClipSpace.xy >= -prevFrameClipSpace.w) && all(prevFrameClipSpace.xyz <= prevFrameClipSpace.w) && prevFrameClipSpace.z >= 0.f)
             {
                 prevFrameClipSpace.xyz /= prevFrameClipSpace.w;
-                const float prevFrameLinearDepth = ComputeLinearDepth(prevFrameClipSpace.z, GetNearPlane(u_prevFrameSceneView.projectionMatrix));
+                const float prevFrameLinearDepth = ComputeLinearDepth(prevFrameClipSpace.z, u_prevFrameSceneView);
 
                 const float3 prevFrameFogFroxelUVW = ComputeFogFroxelUVW(prevFrameClipSpace.xy * 0.5f + 0.5f, prevFrameLinearDepth, fogNearPlane, fogFarPlane);
 

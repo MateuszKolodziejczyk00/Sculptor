@@ -1,15 +1,17 @@
 #ifndef SCENE_VIEW_UTILS_H
 #define SCENE_VIEW_UTILS_H
 
-float GetNearPlane(float4x4 projectionMatrix)
+[[shader_struct(SceneViewData)]]
+
+float GetNearPlane(in SceneViewData sceneView)
 {
-    return projectionMatrix[2][3];
+    return sceneView.projectionMatrix[2][3];
 }
 
 
-float ComputeLinearDepth(float depth, float nearPlane)
+float ComputeLinearDepth(float depth, in SceneViewData sceneView)
 {
-    return nearPlane / depth;
+    return GetNearPlane(sceneView) / depth;
 }
 
 
@@ -40,16 +42,23 @@ bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, f
 }
 
 
-float3 NDCToViewSpace(float3 ndc, float4x4 inverseProjection)
+float3 NDCToViewSpace(in float3 ndc, in SceneViewData sceneView)
 {
-    const float4 viewSpace = mul(inverseProjection, float4(ndc, 1.f));
+    const float4 viewSpace = mul(sceneView.inverseProjection, float4(ndc, 1.f));
     return viewSpace.xyz / viewSpace.w;
 }
 
 
-float3 NDCToWorldSpace(float3 ndc, float4x4 inverseViewProjection)
+float3 NDCToWorldSpaceNoJitter(in float3 ndc, in SceneViewData sceneView)
 {
-    const float4 world = mul(inverseViewProjection, float4(ndc, 1.f));
+    const float4 world = mul(sceneView.inverseViewProjectionNoJitter, float4(ndc, 1.f));
+    return world.xyz / world.w;
+}
+
+
+float3 NDCToWorldSpace(in float3 ndc, in SceneViewData sceneView)
+{
+    const float4 world = mul(sceneView.inverseViewProjection, float4(ndc, 1.f));
     return world.xyz / world.w;
 }
 

@@ -34,7 +34,7 @@ void GenerateShadowRaysRTG()
         const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, u_params.shadowRayConeAngle, noise);
 
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
-        const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView.inverseViewProjection);
+        const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
         RayDesc rayDesc;
         rayDesc.TMin        = u_params.minTraceDistance;

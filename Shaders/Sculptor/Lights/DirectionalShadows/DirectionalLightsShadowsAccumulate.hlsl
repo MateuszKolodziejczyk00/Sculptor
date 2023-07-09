@@ -25,7 +25,7 @@ void AccumulateShadowsCS(CS_INPUT input)
 
         const float currentDepth = u_depth.SampleLevel(u_depthSampler, uv, 0);
 
-        const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, currentDepth), u_sceneView.inverseViewProjection);
+        const float3 worldLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, currentDepth), u_sceneView);
 
         const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(worldLocation, 1.f));
         const float2 prevFrameUV = (prevFrameClip.xy / prevFrameClip.w) * 0.5f + 0.5f;
@@ -36,10 +36,8 @@ void AccumulateShadowsCS(CS_INPUT input)
 
             const float prevFrameRenderedDepth = u_prevDepth.SampleLevel(u_prevDepthSampler, prevFrameUV, 0);
 
-            const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
-
-            const float prevFrameDepthLinear = ComputeLinearDepth(prevFrameDepth, nearPlane);
-            const float prevFrameRenderedDepthLinear = ComputeLinearDepth(prevFrameRenderedDepth, nearPlane);
+            const float prevFrameDepthLinear = ComputeLinearDepth(prevFrameDepth, u_prevFrameSceneView);
+            const float prevFrameRenderedDepthLinear = ComputeLinearDepth(prevFrameRenderedDepth, u_prevFrameSceneView);
 
             const bool canAccumulateSample = abs(prevFrameDepthLinear - prevFrameRenderedDepthLinear) < u_params.maxDepthDifference;
             if (canAccumulateSample)
@@ -52,7 +50,7 @@ void AccumulateShadowsCS(CS_INPUT input)
 
                 // Scale accumulation alpha based on depth difference between current and previous frame
                 // this is to avoid accumulation of noise caused by under/over sampling
-                const float currentLinearDepth = ComputeLinearDepth(currentDepth, nearPlane);
+                const float currentLinearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
                 const float depthDiff = abs(currentLinearDepth - prevFrameDepthLinear);
                 const float depthDiffRequiredForMaxWeight = 0.1f;
                 const float exponentialAverageAlpha = lerp(u_params.minExponentialAverageAlpha, u_params.maxExponentialAverageAlpha, saturate(depthDiff / depthDiffRequiredForMaxWeight));

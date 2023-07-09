@@ -24,7 +24,7 @@ void IntegrateInScatteringCS(CS_INPUT input)
         const float2 uv = (input.globalID.xy + 0.5f) * rcpFogResolution.xy;
 
         const float geometryDepth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
-        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, GetNearPlane(u_sceneView.projectionMatrix));
+        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, u_sceneView);
         
         float currentZ = 0.f;
 

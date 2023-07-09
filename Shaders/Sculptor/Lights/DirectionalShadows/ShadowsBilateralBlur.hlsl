@@ -105,7 +105,7 @@ void ShadowsBilateralBlurCS(CS_INPUT input)
         const float2 sampleUV = (groupBeginPixel + offset + 0.5f) * invRes;
         
         const float depth = u_depth.SampleLevel(u_depthSampler, sampleUV, 0);
-        const float3 viewSpace = NDCToViewSpace(float3(sampleUV * 2.f - 1.f, depth), u_sceneView.inverseProjection);
+        const float3 viewSpace = NDCToViewSpace(float3(sampleUV * 2.f - 1.f, depth), u_sceneView);
 
         const float2 locationAndDepth = IS_HORIZONTAL ? viewSpace.yx : viewSpace.zx;
 

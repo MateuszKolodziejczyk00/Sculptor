@@ -27,7 +27,7 @@ void GenerateAmbientOcclusionRaysRTG()
         AORayPayload payload = { false };
 
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
-        const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView.inverseViewProjection);
+        const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
         const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
         const float3 tangent = dot(normal, UP_VECTOR) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);

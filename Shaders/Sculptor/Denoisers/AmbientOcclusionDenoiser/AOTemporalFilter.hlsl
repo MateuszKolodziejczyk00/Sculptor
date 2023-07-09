@@ -30,11 +30,9 @@ void AOTemporalFilterCS(CS_INPUT input)
 
         if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
         {
-            const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
-
             const float currentDepth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.f);
             const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
-            const float3 currentSampleWS = NDCToWorldSpace(currentNDC, u_sceneView.inverseViewProjection);
+            const float3 currentSampleWS = NDCToWorldSpace(currentNDC, u_sceneView);
 
             float2 closestHistorySampleUV = historyUV;
             float closestOffsetSq = 999999.f;
@@ -45,7 +43,7 @@ void AOTemporalFilterCS(CS_INPUT input)
                     const float2 sampleUV = historyUV + float2(x, y) * pixelSize;
                     const float historyDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f);
                     const float3 historyNDC = float3(sampleUV * 2.f - 1.f, historyDepth);
-                    const float3 historySampleWS = NDCToWorldSpace(historyNDC, u_prevFrameSceneView.inverseViewProjection);
+                    const float3 historySampleWS = NDCToWorldSpace(historyNDC, u_prevFrameSceneView);
 
                     const float3 offset = historySampleWS - currentSampleWS;
                     if(dot(offset, offset) < closestOffsetSq)

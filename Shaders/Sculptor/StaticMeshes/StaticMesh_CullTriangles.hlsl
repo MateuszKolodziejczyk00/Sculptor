@@ -92,7 +92,7 @@ void CullTrianglesCS(CS_INPUT input)
 
         bool isTriangleVisible = true;
 
-        const float nearPlane = GetNearPlane(u_sceneView.projectionMatrix);
+        const float nearPlane = GetNearPlane(u_sceneView);
 
         const uint3 triangleVertexIndices = LoadTriangleVertexIndices(primitiveIndicesOffset, verticesOffset, triangleIdx);
         
