@@ -234,6 +234,10 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
     {
         debug = indirectLighting;
     }
+    else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_AMBIENT_OCCLUSION)
+    {
+        debug = ambientOcclusion;
+    }
     output.debug = float4(debug, 1.f);
 #endif // WITH_DEBUGS
 

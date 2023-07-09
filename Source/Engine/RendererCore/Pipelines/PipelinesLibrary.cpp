@@ -94,6 +94,8 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(shaders.rayGenShader.IsValid());
+
 	const PipelineStateID stateID = GetStateID(shaders, pipelineDef);
 
 	READ_LOCK_IF_WITH_HOT_RELOAD
@@ -114,7 +116,12 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 			hotReloadData.pipelineDef	= pipelineDef;
 			m_rayTracingPipelineHotReloadData[stateID] = hotReloadData;
 
-			for (ShaderID shaderID : shaders.shaders)
+			m_shaderToPipelineStates[shaders.rayGenShader].emplace_back(stateID);
+			for (ShaderID shaderID : shaders.closestHitShaders)
+			{
+				m_shaderToPipelineStates[shaderID].emplace_back(stateID);
+			}
+			for (ShaderID shaderID : shaders.missShaders)
 			{
 				m_shaderToPipelineStates[shaderID].emplace_back(stateID);
 			}
@@ -228,16 +235,26 @@ lib::SharedRef<ComputePipeline> PipelinesLibrary::CreateComputePipelineObject(co
 
 lib::SharedRef<RayTracingPipeline> PipelinesLibrary::CreateRayTracingPipelineObject(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
-	lib::DynamicArray<lib::SharedRef<Shader>> shaderObjects;
-	shaderObjects.reserve(shaders.shaders.size());
-	std::transform(std::cbegin(shaders.shaders), std::cend(shaders.shaders),
-				   std::back_inserter(shaderObjects),
-				   [](ShaderID shaderID)
-				   {
-					   return Renderer::GetShadersManager().GetShader(shaderID);
-				   });
+	const auto getShaderObject = [](ShaderID shaderID)
+	{
+		return Renderer::GetShadersManager().GetShader(shaderID);
+	};
 
-	return lib::MakeShared<RayTracingPipeline>(nameInNotCached, shaderObjects, pipelineDef);
+	RayTracingPipelineShaderObjects shadersObjects;
+	shadersObjects.closestHitShaders.reserve(shaders.closestHitShaders.size());
+	shadersObjects.missShaders.reserve(shaders.missShaders.size());
+
+	shadersObjects.rayGenShader = getShaderObject(shaders.rayGenShader);
+
+	std::transform(std::cbegin(shaders.closestHitShaders), std::cend(shaders.closestHitShaders),
+				   std::back_inserter(shadersObjects.closestHitShaders),
+				   getShaderObject);
+	
+	std::transform(std::cbegin(shaders.missShaders), std::cend(shaders.missShaders),
+				   std::back_inserter(shadersObjects.missShaders),
+				   getShaderObject);
+
+	return lib::MakeShared<RayTracingPipeline>(nameInNotCached, shadersObjects, pipelineDef);
 }
 
 #if WITH_SHADERS_HOT_RELOAD

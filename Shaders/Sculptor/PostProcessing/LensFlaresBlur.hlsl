@@ -20,13 +20,6 @@ struct CS_INPUT
 groupshared float3 sharedData[SHARED_DATA_SIZE];
 
 
-float GaussianBlurWeight(int x, float sigma)
-{
-    const float sigmaSquared = Pow2(sigma);
-    return exp(-0.5f * Pow2(x) / sigmaSquared) / (sqrt(2.f * PI * sigmaSquared));
-}
-
-
 [numthreads(GROUP_SIZE, 1, 1)]
 void LensFlaresBlurCS(CS_INPUT input)
 {

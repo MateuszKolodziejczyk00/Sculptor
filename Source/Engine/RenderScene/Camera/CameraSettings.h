@@ -14,8 +14,8 @@ namespace spt::rsc
 struct CameraLensSettingsComponent
 {
 	CameraLensSettingsComponent()
-		: lensDirtIntensity(math::Vector3f::Constant(0.35f))
-		, lensDirtThreshold(math::Vector3f::Constant(0.1f))
+		: lensDirtIntensity(math::Vector3f::Constant(0.05f))
+		, lensDirtThreshold(math::Vector3f::Constant(1.0f))
 	{ }
 
 	lib::SharedPtr<rdr::TextureView> lensDirtTexture;

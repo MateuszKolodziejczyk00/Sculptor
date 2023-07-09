@@ -90,8 +90,8 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.shaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings));
-	rtShaders.shaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;

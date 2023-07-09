@@ -28,10 +28,14 @@ struct RayTracingPipelineShaders
 
 	SizeType Hash() const
 	{
-		return lib::HashRange(std::cbegin(shaders), std::cend(shaders));
+		return lib::HashCombine(rayGenShader.GetID(),
+								lib::HashRange(std::cbegin(closestHitShaders), std::cend(closestHitShaders)),
+								lib::HashRange(std::cbegin(missShaders), std::cend(missShaders)));
 	}
 
-	lib::DynamicArray<ShaderID> shaders;
+	ShaderID rayGenShader;
+	lib::DynamicArray<ShaderID> closestHitShaders;
+	lib::DynamicArray<ShaderID> missShaders;
 };
 
 

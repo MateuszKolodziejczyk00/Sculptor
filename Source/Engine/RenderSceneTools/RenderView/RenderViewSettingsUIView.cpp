@@ -54,7 +54,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		}
 	}
 
-	const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets", "Show Indirect Lighting"};
+	const char* debugFeatures[rsc::EDebugFeature::NUM] = { "None", "Show Meshlets", "Show Indirect Lighting", "Ambient Occlusion"};
 	int selectedDebugFeature = view.GetDebugFeature();
 	if (ImGui::Combo("Debug Feature", &selectedDebugFeature, debugFeatures, SPT_ARRAY_SIZE(debugFeatures)))
 	{

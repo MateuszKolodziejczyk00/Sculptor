@@ -8,6 +8,16 @@
 namespace spt::rdr
 {
 
+struct RayTracingPipelineShaderObjects
+{
+	RayTracingPipelineShaderObjects() = default;
+
+	lib::SharedPtr<Shader> rayGenShader;
+	lib::DynamicArray<lib::SharedRef<Shader>> closestHitShaders;
+	lib::DynamicArray<lib::SharedRef<Shader>> missShaders;
+};
+
+
 class RENDERER_CORE_API RayTracingPipeline : public Pipeline
 {
 protected:
@@ -16,7 +26,7 @@ protected:
 
 public:
 
-	RayTracingPipeline(const RendererResourceName& name, const lib::DynamicArray<lib::SharedRef<Shader>>& shaders, const rhi::RayTracingPipelineDefinition& definition);
+	RayTracingPipeline(const RendererResourceName& name, const RayTracingPipelineShaderObjects& shaders, const rhi::RayTracingPipelineDefinition& definition);
 	~RayTracingPipeline();
 
 	const rhi::RHIShaderBindingTable& GetShaderBindingTable() const;

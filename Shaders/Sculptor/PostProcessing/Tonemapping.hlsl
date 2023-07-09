@@ -30,7 +30,8 @@ void TonemappingCS(CS_INPUT input)
         float3 color = u_radianceTexture.SampleLevel(u_sampler, uv, 0).xyz;
         color *= exposure;
 
-        color = LinearTosRGB(TonemapACES(color));
+        //color = LinearTosRGB(TonemapACES(color));
+        color = LinearTosRGB(ACESFitted(color));
 
         if(u_tonemappingSettings.enableColorDithering)
         {
