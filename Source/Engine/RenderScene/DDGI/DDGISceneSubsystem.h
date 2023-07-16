@@ -19,7 +19,7 @@ namespace spt::rsc
 
 DS_BEGIN(DDGIDS, rg::RGDescriptorSetState<DDGIDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIGPUParams>),					u_ddgiParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIrradianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_probesDataSampler)
 DS_END();
@@ -37,7 +37,7 @@ public:
 
 	DDGIUpdateProbesGPUParams CreateUpdateProbesParams() const;
 
-	const lib::SharedPtr<rdr::TextureView>& GetProbesIrradianceTexture() const;
+	const lib::SharedPtr<rdr::TextureView>& GetProbesIlluminanceTexture() const;
 	
 	const lib::SharedPtr<rdr::TextureView>& GetProbesHitDistanceTexture() const;
 	
@@ -61,8 +61,8 @@ public:
 
 	math::Vector3u GetProbesVolumeResolution() const;
 
-	math::Vector2u GetProbeIrradianceDataRes() const;
-	math::Vector2u GetProbeIrradianceWithBorderDataRes() const;
+	math::Vector2u GetProbeIlluminanceDataRes() const;
+	math::Vector2u GetProbeIlluminanceWithBorderDataRes() const;
 	
 	math::Vector2u GetProbeDistancesDataRes() const;
 	math::Vector2u GetProbeDistancesDataWithBorderRes() const;
@@ -73,7 +73,7 @@ private:
 
 	void InitializeTextures();
 
-	lib::SharedPtr<rdr::TextureView> m_probesIrradianceTextureView;
+	lib::SharedPtr<rdr::TextureView> m_probesIlluminanceTextureView;
 	lib::SharedPtr<rdr::TextureView> m_probesHitDistanceTextureView;
 
 	DDGIGPUParams m_ddgiParams;

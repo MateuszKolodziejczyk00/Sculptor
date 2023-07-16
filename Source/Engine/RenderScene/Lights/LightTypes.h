@@ -9,7 +9,7 @@ namespace spt::rsc
 
 BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, color)
-	SHADER_STRUCT_FIELD(Real32, intensity)
+	SHADER_STRUCT_FIELD(Real32, illuminance) // Lux
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
 	SHADER_STRUCT_FIELD(Uint32, shadowMaskIdx)
 END_SHADER_STRUCT();
@@ -17,7 +17,7 @@ END_SHADER_STRUCT();
 
 BEGIN_SHADER_STRUCT(PointLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, color)
-	SHADER_STRUCT_FIELD(Real32, intensity)
+	SHADER_STRUCT_FIELD(Real32, luminousPower) // Lumens
 	SHADER_STRUCT_FIELD(math::Vector3f, location)
 	SHADER_STRUCT_FIELD(Real32, radius)
 	SHADER_STRUCT_FIELD(Uint32, entityID)
@@ -29,7 +29,7 @@ struct DirectionalLightData
 {
 	DirectionalLightData()
 		: color(math::Vector3f::Ones())
-		, intensity(1.f)
+		, illuminance(1.f)
 		, direction(-math::Vector3f::UnitZ())
 		, lightConeAngle(0.f)
 	{ }
@@ -38,14 +38,14 @@ struct DirectionalLightData
 	{
 		DirectionalLightGPUData gpuData;
 		gpuData.color		= color;
-		gpuData.intensity	= intensity;
+		gpuData.illuminance	= illuminance;
 		gpuData.direction	= direction;
 
 		return gpuData;
 	}
 
 	math::Vector3f	color;
-	Real32			intensity;
+	Real32			illuminance;
 	math::Vector3f	direction;
 	Real32			lightConeAngle;
 };
@@ -55,7 +55,7 @@ struct PointLightData
 {
 	PointLightData()
 		: color(math::Vector3f::Ones())
-		, intensity(1.f)
+		, luminousPower(1.f)
 		, location(math::Vector3f::Zero())
 		, radius(1.f)
 	{ }
@@ -63,16 +63,16 @@ struct PointLightData
 	PointLightGPUData GenerateGPUData() const
 	{
 		PointLightGPUData gpuData;
-		gpuData.color		= color;
-		gpuData.intensity	= intensity;
-		gpuData.location	= location;
-		gpuData.radius		= radius;
+		gpuData.color			= color;
+		gpuData.luminousPower	= luminousPower;
+		gpuData.location		= location;
+		gpuData.radius			= radius;
 
 		return gpuData;
 	}
 
 	math::Vector3f	color;
-	Real32			intensity;
+	Real32			luminousPower;
 	math::Vector3f	location;
 	Real32			radius;
 };

@@ -699,7 +699,7 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	const Real32 maxDistanceToLight	= 15.f;
 	const Real32 maxRadius			= 5.f;
 	const Real32 maxZDifference		= 7.f;
-	const Real32 maxIntensity		= 100.f;
+	const Real32 maxLuminousPower	= 5000.f;
 
 	const Real32 distanceToLight				= (pointLightData.location - (viewLocation + viewForward * 3.f)).norm();
 	const math::Vector3f viewToLightDirection	= (pointLightData.location - viewLocation).normalized();
@@ -730,7 +730,7 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	priority += (1.f - std::clamp(zDifference / maxZDifference, 0.f, 1.f)) * zDifferenceMutliplier;
 	priority += getLightCurrentQualityPriority(currentQuality) * currentQualityMutliplier;
 	priority += std::clamp(pointLightData.radius / maxRadius, 0.f, 1.f) * radiusMutliplier;
-	priority += std::clamp(pointLightData.intensity / maxIntensity, 0.f, 1.f) * intensityMultiplier;
+	priority += std::clamp(pointLightData.luminousPower / maxLuminousPower, 0.f, 1.f) * intensityMultiplier;
 	priority += IsLocalLightVisible(light) ? visibilityPriority : 0.f;
 
 	return priority;

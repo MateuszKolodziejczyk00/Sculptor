@@ -18,23 +18,23 @@ BEGIN_SHADER_STRUCT(DDGIGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector3u, probesVolumeResolution)
 	SHADER_STRUCT_FIELD(math::Vector3i, probesWrapCoords)
 	
-	SHADER_STRUCT_FIELD(math::Vector2u, probesIrradianceTextureRes)
+	SHADER_STRUCT_FIELD(math::Vector2u, probesIlluminanceTextureRes)
 	SHADER_STRUCT_FIELD(math::Vector2u, probesHitDistanceTextureRes)
 	
-	SHADER_STRUCT_FIELD(math::Vector2u, probeIrradianceDataRes)
-	SHADER_STRUCT_FIELD(math::Vector2u, probeIrradianceDataWithBorderRes)
+	SHADER_STRUCT_FIELD(math::Vector2u, probeIlluminanceDataRes)
+	SHADER_STRUCT_FIELD(math::Vector2u, probeIlluminanceDataWithBorderRes)
 	
 	SHADER_STRUCT_FIELD(math::Vector2u, probeHitDistanceDataRes)
 	SHADER_STRUCT_FIELD(math::Vector2u, probeHitDistanceDataWithBorderRes)
 	
-	SHADER_STRUCT_FIELD(math::Vector2f, probesIrradianceTexturePixelSize)
-	SHADER_STRUCT_FIELD(math::Vector2f, probesIrradianceTextureUVDeltaPerProbe)
-	SHADER_STRUCT_FIELD(math::Vector2f, probesIrradianceTextureUVPerProbeNoBorder)
+	SHADER_STRUCT_FIELD(math::Vector2f, probesIlluminanceTexturePixelSize)
+	SHADER_STRUCT_FIELD(math::Vector2f, probesIlluminanceTextureUVDeltaPerProbe)
+	SHADER_STRUCT_FIELD(math::Vector2f, probesIlluminanceTextureUVPerProbeNoBorder)
 	
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceTexturePixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceUVDeltaPerProbe)
 	SHADER_STRUCT_FIELD(math::Vector2f, probesHitDistanceTextureUVPerProbeNoBorder)
-	SHADER_STRUCT_FIELD(Real32,			probeIrradianceEncodingGamma)
+	SHADER_STRUCT_FIELD(Real32,			probeIlluminanceEncodingGamma)
 END_SHADER_STRUCT();
 
 
@@ -47,9 +47,9 @@ BEGIN_SHADER_STRUCT(DDGIUpdateProbesGPUParams)
 	SHADER_STRUCT_FIELD(Uint32,				probesNumToUpdate)
 	SHADER_STRUCT_FIELD(Real32,				rcpRaysNumPerProbe)
 	SHADER_STRUCT_FIELD(Real32,				rcpProbesNumToUpdate)
-	SHADER_STRUCT_FIELD(math::Vector3f,		skyIrradiance)
+	SHADER_STRUCT_FIELD(math::Vector3f,		skyIlluminance)
 	SHADER_STRUCT_FIELD(Real32,				blendHysteresis)
-	SHADER_STRUCT_FIELD(math::Vector3f,		groundIrradiance)
+	SHADER_STRUCT_FIELD(math::Vector3f,		groundIlluminance)
 	SHADER_STRUCT_FIELD(math::Matrix4f,		raysRotation)
 END_SHADER_STRUCT();
 
@@ -59,7 +59,7 @@ namespace EDDDGIProbesDebugMode
 enum Type
 {
 	None,
-	Irradiance,
+	Illuminance,
 	HitDistance,
 
 	NUM

@@ -35,7 +35,7 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_traceRaysResultTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),				u_updateProbesParams)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),							u_ddgiParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIrradianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_probesDataSampler)
 DS_END();
@@ -68,8 +68,8 @@ BEGIN_SHADER_STRUCT(DDGIProbesDebugParams)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(DDGIUpdateProbesIrradianceDS, rg::RGDescriptorSetState<DDGIUpdateProbesIrradianceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>), u_probesIrradianceTexture)
+DS_BEGIN(DDGIUpdateProbesIlluminanceDS, rg::RGDescriptorSetState<DDGIUpdateProbesIlluminanceDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>), u_probesIlluminanceTexture)
 DS_END();
 
 
@@ -105,17 +105,17 @@ static rdr::PipelineStateID CreateDDGITraceRaysPipeline()
 	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("DDGI Trace Rays Pipeline"), rtShaders, pipelineDefinition);
 }
 
-static rdr::PipelineStateID CreateDDGIBlendProbesIrradiancePipeline(math::Vector2u groupSize, Uint32 raysNumPerProbe)
+static rdr::PipelineStateID CreateDDGIBlendProbesIlluminancePipeline(math::Vector2u groupSize, Uint32 raysNumPerProbe)
 {
 	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DDGI_BLEND_TYPE", "1")); // Blend Irradiance
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DDGI_BLEND_TYPE", "1")); // Blend Illuminance
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GROUP_SIZE_X", std::to_string(groupSize.x())));
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GROUP_SIZE_Y", std::to_string(groupSize.y())));
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("RAYS_NUM_PER_PROBE", std::to_string(raysNumPerProbe)));
 
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIBlendProbesData.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DDGIBlendProbesDataCS"), compilationSettings);
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Blend Probes Irradiance Pipeline"), shader);
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Blend Probes Illuminance Pipeline"), shader);
 }
 
 static rdr::PipelineStateID CreateDDGIBlendProbesHitDistancePipeline(math::Vector2u groupSize, Uint32 raysNumPerProbe)
@@ -223,13 +223,13 @@ static lib::SharedRef<DDGILightsDS> CreateGlobalLightsDS(rg::RenderGraphBuilder&
 // DDGIUpdateParameters ==========================================================================
 
 DDGIUpdateParameters::DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuUpdateParams, const DDGISceneSubsystem& ddgiSubsystem)
-	: probesIrradianceTextureView(ddgiSubsystem.GetProbesIrradianceTexture())
+	: probesIlluminanceTextureView(ddgiSubsystem.GetProbesIlluminanceTexture())
 	, probesHitDistanceTextureView(ddgiSubsystem.GetProbesHitDistanceTexture())
 	, updateProbesParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIUpdateProbesGPUParams>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesGPUParams"), gpuUpdateParams))
 	, ddgiParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIGPUParams>(RENDERER_RESOURCE_NAME("DDGIGPUParams"), ddgiSubsystem.GetDDGIParams()))
 	, probesNumToUpdate(gpuUpdateParams.probesNumToUpdate)
 	, raysNumPerProbe(gpuUpdateParams.raysNumPerProbe)
-	, probeIrradianceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeIrradianceDataWithBorderRes)
+	, probeIlluminanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeIlluminanceDataWithBorderRes)
 	, probeHitDistanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeHitDistanceDataWithBorderRes)
 { }
 
@@ -253,9 +253,9 @@ void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, cons
 	{
 		if (ddgiSubsystem.RequiresClearingData())
 		{
-			const rg::RGTextureViewHandle probesIrradianceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIrradianceTexture());
+			const rg::RGTextureViewHandle probesIlluminanceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIlluminanceTexture());
 
-			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIrradianceTextureView, rhi::ClearColor());
+			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIlluminanceTextureView, rhi::ClearColor());
 
 			ddgiSubsystem.PostClearingData();
 		}
@@ -293,16 +293,16 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 	updateProbesDS->u_updateProbesParams		= updateParams.updateProbesParamsBuffer;
 	updateProbesDS->u_ddgiParams				= updateParams.ddgiParamsBuffer;
 
-	lib::SharedPtr<DDGIUpdateProbesIrradianceDS> updateProbesIrradianceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesIrradianceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIrradianceDS"));
-	updateProbesIrradianceDS->u_probesIrradianceTexture = updateParams.probesIrradianceTextureView;
+	lib::SharedPtr<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
+	updateProbesIlluminanceDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
 
-	static const rdr::PipelineStateID updateProbesIrradiancePipelineID = pipelines::CreateDDGIBlendProbesIrradiancePipeline(updateParams.probeIrradianceDataWithBorderRes, updateParams.raysNumPerProbe);
+	static const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(updateParams.probeIlluminanceDataWithBorderRes, updateParams.raysNumPerProbe);
 	
-	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Irradiance"),
-						  updateProbesIrradiancePipelineID,
+	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Illuminance"),
+						  updateProbesIlluminancePipelineID,
 						  math::Vector3u(updateParams.probesNumToUpdate, 1u, 1u),
 						  rg::BindDescriptorSets(updateProbesDS,
-												 std::move(updateProbesIrradianceDS)));
+												 std::move(updateProbesIlluminanceDS)));
 
 	lib::SharedPtr<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
 	updateProbesHitDistanceDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
@@ -337,7 +337,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysDS->u_traceRaysResultTexture		= probesTraceResultTexture;
 	traceRaysDS->u_updateProbesParams			= updateParams.updateProbesParamsBuffer;
 	traceRaysDS->u_ddgiParams					= updateParams.ddgiParamsBuffer;
-	traceRaysDS->u_probesIrradianceTexture		= updateParams.probesIrradianceTextureView;
+	traceRaysDS->u_probesIlluminanceTexture		= updateParams.probesIlluminanceTextureView;
 	traceRaysDS->u_probesHitDistanceTexture		= updateParams.probesHitDistanceTextureView;
 
 	const lib::SharedRef<DDGILightsDS> lightsDS = utils::CreateGlobalLightsDS(graphBuilder, renderScene);
@@ -399,12 +399,12 @@ void DDGIRenderSystem::RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, c
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
-	rg::RGRenderTargetDef radianceRTDef;
-	radianceRTDef.textureView		= context.texture;
-	radianceRTDef.loadOperation		= rhi::ERTLoadOperation::Load;
-	radianceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	radianceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
-	renderPassDef.AddColorRenderTarget(radianceRTDef);
+	rg::RGRenderTargetDef luminanceRTDef;
+	luminanceRTDef.textureView		= context.texture;
+	luminanceRTDef.loadOperation		= rhi::ERTLoadOperation::Load;
+	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
+	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
+	renderPassDef.AddColorRenderTarget(luminanceRTDef);
 
 	const rhi::EFragmentFormat colorFormat = context.texture->GetFormat();
 	const rhi::EFragmentFormat depthFormat = depthPrepassData.depth->GetFormat();

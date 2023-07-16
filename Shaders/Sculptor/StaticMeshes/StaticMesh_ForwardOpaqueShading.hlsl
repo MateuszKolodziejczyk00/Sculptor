@@ -195,7 +195,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
     const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
 
-    float3 radiance = CalcReflectedRadiance(surface, u_sceneView.viewLocation);
+    float3 luminance = CalcReflectedLuminance(surface, u_sceneView.viewLocation);
 
     float3 indirect = 0.f;
 
@@ -209,17 +209,17 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
 #ifdef ENABLE_DDGI
 
-    indirect = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView) * ambientOcclusion;
+    indirect = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView) * ambientOcclusion;
 
 #endif // ENABLE_DDGI
 
-    radiance += surface.diffuseColor * Diffuse_Lambert(indirect);
+    luminance += surface.diffuseColor * Diffuse_Lambert(indirect);
 
 #if WITH_DEBUGS
     indirectLighting = indirect;
 #endif // WITH_DEBUGS
 
-    output.radiance = float4(radiance, 1.f);
+    output.luminance = float4(luminance, 1.f);
     
     output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
 

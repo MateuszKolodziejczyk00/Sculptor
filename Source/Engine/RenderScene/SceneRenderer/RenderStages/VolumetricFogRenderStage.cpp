@@ -301,7 +301,7 @@ END_SHADER_STRUCT();
 DS_BEGIN(ApplyVolumetricFogDS, rg::RGDescriptorSetState<ApplyVolumetricFogDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_integratedInScatteringSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_radianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_luminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ApplyVolumetricFogParams>),			u_applyVolumetricFogParams)
@@ -332,7 +332,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const lib::SharedRef<ApplyVolumetricFogDS> applyVolumetricFogDS = rdr::ResourcesManager::CreateDescriptorSetState<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
 	applyVolumetricFogDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
-	applyVolumetricFogDS->u_radianceTexture					= shadingData.radiance;
+	applyVolumetricFogDS->u_luminanceTexture				= shadingData.luminanceTexture;
 	applyVolumetricFogDS->u_depthTexture					= depthPrepassData.depth;
 	applyVolumetricFogDS->u_applyVolumetricFogParams		= params;
 

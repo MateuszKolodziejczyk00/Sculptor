@@ -66,7 +66,7 @@ float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shading function ==============================================================================
 
-float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIrradiance)
+float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
 {
     const float a = max(surface.roughness, 0.01f);
 
@@ -79,5 +79,5 @@ float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir
     const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
     const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
 
-    return (diffuse + specular * fresnel) * dotNL * peakIrradiance;
+    return (diffuse + specular * fresnel) * dotNL * peakIlluminance;
 }

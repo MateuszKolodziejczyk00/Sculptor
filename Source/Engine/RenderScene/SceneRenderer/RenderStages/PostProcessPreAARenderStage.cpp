@@ -30,7 +30,7 @@ void PostProcessPreAARenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		const DepthPrepassData& depthData	= viewSpec.GetData().Get<DepthPrepassData>();
 
 		dof::GatherBasedDOFParameters dofParameters;
-		dofParameters.linearColorTexture		= shadingData.radiance;
+		dofParameters.linearColorTexture		= shadingData.luminanceTexture;
 		dofParameters.depthTexture				= depthData.depth;
 		dofParameters.viewDS					= viewSpec.GetRenderView().GetRenderViewDS();
 		dofParameters.focalPlane				= params::focalPlane;

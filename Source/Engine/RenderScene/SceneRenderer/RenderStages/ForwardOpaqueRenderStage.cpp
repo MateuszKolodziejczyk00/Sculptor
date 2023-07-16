@@ -40,24 +40,24 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	const rhi::ETextureUsage passTexturesUsage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::ColorRT);
 	
-	rhi::TextureDefinition radianceDef;
-	radianceDef.resolution	= texturesRes;
-	radianceDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
-	radianceDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
-	passData.radiance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("ViewRadianceTexture"), radianceDef, rhi::EMemoryUsage::GPUOnly);
+	rhi::TextureDefinition luminanceTextureDef;
+	luminanceTextureDef.resolution	= texturesRes;
+	luminanceTextureDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
+	luminanceTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
+	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), luminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 	
-	rhi::TextureDefinition normalsDef;
-	normalsDef.resolution	= texturesRes;
-	normalsDef.usage		= passTexturesUsage;
-	normalsDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float;
-	passData.normals = graphBuilder.CreateTextureView(RG_DEBUG_NAME("ViewNormalsTexture"), normalsDef, rhi::EMemoryUsage::GPUOnly);
+	rhi::TextureDefinition normalsTextureDef;
+	normalsTextureDef.resolution	= texturesRes;
+	normalsTextureDef.usage		= passTexturesUsage;
+	normalsTextureDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float;
+	passData.normalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), normalsTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 #if RENDERER_DEBUG
-	rhi::TextureDefinition debugDef;
-	debugDef.resolution	= texturesRes;
-	debugDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource);
-	debugDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
-	passData.debug = graphBuilder.CreateTextureView(RG_DEBUG_NAME("DebugTexture"), debugDef, rhi::EMemoryUsage::GPUOnly);
+	rhi::TextureDefinition debugTextureDef;
+	debugTextureDef.resolution	= texturesRes;
+	debugTextureDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource);
+	debugTextureDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
+	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), debugTextureDef, rhi::EMemoryUsage::GPUOnly);
 #endif // RENDERER_DEBUG
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
@@ -69,15 +69,15 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
-	rg::RGRenderTargetDef radianceRTDef;
-	radianceRTDef.textureView		= passData.radiance;
-	radianceRTDef.loadOperation		= rhi::ERTLoadOperation::Clear;
-	radianceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	radianceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
-	renderPassDef.AddColorRenderTarget(radianceRTDef);
+	rg::RGRenderTargetDef luminanceRTDef;
+	luminanceRTDef.textureView		= passData.luminanceTexture;
+	luminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
+	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
+	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
+	renderPassDef.AddColorRenderTarget(luminanceRTDef);
 
 	rg::RGRenderTargetDef normalsRTDef;
-	normalsRTDef.textureView	= passData.normals;
+	normalsRTDef.textureView	= passData.normalsTexture;
 	normalsRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	normalsRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
@@ -85,7 +85,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 #if RENDERER_DEBUG
 	rg::RGRenderTargetDef debugRTDef;
-	debugRTDef.textureView		= passData.debug;
+	debugRTDef.textureView		= passData.debugTexture;
 	debugRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	debugRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	debugRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);

@@ -9,7 +9,7 @@
 #include "DDGI/DDGITypes.hlsli"
 
 
-#define DDGI_DEBUG_MODE_IRRADIANCE 1
+#define DDGI_DEBUG_MODE_ILLUMINANCE 1
 #define DDGI_DEBUG_MODE_HIT_DISTANCE 2
 
 
@@ -71,15 +71,15 @@ PS_OUTPUT DDGIDebugProbesPS(VS_OUTPUT vertexInput)
 
     const float2 octahedronUV = GetProbeOctCoords(normalize(vertexInput.normal));
 
-    if(u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_IRRADIANCE)
+    if(u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_ILLUMINANCE)
     {
-        float3 probeIrradiance = SampleProbeIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
+        float3 probeIlluminance = SampleProbeIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
 
-        probeIrradiance = pow(probeIrradiance, u_ddgiParams.probeIrradianceEncodingGamma);
+        probeIlluminance = pow(probeIlluminance, u_ddgiParams.probeIlluminanceEncodingGamma);
 
-        probeIrradiance *= 10.f;
+        probeIlluminance *= 10.f;
     
-        output.color = float4(probeIrradiance / (probeIrradiance + 1.f), 1.f);
+        output.color = float4(probeIlluminance / (probeIlluminance + 1.f), 1.f);
     }
     else if (u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_HIT_DISTANCE)
     {

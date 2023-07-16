@@ -14,9 +14,9 @@ uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 	return mask & uint(rangeMask);
 }
 
-float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
+float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewLocation)
 {
-    float3 radiance = 0.f;
+    float3 luminance = 0.f;
 
     const float3 viewDir = normalize(viewLocation - surface.location);
 
@@ -26,9 +26,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
     {
         const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-        const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
+        const float3 illuminance = directionalLight.color * directionalLight.illuminance;
 
-        if (any(lightIntensity > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+        if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
         {
             float visibility = 1.f;
             if(directionalLight.shadowMaskIdx != IDX_NONE_32)
@@ -38,7 +38,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
 
             if(visibility > 0.f)
             {
-                radiance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIntensity) * visibility;
+                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility;
             }
         }
     }
@@ -71,9 +71,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
                 if (distToLight < pointLight.radius)
                 {
                     const float3 lightDir = toLight / distToLight;
-                    const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
+                    const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, surface.location);
 
-                    if(any(lightIntensity > 0.f))
+                    if(any(illuminance > 0.f))
                     {
                         float visibility = 1.f;
                         if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
@@ -83,7 +83,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
                 
                         if (visibility > 0.f)
                         {
-                            radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * visibility;
+                            luminance += CalcLighting(surface, lightDir, viewDir, illuminance) * visibility;
                         }
                     }
                 }
@@ -94,9 +94,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewLocation)
     }
 
     // ambient
-    radiance += surface.diffuseColor * u_lightsData.ambientLightIntensity;
+    luminance += surface.diffuseColor * u_lightsData.ambientLightIntensity;
 
-    return radiance;
+    return luminance;
 }
 
 
@@ -145,9 +145,9 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
             if(distToLight < pointLight.radius)
             {
                 const float3 lightDir = toLight / distToLight;
-                const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, params.worldLocation);
+                const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, params.worldLocation);
 
-                if (any(lightIntensity > 0.f))
+                if (any(illuminance > 0.f))
                 {
                     float visibility = 1.f;
                     if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
@@ -157,7 +157,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
             
                     if (visibility > 0.f)
                     {
-                        inScattering += lightIntensity * visibility * PhaseFunction(params.toViewNormal, -lightDir, params.phaseFunctionAnisotrophy);
+                        inScattering += illuminance * visibility * PhaseFunction(params.toViewNormal, -lightDir, params.phaseFunctionAnisotrophy);
                     }
                 }
             }

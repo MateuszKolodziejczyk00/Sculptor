@@ -87,9 +87,9 @@ static rg::RGTextureViewHandle RenderTemporalAA(rg::RenderGraphBuilder& graphBui
 	if (!temporalAAData.outputTextureView || temporalAAData.outputTextureView->GetResolution2D() != renderingResolution)
 	{
 		rhi::TextureDefinition taaTextureDef;
-		taaTextureDef.resolution	= shadingData.radiance->GetResolution();
+		taaTextureDef.resolution	= shadingData.luminanceTexture->GetResolution();
 		taaTextureDef.usage			= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
-		taaTextureDef.format		= shadingData.radiance->GetFormat();
+		taaTextureDef.format		= shadingData.luminanceTexture->GetFormat();
 		lib::SharedRef<rdr::Texture> outputTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("TAA Texture"), taaTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 		rhi::TextureViewDefinition viewDef;
@@ -110,7 +110,7 @@ static rg::RGTextureViewHandle RenderTemporalAA(rg::RenderGraphBuilder& graphBui
 
 		const lib::SharedRef<TemporalAADS> temporalAADS = rdr::ResourcesManager::CreateDescriptorSetState<TemporalAADS>(RENDERER_RESOURCE_NAME("Temporal AA DS"));
 		temporalAADS->u_depth			= depthPrepassData.depth;
-		temporalAADS->u_inputColor		= shadingData.radiance;
+		temporalAADS->u_inputColor		= shadingData.luminanceTexture;
 		temporalAADS->u_historyColor	= inputTexture;
 		temporalAADS->u_motion			= motionData.motion;
 		temporalAADS->u_outputColor		= outputTexture;
@@ -127,14 +127,14 @@ static rg::RGTextureViewHandle RenderTemporalAA(rg::RenderGraphBuilder& graphBui
 
 		graphBuilder.CopyTexture(RG_DEBUG_NAME("Apply Temporal AA result"),
 								 outputTexture, math::Vector3i::Zero(),
-								 shadingData.radiance, math::Vector3i::Zero(),
+								 shadingData.luminanceTexture, math::Vector3i::Zero(),
 								 renderView.GetRenderingResolution3D());
 	}
 	else
 	{
 		// We don't have history so we just copy the current frame
 		graphBuilder.CopyTexture(RG_DEBUG_NAME("Save Temporal AA history"),
-								 shadingData.radiance, math::Vector3i::Zero(),
+								 shadingData.luminanceTexture, math::Vector3i::Zero(),
 								 outputTexture, math::Vector3i::Zero(),
 								 renderView.GetRenderingResolution3D());
 	}
@@ -168,7 +168,7 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	default:
 		
-		aaData.outputTexture = shadingData.radiance;
+		aaData.outputTexture = shadingData.luminanceTexture;
 	}
 	
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);

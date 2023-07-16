@@ -288,7 +288,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.intensity = 0.8f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(2.6f, 8.30f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -298,7 +298,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.intensity = 0.8f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(-3.9f, -8.30f, 4.45f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -308,7 +308,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.intensity = 0.8f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(-3.8f, 8.30f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -318,7 +318,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.intensity = 0.8f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(-3.8f, -9.30f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -328,8 +328,8 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color			= math::Vector3f(0.9569f, 0.9137f, 0.6078f);
-			directionalLightData.intensity		= 120.f;
-			directionalLightData.direction		= math::Vector3f(0.5f, 0.f, -1.7f).normalized();
+			directionalLightData.illuminance	= 95000.f;
+			directionalLightData.direction		= math::Vector3f(0.5f, 0.3f, -1.9f).normalized();
 			directionalLightData.lightConeAngle = 0.0046f;
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}

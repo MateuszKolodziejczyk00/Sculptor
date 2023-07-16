@@ -61,7 +61,7 @@ void DDGIProbeRaysRTG()
              rayDesc,
              payload);
 
-    float3 radiance = 0.f;
+    float3 luminance = 0.f;
 
     if(payload.hitDistance > 0.01f)
     {
@@ -76,18 +76,18 @@ void DDGIProbeRaysRTG()
         surface.roughness       = payload.roughness;
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
         
-        radiance = CalcReflectedRadiance(surface, -rayDirection);
+        luminance = CalcReflectedLuminance(surface, -rayDirection);
 
-        const float3 irradiance = SampleIrradiance(u_ddgiParams, u_probesIrradianceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
+        const float3 illuminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
 
-        radiance += Diffuse_Lambert(irradiance) * min(surface.diffuseColor, 0.9f);
+        luminance += Diffuse_Lambert(illuminance) * min(surface.diffuseColor, 0.9f);
     }
     else if (payload.hitDistance >= -0.0001f)
     {
-        radiance = lerp(u_updateProbesParams.groundIrradiance, u_updateProbesParams.skyIrradiance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f));
+        luminance = lerp(u_updateProbesParams.groundIlluminance, u_updateProbesParams.skyIlluminance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f));
     }
 
-    u_traceRaysResultTexture[dispatchIdx] = float4(radiance, payload.hitDistance);
+    u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);
 }
 
 

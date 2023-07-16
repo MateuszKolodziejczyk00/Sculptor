@@ -51,11 +51,11 @@ struct ShadingInputData
 
 struct ShadingData
 {
-	rg::RGTextureViewHandle radiance;
-	rg::RGTextureViewHandle normals;
+	rg::RGTextureViewHandle luminanceTexture;
+	rg::RGTextureViewHandle normalsTexture;
 	
 #if RENDERER_DEBUG
-	rg::RGTextureViewHandle debug;
+	rg::RGTextureViewHandle debugTexture;
 #endif // RENDERER_DEBUG
 };
 

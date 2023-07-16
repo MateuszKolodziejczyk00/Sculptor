@@ -15,7 +15,7 @@ struct DDGIUpdateParameters
 {
 	DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuUpdateParams, const DDGISceneSubsystem& ddgiSubsystem);
 
-	lib::SharedPtr<rdr::TextureView> probesIrradianceTextureView;
+	lib::SharedPtr<rdr::TextureView> probesIlluminanceTextureView;
 	lib::SharedPtr<rdr::TextureView> probesHitDistanceTextureView;
 
 	rdr::BufferView updateProbesParamsBuffer;
@@ -24,7 +24,7 @@ struct DDGIUpdateParameters
 	Uint32 probesNumToUpdate;
 	Uint32 raysNumPerProbe;
 
-	math::Vector2u probeIrradianceDataWithBorderRes;
+	math::Vector2u probeIlluminanceDataWithBorderRes;
 	math::Vector2u probeHitDistanceDataWithBorderRes;
 };
 

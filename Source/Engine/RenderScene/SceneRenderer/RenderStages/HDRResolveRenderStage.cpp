@@ -28,8 +28,8 @@ namespace params
 {
 
 RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.4f, 0.f, 1.f);
-RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
-RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 2.f, -20.f, 20.f);
+RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -6.f, -20.f, 20.f);
+RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 17.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
 RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);
@@ -73,7 +73,7 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(LuminanceHistogramDS, rg::RGDescriptorSetState<LuminanceHistogramDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_radianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_linearColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_sampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ExposureSettings>),					u_exposureSettings)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),								u_luminanceHistogram)
@@ -87,11 +87,11 @@ static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LuminanceHistogramPipeline"), shader);
 }
 
-static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGTextureViewHandle radianceTexture)
+static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGTextureViewHandle linearColorTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(radianceTexture.IsValid());
+	SPT_CHECK(linearColorTexture.IsValid());
 
 	const Uint64 histogramBinsNum = 256;
 
@@ -102,7 +102,7 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Luminance Histogram"), luminanceHistogramBuffer, 0, histogramSize, 0);
 	
 	const lib::SharedRef<LuminanceHistogramDS> luminanceHistogramDS = rdr::ResourcesManager::CreateDescriptorSetState<LuminanceHistogramDS>(RENDERER_RESOURCE_NAME("LuminanceHistogramDS"));
-	luminanceHistogramDS->u_radianceTexture		= radianceTexture;
+	luminanceHistogramDS->u_linearColorTexture	= linearColorTexture;
 	luminanceHistogramDS->u_exposureSettings	= exposureSettings;
 	luminanceHistogramDS->u_luminanceHistogram	= luminanceHistogramBuffer;
 
@@ -486,7 +486,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 						  rg::BindDescriptorSets(bloomPassDS, bloomCompositePassDS));
 }
 
-static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle radianceTexture)
+static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle linearColorTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -512,7 +512,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 		bloomTextureMips.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("Bloom Texture Mip {}", mipIdx)), bloomTexture, viewInfo));
 	}
 
-	BloomDownsample(graphBuilder, viewSpec, bloomTextureMips, radianceTexture);
+	BloomDownsample(graphBuilder, viewSpec, bloomTextureMips, linearColorTexture);
 
 	BloomUpsample(graphBuilder, viewSpec, bloomTextureMips);
 
@@ -520,7 +520,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 													? lens_flares::ComputeLensFlares(graphBuilder, viewSpec, bloomTextureMips[0])
 													: rg::RGTextureViewHandle{};
 
-	BloomComposite(graphBuilder, viewSpec, bloomTextureMips[0], lensFlaresTexture, radianceTexture);
+	BloomComposite(graphBuilder, viewSpec, bloomTextureMips[0], lensFlaresTexture, linearColorTexture);
 }
 
 } // bloom
@@ -537,7 +537,7 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_radianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_linearColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_sampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_LDRTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassSettings>),					u_tonemappingSettings)
@@ -552,12 +552,12 @@ static rdr::PipelineStateID CompileTonemappingPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TonemappingPipeline"), shader);
 }
 
-static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle radianceTexture, const TonemappingPassSettings& tonemappingSettings, rg::RGTextureViewHandle ldrTexture, rg::RGBufferViewHandle adaptedLuminance)
+static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle linearColorTexture, const TonemappingPassSettings& tonemappingSettings, rg::RGTextureViewHandle ldrTexture, rg::RGBufferViewHandle adaptedLuminance)
 {
 	SPT_PROFILER_FUNCTION();
 	
 	const lib::SharedRef<TonemappingDS> tonemappingDS = rdr::ResourcesManager::CreateDescriptorSetState<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
-	tonemappingDS->u_radianceTexture		= radianceTexture;
+	tonemappingDS->u_linearColorTexture		= linearColorTexture;
 	tonemappingDS->u_LDRTexture				= ldrTexture;
 	tonemappingDS->u_tonemappingSettings	= tonemappingSettings;
 	tonemappingDS->u_adaptedLuminance		= adaptedLuminance;
@@ -639,10 +639,10 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	exposureSettings.inverseLogLuminanceRange	= 1.f / exposureSettings.logLuminanceRange;
 	exposureSettings.adaptationSpeed			= params::adaptationSpeed;
 
-	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, shadingData.radiance);
+	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, shadingData.luminanceTexture);
 	const rg::RGBufferViewHandle adaptedLuminance = exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram);
 
-	rg::RGTextureViewHandle linearColorTexture = shadingData.radiance;
+	rg::RGTextureViewHandle linearColorTexture = shadingData.luminanceTexture;
 
 	if (params::enableBloom)
 	{
@@ -655,8 +655,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, linearColorTexture, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
 
 #if RENDERER_DEBUG
-	gamma::DoGammaCorrection(graphBuilder, shadingData.debug);
-	passData.debug = shadingData.debug;
+	gamma::DoGammaCorrection(graphBuilder, shadingData.debugTexture);
+	passData.debug = shadingData.debugTexture;
 #endif // RENDERER_DEBUG
 	
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);

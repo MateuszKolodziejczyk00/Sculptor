@@ -27,7 +27,7 @@ DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 
 	m_ddgiDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDS>(RENDERER_RESOURCE_NAME("DDGIDS"), rdr::EDescriptorSetStateFlags::Persistent);
 	m_ddgiDS->u_ddgiParams					= GetDDGIParams();
-	m_ddgiDS->u_probesIrradianceTexture		= GetProbesIrradianceTexture();
+	m_ddgiDS->u_probesIlluminanceTexture	= GetProbesIlluminanceTexture();
 	m_ddgiDS->u_probesHitDistanceTexture	= GetProbesHitDistanceTexture();
 
 	for (SizeType idx = 0; idx < m_raysRotationMatrices.size(); ++idx)
@@ -58,8 +58,8 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	params.probesNumToUpdate	= params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
 	params.rcpRaysNumPerProbe	= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate	= 1.f / static_cast<Real32>(params.probesNumToUpdate);
-	params.skyIrradiance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 20.55f;
-	params.groundIrradiance		= math::Vector3f::Constant(0.1f) * 0.05f;
+	params.skyIlluminance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 20000.f;
+	params.groundIlluminance	= math::Vector3f::Constant(0.1f) * 500.f;
 	params.blendHysteresis		= parameters::ddgiBlendHysteresis;
 
 	const SizeType rotationsNum = m_raysRotationMatrices.size();
@@ -70,9 +70,9 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	return params;
 }
 
-const lib::SharedPtr<rdr::TextureView>& DDGISceneSubsystem::GetProbesIrradianceTexture() const
+const lib::SharedPtr<rdr::TextureView>& DDGISceneSubsystem::GetProbesIlluminanceTexture() const
 {
-	return m_probesIrradianceTextureView;
+	return m_probesIlluminanceTextureView;
 }
 
 const lib::SharedPtr<rdr::TextureView>& DDGISceneSubsystem::GetProbesHitDistanceTexture() const
@@ -130,14 +130,14 @@ math::Vector3u DDGISceneSubsystem::GetProbesVolumeResolution() const
 	return m_ddgiParams.probesVolumeResolution;
 }
 
-math::Vector2u DDGISceneSubsystem::GetProbeIrradianceDataRes() const
+math::Vector2u DDGISceneSubsystem::GetProbeIlluminanceDataRes() const
 {
-	return m_ddgiParams.probeIrradianceDataRes;
+	return m_ddgiParams.probeIlluminanceDataRes;
 }
 
-math::Vector2u DDGISceneSubsystem::GetProbeIrradianceWithBorderDataRes() const
+math::Vector2u DDGISceneSubsystem::GetProbeIlluminanceWithBorderDataRes() const
 {
-	return m_ddgiParams.probeIrradianceDataWithBorderRes;
+	return m_ddgiParams.probeIlluminanceDataWithBorderRes;
 }
 
 math::Vector2u DDGISceneSubsystem::GetProbeDistancesDataRes() const
@@ -166,24 +166,24 @@ void DDGISceneSubsystem::InitializeDDGIParameters()
 	m_ddgiParams.probesVolumeResolution						= probesVolumeRes;
 	m_ddgiParams.probesWrapCoords							= math::Vector3i::Zero();
 
-	m_ddgiParams.probeIrradianceDataRes						= math::Vector2u::Constant(6u);
-	m_ddgiParams.probeIrradianceDataWithBorderRes			= m_ddgiParams.probeIrradianceDataRes + math::Vector2u::Constant(2u);
+	m_ddgiParams.probeIlluminanceDataRes					= math::Vector2u::Constant(6u);
+	m_ddgiParams.probeIlluminanceDataWithBorderRes			= m_ddgiParams.probeIlluminanceDataRes + math::Vector2u::Constant(2u);
 
 	m_ddgiParams.probeHitDistanceDataRes					= math::Vector2u::Constant(16u);
 	m_ddgiParams.probeHitDistanceDataWithBorderRes			= m_ddgiParams.probeHitDistanceDataRes + math::Vector2u::Constant(2u);
 
-	m_ddgiParams.probesIrradianceTextureRes					= math::Vector2u(probesTextureWidth, probesTextureHeight).cwiseProduct(m_ddgiParams.probeIrradianceDataWithBorderRes);
+	m_ddgiParams.probesIlluminanceTextureRes				= math::Vector2u(probesTextureWidth, probesTextureHeight).cwiseProduct(m_ddgiParams.probeIlluminanceDataWithBorderRes);
 	m_ddgiParams.probesHitDistanceTextureRes				= math::Vector2u(probesTextureWidth, probesTextureHeight).cwiseProduct(m_ddgiParams.probeHitDistanceDataWithBorderRes);
 
-	m_ddgiParams.probesIrradianceTexturePixelSize			= m_ddgiParams.probesIrradianceTextureRes.cast<Real32>().cwiseInverse();
-	m_ddgiParams.probesIrradianceTextureUVDeltaPerProbe		= m_ddgiParams.probesIrradianceTexturePixelSize.cwiseProduct(m_ddgiParams.probeIrradianceDataWithBorderRes.cast<Real32>());
-	m_ddgiParams.probesIrradianceTextureUVPerProbeNoBorder	= m_ddgiParams.probesIrradianceTexturePixelSize.cwiseProduct(m_ddgiParams.probeIrradianceDataRes.cast<Real32>());
+	m_ddgiParams.probesIlluminanceTexturePixelSize			= m_ddgiParams.probesIlluminanceTextureRes.cast<Real32>().cwiseInverse();
+	m_ddgiParams.probesIlluminanceTextureUVDeltaPerProbe	= m_ddgiParams.probesIlluminanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeIlluminanceDataWithBorderRes.cast<Real32>());
+	m_ddgiParams.probesIlluminanceTextureUVPerProbeNoBorder	= m_ddgiParams.probesIlluminanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeIlluminanceDataRes.cast<Real32>());
 	
 	m_ddgiParams.probesHitDistanceTexturePixelSize			= m_ddgiParams.probesHitDistanceTextureRes.cast<Real32>().cwiseInverse();
 	m_ddgiParams.probesHitDistanceUVDeltaPerProbe			= m_ddgiParams.probesHitDistanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeHitDistanceDataWithBorderRes.cast<Real32>());
 	m_ddgiParams.probesHitDistanceTextureUVPerProbeNoBorder	= m_ddgiParams.probesHitDistanceTexturePixelSize.cwiseProduct(m_ddgiParams.probeHitDistanceDataRes.cast<Real32>());
 	
-	m_ddgiParams.probeIrradianceEncodingGamma				= 1.f;
+	m_ddgiParams.probeIlluminanceEncodingGamma				= 1.f;
 }
 
 void DDGISceneSubsystem::InitializeTextures()
@@ -193,22 +193,22 @@ void DDGISceneSubsystem::InitializeTextures()
 	const Uint32 probesTextureWidth		= m_ddgiParams.probesVolumeResolution.x() * m_ddgiParams.probesVolumeResolution.z();
 	const Uint32 probesTextureHeight	= m_ddgiParams.probesVolumeResolution.y();
 
-	const math::Vector2u irradiancePerProbeRes	= GetProbeIrradianceWithBorderDataRes();
+	const math::Vector2u illuminancePerProbeRes	= GetProbeIlluminanceWithBorderDataRes();
 	const math::Vector2u distancePerProbeRes	= GetProbeDistancesDataWithBorderRes();
 
 	const math::Vector3u probesRes = GetProbesVolumeResolution();
 
 	const rhi::ETextureUsage texturesUsage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
 
-	rhi::TextureDefinition probesIrradianceTextureDef;
-	probesIrradianceTextureDef.resolution	= math::Vector3u{ probesTextureWidth * irradiancePerProbeRes.x(), probesTextureHeight * irradiancePerProbeRes.y(), 1u };
-	probesIrradianceTextureDef.usage		= texturesUsage;
-	probesIrradianceTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
-	const lib::SharedRef<rdr::Texture> probesIrradianceTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Probes Irradiance"), probesIrradianceTextureDef, rhi::EMemoryUsage::GPUOnly);
+	rhi::TextureDefinition probesIlluminanceTextureDef;
+	probesIlluminanceTextureDef.resolution	= math::Vector3u{ probesTextureWidth * illuminancePerProbeRes.x(), probesTextureHeight * illuminancePerProbeRes.y(), 1u };
+	probesIlluminanceTextureDef.usage		= texturesUsage;
+	probesIlluminanceTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
+	const lib::SharedRef<rdr::Texture> probesIlluminanceTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Probes Illuminance"), probesIlluminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
-	rhi::TextureViewDefinition probesIrradianceViewDefinition;
-	probesIrradianceViewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	m_probesIrradianceTextureView = probesIrradianceTexture->CreateView(RENDERER_RESOURCE_NAME("Probes Irradiance View"), probesIrradianceViewDefinition);
+	rhi::TextureViewDefinition probesIlluminanceViewDefinition;
+	probesIlluminanceViewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+	m_probesIlluminanceTextureView = probesIlluminanceTexture->CreateView(RENDERER_RESOURCE_NAME("Probes Illuminance View"), probesIlluminanceViewDefinition);
 
 	rhi::TextureDefinition probesDistanceTextureDef;
 	probesDistanceTextureDef.resolution	= math::Vector3u{ probesTextureWidth * distancePerProbeRes.x(), probesTextureHeight * distancePerProbeRes.y(), 1u };

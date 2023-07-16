@@ -19,7 +19,7 @@ void ApplyVolumetricFogCS(CS_INPUT input)
     const uint2 pixel = input.globalID.xy;
 
     uint2 outputRes;
-    u_radianceTexture.GetDimensions(outputRes.x, outputRes.y);
+    u_luminanceTexture.GetDimensions(outputRes.x, outputRes.y);
 
     if (all(pixel < outputRes))
     {
@@ -67,9 +67,9 @@ void ApplyVolumetricFogCS(CS_INPUT input)
         const float3 inScattering = inScatteringTransmittance.rgb;
         const float transmittance = inScatteringTransmittance.a;
 
-        float3 radiance = u_radianceTexture[pixel];
-        radiance = radiance * transmittance + inScattering;
+        float3 luminance = u_luminanceTexture[pixel];
+        luminance = luminance * transmittance + inScattering;
 
-        u_radianceTexture[pixel] = radiance;
+        u_luminanceTexture[pixel] = luminance;
     }
 }

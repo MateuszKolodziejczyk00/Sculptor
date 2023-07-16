@@ -8,9 +8,9 @@ struct DDGIShadowRayPayload
 };
 
 
-float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewDir)
+float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
 {
-    float3 radiance = 0.f;
+    float3 luminance = 0.f;
 
     // Directional Lights
 
@@ -18,9 +18,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewDir)
     {
         const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-        const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
+        const float3 lightIlluminance = directionalLight.color * directionalLight.illuminance;
 
-        if (any(lightIntensity > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+        if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
         {
             DDGIShadowRayPayload payload = { true };
 
@@ -41,7 +41,7 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewDir)
             
             if (!payload.isShadowed)
             {
-                radiance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIntensity);
+                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance);
             }
         }
     }
@@ -61,9 +61,9 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewDir)
             if (distToLight < pointLight.radius)
             {
                 const float3 lightDir = toLight / distToLight;
-                const float3 lightIntensity = GetPointLightIntensityAtLocation(pointLight, surface.location);
+                const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, surface.location);
 
-                if(any(lightIntensity > 0.f))
+                if(any(illuminance > 0.f))
                 {
                     float visibility = 1.f;
                     if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
@@ -74,12 +74,12 @@ float3 CalcReflectedRadiance(ShadedSurface surface, float3 viewDir)
             
                     if (visibility > 0.f)
                     {
-                        radiance += CalcLighting(surface, lightDir, viewDir, lightIntensity) * visibility;
+                        luminance += CalcLighting(surface, lightDir, viewDir, illuminance) * visibility;
                     }
                 }
             }
         }
     }
 
-    return radiance;
+    return luminance;
 }

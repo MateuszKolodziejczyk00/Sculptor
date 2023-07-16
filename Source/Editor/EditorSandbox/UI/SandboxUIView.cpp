@@ -66,16 +66,6 @@ void SandboxUIView::DrawUI()
 	}
 #endif WITH_SHADERS_HOT_RELOAD
 	ImGui::End();
-
-	//ImGui::Begin("DDGI");
-	//if (lib::SharedPtr<rsc::DDGISceneSubsystem> ddgiSubsystem = m_renderer->GetRenderScene()->GetSceneSubsystem<rsc::DDGISceneSubsystem>())
-	//{
-	//	const lib::SharedPtr<rdr::TextureView>& irradianceTexture = ddgiSubsystem->GetProbesHitDistanceTexture();
-	//	ui::TextureID irradianceDataID = rdr::UIBackend::GetUITextureID(lib::Ref(irradianceTexture), rhi::ESamplerFilterType::Nearest);
-	//	const math::Vector2u res = irradianceTexture->GetResolution2D();
-	//	ImGui::Image(irradianceDataID, ImVec2(static_cast<Real32>(res.x() * 4), static_cast<Real32>(res.y() * 4)));
-	//}
-	//ImGui::End();
 }
 
 void SandboxUIView::DrawRendererSettings()

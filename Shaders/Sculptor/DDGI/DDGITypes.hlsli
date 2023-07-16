@@ -66,10 +66,10 @@ uint2 ComputeProbeDataCoords(in const DDGIGPUParams ddgiParams, in uint3 probeWr
 }
 
 
-uint2 ComputeProbeIrradianceDataOffset(in const DDGIGPUParams ddgiParams, in uint3 probeWrappedCoords)
+uint2 ComputeProbeIlluminanceDataOffset(in const DDGIGPUParams ddgiParams, in uint3 probeWrappedCoords)
 {
 	const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
-	return probeDataCoords * ddgiParams.probeIrradianceDataWithBorderRes;
+	return probeDataCoords * ddgiParams.probeIlluminanceDataWithBorderRes;
 }
 
 
@@ -80,20 +80,20 @@ uint2 ComputeProbeHitDistanceDataOffset(in const DDGIGPUParams ddgiParams, in ui
 }
 
 
-float3 SampleProbeIrradiance(in const DDGIGPUParams ddgiParams, Texture2D<float3> probesIrradianceTexture, SamplerState irradianceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
+float3 SampleProbeIlluminance(in const DDGIGPUParams ddgiParams, Texture2D<float3> probesIlluminanceTexture, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
 	const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
 	
 	// Probe data begin UV
-    float2 uv = probeDataCoords * ddgiParams.probesIrradianceTextureUVDeltaPerProbe;
+    float2 uv = probeDataCoords * ddgiParams.probesIlluminanceTextureUVDeltaPerProbe;
 	
 	// Add Border
-    uv += ddgiParams.probesIrradianceTexturePixelSize;
+    uv += ddgiParams.probesIlluminanceTexturePixelSize;
 
 	// add octahedron UV
-    uv += octahedronUV * ddgiParams.probesIrradianceTextureUVPerProbeNoBorder;
+    uv += octahedronUV * ddgiParams.probesIlluminanceTextureUVPerProbeNoBorder;
 
-	return probesIrradianceTexture.SampleLevel(irradianceSampler, uv, 0);
+	return probesIlluminanceTexture.SampleLevel(illuminanceSampler, uv, 0);
 }
 
 
@@ -119,9 +119,9 @@ bool IsInsideDDGIVolume(in const DDGIGPUParams ddgiParams, in float3 worldLocati
 }
 
 
-float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
-						in Texture2D<float3> probesIrradianceTexture,
-						in SamplerState irradianceSampler, 
+float3 SampleIlluminance(in const DDGIGPUParams ddgiParams,
+						in Texture2D<float3> probesIlluminanceTexture,
+						in SamplerState illuminanceSampler, 
 						in Texture2D<float2> probesHitDistanceTexture, 
 						in SamplerState distancesSampler,
 						in float3 worldLocation,
@@ -141,7 +141,7 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
     const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * ddgiParams.rcpProbesSpacing);
 
-    float3 irradianceSum = 0.f;
+    float3 illuminanceSum = 0.f;
     float weightSum = 0.f;
 	
     for (int i = 0; i < 8; ++i)
@@ -196,21 +196,21 @@ float3 SampleIrradiance(in const DDGIGPUParams ddgiParams,
 
         weight *= trilinearWeight;
 		
-		const float2 irradianceOctCoords = GetProbeOctCoords(surfaceNormal);
+		const float2 illuminanceOctCoords = GetProbeOctCoords(surfaceNormal);
 
-		float3 irradiance = SampleProbeIrradiance(ddgiParams, probesIrradianceTexture, irradianceSampler, probeWrappedCoords, irradianceOctCoords);
+		float3 illuminance = SampleProbeIlluminance(ddgiParams, probesIlluminanceTexture, illuminanceSampler, probeWrappedCoords, illuminanceOctCoords);
 
-		irradiance = pow(irradiance, ddgiParams.probeIrradianceEncodingGamma * 0.5f);
+		illuminance = pow(illuminance, ddgiParams.probeIlluminanceEncodingGamma * 0.5f);
 
-        irradianceSum += irradiance * weight;
+        illuminanceSum += illuminance * weight;
         weightSum += weight;
     }
 
-	float3 irradiance = irradianceSum / weightSum;
+	float3 illuminance = illuminanceSum / weightSum;
 
-	irradiance = Pow2(irradiance);
+	illuminance = Pow2(illuminance);
 	
-	irradiance = irradiance * 2.f * PI;
+	illuminance = illuminance * 2.f * PI;
 
-    return irradiance;
+    return illuminance;
 }

@@ -33,9 +33,9 @@ float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
     {
         const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-        const float3 lightIntensity = directionalLight.color * directionalLight.intensity;
+        const float3 illuminance = directionalLight.color * directionalLight.illuminance;
 
-        if (any(lightIntensity > 0.f))
+        if (any(illuminance > 0.f))
         {
             bool isInShadow = false;
 
@@ -61,7 +61,7 @@ float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 
             if (!isInShadow)
             {
-                inScattering += lightIntensity * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+                inScattering += illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
             }
         }
     }

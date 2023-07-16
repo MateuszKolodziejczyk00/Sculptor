@@ -25,15 +25,15 @@ float GetPointLightAttenuationAtLocation(PointLightGPUData pointLight, float3 lo
 }
 
 
-float3 GetPointLightIntensityAtLocation(PointLightGPUData pointLight, float3 location)
+float3 GetPointLightIlluminanceAtLocation(PointLightGPUData pointLight, float3 location)
 {
-    return GetPointLightAttenuationAtLocation(pointLight, location) * pointLight.intensity * pointLight.color;
+    return GetPointLightAttenuationAtLocation(pointLight, location) * pointLight.color * pointLight.luminousPower / (4.f * PI);
 }
 
 
-float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIrradiance)
+float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIlluminance)
 {
-    return DoShading(surface, lightDir, viewDir, peakIrradiance);
+    return DoShading(surface, lightDir, viewDir, peakIlluminance);
 }
 
 
