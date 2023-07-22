@@ -33,6 +33,8 @@
 #include "DDGI/DDGIRenderSystem.h"
 #include "Camera/CameraSettings.h"
 #include "Loaders/TextureLoader.h"
+#include "Atmosphere/AtmosphereSceneSubsystem.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 
 namespace spt::ed
 {
@@ -268,6 +270,7 @@ void SandboxRenderer::InitializeRenderScene()
 
 	m_renderScene->AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();
 	m_renderScene->AddSceneSubsystem<rsc::ShadowMapsManagerSubsystem>(m_renderView);
+	m_renderScene->AddSceneSubsystem<rsc::AtmosphereSceneSubsystem>();
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderScene->AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
@@ -277,6 +280,7 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();
+	m_renderScene->AddRenderSystem<rsc::AtmosphereRenderSystem>();
 
 	const lib::HashedString scenePath = engn::Engine::Get().GetCmdLineArgs().GetValue("-Scene");
 	if (scenePath.IsValid())

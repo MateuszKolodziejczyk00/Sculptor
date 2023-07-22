@@ -12,6 +12,7 @@
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
 #include "RenderStages/AntiAliasingRenderStage.h"
+#include "RenderStages/ApplyAtmosphereRenderStage.h"
 #include "RenderStages/VolumetricFogRenderStage.h"
 #include "RenderStages/PostProcessPreAARenderStage.h"
 #include "RenderGraphBuilder.h"
@@ -101,6 +102,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<DirectionalLightShadowMasksRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	
+	renderer_utils::ProcessRenderStage<ApplyAtmosphereRenderStage>(graphBuilder, scene, renderViewsSpecs);
 	
 	renderer_utils::ProcessRenderStage<VolumetricFogRenderStage>(graphBuilder, scene, renderViewsSpecs);
 

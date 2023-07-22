@@ -142,7 +142,7 @@ public:
 
 	const math::Vector3u& GetResolution() const
 	{
-		return GetTextureDefinition().resolution;
+		return GetTextureDefinition().resolution.AsVector();
 	}
 
 	math::Vector2u GetResolution2D() const

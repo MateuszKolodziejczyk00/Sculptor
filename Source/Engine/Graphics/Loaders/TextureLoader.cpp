@@ -44,7 +44,7 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, rh
 	const Uint64 imageSize = static_cast<Uint64>(width) * static_cast<Uint64>(height) * requiredComonents * (isHDR ? sizeof(Real32) : 1u);
 	const rhi::ETextureAspect aspect = rhi::GetFullAspectForFormat(textureDefinition.format);
 
-	UploadsManager::Get().EnqueUploadToTexture(reinterpret_cast<const Byte*>(imageData), imageSize, texture, aspect, textureDefinition.resolution);
+	UploadsManager::Get().EnqueUploadToTexture(reinterpret_cast<const Byte*>(imageData), imageSize, texture, aspect, textureDefinition.resolution.AsVector());
 
 	stbi_image_free(imageData);
 

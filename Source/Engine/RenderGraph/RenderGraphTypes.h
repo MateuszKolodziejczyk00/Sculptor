@@ -57,5 +57,28 @@ private:
 #endif // DEBUG_RENDER_GRAPH
 
 
+struct WorkloadResolution
+{
+	WorkloadResolution(Uint32 groupsNum)
+		: m_groupsNum(groupsNum, 1u, 1u)
+	{ }
+
+	WorkloadResolution(math::Vector2u groupsNum)
+		: m_groupsNum(groupsNum.x(), groupsNum.y(), 1u)
+	{ }
+
+	WorkloadResolution(const math::Vector3u& groupsNum)
+		: m_groupsNum(groupsNum)
+	{ }
+
+	const math::Vector3u& AsVector() const
+	{
+		return m_groupsNum;
+	}
+
+private:
+
+	math::Vector3u m_groupsNum;
+};
 
 } // spt::rg

@@ -95,11 +95,11 @@ public:
 
 	/** Calls dispatch command with given descriptor sets (this version automatically creates pipeline from shader */
 	template<typename TDescriptorSetStatesRange>
-	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
+	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
 	/** Calls dispatch command with given descriptor sets */
 	template<typename TDescriptorSetStatesRange>
-	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
+	void Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange);
 
 	/** Calls dispatch indirect command with given descriptor sets */
 	template<typename TDescriptorSetStatesRange>
@@ -122,7 +122,7 @@ public:
 	void AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable);
 
 	template<typename TDescriptorSetStatesRange>
-	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const math::Vector3u& traceCount, TDescriptorSetStatesRange&& dsStatesRange);
+	void TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange);
 
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
@@ -209,21 +209,21 @@ TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
+void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::ShaderID shader, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	const rdr::PipelineStateID pipelineStateID = GetOrCreateComputePipelineStateID(shader);
 	Dispatch(dispatchName, pipelineStateID, groupCount, std::forward<TDescriptorSetStatesRange>(dsStatesRange));
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const math::Vector3u& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
+void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
-		recorder.Dispatch(groupCount);
+		recorder.Dispatch(groupCount.AsVector());
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
@@ -333,14 +333,14 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 }
 
 template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const math::Vector3u& traceCount, TDescriptorSetStatesRange&& dsStatesRange)
+void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto executeLambda = [ rayTracingPipelineID, traceCount, dsStatesRange ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindRayTracingPipeline(rayTracingPipelineID);
-		recorder.TraceRays(traceCount);
+		recorder.TraceRays(traceCount.AsVector());
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;

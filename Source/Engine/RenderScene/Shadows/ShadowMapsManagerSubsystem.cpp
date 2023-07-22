@@ -308,11 +308,10 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 		for (Uint32 i = 0; i < shadowMapTexturesToCreate; ++i)
 		{
 			rhi::TextureDefinition textureDef;
-			textureDef.resolution.head<2>()	= resolution;
-			textureDef.resolution.z()		= 1;
-			textureDef.usage				= GetShadowMapUsage();
-			textureDef.format				= shadowMapsFormat;
-			textureDef.mipLevels			= GetShadowMapMipsNum();
+			textureDef.resolution	= resolution;
+			textureDef.usage		= GetShadowMapUsage();
+			textureDef.format		= shadowMapsFormat;
+			textureDef.mipLevels	= GetShadowMapMipsNum();
 			const lib::SharedRef<rdr::Texture> shadowMap = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Shadow Map"), textureDef, rhi::EMemoryUsage::GPUOnly);
 			m_shadowMaps.emplace_back(shadowMap);
 		}

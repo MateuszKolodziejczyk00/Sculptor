@@ -518,9 +518,6 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(texture.IsValid());
 
-	const rhi::TextureDefinition& textureDefinition = texture.GetDefinition();
-	const math::Vector3u textureResolution = textureDefinition.resolution;
-
 	const VkImageLayout layout = VulkanRHI::GetLayoutsManager().GetSubresourceLayout(m_cmdBufferHandle, texture.GetHandle(), mipLevel, arrayLayer);
 
 	VkImageSubresourceLayers imageSubresource;

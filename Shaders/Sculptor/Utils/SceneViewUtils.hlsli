@@ -82,4 +82,14 @@ float ComputeShadowNDCDepth(float linearDepth, float p20, float p23)
 }
 
 
+float3 ComputeViewRayDirection(in SceneViewData sceneView, in float2 uv)
+{
+    const float2 xy = uv * 2.f - 1.f;
+    const float x = 1.f;
+    const float y = xy.x / sceneView.projectionMatrix[0][1];
+    const float z = xy.y / sceneView.projectionMatrix[1][2];
+    return normalize(mul(sceneView.inverseView, float4(x, y, z, 0.f))).xyz;
+
+}
+
 #endif // SCENE_VIEW_UTILS_H

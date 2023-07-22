@@ -100,19 +100,67 @@ enum class ETextureFlags : Flags8
 };
 
 
+struct RHIResolution
+{
+public:
+
+	RHIResolution()
+		: resolution(math::Vector3u::Zero())
+	{ }
+	
+	RHIResolution(math::Vector2u inResolution)
+		: resolution(inResolution.x(), inResolution.y(), 1u)
+	{ }
+	
+	RHIResolution(math::Vector3u inResolution)
+		: resolution(inResolution)
+	{ }
+
+	RHIResolution& operator=(const math::Vector2u& inResolution)
+	{
+		resolution = math::Vector3u(inResolution.x(), inResolution.y(), 1u);
+		return *this;
+	}
+
+	RHIResolution& operator=(const math::Vector3u& inResolution)
+	{
+		resolution = inResolution;
+		return *this;
+	}
+
+	Bool operator==(const RHIResolution& other) const
+	{
+		return resolution == other.resolution;
+	}
+
+	Bool operator!=(const RHIResolution& other) const
+	{
+		return !(*this == other);
+	}
+
+	const math::Vector3u& AsVector() const
+	{
+		return resolution;
+	}
+
+private:
+
+	math::Vector3u resolution;
+};
+
+
 struct TextureDefinition
 {
 	TextureDefinition()
-		: resolution{}
-		, usage(ETextureUsage::None)
+		: usage(ETextureUsage::None)
 		, format(EFragmentFormat::RGBA8_UN_Float)
 		, samples(1)
 		, mipLevels(1)
 		, arrayLayers(1)
 		, flags(ETextureFlags::Default)
 	{ }
-
-	TextureDefinition(math::Vector3u inResolution, ETextureUsage inUsage, EFragmentFormat inFormat)
+	
+	TextureDefinition(const RHIResolution& inResolution, ETextureUsage inUsage, EFragmentFormat inFormat)
 		: resolution(inResolution)
 		, usage(inUsage)
 		, format(inFormat)
@@ -122,7 +170,7 @@ struct TextureDefinition
 		, flags(ETextureFlags::Default)
 	{ }
 
-	math::Vector3u		resolution;
+	RHIResolution		resolution;
 	ETextureUsage		usage;
 	EFragmentFormat		format;
 	Uint8				samples;

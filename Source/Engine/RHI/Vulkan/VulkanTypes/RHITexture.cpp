@@ -16,11 +16,11 @@ namespace priv
 
 VkImageType SelectVulkanImageType(const rhi::TextureDefinition& definition)
 {
-    if (definition.resolution.z() > 1)
+    if (definition.resolution.AsVector().z() > 1)
     {
         return VK_IMAGE_TYPE_3D;
     }
-    else if (definition.resolution.y() > 1)
+    else if (definition.resolution.AsVector().y() > 1)
     {
         return VK_IMAGE_TYPE_2D;
     }
@@ -200,11 +200,11 @@ VkImageViewType GetVulkanViewType(rhi::ETextureViewType viewType, const rhi::Tex
 {
     if (viewType == rhi::ETextureViewType::Default)
     {
-        if (textureDef.resolution.z() > 1)
+        if (textureDef.resolution.AsVector().z() > 1)
         {
             return VK_IMAGE_VIEW_TYPE_3D;
         }
-        else if (textureDef.resolution.y() > 1)
+        else if (textureDef.resolution.AsVector().y() > 1)
         {
             return IsArrayView(range, textureDef) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
         }
@@ -284,15 +284,18 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	SPT_PROFILER_FUNCTION();
 
     SPT_CHECK(!IsValid());
-    SPT_CHECK(definition.resolution.x() > 0);
-    SPT_CHECK(definition.resolution.y() > 0);
-    SPT_CHECK(definition.resolution.z() > 0);
+
+    const math::Vector3u resolution = definition.resolution.AsVector();
+
+    SPT_CHECK(resolution.x() > 0);
+    SPT_CHECK(resolution.y() > 0);
+    SPT_CHECK(resolution.z() > 0);
 
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
     imageInfo.flags             = 0;
     imageInfo.imageType         = priv::SelectVulkanImageType(definition);
     imageInfo.format            = RHIToVulkan::GetVulkanFormat(definition.format);
-    imageInfo.extent            = { definition.resolution.x(), definition.resolution.y(), definition.resolution.z() };
+    imageInfo.extent            = { resolution.x(), resolution.y(), resolution.z() };
     imageInfo.mipLevels         = definition.mipLevels;
     imageInfo.arrayLayers       = definition.arrayLayers;
     imageInfo.samples           = priv::GetVulkanSampleCountFlag(definition.samples);
@@ -344,7 +347,7 @@ const rhi::TextureDefinition& RHITexture::GetDefinition() const
 
 const math::Vector3u& RHITexture::GetResolution() const
 {
-    return GetDefinition().resolution;
+    return GetDefinition().resolution.AsVector();
 }
 
 math::Vector3u RHITexture::GetMipResolution(Uint32 mipLevel) const

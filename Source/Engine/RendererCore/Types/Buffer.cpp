@@ -27,6 +27,11 @@ BufferView Buffer::CreateFullView() const
 	return BufferView(lib::Ref(const_cast<Buffer*>(this)->shared_from_this()), 0, GetRHI().GetSize());
 }
 
+Uint64 Buffer::GetSize() const
+{
+	return GetRHI().GetSize();
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // BufferView ====================================================================================
 

@@ -31,6 +31,8 @@ public:
 	Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBufferInstance);
 
 	BufferView CreateFullView() const;
+
+	Uint64 GetSize() const;
 };
 
 

@@ -10,16 +10,7 @@ namespace spt::rsc
 
 enum RenderingDataEntity : Uint32 {};
 
-class RenderingDataRegistry : public ecs::basic_registry<RenderingDataEntity>
-{
-protected:
-
-	using Super = ecs::basic_registry<RenderingDataEntity>;
-
-public:
-
-	using Super::Super;
-};
+using RenderingDataRegistry = ecs::basic_registry<RenderingDataEntity>;
 
 using RenderingDataEntityHandle = ecs::basic_handle<RenderingDataRegistry>;
 using ConstRenderingDataEntityHandle = ecs::basic_handle<const RenderingDataRegistry>;

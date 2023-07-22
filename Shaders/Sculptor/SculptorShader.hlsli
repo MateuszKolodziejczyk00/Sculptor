@@ -16,6 +16,7 @@
 #define OUT
 #define INOUT
 
+#define ZERO_VECTOR     (float3(0.f, 0.f, 0.f))
 
 #define FORWARD_VECTOR  (float3(1.f, 0.f, 0.f))
 #define RIGHT_VECTOR    (float3(0.f, 1.f, 0.f))

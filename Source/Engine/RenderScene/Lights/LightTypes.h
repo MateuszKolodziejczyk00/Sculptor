@@ -45,7 +45,10 @@ struct DirectionalLightData
 	}
 
 	math::Vector3f	color;
+
+	// Illuminance in lux
 	Real32			illuminance;
+
 	math::Vector3f	direction;
 	Real32			lightConeAngle;
 };
@@ -72,7 +75,10 @@ struct PointLightData
 	}
 
 	math::Vector3f	color;
+
+	// Luminous power in lumens
 	Real32			luminousPower;
+
 	math::Vector3f	location;
 	Real32			radius;
 };
