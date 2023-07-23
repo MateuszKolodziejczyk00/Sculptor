@@ -1,4 +1,5 @@
 #include "SculptorShader.hlsli"
+#include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(ApplyAtmosphereDS, 0)]]
@@ -9,32 +10,6 @@ struct CS_INPUT
 {
     uint3 globalID : SV_DispatchThreadID;
 };
-
-
-float3 GetLuminanceFromSkyViewLUT(float3 viewLocation, float3 rayDirection)
-{
-    const float viewHeight = length(viewLocation);
-    const float3 upVector = viewLocation / viewHeight;
-
-    const float distToHorizon = sqrt(Pow2(viewHeight) - Pow2(u_atmosphereParams.groundRadiusMM));
-    const float horizonAngle = acos(distToHorizon / viewHeight);
-
-    const float altitudeAngle = horizonAngle - acos(dot(upVector, rayDirection));
-
-    const float3 rightVector = cross(upVector, FORWARD_VECTOR);
-    const float3 forwardVector = cross(rightVector, upVector);
-
-    const float3 projectedDir = normalize(rayDirection - upVector * dot(rayDirection, upVector));
-    const float sinTheta = dot(rightVector, projectedDir);
-    const float cosTheta = dot(forwardVector, projectedDir);
-
-    const float azimuthAngle = atan2(sinTheta, cosTheta);
-    
-    const float v = 0.5f + 0.5f * sign(altitudeAngle) * sqrt(abs(altitudeAngle) * 2.f * INV_PI);
-    const float2 uv = float2(0.5f + azimuthAngle * 0.5f * INV_PI, v);
-
-    return u_skyViewLUT.SampleLevel(u_linearSampler, uv, 0);
-}
 
 
 [numthreads(8, 8, 1)]
@@ -58,8 +33,22 @@ void ApplyAtmosphereCS(CS_INPUT input)
 
             const float3 viewLocation = float3(0.f, 0.f, u_atmosphereParams.groundRadiusMM + u_atmosphereParams.viewHeight * 0.000001f);
 
-            float3 skyLuminance = GetLuminanceFromSkyViewLUT(viewLocation, rayDirection);
+            float3 skyLuminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, viewLocation, rayDirection);
 
+            for (int lightIdx = 0; lightIdx < u_atmosphereParams.directionalLightsNum; ++lightIdx)
+            {
+                const DirectionalLightGPUData directionalLight = u_directionalLights[lightIdx];
+                const float3 lightDirection = -directionalLight.direction;
+
+                const float rayLightDot = dot(rayDirection, lightDirection);
+                const float minRayLightDot = 0.9998f;
+                if (rayLightDot > minRayLightDot)
+                {
+                    const float alpha = (rayLightDot - minRayLightDot) / (1.f - minRayLightDot);
+                    skyLuminance += directionalLight.illuminance * alpha;
+                }
+            }
+            
             u_luminanceTexture[pixel] = skyLuminance;
         }
     }

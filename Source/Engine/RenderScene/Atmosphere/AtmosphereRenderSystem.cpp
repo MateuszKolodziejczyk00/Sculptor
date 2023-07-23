@@ -32,12 +32,9 @@ static rdr::PipelineStateID CompileRenderTransmittanceLUTPipeline()
 }
 
 
-static rg::RGTextureViewHandle RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const AtmosphereContext& context, math::Vector2u lutResolution)
+static void RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const AtmosphereContext& context, rg::RGTextureViewHandle transmittanceLUT)
 {
 	SPT_PROFILER_FUNCTION();
-
-	const rhi::TextureDefinition transmittanceLUTDef(lutResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const rg::RGTextureViewHandle transmittanceLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Atmosphere Transmittance LUT"), transmittanceLUTDef, rhi::EMemoryUsage::GPUOnly);
 
 	static const rdr::PipelineStateID pipeline = CompileRenderTransmittanceLUTPipeline();
 	
@@ -47,10 +44,8 @@ static rg::RGTextureViewHandle RenderTransmittanceLUT(rg::RenderGraphBuilder& gr
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Transmittance LUT"),
 						  pipeline,
-						  math::Utils::DivideCeil(lutResolution, math::Vector2u(8u, 8u)),
+						  math::Utils::DivideCeil(transmittanceLUT->GetResolution2D(), math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds)));
-
-	return transmittanceLUT;
 }
 
 } // transmittance_lut
@@ -73,12 +68,9 @@ static rdr::PipelineStateID CompileRenderMultiScatteringLUTPipeline()
 }
 
 
-static rg::RGTextureViewHandle RenderMultiScatteringLUT(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const AtmosphereContext& context, rg::RGTextureViewHandle transmittancleLUT, math::Vector2u lutResolution)
+static void RenderMultiScatteringLUT(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const AtmosphereContext& context, rg::RGTextureViewHandle transmittancleLUT, rg::RGTextureViewHandle multiScatteringLUT)
 {
 	SPT_PROFILER_FUNCTION();
-
-	const rhi::TextureDefinition multiScatteringLUTDef(lutResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const rg::RGTextureViewHandle multiScatteringLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Atmosphere Multi Scattering LUT"), multiScatteringLUTDef, rhi::EMemoryUsage::GPUOnly);
 
 	static const rdr::PipelineStateID pipeline = CompileRenderMultiScatteringLUTPipeline();
 
@@ -89,10 +81,8 @@ static rg::RGTextureViewHandle RenderMultiScatteringLUT(rg::RenderGraphBuilder& 
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Multi Scattering LUT"),
 						  pipeline,
-						  math::Utils::DivideCeil(lutResolution, math::Vector2u(8u, 8u)),
+						  math::Utils::DivideCeil(multiScatteringLUT->GetResolution2D(), math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds)));
-
-	return multiScatteringLUT;
 }
 
 } // multi_scattering_lut
@@ -104,7 +94,7 @@ struct SkyViewParams
 {
 	rg::RGTextureViewHandle transmittanceLUT;
 	rg::RGTextureViewHandle multiScatteringLUT;
-	lib::SharedPtr<rdr::TextureView> skyViewLUT;
+	math::Vector2u skyViewLUTResolution;
 };
 
 
@@ -125,13 +115,14 @@ static rdr::PipelineStateID CompileRenderSkyViewLUTPipeline()
 }
 
 
-static void RenderSkyViewLUT(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const AtmosphereContext& context, const SkyViewParams& skyViewParams)
+static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, const AtmosphereContext& context, const SkyViewParams& skyViewParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(!!skyViewParams.skyViewLUT);
+	const math::Vector2u skyViewLUTResolution = skyViewParams.skyViewLUTResolution;
 
-	const math::Vector2u skyViewResolution = skyViewParams.skyViewLUT->GetResolution2D();
+	const rhi::TextureDefinition lutDefinition(skyViewLUTResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
+	const rg::RGTextureViewHandle skyViewLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Sky View LUT"), lutDefinition, rhi::EMemoryUsage::GPUOnly);
 
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyViewLUTPipeline();
 
@@ -140,12 +131,15 @@ static void RenderSkyViewLUT(rg::RenderGraphBuilder& graphBuilder, const RenderS
 	ds->u_directionalLights		= context.directionalLightsBuffer->CreateFullView();
 	ds->u_transmittanceLUT		= skyViewParams.transmittanceLUT;
 	ds->u_multiScatteringLUT	= skyViewParams.multiScatteringLUT;
-	ds->u_skyViewLUT			= skyViewParams.skyViewLUT;
+	ds->u_skyViewLUT			= skyViewLUT;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Sky View LUT"),
 						  pipeline,
-						  math::Utils::DivideCeil(skyViewResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds)));
+						  math::Utils::DivideCeil(skyViewLUTResolution, math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(std::move(ds),
+												 viewSpec.GetRenderView().GetRenderViewDS()));
+
+	return skyViewLUT;
 }
 
 } // sky_view
@@ -155,6 +149,7 @@ namespace apply_atmosphere
 
 DS_BEGIN(ApplyAtmosphereDS, rg::RGDescriptorSetState<ApplyAtmosphereDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),					u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
@@ -170,7 +165,7 @@ static rdr::PipelineStateID CompileApplyAtmospherePipeline()
 }
 
 
-static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& view, const AtmosphereContext& context, const lib::SharedPtr<rdr::TextureView>& skyViewLUT)
+static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& view, const AtmosphereContext& context, rg::RGTextureViewHandle skyViewLUT)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -185,6 +180,7 @@ static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const Vi
 
 	lib::SharedPtr<ApplyAtmosphereDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<ApplyAtmosphereDS>(RENDERER_RESOURCE_NAME("Apply Atmosphere DS"));
 	ds->u_atmosphereParams	= context.atmosphereParamsBuffer->CreateFullView();
+	ds->u_directionalLights	= context.directionalLightsBuffer->CreateFullView();
 	ds->u_skyViewLUT		= skyViewLUT;
 	ds->u_depthTexture		= depthPrepassData.depth;
 	ds->u_luminanceTexture	= shadingData.luminanceTexture;
@@ -203,13 +199,18 @@ AtmosphereRenderSystem::AtmosphereRenderSystem()
 {
 	m_supportedStages = rsc::ERenderStage::ApplyAtmosphere;
 
-	const math::Vector3u skyIlluminanceTextureSize(200, 100, 1);
-	const rhi::TextureDefinition skyIlluminanceTextureDef(skyIlluminanceTextureSize, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const lib::SharedRef<rdr::Texture> skyIlluminanceTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Sky Illuminance Texture"), skyIlluminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const auto createLUT = [](const rdr::RendererResourceName& name, math::Vector2u resolution, rhi::EFragmentFormat format)
+	{
+		const rhi::TextureDefinition textureDef(resolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), format);
+		const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(name, textureDef, rhi::EMemoryUsage::GPUOnly);
 
-	rhi::TextureViewDefinition viewDefinition;
-	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	m_skyIlluminanceTextureView = skyIlluminanceTexture->CreateView(RENDERER_RESOURCE_NAME("Sky Illuminance Texture View"), viewDefinition);
+		rhi::TextureViewDefinition viewDefinition;
+		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+		return texture->CreateView(RENDERER_RESOURCE_NAME("Sky Illuminance Texture View"), viewDefinition);
+	};
+
+	m_atmosphereTransmittanceLUT	= createLUT(RENDERER_RESOURCE_NAME("Atmosphere Transmittance LUT"), math::Vector2u(256u, 64u), rhi::EFragmentFormat::B10G11R11_U_Float);
+	m_multiScatteringLUT			= createLUT(RENDERER_RESOURCE_NAME("Atmosphere Multi Scattering LUT"), math::Vector2u(32u, 32u), rhi::EFragmentFormat::B10G11R11_U_Float);
 }
 
 void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
@@ -218,31 +219,39 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 
 	Super::RenderPerFrame(graphBuilder, renderScene);
 
-	AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 
 	if (atmosphereSubsystem.IsAtmosphereTextureDirty())
 	{
 		const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
 
-		const math::Vector2u transmittanceLUTRes(256u, 64u);
-		const math::Vector2u multiScatteringLUTRes(32u, 32u);
+		const rg::RGTextureViewHandle transmittanceLUT		= graphBuilder.AcquireExternalTextureView(m_atmosphereTransmittanceLUT);
+		const rg::RGTextureViewHandle multiScatteringLUT	= graphBuilder.AcquireExternalTextureView(m_multiScatteringLUT);
 
-		const rg::RGTextureViewHandle transmittanceLUT = transmittance_lut::RenderTransmittanceLUT(graphBuilder, renderScene, context, transmittanceLUTRes);
+		transmittance_lut::RenderTransmittanceLUT(graphBuilder, renderScene, context, transmittanceLUT);
 
-		const rg::RGTextureViewHandle multiScatteringLUT = multi_scattering_lut::RenderMultiScatteringLUT(graphBuilder, renderScene, context, transmittanceLUT, multiScatteringLUTRes);
-
-		sky_view::SkyViewParams skyViewParams;
-		skyViewParams.skyViewLUT			= m_skyIlluminanceTextureView;
-		skyViewParams.transmittanceLUT		= transmittanceLUT;
-		skyViewParams.multiScatteringLUT	= multiScatteringLUT;
-
-		sky_view::RenderSkyViewLUT(graphBuilder, renderScene, context, skyViewParams);
+		multi_scattering_lut::RenderMultiScatteringLUT(graphBuilder, renderScene, context, transmittanceLUT, multiScatteringLUT);
 	}
 }
 
 void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
+
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
+
+	sky_view::SkyViewParams skyViewParams;
+	skyViewParams.transmittanceLUT		= graphBuilder.AcquireExternalTextureView(m_atmosphereTransmittanceLUT);
+	skyViewParams.multiScatteringLUT	= graphBuilder.AcquireExternalTextureView(m_multiScatteringLUT);
+	skyViewParams.skyViewLUTResolution	= math::Vector2u(200u, 200u);
+
+	const rg::RGTextureViewHandle skyViewLUT = sky_view::RenderSkyViewLUT(graphBuilder, viewSpec, context, skyViewParams);
+
+	ViewAtmosphereRenderData viewAtmosphere;
+	viewAtmosphere.skyViewLUT = skyViewLUT;
+
+	viewSpec.GetData().Create<ViewAtmosphereRenderData>(viewAtmosphere);
 
 	RenderStageEntries& atmosphereStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ApplyAtmosphere);
 	atmosphereStageEntries.GetOnRenderStage().AddRawMember(this, &AtmosphereRenderSystem::ApplyAtmosphereToView);
@@ -252,9 +261,11 @@ void AtmosphereRenderSystem::ApplyAtmosphereToView(rg::RenderGraphBuilder& graph
 {
 	SPT_PROFILER_FUNCTION();
 
+	const ViewAtmosphereRenderData& viewAtmosphere = viewSpec.GetData().Get<ViewAtmosphereRenderData>();
+
 	AtmosphereSceneSubsystem& atmosphereSubsystem = scene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 
-	apply_atmosphere::ApplyAtmosphereToView(graphBuilder, viewSpec, atmosphereSubsystem.GetAtmosphereContext(), m_skyIlluminanceTextureView);
+	apply_atmosphere::ApplyAtmosphereToView(graphBuilder, viewSpec, atmosphereSubsystem.GetAtmosphereContext(), viewAtmosphere.skyViewLUT);
 }
 
 } // spt::rsc

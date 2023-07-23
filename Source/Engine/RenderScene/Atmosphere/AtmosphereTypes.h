@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "RGResources/RGResourceHandles.h"
 
 
 namespace spt::rdr
@@ -18,7 +19,6 @@ BEGIN_SHADER_STRUCT(AtmosphereParams)
 	
 	SHADER_STRUCT_FIELD(float, groundRadiusMM)
 	SHADER_STRUCT_FIELD(float, atmosphereRadiusMM)
-	SHADER_STRUCT_FIELD(float, viewHeight)
 
 	SHADER_STRUCT_FIELD(math::Vector3f, groundAlbedo)
 
@@ -37,6 +37,12 @@ struct AtmosphereContext
 	lib::SharedPtr<rdr::Buffer> atmosphereParamsBuffer;
 
 	lib::SharedPtr<rdr::Buffer>	directionalLightsBuffer;
+};
+
+
+struct ViewAtmosphereRenderData
+{
+	rg::RGTextureViewHandle skyViewLUT;
 };
 
 } // spt::rsc

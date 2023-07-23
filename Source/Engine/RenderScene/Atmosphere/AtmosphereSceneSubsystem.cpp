@@ -20,7 +20,6 @@ AtmosphereSceneSubsystem::AtmosphereSceneSubsystem(RenderScene& owningScene)
 
 	m_atmosphereParams.groundRadiusMM		= 6.360f;
 	m_atmosphereParams.atmosphereRadiusMM	= 6.460f;
-	m_atmosphereParams.viewHeight			= 200.0f;
 
 	m_atmosphereParams.groundAlbedo			= math::Vector3f::Constant(0.3f);
 

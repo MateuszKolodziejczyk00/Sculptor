@@ -3,6 +3,7 @@
 #include "Utils/Shapes.hlsli"
 
 [[descriptor_set(RenderSkyViewLUTDS, 0)]]
+[[descriptor_set(RenderViewDS, 1)]]
 
 
 struct CS_INPUT
@@ -82,7 +83,7 @@ void RenderSkyViewLUTCS(CS_INPUT input)
             compressedV = Pow2(coord);
         }
 
-        const float3 viewLocation = float3(0.f, 0.f, u_atmosphereParams.groundRadiusMM + u_atmosphereParams.viewHeight * 0.000001f);
+        const float3 viewLocation = GetViewLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
         const float viewHeight = length(viewLocation);
 
         const float3 upVector = viewLocation / viewHeight;

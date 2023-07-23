@@ -57,6 +57,12 @@ ScatteringValues ComputeScatteringValues(in AtmosphereParams atmosphere, float3 
 }
 
 
+float3 GetViewLocationInAtmosphere(in AtmosphereParams atmosphere, in float3 viewLocation)
+{
+    return float3(0.f, 0.f, atmosphere.groundRadiusMM + 0.0002f) + viewLocation * 0.000001f;
+}
+
+
 float2 ComputeAtmosphereLUTsUV(in AtmosphereParams atmosphere, in float3 location, in float3 sunDirection)
 {
     const float height = length(location);
@@ -81,4 +87,30 @@ float3 GetMultiScatteringPsiFromLUT(in AtmosphereParams atmosphere, in Texture2D
 {
     const float2 uv = ComputeAtmosphereLUTsUV(atmosphere, location, sunDirection);
     return multiScatteringLUT.SampleLevel(lutSampler, uv, 0);
+}
+
+
+float3 GetLuminanceFromSkyViewLUT(in AtmosphereParams atmosphere, in Texture2D<float3> skyViewLUT, in SamplerState skyViewSampler, float3 viewLocation, float3 rayDirection)
+{
+    const float viewHeight = length(viewLocation);
+    const float3 upVector = viewLocation / viewHeight;
+
+    const float distToHorizon = sqrt(Pow2(viewHeight) - Pow2(atmosphere.groundRadiusMM));
+    const float horizonAngle = acos(distToHorizon / viewHeight);
+
+    const float altitudeAngle = horizonAngle - acos(dot(upVector, rayDirection));
+
+    const float3 rightVector = cross(upVector, FORWARD_VECTOR);
+    const float3 forwardVector = cross(rightVector, upVector);
+
+    const float3 projectedDir = normalize(rayDirection - upVector * dot(rayDirection, upVector));
+    const float sinTheta = dot(rightVector, projectedDir);
+    const float cosTheta = dot(forwardVector, projectedDir);
+
+    const float azimuthAngle = atan2(sinTheta, cosTheta);
+    
+    const float v = 0.5f + 0.5f * sign(altitudeAngle) * sqrt(abs(altitudeAngle) * 2.f * INV_PI);
+    const float2 uv = float2(0.5f + azimuthAngle * 0.5f * INV_PI, v);
+
+    return skyViewLUT.SampleLevel(skyViewSampler, uv, 0);
 }
