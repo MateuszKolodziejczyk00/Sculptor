@@ -31,7 +31,7 @@ void ApplyAtmosphereCS(CS_INPUT input)
         {
             const float3 rayDirection = ComputeViewRayDirection(u_sceneView, uv);
 
-            const float3 viewLocation = float3(0.f, 0.f, u_atmosphereParams.groundRadiusMM + u_atmosphereParams.viewHeight * 0.000001f);
+            const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
 
             float3 skyLuminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, viewLocation, rayDirection);
 
@@ -45,7 +45,8 @@ void ApplyAtmosphereCS(CS_INPUT input)
                 if (rayLightDot > minRayLightDot)
                 {
                     const float alpha = (rayLightDot - minRayLightDot) / (1.f - minRayLightDot);
-                    skyLuminance += directionalLight.illuminance * alpha;
+                    const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, rayDirection);
+                    skyLuminance += directionalLight.illuminance * alpha * transmittance;
                 }
             }
             

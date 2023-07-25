@@ -63,6 +63,19 @@ Bool AtmosphereSceneSubsystem::IsAtmosphereTextureDirty() const
 void AtmosphereSceneSubsystem::InitializeResources()
 {
 	m_atmosphereContext.atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(sizeof(AtmosphereParams), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
+
+	const auto createLUT = [](const rdr::RendererResourceName& name, math::Vector2u resolution, rhi::EFragmentFormat format)
+	{
+		const rhi::TextureDefinition textureDef(resolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), format);
+		const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(name, textureDef, rhi::EMemoryUsage::GPUOnly);
+
+		rhi::TextureViewDefinition viewDefinition;
+		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
+		return texture->CreateView(name, viewDefinition);
+	};
+
+	m_atmosphereContext.transmittanceLUT	= createLUT(RENDERER_RESOURCE_NAME("Atmosphere Transmittance LUT"), math::Vector2u(256u, 64u), rhi::EFragmentFormat::B10G11R11_U_Float);
+	m_atmosphereContext.multiScatteringLUT	= createLUT(RENDERER_RESOURCE_NAME("Atmosphere Multi Scattering LUT"), math::Vector2u(32u, 32u), rhi::EFragmentFormat::B10G11R11_U_Float);
 }
 
 void AtmosphereSceneSubsystem::UpdateAtmosphereContext()

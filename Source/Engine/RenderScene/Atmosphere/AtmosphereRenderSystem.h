@@ -24,9 +24,6 @@ public:
 private:
 
 	void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
-
-	lib::SharedPtr<rdr::TextureView> m_atmosphereTransmittanceLUT;
-	lib::SharedPtr<rdr::TextureView> m_multiScatteringLUT;
 };
 
 } // spt::rsc

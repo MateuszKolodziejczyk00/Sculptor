@@ -17,6 +17,8 @@
 #include "Materials/MaterialsUnifiedData.h"
 #include "Lights/LightTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
+#include "Atmosphere/AtmosphereTypes.h"
+#include "Atmosphere/AtmosphereSceneSubsystem.h"
 
 namespace spt::rsc
 {
@@ -30,6 +32,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_skyViewLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
 	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_sceneAccelerationStructure)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTInstanceData>),							u_rtInstances)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_traceRaysResultTexture)
@@ -37,7 +41,7 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),							u_ddgiParams)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_probesDataSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 DS_END();
 
 
@@ -238,32 +242,7 @@ DDGIUpdateParameters::DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuU
 
 DDGIRenderSystem::DDGIRenderSystem()
 {
-	m_supportedStages = spt::rsc::ERenderStage::ForwardOpaque;
-}
-
-void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
-{
-	SPT_PROFILER_FUNCTION();
-
-	Super::RenderPerFrame(graphBuilder, renderScene);
-
-	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-
-	if (ddgiSubsystem.IsDDGIEnabled())
-	{
-		if (ddgiSubsystem.RequiresClearingData())
-		{
-			const rg::RGTextureViewHandle probesIlluminanceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIlluminanceTexture());
-
-			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIlluminanceTextureView, rhi::ClearColor());
-
-			ddgiSubsystem.PostClearingData();
-		}
-
-		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
-
-		UpdateProbes(graphBuilder, renderScene, updateParams);
-	}
+	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::ForwardOpaque);
 }
 
 void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -274,19 +253,26 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 
 	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 
-	
-	const EDDDGIProbesDebugMode::Type probesDebug = ddgiSubsystem.GetProbesDebugMode();
-	if (probesDebug != EDDDGIProbesDebugMode::None)
+	if (viewSpec.SupportsStage(ERenderStage::GlobalIllumination))
 	{
-		viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebugProbes);
+		viewSpec.GetRenderStageEntries(ERenderStage::GlobalIllumination).GetOnRenderStage().AddRawMember(this, &DDGIRenderSystem::RenderGlobalIllumination);
+	}
+
+	if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
+	{
+		const EDDDGIProbesDebugMode::Type probesDebug = ddgiSubsystem.GetProbesDebugMode();
+		if (probesDebug != EDDDGIProbesDebugMode::None)
+		{
+			viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebugProbes);
+		}
 	}
 }
 
-void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const DDGIUpdateParameters& updateParams) const
+void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGTextureViewHandle probesTraceResultTexture = TraceRays(graphBuilder, renderScene, updateParams);
+	const rg::RGTextureViewHandle probesTraceResultTexture = TraceRays(graphBuilder, renderScene, viewSpec, updateParams);
 
 	const lib::SharedRef<DDGIBlendProbesDataDS> updateProbesDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIBlendProbesDataDS>(RENDERER_RESOURCE_NAME("DDGIBlendProbesDataDS"));
 	updateProbesDS->u_traceRaysResultTexture	= probesTraceResultTexture;
@@ -316,7 +302,7 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 												 std::move(updateProbesHitDistanceDS)));
 }
 
-rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const DDGIUpdateParameters& updateParams) const
+rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -331,7 +317,15 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
+	const ViewAtmosphereRenderData& viewAtmosphereData = viewSpec.GetData().Get<ViewAtmosphereRenderData>();
+	SPT_CHECK(viewAtmosphereData.skyViewLUT.IsValid());
+
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
+
 	const lib::SharedPtr<DDGITraceRaysDS> traceRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
+	traceRaysDS->u_skyViewLUT					= viewAtmosphereData.skyViewLUT;
+	traceRaysDS->u_atmosphereParams				= atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_sceneAccelerationStructure	= lib::Ref(rayTracingSubsystem.GetSceneTLAS());
 	traceRaysDS->u_rtInstances					= rayTracingSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
 	traceRaysDS->u_traceRaysResultTexture		= probesTraceResultTexture;
@@ -367,6 +361,29 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 												  shadowMapsDS));
 
 	return probesTraceResultTexture;
+}
+
+void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	DDGISceneSubsystem& ddgiSubsystem = scene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
+
+	if (ddgiSubsystem.IsDDGIEnabled())
+	{
+		if (ddgiSubsystem.RequiresClearingData())
+		{
+			const rg::RGTextureViewHandle probesIlluminanceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIlluminanceTexture());
+
+			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIlluminanceTextureView, rhi::ClearColor());
+
+			ddgiSubsystem.PostClearingData();
+		}
+
+		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
+
+		UpdateProbes(graphBuilder, scene, viewSpec, updateParams);
+	}
 }
 
 void DDGIRenderSystem::RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const

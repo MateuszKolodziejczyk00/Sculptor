@@ -7,7 +7,9 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "LightTypes.h"
+#include "Atmosphere/AtmosphereTypes.h"
 #include "RHICore/RHISamplerTypes.h"
 
 
@@ -36,7 +38,10 @@ DS_BEGIN(ViewShadingInputDS, rg::RGDescriptorSetState<ViewShadingInputDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),			u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<4, true>),								u_shadowMasks)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_ambientOcclusionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
 DS_END();
 
 

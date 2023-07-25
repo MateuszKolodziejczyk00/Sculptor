@@ -28,6 +28,8 @@ struct CS_INPUT
 float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 {
     float3 inScattering = 0.f;
+
+    const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, params.worldLocation);
     
     for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
     {
@@ -61,7 +63,9 @@ float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 
             if (!isInShadow)
             {
-                inScattering += illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+                const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
+
+                inScattering += transmittance * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
             }
         }
     }

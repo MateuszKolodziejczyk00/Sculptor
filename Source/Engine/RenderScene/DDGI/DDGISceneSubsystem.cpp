@@ -58,8 +58,6 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	params.probesNumToUpdate	= params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
 	params.rcpRaysNumPerProbe	= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate	= 1.f / static_cast<Real32>(params.probesNumToUpdate);
-	params.skyIlluminance		= math::Vector3f(0.52f, 0.81f, 0.92f) * 20000.f;
-	params.groundIlluminance	= math::Vector3f::Constant(0.1f) * 500.f;
 	params.blendHysteresis		= parameters::ddgiBlendHysteresis;
 
 	const SizeType rotationsNum = m_raysRotationMatrices.size();

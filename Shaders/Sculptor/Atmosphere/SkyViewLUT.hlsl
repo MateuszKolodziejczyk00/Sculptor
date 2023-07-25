@@ -83,7 +83,7 @@ void RenderSkyViewLUTCS(CS_INPUT input)
             compressedV = Pow2(coord);
         }
 
-        const float3 viewLocation = GetViewLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
+        const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
         const float viewHeight = length(viewLocation);
 
         const float3 upVector = viewLocation / viewHeight;

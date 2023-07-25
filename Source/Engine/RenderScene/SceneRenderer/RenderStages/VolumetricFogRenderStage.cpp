@@ -23,9 +23,9 @@ namespace parameters
 {
 
 RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.03f, 0.f, 1.f);
-RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 1.f, 0.f, 1.f);
-RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.55f, 0.f, 1.f);
-RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.85f, 0.f, 1.f);
+RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
+RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.4f, 0.f, 1.f);
+RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
 
 RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 20.f, 1.f, 50.f);
 
@@ -298,6 +298,7 @@ BEGIN_SHADER_STRUCT(ApplyVolumetricFogParams)
 	SHADER_STRUCT_FIELD(Real32, blendPixelsOffset)
 END_SHADER_STRUCT();
 
+
 DS_BEGIN(ApplyVolumetricFogDS, rg::RGDescriptorSetState<ApplyVolumetricFogDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_integratedInScatteringSampler)
@@ -314,6 +315,7 @@ static rdr::PipelineStateID CompileApplyVolumetricFogPipeline()
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ApplyVolumetricFogPipeline"), shader);
 }
+
 
 static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const ViewRenderingSpec& viewSpec, const VolumetricFogParams& fogParams)
 {

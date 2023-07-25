@@ -1,6 +1,4 @@
 #include "ApplyAtmosphereRenderStage.h"
-#include "Atmosphere/AtmosphereSceneSubsystem.h"
-#include "RenderScene.h"
 
 namespace spt::rsc
 {

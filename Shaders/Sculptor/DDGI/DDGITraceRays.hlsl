@@ -1,5 +1,6 @@
 
 #include "SculptorShader.hlsli"
+#include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(DDGITraceRaysDS, 0)]]
@@ -78,13 +79,13 @@ void DDGIProbeRaysRTG()
         
         luminance = CalcReflectedLuminance(surface, -rayDirection);
 
-        const float3 illuminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, payload.normal, -rayDirection);
+        const float3 illuminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, worldLocation, payload.normal, -rayDirection);
 
         luminance += Diffuse_Lambert(illuminance) * min(surface.diffuseColor, 0.9f);
     }
     else if (payload.hitDistance >= -0.0001f)
     {
-        luminance = lerp(u_updateProbesParams.groundIlluminance, u_updateProbesParams.skyIlluminance, Pow2(1.f - rayDirection.z * 0.5f + 0.5f));
+        luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeWorldLocation, rayDirection);
     }
 
     u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);

@@ -18,6 +18,7 @@
 #include "EngineFrame.h"
 #include "ViewShadingInput.h"
 #include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
+#include "Atmosphere/AtmosphereSceneSubsystem.h"
 
 namespace spt::rsc
 {
@@ -321,9 +322,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		shadingInputDS->u_tilesLightsMask	= tilesLightsMask;
 		shadingInputDS->u_clustersRanges	= clustersRanges;
 
-		const ShadingInputData& viewShadingInputData = viewSpec.GetData().Get<ShadingInputData>();
-		shadingInputDS->u_ambientOcclusionTexture = viewShadingInputData.ambientOcclusion;
-
 		lightsRenderingDataPerView.buildZClustersDS				= buildZClusters;
 		lightsRenderingDataPerView.generateLightsDrawCommnadsDS	= generateLightsDrawCommnadsDS;
 		lightsRenderingDataPerView.buildLightTilesDS			= buildLightTilesDS;
@@ -335,6 +333,15 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, renderScene, viewSpec, INOUT shadingInputDS);
 	lightsData.directionalLightsNum = directionalLightsNum;
+
+	const ShadingInputData& viewShadingInputData = viewSpec.GetData().Get<ShadingInputData>();
+	shadingInputDS->u_ambientOcclusionTexture = viewShadingInputData.ambientOcclusion;
+
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
+
+	shadingInputDS->u_transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
+	shadingInputDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	
 	shadingInputDS->u_lightsData = lightsData;
 	

@@ -40,16 +40,16 @@ public:
 	DDGIRenderSystem();
 
 	// Begin RenderSystem overrides
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
 	// End RenderSystem overrides
 
 private:
 
-	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const DDGIUpdateParameters& updateParams) const;
+	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
 
-	rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const DDGIUpdateParameters& updateParams) const;
+	rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
 
+	void RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context) const;
 	void RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
 };
 

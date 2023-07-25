@@ -34,7 +34,7 @@ RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 17.f
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
 RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);
 RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f, 0.f, 1.f);
-RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.85f, 0.f, 1.f);
+RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
 
 
 RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, false);

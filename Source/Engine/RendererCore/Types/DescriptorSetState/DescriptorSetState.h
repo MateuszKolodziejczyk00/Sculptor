@@ -93,9 +93,13 @@ protected:
 	// Helpers =========================================
 	static constexpr lib::String BuildBindingVariableCode(lib::StringView bindingVariable, Uint32 bindingIdx)
 	{
-		SPT_CHECK(bindingIdx <= 9);
-		const char bindingIdxChar = '0' + static_cast<char>(bindingIdx);
-		return lib::String("[[vk::binding(") + bindingIdxChar + ", X)]] " + bindingVariable.data() + ";\n";
+		SPT_CHECK(bindingIdx <= 99);
+		char bindingIdxChars[2];
+		bindingIdxChars[0] = '0' + static_cast<char>(bindingIdx / 10);
+		bindingIdxChars[1] = '0' + static_cast<char>(bindingIdx % 10);
+		return bindingIdxChars[0] == '0'
+			? lib::String("[[vk::binding(") + bindingIdxChars[1] + ", X)]] " + bindingVariable.data() + ";\n"
+			: lib::String("[[vk::binding(") + bindingIdxChars[0] + bindingIdxChars[1] + ", X)]] " + bindingVariable.data() + ";\n";
 	}
 
 private:

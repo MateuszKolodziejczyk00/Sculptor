@@ -9,23 +9,24 @@ namespace spt::rsc
 enum class ERenderStage
 {
 	None							= 0,
-	ShadowMap						= BIT(0),
-	DepthPrepass					= BIT(1),
-	MotionAndDepth					= BIT(2),
-	GenerateGeometryNormals			= BIT(3),
-	AmbientOcclusion				= BIT(4),
-	DirectionalLightsShadowMasks	= BIT(5),
-	ForwardOpaque					= BIT(6),
-	ApplyAtmosphere					= BIT(7),
-	VolumetricFog					= BIT(8),
-	PostProcessPreAA				= BIT(9),
+	GlobalIllumination				= BIT(0),
+	ShadowMap						= BIT(1),
+	DepthPrepass					= BIT(2),
+	MotionAndDepth					= BIT(3),
+	GenerateGeometryNormals			= BIT(4),
+	AmbientOcclusion				= BIT(5),
+	DirectionalLightsShadowMasks	= BIT(6),
+	ForwardOpaque					= BIT(7),
+	ApplyAtmosphere					= BIT(8),
+	VolumetricFog					= BIT(9),
+	PostProcessPreAA				= BIT(10),
 	AntiAliasing					= BIT(10),
 	HDRResolve						= BIT(11),
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
 	DepthPrepassStages				= DepthPrepass | MotionAndDepth,
-	ForwardLightingStages			= GenerateGeometryNormals | AmbientOcclusion | ForwardOpaque | ApplyAtmosphere | VolumetricFog,
+	ForwardLightingStages			= GlobalIllumination | GenerateGeometryNormals | AmbientOcclusion | ForwardOpaque | ApplyAtmosphere | VolumetricFog,
 	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
 
 	// Presets

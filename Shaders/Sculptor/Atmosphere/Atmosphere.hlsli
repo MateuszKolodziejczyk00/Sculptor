@@ -1,3 +1,6 @@
+#ifndef ATMOSPHERE_HLSLI
+#define ATMOSPHERE_HLSLI
+
 #include "Utils/Shapes.hlsli"
 
 [[shader_struct(AtmosphereParams)]]
@@ -57,7 +60,7 @@ ScatteringValues ComputeScatteringValues(in AtmosphereParams atmosphere, float3 
 }
 
 
-float3 GetViewLocationInAtmosphere(in AtmosphereParams atmosphere, in float3 viewLocation)
+float3 GetLocationInAtmosphere(in AtmosphereParams atmosphere, in float3 viewLocation)
 {
     return float3(0.f, 0.f, atmosphere.groundRadiusMM + 0.0002f) + viewLocation * 0.000001f;
 }
@@ -114,3 +117,5 @@ float3 GetLuminanceFromSkyViewLUT(in AtmosphereParams atmosphere, in Texture2D<f
 
     return skyViewLUT.SampleLevel(skyViewSampler, uv, 0);
 }
+
+#endif // ATMOSPHERE_HLSLI

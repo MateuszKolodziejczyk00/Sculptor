@@ -8,6 +8,7 @@
 namespace spt::rdr
 {
 class Buffer;
+class TextureView;
 } // spt::rdr
 
 
@@ -34,9 +35,13 @@ END_SHADER_STRUCT();
 
 struct AtmosphereContext
 {
-	lib::SharedPtr<rdr::Buffer> atmosphereParamsBuffer;
+	lib::SharedPtr<rdr::Buffer>			atmosphereParamsBuffer;
 
-	lib::SharedPtr<rdr::Buffer>	directionalLightsBuffer;
+	lib::SharedPtr<rdr::Buffer>			directionalLightsBuffer;
+
+	lib::SharedPtr<rdr::TextureView>	transmittanceLUT;
+
+	lib::SharedPtr<rdr::TextureView>	multiScatteringLUT;
 };
 
 

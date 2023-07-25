@@ -1,6 +1,7 @@
 #include "Lights/LightsTiles.hlsli"
 #include "Lights/LightingUtils.hlsli"
 #include "Lights/Shadows.hlsli"
+#include "Atmosphere/Atmosphere.hlsli"
 
 
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
@@ -20,6 +21,8 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewLocation)
 
     const float3 viewDir = normalize(viewLocation - surface.location);
 
+    const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, surface.location);
+
     // Directional Lights
 
     for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
@@ -30,6 +33,13 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewLocation)
 
         if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
         {
+            const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
+
+            if (all(transmittance) == 0.f)
+            {
+                continue;
+            }
+
             float visibility = 1.f;
             if(directionalLight.shadowMaskIdx != IDX_NONE_32)
             {

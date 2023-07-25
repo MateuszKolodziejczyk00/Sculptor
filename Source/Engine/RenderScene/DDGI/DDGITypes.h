@@ -47,9 +47,7 @@ BEGIN_SHADER_STRUCT(DDGIUpdateProbesGPUParams)
 	SHADER_STRUCT_FIELD(Uint32,				probesNumToUpdate)
 	SHADER_STRUCT_FIELD(Real32,				rcpRaysNumPerProbe)
 	SHADER_STRUCT_FIELD(Real32,				rcpProbesNumToUpdate)
-	SHADER_STRUCT_FIELD(math::Vector3f,		skyIlluminance)
 	SHADER_STRUCT_FIELD(Real32,				blendHysteresis)
-	SHADER_STRUCT_FIELD(math::Vector3f,		groundIlluminance)
 	SHADER_STRUCT_FIELD(math::Matrix4f,		raysRotation)
 END_SHADER_STRUCT();
 
