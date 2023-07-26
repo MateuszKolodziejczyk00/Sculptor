@@ -37,13 +37,13 @@ RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
 
 
-RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, false);
+RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
 RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.04f, 0.f, 1.f);
-RendererFloatParameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, 0.4f, 0.f, 10.f);
+RendererFloatParameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, 45000.f, 0.f, 1000000.f);
 
-RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 3, 0, 10);
+RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 6, 0, 10);
 RendererFloatParameter lensFlaresGhostsDispersal("Lens Flares Ghosts Dispersal", { "Lens Flares", "Ghosts" }, 0.3f, 0.f, 1.f);
-RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 1.0f, 0.f, 3.f);
+RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 3.0f, 0.f, 10.f);
 RendererFloat3Parameter lensFlaresGhostsDistortion("Lens Flares Ghosts Distortion", { "Lens Flares", "Ghosts" }, math::Vector3f(0.f, 0.03f, 0.076f), 0.f, 1.f);
 
 RendererFloatParameter lensFlaresHaloIntensity("Lens Flares Halo Intensity", { "Lens Flares", "Halo" }, 1.0f, 0.f, 3.f);
