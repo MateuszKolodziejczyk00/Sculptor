@@ -109,23 +109,23 @@ private:
 
 		if (inputAsseblyVerticesIdx.has_value())
 		{
-			result.inputAsseblyVertices = context.pipelineStatistics[inputAsseblyVerticesIdx.value()];
+			result.inputAsseblyVertices = static_cast<Uint32>(context.pipelineStatistics[inputAsseblyVerticesIdx.value()]);
 		}
 		if (inputAsseblyPrimitivesIdx.has_value())
 		{
-			result.inputAsseblyPrimitives = context.pipelineStatistics[inputAsseblyPrimitivesIdx.value()];
+			result.inputAsseblyPrimitives = static_cast<Uint32>(context.pipelineStatistics[inputAsseblyPrimitivesIdx.value()]);
 		}
 		if (vertexShaderInvocationsIdx.has_value())
 		{
-			result.vertexShaderInvocations = context.pipelineStatistics[vertexShaderInvocationsIdx.value()];
+			result.vertexShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[vertexShaderInvocationsIdx.value()]);
 		}
 		if (fragmentShaderInvocationsIdx.has_value())
 		{
-			result.fragmentShaderInvocations = context.pipelineStatistics[fragmentShaderInvocationsIdx.value()];
+			result.fragmentShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[fragmentShaderInvocationsIdx.value()]);
 		}
 		if (computeShaderInvocationsIdx.has_value())
 		{
-			result.computeShaderInvocations = context.pipelineStatistics[computeShaderInvocationsIdx.value()];
+			result.computeShaderInvocations = static_cast<Uint32>(context.pipelineStatistics[computeShaderInvocationsIdx.value()]);
 		}
 	}
 };
