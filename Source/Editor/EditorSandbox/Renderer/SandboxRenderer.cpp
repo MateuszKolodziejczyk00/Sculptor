@@ -128,7 +128,10 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 																									   prf::Profiler::Get().SetGPUFrameStatistics(gpuStatisticsCollector->CollectStatistics());
 																								   }));
 
-	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView);
+	rsc::SceneRendererSettings rendererSettings;
+	rendererSettings.outputFormat = m_window->GetRHI().GetFragmentFormat();
+
+	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(m_sceneUITextureView);
@@ -334,6 +337,7 @@ void SandboxRenderer::InitializeRenderScene()
 			directionalLightData.color			= math::Vector3f(0.9569f, 0.9137f, 0.6078f);
 			directionalLightData.illuminance	= 95000.f;
 			directionalLightData.direction		= math::Vector3f(0.5f, 0.3f, -1.9f).normalized();
+			//directionalLightData.direction		= math::Vector3f(0.5f, 0.3f, 0.1f).normalized();
 			directionalLightData.lightConeAngle = 0.0046f;
 			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
@@ -346,13 +350,14 @@ void SandboxRenderer::UpdateSceneUITextureForView(const rsc::RenderView& renderV
 	if (!m_sceneUITexture || (m_sceneUITexture->GetResolution().head<2>().array() != renderingResolution.head<2>().array()).any())
 	{
 		rhi::TextureDefinition textureDef;
-		textureDef.resolution = math::Vector3u(renderingResolution.x(), renderingResolution.y(), 1);
-		textureDef.usage = lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
+		textureDef.resolution	= renderingResolution;
+		textureDef.usage		= lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
+		textureDef.format		= m_window->GetRHI().GetFragmentFormat();
 
 		rhi::TextureViewDefinition viewDef;
 		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
 
-		m_sceneUITexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("DisplayTexture"), textureDef, rhi::RHIAllocationInfo());
+		m_sceneUITexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("DisplayTexture"), textureDef, rhi::EMemoryUsage::GPUOnly);
 		m_sceneUITextureView = m_sceneUITexture->CreateView(RENDERER_RESOURCE_NAME("DisplayTextureView"), viewDef);
 	}
 }

@@ -626,7 +626,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	rhi::TextureDefinition tonemappedTextureDef;
 	tonemappedTextureDef.resolution = textureRes;
 	tonemappedTextureDef.usage		= lib::Flags(rhi::ETextureUsage::ColorRT, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
-	tonemappedTextureDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
+	tonemappedTextureDef.format		= stageContext.rendererSettings.outputFormat;
 	passData.tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), tonemappedTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 	exposure::ExposureSettings exposureSettings;

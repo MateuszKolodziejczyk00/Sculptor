@@ -36,6 +36,8 @@ public:
 	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>);
 	RHITexture					GetSwapchinImage(Uint32 imageIdx) const;
 
+	rhi::EFragmentFormat		GetFragmentFormat() const;
+
 	Uint32						GetSwapchainImagesNum() const;
 
 	Bool						PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);

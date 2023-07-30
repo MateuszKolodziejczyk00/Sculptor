@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHICore/RHITextureTypes.h"
 
 
 namespace spt::rsc
@@ -32,6 +33,16 @@ enum class ERenderStage
 	// Presets
 	ForwardRendererStages			= DepthPrepassStages | ForwardLightingStages | PostProcessStages,
 	ShadowMapRendererStages			= ShadowMap,
+};
+
+
+struct SceneRendererSettings
+{
+	SceneRendererSettings()
+		: outputFormat(rhi::EFragmentFormat::None)
+	{ }
+
+	rhi::EFragmentFormat outputFormat;
 };
 
 } // spt::rsc

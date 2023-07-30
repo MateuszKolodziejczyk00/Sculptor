@@ -241,10 +241,12 @@ private:
 
 struct RenderStageExecutionContext
 {
-	explicit RenderStageExecutionContext(ERenderStage inStage)
-		: stage(inStage)
+	explicit RenderStageExecutionContext(const SceneRendererSettings& inRendererSettings, ERenderStage inStage)
+		: rendererSettings(inRendererSettings)
+		, stage(inStage)
 	{ }
 
+	const SceneRendererSettings& rendererSettings;
 	ERenderStage stage;
 };
 

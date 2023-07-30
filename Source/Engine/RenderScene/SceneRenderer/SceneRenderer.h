@@ -19,6 +19,7 @@ namespace spt::rsc
 class RenderScene;
 class RenderView;
 class ViewRenderingSpec;
+struct SceneRendererSettings;
 
 
 class RENDER_SCENE_API SceneRenderer
@@ -27,7 +28,7 @@ public:
 
 	SceneRenderer();
 
-	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view);
+	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, const SceneRendererSettings& settings);
 
 private:
 

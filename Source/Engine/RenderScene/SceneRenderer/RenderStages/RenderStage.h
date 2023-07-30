@@ -33,20 +33,20 @@ public:
 
 	static constexpr ERenderStage GetStageEnum() { return stage; }
 
-	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+	void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SceneRendererSettings& settings);
 
 	RenderStageEntries& GetStageEntries(ViewRenderingSpec& viewSpec);
 };
 
 
 template<typename TRenderStageType, ERenderStage stage>
-inline void RenderStage<TRenderStageType, stage>::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+inline void RenderStage<TRenderStageType, stage>::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
 	RenderStageEntries& viewStageEntries = GetStageEntries(viewSpec);
 
-	RenderStageExecutionContext stageContext(stage);
+	RenderStageExecutionContext stageContext(settings, stage);
 
 	viewStageEntries.GetPreRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
 

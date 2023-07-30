@@ -116,11 +116,13 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	const VkFormat requestSurfaceImageFormats[] =
 	{
+		VK_FORMAT_A2B10G10R10_UNORM_PACK32,
 		VK_FORMAT_B8G8R8A8_UNORM,
 		VK_FORMAT_R8G8B8A8_UNORM,
 		VK_FORMAT_B8G8R8_UNORM,
 		VK_FORMAT_R8G8B8_UNORM
 	};
+
 	const VkColorSpaceKHR requestedColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 	m_surfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(physicalDeviceHandle, m_surface, requestSurfaceImageFormats, SPT_ARRAY_SIZE(requestSurfaceImageFormats), requestedColorSpace);
 
@@ -178,6 +180,13 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 	texture.InitializeRHI(m_swapchainTextureDef, m_swapchainImages[imageIdx], rhi::EMemoryUsage::GPUOnly);
 
 	return texture;
+}
+
+rhi::EFragmentFormat RHIWindow::GetFragmentFormat() const
+{
+	SPT_CHECK(IsValid());
+
+	return m_swapchainTextureDef.format;
 }
 
 Uint32 RHIWindow::GetSwapchainImagesNum() const

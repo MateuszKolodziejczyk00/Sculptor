@@ -30,7 +30,7 @@ namespace renderer_utils
 {
 
 template<typename TRenderStage>
-void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec*>& renderViewsSpecs)
+void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, lib::DynamicArray<ViewRenderingSpec*>& renderViewsSpecs, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -40,7 +40,7 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 	{
 		if (viewSpec->SupportsStage(TRenderStage::GetStageEnum()))
 		{
-			stageInstance.Render(graphBuilder, scene, *viewSpec);
+			stageInstance.Render(graphBuilder, scene, *viewSpec, settings);
 		}
 	}
 }
@@ -53,7 +53,7 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 SceneRenderer::SceneRenderer()
 { }
 
-rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view)
+rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -90,31 +90,31 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
 
-	renderer_utils::ProcessRenderStage<GlobalIlluminationRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<GlobalIlluminationRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	renderer_utils::ProcessRenderStage<ShadowMapRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<ShadowMapRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<DepthPrepassRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<DepthPrepassRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<MotionAndDepthRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<MotionAndDepthRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<GenerateGeometryNormalsRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<GenerateGeometryNormalsRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<AmbientOcclusionRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<AmbientOcclusionRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	renderer_utils::ProcessRenderStage<DirectionalLightShadowMasksRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<DirectionalLightShadowMasksRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<ApplyAtmosphereRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<ApplyAtmosphereRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
-	renderer_utils::ProcessRenderStage<VolumetricFogRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<VolumetricFogRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	renderer_utils::ProcessRenderStage<PostProcessPreAARenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<PostProcessPreAARenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	renderer_utils::ProcessRenderStage<AntiAliasingRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<AntiAliasingRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs);
+	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
 	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
 	{
