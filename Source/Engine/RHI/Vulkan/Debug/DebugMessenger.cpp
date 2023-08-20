@@ -40,7 +40,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverit
 		SPT_CHECK_NO_ENTRY();
 	}
 
-	return VK_FALSE;
+return VK_FALSE;
 }
 
 }

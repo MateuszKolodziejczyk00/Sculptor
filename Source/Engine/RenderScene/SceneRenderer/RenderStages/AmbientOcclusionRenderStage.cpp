@@ -159,14 +159,14 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 
 	trace_rays::TraceAmbientOcclusionRays(graphBuilder, context, viewAORenderingData);
 
-	ao_denoiser::DenoiserParams denoiserParams(renderView);
+	ao_denoiser::AODenoiserParams denoiserParams(renderView);
 	denoiserParams.historyDepthTexture		= context.historyDepthTexture;
 	denoiserParams.currentDepthTexture		= context.depthTexture;
 	denoiserParams.motionTexture			= context.motionTexture;
 	denoiserParams.geometryNormalsTexture	= context.geometryNormalsTexture;
-	denoiserParams.currentAOTexture			= viewAORenderingData.currentAOTexture;
-	denoiserParams.historyAOTexture			= viewAORenderingData.historyAOTexture;
-	denoiserParams.hasValidHistory			= hasValidHistory;
+	denoiserParams.currentTexture			= viewAORenderingData.currentAOTexture;
+	denoiserParams.historyTexture			= viewAORenderingData.historyAOTexture;
+	denoiserParams.enableTemporalFilter		= hasValidHistory;
 
 	ao_denoiser::Denoise(graphBuilder, denoiserParams);
 

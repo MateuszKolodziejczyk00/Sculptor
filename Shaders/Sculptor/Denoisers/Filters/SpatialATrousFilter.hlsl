@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-[[descriptor_set(AOSpatialFilterDS, 0)]]
+[[descriptor_set(SpatialATrousFilterDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
 
 
@@ -29,12 +29,12 @@ float WorldLocationWeight(float3 centerWS, float3 sampleWS)
 
 
 [numthreads(8, 8, 1)]
-void AOSpatialFilterCS(CS_INPUT input)
+void SpatialATrousFilterCS(CS_INPUT input)
 {
     const uint2 pixel = input.globalID.xy;
     
     uint2 outputRes;
-    u_outputAOTexture.GetDimensions(outputRes.x, outputRes.y);
+    u_outputTexture.GetDimensions(outputRes.x, outputRes.y);
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
@@ -49,7 +49,7 @@ void AOSpatialFilterCS(CS_INPUT input)
 
         const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
-        float aoSum = 0.0f;
+        float4 valueSum = 0.0f;
         float weightSum = 0.0f;
         for (int x = -2; x <= 2; ++x)
         {
@@ -71,12 +71,12 @@ void AOSpatialFilterCS(CS_INPUT input)
                 
                 const float weight = w * wn * wl;
 
-                aoSum += u_inputAOTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f) * weight;
+                valueSum += u_inputTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f) * weight;
                 weightSum += weight;
             }
         }
 
-        const float ao = aoSum / weightSum;
-        u_outputAOTexture[pixel] = ao;
+        const float4 output = valueSum / weightSum;
+        u_outputTexture[pixel] = output;
     }
 }

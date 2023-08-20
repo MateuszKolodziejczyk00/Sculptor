@@ -437,6 +437,7 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 			SPT_CHECK(texture.GetDefinition().arrayLayers > range.baseArrayLayer);
 			return texture.GetDefinition().arrayLayers - range.baseArrayLayer;
 		}
+		else
 		{
 			const Uint32 arrayLayersEnd = range.baseArrayLayer + range.arrayLayersNum;
 			SPT_CHECK(texture.GetDefinition().arrayLayers >= arrayLayersEnd); // check if array layers range is in texture range

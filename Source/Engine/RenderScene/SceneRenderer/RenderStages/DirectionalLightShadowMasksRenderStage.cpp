@@ -16,6 +16,7 @@
 #include "Lights/LightTypes.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "Denoisers/DirectionalLightShadowsDenoiser.h"
 
 namespace spt::rsc
 {
@@ -26,11 +27,6 @@ namespace params
 RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows", { "Lighting", "Shadows", "Directional"}, true);
 RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
-RendererBoolParameter directionalLightAccumulateShadows("Accumulate Shadows", { "Lighting", "Shadows", "Directional", "Accumulation"}, true);
-RendererFloatParameter directionalLightAccumulationMaxDepthDiff("Max Depth Diff", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.18f, 0.f, 1.f);
-RendererFloatParameter directionalLightMinAccumulationAlpha("Min Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.1f, 0.f, 1.f);
-RendererFloatParameter directionalLightMaxAccumulationAlpha("Max Accumulation Alpha", { "Lighting", "Shadows", "Directional", "Accumulation"}, 0.9f, 0.f, 1.f);
-RendererBoolParameter directionalLightApplyShadowsBlur("Shadows Blur", { "Lighting", "Shadows", "Directional"}, true);
 
 } // params
 
@@ -56,69 +52,18 @@ DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLight
 DS_END();
 
 
-BEGIN_SHADER_STRUCT(DirShadowsAccumulationParams)
-	SHADER_STRUCT_FIELD(Real32, maxDepthDifference)
-	SHADER_STRUCT_FIELD(Real32, minExponentialAverageAlpha)
-	SHADER_STRUCT_FIELD(Real32, maxExponentialAverageAlpha)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(DirShadowsAccumulationMasksDS, rg::RGDescriptorSetState<DirShadowsAccumulationMasksDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_prevShadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_shadowMaskSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_shadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_prevDepth)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_prevDepthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DirShadowsAccumulationParams>),		u_params)
-DS_END();
-
-
-DS_BEGIN(ShadowsBilateralBlurDS, rg::RGDescriptorSetState<ShadowsBilateralBlurDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depth)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
-DS_END()
-
-
 static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
 	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Directional Lights Shadows Ray Tracing Pipeline"), rtShaders, pipelineDefinition);
-}
-
-static rdr::PipelineStateID CreateAccumulateShadowsPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/DirectionalLightsShadowsAccumulate.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AccumulateShadowsCS"));
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AccumulateShadowsPipeline"), shader);
-}
-
-static rdr::PipelineStateID CreateeShadowsBilateralBlurPipeline(Bool isHorizontal)
-{
-	sc::ShaderCompilationSettings compilationSettings;
-	if (isHorizontal)
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "1"));
-	}
-	else
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("IS_HORIZONTAL", "0"));
-	}
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalShadows/ShadowsBilateralBlur.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ShadowsBilateralBlurCS"), compilationSettings);
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ShadowsBilateralBlurPipeline"), shader);
 }
 
 static ViewShadowMasksDataComponent& GetViewShadowMasksDataComponent(RenderSceneEntityHandle viewEntity)
@@ -129,6 +74,21 @@ static ViewShadowMasksDataComponent& GetViewShadowMasksDataComponent(RenderScene
 		viewShadowMasks = &viewEntity.emplace<ViewShadowMasksDataComponent>();
 	}
 	return *viewShadowMasks;
+}
+
+static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::RendererResourceName& name, const RenderView& renderView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	rhi::TextureDefinition shadowMaskDef;
+	shadowMaskDef.resolution = renderView.GetRenderingResolution3D();
+	shadowMaskDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource); // TODO
+	shadowMaskDef.format = rhi::EFragmentFormat::R8_UN_Float;
+	lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureViewDefinition shadowMaskViewDef;
+	shadowMaskViewDef.subresourceRange = rhi::TextureSubresourceRange(spt::rhi::ETextureAspect::Color);
+	return shadowMaskTexture->CreateView(name, shadowMaskViewDef);
 }
 
 static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -142,7 +102,7 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 
 	const math::Vector2u viewRenderingRes = renderView.GetRenderingResolution();
 
-	auto& registry = renderScene.GetRegistry();
+	const rsc::RenderSceneRegistry& registry = renderScene.GetRegistry();
 
 	const auto directionalLights = registry.view<DirectionalLightData>();
 
@@ -170,22 +130,15 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 			const RenderSceneEntity lightEntity = RenderSceneEntity(entityID);
 
 			DirectionalLightShadowMasks& shadowMasks = viewShadowMasks.directionalLightShadowMasks[lightEntity];
-			shadowMasks.AdvanceFrame();
-			lib::SharedPtr<rdr::TextureView>& currentShadowMask = shadowMasks.GetCurrentFrameShadowMask();
 
-			const bool isShadowMaskDirty = !currentShadowMask || currentShadowMask->GetResolution2D() != viewRenderingRes;
+			const bool isShadowMaskDirty = !shadowMasks.currentShadowMask || shadowMasks.currentShadowMask->GetResolution2D() != viewRenderingRes;
 			if (isShadowMaskDirty)
 			{
-				rhi::TextureDefinition shadowMaskDef;
-				shadowMaskDef.resolution	= renderView.GetRenderingResolution3D();
-				shadowMaskDef.usage			= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-				shadowMaskDef.format		= rhi::EFragmentFormat::R8_UN_Float;
-				lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
-
-				rhi::TextureViewDefinition shadowMaskViewDef;
-				shadowMaskViewDef.subresourceRange = rhi::TextureSubresourceRange(spt::rhi::ETextureAspect::Color);
-				currentShadowMask = shadowMaskTexture->CreateView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), shadowMaskViewDef);
+				shadowMasks.currentShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), renderView);
+				shadowMasks.historyShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask History View"), renderView);
 			}
+
+			shadowMasks.hasValidHistory = !isShadowMaskDirty;
 		}
 	}
 
@@ -207,6 +160,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 
 	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
+	const MotionData& motionData				= viewSpec.GetData().Get<MotionData>();
+	const ShadingInputData& shadingInputData	= viewSpec.GetData().Get<ShadingInputData>();
 	
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
@@ -225,8 +180,6 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	{
 		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
 
-		const lib::SharedPtr<rdr::TextureView>& shadowMask = shadowsData.GetCurrentFrameShadowMask();
-
 		DirectionalLightShadowUpdateParams updateParams;
 		updateParams.lightDirection		= directionalLight.direction;
 		updateParams.minTraceDistance	= params::directionalLightMinShadowTraceDist;
@@ -236,7 +189,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		updateParams.enableShadows		= params::directionalLightEnableShadows;
 
 		const lib::SharedRef<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = rdr::ResourcesManager::CreateDescriptorSetState<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
-		directionalLightShadowMaskDS->u_shadowMask	= shadowMask;
+		directionalLightShadowMaskDS->u_shadowMask	= shadowsData.currentShadowMask;
 		directionalLightShadowMaskDS->u_params		= updateParams;
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
@@ -245,94 +198,22 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDS()));
 	}
 
-	if (params::directionalLightApplyShadowsBlur)
+	// Denoise shadow masks
+
+	for (const auto& [entity, directionalLight] : directionalLightsView.each())
 	{
-		// Bilateral blur
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
-		{
-			const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
 
-			const lib::SharedPtr<rdr::TextureView>& shadowMask		= shadowsData.GetCurrentFrameShadowMask();
-			const lib::SharedRef<rdr::Texture>& shadowMaskTexture	= shadowMask->GetTexture();
+		dir_shadows_denoiser::DirShadowsDenoiserParams denoiserParams(renderView);
+		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepth;
+		denoiserParams.currentDepthTexture		= depthPrepassData.depth;
+		denoiserParams.motionTexture			= motionData.motion;
+		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormals;
+		denoiserParams.currentTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.currentShadowMask);
+		denoiserParams.historyTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.historyShadowMask);
+		denoiserParams.enableTemporalFilter		= shadowsData.hasValidHistory;
 
-			rhi::TextureDefinition temporaryTextureDef;
-			temporaryTextureDef.resolution	= shadowMaskTexture->GetResolution();
-			temporaryTextureDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-			temporaryTextureDef.format		= shadowMaskTexture->GetRHI().GetDefinition().format;
-			const rg::RGTextureViewHandle blurTemporaryTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Shadow Mask Blur Temporary Texture"), temporaryTextureDef, rhi::EMemoryUsage::GPUOnly);
-
-			{
-
-				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralHorizontalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Horizontal Bilateral Blur DS"));
-				shadowsBilateralHorizontalBlurDS->u_inputTexture = shadowMask;
-				shadowsBilateralHorizontalBlurDS->u_outputTexture = blurTemporaryTexture;
-				shadowsBilateralHorizontalBlurDS->u_depth = depthPrepassData.depth;
-			
-				static const rdr::PipelineStateID shadowsHorizontalBilateralBlurPipeline = CreateeShadowsBilateralBlurPipeline(true);
-
-				const math::Vector3u horizontalBlurDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(128, 1, 1));
-
-				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Horizontal Bilateral Blur"),
-									  shadowsHorizontalBilateralBlurPipeline,
-									  horizontalBlurDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralHorizontalBlurDS, renderView.GetRenderViewDS()));
-			}
-
-			{
-				const lib::SharedRef<ShadowsBilateralBlurDS> shadowsBilateralVerticalBlurDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowsBilateralBlurDS>(RENDERER_RESOURCE_NAME("Shadows Vertical Bilateral Blur DS"));
-				shadowsBilateralVerticalBlurDS->u_inputTexture = blurTemporaryTexture;
-				shadowsBilateralVerticalBlurDS->u_outputTexture = shadowMask;
-				shadowsBilateralVerticalBlurDS->u_depth = depthPrepassData.depth;
-			
-				static const rdr::PipelineStateID shadowsVerticalBilateralBlurPipeline = CreateeShadowsBilateralBlurPipeline(false);
-
-				const math::Vector3u verticalBlurDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.y(), renderingRes.x(), 1), math::Vector3u(128, 1, 1));
-
-				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Vertical Bilateral Blur"),
-									  shadowsVerticalBilateralBlurPipeline,
-									  verticalBlurDispatchGroups,
-									  rg::BindDescriptorSets(shadowsBilateralVerticalBlurDS, renderView.GetRenderViewDS()));
-			}
-		}
-	}
-	
-	// Temporal accumulate shadow data
-
-	if (depthPrepassData.prevFrameDepth.IsValid() && params::directionalLightAccumulateShadows)
-	{
-		const math::Vector3u accumulationDispatchGroups = math::Utils::DivideCeil(math::Vector3u(renderingRes.x(), renderingRes.y(), 1), math::Vector3u(8, 8, 1));
-
-		static const rdr::PipelineStateID accumulateShadowsPipeline = CreateAccumulateShadowsPipeline();
-
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
-		{
-			const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
-
-			const lib::SharedPtr<rdr::TextureView>& prevShadowMask	= shadowsData.GetPreviousFrameShadowMask();
-			const lib::SharedPtr<rdr::TextureView>& shadowMask		= shadowsData.GetCurrentFrameShadowMask();
-
-			const Bool canAccumulateShadows = !!prevShadowMask;
-
-			if (canAccumulateShadows)
-			{
-				DirShadowsAccumulationParams accumulationParams;
-				accumulationParams.maxDepthDifference			= params::directionalLightAccumulationMaxDepthDiff;
-				accumulationParams.minExponentialAverageAlpha	= params::directionalLightMinAccumulationAlpha;
-				accumulationParams.maxExponentialAverageAlpha	= params::directionalLightMaxAccumulationAlpha;
-
-				const lib::SharedRef<DirShadowsAccumulationMasksDS> dirShadowsAccumulationMasksDS = rdr::ResourcesManager::CreateDescriptorSetState<DirShadowsAccumulationMasksDS>(RENDERER_RESOURCE_NAME("Dir Shadows Accumulation Masks DS"));
-				dirShadowsAccumulationMasksDS->u_prevShadowMask = prevShadowMask;
-				dirShadowsAccumulationMasksDS->u_depth = depthPrepassData.depth;
-				dirShadowsAccumulationMasksDS->u_prevDepth = depthPrepassData.prevFrameDepth;
-				dirShadowsAccumulationMasksDS->u_shadowMask = shadowMask;
-				dirShadowsAccumulationMasksDS->u_params = accumulationParams;
-
-				graphBuilder.Dispatch(RG_DEBUG_NAME("Directional Light Accumulate Shadows"),
-									  accumulateShadowsPipeline,
-									  accumulationDispatchGroups,
-									  rg::BindDescriptorSets(renderView.GetRenderViewDS(), dirShadowsAccumulationMasksDS));
-			}
-		}
+		dir_shadows_denoiser::Denoise(graphBuilder, denoiserParams);
 	}
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);

@@ -23,23 +23,23 @@ namespace spt::rsc
 class RenderView;
 
 
-namespace ao_denoiser
+namespace dir_shadows_denoiser
 {
 
-struct AODenoiserParams : public denoising::DenoiserBaseParams
+struct DirShadowsDenoiserParams : public denoising::DenoiserBaseParams
 {
-	AODenoiserParams(const RenderView& inRenderView)
+	DirShadowsDenoiserParams(const RenderView& inRenderView)
 		: denoising::DenoiserBaseParams(inRenderView)
 		, enableTemporalFilter(false)
 	{
 	}
 
-	Bool enableTemporalFilter;
+	Bool					enableTemporalFilter;
 };
 
 
-RENDER_SCENE_API void Denoise(rg::RenderGraphBuilder& graphBuilder, const AODenoiserParams& params);
+RENDER_SCENE_API void Denoise(rg::RenderGraphBuilder& graphBuilder, const DirShadowsDenoiserParams& params);
 
-} // ao_denoiser
+} // dir_shadows_denoiser
 
 } // spt::rsc

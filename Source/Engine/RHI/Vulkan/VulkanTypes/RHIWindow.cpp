@@ -304,7 +304,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	swapchainInfo.compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapchainInfo.presentMode				= presentMode;
 	swapchainInfo.clipped					= VK_TRUE;
-	swapchainInfo.oldSwapchain				= newSurface == m_surface ? oldSwapchain : VK_NULL_HANDLE;
+	swapchainInfo.oldSwapchain				= VK_NULL_HANDLE;
 
 	m_swapchainTextureDef.resolution	= math::Vector3u(framebufferSize.x(), framebufferSize.y(), 1);
 	m_swapchainTextureDef.usage			= rhiSwapchainTextureUsage;

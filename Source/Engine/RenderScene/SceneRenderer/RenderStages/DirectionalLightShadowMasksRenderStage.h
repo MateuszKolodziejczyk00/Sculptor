@@ -15,36 +15,14 @@ namespace spt::rsc
 
 struct DirectionalLightShadowMasks
 {
-public:
-
 	DirectionalLightShadowMasks()
-		: currentFrameShadowMaskIdx(0)
+		: hasValidHistory(false)
 	{ }
 
-	void AdvanceFrame()
-	{
-		currentFrameShadowMaskIdx = currentFrameShadowMaskIdx == 0 ? 1 : 0;
-	}
-
-	lib::SharedPtr<rdr::TextureView>& GetCurrentFrameShadowMask()
-	{
-		return shadowMasks[currentFrameShadowMaskIdx];
-	}
-
-	const lib::SharedPtr<rdr::TextureView>& GetCurrentFrameShadowMask() const
-	{
-		return shadowMasks[currentFrameShadowMaskIdx];
-	}
-
-	const lib::SharedPtr<rdr::TextureView>& GetPreviousFrameShadowMask() const
-	{
-		return shadowMasks[currentFrameShadowMaskIdx == 0 ? 1 : 0];
-	}
-
-private:
-
-	lib::SharedPtr<rdr::TextureView> shadowMasks[2];
-	Uint32 currentFrameShadowMaskIdx;
+	lib::SharedPtr<rdr::TextureView> currentShadowMask;
+	lib::SharedPtr<rdr::TextureView> historyShadowMask;
+	
+	Bool hasValidHistory;
 };
 
 

@@ -225,7 +225,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 				const auto lightShadowMask = viewShadowMasks->directionalLightShadowMasks.find(entity);
 				if (lightShadowMask != std::cend(viewShadowMasks->directionalLightShadowMasks))
 				{
-					const Uint32 shadowMaskIdx = shadingInputDS->u_shadowMasks.BindTexture(lib::Ref(lightShadowMask->second.GetCurrentFrameShadowMask()));
+					const Uint32 shadowMaskIdx = shadingInputDS->u_shadowMasks.BindTexture(lib::Ref(lightShadowMask->second.currentShadowMask));
 					lightGPUData.shadowMaskIdx = shadowMaskIdx;
 				}
 			}
