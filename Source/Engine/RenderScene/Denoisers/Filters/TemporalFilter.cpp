@@ -17,6 +17,7 @@ DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_historyDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_motionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 DS_END();
 
@@ -37,11 +38,12 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	const math::Vector3u resolution = params.currentTexture->GetResolution();
 
 	lib::SharedPtr<TemporalFilterDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
-	ds->u_currentTexture		= params.currentTexture;
-	ds->u_historyTexture		= params.historyTexture;
-	ds->u_historyDepthTexture	= params.historyDepthTexture;
-	ds->u_depthTexture			= params.currentDepthTexture;
-	ds->u_motionTexture			= params.motionTexture;
+	ds->u_currentTexture			= params.currentTexture;
+	ds->u_historyTexture			= params.historyTexture;
+	ds->u_historyDepthTexture		= params.historyDepthTexture;
+	ds->u_depthTexture				= params.currentDepthTexture;
+	ds->u_motionTexture				= params.motionTexture;
+	ds->u_geometryNormalsTexture	= params.geometryNormalsTexture;
 
 	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
 

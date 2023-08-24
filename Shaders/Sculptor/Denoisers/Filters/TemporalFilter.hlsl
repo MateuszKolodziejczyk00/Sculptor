@@ -33,17 +33,22 @@ void TemporalFilterCS(CS_INPUT input)
             const float currentDepth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.f);
             const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
             const float3 currentSampleWS = NDCToWorldSpace(currentNDC, u_sceneView);
+        
+            const float3 currentSampleNormal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0.0f).xyz * 2.f - 1.f;
 
             float2 closestHistorySampleUV = historyUV;
 
             const float historyDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
             const float3 historyNDC = float3(historyUV * 2.f - 1.f, historyDepth);
             const float3 historySampleWS = NDCToWorldSpaceNoJitter(historyNDC, u_prevFrameSceneView);
+            
+            const float3 historySampleNormal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, historyUV, 0.0f).xyz * 2.f - 1.f;
 
             const float3 offset = historySampleWS - currentSampleWS;
             
             const float maxOffset = 0.1f;
-            if (dot(offset, offset) < Pow2(maxOffset))
+            const float minNormalDiffCos = 0.98f;
+            if (dot(offset, offset) < Pow2(maxOffset) && dot(currentSampleNormal, historySampleNormal) > minNormalDiffCos)
             {
                 const float4 currentValue = u_currentTexture[pixel];
                 const float4 historyValue = u_historyTexture.SampleLevel(u_nearestSampler, historyUV, 0.05f);
@@ -51,7 +56,7 @@ void TemporalFilterCS(CS_INPUT input)
                 float4 newValue = lerp(historyValue, currentValue, 0.1f);
 
                 [unroll]
-                for(int i = 0; i < 3; ++i)
+                for (int i = 0; i < 3; ++i)
                 {
                     if (abs(newValue[i] - currentValue[i]) < 0.03f)
                     {

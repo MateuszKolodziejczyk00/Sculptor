@@ -13,7 +13,9 @@ namespace spt::rsc
 RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 {
 	RenderTargetFormatsDef formats;
-	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::B10G11R11_U_Float);
+	//formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::B10G11R11_U_Float);
+	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_S_Float);
+
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
 #if RENDERER_DEBUG
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
@@ -43,7 +45,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	rhi::TextureDefinition luminanceTextureDef;
 	luminanceTextureDef.resolution	= texturesRes;
 	luminanceTextureDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
-	luminanceTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
+	luminanceTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float;
 	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), luminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 	
 	rhi::TextureDefinition normalsTextureDef;
