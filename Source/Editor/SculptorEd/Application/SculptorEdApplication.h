@@ -35,6 +35,7 @@ private:
 
 	void RenderFrame(SandboxRenderer& renderer);
 
+	void PreExecuteFrame();
 	void ExecuteSimulationFrame(engn::FrameContext& context);
 	void ExecuteRenderingFrame(engn::FrameContext& context);
 

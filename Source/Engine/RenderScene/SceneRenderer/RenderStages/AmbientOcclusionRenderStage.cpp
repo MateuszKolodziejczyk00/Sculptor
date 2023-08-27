@@ -115,7 +115,10 @@ static void TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, cons
 static lib::SharedRef<rdr::TextureView> CreateAOTexture(const math::Vector3u& renderingResolution)
 {
 	const rhi::EFragmentFormat format = rhi::EFragmentFormat::R16_UN_Float;
-	const rhi::TextureDefinition textureDefinition(renderingResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), format);
+	rhi::TextureDefinition textureDefinition(renderingResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), format);
+#if !SPT_RELEASE
+	lib::AddFlag(textureDefinition.usage, rhi::ETextureUsage::TransferSource);
+#endif // SPT_RELEASE
 	const lib::SharedRef<rdr::Texture> texture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("AO Temporal Texture"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 
 	rhi::TextureViewDefinition viewDefinition;
@@ -160,6 +163,7 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	trace_rays::TraceAmbientOcclusionRays(graphBuilder, context, viewAORenderingData);
 
 	ao_denoiser::AODenoiserParams denoiserParams(renderView);
+		denoiserParams.name					= RG_DEBUG_NAME("RTAO");
 	denoiserParams.historyDepthTexture		= context.historyDepthTexture;
 	denoiserParams.currentDepthTexture		= context.depthTexture;
 	denoiserParams.motionTexture			= context.motionTexture;

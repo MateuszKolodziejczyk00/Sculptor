@@ -69,14 +69,14 @@ const lib::SharedRef<Texture>& TextureView::GetTexture() const
 	return m_texture;
 }
 
-const math::Vector3u& TextureView::GetResolution() const
+math::Vector3u TextureView::GetResolution() const
 {
-	return m_texture->GetResolution();
+	return GetRHI().GetResolution();
 }
 
 math::Vector2u TextureView::GetResolution2D() const
 {
-	return m_texture->GetResolution2D();
+	return GetResolution().head<2>();
 }
 
 } // spt::rdr

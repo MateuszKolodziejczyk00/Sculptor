@@ -27,6 +27,8 @@ public:
 
 	const math::Vector3u&			GetResolution() const;
 	math::Vector3u					GetMipResolution(Uint32 mipLevel) const;
+
+	rhi::ETextureType				GetType() const;
 	
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
@@ -51,6 +53,8 @@ private:
 	rhi::TextureDefinition			m_definition;
 	rhi::RHIAllocationInfo			m_allocationInfo;
 
+	rhi::ETextureType				m_type;
+
 	VkImage							m_imageHandle;
 
 	VmaAllocation					m_allocation;
@@ -74,6 +78,9 @@ public:
 
 	const RHITexture*					GetTexture() const;
 
+	math::Vector3u						GetResolution() const;
+	math::Vector2u						GetResolution2D() const;
+
 	const rhi::TextureSubresourceRange&	GetSubresourceRange() const;
 
 	void								SetName(const lib::HashedString& name);
@@ -90,4 +97,4 @@ private:
 	DebugName							m_name;
 };
 
-}
+} // spt::vulkan

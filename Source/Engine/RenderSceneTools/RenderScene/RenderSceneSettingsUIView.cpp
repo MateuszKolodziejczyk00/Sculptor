@@ -3,6 +3,7 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
+#include "ImGui/DockBuilder.h"
 
 namespace spt::rsc
 {
@@ -10,14 +11,22 @@ namespace spt::rsc
 RenderSceneSettingsUIView::RenderSceneSettingsUIView(const scui::ViewDefinition& definition, const lib::SharedPtr<RenderScene>& renderScene)
 	: Super(definition)
 	, m_renderScene(renderScene)
+	, m_renderSceneSettingsName(CreateUniqueName("Render Scene"))
 { }
+
+void RenderSceneSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+{
+	Super::BuildDefaultLayout(dockspaceID);
+
+	ui::Build(dockspaceID, ui::DockWindow(m_renderSceneSettingsName));
+}
 
 void RenderSceneSettingsUIView::DrawUI()
 {
 	SPT_PROFILER_FUNCTION();
 	
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
-	ImGui::Begin("Render Scene");
+	ImGui::Begin(m_renderSceneSettingsName.GetData());
 
 	Super::DrawUI();
 

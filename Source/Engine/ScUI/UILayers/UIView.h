@@ -10,13 +10,18 @@ namespace spt::scui
 
 struct ViewDefinition
 {
-	ViewDefinition() = default;
+	ViewDefinition()
+		: minimumSize(0.0f, 0.0f)
+	{ }
 
 	explicit ViewDefinition(const lib::HashedString& inName)
 		: name(inName)
+		, minimumSize(0.0f, 0.0f)
 	{ }
 
 	lib::HashedString name;
+
+	math::Vector2u minimumSize;
 };
 
 
@@ -32,19 +37,24 @@ public:
 
 	const lib::HashedString& GetName() const;
 
-	void AddChild(lib::SharedRef<UIView> child);
+	const lib::HashedString& AddChild(lib::SharedRef<UIView> child);
 
 	void RemoveChild(UIViewID viewID);
 	void RemoveChild(const lib::SharedPtr<UIView>& view);
 
 protected:
 
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const;
 	virtual void DrawUI();
+
+	lib::HashedString CreateUniqueName(const lib::HashedString& name);
 
 private:
 	
 	lib::HashedString	m_name;
 	UIViewID			m_id;
+
+	math::Vector2f 		m_minimumSize;
 
 	UIViewsContainer m_children;
 };

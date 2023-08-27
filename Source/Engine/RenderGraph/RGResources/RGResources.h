@@ -145,14 +145,34 @@ public:
 		return GetTextureDefinition().resolution.AsVector();
 	}
 
+	math::Vector3u GetMipResolution(Uint32 mipLevel) const
+	{
+		return math::Utils::ComputeMipResolution(GetResolution(), mipLevel);
+	}
+
 	math::Vector2u GetResolution2D() const
 	{
 		return GetResolution().head<2>();
 	}
 
+	Uint32 GetMipLevelsNum() const
+	{
+		return GetTextureDefinition().mipLevels;
+	}
+
 	rhi::EFragmentFormat GetFormat() const
 	{
 		return GetTextureDefinition().format;
+	}
+
+	Bool TryAppendUsage(rhi::ETextureUsage usage)
+	{
+		if (!IsExternal())
+		{
+			lib::AddFlag(m_textureDefinition.usage, usage);
+		}
+
+		return lib::HasAnyFlag(GetUsage(), usage);
 	}
 
 	// Texture Resource ====================================================
@@ -271,9 +291,9 @@ public:
 		return IsExternal() ? m_textureView->GetRHI().GetSubresourceRange() : GetViewDefinition().subresourceRange;
 	}
 
-	const math::Vector3u& GetResolution() const
+	math::Vector3u GetResolution() const
 	{
-		return GetTexture()->GetResolution();
+		return m_texture->GetMipResolution(GetSubresourceRange().baseMipLevel);
 	}
 
 	math::Vector2u GetResolution2D() const

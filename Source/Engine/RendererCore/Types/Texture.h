@@ -52,8 +52,8 @@ public:
 
 	const lib::SharedRef<Texture>& GetTexture() const;
 
-	const math::Vector3u&	GetResolution() const;
-	math::Vector2u			GetResolution2D() const;
+	math::Vector3u GetResolution() const;
+	math::Vector2u GetResolution2D() const;
 
 private:
 

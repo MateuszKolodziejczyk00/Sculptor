@@ -1,14 +1,17 @@
 #include "UIView.h"
 #include "ImGui/SculptorImGui.h"
 #include "UIUtils.h"
+#include "ImGui/DockBuilder.h"
 
 namespace spt::scui
 {
 
 UIView::UIView(const ViewDefinition& definition)
-	: m_name(definition.name)
-	, m_id(UIViewID::GenerateID())
-{ }
+	: m_id(UIViewID::GenerateID())
+	, m_minimumSize(definition.minimumSize.cast<Real32>())
+{
+	m_name = CreateUniqueName(definition.name);
+}
 
 UIViewID UIView::GetID() const
 {
@@ -30,8 +33,11 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 	Bool isOpen = true;
 
 	// "Master" window of this view
-	ImGui::Begin(m_name.GetData(), &isOpen);
+	if(ImGui::Begin(m_name.GetData(), &isOpen))
 	{
+		const math::Vector2f windowSize = m_minimumSize.cwiseMax(math::Vector2f(ImGui::GetWindowSize()));
+		ImGui::SetWindowSize(windowSize);
+
 		const ImGuiID dockspaceID = ImGui::GetID(m_name.GetData());
 
 		ImGui::PushID(dockspaceID);
@@ -48,10 +54,16 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 
 		m_children.DrawViews(childDrawParams);
 
+		if (ui::ShouldBuildDock(dockspaceID))
+		{
+			BuildDefaultLayout(dockspaceID);
+		}
+
 		DrawUI();
 
 		ImGui::PopID();
 	}
+	
 	ImGui::End();
 
 	return isOpen ? EViewDrawResultActions::None : EViewDrawResultActions::Close;
@@ -62,9 +74,11 @@ const lib::HashedString& UIView::GetName() const
 	return m_name;
 }
 
-void UIView::AddChild(lib::SharedRef<UIView> child)
+const lib::HashedString& UIView::AddChild(lib::SharedRef<UIView> child)
 {
+	const lib::HashedString& name = child->GetName();
 	m_children.AddView(std::move(child));
+	return name;
 }
 
 void UIView::RemoveChild(UIViewID viewID)
@@ -77,9 +91,19 @@ void UIView::RemoveChild(const lib::SharedPtr<UIView>& view)
 	m_children.RemoveView(view);
 }
 
+void UIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+{
+
+}
+
 void UIView::DrawUI()
 {
 
+}
+
+lib::HashedString UIView::CreateUniqueName(const lib::HashedString& name)
+{
+	return name.ToString() + "##" + std::to_string(UIViewID::GenerateID().GetValue());
 }
 
 } // spt::scui

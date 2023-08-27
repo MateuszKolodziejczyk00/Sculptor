@@ -59,6 +59,8 @@ public:
 	void	SetCameraSpeed(Real32 speed);
 	Real32	GetCameraSpeed();
 
+	void CreateRenderGraphCapture();
+
 private:
 
 	void InitializeRenderScene();
@@ -81,6 +83,8 @@ private:
 	Real32								m_farPlane;
 	
 	Real32								m_cameraSpeed;
+
+	Bool m_wantsCaptureNextFrame;
 };
 
 } // spt::ed

@@ -79,6 +79,7 @@ void SculptorEdApplication::OnRun()
 	rdr::UIBackend::Initialize(uiContext, lib::Ref(m_window));
 
 	engn::FramesManagerInitializationInfo framesManagerInitInfo;
+	framesManagerInitInfo.preExecuteFrame.BindRawMember(this, &SculptorEdApplication::PreExecuteFrame);
 	framesManagerInitInfo.executeSimulationFrame.BindRawMember(this, &SculptorEdApplication::ExecuteSimulationFrame);
 	framesManagerInitInfo.executeRenderingFrame.BindRawMember(this, &SculptorEdApplication::ExecuteRenderingFrame);
 	engn::EngineFramesManager::Initialize(framesManagerInitInfo);
@@ -114,11 +115,8 @@ void SculptorEdApplication::OnRun()
 
 	scui::ViewDefinition sandboxViewDef;
 	sandboxViewDef.name = "SandboxView";
+	sandboxViewDef.minimumSize = m_window->GetSwapchainSize();
 	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef, *m_renderer);
-
-	scui::ViewDefinition profilerViewDef;
-	profilerViewDef.name = "ProfilerView";
-	view->AddChild(lib::MakeShared<prf::ProfilerUIView>(profilerViewDef));
 
 	while (true)
 	{
@@ -147,6 +145,8 @@ void SculptorEdApplication::OnRun()
 
 void SculptorEdApplication::OnShutdown()
 {
+	scui::ApplicationUI::CloseAllViews();
+
 	engn::EngineFramesManager::Shutdown();
 
 	m_renderer.reset();
@@ -313,9 +313,18 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	}
 }
 
+void SculptorEdApplication::PreExecuteFrame()
+{
+	rdr::UIBackend::BeginFrame();
+
+	ImGui::NewFrame();
+
+	scui::ApplicationUI::Draw(uiContext);
+}
+
 void SculptorEdApplication::ExecuteSimulationFrame(engn::FrameContext& context)
 {
-
+	engn::EngineFramesManager::DispatchTickFrame(context);
 }
 
 void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
@@ -333,12 +342,7 @@ void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
 
 	rg::RenderGraphManager::OnBeginFrame();
 
-	rdr::UIBackend::BeginFrame();
-
-	ImGui::NewFrame();
-
-	scui::ApplicationUI::Draw(uiContext);
-
+	engn::EngineFramesManager::DispatchTickFrame(context);
 	m_renderer->Tick(deltaTime);
 
 	RenderFrame(*m_renderer);

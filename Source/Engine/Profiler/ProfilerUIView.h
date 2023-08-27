@@ -26,6 +26,7 @@ public:
 protected:
 
 	//~ Begin  UIView overrides
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const override;
 	virtual void DrawUI() override;
 	//~ End  UIView overrides
 
@@ -37,6 +38,8 @@ private:
 
 	lib::StaticArray<float, 64>	m_lastFrameTimes;
 	SizeType					m_oldestFrameTimeIdx;
+
+	lib::HashedString m_profilerPanelName;
 };
 
 } // spt::prf

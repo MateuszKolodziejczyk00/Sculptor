@@ -56,7 +56,7 @@ RGTextureSubresourceAccessState& RGTextureAccessState::GetForSubresource(RGTextu
 
 RGTextureSubresourceAccessState& RGTextureAccessState::GetForSubresource(Uint32 layerIdx, Uint32 mipMapIdx)
 {
-	SPT_CHECK(mipMapIdx < m_textureMipsNum&& layerIdx < m_textureLayersNum);
+	SPT_CHECK(mipMapIdx < m_textureMipsNum && layerIdx < m_textureLayersNum);
 
 	if (IsFullResource())
 	{

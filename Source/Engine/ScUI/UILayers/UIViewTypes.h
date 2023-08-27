@@ -39,6 +39,11 @@ public:
 		m_id = idxNone<SizeType>;
 	}
 
+	SizeType GetValue() const
+	{
+		return m_id;
+	}
+
 private:
 
 	explicit UIViewID(SizeType id)
@@ -110,6 +115,8 @@ public:
 	
 	void RemoveView(UIViewID viewID);
 	void RemoveView(const lib::SharedPtr<UIView>& view);
+
+	void ClearViews();
 
 	void DrawViews(const UIViewDrawParams& params);
 

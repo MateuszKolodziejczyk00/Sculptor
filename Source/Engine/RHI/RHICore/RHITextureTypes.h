@@ -150,6 +150,15 @@ private:
 };
 
 
+enum class ETextureType : Uint8
+{
+	Auto,
+	Texture1D,
+	Texture2D,
+	Texture3D
+};
+
+
 struct TextureDefinition
 {
 	TextureDefinition()
@@ -159,6 +168,7 @@ struct TextureDefinition
 		, mipLevels(1)
 		, arrayLayers(1)
 		, flags(ETextureFlags::Default)
+		, type(ETextureType::Auto)
 	{ }
 	
 	TextureDefinition(const RHIResolution& inResolution, ETextureUsage inUsage, EFragmentFormat inFormat)
@@ -169,6 +179,7 @@ struct TextureDefinition
 		, mipLevels(1)
 		, arrayLayers(1)
 		, flags(ETextureFlags::Default)
+		, type(ETextureType::Auto)
 	{ }
 
 	RHIResolution		resolution;
@@ -178,6 +189,7 @@ struct TextureDefinition
 	Uint32				mipLevels;
 	Uint32				arrayLayers;
 	ETextureFlags		flags;
+	ETextureType		type;
 };
 
 

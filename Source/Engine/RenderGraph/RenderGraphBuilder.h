@@ -13,6 +13,7 @@
 #include "RGNodeParametersStruct.h"
 #include "Utility/Templates/Overload.h"
 
+
 namespace spt::rhi
 {
 struct BarrierTextureTransitionDefinition;
@@ -21,6 +22,8 @@ struct BarrierTextureTransitionDefinition;
 
 namespace spt::rg
 {
+
+class RenderGraphDebugDecorator;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Descriptor Sets Helpers =======================================================================
@@ -51,6 +54,8 @@ public:
 	// Utility ================================================
 
 	void BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector);
+
+	void AddDebugDecorator(const lib::SharedRef<RenderGraphDebugDecorator>& debugDecorator);
 
 	// Textures ===============================================
 
@@ -127,6 +132,8 @@ public:
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
+	
+	void CopyFullTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGTextureViewHandle destRGTextureView);
 
 	void ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor);
 
@@ -156,6 +163,7 @@ private:
 	void BuildParametersStructDependencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
 
 	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
+	void PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	void ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies);
 
@@ -197,7 +205,11 @@ private:
 	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStates;
 	lib::DynamicArray<lib::SharedRef<RGDescriptorSetStateBase>> m_boundDSStatesWithDependencies;
 
+	lib::DynamicArray<lib::SharedPtr<RenderGraphDebugDecorator>> m_debugDecorators;
+
 	lib::SharedPtr<rdr::GPUStatisticsCollector> m_statisticsCollector;
+
+	RGResourceHandle<RGRenderPassNodeBase> m_lastRenderPassNode;
 
 	RGAllocator m_allocator;
 };
@@ -298,12 +310,7 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(!m_nodes.empty());
-
-	RGNodeHandle lastNode = m_nodes.back();
-	SPT_CHECK_MSG(lastNode->GetType() == ERenderGraphNodeType::RenderPass, "Subpasses can be added only to render pass nodes");
-
-	RGRenderPassNodeBase* lastRenderPass = static_cast<RGRenderPassNodeBase*>(lastNode.Get());
+	SPT_CHECK(!!m_lastRenderPassNode);
 
 	using CallableType	= std::remove_cvref_t<TCallable>;
 	using SubpassType	= RGLambdaSubpass<CallableType>;
@@ -322,14 +329,14 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 		subpass->BindDSState(dsState);
 	}
 	
-	lastRenderPass->AppendSubpass(subpass);
+	m_lastRenderPassNode->AppendSubpass(subpass);
 
 	RGDependeciesContainer subpassDependencies;
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
 	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
 
-	ResolveNodeDependecies(*lastRenderPass, subpassDependencies);
+	ResolveNodeDependecies(*m_lastRenderPassNode, subpassDependencies);
 }
 
 template<typename TDescriptorSetStatesRange>

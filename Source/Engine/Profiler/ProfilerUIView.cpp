@@ -1,13 +1,22 @@
 #include "ProfilerUIView.h"
 #include "ImGui/SculptorImGui.h"
 #include "Profiler.h"
+#include "ImGui/DockBuilder.h"
 
 namespace spt::prf
 {
 
 ProfilerUIView::ProfilerUIView(const scui::ViewDefinition& definition)
 	: Super(definition)
+	, m_profilerPanelName(CreateUniqueName("Profiler"))
 { }
+
+void ProfilerUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+{
+	Super::BuildDefaultLayout(dockspaceID);
+
+	ui::Build(dockspaceID, ui::DockWindow(m_profilerPanelName));
+}
 
 void ProfilerUIView::DrawUI()
 {
@@ -15,7 +24,7 @@ void ProfilerUIView::DrawUI()
 	
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 
-	ImGui::Begin("Profiler");
+	ImGui::Begin(m_profilerPanelName.GetData());
 
 	ImGui::Separator();
 

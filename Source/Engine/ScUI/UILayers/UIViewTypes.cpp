@@ -50,6 +50,11 @@ void UIViewsContainer::RemoveView(const lib::SharedPtr<UIView>& view)
 	}
 }
 
+void UIViewsContainer::ClearViews()
+{
+	m_views.clear();
+}
+
 void UIViewsContainer::DrawViews(const UIViewDrawParams& params)
 {
 	SPT_PROFILER_FUNCTION();

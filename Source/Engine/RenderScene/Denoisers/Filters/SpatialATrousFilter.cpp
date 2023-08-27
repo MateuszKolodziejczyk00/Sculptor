@@ -53,7 +53,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	ds->u_geometryNormalsTexture	= params.geometryNormalsTexture;
 	ds->u_params					= dispatchParams;
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Denoise Spatial A-Trous Filter"),
+	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));

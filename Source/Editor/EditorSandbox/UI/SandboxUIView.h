@@ -23,6 +23,7 @@ public:
 protected:
 
 	//~ Begin  UIView overrides
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const override;
 	virtual void DrawUI() override;
 	//~ End  UIView overrides
 
@@ -33,6 +34,13 @@ private:
 	void DrawJobSystemTestsUI();
 
 	SandboxRenderer* m_renderer;
+
+	lib::HashedString m_sceneViewName;
+	lib::HashedString m_sanboxUIViewName;
+
+	lib::HashedString m_renderViewSettingsName;
+	lib::HashedString m_renderSceneSettingsName;
+	lib::HashedString m_profilerPanelName;
 };
 
 } // spt::ed

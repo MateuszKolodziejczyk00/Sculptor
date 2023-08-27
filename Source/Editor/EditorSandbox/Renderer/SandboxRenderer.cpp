@@ -35,6 +35,9 @@
 #include "Loaders/TextureLoader.h"
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
+#include "RenderGraphCapturer.h"
+#include "RenderGraphCaptureUIView.h"
+#include "UIElements/ApplicationUI.h"
 
 namespace spt::ed
 {
@@ -48,6 +51,7 @@ SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
 	, m_farPlane(50.f)
 	, m_cameraSpeed(5.f)
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
+	, m_wantsCaptureNextFrame(false)
 {
 	InitializeRenderScene();
 }
@@ -123,6 +127,14 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	rg::RenderGraphBuilder graphBuilder;
 	graphBuilder.BindGPUStatisticsCollector(gpuStatisticsCollector);
 
+	rg::capture::RenderGraphCapturer capturer;
+
+	if (m_wantsCaptureNextFrame)
+	{
+		capturer.Capture(graphBuilder);
+		m_wantsCaptureNextFrame = false;
+	}
+
 	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ gpuStatisticsCollector ](engn::FrameContext& context)
 																								   {
 																									   prf::Profiler::Get().SetGPUFrameStatistics(gpuStatisticsCollector->CollectStatistics());
@@ -158,6 +170,21 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
 
 	graphBuilder.Execute(waitSemaphores, signalSemaphores);
+
+	if (capturer.HasValidCapture())
+	{
+		using GPUFinishedDelegate = engn::OnGPUFinished::Delegate;
+
+		GPUFinishedDelegate delegate = GPUFinishedDelegate::CreateLambda([rgCapture = lib::Ref(capturer.GetCapture())](engn::FrameContext& context)
+																		 {
+																			 scui::ViewDefinition viewDef("Render Graph Capture Viewer");
+																			 viewDef.minimumSize = math::Vector2u(800, 600);
+																			 lib::SharedRef<rg::capture::RenderGraphCaptureUIView> captureView = lib::MakeShared<rg::capture::RenderGraphCaptureUIView>(viewDef, std::move(rgCapture));
+																			 scui::ApplicationUI::AddView(std::move(captureView));
+																		 });
+
+		engn::GetRenderingFrame().AddOnGPUFinishedDelegate(std::move(delegate));
+	}
 
 	return finishSemaphore.ToSharedPtr();
 }
@@ -246,6 +273,11 @@ void SandboxRenderer::SetCameraSpeed(Real32 speed)
 Real32 SandboxRenderer::GetCameraSpeed()
 {
 	return m_cameraSpeed;
+}
+
+void SandboxRenderer::CreateRenderGraphCapture()
+{
+	m_wantsCaptureNextFrame = true;
 }
 
 void SandboxRenderer::InitializeRenderScene()

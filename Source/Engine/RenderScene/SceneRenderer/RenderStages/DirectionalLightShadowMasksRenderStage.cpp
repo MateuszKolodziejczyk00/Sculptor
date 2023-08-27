@@ -84,6 +84,9 @@ static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::Rende
 	shadowMaskDef.resolution = renderView.GetRenderingResolution3D();
 	shadowMaskDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource); // TODO
 	shadowMaskDef.format = rhi::EFragmentFormat::R8_UN_Float;
+#if !SPT_RELEASE
+	lib::AddFlag(shadowMaskDef.usage, rhi::ETextureUsage::TransferSource);
+#endif // SPT_RELEASE
 	lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
 
 	rhi::TextureViewDefinition shadowMaskViewDef;
@@ -205,6 +208,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
 
 		dir_shadows_denoiser::DirShadowsDenoiserParams denoiserParams(renderView);
+		denoiserParams.name						= RG_DEBUG_NAME("Directional Shadows");
 		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepth;
 		denoiserParams.currentDepthTexture		= depthPrepassData.depth;
 		denoiserParams.motionTexture			= motionData.motion;

@@ -164,6 +164,16 @@ public:
 		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
 	}
 
+	static math::Vector3u ComputeMipResolution(const math::Vector3u& resolution, Uint32 mipLevel)
+	{
+		math::Vector3u mipResolution{};
+		mipResolution.x() = std::max<Uint32>(resolution.x() >> mipLevel, 1);
+		mipResolution.y() = std::max<Uint32>(resolution.y() >> mipLevel, 1);
+		mipResolution.z() = std::max<Uint32>(resolution.z() >> mipLevel, 1);
+
+		return mipResolution;
+	}
+
 	static Quaternionf EulerToQuaternionRadians(Real32 roll, Real32 pitch, Real32 yaw)
 	{
 		return AngleAxisf(roll, Vector3f::UnitX()) * AngleAxisf(pitch, Vector3f::UnitY()) * AngleAxisf(yaw, Vector3f::UnitZ());

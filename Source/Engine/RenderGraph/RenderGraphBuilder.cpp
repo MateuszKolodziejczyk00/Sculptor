@@ -5,6 +5,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
 #include "Vulkan/VulkanTypes/RHIBuffer.h"
+#include "RenderGraphDebugDecorator.h"
 
 namespace spt::rg
 {
@@ -15,6 +16,11 @@ RenderGraphBuilder::RenderGraphBuilder()
 void RenderGraphBuilder::BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector)
 {
 	m_statisticsCollector = collector;
+}
+
+void RenderGraphBuilder::AddDebugDecorator(const lib::SharedRef<RenderGraphDebugDecorator>& debugDecorator)
+{
+	m_debugDecorators.emplace_back(std::move(debugDecorator));
 }
 
 Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const
@@ -308,6 +314,18 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 	AddNodeInternal(node, dependencies);
 }
 
+void RenderGraphBuilder::CopyFullTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGTextureViewHandle destRGTextureView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(sourceRGTextureView.IsValid());
+	SPT_CHECK(destRGTextureView.IsValid());
+
+	SPT_CHECK(sourceRGTextureView->GetResolution() == destRGTextureView->GetResolution());
+
+	CopyTexture(copyName, sourceRGTextureView, math::Vector3i::Zero(), destRGTextureView, math::Vector3i::Zero(), sourceRGTextureView->GetResolution());
+}
+
 void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor)
 {
 	SPT_PROFILER_FUNCTION();
@@ -388,6 +406,23 @@ void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContai
 	ResolveNodeDependecies(node, dependencies);
 
 	m_nodes.emplace_back(&node);
+
+	PostNodeAdded(node, dependencies);
+}
+
+void RenderGraphBuilder::PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (node.GetType() == ERenderGraphNodeType::RenderPass)
+	{
+		m_lastRenderPassNode = static_cast<RGRenderPassNodeBase*>(&node);
+	}
+
+	for (const lib::SharedPtr<RenderGraphDebugDecorator>& decorator : m_debugDecorators)
+	{
+		decorator->PostNodeAdded(*this, node, dependencies);
+	}
 }
 
 void RenderGraphBuilder::ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies)

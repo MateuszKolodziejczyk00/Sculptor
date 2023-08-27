@@ -28,6 +28,8 @@ public:
 	static void CloseView(const lib::SharedPtr<UIView>& view);
 	static void CloseView(UIViewID id);
 
+	static void CloseAllViews();
+
 	static void Draw(ui::UIContext context);
 
 private:

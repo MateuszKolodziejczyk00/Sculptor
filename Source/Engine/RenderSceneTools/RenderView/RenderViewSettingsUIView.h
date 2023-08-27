@@ -23,6 +23,7 @@ public:
 protected:
 
 	// Begin UIView overrides
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const override;
 	virtual void DrawUI() override;
 	// End UIView overrides
 
@@ -31,6 +32,8 @@ private:
 	void DrawUIForView(RenderView& view);
 
 	lib::WeakPtr<RenderView> m_renderView;
+
+	lib::HashedString m_renderViewSettingsName;
 };
 
 } // spt::rsc

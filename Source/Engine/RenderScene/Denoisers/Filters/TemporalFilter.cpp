@@ -47,7 +47,7 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 
 	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Denoise Temporal Filter"),
+	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Temporal Filter", params.name.Get().ToString())),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
 						  rg::BindDescriptorSets(std::move(ds),

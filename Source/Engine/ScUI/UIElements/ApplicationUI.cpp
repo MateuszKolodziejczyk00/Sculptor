@@ -32,6 +32,13 @@ void ApplicationUI::CloseView(UIViewID id)
 	instance.m_views.RemoveView(id);
 }
 
+void ApplicationUI::CloseAllViews()
+{
+	ApplicationUI& instance = GetInstance();
+
+	instance.m_views.ClearViews();
+}
+
 void ApplicationUI::Draw(ui::UIContext context)
 {
 	SPT_PROFILER_FUNCTION();

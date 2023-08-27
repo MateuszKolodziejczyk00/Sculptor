@@ -362,7 +362,7 @@ rg::RGTextureViewHandle CreateHiZProperMipViewForVolumetricFog(rg::RenderGraphBu
 	// We need to use greater mip to avoid artifacts with blending.
 	// The reason is that we use linear filtering for integrated in scattering texture, so we may access neighbor froxels that are occluded
 	// This still may not be enough and we may have lower scattering and transmittance values near occluded froxels but it's acceptable
-	const Uint32 depthPyramidMipIdx = math::Utils::LowestSetBitIdx(volumetricTileSize) + 1;
+	const Uint32 depthPyramidMipIdx = std::min(math::Utils::LowestSetBitIdx(volumetricTileSize) + 1, hiZTexture->GetMipLevelsNum() - 1);
 
 	rhi::TextureViewDefinition hiZProperMipViewDef;
 	hiZProperMipViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, depthPyramidMipIdx, 1, 0, 1);

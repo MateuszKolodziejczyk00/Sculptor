@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
+#include "RenderGraphTypes.h"
 
 
 namespace spt::rsc
@@ -26,6 +27,8 @@ struct DenoiserBaseParams
 
 	const RenderView& renderView;
 
+	rg::RenderGraphDebugName name;
+
 	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle currentDepthTexture;
 
@@ -46,11 +49,14 @@ struct DenoiserGeometryParams
 	
 	DenoiserGeometryParams(const DenoiserBaseParams& denoiserParams)
 		: renderView(denoiserParams.renderView)
+		, name(denoiserParams.name)
 		, depthTexture(denoiserParams.currentDepthTexture)
 		, geometryNormalsTexture(denoiserParams.geometryNormalsTexture)
 	{ }
 
 	const RenderView& renderView;
+
+	rg::RenderGraphDebugName name;
 
 	rg::RGTextureViewHandle depthTexture;
 

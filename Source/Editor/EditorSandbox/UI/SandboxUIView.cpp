@@ -12,27 +12,49 @@
 #include "Types/UIBackend.h"
 #include "Types/Texture.h"
 #include "DDGI/DDGITypes.h"
+#include "ImGui/DockBuilder.h"
+#include "ProfilerUIView.h"
 
 namespace spt::ed
 {
 
 SPT_DEFINE_LOG_CATEGORY(SandboxUI, true);
 
+
 SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer)
 	: Super(definition)
 	, m_renderer(&renderer)
+	, m_sceneViewName(CreateUniqueName("Scene"))
+	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), renderer.GetRenderView()));
-	AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), renderer.GetRenderScene()));
+	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), renderer.GetRenderView()));
+	m_renderSceneSettingsName = AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), renderer.GetRenderScene()));
+	m_profilerPanelName = AddChild(lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView")));
+}
+
+void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+{
+	Super::BuildDefaultLayout(dockspaceID);
+
+	ui::Build(dockspaceID,
+			  ui::Split(ui::ESplit::Horizontal, 0.2f,
+						ui::DockWindow(m_profilerPanelName),
+						ui::Split(ui::ESplit::Horizontal, 0.8f,
+								  ui::DockWindow(m_sceneViewName),
+								  ui::Split(ui::ESplit::Vertical, 0.33f,
+											ui::DockWindow(m_sanboxUIViewName),
+											ui::Split(ui::ESplit::Vertical, 0.5f,
+													  ui::DockWindow(m_renderViewSettingsName),
+													  ui::DockWindow(m_renderSceneSettingsName))))));
 }
 
 void SandboxUIView::DrawUI()
 {
 	Super::DrawUI();
-
+	
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	
-	ImGui::Begin("Scene");
+	ImGui::Begin(m_sceneViewName.GetData());
 
 	const ui::TextureID sceneTexture = m_renderer->GetUITextureID();
 	if (sceneTexture)
@@ -50,7 +72,7 @@ void SandboxUIView::DrawUI()
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 
-	ImGui::Begin("SandboxUI");
+	ImGui::Begin(m_sanboxUIViewName.GetData());
 
 	ImGui::Separator();
 	DrawRendererSettings();
@@ -102,6 +124,11 @@ void SandboxUIView::DrawRendererSettings()
 	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 100.f))
 	{
 		m_renderer->SetFarPlane(farPlane);
+	}
+
+	if (ImGui::Button("Capture Render Graph"))
+	{
+		m_renderer->CreateRenderGraphCapture();
 	}
 
 }

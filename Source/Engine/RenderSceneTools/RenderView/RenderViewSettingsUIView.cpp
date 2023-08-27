@@ -2,6 +2,7 @@
 #include "View/RenderView.h"
 #include "ImGui/SculptorImGui.h"
 #include "Camera/CameraSettings.h"
+#include "ImGui/DockBuilder.h"
 
 namespace spt::rsc
 {
@@ -9,21 +10,30 @@ namespace spt::rsc
 RenderViewSettingsUIView::RenderViewSettingsUIView(const scui::ViewDefinition& definition, const lib::SharedPtr<RenderView>& renderView)
 	: Super(definition)
 	, m_renderView(renderView)
+	, m_renderViewSettingsName(CreateUniqueName("Render View"))
 { }
+
+void RenderViewSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+{
+	Super::BuildDefaultLayout(dockspaceID);
+
+	ui::Build(dockspaceID, ui::DockWindow(m_renderViewSettingsName));
+}
 
 void RenderViewSettingsUIView::DrawUI()
 {
 	SPT_PROFILER_FUNCTION();
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
-	ImGui::Begin("Render View");
-
-	Super::DrawUI();
-
-	const lib::SharedPtr<RenderView> renderView = m_renderView.lock();
-	if (renderView)
+	if (ImGui::Begin(m_renderViewSettingsName.GetData()))
 	{
-		DrawUIForView(*renderView);
+		Super::DrawUI();
+
+		const lib::SharedPtr<RenderView> renderView = m_renderView.lock();
+		if (renderView)
+		{
+			DrawUIForView(*renderView);
+		}
 	}
 
 	ImGui::End();
