@@ -213,6 +213,8 @@ public:
 	~JobCallableWrapper()
 	{
 		DestroyCallable();
+
+		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	template<typename TCallable>
@@ -244,10 +246,14 @@ public:
 		{
 			m_callable = new CallableType(std::move(callable));
 		}
+
+		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	void Invoke()
 	{
+		std::atomic_thread_fence(std::memory_order_acquire);
+
 		SPT_CHECK(!!m_callable);
 
 		m_callable->Invoke();
@@ -275,6 +281,8 @@ private:
 			{
 				delete m_callable;
 			}
+
+			m_callable = nullptr;
 		}
 	}
 
@@ -289,6 +297,7 @@ class JobInstance : public std::enable_shared_from_this<JobInstance>
 	{
 		Pending,
 		Executing,
+		Executed,
 		Finished
 	};
 
@@ -321,10 +330,11 @@ public:
 		SPT_PROFILER_FUNCTION();
 
 		SetCallable(std::forward<TCallable>(callable));
-		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
 
 		m_priority = priority;
 		m_flags = flags;
+		
+		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
 
 		OnConstructed();
 	}
@@ -346,19 +356,21 @@ public:
 		{
 			Execute();
 
+			if (!CanFinishExecution())
+			{
+				TryExecutePrerequisites();
+			}
+
+			m_jobState.store(EJobState::Executed);
+
 			if (CanFinishExecution())
 			{
 				finishedThisThread = TryFinish();
 				if (!finishedThisThread)
 				{
-					// This thead couldn't finish this job, but we should return true if job was already finished
+					// This thread couldn't finish this job, but we should return true if job was already finished
 					previous = m_jobState.load(std::memory_order_acquire);
 				}
-			}
-			else
-			{
-				// Try execute pending nested tasks
-				TryExecutePrerequisites();
 			}
 		}
 
@@ -490,6 +502,11 @@ protected:
 		// We probably don't need lock here for now
 		for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
 		{
+			if (CanFinishExecution())
+			{
+				break;
+			}
+
 			prerequisite->TryExecute();
 		}
 	}
@@ -510,17 +527,17 @@ protected:
 		m_callable.Invoke();
 	}
 
-	inline Bool CanFinishExecution()
+	inline Bool CanFinishExecution() const
 	{
 		return m_remainingPrerequisitesNum.load() == 0;
 	}
 
 	Bool TryFinish()
 	{
-		EJobState expected = EJobState::Executing;
+		EJobState expected = EJobState::Executed;
 		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finished);
 
-		SPT_CHECK(expected == EJobState::Executing || expected == EJobState::Finished);
+		SPT_CHECK(expected != EJobState::Pending);
 
 		if (finishThisThread)
 		{
@@ -558,7 +575,7 @@ protected:
 			{
 				Schedule();
 			}
-			else if(currentState == EJobState::Executing)
+			else if(currentState == EJobState::Executed)
 			{
 				// Finished nested job
 				if (CanFinishExecution())
