@@ -25,9 +25,15 @@ math::Vector2i InputManager::GetMouseMoveDelta() const
 	return m_mouseCurrentPosition - m_mousePrevPosition;
 }
 
+Real32 InputManager::GetScrollDelta() const
+{
+	return m_scrollDelta;
+}
+
 InputManager::InputManager()
 	: m_mouseCurrentPosition(math::Vector2i::Zero())
 	, m_mousePrevPosition(math::Vector2i::Zero())
+	, m_scrollDelta(0.f)
 {
 	std::fill(std::begin(m_keysPressStatus), std::end(m_keysPressStatus), false);
 }
@@ -35,6 +41,7 @@ InputManager::InputManager()
 void InputManager::PreUpdateInput()
 {
 	m_mousePrevPosition = m_mouseCurrentPosition;
+	m_scrollDelta = 0.f;
 }
 
 void InputManager::OnKeyAction(EKey key, EInputActionType action)
@@ -46,6 +53,11 @@ void InputManager::OnKeyAction(EKey key, EInputActionType action)
 void InputManager::OnMousePositionChanged(const math::Vector2i& newPosition)
 {
 	m_mouseCurrentPosition = newPosition;
+}
+
+void InputManager::OnScrollPositionChanged(Real32 delta)
+{
+	m_scrollDelta = delta;
 }
 
 } // spt::inp

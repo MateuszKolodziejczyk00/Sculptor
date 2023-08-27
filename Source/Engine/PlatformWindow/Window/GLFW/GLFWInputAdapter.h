@@ -20,6 +20,8 @@ public:
 	void OnKeyboardKeyAction(int key, int keyAction);
 
 	void OnMousePositionChanged(double newX, double newY);
+	
+	void OnScrollPositionChanged(double xOffset, double yOffset);
 };
 
 } // spt::platf

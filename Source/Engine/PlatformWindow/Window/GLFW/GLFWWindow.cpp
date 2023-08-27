@@ -118,6 +118,14 @@ static void OnMouseMoved(GLFWwindow* window, double newX, double newY)
 	windowData->inputAdapter.OnMousePositionChanged(newX, newY);
 }
 
+static void OnMouseScroll(GLFWwindow* window, double xOffset, double yOffset)
+{
+	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
+	SPT_CHECK(!!windowData);
+
+	windowData->inputAdapter.OnScrollPositionChanged(xOffset, yOffset);
+}
+
 } // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,6 +255,7 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 	glfwSetKeyCallback(windowHandle, &priv::OnKeyAction);
 	glfwSetCursorPosCallback(windowHandle, &priv::OnMouseMoved);
 	glfwSetMouseButtonCallback(windowHandle, &priv::OnMouseButtonAction);
+	glfwSetScrollCallback(windowHandle, &priv::OnMouseScroll);
 
 	GetOnClosedCallback().AddRawMember(this, &GLFWWindow::OnThisWindowClosed);
 }

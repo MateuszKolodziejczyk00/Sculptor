@@ -19,4 +19,9 @@ void InputAdapter::OnMousePositionChangedImpl(const math::Vector2i& newPosition)
 	InputManager::Get().OnMousePositionChanged(newPosition);
 }
 
+void InputAdapter::OnScrollPositionChangedImpl(Real32 delta)
+{
+	InputManager::Get().OnScrollPositionChanged(delta);
+}
+
 } // spt::inp

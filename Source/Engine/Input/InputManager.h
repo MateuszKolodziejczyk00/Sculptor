@@ -19,6 +19,8 @@ public:
 	math::Vector2i GetMousePosition() const;
 	math::Vector2i GetMouseMoveDelta() const;
 
+	Real32 GetScrollDelta() const;
+
 private:
 
 	InputManager();
@@ -28,12 +30,16 @@ private:
 	void OnKeyAction(EKey key, EInputActionType action);
 	void OnMousePositionChanged(const math::Vector2i& newPosition);
 
+	void OnScrollPositionChanged(Real32 delta);
+
 	static constexpr SizeType keysNum = static_cast<SizeType>(EKey::Num);
 
 	lib::StaticArray<Bool, keysNum> m_keysPressStatus;
 
 	math::Vector2i m_mouseCurrentPosition;
 	math::Vector2i m_mousePrevPosition;
+
+	Real32 m_scrollDelta;
 
 	friend class InputAdapter;
 };

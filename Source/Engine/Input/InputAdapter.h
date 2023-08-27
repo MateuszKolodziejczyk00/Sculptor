@@ -21,6 +21,8 @@ protected:
 
 	void OnKeyActionImpl(EKey key, EInputActionType action);
 	void OnMousePositionChangedImpl(const math::Vector2i& newPosition);
+
+	void OnScrollPositionChangedImpl(Real32 delta);
 };
 
 } // spt::inp

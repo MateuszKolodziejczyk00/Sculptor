@@ -193,6 +193,11 @@ void GLFWInputAdapter::OnMousePositionChanged(double newX, double newY)
 	OnMousePositionChangedImpl(math::Vector2i(static_cast<Int32>(newX), static_cast<Int32>(newY)));
 }
 
+void GLFWInputAdapter::OnScrollPositionChanged(double xOffset, double yOffset)
+{
+	OnScrollPositionChangedImpl(static_cast<Real32>(yOffset));
+}
+
 } // spt::platf
 
 #endif // USE_GLFW
