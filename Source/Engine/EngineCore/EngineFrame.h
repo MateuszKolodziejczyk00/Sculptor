@@ -15,8 +15,11 @@ enum class EFrameState
 {
 	Simulation,
 	Rendering,
-	GPU
+	GPU,
+	NUM_TICKABLE_FRAMES = GPU,
+	NUM_PARALLEL_FRAMES
 };
+
 
 /**
  * These delegates are called when given state of frame is finished
@@ -73,11 +76,15 @@ public:
 
 	Uint64 GetFrameIdx() const { return m_frameDefinition.frameIdx; }
 
+	EFrameState GetFrameState() const { return m_frameState; }
+
 private:
 
 	// Frame Flow =====================================================
 
 	void BeginFrame(const FrameDefinition& definition);
+
+	void SetFrameState(EFrameState state);
 
 	void FinalizeSimulation();
 	void EndSimulation();
@@ -103,18 +110,25 @@ private:
 	OnFinalizeGPU			m_finalizeGPU;
 	OnGPUFinished			m_onGPUFinished;
 
+	EFrameState				m_frameState;
+
 	friend class EngineFramesManager;
 };
 
 
+using PreExecuteFrame			= lib::Delegate<void()>;
 using ExecuteSimulationFrame	= lib::Delegate<void(FrameContext& context)>;
 using ExecuteRenderingFrame		= lib::Delegate<void(FrameContext& context)>;
 
 
+using OnFrameTick = lib::MulticastDelegate<void(Real32 deltaTime)>;
+
+
 struct FramesManagerInitializationInfo
 {
-	ExecuteSimulationFrame executeSimulationFrame;
-	ExecuteRenderingFrame executeRenderingFrame;
+	PreExecuteFrame			preExecuteFrame;
+	ExecuteSimulationFrame	executeSimulationFrame;
+	ExecuteRenderingFrame	executeRenderingFrame;
 };
 
 
@@ -134,9 +148,15 @@ public:
 
 	static void ExecuteFrame();
 
+	static void DispatchTickFrame(const FrameContext& context);
+
+	static lib::DelegateHandle AddOnFrameTick(EFrameState frameState, OnFrameTick::Delegate&& delegate);
+	static void RemoveOnFrameTick(EFrameState frameState, lib::DelegateHandle delegateHandle);
+
 private:
 
-	static constexpr Uint32 parallelFramesNum = 3;
+	static constexpr Uint32 parallelFramesNum = (Uint32)EFrameState::NUM_PARALLEL_FRAMES;
+	static constexpr Uint32 tickableFramesNum = (Uint32)EFrameState::NUM_TICKABLE_FRAMES;
 
 	EngineFramesManager();
 
@@ -145,9 +165,13 @@ private:
 	void ShutdownImpl();
 
 	void ExecuteFrameImpl();
+	
+	PreExecuteFrame			m_preExecuteFrame;
 
 	ExecuteSimulationFrame	m_executeSimulationFrame;
 	ExecuteRenderingFrame	m_executeRenderingFrame;
+
+	OnFrameTick m_onFrameTick[tickableFramesNum];
 
 	Uint64 m_frameCounter;
 
@@ -175,5 +199,32 @@ inline FrameContext& GetGPUFrame()
 {
 	return EngineFramesManager::GetGPUFrame();
 }
+
+
+template<EFrameState frameState, typename TDerived>
+class EngineTickable
+{
+public:
+
+	EngineTickable()
+	{
+		m_onFrameTickHandle = EngineFramesManager::AddOnFrameTick(frameState,
+																  OnFrameTick::Delegate::CreateRawMember(this, &EngineTickable::CallTick));
+	}
+
+	~EngineTickable()
+	{
+		EngineFramesManager::RemoveOnFrameTick(frameState, m_onFrameTickHandle);
+	}
+
+private:
+
+	lib::DelegateHandle m_onFrameTickHandle;
+
+	void CallTick(Real32 deltaTime)
+	{
+		reinterpret_cast<TDerived*>(this)->Tick(deltaTime);
+	}
+};
 
 } // spt::engn

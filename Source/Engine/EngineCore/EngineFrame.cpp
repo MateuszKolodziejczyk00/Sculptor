@@ -16,6 +16,7 @@ static lib::UniquePtr<EngineFramesManager> g_engineFramesManager;
 // FrameContext ==================================================================================
 
 FrameContext::FrameContext()
+	: m_frameState(EFrameState::Simulation)
 { }
 
 void FrameContext::AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate)
@@ -51,6 +52,11 @@ void FrameContext::AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate)
 void FrameContext::BeginFrame(const FrameDefinition& definition)
 {
 	m_frameDefinition = definition;
+}
+
+void FrameContext::SetFrameState(EFrameState state)
+{
+	m_frameState = state;
 }
 
 void FrameContext::FinalizeSimulation()
@@ -155,6 +161,27 @@ void EngineFramesManager::ExecuteFrame()
 	GetInstance().ExecuteFrameImpl();
 }
 
+void EngineFramesManager::DispatchTickFrame(const FrameContext& context)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(context.GetFrameState() != EFrameState::GPU);
+	const Uint32 stateIdx = static_cast<Uint32>(context.GetFrameState());
+	GetInstance().m_onFrameTick[stateIdx].Broadcast(context.GetDeltaTime());
+}
+
+lib::DelegateHandle EngineFramesManager::AddOnFrameTick(EFrameState frameState, OnFrameTick::Delegate&& delegate)
+{
+	SPT_CHECK(frameState != EFrameState::GPU);
+	return GetInstance().m_onFrameTick[static_cast<Uint32>(frameState)].Add(std::move(delegate));
+}
+
+void EngineFramesManager::RemoveOnFrameTick(EFrameState frameState, lib::DelegateHandle delegateHandle)
+{
+	SPT_CHECK(frameState != EFrameState::GPU);
+	GetInstance().m_onFrameTick[static_cast<Uint32>(frameState)].Unbind(delegateHandle);
+}
+
 EngineFramesManager::EngineFramesManager()
 	: m_frameCounter(0)
 	, m_simulationFrame(nullptr)
@@ -164,6 +191,7 @@ EngineFramesManager::EngineFramesManager()
 
 void EngineFramesManager::InitializeImpl(FramesManagerInitializationInfo& info)
 {
+	m_preExecuteFrame			= std::move(info.preExecuteFrame);
 	m_executeSimulationFrame	= std::move(info.executeSimulationFrame);
 	m_executeRenderingFrame		= std::move(info.executeRenderingFrame);
 
@@ -205,6 +233,18 @@ void EngineFramesManager::ShutdownImpl()
 void EngineFramesManager::ExecuteFrameImpl()
 {
 	SPT_PROFILER_FUNCTION();
+
+	m_simulationFrame->SetFrameState(EFrameState::Simulation);
+	m_renderingFrame->SetFrameState(EFrameState::Rendering);
+	m_gpuFrame->SetFrameState(EFrameState::GPU);
+
+	js::Launch("Pre Execute Frame",
+			   [this]
+			   {
+				   m_preExecuteFrame.ExecuteIfBound();
+			   },
+			   js::EJobPriority::High,
+			   js::EJobFlags::Inline);
 	
 	js::Launch("Execute Frame",
 			   [ this ]
