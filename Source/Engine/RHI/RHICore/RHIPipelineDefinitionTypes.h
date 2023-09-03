@@ -159,13 +159,41 @@ struct GraphicsPipelineDefinition
 };
 
 
+struct RayTracingHitGroupDefinition
+{
+	RayTracingHitGroupDefinition()
+	{ }
+
+	SizeType GetValidShadersNum() const
+	{
+		return (closestHitModule.IsValid() ? 1 : 0)
+			 + (anyHitModule.IsValid() ? 1 : 0)
+			 + (intersectionModule.IsValid() ? 1 : 0);
+	}
+
+	RHIShaderModule closestHitModule;
+	RHIShaderModule anyHitModule;
+	RHIShaderModule intersectionModule;
+};
+
+
 struct RayTracingShadersDefinition
 {
 	RayTracingShadersDefinition()
 	{ }
 
+	SizeType GetHitShadersNum() const
+	{
+		return std::accumulate(std::cbegin(hitGroups), std::cend(hitGroups),
+							   SizeType(0),
+							   [](SizeType currentValue, const RayTracingHitGroupDefinition& hitGroup)
+							   {
+								   return currentValue + hitGroup.GetValidShadersNum();
+							   });
+	}
+
 	RHIShaderModule rayGenerationModule;
-	lib::DynamicArray<RHIShaderModule> closestHitModules;
+	lib::DynamicArray<RayTracingHitGroupDefinition> hitGroups;
 	lib::DynamicArray<RHIShaderModule> missModules;
 };
 

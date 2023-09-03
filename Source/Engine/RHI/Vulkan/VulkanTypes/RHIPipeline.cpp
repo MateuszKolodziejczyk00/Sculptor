@@ -388,6 +388,25 @@ static void AppendShaderStageInfos(INOUT lib::DynamicArray<VkPipelineShaderStage
 	}
 }
 
+static void AppendShaderStageInfos(INOUT lib::DynamicArray<VkPipelineShaderStageCreateInfo>& stageInfos, const lib::DynamicArray<rhi::RayTracingHitGroupDefinition>& hitGroups)
+{
+	for (const rhi::RayTracingHitGroupDefinition& hitGroup : hitGroups)
+	{
+		SPT_CHECK(hitGroup.closestHitModule.IsValid());
+		stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(hitGroup.closestHitModule));
+
+		if (hitGroup.anyHitModule.IsValid())
+		{
+			stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(hitGroup.anyHitModule));
+		}
+
+		if (hitGroup.intersectionModule.IsValid())
+		{
+			stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(hitGroup.intersectionModule));
+		}
+	}
+}
+
 static VkRayTracingShaderGroupCreateInfoKHR CreateGeneralShaderGroup(Uint32 generalShaderIdx)
 {
 	VkRayTracingShaderGroupCreateInfoKHR group{ VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
@@ -410,12 +429,12 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	SPT_CHECK(shadersDef.rayGenerationModule.IsValid());
 	
 	// We need to add 1 because of the ray generation shader
-	const SizeType shadersNum = shadersDef.closestHitModules.size() + shadersDef.missModules.size() + 1;
+	const SizeType shadersNum = shadersDef.GetHitShadersNum() + shadersDef.missModules.size() + 1;
 
 	lib::DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.reserve(shadersNum);
 	shaderStages.emplace_back(helpers::BuildPipelineShaderStageInfo(shadersDef.rayGenerationModule));
-	AppendShaderStageInfos(shaderStages, shadersDef.closestHitModules);
+	AppendShaderStageInfos(shaderStages, shadersDef.hitGroups);
 	AppendShaderStageInfos(shaderStages, shadersDef.missModules);
 
 	Uint32 shaderIdx = 0;
@@ -426,16 +445,18 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	// Ray generation shader group
 	shaderGroups.emplace_back(CreateGeneralShaderGroup(shaderIdx++));
 
-	// Closest hit shader groups
-	std::generate_n(std::back_inserter(shaderGroups), shadersDef.closestHitModules.size(),
-					[&shaderIdx]
+	// Hit shader groups
+	std::generate_n(std::back_inserter(shaderGroups), shadersDef.hitGroups.size(),
+					[&shaderIdx, currentHitGroupIdx = 0u, &shadersDef]() mutable
 					{
+						const rhi::RayTracingHitGroupDefinition& hitGroup = shadersDef.hitGroups[currentHitGroupIdx++];
+
 						VkRayTracingShaderGroupCreateInfoKHR group{ VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
 						group.type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
 						group.generalShader			= VK_SHADER_UNUSED_KHR;
 						group.closestHitShader		= shaderIdx++;
-						group.anyHitShader			= VK_SHADER_UNUSED_KHR;
-						group.intersectionShader	= VK_SHADER_UNUSED_KHR;
+						group.anyHitShader			= hitGroup.anyHitModule.IsValid() ? shaderIdx++ : VK_SHADER_UNUSED_KHR;
+						group.intersectionShader	= hitGroup.intersectionModule.IsValid() ? shaderIdx++ : VK_SHADER_UNUSED_KHR;
 	
 						return group;
 					});

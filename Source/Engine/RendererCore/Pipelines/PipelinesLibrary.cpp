@@ -117,9 +117,20 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 			m_rayTracingPipelineHotReloadData[stateID] = hotReloadData;
 
 			m_shaderToPipelineStates[shaders.rayGenShader].emplace_back(stateID);
-			for (ShaderID shaderID : shaders.closestHitShaders)
+			for (const RayTracingHitGroup& group : shaders.hitGroups)
 			{
-				m_shaderToPipelineStates[shaderID].emplace_back(stateID);
+				SPT_CHECK(group.closestHitShader.IsValid());
+				m_shaderToPipelineStates[group.closestHitShader].emplace_back(stateID);
+
+				if (group.anyHitShader.IsValid())
+				{
+					m_shaderToPipelineStates[group.anyHitShader].emplace_back(stateID);
+				}
+
+				if (group.intersectionShader.IsValid())
+				{
+					m_shaderToPipelineStates[group.intersectionShader].emplace_back(stateID);
+				}
 			}
 			for (ShaderID shaderID : shaders.missShaders)
 			{
@@ -241,14 +252,27 @@ lib::SharedRef<RayTracingPipeline> PipelinesLibrary::CreateRayTracingPipelineObj
 	};
 
 	RayTracingPipelineShaderObjects shadersObjects;
-	shadersObjects.closestHitShaders.reserve(shaders.closestHitShaders.size());
+	shadersObjects.hitGroups.reserve(shaders.hitGroups.size());
 	shadersObjects.missShaders.reserve(shaders.missShaders.size());
 
 	shadersObjects.rayGenShader = getShaderObject(shaders.rayGenShader);
 
-	std::transform(std::cbegin(shaders.closestHitShaders), std::cend(shaders.closestHitShaders),
-				   std::back_inserter(shadersObjects.closestHitShaders),
-				   getShaderObject);
+	std::transform(std::cbegin(shaders.hitGroups), std::cend(shaders.hitGroups),
+				   std::back_inserter(shadersObjects.hitGroups),
+				   [getShaderObject](const RayTracingHitGroup& hitGroup)
+				   {
+					   RayTracingHitGroupShaders hitGroupShaders;
+					   hitGroupShaders.closestHitShader = getShaderObject(hitGroup.closestHitShader);
+					   if (hitGroup.anyHitShader.IsValid())
+					   {
+						   hitGroupShaders.anyHitShader = getShaderObject(hitGroup.anyHitShader);
+					   }
+					   if (hitGroup.intersectionShader.IsValid())
+					   {
+						   hitGroupShaders.intersectionShader = getShaderObject(hitGroup.intersectionShader);
+					   }
+					   return hitGroupShaders;
+				   });
 	
 	std::transform(std::cbegin(shaders.missShaders), std::cend(shaders.missShaders),
 				   std::back_inserter(shadersObjects.missShaders),

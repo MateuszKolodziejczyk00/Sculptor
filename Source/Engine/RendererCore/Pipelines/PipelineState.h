@@ -22,6 +22,25 @@ struct GraphicsPipelineShaders
 };
 
 
+struct RayTracingHitGroup
+{
+	RayTracingHitGroup() = default;
+
+	RayTracingHitGroup(ShaderID inClosestHitShader)
+		: closestHitShader(inClosestHitShader)
+	{ }
+
+	SizeType Hash() const
+	{
+		return lib::HashCombine(closestHitShader, anyHitShader, intersectionShader);
+	}
+
+	ShaderID closestHitShader;
+	ShaderID anyHitShader;
+	ShaderID intersectionShader;
+};
+
+
 struct RayTracingPipelineShaders
 {
 	RayTracingPipelineShaders() = default;
@@ -29,12 +48,16 @@ struct RayTracingPipelineShaders
 	SizeType Hash() const
 	{
 		return lib::HashCombine(rayGenShader.GetID(),
-								lib::HashRange(std::cbegin(closestHitShaders), std::cend(closestHitShaders)),
+								lib::HashRange(std::cbegin(hitGroups), std::cend(hitGroups),
+											   [](const RayTracingHitGroup& hitGroup)
+											   {
+												   return hitGroup.Hash();
+											   }),
 								lib::HashRange(std::cbegin(missShaders), std::cend(missShaders)));
 	}
 
 	ShaderID rayGenShader;
-	lib::DynamicArray<ShaderID> closestHitShaders;
+	lib::DynamicArray<RayTracingHitGroup> hitGroups;
 	lib::DynamicArray<ShaderID> missShaders;
 };
 

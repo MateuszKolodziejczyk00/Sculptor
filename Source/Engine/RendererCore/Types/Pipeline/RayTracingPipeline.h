@@ -8,12 +8,19 @@
 namespace spt::rdr
 {
 
+struct RayTracingHitGroupShaders
+{
+	lib::SharedPtr<Shader> closestHitShader;
+	lib::SharedPtr<Shader> anyHitShader;
+	lib::SharedPtr<Shader> intersectionShader;
+};
+
 struct RayTracingPipelineShaderObjects
 {
 	RayTracingPipelineShaderObjects() = default;
 
 	lib::SharedPtr<Shader> rayGenShader;
-	lib::DynamicArray<lib::SharedRef<Shader>> closestHitShaders;
+	lib::DynamicArray<RayTracingHitGroupShaders> hitGroups;
 	lib::DynamicArray<lib::SharedRef<Shader>> missShaders;
 };
 

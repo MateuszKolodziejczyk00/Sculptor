@@ -45,7 +45,7 @@ constexpr SizeType HashRange(const TIterator begin, const TIterator end, THasher
 	using ElementType = TIterator::value_type;
 
 	// Source: Thomas Mueller's post https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-	const auto elementHash = [hasher](SizeType seed, const ElementType& element) -> SizeType
+	const auto elementHash = [&hasher](SizeType seed, const ElementType& element) -> SizeType
 	{
 		const SizeType val = hasher(element);
 

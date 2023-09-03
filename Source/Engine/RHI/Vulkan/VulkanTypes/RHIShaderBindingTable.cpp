@@ -32,10 +32,10 @@ void RHIShaderBindingTable::InitializeRHI(const RHIPipeline& pipeline, const rhi
 		region.size		= static_cast<VkDeviceSize>(math::Utils::RoundUp(groupCount * groupHandleSizeAligned, rtPipelineProps.shaderGroupBaseAlignment));
 	};
 
-	initRegionSize(m_closestHitRegion, static_cast<Uint32>(shadersDef.closestHitModules.size()));
+	initRegionSize(m_closestHitRegion, static_cast<Uint32>(shadersDef.hitGroups.size()));
 	initRegionSize(m_missRegion, static_cast<Uint32>(shadersDef.missModules.size()));
 
-	const Uint32 handleCount = 1 + static_cast<Uint32>(shadersDef.closestHitModules.size()) + static_cast<Uint32>(shadersDef.missModules.size());
+	const Uint32 handleCount = 1 + static_cast<Uint32>(shadersDef.hitGroups.size()) + static_cast<Uint32>(shadersDef.missModules.size());
 
 	const SizeType handlesDataSize = handleCount * groupHandleSize;
 	lib::DynamicArray<Byte> handlesData(handlesDataSize);
@@ -66,7 +66,7 @@ void RHIShaderBindingTable::InitializeRHI(const RHIPipeline& pipeline, const rhi
 		};
 
 		copyRegionHandles(m_rayGenRegion, 1);
-		copyRegionHandles(m_closestHitRegion, static_cast<Uint32>(shadersDef.closestHitModules.size()));
+		copyRegionHandles(m_closestHitRegion, static_cast<Uint32>(shadersDef.hitGroups.size()));
 		copyRegionHandles(m_missRegion, static_cast<Uint32>(shadersDef.missModules.size()));
 	}
 }
