@@ -13,9 +13,12 @@ RenderGraphCaptureUIView::RenderGraphCaptureUIView(const scui::ViewDefinition& d
 	: Super(definition)
 	, m_captureViewer(std::move(capture))
 	, m_nodesListPanelName(CreateUniqueName("Nodes List"))
+	, m_nodesListFilterName(CreateUniqueName("Nodes Filter"))
 	, m_nodeDetailsPanelName(CreateUniqueName("Node Details"))
 	, m_textureViewPanelName(CreateUniqueName("Texture View"))
-{ }
+{
+	m_nodesListFilter[0] = '\0';
+}
 
 void RenderGraphCaptureUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
 {
@@ -53,11 +56,24 @@ void RenderGraphCaptureUIView::DrawNodesList(const RGCapture& capture)
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_nodesListPanelName.GetData());
 
+	ImGui::InputText(m_nodesListFilterName.GetData(), m_nodesListFilter, SPT_ARRAY_SIZE(m_nodesListFilter));
+
+	const lib::StringView filterText = m_nodesListFilter;
+
 	const math::Vector2f contentSize = ui::UIUtils::GetWindowContentSize();
 
 	for (const RGNodeCapture& node : capture.nodes)
 	{
 		Bool isNodeSelected = &node == m_captureViewer.GetSelectedNode();
+
+		if (!filterText.empty() && !isNodeSelected)
+		{
+			if (node.name.GetView().find(filterText) == lib::StringView::npos)
+			{
+				continue;
+			}
+		}
+
 		if (ImGui::Selectable(node.name.GetData(), &isNodeSelected))
 		{
 			m_captureViewer.SelectNode(&node);

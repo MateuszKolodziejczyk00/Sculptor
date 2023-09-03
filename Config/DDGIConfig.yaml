@@ -1,0 +1,14 @@
+ProbesVolumeResolution:
+  - 12
+  - 12
+  - 12
+LocalProbesUpdateResolution:
+  - 6
+  - 6
+  - 6
+ProbesSpacing:
+  - 1
+  - 2
+  - 1
+LocalUpdateRaysPerProbe: 1024
+GlobalUpdateRaysPerProbe: 400

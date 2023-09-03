@@ -6,6 +6,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
+#include "RenderSceneRegistry.h"
 
 
 namespace spt::rdr
@@ -25,6 +26,18 @@ DS_BEGIN(DDGIDS, rg::RGDescriptorSetState<DDGIDS>)
 DS_END();
 
 
+struct DDGIConfig
+{
+	math::Vector3u probesVolumeResolution = math::Vector3u::Constant(12u);
+	math::Vector3u localProbesUpdateResolution = math::Vector3u::Constant(6u);
+	
+	math::Vector3f probesSpacing = math::Vector3f(1.f, 2.f, 1.f);
+
+	Uint32 localUpdateRaysPerProbe = 1024u;
+	Uint32 globalUpdateRaysPerProbe = 380u;
+};
+
+
 class RENDER_SCENE_API DDGISceneSubsystem : public RenderSceneSubsystem
 {
 protected:
@@ -34,6 +47,7 @@ protected:
 public:
 
 	explicit DDGISceneSubsystem(RenderScene& owningScene);
+	~DDGISceneSubsystem();
 
 	DDGIUpdateProbesGPUParams CreateUpdateProbesParams() const;
 
@@ -52,6 +66,8 @@ public:
 
 	Bool RequiresClearingData() const;
 	void PostClearingData();
+
+	void PostUpdateProbes();
 
 	// Settings ==================================================================
 
@@ -73,20 +89,22 @@ private:
 
 	void InitializeTextures();
 
+	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
+
 	lib::SharedPtr<rdr::TextureView> m_probesIlluminanceTextureView;
 	lib::SharedPtr<rdr::TextureView> m_probesHitDistanceTextureView;
 
 	DDGIGPUParams m_ddgiParams;
 
+	DDGIConfig m_config;
+
 	EDDDGIProbesDebugMode::Type m_probesDebugMode;
 
 	lib::SharedPtr<DDGIDS> m_ddgiDS;
 
-	math::Vector3u m_probesUpdatedPerFrame;
-
 	Bool m_requiresClearingData;
 
-	lib::StaticArray<math::Matrix3f, 12u> m_raysRotationMatrices;
+	Bool m_wantsGlobalUpdate;
 };
 
 } // spt::rsc

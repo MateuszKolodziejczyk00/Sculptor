@@ -23,6 +23,7 @@ protected:
 public:
 
 	explicit AtmosphereSceneSubsystem(RenderScene& owningScene);
+	~AtmosphereSceneSubsystem();
 
 	// Begin RenderSceneSubsystem overrides
 	virtual void Update() override;

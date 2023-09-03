@@ -77,15 +77,13 @@ PS_OUTPUT DDGIDebugProbesPS(VS_OUTPUT vertexInput)
 
         probeIlluminance = pow(probeIlluminance, u_ddgiParams.probeIlluminanceEncodingGamma);
 
-        probeIlluminance *= 10.f;
+        probeIlluminance *= 0.01f;
     
         output.color = float4(probeIlluminance / (probeIlluminance + 1.f), 1.f);
     }
     else if (u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_HIT_DISTANCE)
     {
         float2 hitDistance = SampleProbeHitDistance(u_ddgiParams, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
-        hitDistance.y = sqrt(hitDistance.y);
-        hitDistance /= length(u_ddgiParams.probesSpacing);
 
         output.color = float4(hitDistance, 0.0f, 1.0f);
     }

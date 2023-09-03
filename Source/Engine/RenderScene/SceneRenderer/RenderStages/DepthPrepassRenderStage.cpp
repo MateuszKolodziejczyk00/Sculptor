@@ -46,6 +46,9 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 		rhi::TextureDefinition depthDef;
 		depthDef.resolution	= texturesRes;
 		depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
+#if !SPT_RELEASE
+		lib::AddFlag(depthDef.usage, rhi::ETextureUsage::TransferSource);
+#endif // !SPT_RELEASE
 		depthDef.format		= GetDepthFormat();
 		const lib::SharedRef<rdr::Texture> depthTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Depth Texture"), depthDef, rhi::EMemoryUsage::GPUOnly);
 

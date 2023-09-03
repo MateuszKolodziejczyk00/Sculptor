@@ -35,8 +35,12 @@ private:
 	RenderGraphCaptureViewer m_captureViewer;
 
 	lib::HashedString m_nodesListPanelName;
+	lib::HashedString m_nodesListFilterName;
+
 	lib::HashedString m_nodeDetailsPanelName;
 	lib::HashedString m_textureViewPanelName;
+
+	char m_nodesListFilter[64];
 };
 
 } // spt::rg::capture

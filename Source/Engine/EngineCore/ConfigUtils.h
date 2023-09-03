@@ -32,7 +32,12 @@ template<typename TDataType>
 Bool ConfigUtils::LoadConfigData(TDataType& data, const lib::String& configFileName)
 {
 	const lib::String finalPath = Paths::Combine(Paths::GetConfigsPath(), configFileName);
-	return srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
+	const Bool success = srl::SerializationHelper::LoadTextStructFromFile(data, finalPath);
+
+	// Save config in case of change of the struct
+	SaveConfigData(data, configFileName);
+
+	return success;
 }
 
 } // spt::engn

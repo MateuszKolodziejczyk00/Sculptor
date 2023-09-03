@@ -27,6 +27,7 @@ namespace params
 RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows", { "Lighting", "Shadows", "Directional"}, true);
 RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
+RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 0.1f);
 
 } // params
 
@@ -34,6 +35,7 @@ BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, lightDirection)
 	SHADER_STRUCT_FIELD(Real32,			minTraceDistance)
 	SHADER_STRUCT_FIELD(Real32,			maxTraceDistance)
+	SHADER_STRUCT_FIELD(Real32,			shadowRayBias)
 	SHADER_STRUCT_FIELD(Real32,			time)
 	SHADER_STRUCT_FIELD(Real32,			shadowRayConeAngle)
 	SHADER_STRUCT_FIELD(Bool,			enableShadows)
@@ -42,7 +44,8 @@ END_SHADER_STRUCT();
 DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_worldAccelerationStructure)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 DS_END();
 
 
@@ -173,6 +176,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const lib::SharedRef<TraceShadowRaysDS> traceShadowRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
 	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depth;
+	traceShadowRaysDS->u_geometryNormalsTexture     = shadingInputData.geometryNormals;
 
 	static const rdr::PipelineStateID shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline();
 
@@ -190,6 +194,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		updateParams.time				= engn::GetRenderingFrame().GetTime();
 		updateParams.shadowRayConeAngle = directionalLight.lightConeAngle;
 		updateParams.enableShadows		= params::directionalLightEnableShadows;
+		updateParams.shadowRayBias		= params::directionalLightShadowRayBias;
 
 		const lib::SharedRef<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = rdr::ResourcesManager::CreateDescriptorSetState<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
 		directionalLightShadowMaskDS->u_shadowMask	= shadowsData.currentShadowMask;

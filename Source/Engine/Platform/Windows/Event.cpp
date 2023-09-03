@@ -52,11 +52,14 @@ void Event::Reset()
 Bool Event::IsTriggered() const
 {
 	SPT_PROFILER_FUNCTION();
+
 	return WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), 0) != WAIT_TIMEOUT;
 }
 
 void Event::Wait()
 {
+	SPT_PROFILER_FUNCTION();
+
 	WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), INFINITE);
 }
 

@@ -10,7 +10,7 @@
 namespace spt::lib
 {
 
-// multi-producer/single-consumer waitfree queue
+// multi-producer/multi-consumer waitfree queue
 // Based on implementation provided by Dmitry Vyukov:
 // https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 template<typename TType, SizeType size>

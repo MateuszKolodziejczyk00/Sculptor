@@ -282,7 +282,7 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 	lib::SharedPtr<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
 	updateProbesIlluminanceDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
 
-	static const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(updateParams.probeIlluminanceDataWithBorderRes, updateParams.raysNumPerProbe);
+	const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(updateParams.probeIlluminanceDataWithBorderRes, updateParams.raysNumPerProbe);
 	
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Illuminance"),
 						  updateProbesIlluminancePipelineID,
@@ -293,7 +293,7 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 	lib::SharedPtr<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
 	updateProbesHitDistanceDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
 	
-	static const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(updateParams.probeHitDistanceDataWithBorderRes, updateParams.raysNumPerProbe);;
+	const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(updateParams.probeHitDistanceDataWithBorderRes, updateParams.raysNumPerProbe);;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Hit Distance"),
 						  updateProbesDistancesPipelineID,
@@ -383,6 +383,8 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
 
 		UpdateProbes(graphBuilder, scene, viewSpec, updateParams);
+
+		ddgiSubsystem.PostUpdateProbes();
 	}
 }
 

@@ -34,6 +34,15 @@ AtmosphereSceneSubsystem::AtmosphereSceneSubsystem(RenderScene& owningScene)
 	InitializeResources();
 }
 
+AtmosphereSceneSubsystem::~AtmosphereSceneSubsystem()
+{
+	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
+
+	registry.on_construct<DirectionalLightData>().disconnect<&AtmosphereSceneSubsystem::OnDirectionalLightUpdated>(this);
+	registry.on_update<DirectionalLightData>().disconnect<&AtmosphereSceneSubsystem::OnDirectionalLightUpdated>(this);
+	registry.on_destroy<DirectionalLightData>().disconnect<&AtmosphereSceneSubsystem::OnDirectionalLightUpdated>(this);
+}
+
 void AtmosphereSceneSubsystem::Update()
 {
 	SPT_PROFILER_FUNCTION();

@@ -27,9 +27,9 @@ namespace spt::rsc
 namespace params
 {
 
-RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.4f, 0.f, 1.f);
-RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -6.f, -20.f, 20.f);
-RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 17.f, -20.f, 20.f);
+RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.65f, 0.f, 1.f);
+RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
+RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 20.f, -20.f, 20.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
 RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);

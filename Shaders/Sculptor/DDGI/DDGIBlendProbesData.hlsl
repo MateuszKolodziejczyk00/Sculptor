@@ -66,10 +66,15 @@ struct CS_INPUT
 void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 {
     const uint flatThreadLocalID = threadLocalID.y * GROUP_SIZE_X + threadLocalID.x;
-    
+ 
+    uint2 traceResultTextureRes;
+    u_traceRaysResultTexture.GetDimensions(traceResultTextureRes.x, traceResultTextureRes.y);
+
+    const float2 rcpTraceResultTextureRes = rcp(float2(traceResultTextureRes));
+
     for (uint rayIdx = flatThreadLocalID; rayIdx < RAYS_NUM_PER_PROBE; rayIdx += (GROUP_SIZE_X * GROUP_SIZE_Y))
     {
-        const float2 resultUV = (float2(updatedProbeIdx, rayIdx) + 0.5f) * float2(u_updateProbesParams.rcpProbesNumToUpdate, u_updateProbesParams.rcpRaysNumPerProbe);
+        const float2 resultUV = (float2(updatedProbeIdx, rayIdx) + 0.5f) * rcpTraceResultTextureRes;
         const float4 rayResult = u_traceRaysResultTexture.SampleLevel(u_traceRaysResultSampler, resultUV, 0);
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
@@ -218,12 +223,17 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             hysteresis = 0.f;
         }
 
-        if (abs(MaxComponent(result - prevIlluminance)) > 2000.2f)
-        {
-            hysteresis = max(hysteresis - 0.75f, 0.f);
-        }
+        const float maxIlluminanceDiff = abs(MaxComponent(result - prevIlluminance));
+        const float histeresisDelta = maxIlluminanceDiff > u_updateProbesParams.illuminanceDiffThreshold ? 0.8f : 0.f;
+        hysteresis = max(hysteresis - histeresisDelta, 0.f);
 
         float3 delta = result - prevIlluminance;
+
+        const float deltaLuminance = Luminance(abs(delta));
+        if(deltaLuminance > u_updateProbesParams.luminanceDiffThreshold)
+        {
+            delta *= 0.2f;
+        }
 
         float3 deltaThisFrame = delta * (1.f - hysteresis);
         result = prevIlluminance + deltaThisFrame;
