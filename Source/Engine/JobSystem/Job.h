@@ -179,6 +179,21 @@ public:
 	}
 };
 
+
+#define  SPT_JS_JOB_ALL_SEQENCIAL_MEMORY_ORDER 0
+
+#if SPT_JS_JOB_ALL_SEQENCIAL_MEMORY_ORDER
+constexpr auto MemoryOrderSequencial		= std::memory_order_seq_cst;
+constexpr auto MemoryOrderAcquire			= std::memory_order_seq_cst;
+constexpr auto MemoryOrderRelease			= std::memory_order_seq_cst;
+constexpr auto MemoryOrderAcquireRelease	= std::memory_order_seq_cst;
+#else
+constexpr auto MemoryOrderSequencial		= std::memory_order_seq_cst;
+constexpr auto MemoryOrderAcquire			= std::memory_order_acquire;
+constexpr auto MemoryOrderRelease			= std::memory_order_release;
+constexpr auto MemoryOrderAcquireRelease	= std::memory_order_acq_rel;
+#endif // SPT_JS_SEQENCIAL_MEMORY_ORDER
+
 } // impl
 
 class JobInstance;
@@ -214,7 +229,7 @@ public:
 	{
 		DestroyCallable();
 
-		std::atomic_thread_fence(std::memory_order_release);
+		std::atomic_thread_fence(impl::MemoryOrderRelease);
 	}
 
 	template<typename TCallable>
@@ -229,8 +244,6 @@ public:
 
 		Bool allocatedInline = false;
 
-		SPT_MAYBE_UNUSED
-		const SizeType size = sizeof(CallableType);
 		if constexpr (sizeof(CallableType) <= s_inlineStorageSize)
 		{
 			const SizeType inlineStorageAddress = reinterpret_cast<SizeType>(m_inlineStorage);
@@ -247,12 +260,12 @@ public:
 			m_callable = new CallableType(std::move(callable));
 		}
 
-		std::atomic_thread_fence(std::memory_order_release);
+		std::atomic_thread_fence(impl::MemoryOrderRelease);
 	}
 
 	void Invoke()
 	{
-		std::atomic_thread_fence(std::memory_order_acquire);
+		std::atomic_thread_fence(impl::MemoryOrderAcquire);
 
 		SPT_CHECK(!!m_callable);
 
@@ -341,14 +354,14 @@ public:
 
 	Bool TryExecute()
 	{
-		const Int32 remainingPrerequisites = m_remainingPrerequisitesNum.load(std::memory_order_acquire);
+		const Int32 remainingPrerequisites = m_remainingPrerequisitesNum.load(impl::MemoryOrderAcquire);
 		if (remainingPrerequisites > 0)
 		{
 			return false;
 		}
 
 		EJobState previous = EJobState::Pending;
-		const Bool executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing);
+		const Bool executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing, impl::MemoryOrderSequencial);
 
 		Bool finishedThisThread = false;
 
@@ -358,10 +371,11 @@ public:
 
 			if (!CanFinishExecution())
 			{
-				TryExecutePrerequisites();
+				// We can use lockless function because we're on executing thread
+				TryExecutePrerequisites_Lockless(m_prerequisites);
 			}
 
-			m_jobState.store(EJobState::Executed);
+			m_jobState.store(EJobState::Executed, impl::MemoryOrderSequencial);
 
 			if (CanFinishExecution())
 			{
@@ -369,7 +383,7 @@ public:
 				if (!finishedThisThread)
 				{
 					// This thread couldn't finish this job, but we should return true if job was already finished
-					previous = m_jobState.load(std::memory_order_acquire);
+					previous = m_jobState.load(impl::MemoryOrderSequencial);
 				}
 			}
 		}
@@ -379,12 +393,12 @@ public:
 
 	Bool IsFinished() const
 	{
-		return m_jobState.load(std::memory_order_acquire) == EJobState::Finished;
+		return m_jobState.load(impl::MemoryOrderSequencial) == EJobState::Finished;
 	}
 
 	void Wait()
 	{
-		const EJobState loadedState = m_jobState.load();
+		const EJobState loadedState = m_jobState.load(impl::MemoryOrderSequencial);
 		if (loadedState == EJobState::Finished)
 		{
 			return;
@@ -402,6 +416,11 @@ public:
 					return;
 				}
 			}
+		}
+		else if (loadedState == EJobState::Executing)
+		{
+			// Try executing nested jobs
+			TryExecutePrerequisites();
 		}
 
 		platf::Event finishEvent(true);
@@ -434,7 +453,7 @@ public:
 		AddPrerequisite(std::move(job));
 	}
 
-protected:
+private:
 
 	template<typename TCallable>
 	void SetCallable(TCallable&& callable)
@@ -461,9 +480,20 @@ protected:
 
 	void AddPrerequisite(const lib::SharedPtr<JobInstance>& job)
 	{
-		m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
+		const Bool useLock = m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Pending;
+		if (useLock)
+		{
+			m_prerequisitesLock.lock();
+		}
+
+		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderAcquireRelease);
 		m_prerequisites.emplace_back(job);
 		job->AddConsequent(shared_from_this());
+
+		if (useLock)
+		{
+			m_prerequisitesLock.unlock();
+		}
 	}
 
 	void AddConsequent(lib::SharedPtr<JobInstance> next)
@@ -472,7 +502,7 @@ protected:
 
 		const lib::LockGuard lockGuard(m_consequentsLock);
 
-		if(m_jobState.load() != EJobState::Finished)
+		if(m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
 		{
 			m_consequents.emplace_back(std::move(next));
 		}
@@ -499,7 +529,22 @@ protected:
 
 	void TryExecutePrerequisites() const
 	{
-		// We probably don't need lock here for now
+		if (!CanFinishExecution())
+		{
+			const Bool canUseLockless = m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Executing;
+			if (canUseLockless)
+			{
+				TryExecutePrerequisites_Lockless(m_prerequisites);
+			}
+			else
+			{
+				TryExecutePrerequisites_Locked();
+			}
+		}
+	}
+
+	void TryExecutePrerequisites_Lockless(const lib::DynamicArray<lib::SharedPtr<JobInstance>>& prerequisitesToExecute) const
+	{
 		for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
 		{
 			if (CanFinishExecution())
@@ -511,15 +556,26 @@ protected:
 		}
 	}
 
+	void TryExecutePrerequisites_Locked() const
+	{
+		lib::DynamicArray<lib::SharedPtr<JobInstance>> prerequisitesCopy;
+		{
+			const lib::LockGuard lockGuard(m_prerequisitesLock);
+			prerequisitesCopy = m_prerequisites;
+		}
+
+		TryExecutePrerequisites_Lockless(prerequisitesCopy);
+	}
+
 	void Execute()
 	{
 		const JobExecutionScope executionScope(*this);
 
 		m_prerequisites.clear();
 
-		m_remainingPrerequisitesNum.fetch_add(1, std::memory_order_release);
+		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderRelease);
 		DoExecute();
-		m_remainingPrerequisitesNum.fetch_add(-1, std::memory_order_release);
+		m_remainingPrerequisitesNum.fetch_add(-1, impl::MemoryOrderRelease);
 	}
 
 	void DoExecute()
@@ -529,19 +585,19 @@ protected:
 
 	inline Bool CanFinishExecution() const
 	{
-		return m_remainingPrerequisitesNum.load() == 0;
+		return m_remainingPrerequisitesNum.load(impl::MemoryOrderAcquire) == 0;
 	}
 
 	Bool TryFinish()
 	{
 		EJobState expected = EJobState::Executed;
-		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finished);
+		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finished, impl::MemoryOrderSequencial);
 
 		SPT_CHECK(expected != EJobState::Pending);
 
 		if (finishThisThread)
 		{
-			m_jobState.store(EJobState::Finished);
+			m_jobState.store(EJobState::Finished, impl::MemoryOrderSequencial);
 
 			m_prerequisites.clear();
 
@@ -566,22 +622,20 @@ protected:
 
 	void PostPrerequisiteExecuted()
 	{
-		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1) - 1;
+		const Int32 remaining = m_remainingPrerequisitesNum.fetch_add(-1, impl::MemoryOrderAcquireRelease) - 1;
+		SPT_CHECK(remaining >= 0);
 
 		if (remaining == 0)
 		{
-			const EJobState currentState = m_jobState.load();
+			const EJobState currentState = m_jobState.load(impl::MemoryOrderSequencial);
 			if (currentState == EJobState::Pending)
 			{
 				Schedule();
 			}
 			else if(currentState == EJobState::Executed)
 			{
-				// Finished nested job
-				if (CanFinishExecution())
-				{
-					TryFinish();
-				}
+				// Finished nested jobs
+				TryFinish();
 			}
 		}
 	}
@@ -591,10 +645,9 @@ protected:
 		Scheduler::ScheduleJob(shared_from_this());
 	}
 
-private:
-
 	lib::DynamicArray<lib::SharedPtr<JobInstance>>  m_prerequisites;
 	std::atomic<Int32>								m_remainingPrerequisitesNum;
+	mutable lib::Lock								m_prerequisitesLock;
 
 	std::atomic<EJobState> m_jobState;
 
