@@ -121,7 +121,7 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 
 	const math::Vector2u skyViewLUTResolution = skyViewParams.skyViewLUTResolution;
 
-	const rhi::TextureDefinition lutDefinition(skyViewLUTResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
+	const rhi::TextureDefinition lutDefinition(skyViewLUTResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::RGBA16_S_Float);
 	const rg::RGTextureViewHandle skyViewLUT = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Sky View LUT"), lutDefinition, rhi::EMemoryUsage::GPUOnly);
 
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyViewLUTPipeline();
