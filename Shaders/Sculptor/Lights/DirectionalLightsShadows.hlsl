@@ -24,7 +24,7 @@ void GenerateShadowRaysRTG()
     }
     
     const float2 uv = (pixel + 0.5f) / float2(DispatchRaysDimensions().xy);
-    const float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
+    const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0);
 
     ShadowRayPayload payload = { true };
 
@@ -34,7 +34,12 @@ void GenerateShadowRaysRTG()
         const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, u_params.shadowRayConeAngle, noise);
 
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
-        const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+        float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
+
+        const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
+
+        worldLocation += normal * u_params.shadowRayBias;
+
 
         RayDesc rayDesc;
         rayDesc.TMin        = u_params.minTraceDistance;

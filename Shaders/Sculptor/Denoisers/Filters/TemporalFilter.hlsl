@@ -24,6 +24,14 @@ void TemporalFilterCS(CS_INPUT input)
         const float2 pixelSize = rcp(float2(outputRes));
         const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
+        float currentSampleWeight = u_params.currentFrameMinWeight;
+        float variance = -1.f;
+        if(u_params.hasValidVarianceTexture)
+        {
+            variance = u_varianceTexture.SampleLevel(u_linearSampler, uv, 0.f).x;
+            currentSampleWeight = clamp(1.f - variance, u_params.currentFrameMinWeight, u_params.currentFrameMaxWeight);
+        }
+
         const float2 motion = u_motionTexture.SampleLevel(u_nearestSampler, uv, 0.f);
 
         const float2 historyUV = uv - motion;
@@ -51,9 +59,14 @@ void TemporalFilterCS(CS_INPUT input)
             if (dot(offset, offset) < Pow2(maxOffset) && dot(currentSampleNormal, historySampleNormal) > minNormalDiffCos)
             {
                 const float4 currentValue = u_currentTexture[pixel];
-                const float4 historyValue = u_historyTexture.SampleLevel(u_nearestSampler, historyUV, 0.05f);
+                float4 historyValue = u_historyTexture.SampleLevel(u_nearestSampler, historyUV, 0.05f);
+                if(u_params.hasValidVarianceTexture)
+                {
+                    const float clampExtent = max(variance * u_params.varianceHistoryClampMultiplier, u_params.minHistoryClampExtent);
+                    historyValue = clamp(historyValue, currentValue - clampExtent, currentValue + clampExtent);
+                }
 
-                float4 newValue = lerp(historyValue, currentValue, 0.1f);
+                float4 newValue = lerp(historyValue, currentValue, currentSampleWeight);
 
                 [unroll]
                 for (int i = 0; i < 3; ++i)

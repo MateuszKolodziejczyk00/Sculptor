@@ -12,7 +12,16 @@ class RenderGraphBuilder;
 namespace spt::rsc::denoising::filters::spatial
 {
 
-using SpatialATrousFilterParams = denoising::DenoiserGeometryParams;
+struct SpatialATrousFilterParams : public denoising::DenoiserGeometryParams
+{
+	using denoising::DenoiserGeometryParams::DenoiserGeometryParams;
+
+	SpatialATrousFilterParams(const denoising::DenoiserGeometryParams& inParams)
+		: denoising::DenoiserGeometryParams(inParams)
+	{  }
+
+	rg::RGTextureViewHandle varianceTexture;
+};
 
 RENDER_SCENE_API void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrousFilterParams& params, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 iterationIdx);
 

@@ -41,6 +41,17 @@ void SpatialATrousFilterCS(CS_INPUT input)
         const float2 pixelSize = rcp(float2(outputRes));
         const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
+        [branch]
+        if(u_params.hasValidVarianceTexture)
+        {
+            const float variance = u_varianceTexture.SampleLevel(u_nearestSampler, uv, 0.0f).x;
+            if(variance < 0.02f)
+            {
+                u_outputTexture[pixel] = u_inputTexture.SampleLevel(u_nearestSampler, uv, 0.f);
+                return;
+            }
+        }
+
         const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0.0f).xyz * 2.f - 1.f;
 
         const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.0f).x;
