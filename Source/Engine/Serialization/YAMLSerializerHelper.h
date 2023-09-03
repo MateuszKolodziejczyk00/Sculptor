@@ -35,15 +35,17 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
+	Bool Serialize(const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
 	{
 		m_node.push_back(data);
+		return true;
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
+	Bool Serialize(lib::StringView key, const TDataType& data, ESerializationFlags flags = ESerializationFlags::None) const
 	{
 		m_node[key.data()] = data;
+		return true;
 	}
 
 private:
@@ -72,15 +74,29 @@ public:
 	}
 
 	template<typename TDataType>
-	void Serialize(TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
+	Bool Serialize(TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
-		data = m_node[m_currentIdx++].as<TDataType>();
+		const YAML::Node child = m_node[m_currentIdx++];
+		if (child.IsDefined())
+		{
+			data = child.as<TDataType>();
+			return true;
+		}
+
+		return false;
 	}
 
 	template<typename TDataType>
-	void Serialize(lib::StringView key, TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
+	Bool Serialize(lib::StringView key, TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
-		data = m_node[key.data()].as<TDataType>();
+		const YAML::Node child = m_node[key.data()];
+		if (child.IsDefined())
+		{
+			data = child.as<TDataType>();
+			return true;
+		}
+
+		return false;
 	}
 
 private:
@@ -240,6 +256,38 @@ public:
 		m_serializer.Serialize(key, asUnderlying);
 	}
 
+	template<typename TType, int Rows, int Cols>
+	void Serialize(lib::StringView key, math::Matrix<TType, Rows, Cols>& data)
+	{
+		std::vector<TType> asArray(Rows * Cols);
+
+		if (m_serializer.Serialize(key, asArray))
+		{
+			for (int i = 0; i < Cols; ++i)
+			{
+				for (int j = 0; j < Rows; ++j)
+				{
+					data(j, i) = asArray[i * Rows + j];
+				}
+			}
+		}
+	}
+
+	template<typename TType, int Rows, int Cols>
+	void Serialize(lib::StringView key, const math::Matrix<TType, Rows, Cols>& data)
+	{
+		std::vector<TType> asArray(Rows * Cols);
+		for (int i = 0; i < Cols; ++i)
+		{
+			for (int j = 0; j < Rows; ++j)
+			{
+				asArray[i * Rows + j] = data(j, i);
+			}
+		}
+
+		m_serializer.Serialize(key, asArray);
+	}
+
 	TSerializer& Get()
 	{
 		return m_serializer;
@@ -314,6 +362,33 @@ inline Emitter& operator<<(Emitter& emitter, const type& data)						\
 }																					\
 																					\
 template<>																			\
+struct convert<type>																\
+{																					\
+	static Node encode(const type& data)											\
+	{																				\
+		return spt::srl::YAMLSerializeHelper::Write(data);							\
+	}																				\
+																					\
+	static bool decode(const Node& node, type& data)								\
+	{																				\
+		return spt::srl::YAMLSerializeHelper::Load(node, data);						\
+	}																				\
+};																					\
+} 																					\
+
+#define SPT_TEMPLATED_TYPES(...) __VA_ARGS__
+
+#define SPT_YAML_SERIALIZATION_TEMPLATES_GENERIC(templatedTypes, type)				\
+namespace YAML																		\
+{																					\
+template<templatedTypes>															\
+inline Emitter& operator<<(Emitter& emitter, const type& data)						\
+{																					\
+	spt::srl::YAMLSerializeHelper::Emit(emitter, data);								\
+	return emitter;																	\
+}																					\
+																					\
+template<templatedTypes>															\
 struct convert<type>																\
 {																					\
 	static Node encode(const type& data)											\
