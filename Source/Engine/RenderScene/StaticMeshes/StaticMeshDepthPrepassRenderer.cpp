@@ -29,16 +29,19 @@ StaticMeshDepthPrepassRenderer::StaticMeshDepthPrepassRenderer()
 	}
 }
 
-Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS)
+Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions)
 {
 	SPT_PROFILER_FUNCTION();
 	
 	lib::DynamicArray<SMDepthPrepassBatch> batches;
+	batches.reserve(batchDefinitions.size());
 
-	if (batchDefinition.IsValid())
-	{
-		batches.emplace_back(CreateBatch(graphBuilder, renderScene, batchDefinition, batchDS));
-	}
+	std::transform(std::cbegin(batchDefinitions), std::cend(batchDefinitions),
+				   std::back_inserter(batches),
+				   [&](const StaticMeshBatchDefinition& batchDefinition)
+				   {
+					   return CreateBatch(graphBuilder, renderScene, batchDefinition);
+				   });
 
 	if (!batches.empty())
 	{
@@ -115,7 +118,7 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 	}
 }
 
-SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const
+SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -123,7 +126,7 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 
 	// Create batch info
 
-	batch.batchDS = batchDS;
+	batch.batchDS = batchDef.batchDS;
 	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
 
 	// Create buffers

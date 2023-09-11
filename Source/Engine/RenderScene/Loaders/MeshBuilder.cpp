@@ -20,7 +20,7 @@ MeshBuilder::MeshBuilder(const MeshBuildParameters& parameters)
 	m_geometryData.reserve(1024 * 1024 * 8);
 }
 
-RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
+ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -55,14 +55,6 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 					   return submeshBD.submesh;
 				   });
 
-	const Uint32 indicesNum = std::accumulate(std::cbegin(submeshesData), std::cend(submeshesData), 0,
-											  [](Uint32 indices, const SubmeshGPUData& submesh)
-											  {
-												  return indices + submesh.indicesNum;
-											  });
-
-	const Uint32 trianglesNum = indicesNum / 3;
-
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
 	const Uint32 submeshesBeginIdx = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(SubmeshGPUData));
@@ -70,18 +62,22 @@ RenderingDataEntityHandle MeshBuilder::EmitMeshGeometry()
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
 	staticMeshRenderingDef.geometryDataOffset	= static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
 	staticMeshRenderingDef.submeshesBeginIdx	= submeshesBeginIdx;
-	staticMeshRenderingDef.submeshesNum			= static_cast<Uint32>(submeshesData.size());
 	staticMeshRenderingDef.boundingSphereCenter = m_boundingSphereCenter;
 	staticMeshRenderingDef.boundingSphereRadius = m_boundingSphereRadius;
-	staticMeshRenderingDef.maxMeshletsNum		= static_cast<Uint32>(m_meshlets.size());
-	staticMeshRenderingDef.maxTrianglesNum		= trianglesNum;
+	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes),
+				   std::back_inserter(staticMeshRenderingDef.submeshesDefs),
+				   [idx = 0](const SubmeshBuildData& submeshBD) mutable
+				   {
+					   SubmeshRenderingDefinition submeshDef;
+					   submeshDef.trianglesNum = submeshBD.submesh.indicesNum / 3;;
+					   submeshDef.meshletsNum = submeshBD.submesh.meshletsNum;;
+					   return submeshDef;
+				   });
 
-	RenderingDataRegistry& renderingDataRegistry = RenderingData::Get();
-	const RenderingDataEntity staticMeshEntity = renderingDataRegistry.create();
-	const RenderingDataEntityHandle staticMeshDataHandle(renderingDataRegistry, staticMeshEntity);
+	const ecs::EntityHandle staticMeshDataHandle = ecs::CreateEntity();
 
 	staticMeshDataHandle.emplace<StaticMeshGeometryData>(staticMeshGeometryData);
-	staticMeshDataHandle.emplace<StaticMeshRenderingDefinition>(staticMeshRenderingDef);
+	staticMeshDataHandle.emplace<StaticMeshRenderingDefinition>(std::move(staticMeshRenderingDef));
 
 	const Uint64 geometryDataDeviceAddress = GeometryManager::Get().GetGeometryBufferDeviceAddress();
 

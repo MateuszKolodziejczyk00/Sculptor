@@ -41,7 +41,11 @@ void Denoise(rg::RenderGraphBuilder& graphBuilder, const AODenoiserParams& param
 	{
 		// Don't use variance for temporal filter as ambient occlusion has huge variance in most cases
 		// and it will decrease temporal filter quality even in static scenes
-		denoising::filters::temporal::ApplyTemporalFilter(graphBuilder, params);
+		denoising::filters::temporal::TemporalFilterParams temporalParams = params;
+		temporalParams.currentFrameMinWeight = 0.015f;
+		temporalParams.currentFrameMaxWeight = 0.015f;
+
+		denoising::filters::temporal::ApplyTemporalFilter(graphBuilder, temporalParams);
 	}
 	ApplySpatialFilter(graphBuilder, params, varianceTexture);
 }

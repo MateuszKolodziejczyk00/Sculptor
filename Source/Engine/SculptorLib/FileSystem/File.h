@@ -24,10 +24,10 @@ public:
 	static std::ifstream	OpenInputStream(const lib::String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 	static std::ofstream	OpenOutputStream(const lib::String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
-	static Bool				Exists(const lib::String& path);
+	static Bool				Exists(const lib::StringView& path);
 
 	static lib::String		DiscardExtension(const lib::String& file);
-	static lib::String		GetExtension(const lib::String& file);
+	static lib::String		GetExtension(const lib::StringView& file);
 };
 
 } // spt::lib

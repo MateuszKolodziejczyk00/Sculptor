@@ -30,6 +30,18 @@ public:
 		: value(std::move(inValue))
 	{}
 
+	NamedType& operator=(const NamedType& inValue)
+	{
+		value = inValue.value;
+		return *this;
+	}
+
+	NamedType& operator=(NamedType&& inValue)
+	{
+		value = std::move(inValue.value);
+		return *this;
+	}
+
 	TType& Get()
 	{
 		return value;

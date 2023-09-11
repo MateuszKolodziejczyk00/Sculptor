@@ -3,7 +3,7 @@
 #include "Transfers/UploadUtils.h"
 #include "Renderer.h"
 
-namespace spt::rsc
+namespace spt::mat
 {
 
 MaterialsUnifiedData& MaterialsUnifiedData::Get()
@@ -74,4 +74,4 @@ lib::SharedRef<MaterialsDS> MaterialsUnifiedData::CreateMaterialsDS() const
 	return ds;
 }
 
-} // spt::rsc
+} // spt::mat

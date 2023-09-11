@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderSceneMacros.h"
+#include "MaterialsMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
@@ -8,7 +8,7 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 
 
-namespace spt::rsc
+namespace spt::mat
 {
 
 DS_BEGIN(MaterialsDS, rg::RGDescriptorSetState<MaterialsDS>)
@@ -18,7 +18,7 @@ DS_BEGIN(MaterialsDS, rg::RGDescriptorSetState<MaterialsDS>)
 DS_END();
 
 
-class MaterialsUnifiedData
+class MATERIALS_API MaterialsUnifiedData
 {
 public:
 
@@ -43,4 +43,4 @@ private:
 	lib::SharedPtr<MaterialsDS> m_materialsDS;
 };
 
-} // spt::rsc
+} // spt::mat

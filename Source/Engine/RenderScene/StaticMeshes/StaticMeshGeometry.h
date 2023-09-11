@@ -17,41 +17,30 @@ struct StaticMeshGeometryData
 };
 
 
+struct SubmeshRenderingDefinition
+{
+	Uint32 trianglesNum;
+	Uint32 meshletsNum;
+};
+
+
 struct StaticMeshRenderingDefinition
 {
 	StaticMeshRenderingDefinition()
 		: geometryDataOffset(0)
 		, submeshesBeginIdx(0)
-		, submeshesNum(0)
 		, boundingSphereCenter(math::Vector3f::Zero())
 		, boundingSphereRadius(0.f)
-		, maxMeshletsNum(0)
-		, maxTrianglesNum(0)
 	{ }
 	
 	Uint32 geometryDataOffset;
 	Uint32 submeshesBeginIdx;
-	Uint32 submeshesNum;
 	
 	math::Vector3f boundingSphereCenter;
 	Real32 boundingSphereRadius;
 
-	// Meshlets of first LOD
-	Uint32 maxMeshletsNum;
-	// Triangles of first LOD
-	Uint32 maxTrianglesNum;
+	lib::DynamicArray<SubmeshRenderingDefinition> submeshesDefs;
 };
-
-
-BEGIN_SHADER_STRUCT(WtaticMeshGPUData)
-	SHADER_STRUCT_FIELD(Uint32, geometryDataOffset)
-	SHADER_STRUCT_FIELD(Uint32, submeshesBeginIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshesNum)
-	/* 4 empty bytes */
-	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
-	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
-END_SHADER_STRUCT();
-
 
 BEGIN_SHADER_STRUCT(SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, indicesOffset)

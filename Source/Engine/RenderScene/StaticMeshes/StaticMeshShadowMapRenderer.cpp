@@ -53,15 +53,17 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 			const PointLightShadowMapComponent& pointLightShadowMap = sceneRegistry.get<PointLightShadowMapComponent>(pointLight);
 
 			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-			const StaticMeshBatchDefinition batchDef = staticMeshPrimsSystem.BuildBatchForPointLight(pointLightData, EMaterialType::Opaque);
+			const lib::DynamicArray<StaticMeshBatchDefinition> batchDefs = staticMeshPrimsSystem.BuildBatchesForPointLight(pointLightData, mat::EMaterialType::Opaque);
 
 			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);
 			
-			if (!batchDef.batchElements.empty())
+			lib::DynamicArray<SMShadowMapBatch>& pointLightBatches = m_pointLightBatches[pointLight];
+
+			for(const StaticMeshBatchDefinition& batchDef : batchDefs)
 			{
 				const SMShadowMapBatch batch = CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef);
 				BuildBatchDrawCommands(graphBuilder, batch);
-				m_pointLightBatches.emplace(pointLight, batch);
+				pointLightBatches.emplace_back(batch);
 			}
 		}
 	}
@@ -76,33 +78,34 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
 	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
 
-	const auto foundBatch = m_pointLightBatches.find(viewShadowMapData.owningLight);
-	if (foundBatch == std::cend(m_pointLightBatches))
+	const auto foundBatches = m_pointLightBatches.find(viewShadowMapData.owningLight);
+	if (foundBatches == std::cend(m_pointLightBatches))
 	{
 		return;
 	}
 
-	const SMShadowMapBatch& batch = foundBatch->second;
+	for (const SMShadowMapBatch& batch : foundBatches->second)
+	{
+		SMIndirectShadowMapCommandsParameters drawParams;
+		drawParams.batchDrawCommandsBuffer = batch.perFaceData[viewShadowMapData.faceIdx].drawCommandsBuffer;
+		drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountsBuffer;
 
-	SMIndirectShadowMapCommandsParameters drawParams;
-	drawParams.batchDrawCommandsBuffer = batch.perFaceData[viewShadowMapData.faceIdx].drawCommandsBuffer;
-	drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountsBuffer;
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
+								rg::BindDescriptorSets(batch.batchDS,
+													   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
+													   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+													   GeometryManager::Get().GetGeometryDSState(),
+													   renderView.GetRenderViewDS()),
+								std::tie(drawParams),
+								[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									recorder.BindGraphicsPipeline(m_shadowMapRenderingPipeline);
 
-	graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-							rg::BindDescriptorSets(batch.batchDS,
-												   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
-												   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
-												   GeometryManager::Get().GetGeometryDSState(),
-												   renderView.GetRenderViewDS()),
-							std::tie(drawParams),
-							[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							{
-								recorder.BindGraphicsPipeline(m_shadowMapRenderingPipeline);
-
-								const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
-								const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
-								recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, faceIdx * sizeof(Uint32), maxDrawCallsNum);
-							});
+									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
+									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, faceIdx * sizeof(Uint32), maxDrawCallsNum);
+								});
+	}
 }
 
 SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshBatchDefinition& batchDef) const
@@ -113,20 +116,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 	// Create batch data and buffer
 
-	SMGPUBatchData gpuBatchData;
-	gpuBatchData.elementsNum = static_cast<Uint32>(batchDef.batchElements.size());
-
-	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batchDef.batchElements.size();
-	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
-	const rhi::RHIAllocationInfo batchBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
-	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatch"), batchBufferDef, batchBufferAllocation);
-
-	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchDef.batchElements.data()), batchDataSize);
-
-	batch.batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
-	batch.batchDS->u_batchElements	= batchBuffer->CreateFullView();
-	batch.batchDS->u_batchData		= gpuBatchData;
-
+	batch.batchDS = batchDef.batchDS;
 	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
 
 	// Create indirect draw counts buffer

@@ -1,0 +1,7 @@
+Techniques:
+  ? Name: SMForwardOpaque
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMForwardOpaque.hlsl
+  ? Name: DDGI
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMDDGI.hlsl

@@ -44,13 +44,13 @@ public:
 
 	StaticMeshDepthPrepassRenderer();
 
-	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS);
+	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions);
 	void CullPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 private:
 
-	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const;
+	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 

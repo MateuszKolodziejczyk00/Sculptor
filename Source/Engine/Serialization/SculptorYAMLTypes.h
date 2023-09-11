@@ -1,37 +1,31 @@
 #pragma once
 
-#include "SculptorCoreTypes.h"
-#include "YAML.h"
 #include "ContainersYAMLSerialization.h"
+#include "YAMLSerializerHelper.h"
 
-namespace YAML
+namespace spt::srl
 {
-
-// spt::lib::HashedString =====================================================
-
-inline Emitter& operator<<(Emitter& emitter, spt::lib::HashedString hashedString)
-{
-	return emitter.Write(hashedString.ToString());
-}
 
 template<>
-struct convert<spt::lib::HashedString>
+struct TypeSerializer<lib::HashedString>
 {
-	static Node encode(const spt::lib::HashedString& hashedString)
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		const spt::lib::String asString = hashedString.ToString();
-
-		Node node;
-		node.push_back(asString);
-		return node;
-	}
-
-	static bool decode(const Node& node, spt::lib::HashedString& hashedString)
-	{
-		const spt::lib::String asString = node.as<spt::lib::String>();
-		hashedString = asString;
-		return true;
+		if constexpr (Serializer::IsLoading())
+		{
+			lib::String str;
+			serializer.Serialize("Name", str);
+			data = str;
+		}
+		else
+		{
+			serializer.Serialize("Name", data.ToString());
+		}
 	}
 };
 
-} // YAML
+} // spt::srl
+
+
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::lib::HashedString);

@@ -32,6 +32,7 @@ SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererCore")
 IncludeProject("RenderGraph")
 IncludeProject("Graphics")
+IncludeProject("Materials")
 
 SetProjectsSubgroupName("Scene")
 IncludeProject("RenderScene")

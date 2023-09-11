@@ -6,18 +6,23 @@
 #include "Renderer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
-#include "Materials/MaterialTypes.h"
+#include "Material.h"
 
 namespace spt::rsc
 {
 
 RayTracingRenderSceneSubsystem::RayTracingRenderSceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
+	, m_isTLASDirty(false)
+	, m_areSBTRecordsDirty(false)
 { }
 
 void RayTracingRenderSceneSubsystem::Update()
 {
 	Super::Update();
+
+	m_isTLASDirty			= false;
+	m_areSBTRecordsDirty	= false;
 
 	// We should update TLAS every frame if any of the objects has been moved or updated
 	// The problem is that Nsight Graphics is crashing if we capture frame with TLAS build, so for now we will update TLAS only once
@@ -33,6 +38,27 @@ const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSceneSubsystem::GetRTInstance
 	return m_rtInstancesDataBuffer;
 }
 
+Uint32 RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const
+{
+	const auto foundRecordIdx = m_materialShaderToSBTRecordIdx.find(materialShadersHash);
+	return foundRecordIdx != std::cend(m_materialShaderToSBTRecordIdx) ? foundRecordIdx->second : idxNone<Uint32>;
+}
+
+const lib::DynamicArray<mat::MaterialShadersHash>& RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecords() const
+{
+	return m_materialShaderSBTRecords;
+}
+
+Bool RayTracingRenderSceneSubsystem::IsTLASDirty() const
+{
+	return m_isTLASDirty;
+}
+
+Bool RayTracingRenderSceneSubsystem::AreSBTRecordsDirty() const
+{
+	return m_areSBTRecordsDirty;
+}
+
 void RayTracingRenderSceneSubsystem::UpdateTLAS()
 {
 	SPT_PROFILER_FUNCTION();
@@ -41,40 +67,48 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	rhi::TLASDefinition tlasDefinition;
 
-	const auto rayTracedObjectsEntities = sceneRegistry.view<EntityGPUDataHandle, TransformComponent, MaterialsDataComponent, RayTracingGeometryProviderComponent>();
+	const auto rayTracedObjectsEntities = sceneRegistry.view<EntityGPUDataHandle, TransformComponent, mat::MaterialSlotsComponent, RayTracingGeometryProviderComponent>();
 	const SizeType rayTracedEntitiesNum = static_cast<SizeType>(rayTracedObjectsEntities.size_hint() * 2.2f);
 	tlasDefinition.instances.reserve(rayTracedEntitiesNum);
 
 	lib::DynamicArray<RTInstanceData> rtInstances;
 	rtInstances.reserve(rayTracedObjectsEntities.size_hint());
 
-	for (const auto& [entity, gpuEntity, transform, materialsData, rtGeoProvider] : rayTracedObjectsEntities.each())
+	for (const auto& [entity, gpuEntity, transform, materialsSlots, rtGeoProvider] : rayTracedObjectsEntities.each())
 	{
 		const RayTracingGeometryComponent& rayTracingGeoComp = rtGeoProvider.entity.get<RayTracingGeometryComponent>();
 
 		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.GetTransform().matrix().topLeftCorner<3, 4>();
 
-		SPT_CHECK(rayTracingGeoComp.geometries.size() == materialsData.materials.size());
-		
+		SPT_CHECK(rayTracingGeoComp.geometries.size() == materialsSlots.slots.size());
+
 		for(SizeType idx = 0; idx < rayTracingGeoComp.geometries.size(); ++idx)
 		{
-			const RayTracingGeometryDefinition& rtGeometry	= rayTracingGeoComp.geometries[idx];
-			const RenderingDataEntityHandle material		= materialsData.materials[idx];
-			const MaterialCommonData& materialData			= material.get<MaterialCommonData>();
+			const RayTracingGeometryDefinition& rtGeometry		= rayTracingGeoComp.geometries[idx];
+			const ecs::EntityHandle material					= materialsSlots.slots[idx];
+			const mat::MaterialProxyComponent& materialProxy	= material.get<mat::MaterialProxyComponent>();
 
-			if(materialData.SupportsRayTracing())
+			if(materialProxy.SupportsRayTracing())
 			{
 				RTInstanceData& rtInstance = rtInstances.emplace_back();
 				rtInstance.entityIdx				= gpuEntity.GetEntityIdx();
-				rtInstance.materialDataOffset		= static_cast<Uint32>(materialData.materialDataSuballocation.GetOffset());
+				rtInstance.materialDataOffset		= static_cast<Uint32>(materialProxy.materialDataSuballocation.GetOffset());
 				rtInstance.geometryDataID			= rtGeometry.geometryDataID;
 
-				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
-				tlasInstance.transform		= transformMatrix;
-				tlasInstance.blasAddress	= rtGeometry.blas->GetRHI().GetDeviceAddress();
-				tlasInstance.customIdx		= static_cast<Uint32>(rtInstances.size() - 1);
+				if (!m_materialShaderToSBTRecordIdx.contains(materialProxy.materialShadersHash))
+				{
+					m_materialShaderToSBTRecordIdx[materialProxy.materialShadersHash] = static_cast<Uint32>(m_materialShaderSBTRecords.size());
+					m_materialShaderSBTRecords.emplace_back(materialProxy.materialShadersHash);
+					m_areSBTRecordsDirty = true;
+				}
 
-				if (materialData.materialType == EMaterialType::Opaque)
+				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
+				tlasInstance.transform			= transformMatrix;
+				tlasInstance.blasAddress		= rtGeometry.blas->GetRHI().GetDeviceAddress();
+				tlasInstance.customIdx			= static_cast<Uint32>(rtInstances.size() - 1);
+				tlasInstance.sbtRecordOffset	= m_materialShaderToSBTRecordIdx.at(materialProxy.materialShadersHash);
+
+				if (materialProxy.params.materialType == mat::EMaterialType::Opaque)
 				{
 					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
 				}
@@ -108,6 +142,8 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 		m_tlas->ReleaseInstancesBuildData();
 	}
+
+	m_isTLASDirty = true;
 }
 
 lib::SharedPtr<rdr::Buffer> RayTracingRenderSceneSubsystem::BuildRTInstancesBuffer(const lib::DynamicArray<RTInstanceData>& instances) const

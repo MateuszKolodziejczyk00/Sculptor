@@ -12,6 +12,7 @@
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
+#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -34,18 +35,20 @@ StaticMeshForwardOpaqueRenderer::StaticMeshForwardOpaqueRenderer()
 	}
 }
 
-Bool StaticMeshForwardOpaqueRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS)
+Bool StaticMeshForwardOpaqueRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions)
 {
 	SPT_PROFILER_FUNCTION()
 
 	// We don't need array here right now, but it's made for future use, as we'll for sure want to have more than one batch
 	lib::DynamicArray<SMForwardOpaqueBatch> batches;
+	batches.reserve(batchDefinitions.size());
 
-	if (batchDefinition.IsValid())
-	{
-		const SMForwardOpaqueBatch batchRenderingData = CreateBatch(graphBuilder, renderScene, batchDefinition, batchDS);
-		batches.emplace_back(batchRenderingData);
-	}
+	std::transform(std::cbegin(batchDefinitions), std::cend(batchDefinitions),
+				   std::back_inserter(batches),
+				   [&](const StaticMeshBatchDefinition& batchDefinition)
+				   {
+					   return CreateBatch(graphBuilder, renderScene, batchDefinition);
+				   });
 
 	if (!batches.empty())
 	{
@@ -134,10 +137,10 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(batch.indirectRenderTrianglesDS,
-													   MaterialsUnifiedData::Get().GetMaterialsDS(),
+													   mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 													   ddgiDS),
 								std::tie(drawParams),
-								[drawParams, this, pipeline = GetShadingPipeline(renderScene, viewSpec)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[drawParams, this, pipeline = GetShadingPipeline(batch, renderScene, viewSpec)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									recorder.BindGraphicsPipeline(pipeline);
 
@@ -147,13 +150,15 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 	}
 }
 
-SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const
+SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const
 {
 	SPT_PROFILER_FUNCTION();
 	
 	SMForwardOpaqueBatch batch;
 
-	batch.batchDS = batchDS;
+	batch.materialShadersHash = batchDef.materialShadersHash;
+
+	batch.batchDS = batchDef.batchDS;
 
 	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
 
@@ -221,7 +226,7 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 	return batch;
 }
 
-rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const
+rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const SMForwardOpaqueBatch& batch, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -231,20 +236,20 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const R
 
 	const ShadingInputData& shadingInputData = viewSpec.GetData().Get<ShadingInputData>();
 	
-	sc::ShaderCompilationSettings compilationSettings;
+	mat::MaterialShadersParameters materialShadersParameters;
 	if (ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled())
 	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_DDGI", "1"));
+		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_DDGI", "1"));
 	}
 
 	if (shadingInputData.ambientOcclusion.IsValid())
 	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_AMBIENT_OCCLUSION", "1"));
+		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_AMBIENT_OCCLUSION", "1"));
 	}
 
-	rdr::GraphicsPipelineShaders shaders;
-	shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMeshVS"), compilationSettings);
-	shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_ForwardOpaqueShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMeshFS"), compilationSettings);
+	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("SMForwardOpaque",
+																																 batch.materialShadersHash,
+																																 materialShadersParameters);
 
 	rhi::GraphicsPipelineDefinition pipelineDef;
 	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
@@ -255,7 +260,11 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const R
 		pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(format));
 	}
 
-	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), shaders, pipelineDef);
+	rdr::GraphicsPipelineShaders pipelineShaders;
+	pipelineShaders.vertexShader	= shaders.vertexShader;
+	pipelineShaders.fragmentShader	= shaders.fragmentShader;
+
+	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ForwardOpaqueShading"), pipelineShaders, pipelineDef);
 }
 
 } // spt::rsc

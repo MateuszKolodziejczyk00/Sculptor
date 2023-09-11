@@ -455,6 +455,11 @@ struct GenericShaderBinding
 
 	bool TryMergeWith(const GenericShaderBinding& other)
 	{
+		if (!other.IsValid())
+		{
+			return true;
+		}
+
 		if (!IsValid())
 		{
 			*this = other;

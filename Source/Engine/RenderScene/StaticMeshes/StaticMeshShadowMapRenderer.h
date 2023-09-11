@@ -70,8 +70,7 @@ private:
 	
 	void BuildBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const SMShadowMapBatch& batch);
 
-	// Right now we need only one batch per light, but if this will change, value of this map should be array of batches
-	lib::HashMap<RenderSceneEntity, SMShadowMapBatch> m_pointLightBatches;
+	lib::HashMap<RenderSceneEntity, lib::DynamicArray<SMShadowMapBatch>> m_pointLightBatches;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 

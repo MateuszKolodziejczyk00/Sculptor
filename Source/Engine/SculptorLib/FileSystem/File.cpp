@@ -57,7 +57,7 @@ std::ofstream File::OpenOutputStream(const lib::String& path, EFileOpenFlags ope
 	return outputStream;
 }
 
-Bool File::Exists(const lib::String& path)
+Bool File::Exists(const lib::StringView& path)
 {
 	return std::filesystem::exists(path);
 }
@@ -70,7 +70,7 @@ lib::String File::DiscardExtension(const lib::String& file)
 		: file;
 }
 
-lib::String File::GetExtension(const lib::String& file)
+lib::String File::GetExtension(const lib::StringView& file)
 {
 	const SizeType extensionBeginPosition = file.find_last_of('.');
 	return extensionBeginPosition != lib::String::npos

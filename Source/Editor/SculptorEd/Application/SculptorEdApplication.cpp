@@ -20,7 +20,7 @@
 #include "ProfilerUIView.h"
 #include "RenderGraphManager.h"
 #include "Paths.h"
-#include "RenderingDataRegistry.h"
+#include "ECSRegistry.h"
 
 
 namespace spt::ed
@@ -151,7 +151,7 @@ void SculptorEdApplication::OnShutdown()
 
 	m_renderer.reset();
 
-	rsc::RenderingData::Get().clear();
+	ecs::GetRegistry().clear();
 	
 	rdr::UIBackend::Uninitialize();
 

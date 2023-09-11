@@ -53,6 +53,8 @@ struct SMForwardOpaqueBatch
 	lib::SharedPtr<SMIndirectRenderTrianglesDS>	indirectRenderTrianglesDS;
 
 	Uint32 batchedSubmeshesNum;
+
+	mat::MaterialShadersHash materialShadersHash;
 };
 
 
@@ -68,15 +70,15 @@ public:
 
 	StaticMeshForwardOpaqueRenderer();
 
-	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const StaticMeshBatchDefinition& batchDefinition, const lib::SharedRef<StaticMeshBatchDS>& batchDS);
+	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions);
 	void CullPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 private:
 
-	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef, const lib::SharedRef<StaticMeshBatchDS>& batchDS) const;
+	SMForwardOpaqueBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
 
-	rdr::PipelineStateID GetShadingPipeline(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const;
+	rdr::PipelineStateID GetShadingPipeline(const SMForwardOpaqueBatch& batch, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const;
 
 	rdr::PipelineStateID m_cullSubmeshesPipeline;
 	rdr::PipelineStateID m_cullMeshletsPipeline;

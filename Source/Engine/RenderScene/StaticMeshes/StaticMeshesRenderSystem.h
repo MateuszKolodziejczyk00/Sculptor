@@ -25,8 +25,6 @@ public:
 
 private:
 
-	lib::SharedRef<StaticMeshBatchDS> CreateBatchDS(const StaticMeshBatchDefinition& batchDef) const;
-
 	StaticMeshShadowMapRenderer m_shadowMapRenderer;
 
 	StaticMeshDepthPrepassRenderer m_depthPrepassRenderer;

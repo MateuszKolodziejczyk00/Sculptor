@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RenderingDataRegistry.h"
+#include "ECSRegistry.h"
 
 namespace spt::rdr
 {
@@ -15,7 +15,7 @@ namespace spt::rsc
 struct RayTracingGeometryProviderComponent
 {
 	// Entity that contains RayTracingGeometryComponent
-	RenderingDataEntityHandle entity;
+	ecs::EntityHandle entity;
 };
 
 

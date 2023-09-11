@@ -14,11 +14,12 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
-#include "Materials/MaterialsUnifiedData.h"
 #include "Lights/LightTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Atmosphere/AtmosphereTypes.h"
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
+#include "MaterialsSubsystem.h"
+#include "MaterialsUnifiedData.h"
 
 namespace spt::rsc
 {
@@ -92,7 +93,7 @@ DS_END();
 namespace pipelines
 {
 
-static rdr::PipelineStateID CreateDDGITraceRaysPipeline()
+static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
@@ -102,7 +103,19 @@ static rdr::PipelineStateID CreateDDGITraceRaysPipeline()
 	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "DDGIProbeRaysRTG"), compilationSettings);
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIProbeRaysRTM"), compilationSettings));
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIShadowRaysRTM"), compilationSettings));
-	rtShaders.hitGroups.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTClosestHit, "DDGIProbeRaysStaticMeshRTCH"), compilationSettings));
+
+	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
+
+	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
+	{
+		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>("DDGI", sbtRecords[recordIdx]);
+
+		rdr::RayTracingHitGroup hitGroup;
+		hitGroup.closestHitShader	= shaders.closestHitShader;
+		hitGroup.anyHitShader		= shaders.anyHitShader;
+
+		rtShaders.hitGroups.emplace_back(hitGroup);
+	}
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
@@ -348,7 +361,11 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 		shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
 	}
 
-	static const rdr::PipelineStateID traceRaysPipelineID = pipelines::CreateDDGITraceRaysPipeline();
+	static rdr::PipelineStateID traceRaysPipelineID;
+	if (!traceRaysPipelineID.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
+	{
+		traceRaysPipelineID = pipelines::CreateDDGITraceRaysPipeline(rayTracingSubsystem);
+	}
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("DDGI Trace Rays"),
 						   traceRaysPipelineID,
@@ -357,7 +374,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 												  lightsDS,
 												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 												  GeometryManager::Get().GetGeometryDSState(),
-												  MaterialsUnifiedData::Get().GetMaterialsDS(),
+												  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 												  shadowMapsDS));
 
 	return probesTraceResultTexture;

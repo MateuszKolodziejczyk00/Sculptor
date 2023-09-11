@@ -33,7 +33,9 @@ enum class EShaderStage : Flags32
 	RTAnyHit,
 	RTClosestHit,
 	RTMiss,
-	RTIntersection
+	RTIntersection,
+
+	NUM
 };
 
 

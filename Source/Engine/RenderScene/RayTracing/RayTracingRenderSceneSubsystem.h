@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RenderSceneSubsystem.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "Material.h"
 
 namespace spt::rdr
 {
@@ -40,6 +41,13 @@ public:
 
 	const lib::SharedPtr<rdr::Buffer>& GetRTInstancesDataBuffer() const;
 
+	Uint32 GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const;
+
+	const lib::DynamicArray<mat::MaterialShadersHash>& GetMaterialShaderSBTRecords() const;
+
+	Bool IsTLASDirty() const;
+	Bool AreSBTRecordsDirty() const;
+
 private:
 
 	void UpdateTLAS();
@@ -49,6 +57,12 @@ private:
 	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
 
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
+
+	lib::HashMap<mat::MaterialShadersHash, Uint32> m_materialShaderToSBTRecordIdx;
+	lib::DynamicArray<mat::MaterialShadersHash> m_materialShaderSBTRecords;
+
+	Bool m_isTLASDirty;
+	Bool m_areSBTRecordsDirty;
 };
 
 } // spt::rsc

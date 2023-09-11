@@ -66,28 +66,28 @@ lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
 	switch (stage)
 	{
 	case rhi::EShaderStage::Vertex:
-		return lib::WString(L"VERTEX_SHADER");
+		return lib::WString(L"SPT_VERTEX_SHADER");
 
 	case rhi::EShaderStage::Fragment:
-		return lib::WString(L"FRAGMENT_SHADER");
+		return lib::WString(L"SPT_FRAGMENT_SHADER");
 
 	case rhi::EShaderStage::Compute:
-		return lib::WString(L"COMPUTE_SHADER");
+		return lib::WString(L"SPT_COMPUTE_SHADER");
 
 	case rhi::EShaderStage::RTGeneration:
-		return lib::WString(L"RT_GENERATION_SHADER");
+		return lib::WString(L"SPT_RT_GENERATION_SHADER");
 
 	case rhi::EShaderStage::RTAnyHit:
-		return lib::WString(L"RT_ANY_HIT_SHADER");
+		return lib::WString(L"SPT_RT_ANY_HIT_SHADER");
 
 	case rhi::EShaderStage::RTClosestHit:
-		return lib::WString(L"RT_CLOSEST_HIT_SHADER");
+		return lib::WString(L"SPT_RT_CLOSEST_HIT_SHADER");
 
 	case rhi::EShaderStage::RTMiss:
-		return lib::WString(L"RT_MISS_SHADER");
+		return lib::WString(L"SPT_RT_MISS_SHADER");
 
 	case rhi::EShaderStage::RTIntersection:
-		return lib::WString(L"RT_INTERSECTION_SHADER");
+		return lib::WString(L"SPT_RT_INTERSECTION_SHADER");
 
 	default:
 		SPT_CHECK_NO_ENTRY();

@@ -1,6 +1,5 @@
 #include "SculptorShader.hlsli"
 #include "StaticMeshes/StaticMesh_Workload.hlsli"
-#include "RenderStages/ForwardOpaque/ForwardOpaque.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
@@ -25,9 +24,11 @@
 
 #endif // ENABLE_DDGI
 
-[[shader_struct(MaterialPBRData)]]
-
 #include "Lights/Lighting.hlsli"
+
+
+#include "Materials/MaterialSystem.hlsli"
+#include SPT_MATERIAL_SHADER_PATH
 
 
 struct VS_INPUT
@@ -57,7 +58,7 @@ struct VS_OUTPUT
 };
 
 
-VS_OUTPUT StaticMeshVS(VS_INPUT input)
+VS_OUTPUT SMForwardOpaque_VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
@@ -137,45 +138,33 @@ VS_OUTPUT StaticMeshVS(VS_INPUT input)
 }
 
 
-FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
+struct FO_PS_OUTPUT
+{
+    float4 luminance    : SV_TARGET0;
+    float4 normal       : SV_TARGET1;
+    
+#if WITH_DEBUGS
+    float4 debug        : SV_TARGET2;
+#endif // WITH_DEBUGS
+};
+
+
+FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 {
     FO_PS_OUTPUT output;
-    
-    float3 baseColor = 1.f;
-    
-    const MaterialPBRData material = u_materialsData.Load<MaterialPBRData>(vertexInput.materialDataOffset);
-    if(material.baseColorTextureIdx != IDX_NONE_32)
-    {
-        baseColor = u_materialsTextures[material.baseColorTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).rgb;
-        baseColor = pow(baseColor, 2.2f);
-    }
 
-    baseColor *= material.baseColorFactor;
-
-    float metallic = material.metallicFactor;
-    float roughness = material.roughnessFactor;
+    MaterialEvaluationParameters materialEvalParams;
+    materialEvalParams.normal = vertexInput.normal;
+    materialEvalParams.tangent = vertexInput.tangent;
+    materialEvalParams.bitangent = vertexInput.bitangent;
+    materialEvalParams.hasTangent = vertexInput.hasTangent;
+    materialEvalParams.uv = vertexInput.uv;
+    materialEvalParams.worldLocation = vertexInput.worldLocation;
+    materialEvalParams.clipSpace = vertexInput.pixelClipSpace;
     
-    if(material.metallicRoughnessTextureIdx != IDX_NONE_32)
-    {
-        float2 metallicRoughness = u_materialsTextures[material.metallicRoughnessTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xy;
-        metallic *= metallicRoughness.x;
-        roughness *= metallicRoughness.y;
-    }
+    const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(vertexInput.materialDataOffset);
 
-    float3 shadingNormal;
-    const float3 geometryNormal = normalize(vertexInput.normal);
-    if(vertexInput.hasTangent && material.normalsTextureIdx != IDX_NONE_32)
-    {
-        float3 textureNormal = u_materialsTextures[material.normalsTextureIdx].Sample(u_materialTexturesSampler, vertexInput.uv).xyz;
-        textureNormal = textureNormal * 2.f - 1.f;
-        textureNormal.z = sqrt(1.f - saturate(Pow2(textureNormal.x) + Pow2(textureNormal.y)));
-        const float3x3 TBN = transpose(float3x3(normalize(vertexInput.tangent), normalize(vertexInput.bitangent), geometryNormal));
-        shadingNormal = normalize(mul(TBN, textureNormal));
-    }
-    else
-    {
-        shadingNormal = normalize(vertexInput.normal);
-    }
+    const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 #if WITH_DEBUGS
     float3 indirectLighting = 0.f;
@@ -185,13 +174,13 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
     ShadedSurface surface;
     surface.location = vertexInput.worldLocation;
-    surface.shadingNormal = shadingNormal;
-    surface.geometryNormal = geometryNormal;
-    surface.roughness = roughness;
+    surface.shadingNormal = evaluatedMaterial.shadingNormal;
+    surface.geometryNormal = evaluatedMaterial.geometryNormal;
+    surface.roughness = evaluatedMaterial.roughness;
     surface.uv = screenUV;
     surface.linearDepth = ComputeLinearDepth(vertexInput.pixelClipSpace.z / vertexInput.pixelClipSpace.w, u_sceneView);
 
-    ComputeSurfaceColor(baseColor, metallic, surface.diffuseColor, surface.specularColor);
+    ComputeSurfaceColor(evaluatedMaterial.baseColor, evaluatedMaterial.metallic, OUT surface.diffuseColor, OUT surface.specularColor);
 
     const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
 
@@ -209,7 +198,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
 #ifdef ENABLE_DDGI
 
-    indirect = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, shadingNormal, toView) * ambientOcclusion;
+    indirect = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, surface.shadingNormal, toView) * ambientOcclusion;
 
 #endif // ENABLE_DDGI
 
@@ -221,7 +210,7 @@ FO_PS_OUTPUT StaticMeshFS(VS_OUTPUT vertexInput)
 
     output.luminance = float4(luminance, 1.f);
     
-    output.normal = float4(shadingNormal * 0.5f + 0.5f, 1.f);
+    output.normal = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
 
 #if WITH_DEBUGS
     float3 debug = 1.f;

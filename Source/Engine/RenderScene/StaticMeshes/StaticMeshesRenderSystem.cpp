@@ -36,15 +36,13 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	if (supportsDepthPrepass || supportsForwardOpaque)
 	{
 		const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-		const StaticMeshBatchDefinition batchDefinition = staticMeshPrimsSystem.BuildBatchForView(viewSpec.GetRenderView(), EMaterialType::Opaque);
+		lib::DynamicArray<StaticMeshBatchDefinition> batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView(), mat::EMaterialType::Opaque);
 		
-		if (batchDefinition.IsValid())
+		if (!batchDefinitions.empty())
 		{
-			const lib::SharedRef<StaticMeshBatchDS> batchDS = CreateBatchDS(batchDefinition);
-
 			if (supportsDepthPrepass)
 			{
-				const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
+				const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinitions);
 
 				if (hasAnyBatches)
 				{
@@ -57,7 +55,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 			if (supportsForwardOpaque)
 			{
-				const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinition, batchDS);
+				const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinitions);
 
 				if (hasAnyBatches)
 				{
@@ -70,31 +68,6 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 			}
 		}
 	}
-}
-
-lib::SharedRef<StaticMeshBatchDS> StaticMeshesRenderSystem::CreateBatchDS(const StaticMeshBatchDefinition& batchDef) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	// Create GPU batch data
-
-	SMGPUBatchData gpuBatchData;
-	gpuBatchData.elementsNum = static_cast<Uint32>(batchDef.batchElements.size());
-
-	// Create Batch elements buffer
-
-	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batchDef.batchElements.size();
-	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
-	const rhi::RHIAllocationInfo batchBufferAllocation(rhi::EMemoryUsage::CPUToGPU);
-	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatch"), batchBufferDef, batchBufferAllocation);
-
-	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchDef.batchElements.data()), batchDataSize);
-
-	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
-	batchDS->u_batchElements	= batchBuffer->CreateFullView();
-	batchDS->u_batchData		= gpuBatchData;
-
-	return batchDS;
 }
 
 } // spt::rsc

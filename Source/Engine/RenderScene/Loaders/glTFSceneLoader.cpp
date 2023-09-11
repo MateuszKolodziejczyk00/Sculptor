@@ -4,7 +4,6 @@
 #include "MeshBuilder.h"
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
-#include "RenderingDataRegistry.h"
 #include "Types/Texture.h"
 #include "Types/RenderContext.h"
 #include "CommandsRecorder/CommandRecorder.h"
@@ -14,7 +13,6 @@
 #include "Transfers/TransfersManager.h"
 #include "Utils/TextureUtils.h"
 #include "Materials/MaterialsUnifiedData.h"
-#include "Materials/MaterialTypes.h"
 #include "Types/AccelerationStructure.h"
 #include "RayTracing/RayTracingSceneTypes.h"
 
@@ -26,6 +24,7 @@
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
 #pragma warning(pop)
+#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -264,7 +263,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	return transform;
 }
 
-static RenderingDataEntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model, const MeshBuildParameters& parameters)
+static ecs::EntityHandle LoadMesh(const tinygltf::Mesh& mesh, const tinygltf::Model& model, const MeshBuildParameters& parameters)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -418,29 +417,29 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 		rhi::TextureViewDefinition viewDef;
 		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
 		lib::SharedRef<rdr::TextureView> textureView = texture->CreateView(RENDERER_RESOURCE_NAME(texture->GetRHI().GetName().ToString() + "View"), viewDef);
-		textureIndicesInMaterialDS.emplace_back(MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView)));
+		textureIndicesInMaterialDS.emplace_back(mat::MaterialsUnifiedData::Get().AddMaterialTexture(std::move(textureView)));
 	}
 
 	return textureIndicesInMaterialDS;
 }
 
-static EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
+static mat::EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
 {
-	EMaterialType materialType = EMaterialType::Opaque;
+	mat::EMaterialType materialType = mat::EMaterialType::Opaque;
 
 	if (materialDef.alphaMode == "MASK")
 	{
-		materialType = EMaterialType::AlphaMasked;
+		materialType = mat::EMaterialType::AlphaMasked;
 	}
 	else if (materialDef.alphaMode == "BLEND")
 	{
-		materialType = EMaterialType::Transparent;
+		materialType = mat::EMaterialType::Transparent;
 	}
 
 	return materialType;
 }
 
-static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
+static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
 {
 	const auto getLoadedTextureIndex = [&model, &textureIndicesInMaterialDS](int modelTextureIdx)
 	{
@@ -453,30 +452,29 @@ static lib::DynamicArray<RenderingDataEntityHandle> CreateMaterials(const tinygl
 		return loadedTextureIdx;
 	};
 
-	lib::DynamicArray<RenderingDataEntityHandle> materials;
+	lib::DynamicArray<ecs::EntityHandle> materials;
 	materials.reserve(model.materials.size());
 
-	for (const tinygltf::Material& materialDef : model.materials)
+	for (const tinygltf::Material& materialSourceDef : model.materials)
 	{
-		const RenderingDataEntityHandle materialDataHandle = RenderingData::CreateEntity();
+		const tinygltf::PbrMetallicRoughness& pbrDef = materialSourceDef.pbrMetallicRoughness;
 
-		const tinygltf::PbrMetallicRoughness& pbrDef = materialDef.pbrMetallicRoughness;
-
-		MaterialPBRData pbrData;
+		mat::MaterialPBRData pbrData;
 		pbrData.baseColorFactor				= math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
 		pbrData.metallicFactor				= static_cast<Real32>(pbrDef.metallicFactor);
 		pbrData.roughnessFactor				= static_cast<Real32>(pbrDef.roughnessFactor);
 		pbrData.baseColorTextureIdx			= getLoadedTextureIndex(pbrDef.baseColorTexture.index);
 		pbrData.metallicRoughnessTextureIdx	= getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
-		pbrData.normalsTextureIdx			= getLoadedTextureIndex(materialDef.normalTexture.index);
+		pbrData.normalsTextureIdx			= getLoadedTextureIndex(materialSourceDef.normalTexture.index);
 
-		const rhi::RHISuballocation materialDataSuballocation = MaterialsUnifiedData::Get().CreateMaterialDataSuballocation(reinterpret_cast<const Byte*>(&pbrData), sizeof(MaterialPBRData));
+		mat::MaterialDefinition materialDefinition;
+		materialDefinition.name				= materialSourceDef.name;
+		materialDefinition.materialType		= GetMaterialType(materialSourceDef);
+		materialDefinition.customOpacity	= false;
 
-		MaterialCommonData materialCommonData(materialDataSuballocation);
-		materialCommonData.materialType = GetMaterialType(materialDef);
-		materialDataHandle.emplace<MaterialCommonData>(materialCommonData);
+		const ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, pbrData);
 
-		materials.emplace_back(materialDataHandle);
+		materials.emplace_back(material);
 	}
 
 	return materials;
@@ -542,9 +540,9 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 		const Bool withRayTracing = rdr::Renderer::IsRayTracingEnabled();
 
 		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
-		const lib::DynamicArray<RenderingDataEntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
+		const lib::DynamicArray<ecs::EntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
 
-		lib::DynamicArray<RenderingDataEntityHandle> loadedMeshes;
+		lib::DynamicArray<ecs::EntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
 		rdr::BLASBuilder blasBuilder;
@@ -575,16 +573,16 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				StaticMeshInstanceRenderData entityStaticMeshData;
 				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
 
-				MaterialsDataComponent materialsDataComp;
+				mat::MaterialSlotsComponent materialSlots;
 
-				materialsDataComp.materials.reserve(mesh.primitives.size());
+				materialSlots.slots.reserve(mesh.primitives.size());
 				for (const tinygltf::Primitive& prim : mesh.primitives)
 				{
-					materialsDataComp.materials.emplace_back(materials[prim.material]);
+					materialSlots.slots.emplace_back(materials[prim.material]);
 				}
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
-				meshSceneEntity.emplace<MaterialsDataComponent>(std::move(materialsDataComp));
+				meshSceneEntity.emplace<mat::MaterialSlotsComponent>(std::move(materialSlots));
 
 				if (withRayTracing)
 				{

@@ -41,17 +41,6 @@ BEGIN_SHADER_STRUCT(SMGPUWorkloadID)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(SMGPUBatchData)
-	SHADER_STRUCT_FIELD(Uint32, elementsNum)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_batchElements)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMGPUBatchData>),	u_batchData)
-DS_END();
-
-
 BEGIN_SHADER_STRUCT(SMDepthOnlyDrawCallData)
 	/* Vulkan command data */
 	SHADER_STRUCT_FIELD(Uint32, vertexCount)

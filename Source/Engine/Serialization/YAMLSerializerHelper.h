@@ -374,31 +374,4 @@ struct convert<type>																\
 		return spt::srl::YAMLSerializeHelper::Load(node, data);						\
 	}																				\
 };																					\
-} 																					\
-
-#define SPT_TEMPLATED_TYPES(...) __VA_ARGS__
-
-#define SPT_YAML_SERIALIZATION_TEMPLATES_GENERIC(templatedTypes, type)				\
-namespace YAML																		\
-{																					\
-template<templatedTypes>															\
-inline Emitter& operator<<(Emitter& emitter, const type& data)						\
-{																					\
-	spt::srl::YAMLSerializeHelper::Emit(emitter, data);								\
-	return emitter;																	\
-}																					\
-																					\
-template<templatedTypes>															\
-struct convert<type>																\
-{																					\
-	static Node encode(const type& data)											\
-	{																				\
-		return spt::srl::YAMLSerializeHelper::Write(data);							\
-	}																				\
-																					\
-	static bool decode(const Node& node, type& data)								\
-	{																				\
-		return spt::srl::YAMLSerializeHelper::Load(node, data);						\
-	}																				\
-};																					\
-} 																					\
+}

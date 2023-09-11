@@ -44,4 +44,4 @@ enum class ETargetEnvironment
 	Vulkan_1_3
 };
 
-}
+} // spt::sc

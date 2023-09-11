@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "GeometryManager.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
-#include "RenderingDataRegistry.h"
+#include "ECSRegistry.h"
 
 
 namespace spt::rdr
@@ -45,7 +45,7 @@ public:
 
 	explicit MeshBuilder(const MeshBuildParameters& parameters);
 
-	RenderingDataEntityHandle EmitMeshGeometry();
+	ecs::EntityHandle EmitMeshGeometry();
 
 protected:
 
