@@ -3,6 +3,25 @@
 [[shader_struct(MaterialPBRData)]]
 
 
+CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
+{
+    CustomOpacityOutput output;
+
+    if(materialData.baseColorTextureIdx != IDX_NONE_32)
+    {
+        float opacity = 1.f;
+        opacity = u_materialsTextures[materialData.baseColorTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).a;
+        output.shouldDiscard = opacity < 0.9f;
+    }
+    else
+    {
+        output.shouldDiscard = false;
+    }
+    
+    return output;
+}
+
+
 MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     float3 baseColor = 1.f;

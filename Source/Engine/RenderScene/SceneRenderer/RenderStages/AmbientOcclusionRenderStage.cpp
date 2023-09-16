@@ -12,6 +12,11 @@
 #include "RenderScene.h"
 #include "Utility/Random.h"
 #include "Denoisers/AmbientOcclusionDenoiser.h"
+#include "MaterialsSubsystem.h"
+#include "StaticMeshes/StaticMeshGeometry.h"
+#include "GeometryManager.h"
+#include "MaterialsUnifiedData.h"
+#include "Utils/RTVisibilityUtils.h"
 
 
 namespace spt::rsc
@@ -65,14 +70,29 @@ DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
+static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
 	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateAmbientOcclusionRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "AmbientOcclusionRTM"), compilationSettings));
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVIsibilityRTM"), compilationSettings));
+
+	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
+
+	const lib::HashedString materialTechnique = "RTVisibility";
+
+	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
+	{
+		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
+
+		rdr::RayTracingHitGroup hitGroup;
+		hitGroup.closestHitShader	= shaders.closestHitShader;
+		hitGroup.anyHitShader		= shaders.anyHitShader;
+
+		rtShaders.hitGroups.emplace_back(hitGroup);
+	}
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1u;
@@ -87,9 +107,13 @@ static void TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, cons
 
 	const math::Vector3u renderingResolution = viewRenderingData.currentAOTexture->GetResolution();
 
-	const static rdr::PipelineStateID traceRaysPipeline = CreateShadowsRayTracingPipeline();
-
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = context.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
+
+	static rdr::PipelineStateID traceRaysPipeline;
+	if (!traceRaysPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
+	{
+		traceRaysPipeline = CreateShadowsRayTracingPipeline(rayTracingSceneSubsystem);
+	}
 
 	RTAOTraceRaysParams params;
 	params.randomSeed			= math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
@@ -104,10 +128,18 @@ static void TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, cons
 	traceRaysDS->u_rtaoParams					= params;
 	traceRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
 
+	const lib::SharedPtr<RTVisibilityDS> visibilityDS = rdr::ResourcesManager::CreateDescriptorSetState<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
+	visibilityDS->u_rtInstances				= rayTracingSceneSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
+	visibilityDS->u_geometryDS				= GeometryManager::Get().GetGeometryDSState();
+	visibilityDS->u_staticMeshUnifiedDataDS	= StaticMeshUnifiedData::Get().GetUnifiedDataDS();
+	visibilityDS->u_MaterialsDS				= mat::MaterialsUnifiedData::Get().GetMaterialsDS();
+
 	graphBuilder.TraceRays(RG_DEBUG_NAME("RTAO Trace Rays"),
 						   traceRaysPipeline,
 						   renderingResolution,
-						   rg::BindDescriptorSets(traceRaysDS, context.renderView.GetRenderViewDS()));
+						   rg::BindDescriptorSets(std::move(traceRaysDS),
+												  std::move(visibilityDS),
+												  context.renderView.GetRenderViewDS()));
 }
 
 } // trace_rays

@@ -84,7 +84,7 @@ DS_END();
 
 
 DS_BEGIN(DDGIDebugDrawProbesDS, rg::RGDescriptorSetState<DDGIDebugDrawProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIProbesDebugParams>),			u_ddgiProbesDebugParams)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIProbesDebugParams>), u_ddgiProbesDebugParams)
 DS_END();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,13 +106,15 @@ static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSc
 
 	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
 
+	const lib::HashedString materialTechnique = "DDGI";
+
 	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
 	{
-		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>("DDGI", sbtRecords[recordIdx]);
+		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
 
 		rdr::RayTracingHitGroup hitGroup;
 		hitGroup.closestHitShader	= shaders.closestHitShader;
-		hitGroup.anyHitShader		= shaders.anyHitShader;
+		//hitGroup.anyHitShader		= shaders.anyHitShader;
 
 		rtShaders.hitGroups.emplace_back(hitGroup);
 	}

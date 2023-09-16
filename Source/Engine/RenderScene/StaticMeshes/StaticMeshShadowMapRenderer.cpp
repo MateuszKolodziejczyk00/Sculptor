@@ -9,6 +9,8 @@
 #include "StaticMeshGeometry.h"
 #include "Common/ShaderCompilationInput.h"
 #include "GeometryManager.h"
+#include "MaterialsUnifiedData.h"
+#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -18,18 +20,6 @@ StaticMeshShadowMapRenderer::StaticMeshShadowMapRenderer()
 	{
 		const rdr::ShaderID buildDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_BuildShadowMapDrawCommands.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildDrawCommandsCS"));
 		m_buildDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_BuildShadowMapDrawCommands"), buildDrawCommandsShader);
-	}
-
-	{
-		rdr::GraphicsPipelineShaders shaders;
-		shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthVS"));
-		shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthFS"));
-
-		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
-		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		depthPrepassPipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetRenderedDepthFormat();
-		m_shadowMapRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_ShadowMapPipeline"), shaders, depthPrepassPipelineDef);
 	}
 }
 
@@ -53,7 +43,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 			const PointLightShadowMapComponent& pointLightShadowMap = sceneRegistry.get<PointLightShadowMapComponent>(pointLight);
 
 			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-			const lib::DynamicArray<StaticMeshBatchDefinition> batchDefs = staticMeshPrimsSystem.BuildBatchesForPointLight(pointLightData, mat::EMaterialType::Opaque);
+			const lib::DynamicArray<StaticMeshBatchDefinition> batchDefs = staticMeshPrimsSystem.BuildBatchesForPointLight(pointLightData);
 
 			const lib::DynamicArray<RenderView*> shadowMapViews = shadowMapsManager->GetPointLightShadowMapViews(pointLightShadowMap);
 			
@@ -95,11 +85,12 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 													   batch.perFaceData[viewShadowMapData.faceIdx].drawDS,
 													   StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 													   GeometryManager::Get().GetGeometryDSState(),
-													   renderView.GetRenderViewDS()),
+													   renderView.GetRenderViewDS(),
+													   mat::MaterialsUnifiedData::Get().GetMaterialsDS()),
 								std::tie(drawParams),
-								[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[maxDrawCallsNum = batch.batchedSubmeshesNum, faceIdx = viewShadowMapData.faceIdx, pipelineID = GetPipelineStateForBatch(batch), drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
-									recorder.BindGraphicsPipeline(m_shadowMapRenderingPipeline);
+									recorder.BindGraphicsPipeline(pipelineID);
 
 									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
 									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
@@ -116,8 +107,9 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 	// Create batch data and buffer
 
-	batch.batchDS = batchDef.batchDS;
-	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
+	batch.batchDS				= batchDef.batchDS;
+	batch.batchedSubmeshesNum	= static_cast<Uint32>(batchDef.batchElements.size());
+	batch.materialShadersHash	= batchDef.materialShadersHash;
 
 	// Create indirect draw counts buffer
 
@@ -209,6 +201,22 @@ void StaticMeshShadowMapRenderer::BuildBatchDrawCommands(rg::RenderGraphBuilder&
 						  rg::BindDescriptorSets(batch.batchDS,
 												 batch.cullingDS,
 												 StaticMeshUnifiedData::Get().GetUnifiedDataDS()));
+}
+
+rdr::PipelineStateID StaticMeshShadowMapRenderer::GetPipelineStateForBatch(const SMShadowMapBatch& batch) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const mat::MaterialGraphicsShaders materialShaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("SMDepthOnly",
+																																		 batch.materialShadersHash);
+	rdr::GraphicsPipelineShaders shaders;
+	shaders.vertexShader	= materialShaders.vertexShader;
+	shaders.fragmentShader	= materialShaders.fragmentShader;
+
+	rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
+	depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+	depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetRenderedDepthFormat();
+	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), shaders, depthPrepassPipelineDef);
 }
 
 } // spt::rsc

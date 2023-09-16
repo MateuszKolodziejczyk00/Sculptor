@@ -392,8 +392,10 @@ static void AppendShaderStageInfos(INOUT lib::DynamicArray<VkPipelineShaderStage
 {
 	for (const rhi::RayTracingHitGroupDefinition& hitGroup : hitGroups)
 	{
-		SPT_CHECK(hitGroup.closestHitModule.IsValid());
-		stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(hitGroup.closestHitModule));
+		if (hitGroup.closestHitModule.IsValid())
+		{
+			stageInfos.emplace_back(helpers::BuildPipelineShaderStageInfo(hitGroup.closestHitModule));
+		}
 
 		if (hitGroup.anyHitModule.IsValid())
 		{
@@ -454,9 +456,9 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 						VkRayTracingShaderGroupCreateInfoKHR group{ VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR };
 						group.type					= VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
 						group.generalShader			= VK_SHADER_UNUSED_KHR;
-						group.closestHitShader		= shaderIdx++;
-						group.anyHitShader			= hitGroup.anyHitModule.IsValid() ? shaderIdx++ : VK_SHADER_UNUSED_KHR;
-						group.intersectionShader	= hitGroup.intersectionModule.IsValid() ? shaderIdx++ : VK_SHADER_UNUSED_KHR;
+						group.closestHitShader		= hitGroup.closestHitModule.IsValid()	? shaderIdx++ : VK_SHADER_UNUSED_KHR;
+						group.anyHitShader			= hitGroup.anyHitModule.IsValid()		? shaderIdx++ : VK_SHADER_UNUSED_KHR;
+						group.intersectionShader	= hitGroup.intersectionModule.IsValid()	? shaderIdx++ : VK_SHADER_UNUSED_KHR;
 	
 						return group;
 					});

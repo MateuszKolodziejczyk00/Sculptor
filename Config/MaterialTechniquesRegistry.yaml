@@ -2,6 +2,16 @@ Techniques:
   ? Name: SMForwardOpaque
   : ShadersPath:
       Name: Sculptor/StaticMeshes/SMForwardOpaque.hlsl
+    RayTracingWithClosestHit: true
+  ? Name: SMDepthOnly
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMDepthOnly.hlsl
+    RayTracingWithClosestHit: true
   ? Name: DDGI
   : ShadersPath:
       Name: Sculptor/StaticMeshes/SMDDGI.hlsl
+    RayTracingWithClosestHit: true
+  ? Name: RTVisibility
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMRTVisibility.hlsl
+    RayTracingWithClosestHit: false

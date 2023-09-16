@@ -164,6 +164,14 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     
     const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(vertexInput.materialDataOffset);
 
+#ifdef SPT_MATERIAL_CUSTOM_OPACITY
+    const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
+    if(opacityOutput.shouldDiscard)
+    {
+        discard;
+    }
+#endif // SPT_MATERIAL_CUSTOM_OPACITY
+
     const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
 #if WITH_DEBUGS

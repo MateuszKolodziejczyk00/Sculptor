@@ -14,6 +14,7 @@ struct TypeSerializer<mat::MaterialTechniqueConfig>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
 		serializer.Serialize("ShadersPath", data.shadersPath);
+		serializer.Serialize("RayTracingWithClosestHit", data.rayTracingWithClosestHit);
 	}
 };
 
@@ -61,11 +62,16 @@ void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techn
 {
 	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(materialParams, parameters);
 
-	const lib::String shadersPath = GetMaterialTechniqueShadersPath(techniqueName).ToString();
+	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
+	
+	const lib::String shadersPath = techniqueConfig.shadersPath.ToString();
 
-	rayTracingShaders.closestHitShader = rdr::ResourcesManager::CreateShader(shadersPath,
-																			 GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::RTClosestHit),
-																			 compilationSettings);
+	if (techniqueConfig.rayTracingWithClosestHit)
+	{
+		rayTracingShaders.closestHitShader = rdr::ResourcesManager::CreateShader(shadersPath,
+																				 GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::RTClosestHit),
+																				 compilationSettings);
+	}
 
 	const Bool hasAnyHitShader = materialParams.customOpacity;
 
@@ -81,7 +87,9 @@ void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techn
 {
 	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(materialParams, parameters);
 
-	const lib::String shadersPath = GetMaterialTechniqueShadersPath(techniqueName).ToString();
+	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
+	
+	const lib::String shadersPath = techniqueConfig.shadersPath.ToString();
 
 	graphicsShaders.vertexShader = rdr::ResourcesManager::CreateShader(shadersPath,
 																	   GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Vertex),
@@ -92,12 +100,12 @@ void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techn
 																		 compilationSettings);
 }
 
-lib::HashedString IMaterialShadersCompiler::GetMaterialTechniqueShadersPath(lib::HashedString techniqueName) const
+const MaterialTechniqueConfig& IMaterialShadersCompiler::GetMaterialTechniqueConfig(lib::HashedString techniqueName) const
 {
 	const auto it = m_techniquesRegistry.techniques.find(techniqueName);
 	SPT_CHECK_MSG(it != m_techniquesRegistry.techniques.end(), "Material technique \"{}\" not found", techniqueName.ToString().c_str());
 
-	return it->second.shadersPath;
+	return it->second;
 }
 
 sc::ShaderStageCompilationDef IMaterialShadersCompiler::GetShaderStageCompilationDef(lib::HashedString techniqueName, rhi::EShaderStage stage) const

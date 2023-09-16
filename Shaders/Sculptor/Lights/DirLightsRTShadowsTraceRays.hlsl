@@ -1,15 +1,11 @@
 #include "SculptorShader.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-[[descriptor_set(TraceShadowRaysDS, 0)]]
-[[descriptor_set(DirectionalLightShadowMaskDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+#include "Utils/RTVisibilityCommon.hlsli"
 
-
-struct ShadowRayPayload
-{
-    bool isInShadow;
-};
+[[descriptor_set(TraceShadowRaysDS, 2)]]
+[[descriptor_set(DirectionalLightShadowMaskDS, 3)]]
+[[descriptor_set(RenderViewDS, 4)]]
 
 
 [shader("raygeneration")]
@@ -26,7 +22,7 @@ void GenerateShadowRaysRTG()
     const float2 uv = (pixel + 0.5f) / float2(DispatchRaysDimensions().xy);
     const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0);
 
-    ShadowRayPayload payload = { true };
+    RTVisibilityPayload payload = { false };
 
     if(depth > 0.f)
     {
@@ -39,7 +35,6 @@ void GenerateShadowRaysRTG()
         const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
 
         worldLocation += normal * u_params.shadowRayBias;
-
 
         RayDesc rayDesc;
         rayDesc.TMin        = u_params.minTraceDistance;
@@ -57,12 +52,5 @@ void GenerateShadowRaysRTG()
                  payload);
     }
 
-    u_shadowMask[pixel] = payload.isInShadow ? 0.f : 1.f;
-}
-
-
-[shader("miss")]
-void ShadowRayRTM(inout ShadowRayPayload payload)
-{
-    payload.isInShadow = false;
+    u_shadowMask[pixel] = payload.isVisible ? 1.f : 0.f;
 }

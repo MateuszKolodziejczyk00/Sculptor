@@ -17,9 +17,13 @@ struct MaterialStaticParameters;
 
 struct MaterialTechniqueConfig
 {
-	MaterialTechniqueConfig() = default;
+	MaterialTechniqueConfig()
+		: rayTracingWithClosestHit(true)
+	{ }
 
 	lib::HashedString shadersPath;
+
+	Bool rayTracingWithClosestHit;
 
 	lib::HashedString entryPointNames[static_cast<Uint32>(rhi::EShaderStage::NUM)];
 
@@ -98,7 +102,7 @@ protected:
 	void CreateMaterialShadersImpl(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT MaterialRayTracingShaders& rayTracingShaders);
 	void CreateMaterialShadersImpl(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT MaterialGraphicsShaders& graphicsShaders);
 
-	lib::HashedString GetMaterialTechniqueShadersPath(lib::HashedString techniqueName) const;
+	const MaterialTechniqueConfig& GetMaterialTechniqueConfig(lib::HashedString techniqueName) const;
 	sc::ShaderStageCompilationDef GetShaderStageCompilationDef(lib::HashedString techniqueName, rhi::EShaderStage stage) const;
 
 private:

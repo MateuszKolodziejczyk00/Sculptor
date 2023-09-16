@@ -6,6 +6,8 @@
 #include "GeometryManager.h"
 #include "StaticMeshGeometry.h"
 #include "SceneRenderer/RenderStages/DepthPrepassRenderStage.h"
+#include "MaterialsUnifiedData.h"
+#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -15,17 +17,6 @@ StaticMeshDepthPrepassRenderer::StaticMeshDepthPrepassRenderer()
 	{
 		const rdr::ShaderID buildDrawCommandsShader = rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_BuildDepthPrepassDrawCommands.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildDrawCommandsCS"));
 		m_buildDrawCommandsPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("StaticMesh_BuildDepthPrepassDrawCommands"), buildDrawCommandsShader);
-	}
-
-	{
-		rdr::GraphicsPipelineShaders shaders;
-		shaders.vertexShader	= rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "StaticMesh_DepthVS"));
-		shaders.fragmentShader	= rdr::ResourcesManager::CreateShader("Sculptor/StaticMeshes/StaticMesh_RenderDepth.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "StaticMesh_DepthFS"));
-
-		rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
-		depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
-		m_depthPrepassRenderingPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), shaders, depthPrepassPipelineDef);
 	}
 }
 
@@ -90,26 +81,23 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 																						GeometryManager::Get().GetGeometryDSState(),
-																						renderView.GetRenderViewDS()));
+																						renderView.GetRenderViewDS(),
+																						mat::MaterialsUnifiedData::Get().GetMaterialsDS()));
 
 	for (const SMDepthPrepassBatch& batch : depthPrepassBatches.batches)
 	{
-		const rg::BindDescriptorSetsScope staticMeshBatchDSScope(graphBuilder, rg::BindDescriptorSets(batch.batchDS));
-
 		SMIndirectDepthPrepassCommandsParameters drawParams;
 		drawParams.batchDrawCommandsBuffer = batch.drawCommandsBuffer;
 		drawParams.batchDrawCommandsCountBuffer = batch.indirectDrawCountBuffer;
 
-		const lib::SharedRef<GeometryDS> unifiedGeometryDS = lib::Ref(GeometryManager::Get().GetGeometryDSState());
-
 		const Uint32 maxDrawCallsNum = batch.batchedSubmeshesNum;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
-								rg::BindDescriptorSets(batch.drawInstancesDS),
+								rg::BindDescriptorSets(batch.drawInstancesDS, batch.batchDS),
 								std::tie(drawParams),
-								[maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[pipelineID = GetPipelineStateForBatch(batch), maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
-									recorder.BindGraphicsPipeline(m_depthPrepassRenderingPipeline);
+									recorder.BindGraphicsPipeline(pipelineID);
 
 									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
 									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
@@ -126,8 +114,9 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 
 	// Create batch info
 
-	batch.batchDS = batchDef.batchDS;
-	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
+	batch.batchDS				= batchDef.batchDS;
+	batch.batchedSubmeshesNum	= static_cast<Uint32>(batchDef.batchElements.size());
+	batch.materialShadersHash	= batchDef.materialShadersHash;
 
 	// Create buffers
 
@@ -157,6 +146,22 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 	batch.indirectDrawCountBuffer = indirectDrawCountBuffer;
 
 	return batch;
+}
+
+rdr::PipelineStateID StaticMeshDepthPrepassRenderer::GetPipelineStateForBatch(const SMDepthPrepassBatch& batch) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const mat::MaterialGraphicsShaders materialShaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("SMDepthOnly",
+																																		 batch.materialShadersHash);
+	rdr::GraphicsPipelineShaders shaders;
+	shaders.vertexShader	= materialShaders.vertexShader;
+	shaders.fragmentShader	= materialShaders.fragmentShader;
+
+	rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
+	depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+	depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = DepthPrepassRenderStage::GetDepthFormat();
+	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), shaders, depthPrepassPipelineDef);
 }
 
 } // spt::rsc

@@ -18,7 +18,7 @@ struct MaterialEvaluationParameters
 
 struct CustomOpacityOutput
 {
-    float opacity;
+    bool shouldDiscard;
 };
 
 

@@ -14,8 +14,7 @@ enum class EMaterialType : Uint32
 {
 	Invalid,
 	Opaque,
-	AlphaMasked,
-	Transparent
+	AlphaMasked
 };
 
 
@@ -96,7 +95,7 @@ struct MaterialProxyComponent
 
 	Bool SupportsRayTracing() const
 	{
-		return params.materialType == EMaterialType::Opaque;
+		return true;
 	}
 
 	rhi::RHISuballocation materialDataSuballocation;

@@ -28,7 +28,9 @@ struct SMDepthPrepassBatch
 	rg::RGBufferViewHandle drawCommandsBuffer;
 	rg::RGBufferViewHandle indirectDrawCountBuffer;
 
-	Uint32 batchedSubmeshesNum;
+	Uint32 batchedSubmeshesNum = 0u;
+
+	mat::MaterialShadersHash materialShadersHash;
 };
 
 
@@ -51,10 +53,10 @@ public:
 private:
 
 	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
+	
+	rdr::PipelineStateID GetPipelineStateForBatch(const SMDepthPrepassBatch& batch) const;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
-
-	rdr::PipelineStateID m_depthPrepassRenderingPipeline;
 };
 
 } // spt::rsc

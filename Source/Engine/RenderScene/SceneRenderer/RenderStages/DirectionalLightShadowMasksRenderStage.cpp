@@ -17,6 +17,11 @@
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "Denoisers/DirectionalLightShadowsDenoiser.h"
+#include "MaterialsSubsystem.h"
+#include "StaticMeshes/StaticMeshGeometry.h"
+#include "GeometryManager.h"
+#include "MaterialsUnifiedData.h"
+#include "Utils/RTVisibilityUtils.h"
 
 namespace spt::rsc
 {
@@ -41,6 +46,7 @@ BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
 	SHADER_STRUCT_FIELD(Bool,			enableShadows)
 END_SHADER_STRUCT();
 
+
 DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_worldAccelerationStructure)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
@@ -55,14 +61,29 @@ DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLight
 DS_END();
 
 
-static rdr::PipelineStateID CreateShadowsRayTracingPipeline()
+static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirectionalLightsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), compilationSettings));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVIsibilityRTM"), compilationSettings));
+
+	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
+
+	const lib::HashedString materialTechnique = "RTVisibility";
+
+	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
+	{
+		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
+
+		rdr::RayTracingHitGroup hitGroup;
+		hitGroup.closestHitShader	= shaders.closestHitShader;
+		hitGroup.anyHitShader		= shaders.anyHitShader;
+
+		rtShaders.hitGroups.emplace_back(hitGroup);
+	}
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
@@ -178,7 +199,11 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depth;
 	traceShadowRaysDS->u_geometryNormalsTexture     = shadingInputData.geometryNormals;
 
-	static const rdr::PipelineStateID shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline();
+	static rdr::PipelineStateID shadowsRayTracingPipeline;
+	if (!shadowsRayTracingPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
+	{
+		shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline(rayTracingSceneSubsystem);
+	}
 
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 	const auto directionalLightsView = sceneRegistry.view<DirectionalLightData>();
@@ -200,10 +225,19 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		directionalLightShadowMaskDS->u_shadowMask	= shadowsData.currentShadowMask;
 		directionalLightShadowMaskDS->u_params		= updateParams;
 
+		const lib::SharedPtr<RTVisibilityDS> visibilityDS = rdr::ResourcesManager::CreateDescriptorSetState<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
+		visibilityDS->u_rtInstances				= rayTracingSceneSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
+		visibilityDS->u_geometryDS				= GeometryManager::Get().GetGeometryDSState();
+		visibilityDS->u_staticMeshUnifiedDataDS	= StaticMeshUnifiedData::Get().GetUnifiedDataDS();
+		visibilityDS->u_MaterialsDS				= mat::MaterialsUnifiedData::Get().GetMaterialsDS();
+
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,
 							   math::Vector3u(renderingRes.x(), renderingRes.y(), 1),
-							   rg::BindDescriptorSets(traceShadowRaysDS, directionalLightShadowMaskDS, renderView.GetRenderViewDS()));
+							   rg::BindDescriptorSets(traceShadowRaysDS,
+													  directionalLightShadowMaskDS,
+													  renderView.GetRenderViewDS(),
+													  std::move(visibilityDS)));
 	}
 
 	// Denoise shadow masks

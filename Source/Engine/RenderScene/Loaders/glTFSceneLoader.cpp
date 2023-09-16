@@ -431,10 +431,6 @@ static mat::EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
 	{
 		materialType = mat::EMaterialType::AlphaMasked;
 	}
-	else if (materialDef.alphaMode == "BLEND")
-	{
-		materialType = mat::EMaterialType::Transparent;
-	}
 
 	return materialType;
 }
@@ -470,7 +466,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name				= materialSourceDef.name;
 		materialDefinition.materialType		= GetMaterialType(materialSourceDef);
-		materialDefinition.customOpacity	= false;
+		materialDefinition.customOpacity	= materialDefinition.materialType == mat::EMaterialType::AlphaMasked;
 
 		const ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, pbrData);
 

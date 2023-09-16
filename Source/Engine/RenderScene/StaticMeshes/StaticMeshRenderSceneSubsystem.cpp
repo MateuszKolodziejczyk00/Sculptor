@@ -16,30 +16,27 @@ SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>&
 	: batches(inBatches)
 { }
 
-void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots, mat::EMaterialType batchMaterialType)
+void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots)
 {
 	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
 	{
 		const ecs::EntityHandle material = materialsSlots.slots[idx];
 		const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 
-		if(materialProxy.params.materialType == batchMaterialType)
-		{
-			const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
+		const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
 
-			StaticMeshBatchDefinition& batch = GetBatchForMaterial(materialProxy.materialShadersHash);
+		StaticMeshBatchDefinition& batch = GetBatchForMaterial(materialProxy.materialShadersHash);
 
-			const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
+		const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
 
-			StaticMeshBatchElement batchElement;
-			batchElement.entityIdx			= entityIdx;
-			batchElement.submeshGlobalIdx	= globalSubmeshIdx;
-			batchElement.materialDataOffset	= static_cast<Uint32>(materialProxy.materialDataSuballocation.GetOffset());
-			batch.batchElements.emplace_back(batchElement);
+		StaticMeshBatchElement batchElement;
+		batchElement.entityIdx			= entityIdx;
+		batchElement.submeshGlobalIdx	= globalSubmeshIdx;
+		batchElement.materialDataOffset	= static_cast<Uint32>(materialProxy.materialDataSuballocation.GetOffset());
+		batch.batchElements.emplace_back(batchElement);
 
-			batch.maxMeshletsNum	+= submeshDef.meshletsNum;
-			batch.maxTrianglesNum	+= submeshDef.trianglesNum;
-		}
+		batch.maxMeshletsNum	+= submeshDef.meshletsNum;
+		batch.maxTrianglesNum	+= submeshDef.trianglesNum;
 	}
 }
 
@@ -97,7 +94,7 @@ StaticMeshRenderSceneSubsystem::StaticMeshRenderSceneSubsystem(RenderScene& owni
 	: Super(owningScene)
 { }
 
-lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForView(const RenderView& view, mat::EMaterialType materialType) const
+lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForView(const RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -118,7 +115,7 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 		if (view.IsSphereOverlappingFrustum(boundingSphereCenterWS, boundingSphereRadius))
 		{
 			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
-			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots, materialType);
+			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
 		}
 	}
 
@@ -127,7 +124,7 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 	return batches;
 }
 
-lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForPointLight(const PointLightData& pointLight, mat::EMaterialType materialType) const
+lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForPointLight(const PointLightData& pointLight) const
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -148,7 +145,7 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 		if ((boundingSphereCenterWS - pointLight.location).squaredNorm() < math::Utils::Square(pointLight.radius + boundingSphereRadius))
 		{
 			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
-			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots, materialType);
+			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
 		}
 	}
 

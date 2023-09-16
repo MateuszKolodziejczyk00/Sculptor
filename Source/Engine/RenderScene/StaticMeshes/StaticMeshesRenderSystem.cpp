@@ -36,7 +36,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	if (supportsDepthPrepass || supportsForwardOpaque)
 	{
 		const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-		lib::DynamicArray<StaticMeshBatchDefinition> batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView(), mat::EMaterialType::Opaque);
+		lib::DynamicArray<StaticMeshBatchDefinition> batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView());
 		
 		if (!batchDefinitions.empty())
 		{

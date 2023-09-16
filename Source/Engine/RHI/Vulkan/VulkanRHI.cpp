@@ -112,6 +112,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
     }
 
     extensionNames.emplace_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+    extensionNames.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
     
 #if RHI_DEBUG
 

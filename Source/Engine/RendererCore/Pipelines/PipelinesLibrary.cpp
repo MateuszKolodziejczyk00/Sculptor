@@ -119,8 +119,10 @@ PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererRe
 			m_shaderToPipelineStates[shaders.rayGenShader].emplace_back(stateID);
 			for (const RayTracingHitGroup& group : shaders.hitGroups)
 			{
-				SPT_CHECK(group.closestHitShader.IsValid());
-				m_shaderToPipelineStates[group.closestHitShader].emplace_back(stateID);
+				if (group.closestHitShader.IsValid())
+				{
+					m_shaderToPipelineStates[group.closestHitShader].emplace_back(stateID);
+				}
 
 				if (group.anyHitShader.IsValid())
 				{
@@ -262,7 +264,10 @@ lib::SharedRef<RayTracingPipeline> PipelinesLibrary::CreateRayTracingPipelineObj
 				   [getShaderObject](const RayTracingHitGroup& hitGroup)
 				   {
 					   RayTracingHitGroupShaders hitGroupShaders;
-					   hitGroupShaders.closestHitShader = getShaderObject(hitGroup.closestHitShader);
+					   if (hitGroup.closestHitShader.IsValid())
+					   {
+						   hitGroupShaders.closestHitShader = getShaderObject(hitGroup.closestHitShader);
+					   }
 					   if (hitGroup.anyHitShader.IsValid())
 					   {
 						   hitGroupShaders.anyHitShader = getShaderObject(hitGroup.anyHitShader);

@@ -74,7 +74,7 @@ public:
 
 	SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches);
 
-	void AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots, mat::EMaterialType batchMaterialType);
+	void AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots);
 
 	void FinalizeBatches();
 
@@ -100,8 +100,8 @@ public:
 
 	explicit StaticMeshRenderSceneSubsystem(RenderScene& owningScene);
 
-	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForView(const RenderView& view, mat::EMaterialType materialType) const;
-	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForPointLight(const PointLightData& pointLight, mat::EMaterialType materialType) const;
+	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForView(const RenderView& view) const;
+	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForPointLight(const PointLightData& pointLight) const;
 };
 
 } // spt::rsc

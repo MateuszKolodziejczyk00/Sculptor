@@ -1,14 +1,10 @@
 #include "SculptorShader.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-[[descriptor_set(RTAOTraceRaysDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+#include "Utils/RTVisibilityCommon.hlsli"
 
-
-struct AORayPayload
-{
-    bool isMiss;
-};
+[[descriptor_set(RTAOTraceRaysDS, 2)]]
+[[descriptor_set(RenderViewDS, 3)]]
 
 
 [shader("raygeneration")]
@@ -23,8 +19,7 @@ void GenerateAmbientOcclusionRaysRTG()
 
     if(depth > 0.f)
     {
-
-        AORayPayload payload = { false };
+        RTVisibilityPayload payload = { false };
 
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
@@ -55,15 +50,8 @@ void GenerateAmbientOcclusionRaysRTG()
                  rayDesc,
                  payload);
 
-        ao = payload.isMiss ? 1.f : 0.f;
+        ao = payload.isVisible ? 1.f : 0.f;
     }
 
     u_ambientOcclusionTexture[pixel] = ao;
-}
-
-
-[shader("miss")]
-void AmbientOcclusionRTM(inout AORayPayload payload)
-{
-    payload.isMiss = true;
 }

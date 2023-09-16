@@ -16,8 +16,10 @@ RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const R
 
 	for (const RayTracingHitGroupShaders& hitGroupShaders : shaders.hitGroups)
 	{
-		SPT_CHECK(hitGroupShaders.closestHitShader);
-		AppendToPipelineMetaData(hitGroupShaders.closestHitShader->GetMetaData());
+		if (hitGroupShaders.closestHitShader)
+		{
+			AppendToPipelineMetaData(hitGroupShaders.closestHitShader->GetMetaData());
+		}
 		if (hitGroupShaders.anyHitShader)
 		{
 			AppendToPipelineMetaData(hitGroupShaders.anyHitShader->GetMetaData());
@@ -28,9 +30,9 @@ RayTracingPipeline::RayTracingPipeline(const RendererResourceName& name, const R
 		}
 
 		rhi::RayTracingHitGroupDefinition& rhiHitGroup = rayTracingShaders.hitGroups.emplace_back();
-		rhiHitGroup.closestHitModule	= hitGroupShaders.closestHitShader->GetRHI();
-		rhiHitGroup.anyHitModule		= hitGroupShaders.anyHitShader ? hitGroupShaders.anyHitShader->GetRHI() : rhi::RHIShaderModule{};
-		rhiHitGroup.intersectionModule	= hitGroupShaders.intersectionShader ? hitGroupShaders.intersectionShader->GetRHI() : rhi::RHIShaderModule{};
+		rhiHitGroup.closestHitModule	= hitGroupShaders.closestHitShader		? hitGroupShaders.closestHitShader->GetRHI() : rhi::RHIShaderModule{};
+		rhiHitGroup.anyHitModule		= hitGroupShaders.anyHitShader			? hitGroupShaders.anyHitShader->GetRHI() : rhi::RHIShaderModule{};
+		rhiHitGroup.intersectionModule	= hitGroupShaders.intersectionShader	? hitGroupShaders.intersectionShader->GetRHI() : rhi::RHIShaderModule{};
 	}
 
 	for (const lib::SharedRef<Shader>& shader : shaders.missShaders)

@@ -70,6 +70,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	VkPhysicalDeviceVulkan13Features vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 	vulkan13Features.synchronization2 = VK_TRUE;
 	vulkan13Features.dynamicRendering = VK_TRUE;
+	vulkan13Features.shaderDemoteToHelperInvocation	= VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan13Features);
 
