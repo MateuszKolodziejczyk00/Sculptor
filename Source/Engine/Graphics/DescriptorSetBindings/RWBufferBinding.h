@@ -53,8 +53,8 @@ public:
 				BuildBindingVariableCode(prefix + lib::String("StructuredBuffer") + '<' + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 		}
 	}
-
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
 		smd::EBindingFlags flags = lib::Union(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound);
 
@@ -63,7 +63,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
 		}
 
-		return flags;
+		return { rdr::ShaderBindingMetaData(flags) };
 	}
 
 	static constexpr Bool IsByteBuffer()

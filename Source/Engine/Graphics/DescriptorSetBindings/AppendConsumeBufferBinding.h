@@ -37,12 +37,6 @@ public:
 		m_boundCountBuffer.AddRGDependency(builder, rg::ERGBufferAccess::ReadWrite);
 	}
 
-	// We need to take two bindings - first for buffer and second for count (storage buffer)
-	static constexpr Uint32 GetBindingIdxDelta()
-	{
-		return 2;
-	}
-
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		lib::String bufferTypeName = isAppend ? lib::String("AppendStructuredBuffer") : lib::String("AppendStructuredBuffer");
@@ -51,10 +45,11 @@ public:
 		code += BuildBindingVariableCode(bufferTypeName + '<' + TStorageType::GetStructName() + "> " + name, bindingIdx);
 		return code;
 	}
-
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	
+	// We need to take two bindings - first for buffer and second for count (storage buffer)
+	static constexpr std::array<ShaderBindingMetaData, 2> GetShaderBindingsMetaData()
 	{
-		return lib::Flags(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound);
+		return { ShaderBindingMetaData(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound), ShaderBindingMetaData(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound) };
 	}
 
 	template<CInstanceOrRGBufferView TBufferType, CInstanceOrRGBufferView TCountBufferType>

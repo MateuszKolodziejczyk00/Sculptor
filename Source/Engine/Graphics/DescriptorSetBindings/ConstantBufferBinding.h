@@ -70,7 +70,7 @@ public:
 			BuildBindingVariableCode(lib::String("ConstantBuffer<") + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 	}
 
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
 		smd::EBindingFlags flags = smd::EBindingFlags::None;
 
@@ -79,7 +79,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::DynamicOffset);
 		}
 
-		return flags;
+		return { rdr::ShaderBindingMetaData(flags) };
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>

@@ -42,9 +42,9 @@ public:
 			BuildBindingVariableCode(lib::String("ConstantBuffer<") + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
 	}
 
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return smd::EBindingFlags::None;
+		return { rdr::ShaderBindingMetaData(smd::EBindingFlags::None) };
 	}
 
 	template<priv::CInstanceOrRGBufferView TType>

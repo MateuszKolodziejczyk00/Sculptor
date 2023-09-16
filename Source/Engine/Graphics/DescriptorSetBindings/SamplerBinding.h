@@ -31,14 +31,9 @@ public:
 		return BuildBindingVariableCode(GetSamplerTypeName() + " " + name, bindingIdx);
 	}
 
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return smd::EBindingFlags::ImmutableSampler;
-	}
-
-	static constexpr std::optional<rhi::SamplerDefinition> GetImmutableSamplerDef()
-	{
-		return std::make_optional(samplerDefinition);
+		return { rdr::ShaderBindingMetaData(samplerDefinition) };
 	}
 
 private:

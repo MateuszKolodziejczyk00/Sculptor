@@ -56,8 +56,8 @@ public:
 		return BuildBindingVariableCode(formatString + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
 										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
 	}
-
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
 		smd::EBindingFlags flags = smd::EBindingFlags::Storage;
 
@@ -66,7 +66,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
 		}
 
-		return flags;
+		return { rdr::ShaderBindingMetaData(flags) };
 	}
 
 	template<priv::CTextureInstanceOrRGTextureView TType>

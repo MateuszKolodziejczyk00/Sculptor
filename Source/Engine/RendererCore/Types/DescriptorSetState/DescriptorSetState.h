@@ -44,6 +44,23 @@ enum class EDescriptorSetStateFlags
 };
 
 
+struct ShaderBindingMetaData
+{
+	constexpr ShaderBindingMetaData(smd::EBindingFlags inFlags = smd::EBindingFlags::None)
+		: flags(inFlags)
+	{ }
+	
+	constexpr ShaderBindingMetaData(const rhi::SamplerDefinition& inImmutableSamplerDef, smd::EBindingFlags inFlags = smd::EBindingFlags::ImmutableSampler)
+		: flags(inFlags)
+		, immutableSamplerDef(inImmutableSamplerDef)
+	{ }
+
+	smd::EBindingFlags flags;
+
+	std::optional<rhi::SamplerDefinition> immutableSamplerDef;
+};
+
+
 class RENDERER_CORE_API DescriptorSetUpdateContext
 {
 public:
@@ -80,9 +97,9 @@ public:
 	void Initialize(DescriptorSetState& owningState) {}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
-	static constexpr smd::EBindingFlags GetBindingFlags() { return smd::EBindingFlags::None; }
-	static constexpr Uint32 GetBindingIdxDelta() { return 1; }
-	static constexpr std::optional<rhi::SamplerDefinition> GetImmutableSamplerDef() { return std::nullopt; }
+
+	// Children classes MUST also define this function (with arbitrary N)
+	//static constexpr std::array<ShaderBindingMetaData, N> GetShaderBindingsMetaData();
 
 	void SetOwningDSState(DescriptorSetState& state);
 
@@ -410,6 +427,15 @@ constexpr Bool IsTailBinding()
 	return std::is_same_v<NextBindingHandleType, void>;
 }
 
+template<typename TBindingType>
+constexpr Uint32 GetShaderBindingsNumForBinding()
+{
+	// use helper lambda to get nicer compile errors
+	const auto helper = [] { return TBindingType::GetShaderBindingsMetaData(); };
+	using TBindingsMetaDataType = std::invoke_result_t<decltype(helper)>;
+	return (Uint32)lib::StaticArrayTraits<TBindingsMetaDataType>::Size;
+}
+
 template<typename TBindingHandle>
 constexpr SizeType GetBindingsNum()
 {
@@ -463,17 +489,63 @@ void ForEachBindingWithDynamicOffset(TCallable callable)
 {
 	SPT_PROFILER_FUNCTION();
 
-	ForEachBinding<TBindingHandle>([&callable, bindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&callable, shaderBindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-	
-		if (lib::HasAnyFlag(CurrentBindingType::GetBindingFlags(), smd::EBindingFlags::DynamicOffset))
-		{
-			callable(bindingIdx);
-		}
 
-		bindingIdx += CurrentBindingType::GetBindingIdxDelta();
+		const auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
+
+		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
+		{
+			if (lib::HasAnyFlag(shaderBindingMetaData.flags, smd::EBindingFlags::DynamicOffset))
+			{
+				callable(shaderBindingIdx);
+			}
+
+			shaderBindingIdx++;
+		}
 	});
+}
+
+template<typename TDescriptorSetType>
+constexpr SizeType GetShaderBindingsNum()
+{
+	SizeType bindingsNum = 0u;
+
+	using HeadBindingHandle = typename TDescriptorSetType::ReflHeadBindingType;
+
+	ForEachBinding<HeadBindingHandle>([&bindingsNum]<typename TCurrentBindingHandle>()
+	{
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+
+		bindingsNum += GetShaderBindingsNumForBinding<CurrentBindingType>();
+	});
+
+	return bindingsNum;
+}
+
+template<typename TDescriptorSetType>
+constexpr auto GetShaderBindingsMetaData() -> lib::StaticArray<ShaderBindingMetaData, GetShaderBindingsNum<TDescriptorSetType>()>
+{
+	using TResultType = lib::StaticArray<ShaderBindingMetaData, GetShaderBindingsNum<TDescriptorSetType>()>;
+
+	using HeadBindingHandle = typename TDescriptorSetType::ReflHeadBindingType;
+
+	TResultType result;
+
+	ForEachBinding<HeadBindingHandle>([&result, currentIdx = SizeType(0)]<typename TCurrentBindingHandle>() mutable
+	{
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+
+		const auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
+
+		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
+		{
+			result[currentIdx++] = shaderBindingMetaData;
+		}
+	});
+
+	return result;
 }
 
 template<typename TBindingHandle>
@@ -490,15 +562,15 @@ void InitializeBindings(TBindingHandle& bindingHandle, DescriptorSetState& ownin
 }
 
 template<typename TBindingHandle>
-constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdx = 0)
+constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdxshaderBindingIdx = 0)
 {
 	lib::String result;
 
-	ForEachBinding<TBindingHandle>([&result, bindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&result, &bindingIdxshaderBindingIdx]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdx);
-		bindingIdx += CurrentBindingType::GetBindingIdxDelta();
+		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdxshaderBindingIdx);
+		bindingIdxshaderBindingIdx += GetShaderBindingsNumForBinding<CurrentBindingType>();
 	});
 
 	return result;
@@ -531,33 +603,32 @@ sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 {
 	SPT_PROFILER_FUNCTION();
 
-	sc::DescriptorSetCompilationMetaData metaData;
+	sc::DescriptorSetCompilationMetaData dsMetaData;
 
 	using HeadBindingHandle = typename TDSType::ReflHeadBindingType;
 
-	ForEachBinding<HeadBindingHandle>([bindingIdx = 0u, &metaData]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<HeadBindingHandle>([shaderBindingIdx = 0u, &dsMetaData]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
 
-		const Uint32 bindingEndIdx = bindingIdx + CurrentBindingType::GetBindingIdxDelta();
-			
-		smd::EBindingFlags flags = CurrentBindingType::GetBindingFlags();
-		std::optional<rhi::SamplerDefinition> immutableSamplerDef = CurrentBindingType::GetImmutableSamplerDef();
+		const auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
 
-		for (; bindingIdx < bindingEndIdx; ++bindingIdx)
+		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
 		{
-			metaData.bindingsFlags.emplace_back(flags);
+			dsMetaData.bindingsFlags.emplace_back(shaderBindingMetaData.flags);
 
-			if (immutableSamplerDef)
+			if (shaderBindingMetaData.immutableSamplerDef)
 			{
-				metaData.bindingToImmutableSampler.emplace(bindingIdx, *immutableSamplerDef);
+				dsMetaData.bindingToImmutableSampler.emplace(shaderBindingIdx, *shaderBindingMetaData.immutableSamplerDef);
 			}
+
+			++shaderBindingIdx;
 		}
 	});
 
-	metaData.hash = TDSType::GetTypeHash();
+	dsMetaData.hash = TDSType::GetTypeHash();
 
-	return metaData;
+	return dsMetaData;
 }
 
 } // bindings_refl
@@ -581,4 +652,4 @@ private:
 	}
 };
 
-} // spt::rdr
+} // spt::rdr(SizeType)

@@ -53,9 +53,9 @@ public:
 		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>() + ' ' + name + '[' + arraySizeNumber + ']', bindingIdx);
 	}
 
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound);
+		return { rdr::ShaderBindingMetaData(lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound)) };
 	}
 
 	static constexpr Bool IsUnbound()

@@ -46,9 +46,9 @@ public:
 		return BuildBindingVariableCode(lib::String("RaytracingAccelerationStructure ") + name, bindingIdx);
 	}
 
-	static constexpr smd::EBindingFlags GetBindingFlags()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return smd::EBindingFlags::None;
+		return { rdr::ShaderBindingMetaData() };
 	}
 
 private:
