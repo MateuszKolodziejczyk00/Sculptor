@@ -36,14 +36,14 @@ namespace parameters
 {
 
 RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
-RendererFloatParameter ddgiBlendHysteresisForLocalUpdate("DDGI Blend Hysteresis (Local)", { "DDGI" }, 0.97f, 0.f, 1.f);
-RendererFloatParameter ddgiBlendHysteresisForGlobalUpdate("DDGI Blend Hysteresis (Global)", { "DDGI" }, 0.98f, 0.f, 1.f);
+RendererFloatParameter ddgiBlendHysteresisForLocalUpdate("DDGI Blend Hysteresis (Local)", { "DDGI" }, 0.95f, 0.f, 1.f);
+RendererFloatParameter ddgiBlendHysteresisForGlobalUpdate("DDGI Blend Hysteresis (Global)", { "DDGI" }, 0.96f, 0.f, 1.f);
 
 } // parameters
 
 DDGISceneSubsystem::DDGISceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
-	, m_probesDebugMode(EDDDGIProbesDebugMode::None)
+	, m_debugMode(EDDGIDebugMode::None)
 	, m_requiresClearingData(false)
 	, m_wantsGlobalUpdate(false)
 {
@@ -123,14 +123,14 @@ const DDGIGPUParams& DDGISceneSubsystem::GetDDGIParams() const
 	return m_ddgiParams;
 }
 
-void DDGISceneSubsystem::SetProbesDebugMode(EDDDGIProbesDebugMode::Type mode)
+void DDGISceneSubsystem::SetDebugMode(EDDGIDebugMode::Type mode)
 {
-	m_probesDebugMode = mode;
+	m_debugMode = mode;
 }
 
-EDDDGIProbesDebugMode::Type DDGISceneSubsystem::GetProbesDebugMode() const
+EDDGIDebugMode::Type DDGISceneSubsystem::GetDebugMode() const
 {
-	return m_probesDebugMode;
+	return m_debugMode;
 }
 
 const lib::SharedPtr<DDGIDS>& DDGISceneSubsystem::GetDDGIDS() const

@@ -26,6 +26,8 @@ struct DDGIUpdateParameters
 
 	math::Vector2u probeIlluminanceDataWithBorderRes;
 	math::Vector2u probeHitDistanceDataWithBorderRes;
+
+	EDDGIDebugMode::Type debugMode;
 };
 
 
@@ -50,7 +52,7 @@ private:
 	rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
 
 	void RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context) const;
-	void RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
+	void RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
 };
 
 } // spt::rsc

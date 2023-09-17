@@ -10,6 +10,8 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
+#include "DescriptorSetBindings/ConditionalBinding.h"
+#include "DescriptorSetBindings/AppendConsumeBufferBinding.h"
 #include "SceneRenderer/SceneRendererTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
@@ -21,6 +23,13 @@
 #include "MaterialsSubsystem.h"
 #include "MaterialsUnifiedData.h"
 
+
+#ifdef SPT_RELEASE
+#define DDGI_DEBUGGING 0
+#else
+#define DDGI_DEBUGGING 1
+#endif // SPT_RELEASE
+
 namespace spt::rsc
 {
 
@@ -29,6 +38,14 @@ namespace spt::rsc
 
 BEGIN_SHADER_STRUCT(DDGIBlendParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, traceRaysResultTexturePixelSize)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(DDGIDebugRay)
+	SHADER_STRUCT_FIELD(math::Vector3f, traceOrigin)
+	SHADER_STRUCT_FIELD(Bool,			isValidHit)
+	SHADER_STRUCT_FIELD(math::Vector3f, traceEnd)
+	SHADER_STRUCT_FIELD(math::Vector3f, luminance)
 END_SHADER_STRUCT();
 
 
@@ -43,6 +60,9 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+
+	DS_BINDING(BINDING_TYPE(gfx::ConditionalBinding<"DDGI_DEBUG_RAYS",
+													gfx::OptionalRWStructuredBufferBinding<DDGIDebugRay>>),	u_debugRays)
 DS_END();
 
 
@@ -87,6 +107,11 @@ DS_BEGIN(DDGIDebugDrawProbesDS, rg::RGDescriptorSetState<DDGIDebugDrawProbesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIProbesDebugParams>), u_ddgiProbesDebugParams)
 DS_END();
 
+
+DS_BEGIN(DDGIDebugDrawRaysDS, rg::RGDescriptorSetState<DDGIDebugDrawRaysDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DDGIDebugRay>), u_debugRays)
+DS_END();
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Pipelines =====================================================================================
 
@@ -96,6 +121,9 @@ namespace pipelines
 static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
+#if DDGI_DEBUGGING
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DDGI_DEBUG_RAYS", "1"));
+#endif // DDGI_DEBUGGING
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
@@ -163,6 +191,21 @@ static rdr::PipelineStateID CreateDDGIDrawDebugProbesPipeline(rhi::EFragmentForm
 	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(colorRTFormat));
 
 	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("DDGI Debug Probes Pipeline"), shaders, pipelineDef);
+}
+
+static rdr::PipelineStateID CreateDDGIDrawDebugRaysPipeline(rhi::EFragmentFormat colorRTFormat, rhi::EFragmentFormat depthFormat)
+{
+	rdr::GraphicsPipelineShaders shaders;
+	shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "DDGIDebugRaysVS"));
+	shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "DDGIDebugRaysPS"));
+
+	rhi::GraphicsPipelineDefinition pipelineDef;
+	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::LineList;
+	pipelineDef.renderTargetsDefinition.depthRTDefinition.format = depthFormat;
+	pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
+	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(colorRTFormat));
+
+	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("DDGI Debug Rays Pipeline"), shaders, pipelineDef);
 }
 
 } // pipelines
@@ -250,7 +293,23 @@ DDGIUpdateParameters::DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuU
 	, raysNumPerProbe(gpuUpdateParams.raysNumPerProbe)
 	, probeIlluminanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeIlluminanceDataWithBorderRes)
 	, probeHitDistanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeHitDistanceDataWithBorderRes)
+	, debugMode(ddgiSubsystem.GetDebugMode())
 { }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DDGI Utilities ================================================================================
+
+struct DDGIDebugRaysViewData
+{
+	explicit DDGIDebugRaysViewData(rg::RGBufferViewHandle inDebugRays, Uint32 inRaysNum)
+		: debugRays(inDebugRays)
+		, raysNum(inRaysNum)
+	{ }
+
+	rg::RGBufferViewHandle debugRays;
+
+	Uint32 raysNum;
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIRenderSystem ==============================================================================
@@ -266,21 +325,22 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 
 	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
-	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-
 	if (viewSpec.SupportsStage(ERenderStage::GlobalIllumination))
 	{
 		viewSpec.GetRenderStageEntries(ERenderStage::GlobalIllumination).GetOnRenderStage().AddRawMember(this, &DDGIRenderSystem::RenderGlobalIllumination);
 	}
 
+#if DDGI_DEBUGGING
 	if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
 	{
-		const EDDDGIProbesDebugMode::Type probesDebug = ddgiSubsystem.GetProbesDebugMode();
-		if (probesDebug != EDDDGIProbesDebugMode::None)
+		const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
+		const EDDGIDebugMode::Type probesDebug = ddgiSubsystem.GetDebugMode();
+		if (probesDebug != EDDGIDebugMode::None)
 		{
-			viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebugProbes);
+			viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebug);
 		}
 	}
+#endif // DDGI_DEBUGGING
 }
 
 void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const
@@ -349,6 +409,20 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysDS->u_probesIlluminanceTexture		= updateParams.probesIlluminanceTextureView;
 	traceRaysDS->u_probesHitDistanceTexture		= updateParams.probesHitDistanceTextureView;
 
+#if DDGI_DEBUGGING
+	if (updateParams.debugMode == EDDGIDebugMode::DebugRays)
+	{
+		const Uint32 debugRaysNum = probesToUpdateNum * raysNumPerProbe;
+		const Uint64 debugRaysBufferSize = debugRaysNum * sizeof(DDGIDebugRay);
+		const rhi::BufferDefinition debugRaysBufferDef(debugRaysBufferSize, rhi::EBufferUsage::Storage);
+		const rg::RGBufferViewHandle debugRaysBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Debug Rays Buffer"), debugRaysBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+		traceRaysDS->u_debugRays.Set<rg::RGBufferViewHandle>(debugRaysBuffer);
+
+		viewSpec.GetData().Create<DDGIDebugRaysViewData>(debugRaysBuffer, debugRaysNum);
+	}
+#endif // DDGI_DEBUGGING
+
 	const lib::SharedRef<DDGILightsDS> lightsDS = utils::CreateGlobalLightsDS(graphBuilder, renderScene);
 
 	lib::SharedPtr<ShadowMapsDS> shadowMapsDS;
@@ -407,23 +481,13 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 	}
 }
 
-void DDGIRenderSystem::RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const
+void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-
-	DDGIProbesDebugParams debugParams;
-	debugParams.probeRadius	= 0.075f;
-	debugParams.debugMode	= ddgiSubsystem.GetProbesDebugMode();
-
-	lib::SharedPtr<DDGIDebugDrawProbesDS> debugDrawProbesDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
-	debugDrawProbesDS->u_ddgiProbesDebugParams		= debugParams;
-	
-	const Uint32 probesNum			= ddgiSubsystem.GetProbesNum();
-	const Uint32 probeVerticesNum	= 144u;
 	
 	const math::Vector2u renderingArea = renderView.GetRenderingResolution();
 
@@ -439,7 +503,7 @@ void DDGIRenderSystem::RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, c
 
 	rg::RGRenderTargetDef luminanceRTDef;
 	luminanceRTDef.textureView		= context.texture;
-	luminanceRTDef.loadOperation		= rhi::ERTLoadOperation::Load;
+	luminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
 	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
@@ -447,21 +511,57 @@ void DDGIRenderSystem::RenderDebugProbes(rg::RenderGraphBuilder& graphBuilder, c
 	const rhi::EFragmentFormat colorFormat = context.texture->GetFormat();
 	const rhi::EFragmentFormat depthFormat = depthPrepassData.depth->GetFormat();
 
-	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Probes"),
+	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Pass"),
 							renderPassDef,
 							rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-												   std::move(debugDrawProbesDS),
 												   ddgiSubsystem.GetDDGIDS()),
 							[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
 								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
-
-								static const rdr::PipelineStateID drawDebugProbesPipeline = pipelines::CreateDDGIDrawDebugProbesPipeline(colorFormat, depthFormat);
-								recorder.BindGraphicsPipeline(drawDebugProbesPipeline);
-
-								recorder.DrawInstances(probeVerticesNum, probesNum);
 							});
+
+	if (ddgiSubsystem.GetDebugMode() == EDDGIDebugMode::DebugRays)
+	{
+		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().Get<DDGIDebugRaysViewData>();
+
+		const lib::SharedPtr<DDGIDebugDrawRaysDS> debugRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
+		debugRaysDS->u_debugRays = debugRaysViewData.debugRays;
+
+		const Uint32 raysNum = debugRaysViewData.raysNum;
+
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Rays Subpass"),
+																rg::BindDescriptorSets(std::move(debugRaysDS)),
+								[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									static const rdr::PipelineStateID drawDebugRaysPipeline = pipelines::CreateDDGIDrawDebugRaysPipeline(colorFormat, depthFormat);
+									recorder.BindGraphicsPipeline(drawDebugRaysPipeline);
+
+									recorder.DrawInstances(2u, raysNum);
+								});
+	}
+	else
+	{
+		DDGIProbesDebugParams debugParams;
+		debugParams.probeRadius	= 0.075f;
+		debugParams.debugMode	= ddgiSubsystem.GetDebugMode();
+
+		lib::SharedPtr<DDGIDebugDrawProbesDS> debugDrawProbesDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
+		debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
+		
+		const Uint32 probesNum			= ddgiSubsystem.GetProbesNum();
+		const Uint32 probeVerticesNum	= 144u;
+
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Probes Subpass"),
+								rg::BindDescriptorSets(std::move(debugDrawProbesDS)),
+								[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									static const rdr::PipelineStateID drawDebugProbesPipeline = pipelines::CreateDDGIDrawDebugProbesPipeline(colorFormat, depthFormat);
+									recorder.BindGraphicsPipeline(drawDebugProbesPipeline);
+
+									recorder.DrawInstances(probeVerticesNum, probesNum);
+								});
+	}
 }
 
 } // spt::rsc

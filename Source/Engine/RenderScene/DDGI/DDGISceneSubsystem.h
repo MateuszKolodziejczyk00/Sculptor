@@ -57,8 +57,8 @@ public:
 	
 	const DDGIGPUParams& GetDDGIParams() const;
 
-	void SetProbesDebugMode(EDDDGIProbesDebugMode::Type mode);
-	EDDDGIProbesDebugMode::Type GetProbesDebugMode() const;
+	void SetDebugMode(EDDGIDebugMode::Type mode);
+	EDDGIDebugMode::Type GetDebugMode() const;
 
 	const lib::SharedPtr<DDGIDS>& GetDDGIDS() const;
 
@@ -98,7 +98,7 @@ private:
 
 	DDGIConfig m_config;
 
-	EDDDGIProbesDebugMode::Type m_probesDebugMode;
+	EDDGIDebugMode::Type m_debugMode;
 
 	lib::SharedPtr<DDGIDS> m_ddgiDS;
 

@@ -21,7 +21,6 @@ void TonemappingCS(CS_INPUT input)
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
-        //const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001) + 1.f;
         const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
         const float exposure = ConvertEV100ToExposure(EV100);
 

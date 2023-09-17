@@ -44,7 +44,6 @@ static rdr::PipelineStateID CompileGenerateCoCPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("GenerateCoCPipeline"), shader);
 }
 
-#pragma optimize("", off)
 static rg::RGTextureViewHandle DOFGenerateCoC(rg::RenderGraphBuilder& graphBuilder, const GatherBasedDOFParameters& params)
 {
 	SPT_PROFILER_FUNCTION();

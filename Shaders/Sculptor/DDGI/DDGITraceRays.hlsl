@@ -42,7 +42,9 @@ void DDGIProbeRaysRTG()
 
     float3 luminance = 0.f;
 
-    if(payload.hitDistance > 0.f)
+    const bool isValidHit = payload.hitDistance > 0.f && payload.hitDistance <= u_updateProbesParams.probeRaysMaxT;
+
+    if(isValidHit)
     {
         float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
 
@@ -63,9 +65,20 @@ void DDGIProbeRaysRTG()
     }
     else if (payload.hitDistance > u_updateProbesParams.probeRaysMaxT)
     {
-        luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeWorldLocation, rayDirection);
-        payload.hitDistance = u_updateProbesParams.probeRaysMaxT;
+        const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
+        luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
     }
+
+#if DDGI_DEBUG_RAYS
+    const uint debugRayIdx = dispatchIdx.x * u_updateProbesParams.raysNumPerProbe + rayIdx;
+
+    DDGIDebugRay debugRay;
+    debugRay.traceOrigin        = probeWorldLocation;
+    debugRay.isValidHit         = isValidHit;
+    debugRay.traceEnd           = probeWorldLocation + rayDirection * abs(payload.hitDistance);
+    debugRay.luminance          = luminance;
+    u_debugRays[debugRayIdx]    = debugRay;
+#endif // DDGI_DEBUG_RAYS
 
     u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);
 }
@@ -77,7 +90,7 @@ void DDGIProbeRaysRTM(inout DDGIRayPayload payload)
     payload.normal              = 0.f;
     payload.roughness           = 0.f;
     payload.baseColorMetallic   = PackFloat4x8(float4(0.f, 0.5f, 1.f, 0.f));
-    payload.hitDistance         = u_updateProbesParams.probeRaysMaxT + 1000.f;;
+    payload.hitDistance         = u_updateProbesParams.probeRaysMaxT + 1000.f;
 }
 
 

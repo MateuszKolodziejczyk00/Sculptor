@@ -54,13 +54,14 @@ BEGIN_SHADER_STRUCT(DDGIUpdateProbesGPUParams)
 END_SHADER_STRUCT();
 
 
-namespace EDDDGIProbesDebugMode
+namespace EDDGIDebugMode
 {
 enum Type
 {
 	None,
 	Illuminance,
 	HitDistance,
+	DebugRays,
 
 	NUM
 };
