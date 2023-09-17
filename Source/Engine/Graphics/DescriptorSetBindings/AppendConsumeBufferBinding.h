@@ -47,9 +47,9 @@ public:
 	}
 	
 	// We need to take two bindings - first for buffer and second for count (storage buffer)
-	static constexpr std::array<ShaderBindingMetaData, 2> GetShaderBindingsMetaData()
+	static constexpr std::array<rdr::ShaderBindingMetaData, 2> GetShaderBindingsMetaData()
 	{
-		return { ShaderBindingMetaData(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound), ShaderBindingMetaData(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound) };
+		return { rdr::ShaderBindingMetaData(lib::Flags(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound)), rdr::ShaderBindingMetaData(smd::EBindingFlags::Storage) };
 	}
 
 	template<CInstanceOrRGBufferView TBufferType, CInstanceOrRGBufferView TCountBufferType>
