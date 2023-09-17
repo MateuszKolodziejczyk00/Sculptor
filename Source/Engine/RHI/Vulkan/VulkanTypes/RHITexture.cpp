@@ -457,8 +457,11 @@ void RHITexture::PostImageInitialized()
 
 void RHITexture::PreImageReleased()
 {
-
-    VulkanRHI::GetLayoutsManager().UnregisterImage(m_imageHandle);
+    // In case of images not owned by RHITexture, it's user responsibility to unregister image
+    if (m_allocation)
+    {
+        VulkanRHI::GetLayoutsManager().UnregisterImage(m_imageHandle);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,6 @@
 #include "RHIWindow.h"
 #include "Vulkan/VulkanRHI.h"
+#include "Vulkan/LayoutsManager.h"
 #include "RHISemaphore.h"
 #include "Vulkan/Device/LogicalDevice.h"
 #include "RHICore/RHIInitialization.h"
@@ -134,6 +135,8 @@ void RHIWindow::ReleaseRHI()
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!IsValid());
+
+	ReleaseSwapchainImages();
 
 	vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
 	m_swapchain = VK_NULL_HANDLE;
@@ -315,6 +318,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 
 	if (oldSwapchain)
 	{
+		ReleaseSwapchainImages();
 		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), oldSwapchain, VulkanRHI::GetAllocationCallbacks());
 	}
 
@@ -340,6 +344,14 @@ void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, nullptr));
 	m_swapchainImages.resize(static_cast<SizeType>(imagesNum));
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, m_swapchainImages.data()));
+}
+
+void RHIWindow::ReleaseSwapchainImages()
+{
+	for (VkImage image : m_swapchainImages)
+	{
+		VulkanRHI::GetLayoutsManager().UnregisterImage(image);
+	}
 }
 
 void RHIWindow::SetSwapchainOutOfDate()

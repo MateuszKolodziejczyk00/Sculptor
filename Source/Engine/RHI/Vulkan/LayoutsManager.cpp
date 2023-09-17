@@ -426,6 +426,8 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 
 	const CommandBufferLayoutsManager::ImagesLayoutData& images = cmdBufferLayouts.GetAcquiredImagesLayouts();
 
+	const lib::WriteLockGuard imageLayoutsWriteLock(m_imageLayoutsLock);
+
 	for (const auto& [image, layoutData] : images)
 	{
 		if (layoutData.HasWriteAccess())

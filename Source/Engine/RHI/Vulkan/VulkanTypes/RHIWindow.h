@@ -61,6 +61,7 @@ private:
 	VkSwapchainKHR				CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);
 
 	void						CacheSwapchainImages(VkSwapchainKHR m_swapchain);
+	void						ReleaseSwapchainImages();
 
 	void						SetSwapchainOutOfDate();
 
