@@ -26,17 +26,23 @@ DS_END();
 
 struct DepthPrepassData
 {
-	rg::RGTextureViewHandle prevFrameDepth;
 	rg::RGTextureViewHandle depth;
+	rg::RGTextureViewHandle depthHalfRes;
+
 	rg::RGTextureViewHandle hiZ;
+	
+	rg::RGTextureViewHandle prevFrameDepth;
+	rg::RGTextureViewHandle prevFrameDepthHalfRes;
 
 	lib::SharedPtr<DepthCullingDS> depthCullingDS;
+
 };
 
 
 struct MotionData
 {
 	rg::RGTextureViewHandle motion;
+	rg::RGTextureViewHandle motionHalfRes;
 };
 
 
@@ -44,6 +50,8 @@ struct ShadingInputData
 {
 	// Normals created from the depth buffer
 	rg::RGTextureViewHandle geometryNormals;
+
+	rg::RGTextureViewHandle geometryNormalsHalfRes;
 
 	rg::RGTextureViewHandle ambientOcclusion;
 };

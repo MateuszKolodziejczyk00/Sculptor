@@ -38,6 +38,11 @@ public:
 #endif // DEBUG_RENDER_GRAPH
 	}
 
+	lib::String AsString() const
+	{
+		return Get().ToString();
+	}
+
 private:
 
 #if DEBUG_RENDER_GRAPH

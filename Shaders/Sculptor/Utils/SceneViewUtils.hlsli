@@ -9,7 +9,8 @@ float GetNearPlane(in SceneViewData sceneView)
 }
 
 
-float ComputeLinearDepth(float depth, in SceneViewData sceneView)
+template<typename TDepthType>
+TDepthType ComputeLinearDepth(TDepthType depth, in SceneViewData sceneView)
 {
     return GetNearPlane(sceneView) / depth;
 }

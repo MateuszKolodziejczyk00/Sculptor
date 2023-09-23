@@ -32,7 +32,8 @@ public:
 	{
 		for (const BoundTexture& boundTexture : m_boundTextures)
 		{
-			context.UpdateTexture(GetName(), boundTexture.texture, boundTexture.arrayIndex);
+			const lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance ? boundTexture.textureInstance : boundTexture.rgTexture->GetViewInstance();
+			context.UpdateTexture(GetName(), lib::Ref(textureView), boundTexture.arrayIndex);
 		}
 	}
 	
@@ -42,7 +43,14 @@ public:
 		{
 			for (const BoundTexture& texture : m_boundTextures)
 			{
-				builder.AddTextureAccessIfAcquired(texture.texture, rg::ERGTextureAccess::SampledTexture);
+				if (texture.textureInstance)
+				{
+					builder.AddTextureAccessIfAcquired(lib::Ref(texture.textureInstance), rg::ERGTextureAccess::SampledTexture);
+				}
+				else
+				{
+					builder.AddTextureAccess(texture.rgTexture, rg::ERGTextureAccess::SampledTexture);
+				}
 			}
 		}
 	}
@@ -65,26 +73,18 @@ public:
 
 	Uint32 BindTexture(const lib::SharedRef<rdr::TextureView>& textureView)
 	{
-		SPT_CHECK(!m_availableArrayIndices.empty());
+		BoundTexture textureToBind;
+		textureToBind.textureInstance = textureView;
+		return BindTextureImpl(textureToBind);
+	}
 
-		const Uint64 currentFrameIdx	= rdr::Renderer::GetCurrentFrameIdx();
-		const Uint64 framesInFlight		= rdr::RendererSettings::Get().framesInFlight;
+	Uint32 BindTexture(const rg::RGTextureViewHandle& textureView)
+	{
+		SPT_CHECK(trackInRenderGraph);
 
-		const auto foundAvailableIdxIt = std::find_if(std::crbegin(m_availableArrayIndices), std::crend(m_availableArrayIndices),
-													  [ = ](const AvailableIndex& availableIdx)
-													  {
-														  return availableIdx.lastUseFrameIdx == idxNone<Uint32> || currentFrameIdx >= availableIdx.lastUseFrameIdx + framesInFlight;
-													  });
-
-		SPT_CHECK(foundAvailableIdxIt != std::crend(m_availableArrayIndices));
-	
-		const Uint32 arrayIndex = foundAvailableIdxIt->arrayIndex;
-		m_availableArrayIndices.erase(std::next(foundAvailableIdxIt).base());
-		m_boundTextures.emplace_back(BoundTexture{ textureView, arrayIndex });
-
-		MarkAsDirty();
-
-		return arrayIndex;
+		BoundTexture textureToBind;
+		textureToBind.rgTexture = textureView;
+		return BindTextureImpl(textureToBind);
 	}
 
 	void UnbindTexture(Uint32 textureArrayIdx)
@@ -110,7 +110,8 @@ private:
 
 	struct BoundTexture
 	{
-		lib::SharedRef<rdr::TextureView> texture;
+		lib::SharedPtr<rdr::TextureView> textureInstance;
+		rg::RGTextureViewHandle rgTexture;
 		Uint32 arrayIndex;
 	};
 
@@ -119,6 +120,32 @@ private:
 		Uint32 arrayIndex;
 		Uint64 lastUseFrameIdx;
 	};
+
+	Uint32 BindTextureImpl(BoundTexture textureToBind)
+	{
+		SPT_CHECK(!m_availableArrayIndices.empty());
+		SPT_CHECK(textureToBind.rgTexture.IsValid() || !!textureToBind.textureInstance);
+
+		const Uint64 currentFrameIdx	= rdr::Renderer::GetCurrentFrameIdx();
+		const Uint64 framesInFlight		= rdr::RendererSettings::Get().framesInFlight;
+
+		const auto foundAvailableIdxIt = std::find_if(std::crbegin(m_availableArrayIndices), std::crend(m_availableArrayIndices),
+													  [ = ](const AvailableIndex& availableIdx)
+													  {
+														  return availableIdx.lastUseFrameIdx == idxNone<Uint32> || currentFrameIdx >= availableIdx.lastUseFrameIdx + framesInFlight;
+													  });
+
+		SPT_CHECK(foundAvailableIdxIt != std::crend(m_availableArrayIndices));
+	
+		const Uint32 arrayIndex = foundAvailableIdxIt->arrayIndex;
+		m_availableArrayIndices.erase(std::next(foundAvailableIdxIt).base());
+		textureToBind.arrayIndex = arrayIndex;
+		m_boundTextures.emplace_back(textureToBind);
+
+		MarkAsDirty();
+
+		return arrayIndex;
+	}
 
 	lib::DynamicArray<AvailableIndex>	m_availableArrayIndices;
 	lib::DynamicArray<BoundTexture>		m_boundTextures;

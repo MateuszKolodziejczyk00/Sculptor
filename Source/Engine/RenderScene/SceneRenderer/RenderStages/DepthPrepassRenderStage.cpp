@@ -11,7 +11,33 @@ struct SceneViewDepthDataComponent
 {
 	lib::SharedPtr<rdr::TextureView> currentDepthTexture;
 	lib::SharedPtr<rdr::TextureView> prevFrameDepthTexture;
+	lib::SharedPtr<rdr::TextureView> currentDepthTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> prevFrameDepthTextureHalfRes;
 };
+
+
+namespace utils
+{
+
+static lib::SharedPtr<rdr::TextureView> CreateDepthTexture(rhi::EFragmentFormat format, math::Vector2u resolution, Bool isRenderTarget)
+{
+	rhi::TextureDefinition depthDef;
+	depthDef.resolution	= resolution;
+	depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, (isRenderTarget ? rhi::ETextureUsage::DepthSetncilRT : rhi::ETextureUsage::StorageTexture));
+	depthDef.format		= format;
+
+#if !SPT_RELEASE
+	lib::AddFlag(depthDef.usage, rhi::ETextureUsage::TransferSource);
+#endif // !SPT_RELEASE
+
+	const lib::SharedRef<rdr::Texture> depthTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Depth Texture"), depthDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureViewDefinition viewDefinition;
+	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(isRenderTarget ? rhi::ETextureAspect::Depth : rhi::ETextureAspect::Color);
+	return depthTexture->CreateView(RENDERER_RESOURCE_NAME("Depth Texture View"), viewDefinition);
+}
+
+} // utils
 
 
 rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
@@ -37,33 +63,26 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	SPT_CHECK(!!viewDepthData);
 
 	std::swap(viewDepthData->currentDepthTexture, viewDepthData->prevFrameDepthTexture);
+	std::swap(viewDepthData->currentDepthTextureHalfRes, viewDepthData->prevFrameDepthTextureHalfRes);
 
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
-	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 
 	if (!viewDepthData->currentDepthTexture || viewDepthData->currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
 	{
-		rhi::TextureDefinition depthDef;
-		depthDef.resolution	= texturesRes;
-		depthDef.usage		= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::DepthSetncilRT);
-#if !SPT_RELEASE
-		lib::AddFlag(depthDef.usage, rhi::ETextureUsage::TransferSource);
-#endif // !SPT_RELEASE
-		depthDef.format		= GetDepthFormat();
-		const lib::SharedRef<rdr::Texture> depthTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Depth Texture"), depthDef, rhi::EMemoryUsage::GPUOnly);
-
-		rhi::TextureViewDefinition viewDefinition;
-		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Depth);
-		viewDepthData->currentDepthTexture = depthTexture->CreateView(RENDERER_RESOURCE_NAME("Depth Texture View"), viewDefinition);
+		const math::Vector2u renderinHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
+		viewDepthData->currentDepthTexture			= utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
+		viewDepthData->currentDepthTextureHalfRes	= utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderinHalfRes, false);
 	}
 
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
 
-	depthPrepassData.depth = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
+	depthPrepassData.depth			= graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
+	depthPrepassData.depthHalfRes	= graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTextureHalfRes);
 
 	if (viewDepthData->prevFrameDepthTexture)
 	{
-		depthPrepassData.prevFrameDepth = graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTexture);
+		depthPrepassData.prevFrameDepth			= graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTexture);
+		depthPrepassData.prevFrameDepthHalfRes	= graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTextureHalfRes);
 	}
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);

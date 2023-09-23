@@ -45,6 +45,12 @@ DS_BEGIN(ViewShadingInputDS, rg::RGDescriptorSetState<ViewShadingInputDS>)
 DS_END();
 
 
+struct ViewDirectionalShadowMasksData
+{
+	lib::HashMap<RenderSceneEntity, rg::RGTextureViewHandle> shadowMasks;
+};
+
+
 struct ViewSpecShadingParameters
 {
 	lib::SharedPtr<ViewShadingInputDS>	shadingInputDS;

@@ -252,7 +252,6 @@ private:
 	RGTextureAccessState m_accessState;
 
 	lib::SharedPtr<rdr::Texture>*					m_extractionDest;
-
 	const rhi::BarrierTextureTransitionDefinition*	m_releaseTransitionTarget;
 };
 
@@ -304,6 +303,11 @@ public:
 	rhi::EFragmentFormat GetFormat() const
 	{
 		return GetTexture()->GetFormat();
+	}
+
+	const rhi::RHIAllocationInfo& GetAllocationInfo() const
+	{
+		return GetTexture()->GetAllocationInfo();
 	}
 
 	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const

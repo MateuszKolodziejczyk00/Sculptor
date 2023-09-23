@@ -203,7 +203,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
 
-	ViewShadowMasksDataComponent* viewShadowMasks = viewEntity.try_get<ViewShadowMasksDataComponent>();
+	const ViewDirectionalShadowMasksData& viewShadowMasks = viewSpec.GetData().Get<ViewDirectionalShadowMasksData>();
 
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
 
@@ -220,14 +220,11 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 			DirectionalLightGPUData lightGPUData = directionalLight.GenerateGPUData();
 			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
 			
-			if (viewShadowMasks)
+			const auto lightShadowMask = viewShadowMasks.shadowMasks.find(entity);
+			if (lightShadowMask != std::cend(viewShadowMasks.shadowMasks))
 			{
-				const auto lightShadowMask = viewShadowMasks->directionalLightShadowMasks.find(entity);
-				if (lightShadowMask != std::cend(viewShadowMasks->directionalLightShadowMasks))
-				{
-					const Uint32 shadowMaskIdx = shadingInputDS->u_shadowMasks.BindTexture(lib::Ref(lightShadowMask->second.currentShadowMask));
-					lightGPUData.shadowMaskIdx = shadowMaskIdx;
-				}
+				const Uint32 shadowMaskIdx = shadingInputDS->u_shadowMasks.BindTexture(lightShadowMask->second);
+				lightGPUData.shadowMaskIdx = shadowMaskIdx;
 			}
 
 			directionalLightsData.emplace_back(lightGPUData);

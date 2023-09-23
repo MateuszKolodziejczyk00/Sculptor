@@ -21,7 +21,9 @@
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
 #include "MaterialsUnifiedData.h"
-#include "Utils/RTVisibilityUtils.h"
+#include "SceneRenderer/Utils/RTVisibilityUtils.h"
+#include "SceneRenderer/Utils/DepthBasedUpsampler.h"
+#include "Lights/ViewShadingInput.h"
 
 namespace spt::rsc
 {
@@ -100,12 +102,12 @@ static ViewShadowMasksDataComponent& GetViewShadowMasksDataComponent(RenderScene
 	return *viewShadowMasks;
 }
 
-static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::RendererResourceName& name, const RenderView& renderView)
+static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::RendererResourceName& name, math::Vector2u resolution)
 {
 	SPT_PROFILER_FUNCTION();
 
 	rhi::TextureDefinition shadowMaskDef;
-	shadowMaskDef.resolution = renderView.GetRenderingResolution3D();
+	shadowMaskDef.resolution = resolution;
 	shadowMaskDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource); // TODO
 	shadowMaskDef.format = rhi::EFragmentFormat::R8_UN_Float;
 #if !SPT_RELEASE
@@ -118,7 +120,7 @@ static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::Rende
 	return shadowMaskTexture->CreateView(name, shadowMaskViewDef);
 }
 
-static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& renderScene, ViewRenderingSpec& viewSpec, math::Vector2u shadowMasksRenderingResolution)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -126,8 +128,6 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 	const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
 
 	ViewShadowMasksDataComponent& viewShadowMasks = GetViewShadowMasksDataComponent(viewEntity);
-
-	const math::Vector2u viewRenderingRes = renderView.GetRenderingResolution();
 
 	const rsc::RenderSceneRegistry& registry = renderScene.GetRegistry();
 
@@ -158,11 +158,11 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 
 			DirectionalLightShadowMasks& shadowMasks = viewShadowMasks.directionalLightShadowMasks[lightEntity];
 
-			const bool isShadowMaskDirty = !shadowMasks.currentShadowMask || shadowMasks.currentShadowMask->GetResolution2D() != viewRenderingRes;
+			const bool isShadowMaskDirty = !shadowMasks.currentShadowMask || shadowMasks.currentShadowMask->GetResolution2D() != shadowMasksRenderingResolution;
 			if (isShadowMaskDirty)
 			{
-				shadowMasks.currentShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), renderView);
-				shadowMasks.historyShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask History View"), renderView);
+				shadowMasks.currentShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), shadowMasksRenderingResolution);
+				shadowMasks.historyShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask History View"), shadowMasksRenderingResolution);
 			}
 
 			shadowMasks.hasValidHistory = !isShadowMaskDirty;
@@ -181,14 +181,15 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	SPT_CHECK(rdr::Renderer::IsRayTracingEnabled());
 
-	ViewShadowMasksDataComponent& viewShadowMasks = UpdateShadowMaskForView(renderScene, viewSpec);
-
-	const RenderView& renderView = viewSpec.GetRenderView();
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
-
 	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
 	const MotionData& motionData				= viewSpec.GetData().Get<MotionData>();
 	const ShadingInputData& shadingInputData	= viewSpec.GetData().Get<ShadingInputData>();
+
+	const math::Vector2u shadowMasksRenderingRes = depthPrepassData.depthHalfRes->GetResolution2D();
+
+	ViewShadowMasksDataComponent& viewShadowMasks = UpdateShadowMaskForView(renderScene, viewSpec, shadowMasksRenderingRes);
+
+	const RenderView& renderView = viewSpec.GetRenderView();
 	
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
@@ -196,8 +197,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	const lib::SharedRef<TraceShadowRaysDS> traceShadowRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
-	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depth;
-	traceShadowRaysDS->u_geometryNormalsTexture     = shadingInputData.geometryNormals;
+	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depthHalfRes;
+	traceShadowRaysDS->u_geometryNormalsTexture     = shadingInputData.geometryNormalsHalfRes;
 
 	static rdr::PipelineStateID shadowsRayTracingPipeline;
 	if (!shadowsRayTracingPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
@@ -233,7 +234,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 							   shadowsRayTracingPipeline,
-							   math::Vector3u(renderingRes.x(), renderingRes.y(), 1),
+							   shadowMasksRenderingRes,
 							   rg::BindDescriptorSets(traceShadowRaysDS,
 													  directionalLightShadowMaskDS,
 													  renderView.GetRenderViewDS(),
@@ -248,15 +249,31 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 		dir_shadows_denoiser::DirShadowsDenoiserParams denoiserParams(renderView);
 		denoiserParams.name						= RG_DEBUG_NAME("Directional Shadows");
-		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepth;
-		denoiserParams.currentDepthTexture		= depthPrepassData.depth;
-		denoiserParams.motionTexture			= motionData.motion;
-		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormals;
+		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepthHalfRes;
+		denoiserParams.currentDepthTexture		= depthPrepassData.depthHalfRes;
+		denoiserParams.motionTexture			= motionData.motionHalfRes;
+		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormalsHalfRes;
 		denoiserParams.currentTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.currentShadowMask);
 		denoiserParams.historyTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.historyShadowMask);
 		denoiserParams.enableTemporalFilter		= shadowsData.hasValidHistory;
 
 		dir_shadows_denoiser::Denoise(graphBuilder, denoiserParams);
+	}
+
+	// Upsample shadow masks
+
+	ViewDirectionalShadowMasksData& frameShadowMasks = viewSpec.GetData().Create<ViewDirectionalShadowMasksData>();
+
+	for (const auto& [entity, directionalLight] : directionalLightsView.each())
+	{
+		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+
+		upsampler::DepthBasedUpsampleParams upsampleParams;
+		upsampleParams.debugName	= RG_DEBUG_NAME("Directional Shadows Upsample");
+		upsampleParams.depth		= depthPrepassData.depth;
+		upsampleParams.depthHalfRes = depthPrepassData.depthHalfRes;
+		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
+		frameShadowMasks.shadowMasks[entity] = upsampler::DepthBasedUpsample(graphBuilder, graphBuilder.AcquireExternalTextureView(shadowsData.currentShadowMask), upsampleParams);
 	}
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
