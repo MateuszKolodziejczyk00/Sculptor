@@ -48,13 +48,12 @@ rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder
 
 	const Uint32 mipLevels = math::Utils::ComputeMipLevelsNumForResolution(hiZRes);
 
-	rhi::TextureDefinition hiZTextureDef;
+	rg::TextureDef hiZTextureDef;
 	hiZTextureDef.resolution	= math::Vector3u(hiZRes.x(), hiZRes.y(), 1u);
-	hiZTextureDef.usage			= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
 	hiZTextureDef.format		= depthFormat;
 	hiZTextureDef.mipLevels		= mipLevels;
 
-	const rg::RGTextureHandle hiZTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("HiZ Texture"), hiZTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureHandle hiZTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("HiZ Texture"), hiZTextureDef);
 	
 	lib::DynamicArray<rg::RGTextureViewHandle> hiZMipViews;
 	hiZMipViews.reserve(static_cast<SizeType>(mipLevels));

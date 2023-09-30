@@ -37,8 +37,7 @@ static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& grap
 	const math::Vector2u tileSize = math::Vector2u::Constant(16u);
 	const math::Vector2u tilesResolution = math::Utils::DivideCeil(inputResolution, tileSize);
 
-	const rhi::TextureDefinition tilesVarianceDef(tilesResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), params.dataTexture->GetFormat());
-	const rg::RGTextureViewHandle tilesVariance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVariance"), tilesVarianceDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle tilesVariance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVariance"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
 	lib::SharedPtr<TilesVarianceDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TilesVarianceDS>(RENDERER_RESOURCE_NAME("Tiles Variance DS"));
 	ds->u_tilesVarianceTexture = tilesVariance;
@@ -79,8 +78,7 @@ static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& gra
 
 	const math::Vector2u tilesResolution = tilesVariance->GetResolution2D();
 
-	const rhi::TextureDefinition tilesVariancMaxeDef(tilesResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), params.dataTexture->GetFormat());
-	const rg::RGTextureViewHandle tilesVarianceMax = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVarianceMax"), tilesVariancMaxeDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle tilesVarianceMax = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVarianceMax"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
 	const lib::SharedPtr<TilesVarianceMax3x3DS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TilesVarianceMax3x3DS>(RENDERER_RESOURCE_NAME("Tiles Variance Max 3x3 DS"));
 	ds->u_tilesVarianceTexture			= tilesVariance;

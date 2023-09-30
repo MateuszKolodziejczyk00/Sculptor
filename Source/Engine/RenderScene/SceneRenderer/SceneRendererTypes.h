@@ -12,6 +12,12 @@
 namespace spt::rsc
 {
 
+struct SceneRendererStatics
+{
+	static constexpr rhi::EFragmentFormat hdrFormat = rhi::EFragmentFormat::RGBA16_S_Float;
+};
+
+
 BEGIN_SHADER_STRUCT(DepthCullingParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
 END_SHADER_STRUCT();

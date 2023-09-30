@@ -72,7 +72,7 @@ RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPt
 	return rgTextureView;
 }
 
-RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -100,7 +100,7 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 	return textureViewHandle;
 }
 
-RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -441,6 +441,8 @@ void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDepend
 		const RGTextureHandle accessedTexture							= accessedTextureView->GetTexture();
 		const rhi::TextureSubresourceRange& accessedSubresourceRange	= accessedTextureView->GetSubresourceRange();
 
+		accessedTexture->AddUsageForAccess(textureAccessDef.access);
+
 		if (!accessedTexture->IsExternal() && !accessedTexture->HasAcquireNode())
 		{
 			node.AddTextureToAcquire(accessedTexture);
@@ -695,7 +697,7 @@ void RenderGraphBuilder::PostBuild()
 
 	AddReleaseResourcesNode();
 
-	ResolveTextureReleases();
+	ResolveTextureProperties();
 }
 
 void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores)
@@ -761,13 +763,13 @@ void RenderGraphBuilder::AddReleaseResourcesNode()
 	}
 }
 
-void RenderGraphBuilder::ResolveResourceReleases()
+void RenderGraphBuilder::ResolveResourceProperties()
 {
-	ResolveTextureReleases();
+	ResolveTextureProperties();
 	ResolveBufferReleases();
 }
 
-void RenderGraphBuilder::ResolveTextureReleases()
+void RenderGraphBuilder::ResolveTextureProperties()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -797,9 +799,12 @@ void RenderGraphBuilder::ResolveTextureReleases()
 												   });
 			}
 
-			SPT_CHECK(lastAccessNode.IsValid());
+			if (lastAccessNode)
+			{
+				lastAccessNode->AddTextureToRelease(texture);
 
-			lastAccessNode->AddTextureToRelease(texture);
+				texture->SelectAllocationStrategy();
+			}
 		}
 	}
 }

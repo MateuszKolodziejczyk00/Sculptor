@@ -95,9 +95,9 @@ void Denoiser::ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const d
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::TextureDefinition& textureDef = params.currentTexture->GetTextureDefinition();
-	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture", m_debugName.AsString()), textureDef, rhi::EMemoryUsage::GPUOnly);
-	const rg::RGTextureViewHandle tempTexture2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture (2)", m_debugName.AsString()), textureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::TextureDef& textureDef = params.currentTexture->GetTextureDefinition();
+	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture", m_debugName.AsString()), textureDef);
+	const rg::RGTextureViewHandle tempTexture2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture (2)", m_debugName.AsString()), textureDef);
 
 	spatial::SpatialATrousFilterParams spatialParams = params;
 	spatialParams.momentsTexture = momentsTexture;

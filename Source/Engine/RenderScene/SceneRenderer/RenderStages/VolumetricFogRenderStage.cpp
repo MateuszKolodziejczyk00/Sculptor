@@ -22,7 +22,7 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.03f, 0.f, 1.f);
+RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.23f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.4f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
@@ -329,8 +329,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	ApplyVolumetricFogParams params;
 	params.fogNearPlane			= fogParams.nearPlane;
 	params.fogFarPlane			= fogParams.farPlane;
-	params.blendPixelsOffset	= 4.f;
-
+	params.blendPixelsOffset	= 8.f;
 
 	const lib::SharedRef<ApplyVolumetricFogDS> applyVolumetricFogDS = rdr::ResourcesManager::CreateDescriptorSetState<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
 	applyVolumetricFogDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
@@ -413,17 +412,15 @@ void VolumetricFogRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	const math::Vector3u volumetricFogRes(volumetricTilesNum.x(), volumetricTilesNum.y(), volumetricFogZRes);
 
-	rhi::TextureDefinition participatingMediaTextureDef;
+	rg::TextureDef participatingMediaTextureDef;
 	participatingMediaTextureDef.resolution	= volumetricFogRes;
-	participatingMediaTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
 	participatingMediaTextureDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float; // [Color (RGB), Extinction (A)]
-	const rg::RGTextureViewHandle participatingMediaTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Participating Media Texture"), participatingMediaTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle participatingMediaTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Participating Media Texture"), participatingMediaTextureDef);
 
-	rhi::TextureDefinition integratedInScatteringTextureDef;
+	rg::TextureDef integratedInScatteringTextureDef;
 	integratedInScatteringTextureDef.resolution	= volumetricFogRes;
-	integratedInScatteringTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
 	integratedInScatteringTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float; // [Integrated In-Scattering (RGB), Transmittance (A)]
-	const rg::RGTextureViewHandle integratedInScatteringTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Integrated In-Scattering Texture"), integratedInScatteringTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle integratedInScatteringTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Integrated In-Scattering Texture"), integratedInScatteringTextureDef);
 
 	const RenderSceneEntityHandle renderViewEntity = renderView.GetViewEntity();
 	SceneViewVolumetricDataComponent& volumetricDataComp = GetVolumetricDataForView(renderViewEntity, volumetricFogRes);
@@ -444,7 +441,7 @@ void VolumetricFogRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 														 math::Sequences::Halton<Real32>(jitterSequenceIdx, 3),
 														 math::Sequences::Halton<Real32>(jitterSequenceIdx, 4));
 
-	const math::Vector3f jitter = (jitterSequence - math::Vector3f::Constant(0.5f)).cwiseProduct(volumetricFogRes.cast<Real32>().cwiseInverse());
+	const math::Vector3f jitter = (jitterSequence - math::Vector3f::Constant(1.0f)).cwiseProduct(volumetricFogRes.cast<Real32>().cwiseInverse());
 
 	VolumetricFogParams fogParams;
 	fogParams.participatingMediaTextureView			= participatingMediaTextureView;

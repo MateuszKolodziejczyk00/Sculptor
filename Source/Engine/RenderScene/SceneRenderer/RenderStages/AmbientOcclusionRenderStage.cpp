@@ -110,8 +110,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 		traceRaysPipeline = CreateShadowsRayTracingPipeline(rayTracingSceneSubsystem);
 	}
 	
-	const rhi::TextureDefinition traceRaysResultTextureDef(traceRaysResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource), rhi::EFragmentFormat::R8_UN_Float);
-	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), traceRaysResultTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	RTAOTraceRaysParams params;
 	params.randomSeed			= math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());

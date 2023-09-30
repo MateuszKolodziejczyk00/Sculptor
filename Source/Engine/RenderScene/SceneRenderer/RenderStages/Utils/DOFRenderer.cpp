@@ -50,8 +50,7 @@ static rg::RGTextureViewHandle DOFGenerateCoC(rg::RenderGraphBuilder& graphBuild
 
 	const math::Vector3u resolution = params.linearColorTexture->GetResolution();
 
-	const rhi::TextureDefinition cocTextureDef(resolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::RG8_UN_Float);
-	const rg::RGTextureViewHandle cocTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture"), cocTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle cocTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG8_UN_Float));
 
 	DOFShaderParameters shaderParams;
 	shaderParams.nearFieldEnd	= params.focalPlane - (params.fullFocusRange * 0.5f);
@@ -126,9 +125,8 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 
 	const math::Vector3u resolution = cocTexture->GetResolution();
 
-	const rhi::TextureDefinition cocTextureDef(resolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::R8_UN_Float);
-	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture Blurred"), cocTextureDef, rhi::EMemoryUsage::GPUOnly);
-	const rg::RGTextureViewHandle cocTextureBlurred = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture Blurred"), cocTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture Blurred"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float));
+	const rg::RGTextureViewHandle cocTextureBlurred = graphBuilder.CreateTextureView(RG_DEBUG_NAME("COC Texture Blurred"), rg::TextureDef(resolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	static const rdr::PipelineStateID maxBlurPipeline = CompileNearFieldCoCBlur(ENearCoCBlurType::Max);
 
@@ -243,12 +241,11 @@ static DOFDownsampleResult DOFDownsample(rg::RenderGraphBuilder& graphBuilder, c
 	const math::Vector3u resolution = params.linearColorTexture->GetResolution();
 	const math::Vector3u halfResolution = math::Utils::DivideCeil(resolution, math::Vector3u(2u, 2u, 2u));
 
-	const rhi::TextureDefinition halfResCoCDef(halfResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::RG8_UN_Float);
-	const rg::RGTextureViewHandle halfResCoC = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution CoC"), halfResCoCDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle halfResCoC = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution CoC"), rg::TextureDef(halfResolution, rhi::EFragmentFormat::RG8_UN_Float));
 
-	const rhi::TextureDefinition halfLinearColorDef(halfResolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const rg::RGTextureViewHandle halfLinearColor = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution Linear Color"), halfLinearColorDef, rhi::EMemoryUsage::GPUOnly);
-	const rg::RGTextureViewHandle halfLinearColorMulFar = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution Linear Color Mul Far"), halfLinearColorDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::TextureDef halfLinearColorDef(halfResolution, rhi::EFragmentFormat::B10G11R11_U_Float);
+	const rg::RGTextureViewHandle halfLinearColor = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution Linear Color"), halfLinearColorDef);
+	const rg::RGTextureViewHandle halfLinearColorMulFar = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Half Resolution Linear Color Mul Far"), halfLinearColorDef);
 
 	DOFDownsampleParams downsampleParams;
 	downsampleParams.inputPixelSize		= math::Vector2f(1.f / resolution.x(), 1.f / resolution.y());
@@ -318,9 +315,9 @@ static DOFFillResult DOFFill(rg::RenderGraphBuilder& graphBuilder, rg::RGTexture
 
 	const math::Vector3u resolution = nearFieldDOFTexture->GetResolution();
 
-	const rhi::TextureDefinition dofFilledTexturesDef(resolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const rg::RGTextureViewHandle nearFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field Filled DOF"), dofFilledTexturesDef, rhi::EMemoryUsage::GPUOnly);
-	const rg::RGTextureViewHandle farFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field Filled DOF"), dofFilledTexturesDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::TextureDef dofFilledTexturesDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float);
+	const rg::RGTextureViewHandle nearFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field Filled DOF"), dofFilledTexturesDef);
+	const rg::RGTextureViewHandle farFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field Filled DOF"), dofFilledTexturesDef);
 
 	const lib::SharedPtr<DOFFillPassDS> fillPassDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFFillPassDS>(RENDERER_RESOURCE_NAME("DOFFillPassDS"));
 	fillPassDS->u_nearFieldDOFTexture			= nearFieldDOFTexture;
@@ -378,9 +375,8 @@ static DOFComputationResult DOFComputation(rg::RenderGraphBuilder& graphBuilder,
 
 	const math::Vector3u resolution = downsampleResult.linearColorHalfTexture->GetResolution();
 
-	const rhi::TextureDefinition dofTexturesDef(resolution, lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture), rhi::EFragmentFormat::B10G11R11_U_Float);
-	const rg::RGTextureViewHandle nearFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field DOF"), dofTexturesDef, rhi::EMemoryUsage::GPUOnly);
-	const rg::RGTextureViewHandle farFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field DOF"), dofTexturesDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle nearFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
+	const rg::RGTextureViewHandle farFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
 
 	const lib::SharedPtr<DOComputationPassDS> computationPassDS = rdr::ResourcesManager::CreateDescriptorSetState<DOComputationPassDS>(RENDERER_RESOURCE_NAME("DOComputationPassDS"));
 	computationPassDS->u_linearColorTexture			= downsampleResult.linearColorHalfTexture;

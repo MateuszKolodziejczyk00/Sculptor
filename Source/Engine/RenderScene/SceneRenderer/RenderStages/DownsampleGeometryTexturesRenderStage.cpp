@@ -54,11 +54,11 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 
 	SPT_CHECK(depthPrepassData.depthHalfRes->GetResolution2D() == halfRes);
 
-	rhi::TextureDefinition motionDef = motionData.motion->GetTextureDefinition();
+	rg::TextureDef motionDef = motionData.motion->GetTextureDefinition();
 	motionDef.resolution = halfRes;
-	const rg::RGTextureViewHandle motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Half Res"), motionDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Half Res"), motionDef);
 
-	rhi::TextureDefinition geometryNormalsDef = shadingInputData.geometryNormals->GetTextureDefinition();
+	rg::TextureDef geometryNormalsDef = shadingInputData.geometryNormals->GetTextureDefinition();
 	geometryNormalsDef.resolution = halfRes;
 	const rg::RGTextureViewHandle geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Geometry Normals Half Res"), geometryNormalsDef, rhi::EMemoryUsage::GPUOnly);
 

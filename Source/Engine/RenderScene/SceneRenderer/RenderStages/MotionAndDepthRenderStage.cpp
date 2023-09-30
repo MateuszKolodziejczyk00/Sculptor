@@ -78,11 +78,7 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 
 	MotionData& motionData = viewSpec.GetData().Create<MotionData>();
 
-	rhi::TextureDefinition motionDef;
-	motionDef.resolution	= texturesRes;
-	motionDef.usage			= lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::ColorRT);
-	motionDef.format		= GetMotionFormat();
-	motionData.motion = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), motionDef, rhi::EMemoryUsage::GPUOnly);
+	motionData.motion = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), rg::TextureDef(texturesRes, GetMotionFormat()));
 
 	// Render camera only motion as default
 	camera_motion::ComputeCameraMotion(graphBuilder, renderView, depthPrepassData.depth, motionData.motion, depthPrepassData.depth);

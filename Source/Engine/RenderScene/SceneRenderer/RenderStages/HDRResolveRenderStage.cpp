@@ -235,13 +235,9 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 
 	const math::Vector3u lensFlaresRes = bloomTexture->GetResolution();
 
-	rhi::TextureDefinition lensFlaresTextureDef;
-	lensFlaresTextureDef.resolution	= lensFlaresRes;
-	lensFlaresTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	lensFlaresTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
-	const rg::RGTextureViewHandle lensFlaresTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture"), lensFlaresTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle lensFlaresTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture"), rg::TextureDef(lensFlaresRes, SceneRendererStatics::hdrFormat));
 	
-	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture Temp"), lensFlaresTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Lens Flares Texture Temp"), rg::TextureDef(lensFlaresRes, SceneRendererStatics::hdrFormat));
 
 	static const rdr::PipelineStateID computeLensFlaresPipeline = CompileComputeLensFlaresPipeline();
 
@@ -495,14 +491,13 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
 
-	rhi::TextureDefinition bloomTextureDef;
+	rg::TextureDef bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
-	bloomTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	bloomTextureDef.format		= rhi::EFragmentFormat::B10G11R11_U_Float;
+	bloomTextureDef.format		= SceneRendererStatics::hdrFormat;
 	bloomTextureDef.samples		= 1;
 	bloomTextureDef.mipLevels	= bloomPassesNum;
 	bloomTextureDef.arrayLayers	= 1;
-	const rg::RGTextureHandle bloomTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("Bloom Downsample Texture"), bloomTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureHandle bloomTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("Bloom Downsample Texture"), bloomTextureDef);
 
 	lib::DynamicArray<rg::RGTextureViewHandle> bloomTextureMips;
 	bloomTextureMips.reserve(static_cast<SizeType>(bloomPassesNum));
@@ -625,11 +620,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	const math::Vector3u textureRes(renderingRes.x(), renderingRes.y(), 1);
 	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
 	
-	rhi::TextureDefinition tonemappedTextureDef;
-	tonemappedTextureDef.resolution = textureRes;
-	tonemappedTextureDef.usage		= lib::Flags(rhi::ETextureUsage::ColorRT, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
-	tonemappedTextureDef.format		= stageContext.rendererSettings.outputFormat;
-	passData.tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), tonemappedTextureDef, rhi::EMemoryUsage::GPUOnly);
+	passData.tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), rg::TextureDef(textureRes, stageContext.rendererSettings.outputFormat));
 
 	exposure::ExposureSettings exposureSettings;
 	exposureSettings.textureSize				= renderingRes;

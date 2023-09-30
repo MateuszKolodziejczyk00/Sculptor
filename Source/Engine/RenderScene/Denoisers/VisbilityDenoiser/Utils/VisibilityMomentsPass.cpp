@@ -34,14 +34,9 @@ rg::RGTextureViewHandle CompressTexture(rg::RenderGraphBuilder& graphBuilder, co
 	const math::Vector2u inputResolution = params.dataTexture->GetResolution2D();
 	const math::Vector2u compressedResolution = math::Utils::DivideCeil(inputResolution, math::Vector2u(8u, 4u));
 
-	rhi::TextureDefinition compressedTextureDef;
-	compressedTextureDef.resolution	= compressedResolution;
-	compressedTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	compressedTextureDef.format		= rhi::EFragmentFormat::R32_U_Int;
-
 	const rg::RGTextureViewHandle compressedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Compressed", params.debugName.AsString()),
-																					 compressedTextureDef,
-																					 rhi::EMemoryUsage::GPUOnly);
+																					 rg::TextureDef(compressedResolution, rhi::EFragmentFormat::R32_U_Int));
+																					 
 
 	static const rdr::PipelineStateID pipeline = CreateCompressionPipeline();
 
@@ -82,10 +77,8 @@ rg::RGTextureViewHandle ComputeMoments(rg::RenderGraphBuilder& graphBuilder, con
 
 	const math::Vector2u resolution = params.dataTexture->GetResolution2D();
 
-	const rhi::TextureDefinition momentsTextureDef(resolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), rhi::EFragmentFormat::R16_UN_Float);
 	const rg::RGTextureViewHandle momentsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Moments", params.debugName.AsString()),
-																				  momentsTextureDef,
-																				  rhi::EMemoryUsage::GPUOnly);
+																				  rg::TextureDef(resolution, rhi::EFragmentFormat::R16_UN_Float));
 
 	static const rdr::PipelineStateID pipeline = CreateComputationPipeline();
 

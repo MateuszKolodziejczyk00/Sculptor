@@ -132,12 +132,9 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
+	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 
-	rhi::TextureDefinition shadowRTDef;
-	shadowRTDef.resolution = renderView.GetRenderingResolution3D();
-	shadowRTDef.usage = lib::Flags(rhi::ETextureUsage::DepthSetncilRT, rhi::ETextureUsage::SampledTexture);
-	shadowRTDef.format = rhi::EFragmentFormat::D16_UN_Float;
-	const rg::RGTextureHandle depthRenderTarget = graphBuilder.CreateTexture(RG_DEBUG_NAME("MSM Depth RT"), shadowRTDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureHandle depthRenderTarget = graphBuilder.CreateTexture(RG_DEBUG_NAME("MSM Depth RT"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D16_UN_Float));
 
 	rhi::TextureViewDefinition shadowRTViewDef;
 	shadowRTViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Depth);
@@ -145,11 +142,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 
 	RenderDepth(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTextureView);
 
-	rhi::TextureDefinition blurIntermediateTextureDef;
-	blurIntermediateTextureDef.resolution = renderView.GetRenderingResolution3D();
-	blurIntermediateTextureDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	blurIntermediateTextureDef.format = rhi::EFragmentFormat::RGBA16_UN_Float;
-	const rg::RGTextureViewHandle blurIntermediateTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("MSM Blur Intermediate Texture"), blurIntermediateTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle blurIntermediateTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("MSM Blur Intermediate Texture"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::RGBA16_UN_Float));
 
 	const std::optional<Real32> farPlane = renderView.GetFarPlane();
 

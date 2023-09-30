@@ -176,10 +176,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	for (const auto& [entity, directionalLight] : directionalLightsView.each())
 	{
-		const rhi::ETextureUsage shadowMaskUsage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource);
-		const rhi::TextureDefinition shadowMaskDef(shadowMasksRenderingRes, shadowMaskUsage, rhi::EFragmentFormat::R16_UN_Float);
 		rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks[entity];
-		shadowMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
+		shadowMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), rg::TextureDef(shadowMasksRenderingRes, rhi::EFragmentFormat::R16_UN_Float));
 
 		DirectionalLightShadowUpdateParams updateParams;
 		updateParams.lightDirection		= directionalLight.direction;

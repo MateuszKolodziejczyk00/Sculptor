@@ -70,10 +70,11 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 			if (canCapture)
 			{
-				rhi::TextureDefinition captureTextureDef = rgTextureView->GetTextureDefinition();
+				rhi::TextureDefinition captureTextureDef;
 				lib::AddFlags(captureTextureDef.usage, lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture));
-				captureTextureDef.mipLevels		= 1u;
 				captureTextureDef.resolution	= rgTextureView->GetResolution();
+				captureTextureDef.format		= rgTextureView->GetFormat();
+				captureTextureDef.mipLevels		= 1u;
 				captureTextureDef.type			= rhi::ETextureType::Texture2D;
 				const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
 																										 captureTextureDef,

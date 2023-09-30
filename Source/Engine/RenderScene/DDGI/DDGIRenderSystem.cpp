@@ -384,11 +384,8 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const Uint32 probesToUpdateNum	= updateParams.probesNumToUpdate;
 	const Uint32 raysNumPerProbe	= updateParams.raysNumPerProbe;
 
-	rhi::TextureDefinition probesTraceResultTextureDef;
-	probesTraceResultTextureDef.resolution	= math::Vector3u(probesToUpdateNum, raysNumPerProbe, 1u);
-	probesTraceResultTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-	probesTraceResultTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float;
-	const rg::RGTextureViewHandle probesTraceResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Probes Trace Result"), probesTraceResultTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const math::Vector2u probesResultRes = math::Vector2u(probesToUpdateNum, raysNumPerProbe);
+	const rg::RGTextureViewHandle probesTraceResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Probes Trace Result"), rg::TextureDef(probesResultRes, rhi::EFragmentFormat::RGBA16_S_Float));
 
 	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 

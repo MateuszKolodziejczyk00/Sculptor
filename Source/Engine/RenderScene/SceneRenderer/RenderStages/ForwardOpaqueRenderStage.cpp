@@ -13,8 +13,7 @@ namespace spt::rsc
 RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 {
 	RenderTargetFormatsDef formats;
-	//formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::B10G11R11_U_Float);
-	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_S_Float);
+	formats.colorRTFormats.emplace_back(SceneRendererStatics::hdrFormat);
 
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
 #if RENDERER_DEBUG
@@ -39,27 +38,13 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
-
-	const rhi::ETextureUsage passTexturesUsage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::ColorRT);
 	
-	rhi::TextureDefinition luminanceTextureDef;
-	luminanceTextureDef.resolution	= texturesRes;
-	luminanceTextureDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
-	luminanceTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float;
-	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), luminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
+	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
 	
-	rhi::TextureDefinition normalsTextureDef;
-	normalsTextureDef.resolution	= texturesRes;
-	normalsTextureDef.usage		= passTexturesUsage;
-	normalsTextureDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float;
-	passData.normalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), normalsTextureDef, rhi::EMemoryUsage::GPUOnly);
+	passData.normalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
 
 #if RENDERER_DEBUG
-	rhi::TextureDefinition debugTextureDef;
-	debugTextureDef.resolution	= texturesRes;
-	debugTextureDef.usage		= lib::Flags(passTexturesUsage, rhi::ETextureUsage::TransferSource);
-	debugTextureDef.format		= rhi::EFragmentFormat::RGBA8_UN_Float;
-	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), debugTextureDef, rhi::EMemoryUsage::GPUOnly);
+	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 #endif // RENDERER_DEBUG
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);

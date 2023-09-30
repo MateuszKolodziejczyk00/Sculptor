@@ -96,13 +96,45 @@ private:
 };
 
 
+struct TextureDef
+{
+	TextureDef()
+	{ }
+	
+	TextureDef(const rhi::RHIResolution& inResolution, rhi::EFragmentFormat inFormat)
+		: resolution(inResolution)
+		, format(inFormat)
+	{ }
+
+	rhi::TextureDefinition ToRHI() const
+	{
+		rhi::TextureDefinition rhiDefinition;
+		rhiDefinition.resolution	= resolution;
+		rhiDefinition.format		= format;
+		rhiDefinition.samples		= samples;
+		rhiDefinition.mipLevels		= mipLevels;
+		rhiDefinition.arrayLayers	= arrayLayers;
+		rhiDefinition.type			= type;
+
+		return rhiDefinition;
+	}
+
+	rhi::RHIResolution		resolution;
+	rhi::EFragmentFormat	format = rhi::EFragmentFormat::None;
+	Uint8					samples = 1u;
+	Uint32					mipLevels = 1u;
+	Uint32					arrayLayers = 1u;
+	rhi::ETextureType		type = rhi::ETextureType::Auto;
+};
+
+
 class RGTexture : public RGResource
 {
 public:
 
-	RGTexture(const RGResourceDef& resourceDefinition, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+	RGTexture(const RGResourceDef& resourceDefinition, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo)
 		: RGResource(resourceDefinition)
-		, m_textureDefinition(textureDefinition)
+		, m_textureDefinition(textureDefinition.ToRHI())
 		, m_allocationInfo(allocationInfo)
 		, m_isAcquired(false)
 		, m_accessState(textureDefinition.mipLevels, textureDefinition.arrayLayers)
@@ -125,24 +157,42 @@ public:
 	
 	// Texture Definition ==================================================
 	
-	const rhi::TextureDefinition& GetTextureDefinition() const
+	rg::TextureDef GetTextureDefinition() const
+	{
+		rg::TextureDef def;
+		def.resolution	= m_textureDefinition.resolution;
+		def.format		= m_textureDefinition.format;
+		def.samples		= m_textureDefinition.samples;
+		def.mipLevels	= m_textureDefinition.mipLevels;
+		def.arrayLayers	= m_textureDefinition.arrayLayers;
+		def.type		= m_textureDefinition.type;
+
+		return def;
+	}
+
+	const rhi::TextureDefinition& GetTextureRHIDefinition() const
 	{
 		return m_textureDefinition;
 	}
 
-	const rhi::RHIAllocationInfo& GetAllocationInfo() const
+	const std::optional<rhi::RHIAllocationInfo>& GetOptionalAllocationInfo() const
 	{
 		return m_allocationInfo;
 	}
 
+	const rhi::RHIAllocationInfo& GetAllocationInfo() const
+	{
+		return *m_allocationInfo;
+	}
+
 	rhi::ETextureUsage GetUsage() const
 	{
-		return GetTextureDefinition().usage;
+		return GetTextureRHIDefinition().usage;
 	}
 
 	const math::Vector3u& GetResolution() const
 	{
-		return GetTextureDefinition().resolution.AsVector();
+		return GetTextureRHIDefinition().resolution.AsVector();
 	}
 
 	math::Vector3u GetMipResolution(Uint32 mipLevel) const
@@ -172,7 +222,7 @@ public:
 			lib::AddFlag(m_textureDefinition.usage, usage);
 		}
 
-		return lib::HasAnyFlag(GetUsage(), usage);
+		return lib::HasAllFlags(GetUsage(), usage);
 	}
 
 	// Texture Resource ====================================================
@@ -240,10 +290,52 @@ public:
 		return m_releaseTransitionTarget;
 	}
 
+	// Properties ==========================================================
+
+	void AddUsageForAccess(ERGTextureAccess access)
+	{
+		Bool success = true;
+		switch (access)
+		{
+		case ERGTextureAccess::ColorRenderTarget:
+			success |= TryAppendUsage(rhi::ETextureUsage::ColorRT);
+			break;
+		case ERGTextureAccess::DepthRenderTarget:
+			success |= TryAppendUsage(rhi::ETextureUsage::DepthSetncilRT);
+			break;
+		case ERGTextureAccess::StencilRenderTarget:
+			success |= TryAppendUsage(rhi::ETextureUsage::DepthSetncilRT);
+			break;
+		case ERGTextureAccess::StorageWriteTexture:
+			success |= TryAppendUsage(rhi::ETextureUsage::StorageTexture);
+			break;
+		case ERGTextureAccess::SampledTexture:
+			success |= TryAppendUsage(rhi::ETextureUsage::SampledTexture);
+			break;
+		case ERGTextureAccess::TransferSource:
+			success |= TryAppendUsage(rhi::ETextureUsage::TransferSource);
+			break;
+		case ERGTextureAccess::TransferDest:
+			success |= TryAppendUsage(rhi::ETextureUsage::TransferDest);
+
+			break;
+		}
+
+		SPT_CHECK(success);
+	}
+
+	void SelectAllocationStrategy()
+	{
+		if (!m_allocationInfo.has_value())
+		{
+			m_allocationInfo = rhi::EMemoryUsage::GPUOnly;
+		}
+	}
+
 private:
 
-	rhi::TextureDefinition m_textureDefinition;
-	rhi::RHIAllocationInfo m_allocationInfo;
+	rhi::TextureDefinition					m_textureDefinition;
+	std::optional<rhi::RHIAllocationInfo>	m_allocationInfo;
 
 	Bool m_isAcquired;
 
@@ -279,10 +371,16 @@ public:
 		return m_texture;
 	}
 
-	const rhi::TextureDefinition& GetTextureDefinition() const
+	rg::TextureDef GetTextureDefinition() const
 	{
 		SPT_CHECK(m_texture.IsValid());
 		return m_texture->GetTextureDefinition();
+	}
+
+	const rhi::TextureDefinition& GetTextureRHIDefinition() const
+	{
+		SPT_CHECK(m_texture.IsValid());
+		return m_texture->GetTextureRHIDefinition();
 	}
 
 	const rhi::TextureSubresourceRange& GetSubresourceRange() const

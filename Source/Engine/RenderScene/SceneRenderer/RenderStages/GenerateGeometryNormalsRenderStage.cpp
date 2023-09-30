@@ -40,8 +40,7 @@ void GenerateGeometryNormalsRenderStage::OnRender(rg::RenderGraphBuilder& graphB
 
 	const math::Vector3u renderingResolution = renderView.GetRenderingResolution3D();
 
-	const rhi::TextureDefinition geometryNormalsTextureDef(renderingResolution, lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture), rhi::EFragmentFormat::RGBA16_UN_Float);
-	const rg::RGTextureViewHandle geometryNormalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), geometryNormalsTextureDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGTextureViewHandle geometryNormalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderingResolution, rhi::EFragmentFormat::RGBA16_UN_Float));
 
 	static rdr::PipelineStateID pipelineState = CompileGenerateGeometryNormalsPipeline();
 

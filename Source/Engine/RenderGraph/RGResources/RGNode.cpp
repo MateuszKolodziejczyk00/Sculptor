@@ -233,7 +233,7 @@ void RGNode::AcquireTextures()
 
 	for (RGTextureHandle textureToAcquire : m_texturesToAcquire)
 	{
-		lib::SharedPtr<rdr::Texture> acquiredTexture = resourcesPool.AcquireTexture(RG_DEBUG_NAME(textureToAcquire->GetName()), textureToAcquire->GetTextureDefinition(), textureToAcquire->GetAllocationInfo());
+		lib::SharedPtr<rdr::Texture> acquiredTexture = resourcesPool.AcquireTexture(RG_DEBUG_NAME(textureToAcquire->GetName()), textureToAcquire->GetTextureRHIDefinition(), textureToAcquire->GetAllocationInfo());
 		SPT_CHECK(!!acquiredTexture);
 
 		textureToAcquire->AcquireResource(std::move(acquiredTexture));

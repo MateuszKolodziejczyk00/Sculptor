@@ -65,12 +65,12 @@ public:
 
 	RGTextureViewHandle AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);
 
-	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);
 
 	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags = ERGResourceFlags::Default);
 	
 	/** Creates texture from given definition and returns full view of this texture */
-	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
+	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);
 	
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
@@ -184,9 +184,8 @@ private:
 
 	void AddReleaseResourcesNode();
 
-	void ResolveResourceReleases();
-	void ResolveTextureReleases();
-	void ResolveTextureViewReleases();
+	void ResolveResourceProperties();
+	void ResolveTextureProperties();
 	void ResolveBufferReleases();
 
 	rdr::PipelineStateID GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const;
