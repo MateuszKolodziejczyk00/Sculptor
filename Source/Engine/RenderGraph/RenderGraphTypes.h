@@ -54,10 +54,12 @@ private:
 #if DEBUG_RENDER_GRAPH
 
 #define RG_DEBUG_NAME(name) spt::rg::RenderGraphDebugName(name)
+#define RG_DEBUG_NAME_FORMATTED(...) spt::rg::RenderGraphDebugName(std::format(__VA_ARGS__))
 
 #else
 
 #define RG_DEBUG_NAME(name)
+#define RG_DEBUG_NAME_FORMATTED(...)
 
 #endif // DEBUG_RENDER_GRAPH
 

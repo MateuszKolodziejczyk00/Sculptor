@@ -36,7 +36,7 @@ public:
 	const math::Vector3u&			GetResolution() const;
 	math::Vector2u					GetResolution2D() const;
 
-	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const;
+	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition()) const;
 };
 
 

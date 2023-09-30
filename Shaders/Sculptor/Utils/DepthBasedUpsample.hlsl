@@ -16,14 +16,14 @@ static const float depthDiffThreshold = 0.04f;
 
 float ComputeSampleWeight(float sampleDepthDiff)
 {
-    return sampleDepthDiff < depthDiffThreshold ? rcp(Pow2(sampleDepthDiff / depthDiffThreshold + 1.f)) : 0.f;
+    return sampleDepthDiff <= depthDiffThreshold ? rcp(Pow2(sampleDepthDiff / depthDiffThreshold + 1.f)) : 0.f;
 }
 
 
 [numthreads(8, 8, 1)]
 void DepthBasedUpsampleCS(CS_INPUT input)
 {
-    const uint2 pixel = input.globalID.xy;
+    const int2 pixel = input.globalID.xy;
     
     uint2 outputRes;
     u_depthTexture.GetDimensions(outputRes.x, outputRes.y);
@@ -37,7 +37,7 @@ void DepthBasedUpsampleCS(CS_INPUT input)
         u_depthTextureHalfRes.GetDimensions(inputRes.x, inputRes.y);
         const float2 inputPixelSize = rcp(float2(inputRes));
 
-        const uint2 inputPixel = pixel / 2 + (pixel & 1) - 1;
+        const int2 inputPixel = pixel / 2 + (pixel & 1) - 1;
         const float2 inputUV = float2(inputPixel + 0.5f) * inputPixelSize;
 
         const float2 uv0 = inputUV + float2(0.f, 1.f) * inputPixelSize;

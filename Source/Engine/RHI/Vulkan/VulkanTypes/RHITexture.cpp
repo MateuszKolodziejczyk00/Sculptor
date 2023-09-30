@@ -71,8 +71,10 @@ static rhi::EFragmentFormat GetRHIFormat(VkFormat format)
     switch (format)
     {
     case VK_FORMAT_R8_UNORM:                        return rhi::EFragmentFormat::R8_UN_Float;
+    case VK_FORMAT_R8_UINT:                         return rhi::EFragmentFormat::R8_U_Int;
     case VK_FORMAT_R16_UNORM:                       return rhi::EFragmentFormat::R16_UN_Float;
     case VK_FORMAT_R32_SFLOAT:                      return rhi::EFragmentFormat::R32_S_Float;
+    case VK_FORMAT_R32_UINT:                        return rhi::EFragmentFormat::R32_U_Int;
     
     case VK_FORMAT_R8G8_UNORM:                      return rhi::EFragmentFormat::RG8_UN_Float;
     case VK_FORMAT_R16G16_UNORM:                    return rhi::EFragmentFormat::RG16_UN_Float;
@@ -478,10 +480,17 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 
     const rhi::TextureDefinition& textureDef = texture.GetDefinition();
 
+    m_texture = &texture;
+    m_subresourceRange = viewDefinition.subresourceRange;
+    if (m_subresourceRange.aspect == rhi::ETextureAspect::Auto)
+    {
+        m_subresourceRange.aspect = rhi::GetFullAspectForFormat(textureDef.format);
+    }
+
     VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
     viewInfo.flags      = 0;
     viewInfo.image      = texture.GetHandle();
-    viewInfo.viewType   = priv::GetVulkanViewType(viewDefinition.viewType, viewDefinition.subresourceRange, texture);
+    viewInfo.viewType   = priv::GetVulkanViewType(viewDefinition.viewType, m_subresourceRange, texture);
     viewInfo.format     = RHIToVulkan::GetVulkanFormat(textureDef.format);
 
     viewInfo.components.r = priv::GetVulkanComponentMapping(viewDefinition.componentMappings.r);
@@ -489,16 +498,13 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
     viewInfo.components.b = priv::GetVulkanComponentMapping(viewDefinition.componentMappings.b);
     viewInfo.components.a = priv::GetVulkanComponentMapping(viewDefinition.componentMappings.a);
 
-    viewInfo.subresourceRange.aspectMask        = priv::GetVulkanAspect(viewDefinition.subresourceRange.aspect);
-    viewInfo.subresourceRange.baseMipLevel      = viewDefinition.subresourceRange.baseMipLevel;
-    viewInfo.subresourceRange.levelCount        = viewDefinition.subresourceRange.mipLevelsNum;
-    viewInfo.subresourceRange.baseArrayLayer    = viewDefinition.subresourceRange.baseArrayLayer;
-    viewInfo.subresourceRange.layerCount        = viewDefinition.subresourceRange.arrayLayersNum;
+    viewInfo.subresourceRange.aspectMask        = priv::GetVulkanAspect(m_subresourceRange.aspect);
+    viewInfo.subresourceRange.baseMipLevel      = m_subresourceRange.baseMipLevel;
+    viewInfo.subresourceRange.levelCount        = m_subresourceRange.mipLevelsNum;
+    viewInfo.subresourceRange.baseArrayLayer    = m_subresourceRange.baseArrayLayer;
+    viewInfo.subresourceRange.layerCount        = m_subresourceRange.arrayLayersNum;
 
     SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
-
-    m_texture = &texture;
-    m_subresourceRange = viewDefinition.subresourceRange;
 }
 
 void RHITextureView::ReleaseRHI()

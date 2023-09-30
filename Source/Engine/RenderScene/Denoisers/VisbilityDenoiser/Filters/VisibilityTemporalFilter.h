@@ -10,28 +10,28 @@ class RenderGraphBuilder;
 } // spt::rg
 
 
-namespace spt::rsc::denoising::filters::temporal
+namespace spt::rsc::visibility_denoiser::temporal_accumulation
 {
 
 struct TemporalFilterParams : public denoising::DenoiserBaseParams
 {
 	using denoising::DenoiserBaseParams::DenoiserBaseParams;
 
-	TemporalFilterParams(const denoising::DenoiserBaseParams& inParams)
+	explicit TemporalFilterParams(const denoising::DenoiserBaseParams& inParams)
 		: denoising::DenoiserBaseParams(inParams)
 	{  }
 
-	Real32 currentFrameMinWeight = 0.1f;
-	Real32 currentFrameMaxWeight = 0.35f;
-	
-	Real32 varianceHistoryClampMultiplier = 8.f;
-	
-	Real32 minHistoryClampExtent = 0.15f;
+	Real32 currentFrameWeight = 0.02f;
 
-	rg::RGTextureViewHandle varianceTexture;
+	Real32 linearAndNearestSamplesMaxDepthDiff = 0.02f;
+
+	rg::RGTextureViewHandle momentsTexture;
+
+	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
+	rg::RGTextureViewHandle accumulatedSamplesNumHistoryTexture;
 };
 
 
 RENDER_SCENE_API void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFilterParams& params);
 
-} // spt::rsc::denoising::filters::temporal
+} // spt::rsc::visibility_denoiser::temporal_accumulation

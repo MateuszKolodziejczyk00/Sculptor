@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RenderStage.h"
+#include "Denoisers/VisbilityDenoiser/VisibilityDataDenoiser.h"
 
 
 namespace spt::rdr
@@ -13,22 +14,19 @@ class TextureView;
 namespace spt::rsc
 {
 
-struct DirectionalLightShadowMasks
+struct DirectionalLightRTShadowsData
 {
-	DirectionalLightShadowMasks()
-		: hasValidHistory(false)
+	DirectionalLightRTShadowsData()
+		: denoiser(RG_DEBUG_NAME("Directional Light Denoiser"))
 	{ }
 
-	lib::SharedPtr<rdr::TextureView> currentShadowMask;
-	lib::SharedPtr<rdr::TextureView> historyShadowMask;
-	
-	Bool hasValidHistory;
+	visibility_denoiser::Denoiser denoiser;
 };
 
 
 struct ViewShadowMasksDataComponent
 {
-	lib::HashMap<RenderSceneEntity, DirectionalLightShadowMasks> directionalLightShadowMasks;
+	lib::HashMap<RenderSceneEntity, DirectionalLightRTShadowsData> directionalLightsShadowData;
 };
 
 

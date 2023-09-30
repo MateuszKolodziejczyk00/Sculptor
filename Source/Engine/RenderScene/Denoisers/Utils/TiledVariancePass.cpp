@@ -1,4 +1,4 @@
-#include "VariancePass.h"
+#include "TiledVariancePass.h"
 #include "RenderGraphBuilder.h"
 #include "MathUtils.h"
 #include "RGDescriptorSetState.h"
@@ -8,7 +8,7 @@
 #include "ResourcesManager.h"
 
 
-namespace spt::rsc::denoising::variance
+namespace spt::rsc::denoising::tiled_variance
 {
 
 namespace tiles_variance
@@ -28,7 +28,7 @@ static rdr::PipelineStateID CreateTilesVariancePipeline()
 }
 
 
-static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceParameters& params)
+static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& graphBuilder, const TiledVarianceParameters& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -73,7 +73,7 @@ static rdr::PipelineStateID CreateTilesVarianceMax3x3Pipeline()
 }
 
 
-static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& graphBuilder, const VarianceParameters& params, rg::RGTextureViewHandle tilesVariance)
+static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& graphBuilder, const TiledVarianceParameters& params, rg::RGTextureViewHandle tilesVariance)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -98,7 +98,7 @@ static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& gra
 
 } // variance_max
 
-rg::RGTextureViewHandle ComputeVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceParameters& params)
+rg::RGTextureViewHandle ComputeVariance(rg::RenderGraphBuilder& graphBuilder, const TiledVarianceParameters& params)
 {
 	SPT_PROFILER_FUNCTION();
 

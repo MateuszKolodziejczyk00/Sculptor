@@ -47,6 +47,7 @@ class Window;
 class Event;
 class Buffer;
 class Texture;
+class TextureView;
 class Semaphore;
 class CommandBuffer;
 class Shader;
@@ -72,6 +73,7 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
 
 	SPT_NODISCARD static lib::SharedRef<Texture>			CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<TextureView>		CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
 
 	SPT_NODISCARD static lib::SharedRef<Semaphore>			CreateRenderSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 

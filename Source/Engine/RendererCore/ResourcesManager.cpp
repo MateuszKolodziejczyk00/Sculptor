@@ -51,6 +51,12 @@ lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceNa
 	return lib::MakeShared<Texture>(name, textureDefinition, allocationInfo);
 }
 
+lib::SharedRef<rdr::TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+{
+	const lib::SharedRef<Texture> texture = CreateTexture(name, textureDefinition, allocationInfo);
+	return texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", name.Get().ToString()));
+}
+
 lib::SharedRef<Semaphore> ResourcesManager::CreateRenderSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)
 {
 	return lib::MakeShared<Semaphore>(name, definition);

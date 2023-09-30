@@ -64,10 +64,12 @@ private:
 #if RENDERER_VALIDATION
 
 #define RENDERER_RESOURCE_NAME(Name) spt::rdr::RendererResourceName(Name)
+#define RENDERER_RESOURCE_NAME_FORMATTED(...) spt::rdr::RendererResourceName(std::format(__VA_ARGS__))
 
 #else
 
 #define RENDERER_RESOURCE_NAME(Name) spt::rdr::RendererResourceName()
+#define RENDERER_RESOURCE_NAME_FORMATTED(...) spt::rdr::RendererResourceName()
 
 #endif // RENDERER_VALIDATION
 

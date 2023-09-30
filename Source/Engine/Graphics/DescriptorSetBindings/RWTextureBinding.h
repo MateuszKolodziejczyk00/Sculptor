@@ -103,6 +103,14 @@ private:
 		{
 			return "r32f";
 		}
+		else if constexpr (std::is_same_v<TPixelFormatType, Uint8>)
+		{
+			return "r8ui";
+		}
+		else if constexpr (std::is_same_v<TPixelFormatType, Uint32>)
+		{
+			return "r32ui";
+		}
 
 		SPT_CHECK_NO_ENTRY_MSG("Unspecified format for pixel type");
 		return lib::String();

@@ -43,7 +43,7 @@ math::Vector2u Texture::GetResolution2D() const
 	return GetResolution().head<2>();
 }
 
-lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition) const
+lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/) const
 {
 	SPT_PROFILER_FUNCTION();
 

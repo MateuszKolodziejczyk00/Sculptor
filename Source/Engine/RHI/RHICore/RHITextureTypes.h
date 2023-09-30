@@ -64,8 +64,10 @@ enum class EFragmentFormat : Uint32
 	None,
 
 	R8_UN_Float,
+	R8_U_Int,
 	R16_UN_Float,
 	R32_S_Float,
+	R32_U_Int,
 
 	RG8_UN_Float,
 	RG16_UN_Float,
@@ -234,15 +236,16 @@ struct TextureComponentMappings
 enum class ETextureAspect : Flags8
 {
 	None			= 0,
-	Color			= BIT(0),
-	Depth			= BIT(1),
-	Stencil			= BIT(2)
+	Auto			= BIT(0),
+	Color			= BIT(1),
+	Depth			= BIT(2),
+	Stencil			= BIT(3)
 };
 
 
 struct TextureSubresourceRange
 {
-	TextureSubresourceRange(ETextureAspect inAspect = ETextureAspect::None, Uint32 inBaseMip = 0, Uint32 inMipLevelsNum = constants::allRemainingMips, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = constants::allRemainingArrayLayers)
+	TextureSubresourceRange(ETextureAspect inAspect = ETextureAspect::Auto, Uint32 inBaseMip = 0, Uint32 inMipLevelsNum = constants::allRemainingMips, Uint32 inBaseArrayLayer = 0, Uint32 inArrayLayersNum = constants::allRemainingArrayLayers)
 		: aspect(inAspect)
 		, baseMipLevel(inBaseMip)
 		, mipLevelsNum(inMipLevelsNum)
@@ -260,9 +263,9 @@ struct TextureSubresourceRange
 
 struct TextureViewDefinition
 {
-	TextureViewDefinition(	ETextureViewType inViewType = ETextureViewType::Default,
-							const TextureSubresourceRange& inSubresourceRange = TextureSubresourceRange(),
-							const TextureComponentMappings& inComponentMappings = TextureComponentMappings())
+	TextureViewDefinition(ETextureViewType inViewType = ETextureViewType::Default,
+						  const TextureSubresourceRange& inSubresourceRange = TextureSubresourceRange(),
+						  const TextureComponentMappings& inComponentMappings = TextureComponentMappings())
 		: viewType(inViewType)
 		, subresourceRange(inSubresourceRange)
 		, componentMappings(inComponentMappings)
@@ -291,8 +294,10 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 		return ETextureAspect::Depth;
 
 	case EFragmentFormat::R8_UN_Float:
+	case EFragmentFormat::R8_U_Int:
 	case EFragmentFormat::R16_UN_Float:
 	case EFragmentFormat::R32_S_Float:
+	case EFragmentFormat::R32_U_Int:
 	case EFragmentFormat::RG8_UN_Float:
 	case EFragmentFormat::RG16_UN_Float:
 	case EFragmentFormat::RG16_SN_Float:

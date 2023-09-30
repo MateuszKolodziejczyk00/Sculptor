@@ -16,7 +16,6 @@
 #include "Lights/LightTypes.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "Denoisers/DirectionalLightShadowsDenoiser.h"
 #include "MaterialsSubsystem.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
@@ -102,24 +101,6 @@ static ViewShadowMasksDataComponent& GetViewShadowMasksDataComponent(RenderScene
 	return *viewShadowMasks;
 }
 
-static lib::SharedRef<rdr::TextureView> CreateShadowMaskForView(const rdr::RendererResourceName& name, math::Vector2u resolution)
-{
-	SPT_PROFILER_FUNCTION();
-
-	rhi::TextureDefinition shadowMaskDef;
-	shadowMaskDef.resolution = resolution;
-	shadowMaskDef.usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::TransferSource); // TODO
-	shadowMaskDef.format = rhi::EFragmentFormat::R8_UN_Float;
-#if !SPT_RELEASE
-	lib::AddFlag(shadowMaskDef.usage, rhi::ETextureUsage::TransferSource);
-#endif // SPT_RELEASE
-	lib::SharedRef<rdr::Texture> shadowMaskTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
-
-	rhi::TextureViewDefinition shadowMaskViewDef;
-	shadowMaskViewDef.subresourceRange = rhi::TextureSubresourceRange(spt::rhi::ETextureAspect::Color);
-	return shadowMaskTexture->CreateView(name, shadowMaskViewDef);
-}
-
 static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& renderScene, ViewRenderingSpec& viewSpec, math::Vector2u shadowMasksRenderingResolution)
 {
 	SPT_PROFILER_FUNCTION();
@@ -136,7 +117,7 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 	// Remove shadow masks for removed lights
 	{
 		lib::DynamicArray<RenderSceneEntity> lightsToRemove;
-		for (const auto& [entityID, shadowMasks] : viewShadowMasks.directionalLightShadowMasks)
+		for (const auto& [entityID, shadowMasks] : viewShadowMasks.directionalLightsShadowData)
 		{
 			if (!registry.valid(entityID))
 			{
@@ -146,29 +127,9 @@ static ViewShadowMasksDataComponent& UpdateShadowMaskForView(const RenderScene& 
 
 		for (RenderSceneEntity lightToRemove : lightsToRemove)
 		{
-			viewShadowMasks.directionalLightShadowMasks.erase(lightToRemove);
+			viewShadowMasks.directionalLightsShadowData.erase(lightToRemove);
 		}
 	}
-
-	// Update shadow masks for existing lights
-	{
-		for (const auto& [entityID, directionalLightData] : directionalLights.each())
-		{
-			const RenderSceneEntity lightEntity = RenderSceneEntity(entityID);
-
-			DirectionalLightShadowMasks& shadowMasks = viewShadowMasks.directionalLightShadowMasks[lightEntity];
-
-			const bool isShadowMaskDirty = !shadowMasks.currentShadowMask || shadowMasks.currentShadowMask->GetResolution2D() != shadowMasksRenderingResolution;
-			if (isShadowMaskDirty)
-			{
-				shadowMasks.currentShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask View"), shadowMasksRenderingResolution);
-				shadowMasks.historyShadowMask = CreateShadowMaskForView(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask History View"), shadowMasksRenderingResolution);
-			}
-
-			shadowMasks.hasValidHistory = !isShadowMaskDirty;
-		}
-	}
-
 	return viewShadowMasks;
 }
 
@@ -181,6 +142,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	SPT_CHECK(rdr::Renderer::IsRayTracingEnabled());
 
+	const RenderView& renderView = viewSpec.GetRenderView();
+
 	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
 	const MotionData& motionData				= viewSpec.GetData().Get<MotionData>();
 	const ShadingInputData& shadingInputData	= viewSpec.GetData().Get<ShadingInputData>();
@@ -188,10 +151,10 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const math::Vector2u shadowMasksRenderingRes = depthPrepassData.depthHalfRes->GetResolution2D();
 
 	ViewShadowMasksDataComponent& viewShadowMasks = UpdateShadowMaskForView(renderScene, viewSpec, shadowMasksRenderingRes);
-
-	const RenderView& renderView = viewSpec.GetRenderView();
 	
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
+
+	lib::HashMap<RenderSceneEntity, rg::RGTextureViewHandle> directionalLightShadowMasks;
 
 	// Do ray tracing to create shadow mask for each directional light
 
@@ -209,9 +172,14 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 	const auto directionalLightsView = sceneRegistry.view<DirectionalLightData>();
 
+	// Create shadow mask textures and trace rays
+
 	for (const auto& [entity, directionalLight] : directionalLightsView.each())
 	{
-		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+		const rhi::ETextureUsage shadowMaskUsage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource);
+		const rhi::TextureDefinition shadowMaskDef(shadowMasksRenderingRes, shadowMaskUsage, rhi::EFragmentFormat::R16_UN_Float);
+		rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks[entity];
+		shadowMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Directional Light Shadow Mask"), shadowMaskDef, rhi::EMemoryUsage::GPUOnly);
 
 		DirectionalLightShadowUpdateParams updateParams;
 		updateParams.lightDirection		= directionalLight.direction;
@@ -223,10 +191,10 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		updateParams.shadowRayBias		= params::directionalLightShadowRayBias;
 
 		const lib::SharedRef<DirectionalLightShadowMaskDS> directionalLightShadowMaskDS = rdr::ResourcesManager::CreateDescriptorSetState<DirectionalLightShadowMaskDS>(RENDERER_RESOURCE_NAME("Directional Light Shadow Mask DS"));
-		directionalLightShadowMaskDS->u_shadowMask	= shadowsData.currentShadowMask;
+		directionalLightShadowMaskDS->u_shadowMask	= shadowMask;
 		directionalLightShadowMaskDS->u_params		= updateParams;
 
-		const lib::SharedPtr<RTVisibilityDS> visibilityDS = rdr::ResourcesManager::CreateDescriptorSetState<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
+		lib::SharedPtr<RTVisibilityDS> visibilityDS = rdr::ResourcesManager::CreateDescriptorSetState<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
 		visibilityDS->u_rtInstances				= rayTracingSceneSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
 		visibilityDS->u_geometryDS				= GeometryManager::Get().GetGeometryDSState();
 		visibilityDS->u_staticMeshUnifiedDataDS	= StaticMeshUnifiedData::Get().GetUnifiedDataDS();
@@ -245,19 +213,16 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	for (const auto& [entity, directionalLight] : directionalLightsView.each())
 	{
-		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+		DirectionalLightRTShadowsData& shadowsData = viewShadowMasks.directionalLightsShadowData[entity];
+		const rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks.at(entity);
 
-		dir_shadows_denoiser::DirShadowsDenoiserParams denoiserParams(renderView);
-		denoiserParams.name						= RG_DEBUG_NAME("Directional Shadows");
+		visibility_denoiser::Denoiser::Params denoiserParams(renderView);
 		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepthHalfRes;
 		denoiserParams.currentDepthTexture		= depthPrepassData.depthHalfRes;
 		denoiserParams.motionTexture			= motionData.motionHalfRes;
 		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormalsHalfRes;
-		denoiserParams.currentTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.currentShadowMask);
-		denoiserParams.historyTexture			= graphBuilder.AcquireExternalTextureView(shadowsData.historyShadowMask);
-		denoiserParams.enableTemporalFilter		= shadowsData.hasValidHistory;
 
-		dir_shadows_denoiser::Denoise(graphBuilder, denoiserParams);
+		shadowsData.denoiser.Denoise(graphBuilder, shadowMask, denoiserParams);
 	}
 
 	// Upsample shadow masks
@@ -266,14 +231,14 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	for (const auto& [entity, directionalLight] : directionalLightsView.each())
 	{
-		const DirectionalLightShadowMasks& shadowsData = viewShadowMasks.directionalLightShadowMasks.at(entity);
+		const rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks.at(entity);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName	= RG_DEBUG_NAME("Directional Shadows Upsample");
 		upsampleParams.depth		= depthPrepassData.depth;
 		upsampleParams.depthHalfRes = depthPrepassData.depthHalfRes;
 		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
-		frameShadowMasks.shadowMasks[entity] = upsampler::DepthBasedUpsample(graphBuilder, graphBuilder.AcquireExternalTextureView(shadowsData.currentShadowMask), upsampleParams);
+		frameShadowMasks.shadowMasks[entity] = upsampler::DepthBasedUpsample(graphBuilder, shadowMask, upsampleParams);
 	}
 
 	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);

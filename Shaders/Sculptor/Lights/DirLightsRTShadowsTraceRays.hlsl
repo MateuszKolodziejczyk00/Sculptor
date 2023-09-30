@@ -26,15 +26,17 @@ void GenerateShadowRaysRTG()
 
     if(depth > 0.f)
     {
-        const float2 noise = float2(InterleavedGradientNoise(float2(pixel) + u_params.time), InterleavedGradientNoise(float2(pixel.yx) + u_params.time));
-        const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, u_params.shadowRayConeAngle, noise);
-
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
         const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
 
         worldLocation += normal * u_params.shadowRayBias;
+
+        const float maxConeAngle = u_params.shadowRayConeAngle;
+        
+        const float2 noise = float2(InterleavedGradientNoise(float2(pixel) + u_params.time), InterleavedGradientNoise(float2(pixel.yx) + u_params.time));
+        const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
 
         RayDesc rayDesc;
         rayDesc.TMin        = u_params.minTraceDistance;

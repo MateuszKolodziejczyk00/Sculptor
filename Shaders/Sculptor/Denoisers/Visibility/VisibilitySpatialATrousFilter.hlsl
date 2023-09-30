@@ -13,14 +13,14 @@ struct CS_INPUT
 
 float NormalWeight(float3 centerNormal, float3 sampleNomral)
 {
-    return pow(max(0.f, dot(centerNormal, sampleNomral)), 128);
+    return pow(max(0.f, dot(centerNormal, sampleNomral)), 8.f);
 }
 
 
 float WorldLocationWeight(float3 centerWS, float3 sampleWS)
 {
     const float3 offset = sampleWS - centerWS;
-    if (dot(offset, offset) > Pow2(0.1f))
+    if (dot(offset, offset) > Pow2(0.05f))
     {
         return 0.f;
     }
@@ -41,17 +41,6 @@ void SpatialATrousFilterCS(CS_INPUT input)
         const float2 pixelSize = rcp(float2(outputRes));
         const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-        [branch]
-        if(u_params.hasValidVarianceTexture)
-        {
-            const float variance = u_varianceTexture.SampleLevel(u_nearestSampler, uv, 0.0f).x;
-            if(variance < 0.02f)
-            {
-                u_outputTexture[pixel] = u_inputTexture.SampleLevel(u_nearestSampler, uv, 0.f);
-                return;
-            }
-        }
-
         const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0.0f).xyz * 2.f - 1.f;
 
         const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.0f).x;
@@ -60,7 +49,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 
         const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
-        float4 valueSum = 0.0f;
+        float valueSum = 0.0f;
         float weightSum = 0.0f;
         for (int x = -2; x <= 2; ++x)
         {
@@ -87,7 +76,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
             }
         }
 
-        const float4 output = valueSum / weightSum;
+        const float output = valueSum / weightSum;
         u_outputTexture[pixel] = output;
     }
 }

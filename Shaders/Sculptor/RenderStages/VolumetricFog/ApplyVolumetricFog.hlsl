@@ -55,8 +55,6 @@ void ApplyVolumetricFogCS(CS_INPUT input)
             {
                 const float2 currentSampleUV = uv + float2(i, j) * pixelSize * u_applyVolumetricFogParams.blendPixelsOffset;
 
-                const float sampleDepth = u_depthTexture.SampleLevel(u_depthSampler, currentSampleUV, 0);
-
                 inScatteringTransmittance += u_integratedInScatteringTexture.SampleLevel(u_integratedInScatteringSampler, float3(currentSampleUV, fogFroxelUVW.z), 0);
                 weight += 1.f;
             }

@@ -16,7 +16,7 @@ static const float depthDiffThreshold = 0.04f;
 
 float ComputeSampleWeight(float sampleDepthDiff)
 {
-    return sampleDepthDiff < depthDiffThreshold ? rcp(Pow2(sampleDepthDiff / depthDiffThreshold + 1.f)) : 0.f;
+    return sampleDepthDiff <= depthDiffThreshold ? rcp(Pow2(sampleDepthDiff / depthDiffThreshold + 1.f)) : 0.f;
 }
 
 
