@@ -78,7 +78,7 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 				captureTextureDef.type			= rhi::ETextureType::Texture2D;
 				const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
 																										 captureTextureDef,
-																										 rgTexture->GetAllocationInfo());
+																										 rhi::EMemoryUsage::GPUOnly);
 
 				rhi::TextureViewDefinition captureTextureViewDef;
 				captureTextureViewDef.subresourceRange.aspect = rgTextureView->GetSubresourceRange().aspect;
