@@ -22,7 +22,7 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.23f, 0.f, 1.f);
+RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.5f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.4f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
@@ -73,10 +73,13 @@ namespace participating_media
 
 BEGIN_SHADER_STRUCT(RenderParticipatingMediaParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, constantFogColor)
-	SHADER_STRUCT_FIELD(Real32, constantFogDensity)
 	SHADER_STRUCT_FIELD(Real32, scatteringFactor)
 	SHADER_STRUCT_FIELD(Real32,	fogNearPlane)
 	SHADER_STRUCT_FIELD(Real32, fogFarPlane)
+    SHADER_STRUCT_FIELD(Real32, maxDensity)
+    SHADER_STRUCT_FIELD(Real32, densityNoiseThreshold)
+    SHADER_STRUCT_FIELD(math::Vector3f, densityNoiseSpeed)
+    SHADER_STRUCT_FIELD(Real32, densityNoiseZSigma)
 END_SHADER_STRUCT();
 
 DS_BEGIN(RenderParticipatingMediaDS, rg::RGDescriptorSetState<RenderParticipatingMediaDS>)
@@ -100,10 +103,13 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	RenderParticipatingMediaParams pariticipatingMediaParams;
 	pariticipatingMediaParams.constantFogColor		= math::Vector3f::Constant(1.0f);
-	pariticipatingMediaParams.constantFogDensity	= parameters::fogDensity;
 	pariticipatingMediaParams.scatteringFactor		= parameters::scatteringFactor;
 	pariticipatingMediaParams.fogNearPlane			= fogParams.nearPlane;
 	pariticipatingMediaParams.fogFarPlane			= fogParams.farPlane;
+    pariticipatingMediaParams.maxDensity			= parameters::fogDensity;
+	pariticipatingMediaParams.densityNoiseThreshold = 0.45f;
+    pariticipatingMediaParams.densityNoiseZSigma	= -6.f;
+    pariticipatingMediaParams.densityNoiseSpeed		= math::Vector3f(-0.5f, -0.5f, 0.1f);
 
 	const lib::SharedRef<RenderParticipatingMediaDS> participatingMediaDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
 	participatingMediaDS->u_participatingMediaTexture	= fogParams.participatingMediaTextureView;
