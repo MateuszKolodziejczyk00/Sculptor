@@ -22,7 +22,8 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogDensity("Fog Density", { "Volumetric Fog" }, 0.5f, 0.f, 1.f);
+RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.02f, 0.f, 1.f);
+RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.4f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
@@ -76,10 +77,11 @@ BEGIN_SHADER_STRUCT(RenderParticipatingMediaParams)
 	SHADER_STRUCT_FIELD(Real32, scatteringFactor)
 	SHADER_STRUCT_FIELD(Real32,	fogNearPlane)
 	SHADER_STRUCT_FIELD(Real32, fogFarPlane)
-    SHADER_STRUCT_FIELD(Real32, maxDensity)
     SHADER_STRUCT_FIELD(Real32, densityNoiseThreshold)
-    SHADER_STRUCT_FIELD(math::Vector3f, densityNoiseSpeed)
     SHADER_STRUCT_FIELD(Real32, densityNoiseZSigma)
+    SHADER_STRUCT_FIELD(math::Vector3f, densityNoiseSpeed)
+    SHADER_STRUCT_FIELD(Real32, maxDensity)
+    SHADER_STRUCT_FIELD(Real32, minDensity)
 END_SHADER_STRUCT();
 
 DS_BEGIN(RenderParticipatingMediaDS, rg::RGDescriptorSetState<RenderParticipatingMediaDS>)
@@ -106,7 +108,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	pariticipatingMediaParams.scatteringFactor		= parameters::scatteringFactor;
 	pariticipatingMediaParams.fogNearPlane			= fogParams.nearPlane;
 	pariticipatingMediaParams.fogFarPlane			= fogParams.farPlane;
-    pariticipatingMediaParams.maxDensity			= parameters::fogDensity;
+    pariticipatingMediaParams.maxDensity			= parameters::fogMaxDensity;
+    pariticipatingMediaParams.minDensity			= parameters::fogMinDensity;
 	pariticipatingMediaParams.densityNoiseThreshold = 0.45f;
     pariticipatingMediaParams.densityNoiseZSigma	= -6.f;
     pariticipatingMediaParams.densityNoiseSpeed		= math::Vector3f(-0.5f, -0.5f, 0.1f);

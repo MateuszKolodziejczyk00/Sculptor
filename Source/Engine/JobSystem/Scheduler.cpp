@@ -96,19 +96,37 @@ void Scheduler::Shutdown()
 	impl::GetInstance().DestroyWorkers();
 }
 
-void Scheduler::ScheduleJob(lib::SharedPtr<JobInstance> job)
+void Scheduler::ScheduleJob(lib::MTHandle<JobInstance> job)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const SizeType priority = job->GetPriority();
+	SPT_CHECK(!job->IsInline());
 
-	while (!JobsQueueManagerTls::EnqueueGlobal(job))
+	if (JobsQueueManagerTls::IsWorkerThread() && !job->IsForcedToGlobalQueue())
 	{
-		// Execute job locally if couldn't enqueue global job
-		Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal(priority));
+		JobsQueueManagerTls::EnqueueLocal(std::move(job));
+	}
+	else
+	{
+		const EJobPriority::Type priority = job->GetPriority();
+
+		while (!JobsQueueManagerTls::EnqueueGlobal(std::move(job)))
+		{
+			// Execute job locally if couldn't enqueue global job
+			Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal(priority));
+		}
 	}
 
 	WakeWorker();
+}
+
+Bool Scheduler::TryExecuteScheduledJob(Bool allowLocalQueueJobs)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Bool isWorkerThread = JobsQueueManagerTls::IsWorkerThread();
+	return (isWorkerThread && allowLocalQueueJobs && Worker::TryExecuteJob(JobsQueueManagerTls::DequeueLocal()))
+		|| Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal());
 }
 
 void Scheduler::WakeWorker()

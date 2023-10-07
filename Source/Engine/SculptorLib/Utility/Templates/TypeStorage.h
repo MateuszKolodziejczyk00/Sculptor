@@ -40,6 +40,11 @@ public:
 		return *reinterpret_cast<const TType*>(m_storage);
 	}
 
+	TType&& Move()
+	{
+		return std::move(*reinterpret_cast<TType*>(m_storage));
+	}
+
 	TType* GetAddress()
 	{
 		return reinterpret_cast<TType*>(m_storage);

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Containers/SPSCQueue.h"
+#include "Utility/RefCounted.h"
 #include "Containers/MPMCQueue.h"
-#include "Containers/MPSCQueue.h"
+#include "WorkStealingQueue.h"
 #include "JobTypes.h"
 #include "Event.h"
 
@@ -13,8 +13,8 @@ namespace spt::js
 
 class JobInstance;
 
-using LocalQueueType	= lib::SPSCQueue<lib::SharedPtr<JobInstance>>;
-using GlobalQueueType	= lib::MPMCQueue<lib::SharedPtr<JobInstance>, 64>;
+using LocalQueueType	= WorkStealingQueue<JobInstance*>;
+using GlobalQueueType	= lib::MPMCQueue<lib::MTHandle<JobInstance>, 64>;
 
 
 class JobsQueueManagerTls
@@ -23,17 +23,19 @@ public:
 
 	// Global Queue =======================================
 
-	static Bool EnqueueGlobal(lib::SharedPtr<JobInstance> job);
-	static lib::SharedPtr<JobInstance> DequeueGlobal(SizeType priority);
-	static lib::SharedPtr<JobInstance> DequeueGlobal();
+	static Bool EnqueueGlobal(lib::MTHandle<JobInstance> job);
+	static lib::MTHandle<JobInstance> DequeueGlobal(EJobPriority::Type priority);
+	static lib::MTHandle<JobInstance> DequeueGlobal();
 
 	// Local Queue ========================================
 
 	static void InitializeLocalQueues(SizeType queuesNum);
 	static void InitThreadLocalQueue(SizeType idx);
 
-	static void EnqueueLocal(lib::SharedPtr<JobInstance> job);
-	static lib::SharedPtr<JobInstance> DequeueLocal();
+	static void EnqueueLocal(lib::MTHandle<JobInstance> job);
+	static lib::MTHandle<JobInstance> DequeueLocal();
+
+	static lib::MTHandle<JobInstance> Steal();
 
 	// Sleep Events =======================================
 
@@ -47,13 +49,15 @@ public:
 
 	static Int32 GetActiveWorkersCount();
 
+	static Bool IsWorkerThread();
+
 private:
 
 	static GlobalQueueType s_globalQueues[EJobPriority::Num];
 
 	thread_local static SizeType tls_localQueueIdx;
 
-	static lib::DynamicArray<lib::UniquePtr<LocalQueueType>> s_localQueues;
+	static lib::DynamicArray<lib::UniquePtr<lib::StaticArray<LocalQueueType, EJobPriority::Num>>> s_localQueues;
 
 	static lib::MPMCQueue<lib::SharedPtr<platf::Event>, g_maxWorkerThreadsNum> s_sleepEventsQueue;
 

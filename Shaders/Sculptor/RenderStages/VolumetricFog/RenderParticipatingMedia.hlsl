@@ -32,7 +32,7 @@ float EvaluateDensityAtLocation(in RenderParticipatingMediaParams params, in flo
     float noise = lowFrequencyOctave + highFrequencyOctave;
     noise = saturate(noise - noiseThreshold) / max(1.f - noiseThreshold, 0.001f);
 
-    return saturate(lerp(0.f, params.maxDensity, noise));
+    return saturate(lerp(params.minDensity, params.maxDensity, noise));
 }
 
 

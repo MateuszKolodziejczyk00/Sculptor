@@ -25,10 +25,14 @@ enum Type
 
 enum class EJobFlags
 {
-	None			= 0,
+	None				= 0,
 
-	// Launches job on calling thread
-	Inline			= BIT(1),
+	// Job is created on stack
+	Local				= BIT(1),
+	// Launches job on calling thread is it doesn't have prerequisites. Otherwise it's executed immediately after last prerequisite is finished
+	Inline				= BIT(2),
+	// Job is always pushed to global queue
+	ForceGlobalQueue	= BIT(3),
 
 	Default = None
 };

@@ -33,9 +33,9 @@ class Worker
 public:
 
 	static void WorkerMain(WorkerContext& inContext);
-	static Bool TryExecuteJob(const lib::SharedPtr<JobInstance>& job);
+	static Bool TryExecuteJob(lib::MTHandle<JobInstance> job);
 
-	Worker(WorkerContext& inContext);
+	explicit Worker(WorkerContext& inContext);
 
 	void Run();
 

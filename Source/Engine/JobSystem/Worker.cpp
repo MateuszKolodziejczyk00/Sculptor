@@ -64,13 +64,20 @@ void Worker::WorkerMain(WorkerContext& jobsQueue)
 	worker.Run();
 }
 
-Bool Worker::TryExecuteJob(const lib::SharedPtr<JobInstance>& job)
+Bool Worker::TryExecuteJob(lib::MTHandle<JobInstance> job)
 {
-	if (job)
+	if (job.IsValid())
 	{
 		SPT_PROFILER_SCOPE("Execute Job");
 
-		job->TryExecute();
+		JobInstance* jobPtr = job.Get();
+		// make sure we release all references before finishing local job
+		if (jobPtr->IsLocal())
+		{
+			job.Reset();
+		}
+
+		jobPtr->TryExecute();
 		return true;
 	}
 
@@ -83,7 +90,7 @@ Worker::Worker(WorkerContext& inContext)
 
 void Worker::Run()
 {
-	constexpr SizeType idleLoopsRequiredToSleep = 32;
+	constexpr SizeType idleLoopsRequiredToSleep = 192u;
 	SizeType currentIdleLoopsNum = 0;
 
 	ActiveWorkerGuard activeWorkerGuard(false);
@@ -91,7 +98,8 @@ void Worker::Run()
 	while (true)
 	{
 		if (	TryExecuteJob(JobsQueueManagerTls::DequeueLocal())
-			||	TryExecuteJob(JobsQueueManagerTls::DequeueGlobal()))
+			||	TryExecuteJob(JobsQueueManagerTls::DequeueGlobal())
+			||	TryExecuteJob(JobsQueueManagerTls::Steal()))
 		{
 			currentIdleLoopsNum = 0;
 			continue;

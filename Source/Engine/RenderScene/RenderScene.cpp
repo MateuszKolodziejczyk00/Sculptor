@@ -68,14 +68,12 @@ void RenderScene::Update()
 
 	const auto& sceneSubsystems = m_renderSceneSubsystems.GetSystems();
 
-	js::ParallelForEach("Update Render Scene Subsystems",
-						sceneSubsystems,
-						[](const lib::SharedPtr<RenderSceneSubsystem>& system)
-						{
-							system->Update();
-						},
-						js::EJobPriority::High,
-						js::EJobFlags::Inline);
+	js::InlineParallelForEach("Update Render Scene Subsystems",
+							  sceneSubsystems,
+							  [](const lib::SharedPtr<RenderSceneSubsystem>& system)
+							  {
+								  system->Update();
+							  });
 
 	GPUSceneFrameData frameData;
 	frameData.deltaTime	= engn::GetRenderingFrame().GetDeltaTime();

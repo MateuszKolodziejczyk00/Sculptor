@@ -8,6 +8,7 @@
 #include "MathUtils.h"
 #include "ThreadInfo.h"
 #include "Event.h"
+#include "Utility/RefCounted.h"
 
 
 namespace spt::js
@@ -172,10 +173,10 @@ struct JobInstanceGetter
 {
 public:
 
-	static lib::SharedPtr<JobInstance> GetInstance(const TType& job)
+	static lib::MTHandle<JobInstance> GetInstance(const TType& job)
 	{
 		SPT_CHECK_NO_ENTRY();
-		return lib::SharedPtr<JobInstance>{};
+		return lib::MTHandle<JobInstance>{};
 	}
 };
 
@@ -204,9 +205,9 @@ auto Prerequisites(const TJobs&... jobs)
 {
 	constexpr SizeType size = lib::ParameterPackSize<TJobs...>::Count;
 
-	using PrerequsitesRangeType = lib::StaticArray<lib::SharedPtr<JobInstance>, size>;
+	using PrerequsitesRangeType = lib::StaticArray<lib::MTHandle<JobInstance>, size>;
 
-	const auto getJobInstance = []<typename TJobType>(const TJobType& job) -> lib::SharedPtr<JobInstance>
+	const auto getJobInstance = []<typename TJobType>(const TJobType& job) -> lib::MTHandle<JobInstance>
 	{
 		return impl::JobInstanceGetter<TJobType>::GetInstance(job);
 	};
@@ -217,7 +218,7 @@ auto Prerequisites(const TJobs&... jobs)
 
 class JobCallableWrapper
 {
-	static constexpr SizeType s_inlineStorageSize = 32;
+	static constexpr SizeType s_inlineStorageSize = 128u;
 
 public:
 
@@ -304,13 +305,22 @@ private:
 };
 
 
-class JobInstance : public std::enable_shared_from_this<JobInstance>
+class JobInstance : public lib::MTRefCounted
 {
 	enum class EJobState : Uint8
 	{
+		// Job is created but not scheduled yet
+		// That means that we either wait for prerequisites to be finished or job is not initialized yet
 		Pending,
+		// Job is currently scheduled in one of the queues
+		Scheduled,
+		// Job is currently executing it's callable
 		Executing,
+		// Job was executed and it's ready to be finished after all of it's nested jobs will be finished
 		Executed,
+		// Job is currently finishing (doing cleanup)
+		Finishing,
+		// Job is finished and ready to be destroyed
 		Finished
 	};
 
@@ -360,8 +370,12 @@ public:
 			return false;
 		}
 
-		EJobState previous = EJobState::Pending;
-		const Bool executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing, impl::MemoryOrderSequencial);
+		EJobState previous = EJobState::Scheduled;
+		Bool executeThisThread = false;
+		while (!executeThisThread && (previous == EJobState::Pending || previous == EJobState::Scheduled))
+		{
+			executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing, impl::MemoryOrderSequencial);
+		}
 
 		Bool finishedThisThread = false;
 
@@ -369,31 +383,21 @@ public:
 		{
 			Execute();
 
-			if (!CanFinishExecution())
+			finishedThisThread = TryFinish();
+			if (!finishedThisThread)
 			{
-				// We can use lockless function because we're on executing thread
-				TryExecutePrerequisites_Lockless(m_prerequisites);
-			}
-
-			m_jobState.store(EJobState::Executed, impl::MemoryOrderSequencial);
-
-			if (CanFinishExecution())
-			{
-				finishedThisThread = TryFinish();
-				if (!finishedThisThread)
-				{
-					// This thread couldn't finish this job, but we should return true if job was already finished
-					previous = m_jobState.load(impl::MemoryOrderSequencial);
-				}
+				// This thread couldn't finish this job, but we should return true if job was already finished
+				previous = m_jobState.load(impl::MemoryOrderSequencial);
 			}
 		}
 
 		return (executeThisThread && finishedThisThread) || previous == EJobState::Finished;
 	}
 
-	Bool IsFinished() const
+	Bool IsResultReady() const
 	{
-		return m_jobState.load(impl::MemoryOrderSequencial) == EJobState::Finished;
+		const EJobState state = m_jobState.load(impl::MemoryOrderSequencial);
+		return state == EJobState::Finishing || state == EJobState::Finished;
 	}
 
 	void Wait()
@@ -417,24 +421,74 @@ public:
 				}
 			}
 		}
-		else if (loadedState == EJobState::Executing)
+		else if(loadedState == EJobState::Scheduled)
+		{
+			// We cannot execute local jobs here, if they are already scheduled
+			// That's because scheduler holds reference to this job, and we have to be sure that all refs are released before task is finished
+			// because of this, we have to wait for worker thread to finish this job
+			const Bool canExecuteLocally = !IsLocal();
+			if (canExecuteLocally)
+			{
+				if (TryExecute())
+				{
+					return;
+				}
+			}
+			else
+			{
+				// At this point, only thing we can do is to try execute one of the jobs during waiting
+				// If we know that this job is in global queue, we don't want to execute local jobs to increase chance of executing this job
+				const Bool wantsExecuteLocalQueueJobs = !IsForcedToGlobalQueue();
+
+				EJobState currentState = loadedState;
+				while (currentState != EJobState::Finishing || currentState != EJobState::Finished)
+				{
+					Scheduler::TryExecuteScheduledJob(wantsExecuteLocalQueueJobs);
+					currentState = m_jobState.load(impl::MemoryOrderSequencial);
+				}
+			}
+		}
+		else if (loadedState == EJobState::Executing || loadedState == EJobState::Executed)
 		{
 			// Try executing nested jobs
 			TryExecutePrerequisites();
 		}
+		else if (loadedState == EJobState::Finishing)
+		{
+			while(m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
+			{
+				platf::Platform::SwitchToThread();
+			}
+			return;
+		}
 
 		platf::Event finishEvent(true);
 
-		lib::SharedRef<JobInstance> finishEventJob = lib::MakeShared<JobInstance>("WaitEventJob");
-		finishEventJob->Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(shared_from_this()), GetPriority(), js::EJobFlags::None);
+		JobInstance finishEventJob("WaitEventJob");
+		finishEventJob.AddRef();
+
+		finishEventJob.Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(this), GetPriority(), lib::Flags(EJobFlags::Local, EJobFlags::Inline));
 		
 		finishEvent.Wait();
+
+		// We have to wait for the job to reach "Finished" state before we destroy it
+		// We do this without any events because it should be very fast after signaling the event
+		// Other option would be to not use local job here, but this would require memory allocation
+		while(finishEventJob.m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
+		{
+			platf::Platform::SwitchToThread();
+		}
+
+		const Bool canDestroy = finishEventJob.Release();
+		SPT_CHECK(canDestroy);
+
+		return;
 	}
 
 	template<typename TResultType>
 	const TResultType& GetResultAs() const
 	{
-		SPT_CHECK(IsFinished());
+		SPT_CHECK(IsResultReady());
 		return m_callable.GetResult<TResultType>();
 	}
 
@@ -448,7 +502,27 @@ public:
 		return m_flags;
 	}
 
-	void AddNested(lib::SharedPtr<JobInstance> job)
+	const char* GetName() const
+	{
+		return m_name;
+	}
+
+	Bool IsLocal() const
+	{
+		return lib::HasAnyFlag(GetFlags(), EJobFlags::Local);
+	}
+
+	Bool IsInline() const
+	{
+		return lib::HasAnyFlag(GetFlags(), EJobFlags::Inline);
+	}
+
+	Bool IsForcedToGlobalQueue() const
+	{
+		return lib::HasAnyFlag(GetFlags(), EJobFlags::ForceGlobalQueue);
+	}
+
+	void AddNested(lib::MTHandle<JobInstance> job)
 	{
 		AddPrerequisite(std::move(job));
 	}
@@ -458,7 +532,7 @@ private:
 	template<typename TCallable>
 	void SetCallable(TCallable&& callable)
 	{
-		m_callable.SetCallable(callable);
+		m_callable.SetCallable(std::forward<TCallable>(callable));
 	}
 
 	template<typename TPrerequisitesRange>
@@ -474,11 +548,11 @@ private:
 		for (auto& prerequisite : prerequisites)
 		{
 			m_prerequisites.emplace_back(prerequisite);
-			prerequisite->AddConsequent(shared_from_this());
+			prerequisite->AddConsequent(this);
 		}
 	}
 
-	void AddPrerequisite(const lib::SharedPtr<JobInstance>& job)
+	void AddPrerequisite(lib::MTHandle<JobInstance> job)
 	{
 		const Bool useLock = m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Pending;
 		if (useLock)
@@ -488,7 +562,7 @@ private:
 
 		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderAcquireRelease);
 		m_prerequisites.emplace_back(job);
-		job->AddConsequent(shared_from_this());
+		job->AddConsequent(this);
 
 		if (useLock)
 		{
@@ -496,13 +570,26 @@ private:
 		}
 	}
 
-	void AddConsequent(lib::SharedPtr<JobInstance> next)
+	void AddConsequent(lib::MTHandle<JobInstance> next)
 	{
-		SPT_CHECK(!!next);
+		SPT_CHECK(next.IsValid());
 
-		const lib::LockGuard lockGuard(m_consequentsLock);
+		m_consequentsLock.lock();
 
-		if(m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
+		EJobState currentJobState = m_jobState.load(impl::MemoryOrderSequencial);
+
+		if (currentJobState == EJobState::Finishing)
+		{
+			m_consequentsLock.unlock();
+			while (currentJobState != EJobState::Finished)
+			{
+				platf::Platform::SwitchToThread();
+				currentJobState = m_jobState.load(impl::MemoryOrderSequencial);
+			}
+			m_consequentsLock.lock();
+		}
+
+		if(currentJobState != EJobState::Finished)
 		{
 			m_consequents.emplace_back(std::move(next));
 		}
@@ -510,19 +597,21 @@ private:
 		{
 			next->PostPrerequisiteExecuted();
 		}
+
+		m_consequentsLock.unlock();
 	}
 
 	void OnConstructed()
 	{
-		if (lib::HasAnyFlag(GetFlags(), EJobFlags::Inline))
+		if (m_remainingPrerequisitesNum.load() == 0)
 		{
-			Wait();
-		}
-		else
-		{
-			if (m_remainingPrerequisitesNum.load() == 0)
+			if(IsInline())
 			{
-				Schedule();
+				TryExecute();
+			}
+			else
+			{
+				TrySchedule();
 			}
 		}
 	}
@@ -543,9 +632,9 @@ private:
 		}
 	}
 
-	void TryExecutePrerequisites_Lockless(const lib::DynamicArray<lib::SharedPtr<JobInstance>>& prerequisitesToExecute) const
+	void TryExecutePrerequisites_Lockless(const lib::DynamicArray<lib::MTHandle<JobInstance>>& prerequisitesToExecute) const
 	{
-		for (const lib::SharedPtr<JobInstance>& prerequisite : m_prerequisites)
+		for (const lib::MTHandle<JobInstance>& prerequisite : m_prerequisites)
 		{
 			if (CanFinishExecution())
 			{
@@ -558,7 +647,7 @@ private:
 
 	void TryExecutePrerequisites_Locked() const
 	{
-		lib::DynamicArray<lib::SharedPtr<JobInstance>> prerequisitesCopy;
+		lib::DynamicArray<lib::MTHandle<JobInstance>> prerequisitesCopy;
 		{
 			const lib::LockGuard lockGuard(m_prerequisitesLock);
 			prerequisitesCopy = m_prerequisites;
@@ -571,11 +660,22 @@ private:
 	{
 		const JobExecutionScope executionScope(*this);
 
+		// Nested jobs should tread this job as "Inline"
+		lib::RemoveFlag(m_flags, EJobFlags::Inline);
+
 		m_prerequisites.clear();
 
 		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderRelease);
 		DoExecute();
 		m_remainingPrerequisitesNum.fetch_add(-1, impl::MemoryOrderRelease);
+
+		if (!CanFinishExecution())
+		{
+			// We can use lockless function because we're on executing thread
+			TryExecutePrerequisites_Lockless(m_prerequisites);
+		}
+
+		m_jobState.store(EJobState::Executed, impl::MemoryOrderSequencial);
 	}
 
 	void DoExecute()
@@ -590,30 +690,63 @@ private:
 
 	Bool TryFinish()
 	{
-		EJobState expected = EJobState::Executed;
-		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finished, impl::MemoryOrderSequencial);
+		if (!CanFinishExecution())
+		{
+			return false;
+		}
 
-		SPT_CHECK(expected != EJobState::Pending);
+		EJobState expected = EJobState::Executed;
+		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finishing, impl::MemoryOrderSequencial);
+
+		SPT_CHECK(expected != EJobState::Pending && expected != EJobState::Scheduled);
 
 		if (finishThisThread)
 		{
-			m_jobState.store(EJobState::Finished, impl::MemoryOrderSequencial);
-
 			m_prerequisites.clear();
 
-			lib::DynamicArray<lib::SharedPtr<JobInstance>> consequentsCopy;
+			lib::DynamicArray<lib::MTHandle<JobInstance>> consequentsCopy;
 			{
 				const lib::LockGuard lockGuard(m_consequentsLock);
 
-				// During next for loop we this job may be destroyed during call to PostPrerequisiteExecuted if consequent had only reference to this job
-				// This may happen if this job is nested
-				// Because of this we don't want to use any members from now on, so we need to move consequents to local array
 				consequentsCopy = std::move(m_consequents);
 			}
 
-			for (const lib::SharedPtr<JobInstance>& consequent : consequentsCopy)
+			SPT_CHECK(m_consequents.empty() && m_prerequisites.empty());
+
+			m_jobState.store(EJobState::Finished, impl::MemoryOrderSequencial);
+
+			// During next for loop we this job may be destroyed during call to PostPrerequisiteExecuted if consequent had only reference to this job
+			// This may happen if this job is nested
+			// Because of this we don't want to use any members from now on, so we need to move consequents to local array
+
+			// First we loop over all jobs to decrement their prerequisites count and add to scheduler (not inline jobs)
+			for (lib::MTHandle<JobInstance>& consequent : consequentsCopy)
 			{
-				consequent->PostPrerequisiteExecuted();
+				JobInstance* consequentPtr = consequent.Get();
+				// make sure we release all references before finishing local job
+				if (consequentPtr->IsLocal() && !consequentPtr->IsInline())
+				{
+					SPT_CHECK(consequentPtr->GetRefCount() > 0u);
+					consequent.Reset();
+				}
+				consequentPtr->PostPrerequisiteExecuted();
+			}
+
+			// Then we loop over all jobs to execute inline consequents
+			for (lib::MTHandle<JobInstance>& consequent : consequentsCopy)
+			{
+				JobInstance* consequentPtr = consequent.Get();
+				if (consequentPtr && consequentPtr->IsInline())
+				{
+					// make sure we release all references before finishing local job
+					if (consequentPtr->IsLocal())
+					{
+						SPT_CHECK(consequentPtr->GetRefCount() > 0u);
+						consequent.Reset();
+					}
+
+					consequentPtr->TryExecute();
+				}
 			}
 		}
 
@@ -630,7 +763,11 @@ private:
 			const EJobState currentState = m_jobState.load(impl::MemoryOrderSequencial);
 			if (currentState == EJobState::Pending)
 			{
-				Schedule();
+				// Immediate job will be executed without scheduling
+				if (!IsInline())
+				{
+					TrySchedule();
+				}
 			}
 			else if(currentState == EJobState::Executed)
 			{
@@ -640,18 +777,23 @@ private:
 		}
 	}
 
-	void Schedule()
+	void TrySchedule()
 	{
-		Scheduler::ScheduleJob(shared_from_this());
+		EJobState previous = EJobState::Pending;
+		const Bool scheduleOnThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Scheduled, impl::MemoryOrderSequencial);
+		if(scheduleOnThisThread)
+		{
+			Scheduler::ScheduleJob(this);
+		}
 	}
 
-	lib::DynamicArray<lib::SharedPtr<JobInstance>>  m_prerequisites;
+	lib::DynamicArray<lib::MTHandle<JobInstance>>	m_prerequisites;
 	std::atomic<Int32>								m_remainingPrerequisitesNum;
 	mutable lib::Lock								m_prerequisitesLock;
 
 	std::atomic<EJobState> m_jobState;
 
-	lib::DynamicArray<lib::SharedPtr<JobInstance>>	m_consequents;
+	lib::DynamicArray<lib::MTHandle<JobInstance>>	m_consequents;
 	lib::Lock										m_consequentsLock;
 
 	JobCallableWrapper	m_callable;
@@ -672,13 +814,13 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedPtr<JobInstance> job;
+		lib::MTHandle<JobInstance> job;
 		{
 			SPT_PROFILER_SCOPE("Allocate Job");
-			job = lib::MakeShared<JobInstance>(name);
+			job = new JobInstance(name);
 		}
 		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites), priority, flags);
-		return lib::Ref(job);
+		return job;
 	}
 
 	template<typename TCallable>
@@ -686,13 +828,38 @@ public:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		lib::SharedPtr<JobInstance> job;
+		lib::MTHandle<JobInstance> job;
 		{
 			SPT_PROFILER_SCOPE("Allocate Job");
-			job = lib::MakeShared<JobInstance>(name);
+			job = new JobInstance(name);
 		}
 		job->Init(std::forward<TCallable>(callable), priority, flags);
-		return lib::Ref(job);
+		return job;
+	}
+
+	template<typename TCallable>
+	static auto InitLocal(JobInstance& job, TCallable&& callable, EJobPriority::Type priority, EJobFlags flags, Byte* resultPtr = nullptr)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		job.AddRef();
+
+		using CallableResult = impl::JobInvokeResult<TCallable>::Type;
+
+		auto callableWrapper = [&callable, resultPtr]()
+		{
+			if constexpr (std::is_same_v<CallableResult, void>)
+			{
+				callable();
+			}
+			else
+			{
+				lib::TypeStorage<CallableResult>* resultStorage = resultPtr;
+				resultStorage.Construct(callable());
+			}
+		};
+
+		job.Init(callableWrapper, priority, flags);
 	}
 };
 
@@ -701,7 +868,7 @@ class Job
 {
 public:
 
-	explicit Job(lib::SharedRef<JobInstance> inInstance)
+	explicit Job(lib::MTHandle<JobInstance> inInstance)
 		: m_instance(std::move(inInstance))
 	{ }
 
@@ -710,7 +877,7 @@ public:
 		m_instance->Wait();
 	}
 
-	const lib::SharedRef<JobInstance>& GetJobInstance() const
+	const lib::MTHandle<JobInstance>& GetJobInstance() const
 	{
 		return m_instance;
 	}
@@ -718,13 +885,20 @@ public:
 	template<typename TCallable>
 	Job Then(const char* name, TCallable&& callable)
 	{
-		lib::SharedRef<JobInstance> instance =  JobInstanceBuilder::Build(name, callable, Prerequisites(*this), m_instance->GetPriority(), m_instance->GetFlags());
+		lib::MTHandle<JobInstance> instance =  JobInstanceBuilder::Build(name, callable, Prerequisites(*this), m_instance->GetPriority(), m_instance->GetFlags());
 		return Job(std::move(instance));
+	}
+
+protected:
+
+	void ClearJobHandle()
+	{
+		m_instance.Reset();
 	}
 
 private:
 
-	lib::SharedRef<JobInstance> m_instance;
+	lib::MTHandle<JobInstance> m_instance;
 };
 
 
@@ -733,7 +907,7 @@ class JobWithResult : public Job
 {
 public:
 
-	explicit JobWithResult(lib::SharedRef<JobInstance> inInstance)
+	explicit JobWithResult(lib::MTHandle<JobInstance> inInstance)
 		: Job(std::move(inInstance))
 	{ }
 
@@ -746,6 +920,33 @@ public:
 	{
 		Wait();
 		return GetJobInstance()->GetResultAs<TResultType>();
+	}
+};
+
+
+template<typename TJobType>
+class LocalJob : public TJobType
+{
+protected:
+
+	using Super = TJobType;
+
+public:
+
+	explicit LocalJob(lib::MTHandle<JobInstance> inInstance)
+		: Super(inInstance)
+	{
+		inInstance->AddRef();
+	}
+
+	~LocalJob()
+	{
+		JobInstance& job = *TJobType::GetJobInstance();
+		job->Wait();
+		TJobType::ClearJobHandle();
+
+		const Bool canBeDestroed = job.Release();
+		SPT_CHECK(canBeDestroed);
 	}
 };
 
@@ -765,7 +966,7 @@ struct JobInstanceGetter<Job>
 {
 public:
 
-	static lib::SharedPtr<JobInstance> GetInstance(const Job& job)
+	static lib::MTHandle<JobInstance> GetInstance(const Job& job)
 	{
 		return job.GetJobInstance();
 	}
@@ -774,12 +975,26 @@ public:
 template<typename TResultType>
 struct JobInstanceGetter<JobWithResult<TResultType>> : public JobInstanceGetter<Job> {};
 
+template<typename TUnderlyingJobType>
+struct JobInstanceGetter<LocalJob<TUnderlyingJobType>> : public JobInstanceGetter<TUnderlyingJobType> {};
+
 template<>
-struct JobInstanceGetter<lib::SharedPtr<JobInstance>>
+struct JobInstanceGetter<lib::MTHandle<JobInstance>>
 {
 public:
 
-	static lib::SharedPtr<JobInstance> GetInstance(const lib::SharedPtr<JobInstance>& job)
+	static lib::MTHandle<JobInstance> GetInstance(const lib::MTHandle<JobInstance>& job)
+	{
+		return job;
+	}
+};
+
+template<>
+struct JobInstanceGetter<JobInstance*>
+{
+public:
+
+	static lib::MTHandle<JobInstance> GetInstance(JobInstance* job)
 	{
 		return job;
 	}
@@ -792,21 +1007,22 @@ class JobBuilder
 {
 public:
 
-	template<typename TCallable>
-	static auto Build(const lib::SharedRef<JobInstance>& job)
+	template<typename TCallable, Bool isLocal = false>
+	static auto Build(lib::MTHandle<JobInstance> job)
 	{
-		return CreateJobWrapper<TCallable>(job);
+		return CreateJobWrapper<TCallable, isLocal>(std::move(job));
 	}
 
 private:
 
-	template<typename TCallable>
-	static auto CreateJobWrapper(const lib::SharedRef<JobInstance>& jobInstance)
+	template<typename TCallable, Bool isLocal>
+	static auto CreateJobWrapper(lib::MTHandle<JobInstance> jobInstance)
 	{
 		using CallableResult = impl::JobInvokeResult<TCallable>::Type;
-		using JobType = std::conditional_t<std::is_same_v<CallableResult, void>, Job, JobWithResult<CallableResult>>;
+		using UnderlyingJobType = std::conditional_t<std::is_same_v<CallableResult, void>, Job, JobWithResult<CallableResult>>;
+		using JobType = std::conditional_t<isLocal, LocalJob<UnderlyingJobType>, UnderlyingJobType>;
 
-		return JobType(jobInstance);
+		return JobType(std::move(jobInstance));
 	}
 };
 

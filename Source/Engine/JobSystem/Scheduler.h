@@ -2,6 +2,7 @@
 
 #include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
+#include "Utility/RefCounted.h"
 
 
 namespace spt::js
@@ -27,7 +28,9 @@ public:
 	static void Init(const SchedulerInitParams& initParams);
 	static void Shutdown();
 
-	static void ScheduleJob(lib::SharedPtr<JobInstance> job);
+	static void ScheduleJob(lib::MTHandle<JobInstance> job);
+
+	static Bool TryExecuteScheduledJob(Bool allowLocalQueueJobs);
 
 private:
 

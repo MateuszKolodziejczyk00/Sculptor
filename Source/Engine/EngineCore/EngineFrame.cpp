@@ -238,72 +238,66 @@ void EngineFramesManager::ExecuteFrameImpl()
 	m_renderingFrame->SetFrameState(EFrameState::Rendering);
 	m_gpuFrame->SetFrameState(EFrameState::GPU);
 
-	js::Launch("Pre Execute Frame",
-			   [this]
-			   {
-				   m_preExecuteFrame.ExecuteIfBound();
-			   },
-			   js::EJobPriority::High,
-			   js::EJobFlags::Inline);
+	js::LaunchInline("Pre Execute Frame",
+					 [this]
+					 {
+						 m_preExecuteFrame.ExecuteIfBound();
+					 });
 	
-	js::Launch("Execute Frame",
-			   [ this ]
-			   {
-				   js::AddNested("Execute Simulation",
-								 [this]
-								 {
-									 m_executeSimulationFrame.ExecuteIfBound(*m_simulationFrame);
-								     m_simulationFrame->FinalizeSimulation();
-								 },
-								 js::EJobPriority::High);
+	js::LaunchInline("Execute Frame",
+					 [this]
+					 {
+						 js::AddNested("Execute Simulation",
+									   [this]
+									   {
+										   m_executeSimulationFrame.ExecuteIfBound(*m_simulationFrame);
+										   m_simulationFrame->FinalizeSimulation();
+									   },
+									   js::EJobPriority::High);
 
-				   js::AddNested("Execute Rendering",
-								 [this]
-								 {
-									 m_executeRenderingFrame.ExecuteIfBound(*m_renderingFrame);
-								     m_renderingFrame->FinalizeRendering();
-								 },
-								 js::EJobPriority::High);
+						 js::AddNested("Execute Rendering",
+									   [this]
+									   {
+										   m_executeRenderingFrame.ExecuteIfBound(*m_renderingFrame);
+										   m_renderingFrame->FinalizeRendering();
+									   },
+									   js::EJobPriority::High);
 
-				   js::AddNested("Execute GPU",
-								 [this]
-								 {
-									 m_gpuFrame->FinalizeGPU();
-								 },
-								 js::EJobPriority::High);
+						 js::AddNested("Execute GPU",
+									   [this]
+									   {
+										   m_gpuFrame->FinalizeGPU();
+									   },
+									   js::EJobPriority::High);
 
-			   },
-			   js::EJobPriority::Default,
-			   js::EJobFlags::Inline);
+					 });
 
-	js::Launch("End Frame",
-			   [ this ]
-			   {
-				   js::AddNested("End Simulation",
-								 [this]
-								 {
-									 m_simulationFrame->EndSimulation();
-								 },
-								 js::EJobPriority::High);
+	js::LaunchInline("End Frame",
+					 [this]
+					 {
+						 js::AddNested("End Simulation",
+									   [this]
+									   {
+										   m_simulationFrame->EndSimulation();
+									   },
+									   js::EJobPriority::High);
 
-				   js::AddNested("End Rendering",
-								 [this]
-								 {
-									 m_renderingFrame->EndRendering();
-								 },
-								 js::EJobPriority::High);
+						 js::AddNested("End Rendering",
+									   [this]
+									   {
+										   m_renderingFrame->EndRendering();
+									   },
+									   js::EJobPriority::High);
 
-				   js::AddNested("End GPU",
-								 [this]
-								 {
-									 m_gpuFrame->EndGPU();
-									 m_gpuFrame->EndFrame();
-								 },
-								 js::EJobPriority::High);
+						 js::AddNested("End GPU",
+									   [this]
+									   {
+										   m_gpuFrame->EndGPU();
+										   m_gpuFrame->EndFrame();
+									   },
+									   js::EJobPriority::High);
 
-			   },
-			   js::EJobPriority::Default,
-			   js::EJobFlags::Inline);
+					 });
 
 	FrameDefinition frameDef;
 	frameDef.deltaTime	= Engine::Get().BeginFrame();
