@@ -410,7 +410,7 @@ public:
 
 		if (loadedState == EJobState::Pending)
 		{
-			TryExecutePrerequisites();
+			TryExecutePrerequisites_Locked();
 
 			if (m_remainingPrerequisitesNum.load() == 0)
 			{
@@ -451,7 +451,7 @@ public:
 		else if (loadedState == EJobState::Executing || loadedState == EJobState::Executed)
 		{
 			// Try executing nested jobs
-			TryExecutePrerequisites();
+			TryExecutePrerequisites_Locked();
 		}
 		else if (loadedState == EJobState::Finishing)
 		{
@@ -616,22 +616,6 @@ private:
 		}
 	}
 
-	void TryExecutePrerequisites() const
-	{
-		if (!CanFinishExecution())
-		{
-			const Bool canUseLockless = m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Executing;
-			if (canUseLockless)
-			{
-				TryExecutePrerequisites_Lockless(m_prerequisites);
-			}
-			else
-			{
-				TryExecutePrerequisites_Locked();
-			}
-		}
-	}
-
 	void TryExecutePrerequisites_Lockless(const lib::DynamicArray<lib::MTHandle<JobInstance>>& prerequisitesToExecute) const
 	{
 		for (const lib::MTHandle<JobInstance>& prerequisite : m_prerequisites)
@@ -702,7 +686,10 @@ private:
 
 		if (finishThisThread)
 		{
-			m_prerequisites.clear();
+			{
+				const lib::LockGuard lockGuard(m_prerequisitesLock);
+				m_prerequisites.clear();
+			}
 
 			lib::DynamicArray<lib::MTHandle<JobInstance>> consequentsCopy;
 			{
