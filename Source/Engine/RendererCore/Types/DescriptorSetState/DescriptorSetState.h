@@ -61,6 +61,25 @@ struct ShaderBindingMetaData
 };
 
 
+class ShaderCompilationAdditionalArgsBuilder
+{
+public:
+
+	explicit ShaderCompilationAdditionalArgsBuilder(lib::DynamicArray<lib::HashedString>& macroDefinitions)
+		: m_macroDefinitions(macroDefinitions)
+	{  }
+
+	void AddDescriptorSet(const lib::HashedString& dsName)
+	{
+		m_macroDefinitions.emplace_back("DS_" + dsName.ToString());
+	}
+
+private:
+
+	lib::DynamicArray<lib::HashedString>& m_macroDefinitions;
+};
+
+
 class RENDERER_CORE_API DescriptorSetUpdateContext
 {
 public:
@@ -97,6 +116,8 @@ public:
 	void Initialize(DescriptorSetState& owningState) {}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
+
+	static void BuildAdditionalShaderCompilationArgs(ShaderCompilationAdditionalArgsBuilder& builder) {}
 
 	// Children classes MUST also define this function (with arbitrary N)
 	//static constexpr std::array<ShaderBindingMetaData, N> GetShaderBindingsMetaData();
@@ -599,17 +620,34 @@ consteval auto BuildDescriptorSetShaderCode()
 }
 
 template<typename TDSType>
+void BuildAdditionalShaderCompilationArgs(ShaderCompilationAdditionalArgsBuilder& additionalArgsBuilder)
+{
+	using HeadBindingHandle = typename TDSType::ReflHeadBindingType;
+	ForEachBinding<HeadBindingHandle>([&additionalArgsBuilder]<typename TCurrentBindingHandle>() mutable
+	{
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+
+		CurrentBindingType::BuildAdditionalShaderCompilationArgs(additionalArgsBuilder);
+	});
+}
+
+template<typename TDSType>
 sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 {
 	SPT_PROFILER_FUNCTION();
 
 	sc::DescriptorSetCompilationMetaData dsMetaData;
 
+	ShaderCompilationAdditionalArgsBuilder additionalArgsBuilder(dsMetaData.additionalMacros);
+	additionalArgsBuilder.AddDescriptorSet(TDSType::GetDescriptorSetName());
+
 	using HeadBindingHandle = typename TDSType::ReflHeadBindingType;
 
-	ForEachBinding<HeadBindingHandle>([shaderBindingIdx = 0u, &dsMetaData]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<HeadBindingHandle>([shaderBindingIdx = 0u, &dsMetaData, &additionalArgsBuilder]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+
+		CurrentBindingType::BuildAdditionalShaderCompilationArgs(additionalArgsBuilder);
 
 		const auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
 

@@ -12,7 +12,6 @@
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "DescriptorSetBindings/ConditionalBinding.h"
 #include "DescriptorSetBindings/AppendConsumeBufferBinding.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
@@ -319,11 +318,22 @@ DDGIRenderSystem::DDGIRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::ForwardOpaque);
 }
 
-void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecsb)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecsb);
+
+	for (ViewRenderingSpec* view : viewSpecsb)
+	{
+		SPT_CHECK(!!view);
+		RenderPerView(graphBuilder, renderScene, *view);
+	}
+}
+
+void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
 
 	if (viewSpec.SupportsStage(ERenderStage::GlobalIllumination))
 	{

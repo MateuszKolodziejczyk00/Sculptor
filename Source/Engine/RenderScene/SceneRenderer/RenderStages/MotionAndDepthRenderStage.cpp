@@ -3,7 +3,6 @@
 #include "RenderGraphBuilder.h"
 #include "ResourcesManager.h"
 #include "Common/ShaderCompilationInput.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "View/ViewRenderingSpec.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SamplerBinding.h"

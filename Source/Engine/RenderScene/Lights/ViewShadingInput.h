@@ -11,6 +11,7 @@
 #include "LightTypes.h"
 #include "Atmosphere/AtmosphereTypes.h"
 #include "RHICore/RHISamplerTypes.h"
+#include "Shadows/ShadowsRenderingTypes.h"
 
 
 namespace spt::rsc
@@ -42,6 +43,9 @@ DS_BEGIN(ViewShadingInputDS, rg::RGDescriptorSetState<ViewShadingInputDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_ambientOcclusionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
+	
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<8, true>),								u_shadowMapCascades)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),				u_shadowMapCascadeViews)
 DS_END();
 
 

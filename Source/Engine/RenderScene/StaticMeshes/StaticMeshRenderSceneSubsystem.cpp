@@ -13,7 +13,7 @@ namespace spt::rsc
 // SMBatchesBuilder ==============================================================================
 
 SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches)
-	: batches(inBatches)
+	: m_batches(inBatches)
 { }
 
 void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots)
@@ -25,7 +25,7 @@ void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInsta
 
 		const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
 
-		StaticMeshBatchDefinition& batch = GetBatchForMaterial(materialProxy.materialShadersHash);
+		BatchBuildData& batch = GetBatchBuildDataForMaterial(materialProxy.materialShadersHash);
 
 		const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
 
@@ -44,47 +44,60 @@ void SMBatchesBuilder::FinalizeBatches()
 {
 	SPT_PROFILER_FUNCTION();
 
-	for (StaticMeshBatchDefinition& batch : batches)
+	m_batches.reserve(m_batches.size() + m_batchBuildDatas.size());
+	for (const BatchBuildData& batchBuildData : m_batchBuildDatas)
 	{
-		CreateBatchDescriptorSet(batch);
+		if (batchBuildData.IsValid())
+		{
+			m_batches.emplace_back(FinalizeBatchDefinition(batchBuildData));
+		}
 	}
 }
 
-StaticMeshBatchDefinition& SMBatchesBuilder::GetBatchForMaterial(mat::MaterialShadersHash materialShaderHash)
+SMBatchesBuilder::BatchBuildData& SMBatchesBuilder::GetBatchBuildDataForMaterial(mat::MaterialShadersHash materialShaderHash)
 {
-	const auto it = materialShaderHashToBatchIdx.find(materialShaderHash);
-	if (it != materialShaderHashToBatchIdx.end())
+	const auto it = m_materialShaderHashToBatchIdx.find(materialShaderHash);
+	if (it != m_materialShaderHashToBatchIdx.end())
 	{
-		return batches[it->second];
+		return m_batchBuildDatas[it->second];
 	}
 	else
 	{
-		const Uint32 batchIdx = static_cast<Uint32>(batches.size());
-		materialShaderHashToBatchIdx[materialShaderHash] = batchIdx;
+		const Uint32 batchIdx = static_cast<Uint32>(m_batches.size());
+		m_materialShaderHashToBatchIdx[materialShaderHash] = batchIdx;
 
-		batches.emplace_back();
-		batches[batchIdx].materialShadersHash = materialShaderHash;
+		BatchBuildData& batchData = m_batchBuildDatas.emplace_back();
+		batchData.materialShadersHash = materialShaderHash;
 
-		return batches[batchIdx];
+		return batchData;
 	}
 }
 
-void SMBatchesBuilder::CreateBatchDescriptorSet(StaticMeshBatchDefinition& batch) const
+StaticMeshBatchDefinition SMBatchesBuilder::FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const
 {
-	SMGPUBatchData gpuBatchData;
-	gpuBatchData.elementsNum = static_cast<Uint32>(batch.batchElements.size());
+	StaticMeshBatchDefinition batchDef;
 
-	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batch.batchElements.size();
+	batchDef.batchElementsNum    = static_cast<Uint32>(batchBuildData.batchElements.size());
+	batchDef.maxMeshletsNum      = batchBuildData.maxMeshletsNum;
+	batchDef.maxTrianglesNum     = batchBuildData.maxTrianglesNum;
+	batchDef.materialShadersHash = batchBuildData.materialShadersHash;
+
+	SMGPUBatchData gpuBatchData;
+	gpuBatchData.elementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
+
+	const Uint64 batchDataSize = sizeof(StaticMeshBatchElement) * batchBuildData.batchElements.size();
 	const rhi::BufferDefinition batchBufferDef(batchDataSize, rhi::EBufferUsage::Storage);
 	const lib::SharedRef<rdr::Buffer> batchBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("StaticMeshesBatch"), batchBufferDef, rhi::EMemoryUsage::CPUToGPU);
 
-	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batch.batchElements.data()), batchDataSize);
+	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchDataSize);
 
 	const lib::SharedRef<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
-	batchDS->u_batchElements	= batchBuffer->CreateFullView();
-	batchDS->u_batchData		= gpuBatchData;
+	batchDS->u_batchElements = batchBuffer->CreateFullView();
+	batchDS->u_batchData     = gpuBatchData;
 
-	batch.batchDS = batchDS;
+	batchDef.batchDS = batchDS;
+
+	return batchDef;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,34 +107,20 @@ StaticMeshRenderSceneSubsystem::StaticMeshRenderSceneSubsystem(RenderScene& owni
 	: Super(owningScene)
 { }
 
-lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForView(const RenderView& view) const
+void StaticMeshRenderSceneSubsystem::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::DynamicArray<StaticMeshBatchDefinition> batches;
+	Super::Update();
 
-	SMBatchesBuilder batchesBuilder(batches);
+	m_cachedSMBatches = CacheStaticMeshBatches();
+}
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, mat::MaterialSlotsComponent>();
-	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
-	{
-		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+const lib::DynamicArray<StaticMeshBatchDefinition>& StaticMeshRenderSceneSubsystem::BuildBatchesForView(const RenderView& view) const
+{
+	SPT_PROFILER_FUNCTION();
 
-		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
-
-		const math::Vector3f boundingSphereCenterWS = transformComp.GetTransform() * meshRenderingDef.boundingSphereCenter;
-		const Real32 boundingSphereRadius = meshRenderingDef.boundingSphereRadius * transformComp.GetUniformScale();
-
-		if (view.IsSphereOverlappingFrustum(boundingSphereCenterWS, boundingSphereRadius))
-		{
-			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
-			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
-		}
-	}
-
-	batchesBuilder.FinalizeBatches();
-
-	return batches;
+	return m_cachedSMBatches.batches;
 }
 
 lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForPointLight(const PointLightData& pointLight) const
@@ -152,6 +151,31 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 	batchesBuilder.FinalizeBatches();
 
 	return batches;
+}
+
+StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::CacheStaticMeshBatches() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	CachedSMBatches cachedBatches;
+
+	SMBatchesBuilder batchesBuilder(cachedBatches.batches);
+
+	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityGPUDataHandle, mat::MaterialSlotsComponent>();
+	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
+	{
+		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+
+		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
+
+		const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
+		batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
+	}
+
+	batchesBuilder.FinalizeBatches();
+
+	return cachedBatches;
+
 }
 
 } // spt::rsc

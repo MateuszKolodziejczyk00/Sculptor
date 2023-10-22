@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 #include "DDGITypes.h"
 #include "RGResources/RGResourceHandles.h"
 
@@ -31,21 +31,23 @@ struct DDGIUpdateParameters
 };
 
 
-class RENDER_SCENE_API DDGIRenderSystem : public RenderSystem
+class RENDER_SCENE_API DDGIRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSystem;
+	using Super = SceneRenderSystem;
 
 public:
 
 	DDGIRenderSystem();
 
-	// Begin RenderSystem overrides
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
-	// End RenderSystem overrides
+	// Begin SceneRenderSystem overrides
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpec) override;
+	// End SceneRenderSystem overrides
 
 private:
+
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
 

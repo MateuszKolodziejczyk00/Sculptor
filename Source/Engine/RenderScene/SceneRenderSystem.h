@@ -2,7 +2,7 @@
 
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
-#include "SceneRenderingTypes.h"
+#include "SceneRenderer/SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
 #include "View/ViewRenderingSpec.h"
 
@@ -18,20 +18,19 @@ class RenderScene;
 class RenderView;
 
 
-class RENDER_SCENE_API RenderSystem : public std::enable_shared_from_this<RenderSystem>
+class RENDER_SCENE_API SceneRenderSystem : public std::enable_shared_from_this<SceneRenderSystem>
 {
 public:
 
-	RenderSystem();
-	virtual ~RenderSystem() = default;
+	SceneRenderSystem();
+	virtual ~SceneRenderSystem() = default;
 
 	void Initialize(RenderScene& renderScene);
 	void Deinitialize(RenderScene& renderScene);
 
-	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) {};
+	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) {};
 
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) {};
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) {};
 	
 	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) {};
 

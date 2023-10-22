@@ -2,7 +2,6 @@
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "RenderScene.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 
 namespace spt::rsc
 {

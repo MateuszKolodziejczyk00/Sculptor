@@ -1,6 +1,6 @@
 #include "SceneRenderer.h"
 #include "RenderScene.h"
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 #include "View/RenderView.h"
 #include "Transfers/UploadUtils.h"
 #include "RenderStages/GlobalIlluminationRenderStage.h"
@@ -18,7 +18,6 @@
 #include "RenderStages/VolumetricFogRenderStage.h"
 #include "RenderStages/PostProcessPreAARenderStage.h"
 #include "RenderGraphBuilder.h"
-#include "SceneRendererTypes.h"
 #include "Parameters/SceneRendererParams.h"
 
 namespace spt::rsc
@@ -70,22 +69,30 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	{
 		viewSpec->GetRenderView().OnBeginRendering();
 	}
-
-	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& renderSystems = scene.GetRenderSystems();
-	for (const lib::SharedRef<RenderSystem>& renderSystem : renderSystems)
-	{
-		renderSystem->RenderPerFrame(graphBuilder, scene);
-	}
 	
-	for (const lib::SharedRef<RenderSystem>& renderSystem : renderSystems)
+	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
+		const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& viewSystems = viewSpec->GetRenderView().GetRenderSystems();
+		for (const lib::SharedRef<ViewRenderSystem>& viewSystem : viewSystems)
+		{
+			viewSystem->PreRenderFrame(graphBuilder, scene, *viewSpec);
+		}
+	}
+
+	const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& renderSystems = scene.GetRenderSystems();
+	for (const lib::SharedRef<SceneRenderSystem>& renderSystem : renderSystems)
+	{
+		lib::DynamicArray<ViewRenderingSpec*> viewSpecs;
+
 		for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 		{
 			if (lib::HasAnyFlag(viewSpec->GetSupportedStages(), renderSystem->GetSupportedStages()))
 			{
-				renderSystem->RenderPerView(graphBuilder, scene, *viewSpec);
+				viewSpecs.emplace_back(viewSpec);
 			}
 		}
+		
+		renderSystem->RenderPerFrame(graphBuilder, scene, viewSpecs);
 	}
 
 	// Flush all writes that happened during prepare phrase
@@ -119,7 +126,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	renderer_utils::ProcessRenderStage<HDRResolveRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
-	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
+	for (const lib::SharedPtr<SceneRenderSystem>& renderSystem : renderSystems)
 	{
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
@@ -140,41 +147,44 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	return output;
 }
 
-lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const
+lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& mainRenderView, SizeType& OUT mainViewIdx) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	mainViewIdx = idxNone<SizeType>;
 
-	lib::DynamicArray<RenderView*> views;
-	views.reserve(4);
-	views.emplace_back(&view);
+	RenderViewsCollector viewsCollector;
+	viewsCollector.AddRenderView(mainRenderView);
 
-	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& renderSystems = scene.GetRenderSystems();
-	for (const lib::SharedPtr<RenderSystem>& renderSystem : renderSystems)
+	const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& renderSystems = scene.GetRenderSystems();
+	for (const lib::SharedPtr<SceneRenderSystem>& renderSystem : renderSystems)
 	{
-		renderSystem->CollectRenderViews(scene, view, INOUT views);
+		renderSystem->CollectRenderViews(scene, mainRenderView, INOUT viewsCollector);
 	}
 
-	// Remove duplicated views
-	std::sort(std::begin(views), std::end(views));
-	views.erase(std::unique(std::begin(views), std::end(views)), std::end(views));
+	lib::DynamicArray<ViewRenderingSpec*> viewRenderingSpecs;
+	viewRenderingSpecs.reserve(viewsCollector.GetViewsNum());
 
-	lib::DynamicArray<ViewRenderingSpec*> viewsEntryPoints(views.size(), nullptr);
-	for (SizeType viewIdx = 0; viewIdx < views.size(); ++viewIdx)
+	while (viewsCollector.HasAnyViewsToExtract())
 	{
-		viewsEntryPoints[viewIdx] = graphBuilder.Allocate<ViewRenderingSpec>();
-		viewsEntryPoints[viewIdx]->Initialize(*views[viewIdx]);
-
-		if (views[viewIdx] == &view)
+		for (RenderView* renderView : viewsCollector.ExtractNewRenderViews())
 		{
-			mainViewIdx = viewIdx;
+			ViewRenderingSpec* viewSpec = graphBuilder.Allocate<ViewRenderingSpec>();
+			viewSpec->Initialize(*renderView);
+			viewRenderingSpecs.emplace_back(viewSpec);
+
+			renderView->CollectRenderViews(scene, INOUT viewsCollector);
+
+			if (renderView == &mainRenderView)
+			{
+				mainViewIdx = viewRenderingSpecs.size() - 1;
+			}
 		}
 	}
 
 	SPT_CHECK(mainViewIdx != idxNone<SizeType>);
 
-	return viewsEntryPoints;
+	return viewRenderingSpecs;
 }
 
 } // spt::rsc

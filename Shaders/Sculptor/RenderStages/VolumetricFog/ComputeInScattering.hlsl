@@ -2,10 +2,6 @@
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-#ifndef ENABLE_RAY_TRACING
-#error "ENABLE_RAY_TRACING must be defined"
-#endif // ENABLE_RAY_TRACING
-
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -13,67 +9,12 @@
 [[descriptor_set(ShadowMapsDS, 3)]]
 [[descriptor_set(ComputeInScatteringDS, 4)]]
 
-#if ENABLE_RAY_TRACING
-[[descriptor_set(InScatteringAccelerationStructureDS, 5)]]
-#endif // ENABLE_RAY_TRACING
-
 #include "Lights/Lighting.hlsli"
 
 struct CS_INPUT
 {
     uint3 globalID : SV_DispatchThreadID;
 };
-
-
-float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
-{
-    float3 inScattering = 0.f;
-
-    const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, params.worldLocation);
-    
-    for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
-    {
-        const DirectionalLightGPUData directionalLight = u_directionalLights[i];
-
-        const float3 illuminance = directionalLight.color * directionalLight.illuminance;
-
-        if (any(illuminance > 0.f))
-        {
-            bool isInShadow = false;
-
-#if ENABLE_RAY_TRACING
-
-            if(u_volumetricRayTracedShadowsParams.enableDirectionalLightsVolumetricRTShadows)
-            {
-                RayDesc rayDesc;
-                rayDesc.Origin      = params.worldLocation;
-                rayDesc.Direction   = -directionalLight.direction;
-                rayDesc.TMin        = u_volumetricRayTracedShadowsParams.shadowRayMinT;
-                rayDesc.TMax        = u_volumetricRayTracedShadowsParams.shadowRayMaxT;
-                
-                RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> shadowRayQuery;
-                shadowRayQuery.TraceRayInline(u_sceneAccelerationStructure, 0, 0xFF, rayDesc);
-
-                while (shadowRayQuery.Proceed()) {};
-                
-                isInShadow = (shadowRayQuery.CommittedStatus() != COMMITTED_NOTHING);
-            }
-
-#endif // ENABLE_RAY_TRACING
-
-            if (!isInShadow)
-            {
-                const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
-
-                inScattering += transmittance * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
-            }
-        }
-    }
-
-    inScattering *= params.inScatteringColor;
-
-    return inScattering;
-}
 
 
 [numthreads(4, 4, 4)]
@@ -123,12 +64,6 @@ void ComputeInScatteringCS(CS_INPUT input)
         params.inScatteringColor        = scatteringExtinction.rgb;
 
         float3 inScattering = ComputeLocalLightsInScattering(params);
-
-        if(u_inScatteringParams.enableDirectionalLightsInScattering)
-        {
-            params.phaseFunctionAnisotrophy = u_inScatteringParams.dirLightsPhaseFunctionAnisotrophy;
-            inScattering += ComputeDirectionalLightsInScattering(params);
-        }
 
         float4 inScatteringExtinction = float4(inScattering, scatteringExtinction.w);
 

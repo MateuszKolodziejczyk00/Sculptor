@@ -115,7 +115,7 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 	// Create batch info
 
 	batch.batchDS				= batchDef.batchDS;
-	batch.batchedSubmeshesNum	= static_cast<Uint32>(batchDef.batchElements.size());
+	batch.batchedSubmeshesNum	= batchDef.batchElementsNum;
 	batch.materialShadersHash	= batchDef.materialShadersHash;
 
 	// Create buffers

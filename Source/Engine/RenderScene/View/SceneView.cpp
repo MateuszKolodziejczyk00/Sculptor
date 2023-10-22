@@ -67,17 +67,17 @@ void SceneView::SetShadowPerspectiveProjection(Real32 fovRadians, Real32 aspect,
 void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)
 {
 	const Real32 a = 2.f / (right - left);
-	const Real32 b = 2.f / (top - bottom);
-	const Real32 c = 2.f / (far - near);
+	const Real32 b = -2.f / (top - bottom);
+	const Real32 c = -1.f / (far - near);
 
 	const Real32 x = -(right + left) / (right - left);
 	const Real32 y = -(top + bottom) / (top - bottom);
-	const Real32 z = -(far + near) / (far - near);
+	const Real32 z = 1.f + near / (far - near);
 
 	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	x	},
 										{0.f,	0.f,	b,		y	},
 										{c,		0.f,	0.f,	z	},
-										{0.f,	0.f,	0.f,	1.f	} };
+										{0.f,	0.f,	0.f,	1.f } };
 
 	m_nearPlane	= near;
 	m_farPlane	= far;
@@ -111,6 +111,11 @@ void SceneView::Rotate(const math::AngleAxisf& delta)
 void SceneView::SetRotation(const math::Quaternionf& newRotation)
 {
 	m_rotation = newRotation;
+}
+
+void SceneView::SetRotation(const math::Vector3f& forwardVector)
+{
+	m_rotation = math::Quaternionf::FromTwoVectors(math::Vector3f(1.f, 0.f, 0.f), forwardVector);
 }
 
 const math::Quaternionf& SceneView::GetRotation() const
@@ -153,9 +158,52 @@ const SceneViewData& SceneView::GetPrevFrameRenderingData() const
 	return m_prevFrameRenderingData;
 }
 
+Bool SceneView::IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const
+{
+	math::Vector4f center4 = math::Vector4f::Ones();
+	center4.head<3>() = center;
+
+    for(Uint32 planeIdx = 0; planeIdx < 4; ++planeIdx)
+    {
+		if (m_viewCullingData.cullingPlanes[planeIdx].dot(center4) < -radius)
+		{
+			return false;
+		}
+    }
+
+	return true;
+}
+
+math::Matrix4f SceneView::GenerateViewMatrix() const
+{
+	const math::Vector3f forward = m_rotation * math::Vector3f::UnitX();
+	const math::Vector3f up = m_rotation * math::Vector3f::UnitZ();
+
+	const math::Matrix3f inverseRotation = m_rotation.toRotationMatrix().transpose();
+	const math::Vector3f m_invLocation = inverseRotation * -m_viewLocation;
+
+	math::Matrix4f viewMatrix = math::Matrix4f::Zero();
+	viewMatrix.topLeftCorner<3, 3>() = inverseRotation;
+	viewMatrix.topRightCorner<3, 1>() = m_invLocation;
+	viewMatrix(3, 3) = 1.f;
+
+	return viewMatrix;
+}
+
 math::Matrix4f SceneView::GenerateViewProjectionMatrix() const
 {
 	return m_projectionMatrix * GenerateViewMatrix();
+}
+
+math::Matrix4f SceneView::GenerateInverseViewProjectionMatrix() const
+{
+	return GenerateViewProjectionMatrix().inverse();
+}
+
+Real32 SceneView::ComputeProjectedDepth(Real32 linearDepth) const
+{
+	const math::Vector4f projected = m_projectionMatrix * math::Vector4f(linearDepth, 0.f, 0.f, 1.f);
+	return projected.z() / projected.w();
 }
 
 void SceneView::SetJittering(Bool enableJittering)
@@ -221,38 +269,6 @@ void SceneView::UpdateCullingData()
 		const Real32 norm = cullingPlane.head<3>().norm();
 		cullingPlane /= norm;
 	}
-}
-
-math::Matrix4f SceneView::GenerateViewMatrix() const
-{
-	const math::Vector3f forward = m_rotation * math::Vector3f::UnitX();
-	const math::Vector3f up = m_rotation * math::Vector3f::UnitZ();
-
-	const math::Matrix3f inverseRotation = m_rotation.toRotationMatrix().transpose();
-	const math::Vector3f m_invLocation = inverseRotation * -m_viewLocation;
-
-	math::Matrix4f viewMatrix = math::Matrix4f::Zero();
-	viewMatrix.topLeftCorner<3, 3>() = inverseRotation;
-	viewMatrix.topRightCorner<3, 1>() = m_invLocation;
-	viewMatrix(3, 3) = 1.f;
-
-	return viewMatrix;
-}
-
-Bool SceneView::IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const
-{
-	math::Vector4f center4 = math::Vector4f::Ones();
-	center4.head<3>() = center;
-
-    for(Uint32 planeIdx = 0; planeIdx < 4; ++planeIdx)
-    {
-		if (m_viewCullingData.cullingPlanes[planeIdx].dot(center4) < -radius)
-		{
-			return false;
-		}
-    }
-
-	return true;
 }
 
 } // spt::rsc

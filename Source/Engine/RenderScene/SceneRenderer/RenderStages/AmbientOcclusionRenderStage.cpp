@@ -1,5 +1,4 @@
 #include "AmbientOcclusionRenderStage.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGDescriptorSetState.h"

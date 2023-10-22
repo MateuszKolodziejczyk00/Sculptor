@@ -13,12 +13,12 @@
 #include "RenderGraphBuilder.h"
 #include "Common/ShaderCompilationInput.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "EngineFrame.h"
 #include "ViewShadingInput.h"
 #include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
+#include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 
 namespace spt::rsc
 {
@@ -215,6 +215,10 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 		lib::DynamicArray<DirectionalLightGPUData> directionalLightsData;
 		directionalLightsData.reserve(directionalLightsNum);
 
+		const auto cascadedSMSystem = renderView.FindRenderSystem<CascadedShadowMapsViewRenderSystem>();
+
+		lib::DynamicArray<ShadowMapViewData> cascadeViewsData;
+
 		for (const auto& [entity, directionalLight] : directionalLightsView.each())
 		{
 			DirectionalLightGPUData lightGPUData = directionalLight.GenerateGPUData();
@@ -229,8 +233,31 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 					lightGPUData.shadowMaskIdx = shadowMaskIdx;
 				}
 			}
+			if (cascadedSMSystem)
+			{
+				const lib::DynamicArray<ShadowMap>& shadowMapViews = cascadedSMSystem->GetShadowCascadesViews(entity);
+
+				lightGPUData.firstShadowCascadeIdx = static_cast<Uint32>(cascadeViewsData.size());
+				lightGPUData.shadowCascadesNum     = static_cast<Uint32>(shadowMapViews.size());
+
+				for (const ShadowMap& shadowMap : shadowMapViews)
+				{
+					shadingInputDS->u_shadowMapCascades.BindTexture(lib::Ref(shadowMap.textureView));
+					cascadeViewsData.emplace_back(shadowMap.viewData);
+				}
+			}
 
 			directionalLightsData.emplace_back(lightGPUData);
+		}
+
+		if (!cascadeViewsData.empty())
+		{
+			const Uint64 cascadeViewsBufferSize = cascadeViewsData.size() * sizeof(ShadowMapViewData);
+			const rhi::BufferDefinition cascadeViewsBufferDefinition(cascadeViewsBufferSize, rhi::EBufferUsage::Storage);
+			const lib::SharedRef<rdr::Buffer> shadowMapViewsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Cascade Views Data"), cascadeViewsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
+			gfx::UploadDataToBuffer(shadowMapViewsBuffer, 0, reinterpret_cast<const Byte*>(cascadeViewsData.data()), cascadeViewsBufferSize);
+
+			shadingInputDS->u_shadowMapCascadeViews = graphBuilder.AcquireExternalBufferView(shadowMapViewsBuffer->CreateFullView());
 		}
 
 		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);
@@ -386,32 +413,40 @@ LightsRenderSystem::LightsRenderSystem()
 	}
 }
 
-void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews)
+void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::CollectRenderViews(renderScene, mainRenderView, outViews);
+	Super::CollectRenderViews(renderScene, mainRenderView, viewsCollector);
 
 	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
 	{
 		const lib::DynamicArray<RenderView*> shadowMapViewsToRender = shadowMapsManager->GetShadowMapViewsToUpdate();
-		std::copy(std::cbegin(shadowMapViewsToRender), std::cend(shadowMapViewsToRender), std::back_inserter(outViews));
+		for (RenderView* renderView : shadowMapViewsToRender)
+		{
+			SPT_CHECK(!!renderView);
+			viewsCollector.AddRenderView(*renderView);
+		}
 	}
 }
 
-void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
 {
-	Super::RenderPerFrame(graphBuilder, renderScene);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 
 	// Cache shadow maps for each views for this frame
 	CacheShadowMapsDS(graphBuilder, renderScene);
+
+	for (ViewRenderingSpec* viewSpec : viewSpecs)
+	{
+		SPT_CHECK(!!viewSpec);
+		RenderPerView(graphBuilder, renderScene, *viewSpec);
+	}
 }
 
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
-
-	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 
 	// if this view supports directional shadow masks, we need to render them before creating shading input to properly cache shadow masks
 	RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);

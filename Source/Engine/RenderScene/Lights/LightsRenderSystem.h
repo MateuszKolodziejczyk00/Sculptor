@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 #include "Pipelines/PipelineState.h"
 
 
@@ -33,23 +33,24 @@ struct DirectionalLightRuntimeData
 };
 
 
-class RENDER_SCENE_API LightsRenderSystem : public RenderSystem
+class RENDER_SCENE_API LightsRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSystem;
+	using Super = SceneRenderSystem;
 
 public:
 
 	LightsRenderSystem();
 
-	// Begin RenderSystem overrides
-	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT lib::DynamicArray<RenderView*>& outViews) override;
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
-	// End RenderSystem overrides
+	// Begin SceneRenderSystem overrides
+	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& mainRenderView, INOUT RenderViewsCollector& viewsCollector) override;
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
+	// End SceneRenderSystem overrides
 
 private:
+
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 

@@ -38,6 +38,7 @@
 #include "RenderGraphCapturer.h"
 #include "RenderGraphCaptureUIView.h"
 #include "UIElements/ApplicationUI.h"
+#include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 
 namespace spt::ed
 {
@@ -291,6 +292,12 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
+
+	rsc::ShadowCascadesParams cascadesParams;
+	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::VSM;
+	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
+
+
 	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
 	
 	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))

@@ -1,5 +1,4 @@
 #include "DownsampleGeometryTexturesRenderStage.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "RenderGraphBuilder.h"
 #include "RGDescriptorSetState.h"
 #include "Pipelines/PipelineState.h"

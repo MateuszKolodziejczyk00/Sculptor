@@ -297,9 +297,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 
 	SPT_CHECK(m_shadowMaps.empty());
 
-	const rhi::EFragmentFormat shadowMapsFormat = GetShadowMapFormat();
-
-	const auto CreateShadowMapsHelper = [this, shadowMapsFormat](math::Vector2u resolution, SizeType shadowMapsNum, EShadowMapQuality quality)
+	const auto CreateShadowMapsHelper = [this](math::Vector2u resolution, SizeType shadowMapsNum, EShadowMapQuality quality)
 	{
 		const Uint32 prevShadowMapsNum = static_cast<Uint32>(m_shadowMaps.size());
 
@@ -307,11 +305,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMaps()
 		m_shadowMaps.reserve(m_shadowMaps.size() + shadowMapTexturesToCreate);
 		for (Uint32 i = 0; i < shadowMapTexturesToCreate; ++i)
 		{
-			rhi::TextureDefinition textureDef;
-			textureDef.resolution	= resolution;
-			textureDef.usage		= GetShadowMapUsage();
-			textureDef.format		= shadowMapsFormat;
-			textureDef.mipLevels	= GetShadowMapMipsNum();
+			const rhi::TextureDefinition textureDef = ShadowMapUtils::CreateShadowMapDefinition(resolution, GetShadowMappingTechnique());
 			const lib::SharedRef<rdr::Texture> shadowMap = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Shadow Map"), textureDef, rhi::EMemoryUsage::GPUOnly);
 			m_shadowMaps.emplace_back(shadowMap);
 		}
@@ -549,9 +543,10 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 		const math::Vector2u shadowMapResolution = shadowMapTexture->GetResolution2D();
 
 		ShadowMapViewComponent shadowMapViewComp;
-		shadowMapViewComp.shadowMap		= shadowMapTexture;
-		shadowMapViewComp.owningLight	= owningLight;
-		shadowMapViewComp.faceIdx		= static_cast<Uint32>(faceIdx);
+		shadowMapViewComp.shadowMap     = shadowMapTexture;
+		shadowMapViewComp.owningLight   = owningLight;
+		shadowMapViewComp.shadowMapType = EShadowMapType::PointLightFace;
+		shadowMapViewComp.faceIdx       = static_cast<Uint32>(faceIdx);
 		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
 
 		renderView->SetShadowPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, constants::projectionNearPlane, pointLight.radius);
@@ -733,54 +728,6 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	priority += IsLocalLightVisible(light) ? visibilityPriority : 0.f;
 
 	return priority;
-}
-
-const rhi::EFragmentFormat ShadowMapsManagerSubsystem::GetShadowMapFormat() const
-{
-	switch (GetShadowMappingTechnique())
-	{
-	case EShadowMappingTechnique::DPCF:
-		return rhi::EFragmentFormat::D16_UN_Float;
-
-	case EShadowMappingTechnique::MSM:
-		return rhi::EFragmentFormat::RGBA16_UN_Float;
-
-	default:
-		SPT_CHECK_NO_ENTRY();
-		return rhi::EFragmentFormat::None;
-	}
-}
-
-const rhi::ETextureUsage ShadowMapsManagerSubsystem::GetShadowMapUsage() const
-{
-	switch (GetShadowMappingTechnique())
-	{
-	case EShadowMappingTechnique::DPCF:
-		return lib::Flags(rhi::ETextureUsage::DepthSetncilRT, rhi::ETextureUsage::SampledTexture);
-
-	case EShadowMappingTechnique::MSM:
-		return lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
-
-	default:
-		SPT_CHECK_NO_ENTRY();
-		return rhi::ETextureUsage::None;
-	}
-}
-
-const Uint32 ShadowMapsManagerSubsystem::GetShadowMapMipsNum() const
-{
-	switch (GetShadowMappingTechnique())
-	{
-	case EShadowMappingTechnique::DPCF:
-		return 1;
-
-	case EShadowMappingTechnique::MSM:
-		return 5;
-
-	default:
-		SPT_CHECK_NO_ENTRY();
-		return idxNone<Uint32>;
-	}
 }
 
 void ShadowMapsManagerSubsystem::RecreateShadowMaps()

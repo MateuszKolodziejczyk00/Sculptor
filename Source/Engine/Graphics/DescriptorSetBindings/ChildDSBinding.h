@@ -47,6 +47,13 @@ public:
 		return rdr::bindings_refl::GetShaderBindingsMetaData<TDescriptorSet>();
 	}
 
+	static void BuildAdditionalShaderCompilationArgs(rdr::ShaderCompilationAdditionalArgsBuilder& builder)
+	{
+		Super::BuildAdditionalShaderCompilationArgs(builder);
+		builder.AddDescriptorSet(TDescriptorSet::GetDescriptorSetName());
+		rdr::bindings_refl::BuildAdditionalShaderCompilationArgs<TDescriptorSet>(builder);
+	}
+
 	void Set(lib::SharedPtr<TDescriptorSet> ds)
 	{
 		if(m_boundDS != ds)

@@ -1,6 +1,5 @@
 #include "ForwardOpaqueRenderStage.h"
 #include "View/ViewRenderingSpec.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "View/RenderView.h"
 #include "RenderGraphBuilder.h"
 #include "DepthPrepassRenderStage.h"

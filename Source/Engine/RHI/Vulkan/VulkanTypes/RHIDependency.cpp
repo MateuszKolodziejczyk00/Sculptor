@@ -244,9 +244,13 @@ SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rh
 {
 	SPT_PROFILER_FUNCTION();
 
+	const VkImageAspectFlags aspect = RHIToVulkan::GetAspectFlags(subresourceRange.aspect == rhi::ETextureAspect::Auto
+																  ? GetFullAspectForFormat(texture.GetDefinition().format)
+																  : subresourceRange.aspect);
+
 	VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
 	barrier.image								= texture.GetHandle();
-	barrier.subresourceRange.aspectMask			= RHIToVulkan::GetAspectFlags(subresourceRange.aspect);
+	barrier.subresourceRange.aspectMask			= aspect;
 	barrier.subresourceRange.baseMipLevel		= subresourceRange.baseMipLevel;
 	barrier.subresourceRange.levelCount			= subresourceRange.mipLevelsNum;
 	barrier.subresourceRange.baseArrayLayer		= subresourceRange.baseArrayLayer;

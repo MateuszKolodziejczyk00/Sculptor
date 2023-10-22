@@ -48,17 +48,13 @@ DS_END();
 struct StaticMeshBatchDefinition
 {
 	StaticMeshBatchDefinition()
-		: maxMeshletsNum(0)
+		: batchElementsNum(0)
+		, maxMeshletsNum(0)
 		, maxTrianglesNum(0)
 		, materialShadersHash(0)
 	{ }
 
-	Bool IsValid() const
-	{
-		return !batchElements.empty();
-	}
-
-	lib::DynamicArray<StaticMeshBatchElement> batchElements;
+	Uint32 batchElementsNum;
 	Uint32 maxMeshletsNum;
 	Uint32 maxTrianglesNum;
 
@@ -80,13 +76,34 @@ public:
 
 private:
 
-	StaticMeshBatchDefinition& GetBatchForMaterial(mat::MaterialShadersHash materialShaderHash);
 
-	void CreateBatchDescriptorSet(StaticMeshBatchDefinition& batch) const;
+	struct BatchBuildData
+	{
+		BatchBuildData()
+			: maxMeshletsNum(0)
+			, maxTrianglesNum(0)
+		{ }
 
-	lib::HashMap<mat::MaterialShadersHash, Uint32> materialShaderHashToBatchIdx;
+		Bool IsValid() const
+		{
+			return !batchElements.empty();
+		}
 
-	lib::DynamicArray<StaticMeshBatchDefinition>& batches;
+		lib::DynamicArray<StaticMeshBatchElement> batchElements;
+		Uint32 maxMeshletsNum;
+		Uint32 maxTrianglesNum;
+		mat::MaterialShadersHash materialShadersHash;
+	};
+
+
+	BatchBuildData& GetBatchBuildDataForMaterial(mat::MaterialShadersHash materialShaderHash);
+
+	StaticMeshBatchDefinition FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const;
+
+	lib::HashMap<mat::MaterialShadersHash, Uint32> m_materialShaderHashToBatchIdx;
+
+	lib::DynamicArray<BatchBuildData>             m_batchBuildDatas;
+	lib::DynamicArray<StaticMeshBatchDefinition>& m_batches;
 };
 
 
@@ -100,8 +117,23 @@ public:
 
 	explicit StaticMeshRenderSceneSubsystem(RenderScene& owningScene);
 
-	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForView(const RenderView& view) const;
-	lib::DynamicArray<StaticMeshBatchDefinition> BuildBatchesForPointLight(const PointLightData& pointLight) const;
+	// Begin RenderSceneSubsystem overrides
+	virtual void Update() override;
+	// End RenderSceneSubsystem overrides
+
+	const lib::DynamicArray<StaticMeshBatchDefinition>& BuildBatchesForView(const RenderView& view) const;
+	lib::DynamicArray<StaticMeshBatchDefinition>        BuildBatchesForPointLight(const PointLightData& pointLight) const;
+
+private:
+
+	struct CachedSMBatches
+	{
+		lib::DynamicArray<StaticMeshBatchDefinition> batches;
+	};
+
+	CachedSMBatches CacheStaticMeshBatches() const;
+
+	CachedSMBatches m_cachedSMBatches;
 };
 
 } // spt::rsc

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 #include "StaticMeshDepthPrepassRenderer.h"
 #include "StaticMeshForwardOpaqueRenderer.h"
 #include "StaticMeshShadowMapRenderer.h"
@@ -8,22 +8,23 @@
 namespace spt::rsc
 {
 
-class RENDER_SCENE_API StaticMeshesRenderSystem : public RenderSystem
+class RENDER_SCENE_API StaticMeshesRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSystem;
+	using Super = SceneRenderSystem;
 
 public:
 	
 	StaticMeshesRenderSystem();
 
-	// Begin RenderSystem overrides
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
-	// End RenderSystem overrides
+	// Begin SceneRenderSystem overrides
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
+	// End SceneRenderSystem overrides
 
 private:
+
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	StaticMeshShadowMapRenderer m_shadowMapRenderer;
 

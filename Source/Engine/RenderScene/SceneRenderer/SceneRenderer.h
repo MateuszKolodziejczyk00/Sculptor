@@ -3,7 +3,6 @@
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
-#include "SceneRendererTypes.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
@@ -32,7 +31,7 @@ public:
 
 private:
 
-	lib::DynamicArray<ViewRenderingSpec*> CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& view, SizeType& OUT mainViewIdx) const;
+	lib::DynamicArray<ViewRenderingSpec*> CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& mainRenderView, SizeType& OUT mainViewIdx) const;
 };
 
 } // spt::rsc

@@ -44,6 +44,7 @@ public:
 
 	void						Rotate(const math::AngleAxisf& delta);
 	void						SetRotation(const math::Quaternionf& newRotation);
+	void						SetRotation(const math::Vector3f& forwardVector);
 	const math::Quaternionf&	GetRotation() const;
 
 	const math::Vector3f		GetForwardVector() const;
@@ -59,7 +60,12 @@ public:
 
 	Bool IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 radius) const;
 
+	math::Matrix4f GenerateViewMatrix() const;
+
 	math::Matrix4f GenerateViewProjectionMatrix() const;
+	math::Matrix4f GenerateInverseViewProjectionMatrix() const;
+
+	Real32 ComputeProjectedDepth(Real32 linearDepth) const;
 
 protected:
 
@@ -70,8 +76,6 @@ protected:
 	void CachePrevFrameRenderingData();
 	void UpdateViewRenderingData(math::Vector2u resolution);
 	void UpdateCullingData();
-
-	math::Matrix4f GenerateViewMatrix() const;
 
 private:
 

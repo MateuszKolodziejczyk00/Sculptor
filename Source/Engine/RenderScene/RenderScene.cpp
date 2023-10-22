@@ -126,7 +126,7 @@ Uint32 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
 	return entityDataHandle.GetEntityIdx();
 }
 
-const lib::DynamicArray<lib::SharedRef<RenderSystem>>& RenderScene::GetRenderSystems() const
+const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& RenderScene::GetRenderSystems() const
 {
 	return m_renderSystems.GetRenderSystems();
 }
@@ -163,14 +163,14 @@ lib::SharedRef<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
 	return sceneDS;
 }
 
-void RenderScene::InitializeRenderSystem(RenderSystem& system)
+void RenderScene::InitializeRenderSystem(SceneRenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();
 
 	system.Initialize(*this);
 }
 
-void RenderScene::DeinitializeRenderSystem(RenderSystem& system)
+void RenderScene::DeinitializeRenderSystem(SceneRenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();
 

@@ -4,8 +4,9 @@
 #include "SculptorCoreTypes.h"
 #include "Types/Buffer.h"
 #include "RenderSceneRegistry.h"
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 #include "RenderSceneSubsystem.h"
+#include "RenderSystemsRegistry.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
@@ -76,74 +77,6 @@ struct EntityGPUDataHandle
 	}
 
 	rhi::RHISuballocation transformSuballocation;
-};
-
-
-class RenderSystemsRegistry
-{
-public:
-
-	RenderSystemsRegistry() = default;
-
-	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& GetRenderSystems() const
-	{
-		return m_renderSystems;
-	}
-
-	template<typename TSystemType>
-	RenderSystem* AddRenderSystem()
-	{
-		SPT_PROFILER_FUNCTION();
-
-		const RenderSystemTypeID typeID = ecs::type_id<TSystemType>();
-
-		RenderSystem* addedSystem = nullptr;
-		{
-			const lib::LockGuard lockGuard(m_lock);
-
-			if (std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID) == std::cend(m_renderSystemsID))
-			{
-				addedSystem = m_renderSystems.emplace_back(lib::MakeShared<TSystemType>()).Get();
-				m_renderSystemsID.emplace_back(typeID);
-			}
-		}
-		
-		return addedSystem;
-	}
-
-	template<typename TSystemType>
-	lib::SharedPtr<RenderSystem> RemoveRenderSystem()
-	{
-		SPT_PROFILER_FUNCTION();
-
-		const RenderSystemTypeID typeID = ecs::type_id<TSystemType>();
-		
-		lib::SharedPtr<RenderSystem> removedSystem;
-		{
-			const lib::LockGuard lockGuard(m_lock);
-
-			const auto foundSystem = std::find(std::cbegin(m_renderSystemsID), std::cend(m_renderSystemsID), typeID);
-			if (foundSystem != std::cend(m_renderSystems))
-			{
-				const SizeType systemIdx = std::distance(std::cbegin(m_renderSystemsID), foundSystem);
-				removedSystem = m_renderSystems[systemIdx];
-
-				m_renderSystems.erase(std::begin(m_renderSystems) + systemIdx);
-				m_renderSystemsID.erase(std::begin(m_renderSystemsID) + systemIdx);
-			}
-		}
-
-		return removedSystem;
-	}
-
-private:
-
-	using RenderSystemTypeID = ecs::type_info;
-
-	lib::Lock m_lock;
-	// These to arrays must match - m_systemsID[i] is id of system m_renderSystems[i]
-	lib::DynamicArray<lib::SharedRef<RenderSystem>> m_renderSystems;
-	lib::DynamicArray<RenderSystemTypeID>			m_renderSystemsID;
 };
 
 
@@ -248,12 +181,12 @@ public:
 	
 	// Render Systems =======================================================
 
-	const lib::DynamicArray<lib::SharedRef<RenderSystem>>& GetRenderSystems() const;
+	const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& GetRenderSystems() const;
 
-	template<typename TSystemType>
-	void AddRenderSystem()
+	template<typename TSystemType, typename... TArgs>
+	void AddRenderSystem(TArgs&&... args)
 	{
-		RenderSystem* addedSystem = m_renderSystems.AddRenderSystem<TSystemType>();
+		SceneRenderSystem* addedSystem = m_renderSystems.AddRenderSystem<TSystemType>(std::forward<TArgs>(args)...);
 		if (addedSystem)
 		{
 			InitializeRenderSystem(*addedSystem);
@@ -263,7 +196,7 @@ public:
 	template<typename TSystemType>
 	void RemoveRenderSystem()
 	{
-		lib::SharedPtr<RenderSystem> removedSystem = m_renderSystems.RemoveRenderSystem<TSystemType>();
+		lib::SharedPtr<SceneRenderSystem> removedSystem = m_renderSystems.RemoveRenderSystem<TSystemType>();
 		if (removedSystem)
 		{
 			DeinitializeRenderSystem(*removedSystem);
@@ -303,8 +236,8 @@ private:
 	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
 	lib::SharedRef<RenderSceneDS> CreateRenderSceneDS() const;
 
-	void InitializeRenderSystem(RenderSystem& system);
-	void DeinitializeRenderSystem(RenderSystem& system);
+	void InitializeRenderSystem(SceneRenderSystem& system);
+	void DeinitializeRenderSystem(SceneRenderSystem& system);
 
 	RenderSceneRegistry m_registry;
 
@@ -314,7 +247,7 @@ private:
 
 	RenderSceneSubsystemsRegistry m_renderSceneSubsystems;
 
-	RenderSystemsRegistry m_renderSystems;
+	RenderSystemsRegistry<SceneRenderSystem> m_renderSystems;
 };
 
 } // spt::rsc

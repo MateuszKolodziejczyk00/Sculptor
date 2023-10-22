@@ -23,11 +23,12 @@ StaticMeshShadowMapRenderer::StaticMeshShadowMapRenderer()
 	}
 }
 
-void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_pointLightBatches.clear();
+	m_globalShadowViewBatches.clear();
 
 	if (const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>())
 	{
@@ -57,9 +58,32 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 			}
 		}
 	}
+
+	for (ViewRenderingSpec* viewSpec : viewSpecs)
+	{
+		RenderView& renderView = viewSpec->GetRenderView();
+		const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
+		const ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
+
+		if (viewShadowMapData.shadowMapType == EShadowMapType::DirectionalLightCascade)
+		{
+			const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
+			const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefs = staticMeshPrimsSystem.BuildBatchesForView(renderView);
+
+			lib::DynamicArray<SMShadowMapBatch>& viewBatches = m_globalShadowViewBatches[&renderView];
+
+			for (const StaticMeshBatchDefinition& batchDef : batchDefs)
+			{
+				lib::DynamicArray<RenderView*> shadowMapViews = { &renderView };
+				const SMShadowMapBatch batch = CreateBatch(graphBuilder, renderScene, shadowMapViews, batchDef);
+				BuildBatchDrawCommands(graphBuilder, batch);
+				viewBatches.emplace_back(batch);
+			}
+		}
+	}
 }
 
-void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -68,13 +92,17 @@ void StaticMeshShadowMapRenderer::RenderPerView(rg::RenderGraphBuilder& graphBui
 	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
 	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
 
-	const auto foundBatches = m_pointLightBatches.find(viewShadowMapData.owningLight);
-	if (foundBatches == std::cend(m_pointLightBatches))
+	lib::DynamicArray<SMShadowMapBatch>* batches = nullptr;
+	if (viewShadowMapData.shadowMapType == EShadowMapType::DirectionalLightCascade)
 	{
-		return;
+		batches = &m_globalShadowViewBatches.at(&renderView);
+	}
+	else if(viewShadowMapData.shadowMapType == EShadowMapType::PointLightFace)
+	{
+		batches = &m_pointLightBatches.at(viewShadowMapData.owningLight);
 	}
 
-	for (const SMShadowMapBatch& batch : foundBatches->second)
+	for (const SMShadowMapBatch& batch : *batches)
 	{
 		SMIndirectShadowMapCommandsParameters drawParams;
 		drawParams.batchDrawCommandsBuffer = batch.perFaceData[viewShadowMapData.faceIdx].drawCommandsBuffer;
@@ -108,14 +136,14 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 	// Create batch data and buffer
 
 	batch.batchDS				= batchDef.batchDS;
-	batch.batchedSubmeshesNum	= static_cast<Uint32>(batchDef.batchElements.size());
+	batch.batchedSubmeshesNum	= batchDef.batchElementsNum;
 	batch.materialShadersHash	= batchDef.materialShadersHash;
 
 	// Create indirect draw counts buffer
 
 	const Uint64 indirectDrawCountsBuffersSize = batchedViews.size() * sizeof(Uint32);
 	rhi::BufferDefinition bufferDef(indirectDrawCountsBuffersSize, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
-	const rg::RGBufferViewHandle indirectDrawCountsBuffer= graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDrawCountsPerSide"), bufferDef, rhi::EMemoryUsage::GPUOnly);
+	const rg::RGBufferViewHandle indirectDrawCountsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("IndirectDrawCountsPerSide"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize IndirectDrawCountsBuffer"), indirectDrawCountsBuffer, 0, indirectDrawCountsBuffersSize, 0);
 
@@ -130,7 +158,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 	const lib::SharedRef<rdr::Buffer> viewsCullingDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("ViewsCullingData"), viewsCullingDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
 	SceneViewCullingData* cullingDataBufferPtr = reinterpret_cast<SceneViewCullingData*>(viewsCullingDataBuffer->GetRHI().MapPtr());
 
-	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batchDef.batchElements.size(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batchDef.batchElementsNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 
 	batch.perFaceData.reserve(batchedViews.size());
 

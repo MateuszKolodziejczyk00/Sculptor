@@ -2,10 +2,12 @@
 
 #include "RenderSceneMacros.h"
 #include "SceneView.h"
-#include "SceneRenderingTypes.h"
+#include "SceneRenderer/SceneRenderingTypes.h"
 #include "RenderSceneRegistry.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "ViewRenderSystem.h"
+#include "RenderSystemsRegistry.h"
 
 
 namespace spt::rsc
@@ -77,6 +79,7 @@ public:
 	const math::Vector2u& GetRenderingResolution() const;
 	math::Vector3u GetRenderingResolution3D() const;
 
+	RenderScene&                   GetRenderScene() const;
 	const RenderSceneEntityHandle& GetViewEntity() const;
 
 	const lib::SharedPtr<RenderViewDS>& GetRenderViewDS() const;
@@ -93,9 +96,44 @@ public:
 
 	void OnBeginRendering();
 
+	// Render systems
+
+	const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& GetRenderSystems() const;
+
+	template<typename TSystemType>
+	lib::SharedPtr<TSystemType> FindRenderSystem() const
+	{
+		return m_renderSystems.FindRenderSystem<TSystemType>();
+	}
+
+	template<typename TSystemType, typename... TArgs>
+	void AddRenderSystem(TArgs&&... args)
+	{
+		ViewRenderSystem* addedSystem = m_renderSystems.AddRenderSystem<TSystemType>(std::forward<TArgs>(args)...);
+		if (addedSystem)
+		{
+			InitializeRenderSystem(*addedSystem);
+		}
+	}
+
+	template<typename TSystemType>
+	void RemoveRenderSystem()
+	{
+		lib::SharedPtr<ViewRenderSystem> removedSystem = m_renderSystems.RemoveRenderSystem<TSystemType>();
+		if (removedSystem)
+		{
+			DeinitializeRenderSystem(*removedSystem);
+		}
+	}
+
+	void CollectRenderViews(const RenderScene& renderScene, INOUT RenderViewsCollector& viewsCollector) const;
+
 private:
 
 	void CreateRenderViewDS();
+
+	void InitializeRenderSystem(ViewRenderSystem& renderSystem);
+	void DeinitializeRenderSystem(ViewRenderSystem& renderSystem);
 
 	ERenderStage m_supportedStages;
 
@@ -103,8 +141,12 @@ private:
 
 	RenderSceneEntityHandle m_viewEntity;
 
+	RenderScene& m_renderScene;
+
 	lib::SharedPtr<RenderViewDS> m_renderViewDS;
-	
+
+	RenderSystemsRegistry<ViewRenderSystem> m_renderSystems;
+
 	// Rendering settings
 
 	EAntiAliasingMode::Type m_aaMode;

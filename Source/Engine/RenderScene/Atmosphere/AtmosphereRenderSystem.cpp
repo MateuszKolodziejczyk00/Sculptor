@@ -10,7 +10,6 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Lights/LightTypes.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 
 
 namespace spt::rsc
@@ -201,11 +200,11 @@ AtmosphereRenderSystem::AtmosphereRenderSystem()
 	m_supportedStages = rsc::ERenderStage::ApplyAtmosphere;
 }
 
-void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerFrame(graphBuilder, renderScene);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 
@@ -220,12 +219,16 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 
 		multi_scattering_lut::RenderMultiScatteringLUT(graphBuilder, renderScene, context, transmittanceLUT, multiScatteringLUT);
 	}
+
+	for (ViewRenderingSpec* viewSpec : viewSpecs)
+	{
+		SPT_CHECK(!!viewSpec);
+		RenderPerView(graphBuilder, renderScene, *viewSpec);
+	}
 }
 
 void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
-	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
-
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
 

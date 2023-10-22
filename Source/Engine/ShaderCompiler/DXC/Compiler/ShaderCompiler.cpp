@@ -177,10 +177,12 @@ public:
 
 private:
 
-	ComPtr<IDxcResult>		PreprocessShader(const lib::String& sourceCode, const DxcArguments& args) const;
-	ComPtr<IDxcResult>		CompileToSPIRV(const lib::String& sourceCode, DxcArguments& args) const;
+	lib::String        PreprocessShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const DxcArguments& args) const;
+	ComPtr<IDxcResult> PreprocessShaderImpl(const lib::String& sourceCode, const DxcArguments& args) const;
+	ComPtr<IDxcResult> CompileToSPIRV(const lib::String& sourceCode, DxcArguments& args) const;
 
-	DxcArguments			BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
+	DxcArguments BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
+	void         PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const;
 
 	ComPtr<IDxcUtils>			m_utils;
 	ComPtr<IDxcCompiler3>		m_compiler;
@@ -205,27 +207,22 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	CompiledShader result{};
 
 	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, stageCompilationDef, compilationSettings);
+	PreprocessAdditionalCompilerArgs(shaderPath, sourceCode, stageCompilationDef, INOUT compilerArgs);
 
-	const ComPtr<IDxcResult> preprocessResult = PreprocessShader(sourceCode, compilerArgs);
-
-	HRESULT preprocessStatus{};
-	preprocessResult->GetStatus(&preprocessStatus);
-
-	if (!SUCCEEDED(preprocessStatus))
+	lib::String preprocessedHLSL = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, compilerArgs);
+	if (preprocessedHLSL.empty())
 	{
-		ComPtr<IDxcBlobUtf8> errorsBlob;
-		preprocessResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
-		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
-		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, stageCompilationDef, errors);
-		SPT_LOG_TRACE(ShaderCompiler, "Failed to preprocess shader {0}", shaderPath.c_str());
 		return result;
 	}
 
-	ComPtr<IDxcBlobUtf8> preprocessedSourceBlob;
-	preprocessResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(preprocessedSourceBlob.GetAddressOf()), nullptr);
-	lib::String preprocessedHLSL(static_cast<const char*>(preprocessedSourceBlob->GetBufferPointer()), static_cast<SizeType>(preprocessedSourceBlob->GetStringLength()));
-
 	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedHLSL);
+
+	// preprocess again to expand descriptor set macros
+	preprocessedHLSL = PreprocessShader(shaderPath, preprocessedHLSL, stageCompilationDef, compilerArgs);
+	if (preprocessedHLSL.empty())
+	{
+		return result;
+	}
 
 	const ComPtr<IDxcResult> compilationResult = CompileToSPIRV(preprocessedHLSL, compilerArgs);
 
@@ -260,7 +257,30 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	return result;
 }
 
-ComPtr<IDxcResult> CompilerImpl::PreprocessShader(const lib::String& sourceCode, const DxcArguments& args) const
+lib::String CompilerImpl::PreprocessShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const DxcArguments& args) const
+{
+	const ComPtr<IDxcResult> preprocessResult = PreprocessShaderImpl(sourceCode, args);
+
+	HRESULT preprocessStatus{};
+	preprocessResult->GetStatus(&preprocessStatus);
+
+	if (!SUCCEEDED(preprocessStatus))
+	{
+		ComPtr<IDxcBlobUtf8> errorsBlob;
+		preprocessResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
+		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
+		CompilationErrorsLogger::OutputShaderPreprocessingErrors(shaderPath, sourceCode, stageCompilationDef, errors);
+		SPT_LOG_TRACE(ShaderCompiler, "Failed to preprocess shader {0}", shaderPath.c_str());
+		return lib::String();
+	}
+
+	ComPtr<IDxcBlobUtf8> preprocessedSourceBlob;
+	preprocessResult->GetOutput(DXC_OUT_HLSL, IID_PPV_ARGS(preprocessedSourceBlob.GetAddressOf()), nullptr);
+	lib::String preprocessedHLSL(static_cast<const char*>(preprocessedSourceBlob->GetBufferPointer()), static_cast<SizeType>(preprocessedSourceBlob->GetStringLength()));
+	return preprocessedHLSL;
+}
+
+ComPtr<IDxcResult> CompilerImpl::PreprocessShaderImpl(const lib::String& sourceCode, const DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -360,6 +380,17 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 		args.Append(lib::WString(L"-D"), macro.c_str());
 	}
 	return args;
+}
+
+void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const
+{
+	const lib::String preprocessed = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, args);
+	const ShaderCompilationMetaData compilationMetaData = ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(preprocessed);
+
+	for(const lib::HashedString& macro : compilationMetaData.macroDefinitions)
+	{
+		args.Append(lib::WString(L"-D"), lib::StringUtils::ToWideString(macro.GetView()));
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

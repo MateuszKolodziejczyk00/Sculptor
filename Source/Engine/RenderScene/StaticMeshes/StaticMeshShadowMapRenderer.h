@@ -63,8 +63,9 @@ public:
 
 	StaticMeshShadowMapRenderer();
 
-	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
-	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs);
+
+	void RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 private:
 
@@ -75,6 +76,7 @@ private:
 	rdr::PipelineStateID GetPipelineStateForBatch(const SMShadowMapBatch& batch) const;
 
 	lib::HashMap<RenderSceneEntity, lib::DynamicArray<SMShadowMapBatch>> m_pointLightBatches;
+	lib::HashMap<const RenderView*, lib::DynamicArray<SMShadowMapBatch>> m_globalShadowViewBatches;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 };

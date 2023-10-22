@@ -9,7 +9,6 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/AccelerationStructureBinding.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "RayTracing/RayTracingRenderSceneSubsystem.h"
 #include "EngineFrame.h"
@@ -157,33 +156,9 @@ DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
 DS_END();
 
 
-BEGIN_SHADER_STRUCT(VolumetricRayTracedShadowsParams)
-	SHADER_STRUCT_FIELD(Real32,	shadowRayMinT)
-	SHADER_STRUCT_FIELD(Real32, shadowRayMaxT)
-	SHADER_STRUCT_FIELD(Bool,	enableDirectionalLightsVolumetricRTShadows)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(InScatteringAccelerationStructureDS, rg::RGDescriptorSetState<InScatteringAccelerationStructureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),											u_sceneAccelerationStructure)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<VolumetricRayTracedShadowsParams>),		u_volumetricRayTracedShadowsParams)
-DS_END();
-
-
 static rdr::PipelineStateID CompileComputeInScatteringPipeline()
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	if (rdr::Renderer::IsRayTracingEnabled())
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_RAY_TRACING", "1"));
-		compilationSettings.DisableGeneratingDebugSource();
-	}
-	else
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_RAY_TRACING", "0"));
-	}
-	
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/VolumetricFog/ComputeInScattering.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeInScatteringCS"), compilationSettings);
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/VolumetricFog/ComputeInScattering.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ComputeInScatteringCS"));
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("InScatteringPipeline"), shader);
 }
@@ -213,21 +188,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	computeInScatteringDS->u_depthTexture				= fogParams.depthTextureView;
 	computeInScatteringDS->u_inScatteringParams			= inScatteringParams;
 
-	lib::SharedPtr<InScatteringAccelerationStructureDS> accelerationStructureDS;
-	if (rdr::Renderer::IsRayTracingEnabled())
-	{
-		RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
-		VolumetricRayTracedShadowsParams volumetricRayTracedShadowsParams;
-		volumetricRayTracedShadowsParams.shadowRayMinT								= 0.04f;
-		volumetricRayTracedShadowsParams.shadowRayMaxT								= 30.f;
-		volumetricRayTracedShadowsParams.enableDirectionalLightsVolumetricRTShadows	= parameters::enableDirectionalLightsVolumetricRTShadows;
-
-		accelerationStructureDS = rdr::ResourcesManager::CreateDescriptorSetState<InScatteringAccelerationStructureDS>(RENDERER_RESOURCE_NAME("InScatteringAccelerationStructureDS"));
-		accelerationStructureDS->u_sceneAccelerationStructure		= lib::Ref(rayTracingSubsystem.GetSceneTLAS());
-		accelerationStructureDS->u_volumetricRayTracedShadowsParams	= volumetricRayTracedShadowsParams;
-	}
-
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
 	static const rdr::PipelineStateID computeInScatteringPipeline = CompileComputeInScatteringPipeline();
@@ -238,8 +198,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  rg::BindDescriptorSets(computeInScatteringDS,
 												 renderView.GetRenderViewDS(),
 												 shadingParams.shadingInputDS,
-												 shadingParams.shadowMapsDS,
-												 accelerationStructureDS));
+												 shadingParams.shadowMapsDS));
 }
 
 } // in_scattering

@@ -87,7 +87,7 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 	return textureHandle;
 }
 
-RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
+RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
 

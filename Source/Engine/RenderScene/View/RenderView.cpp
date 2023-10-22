@@ -8,6 +8,7 @@ namespace spt::rsc
 RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
+	, m_renderScene(renderScene)
 	, m_aaMode(EAntiAliasingMode::None)
 #if RENDERER_DEBUG
 	, m_debugFeature(EDebugFeature::None)
@@ -54,6 +55,11 @@ const math::Vector2u& RenderView::GetRenderingResolution() const
 math::Vector3u RenderView::GetRenderingResolution3D() const
 {
 	return math::Vector3u(m_renderingResolution.x(), m_renderingResolution.y(), 1u);
+}
+
+RenderScene& RenderView::GetRenderScene() const
+{
+	return m_renderScene;
 }
 
 const RenderSceneEntityHandle& RenderView::GetViewEntity() const
@@ -105,6 +111,11 @@ void RenderView::OnBeginRendering()
 	CreateRenderViewDS();
 }
 
+const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& RenderView::GetRenderSystems() const
+{
+	return m_renderSystems.GetRenderSystems();
+}
+
 void RenderView::CreateRenderViewDS()
 {
 	SPT_PROFILER_FUNCTION();
@@ -121,6 +132,25 @@ void RenderView::CreateRenderViewDS()
 	m_renderViewDS->u_sceneView				= GetViewRenderingData();
 	m_renderViewDS->u_cullingData			= GetCullingData();
 	m_renderViewDS->u_viewRenderingParams	= renderViewData;
+}
+
+void RenderView::CollectRenderViews(const RenderScene& renderScene, INOUT RenderViewsCollector& viewsCollector) const
+{
+	const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& renderSystems = m_renderSystems.GetRenderSystems();
+	for (const auto& renderSystem : renderSystems)
+	{
+		renderSystem->CollectRenderViews(renderScene, *this, INOUT viewsCollector);
+	}
+}
+
+void RenderView::InitializeRenderSystem(ViewRenderSystem& renderSystem)
+{
+	renderSystem.Initialize(*this);
+}
+
+void RenderView::DeinitializeRenderSystem(ViewRenderSystem& renderSystem)
+{
+	renderSystem.Deinitialize(*this);
 }
 
 } // spt::rsc

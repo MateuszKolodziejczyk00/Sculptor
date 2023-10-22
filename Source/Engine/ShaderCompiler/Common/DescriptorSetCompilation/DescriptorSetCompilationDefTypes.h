@@ -14,6 +14,8 @@ struct DescriptorSetCompilationMetaData
 		: hash(0)
 	{ }
 
+	lib::DynamicArray<lib::HashedString> additionalMacros;
+
 	lib::DynamicArray<smd::EBindingFlags> bindingsFlags;
 
 	lib::HashMap<Uint32, rhi::SamplerDefinition> bindingToImmutableSampler;

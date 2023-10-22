@@ -1,27 +1,28 @@
 #pragma once
 
-#include "RenderSystem.h"
+#include "SceneRenderSystem.h"
 
 
 namespace spt::rsc
 {
 
-class RENDER_SCENE_API AtmosphereRenderSystem : public RenderSystem
+class RENDER_SCENE_API AtmosphereRenderSystem : public SceneRenderSystem
 {
 protected:
 
-	using Super = RenderSystem;
+	using Super = SceneRenderSystem;
 
 public:
 
 	AtmosphereRenderSystem();
 
-	// Begin RenderSystem overrides
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
-	virtual void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
-	// End RenderSystem overrides
+	// Begin SceneRenderSystem overrides
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
+	// End SceneRenderSystem overrides
 
 private:
+
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 };

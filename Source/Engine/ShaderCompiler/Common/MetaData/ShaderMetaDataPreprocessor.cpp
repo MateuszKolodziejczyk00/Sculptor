@@ -105,10 +105,77 @@ static void BuildParameterMetaData(lib::HashedString paramName, lib::StringView 
 	outMetaData.AddParamMetaData(paramName, std::move(paramMetaData));
 }
 
+
+enum class EDSIteratorFuncResult
+{
+	Continue,
+	Break,
+	ContinueFromStart
+};
+
+
+template<typename TFunctor>
+static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode)
+{
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
+
+	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
+
+	while (descriptorSetIt != std::sregex_iterator())
+	{
+		const std::smatch descriptorSetMatch = *descriptorSetIt;
+		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
+		const lib::HashedString dsName = descriptorSetMatch[1].str();
+		const lib::String dsIdxStr = descriptorSetMatch[2].str();
+		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
+
+		const SizeType dsTokenPosition = descriptorSetIt->prefix().length();
+		const SizeType dsTokenLength   = descriptorSetMatch.length();
+
+		const EDSIteratorFuncResult res = func(dsName, dsIdx, dsTokenPosition, dsTokenLength);
+
+		if (res == EDSIteratorFuncResult::Break)
+		{
+			break;
+		}
+		else if (res == EDSIteratorFuncResult::Continue)
+		{
+			++descriptorSetIt;
+		}
+		else if (res == EDSIteratorFuncResult::ContinueFromStart)
+		{
+			descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
+		}
+		else
+		{
+			SPT_CHECK_NO_ENTRY();
+		}
+	}
+}
+
 } // helper
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderMetaDataPrerpocessor ====================================================================
+
+ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderCompilationMetaData metaData;
+
+	helper::IterateDescriptorSets([&metaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+								  {
+									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
+									  std::copy(std::cbegin(dsCompilationDef.GetMetaData().additionalMacros),
+												std::cend(dsCompilationDef.GetMetaData().additionalMacros),
+												std::back_inserter(metaData.macroDefinitions));
+									  return helper::EDSIteratorFuncResult::Continue;
+								  },
+								  sourceCode);
+
+	return metaData;
+}
 
 ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
 {
@@ -158,29 +225,19 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
+	
+	helper::IterateDescriptorSets([&sourceCode, &outMetaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+								  {
+									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 
-	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
+									  const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
+									  sourceCode.replace(dsTokenPosition, dsTokenLength, dsSourceCode);
 
-	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
-
-	while (descriptorSetIt != std::sregex_iterator())
-	{
-		const std::smatch descriptorSetMatch = *descriptorSetIt;
-		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
-		const lib::HashedString dsName = descriptorSetMatch[1].str();
-		const lib::String dsIdxStr = descriptorSetMatch[2].str();
-		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
-
-		const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
-
-		const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
-		sourceCode.replace(descriptorSetIt->prefix().length(), descriptorSetMatch.length(), dsSourceCode);
-
-		outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
-
-		// Always search for new descriptor from the beginning, because we're modifying source code during loop
-		descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
-	}
+									  outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
+									  
+									  return helper::EDSIteratorFuncResult::ContinueFromStart;
+								  },
+								  sourceCode);
 }
 
 void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)

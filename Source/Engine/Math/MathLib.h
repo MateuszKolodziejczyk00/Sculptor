@@ -1,7 +1,8 @@
 #pragma once
 
 #pragma warning(push)
-#pragma warning(disable: 5054)
+#pragma warning(disable: 5054) // operator '|': deprecated between enumerations of different types
+#pragma warning(disable: 4702) // unreachable code
 
 #include "Eigen/Geometry"
 

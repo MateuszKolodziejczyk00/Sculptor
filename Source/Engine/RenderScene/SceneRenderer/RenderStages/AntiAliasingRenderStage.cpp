@@ -1,6 +1,5 @@
 #include "AntiAliasingRenderStage.h"
 #include "RenderGraphBuilder.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"

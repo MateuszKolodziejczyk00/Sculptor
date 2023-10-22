@@ -9,7 +9,6 @@
 #include "Common/ShaderCompilationInput.h"
 #include "RenderGraphBuilder.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "View/ViewRenderingSpec.h"
 #include "View/RenderView.h"
 #include "Engine.h"

@@ -11,23 +11,37 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
 }
 
-void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
 {
-	Super::RenderPerFrame(graphBuilder, renderScene);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 
-	m_shadowMapRenderer.RenderPerFrame(graphBuilder, renderScene);
+	{
+		lib::DynamicArray<ViewRenderingSpec*> shadowMapViewSpecs;
+		std::copy_if(std::cbegin(viewSpecs), std::cend(viewSpecs),
+					 std::back_inserter(shadowMapViewSpecs),
+					 [](const ViewRenderingSpec* viewSpec)
+					 {
+						 return viewSpec->SupportsStage(ERenderStage::ShadowMap);
+					 });
+
+		m_shadowMapRenderer.RenderPerFrame(graphBuilder, renderScene, shadowMapViewSpecs);
+	}
+
+	for (ViewRenderingSpec* viewSpec : viewSpecs)
+	{
+		SPT_CHECK(!!viewSpec);
+		RenderPerView(graphBuilder, renderScene, *viewSpec);
+	}
 }
 
 void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
-
-	Super::RenderPerView(graphBuilder, renderScene, viewSpec);
 	
 	if (viewSpec.SupportsStage(ERenderStage::ShadowMap))
 	{
 		RenderStageEntries& shadowMapStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ShadowMap);
-		shadowMapStageEntries.GetOnRenderStage().AddRawMember(&m_shadowMapRenderer, &StaticMeshShadowMapRenderer::RenderPerView);
+		shadowMapStageEntries.GetOnRenderStage().AddRawMember(&m_shadowMapRenderer, &StaticMeshShadowMapRenderer::RenderToShadowMap);
 	}
 
 	const Bool supportsDepthPrepass		= viewSpec.SupportsStage(ERenderStage::DepthPrepass);
@@ -36,7 +50,7 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	if (supportsDepthPrepass || supportsForwardOpaque)
 	{
 		const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-		lib::DynamicArray<StaticMeshBatchDefinition> batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView());
+		const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView());
 		
 		if (!batchDefinitions.empty())
 		{

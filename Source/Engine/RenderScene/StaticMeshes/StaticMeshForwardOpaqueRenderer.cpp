@@ -9,7 +9,6 @@
 #include "SceneRenderer/RenderStages/ForwardOpaqueRenderStage.h"
 #include "View/ViewRenderingSpec.h"
 #include "RenderScene.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "MaterialsSubsystem.h"
@@ -160,14 +159,14 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 
 	batch.batchDS = batchDef.batchDS;
 
-	batch.batchedSubmeshesNum = static_cast<Uint32>(batchDef.batchElements.size());
+	batch.batchedSubmeshesNum = batchDef.batchElementsNum;
 
 	const rhi::EBufferUsage indirectBuffersUsageFlags = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
 	const rhi::RHIAllocationInfo batchBuffersAllocation(rhi::EMemoryUsage::GPUOnly);
 	
 	// Create workloads buffers
 
-	const rhi::BufferDefinition visibleInstancesBufferDef(sizeof(StaticMeshBatchElement) * batchDef.batchElements.size(), rhi::EBufferUsage::Storage);
+	const rhi::BufferDefinition visibleInstancesBufferDef(sizeof(StaticMeshBatchElement) * batchDef.batchElementsNum, rhi::EBufferUsage::Storage);
 	const rg::RGBufferViewHandle visibleBatchElements = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMVisibleBatchElements"), visibleInstancesBufferDef, batchBuffersAllocation);
 
 	const rhi::BufferDefinition meshletWorkloadsBufferDef(sizeof(SMGPUWorkloadID) * batchDef.maxMeshletsNum, rhi::EBufferUsage::Storage);

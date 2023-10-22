@@ -7,6 +7,7 @@
 #include "MathUtils.h"
 #include "RendererSettings.h"
 #include "Renderer.h"
+#include "ShaderStructs/ShaderStructsTypes.h"
 
 
 namespace spt::gfx

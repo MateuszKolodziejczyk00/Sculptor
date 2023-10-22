@@ -67,7 +67,7 @@ public:
 
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);
 
-	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition, ERGResourceFlags flags = ERGResourceFlags::Default);
+	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition(), ERGResourceFlags flags = ERGResourceFlags::Default);
 	
 	/** Creates texture from given definition and returns full view of this texture */
 	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);

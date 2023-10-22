@@ -48,7 +48,7 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewLocation)
 
             if(visibility > 0.f)
             {
-                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility;
+                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility * transmittance;
             }
         }
     }
@@ -128,6 +128,29 @@ struct InScatteringParams
 float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 {
     float3 inScattering = 0.f;
+
+    // Directional Lights
+
+    const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, params.worldLocation);
+
+    for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
+    {
+        const DirectionalLightGPUData directionalLight = u_directionalLights[i];
+
+        const float3 illuminance = directionalLight.color * directionalLight.illuminance;
+
+        float visibility = 1.f;
+        if(directionalLight.shadowCascadesNum != 0)
+        {
+            visibility = EvaluateCascadedShadowsAtLocation(params.worldLocation, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
+        }
+
+        if(visibility > 0.f)
+        {
+            const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
+            inScattering += transmittance * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+        }
+    }
     
     // Point lights
     const uint2 lightsTileCoords = GetLightsTile(params.uv, u_lightsData.tileSize);

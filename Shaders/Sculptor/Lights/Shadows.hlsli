@@ -7,6 +7,7 @@
 #define SPT_SHADOWS_TECHNIQUE_NONE   0
 #define SPT_SHADOWS_TECHNIQUE_DPCF   1
 #define SPT_SHADOWS_TECHNIQUE_MSM    2
+#define SPT_SHADOWS_TECHNIQUE_VSM    3
 
 
 static const float2 pcssShadowSamples[PCSS_SHADOW_SAMPLES_NUM] =
@@ -243,7 +244,7 @@ float EvaluateShadowsPCF(Texture2D shadowMap, SamplerComparisonState shadowSampl
 
     const float2x2 samplesRotation = NoiseRotation(noise);
 
-    [[unroll]]
+    [unroll]
     for (uint i = 0; i < PCF_SHADOW_SAMPLES_NUM; ++i)
     {
         float2 offset = pcfShadowSamples[i] * penumbraSize;
@@ -376,6 +377,26 @@ float EvaluateShadowsMSM(Texture2D shadowMap, SamplerState shadowSampler, float2
 }
 
 
+float VSMReduceLightLeaking(in float visibility, in float lightLeakThreshold)
+{
+    return saturate((visibility - lightLeakThreshold) / (1.f - lightLeakThreshold));
+}
+
+
+float EvaluateShadowsVSM(in Texture2D shadowMap, in SamplerState shadowSampler, in float2 shadowMapUV, in float linearDepth)
+{
+    const float adjustedDepth = linearDepth - 0.002f;
+    const float2 moments = shadowMap.SampleLevel(shadowSampler, shadowMapUV, 0.f).xy;
+    if (adjustedDepth > moments.x)
+    {
+        return 1.f;
+    }
+    const float variance = abs(moments.y - moments.x * moments.x);
+    const float d = moments.x - adjustedDepth;
+    return VSMReduceLightLeaking(saturate(variance / (variance + d * d)), 0.9);
+}
+
+
 float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation, float pointLightAttenuationRadius, uint shadowMapFirstFaceIdx)
 {
     const uint shadowMapFaceIdx = GetShadowMapFaceIndex(surface.location - pointLightLocation);
@@ -409,7 +430,7 @@ float EvaluatePointLightShadows(ShadedSurface surface, float3 pointLightLocation
     }
     else if (u_shadowsSettings.shadowMappingTechnique == SPT_SHADOWS_TECHNIQUE_MSM)
     {
-        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_momentShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
+        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_linearShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
     }
 
     return 1.f;
@@ -447,8 +468,30 @@ float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 poi
 
         const float surfaceLinearDepth = ComputeShadowLinearDepth(surfaceNDCDepth, p20, p23);
 
-        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_momentShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
+        return EvaluateShadowsMSM(u_shadowMaps[shadowMapIdx], u_linearShadowMapSampler, shadowMapUV, surfaceLinearDepth, farPlane);
     }
 
     return 1.f;
 }
+
+#ifdef DS_ViewShadingInputDS
+
+float EvaluateCascadedShadowsAtLocation(in float3 worldLocation, in uint firstCascadeIdx, in uint cascadesNum)
+{
+    for(uint cascadeIdx = firstCascadeIdx; cascadeIdx < firstCascadeIdx + cascadesNum; ++cascadeIdx)
+    {
+        const float4 cascadeShadowCS = mul(u_shadowMapCascadeViews[cascadeIdx].viewProjectionMatrix, float4(worldLocation, 1.f));
+        if (any(cascadeShadowCS.xy > cascadeShadowCS.w) || any(cascadeShadowCS.xy < -cascadeShadowCS.w))
+        {
+            continue;
+        }
+        const float3 cascadeShadowNDC = cascadeShadowCS.xyz / cascadeShadowCS.w;
+        const float2 cascadeShadowUV = cascadeShadowNDC.xy * 0.5f + 0.5f;
+
+        return EvaluateShadowsVSM(u_shadowMapCascades[cascadeIdx], u_linearShadowMapSampler, cascadeShadowUV, cascadeShadowNDC.z);
+    }
+
+    return 0.f;
+}
+
+#endif // RENDER_VIEW_LIGHTING

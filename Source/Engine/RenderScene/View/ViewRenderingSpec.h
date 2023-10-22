@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Delegates/MulticastDelegate.h"
-#include "SceneRenderingTypes.h"
+#include "SceneRenderer/SceneRenderingTypes.h"
 #include "SculptorECS.h"
 #include "RGResources/RGTrackedObject.h"
 #include "RenderView.h"

@@ -7,11 +7,18 @@
 namespace spt::sc
 {
 
+struct ShaderCompilationMetaData
+{
+	lib::DynamicArray<lib::HashedString> macroDefinitions;
+};
+
+
 class ShaderMetaDataPrerpocessor
 {
 public:
 
-	SPT_NODISCARD static ShaderParametersMetaData PreprocessShader(lib::String& sourceCode);
+	SPT_NODISCARD static ShaderCompilationMetaData PreprocessAdditionalCompilerArgs(const lib::String& sourceCode);
+	SPT_NODISCARD static ShaderParametersMetaData  PreprocessShader(lib::String& sourceCode);
 
 private:
 

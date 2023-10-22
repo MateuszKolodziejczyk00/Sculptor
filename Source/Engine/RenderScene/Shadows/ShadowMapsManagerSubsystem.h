@@ -12,6 +12,7 @@
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "ShadowsRenderingTypes.h"
 
 
 namespace spt::rdr
@@ -32,14 +33,6 @@ enum class EShadowMapQuality
 	Low,
 	Medium,
 	High,
-};
-
-
-enum class EShadowMappingTechnique
-{
-	None,
-	DPCF,
-	MSM
 };
 
 
@@ -69,15 +62,10 @@ BEGIN_SHADER_STRUCT(ShadowsSettings)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(ShadowMapViewData)
-	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
-END_SHADER_STRUCT();
-
-
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),				u_shadowMapViews)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_shadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_momentShadowMapSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearShadowMapSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)
 DS_END();
@@ -148,10 +136,6 @@ private:
 	Real32 ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const;
 
 	void RecreateShadowMaps();
-
-	const rhi::EFragmentFormat GetShadowMapFormat() const;
-	const rhi::ETextureUsage GetShadowMapUsage() const;
-	const Uint32 GetShadowMapMipsNum() const;
 
 	lib::DynamicArray<lib::SharedRef<rdr::Texture>> m_shadowMaps;
 	lib::DynamicArray<lib::UniquePtr<RenderView>> m_shadowMapsRenderViews;

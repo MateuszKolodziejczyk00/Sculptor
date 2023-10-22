@@ -12,7 +12,6 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RayTracing/RayTracingRenderSceneSubsystem.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "Lights/LightTypes.h"
 #include "EngineFrame.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"

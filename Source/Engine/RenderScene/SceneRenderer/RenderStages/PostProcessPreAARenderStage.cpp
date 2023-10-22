@@ -1,5 +1,4 @@
 #include "PostProcessPreAARenderStage.h"
-#include "SceneRenderer/SceneRendererTypes.h"
 #include "Utils/DOFRenderer.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 
