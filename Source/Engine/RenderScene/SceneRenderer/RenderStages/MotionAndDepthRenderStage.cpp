@@ -42,7 +42,7 @@ void ComputeCameraMotion(rg::RenderGraphBuilder& graphBuilder, const RenderView&
 
 	static const rdr::PipelineStateID pipeline = CompileCameraMotionPipeline();
 
-	const lib::SharedRef<CameraMotionDS> cameraMotionDS = rdr::ResourcesManager::CreateDescriptorSetState<CameraMotionDS>(RENDERER_RESOURCE_NAME("CameraMotionDS"));
+	const lib::MTHandle<CameraMotionDS> cameraMotionDS = graphBuilder.CreateDescriptorSet<CameraMotionDS>(RENDERER_RESOURCE_NAME("CameraMotionDS"));
 	cameraMotionDS->u_depth		= depthTextureView;
 	cameraMotionDS->u_motion	= motionTextureView;
 
@@ -116,7 +116,7 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 	DepthCullingParams depthCullingParams;
 	depthCullingParams.hiZResolution = depthPrepassData.hiZ->GetResolution2D().cast<Real32>();
 
-	const lib::SharedRef<DepthCullingDS> depthCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
+	const lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
 	depthCullingDS->u_hiZTexture			= depthPrepassData.hiZ;
 	depthCullingDS->u_depthCullingParams	= depthCullingParams;
 

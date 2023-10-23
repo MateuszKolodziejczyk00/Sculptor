@@ -151,12 +151,12 @@ private:
 /**
  * Base class for all descriptor set states
  */
-class RENDERER_CORE_API DescriptorSetState abstract
+class RENDERER_CORE_API DescriptorSetState abstract : public lib::MTRefCounted
 {
 public:
 
 	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags);
-	virtual ~DescriptorSetState() = default;
+	virtual ~DescriptorSetState();
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 

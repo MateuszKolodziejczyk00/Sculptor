@@ -29,18 +29,18 @@ public:
 	rhi::RHISuballocation CreateMaterialDataSuballocation(Uint32 dataSize);
 	rhi::RHISuballocation CreateMaterialDataSuballocation(const Byte* materialData, Uint32 dataSize);
 
-	lib::SharedRef<MaterialsDS> GetMaterialsDS() const;
+	lib::MTHandle<MaterialsDS> GetMaterialsDS() const;
 
 private:
 
 	MaterialsUnifiedData();
 
 	lib::SharedRef<rdr::Buffer> CreateMaterialsUnifiedBuffer() const;
-	lib::SharedRef<MaterialsDS> CreateMaterialsDS() const;
+	lib::MTHandle<MaterialsDS> CreateMaterialsDS() const;
 
 	lib::SharedPtr<rdr::Buffer> m_materialsUnifiedBuffer;
 
-	lib::SharedPtr<MaterialsDS> m_materialsDS;
+	lib::MTHandle<MaterialsDS> m_materialsDS;
 };
 
 } // spt::mat

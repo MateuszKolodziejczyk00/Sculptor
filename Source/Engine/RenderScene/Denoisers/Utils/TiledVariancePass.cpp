@@ -39,7 +39,7 @@ static rg::RGTextureViewHandle ComputeTilesVariance(rg::RenderGraphBuilder& grap
 
 	const rg::RGTextureViewHandle tilesVariance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVariance"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
-	lib::SharedPtr<TilesVarianceDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TilesVarianceDS>(RENDERER_RESOURCE_NAME("Tiles Variance DS"));
+	lib::MTHandle<TilesVarianceDS> ds = graphBuilder.CreateDescriptorSet<TilesVarianceDS>(RENDERER_RESOURCE_NAME("Tiles Variance DS"));
 	ds->u_tilesVarianceTexture = tilesVariance;
 	ds->u_inputValueTexture = params.dataTexture;
 
@@ -80,7 +80,7 @@ static rg::RGTextureViewHandle ComputeMaxVariance3x3(rg::RenderGraphBuilder& gra
 
 	const rg::RGTextureViewHandle tilesVarianceMax = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TilesVarianceMax"), rg::TextureDef(tilesResolution, params.dataTexture->GetFormat()));
 
-	const lib::SharedPtr<TilesVarianceMax3x3DS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TilesVarianceMax3x3DS>(RENDERER_RESOURCE_NAME("Tiles Variance Max 3x3 DS"));
+	const lib::MTHandle<TilesVarianceMax3x3DS> ds = graphBuilder.CreateDescriptorSet<TilesVarianceMax3x3DS>(RENDERER_RESOURCE_NAME("Tiles Variance Max 3x3 DS"));
 	ds->u_tilesVarianceTexture			= tilesVariance;
 	ds->u_tilesVarianceMax3x3Texture	= tilesVarianceMax;
 

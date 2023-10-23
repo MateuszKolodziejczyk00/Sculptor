@@ -185,7 +185,7 @@ void PipelinePendingState::EnqueueFlushDirtyDSForRayTracingPipeline(CommandQueue
 	}
 }
 
-void PipelinePendingState::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -194,12 +194,12 @@ void PipelinePendingState::BindDescriptorSetState(const lib::SharedRef<Descripto
 	TryMarkAsDirty(state);
 }
 
-void PipelinePendingState::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto foundDescriptor = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
-											  [statePtr = state.ToSharedPtr()](const BoundDescriptorSetState& boundState)
+											  [statePtr = state](const BoundDescriptorSetState& boundState)
 											  {
 												  return boundState.instance == statePtr;
 											  });
@@ -223,7 +223,7 @@ void PipelinePendingState::PrepareForExecution(const lib::SharedRef<RenderContex
 	}
 }
 
-void PipelinePendingState::TryMarkAsDirty(const lib::SharedRef<DescriptorSetState>& state)
+void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -231,7 +231,7 @@ void PipelinePendingState::TryMarkAsDirty(const lib::SharedRef<DescriptorSetStat
 	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
 }
 
-void PipelinePendingState::TryMarkAsDirtyImpl(const lib::SharedRef<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -288,7 +288,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			const BoundDescriptorSetState* foundState = GetBoundDescriptorSetState(dsTypeHash);
 			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}\nTry removing Saved/Shaders/Cache directory", pipeline->GetRHI().GetName().GetData(), dsIdx);
 			
-			const lib::SharedRef<DescriptorSetState> stateInstance = lib::Ref(foundState->instance);
+			const lib::MTHandle<DescriptorSetState> stateInstance = foundState->instance;
 
 			if (lib::HasAnyFlag(stateInstance->GetFlags(), EDescriptorSetStateFlags::Persistent))
 			{

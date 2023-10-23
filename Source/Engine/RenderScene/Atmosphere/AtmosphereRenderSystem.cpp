@@ -37,7 +37,7 @@ static void RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const R
 
 	static const rdr::PipelineStateID pipeline = CompileRenderTransmittanceLUTPipeline();
 	
-	lib::SharedPtr<RenderTransmittanceLUTDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<RenderTransmittanceLUTDS>(RENDERER_RESOURCE_NAME("Render Transmittance LUT DS"));
+	lib::MTHandle<RenderTransmittanceLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderTransmittanceLUTDS>(RENDERER_RESOURCE_NAME("Render Transmittance LUT DS"));
 	ds->u_transmittanceLUT = transmittanceLUT;
 	ds->u_atmosphereParams = context.atmosphereParamsBuffer->CreateFullView();
 
@@ -73,7 +73,7 @@ static void RenderMultiScatteringLUT(rg::RenderGraphBuilder& graphBuilder, const
 
 	static const rdr::PipelineStateID pipeline = CompileRenderMultiScatteringLUTPipeline();
 
-	lib::SharedPtr<RenderMultiScatteringLUTDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<RenderMultiScatteringLUTDS>(RENDERER_RESOURCE_NAME("Render Multi Scattering LUT DS"));
+	lib::MTHandle<RenderMultiScatteringLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderMultiScatteringLUTDS>(RENDERER_RESOURCE_NAME("Render Multi Scattering LUT DS"));
 	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->CreateFullView();
 	ds->u_transmittanceLUT		= transmittancleLUT;
 	ds->u_multiScatteringLUT	= multiScatteringLUT;
@@ -124,7 +124,7 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyViewLUTPipeline();
 
-	lib::SharedPtr<RenderSkyViewLUTDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<RenderSkyViewLUTDS>(RENDERER_RESOURCE_NAME("Render Sky View LUT DS"));
+	lib::MTHandle<RenderSkyViewLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyViewLUTDS>(RENDERER_RESOURCE_NAME("Render Sky View LUT DS"));
 	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->CreateFullView();
 	ds->u_directionalLights		= context.directionalLightsBuffer->CreateFullView();
 	ds->u_transmittanceLUT		= skyViewParams.transmittanceLUT;
@@ -177,7 +177,7 @@ static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const Vi
 
 	static rdr::PipelineStateID pipeline = CompileApplyAtmospherePipeline();
 
-	lib::SharedPtr<ApplyAtmosphereDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<ApplyAtmosphereDS>(RENDERER_RESOURCE_NAME("Apply Atmosphere DS"));
+	lib::MTHandle<ApplyAtmosphereDS> ds = graphBuilder.CreateDescriptorSet<ApplyAtmosphereDS>(RENDERER_RESOURCE_NAME("Apply Atmosphere DS"));
 	ds->u_atmosphereParams	= context.atmosphereParamsBuffer->CreateFullView();
 	ds->u_directionalLights	= context.directionalLightsBuffer->CreateFullView();
 	ds->u_transmittanceLUT	= transmittanceLUT;

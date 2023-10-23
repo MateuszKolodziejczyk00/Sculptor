@@ -67,7 +67,7 @@ const RenderSceneEntityHandle& RenderView::GetViewEntity() const
 	return m_viewEntity;
 }
 
-const lib::SharedPtr<RenderViewDS>& RenderView::GetRenderViewDS() const
+const lib::MTHandle<RenderViewDS>& RenderView::GetRenderViewDS() const
 {
 	return m_renderViewDS;
 }

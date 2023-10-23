@@ -132,11 +132,11 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 
 	// Create Descriptor Sets
 	
-	const lib::SharedRef<SMDepthPrepassCullInstancesDS> cullInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthPrepassCullInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassCullInstancesDS"));
+	const lib::MTHandle<SMDepthPrepassCullInstancesDS> cullInstancesDS = graphBuilder.CreateDescriptorSet<SMDepthPrepassCullInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassCullInstancesDS"));
 	cullInstancesDS->u_drawCommands				= drawCommandsBuffer;
 	cullInstancesDS->u_drawsCount				= indirectDrawCountBuffer;
 
-	const lib::SharedRef<SMDepthOnlyDrawInstancesDS> drawInstancesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassDrawInstancesDS"));
+	const lib::MTHandle<SMDepthOnlyDrawInstancesDS> drawInstancesDS = graphBuilder.CreateDescriptorSet<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMDepthPrepassDrawInstancesDS"));
 	drawInstancesDS->u_drawCommands = drawCommandsBuffer;
 
 	batch.cullInstancesDS = cullInstancesDS;

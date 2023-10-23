@@ -57,8 +57,8 @@ struct ViewDirectionalShadowMasksData
 
 struct ViewSpecShadingParameters
 {
-	lib::SharedPtr<ViewShadingInputDS>	shadingInputDS;
-	lib::SharedPtr<ShadowMapsDS>		shadowMapsDS;
+	lib::MTHandle<ViewShadingInputDS>	shadingInputDS;
+	lib::MTHandle<ShadowMapsDS>		shadowMapsDS;
 };
 
 } // spt::rsc

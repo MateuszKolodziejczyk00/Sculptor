@@ -40,9 +40,9 @@ rhi::RHISuballocation MaterialsUnifiedData::CreateMaterialDataSuballocation(cons
 	return suballocation;
 }
 
-lib::SharedRef<MaterialsDS> MaterialsUnifiedData::GetMaterialsDS() const
+lib::MTHandle<MaterialsDS> MaterialsUnifiedData::GetMaterialsDS() const
 {
-	return lib::Ref(m_materialsDS);
+	return m_materialsDS;
 }
 
 MaterialsUnifiedData::MaterialsUnifiedData()
@@ -52,7 +52,7 @@ MaterialsUnifiedData::MaterialsUnifiedData()
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
 																m_materialsUnifiedBuffer.reset();
-																m_materialsDS.reset();
+																m_materialsDS.Reset();
 															});
 }
 
@@ -65,9 +65,9 @@ lib::SharedRef<rdr::Buffer> MaterialsUnifiedData::CreateMaterialsUnifiedBuffer()
 	return rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("MaterialsUnifiedData"), bufferDefinition, allocationInfo);
 }
 
-lib::SharedRef<MaterialsDS> MaterialsUnifiedData::CreateMaterialsDS() const
+lib::MTHandle<MaterialsDS> MaterialsUnifiedData::CreateMaterialsDS() const
 {
-	const lib::SharedRef<MaterialsDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<MaterialsDS>(RENDERER_RESOURCE_NAME("MaterialsDS"), rdr::EDescriptorSetStateFlags::Persistent);
+	const lib::MTHandle<MaterialsDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<MaterialsDS>(RENDERER_RESOURCE_NAME("MaterialsDS"), rdr::EDescriptorSetStateFlags::Persistent);
 
 	ds->u_materialsData = m_materialsUnifiedBuffer->CreateFullView();
 

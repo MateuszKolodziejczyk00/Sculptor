@@ -143,9 +143,9 @@ void RGNode::TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 of
 	}
 }
 
-void RGNode::AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState)
+void RGNode::AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState)
 {
-	m_dsStates.emplace_back(dsState);
+	m_dsStates.emplace_back(std::move(dsState));
 }
 
 void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context)
@@ -287,7 +287,7 @@ const RenderGraphDebugName& RGSubpass::GetName() const
 	return m_name;
 }
 
-void RGSubpass::BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds)
+void RGSubpass::BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds)
 {
 	m_dsStatesToBind.emplace_back(std::move(ds));
 }
@@ -300,14 +300,14 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
 	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
 
-	for(const lib::SharedRef<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	for(const lib::MTHandle<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
 	{
 		recorder.BindDescriptorSetState(ds);
 	}
 
 	DoExecute(renderContext, recorder);
 
-	for(const lib::SharedRef<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
+	for(const lib::MTHandle<rdr::DescriptorSetState>& ds : m_dsStatesToBind)
 	{
 		recorder.UnbindDescriptorSetState(ds);
 	}

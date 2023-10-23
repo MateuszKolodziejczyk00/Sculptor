@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Utility/RefCounted.h"
 #include "Containers/MPMCQueue.h"
 #include "WorkStealingQueue.h"
 #include "JobTypes.h"

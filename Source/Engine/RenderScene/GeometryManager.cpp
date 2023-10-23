@@ -58,7 +58,7 @@ Uint64 GeometryManager::GetGeometryBufferDeviceAddress() const
 	return m_geometryBuffer->GetRHI().GetDeviceAddress();
 }
 
-const lib::SharedPtr<GeometryDS>& GeometryManager::GetGeometryDSState() const
+const lib::MTHandle<GeometryDS>& GeometryManager::GetGeometryDSState() const
 {
 	return m_geometryDSState;
 }
@@ -66,7 +66,7 @@ const lib::SharedPtr<GeometryDS>& GeometryManager::GetGeometryDSState() const
 void GeometryManager::DestroyResources()
 {
 	m_geometryBuffer.reset();
-	m_geometryDSState.reset();
+	m_geometryDSState.Reset();
 }
 
 } // spt::rsc

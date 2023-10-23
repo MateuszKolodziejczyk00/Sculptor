@@ -34,9 +34,11 @@ public:
 
 	void UpdatePersistentDescriptors();
 
-	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const;
+	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state) const;
 
-	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state);
+	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state);
+
+	void UnregisterDescriptorSet(const DescriptorSetState& state);
 
 private:
 
@@ -44,7 +46,7 @@ private:
 	void RemoveInvalidSets();
 	void UpdateDescriptorSets();
 
-	PersistentDSHash HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const;
+	PersistentDSHash HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state) const;
 
 	/**
 	 * Descriptors created in current frame.
@@ -67,13 +69,14 @@ private:
 			, lastUpdateFrame(0)
 		{ }
 
-		PersistentDSHash					hash;
-		lib::WeakPtr<Pipeline>				pipeline;
-		lib::WeakPtr<DescriptorSetState>	state;
-		Uint64								lastUpdateFrame;
+		PersistentDSHash          hash;
+		lib::WeakPtr<Pipeline>    pipeline;
+		const DescriptorSetState* state;
+		Uint64                    lastUpdateFrame;
 	};
 
-	lib::DynamicArray<PersistentDSData> m_dsData;
+	lib::HashSet<const DescriptorSetState*> m_destroyedDescriptors;
+	lib::DynamicArray<PersistentDSData>     m_dsData;
 };
 
 } // spt::rdr

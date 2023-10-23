@@ -79,7 +79,7 @@ rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder
 		BuildHiZParams params;
 		params.downsampleMipsNum = downsampleMipsNum;
 
-		const lib::SharedRef<BuildHiZDS> buildHiZDS = rdr::ResourcesManager::CreateDescriptorSetState<BuildHiZDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx, mipIdx0 + downsampleMipsNum)));
+		const lib::MTHandle<BuildHiZDS> buildHiZDS = graphBuilder.CreateDescriptorSet<BuildHiZDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx, mipIdx0 + downsampleMipsNum)));
 		buildHiZDS->u_buildParams = params;
 		buildHiZDS->u_depthTexture = inputDepthTexture;
 		buildHiZDS->u_HiZMip0 = hiZMipViews[mipIdx];

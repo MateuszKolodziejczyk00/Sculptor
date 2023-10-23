@@ -20,10 +20,10 @@ END_RG_NODE_PARAMETERS_STRUCT();
 
 struct SMDepthPrepassBatch
 {
-	lib::SharedPtr<StaticMeshBatchDS>				batchDS;
+	lib::MTHandle<StaticMeshBatchDS>				batchDS;
 	
-	lib::SharedPtr<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
-	lib::SharedPtr<SMDepthOnlyDrawInstancesDS>		drawInstancesDS;
+	lib::MTHandle<SMDepthPrepassCullInstancesDS>	cullInstancesDS;
+	lib::MTHandle<SMDepthOnlyDrawInstancesDS>		drawInstancesDS;
 
 	rg::RGBufferViewHandle drawCommandsBuffer;
 	rg::RGBufferViewHandle indirectDrawCountBuffer;

@@ -43,7 +43,7 @@ void GenerateGeometryNormalsRenderStage::OnRender(rg::RenderGraphBuilder& graphB
 
 	static rdr::PipelineStateID pipelineState = CompileGenerateGeometryNormalsPipeline();
 
-	lib::SharedPtr<GenerateGeometryNormalsDS> generateGeometryNormalsDS = rdr::ResourcesManager::CreateDescriptorSetState<GenerateGeometryNormalsDS>(RENDERER_RESOURCE_NAME("GenerateGeometryNormalsDS"));
+	lib::MTHandle<GenerateGeometryNormalsDS> generateGeometryNormalsDS = graphBuilder.CreateDescriptorSet<GenerateGeometryNormalsDS>(RENDERER_RESOURCE_NAME("GenerateGeometryNormalsDS"));
 	generateGeometryNormalsDS->u_depthTexture			= depthPrepassData.depth;
 	generateGeometryNormalsDS->u_geometryNormalsTexture	= geometryNormalsTexture;
 

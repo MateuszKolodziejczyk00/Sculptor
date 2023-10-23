@@ -16,7 +16,7 @@ void DescriptorSetsManager::BeginFrame()
 	m_persistentDescriptorSets.UpdatePersistentDescriptors();
 }
 
-rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState) const
+rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& descriptorSetState) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -26,7 +26,7 @@ rhi::RHIDescriptorSet DescriptorSetsManager::GetDescriptorSet(const lib::SharedR
 	return m_persistentDescriptorSets.GetDescriptorSet(pipeline, descriptorSetIdx, descriptorSetState);
 }
 
-rhi::RHIDescriptorSet DescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& descriptorSetState)
+rhi::RHIDescriptorSet DescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& descriptorSetState)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -35,6 +35,15 @@ rhi::RHIDescriptorSet DescriptorSetsManager::GetOrCreateDescriptorSet(const lib:
 	SPT_CHECK(descriptorSetIdx != idxNone<Uint32>);
 
 	return m_persistentDescriptorSets.GetOrCreateDescriptorSet(pipeline, descriptorSetIdx, descriptorSetState);
+}
+
+void DescriptorSetsManager::UnregisterDescriptorSet(const DescriptorSetState& descriptorSetState)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(lib::HasAnyFlag(descriptorSetState.GetFlags(), EDescriptorSetStateFlags::Persistent));
+
+	m_persistentDescriptorSets.UnregisterDescriptorSet(descriptorSetState);
 }
 
 } // spt::rdr

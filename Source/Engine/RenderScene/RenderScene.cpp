@@ -136,7 +136,7 @@ const lib::SharedRef<rdr::Buffer>& RenderScene::GetRenderEntitiesBuffer() const
 	return m_renderEntitiesBuffer;
 }
 
-const lib::SharedRef<RenderSceneDS>& RenderScene::GetRenderSceneDS() const
+const lib::MTHandle<RenderSceneDS>& RenderScene::GetRenderSceneDS() const
 {
 	return m_renderSceneDS;
 }
@@ -156,9 +156,9 @@ lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 	return rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("RenderEntitiesGPUDataBuffer"), renderEntitiesBufferDef, renderEntitiesAllocationInfo);
 }
 
-lib::SharedRef<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
+lib::MTHandle<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
 {
-	const lib::SharedRef<RenderSceneDS> sceneDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"), rdr::EDescriptorSetStateFlags::Persistent);
+	const lib::MTHandle<RenderSceneDS> sceneDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"), rdr::EDescriptorSetStateFlags::Persistent);
 	sceneDS->u_renderEntitiesData = m_renderEntitiesBuffer->CreateFullView();
 	return sceneDS;
 }

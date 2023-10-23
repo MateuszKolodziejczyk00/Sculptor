@@ -98,7 +98,7 @@ public:
 
 	Bool CanRenderShadows() const;
 
-	const lib::SharedPtr<ShadowMapsDS>& GetShadowMapsDS() const;
+	const lib::MTHandle<ShadowMapsDS>& GetShadowMapsDS() const;
 
 	const lib::DynamicArray<RenderSceneEntity>& GetPointLightsWithShadowMapsToUpdate() const;
 	
@@ -160,7 +160,7 @@ private:
 	lib::DynamicArray<ShadowMapViewData> m_shadowMapViewsData;
 	lib::DynamicArray<lib::SharedPtr<rdr::Buffer>> m_shadowMapViewsBuffers;
 
-	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
+	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
 
 	lib::WeakPtr<RenderView> m_mainView;
 

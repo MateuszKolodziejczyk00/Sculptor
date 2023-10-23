@@ -126,7 +126,7 @@ struct DepthPrepassData
 	rg::RGTextureViewHandle prevFrameDepth;
 	rg::RGTextureViewHandle prevFrameDepthHalfRes;
 
-	lib::SharedPtr<DepthCullingDS> depthCullingDS;
+	lib::MTHandle<DepthCullingDS> depthCullingDS;
 
 };
 

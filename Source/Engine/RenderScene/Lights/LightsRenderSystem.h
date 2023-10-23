@@ -61,7 +61,7 @@ private:
 	
 	rdr::PipelineStateID m_buildLightsTilesPipeline;
 
-	lib::SharedPtr<ShadowMapsDS> m_shadowMapsDS;
+	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
 };
 
 } // spt::rsc

@@ -40,7 +40,7 @@ rg::RGTextureViewHandle CompressTexture(rg::RenderGraphBuilder& graphBuilder, co
 
 	static const rdr::PipelineStateID pipeline = CreateCompressionPipeline();
 
-	lib::SharedPtr<VisibilityDataCompressionDS> descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<VisibilityDataCompressionDS>(RENDERER_RESOURCE_NAME("VisibilityDataCompressionDS"));
+	lib::MTHandle<VisibilityDataCompressionDS> descriptorSet = graphBuilder.CreateDescriptorSet<VisibilityDataCompressionDS>(RENDERER_RESOURCE_NAME("VisibilityDataCompressionDS"));
 	descriptorSet->u_compressedDataTexture	= compressedTexture;
 	descriptorSet->u_inputTexture			= params.dataTexture;
 	
@@ -82,7 +82,7 @@ rg::RGTextureViewHandle ComputeMoments(rg::RenderGraphBuilder& graphBuilder, con
 
 	static const rdr::PipelineStateID pipeline = CreateComputationPipeline();
 
-	lib::SharedPtr<VisibilityMomentsComputationDS> descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<VisibilityMomentsComputationDS>(RENDERER_RESOURCE_NAME("VisibilityMomentsComputationDS"));
+	lib::MTHandle<VisibilityMomentsComputationDS> descriptorSet = graphBuilder.CreateDescriptorSet<VisibilityMomentsComputationDS>(RENDERER_RESOURCE_NAME("VisibilityMomentsComputationDS"));
 	descriptorSet->u_compressedDataTexture	= compressedData;
 	descriptorSet->u_momentsTexture			= momentsTexture;
 

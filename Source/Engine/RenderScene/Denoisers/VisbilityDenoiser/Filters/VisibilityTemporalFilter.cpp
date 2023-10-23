@@ -59,7 +59,7 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	shaderParams.hasValidMomentsTexture					= params.momentsTexture.IsValid();
 	shaderParams.hasValidSamplesCountTexture			= hasValidSamplesCountTexture;
 
-	lib::SharedPtr<TemporalFilterDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
+	lib::MTHandle<TemporalFilterDS> ds = graphBuilder.CreateDescriptorSet<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
 	ds->u_currentTexture						= params.currentTexture;
 	ds->u_historyTexture						= params.historyTexture;
 	ds->u_historyDepthTexture					= params.historyDepthTexture;

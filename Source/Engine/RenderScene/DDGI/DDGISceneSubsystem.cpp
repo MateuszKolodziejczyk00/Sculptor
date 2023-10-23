@@ -133,7 +133,7 @@ EDDGIDebugMode::Type DDGISceneSubsystem::GetDebugMode() const
 	return m_debugMode;
 }
 
-const lib::SharedPtr<DDGIDS>& DDGISceneSubsystem::GetDDGIDS() const
+const lib::MTHandle<DDGIDS>& DDGISceneSubsystem::GetDDGIDS() const
 {
 	return m_ddgiDS;
 }

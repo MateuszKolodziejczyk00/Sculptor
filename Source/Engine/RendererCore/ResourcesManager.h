@@ -94,7 +94,7 @@ public:
 	SPT_NODISCARD static lib::SharedRef<Sampler>			CreateSampler(const rhi::SamplerDefinition& def);
 
 	template<typename TDSState>
-	SPT_NODISCARD static lib::SharedRef<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::Default);
+	SPT_NODISCARD static lib::MTHandle<TDSState>			CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::Default);
 	
 	SPT_NODISCARD static lib::SharedRef<QueryPool>			CreateQueryPool(const rhi::QueryPoolDefinition& def);
 
@@ -106,9 +106,9 @@ private:
 
 
 template<typename TDSState>
-lib::SharedRef<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags /*= rdr::EDescriptorSetStateFlags::Default*/)
+lib::MTHandle<TDSState> ResourcesManager::CreateDescriptorSetState(const RendererResourceName& name, rdr::EDescriptorSetStateFlags flags /*= rdr::EDescriptorSetStateFlags::Default*/)
 {
-	return lib::MakeShared<TDSState>(name, flags);
+	return lib::MTHandle<TDSState>(new TDSState(name, flags));
 }
 
 } // spt::rdr

@@ -70,7 +70,7 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	return geometryData;
 }
 
-const lib::SharedPtr<StaticMeshUnifiedDataDS>& StaticMeshUnifiedData::GetUnifiedDataDS() const
+const lib::MTHandle<StaticMeshUnifiedDataDS>& StaticMeshUnifiedData::GetUnifiedDataDS() const
 {
 	return m_unifiedDataDS;
 }
@@ -104,7 +104,7 @@ void StaticMeshUnifiedData::DestroyResources()
 {
 	m_submeshesBuffer.reset();
 	m_meshletsBuffer.reset();
-	m_unifiedDataDS.reset();
+	m_unifiedDataDS.Reset();
 }
 
 } // spt::rsc

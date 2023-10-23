@@ -212,7 +212,7 @@ static rdr::PipelineStateID CreateDDGIDrawDebugRaysPipeline(rhi::EFragmentFormat
 namespace utils
 {
 
-static lib::SharedRef<DDGILightsDS> CreateGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+static lib::MTHandle<DDGILightsDS> CreateGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
 {
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
 
@@ -270,7 +270,7 @@ static lib::SharedRef<DDGILightsDS> CreateGlobalLightsDS(rg::RenderGraphBuilder&
 	lightsParams.pointLightsNum			= static_cast<Uint32>(pointLightsNum);
 	lightsParams.directionalLightsNum	= static_cast<Uint32>(directionalLightsNum);
 
-	const lib::SharedRef<DDGILightsDS> lightsDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGILightsDS>(RENDERER_RESOURCE_NAME("DDGILightsDS"));
+	const lib::MTHandle<DDGILightsDS> lightsDS = graphBuilder.CreateDescriptorSet<DDGILightsDS>(RENDERER_RESOURCE_NAME("DDGILightsDS"));
 	lightsDS->u_lightsParams		= lightsParams;
 	lightsDS->u_pointLights			= pointLightsBuffer->CreateFullView();
 	lightsDS->u_directionalLights	= directionalLightsBuffer->CreateFullView();
@@ -359,12 +359,12 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 
 	const rg::RGTextureViewHandle probesTraceResultTexture = TraceRays(graphBuilder, renderScene, viewSpec, updateParams);
 
-	const lib::SharedRef<DDGIBlendProbesDataDS> updateProbesDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIBlendProbesDataDS>(RENDERER_RESOURCE_NAME("DDGIBlendProbesDataDS"));
+	const lib::MTHandle<DDGIBlendProbesDataDS> updateProbesDS = graphBuilder.CreateDescriptorSet<DDGIBlendProbesDataDS>(RENDERER_RESOURCE_NAME("DDGIBlendProbesDataDS"));
 	updateProbesDS->u_traceRaysResultTexture	= probesTraceResultTexture;
 	updateProbesDS->u_updateProbesParams		= updateParams.updateProbesParamsBuffer;
 	updateProbesDS->u_ddgiParams				= updateParams.ddgiParamsBuffer;
 
-	lib::SharedPtr<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
+	lib::MTHandle<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
 	updateProbesIlluminanceDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
 
 	const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(updateParams.probeIlluminanceDataWithBorderRes, updateParams.raysNumPerProbe);
@@ -375,7 +375,7 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 						  rg::BindDescriptorSets(updateProbesDS,
 												 std::move(updateProbesIlluminanceDS)));
 
-	lib::SharedPtr<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
+	lib::MTHandle<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
 	updateProbesHitDistanceDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
 	
 	const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(updateParams.probeHitDistanceDataWithBorderRes, updateParams.raysNumPerProbe);;
@@ -405,7 +405,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 
-	const lib::SharedPtr<DDGITraceRaysDS> traceRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
+	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
 	traceRaysDS->u_skyViewLUT					= viewAtmosphereData.skyViewLUT;
 	traceRaysDS->u_atmosphereParams				= atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_sceneAccelerationStructure	= lib::Ref(rayTracingSubsystem.GetSceneTLAS());
@@ -430,9 +430,9 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	}
 #endif // DDGI_DEBUGGING
 
-	const lib::SharedRef<DDGILightsDS> lightsDS = utils::CreateGlobalLightsDS(graphBuilder, renderScene);
+	const lib::MTHandle<DDGILightsDS> lightsDS = utils::CreateGlobalLightsDS(graphBuilder, renderScene);
 
-	lib::SharedPtr<ShadowMapsDS> shadowMapsDS;
+	lib::MTHandle<ShadowMapsDS> shadowMapsDS;
 	
 	const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = renderScene.GetSceneSubsystem<ShadowMapsManagerSubsystem>();
 	if (shadowMapsManager && shadowMapsManager->CanRenderShadows())
@@ -441,7 +441,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	}
 	else
 	{
-		shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
+		shadowMapsDS = graphBuilder.CreateDescriptorSet<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
 	}
 
 	static rdr::PipelineStateID traceRaysPipelineID;
@@ -532,7 +532,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	{
 		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().Get<DDGIDebugRaysViewData>();
 
-		const lib::SharedPtr<DDGIDebugDrawRaysDS> debugRaysDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
+		const lib::MTHandle<DDGIDebugDrawRaysDS> debugRaysDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
 		debugRaysDS->u_debugRays = debugRaysViewData.debugRays;
 
 		const Uint32 raysNum = debugRaysViewData.raysNum;
@@ -553,7 +553,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 		debugParams.probeRadius	= 0.075f;
 		debugParams.debugMode	= ddgiSubsystem.GetDebugMode();
 
-		lib::SharedPtr<DDGIDebugDrawProbesDS> debugDrawProbesDS = rdr::ResourcesManager::CreateDescriptorSetState<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
+		lib::MTHandle<DDGIDebugDrawProbesDS> debugDrawProbesDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
 		debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
 		
 		const Uint32 probesNum			= ddgiSubsystem.GetProbesNum();

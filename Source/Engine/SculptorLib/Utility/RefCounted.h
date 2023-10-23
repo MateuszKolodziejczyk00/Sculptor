@@ -18,11 +18,22 @@ public:
 
 	RefCounted()
 		: m_refCount(0)
+		, m_deleteOnZeroRefCount(true)
 	{ }
 
 	virtual ~RefCounted()
 	{
 		SPT_CHECK(m_refCount == 0);
+	}
+
+	Bool ShouldDeleteOnZeroRefCount() const
+	{
+		return m_deleteOnZeroRefCount;
+	}
+
+	void DisableDeleteOnZeroRefCount()
+	{
+		m_deleteOnZeroRefCount = false;
 	}
 
 	void AddRef()
@@ -45,6 +56,8 @@ public:
 private:
 
 	TCountType m_refCount;
+
+	Bool m_deleteOnZeroRefCount;
 };
 
 
@@ -61,7 +74,6 @@ public:
 	Handle(TInstanceType* object)
 		: m_object(object)
 	{
-
 		static_assert(ValidateObjectType<TInstanceType>());
 
 		if (IsValid())
@@ -70,24 +82,44 @@ public:
 		}
 	}
 
-	Handle(nullptr_t)
-		: m_object(nullptr)
-	{ }
-
 	Handle(const Handle& other)
-		: m_object(other.m_object)
+		: m_object(other.Get())
 	{
 		if (IsValid())
 		{
 			AddRef();
 		}
 	}
-
+	
 	Handle(Handle&& other)
-		: m_object(other.m_object)
+		: m_object(other.Get())
 	{
 		other.ResetWithoutRelease();
 	}
+
+	template<typename TInstanceType>
+	Handle(const Handle<TInstanceType, TRefCountedType>& other)
+		: m_object(other.Get())
+	{
+		static_assert(ValidateObjectType<TInstanceType>());
+
+		if (IsValid())
+		{
+			AddRef();
+		}
+	}
+
+	template<typename TInstanceType>
+	Handle(Handle<TInstanceType, TRefCountedType>&& other)
+		: m_object(other.Get())
+	{
+		static_assert(ValidateObjectType<TInstanceType>());
+		other.ResetWithoutRelease();
+	}
+
+	Handle(nullptr_t)
+		: m_object(nullptr)
+	{ }
 
 	~Handle()
 	{
@@ -97,25 +129,6 @@ public:
 	Bool IsValid() const
 	{
 		return m_object != nullptr;
-	}
-
-	Handle& operator=(const Handle& other)
-	{
-		ResetWithRelease();
-
-		SetObject<true>(other.m_object);
-
-		return *this;
-	}
-
-	Handle& operator=(Handle&& other)
-	{
-		ResetWithRelease();
-
-		SetObject<false>(other.m_object);
-		other.ResetWithoutRelease();
-
-		return *this;
 	}
 
 	template<typename TInstanceType>
@@ -128,6 +141,45 @@ public:
 		SetObject<true>(object);
 
 		return *this;
+	}
+
+	Handle& operator=(const Handle& other)
+	{
+		return (*this = other.Get());
+	}
+
+	Handle& operator=(Handle&& other)
+	{
+		ResetWithRelease();
+
+		SetObject<false>(other.Get());
+		other.ResetWithoutRelease();
+
+		return *this;
+	}
+
+	template<typename TInstanceType>
+	Handle& operator=(const Handle<TInstanceType, TRefCountedType>& other)
+	{
+		return (*this = other.Get());
+	}
+
+	template<typename TInstanceType>
+	Handle& operator=(Handle<TInstanceType, TRefCountedType>&& other)
+	{
+		static_assert(ValidateObjectType<TInstanceType>());
+
+		ResetWithRelease();
+
+		SetObject<false>(other.Get());
+		other.ResetWithoutRelease();
+
+		return *this;
+	}
+
+	Bool operator==(const Handle& other) const
+	{
+		return m_object == other.m_object;
 	}
 
 	void Reset()
@@ -159,9 +211,17 @@ private:
 
 	void Release() const
 	{
-		if (((TRefCountedType*)m_object)->Release())
+		TRefCountedType* refCountedObj = (TRefCountedType*)m_object;
+		if (refCountedObj->Release())
 		{
-			delete m_object;
+			if (refCountedObj->ShouldDeleteOnZeroRefCount())
+			{
+				delete refCountedObj;
+			}
+			else
+			{
+				refCountedObj->~TRefCountedType();
+			}
 		}
 	}
 
@@ -200,6 +260,9 @@ private:
 	}
 
 	TObject* m_object;
+
+	template<typename THandleInstanceType, typename THandleRefCountedType>
+	friend class Handle;
 };
 
 } // priv

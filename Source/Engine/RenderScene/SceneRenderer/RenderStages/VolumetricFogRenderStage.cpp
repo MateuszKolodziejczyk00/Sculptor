@@ -113,7 +113,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
     pariticipatingMediaParams.densityNoiseZSigma	= -6.f;
     pariticipatingMediaParams.densityNoiseSpeed		= math::Vector3f(-0.5f, -0.5f, 0.1f);
 
-	const lib::SharedRef<RenderParticipatingMediaDS> participatingMediaDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
+	const lib::MTHandle<RenderParticipatingMediaDS> participatingMediaDS = graphBuilder.CreateDescriptorSet<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
 	participatingMediaDS->u_participatingMediaTexture	= fogParams.participatingMediaTextureView;
 	participatingMediaDS->u_participatingMediaParams	= pariticipatingMediaParams;
 
@@ -181,7 +181,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	inScatteringParams.fogNearPlane							= fogParams.nearPlane;
 	inScatteringParams.fogFarPlane							= fogParams.farPlane;
 
-	const lib::SharedRef<ComputeInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<ComputeInScatteringDS>(RENDERER_RESOURCE_NAME("ComputeInScatteringDS"));
+	const lib::MTHandle<ComputeInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<ComputeInScatteringDS>(RENDERER_RESOURCE_NAME("ComputeInScatteringDS"));
 	computeInScatteringDS->u_participatingMediaTexture	= fogParams.participatingMediaTextureView;
 	computeInScatteringDS->u_inScatteringTexture		= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_inScatteringHistoryTexture	= fogParams.inScatteringHistoryTextureView;
@@ -238,7 +238,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	params.fogNearPlane	= fogParams.nearPlane;
 	params.fogFarPlane	= fogParams.farPlane;
 
-	const lib::SharedRef<IntegrateInScatteringDS> computeInScatteringDS = rdr::ResourcesManager::CreateDescriptorSetState<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
+	const lib::MTHandle<IntegrateInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
 	computeInScatteringDS->u_inScatteringTexture			= fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
 	computeInScatteringDS->u_depthTexture					= fogParams.depthTextureView;
@@ -299,7 +299,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	params.fogFarPlane			= fogParams.farPlane;
 	params.blendPixelsOffset	= 8.f;
 
-	const lib::SharedRef<ApplyVolumetricFogDS> applyVolumetricFogDS = rdr::ResourcesManager::CreateDescriptorSetState<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
+	const lib::MTHandle<ApplyVolumetricFogDS> applyVolumetricFogDS = graphBuilder.CreateDescriptorSet<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
 	applyVolumetricFogDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
 	applyVolumetricFogDS->u_luminanceTexture				= shadingData.luminanceTexture;
 	applyVolumetricFogDS->u_depthTexture					= depthPrepassData.depth;

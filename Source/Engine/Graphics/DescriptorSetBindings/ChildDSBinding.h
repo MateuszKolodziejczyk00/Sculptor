@@ -54,7 +54,7 @@ public:
 		rdr::bindings_refl::BuildAdditionalShaderCompilationArgs<TDescriptorSet>(builder);
 	}
 
-	void Set(lib::SharedPtr<TDescriptorSet> ds)
+	void Set(lib::MTHandle<TDescriptorSet> ds)
 	{
 		if(m_boundDS != ds)
 		{
@@ -63,25 +63,9 @@ public:
 		}
 	}
 
-	void Set(const lib::SharedRef<TDescriptorSet>& ds)
-	{
-		const lib::SharedPtr<TDescriptorSet>& ptr = ds.ToSharedPtr();
-		if(m_boundDS != ptr)
-		{
-			m_boundDS = std::move(ptr);
-			MarkAsDirty();
-		}
-	}
-
-	ChildDSBinding& operator=(lib::SharedPtr<TDescriptorSet> ds)
+	ChildDSBinding& operator=(lib::MTHandle<TDescriptorSet> ds)
 	{
 		Set(std::move(ds));
-		return *this;
-	}
-
-	ChildDSBinding& operator=(const lib::SharedRef<TDescriptorSet>& ds)
-	{
-		Set(ds);
 		return *this;
 	}
 
@@ -92,12 +76,12 @@ public:
 
 	Bool IsValid() const
 	{
-		return !!m_boundDS;
+		return m_boundDS.IsValid();
 	}
 
 private:
 
-	lib::SharedPtr<TDescriptorSet> m_boundDS;
+	lib::MTHandle<TDescriptorSet> m_boundDS;
 };
 
 } // spt::gfx

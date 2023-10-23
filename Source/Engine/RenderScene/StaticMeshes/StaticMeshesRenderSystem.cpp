@@ -34,6 +34,13 @@ void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuild
 	}
 }
 
+void StaticMeshesRenderSystem::FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+{
+	Super::FinishRenderingFrame(graphBuilder, renderScene);
+
+	m_shadowMapRenderer.FinishRenderingFrame();
+}
+
 void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();

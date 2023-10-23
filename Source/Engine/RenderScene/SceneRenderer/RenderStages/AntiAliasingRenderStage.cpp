@@ -107,7 +107,7 @@ static rg::RGTextureViewHandle RenderTemporalAA(rg::RenderGraphBuilder& graphBui
 		TemporalAAParams params;
 		params.useYCoCg = true;
 
-		const lib::SharedRef<TemporalAADS> temporalAADS = rdr::ResourcesManager::CreateDescriptorSetState<TemporalAADS>(RENDERER_RESOURCE_NAME("Temporal AA DS"));
+		const lib::MTHandle<TemporalAADS> temporalAADS = graphBuilder.CreateDescriptorSet<TemporalAADS>(RENDERER_RESOURCE_NAME("Temporal AA DS"));
 		temporalAADS->u_depth			= depthPrepassData.depth;
 		temporalAADS->u_inputColor		= shadingData.luminanceTexture;
 		temporalAADS->u_historyColor	= inputTexture;

@@ -49,7 +49,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	dispatchParams.samplesOffset			= 1u << iterationIdx;
 	dispatchParams.hasValidMomentsTexture	= params.momentsTexture.IsValid();
 
-	lib::SharedPtr<SpatialATrousFilterDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
+	lib::MTHandle<SpatialATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
 	ds->u_inputTexture				= input;
 	ds->u_outputTexture				= output;
 	ds->u_depthTexture				= params.depthTexture;

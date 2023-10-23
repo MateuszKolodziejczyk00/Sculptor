@@ -170,7 +170,7 @@ Bool ShadowMapsManagerSubsystem::CanRenderShadows() const
 	return !m_shadowMaps.empty();
 }
 
-const lib::SharedPtr<ShadowMapsDS>& ShadowMapsManagerSubsystem::GetShadowMapsDS() const
+const lib::MTHandle<ShadowMapsDS>& ShadowMapsManagerSubsystem::GetShadowMapsDS() const
 {
 	return m_shadowMapsDS;
 }
@@ -633,7 +633,7 @@ void ShadowMapsManagerSubsystem::CreateShadowMapsDescriptorSet()
 	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
 	for (const lib::SharedPtr<rdr::Texture>& shadowMap : m_shadowMaps)
 	{
-		rhi::TextureViewDefinition  shadowMapViewDef;
+		rhi::TextureViewDefinition shadowMapViewDef;
 		shadowMapViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::GetFullAspectForFormat(shadowMap->GetDefinition().format));
 		m_shadowMapsDS->u_shadowMaps.BindTexture(shadowMap->CreateView(RENDERER_RESOURCE_NAME("Shadow Map View"), shadowMapViewDef));
 	}

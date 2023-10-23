@@ -2,7 +2,6 @@
 
 #include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
-#include "Utility/RefCounted.h"
 
 
 namespace spt::js

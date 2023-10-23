@@ -45,12 +45,12 @@ struct SMForwardOpaqueBatch
 	rg::RGBufferViewHandle meshletsWorkloadsDispatchArgsBuffer;
 	rg::RGBufferViewHandle drawTrianglesBatchArgsBuffer;
 	
-	lib::SharedPtr<StaticMeshBatchDS>			batchDS;
+	lib::MTHandle<StaticMeshBatchDS> batchDS;
 	
-	lib::SharedPtr<SMCullSubmeshesDS>			cullSubmeshesDS;
-	lib::SharedPtr<SMCullMeshletsDS>			cullMeshletsDS;
-	lib::SharedPtr<SMCullTrianglesDS>			cullTrianglesDS;
-	lib::SharedPtr<SMIndirectRenderTrianglesDS>	indirectRenderTrianglesDS;
+	lib::MTHandle<SMCullSubmeshesDS>           cullSubmeshesDS;
+	lib::MTHandle<SMCullMeshletsDS>            cullMeshletsDS;
+	lib::MTHandle<SMCullTrianglesDS>           cullTrianglesDS;
+	lib::MTHandle<SMIndirectRenderTrianglesDS> indirectRenderTrianglesDS;
 
 	Uint32 batchedSubmeshesNum;
 

@@ -82,7 +82,7 @@ public:
 	RenderScene&                   GetRenderScene() const;
 	const RenderSceneEntityHandle& GetViewEntity() const;
 
-	const lib::SharedPtr<RenderViewDS>& GetRenderViewDS() const;
+	const lib::MTHandle<RenderViewDS>& GetRenderViewDS() const;
 
 	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
 	EAntiAliasingMode::Type GetAnitAliasingMode() const;
@@ -143,7 +143,7 @@ private:
 
 	RenderScene& m_renderScene;
 
-	lib::SharedPtr<RenderViewDS> m_renderViewDS;
+	lib::MTHandle<RenderViewDS> m_renderViewDS;
 
 	RenderSystemsRegistry<ViewRenderSystem> m_renderSystems;
 

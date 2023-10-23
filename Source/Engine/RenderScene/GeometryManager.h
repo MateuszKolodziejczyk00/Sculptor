@@ -24,7 +24,7 @@ public:
 	rhi::RHISuballocation CreateGeometry(const Byte* geometryData, Uint64 dataSize);
 	rhi::RHISuballocation CreateGeometry(Uint64 dataSize);
 
-	const lib::SharedPtr<GeometryDS>& GetGeometryDSState() const;
+	const lib::MTHandle<GeometryDS>& GetGeometryDSState() const;
 
 	Uint64 GetGeometryBufferDeviceAddress() const;
 
@@ -34,7 +34,7 @@ private:
 	void DestroyResources();
 
 	lib::SharedPtr<rdr::Buffer> m_geometryBuffer;
-	lib::SharedPtr<GeometryDS>	m_geometryDSState;
+	lib::MTHandle<GeometryDS>	m_geometryDSState;
 };
 
 } // spt::rsc

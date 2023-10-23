@@ -22,7 +22,7 @@ void PersistentDescriptorSetsManager::UpdatePersistentDescriptors()
 	UpdateDescriptorSets();
 }
 
-rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const
+rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -45,7 +45,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetDescriptorSet(const li
 	return ds;
 }
 
-rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state)
+rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -74,7 +74,7 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 		PersistentDSData newDSData;
 		newDSData.hash				= dsHash;
 		newDSData.pipeline			= pipeline.ToSharedPtr();
-		newDSData.state				= state.ToSharedPtr();
+		newDSData.state				= state.Get();
 		newDSData.lastUpdateFrame	= rdr::Renderer::GetCurrentFrameIdx() + 1;
 		m_dsData.emplace_back(newDSData);
 
@@ -85,6 +85,11 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 	}
 
 	return createdDS;
+}
+
+void PersistentDescriptorSetsManager::UnregisterDescriptorSet(const DescriptorSetState& state)
+{
+	m_destroyedDescriptors.emplace(&state);
 }
 
 void PersistentDescriptorSetsManager::FlushCreatedDescriptorSets()
@@ -101,9 +106,9 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 
 	// remove all sets with expired descriptor set states
 	const auto removedBegin = std::remove_if(std::begin(m_dsData), std::end(m_dsData),
-											 [](const PersistentDSData& ds)
+											 [this](const PersistentDSData& ds)
 											 {
-												 return ds.state.expired() || ds.pipeline.expired();
+												 return m_destroyedDescriptors.contains(ds.state) || ds.pipeline.expired();
 											 });
 
 	// destroy descriptor sets
@@ -116,6 +121,8 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 				  });
 
 	m_dsData.erase(removedBegin, std::cend(m_dsData));
+
+	m_destroyedDescriptors.clear();
 }
 
 void PersistentDescriptorSetsManager::UpdateDescriptorSets()
@@ -124,23 +131,15 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 
 	const Uint64 currentFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
 
-	lib::DynamicArray<lib::SharedPtr<DescriptorSetState>> dirtyStates;
-	dirtyStates.reserve(64);
-
 	DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
 
 	for (PersistentDSData& ds : m_dsData)
 	{
-		lib::SharedPtr<DescriptorSetState> state = ds.state.lock();
-		SPT_CHECK(!!state);
-
-		if (state->IsDirty() && ds.lastUpdateFrame < currentFrameIdx)
+		if (ds.state->IsDirty() && ds.lastUpdateFrame < currentFrameIdx)
 		{
 			lib::SharedPtr<Pipeline> pipeline = ds.pipeline.lock();
 			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.hash), writer, pipeline->GetMetaData());
-			state->UpdateDescriptors(updateContext);
-
-			dirtyStates.emplace_back(std::move(state));
+			ds.state->UpdateDescriptors(updateContext);
 
 			ds.lastUpdateFrame = currentFrameIdx;
 		}
@@ -149,7 +148,7 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 	writer.Flush();
 }
 
-PersistentDescriptorSetsManager::PersistentDSHash PersistentDescriptorSetsManager::HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::SharedRef<DescriptorSetState>& state) const
+PersistentDescriptorSetsManager::PersistentDSHash PersistentDescriptorSetsManager::HashPersistentDS(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& state) const
 {
 	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 

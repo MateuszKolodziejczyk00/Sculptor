@@ -83,7 +83,7 @@ public:
 
 	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
 
-	const lib::SharedPtr<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
+	const lib::MTHandle<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 
 private:
 
@@ -93,7 +93,7 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_submeshesBuffer;
 	lib::SharedPtr<rdr::Buffer> m_meshletsBuffer;
 
-	lib::SharedPtr<StaticMeshUnifiedDataDS> m_unifiedDataDS;
+	lib::MTHandle<StaticMeshUnifiedDataDS> m_unifiedDataDS;
 };
 
 } // spt::rsc

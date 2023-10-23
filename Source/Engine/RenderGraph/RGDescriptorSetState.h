@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
+#include "RGResources/RGTrackedObject.h"
 
 
 namespace spt::rg

@@ -61,7 +61,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	geometryNormalsDef.resolution = halfRes;
 	const rg::RGTextureViewHandle geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Geometry Normals Half Res"), geometryNormalsDef, rhi::EMemoryUsage::GPUOnly);
 
-	const lib::SharedPtr<DownsampleGeometryTexturesDS> ds = rdr::ResourcesManager::CreateDescriptorSetState<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
+	const lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
 	ds->u_depthTexture						= depthPrepassData.depth;
 	ds->u_motionTexture						= motionData.motion;
 	ds->u_geometryNormalsTexture			= shadingInputData.geometryNormals;

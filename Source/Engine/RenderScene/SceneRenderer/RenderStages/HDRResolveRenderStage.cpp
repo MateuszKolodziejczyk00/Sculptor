@@ -102,7 +102,7 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Luminance Histogram"), luminanceHistogramBuffer, 0, histogramSize, 0);
 	
-	const lib::SharedRef<LuminanceHistogramDS> luminanceHistogramDS = rdr::ResourcesManager::CreateDescriptorSetState<LuminanceHistogramDS>(RENDERER_RESOURCE_NAME("LuminanceHistogramDS"));
+	const lib::MTHandle<LuminanceHistogramDS> luminanceHistogramDS = graphBuilder.CreateDescriptorSet<LuminanceHistogramDS>(RENDERER_RESOURCE_NAME("LuminanceHistogramDS"));
 	luminanceHistogramDS->u_linearColorTexture	= linearColorTexture;
 	luminanceHistogramDS->u_exposureSettings	= exposureSettings;
 	luminanceHistogramDS->u_luminanceHistogram	= luminanceHistogramBuffer;
@@ -158,7 +158,7 @@ rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& graphBuil
 
 	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->CreateFullView());
 
-	const lib::SharedRef<ComputeAdaptedLuminanceDS> computeAdaptedLuminanceDS = rdr::ResourcesManager::CreateDescriptorSetState<ComputeAdaptedLuminanceDS>(RENDERER_RESOURCE_NAME("ComputeAdaptedLuminanceDS"));
+	const lib::MTHandle<ComputeAdaptedLuminanceDS> computeAdaptedLuminanceDS = graphBuilder.CreateDescriptorSet<ComputeAdaptedLuminanceDS>(RENDERER_RESOURCE_NAME("ComputeAdaptedLuminanceDS"));
 	computeAdaptedLuminanceDS->u_exposureSettings	= exposureSettings;
 	computeAdaptedLuminanceDS->u_luminanceHistogram = luminanceHistogram;
 	computeAdaptedLuminanceDS->u_adaptedLuminance	= adaptedLuminanceBuffer;
@@ -251,7 +251,7 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	lensFlaresParams.haloWidth				= params::lensFlaresHaloWidth;
 	lensFlaresParams.linearColorThreshold	= params::lensFlaresLinearColorThreshold;
 
-	const lib::SharedRef<LensFlaresPassDS> lensFlaresPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresPassDS>(RENDERER_RESOURCE_NAME("LensFlaresPassDS"));
+	const lib::MTHandle<LensFlaresPassDS> lensFlaresPassDS = graphBuilder.CreateDescriptorSet<LensFlaresPassDS>(RENDERER_RESOURCE_NAME("LensFlaresPassDS"));
 	lensFlaresPassDS->u_inputTexture		= bloomTexture;
 	lensFlaresPassDS->u_outputTexture		= lensFlaresTexture;
 	lensFlaresPassDS->u_lensFlaresParams	= lensFlaresParams;
@@ -263,7 +263,7 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 
 	static const rdr::PipelineStateID lensFlaresBlurPipeline = CompileLensFlaresBlurPipeline();
 
-	const lib::SharedRef<LensFlaresBlurDS> blurHorizontalPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresHorizontalBlurDS"));
+	const lib::MTHandle<LensFlaresBlurDS> blurHorizontalPassDS = graphBuilder.CreateDescriptorSet<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresHorizontalBlurDS"));
 	blurHorizontalPassDS->u_inputTexture	= lensFlaresTexture;
 	blurHorizontalPassDS->u_outputTexture	= tempTexture;
 	blurHorizontalPassDS->u_blurParams		= LensFlaresBlurParams{ 1u };
@@ -273,7 +273,7 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 						  math::Utils::DivideCeil(lensFlaresRes, math::Vector3u(256u, 1u, 1u)),
 						  rg::BindDescriptorSets(blurHorizontalPassDS));
 
-	const lib::SharedRef<LensFlaresBlurDS> blurVerticalPassDS = rdr::ResourcesManager::CreateDescriptorSetState<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresVericalBlurDS"));
+	const lib::MTHandle<LensFlaresBlurDS> blurVerticalPassDS = graphBuilder.CreateDescriptorSet<LensFlaresBlurDS>(RENDERER_RESOURCE_NAME("LensFlaresVericalBlurDS"));
 	blurVerticalPassDS->u_inputTexture		= tempTexture;
 	blurVerticalPassDS->u_outputTexture		= lensFlaresTexture;
 	blurVerticalPassDS->u_blurParams		= LensFlaresBlurParams{ 0u };
@@ -386,7 +386,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 
 		const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
-		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomDownsampleDS(%d)", passIdx)));
+		const lib::MTHandle<BloomPassDS> bloomPassDS = graphBuilder.CreateDescriptorSet<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomDownsampleDS(%d)", passIdx)));
 		bloomPassDS->u_bloomInfo		= passInfo;
 		bloomPassDS->u_inputTexture		= inputTextureView;
 		bloomPassDS->u_outputTexture	= outputTextureView;
@@ -423,7 +423,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 
 		const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
-		const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomUpsampleDS(%d)", passIdx)));
+		const lib::MTHandle<BloomPassDS> bloomPassDS = graphBuilder.CreateDescriptorSet<BloomPassDS>(RENDERER_RESOURCE_NAME(std::format("BloomUpsampleDS(%d)", passIdx)));
 		bloomPassDS->u_bloomInfo		= passInfo;
 		bloomPassDS->u_inputTexture		= inputTextureView;
 		bloomPassDS->u_outputTexture	= outputTextureView;
@@ -451,7 +451,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 
 	const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
-	const lib::SharedRef<BloomPassDS> bloomPassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
+	const lib::MTHandle<BloomPassDS> bloomPassDS = graphBuilder.CreateDescriptorSet<BloomPassDS>(RENDERER_RESOURCE_NAME("BloomCompositeDS"));
 	bloomPassDS->u_inputTexture		= bloomTextureMip0;
 	bloomPassDS->u_outputTexture	= outputTexture;
 	bloomPassDS->u_bloomInfo		= passInfo;
@@ -460,7 +460,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	compositePassInfo.bloomBlendFactor		= params::bloomBlendFactor;
 	compositePassInfo.lensFlaresIntensity	= params::lensFlaresIntensity;
 
-	const lib::SharedRef<BloomCompositePassDS> bloomCompositePassDS = rdr::ResourcesManager::CreateDescriptorSetState<BloomCompositePassDS>(RENDERER_RESOURCE_NAME("BloomCombinePassDS"));
+	const lib::MTHandle<BloomCompositePassDS> bloomCompositePassDS = graphBuilder.CreateDescriptorSet<BloomCompositePassDS>(RENDERER_RESOURCE_NAME("BloomCombinePassDS"));
 
 	const RenderSceneEntityHandle renderViewEntity = viewSpec.GetRenderView().GetViewEntity();
 	if (const CameraLensSettingsComponent* lensSettings = renderViewEntity.try_get<CameraLensSettingsComponent>())
@@ -552,7 +552,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const lib::SharedRef<TonemappingDS> tonemappingDS = rdr::ResourcesManager::CreateDescriptorSetState<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
+	const lib::MTHandle<TonemappingDS> tonemappingDS = graphBuilder.CreateDescriptorSet<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
 	tonemappingDS->u_linearColorTexture		= linearColorTexture;
 	tonemappingDS->u_LDRTexture				= ldrTexture;
 	tonemappingDS->u_tonemappingSettings	= tonemappingSettings;
@@ -590,7 +590,7 @@ void DoGammaCorrection(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHa
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const lib::SharedRef<GammaCorrectionDS> gammaCorrectionCS = rdr::ResourcesManager::CreateDescriptorSetState<GammaCorrectionDS>(RENDERER_RESOURCE_NAME("GammaCorrectionDS"));
+	const lib::MTHandle<GammaCorrectionDS> gammaCorrectionCS = graphBuilder.CreateDescriptorSet<GammaCorrectionDS>(RENDERER_RESOURCE_NAME("GammaCorrectionDS"));
 	gammaCorrectionCS->u_texture = texture;
 
 	static const rdr::PipelineStateID pipelineState = CompileGammaCorrectionPipeline();

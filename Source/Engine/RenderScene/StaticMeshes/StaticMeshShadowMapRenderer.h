@@ -40,12 +40,12 @@ struct SMShadowMapBatch
 	struct PerFaceData
 	{
 		rg::RGBufferViewHandle						drawCommandsBuffer;
-		lib::SharedPtr<SMDepthOnlyDrawInstancesDS>	drawDS;
+		lib::MTHandle<SMDepthOnlyDrawInstancesDS>	drawDS;
 	};
 
-	lib::SharedPtr<StaticMeshBatchDS> batchDS;
+	lib::MTHandle<StaticMeshBatchDS> batchDS;
 
-	lib::SharedPtr<SMShadowMapCullingDS> cullingDS;
+	lib::MTHandle<SMShadowMapCullingDS> cullingDS;
 
 	lib::DynamicArray<PerFaceData> perFaceData;
 
@@ -66,6 +66,8 @@ public:
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs);
 
 	void RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+
+	void FinishRenderingFrame();
 
 private:
 

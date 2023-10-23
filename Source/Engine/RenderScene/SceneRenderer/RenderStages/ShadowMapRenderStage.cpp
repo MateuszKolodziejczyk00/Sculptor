@@ -181,7 +181,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 	horizontalFilterParams.nearPlane = renderView.GetNearPlane();
 	horizontalFilterParams.farPlane = farPlane.value();
 
-	const lib::SharedRef<msm::FilterMSMDS> horizontalFilterMSMDS = rdr::ResourcesManager::CreateDescriptorSetState<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Horizontal)"));
+	const lib::MTHandle<msm::FilterMSMDS> horizontalFilterMSMDS = graphBuilder.CreateDescriptorSet<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Horizontal)"));
 	horizontalFilterMSMDS->u_input	= shadowMapTextureView;
 	horizontalFilterMSMDS->u_output = blurIntermediateTexture;
 	horizontalFilterMSMDS->u_params = horizontalFilterParams;
@@ -201,7 +201,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 	shadowMapMip0ViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, 0, 1);
 	const rg::RGTextureViewHandle shadowMapMip0View = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shadow Map View"), shadowMap, shadowMapMip0ViewDef);
 
-	const lib::SharedRef<msm::FilterMSMDS> verticalFilterMSMDS = rdr::ResourcesManager::CreateDescriptorSetState<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Vertical)"));
+	const lib::MTHandle<msm::FilterMSMDS> verticalFilterMSMDS = graphBuilder.CreateDescriptorSet<msm::FilterMSMDS>(RENDERER_RESOURCE_NAME("FilterMSMDS (Vertical)"));
 	verticalFilterMSMDS->u_input	= blurIntermediateTexture;
 	verticalFilterMSMDS->u_output	= shadowMapMip0View;
 	verticalFilterMSMDS->u_params	= verticalFilterParams;
@@ -230,7 +230,7 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 	{
 		// Horizontal pass
 
-		const lib::SharedRef<vsm::FilterVSMDS> horizontalFilterDS = rdr::ResourcesManager::CreateDescriptorSetState<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Horizontal)"));
+		const lib::MTHandle<vsm::FilterVSMDS> horizontalFilterDS = graphBuilder.CreateDescriptorSet<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Horizontal)"));
 		horizontalFilterDS->u_depth.Set(depthRenderTarget);
 		horizontalFilterDS->u_output = tempTexture;
 
@@ -248,7 +248,7 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 
 		const rg::RGTextureViewHandle shadowMapView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Shadow Map View"), shadowMap);
 
-		const lib::SharedRef<vsm::FilterVSMDS> verticalFilterDS = rdr::ResourcesManager::CreateDescriptorSetState<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Vertical)"));
+		const lib::MTHandle<vsm::FilterVSMDS> verticalFilterDS = graphBuilder.CreateDescriptorSet<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Vertical)"));
 		verticalFilterDS->u_moments.Set(tempTexture);
 		verticalFilterDS->u_output = shadowMapView;
 

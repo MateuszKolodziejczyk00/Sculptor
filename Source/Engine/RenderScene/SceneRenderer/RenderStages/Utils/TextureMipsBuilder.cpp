@@ -72,7 +72,7 @@ void BuildTextureMips(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureHandle 
 		MipsBuildPassParams params;
 		params.downsampleMipsNum = downsampleMipsNum;
 
-		const lib::SharedRef<MipsBuildPassDS> mipsBuildDS = rdr::ResourcesManager::CreateDescriptorSetState<MipsBuildPassDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx0 + sourceMipLevel, mipIdx0 + downsampleMipsNum + sourceMipLevel)));
+		const lib::MTHandle<MipsBuildPassDS> mipsBuildDS = graphBuilder.CreateDescriptorSet<MipsBuildPassDS>(RENDERER_RESOURCE_NAME(std::format("BuildHiZDS (Mips {} - {})", mipIdx0 + sourceMipLevel, mipIdx0 + downsampleMipsNum + sourceMipLevel)));
 		mipsBuildDS->u_mipsBuildParams = params;
 		mipsBuildDS->u_inputTexture = inputTexture;
 		mipsBuildDS->u_textureMip0 = textureMipViews[mipIdx];

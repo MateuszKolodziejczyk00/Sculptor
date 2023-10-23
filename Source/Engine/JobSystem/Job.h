@@ -8,7 +8,6 @@
 #include "MathUtils.h"
 #include "ThreadInfo.h"
 #include "Event.h"
-#include "Utility/RefCounted.h"
 
 
 namespace spt::js

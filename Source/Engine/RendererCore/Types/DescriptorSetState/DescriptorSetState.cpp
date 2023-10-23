@@ -3,6 +3,7 @@
 #include "Types/DescriptorSetWriter.h"
 #include "Types/Buffer.h"
 #include "Renderer.h"
+#include "DescriptorSets/DescriptorSetsManager.h"
 
 namespace spt::rdr
 {
@@ -158,6 +159,15 @@ DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescri
 	, m_descriptorSetHash(idxNone<SizeType>)
 	, m_name(name)
 { }
+
+DescriptorSetState::~DescriptorSetState()
+{
+	if (lib::HasAnyFlag(m_flags, EDescriptorSetStateFlags::Persistent))
+	{
+		DescriptorSetsManager& dsManager = Renderer::GetDescriptorSetsManager();
+		dsManager.UnregisterDescriptorSet(*this);
+	}
+}
 
 DSStateID DescriptorSetState::GetID() const
 {

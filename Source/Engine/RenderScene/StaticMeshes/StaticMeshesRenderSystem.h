@@ -20,6 +20,7 @@ public:
 
 	// Begin SceneRenderSystem overrides
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
+	virtual void FinishRenderingFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene) override;
 	// End SceneRenderSystem overrides
 
 private:

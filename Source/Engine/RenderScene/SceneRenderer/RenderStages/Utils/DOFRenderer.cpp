@@ -58,7 +58,7 @@ static rg::RGTextureViewHandle DOFGenerateCoC(rg::RenderGraphBuilder& graphBuild
 	shaderParams.farFieldBegin	= params.focalPlane + (params.fullFocusRange * 0.5f);
 	shaderParams.farFieldEnd	= shaderParams.farFieldBegin + params.farFocusIncreaseRange;
 
-	lib::SharedPtr<DOFGenerateCoCDS> cocDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFGenerateCoCDS>(RENDERER_RESOURCE_NAME("DOFGenerateCoCDS"));
+	lib::MTHandle<DOFGenerateCoCDS> cocDS = graphBuilder.CreateDescriptorSet<DOFGenerateCoCDS>(RENDERER_RESOURCE_NAME("DOFGenerateCoCDS"));
 	cocDS->u_params					= shaderParams;
 	cocDS->u_depthTexture			= params.depthTexture;
 	cocDS->u_cocTexture				= cocTexture;
@@ -135,7 +135,7 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
 
-		lib::SharedPtr<DOFNearCoCBlurDS> cocDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
+		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
 		cocDS->u_cocTexture			= cocTexture;
 		cocDS->u_cocTextureBlurred	= tempTexture;
 		cocDS->u_params				= params;
@@ -151,7 +151,7 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
 
-		lib::SharedPtr<DOFNearCoCBlurDS> cocDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
+		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
 		cocDS->u_cocTexture			= tempTexture;
 		cocDS->u_cocTextureBlurred	= cocTextureBlurred;
 		cocDS->u_params				= params;
@@ -169,7 +169,7 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
 
-		lib::SharedPtr<DOFNearCoCBlurDS> cocDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
+		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
 		cocDS->u_cocTexture			= cocTextureBlurred;
 		cocDS->u_cocTextureBlurred	= tempTexture;
 		cocDS->u_params				= params;
@@ -185,7 +185,7 @@ static rg::RGTextureViewHandle DOFBlurNearFieldCoC(rg::RenderGraphBuilder& graph
 		DOFNearCoCBlurParams params;
 		params.isHorizontal = true;
 
-		lib::SharedPtr<DOFNearCoCBlurDS> cocDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
+		lib::MTHandle<DOFNearCoCBlurDS> cocDS = graphBuilder.CreateDescriptorSet<DOFNearCoCBlurDS>(RENDERER_RESOURCE_NAME("DOFNearCoCBlurDS"));
 		cocDS->u_cocTexture			= tempTexture;
 		cocDS->u_cocTextureBlurred	= cocTextureBlurred;
 		cocDS->u_params				= params;
@@ -251,7 +251,7 @@ static DOFDownsampleResult DOFDownsample(rg::RenderGraphBuilder& graphBuilder, c
 	downsampleParams.inputPixelSize		= math::Vector2f(1.f / resolution.x(), 1.f / resolution.y());
 	downsampleParams.inputResolution	= math::Vector2u(resolution.x(), resolution.y());
 
-	lib::SharedPtr<DOFDownsampleDS> downsampleDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFDownsampleDS>(RENDERER_RESOURCE_NAME("DOFDownsampleDS"));
+	lib::MTHandle<DOFDownsampleDS> downsampleDS = graphBuilder.CreateDescriptorSet<DOFDownsampleDS>(RENDERER_RESOURCE_NAME("DOFDownsampleDS"));
 	downsampleDS->u_params							= downsampleParams;
 	downsampleDS->u_linearColorTexture				= params.linearColorTexture;
 	downsampleDS->u_cocTexture						= cocTexture;
@@ -319,7 +319,7 @@ static DOFFillResult DOFFill(rg::RenderGraphBuilder& graphBuilder, rg::RGTexture
 	const rg::RGTextureViewHandle nearFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field Filled DOF"), dofFilledTexturesDef);
 	const rg::RGTextureViewHandle farFieldFilledDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field Filled DOF"), dofFilledTexturesDef);
 
-	const lib::SharedPtr<DOFFillPassDS> fillPassDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFFillPassDS>(RENDERER_RESOURCE_NAME("DOFFillPassDS"));
+	const lib::MTHandle<DOFFillPassDS> fillPassDS = graphBuilder.CreateDescriptorSet<DOFFillPassDS>(RENDERER_RESOURCE_NAME("DOFFillPassDS"));
 	fillPassDS->u_nearFieldDOFTexture			= nearFieldDOFTexture;
 	fillPassDS->u_farFieldDOFTexture			= farFieldDOFTexture;
 	fillPassDS->u_cocTexture					= downsampleResult.cocHalfTexture;
@@ -378,7 +378,7 @@ static DOFComputationResult DOFComputation(rg::RenderGraphBuilder& graphBuilder,
 	const rg::RGTextureViewHandle nearFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Near Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
 	const rg::RGTextureViewHandle farFieldDOFTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Far Field DOF"), rg::TextureDef(resolution, rhi::EFragmentFormat::B10G11R11_U_Float));
 
-	const lib::SharedPtr<DOComputationPassDS> computationPassDS = rdr::ResourcesManager::CreateDescriptorSetState<DOComputationPassDS>(RENDERER_RESOURCE_NAME("DOComputationPassDS"));
+	const lib::MTHandle<DOComputationPassDS> computationPassDS = graphBuilder.CreateDescriptorSet<DOComputationPassDS>(RENDERER_RESOURCE_NAME("DOComputationPassDS"));
 	computationPassDS->u_linearColorTexture			= downsampleResult.linearColorHalfTexture;
 	computationPassDS->u_linearColorMulFarTexture	= downsampleResult.linearColorMulFarHalfTexture;
 	computationPassDS->u_cocTexture					= downsampleResult.cocHalfTexture;
@@ -433,7 +433,7 @@ static void DOFComposite(rg::RenderGraphBuilder& graphBuilder, const GatherBased
 
 	const math::Vector3u resolution = params.linearColorTexture->GetResolution();
 
-	const lib::SharedPtr<DOFCompositeDS> compositePassDS = rdr::ResourcesManager::CreateDescriptorSetState<DOFCompositeDS>(RENDERER_RESOURCE_NAME("DOCCompositePassDS"));
+	const lib::MTHandle<DOFCompositeDS> compositePassDS = graphBuilder.CreateDescriptorSet<DOFCompositeDS>(RENDERER_RESOURCE_NAME("DOCCompositePassDS"));
 	compositePassDS->u_nearFieldDOFTexture		= computationResult.nearFieldDOF;
 	compositePassDS->u_farFieldDOFTexture		= computationResult.farFieldDOF;
 	compositePassDS->u_cocTexture				= downsampleResult.cocHalfTexture;

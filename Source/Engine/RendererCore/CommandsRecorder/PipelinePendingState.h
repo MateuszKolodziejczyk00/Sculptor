@@ -52,8 +52,8 @@ public:
 	
 	// Descriptor Set States ============================================
 	
-	void BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
-	void UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state);
+	void BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
+	void UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 
 	// ==================================================================
 
@@ -85,13 +85,13 @@ private:
 
 	struct BoundDescriptorSetState
 	{
-		lib::SharedPtr<DescriptorSetState>	instance;
+		lib::MTHandle<DescriptorSetState>	instance;
 		// snapshotted state of dynamic offsets during bound
 		DynamicOffsetsArray					dynamicOffsets;
 	};
 
-	void TryMarkAsDirty(const lib::SharedRef<DescriptorSetState>& state);
-	void TryMarkAsDirtyImpl(const lib::SharedRef<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
+	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);
+	void TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
 
 	void UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
 

@@ -177,7 +177,7 @@ public:
 
 	const lib::SharedRef<rdr::Buffer>& GetRenderEntitiesBuffer() const;
 
-	const lib::SharedRef<RenderSceneDS>& GetRenderSceneDS() const;
+	const lib::MTHandle<RenderSceneDS>& GetRenderSceneDS() const;
 	
 	// Render Systems =======================================================
 
@@ -234,7 +234,7 @@ public:
 private:
 
 	lib::SharedRef<rdr::Buffer> CreateInstancesBuffer() const;
-	lib::SharedRef<RenderSceneDS> CreateRenderSceneDS() const;
+	lib::MTHandle<RenderSceneDS> CreateRenderSceneDS() const;
 
 	void InitializeRenderSystem(SceneRenderSystem& system);
 	void DeinitializeRenderSystem(SceneRenderSystem& system);
@@ -243,7 +243,7 @@ private:
 
 	lib::SharedRef<rdr::Buffer> m_renderEntitiesBuffer;
 
-	lib::SharedRef<RenderSceneDS> m_renderSceneDS;
+	lib::MTHandle<RenderSceneDS> m_renderSceneDS;
 
 	RenderSceneSubsystemsRegistry m_renderSceneSubsystems;
 

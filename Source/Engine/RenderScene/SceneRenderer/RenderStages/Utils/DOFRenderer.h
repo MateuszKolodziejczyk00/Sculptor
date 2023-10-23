@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RGResources/RGResourceHandles.h"
+#include "Utility/RefCounted.h"
 
 
 namespace spt::rg
@@ -32,7 +33,7 @@ struct GatherBasedDOFParameters
 	rg::RGTextureViewHandle linearColorTexture;
 	rg::RGTextureViewHandle depthTexture;
 
-	lib::SharedPtr<RenderViewDS> viewDS;
+	lib::MTHandle<RenderViewDS> viewDS;
 
 	Real32 focalPlane;
 	Real32 fullFocusRange;

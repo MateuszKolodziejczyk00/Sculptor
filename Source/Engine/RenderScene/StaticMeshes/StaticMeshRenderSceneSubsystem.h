@@ -60,7 +60,7 @@ struct StaticMeshBatchDefinition
 
 	mat::MaterialShadersHash materialShadersHash;
 
-	lib::SharedPtr<StaticMeshBatchDS> batchDS;
+	lib::MTHandle<StaticMeshBatchDS> batchDS;
 };
 
 

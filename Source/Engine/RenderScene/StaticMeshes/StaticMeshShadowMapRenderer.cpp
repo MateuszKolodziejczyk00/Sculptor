@@ -127,6 +127,12 @@ void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& grap
 	}
 }
 
+void StaticMeshShadowMapRenderer::FinishRenderingFrame()
+{
+	m_globalShadowViewBatches.clear();
+	m_pointLightBatches.clear();
+}
+
 SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshBatchDefinition& batchDef) const
 {
 	SPT_PROFILER_FUNCTION();
@@ -168,7 +174,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 		const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ShadowMapDrawCommandsBuffer"), commandsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
-		const lib::SharedRef<SMDepthOnlyDrawInstancesDS> drawDS = rdr::ResourcesManager::CreateDescriptorSetState<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMShadowMapDrawInstancesDS"));
+		const lib::MTHandle<SMDepthOnlyDrawInstancesDS> drawDS = graphBuilder.CreateDescriptorSet<SMDepthOnlyDrawInstancesDS>(RENDERER_RESOURCE_NAME("SMShadowMapDrawInstancesDS"));
 		drawDS->u_drawCommands = drawCommandsBuffer;
 
 		faceData.drawDS	= drawDS;
@@ -186,7 +192,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 	SMLightShadowMapsData lightShadowMapsData;
 	lightShadowMapsData.facesNum = facesNum;
 
-	const lib::SharedRef<SMShadowMapCullingDS> cullingDS = rdr::ResourcesManager::CreateDescriptorSetState<SMShadowMapCullingDS>(RENDERER_RESOURCE_NAME("SMShadowMapCullingDS"));
+	const lib::MTHandle<SMShadowMapCullingDS> cullingDS = graphBuilder.CreateDescriptorSet<SMShadowMapCullingDS>(RENDERER_RESOURCE_NAME("SMShadowMapCullingDS"));
 	cullingDS->u_shadowMapsData = lightShadowMapsData;
 	cullingDS->u_viewsCullingData = viewsCullingDataBuffer->CreateFullView();
 	cullingDS->u_drawsCount = indirectDrawCountsBuffer;

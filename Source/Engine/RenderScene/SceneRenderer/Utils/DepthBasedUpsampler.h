@@ -27,7 +27,7 @@ struct DepthBasedUpsampleParams
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle depthHalfRes;
 
-	lib::SharedPtr<RenderViewDS> renderViewDS;
+	lib::MTHandle<RenderViewDS> renderViewDS;
 };
 
 rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle texture, const DepthBasedUpsampleParams& params);

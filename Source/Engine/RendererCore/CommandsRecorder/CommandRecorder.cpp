@@ -342,14 +342,14 @@ void CommandRecorder::TraceRays(const math::Vector3u& traceCount)
 						 });
 }
 
-void CommandRecorder::BindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void CommandRecorder::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 
 	m_pipelineState.BindDescriptorSetState(state);
 }
 
-void CommandRecorder::UnbindDescriptorSetState(const lib::SharedRef<DescriptorSetState>& state)
+void CommandRecorder::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();
 

@@ -13,6 +13,18 @@ namespace spt::rg
 RenderGraphBuilder::RenderGraphBuilder()
 { }
 
+RenderGraphBuilder::~RenderGraphBuilder()
+{
+	m_allocator.Deallocate();
+
+#if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
+	for (const auto& ds : m_allocatedDSStates)
+	{
+		SPT_CHECK_MSG(ds->GetRefCount() == 1, "Descriptor set {0} is still in use!", ds->GetName().GetData());
+	}
+#endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
+}
+
 void RenderGraphBuilder::BindGPUStatisticsCollector(const lib::SharedRef<rdr::GPUStatisticsCollector>& collector)
 {
 	m_statisticsCollector = collector;
@@ -356,7 +368,7 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 	AddNodeInternal(node, dependencies);
 }
 
-void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState)
+void RenderGraphBuilder::BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -372,7 +384,7 @@ void RenderGraphBuilder::BindDescriptorSetState(const lib::SharedRef<RGDescripto
 	}
 }
 
-void RenderGraphBuilder::UnbindDescriptorSetState(const lib::SharedRef<RGDescriptorSetStateBase>& dsState)
+void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 

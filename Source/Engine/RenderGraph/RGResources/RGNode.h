@@ -59,7 +59,7 @@ public:
 	void AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 	void TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage destStage, rhi::EAccessType destAccess);
 
-	void AddDescriptorSetState(const lib::SharedRef<rdr::DescriptorSetState>& dsState);
+	void AddDescriptorSetState(lib::MTHandle<rdr::DescriptorSetState> dsState);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
@@ -146,7 +146,7 @@ private:
 	lib::DynamicArray<TextureTransitionDef>	m_preExecuteTextureTransitions;
 	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;
 
-	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_dsStates;
+	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
 
 	Bool m_executed;
 };
@@ -189,7 +189,7 @@ public:
 	
 	const RenderGraphDebugName& GetName() const;
 
-	void BindDSState(lib::SharedRef<rdr::DescriptorSetState> ds);
+	void BindDSState(lib::MTHandle<rdr::DescriptorSetState> ds);
 
 	void Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder, const RGExecutionContext& context);
 
@@ -199,7 +199,7 @@ protected:
 
 private:
 
-	lib::DynamicArray<lib::SharedRef<rdr::DescriptorSetState>> m_dsStatesToBind;
+	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStatesToBind;
 
 	RenderGraphDebugName m_name;
 };

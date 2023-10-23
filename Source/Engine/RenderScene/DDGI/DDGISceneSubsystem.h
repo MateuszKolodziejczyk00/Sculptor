@@ -60,7 +60,7 @@ public:
 	void SetDebugMode(EDDGIDebugMode::Type mode);
 	EDDGIDebugMode::Type GetDebugMode() const;
 
-	const lib::SharedPtr<DDGIDS>& GetDDGIDS() const;
+	const lib::MTHandle<DDGIDS>& GetDDGIDS() const;
 
 	Bool IsDDGIEnabled() const;
 
@@ -100,7 +100,7 @@ private:
 
 	EDDGIDebugMode::Type m_debugMode;
 
-	lib::SharedPtr<DDGIDS> m_ddgiDS;
+	lib::MTHandle<DDGIDS> m_ddgiDS;
 
 	Bool m_requiresClearingData;
 

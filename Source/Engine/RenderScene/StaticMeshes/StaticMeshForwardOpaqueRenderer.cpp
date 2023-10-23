@@ -125,7 +125,7 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 																						renderView.GetRenderViewDS()));
 
 	const lib::SharedPtr<DDGISceneSubsystem> ddgiSceneSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
-	const lib::SharedPtr<DDGIDS> ddgiDS = ddgiSceneSubsystem ? ddgiSceneSubsystem->GetDDGIDS() : nullptr;
+	const lib::MTHandle<DDGIDS> ddgiDS = ddgiSceneSubsystem ? ddgiSceneSubsystem->GetDDGIDS() : nullptr;
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
@@ -198,22 +198,22 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 
 	// Create descriptor set states
 
-	const lib::SharedRef<SMCullSubmeshesDS> cullSubmeshesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullSubmeshesDS>(RENDERER_RESOURCE_NAME("BatchCullSubmeshesDS"));
+	const lib::MTHandle<SMCullSubmeshesDS> cullSubmeshesDS = graphBuilder.CreateDescriptorSet<SMCullSubmeshesDS>(RENDERER_RESOURCE_NAME("BatchCullSubmeshesDS"));
 	cullSubmeshesDS->u_visibleBatchElements				= visibleBatchElements;
 	cullSubmeshesDS->u_dispatchVisibleBatchElemsParams	= dispatchVisibleBatchElemsParamsBuffer;
 
-	const lib::SharedRef<SMCullMeshletsDS> cullMeshletsDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullMeshletsDS>(RENDERER_RESOURCE_NAME("BatchCullMeshletsDS"));
+	const lib::MTHandle<SMCullMeshletsDS> cullMeshletsDS = graphBuilder.CreateDescriptorSet<SMCullMeshletsDS>(RENDERER_RESOURCE_NAME("BatchCullMeshletsDS"));
 	cullMeshletsDS->u_visibleBatchElements		= visibleBatchElements;
 	cullMeshletsDS->u_meshletWorkloads			= meshletWorkloadsBuffer;
 	cullMeshletsDS->u_dispatchMeshletsParams	= dispatchMeshletsParamsBuffer;
 
-	const lib::SharedRef<SMCullTrianglesDS> cullTrianglesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMCullTrianglesDS>(RENDERER_RESOURCE_NAME("BatchCullTrianglesDS"));
+	const lib::MTHandle<SMCullTrianglesDS> cullTrianglesDS = graphBuilder.CreateDescriptorSet<SMCullTrianglesDS>(RENDERER_RESOURCE_NAME("BatchCullTrianglesDS"));
 	cullTrianglesDS->u_visibleBatchElements		= visibleBatchElements;
 	cullTrianglesDS->u_meshletWorkloads			= meshletWorkloadsBuffer;
 	cullTrianglesDS->u_triangleWorkloads		= triangleWorkloadsBuffer;
 	cullTrianglesDS->u_drawTrianglesParams		= drawTrianglesBatchParamsBuffer;
 
-	const lib::SharedRef<SMIndirectRenderTrianglesDS> indirectRenderTrianglesDS = rdr::ResourcesManager::CreateDescriptorSetState<SMIndirectRenderTrianglesDS>(RENDERER_RESOURCE_NAME("BatchIndirectRenderTrianglesDS"));
+	const lib::MTHandle<SMIndirectRenderTrianglesDS> indirectRenderTrianglesDS = graphBuilder.CreateDescriptorSet<SMIndirectRenderTrianglesDS>(RENDERER_RESOURCE_NAME("BatchIndirectRenderTrianglesDS"));
 	indirectRenderTrianglesDS->u_visibleBatchElements	= visibleBatchElements;
 	indirectRenderTrianglesDS->u_triangleWorkloads		= triangleWorkloadsBuffer;
 

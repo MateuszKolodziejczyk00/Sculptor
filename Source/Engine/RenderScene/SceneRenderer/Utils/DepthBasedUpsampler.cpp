@@ -37,7 +37,7 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 
 	SPT_CHECK(params.depth.IsValid());
 	SPT_CHECK(params.depthHalfRes.IsValid());
-	SPT_CHECK(!!params.renderViewDS);
+	SPT_CHECK(params.renderViewDS.IsValid());
 	SPT_CHECK(texture.IsValid());
 
 	const math::Vector2u inputResolution = params.depthHalfRes->GetResolution2D();
@@ -50,7 +50,7 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 
 	const rg::RGTextureViewHandle outputTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("{} (Upsampled)", texture->GetName().ToString())), outputTextureDef);
 
-	lib::SharedPtr<DepthBasedUpsampleDS> descriptorSet = rdr::ResourcesManager::CreateDescriptorSetState<DepthBasedUpsampleDS>(RENDERER_RESOURCE_NAME("DepthBasedUpsampleDS"));
+	lib::MTHandle<DepthBasedUpsampleDS> descriptorSet = graphBuilder.CreateDescriptorSet<DepthBasedUpsampleDS>(RENDERER_RESOURCE_NAME("DepthBasedUpsampleDS"));
 	descriptorSet->u_depthTexture			= params.depth;
 	descriptorSet->u_depthTextureHalfRes	= params.depthHalfRes;
 	descriptorSet->u_inputTexture			= texture;

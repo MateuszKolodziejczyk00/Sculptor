@@ -33,3 +33,4 @@
 #include "Utility/Threading/Spinlock.h"
 #include "Utility/Templates/TypeTraits.h"
 #include "Utility/Algorithms/Algorithms.h"
+#include "Utility/RefCounted.h"
