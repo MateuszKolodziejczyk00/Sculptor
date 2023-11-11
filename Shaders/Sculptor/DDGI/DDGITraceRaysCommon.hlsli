@@ -19,4 +19,5 @@ struct DDGIRayPayload
     half roughness;
     uint baseColorMetallic;
     float hitDistance;
+    half3 emissive;
 };

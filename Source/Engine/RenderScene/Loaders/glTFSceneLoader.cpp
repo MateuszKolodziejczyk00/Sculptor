@@ -15,6 +15,7 @@
 #include "Materials/MaterialsUnifiedData.h"
 #include "Types/AccelerationStructure.h"
 #include "RayTracing/RayTracingSceneTypes.h"
+#include "MaterialsSubsystem.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -24,7 +25,6 @@
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
 #pragma warning(pop)
-#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -456,12 +456,14 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		const tinygltf::PbrMetallicRoughness& pbrDef = materialSourceDef.pbrMetallicRoughness;
 
 		mat::MaterialPBRData pbrData;
-		pbrData.baseColorFactor				= math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
-		pbrData.metallicFactor				= static_cast<Real32>(pbrDef.metallicFactor);
-		pbrData.roughnessFactor				= static_cast<Real32>(pbrDef.roughnessFactor);
-		pbrData.baseColorTextureIdx			= getLoadedTextureIndex(pbrDef.baseColorTexture.index);
-		pbrData.metallicRoughnessTextureIdx	= getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
-		pbrData.normalsTextureIdx			= getLoadedTextureIndex(materialSourceDef.normalTexture.index);
+		pbrData.baseColorFactor             = math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
+		pbrData.metallicFactor              = static_cast<Real32>(pbrDef.metallicFactor);
+		pbrData.roughnessFactor             = static_cast<Real32>(pbrDef.roughnessFactor);
+		pbrData.baseColorTextureIdx         = getLoadedTextureIndex(pbrDef.baseColorTexture.index);
+		pbrData.metallicRoughnessTextureIdx = getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
+		pbrData.normalsTextureIdx           = getLoadedTextureIndex(materialSourceDef.normalTexture.index);
+		pbrData.emissiveFactor              = math::Map<const math::Vector3d>(materialSourceDef.emissiveFactor.data()).cast<Real32>();
+		pbrData.emissiveTextureIdx          = getLoadedTextureIndex(materialSourceDef.emissiveTexture.index);
 
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name				= materialSourceDef.name;

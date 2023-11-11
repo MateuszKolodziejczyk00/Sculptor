@@ -65,6 +65,7 @@ void DDGI_RT_CHS(inout DDGIRayPayload payload, in BuiltInTriangleIntersectionAtt
     payload.roughness           = half(evaluatedMaterial.roughness);
     payload.baseColorMetallic   = PackFloat4x8(float4(evaluatedMaterial.baseColor.xyz, evaluatedMaterial.metallic));
     payload.hitDistance         = RayTCurrent();
+    payload.emissive            = half3(evaluatedMaterial.emissiveColor);
 }
 
 

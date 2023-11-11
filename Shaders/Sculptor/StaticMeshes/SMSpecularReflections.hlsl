@@ -61,10 +61,11 @@ void SpecularReflections_RT_CHS(inout SpecularReflectionsRayPayload payload, in 
 
     const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
-    payload.normal              = half3(evaluatedMaterial.shadingNormal);
-    payload.roughness           = half(evaluatedMaterial.roughness);
-    payload.baseColorMetallic   = PackFloat4x8(float4(evaluatedMaterial.baseColor.xyz, evaluatedMaterial.metallic));
-    payload.distance           = RayTCurrent();
+    payload.normal            = half3(evaluatedMaterial.shadingNormal);
+    payload.roughness         = half(evaluatedMaterial.roughness);
+    payload.baseColorMetallic = PackFloat4x8(float4(evaluatedMaterial.baseColor.xyz, evaluatedMaterial.metallic));
+    payload.distance          = RayTCurrent();
+    payload.emissive          = half3(evaluatedMaterial.emissiveColor);
 }
 
 

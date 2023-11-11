@@ -20,6 +20,7 @@ struct SpecularReflectionsRayPayload
 {
     half3 normal;
     half roughness;
+    half3 emissive;
     uint baseColorMetallic;
     float distance;
 };

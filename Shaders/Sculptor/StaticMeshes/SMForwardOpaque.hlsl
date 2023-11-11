@@ -213,6 +213,8 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     luminance += surface.diffuseColor * Diffuse_Lambert(indirect);
 
+    luminance += evaluatedMaterial.emissiveColor;
+
 #if WITH_DEBUGS
     indirectLighting = indirect;
 #endif // WITH_DEBUGS

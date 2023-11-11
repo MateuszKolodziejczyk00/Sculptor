@@ -61,6 +61,8 @@ void DDGIProbeRaysRTG()
 
         const float3 illuminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, worldLocation, payload.normal, -rayDirection);
 
+        luminance += payload.emissive;
+
         luminance += Diffuse_Lambert(illuminance) * min(surface.diffuseColor, 0.9f);
     }
     else if (payload.hitDistance > u_updateProbesParams.probeRaysMaxT)

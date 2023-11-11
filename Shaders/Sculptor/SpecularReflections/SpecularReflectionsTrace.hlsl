@@ -83,6 +83,8 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
         result.luminance = CalcReflectedLuminance(surface, -reflectedRayDirection);
+
+        result.luminance += payload.emissive;
     }
     else if (!isBackface)
     {
