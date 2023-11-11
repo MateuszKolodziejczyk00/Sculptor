@@ -37,7 +37,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	SPT_PROFILER_FUNCTION();
 
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
-	SPT_CHECK(depthPrepassData.depth.IsValid());
+	SPT_CHECK(depthPrepassData.depthNoJitter.IsValid());
 
 	MotionData& motionData = viewSpec.GetData().Get<MotionData>();
 	SPT_CHECK(motionData.motion.IsValid());
@@ -51,7 +51,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 
 	const math::Vector2u halfRes = math::Utils::DivideCeil(renderingResolution, math::Vector2u(2u, 2u));
 
-	SPT_CHECK(depthPrepassData.depthHalfRes->GetResolution2D() == halfRes);
+	SPT_CHECK(depthPrepassData.depthNoJitterHalfRes->GetResolution2D() == halfRes);
 
 	rg::TextureDef motionDef = motionData.motion->GetTextureDefinition();
 	motionDef.resolution = halfRes;
@@ -62,10 +62,10 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	const rg::RGTextureViewHandle geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Geometry Normals Half Res"), geometryNormalsDef, rhi::EMemoryUsage::GPUOnly);
 
 	const lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
-	ds->u_depthTexture						= depthPrepassData.depth;
+	ds->u_depthTexture						= depthPrepassData.depthNoJitter;
 	ds->u_motionTexture						= motionData.motion;
 	ds->u_geometryNormalsTexture			= shadingInputData.geometryNormals;
-	ds->u_depthTextureHalfRes				= depthPrepassData.depthHalfRes;
+	ds->u_depthTextureHalfRes				= depthPrepassData.depthNoJitterHalfRes;
 	ds->u_motionTextureHalfRes				= motionHalfRes;
 	ds->u_geometryNormalsTextureHalfRes		= geometryNormalsHalfRes;
 
@@ -76,7 +76,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 						  math::Utils::DivideCeil(halfRes, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds), renderView.GetRenderViewDS()));
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 
 	motionData.motionHalfRes				= motionHalfRes;
 	shadingInputData.geometryNormalsHalfRes	= geometryNormalsHalfRes;

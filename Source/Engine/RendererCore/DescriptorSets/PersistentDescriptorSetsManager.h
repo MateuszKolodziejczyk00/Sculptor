@@ -67,12 +67,14 @@ private:
 		PersistentDSData()
 			: hash(idxNone<PersistentDSHash>)
 			, lastUpdateFrame(0)
+			, descriptorSetIdx(idxNone<Uint32>)
 		{ }
 
 		PersistentDSHash          hash;
 		lib::WeakPtr<Pipeline>    pipeline;
 		const DescriptorSetState* state;
 		Uint64                    lastUpdateFrame;
+		Uint32 	                  descriptorSetIdx;
 	};
 
 	lib::HashSet<const DescriptorSetState*> m_destroyedDescriptors;

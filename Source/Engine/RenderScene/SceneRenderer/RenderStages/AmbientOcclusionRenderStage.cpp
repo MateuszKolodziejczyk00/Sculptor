@@ -75,20 +75,8 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRend
 	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateAmbientOcclusionRaysRTG"), compilationSettings);
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVIsibilityRTM"), compilationSettings));
 
-	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
-
 	const lib::HashedString materialTechnique = "RTVisibility";
-
-	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
-	{
-		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
-
-		rdr::RayTracingHitGroup hitGroup;
-		hitGroup.closestHitShader	= shaders.closestHitShader;
-		hitGroup.anyHitShader		= shaders.anyHitShader;
-
-		rtShaders.hitGroups.emplace_back(hitGroup);
-	}
+	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1u;
@@ -167,8 +155,8 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	viewTemporalData->denoiser.Denoise(graphBuilder, aoHalfResTexture, denoiserParams);
 
 	upsampler::DepthBasedUpsampleParams upsampleParams;
-	upsampleParams.debugName = RG_DEBUG_NAME("RTAO Upsample");
-	upsampleParams.depth = context.depthTexture;
+	upsampleParams.debugName    = RG_DEBUG_NAME("RTAO Upsample");
+	upsampleParams.depth        = context.depthTexture;
 	upsampleParams.depthHalfRes = context.depthTextureHalfRes;
 	upsampleParams.renderViewDS = renderView.GetRenderViewDS();
 	return upsampler::DepthBasedUpsample(graphBuilder, aoHalfResTexture, upsampleParams);
@@ -184,7 +172,7 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 	SPT_PROFILER_FUNCTION();
 
 	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
-	SPT_CHECK(depthPrepassData.depthHalfRes.IsValid());
+	SPT_CHECK(depthPrepassData.depthNoJitterHalfRes.IsValid());
 
 	const MotionData& motionData = viewSpec.GetData().Get<MotionData>();
 	SPT_CHECK(motionData.motionHalfRes.IsValid());
@@ -199,15 +187,15 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		rtao::AORenderingContext aoContext{ renderScene, renderView };
 		aoContext.geometryNormalsTextureHalfRes = shadingInputData.geometryNormalsHalfRes;
 		aoContext.depthTexture					= depthPrepassData.depth;
-		aoContext.depthTextureHalfRes			= depthPrepassData.depthHalfRes;
-		aoContext.historyDepthTextureHalfRes	= depthPrepassData.prevFrameDepthHalfRes;
+		aoContext.depthTextureHalfRes			= depthPrepassData.depthNoJitterHalfRes;
+		aoContext.historyDepthTextureHalfRes	= depthPrepassData.historyDepthNoJitterHalfRes;
 		aoContext.motionTextureHalfRes			= motionData.motionHalfRes;
 
 		const rg::RGTextureViewHandle aoTextureView = rtao::RenderAO(graphBuilder, aoContext);
 		shadingInputData.ambientOcclusion = aoTextureView;
 	}
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

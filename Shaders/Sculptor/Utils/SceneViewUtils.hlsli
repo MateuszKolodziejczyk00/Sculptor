@@ -64,6 +64,20 @@ float3 NDCToWorldSpace(in float3 ndc, in SceneViewData sceneView)
 }
 
 
+float3 WorldSpaceToNDCNoJitter(in float3 worldLocation, in SceneViewData sceneView)
+{
+    const float4 ndc = mul(sceneView.viewProjectionMatrixNoJitter, float4(worldLocation, 1.f));
+    return ndc.xyz / ndc.w;
+}
+
+
+float3 WorldSpaceToNDC(in float3 worldLocation, in SceneViewData sceneView)
+{
+    const float4 ndc = mul(sceneView.viewProjectionMatrix, float4(worldLocation, 1.f));
+    return ndc.xyz / ndc.w;
+}
+
+
 void ComputeShadowProjectionParams(float near, float far, out float p20, out float p23)
 {
     p20 = -near / (far - near);

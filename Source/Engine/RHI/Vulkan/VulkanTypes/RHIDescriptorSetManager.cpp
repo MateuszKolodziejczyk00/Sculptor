@@ -14,7 +14,8 @@ void RHIDescriptorSetManager::InitializeRHI()
 {
 	SPT_PROFILER_FUNCTION();
 	
-	constexpr VkDescriptorPoolCreateFlags poolFlags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+	constexpr VkDescriptorPoolCreateFlags poolFlags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
+	                                                | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 
 	const Uint16 poolSetsNum16 = static_cast<Uint16>(m_poolSets.size());
 	for (Uint16 idx = 0; idx < poolSetsNum16; ++idx)

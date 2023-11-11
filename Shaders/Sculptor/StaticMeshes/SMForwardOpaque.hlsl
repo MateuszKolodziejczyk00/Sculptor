@@ -140,11 +140,12 @@ VS_OUTPUT SMForwardOpaque_VS(VS_INPUT input)
 
 struct FO_PS_OUTPUT
 {
-    float4 luminance    : SV_TARGET0;
-    float4 normal       : SV_TARGET1;
+    float4 luminance            : SV_TARGET0;
+    float4 normal               : SV_TARGET1;
+    float4 specularAndRoguhness : SV_TARGET2;
     
 #if WITH_DEBUGS
-    float4 debug        : SV_TARGET2;
+    float4 debug : SV_TARGET3;
 #endif // WITH_DEBUGS
 };
 
@@ -192,7 +193,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
 
-    float3 luminance = CalcReflectedLuminance(surface, u_sceneView.viewLocation);
+    float3 luminance = CalcReflectedLuminance(surface, toView);
 
     float3 indirect = 0.f;
 
@@ -218,7 +219,8 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     output.luminance = float4(luminance, 1.f);
     
-    output.normal = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
+    output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
+    output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);
 
 #if WITH_DEBUGS
     float3 debug = 1.f;

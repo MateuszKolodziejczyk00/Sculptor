@@ -251,13 +251,13 @@ void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder,
 	atmosphereStageEntries.GetOnRenderStage().AddRawMember(this, &AtmosphereRenderSystem::ApplyAtmosphereToView);
 }
 
-void AtmosphereRenderSystem::ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void AtmosphereRenderSystem::ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const ViewAtmosphereRenderData& viewAtmosphere = viewSpec.GetData().Get<ViewAtmosphereRenderData>();
 	
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = scene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 
 	const rg::RGTextureViewHandle transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);

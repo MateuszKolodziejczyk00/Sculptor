@@ -48,7 +48,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 	}
 	
 	const char* aaModes[rsc::EAntiAliasingMode::NUM] = { "None", "TAA" };
-	int aaMode = view.GetAnitAliasingMode();
+	int aaMode = view.GetAntiAliasingMode();
 	if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
 	{
 		view.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));

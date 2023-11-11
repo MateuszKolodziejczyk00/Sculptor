@@ -23,7 +23,7 @@ DS_BEGIN(SpatialATrousFilterDS, rg::RGDescriptorSetState<SpatialATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_momentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SpatialATrousFilteringParams>),		u_params)
@@ -50,12 +50,12 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	dispatchParams.hasValidMomentsTexture	= params.momentsTexture.IsValid();
 
 	lib::MTHandle<SpatialATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
-	ds->u_inputTexture				= input;
-	ds->u_outputTexture				= output;
-	ds->u_depthTexture				= params.depthTexture;
-	ds->u_geometryNormalsTexture	= params.geometryNormalsTexture;
-	ds->u_momentsTexture			= params.momentsTexture;
-	ds->u_params					= dispatchParams;
+	ds->u_inputTexture                      = input;
+	ds->u_outputTexture                     = output;
+	ds->u_depthTexture                      = params.depthTexture;
+	ds->u_normalsTexture                    = params.normalsTexture;
+	ds->u_momentsTexture                    = params.momentsTexture;
+	ds->u_params                            = dispatchParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),
 						  pipeline,

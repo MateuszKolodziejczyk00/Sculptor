@@ -630,7 +630,7 @@ void ShadowMapsManagerSubsystem::ReleaseAllShadowMaps()
 
 void ShadowMapsManagerSubsystem::CreateShadowMapsDescriptorSet()
 {
-	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
+	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"), rdr::EDescriptorSetStateFlags::Persistent);
 	for (const lib::SharedPtr<rdr::Texture>& shadowMap : m_shadowMaps)
 	{
 		rhi::TextureViewDefinition shadowMapViewDef;
@@ -675,10 +675,10 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	{
 		switch (currentQuality)
 		{
-		case spt::rsc::EShadowMapQuality::None:		return 0.f;
-		case spt::rsc::EShadowMapQuality::Low:		return 0.25f;
-		case spt::rsc::EShadowMapQuality::Medium:	return 0.5f;
-		case spt::rsc::EShadowMapQuality::High:		return 1.f;
+		case EShadowMapQuality::None:   return 0.f;
+		case EShadowMapQuality::Low:    return 0.25f;
+		case EShadowMapQuality::Medium: return 0.5f;
+		case EShadowMapQuality::High:   return 1.f;
 		}
 
 		SPT_CHECK_NO_ENTRY();

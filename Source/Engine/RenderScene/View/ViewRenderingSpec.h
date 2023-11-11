@@ -239,6 +239,62 @@ private:
 };
 
 
+#define SPT_RENDER_STAGE_META_DATA_DEBUG (defined(SPT_DEBUG) || defined(SPT_DEVELOPMENT))
+
+
+class RenderStageContextMetaDataHandle
+{
+public:
+
+	RenderStageContextMetaDataHandle() = default;
+	
+	template<typename TDataType>
+	RenderStageContextMetaDataHandle(const TDataType& data)
+	{
+		Bind(data);
+	}
+
+	template<typename TDataType>
+	void Bind(const TDataType& data)
+	{
+#if SPT_RENDER_STAGE_META_DATA_DEBUG
+		m_typeInfo = ecs::type_id<TDataType>();
+#endif // SPT_RENDER_STAGE_META_DATA_DEBUG
+
+		m_dataPtr = &data;
+	}
+
+	void Reset()
+	{
+		m_dataPtr = nullptr;
+	}
+
+	Bool IsValid() const
+	{
+		return m_dataPtr != nullptr;
+	}
+
+	template<typename TDataType>
+	const TDataType& Get() const
+	{
+#if SPT_RENDER_STAGE_META_DATA_DEBUG
+		SPT_CHECK(m_typeInfo == ecs::type_id<TDataType>());
+#endif // SPT_RENDER_STAGE_META_DATA_DEBUG
+
+		SPT_CHECK(m_dataPtr != nullptr);
+		return *reinterpret_cast<const TDataType*>(m_dataPtr);
+	}
+
+private:
+
+	const void* m_dataPtr = nullptr;
+
+#if SPT_RENDER_STAGE_META_DATA_DEBUG
+	ecs::type_info m_typeInfo;
+#endif // SPT_RENDER_STAGE_META_DATA_DEBUG
+};
+
+
 struct RenderStageExecutionContext
 {
 	explicit RenderStageExecutionContext(const SceneRendererSettings& inRendererSettings, ERenderStage inStage)
@@ -246,8 +302,8 @@ struct RenderStageExecutionContext
 		, stage(inStage)
 	{ }
 
-	const SceneRendererSettings& rendererSettings;
-	ERenderStage stage;
+	const SceneRendererSettings&     rendererSettings;
+	const ERenderStage               stage;
 };
 
 
@@ -256,7 +312,7 @@ class RenderStageEntries
 public:
 
 	using PreRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderStageExecutionContext& /*context*/)>;
-	using OnRenderStageDelegate		= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderStageExecutionContext& /*context*/)>;
+	using OnRenderStageDelegate		= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderStageExecutionContext& /*context*/, RenderStageContextMetaDataHandle /*metaData*/)>;
 	using PostRenderStageDelegate	= lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderStageExecutionContext& /*context*/)>;
 
 	RenderStageEntries();
@@ -264,6 +320,10 @@ public:
 	PreRenderStageDelegate&		GetPreRenderStage();
 	OnRenderStageDelegate&		GetOnRenderStage();
 	PostRenderStageDelegate&	GetPostRenderStage();
+
+	void BroadcastPreRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+	void BroadcastOnRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData = RenderStageContextMetaDataHandle());
+	void BroadcastPostRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
 private:
 

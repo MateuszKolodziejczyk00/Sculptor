@@ -159,7 +159,7 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	AntiAliasingData& aaData		= viewSpec.GetData().Create<AntiAliasingData>();
 	const ShadingData& shadingData	= viewSpec.GetData().Get<ShadingData>();
 
-	switch (renderView.GetAnitAliasingMode())
+	switch (renderView.GetAntiAliasingMode())
 	{
 	case EAntiAliasingMode::TemporalAA:
 		aaData.outputTexture = anti_aliasing::temporal::RenderTemporalAA(graphBuilder, renderScene, viewSpec, stageContext);
@@ -170,7 +170,7 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 		aaData.outputTexture = shadingData.luminanceTexture;
 	}
 	
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

@@ -21,6 +21,8 @@
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "MaterialsSubsystem.h"
 #include "MaterialsUnifiedData.h"
+#include "Lights/LightsRenderSystem.h"
+#include "DescriptorSetBindings/ChildDSBinding.h"
 
 
 #ifdef SPT_RELEASE
@@ -49,16 +51,15 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_sceneAccelerationStructure)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTInstanceData>),							u_rtInstances)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_traceRaysResultTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),				u_updateProbesParams)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),							u_ddgiParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_traceRaysResultTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),           u_updateProbesParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),                       u_ddgiParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_probesIlluminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_probesHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
 
 	DS_BINDING(BINDING_TYPE(gfx::ConditionalBinding<"DDGI_DEBUG_RAYS",
 													gfx::OptionalRWStructuredBufferBinding<DDGIDebugRay>>),	u_debugRays)
@@ -70,19 +71,6 @@ DS_BEGIN(DDGIBlendProbesDataDS, rg::RGDescriptorSetState<DDGIBlendProbesDataDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_traceRaysResultSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),				u_updateProbesParams)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),							u_ddgiParams)
-DS_END();
-
-
-BEGIN_SHADER_STRUCT(DDGILightsParams)
-	SHADER_STRUCT_FIELD(Uint32, pointLightsNum)
-	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(DDGILightsDS, rg::RGDescriptorSetState<DDGILightsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGILightsParams>),		u_lightsParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),			u_pointLights)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),		u_directionalLights)
 DS_END();
 
 
@@ -131,20 +119,8 @@ static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSc
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIProbeRaysRTM"), compilationSettings));
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIShadowRaysRTM"), compilationSettings));
 
-	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
-
 	const lib::HashedString materialTechnique = "DDGI";
-
-	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
-	{
-		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
-
-		rdr::RayTracingHitGroup hitGroup;
-		hitGroup.closestHitShader	= shaders.closestHitShader;
-		//hitGroup.anyHitShader		= shaders.anyHitShader;
-
-		rtShaders.hitGroups.emplace_back(hitGroup);
-	}
+	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
@@ -209,76 +185,6 @@ static rdr::PipelineStateID CreateDDGIDrawDebugRaysPipeline(rhi::EFragmentFormat
 
 } // pipelines
 
-namespace utils
-{
-
-static lib::MTHandle<DDGILightsDS> CreateGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
-{
-	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
-
-	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
-	const SizeType pointLightsNum = pointLightsView.size();
-
-	lib::SharedPtr<rdr::Buffer> pointLightsBuffer;
-	if (pointLightsNum > 0)
-	{
-		const Uint64 pointLightsDataSize = pointLightsNum * sizeof(PointLightGPUData);
-		const rhi::BufferDefinition pointLightsDataBufferDef(pointLightsDataSize, rhi::EBufferUsage::Storage);
-		pointLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("DDGI Point Lights Buffer"), pointLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<PointLightGPUData> pointLightsData(pointLightsBuffer->GetRHI());
-
-		SizeType pointLightIdx = 0;
-
-		for (const auto& [entity, pointLight] : pointLightsView.each())
-		{
-			PointLightGPUData& gpuLightData = pointLightsData[pointLightIdx++];
-			gpuLightData = pointLight.GenerateGPUData();
-			gpuLightData.entityID = static_cast<Uint32>(entity);
-			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
-
-			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
-			{
-				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
-				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
-			}
-		}
-	}
-
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
-	const SizeType directionalLightsNum = directionalLightsView.size();
-
-	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
-	if (directionalLightsNum > 0)
-	{
-		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(DirectionalLightGPUData);
-		const rhi::BufferDefinition directionalLightsDataBufferDef(directionalLightsDataSize, rhi::EBufferUsage::Storage);
-		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("DDGI Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<DirectionalLightGPUData> directionalLightsData(directionalLightsBuffer->GetRHI());
-
-		SizeType directionalLightIdx = 0;
-
-
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
-		{
-			DirectionalLightGPUData& lightGPUData = directionalLightsData[directionalLightIdx++];
-			lightGPUData = directionalLight.GenerateGPUData();
-			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
-		}
-	}
-
-	DDGILightsParams lightsParams;
-	lightsParams.pointLightsNum			= static_cast<Uint32>(pointLightsNum);
-	lightsParams.directionalLightsNum	= static_cast<Uint32>(directionalLightsNum);
-
-	const lib::MTHandle<DDGILightsDS> lightsDS = graphBuilder.CreateDescriptorSet<DDGILightsDS>(RENDERER_RESOURCE_NAME("DDGILightsDS"));
-	lightsDS->u_lightsParams		= lightsParams;
-	lightsDS->u_pointLights			= pointLightsBuffer->CreateFullView();
-	lightsDS->u_directionalLights	= directionalLightsBuffer->CreateFullView();
-
-	return lightsDS;
-}
-
-} // utils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIUpdateParameters ==========================================================================
@@ -406,15 +312,14 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
-	traceRaysDS->u_skyViewLUT					= viewAtmosphereData.skyViewLUT;
-	traceRaysDS->u_atmosphereParams				= atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-	traceRaysDS->u_sceneAccelerationStructure	= lib::Ref(rayTracingSubsystem.GetSceneTLAS());
-	traceRaysDS->u_rtInstances					= rayTracingSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
-	traceRaysDS->u_traceRaysResultTexture		= probesTraceResultTexture;
-	traceRaysDS->u_updateProbesParams			= updateParams.updateProbesParamsBuffer;
-	traceRaysDS->u_ddgiParams					= updateParams.ddgiParamsBuffer;
-	traceRaysDS->u_probesIlluminanceTexture		= updateParams.probesIlluminanceTextureView;
-	traceRaysDS->u_probesHitDistanceTexture		= updateParams.probesHitDistanceTextureView;
+	traceRaysDS->u_skyViewLUT               = viewAtmosphereData.skyViewLUT;
+	traceRaysDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	traceRaysDS->u_traceRaysResultTexture   = probesTraceResultTexture;
+	traceRaysDS->u_updateProbesParams       = updateParams.updateProbesParamsBuffer;
+	traceRaysDS->u_ddgiParams               = updateParams.ddgiParamsBuffer;
+	traceRaysDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
+	traceRaysDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
+	traceRaysDS->rayTracingDS	            = rayTracingSubsystem.GetSceneRayTracingDS();
 
 #if DDGI_DEBUGGING
 	if (updateParams.debugMode == EDDGIDebugMode::DebugRays)
@@ -430,7 +335,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	}
 #endif // DDGI_DEBUGGING
 
-	const lib::MTHandle<DDGILightsDS> lightsDS = utils::CreateGlobalLightsDS(graphBuilder, renderScene);
+	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 
 	lib::MTHandle<ShadowMapsDS> shadowMapsDS;
 	
@@ -454,7 +359,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 						   traceRaysPipelineID,
 						   math::Vector3u(probesToUpdateNum, updateParams.raysNumPerProbe, 1u),
 						   rg::BindDescriptorSets(traceRaysDS,
-												  lightsDS,
+												  lightsRenderSystem.GetGlobalLightsDS(),
 												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 												  GeometryManager::Get().GetGeometryDSState(),
 												  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
@@ -463,11 +368,11 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	return probesTraceResultTexture;
 }
 
-void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context) const
+void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	DDGISceneSubsystem& ddgiSubsystem = scene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
+	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 
 	if (ddgiSubsystem.IsDDGIEnabled())
 	{
@@ -482,7 +387,7 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 
 		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
 
-		UpdateProbes(graphBuilder, scene, viewSpec, updateParams);
+		UpdateProbes(graphBuilder, renderScene, viewSpec, updateParams);
 
 		ddgiSubsystem.PostUpdateProbes();
 	}

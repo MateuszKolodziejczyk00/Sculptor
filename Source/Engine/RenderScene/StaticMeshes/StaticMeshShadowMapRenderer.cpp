@@ -83,7 +83,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 	}
 }
 
-void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
 {
 	SPT_PROFILER_FUNCTION();
 

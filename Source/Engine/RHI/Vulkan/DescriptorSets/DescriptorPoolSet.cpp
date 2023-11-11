@@ -92,8 +92,9 @@ void DescriptorPoolSet::InitializeDescriptorPool(DescriptorPool& pool)
 {
 	SPT_PROFILER_FUNCTION();
 
-	static constexpr lib::StaticArray<VkDescriptorPoolSize, 8> poolSizes =
+	static constexpr lib::StaticArray<VkDescriptorPoolSize, 9> poolSizes =
 	{
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER, 256 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },

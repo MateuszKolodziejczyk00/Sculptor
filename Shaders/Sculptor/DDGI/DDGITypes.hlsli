@@ -1,3 +1,5 @@
+#ifndef DDGI_TYPES_HLSLI
+#define DDGI_TYPES_HLSLI
 
 float3 GetProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
@@ -214,3 +216,4 @@ float3 SampleIlluminance(in const DDGIGPUParams ddgiParams,
 
     return illuminance;
 }
+#endif // DDGI_TYPES_HLSLI

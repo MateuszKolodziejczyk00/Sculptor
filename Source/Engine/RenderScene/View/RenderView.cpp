@@ -78,7 +78,7 @@ void RenderView::SetAntiAliasingMode(EAntiAliasingMode::Type mode)
 	SetJittering(m_aaMode == EAntiAliasingMode::TemporalAA);
 }
 
-EAntiAliasingMode::Type RenderView::GetAnitAliasingMode() const
+EAntiAliasingMode::Type RenderView::GetAntiAliasingMode() const
 {
 	return m_aaMode;
 }

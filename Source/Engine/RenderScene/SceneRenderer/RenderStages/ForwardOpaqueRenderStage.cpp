@@ -15,6 +15,7 @@ RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 	formats.colorRTFormats.emplace_back(SceneRendererStatics::hdrFormat);
 
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
+	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
 #if RENDERER_DEBUG
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
 #endif // RENDERER_DEBUG
@@ -41,6 +42,8 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
 	
 	passData.normalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
+	
+	passData.specularAndRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 
 #if RENDERER_DEBUG
 	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
@@ -69,6 +72,13 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
 
+	rg::RGRenderTargetDef specularAndRoughnessRTDef;
+	specularAndRoughnessRTDef.textureView    = passData.specularAndRoughness;
+	specularAndRoughnessRTDef.loadOperation  = rhi::ERTLoadOperation::Clear;
+	specularAndRoughnessRTDef.storeOperation = rhi::ERTStoreOperation::Store;
+	specularAndRoughnessRTDef.clearColor     = rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
+	renderPassDef.AddColorRenderTarget(specularAndRoughnessRTDef);
+
 #if RENDERER_DEBUG
 	rg::RGRenderTargetDef debugRTDef;
 	debugRTDef.textureView		= passData.debugTexture;
@@ -91,7 +101,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 							});
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

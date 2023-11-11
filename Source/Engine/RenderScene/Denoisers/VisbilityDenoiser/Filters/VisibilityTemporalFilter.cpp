@@ -26,7 +26,7 @@ DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_historyDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_momentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Uint32>),								u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Uint32>),								u_accumulatedSamplesNumHistoryTexture)
@@ -65,7 +65,7 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	ds->u_historyDepthTexture					= params.historyDepthTexture;
 	ds->u_depthTexture							= params.currentDepthTexture;
 	ds->u_motionTexture							= params.motionTexture;
-	ds->u_geometryNormalsTexture				= params.geometryNormalsTexture;
+	ds->u_normalsTexture						= params.normalsTexture;
 	ds->u_momentsTexture						= params.momentsTexture;
 	ds->u_accumulatedSamplesNumTexture			= params.accumulatedSamplesNumTexture;
 	ds->u_accumulatedSamplesNumHistoryTexture	= params.accumulatedSamplesNumHistoryTexture;

@@ -15,10 +15,10 @@ void DescriptorPool::Initialize(VkDescriptorPoolCreateFlags flags, Uint32 maxSet
 	SPT_CHECK(!IsValid());
 
 	VkDescriptorPoolCreateInfo poolInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-	poolInfo.flags = flags;
-    poolInfo.maxSets = maxSetsNum;
+	poolInfo.flags         = flags;
+    poolInfo.maxSets       = maxSetsNum;
     poolInfo.poolSizeCount = poolSizesNum;
-    poolInfo.pPoolSizes = poolSizes;
+    poolInfo.pPoolSizes    = poolSizes;
 
 	SPT_VK_CHECK(vkCreateDescriptorPool(VulkanRHI::GetDeviceHandle(), &poolInfo, VulkanRHI::GetAllocationCallbacks(), &m_poolHandle));
 }

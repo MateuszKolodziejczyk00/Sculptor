@@ -1,10 +1,14 @@
 #pragma once
 
 #include "StaticMeshRenderingCommon.h"
+#include "View/ViewRenderingSpec.h"
 
 
 namespace spt::rsc
 {
+
+struct DepthPrepassMetaData;
+
 
 DS_BEGIN(SMDepthPrepassCullInstancesDS, rg::RGDescriptorSetState<SMDepthPrepassCullInstancesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommands)
@@ -48,13 +52,13 @@ public:
 
 	Bool BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions);
 	void CullPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
-	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData);
 
 private:
 
 	SMDepthPrepassBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const StaticMeshBatchDefinition& batchDef) const;
 	
-	rdr::PipelineStateID GetPipelineStateForBatch(const SMDepthPrepassBatch& batch) const;
+	rdr::PipelineStateID GetPipelineStateForBatch(const SMDepthPrepassBatch& batch, const DepthPrepassMetaData& prepassMetaData) const;
 
 	rdr::PipelineStateID m_buildDrawCommandsPipeline;
 };

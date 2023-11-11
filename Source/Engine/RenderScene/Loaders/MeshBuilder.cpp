@@ -104,7 +104,7 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 			rtGeoDef.geometryDataID	= submeshesBeginIdx + static_cast<Uint32>(submeshIdx);
 		}
 
-		staticMeshDataHandle.emplace<RayTracingGeometryComponent >(std::move(rtGeoComponent));
+		staticMeshDataHandle.emplace<RayTracingGeometryComponent>(std::move(rtGeoComponent));
 	}
 
 	return staticMeshDataHandle;

@@ -14,7 +14,7 @@ struct ShadedSurface
 void ComputeSurfaceColor(in float3 baseColor, in float metallic, out float3 diffuseColor, out float3 specularColor)
 {
     diffuseColor = baseColor * (1.0f - metallic);
-    specularColor = lerp(0.08f, baseColor, metallic);
+    specularColor = lerp(0.04f, baseColor, metallic);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +47,11 @@ float GGXVisibility(in float a2, in float dotNL, in float dotNV)
     return GGX_V1(a2, dotNL) * GGX_V1(a2, dotNV);
 }
 
+float GGXMasking(in float a2, in float dotNL)
+{
+    return 2.0f / (1.0f + sqrt((1.0f - a2) + a2 / Pow2(dotNL)));
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GGX Specular ==================================================================================
 
@@ -68,7 +73,7 @@ float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in
 
 float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
 {
-    const float a = max(surface.roughness, 0.01f);
+    const float a = max(Pow2(surface.roughness), 0.01f);
 
     const float dotNL = saturate(dot(surface.shadingNormal, lightDir));
     const float3 h = normalize(viewDir + lightDir);
@@ -80,4 +85,64 @@ float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir
     const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
 
     return (diffuse + specular * fresnel) * dotNL * peakIlluminance;
+}
+
+float GeometrySchlickGGX(in float NdotV, in float a)
+{
+    const float k = (a * a) / 2.0;
+
+    const float nom   = NdotV;
+    const float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    const float NdotV = max(dot(N, V), 0.0);
+    const float NdotL = max(dot(N, L), 0.0);
+    const float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    const float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+} 
+
+
+float3 ImportanceSampleGGX(in float2 Xi, in float3 N, in float roughness)
+{
+    float a = roughness*roughness;
+	
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+	
+    // from spherical coordinates to cartesian coordinates
+    float3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+	
+    // from tangent-space floattor to world-space sample floattor
+    float3 up        = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent   = normalize(cross(up, N));
+    float3 bitangent = cross(N, tangent);
+	
+    float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
+}
+
+
+float3 IntegrateSpecularGGX(in float3 specularColor, in float3 shadingNormal, in float roughness, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
+{
+    const float a = max(roughness, 0.01f);
+    const float a2 = Pow2(a);
+
+    const float dotNL = saturate(dot(shadingNormal, lightDir));
+    const float3 h = normalize(viewDir + lightDir);
+    const float dotVH = clamp(dot(viewDir, h), 0.001f, 1.f);
+    const float dotNV = clamp(dot(shadingNormal, viewDir), 0.001f, 1.f);
+
+    const float3 fresnel = F_Schlick(specularColor, dotVH);
+
+    return (specularColor * fresnel * GGXMasking(a2, dotNL)) * peakIlluminance;
 }

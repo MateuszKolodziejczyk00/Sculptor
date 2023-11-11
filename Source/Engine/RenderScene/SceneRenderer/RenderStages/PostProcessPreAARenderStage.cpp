@@ -39,7 +39,7 @@ void PostProcessPreAARenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		dof::RenderGatherBasedDOF(graphBuilder, dofParameters);
 	}
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

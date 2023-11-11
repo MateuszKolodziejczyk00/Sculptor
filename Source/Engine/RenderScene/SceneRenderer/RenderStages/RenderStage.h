@@ -48,11 +48,11 @@ inline void RenderStage<TRenderStageType, stage>::Render(rg::RenderGraphBuilder&
 
 	RenderStageExecutionContext stageContext(settings, stage);
 
-	viewStageEntries.GetPreRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	viewStageEntries.BroadcastPreRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 
 	reinterpret_cast<TRenderStageType*>(this)->OnRender(graphBuilder, renderScene, viewSpec, stageContext);
 	
-	viewStageEntries.GetPostRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	viewStageEntries.BroadcastPostRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 template<typename TRenderStageType, ERenderStage stage>

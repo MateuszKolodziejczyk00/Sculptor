@@ -66,7 +66,7 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
         const float rcpWeightSum = rcp(weight0 + weight1 + weight2 + weight3);
 
         const float2 motion = (motion0 * weight0 + motion1 * weight1 + motion2 * weight2 + motion3 * weight3) * rcpWeightSum;
-        const float3 normal = (normal0 * weight0 + normal1 * weight1 + normal2 * weight2 + normal3 * weight3) * rcpWeightSum;
+        const float3 normal = normalize((normal0 * weight0 + normal1 * weight1 + normal2 * weight2 + normal3 * weight3) * rcpWeightSum);
 
         const float closestDepth = max(max(max(depths.x, depths.y), depths.z), depths.w);
         u_depthTextureHalfRes[pixel]           = closestDepth;

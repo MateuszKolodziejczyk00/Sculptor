@@ -388,6 +388,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 LightsRenderSystem::LightsRenderSystem()
 {
 	m_supportedStages = ERenderStage::ForwardOpaque;
+	
+	m_globalLightsDS = rdr::ResourcesManager::CreateDescriptorSetState<GlobalLightsDS>(RENDERER_RESOURCE_NAME("Global Lights DS"));
 
 	{
 		const rdr::ShaderID buildLightsZClustersShaders = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsZClusters.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BuildLightsZClustersCS"));
@@ -437,11 +439,18 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 	// Cache shadow maps for each views for this frame
 	CacheShadowMapsDS(graphBuilder, renderScene);
 
+	CacheGlobalLightsDS(graphBuilder, renderScene);
+
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
 		SPT_CHECK(!!viewSpec);
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
+}
+
+const lib::MTHandle<GlobalLightsDS>& LightsRenderSystem::GetGlobalLightsDS() const
+{
+	return m_globalLightsDS;
 }
 
 void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -525,6 +534,68 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;
 	shadingParams.shadowMapsDS		= m_shadowMapsDS;
 	viewSpec.GetData().Create<ViewSpecShadingParameters>(shadingParams);
+}
+
+void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+{
+	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
+
+	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
+	const SizeType pointLightsNum = pointLightsView.size();
+
+	lib::SharedPtr<rdr::Buffer> pointLightsBuffer;
+	if (pointLightsNum > 0)
+	{
+		const Uint64 pointLightsDataSize = pointLightsNum * sizeof(PointLightGPUData);
+		const rhi::BufferDefinition pointLightsDataBufferDef(pointLightsDataSize, rhi::EBufferUsage::Storage);
+		pointLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Point Lights Buffer"), pointLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
+		rhi::RHIMappedBuffer<PointLightGPUData> pointLightsData(pointLightsBuffer->GetRHI());
+
+		SizeType pointLightIdx = 0;
+
+		for (const auto& [entity, pointLight] : pointLightsView.each())
+		{
+			PointLightGPUData& gpuLightData = pointLightsData[pointLightIdx++];
+			gpuLightData = pointLight.GenerateGPUData();
+			gpuLightData.entityID = static_cast<Uint32>(entity);
+			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
+
+			if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
+			{
+				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
+				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
+			}
+		}
+	}
+
+	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
+	const SizeType directionalLightsNum = directionalLightsView.size();
+
+	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
+	if (directionalLightsNum > 0)
+	{
+		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(DirectionalLightGPUData);
+		const rhi::BufferDefinition directionalLightsDataBufferDef(directionalLightsDataSize, rhi::EBufferUsage::Storage);
+		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
+		rhi::RHIMappedBuffer<DirectionalLightGPUData> directionalLightsData(directionalLightsBuffer->GetRHI());
+
+		SizeType directionalLightIdx = 0;
+
+		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		{
+			DirectionalLightGPUData& lightGPUData = directionalLightsData[directionalLightIdx++];
+			lightGPUData = directionalLight.GenerateGPUData();
+			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
+		}
+	}
+
+	GlobalLightsParams lightsParams;
+	lightsParams.pointLightsNum       = static_cast<Uint32>(pointLightsNum);
+	lightsParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+
+	m_globalLightsDS->u_lightsParams      = lightsParams;
+	m_globalLightsDS->u_pointLights       = pointLightsBuffer->CreateFullView();
+	m_globalLightsDS->u_directionalLights = directionalLightsBuffer->CreateFullView();
 }
 
 void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)

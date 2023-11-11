@@ -109,7 +109,7 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 							});
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 
 	depthPrepassData.hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, depthPrepassData.depth, rhi::EFragmentFormat::R32_S_Float);
 

@@ -7,6 +7,8 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
 #include "Material.h"
+#include "MaterialShadersCompiler.h"
+#include "MaterialsSubsystem.h"
 
 namespace spt::rsc
 {
@@ -38,6 +40,11 @@ const lib::SharedPtr<rdr::Buffer>& RayTracingRenderSceneSubsystem::GetRTInstance
 	return m_rtInstancesDataBuffer;
 }
 
+const lib::MTHandle<SceneRayTracingDS>& RayTracingRenderSceneSubsystem::GetSceneRayTracingDS() const
+{
+	return m_sceneRayTracingDS;
+}
+
 Uint32 RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const
 {
 	const auto foundRecordIdx = m_materialShaderToSBTRecordIdx.find(materialShadersHash);
@@ -47,6 +54,26 @@ Uint32 RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecordIdx(mat::Materi
 const lib::DynamicArray<mat::MaterialShadersHash>& RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecords() const
 {
 	return m_materialShaderSBTRecords;
+}
+
+void RayTracingRenderSceneSubsystem::FillRayTracingGeometryHitGroups(lib::HashedString materialTechnique, INOUT lib::DynamicArray<rdr::RayTracingHitGroup>& hitGroups) const
+{
+	hitGroups.clear();
+
+	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = GetMaterialShaderSBTRecords();
+
+	hitGroups.reserve(sbtRecords.size());
+
+	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
+	{
+		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
+
+		rdr::RayTracingHitGroup hitGroup;
+		hitGroup.closestHitShader = shaders.closestHitShader;
+		hitGroup.anyHitShader     = shaders.anyHitShader;
+
+		hitGroups.emplace_back(hitGroup);
+	}
 }
 
 Bool RayTracingRenderSceneSubsystem::IsTLASDirty() const
@@ -141,6 +168,10 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
 
 		m_tlas->ReleaseInstancesBuildData();
+
+		m_sceneRayTracingDS = rdr::ResourcesManager::CreateDescriptorSetState<SceneRayTracingDS>(RENDERER_RESOURCE_NAME("Scene Ray Tracing DS"));
+		m_sceneRayTracingDS->u_sceneTLAS   = lib::Ref(m_tlas);
+		m_sceneRayTracingDS->u_rtInstances = m_rtInstancesDataBuffer->CreateFullView();
 	}
 
 	m_isTLASDirty = true;

@@ -432,7 +432,7 @@ void VolumetricFogRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 	std::swap(volumetricDataComp.currentInScatteringTexture, volumetricDataComp.prevFrameInScatteringTexture);
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

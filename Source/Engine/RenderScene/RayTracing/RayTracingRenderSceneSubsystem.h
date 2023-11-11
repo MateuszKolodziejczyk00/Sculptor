@@ -5,6 +5,10 @@
 #include "RenderSceneSubsystem.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "Material.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/AccelerationStructureBinding.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "Pipelines/PipelineState.h"
 
 namespace spt::rdr
 {
@@ -21,6 +25,12 @@ BEGIN_ALIGNED_SHADER_STRUCT(16, RTInstanceData)
 	SHADER_STRUCT_FIELD(Uint32, materialDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataID)
 END_SHADER_STRUCT();
+
+
+DS_BEGIN(SceneRayTracingDS, rg::RGDescriptorSetState<SceneRayTracingDS>)
+	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),            u_sceneTLAS)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTInstanceData>), u_rtInstances)
+DS_END();
 
 
 class RENDER_SCENE_API RayTracingRenderSceneSubsystem : public RenderSceneSubsystem
@@ -41,9 +51,13 @@ public:
 
 	const lib::SharedPtr<rdr::Buffer>& GetRTInstancesDataBuffer() const;
 
+	const lib::MTHandle<SceneRayTracingDS>& GetSceneRayTracingDS() const;
+
 	Uint32 GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const;
 
 	const lib::DynamicArray<mat::MaterialShadersHash>& GetMaterialShaderSBTRecords() const;
+
+	void FillRayTracingGeometryHitGroups(lib::HashedString materialTechnique, INOUT lib::DynamicArray<rdr::RayTracingHitGroup>& hitGroups) const;
 
 	Bool IsTLASDirty() const;
 	Bool AreSBTRecordsDirty() const;
@@ -57,6 +71,8 @@ private:
 	lib::SharedPtr<rdr::TopLevelAS> m_tlas;
 
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
+
+	lib::MTHandle<SceneRayTracingDS> m_sceneRayTracingDS;
 
 	lib::HashMap<mat::MaterialShadersHash, Uint32> m_materialShaderToSBTRecordIdx;
 	lib::DynamicArray<mat::MaterialShadersHash> m_materialShaderSBTRecords;

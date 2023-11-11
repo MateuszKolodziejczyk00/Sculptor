@@ -70,13 +70,15 @@ void StaticMeshDepthPrepassRenderer::CullPerView(rg::RenderGraphBuilder& graphBu
 	}
 }
 
-void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+
+	const DepthPrepassMetaData& prepassMetaData = metaData.Get<DepthPrepassMetaData>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
@@ -95,7 +97,7 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Render Static Meshes Batch"),
 								rg::BindDescriptorSets(batch.drawInstancesDS, batch.batchDS),
 								std::tie(drawParams),
-								[pipelineID = GetPipelineStateForBatch(batch), maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[pipelineID = GetPipelineStateForBatch(batch, prepassMetaData), maxDrawCallsNum, drawParams, this](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									recorder.BindGraphicsPipeline(pipelineID);
 
@@ -148,12 +150,19 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 	return batch;
 }
 
-rdr::PipelineStateID StaticMeshDepthPrepassRenderer::GetPipelineStateForBatch(const SMDepthPrepassBatch& batch) const
+rdr::PipelineStateID StaticMeshDepthPrepassRenderer::GetPipelineStateForBatch(const SMDepthPrepassBatch& batch, const DepthPrepassMetaData& prepassMetaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
+	mat::MaterialShadersParameters shadersParams;
+	if (!prepassMetaData.allowJittering)
+	{
+		shadersParams.macroDefinitions.emplace_back("FORCE_NO_JITTER");
+	}
+
 	const mat::MaterialGraphicsShaders materialShaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("SMDepthOnly",
-																																		 batch.materialShadersHash);
+																																		 batch.materialShadersHash,
+																																		 shadersParams);
 	rdr::GraphicsPipelineShaders shaders;
 	shaders.vertexShader	= materialShaders.vertexShader;
 	shaders.fragmentShader	= materialShaders.fragmentShader;

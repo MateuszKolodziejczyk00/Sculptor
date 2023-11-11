@@ -70,20 +70,8 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRend
 	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVIsibilityRTM"), compilationSettings));
 
-	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = rayTracingSubsystem.GetMaterialShaderSBTRecords();
-
 	const lib::HashedString materialTechnique = "RTVisibility";
-
-	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
-	{
-		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
-
-		rdr::RayTracingHitGroup hitGroup;
-		hitGroup.closestHitShader	= shaders.closestHitShader;
-		hitGroup.anyHitShader		= shaders.anyHitShader;
-
-		rtShaders.hitGroups.emplace_back(hitGroup);
-	}
+	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
@@ -147,7 +135,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 	const MotionData& motionData				= viewSpec.GetData().Get<MotionData>();
 	const ShadingInputData& shadingInputData	= viewSpec.GetData().Get<ShadingInputData>();
 
-	const math::Vector2u shadowMasksRenderingRes = depthPrepassData.depthHalfRes->GetResolution2D();
+	const math::Vector2u shadowMasksRenderingRes = depthPrepassData.depthNoJitterHalfRes->GetResolution2D();
 
 	ViewShadowMasksDataComponent& viewShadowMasks = UpdateShadowMaskForView(renderScene, viewSpec, shadowMasksRenderingRes);
 	
@@ -159,7 +147,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	const lib::MTHandle<TraceShadowRaysDS> traceShadowRaysDS = graphBuilder.CreateDescriptorSet<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
-	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depthHalfRes;
+	traceShadowRaysDS->u_depthTexture				= depthPrepassData.depthNoJitterHalfRes;
 	traceShadowRaysDS->u_geometryNormalsTexture     = shadingInputData.geometryNormalsHalfRes;
 
 	static rdr::PipelineStateID shadowsRayTracingPipeline;
@@ -214,8 +202,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		const rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks.at(entity);
 
 		visibility_denoiser::Denoiser::Params denoiserParams(renderView);
-		denoiserParams.historyDepthTexture		= depthPrepassData.prevFrameDepthHalfRes;
-		denoiserParams.currentDepthTexture		= depthPrepassData.depthHalfRes;
+		denoiserParams.historyDepthTexture		= depthPrepassData.historyDepthNoJitterHalfRes;
+		denoiserParams.currentDepthTexture		= depthPrepassData.depthNoJitterHalfRes;
 		denoiserParams.motionTexture			= motionData.motionHalfRes;
 		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormalsHalfRes;
 
@@ -232,13 +220,13 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName	= RG_DEBUG_NAME("Directional Shadows Upsample");
-		upsampleParams.depth		= depthPrepassData.depth;
-		upsampleParams.depthHalfRes = depthPrepassData.depthHalfRes;
+		upsampleParams.depth		= depthPrepassData.depthNoJitter;
+		upsampleParams.depthHalfRes = depthPrepassData.depthNoJitterHalfRes;
 		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
 		frameShadowMasks.shadowMasks[entity] = upsampler::DepthBasedUpsample(graphBuilder, shadowMask, upsampleParams);
 	}
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

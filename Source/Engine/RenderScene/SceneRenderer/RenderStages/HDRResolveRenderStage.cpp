@@ -652,7 +652,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	passData.debug = shadingData.debugTexture;
 #endif // RENDERER_DEBUG
 	
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 	
 	RenderViewEntryContext context;
 	context.texture = passData.tonemappedTexture;

@@ -34,7 +34,7 @@ struct DenoiserBaseParams
 
 	rg::RGTextureViewHandle motionTexture;
 
-	rg::RGTextureViewHandle geometryNormalsTexture;
+	rg::RGTextureViewHandle normalsTexture;
 
 	rg::RGTextureViewHandle currentTexture;
 	rg::RGTextureViewHandle historyTexture;
@@ -51,7 +51,7 @@ struct DenoiserGeometryParams
 		: renderView(denoiserParams.renderView)
 		, name(denoiserParams.name)
 		, depthTexture(denoiserParams.currentDepthTexture)
-		, geometryNormalsTexture(denoiserParams.geometryNormalsTexture)
+		, normalsTexture(denoiserParams.normalsTexture)
 	{ }
 
 	const RenderView& renderView;
@@ -60,7 +60,7 @@ struct DenoiserGeometryParams
 
 	rg::RGTextureViewHandle depthTexture;
 
-	rg::RGTextureViewHandle geometryNormalsTexture;
+	rg::RGTextureViewHandle normalsTexture;
 };
 
 }  // spt::rsc::denoising

@@ -67,7 +67,11 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
     output.uv = vertexUV;
 #endif // FRAGMENT_SHADER_NEEDS_MATERIAL
 
+#if defined(FORCE_NO_JITTER)
+    output.clipSpace = mul(u_sceneView.viewProjectionMatrixNoJitter, float4(vertexWorldLocation, 1.f));
+#else
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
+#endif // FORCE_NO_JITTER
     
     return output;
 }

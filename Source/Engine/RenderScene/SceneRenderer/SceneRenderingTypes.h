@@ -28,16 +28,17 @@ enum class ERenderStage
 	AmbientOcclusion				= BIT(6),
 	DirectionalLightsShadowMasks	= BIT(7),
 	ForwardOpaque					= BIT(8),
-	ApplyAtmosphere					= BIT(9),
-	VolumetricFog					= BIT(10),
-	PostProcessPreAA				= BIT(11),
-	AntiAliasing					= BIT(12),
-	HDRResolve						= BIT(13),
+	SpecularReflections				= BIT(9),
+	ApplyAtmosphere					= BIT(10),
+	VolumetricFog					= BIT(11),
+	PostProcessPreAA				= BIT(12),
+	AntiAliasing					= BIT(13),
+	HDRResolve						= BIT(14),
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
 	DepthPrepassStages				= DepthPrepass | MotionAndDepth,
-	ForwardLightingStages			= GlobalIllumination | GenerateGeometryNormals | DownsampleGeometryTextures | AmbientOcclusion | ForwardOpaque | ApplyAtmosphere | VolumetricFog,
+	ForwardLightingStages			= GlobalIllumination | GenerateGeometryNormals | DownsampleGeometryTextures | AmbientOcclusion | ForwardOpaque | SpecularReflections | ApplyAtmosphere | VolumetricFog,
 	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
 
 	// Presets
@@ -119,12 +120,13 @@ DS_END();
 struct DepthPrepassData
 {
 	rg::RGTextureViewHandle depth;
-	rg::RGTextureViewHandle depthHalfRes;
+	rg::RGTextureViewHandle depthNoJitter;
+	rg::RGTextureViewHandle depthNoJitterHalfRes;
 
 	rg::RGTextureViewHandle hiZ;
 	
-	rg::RGTextureViewHandle prevFrameDepth;
-	rg::RGTextureViewHandle prevFrameDepthHalfRes;
+	rg::RGTextureViewHandle historyDepthNoJitter;
+	rg::RGTextureViewHandle historyDepthNoJitterHalfRes;
 
 	lib::MTHandle<DepthCullingDS> depthCullingDS;
 
@@ -153,6 +155,7 @@ struct ShadingData
 {
 	rg::RGTextureViewHandle luminanceTexture;
 	rg::RGTextureViewHandle normalsTexture;
+	rg::RGTextureViewHandle specularAndRoughness;
 	
 #if RENDERER_DEBUG
 	rg::RGTextureViewHandle debugTexture;

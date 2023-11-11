@@ -25,6 +25,21 @@ RenderStageEntries::PostRenderStageDelegate& RenderStageEntries::GetPostRenderSt
 	return m_postRenderStage;
 }
 
+void RenderStageEntries::BroadcastPreRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+{
+	GetPreRenderStage().Broadcast(graphBuilder, scene, viewSpec, context);
+}
+
+void RenderStageEntries::BroadcastOnRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData /*= RenderStageContextMetaDataHandle()*/)
+{
+	GetOnRenderStage().Broadcast(graphBuilder, scene, viewSpec, context, metaData);
+}
+
+void RenderStageEntries::BroadcastPostRenderStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+{
+	GetPostRenderStage().Broadcast(graphBuilder, scene, viewSpec, context);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ViewRenderingSpec =============================================================================
 

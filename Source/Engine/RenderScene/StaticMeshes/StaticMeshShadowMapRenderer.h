@@ -2,6 +2,7 @@
 
 #include "StaticMeshRenderingCommon.h"
 #include "RenderSceneRegistry.h"
+#include "View/ViewRenderingSpec.h"
 
 
 namespace spt::rsc
@@ -65,7 +66,7 @@ public:
 
 	void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs);
 
-	void RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
+	void RenderToShadowMap(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData);
 
 	void FinishRenderingFrame();
 

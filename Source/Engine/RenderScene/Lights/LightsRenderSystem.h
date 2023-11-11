@@ -2,6 +2,11 @@
 
 #include "SceneRenderSystem.h"
 #include "Pipelines/PipelineState.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/RWBufferBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "LightTypes.h"
 
 
 namespace spt::rdr
@@ -16,21 +21,17 @@ namespace spt::rsc
 class ShadowMapsDS;
 
 
-struct DirectionalLightRuntimeData
-{
-	DirectionalLightRuntimeData()
-		: directionalLightsNum(0)
-	{ }
+BEGIN_SHADER_STRUCT(GlobalLightsParams)
+	SHADER_STRUCT_FIELD(Uint32, pointLightsNum)
+	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
+END_SHADER_STRUCT();
 
-	void Reset()
-	{
-		directionalLightsNum = 0;
-		directionalLightsBuffer.reset();
-	}
 
-	Uint32 directionalLightsNum;
-	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
-};
+DS_BEGIN(GlobalLightsDS, rg::RGDescriptorSetState<GlobalLightsDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GlobalLightsParams>),        u_lightsParams)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),       u_pointLights)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>), u_directionalLights)
+DS_END();
 
 
 class RENDER_SCENE_API LightsRenderSystem : public SceneRenderSystem
@@ -48,12 +49,15 @@ public:
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
 	// End SceneRenderSystem overrides
 
+	const lib::MTHandle<GlobalLightsDS>& GetGlobalLightsDS() const;
+
 private:
 
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
+	void CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;
@@ -62,6 +66,8 @@ private:
 	rdr::PipelineStateID m_buildLightsTilesPipeline;
 
 	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
+
+	lib::MTHandle<GlobalLightsDS> m_globalLightsDS;
 };
 
 } // spt::rsc

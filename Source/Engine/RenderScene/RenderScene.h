@@ -54,6 +54,7 @@ END_SHADER_STRUCT();
 BEGIN_SHADER_STRUCT(GPUSceneFrameData)
 	SHADER_STRUCT_FIELD(Real32, time)
 	SHADER_STRUCT_FIELD(Real32, deltaTime)
+	SHADER_STRUCT_FIELD(Uint32, frameIdx)
 END_SHADER_STRUCT();
 
 
@@ -182,6 +183,20 @@ public:
 	// Render Systems =======================================================
 
 	const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& GetRenderSystems() const;
+
+	template<typename TSystemType>
+	lib::SharedPtr<TSystemType> FindRenderSystem() const
+	{
+		return m_renderSystems.FindRenderSystem<TSystemType>();
+	}
+	
+	template<typename TSystemType>
+	TSystemType& GetRenderSystemChecked() const
+	{
+		const lib::SharedPtr<TSystemType> renderSystem = m_renderSystems.FindRenderSystem<TSystemType>();
+		SPT_CHECK(!!renderSystem);
+		return *renderSystem;
+	}
 
 	template<typename TSystemType, typename... TArgs>
 	void AddRenderSystem(TArgs&&... args)

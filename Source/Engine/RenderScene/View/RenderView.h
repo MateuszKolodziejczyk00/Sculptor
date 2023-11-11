@@ -85,7 +85,7 @@ public:
 	const lib::MTHandle<RenderViewDS>& GetRenderViewDS() const;
 
 	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
-	EAntiAliasingMode::Type GetAnitAliasingMode() const;
+	EAntiAliasingMode::Type GetAntiAliasingMode() const;
 
 #if RENDERER_DEBUG
 	void SetDebugFeature(EDebugFeature::Type debugFeature);

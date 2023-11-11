@@ -145,7 +145,7 @@ void ShadowMapRenderStage::RenderDepth(rg::RenderGraphBuilder& graphBuilder, con
 								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingRes));
 							});
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 void ShadowMapRenderStage::RenderDPCF(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, const rg::RGTextureHandle shadowMap)

@@ -10,7 +10,7 @@ void GlobalIlluminationRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilde
 {
 	SPT_PROFILER_FUNCTION();
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

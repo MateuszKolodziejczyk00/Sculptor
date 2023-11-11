@@ -17,6 +17,16 @@ struct CS_INPUT
 };
 
 
+float3 ComputeAverage(float3 a, float3 b, float3 c, float3 d)
+{
+    const float w1 = 1.f / (1.f + Luminance(a));
+    const float w2 = 1.f / (1.f + Luminance(b));
+    const float w3 = 1.f / (1.f + Luminance(c));
+    const float w4 = 1.f / (1.f + Luminance(d));
+    return (a * w1 + b * w2 + c * w3 + d * w4) / (w1 + w2 + w3 + w4);
+}
+
+
 float3 DownsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float2 uv, float2 pixelSize)
 {
     const float3 Center = inputTexture.SampleLevel(inputSampler, uv, 0).xyz;
@@ -40,12 +50,11 @@ float3 DownsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float
     // 1 C 6
     // 0 3 5
 
-    float3 result = (Inner0 + Inner1 + Inner2 + Inner3) * 0.5f;
-    result += (Outer0 + Outer3 + Outer1 + Center) * 0.125f;
-    result += (Outer1 + Outer2 + Outer4 + Center) * 0.125f;
-    result += (Outer4 + Outer6 + Outer7 + Center) * 0.125f;
-    result += (Outer3 + Outer5 + Outer6 + Center) * 0.125f;
-    result *= 0.25f;
+    float3 result = ComputeAverage(Inner0, Inner1, Inner2, Inner3) * 0.5f;
+    result += ComputeAverage(Outer0, Outer3, Outer1, Center) * 0.125f;
+    result += ComputeAverage(Outer1, Outer2, Outer4, Center) * 0.125f;
+    result += ComputeAverage(Outer4, Outer6, Outer7, Center) * 0.125f;
+    result += ComputeAverage(Outer3, Outer5, Outer6, Center) * 0.125f;
 
     return result;
 }

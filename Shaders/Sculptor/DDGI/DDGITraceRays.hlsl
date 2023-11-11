@@ -6,7 +6,7 @@
 #include "DDGI/DDGITraceRaysCommon.hlsli"
 
 #include "DDGI/DDGITypes.hlsli"
-#include "DDGI/DDGILighting.hlsli"
+#include "Lights/Lighting.hlsli"
 
 
 [shader("raygeneration")]
@@ -31,7 +31,7 @@ void DDGIProbeRaysRTG()
     rayDesc.Origin      = probeWorldLocation;
     rayDesc.Direction   = rayDirection;
 
-    TraceRay(u_sceneAccelerationStructure,
+    TraceRay(u_sceneTLAS,
              0,
              0xFF,
              0,
@@ -95,7 +95,7 @@ void DDGIProbeRaysRTM(inout DDGIRayPayload payload)
 
 
 [shader("miss")]
-void DDGIShadowRaysRTM(inout DDGIShadowRayPayload payload)
+void DDGIShadowRaysRTM(inout ShadowRayPayload payload)
 {
     payload.isShadowed = false;
 }

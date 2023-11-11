@@ -66,6 +66,7 @@ enum class EFragmentFormat : Uint32
 	R8_UN_Float,
 	R8_U_Int,
 	R16_UN_Float,
+	R16_S_Float,
 	R32_S_Float,
 	R32_U_Int,
 
@@ -296,6 +297,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::R8_UN_Float:
 	case EFragmentFormat::R8_U_Int:
 	case EFragmentFormat::R16_UN_Float:
+    case EFragmentFormat::R16_S_Float:
 	case EFragmentFormat::R32_S_Float:
 	case EFragmentFormat::R32_U_Int:
 	case EFragmentFormat::RG8_UN_Float:

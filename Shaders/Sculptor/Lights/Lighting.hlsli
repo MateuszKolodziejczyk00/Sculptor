@@ -3,6 +3,7 @@
 #include "Lights/Shadows.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 
+#ifdef DS_ViewShadingInputDS
 
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
 uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
@@ -15,11 +16,9 @@ uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 	return mask & uint(rangeMask);
 }
 
-float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewLocation)
+float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir)
 {
     float3 luminance = 0.f;
-
-    const float3 viewDir = normalize(viewLocation - surface.location);
 
     const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, surface.location);
 
@@ -203,3 +202,101 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
     
     return inScattering;
 }
+
+#endif // DS_ViewShadingInputDS
+
+#ifdef DS_GlobalLightsDS
+
+#ifdef DS_DDGIDS
+#include "DDGI/DDGITypes.hlsli"
+#endif // DS_DDGIDS
+
+struct ShadowRayPayload
+{
+    bool isShadowed;
+};
+
+
+float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
+{
+    float3 luminance = 0.f;
+
+    // Directional Lights
+
+    for (uint i = 0; i < u_lightsParams.directionalLightsNum; ++i)
+    {
+        const DirectionalLightGPUData directionalLight = u_directionalLights[i];
+
+        const float3 lightIlluminance = directionalLight.color * directionalLight.illuminance;
+
+        if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
+        {
+            ShadowRayPayload payload = { true };
+
+            RayDesc rayDesc;
+            rayDesc.TMin        = 0.02f;
+            rayDesc.TMax        = 50.f;
+            rayDesc.Origin      = surface.location;
+            rayDesc.Direction   = -directionalLight.direction;
+
+            TraceRay(u_sceneTLAS,
+                     RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+                     0xFF,
+                     0,
+                     1,
+                     1,
+                     rayDesc,
+                     payload);
+            
+            if (!payload.isShadowed)
+            {
+                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance);
+            }
+        }
+    }
+
+    // Point Lights
+
+    for(uint lightIdx = 0; lightIdx < u_lightsParams.pointLightsNum; ++lightIdx)
+    {
+        const PointLightGPUData pointLight = u_pointLights[lightIdx];
+        
+        const float3 toLight = pointLight.location - surface.location;
+
+        if (dot(toLight, surface.shadingNormal) > 0.f)
+        {
+            const float distToLight = length(toLight);
+
+            if (distToLight < pointLight.radius)
+            {
+                const float3 lightDir = toLight / distToLight;
+                const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, surface.location);
+
+                if(any(illuminance > 0.f))
+                {
+                    float visibility = 1.f;
+                    if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+                    {
+                        const float3 biasedLocation  = surface.location + surface.shadingNormal * 0.02f;
+                        visibility = EvaluatePointLightShadowsAtLocation(surface.location, biasedLocation, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+                    }
+            
+                    if (visibility > 0.f)
+                    {
+                        luminance += CalcLighting(surface, lightDir, viewDir, illuminance) * visibility;
+                    }
+                }
+            }
+        }
+    }
+
+    // Indirect diffuse
+#ifdef DS_DDGIDS
+    const float3 indirect = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, surface.location, surface.shadingNormal, viewDir);
+    luminance += indirect * surface.diffuseColor;
+#endif // DS_DDGIDS
+
+    return luminance;
+}
+
+#endif // GlobalLightsDS

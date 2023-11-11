@@ -59,13 +59,13 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	const rg::RGTextureViewHandle accumulatedSamplesNumHistory = graphBuilder.AcquireExternalTextureView(m_accumulatedSamplesNumHistory);
 
 	denoising::DenoiserBaseParams denoiserParams(params.renderView);
-	denoiserParams.name						= m_debugName;
-	denoiserParams.historyDepthTexture		= params.historyDepthTexture;
-	denoiserParams.currentDepthTexture		= params.currentDepthTexture;
-	denoiserParams.motionTexture			= params.motionTexture;
-	denoiserParams.geometryNormalsTexture	= params.geometryNormalsTexture;
-	denoiserParams.currentTexture			= denoisedTexture;
-	denoiserParams.historyTexture			= historyTexture;
+	denoiserParams.name                = m_debugName;
+	denoiserParams.historyDepthTexture = params.historyDepthTexture;
+	denoiserParams.currentDepthTexture = params.currentDepthTexture;
+	denoiserParams.motionTexture       = params.motionTexture;
+	denoiserParams.normalsTexture      = params.geometryNormalsTexture;
+	denoiserParams.currentTexture      = denoisedTexture;
+	denoiserParams.historyTexture      = historyTexture;
 
 	moments::VisibilityMomentsParameters visibilityMomentsParams;
 	visibilityMomentsParams.debugName		= m_debugName;

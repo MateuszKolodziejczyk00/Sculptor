@@ -111,7 +111,7 @@ void StaticMeshForwardOpaqueRenderer::CullPerView(rg::RenderGraphBuilder& graphB
 	}
 }
 
-void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
+void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
 {
 	SPT_PROFILER_FUNCTION();
 

@@ -76,8 +76,9 @@ void RenderScene::Update()
 							  });
 
 	GPUSceneFrameData frameData;
-	frameData.deltaTime	= engn::GetRenderingFrame().GetDeltaTime();
-	frameData.time		= engn::GetRenderingFrame().GetTime();
+	frameData.deltaTime = engn::GetRenderingFrame().GetDeltaTime();
+	frameData.time      = engn::GetRenderingFrame().GetTime();
+	frameData.frameIdx  = static_cast<Uint32>(engn::GetRenderingFrame().GetFrameIdx());
 	m_renderSceneDS->u_gpuSceneFrameConstants = frameData;
 }
 

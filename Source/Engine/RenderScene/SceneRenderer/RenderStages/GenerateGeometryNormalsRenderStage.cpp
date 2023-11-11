@@ -55,7 +55,7 @@ void GenerateGeometryNormalsRenderStage::OnRender(rg::RenderGraphBuilder& graphB
 	ShadingInputData& shadingInputData = viewSpec.GetData().GetOrCreate<ShadingInputData>();
 	shadingInputData.geometryNormals = geometryNormalsTexture;
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
 } // spt::rsc

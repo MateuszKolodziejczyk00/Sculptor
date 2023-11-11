@@ -72,10 +72,11 @@ rhi::RHIDescriptorSet PersistentDescriptorSetsManager::GetOrCreateDescriptorSet(
 		createdDS.SetName(state->GetName());
 
 		PersistentDSData newDSData;
-		newDSData.hash				= dsHash;
-		newDSData.pipeline			= pipeline.ToSharedPtr();
-		newDSData.state				= state.Get();
-		newDSData.lastUpdateFrame	= rdr::Renderer::GetCurrentFrameIdx() + 1;
+		newDSData.hash              = dsHash;
+		newDSData.pipeline          = pipeline.ToSharedPtr();
+		newDSData.state             = state.Get();
+		newDSData.lastUpdateFrame   = rdr::Renderer::GetCurrentFrameIdx() + 1;
+		newDSData.descriptorSetIdx  = descriptorSetIdx;
 		m_dsData.emplace_back(newDSData);
 
 		DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();
@@ -138,9 +139,16 @@ void PersistentDescriptorSetsManager::UpdateDescriptorSets()
 		if (ds.state->IsDirty() && ds.lastUpdateFrame < currentFrameIdx)
 		{
 			lib::SharedPtr<Pipeline> pipeline = ds.pipeline.lock();
-			DescriptorSetUpdateContext updateContext(m_cachedDescriptorSets.at(ds.hash), writer, pipeline->GetMetaData());
+			rhi::RHIDescriptorSet& rhiDescriptorSet = m_cachedDescriptorSets[ds.hash];
+			rdr::CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda([rhiDescriptorSet]()
+																				 {
+																					 rhi::RHI::FreeDescriptorSet(rhiDescriptorSet);
+																				 });
+			const rhi::DescriptorSetLayoutID dsLayoutID = pipeline->GetRHI().GetDescriptorSetLayoutID(ds.descriptorSetIdx);
+			rhiDescriptorSet = rhi::RHI::AllocateDescriptorSet(dsLayoutID);
+			DescriptorSetUpdateContext updateContext(rhiDescriptorSet, writer, pipeline->GetMetaData());
 			ds.state->UpdateDescriptors(updateContext);
-
+			
 			ds.lastUpdateFrame = currentFrameIdx;
 		}
 	}

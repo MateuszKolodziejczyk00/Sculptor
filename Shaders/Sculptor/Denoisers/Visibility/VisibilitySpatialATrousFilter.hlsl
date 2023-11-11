@@ -41,11 +41,11 @@ void SpatialATrousFilterCS(CS_INPUT input)
         const float2 pixelSize = rcp(float2(outputRes));
         const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-        const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0.0f).xyz * 2.f - 1.f;
+        const float3 normal = u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0.0f).xyz * 2.f - 1.f;
 
         const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0.0f).x;
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
-        const float3 centerWS = NDCToWorldSpace(ndc, u_sceneView);
+        const float3 centerWS = NDCToWorldSpaceNoJitter(ndc, u_sceneView);
 
         const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
@@ -60,11 +60,11 @@ void SpatialATrousFilterCS(CS_INPUT input)
                 float w = kernel[k];
 
                 const float2 sampleUV = uv + float2(x, y) * u_params.samplesOffset * pixelSize;
-                const float3 sampleNormal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, sampleUV, 0.0f).xyz * 2.f - 1.f;
+                const float3 sampleNormal = u_normalsTexture.SampleLevel(u_nearestSampler, sampleUV, 0.0f).xyz * 2.f - 1.f;
 
                 const float sampleDepth = u_depthTexture.SampleLevel(u_nearestSampler, sampleUV, 0.0f).x;
                 const float3 sampleNDC = float3(sampleUV * 2.f - 1.f, sampleDepth);
-                const float3 sampleWS = NDCToWorldSpace(sampleNDC, u_sceneView);
+                const float3 sampleWS = NDCToWorldSpaceNoJitter(sampleNDC, u_sceneView);
 
                 const float wn = NormalWeight(normal, sampleNormal);
                 const float wl = WorldLocationWeight(centerWS, sampleWS);

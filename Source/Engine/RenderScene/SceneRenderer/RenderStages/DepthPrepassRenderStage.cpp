@@ -9,9 +9,16 @@ namespace spt::rsc
 struct SceneViewDepthDataComponent
 {
 	lib::SharedPtr<rdr::TextureView> currentDepthTexture;
-	lib::SharedPtr<rdr::TextureView> prevFrameDepthTexture;
-	lib::SharedPtr<rdr::TextureView> currentDepthTextureHalfRes;
-	lib::SharedPtr<rdr::TextureView> prevFrameDepthTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> currentDepthNoJitterTexture;
+	lib::SharedPtr<rdr::TextureView> currentDepthNoJitterTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> historyDepthTexture;
+	lib::SharedPtr<rdr::TextureView> historyDepthNoJitterTexture;
+	lib::SharedPtr<rdr::TextureView> historyDepthNoJitterTextureHalfRes;
+
+	Bool HasSeparateNoJitterTextures() const
+	{
+		return !!currentDepthNoJitterTexture && !!historyDepthNoJitterTexture;
+	}
 };
 
 
@@ -61,50 +68,85 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	}
 	SPT_CHECK(!!viewDepthData);
 
-	std::swap(viewDepthData->currentDepthTexture, viewDepthData->prevFrameDepthTexture);
-	std::swap(viewDepthData->currentDepthTextureHalfRes, viewDepthData->prevFrameDepthTextureHalfRes);
+	const Bool wantsSeparateNoJitterTextures = renderView.GetAntiAliasingMode() == EAntiAliasingMode::TemporalAA;
+
+	std::swap(viewDepthData->currentDepthTexture, viewDepthData->historyDepthTexture);
+	std::swap(viewDepthData->currentDepthNoJitterTextureHalfRes, viewDepthData->historyDepthNoJitterTextureHalfRes);
+
+	if (viewDepthData->currentDepthTexture != viewDepthData->currentDepthNoJitterTexture)
+	{
+		std::swap(viewDepthData->currentDepthNoJitterTexture, viewDepthData->historyDepthNoJitterTexture);
+	}
 
 	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
 
 	if (!viewDepthData->currentDepthTexture || viewDepthData->currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
 	{
 		const math::Vector2u renderinHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
-		viewDepthData->currentDepthTexture			= utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
-		viewDepthData->currentDepthTextureHalfRes	= utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderinHalfRes, false);
+
+		viewDepthData->currentDepthTexture                = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
+		viewDepthData->currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderinHalfRes, false);
+		
+		viewDepthData->currentDepthNoJitterTexture = wantsSeparateNoJitterTextures
+			                                       ? utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true)
+			                                       : viewDepthData->currentDepthTexture;
 	}
 
 	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
 
-	depthPrepassData.depth			= graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
-	depthPrepassData.depthHalfRes	= graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTextureHalfRes);
+	depthPrepassData.depth         = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
+	depthPrepassData.depthNoJitter = wantsSeparateNoJitterTextures
+		                           ? graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthNoJitterTexture)
+		                           : depthPrepassData.depth;
 
-	if (viewDepthData->prevFrameDepthTexture)
+	depthPrepassData.depthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthNoJitterTextureHalfRes);
+
+	if (viewDepthData->historyDepthTexture)
 	{
-		depthPrepassData.prevFrameDepth			= graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTexture);
-		depthPrepassData.prevFrameDepthHalfRes	= graphBuilder.AcquireExternalTextureView(viewDepthData->prevFrameDepthTextureHalfRes);
+		depthPrepassData.historyDepthNoJitter        = graphBuilder.AcquireExternalTextureView(viewDepthData->historyDepthNoJitterTexture);
+		depthPrepassData.historyDepthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(viewDepthData->historyDepthNoJitterTextureHalfRes);
 	}
 
-	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
+	{
+		DepthPrepassMetaData metaData;
+		metaData.allowJittering = true;
+		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, depthPrepassData.depth, metaData);
+	}
+
+	if (wantsSeparateNoJitterTextures)
+	{
+		DepthPrepassMetaData metaData;
+		metaData.allowJittering = false;
+		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, depthPrepassData.depthNoJitter, metaData);
+	}
+}
+
+void DepthPrepassRenderStage::ExecuteDepthPrepass(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, rg::RGTextureViewHandle depthTarget, const DepthPrepassMetaData& metaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = depthTarget->GetResolution2D();
+
+	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), resolution);
 
 	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= depthPrepassData.depth;
+	depthRTDef.textureView		= depthTarget;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 	
-	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
-	
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Depth Prepass"),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),
-							[renderingArea](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							[resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
 							});
 
-	GetStageEntries(viewSpec).GetOnRenderStage().Broadcast(graphBuilder, renderScene, viewSpec, stageContext);
+	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext, metaData);
+
 }
 
 } // spt::rsc
