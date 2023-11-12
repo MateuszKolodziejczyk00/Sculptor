@@ -26,6 +26,12 @@ void ApplySpecularReflectionsCS(CS_INPUT input)
         float3 luminance = u_luminanceTexture[pixel].rgb;
 
         const float3 specularReflections       = u_specularReflectionsTexture.Load(uint3(pixel, 0)).rgb;
+
+        if(any(isnan(specularReflections)))
+        {
+            return;
+        }
+
         const float4 specularColorAndRoughness = u_specularAndRoughnessTexture.Load(uint3(pixel, 0));
 
         const float3 specularColor = specularColorAndRoughness.rgb;

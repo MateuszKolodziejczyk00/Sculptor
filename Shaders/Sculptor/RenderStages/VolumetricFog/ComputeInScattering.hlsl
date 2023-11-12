@@ -65,6 +65,11 @@ void ComputeInScatteringCS(CS_INPUT input)
 
         float3 inScattering = ComputeLocalLightsInScattering(params);
 
+        if(u_inScatteringParams.enableIndirectInScattering)
+        {
+            inScattering += u_indirectInScatteringTexture.SampleLevel(u_indirectInScatteringSampler, fogFroxelUVW, 0.f) * scatteringExtinction.rgb;
+        }
+
         float4 inScatteringExtinction = float4(inScattering, scatteringExtinction.w);
 
         if (u_inScatteringParams.hasValidHistory)

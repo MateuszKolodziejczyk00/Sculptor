@@ -12,14 +12,14 @@
 #include "StaticMeshes/StaticMeshGeometry.h"
 #include "GeometryManager.h"
 #include "MaterialsUnifiedData.h"
-#include "../SceneRenderingTypes.h"
+#include "SceneRenderer/SceneRenderingTypes.h"
 #include "Lights/LightsRenderSystem.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "Denoisers/SpecularReflectionsDenoiser/SRDenoiser.h"
 #include "Utils/ShadingTexturesDownsampler.h"
-#include "../Utils/DepthBasedUpsampler.h"
-#include "../Utils/BRDFIntegrationLUT.h"
+#include "SceneRenderer/Utils/DepthBasedUpsampler.h"
+#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
@@ -269,10 +269,12 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		denoise::Denoise(graphBuilder, viewSpec, specularReflectionsTexture, params);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
-		upsampleParams.debugName    = RG_DEBUG_NAME("Upsample Specular Reflections");
-		upsampleParams.depth        = depthData.depth; // Use no jitter depth for upsampling - this should help with edge artifacts
-		upsampleParams.depthHalfRes = depthData.depthNoJitterHalfRes;
-		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
+		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");
+		// Use no jitter depth for upsampling - this should help with edge artifacts
+		upsampleParams.depth              = depthData.depth;
+		upsampleParams.depthHalfRes       = depthData.depthNoJitterHalfRes;
+		upsampleParams.renderViewDS       = renderView.GetRenderViewDS();
+		upsampleParams.eliminateFireflies = true;
 		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, specularReflectionsTexture, upsampleParams);
 
 		const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);

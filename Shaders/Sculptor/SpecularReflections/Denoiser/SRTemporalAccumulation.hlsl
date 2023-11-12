@@ -93,7 +93,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
             historySamplesNum += u_historyAccumulatedSamplesNumTexture.Load(historyPixel);
 
-            const float minHistoryWeight = lerp(0.13f, 0.05f, roughness / GLOSSY_TRACE_MAX_ROUGHNESS);
+            const float minHistoryWeight = lerp(0.05f, 0.3f, Pow3(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS));
             const float currentFrameWeight = max(minHistoryWeight, rcp(float(historySamplesNum)));
             
             const float4 historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);

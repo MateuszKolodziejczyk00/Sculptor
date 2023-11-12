@@ -11,7 +11,7 @@ struct CS_INPUT
 };
 
 
-static const float depthDiffThreshold = 0.04f;
+static const float depthDiffThreshold = 0.035f;
 
 
 float ComputeSampleWeight(float sampleDepthDiff)
@@ -59,10 +59,18 @@ void DepthBasedUpsampleCS(CS_INPUT input)
         const float4 depthDiff = abs(inputLinearDepths - outputLinearDepth);
         const float minDepthDiff = min(min(depthDiff.x, depthDiff.y), min(depthDiff.z, depthDiff.w));
 
-        const float weight0 = ComputeSampleWeight(abs(depthDiff.x - minDepthDiff));
-        const float weight1 = ComputeSampleWeight(abs(depthDiff.y - minDepthDiff));
-        const float weight2 = ComputeSampleWeight(abs(depthDiff.z - minDepthDiff));
-        const float weight3 = ComputeSampleWeight(abs(depthDiff.w - minDepthDiff));
+        float weight0 = ComputeSampleWeight(abs(depthDiff.x - minDepthDiff));
+        float weight1 = ComputeSampleWeight(abs(depthDiff.y - minDepthDiff));
+        float weight2 = ComputeSampleWeight(abs(depthDiff.z - minDepthDiff));
+        float weight3 = ComputeSampleWeight(abs(depthDiff.w - minDepthDiff));
+
+        if(u_params.eliminateFireflies)
+        {
+            weight0 /= (1.f + Luminance(input0.rgb));
+            weight1 /= (1.f + Luminance(input1.rgb));
+            weight2 /= (1.f + Luminance(input2.rgb));
+            weight3 /= (1.f + Luminance(input3.rgb));
+        }
 
         const float rcpWeightSum = rcp(weight0 + weight1 + weight2 + weight3);
 

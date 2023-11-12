@@ -56,7 +56,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     }
     else
     {
-        shadingNormal = normalize(evalParams.normal);
+        shadingNormal = geometryNormal;
     }
 
     float3 emissiveColor = materialData.emissiveFactor;
@@ -64,18 +64,6 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     {
         emissiveColor *= u_materialsTextures[materialData.emissiveTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).rgb;
     }
-
-    // TEMP
-    if(materialData.metallicRoughnessTextureIdx == 26)
-    {
-        metallic = 1.f;
-        roughness = 0.10f;
-    }
-    if(materialData.metallicRoughnessTextureIdx == 41)
-    {
-        emissiveColor = baseColor * 50000.f;
-    }
-    // TEMP
 
     MaterialEvaluationOutput output;
 

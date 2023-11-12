@@ -455,6 +455,13 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 	{
 		const tinygltf::PbrMetallicRoughness& pbrDef = materialSourceDef.pbrMetallicRoughness;
 
+		float emissiveStrength = 0.f;
+		const auto emissiveStrengthIter = materialSourceDef.extensions.find("KHR_materials_emissive_strength");
+		if (emissiveStrengthIter != materialSourceDef.extensions.end())
+		{
+			emissiveStrength = static_cast<Real32>(emissiveStrengthIter->second.Get("emissiveStrength").GetNumberAsDouble());
+		}
+
 		mat::MaterialPBRData pbrData;
 		pbrData.baseColorFactor             = math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
 		pbrData.metallicFactor              = static_cast<Real32>(pbrDef.metallicFactor);
@@ -462,7 +469,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		pbrData.baseColorTextureIdx         = getLoadedTextureIndex(pbrDef.baseColorTexture.index);
 		pbrData.metallicRoughnessTextureIdx = getLoadedTextureIndex(pbrDef.metallicRoughnessTexture.index);
 		pbrData.normalsTextureIdx           = getLoadedTextureIndex(materialSourceDef.normalTexture.index);
-		pbrData.emissiveFactor              = math::Map<const math::Vector3d>(materialSourceDef.emissiveFactor.data()).cast<Real32>();
+		pbrData.emissiveFactor              = math::Map<const math::Vector3d>(materialSourceDef.emissiveFactor.data()).cast<Real32>() * emissiveStrength;
 		pbrData.emissiveTextureIdx          = getLoadedTextureIndex(materialSourceDef.emissiveTexture.index);
 
 		mat::MaterialDefinition materialDefinition;

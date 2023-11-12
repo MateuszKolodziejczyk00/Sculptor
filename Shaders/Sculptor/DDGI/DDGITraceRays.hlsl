@@ -48,7 +48,10 @@ void DDGIProbeRaysRTG()
     {
         float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
 
-        const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance;
+        // Introduce additional bias as using just distance can have too low precision (which results in artifacts f.e. when using shadow maps)
+        const float locationBias = 0.03f;
+
+        const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance - locationBias;
         
         ShadedSurface surface;
         surface.location        = worldLocation;

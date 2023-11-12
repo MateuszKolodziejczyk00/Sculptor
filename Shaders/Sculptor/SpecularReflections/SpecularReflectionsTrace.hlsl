@@ -75,8 +75,11 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 
         const float3 hitNormal = normalize(payload.normal);
 
+        // Introduce additional bias as using just distance can have too low precision (which results in artifacts f.e. when using shadow maps)
+        const float locationBias = 0.03f;
+
         ShadedSurface surface;
-        surface.location = surfWorldLocation + reflectedRayDirection * payload.distance;
+        surface.location = surfWorldLocation + reflectedRayDirection * payload.distance - locationBias;
         surface.shadingNormal = hitNormal;
         surface.geometryNormal = hitNormal;
         surface.roughness = payload.roughness;
@@ -84,7 +87,13 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 
         result.luminance = CalcReflectedLuminance(surface, -reflectedRayDirection);
 
-        result.luminance += payload.emissive;
+        const float3 emissive = payload.emissive;
+        result.luminance += emissive;
+
+        if (any(isnan(result.luminance)))
+        {
+            result.luminance = 0.f;
+        }
     }
     else if (!isBackface)
     {

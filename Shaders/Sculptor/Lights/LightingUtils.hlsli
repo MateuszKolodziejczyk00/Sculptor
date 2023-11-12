@@ -3,6 +3,10 @@
 
 #include "Shading/Shading.hlsli"
 
+
+[[shader_struct(PointLightGPUData)]]
+
+
 float HenyeyGreensteinPhaseFunction(in float g, in float cosTheta)
 {
     const float numerator = 1.f - g * g;

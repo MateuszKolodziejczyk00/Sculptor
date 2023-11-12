@@ -3,6 +3,10 @@
 #include "Lights/Shadows.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 
+#ifdef DS_DDGIDS
+#include "DDGI/DDGITypes.hlsli"
+#endif // DS_DDGIDS
+
 #ifdef DS_ViewShadingInputDS
 
 // Based on https://themaister.net/blog/2020/01/10/clustered-shading-evolution-in-granite/
@@ -206,10 +210,6 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 #endif // DS_ViewShadingInputDS
 
 #ifdef DS_GlobalLightsDS
-
-#ifdef DS_DDGIDS
-#include "DDGI/DDGITypes.hlsli"
-#endif // DS_DDGIDS
 
 struct ShadowRayPayload
 {

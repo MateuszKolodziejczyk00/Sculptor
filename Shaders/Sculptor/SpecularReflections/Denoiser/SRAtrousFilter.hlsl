@@ -107,6 +107,11 @@ void SRATrousFilterCS(CS_INPUT input)
 
                 const float sampleDepth = ComputeLinearDepth(u_depthTexture.Load(uint3(samplePixel, 0)), u_sceneView);
 
+                if(sampleDepth < 0.000001f)
+                {
+                    continue;
+                }
+
                 const float3 sampleWS = NDCToWorldSpaceNoJitter(float3((uv + float2(x, y) * rcp(float2(outputRes))) * 2.f - 1.f, sampleDepth), u_sceneView);
                 const float3 luminance = u_inputTexture.Load(uint3(samplePixel, 0));
                 const float lum = Luminance(luminance);

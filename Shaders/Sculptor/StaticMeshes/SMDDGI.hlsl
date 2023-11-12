@@ -61,11 +61,18 @@ void DDGI_RT_CHS(inout DDGIRayPayload payload, in BuiltInTriangleIntersectionAtt
 
     const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
 
+    half3 emissive = half3(evaluatedMaterial.emissiveColor);
+
+    if(any(isnan(emissive)))
+    {
+        emissive = 0.f;
+    }
+
     payload.normal              = half3(evaluatedMaterial.shadingNormal);
     payload.roughness           = half(evaluatedMaterial.roughness);
     payload.baseColorMetallic   = PackFloat4x8(float4(evaluatedMaterial.baseColor.xyz, evaluatedMaterial.metallic));
     payload.hitDistance         = RayTCurrent();
-    payload.emissive            = half3(evaluatedMaterial.emissiveColor);
+    payload.emissive            = emissive;
 }
 
 
