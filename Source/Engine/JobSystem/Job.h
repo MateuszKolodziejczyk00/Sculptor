@@ -617,7 +617,7 @@ private:
 
 	void TryExecutePrerequisites_Lockless(const lib::DynamicArray<lib::MTHandle<JobInstance>>& prerequisitesToExecute) const
 	{
-		for (const lib::MTHandle<JobInstance>& prerequisite : m_prerequisites)
+		for (const lib::MTHandle<JobInstance>& prerequisite : prerequisitesToExecute)
 		{
 			if (CanFinishExecution())
 			{
