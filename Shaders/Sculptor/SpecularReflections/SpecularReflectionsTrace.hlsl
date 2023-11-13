@@ -79,7 +79,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
         const float locationBias = 0.03f;
 
         ShadedSurface surface;
-        surface.location = surfWorldLocation + reflectedRayDirection * payload.distance - locationBias;
+        surface.location = surfWorldLocation + reflectedRayDirection * payload.distance + hitNormal * locationBias;
         surface.shadingNormal = hitNormal;
         surface.geometryNormal = hitNormal;
         surface.roughness = payload.roughness;

@@ -62,41 +62,50 @@ void TemporalFilterCS(CS_INPUT input)
 
             if (sampleDistance <= distanceThreshold)
             {
-                const float depthLinearlySampled = ComputeLinearDepth(u_historyDepthTexture.SampleLevel(u_linearSampler, historyUV, 0.f), u_prevFrameSceneView);
-                if(abs(depthLinearlySampled - historySampleDepthLinear) <= u_params.linearAndNearestSamplesMaxDepthDiff)
+                const float currentValue = u_currentTexture[pixel];
+
+                float currentFrameWeight = u_params.currentFrameWeight;
+                if (u_params.hasValidSamplesCountTexture)
                 {
-                    float currentFrameWeight = u_params.currentFrameWeight;
-                    if (u_params.hasValidSamplesCountTexture)
-                    {
-                        int2 historyPixel = round(historyUV * outputRes);
-                        historySampleCount = u_accumulatedSamplesNumHistoryTexture.Load(int3(historyPixel, 0));
-                        currentFrameWeight = max(currentFrameWeight, rcp(float(historySampleCount + 1)));
-                    }
-                
-                    const float currentValue = u_currentTexture[pixel];
-                    float historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
-                    if (u_params.hasValidMomentsTexture)
-                    {
-                        const float stdDev = sqrt(neighbourhoodVariance);
-                        const float extent = 0.5f;
-                        const float historyMin = 0.0f;
-                        const float historyMax = neighbourhoodMean + stdDev * extent;
-
-                        const float clampedHistoryValue = clamp(historyValue, historyMin, historyMax);
-
-                        const float sigma = 20.f;
-                        const float historyDeviation = (historyValue - clampedHistoryValue) / max(stdDev * sigma, 0.0001f);
-                        const float currentFrameWeightMultiplier = exp(-Pow2(historyDeviation) / sigma);
-                        currentFrameWeight *= currentFrameWeightMultiplier;
-
-                        historyValue = clampedHistoryValue;
-                    }
-
-                    const float newValue = lerp(historyValue, currentValue, currentFrameWeight);
-
-                    u_currentTexture[pixel] = newValue;
-                    wasSampleAccepted = true;
+                    int2 historyPixel = round(historyUV * outputRes);
+                    historySampleCount = u_accumulatedSamplesNumHistoryTexture.Load(int3(historyPixel, 0));
+                    currentFrameWeight = max(currentFrameWeight, rcp(float(historySampleCount + 1)));
                 }
+                
+                const float currentMomentsWeight = 0.25f;
+                const float2 moments = float2(currentValue, Pow2(currentValue));
+                const float2 historyMoments = u_temporalMomentsHistoryTexture.SampleLevel(u_nearestSampler, historyUV, 0.f).xy;
+
+                const float2 newMoments = lerp(historyMoments, moments, currentMomentsWeight);
+
+                u_temporalMomentsTexture[pixel] = newMoments;
+
+                const float temporalVariance = abs(newMoments.x - Pow2(newMoments.y));
+                currentFrameWeight = saturate(max(currentFrameWeight, 0.02f * rcp(temporalVariance + 0.001f)));
+                
+                float historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
+
+                if (u_params.hasValidMomentsTexture)
+                {
+                    const float stdDev = sqrt(neighbourhoodVariance);
+                    const float extent = 0.5f;
+                    const float historyMin = 0.0f;
+                    const float historyMax = neighbourhoodMean + stdDev * extent;
+
+                    const float clampedHistoryValue = clamp(historyValue, historyMin, historyMax);
+
+                    const float sigma = 20.f;
+                    const float historyDeviation = (historyValue - clampedHistoryValue) / max(stdDev * sigma, 0.0001f);
+                    const float currentFrameWeightMultiplier = exp(-Pow2(historyDeviation) / sigma);
+                    currentFrameWeight *= currentFrameWeightMultiplier;
+
+                    historyValue = clampedHistoryValue;
+                }
+
+                const float newValue = lerp(historyValue, currentValue, currentFrameWeight);
+
+                u_currentTexture[pixel] = newValue;
+                wasSampleAccepted = true;
             }
 
             if(u_params.hasValidSamplesCountTexture)

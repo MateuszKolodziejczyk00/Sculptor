@@ -29,6 +29,9 @@ struct TemporalFilterParams : public denoising::DenoiserBaseParams
 
 	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
 	rg::RGTextureViewHandle accumulatedSamplesNumHistoryTexture;
+
+	rg::RGTextureViewHandle temporalMomentsTexture;
+	rg::RGTextureViewHandle temporalMomentsHistoryTexture;
 };
 
 

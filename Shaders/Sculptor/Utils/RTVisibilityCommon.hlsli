@@ -1,6 +1,6 @@
-[[descriptor_set(RenderSceneDS, 0)]]
+[[descriptor_set(RTVisibilityDS, 0)]]
 
-[[descriptor_set(RTVisibilityDS, 1)]]
+[[descriptor_set(RenderSceneDS, 1)]]
 
 
 struct RTVisibilityPayload

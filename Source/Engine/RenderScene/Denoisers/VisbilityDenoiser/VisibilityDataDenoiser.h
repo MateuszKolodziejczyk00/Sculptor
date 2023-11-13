@@ -65,8 +65,12 @@ private:
 	rg::RenderGraphDebugName m_debugName;
 
 	lib::SharedPtr<rdr::TextureView> m_historyTexture;
+
 	lib::SharedPtr<rdr::TextureView> m_accumulatedSamplesNum;
 	lib::SharedPtr<rdr::TextureView> m_accumulatedSamplesNumHistory;
+	
+	lib::SharedPtr<rdr::TextureView> m_temporalMoments;
+	lib::SharedPtr<rdr::TextureView> m_temporalMomentsHistory;
 
 	Bool m_hasValidHistory;
 };

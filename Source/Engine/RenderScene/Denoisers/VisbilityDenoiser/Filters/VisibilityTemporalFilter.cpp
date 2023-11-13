@@ -30,6 +30,8 @@ DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_momentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Uint32>),								u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Uint32>),								u_accumulatedSamplesNumHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_temporalMomentsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_temporalMomentsHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<TemporalFilterShaderParams>),		u_params)
@@ -60,16 +62,18 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	shaderParams.hasValidSamplesCountTexture			= hasValidSamplesCountTexture;
 
 	lib::MTHandle<TemporalFilterDS> ds = graphBuilder.CreateDescriptorSet<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
-	ds->u_currentTexture						= params.currentTexture;
-	ds->u_historyTexture						= params.historyTexture;
-	ds->u_historyDepthTexture					= params.historyDepthTexture;
-	ds->u_depthTexture							= params.currentDepthTexture;
-	ds->u_motionTexture							= params.motionTexture;
-	ds->u_normalsTexture						= params.normalsTexture;
-	ds->u_momentsTexture						= params.momentsTexture;
-	ds->u_accumulatedSamplesNumTexture			= params.accumulatedSamplesNumTexture;
-	ds->u_accumulatedSamplesNumHistoryTexture	= params.accumulatedSamplesNumHistoryTexture;
-	ds->u_params								= shaderParams;
+	ds->u_currentTexture                      = params.currentTexture;
+	ds->u_historyTexture                      = params.historyTexture;
+	ds->u_historyDepthTexture                 = params.historyDepthTexture;
+	ds->u_depthTexture                        = params.currentDepthTexture;
+	ds->u_motionTexture                       = params.motionTexture;
+	ds->u_normalsTexture                      = params.normalsTexture;
+	ds->u_momentsTexture                      = params.momentsTexture;
+	ds->u_accumulatedSamplesNumTexture        = params.accumulatedSamplesNumTexture;
+	ds->u_accumulatedSamplesNumHistoryTexture = params.accumulatedSamplesNumHistoryTexture;
+	ds->u_temporalMomentsTexture              = params.temporalMomentsTexture;
+	ds->u_temporalMomentsHistoryTexture       = params.temporalMomentsHistoryTexture;
+	ds->u_params                              = shaderParams;
 
 	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
 
