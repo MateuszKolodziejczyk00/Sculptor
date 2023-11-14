@@ -195,7 +195,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     float3 luminance = CalcReflectedLuminance(surface, toView);
 
-    float3 indirect = 0.f;
+    float3 indirectIlluminance = 0.f;
 
     float ambientOcclusion = 1.f;
    
@@ -207,16 +207,16 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
 #ifdef ENABLE_DDGI
 
-    indirect = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, surface.shadingNormal, toView) * ambientOcclusion;
+    indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, surface.geometryNormal, toView, surface.shadingNormal) * ambientOcclusion;
 
 #endif // ENABLE_DDGI
 
-    luminance += surface.diffuseColor * Diffuse_Lambert(indirect);
+    luminance += surface.diffuseColor * Diffuse_Lambert(indirectIlluminance);
 
     luminance += evaluatedMaterial.emissiveColor;
 
 #if WITH_DEBUGS
-    indirectLighting = indirect;
+    indirectLighting = indirectIlluminance;
 #endif // WITH_DEBUGS
 
     output.luminance = float4(luminance, 1.f);

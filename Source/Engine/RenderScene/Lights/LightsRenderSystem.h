@@ -28,9 +28,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(GlobalLightsDS, rg::RGDescriptorSetState<GlobalLightsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GlobalLightsParams>),        u_lightsParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),       u_pointLights)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>), u_directionalLights)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GlobalLightsParams>),                     u_lightsParams)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),                    u_pointLights)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),              u_directionalLights)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
 DS_END();
 
 

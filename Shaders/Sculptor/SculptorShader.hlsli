@@ -7,6 +7,7 @@
 #define INV_PI 0.31830988618
 
 #define TWO_PI 6.28318530718
+#define INV_TWO_PI 0.15915494309
 
 
 #define SMALL_NUMBER 1.e-6f

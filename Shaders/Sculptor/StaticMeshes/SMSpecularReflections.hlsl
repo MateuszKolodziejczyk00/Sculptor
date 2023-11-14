@@ -2,7 +2,7 @@
 
 #include "SpecularReflections/SpecularReflectionsTracingCommon.hlsli"
 
-#define SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL 3
+#define SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL 2
 
 #include "Materials/MaterialSystem.hlsli"
 #include SPT_MATERIAL_SHADER_PATH

@@ -53,17 +53,19 @@ void DDGIProbeRaysRTG()
         // Introduce additional bias as using just distance can have too low precision (which results in artifacts f.e. when using shadow maps)
         const float locationBias = 0.03f;
         const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance + hitNormal * locationBias;
+
+        const float ddgiLightingMinRoughness = 0.3f;
         
         ShadedSurface surface;
         surface.location        = worldLocation;
         surface.shadingNormal   = hitNormal;
         surface.geometryNormal  = hitNormal;
-        surface.roughness       = payload.roughness;
+        surface.roughness       = max(ddgiLightingMinRoughness, payload.roughness);
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
         
         luminance = CalcReflectedLuminance(surface, -rayDirection);
 
-        const float3 illuminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, worldLocation, payload.normal, -rayDirection);
+        const float3 illuminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, worldLocation, payload.normal, -rayDirection, payload.normal);
 
         luminance += payload.emissive;
 

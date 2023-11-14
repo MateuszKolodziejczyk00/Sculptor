@@ -138,7 +138,7 @@ void GenerateSpecularReflectionsRaysRTG()
         else
         {
             const float3 illumNormal = reflect(-toView, normal);
-            luminance = SampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, illumNormal, toView);
+            luminance = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, normal, toView, illumNormal);
             hitDistance = 0.f;
         }
     }

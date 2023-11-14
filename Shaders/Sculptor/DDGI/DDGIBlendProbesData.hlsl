@@ -224,7 +224,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         }
 
         const float maxIlluminanceDiff = abs(MaxComponent(result - prevIlluminance));
-        const float histeresisDelta = maxIlluminanceDiff > u_updateProbesParams.illuminanceDiffThreshold ? 0.8f : 0.f;
+        const float histeresisDelta = maxIlluminanceDiff > u_updateProbesParams.illuminanceDiffThreshold ? 0.5f : 0.f;
         hysteresis = max(hysteresis - histeresisDelta, 0.f);
 
         float3 delta = result - prevIlluminance;

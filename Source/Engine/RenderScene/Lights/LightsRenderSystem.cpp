@@ -19,6 +19,7 @@
 #include "SceneRenderer/RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
+#include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 
 namespace spt::rsc
 {
@@ -593,9 +594,10 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	lightsParams.pointLightsNum       = static_cast<Uint32>(pointLightsNum);
 	lightsParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
 
-	m_globalLightsDS->u_lightsParams      = lightsParams;
-	m_globalLightsDS->u_pointLights       = pointLightsBuffer->CreateFullView();
-	m_globalLightsDS->u_directionalLights = directionalLightsBuffer->CreateFullView();
+	m_globalLightsDS->u_lightsParams       = lightsParams;
+	m_globalLightsDS->u_pointLights        = pointLightsBuffer->CreateFullView();
+	m_globalLightsDS->u_directionalLights  = directionalLightsBuffer->CreateFullView();
+	m_globalLightsDS->u_brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 }
 
 void LightsRenderSystem::CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)

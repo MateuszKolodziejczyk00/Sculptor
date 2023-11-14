@@ -36,8 +36,8 @@ namespace parameters
 {
 
 RendererBoolParameter ddgiEnabled("Enable DDGI", {"DDGI"}, true);
-RendererFloatParameter ddgiBlendHysteresisForLocalUpdate("DDGI Blend Hysteresis (Local)", { "DDGI" }, 0.95f, 0.f, 1.f);
-RendererFloatParameter ddgiBlendHysteresisForGlobalUpdate("DDGI Blend Hysteresis (Global)", { "DDGI" }, 0.96f, 0.f, 1.f);
+RendererFloatParameter ddgiBlendHysteresisForLocalUpdate("DDGI Blend Hysteresis (Local)", { "DDGI" }, 0.98f, 0.f, 1.f);
+RendererFloatParameter ddgiBlendHysteresisForGlobalUpdate("DDGI Blend Hysteresis (Global)", { "DDGI" }, 0.97f, 0.f, 1.f);
 
 } // parameters
 
@@ -99,7 +99,7 @@ DDGIUpdateProbesGPUParams DDGISceneSubsystem::CreateUpdateProbesParams() const
 	params.rcpRaysNumPerProbe			= 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate			= 1.f / static_cast<Real32>(params.probesNumToUpdate);
 	params.blendHysteresis				= m_wantsGlobalUpdate ? parameters::ddgiBlendHysteresisForGlobalUpdate : parameters::ddgiBlendHysteresisForLocalUpdate;
-	params.illuminanceDiffThreshold		= 2000.f;
+	params.illuminanceDiffThreshold		= 3400.f;
 	params.luminanceDiffThreshold		= 500.f;
 	
 	params.raysRotation							= math::Matrix4f::Identity();
@@ -200,7 +200,7 @@ void DDGISceneSubsystem::InitializeDDGIParameters()
 	const Uint32 probesTextureWidth		= probesVolumeRes.x() * probesVolumeRes.z();
 	const Uint32 probesTextureHeight	= probesVolumeRes.y();
 
-	m_ddgiParams.probesOriginWorldLocation					= math::Vector3f(-5.f, -11.f, -0.99f);
+	m_ddgiParams.probesOriginWorldLocation					= math::Vector3f(-5.f, -11.f, -0.5f);
 	m_ddgiParams.probesSpacing								= m_config.probesSpacing;
 	m_ddgiParams.probesEndWorldLocation						= m_ddgiParams.probesOriginWorldLocation + probesVolumeRes.cast<Real32>().cwiseProduct(m_ddgiParams.probesSpacing);
 	m_ddgiParams.rcpProbesSpacing							= m_ddgiParams.probesSpacing.cwiseInverse();
