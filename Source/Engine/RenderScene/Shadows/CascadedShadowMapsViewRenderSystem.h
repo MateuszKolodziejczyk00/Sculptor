@@ -23,7 +23,7 @@ protected:
 
 public:
 
-	CascadedShadowMapsViewRenderSystem(const ShadowCascadesParams& params);
+	explicit CascadedShadowMapsViewRenderSystem(const ShadowCascadesParams& params);
 
 	// Begin ViewRenderSystem interface
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& owningView, INOUT RenderViewsCollector& viewsCollector) override;

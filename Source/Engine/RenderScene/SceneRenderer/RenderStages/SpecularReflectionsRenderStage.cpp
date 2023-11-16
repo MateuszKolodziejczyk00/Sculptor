@@ -21,6 +21,7 @@
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 
 namespace spt::rsc
@@ -52,6 +53,8 @@ namespace trace
 
 BEGIN_SHADER_STRUCT(SpecularTraceShaderParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, random)
+	SHADER_STRUCT_FIELD(Real32, volumetricFogNear)
+	SHADER_STRUCT_FIELD(Real32, volumetricFogFar)
 END_SHADER_STRUCT()
 
 
@@ -65,6 +68,7 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_specularAndRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SpecularTraceShaderParams>),     u_traceParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_integratedInScatteringTexture)
 DS_END();
 
 
@@ -105,18 +109,24 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	
 	const rg::RGTextureViewHandle reflectedLuminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
+	ParticipatingMediaViewRenderSystem& participatingMediaViewSystem = renderView.GetRenderSystem<ParticipatingMediaViewRenderSystem>();
+	const VolumetricFogParams& fogParams = participatingMediaViewSystem.GetVolumetricFogParams();
+
 	SpecularTraceShaderParams shaderParams;
-	shaderParams.random = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
+	shaderParams.random            = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
+	shaderParams.volumetricFogNear = fogParams.nearPlane;
+	shaderParams.volumetricFogFar  = fogParams.farPlane;
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->u_skyViewLUT                  = viewAtmosphereData.skyViewLUT;
-	traceRaysDS->u_atmosphereParams            = atmosphereSubsystem.GetAtmosphereContext().atmosphereParamsBuffer->CreateFullView();
-	traceRaysDS->u_reflectedLuminanceTexture   = reflectedLuminanceTexture;
-	traceRaysDS->rayTracingDS                  = rayTracingSubsystem.GetSceneRayTracingDS();
-	traceRaysDS->u_shadingNormalsTexture       = params.normalsTexture;
-	traceRaysDS->u_depthTexture                = params.depthTexture;
-	traceRaysDS->u_specularAndRoughnessTexture = params.specularColorRoughnessTexture;
-	traceRaysDS->u_traceParams                 = shaderParams;
+	traceRaysDS->u_skyViewLUT                    = viewAtmosphereData.skyViewLUT;
+	traceRaysDS->u_atmosphereParams              = atmosphereSubsystem.GetAtmosphereContext().atmosphereParamsBuffer->CreateFullView();
+	traceRaysDS->u_reflectedLuminanceTexture     = reflectedLuminanceTexture;
+	traceRaysDS->rayTracingDS                    = rayTracingSubsystem.GetSceneRayTracingDS();
+	traceRaysDS->u_shadingNormalsTexture         = params.normalsTexture;
+	traceRaysDS->u_depthTexture                  = params.depthTexture;
+	traceRaysDS->u_specularAndRoughnessTexture   = params.specularColorRoughnessTexture;
+	traceRaysDS->u_traceParams                   = shaderParams;
+	traceRaysDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
 
 	const LightsRenderSystem& lightsRenderSystem        = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();

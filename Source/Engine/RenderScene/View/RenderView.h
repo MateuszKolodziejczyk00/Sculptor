@@ -105,6 +105,14 @@ public:
 	{
 		return m_renderSystems.FindRenderSystem<TSystemType>();
 	}
+	
+	template<typename TSystemType>
+	TSystemType& GetRenderSystem() const
+	{
+		const lib::SharedPtr<TSystemType> foundSystem = FindRenderSystem<TSystemType>();
+		SPT_CHECK_MSG(!!foundSystem, "Render system not found");
+		return *foundSystem;
+	}
 
 	template<typename TSystemType, typename... TArgs>
 	void AddRenderSystem(TArgs&&... args)

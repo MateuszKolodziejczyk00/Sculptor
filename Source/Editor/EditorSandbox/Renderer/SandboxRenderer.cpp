@@ -39,6 +39,7 @@
 #include "RenderGraphCaptureUIView.h"
 #include "UIElements/ApplicationUI.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
+#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 namespace spt::ed
 {
@@ -296,6 +297,7 @@ void SandboxRenderer::InitializeRenderScene()
 	rsc::ShadowCascadesParams cascadesParams;
 	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::VSM;
 	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
+	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
 
 
 	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();

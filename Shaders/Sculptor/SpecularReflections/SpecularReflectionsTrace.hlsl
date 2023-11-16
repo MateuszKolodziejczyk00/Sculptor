@@ -10,6 +10,8 @@
 
 #include "DDGI/DDGITypes.hlsli"
 
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
+
 
 float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 toView, in uint2 pixel)
 {
@@ -93,6 +95,30 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
         if (any(isnan(result.luminance)))
         {
             result.luminance = 0.f;
+        }
+
+        // Try applying volumetric fog using screen space froxels data
+        const float3 ndc = WorldSpaceToNDCNoJitter(surface.location, u_sceneView);
+        if(all(ndc.xy >= -1.f) && all(ndc.xy < 1.f) && ndc.z > 0.f)
+        {
+            const float2 uv = (ndc.xy + 1.f) * 0.5f;
+
+            const float hitLinearDepth = ComputeLinearDepth(ndc.z, u_sceneView);
+            const float3 fogFroxelUVW  = ComputeFogFroxelUVW(uv, hitLinearDepth, u_traceParams.volumetricFogNear, u_traceParams.volumetricFogFar);
+            
+            float4 inScatteringTransmittance = u_integratedInScatteringTexture.SampleLevel(u_linearSampler, fogFroxelUVW, 0);
+
+            const float2 edgeScreenAlpha   = 1.f - smoothstep(0.8f, 1.f, abs(ndc.xy));
+            const float volumetricFogAlpha = min(edgeScreenAlpha.x, edgeScreenAlpha.y);
+
+            inScatteringTransmittance.rgb *= volumetricFogAlpha;
+            inScatteringTransmittance.a    = lerp(inScatteringTransmittance.a, 1.f, volumetricFogAlpha);
+
+            const float intensityAmplifier = payload.distance / max(hitLinearDepth, 0.01f);
+            inScatteringTransmittance.rgb *= intensityAmplifier;
+            inScatteringTransmittance.a    = pow(inScatteringTransmittance.a, intensityAmplifier);
+
+            result.luminance = inScatteringTransmittance.rgb + result.luminance * inScatteringTransmittance.a;
         }
     }
     else if (!isBackface)

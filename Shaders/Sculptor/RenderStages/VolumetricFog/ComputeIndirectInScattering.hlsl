@@ -29,19 +29,10 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
 
         const float projectionNearPlane = GetNearPlane(u_sceneView);
 
-        const float geometryDepth = u_depthTexture.SampleLevel(u_depthSampler, fogFroxelUVW.xy, 0);
-        const float geometryLinearDepth = ComputeLinearDepth(geometryDepth, u_sceneView);
-        
         const float fogNearPlane = u_inScatteringParams.fogNearPlane;
         const float fogFarPlane = u_inScatteringParams.fogFarPlane;
 
         const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z - fogResolutionRcp.z, fogNearPlane, fogFarPlane);
-        
-        if(prevFogFroxelLinearDepth > geometryLinearDepth)
-        {
-            u_inScatteringTexture[input.globalID] = 0.f;
-            return;
-        }
         
         const float3 jitter = u_inScatteringParams.jitter;
 
