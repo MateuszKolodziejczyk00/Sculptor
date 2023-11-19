@@ -10,7 +10,7 @@ class ForwardOpaqueRenderStage : public RenderStage<ForwardOpaqueRenderStage, ER
 {
 public:
 
-	static RenderTargetFormatsDef GetRenderTargetFormats();
+	static RenderTargetFormatsDef GetRenderTargetFormats(const SceneRendererSettings& sceneRendererSettings);
 
 	ForwardOpaqueRenderStage();
 

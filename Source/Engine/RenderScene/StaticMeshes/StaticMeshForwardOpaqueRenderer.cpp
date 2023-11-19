@@ -139,7 +139,8 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 													   mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 													   ddgiDS),
 								std::tie(drawParams),
-								[drawParams, this, pipeline = GetShadingPipeline(batch, renderScene, viewSpec)](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								[drawParams, this, pipeline = GetShadingPipeline(batch, renderScene, viewSpec, context.rendererSettings)]
+								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									recorder.BindGraphicsPipeline(pipeline);
 
@@ -225,11 +226,11 @@ SMForwardOpaqueBatch StaticMeshForwardOpaqueRenderer::CreateBatch(rg::RenderGrap
 	return batch;
 }
 
-rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const SMForwardOpaqueBatch& batch, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) const
+rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const SMForwardOpaqueBatch& batch, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SceneRendererSettings& rendererSettings) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats();
+	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats(rendererSettings);
 
 	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
 

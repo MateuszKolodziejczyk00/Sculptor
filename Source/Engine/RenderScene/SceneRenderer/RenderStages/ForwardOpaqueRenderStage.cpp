@@ -9,7 +9,7 @@
 namespace spt::rsc
 {
 
-RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
+RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats(const SceneRendererSettings& sceneRendererSettings)
 {
 	RenderTargetFormatsDef formats;
 	formats.colorRTFormats.emplace_back(SceneRendererStatics::hdrFormat);
@@ -17,7 +17,7 @@ RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats()
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA16_UN_Float);
 	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
 #if RENDERER_DEBUG
-	formats.colorRTFormats.emplace_back(rhi::EFragmentFormat::RGBA8_UN_Float);
+	formats.colorRTFormats.emplace_back(sceneRendererSettings.outputFormat);
 #endif // RENDERER_DEBUG
 	formats.depthRTFormat = DepthPrepassRenderStage::GetDepthFormat();
 
@@ -46,7 +46,8 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	passData.specularAndRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 
 #if RENDERER_DEBUG
-	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
+	const rhi::EFragmentFormat debugFormat = stageContext.rendererSettings.outputFormat;
+	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, debugFormat));
 #endif // RENDERER_DEBUG
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
