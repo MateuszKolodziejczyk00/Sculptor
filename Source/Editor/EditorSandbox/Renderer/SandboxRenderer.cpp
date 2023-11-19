@@ -137,9 +137,12 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 		m_wantsCaptureNextFrame = false;
 	}
 
-	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ gpuStatisticsCollector ](engn::FrameContext& context)
+	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ resolution = m_renderView->GetRenderingResolution(), gpuStatisticsCollector ](engn::FrameContext& context)
 																								   {
-																									   prf::Profiler::Get().SetGPUFrameStatistics(gpuStatisticsCollector->CollectStatistics());
+																									   prf::GPUProfilerStatistics statistics;
+																									   statistics.resolution      = resolution;
+																									   statistics.frameStatistics = gpuStatisticsCollector->CollectStatistics();
+																									   prf::Profiler::Get().SetGPUFrameStatistics(std::move(statistics));
 																								   }));
 
 	rsc::SceneRendererSettings rendererSettings;

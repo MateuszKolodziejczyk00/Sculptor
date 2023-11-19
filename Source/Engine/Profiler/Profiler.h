@@ -15,6 +15,26 @@ class GPUStatisticsCollector;
 namespace spt::prf
 {
 
+struct GPUProfilerStatistics
+{
+	GPUProfilerStatistics() = default;
+
+	Bool IsValid() const
+	{
+		return resolution != math::Vector2u::Zero() && frameStatistics.IsValid();
+	}
+
+	Real32 GetGPUFrameDuration() const
+	{
+		return frameStatistics.durationInMs;
+	}
+
+	math::Vector2u resolution = math::Vector2u::Zero();
+
+	rdr::GPUStatisticsScopeResult frameStatistics;
+};
+
+
 class PROFILER_API Profiler
 {
 public:
@@ -38,8 +58,8 @@ public:
 
 	// GPU ========================================================
 
-	void SetGPUFrameStatistics(rdr::GPUStatisticsScopeResult frameStatistics);
-	const rdr::GPUStatisticsScopeResult& GetGPUFrameStatistics() const;
+	void SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics);
+	const GPUProfilerStatistics& GetGPUFrameStatistics() const;
 
 private:
 
@@ -49,14 +69,14 @@ private:
 
 	Bool m_startedCapture;
 
-	lib::StaticArray<Real32, 100>	m_recentFrameTimes;
-	SizeType						m_recentFrameTimesNum;
-	SizeType						m_oldestFrameTimeIdx;
-	Real32							m_recentFrameTimesSum;
+	lib::StaticArray<Real32, 100> m_recentFrameTimes;
+	SizeType                      m_recentFrameTimesNum;
+	SizeType                      m_oldestFrameTimeIdx;
+	Real32                        m_recentFrameTimesSum;
 
-	lib::DelegateHandle				m_captureDelegateHandle;
+	lib::DelegateHandle m_captureDelegateHandle;
 
-	rdr::GPUStatisticsScopeResult	m_gpuFrameStatistics;
+	GPUProfilerStatistics m_gpuFrameStatistics;
 };
 
 } // spt::prf

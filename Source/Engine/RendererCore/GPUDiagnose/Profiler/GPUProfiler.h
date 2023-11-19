@@ -16,9 +16,9 @@ class RENDERER_CORE_API GPUProfiler
 {
 public:
 
-	static void						Initialize();
+	static void Initialize();
 
-	static void						FlipFrame(const lib::SharedPtr<Window>& window);
+	static void FlipFrame(const lib::SharedPtr<Window>& window);
 };
 
 } // spt::rdr

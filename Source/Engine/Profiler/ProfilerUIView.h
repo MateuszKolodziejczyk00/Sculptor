@@ -13,6 +13,9 @@ struct GPUStatisticsScopeResult;
 namespace spt::prf
 {
 
+struct GPUProfilerStatistics;
+
+
 class PROFILER_API ProfilerUIView : public scui::UIView
 {
 protected:
@@ -34,6 +37,7 @@ private:
 
 	void DrawGPUProfilerUI();
 
+	void DrawGPUScopeStatistics(const GPUProfilerStatistics& profilerStats);
 	void DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration);
 
 	lib::StaticArray<float, 64>	m_lastFrameTimes;

@@ -26,7 +26,7 @@ struct TemporalAAData
 
 
 BEGIN_SHADER_STRUCT(TemporalAAParams)
-	SHADER_STRUCT_FIELD(Bool, useYCoCg)
+	SHADER_STRUCT_FIELD(Uint32, useYCoCg)
 END_SHADER_STRUCT();
 
 
@@ -105,7 +105,7 @@ static rg::RGTextureViewHandle RenderTemporalAA(rg::RenderGraphBuilder& graphBui
 		const MotionData& motionData				= viewSpec.GetData().Get<MotionData>();
 
 		TemporalAAParams params;
-		params.useYCoCg = true;
+		params.useYCoCg = false;
 
 		const lib::MTHandle<TemporalAADS> temporalAADS = graphBuilder.CreateDescriptorSet<TemporalAADS>(RENDERER_RESOURCE_NAME("Temporal AA DS"));
 		temporalAADS->u_depth			= depthPrepassData.depth;

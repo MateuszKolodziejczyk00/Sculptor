@@ -63,7 +63,7 @@ SMBatchesBuilder::BatchBuildData& SMBatchesBuilder::GetBatchBuildDataForMaterial
 	}
 	else
 	{
-		const Uint32 batchIdx = static_cast<Uint32>(m_batches.size());
+		const Uint32 batchIdx = static_cast<Uint32>(m_batchBuildDatas.size());
 		m_materialShaderHashToBatchIdx[materialShaderHash] = batchIdx;
 
 		BatchBuildData& batchData = m_batchBuildDatas.emplace_back();

@@ -183,12 +183,12 @@ Real32 Profiler::GetAverageFrameTime() const
 	return m_recentFrameTimesNum > 0 ? m_recentFrameTimesSum / static_cast<Real32>(m_recentFrameTimesNum) : 0.f;
 }
 
-void Profiler::SetGPUFrameStatistics(rdr::GPUStatisticsScopeResult frameStatistics)
+void Profiler::SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics)
 {
 	m_gpuFrameStatistics = std::move(frameStatistics);
 }
 
-const rdr::GPUStatisticsScopeResult& Profiler::GetGPUFrameStatistics() const
+const GPUProfilerStatistics& Profiler::GetGPUFrameStatistics() const
 {
 	return m_gpuFrameStatistics;
 }

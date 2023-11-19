@@ -79,13 +79,20 @@ void ProfilerUIView::DrawGPUProfilerUI()
 
 	if (ImGui::CollapsingHeader("GPU Stats"))
 	{
-		const rdr::GPUStatisticsScopeResult& gpuFrameStatistics = prf::Profiler::Get().GetGPUFrameStatistics();
+		const GPUProfilerStatistics& gpuFrameStatistics = prf::Profiler::Get().GetGPUFrameStatistics();
 
 		if (gpuFrameStatistics.IsValid())
 		{
-			DrawGPUScopeStatistics(gpuFrameStatistics, gpuFrameStatistics.durationInMs);
+			DrawGPUScopeStatistics(gpuFrameStatistics);
 		}
 	}
+}
+
+void ProfilerUIView::DrawGPUScopeStatistics(const GPUProfilerStatistics& profilerStats)
+{
+	ImGui::Text("Resolution: %d x %d", profilerStats.resolution.x(), profilerStats.resolution.y());
+
+	DrawGPUScopeStatistics(profilerStats.frameStatistics, profilerStats.GetGPUFrameDuration());
 }
 
 void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration)
