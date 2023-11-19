@@ -122,29 +122,49 @@ bool IsInsideDDGIVolume(in const DDGIGPUParams ddgiParams, in float3 worldLocati
 }
 
 
-float3 DDGIGetSampleLocation(in const DDGIGPUParams ddgiParams, in float3 worldLocation, in float3 surfaceNormal, in float3 viewNormal)
+struct DDGISampleParams
 {
-    const float3 biasVector = (surfaceNormal * 0.4f + viewNormal * 0.6f) * 0.75f * ddgiParams.probesSpacing * 0.6f;
-    return worldLocation + biasVector;
+    float3 worldLocation;
+    float3 surfaceNormal;
+    float3 viewNormal;
+
+    float3 sampleDirection;
+    float  sampleLocationBiasMultiplier;
+};
+
+
+DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfaceNormal, in float3 viewNormal)
+{
+    DDGISampleParams params;
+    params.worldLocation                = worldLocation;
+    params.surfaceNormal                = surfaceNormal;
+    params.viewNormal                   = viewNormal;
+    params.sampleDirection              = surfaceNormal;
+    params.sampleLocationBiasMultiplier = 1.0f;
+    return params;
+}
+
+
+float3 DDGIGetSampleLocation(in const DDGIGPUParams ddgiParams, in DDGISampleParams sampleParams)
+{
+    const float3 biasVector = (sampleParams.surfaceNormal * 0.3f + sampleParams.viewNormal * 0.7f) * 0.75f * ddgiParams.probesSpacing * 0.75f * sampleParams.sampleLocationBiasMultiplier;
+    return sampleParams.worldLocation + biasVector;
 }
 
 
 float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
                              in Texture2D<float3> probesIlluminanceTexture,
-                             in SamplerState illuminanceSampler, 
-                             in Texture2D<float2> probesHitDistanceTexture, 
+                             in SamplerState illuminanceSampler,
+                             in Texture2D<float2> probesHitDistanceTexture,
                              in SamplerState distancesSampler,
-                             in float3 worldLocation,
-                             in float3 surfaceNormal,
-                             in float3 viewNormal,
-                             in float3 illuminanceIncidentPlaneNormal)
+                             in DDGISampleParams sampleParams)
 {
-    if(!IsInsideDDGIVolume(ddgiParams, worldLocation))
+    if(!IsInsideDDGIVolume(ddgiParams, sampleParams.worldLocation))
     {
         return float3(0, 0, 0);
     }
     
-    const float3 biasedWorldLocation = DDGIGetSampleLocation(ddgiParams, worldLocation, surfaceNormal, viewNormal);
+    const float3 biasedWorldLocation = DDGIGetSampleLocation(ddgiParams, sampleParams);
 
     const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(ddgiParams, biasedWorldLocation);
     const float3 baseProbeWorldLocation = GetProbeWorldLocation(ddgiParams, baseProbeCoords);
@@ -167,10 +187,10 @@ float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
         const float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
         float weight = 1.f;
         
-        const float3 dirToProbe = normalize(probeWorldLocation - worldLocation);
+        const float3 dirToProbe = normalize(probeWorldLocation - sampleParams.worldLocation);
 
-        const float probeDirDotNormal = saturate(dot(dirToProbe, surfaceNormal) * 0.5f + 0.5f);
-        weight *= Pow2(probeDirDotNormal) + 0.2f;
+        const float probeDirDotNormal = saturate(dot(dirToProbe, sampleParams.surfaceNormal) * 0.5f + 0.5f);
+        weight *= Pow2(probeDirDotNormal);
         
         float3 probeToBiasedPointDir = biasedWorldLocation - probeWorldLocation;
         const float distToBiasedPoint = length(probeToBiasedPointDir);
@@ -206,7 +226,7 @@ float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
 
         weight *= trilinearWeight;
         
-        const float2 illuminanceOctCoords = GetProbeOctCoords(illuminanceIncidentPlaneNormal);
+        const float2 illuminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
         float3 illuminance = SampleProbeIlluminance(ddgiParams, probesIlluminanceTexture, illuminanceSampler, probeWrappedCoords, illuminanceOctCoords);
 
@@ -231,20 +251,14 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
                            in SamplerState illuminanceSampler,
                            in Texture2D<float2> probesHitDistanceTexture,
                            in SamplerState distancesSampler,
-                           in float3 worldLocation,
-                           in float3 surfaceNormal,
-                           in float3 viewNormal,
-                           in float3 luminanceDir)
+                           in DDGISampleParams sampleParams)
 {
     const float3 illuminance = DDGISampleIlluminance(ddgiParams,
                                                      probesIlluminanceTexture,
                                                      illuminanceSampler,
                                                      probesHitDistanceTexture,
                                                      distancesSampler,
-                                                     worldLocation,
-                                                     surfaceNormal,
-                                                     viewNormal,
-                                                     luminanceDir);
+                                                     sampleParams);
 
     return illuminance * INV_TWO_PI;
 }

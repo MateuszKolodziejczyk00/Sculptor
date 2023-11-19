@@ -112,7 +112,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
             const float volumetricFogAlpha = min(edgeScreenAlpha.x, edgeScreenAlpha.y);
 
             inScatteringTransmittance.rgb *= volumetricFogAlpha;
-            inScatteringTransmittance.a    = lerp(inScatteringTransmittance.a, 1.f, volumetricFogAlpha);
+            inScatteringTransmittance.a    = lerp(1.f, inScatteringTransmittance.a, volumetricFogAlpha);
 
             const float intensityAmplifier = payload.distance / max(hitLinearDepth, 0.01f);
             inScatteringTransmittance.rgb *= intensityAmplifier;
@@ -163,8 +163,10 @@ void GenerateSpecularReflectionsRaysRTG()
         }
         else
         {
-            const float3 illumNormal = reflect(-toView, normal);
-            luminance = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, worldLocation, normal, toView, illumNormal);
+            const float3 reflectedVector = reflect(-toView, normal);
+            DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, normal, toView);
+            ddgiSampleParams.sampleDirection = reflectedVector;
+            luminance = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams);
             hitDistance = 0.f;
         }
     }

@@ -207,7 +207,9 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
 #ifdef ENABLE_DDGI
 
-    indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.worldLocation, surface.geometryNormal, toView, surface.shadingNormal) * ambientOcclusion;
+    DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(vertexInput.worldLocation, surface.geometryNormal, toView);
+    ddgiSampleParams.sampleDirection = surface.shadingNormal;
+    indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams) * ambientOcclusion;
 
 #endif // ENABLE_DDGI
 

@@ -54,18 +54,17 @@ void DDGIProbeRaysRTG()
         const float locationBias = 0.03f;
         const float3 worldLocation = probeWorldLocation + rayDirection * payload.hitDistance + hitNormal * locationBias;
 
-        const float ddgiLightingMinRoughness = 0.3f;
-        
         ShadedSurface surface;
         surface.location        = worldLocation;
         surface.shadingNormal   = hitNormal;
         surface.geometryNormal  = hitNormal;
-        surface.roughness       = max(ddgiLightingMinRoughness, payload.roughness);
+        surface.roughness       = payload.roughness;
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
         
         luminance = CalcReflectedLuminance(surface, -rayDirection);
 
-        const float3 illuminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, worldLocation, payload.normal, -rayDirection, payload.normal);
+        const DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, payload.normal, -rayDirection);
+        const float3 illuminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, ddgiSampleParams);
 
         luminance += payload.emissive;
 

@@ -17,7 +17,7 @@ CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParam
     {
         output.shouldDiscard = false;
     }
-    
+
     return output;
 }
 

@@ -15,3 +15,7 @@ Techniques:
   : ShadersPath:
       Name: Sculptor/StaticMeshes/SMRTVisibility.hlsl
     RayTracingWithClosestHit: false
+  ? Name: SpecularReflections
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMSpecularReflections.hlsl
+    RayTracingWithClosestHit: true

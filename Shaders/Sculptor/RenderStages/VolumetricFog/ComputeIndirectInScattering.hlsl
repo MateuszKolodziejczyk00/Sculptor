@@ -62,7 +62,9 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
             float3 direction = indirectSampleDirections[i];
             direction = mul(u_inScatteringParams.randomRotation, float4(direction, 0.f)).xyz;
 
-            const float3 indirect = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, fogFroxelWorldLocation, direction, toViewDir, direction);
+            DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(fogFroxelWorldLocation, direction, toViewDir);
+            ddgiSampleParams.sampleLocationBiasMultiplier = 0.f;
+            const float3 indirect = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams);
 
             float2 phaseFunctionLUTUV;
             phaseFunctionLUTUV.x = dot(toViewDir, direction) * 0.5f + 0.5f;

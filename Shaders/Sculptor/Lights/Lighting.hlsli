@@ -292,14 +292,17 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
 
     // Indirect diffuse
 #ifdef DS_DDGIDS
-    const float3 indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, surface.location, surface.geometryNormal, viewDir, surface.shadingNormal);
+    DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
+    diffuseSampleParams.sampleDirection = surface.shadingNormal;
+    const float3 indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, diffuseSampleParams);
     luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor;
 
     const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
     const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
 
-    const float3 reflectedVector = reflect(-viewDir, surface.shadingNormal);
-    const float3 specularReflections = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, surface.location, surface.geometryNormal, viewDir, reflectedVector);
+    DDGISampleParams specularSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
+    specularSampleParams.sampleDirection = reflect(-viewDir, surface.shadingNormal);
+    const float3 specularReflections = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, specularSampleParams);
     luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
 #endif // DS_DDGIDS
 
