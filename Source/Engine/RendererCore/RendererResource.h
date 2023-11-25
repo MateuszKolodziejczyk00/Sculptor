@@ -3,10 +3,14 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "CurrentFrameContext.h"
+#include "RHICore/RHIAllocationTypes.h"
 
 
 namespace spt::rdr
 {
+
+class GPUMemoryPool;
+
 
 template<typename TRHIType, Bool deferredReleaseRHI = true>
 class RendererResource
@@ -62,4 +66,48 @@ RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
 	}
 }
 
-}
+
+struct NullAllocationDef { };
+
+
+struct CommitedAllocationDef
+{
+	rhi::RHIAllocationInfo allocationInfo;
+};
+
+
+struct PlacedAllocationDef
+{
+	lib::SharedRef<GPUMemoryPool> memoryPool;
+	rhi::EVirtualAllocationFlags  allocationFlags;
+};
+
+
+class RENDERER_CORE_API AllocationDefinition
+{
+public:
+
+	using AllocationDefinitionVariant = std::variant<NullAllocationDef, CommitedAllocationDef, PlacedAllocationDef>;
+
+	AllocationDefinition(const CommitedAllocationDef& allocationDef);
+	AllocationDefinition(rhi::EMemoryUsage memoryUsage);
+	AllocationDefinition(const rhi::RHIAllocationInfo& allocationInfo);
+	AllocationDefinition(const PlacedAllocationDef& allocationDef);
+
+	Bool IsCommited() const;
+	Bool IsPlaced()   const;
+	Bool IsNull()     const;
+
+	const CommitedAllocationDef& GetCommitedAllocationDef() const;
+	const PlacedAllocationDef&   GetPlacedAllocationDef()   const;
+
+	const AllocationDefinitionVariant& GetAllocationDef() const;
+
+	rhi::RHIResourceAllocationDefinition GetRHIAllocationDef() const;
+	
+private:
+
+	AllocationDefinitionVariant m_allocationDef;
+};
+
+} // spt::rdr

@@ -5,6 +5,7 @@
 #include "RHICore/RHIBufferTypes.h"
 #include "Vulkan/VulkanCore.h"
 #include "Vulkan/Debug/DebugUtils.h"
+#include "Vulkan/Memory/VulkanMemoryTypes.h"
 
 
 namespace spt::rhi
@@ -17,6 +18,7 @@ namespace spt::vulkan
 {
 
 class RHIBuffer;
+class RHIGPUMemoryPool;
 
 
 class RHI_API RHIMappedByteBuffer
@@ -80,13 +82,15 @@ public:
 
 	RHIBuffer();
 
-	void						InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
+	void						InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;
 
 	Uint64						GetSize() const;
 	rhi::EBufferUsage			GetUsage() const;
+
+	Bool						HasBoundMemory() const;
 
 	Bool						CanMapMemory() const;
 	Byte*						MapPtr() const;
@@ -95,8 +99,10 @@ public:
 	DeviceAddress				GetDeviceAddress() const;
 
 	Bool						AllowsSuballocations() const;
-	rhi::RHISuballocation		CreateSuballocation(const rhi::SuballocationDefinition& definition);
-	void						DestroySuballocation(rhi::RHISuballocation suballocation);
+	rhi::RHIVirtualAllocation	CreateSuballocation(const rhi::VirtualAllocationDefinition& definition);
+	void						DestroySuballocation(rhi::RHIVirtualAllocation suballocation);
+
+	rhi::RHIMemoryRequirements	GetMemoryRequirements() const;
 
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
@@ -104,7 +110,6 @@ public:
 	// Vulkan =======================================================================
 
 	VkBuffer					GetHandle() const;
-	VmaAllocation				GetAllocation() const;
 
 private:
 
@@ -115,25 +120,41 @@ private:
 		CannotBeMapped
 	};
 
-	void						InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo);
-	EMappingStrategy			SelectMappingStrategy(const VmaAllocationCreateInfo& allocationInfo) const;
+	Bool                             BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition);
+	rhi::RHIResourceAllocationHandle ReleasePlacedAllocation();
 
-	void						InitVirtualBlock(const rhi::BufferDefinition& definition);
+	rhi::RHIResourceAllocationHandle DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef);
+	rhi::RHIResourceAllocationHandle DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation);
 
-	VkBuffer					m_bufferHandle;
+	void          PreUnbindMemory(VmaAllocation allocation);
+	VmaAllocation GetAllocation() const;
 
-	VmaAllocation				m_allocation;
+	void             InitializeMappingStrategy(const rhi::RHIAllocationInfo& allocationInfo);
+	EMappingStrategy SelectMappingStrategy(const rhi::RHIAllocationInfo& allocationInfo) const;
 
-	Uint64						m_bufferSize;
+	VkBuffer                         m_bufferHandle;
+	rhi::RHIResourceAllocationHandle m_allocationHandle;
 
-	rhi::EBufferUsage			m_usageFlags;
+	Uint64            m_bufferSize;
+	rhi::EBufferUsage m_usageFlags;
 
-	DebugName					m_name;
+	EMappingStrategy m_mappingStrategy;
+	Byte*            m_mappedPointer;
 
-	EMappingStrategy			m_mappingStrategy;
-	Byte*						m_mappedPointer;
+	VulkanVirtualAllocator m_virtualAllocator;
 
-	VmaVirtualBlock				m_allocatorVirtualBlock;
+	DebugName m_name;
+
+	friend class RHIBufferMemoryOwner;
+};
+
+
+class RHI_API RHIBufferMemoryOwner
+{
+protected:
+
+	static Bool                             BindMemory(RHIBuffer& buffer, const rhi::RHIResourceAllocationDefinition& allocationDefinition);
+	static rhi::RHIResourceAllocationHandle ReleasePlacedAllocation(RHIBuffer& buffer);
 };
 
 } // spt::vulkan

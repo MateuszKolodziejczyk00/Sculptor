@@ -11,9 +11,9 @@ namespace spt::rsc
 
 struct StaticMeshGeometryData
 {
-	rhi::RHISuballocation submeshesSuballocation;
-	rhi::RHISuballocation meshletsSuballocation;
-	rhi::RHISuballocation geometrySuballocation;
+	rhi::RHIVirtualAllocation submeshesSuballocation;
+	rhi::RHIVirtualAllocation meshletsSuballocation;
+	rhi::RHIVirtualAllocation geometrySuballocation;
 };
 
 
@@ -81,7 +81,7 @@ public:
 
 	static StaticMeshUnifiedData& Get();
 
-	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation);
+	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation);
 
 	const lib::MTHandle<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
 

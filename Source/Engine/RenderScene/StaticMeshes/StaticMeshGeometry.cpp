@@ -13,7 +13,7 @@ StaticMeshUnifiedData& StaticMeshUnifiedData::Get()
 	return instance;
 }
 
-StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHISuballocation geometryDataSuballocation)
+StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -23,8 +23,8 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	const Uint64 meshletsDataSize	= meshlets.size() * sizeof(MeshletGPUData);
 	const Uint64 submeshesDataSize	= submeshes.size() * sizeof(SubmeshGPUData);
 
-	const rhi::SuballocationDefinition meshletsSuballocationDef(meshletsDataSize, sizeof(MeshletGPUData), rhi::EBufferSuballocationFlags::PreferMinMemory);
-	const rhi::RHISuballocation meshletsSuballocation = m_meshletsBuffer->GetRHI().CreateSuballocation(meshletsSuballocationDef);
+	const rhi::VirtualAllocationDefinition meshletsSuballocationDef(meshletsDataSize, sizeof(MeshletGPUData), rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::RHIVirtualAllocation meshletsSuballocation = m_meshletsBuffer->GetRHI().CreateSuballocation(meshletsSuballocationDef);
 
 	const SizeType meshletsAllocationStartIdx = meshletsSuballocation.GetOffset() / sizeof(MeshletGPUData);
 
@@ -56,8 +56,8 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 					  }
 				  });
 
-	const rhi::SuballocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(SubmeshGPUData), rhi::EBufferSuballocationFlags::PreferMinMemory);
-	const rhi::RHISuballocation submeshesSuballocation = m_submeshesBuffer->GetRHI().CreateSuballocation(submeshesSuballocationDef);
+	const rhi::VirtualAllocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(SubmeshGPUData), rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::RHIVirtualAllocation submeshesSuballocation = m_submeshesBuffer->GetRHI().CreateSuballocation(submeshesSuballocationDef);
 
 	gfx::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(meshlets.data()),		meshletsDataSize);
 	gfx::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(submeshes.data()),	submeshesDataSize);

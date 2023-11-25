@@ -1,7 +1,9 @@
 #include "RHIBuffer.h"
 #include "Vulkan/VulkanRHI.h"
-#include "Vulkan/Memory/MemoryManager.h"
+#include "Vulkan/Memory/VulkanMemoryManager.h"
 #include "MathUtils.h"
+#include "Utility/Templates/Overload.h"
+#include "RHIGPUMemoryPool.h"
 
 namespace spt::vulkan
 {
@@ -74,30 +76,6 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	return vulkanFlags;
 }
 
-VmaVirtualAllocationCreateFlags GetVMAVirtualAllocationFlags(rhi::EBufferSuballocationFlags rhiFlags)
-{
-	VmaVirtualAllocationCreateFlags flags = 0;
-
-	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferUpperAddress))
-	{
-		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_UPPER_ADDRESS_BIT);
-	}
-	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferMinMemory))
-	{
-		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT);
-	}
-	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferFasterAllocation))
-	{
-		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT);
-	}
-	if (lib::HasAnyFlag(rhiFlags, rhi::EBufferSuballocationFlags::PreferMinOffset))
-	{
-		lib::AddFlag(flags, VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_OFFSET_BIT);
-	}
-
-	return flags;
-}
-
 } // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -140,15 +118,13 @@ Uint64 RHIMappedByteBuffer::GetSize() const
 
 RHIBuffer::RHIBuffer()
 	: m_bufferHandle(VK_NULL_HANDLE)
-	, m_allocation(VK_NULL_HANDLE)
 	, m_bufferSize(0)
 	, m_usageFlags(rhi::EBufferUsage::None)
 	, m_mappingStrategy(EMappingStrategy::CannotBeMapped)
 	, m_mappedPointer(nullptr)
-	, m_allocatorVirtualBlock(VK_NULL_HANDLE)
 { }
 
-void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
+void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -156,8 +132,6 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 
 	m_bufferSize = definition.size;
 	m_usageFlags = definition.usage;
-
-	const VmaAllocationCreateInfo vmaAllocationInfo = VulkanRHI::GetMemoryManager().CreateAllocationInfo(allocationInfo);
 
 	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(definition.usage);
 
@@ -167,13 +141,14 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
     bufferInfo.usage = vulkanUsage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	SPT_VK_CHECK(vmaCreateBuffer(VulkanRHI::GetAllocatorHandle(), &bufferInfo, &vmaAllocationInfo, &m_bufferHandle, &m_allocation, nullptr));
+	SPT_VK_CHECK(vkCreateBuffer(VulkanRHI::GetDeviceHandle(), &bufferInfo, VulkanRHI::GetAllocationCallbacks(), OUT &m_bufferHandle));
 
-	InitializeMappingStrategy(vmaAllocationInfo);
+	BindMemory(allocationDef);
 
+	// Allocator lifetime is always same as buffer - so create it even if memory is not bound yet
 	if (lib::HasAnyFlag(definition.flags, rhi::EBufferFlags::WithVirtualSuballocations))
 	{
-		InitVirtualBlock(definition);
+		m_virtualAllocator.InitializeRHI(definition.size, rhi::EVirtualAllocatorFlags::ClearOnRelease);
 	}
 }
 
@@ -183,28 +158,44 @@ void RHIBuffer::ReleaseRHI()
 
 	SPT_CHECK(IsValid());
 
-	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
+	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle), "Buffers cannot be externally allocated!");
+	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle), "Placed allocations must be released manually before releasing resource!");
+
+	VmaAllocation allocationToRelease = VK_NULL_HANDLE;
+
+	if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
 	{
-		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
+		const rhi::RHICommitedAllocation& commitedAllocation = std::get<rhi::RHICommitedAllocation>(m_allocationHandle);
+		allocationToRelease = memory_utils::GetVMAAllocation(commitedAllocation);
 	}
 
-	if (m_allocatorVirtualBlock != VK_NULL_HANDLE)
+	if (allocationToRelease)
 	{
-		vmaClearVirtualBlock(m_allocatorVirtualBlock);
-		vmaDestroyVirtualBlock(m_allocatorVirtualBlock);
+		PreUnbindMemory(allocationToRelease);
+	}
+
+	SPT_CHECK(!m_mappedPointer);
+
+	if (m_virtualAllocator.IsValid())
+	{
+		m_virtualAllocator.ReleaseRHI();
 	}
 	
 	m_name.Reset(reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
 
-	vmaDestroyBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, m_allocation);
+	vkDestroyBuffer(VulkanRHI::GetDeviceHandle(), m_bufferHandle, VulkanRHI::GetAllocationCallbacks());
 
-	m_bufferHandle = VK_NULL_HANDLE;
-	m_allocation = VK_NULL_HANDLE;
-	m_bufferSize = 0;
-	m_usageFlags = rhi::EBufferUsage::None;
-	m_mappingStrategy = EMappingStrategy::CannotBeMapped;
-	m_mappedPointer = nullptr;
-	m_allocatorVirtualBlock = VK_NULL_HANDLE;
+	if (allocationToRelease != VK_NULL_HANDLE)
+	{
+		vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocationToRelease);
+	}
+
+	m_bufferHandle     = VK_NULL_HANDLE;
+	m_allocationHandle = rhi::RHINullAllocation{};
+	m_bufferSize       = 0;
+	m_usageFlags       = rhi::EBufferUsage::None;
+	m_mappingStrategy  = EMappingStrategy::CannotBeMapped;
+	m_mappedPointer    = nullptr;
 }
 
 Bool RHIBuffer::IsValid() const
@@ -222,6 +213,11 @@ rhi::EBufferUsage RHIBuffer::GetUsage() const
 	return m_usageFlags;
 }
 
+Bool RHIBuffer::HasBoundMemory() const
+{
+	return !std::holds_alternative<rhi::RHINullAllocation>(m_allocationHandle);
+}
+
 Bool RHIBuffer::CanMapMemory() const
 {
 	return m_mappingStrategy != EMappingStrategy::CannotBeMapped;
@@ -231,6 +227,8 @@ Byte* RHIBuffer::MapPtr() const
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(HasBoundMemory());
+
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
 		return m_mappedPointer;
@@ -238,7 +236,8 @@ Byte* RHIBuffer::MapPtr() const
 	else if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
 	{
 		void* mappedPtr = nullptr;
-		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation, &mappedPtr));
+		
+		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), GetAllocation(), &mappedPtr));
 		return static_cast<Byte*>(mappedPtr);
 	}
 	else
@@ -251,9 +250,11 @@ void RHIBuffer::Unmap() const
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(HasBoundMemory());
+
 	if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
 	{
-		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
+		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), GetAllocation());
 	}
 }
 
@@ -268,46 +269,40 @@ DeviceAddress RHIBuffer::GetDeviceAddress() const
 
 Bool RHIBuffer::AllowsSuballocations() const
 {
-	return m_allocatorVirtualBlock != VK_NULL_HANDLE;
+	return m_virtualAllocator.IsValid();
 }
 
-rhi::RHISuballocation RHIBuffer::CreateSuballocation(const rhi::SuballocationDefinition& definition)
+rhi::RHIVirtualAllocation RHIBuffer::CreateSuballocation(const rhi::VirtualAllocationDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(AllowsSuballocations());
-	SPT_CHECK(definition.size > 0 && definition.size < GetSize());
 
-	// alignment in VMA must be power of 2
-	const Uint64 properAlignment = math::Utils::IsPowerOf2(definition.alignment) ? definition.alignment : math::Utils::RoundDownToPowerOf2(definition.alignment);
-	const Uint64 missingAlignment = definition.alignment != properAlignment ? std::max<Uint64>(definition.alignment - properAlignment, properAlignment) : 0;
-	const Uint64 properAllocationSize = definition.size + missingAlignment;
-
-	VmaVirtualAllocationCreateInfo virtualAllocationDef{};
-	virtualAllocationDef.alignment = properAlignment;
-	virtualAllocationDef.size = properAllocationSize;
-	virtualAllocationDef.flags = priv::GetVMAVirtualAllocationFlags(definition.flags);
-
-	VmaVirtualAllocation virtualAllocation = VK_NULL_HANDLE;
-	VkDeviceSize offset = 0;
-	const VkResult allocationResult = vmaVirtualAllocate(m_allocatorVirtualBlock, &virtualAllocationDef, &virtualAllocation, &offset);
-
-	SPT_CHECK(virtualAllocation != VK_NULL_HANDLE || allocationResult == VK_ERROR_OUT_OF_DEVICE_MEMORY);
-
-	const Uint64 aligndDataOffset = offset == 0 ? offset : math::Utils::RoundUp(offset, definition.alignment);
-
-	SPT_STATIC_CHECK(sizeof(VmaVirtualAllocation) == sizeof(Uint64));
-	return allocationResult != VK_ERROR_OUT_OF_DEVICE_MEMORY ? rhi::RHISuballocation(reinterpret_cast<Uint64>(virtualAllocation), aligndDataOffset) : rhi::RHISuballocation();
+	return m_virtualAllocator.Allocate(definition);
 }
 
-void RHIBuffer::DestroySuballocation(rhi::RHISuballocation suballocation)
+void RHIBuffer::DestroySuballocation(rhi::RHIVirtualAllocation suballocation)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(AllowsSuballocations());
-	SPT_CHECK(suballocation.IsValid());
 
-	vmaVirtualFree(m_allocatorVirtualBlock, reinterpret_cast<VmaVirtualAllocation>(suballocation.GetSuballocationHandle()));
+	m_virtualAllocator.Free(suballocation);
+}
+
+rhi::RHIMemoryRequirements RHIBuffer::GetMemoryRequirements() const
+{
+	SPT_CHECK(IsValid());
+
+	rhi::RHIMemoryRequirements requirements;
+
+	VkMemoryRequirements vkRequirements;
+	vkGetBufferMemoryRequirements(VulkanRHI::GetDeviceHandle(), m_bufferHandle, OUT &vkRequirements);
+
+	requirements.alignment = vkRequirements.alignment;
+	requirements.size      = vkRequirements.size;
+
+	return requirements;
 }
 
 void RHIBuffer::SetName(const lib::HashedString& name)
@@ -315,9 +310,10 @@ void RHIBuffer::SetName(const lib::HashedString& name)
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
 	
 #if RHI_DEBUG
-	if (m_allocation)
+	if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
 	{
-		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), m_allocation, name.GetData());
+		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommitedAllocation>(m_allocationHandle));
+		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, name.GetData());
 	}
 #endif // RHI_DEBUG
 }
@@ -332,41 +328,160 @@ VkBuffer RHIBuffer::GetHandle() const
 	return m_bufferHandle;
 }
 
-VmaAllocation RHIBuffer::GetAllocation() const
+Bool RHIBuffer::BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition)
 {
-	return m_allocation;
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(!HasBoundMemory());
+
+	m_allocationHandle = std::visit(lib::Overload
+									{
+										[&](const rhi::RHINullAllocationDefinition& nullAllocation) -> rhi::RHIResourceAllocationHandle
+										{
+											return rhi::RHINullAllocation{};
+										},
+										[this](const rhi::RHIPlacedAllocationDefinition& placedAllocation) -> rhi::RHIResourceAllocationHandle
+										{
+											return DoPlacedAllocation(placedAllocation);
+										},
+										[&](const rhi::RHICommitedAllocationDefinition& commitedAllocation) -> rhi::RHIResourceAllocationHandle
+										{
+											return DoCommitedAllocation(commitedAllocation);
+										}
+									},
+									allocationDefinition);
+
+	const Bool success = HasBoundMemory();
+
+	if (success)
+	{
+		const std::optional<rhi::RHIAllocationInfo> allocationInfo = memory_utils::GetAllocationInfo(allocationDefinition);
+		SPT_CHECK(allocationInfo.has_value());
+		InitializeMappingStrategy(*allocationInfo);
+	}
+
+	return success;
 }
 
-void RHIBuffer::InitializeMappingStrategy(const VmaAllocationCreateInfo& allocationInfo)
+rhi::RHIResourceAllocationHandle RHIBuffer::ReleasePlacedAllocation()
 {
+	SPT_CHECK(IsValid());
+	SPT_CHECK(std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle));
+
+	const rhi::RHIPlacedAllocation allocation = std::get<rhi::RHIPlacedAllocation>(m_allocationHandle);
+
+	PreUnbindMemory(memory_utils::GetVMAAllocation(allocation));
+
+	m_allocationHandle = rhi::RHINullAllocation{};
+
+	return allocation;
+}
+
+rhi::RHIResourceAllocationHandle RHIBuffer::DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	SPT_CHECK(!!placedAllocationDef.pool);
+	SPT_CHECK(placedAllocationDef.pool->IsValid());
+
+	VkMemoryRequirements memoryRequirements{};
+	vkGetBufferMemoryRequirements(VulkanRHI::GetDeviceHandle(), m_bufferHandle, OUT &memoryRequirements);
+
+	rhi::VirtualAllocationDefinition suballocationDefinition{};
+	suballocationDefinition.size      = memoryRequirements.size;
+	suballocationDefinition.alignment = memoryRequirements.alignment;
+	suballocationDefinition.flags     = placedAllocationDef.flags;
+
+	const rhi::RHIVirtualAllocation suballocation = placedAllocationDef.pool->Allocate(suballocationDefinition);
+	if (!suballocation.IsValid())
+	{
+		return rhi::RHINullAllocation{};
+	}
+
+	const VmaAllocation poolMemoryAllocation = placedAllocationDef.pool->GetAllocation();
+
+	vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), poolMemoryAllocation, suballocation.GetOffset(), m_bufferHandle, nullptr);
+
+	return rhi::RHIPlacedAllocation(rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(poolMemoryAllocation)), suballocation);
+}
+
+rhi::RHIResourceAllocationHandle RHIBuffer::DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation)
+{
+	SPT_PROFILER_FUNCTION();
+
+	VmaAllocation allocation = VK_NULL_HANDLE;
+
+	VmaAllocationCreateInfo allocationInfo{};
+	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(commitedAllocation.allocationInfo.allocationFlags);
+	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(commitedAllocation.allocationInfo.memoryUsage);
+	SPT_VK_CHECK(vmaAllocateMemoryForBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, &allocationInfo, OUT &allocation, nullptr));
+
+	SPT_CHECK(allocation != VK_NULL_HANDLE);
+
+	vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), allocation, 0, m_bufferHandle, nullptr);
+
+#if RHI_DEBUG
+	if (m_name.HasName())
+	{
+		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, m_name.Get().GetData());
+	}
+#endif // RHI_DEBUG
+
+	return rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(allocation));
+}
+
+void RHIBuffer::PreUnbindMemory(VmaAllocation allocation)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(HasBoundMemory());
+
+	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
+	{
+		vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), allocation);
+		m_mappedPointer = nullptr;
+	}
+}
+
+VmaAllocation RHIBuffer::GetAllocation() const
+{
+	return memory_utils::GetVMAAllocation(m_allocationHandle);
+}
+
+void RHIBuffer::InitializeMappingStrategy(const rhi::RHIAllocationInfo& allocationInfo)
+{
+	SPT_CHECK(HasBoundMemory());
+
 	m_mappingStrategy = SelectMappingStrategy(allocationInfo);
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
 	{
-		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), m_allocation, reinterpret_cast<void**>(&m_mappedPointer)));
+		const VmaAllocation allocation = memory_utils::GetVMAAllocation(m_allocationHandle);
+		SPT_CHECK(allocation != VK_NULL_HANDLE);
+		SPT_VK_CHECK(vmaMapMemory(VulkanRHI::GetAllocatorHandle(), allocation, reinterpret_cast<void**>(&m_mappedPointer)));
 	}
 }
 
-RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const VmaAllocationCreateInfo& allocationInfo) const
+RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const rhi::RHIAllocationInfo& allocationInfo) const
 {
-	const VmaMemoryUsage memoryUsage = allocationInfo.usage;
-
 	// if allocation was created mapped, use persistently mapped strategy
-	if(allocationInfo.flags &  VMA_ALLOCATION_CREATE_MAPPED_BIT)
+	if(lib::HasAnyFlag(allocationInfo.allocationFlags, rhi::EAllocationFlags::CreateMapped))
 	{
 		return EMappingStrategy::PersistentlyMapped;
 	}
 
-	if (memoryUsage == VMA_MEMORY_USAGE_CPU_ONLY)
+	const rhi::EMemoryUsage memoryUsage = allocationInfo.memoryUsage;
+
+	if (memoryUsage == rhi::EMemoryUsage::CPUOnly)
 	{
-		const Uint64 maxSizeForAlwaysPersistentlyMapped = 2048;
+		constexpr Uint64 maxSizeForAlwaysPersistentlyMapped = 2048;
 
 		// in case of CPU only buffers, we want them to be persistently mapped if they are small enough, otherwise mapped only when necessary
 		return (m_bufferSize < maxSizeForAlwaysPersistentlyMapped) ? EMappingStrategy::PersistentlyMapped : EMappingStrategy::MappedWhenNecessary;
 	}
 
 	// All other host visible allocation should be mapped only when necessary
-	if (memoryUsage == VMA_MEMORY_USAGE_CPU_TO_GPU || memoryUsage == VMA_MEMORY_USAGE_GPU_TO_CPU || memoryUsage == VMA_MEMORY_USAGE_CPU_COPY)
+	if (memoryUsage == rhi::EMemoryUsage::CPUToGPU || memoryUsage == rhi::EMemoryUsage::GPUToCpu || memoryUsage == rhi::EMemoryUsage::CPUCopy)
 	{
 		return EMappingStrategy::MappedWhenNecessary;
 	}
@@ -375,13 +490,17 @@ RHIBuffer::EMappingStrategy RHIBuffer::SelectMappingStrategy(const VmaAllocation
 	return EMappingStrategy::CannotBeMapped;
 }
 
-void RHIBuffer::InitVirtualBlock(const rhi::BufferDefinition& definition)
-{
-	SPT_CHECK(lib::HasAnyFlag(definition.flags, rhi::EBufferFlags::WithVirtualSuballocations));
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIBufferMemoryOwner ==========================================================================
 
-	VmaVirtualBlockCreateInfo blockInfo{};
-	blockInfo.size = definition.size;
-	vmaCreateVirtualBlock(&blockInfo, &m_allocatorVirtualBlock);
+Bool RHIBufferMemoryOwner::BindMemory(RHIBuffer& buffer, const rhi::RHIResourceAllocationDefinition& allocationDefinition)
+{
+	return buffer.BindMemory(allocationDefinition);
+}
+
+rhi::RHIResourceAllocationHandle RHIBufferMemoryOwner::ReleasePlacedAllocation(RHIBuffer& buffer)
+{
+	return buffer.ReleasePlacedAllocation();
 }
 
 } // spt::vulkan

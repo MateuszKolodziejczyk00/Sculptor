@@ -21,8 +21,8 @@ public:
 
 	static GeometryManager& Get();
 
-	rhi::RHISuballocation CreateGeometry(const Byte* geometryData, Uint64 dataSize);
-	rhi::RHISuballocation CreateGeometry(Uint64 dataSize);
+	rhi::RHIVirtualAllocation CreateGeometry(const Byte* geometryData, Uint64 dataSize);
+	rhi::RHIVirtualAllocation CreateGeometry(Uint64 dataSize);
 
 	const lib::MTHandle<GeometryDS>& GetGeometryDSState() const;
 

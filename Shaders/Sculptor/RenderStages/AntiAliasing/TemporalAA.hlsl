@@ -264,16 +264,16 @@ void TemporalAACS(CS_INPUT input)
             float3 historyWeight = 0.85f;
             float3 currentWeight = 1.f - historyWeight;
 
-            const float3 compressedCurrent = currentSample / (max(max(currentSample.x, currentSample.y), currentSample.z) + 1.f);
-            const float3 compressedHistory = historySample / (max(max(historySample.x, historySample.y), historySample.z) + 1.f);
+            const float currentLuminance = u_params.useYCoCg ? currentSample.r : Luminance(currentSample);
+            const float historyLuminance = u_params.useYCoCg ? historySample.r : Luminance(historySample);
+            
+            historyWeight /= max(historyLuminance, 0.01f);
+            currentWeight /= max(currentLuminance, 0.01f);
 
-            const float currentLuminance = u_params.useYCoCg ? compressedCurrent.r : Luminance(compressedCurrent);
-            const float historyLuminance = u_params.useYCoCg ? compressedHistory.r : Luminance(compressedHistory);
+            historyWeight = max(historyWeight / (historyWeight + currentWeight), 0.85f);
+            currentWeight = 1.f - historyWeight;
             
-            historyWeight *= (1.0f + historyLuminance);
-            currentWeight *= (1.0f + currentLuminance);
-            
-            float3 outputColor = (historyWeight * historySample + currentWeight * currentSample) / max(historyWeight + currentWeight, 0.0001f);
+            float3 outputColor = (historyWeight * historySample + currentWeight * currentSample);
 
             if(u_params.useYCoCg)
             {

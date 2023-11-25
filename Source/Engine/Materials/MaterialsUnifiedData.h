@@ -34,8 +34,8 @@ public:
 
 	Uint32 AddMaterialTexture(const lib::SharedRef<rdr::TextureView>& texture);
 
-	rhi::RHISuballocation CreateMaterialDataSuballocation(Uint32 dataSize);
-	rhi::RHISuballocation CreateMaterialDataSuballocation(const Byte* materialData, Uint32 dataSize);
+	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(Uint64 dataSize);
+	rhi::RHIVirtualAllocation CreateMaterialDataSuballocation(const Byte* materialData, Uint64 dataSize);
 
 	lib::MTHandle<MaterialsDS> GetMaterialsDS() const;
 

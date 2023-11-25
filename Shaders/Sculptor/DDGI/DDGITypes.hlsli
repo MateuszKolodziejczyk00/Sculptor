@@ -128,6 +128,8 @@ struct DDGISampleParams
     float3 surfaceNormal;
     float3 viewNormal;
 
+    float  minVisibility;
+
     float3 sampleDirection;
     float  sampleLocationBiasMultiplier;
 };
@@ -141,6 +143,7 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
     params.viewNormal                   = viewNormal;
     params.sampleDirection              = surfaceNormal;
     params.sampleLocationBiasMultiplier = 1.0f;
+    params.minVisibility                = 0.0f;
     return params;
 }
 
@@ -152,12 +155,12 @@ float3 DDGIGetSampleLocation(in const DDGIGPUParams ddgiParams, in DDGISamplePar
 }
 
 
-float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
-                             in Texture2D<float3> probesIlluminanceTexture,
-                             in SamplerState illuminanceSampler,
-                             in Texture2D<float2> probesHitDistanceTexture,
-                             in SamplerState distancesSampler,
-                             in DDGISampleParams sampleParams)
+float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
+                           in Texture2D<float3> probesIlluminanceTexture,
+                           in SamplerState illuminanceSampler,
+                           in Texture2D<float2> probesHitDistanceTexture,
+                           in SamplerState distancesSampler,
+                           in DDGISampleParams sampleParams)
 {
     if(!IsInsideDDGIVolume(ddgiParams, sampleParams.worldLocation))
     {
@@ -171,8 +174,10 @@ float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
 
     const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * ddgiParams.rcpProbesSpacing);
 
-    float3 illuminanceSum = 0.f;
+    float3 luminanceSum = 0.f;
     float weightSum = 0.f;
+
+    const float rcpMaxVisibility = rcp(1.f / sampleParams.minVisibility);
     
     for (int i = 0; i < 8; ++i)
     {
@@ -214,6 +219,8 @@ float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
 
             chebyshevWeight = max(Pow3(chebyshevWeight) - 0.2f, 0.00f);
 
+            chebyshevWeight = saturate(chebyshevWeight - sampleParams.minVisibility) * rcpMaxVisibility;
+
             weight *= chebyshevWeight;
         }
 
@@ -226,41 +233,39 @@ float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
 
         weight *= trilinearWeight;
         
-        const float2 illuminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
+        const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
-        float3 illuminance = SampleProbeIlluminance(ddgiParams, probesIlluminanceTexture, illuminanceSampler, probeWrappedCoords, illuminanceOctCoords);
+        float3 luminance = SampleProbeIlluminance(ddgiParams, probesIlluminanceTexture, illuminanceSampler, probeWrappedCoords, luminanceOctCoords);
 
-        illuminance = pow(illuminance, ddgiParams.probeIlluminanceEncodingGamma * 0.5f);
+        luminance = pow(luminance, ddgiParams.probeIlluminanceEncodingGamma * 0.5f);
 
-        illuminanceSum += illuminance * weight;
+        luminanceSum += luminance * weight;
         weightSum += weight;
     }
 
-    float3 illuminance = illuminanceSum / weightSum;
+    float3 luminance = luminanceSum / weightSum;
 
-    illuminance = Pow2(illuminance);
-    
-    illuminance = illuminance * 2.f * PI;
+    luminance = Pow2(luminance);
 
-    return illuminance;
+    return luminance;
 }
 
 
-float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
-                           in Texture2D<float3> probesIlluminanceTexture,
-                           in SamplerState illuminanceSampler,
-                           in Texture2D<float2> probesHitDistanceTexture,
-                           in SamplerState distancesSampler,
-                           in DDGISampleParams sampleParams)
+float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
+                             in Texture2D<float3> probesIlluminanceTexture,
+                             in SamplerState illuminanceSampler,
+                             in Texture2D<float2> probesHitDistanceTexture,
+                             in SamplerState distancesSampler,
+                             in DDGISampleParams sampleParams)
 {
-    const float3 illuminance = DDGISampleIlluminance(ddgiParams,
-                                                     probesIlluminanceTexture,
-                                                     illuminanceSampler,
-                                                     probesHitDistanceTexture,
-                                                     distancesSampler,
-                                                     sampleParams);
+    const float3 luminance = DDGISampleLuminance(ddgiParams,
+                                                 probesIlluminanceTexture,
+                                                 illuminanceSampler,
+                                                 probesHitDistanceTexture,
+                                                 distancesSampler,
+                                                 sampleParams);
 
-    return illuminance * INV_TWO_PI;
+    return luminance * 2.f * PI; // multiply by integration domain area
 }
 
 #endif // DDGI_TYPES_HLSLI

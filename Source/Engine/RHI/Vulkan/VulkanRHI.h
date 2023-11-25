@@ -21,7 +21,7 @@ struct SubmitBatchData;
 namespace spt::vulkan
 {
 
-class MemoryManager;
+class VulkanMemoryManager;
 class LogicalDevice;
 class CommandPoolsManager;
 class LayoutsManager;
@@ -95,7 +95,7 @@ public:
 
 	static const LogicalDevice&				GetLogicalDevice();
 
-	static MemoryManager&					GetMemoryManager();
+	static VulkanMemoryManager&					GetMemoryManager();
 
 	static VmaAllocator						GetAllocatorHandle();
 

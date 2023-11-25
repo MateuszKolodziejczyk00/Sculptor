@@ -1,4 +1,4 @@
-#include "MemoryManager.h"
+#include "VulkanMemoryManager.h"
 #include "RHICore/RHIAllocationTypes.h"
 
 namespace spt::vulkan
@@ -40,44 +40,13 @@ VmaVulkanFunctions BuildVulkanFunctionsPtrsTable()
 	return functionsTable;
 }
 
-VmaMemoryUsage GetVMAMemoryUsage(rhi::EMemoryUsage memoryUsage)
-{
-	switch (memoryUsage)
-	{
-	case rhi::EMemoryUsage::GPUOnly:		return VMA_MEMORY_USAGE_GPU_ONLY;
-	case rhi::EMemoryUsage::CPUOnly:		return VMA_MEMORY_USAGE_CPU_ONLY;
-	case rhi::EMemoryUsage::CPUToGPU:		return VMA_MEMORY_USAGE_CPU_TO_GPU;
-	case rhi::EMemoryUsage::GPUToCpu:		return VMA_MEMORY_USAGE_GPU_TO_CPU;
-	case rhi::EMemoryUsage::CPUCopy:		return VMA_MEMORY_USAGE_CPU_COPY;
-	}
+} // priv
 
-	SPT_CHECK_NO_ENTRY();
-	return VMA_MEMORY_USAGE_AUTO;
-}
-
-VmaAllocationCreateFlags GetVMAAllocationFlags(rhi::EAllocationFlags flags)
-{
-	VmaAllocationCreateFlags vmaFlags{};
-
-	if (lib::HasAnyFlag(flags, rhi::EAllocationFlags::CreateDedicatedAllocation))
-	{
-		lib::AddFlag(vmaFlags, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EAllocationFlags::CreateMapped))
-	{
-		lib::AddFlag(vmaFlags, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-	}
-
-	return vmaFlags;
-}
-
-}
-
-MemoryManager::MemoryManager()
+VulkanMemoryManager::VulkanMemoryManager()
 	: m_allocator(VK_NULL_HANDLE)
 { }
 
-void MemoryManager::Initialize(VkInstance instance, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* allocationCallbacks)
+void VulkanMemoryManager::Initialize(VkInstance instance, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* allocationCallbacks)
 {
 	const VmaVulkanFunctions vulkanFunctionsTable = priv::BuildVulkanFunctionsPtrsTable();
 
@@ -93,7 +62,7 @@ void MemoryManager::Initialize(VkInstance instance, VkDevice logicalDevice, VkPh
 	SPT_VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
 }
 
-void MemoryManager::Destroy()
+void VulkanMemoryManager::Destroy()
 {
 	SPT_CHECK(IsValid());
 
@@ -101,23 +70,14 @@ void MemoryManager::Destroy()
 	m_allocator = VK_NULL_HANDLE;
 }
 
-Bool MemoryManager::IsValid() const
+Bool VulkanMemoryManager::IsValid() const
 {
 	return m_allocator != VK_NULL_HANDLE;
 }
 
-VmaAllocator MemoryManager::GetAllocatorHandle() const
+VmaAllocator VulkanMemoryManager::GetAllocatorHandle() const
 {
 	return m_allocator;
-}
-
-VmaAllocationCreateInfo MemoryManager::CreateAllocationInfo(const rhi::RHIAllocationInfo& rhiAllocationInfo) const
-{
-	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.flags = priv::GetVMAAllocationFlags(rhiAllocationInfo.allocationFlags);
-	allocationInfo.usage = priv::GetVMAMemoryUsage(rhiAllocationInfo.memoryUsage);
-
-	return allocationInfo;
 }
 
 }

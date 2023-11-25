@@ -2,7 +2,7 @@
 
 #if VULKAN_RHI
 
-#include "Vulkan/VulkanTypes/RHICommandBuffer.h"
+#include "Vulkan/VulkanTypes/RHIGPUMemoryPool.h"
 
 #endif
 

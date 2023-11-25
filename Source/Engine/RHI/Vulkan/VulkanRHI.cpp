@@ -3,7 +3,7 @@
 #include "Device/LogicalDevice.h"
 #include "VulkanRHILimits.h"
 #include "Debug/DebugMessenger.h"
-#include "Memory/MemoryManager.h"
+#include "Memory/VulkanMemoryManager.h"
 #include "CommandPool/RHICommandPoolsManager.h"
 #include "VulkanTypes/RHISemaphore.h"
 #include "VulkanTypes/RHICommandBuffer.h"
@@ -47,7 +47,7 @@ public:
     VkPhysicalDevice            physicalDevice;
     LogicalDevice               device;
 
-    MemoryManager               memoryManager;
+    VulkanMemoryManager               memoryManager;
 
     VkSurfaceKHR                surface;
     
@@ -415,7 +415,7 @@ const LogicalDevice& VulkanRHI::GetLogicalDevice()
     return priv::g_data.device;
 }
 
-MemoryManager& VulkanRHI::GetMemoryManager()
+VulkanMemoryManager& VulkanRHI::GetMemoryManager()
 {
     return priv::g_data.memoryManager;
 }

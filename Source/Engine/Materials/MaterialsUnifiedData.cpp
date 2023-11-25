@@ -19,20 +19,20 @@ Uint32 MaterialsUnifiedData::AddMaterialTexture(const lib::SharedRef<rdr::Textur
 	return m_materialsDS->u_materialsTextures.BindTexture(textureView);
 }
 
-rhi::RHISuballocation MaterialsUnifiedData::CreateMaterialDataSuballocation(Uint32 dataSize)
+rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::SuballocationDefinition suballocationDef(dataSize, 4, rhi::EBufferSuballocationFlags::PreferMinMemory);
+	const rhi::VirtualAllocationDefinition virtualAllocationDef(dataSize, 4, rhi::EVirtualAllocationFlags::PreferMinMemory);
 
-	return m_materialsUnifiedBuffer->GetRHI().CreateSuballocation(suballocationDef);
+	return m_materialsUnifiedBuffer->GetRHI().CreateSuballocation(virtualAllocationDef);
 }
 
-rhi::RHISuballocation MaterialsUnifiedData::CreateMaterialDataSuballocation(const Byte* materialData, Uint32 dataSize)
+rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(const Byte* materialData, Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::RHISuballocation suballocation = CreateMaterialDataSuballocation(dataSize);
+	const rhi::RHIVirtualAllocation suballocation = CreateMaterialDataSuballocation(dataSize);
 	SPT_CHECK(suballocation.IsValid());
 
 	gfx::UploadDataToBuffer(lib::Ref(m_materialsUnifiedBuffer), suballocation.GetOffset(), materialData, dataSize);

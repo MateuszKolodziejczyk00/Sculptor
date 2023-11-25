@@ -1,4 +1,5 @@
 #include "Texture.h"
+#include "GPUMemoryPool.h"
 
 
 namespace spt::rdr
@@ -7,12 +8,17 @@ namespace spt::rdr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Texture =======================================================================================
 
-Texture::Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+Texture::Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	GetRHI().InitializeRHI(textureDefinition, allocationInfo);
+	GetRHI().InitializeRHI(textureDefinition, allocationDefinition.GetRHIAllocationDef());
 	GetRHI().SetName(name.Get());
+
+	if (allocationDefinition.IsPlaced())
+	{
+		m_owningMemoryPool = allocationDefinition.GetPlacedAllocationDef().memoryPool;
+	}
 }
 
 Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture)
@@ -21,6 +27,40 @@ Texture::Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTex
 
 	GetRHI() = rhiTexture;
 	GetRHI().SetName(name.Get());
+}
+
+Bool Texture::HasBoundMemory() const
+{
+	return GetRHI().HasBoundMemory();
+}
+
+void Texture::BindMemory(const AllocationDefinition& definition)
+{
+	SPT_CHECK(!HasBoundMemory());
+
+	if (definition.IsPlaced())
+	{
+		m_owningMemoryPool = definition.GetPlacedAllocationDef().memoryPool;
+	}
+	RHITextureMemoryOwner::BindMemory(GetRHI(), definition.GetRHIAllocationDef());
+}
+
+void Texture::ReleasePlacedAllocation()
+{
+	SPT_CHECK(HasBoundMemory());
+	SPT_CHECK(!!m_owningMemoryPool);
+
+	rhi::RHIGPUMemoryPool& memoryPool = m_owningMemoryPool->GetRHI();
+
+	const rhi::RHIResourceAllocationHandle allocation = RHITextureMemoryOwner::ReleasePlacedAllocation(GetRHI());
+
+	SPT_CHECK(std::holds_alternative<rhi::RHIPlacedAllocation>(allocation) || std::holds_alternative<rhi::RHINullAllocation>(allocation))
+	if (std::holds_alternative<rhi::RHIPlacedAllocation>(allocation))
+	{
+		memoryPool.Free(std::get<rhi::RHIPlacedAllocation>(allocation).GetSuballocation());
+	}
+
+	m_owningMemoryPool.reset();
 }
 
 void Texture::Rename(const RendererResourceName& name)

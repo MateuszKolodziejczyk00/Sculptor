@@ -10,7 +10,9 @@ class VulkanRHI;
 class VulkanRHILimits;
 class RHIRenderContext;
 class RHIBuffer;
+class RHIBufferMemoryOwner;
 class RHITexture;
+class RHITextureMemoryOwner;
 class RHITextureView;
 class RHIWindow;
 class RHISemaphore;
@@ -29,6 +31,7 @@ class RHITopLevelAS;
 class RHIBottomLevelAS;
 class RHIShaderBindingTable;
 class RHIQueryPool;
+class RHIGPUMemoryPool;
 
 }
 

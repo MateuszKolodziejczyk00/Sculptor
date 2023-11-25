@@ -68,7 +68,7 @@ struct EntityGPUDataHandle
 {
 	EntityGPUDataHandle() = default;
 
-	explicit EntityGPUDataHandle(const rhi::RHISuballocation& inSuballocation)
+	explicit EntityGPUDataHandle(const rhi::RHIVirtualAllocation& inSuballocation)
 		: transformSuballocation(inSuballocation)
 	{ }
 
@@ -77,7 +77,7 @@ struct EntityGPUDataHandle
 		return static_cast<Uint32>(transformSuballocation.GetOffset() / sizeof(RenderEntityGPUData));
 	}
 
-	rhi::RHISuballocation transformSuballocation;
+	rhi::RHIVirtualAllocation transformSuballocation;
 };
 
 

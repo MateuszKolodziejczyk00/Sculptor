@@ -1,5 +1,6 @@
 #include "Buffer.h"
 #include "RendererUtils.h"
+#include "GPUMemoryPool.h"
 
 
 namespace spt::rdr
@@ -8,10 +9,15 @@ namespace spt::rdr
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer ========================================================================================
 
-Buffer::Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
+Buffer::Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition)
 {
-	GetRHI().InitializeRHI(definition, allocationInfo);
+	GetRHI().InitializeRHI(definition, allocationDefinition.GetRHIAllocationDef());
 	GetRHI().SetName(name.Get());
+
+	if(allocationDefinition.IsPlaced())
+	{
+		m_owningMemoryPool = allocationDefinition.GetPlacedAllocationDef().memoryPool;
+	}
 }
 
 Buffer::Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBufferInstance)
@@ -20,6 +26,40 @@ Buffer::Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBuffer
 
 	GetRHI() = rhiBufferInstance;
 	GetRHI().SetName(name.Get());
+}
+
+Bool Buffer::HasBoundMemory() const
+{
+	return GetRHI().HasBoundMemory();
+}
+
+void Buffer::BindMemory(const AllocationDefinition& definition)
+{
+	SPT_CHECK(!HasBoundMemory());
+
+	if (definition.IsPlaced())
+	{
+		m_owningMemoryPool = definition.GetPlacedAllocationDef().memoryPool;
+	}
+	RHIBufferMemoryOwner::BindMemory(GetRHI(), definition.GetRHIAllocationDef());
+}
+
+void Buffer::ReleasePlacedAllocation()
+{
+	SPT_CHECK(HasBoundMemory());
+	SPT_CHECK(!!m_owningMemoryPool);
+
+	rhi::RHIGPUMemoryPool& memoryPool = m_owningMemoryPool->GetRHI();
+
+	const rhi::RHIResourceAllocationHandle allocation = RHIBufferMemoryOwner::ReleasePlacedAllocation(GetRHI());
+
+	SPT_CHECK(std::holds_alternative<rhi::RHIPlacedAllocation>(allocation) || std::holds_alternative<rhi::RHINullAllocation>(allocation))
+	if (std::holds_alternative<rhi::RHIPlacedAllocation>(allocation))
+	{
+		memoryPool.Free(std::get<rhi::RHIPlacedAllocation>(allocation).GetSuballocation());
+	}
+
+	m_owningMemoryPool.reset();
 }
 
 BufferView Buffer::CreateFullView() const

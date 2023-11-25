@@ -43,7 +43,7 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 	ComputeMeshBoundingSphere();
 
 	GeometryManager& geomManager = GeometryManager::Get();
-	const rhi::RHISuballocation geometrySuballocation = geomManager.CreateGeometry(m_geometryData.data(), m_geometryData.size());
+	const rhi::RHIVirtualAllocation geometrySuballocation = geomManager.CreateGeometry(m_geometryData.data(), m_geometryData.size());
 	SPT_CHECK(geometrySuballocation.IsValid());
 	SPT_CHECK(geometrySuballocation.GetOffset() + m_geometryData.size() <= maxValue<Uint32>);
 

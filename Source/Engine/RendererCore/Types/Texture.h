@@ -17,9 +17,10 @@ namespace spt::rdr
 {
 
 class TextureView;
+class GPUMemoryPool;
 
 
-class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>
+class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>, public rhi::RHITextureMemoryOwner
 {
 protected:
 
@@ -27,8 +28,12 @@ protected:
 
 public:
 
-	Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
+	Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition);
 	Texture(const RendererResourceName& name, const rhi::RHITexture& rhiTexture);
+
+	Bool HasBoundMemory() const;
+	void BindMemory(const AllocationDefinition& definition);
+	void ReleasePlacedAllocation();
 
 	void Rename(const RendererResourceName& name);
 
@@ -37,6 +42,10 @@ public:
 	math::Vector2u					GetResolution2D() const;
 
 	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition()) const;
+
+private:
+
+	lib::SharedPtr<GPUMemoryPool> m_owningMemoryPool;
 };
 
 

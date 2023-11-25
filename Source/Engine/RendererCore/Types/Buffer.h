@@ -16,10 +16,11 @@ namespace spt::rdr
 {
 
 class BufferView;
+class GPUMemoryPool;
 struct RendererResourceName;
 
 
-class RENDERER_CORE_API Buffer : public RendererResource<rhi::RHIBuffer>, public lib::SharedFromThis<Buffer>
+class RENDERER_CORE_API Buffer : public RendererResource<rhi::RHIBuffer>, public lib::SharedFromThis<Buffer>, public rhi::RHIBufferMemoryOwner
 {
 protected:
 
@@ -27,12 +28,20 @@ protected:
 
 public:
 
-	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
+	Buffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition);
 	Buffer(const RendererResourceName& name, const rhi::RHIBuffer& rhiBufferInstance);
+
+	Bool HasBoundMemory() const;
+	void BindMemory(const AllocationDefinition& definition);
+	void ReleasePlacedAllocation();
 
 	BufferView CreateFullView() const;
 
 	Uint64 GetSize() const;
+
+private:
+
+	lib::SharedPtr<GPUMemoryPool> m_owningMemoryPool;
 };
 
 

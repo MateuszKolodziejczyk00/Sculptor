@@ -147,7 +147,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-            float3 rayLuminance          = rayResults[rayIdx].xyz;
+            float3 rayLuminance         = rayResults[rayIdx].xyz;
             const float rayHitDistance  = rayResults[rayIdx].w;
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
@@ -208,7 +208,9 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         float3 result = 0.f;
         if(weightSum > WEIGHT_EPSILON)
         {
-            result = luminanceSum / weightSum;
+            // multiply by 2 because weightSum divide by sum of cosines instead of number of samples which should be used for monte carlo integration
+            // this reduces variance but we must compensate it because its expected value is samplesNum / 2
+            result = luminanceSum / (2.f * weightSum);
         }
 
         const float exponent = 1.f / u_ddgiParams.probeIlluminanceEncodingGamma;

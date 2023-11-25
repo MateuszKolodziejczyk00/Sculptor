@@ -25,8 +25,8 @@ struct MaterialDefinition
 
 struct MaterialDataParameters
 {
-	rhi::RHISuballocation	suballocation;
-	lib::HashedString		materialDataStructName;
+	rhi::RHIVirtualAllocation suballocation;
+	lib::HashedString         materialDataStructName;
 };
 
 

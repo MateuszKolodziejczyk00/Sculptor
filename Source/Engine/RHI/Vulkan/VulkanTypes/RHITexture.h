@@ -18,10 +18,14 @@ public:
 	RHITexture();
 
 	void							InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle, rhi::EMemoryUsage memoryUsage);
-	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationDef);
+	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef);
 	void							ReleaseRHI();
 
 	Bool							IsValid() const;
+
+	Bool							HasBoundMemory() const;
+
+	rhi::RHIMemoryRequirements		GetMemoryRequirements() const;
 
 	const rhi::TextureDefinition&	GetDefinition() const;
 
@@ -47,19 +51,35 @@ public:
 
 private:
 
-	void							PostImageInitialized();
-	void							PreImageReleased();
+	void PostImageInitialized();
+	void PreImageReleased();
 
-	rhi::TextureDefinition			m_definition;
-	rhi::RHIAllocationInfo			m_allocationInfo;
+	Bool                             BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition);
+	rhi::RHIResourceAllocationHandle ReleasePlacedAllocation();
 
-	rhi::ETextureType				m_type;
+	rhi::RHIResourceAllocationHandle DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef);
+	rhi::RHIResourceAllocationHandle DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation);
 
-	VkImage							m_imageHandle;
+	rhi::TextureDefinition           m_definition;
+	VkImage                          m_imageHandle;
+	
+	rhi::ETextureType                m_type;
+	
+	rhi::RHIResourceAllocationHandle m_allocationHandle;
+	rhi::RHIAllocationInfo           m_allocationInfo;
 
-	VmaAllocation					m_allocation;
+	DebugName m_name;
 
-	DebugName						m_name;
+	friend class RHITextureMemoryOwner;
+};
+
+
+class RHI_API RHITextureMemoryOwner
+{
+protected:
+
+	static Bool                             BindMemory(RHITexture& texture, const rhi::RHIResourceAllocationDefinition& allocationDefinition);
+	static rhi::RHIResourceAllocationHandle ReleasePlacedAllocation(RHITexture& texture);
 };
 
 

@@ -12,23 +12,23 @@ GeometryManager& GeometryManager::Get()
 	return instance;
 }
 
-rhi::RHISuballocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 dataSize)
+rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(const Byte* geometryData, Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::RHISuballocation geometryDataSuballocation = CreateGeometry(dataSize);
+	const rhi::RHIVirtualAllocation geometryDataSuballocation = CreateGeometry(dataSize);
 
 	gfx::UploadDataToBuffer(lib::Ref(m_geometryBuffer), geometryDataSuballocation.GetOffset(), geometryData, dataSize);
 
 	return geometryDataSuballocation;
 }
 
-rhi::RHISuballocation GeometryManager::CreateGeometry(Uint64 dataSize)
+rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(Uint64 dataSize)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::SuballocationDefinition suballocationDef(dataSize, 4, rhi::EBufferSuballocationFlags::PreferMinMemory);
-	const rhi::RHISuballocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
+	const rhi::VirtualAllocationDefinition suballocationDef(dataSize, 4, rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::RHIVirtualAllocation geometryDataSuballocation = m_geometryBuffer->GetRHI().CreateSuballocation(suballocationDef);
 	SPT_CHECK(geometryDataSuballocation.IsValid());
 
 	return geometryDataSuballocation;

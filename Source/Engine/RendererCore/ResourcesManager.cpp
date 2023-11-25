@@ -16,6 +16,7 @@
 #include "Types/Pipeline/ComputePipeline.h"
 #include "Types/Event.h"
 #include "Types/QueryPool.h"
+#include "Types/GPUMemoryPool.h"
 
 
 namespace spt::rdr
@@ -36,25 +37,30 @@ lib::SharedRef<Event> ResourcesManager::CreateEvent(const RendererResourceName& 
 	return lib::MakeShared<Event>(name, definition);
 }
 
-lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition)
 {
-	return lib::MakeShared<Buffer>(name, definition, allocationInfo);
+	return lib::MakeShared<Buffer>(name, definition, allocationDefinition);
 }
 
-lib::SharedRef<rdr::Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance)
+lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance)
 {
 	return lib::MakeShared<Buffer>(name, bufferInstance);
 }
 
-lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
-	return lib::MakeShared<Texture>(name, textureDefinition, allocationInfo);
+	return lib::MakeShared<Texture>(name, textureDefinition, allocationDefinition);
 }
 
-lib::SharedRef<rdr::TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo)
+lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
-	const lib::SharedRef<Texture> texture = CreateTexture(name, textureDefinition, allocationInfo);
+	const lib::SharedRef<Texture> texture = CreateTexture(name, textureDefinition, allocationDefinition);
 	return texture->CreateView(RENDERER_RESOURCE_NAME_FORMATTED("{} View", name.Get().ToString()));
+}
+
+lib::SharedRef<GPUMemoryPool> ResourcesManager::CreateGPUMemoryPool(const RendererResourceName& name, const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
+{
+	return lib::MakeShared<GPUMemoryPool>(name, definition, allocationInfo);
 }
 
 lib::SharedRef<Semaphore> ResourcesManager::CreateRenderSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition)

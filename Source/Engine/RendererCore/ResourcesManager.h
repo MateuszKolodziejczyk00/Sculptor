@@ -30,6 +30,7 @@ struct RHIWindowInitializationInfo;
 struct BLASDefinition;
 struct TLASDefinition;
 struct QueryPoolDefinition;
+struct RHIMemoryPoolDefinition;
 } // spt::rhi
 
 
@@ -45,9 +46,11 @@ namespace spt::rdr
 class RenderContext;
 class Window;
 class Event;
+class AllocationDefinition;
 class Buffer;
 class Texture;
 class TextureView;
+class GPUMemoryPool;
 class Semaphore;
 class CommandBuffer;
 class Shader;
@@ -69,11 +72,13 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<Event>				CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	
-	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition);
 	SPT_NODISCARD static lib::SharedRef<Buffer>				CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
 
-	SPT_NODISCARD static lib::SharedRef<Texture>			CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
-	SPT_NODISCARD static lib::SharedRef<TextureView>		CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const rhi::RHIAllocationInfo& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<Texture>			CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
+	SPT_NODISCARD static lib::SharedRef<TextureView>		CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);
+
+	SPT_NODISCARD static lib::SharedRef<GPUMemoryPool>		CreateGPUMemoryPool(const RendererResourceName& name, const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 
 	SPT_NODISCARD static lib::SharedRef<Semaphore>			CreateRenderSemaphore(const RendererResourceName& name, const rhi::SemaphoreDefinition& definition);
 

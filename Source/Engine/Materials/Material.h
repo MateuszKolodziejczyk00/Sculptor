@@ -2,7 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
-#include "RHICore/RHIBufferTypes.h"
+#include "RHICore/RHIAllocationTypes.h"
 #include "ECSRegistry.h"
 #include "Utility/NamedType.h"
 
@@ -98,7 +98,7 @@ struct MaterialProxyComponent
 		return true;
 	}
 
-	rhi::RHISuballocation materialDataSuballocation;
+	rhi::RHIVirtualAllocation materialDataSuballocation;
 
 	MaterialShadersHash materialShadersHash;
 
