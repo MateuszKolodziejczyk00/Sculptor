@@ -20,17 +20,21 @@ public:
 
 private:
 
+	struct MemoryPoolData
+	{
+		lib::SharedPtr<rdr::GPUMemoryPool> memoryPool;
+
+		Uint64 currentMemoryUsage = 0u;
+		Uint64 maxMemoryUsage     = 0u;
+	};
+
 	RenderGraphResourcesPool();
+
+	MemoryPoolData& GetMemoryPoolData(const rhi::RHIAllocationInfo& allocationInfo);
 
 	void DestroyResources();
 
-	struct PooledTexture
-	{
-		lib::SharedPtr<rdr::Texture> texture;
-		Uint32 unusedFramesNum;
-	};
-
-	lib::DynamicArray<PooledTexture> m_pooledTextures;
+	lib::HashMap<rhi::EMemoryUsage, MemoryPoolData> m_memoryPools;
 };
 
 } // spt::rg

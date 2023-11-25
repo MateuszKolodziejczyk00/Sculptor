@@ -45,7 +45,7 @@ void RHIShaderBindingTable::InitializeRHI(const RHIPipeline& pipeline, const rhi
 	const Uint64 sbtSize = m_rayGenRegion.size + m_closestHitRegion.size + m_missRegion.size;
 
 	const rhi::BufferDefinition sbtBufferDefinition(sbtSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ShaderBindingTable));
-	m_sbtBuffer.InitializeRHI(sbtBufferDefinition, rhi::RHICommitedAllocationDefinition(rhi::EMemoryUsage::CPUToGPU));
+	m_sbtBuffer.InitializeRHI(sbtBufferDefinition, rhi::RHICommittedAllocationDefinition(rhi::EMemoryUsage::CPUToGPU));
 
 	{
 		RHIMappedByteBuffer mappedBuffer(m_sbtBuffer);

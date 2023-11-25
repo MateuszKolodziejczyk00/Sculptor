@@ -8,25 +8,29 @@
 namespace spt::rdr
 {
 
-AllocationDefinition::AllocationDefinition(const CommitedAllocationDef& allocationDef)
+AllocationDefinition::AllocationDefinition()
+	: m_allocationDef(NullAllocationDef{})
+{ }
+
+AllocationDefinition::AllocationDefinition(const CommittedAllocationDef& allocationDef)
 	: m_allocationDef(allocationDef)
 { }
 
 AllocationDefinition::AllocationDefinition(rhi::EMemoryUsage memoryUsage)
-	: AllocationDefinition(CommitedAllocationDef{ memoryUsage })
+	: AllocationDefinition(CommittedAllocationDef{ memoryUsage })
 { }
 
 AllocationDefinition::AllocationDefinition(const rhi::RHIAllocationInfo& allocationInfo)
-	: AllocationDefinition(CommitedAllocationDef{ allocationInfo })
+	: AllocationDefinition(CommittedAllocationDef{ allocationInfo })
 { }
 
 AllocationDefinition::AllocationDefinition(const PlacedAllocationDef& allocationDef)
 	: m_allocationDef(allocationDef)
 { }
 
-Bool AllocationDefinition::IsCommited() const
+Bool AllocationDefinition::IsCommitted() const
 {
-	return std::holds_alternative<CommitedAllocationDef>(m_allocationDef);
+	return std::holds_alternative<CommittedAllocationDef>(m_allocationDef);
 }
 
 Bool AllocationDefinition::IsPlaced() const
@@ -49,9 +53,9 @@ rhi::RHIResourceAllocationDefinition AllocationDefinition::GetRHIAllocationDef()
 									  {
 										  return rhi::RHINullAllocationDefinition();
 									  },
-									  [](const CommitedAllocationDef& def) -> rhi::RHIResourceAllocationDefinition
+									  [](const CommittedAllocationDef& def) -> rhi::RHIResourceAllocationDefinition
 									  {
-										  return rhi::RHICommitedAllocationDefinition(def.allocationInfo);
+										  return rhi::RHICommittedAllocationDefinition(def.allocationInfo);
 									  },
 									  [](const PlacedAllocationDef& def) -> rhi::RHIResourceAllocationDefinition
 									  {
@@ -74,10 +78,10 @@ const PlacedAllocationDef& AllocationDefinition::GetPlacedAllocationDef() const
 	return std::get<PlacedAllocationDef>(m_allocationDef);
 }
 
-const CommitedAllocationDef& AllocationDefinition::GetCommitedAllocationDef() const
+const CommittedAllocationDef& AllocationDefinition::GetCommittedAllocationDef() const
 {
-	SPT_CHECK(IsCommited());
-	return std::get<CommitedAllocationDef>(m_allocationDef);
+	SPT_CHECK(IsCommitted());
+	return std::get<CommittedAllocationDef>(m_allocationDef);
 }
 
 } // spt::rdr

@@ -14,11 +14,13 @@ void RHIGPUMemoryPool::InitializeRHI(const rhi::RHIMemoryPoolDefinition& definit
 
 	// We don't need to set memory type mask - Vma will take care of it
 	VkMemoryRequirements memoryRequirements{};
-	memoryRequirements.alignment = definition.alignment;
-	memoryRequirements.size = definition.size;
+	memoryRequirements.alignment      = definition.alignment;
+	memoryRequirements.size           = definition.size;
+	memoryRequirements.memoryTypeBits = ~0u;
 
 	const VmaAllocationCreateInfo vmaAllocationInfo = memory_utils::CreateAllocationInfo(allocationInfo);
-	SPT_VK_CHECK(vmaAllocateMemory(VulkanRHI::GetAllocatorHandle(), &memoryRequirements, &vmaAllocationInfo, OUT & m_allocation, nullptr));
+	const VkResult allocResult = vmaAllocateMemory(VulkanRHI::GetAllocatorHandle(), &memoryRequirements, &vmaAllocationInfo, OUT & m_allocation, nullptr);
+	SPT_CHECK_MSG(allocResult == VK_SUCCESS, "Failed to allocate memory for GPU memory pool");
 
 	m_virtualAllocator.InitializeRHI(definition.size, definition.allocatorFlags);
 
@@ -48,6 +50,11 @@ rhi::RHIVirtualAllocation RHIGPUMemoryPool::Allocate(const rhi::VirtualAllocatio
 void RHIGPUMemoryPool::Free(const rhi::RHIVirtualAllocation& allocation)
 {
 	m_virtualAllocator.Free(allocation);
+}
+
+Uint64 RHIGPUMemoryPool::GetSize() const
+{
+	return m_virtualAllocator.GetSize();
 }
 
 void RHIGPUMemoryPool::SetName(const lib::HashedString& name)

@@ -377,12 +377,18 @@ void RHITexture::ReleaseRHI()
 
 	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
 	{
-		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
-		vkDestroyImage(VulkanRHI::GetDeviceHandle(), m_imageHandle, VulkanRHI::GetAllocationCallbacks());
-
-		if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
 		{
-			const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommitedAllocation>(m_allocationHandle));
+			SPT_PROFILER_SCOPE("Vulkan Release Image");
+
+			m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
+			vkDestroyImage(VulkanRHI::GetDeviceHandle(), m_imageHandle, VulkanRHI::GetAllocationCallbacks());
+		}
+
+		if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
+		{
+			SPT_PROFILER_SCOPE("Release committed allocation");
+
+			const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
 			SPT_CHECK(!!allocation);
 			vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocation);
 		}
@@ -403,6 +409,16 @@ Bool RHITexture::IsValid() const
 Bool RHITexture::HasBoundMemory() const
 {
 	return !std::holds_alternative<rhi::RHINullAllocation>(m_allocationHandle);
+}
+
+Bool RHITexture::IsPlacedAllocation() const
+{
+	return std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle);
+}
+
+Bool RHITexture::IsCommittedAllocation() const
+{
+	return std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle);
 }
 
 rhi::RHIMemoryRequirements RHITexture::GetMemoryRequirements() const
@@ -458,9 +474,9 @@ void RHITexture::SetName(const lib::HashedString& name)
 	m_name.Set(name, reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
 
 #if RHI_DEBUG
-	if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
+	if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 	{
-		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommitedAllocation>(m_allocationHandle));
+		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
 		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, name.GetData());
 	}
 #endif // RHI_DEBUG
@@ -498,6 +514,8 @@ void RHITexture::PostImageInitialized()
 
 void RHITexture::PreImageReleased()
 {
+	SPT_PROFILER_FUNCTION();
+
 	// In case of images not owned by rhi, it's user responsibility to unregister image
 	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
 	{
@@ -522,9 +540,9 @@ Bool RHITexture::BindMemory(const rhi::RHIResourceAllocationDefinition& allocati
 										{
 											return DoPlacedAllocation(placedAllocation);
 										},
-										[&](const rhi::RHICommitedAllocationDefinition& commitedAllocation) -> rhi::RHIResourceAllocationHandle
+										[&](const rhi::RHICommittedAllocationDefinition& committedAllocation) -> rhi::RHIResourceAllocationHandle
 										{
-											return DoCommitedAllocation(commitedAllocation);
+											return DoCommittedAllocation(committedAllocation);
 										}
 									},
 									allocationDefinition);
@@ -578,18 +596,18 @@ rhi::RHIResourceAllocationHandle RHITexture::DoPlacedAllocation(const rhi::RHIPl
 
 	vmaBindImageMemory2(VulkanRHI::GetAllocatorHandle(), poolMemoryAllocation, suballocation.GetOffset(), m_imageHandle, nullptr);
 
-	return rhi::RHIPlacedAllocation(rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(poolMemoryAllocation)), suballocation);
+	return rhi::RHIPlacedAllocation(rhi::RHICommittedAllocation(reinterpret_cast<Uint64>(poolMemoryAllocation)), suballocation);
 }
 
-rhi::RHIResourceAllocationHandle RHITexture::DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation)
+rhi::RHIResourceAllocationHandle RHITexture::DoCommittedAllocation(const rhi::RHICommittedAllocationDefinition& committedAllocation)
 {
 	SPT_PROFILER_FUNCTION();
 
 	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(commitedAllocation.allocationInfo.allocationFlags);
-	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(commitedAllocation.allocationInfo.memoryUsage);
+	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(committedAllocation.allocationInfo.allocationFlags);
+	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(committedAllocation.allocationInfo.memoryUsage);
 	SPT_VK_CHECK(vmaAllocateMemoryForImage(VulkanRHI::GetAllocatorHandle(), m_imageHandle, &allocationInfo, OUT &allocation, nullptr));
 
 	SPT_CHECK(allocation != VK_NULL_HANDLE);
@@ -603,7 +621,7 @@ rhi::RHIResourceAllocationHandle RHITexture::DoCommitedAllocation(const rhi::RHI
 	}
 #endif // RHI_DEBUG
 
-	return rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(allocation));
+	return rhi::RHICommittedAllocation(reinterpret_cast<Uint64>(allocation));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

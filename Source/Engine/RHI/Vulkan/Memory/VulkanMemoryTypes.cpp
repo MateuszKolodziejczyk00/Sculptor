@@ -94,7 +94,7 @@ std::optional<rhi::RHIAllocationInfo> GetAllocationInfo(const rhi::RHIResourceAl
 						  {
 						  	return std::nullopt;
 						  },
-						  [](const rhi::RHICommitedAllocationDefinition& def) -> std::optional<rhi::RHIAllocationInfo>
+						  [](const rhi::RHICommittedAllocationDefinition& def) -> std::optional<rhi::RHIAllocationInfo>
 						  {
 						  	return def.allocationInfo;
 						  },
@@ -106,7 +106,7 @@ std::optional<rhi::RHIAllocationInfo> GetAllocationInfo(const rhi::RHIResourceAl
 					  allocationDefinition);
 }
 
-VmaAllocation GetVMAAllocation(const rhi::RHICommitedAllocation& allocation)
+VmaAllocation GetVMAAllocation(const rhi::RHICommittedAllocation& allocation)
 {
 	return reinterpret_cast<VmaAllocation>(allocation.GetHandle());
 }

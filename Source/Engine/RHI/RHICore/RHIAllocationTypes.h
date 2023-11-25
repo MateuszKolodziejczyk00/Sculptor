@@ -137,15 +137,15 @@ struct RHIMemoryPoolDefinition
 struct RHINullAllocation { };
 
 
-class RHICommitedAllocation
+class RHICommittedAllocation
 {
 public:
 
-	RHICommitedAllocation()
+	RHICommittedAllocation()
 		: m_handle(0)
 	{ }
 
-	explicit RHICommitedAllocation(Uint64 handle)
+	explicit RHICommittedAllocation(Uint64 handle)
 		: m_handle(handle)
 	{ }
 
@@ -176,7 +176,7 @@ public:
 
 	RHIPlacedAllocation() = default;
 
-	RHIPlacedAllocation(const RHICommitedAllocation& owningAllocation, const RHIVirtualAllocation& suballocation)
+	RHIPlacedAllocation(const RHICommittedAllocation& owningAllocation, const RHIVirtualAllocation& suballocation)
 		: m_owningAllocation(owningAllocation)
 		, m_suballocation(suballocation)
 	{ }
@@ -186,7 +186,7 @@ public:
 		return m_owningAllocation.IsValid() && m_suballocation.IsValid();
 	}
 
-	const RHICommitedAllocation& GetOwningAllocation() const
+	const RHICommittedAllocation& GetOwningAllocation() const
 	{
 		return m_owningAllocation;
 	}
@@ -204,8 +204,8 @@ public:
 
 private:
 
-	RHICommitedAllocation m_owningAllocation;
-	RHIVirtualAllocation  m_suballocation;
+	RHICommittedAllocation m_owningAllocation;
+	RHIVirtualAllocation   m_suballocation;
 };
 
 
@@ -217,21 +217,21 @@ public:
 };
 
 
-using RHIResourceAllocationHandle = std::variant<RHINullAllocation, RHICommitedAllocation, RHIPlacedAllocation, RHIExternalAllocation>;
+using RHIResourceAllocationHandle = std::variant<RHINullAllocation, RHICommittedAllocation, RHIPlacedAllocation, RHIExternalAllocation>;
 
 
 struct RHINullAllocationDefinition { };
 
 
-struct RHICommitedAllocationDefinition
+struct RHICommittedAllocationDefinition
 {
-	RHICommitedAllocationDefinition() = default;
+	RHICommittedAllocationDefinition() = default;
 
-	explicit RHICommitedAllocationDefinition(RHIAllocationInfo inAllocationInfo)
+	explicit RHICommittedAllocationDefinition(RHIAllocationInfo inAllocationInfo)
 		: allocationInfo(inAllocationInfo)
 	{ }
 
-	RHICommitedAllocationDefinition(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
+	RHICommittedAllocationDefinition(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
 		: allocationInfo(inMemoryUsage, inAllocationFlags)
 	{ }
 
@@ -246,7 +246,7 @@ struct RHIPlacedAllocationDefinition
 };
 
 
-using RHIResourceAllocationDefinition = std::variant<RHINullAllocationDefinition, RHICommitedAllocationDefinition, RHIPlacedAllocationDefinition>;
+using RHIResourceAllocationDefinition = std::variant<RHINullAllocationDefinition, RHICommittedAllocationDefinition, RHIPlacedAllocationDefinition>;
 
 
 struct RHIMemoryRequirements

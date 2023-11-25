@@ -22,7 +22,7 @@ VmaAllocationCreateInfo         CreateAllocationInfo(const rhi::RHIAllocationInf
 
 std::optional<rhi::RHIAllocationInfo> GetAllocationInfo(const rhi::RHIResourceAllocationDefinition& allocationDefinition);
 
-VmaAllocation                         GetVMAAllocation(const rhi::RHICommitedAllocation& allocation);
+VmaAllocation                         GetVMAAllocation(const rhi::RHICommittedAllocation& allocation);
 VmaAllocation                         GetVMAAllocation(const rhi::RHIPlacedAllocation& allocation);
 VmaAllocation                         GetVMAAllocation(const rhi::RHIResourceAllocationHandle& allocation);
 

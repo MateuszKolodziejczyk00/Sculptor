@@ -31,6 +31,8 @@ public:
 	rhi::RHIVirtualAllocation Allocate(const rhi::VirtualAllocationDefinition& definition);
 	void Free(const rhi::RHIVirtualAllocation& allocation);
 
+	Uint64 GetSize() const;
+
 	void                     SetName(const lib::HashedString& name);
 	const lib::HashedString& GetName() const;
 

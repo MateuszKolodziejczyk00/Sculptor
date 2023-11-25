@@ -104,7 +104,7 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 	if (!accelerationStructureBuffer.IsValid())
 	{
 		const rhi::BufferDefinition asBufferDef(accelerationStructureSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::AccelerationStructureStorage));
-		accelerationStructureBuffer.InitializeRHI(asBufferDef, rhi::RHICommitedAllocationDefinition(rhi::EMemoryUsage::GPUOnly));
+		accelerationStructureBuffer.InitializeRHI(asBufferDef, rhi::RHICommittedAllocationDefinition(rhi::EMemoryUsage::GPUOnly));
 
 		accelerationStructureBufferOffset = 0;
 	}
@@ -194,7 +194,7 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	m_primitivesCount = static_cast<Uint32>(instancesNum);
 
 	const rhi::BufferDefinition instancesBufferDef(instancesBufferSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly));
-	instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::RHICommitedAllocationDefinition(rhi::EMemoryUsage::CPUToGPU));
+	instancesBuildBuffer.InitializeRHI(instancesBufferDef, rhi::RHICommittedAllocationDefinition(rhi::EMemoryUsage::CPUToGPU));
 	
 	// Init buffer of VkAccelerationStructureInstanceKHR from TLASInstanceDefinitions
 	{
@@ -227,7 +227,7 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 	if (!accelerationStructureBuffer.IsValid())
 	{
 		const rhi::BufferDefinition tlasBufferDef(accelerationStructureSize, lib::Flags(rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::AccelerationStructureStorage));
-		accelerationStructureBuffer.InitializeRHI(tlasBufferDef, rhi::RHICommitedAllocationDefinition(rhi::EMemoryUsage::GPUOnly));
+		accelerationStructureBuffer.InitializeRHI(tlasBufferDef, rhi::RHICommittedAllocationDefinition(rhi::EMemoryUsage::GPUOnly));
 	}
 
 	SPT_CHECK(accelerationStructureSize + accelerationStructureBufferOffset <= accelerationStructureBuffer.GetSize());

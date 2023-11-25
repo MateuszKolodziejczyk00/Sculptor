@@ -163,10 +163,10 @@ void RHIBuffer::ReleaseRHI()
 
 	VmaAllocation allocationToRelease = VK_NULL_HANDLE;
 
-	if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
+	if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 	{
-		const rhi::RHICommitedAllocation& commitedAllocation = std::get<rhi::RHICommitedAllocation>(m_allocationHandle);
-		allocationToRelease = memory_utils::GetVMAAllocation(commitedAllocation);
+		const rhi::RHICommittedAllocation& committedAllocation = std::get<rhi::RHICommittedAllocation>(m_allocationHandle);
+		allocationToRelease = memory_utils::GetVMAAllocation(committedAllocation);
 	}
 
 	if (allocationToRelease)
@@ -310,9 +310,9 @@ void RHIBuffer::SetName(const lib::HashedString& name)
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
 	
 #if RHI_DEBUG
-	if (std::holds_alternative<rhi::RHICommitedAllocation>(m_allocationHandle))
+	if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 	{
-		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommitedAllocation>(m_allocationHandle));
+		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
 		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, name.GetData());
 	}
 #endif // RHI_DEBUG
@@ -345,9 +345,9 @@ Bool RHIBuffer::BindMemory(const rhi::RHIResourceAllocationDefinition& allocatio
 										{
 											return DoPlacedAllocation(placedAllocation);
 										},
-										[&](const rhi::RHICommitedAllocationDefinition& commitedAllocation) -> rhi::RHIResourceAllocationHandle
+										[&](const rhi::RHICommittedAllocationDefinition& committedAllocation) -> rhi::RHIResourceAllocationHandle
 										{
-											return DoCommitedAllocation(commitedAllocation);
+											return DoCommittedAllocation(committedAllocation);
 										}
 									},
 									allocationDefinition);
@@ -403,18 +403,18 @@ rhi::RHIResourceAllocationHandle RHIBuffer::DoPlacedAllocation(const rhi::RHIPla
 
 	vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), poolMemoryAllocation, suballocation.GetOffset(), m_bufferHandle, nullptr);
 
-	return rhi::RHIPlacedAllocation(rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(poolMemoryAllocation)), suballocation);
+	return rhi::RHIPlacedAllocation(rhi::RHICommittedAllocation(reinterpret_cast<Uint64>(poolMemoryAllocation)), suballocation);
 }
 
-rhi::RHIResourceAllocationHandle RHIBuffer::DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation)
+rhi::RHIResourceAllocationHandle RHIBuffer::DoCommittedAllocation(const rhi::RHICommittedAllocationDefinition& committedAllocation)
 {
 	SPT_PROFILER_FUNCTION();
 
 	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(commitedAllocation.allocationInfo.allocationFlags);
-	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(commitedAllocation.allocationInfo.memoryUsage);
+	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(committedAllocation.allocationInfo.allocationFlags);
+	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(committedAllocation.allocationInfo.memoryUsage);
 	SPT_VK_CHECK(vmaAllocateMemoryForBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, &allocationInfo, OUT &allocation, nullptr));
 
 	SPT_CHECK(allocation != VK_NULL_HANDLE);
@@ -428,7 +428,7 @@ rhi::RHIResourceAllocationHandle RHIBuffer::DoCommitedAllocation(const rhi::RHIC
 	}
 #endif // RHI_DEBUG
 
-	return rhi::RHICommitedAllocation(reinterpret_cast<Uint64>(allocation));
+	return rhi::RHICommittedAllocation(reinterpret_cast<Uint64>(allocation));
 }
 
 void RHIBuffer::PreUnbindMemory(VmaAllocation allocation)

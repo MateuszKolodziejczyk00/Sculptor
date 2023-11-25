@@ -70,7 +70,7 @@ RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
 struct NullAllocationDef { };
 
 
-struct CommitedAllocationDef
+struct CommittedAllocationDef
 {
 	rhi::RHIAllocationInfo allocationInfo;
 };
@@ -78,6 +78,11 @@ struct CommitedAllocationDef
 
 struct PlacedAllocationDef
 {
+	explicit PlacedAllocationDef(lib::SharedRef<GPUMemoryPool> memoryPool, rhi::EVirtualAllocationFlags allocationFlags = rhi::EVirtualAllocationFlags::None)
+		: memoryPool(memoryPool)
+		, allocationFlags(allocationFlags)
+	{ }
+
 	lib::SharedRef<GPUMemoryPool> memoryPool;
 	rhi::EVirtualAllocationFlags  allocationFlags;
 };
@@ -87,19 +92,26 @@ class RENDERER_CORE_API AllocationDefinition
 {
 public:
 
-	using AllocationDefinitionVariant = std::variant<NullAllocationDef, CommitedAllocationDef, PlacedAllocationDef>;
+	using AllocationDefinitionVariant = std::variant<NullAllocationDef, CommittedAllocationDef, PlacedAllocationDef>;
 
-	AllocationDefinition(const CommitedAllocationDef& allocationDef);
+	AllocationDefinition();
+	AllocationDefinition(const CommittedAllocationDef& allocationDef);
 	AllocationDefinition(rhi::EMemoryUsage memoryUsage);
 	AllocationDefinition(const rhi::RHIAllocationInfo& allocationInfo);
 	AllocationDefinition(const PlacedAllocationDef& allocationDef);
 
-	Bool IsCommited() const;
+	Bool IsCommitted() const;
 	Bool IsPlaced()   const;
 	Bool IsNull()     const;
 
-	const CommitedAllocationDef& GetCommitedAllocationDef() const;
-	const PlacedAllocationDef&   GetPlacedAllocationDef()   const;
+	template<typename TAllocationDef>
+	void SetAllocationDef(TAllocationDef allocationDef)
+	{
+		m_allocationDef = std::move(allocationDef);
+	}
+
+	const CommittedAllocationDef& GetCommittedAllocationDef() const;
+	const PlacedAllocationDef&    GetPlacedAllocationDef()   const;
 
 	const AllocationDefinitionVariant& GetAllocationDef() const;
 

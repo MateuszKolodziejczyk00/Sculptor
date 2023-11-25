@@ -124,7 +124,7 @@ private:
 	rhi::RHIResourceAllocationHandle ReleasePlacedAllocation();
 
 	rhi::RHIResourceAllocationHandle DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef);
-	rhi::RHIResourceAllocationHandle DoCommitedAllocation(const rhi::RHICommitedAllocationDefinition& commitedAllocation);
+	rhi::RHIResourceAllocationHandle DoCommittedAllocation(const rhi::RHICommittedAllocationDefinition& committedAllocation);
 
 	void          PreUnbindMemory(VmaAllocation allocation);
 	VmaAllocation GetAllocation() const;
