@@ -92,9 +92,8 @@ void DescriptorPoolSet::InitializeDescriptorPool(DescriptorPool& pool)
 {
 	SPT_PROFILER_FUNCTION();
 
-	static constexpr lib::StaticArray<VkDescriptorPoolSize, 9> poolSizes =
+	lib::DynamicArray<VkDescriptorPoolSize> poolSizes =
 	{
-		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER, 256 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256 },
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },
@@ -105,7 +104,12 @@ void DescriptorPoolSet::InitializeDescriptorPool(DescriptorPool& pool)
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1024 }
 	};
 
-	constexpr Uint32 maxSetsNum = std::accumulate(std::cbegin(poolSizes), std::cend(poolSizes), 0,
+	if (VulkanRHI::IsRayTracingEnabled())
+	{
+		poolSizes.emplace_back(VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 });
+	}
+
+	const Uint32 maxSetsNum = std::accumulate(std::cbegin(poolSizes), std::cend(poolSizes), 0,
 												  [](Uint32 accumulatedCount, const VkDescriptorPoolSize& poolSize)
 												  {
 													  return accumulatedCount + poolSize.descriptorCount;

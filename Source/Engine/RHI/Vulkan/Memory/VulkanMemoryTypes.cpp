@@ -191,7 +191,12 @@ rhi::RHIVirtualAllocation VulkanVirtualAllocator::Allocate(const rhi::VirtualAll
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(definition.size > 0 && definition.size < GetSize());
+	SPT_CHECK(definition.size > 0u);
+
+	if (definition.size > GetSize())
+	{
+		return rhi::RHIVirtualAllocation{};
+	}
 
 	// alignment in VMA must be power of 2
 	const Uint64 properAlignment      = math::Utils::IsPowerOf2(definition.alignment) ? definition.alignment : math::Utils::RoundDownToPowerOf2(definition.alignment);
