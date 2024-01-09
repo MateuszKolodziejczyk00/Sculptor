@@ -5,7 +5,7 @@
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(IndirectInScatteringDS, 1)]]
-[[descriptor_set(DDGIDS, 2)]]
+[[descriptor_set(DDGISceneDS, 2)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -64,8 +64,8 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
 
             DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(fogFroxelWorldLocation, direction, toViewDir);
             ddgiSampleParams.sampleLocationBiasMultiplier = 0.f;
-            ddgiSampleParams.minVisibility                = 0.7f;
-            const float3 indirect = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams);
+            ddgiSampleParams.minVisibility                = 0.9f;
+            const float3 indirect = DDGISampleIlluminance(ddgiSampleParams);
 
             float2 phaseFunctionLUTUV;
             phaseFunctionLUTUV.x = dot(toViewDir, direction) * 0.5f + 0.5f;

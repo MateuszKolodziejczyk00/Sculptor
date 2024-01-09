@@ -134,6 +134,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
 
+	rdr::Renderer::UpdatePersistentDescriptorSets();
+
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
 	const HDRResolvePassData& mainViewRenderingResult = mainViewSpec.GetData().Get<HDRResolvePassData>();

@@ -1,6 +1,9 @@
 #ifndef DDGI_TYPES_HLSLI
 #define DDGI_TYPES_HLSLI
 
+[[shader_struct(DDGIVolumeGPUParams)]]
+
+
 float3 GetProbeRayDirection(in uint rayIdx, in uint raysNum)
 {
     return FibbonaciSphereDistribution(rayIdx, raysNum);
@@ -30,95 +33,96 @@ uint3 ComputeUpdatedProbeCoords(in uint probeIdx, in uint3 probesToUpdateCoords,
 }
 
 
-float3 GetProbeWorldLocation(in const DDGIGPUParams ddgiParams, in uint3 probedCoords)
+float3 GetProbeWorldLocation(in const DDGIVolumeGPUParams volumeParams, in uint3 probedCoords)
 {
-    return ddgiParams.probesOriginWorldLocation + float3(probedCoords) * ddgiParams.probesSpacing;
+    return volumeParams.probesOriginWorldLocation + float3(probedCoords) * volumeParams.probesSpacing;
 }
 
 
-uint3 ComputeProbeWrappedCoords(in const DDGIGPUParams ddgiParams, in uint3 probeCoords)
+uint3 ComputeProbeWrappedCoords(in const DDGIVolumeGPUParams volumeParams, in uint3 probeCoords)
 {
-    const int3 wrappedCoords = probeCoords - ddgiParams.probesWrapCoords;
+    const int3 wrappedCoords = probeCoords + volumeParams.probesWrapCoords;
 
-    // add 1 because we need  '<' instead of '<='
-    const uint3 wrapDelta = (wrappedCoords < 0) * ddgiParams.probesVolumeResolution;
+    const int3 wrapDelta = (wrappedCoords >= volumeParams.probesVolumeResolution) * volumeParams.probesVolumeResolution;
 
-    return wrappedCoords + wrapDelta;
+    return wrappedCoords - wrapDelta;
 }
 
 
-uint3 GetProbeCoordsAtWorldLocation(in const DDGIGPUParams ddgiParams, in float3 worldLocation)
+uint3 GetProbeCoordsAtWorldLocation(in const DDGIVolumeGPUParams volumeParams, in float3 worldLocation)
 {
-    return (worldLocation - ddgiParams.probesOriginWorldLocation) * ddgiParams.rcpProbesSpacing;
+    return (worldLocation - volumeParams.probesOriginWorldLocation) * volumeParams.rcpProbesSpacing;
 }
 
 
-uint3 OffsetProbe(in const DDGIGPUParams ddgiParams, in uint3 probeCoords, in int3 probeOffset)
+uint3 OffsetProbe(in const DDGIVolumeGPUParams volumeParams, in uint3 probeCoords, in int3 probeOffset)
 {
     const int3 newCoords = int3(probeCoords) + probeOffset;
-    return clamp(newCoords, 0, int3(ddgiParams.probesVolumeResolution) - 1);
+    return clamp(newCoords, 0, int3(volumeParams.probesVolumeResolution) - 1);
 }
 
 
-uint2 ComputeProbeDataCoords(in const DDGIGPUParams ddgiParams, in uint3 probeWrappedCoords)
+uint2 ComputeProbeDataCoords(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-    const uint x = probeWrappedCoords.x + probeWrappedCoords.z * ddgiParams.probesVolumeResolution.x;
+    const uint x = probeWrappedCoords.x + probeWrappedCoords.z * volumeParams.probesVolumeResolution.x;
     const uint y = probeWrappedCoords.y;
     return uint2(x, y);
 }
 
 
-uint2 ComputeProbeIlluminanceDataOffset(in const DDGIGPUParams ddgiParams, in uint3 probeWrappedCoords)
+uint2 ComputeProbeIlluminanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-    const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
-    return probeDataCoords * ddgiParams.probeIlluminanceDataWithBorderRes;
+    const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+    return probeDataCoords * volumeParams.probeIlluminanceDataWithBorderRes;
 }
 
 
-uint2 ComputeProbeHitDistanceDataOffset(in const DDGIGPUParams ddgiParams, in uint3 probeWrappedCoords)
+uint2 ComputeProbeHitDistanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-    const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
-    return probeDataCoords * ddgiParams.probeHitDistanceDataWithBorderRes;
+    const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+    return probeDataCoords * volumeParams.probeHitDistanceDataWithBorderRes;
 }
 
 
-float3 SampleProbeIlluminance(in const DDGIGPUParams ddgiParams, Texture2D<float3> probesIlluminanceTexture, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
+template<typename TSampledDataType>
+float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, Texture2D<TSampledDataType> probesIlluminanceTexture, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-    const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
+    const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
     
     // Probe data begin UV
-    float2 uv = probeDataCoords * ddgiParams.probesIlluminanceTextureUVDeltaPerProbe;
+    float2 uv = probeDataCoords * volumeParams.probesIlluminanceTextureUVDeltaPerProbe;
     
     // Add Border
-    uv += ddgiParams.probesIlluminanceTexturePixelSize;
+    uv += volumeParams.probesIlluminanceTexturePixelSize;
 
     // add octahedron UV
-    uv += octahedronUV * ddgiParams.probesIlluminanceTextureUVPerProbeNoBorder;
+    uv += octahedronUV * volumeParams.probesIlluminanceTextureUVPerProbeNoBorder;
 
-    return probesIlluminanceTexture.SampleLevel(illuminanceSampler, uv, 0);
+    return probesIlluminanceTexture.SampleLevel(illuminanceSampler, uv, 0).rgb;
 }
 
 
-float2 SampleProbeHitDistance(in const DDGIGPUParams ddgiParams, Texture2D<float2> probesHitDistanceTexture, SamplerState distancesSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
+template<typename TSampledDataType>
+float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, Texture2D<TSampledDataType> probesHitDistanceTexture, SamplerState distancesSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-    const uint2 probeDataCoords = ComputeProbeDataCoords(ddgiParams, probeWrappedCoords);
+    const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
     
     // Probe data begin UV
-    float2 uv = probeDataCoords * ddgiParams.probesHitDistanceUVDeltaPerProbe;
+    float2 uv = probeDataCoords * volumeParams.probesHitDistanceUVDeltaPerProbe;
     
     // Add Border
-    uv += ddgiParams.probesHitDistanceTexturePixelSize;
+    uv += volumeParams.probesHitDistanceTexturePixelSize;
 
     // add octahedron UV
-    uv += octahedronUV * ddgiParams.probesHitDistanceTextureUVPerProbeNoBorder;
+    uv += octahedronUV * volumeParams.probesHitDistanceTextureUVPerProbeNoBorder;
     
-    return probesHitDistanceTexture.SampleLevel(distancesSampler, uv, 0);
+    return probesHitDistanceTexture.SampleLevel(distancesSampler, uv, 0).xy;
 }
 
 
-bool IsInsideDDGIVolume(in const DDGIGPUParams ddgiParams, in float3 worldLocation)
+bool IsInsideDDGIVolume(in const DDGIVolumeGPUParams volumeParams, in float3 worldLocation)
 {
-    return all(worldLocation >= ddgiParams.probesOriginWorldLocation - ddgiParams.probesSpacing) && all(worldLocation <= ddgiParams.probesEndWorldLocation + ddgiParams.probesSpacing);
+    return all(worldLocation >= volumeParams.probesOriginWorldLocation) && all(worldLocation <= volumeParams.probesEndWorldLocation);
 }
 
 
@@ -148,45 +152,72 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
 }
 
 
-float3 DDGIGetSampleLocation(in const DDGIGPUParams ddgiParams, in DDGISampleParams sampleParams)
+float3 DDGIGetSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
 {
-    const float3 biasVector = (sampleParams.surfaceNormal * 0.3f + sampleParams.viewNormal * 0.7f) * 0.75f * ddgiParams.probesSpacing * 0.75f * sampleParams.sampleLocationBiasMultiplier;
+    const float3 biasVector = (sampleParams.surfaceNormal * 0.2f + sampleParams.viewNormal * 0.8f) * 0.75f * volumeParams.probesSpacing * 0.2f * sampleParams.sampleLocationBiasMultiplier;
     return sampleParams.worldLocation + biasVector;
 }
 
-
-float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
-                           in Texture2D<float3> probesIlluminanceTexture,
-                           in SamplerState illuminanceSampler,
-                           in Texture2D<float2> probesHitDistanceTexture,
-                           in SamplerState distancesSampler,
-                           in DDGISampleParams sampleParams)
+#ifdef DS_DDGISceneDS
+uint GetDDGIVolumeIdx(in float3 location)
 {
-    if(!IsInsideDDGIVolume(ddgiParams, sampleParams.worldLocation))
+    // Lod 0
+    {
+        const DDGIVolumeGPUParams lod0Volume = u_ddgiVolumes[u_ddgiLOD0.lod0VolumeIdx];
+        if (IsInsideDDGIVolume(lod0Volume, location))
+        {
+            return u_ddgiLOD0.lod0VolumeIdx;
+        }
+    }
+
+    // Lod 1
+    {
+        if(all(location >= u_ddgiLOD1.volumesAABBMin) && all(location <= u_ddgiLOD1.volumesAABBMax))
+        {
+            const int2 coords = clamp(int2((location.xy - u_ddgiLOD1.volumesAABBMin.xy) * u_ddgiLOD1.rcpSingleVolumeSize.xy), 0, 2);
+            const int coordIdx = coords.x + coords.y * 3;
+            return u_ddgiLOD1.volumeIndices[coordIdx].x;
+        }
+    }
+
+    return IDX_NONE_32;
+}
+
+
+float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
+{
+    const uint volumeIdx = GetDDGIVolumeIdx(sampleParams.worldLocation);
+
+    if(volumeIdx == IDX_NONE_32)
     {
         return float3(0, 0, 0);
     }
+
+    const DDGIVolumeGPUParams volumeParams = u_ddgiVolumes[volumeIdx];
+
+    const Texture2D<float4> probesIlluminanceTexture = u_probesTextures[volumeParams.illuminanceTextureIdx];
+    const Texture2D<float4> probesHitDistanceTexture = u_probesTextures[volumeParams.hitDistanceTextureIdx];
     
-    const float3 biasedWorldLocation = DDGIGetSampleLocation(ddgiParams, sampleParams);
+    const float3 biasedWorldLocation = DDGIGetSampleLocation(volumeParams, sampleParams);
 
-    const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(ddgiParams, biasedWorldLocation);
-    const float3 baseProbeWorldLocation = GetProbeWorldLocation(ddgiParams, baseProbeCoords);
+    const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(volumeParams, biasedWorldLocation);
+    const float3 baseProbeWorldLocation = GetProbeWorldLocation(volumeParams, baseProbeCoords);
 
-    const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * ddgiParams.rcpProbesSpacing);
+    const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * volumeParams.rcpProbesSpacing);
 
     float3 luminanceSum = 0.f;
     float weightSum = 0.f;
 
-    const float rcpMaxVisibility = rcp(1.f / sampleParams.minVisibility);
+    const float rcpMaxVisibility = rcp(1.f - sampleParams.minVisibility);
     
     for (int i = 0; i < 8; ++i)
     {
         const int3 probeOffset = int3(i, i >> 1, i >> 2) & int3(1, 1, 1);
-        const uint3 probeCoords = OffsetProbe(ddgiParams, baseProbeCoords, probeOffset);
+        const uint3 probeCoords = OffsetProbe(volumeParams, baseProbeCoords, probeOffset);
 
-        const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(ddgiParams, probeCoords);
+        const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(volumeParams, probeCoords);
 
-        const float3 probeWorldLocation = GetProbeWorldLocation(ddgiParams, probeCoords);
+        const float3 probeWorldLocation = GetProbeWorldLocation(volumeParams, probeCoords);
 
         const float3 trilinear = max(lerp(1.f - baseProbeDistAlpha, baseProbeDistAlpha, probeOffset), 0.001f);
         const float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
@@ -195,7 +226,7 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
         const float3 dirToProbe = normalize(probeWorldLocation - sampleParams.worldLocation);
 
         const float probeDirDotNormal = saturate(dot(dirToProbe, sampleParams.surfaceNormal) * 0.5f + 0.5f);
-        weight *= Pow2(probeDirDotNormal);
+        weight *= Pow2(probeDirDotNormal) + 0.2f;
         
         float3 probeToBiasedPointDir = biasedWorldLocation - probeWorldLocation;
         const float distToBiasedPoint = length(probeToBiasedPointDir);
@@ -203,7 +234,7 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
 
         const float2 hitDistOctCoords = GetProbeOctCoords(probeToBiasedPointDir);
         
-        const float2 hitDistances = SampleProbeHitDistance(ddgiParams, probesHitDistanceTexture, distancesSampler, probeWrappedCoords, hitDistOctCoords);
+        const float2 hitDistances = SampleProbeHitDistance(volumeParams, probesHitDistanceTexture, u_probesDataSampler, probeWrappedCoords, hitDistOctCoords);
 
         if (hitDistances.x < 0.f)
         {
@@ -217,7 +248,7 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
             const float distDiff = distToBiasedPoint - hitDistances.x;
             float chebyshevWeight = (variance / (variance + Pow2(distDiff)));
 
-            chebyshevWeight = max(Pow3(chebyshevWeight) - 0.2f, 0.00f);
+            chebyshevWeight = max(Pow3(chebyshevWeight), 0.00f);
 
             chebyshevWeight = saturate(chebyshevWeight - sampleParams.minVisibility) * rcpMaxVisibility;
 
@@ -235,9 +266,9 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
         
         const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
-        float3 luminance = SampleProbeIlluminance(ddgiParams, probesIlluminanceTexture, illuminanceSampler, probeWrappedCoords, luminanceOctCoords);
+        float3 luminance = SampleProbeIlluminance(volumeParams, probesIlluminanceTexture, u_probesDataSampler, probeWrappedCoords, luminanceOctCoords);
 
-        luminance = pow(luminance, ddgiParams.probeIlluminanceEncodingGamma * 0.5f);
+        luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
 
         luminanceSum += luminance * weight;
         weightSum += weight;
@@ -251,21 +282,26 @@ float3 DDGISampleLuminance(in const DDGIGPUParams ddgiParams,
 }
 
 
-float3 DDGISampleIlluminance(in const DDGIGPUParams ddgiParams,
-                             in Texture2D<float3> probesIlluminanceTexture,
-                             in SamplerState illuminanceSampler,
-                             in Texture2D<float2> probesHitDistanceTexture,
-                             in SamplerState distancesSampler,
-                             in DDGISampleParams sampleParams)
+float3 DDGISampleIlluminance(in DDGISampleParams sampleParams)
 {
-    const float3 luminance = DDGISampleLuminance(ddgiParams,
-                                                 probesIlluminanceTexture,
-                                                 illuminanceSampler,
-                                                 probesHitDistanceTexture,
-                                                 distancesSampler,
-                                                 sampleParams);
+    const float3 luminance = DDGISampleLuminance(sampleParams);
 
     return luminance * 2.f * PI; // multiply by integration domain area
 }
+
+
+float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
+{
+    const Texture2D<float4> probesIlluminanceTexture = u_probesTextures[volumeParams.illuminanceTextureIdx];
+    return SampleProbeIlluminance(volumeParams, probesIlluminanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+}
+
+
+float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
+{
+    const Texture2D<float4> probesHitDistanceTexture = u_probesTextures[volumeParams.hitDistanceTextureIdx];
+    return SampleProbeHitDistance(volumeParams, probesHitDistanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+}
+#endif // DS_DDGISceneDS
 
 #endif // DDGI_TYPES_HLSLI

@@ -11,6 +11,11 @@ DescriptorSetsManager::DescriptorSetsManager()
 
 void DescriptorSetsManager::BeginFrame()
 {
+	UpdatePersistentDescriptorSets();
+}
+
+void DescriptorSetsManager::UpdatePersistentDescriptorSets()
+{
 	SPT_PROFILER_FUNCTION();
 
 	m_persistentDescriptorSets.UpdatePersistentDescriptors();

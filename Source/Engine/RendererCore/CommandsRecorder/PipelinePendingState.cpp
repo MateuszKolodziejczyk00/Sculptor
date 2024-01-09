@@ -229,6 +229,7 @@ void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState
 
 	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
 	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
+	TryMarkAsDirtyImpl(state, m_boundRayTracingPipeline, m_dirtyRayTracingDescriptorSets);
 }
 
 void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)

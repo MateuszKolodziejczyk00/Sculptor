@@ -322,8 +322,8 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		m_renderScene->AddSceneSubsystem<rsc::RayTracingRenderSceneSubsystem>();
 		
-		m_renderScene->AddRenderSystem<rsc::DDGIRenderSystem>();
-		m_renderScene->AddSceneSubsystem<rsc::DDGISceneSubsystem>();
+		m_renderScene->AddRenderSystem<rsc::ddgi::DDGIRenderSystem>();
+		m_renderScene->AddSceneSubsystem<rsc::ddgi::DDGISceneSubsystem>();
 	}
 	m_renderScene->AddRenderSystem<rsc::StaticMeshesRenderSystem>();
 	m_renderScene->AddRenderSystem<rsc::LightsRenderSystem>();

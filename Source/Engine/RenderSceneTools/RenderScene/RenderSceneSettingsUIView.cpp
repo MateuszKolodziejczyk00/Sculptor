@@ -53,13 +53,13 @@ void RenderSceneSettingsUIView::DrawUIForScene(RenderScene& scene)
 		}
 	}
 
-	if (lib::SharedPtr<rsc::DDGISceneSubsystem> ddgiSubsystem = scene.GetSceneSubsystem<rsc::DDGISceneSubsystem>())
+	if (lib::SharedPtr<rsc::ddgi::DDGISceneSubsystem> ddgiSubsystem = scene.GetSceneSubsystem<rsc::ddgi::DDGISceneSubsystem>())
 	{
-		const char* ddgiDebugModes[rsc::EDDGIDebugMode::NUM] = { "None", "Illuminance", "Hit Distance", "Debug Rays"};
+		const char* ddgiDebugModes[rsc::ddgi::EDDGIDebugMode::NUM] = { "None", "Illuminance", "Hit Distance", "Debug Rays"};
 		int ddgiDebugMode = ddgiSubsystem->GetDebugMode();
 		if (ImGui::Combo("DDGI Probes Visualization", &ddgiDebugMode, ddgiDebugModes, SPT_ARRAY_SIZE(ddgiDebugModes)))
 		{
-			ddgiSubsystem->SetDebugMode(static_cast<rsc::EDDGIDebugMode::Type>(ddgiDebugMode));
+			ddgiSubsystem->SetDebugMode(static_cast<rsc::ddgi::EDDGIDebugMode::Type>(ddgiDebugMode));
 		}
 	}
 }

@@ -583,7 +583,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				materialSlots.slots.reserve(mesh.primitives.size());
 				for (const tinygltf::Primitive& prim : mesh.primitives)
 				{
-					materialSlots.slots.emplace_back(materials[prim.material]);
+					materialSlots.slots.emplace_back(materials.at(prim.material));
 				}
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);

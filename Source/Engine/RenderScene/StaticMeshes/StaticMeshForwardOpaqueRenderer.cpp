@@ -124,8 +124,8 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 																						GeometryManager::Get().GetGeometryDSState(),
 																						renderView.GetRenderViewDS()));
 
-	const lib::SharedPtr<DDGISceneSubsystem> ddgiSceneSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
-	const lib::MTHandle<DDGIDS> ddgiDS = ddgiSceneSubsystem ? ddgiSceneSubsystem->GetDDGIDS() : nullptr;
+	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSceneSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
+	const lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem ? ddgiSceneSubsystem->GetDDGISceneDS() : nullptr;
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
@@ -232,7 +232,7 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 
 	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats(rendererSettings);
 
-	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
+	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
 
 	const ShadingInputData& shadingInputData = viewSpec.GetData().Get<ShadingInputData>();
 	

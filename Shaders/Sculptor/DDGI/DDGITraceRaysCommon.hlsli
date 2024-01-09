@@ -12,6 +12,8 @@
 
 [[descriptor_set(ShadowMapsDS, 6)]]
 
+[[descriptor_set(DDGISceneDS, 7)]]
+
 
 struct DDGIRayPayload
 {

@@ -330,7 +330,7 @@ void SculptorEdApplication::ExecuteSimulationFrame(engn::FrameContext& context)
 void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
 {
 	SPT_PROFILER_FUNCTION();
-
+	
 	context.AddFinalizeGPUDelegate(engn::OnFinalizeGPU::Delegate::CreateLambda([](engn::FrameContext& context)
 																			   {
 																				   rdr::Renderer::WaitForFrameRendered(context.GetFrameIdx());

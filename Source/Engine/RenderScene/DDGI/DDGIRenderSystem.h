@@ -5,27 +5,34 @@
 #include "RGResources/RGResourceHandles.h"
 
 
-namespace spt::rsc
+namespace spt::rsc::ddgi
 {
 
 class DDGISceneSubsystem;
+class DDGIVolume;
+class DDGIScene;
+struct DDGIConfig;
 
 
-struct DDGIUpdateParameters
+struct DDGIVolumeRelitParameters
 {
-	DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuUpdateParams, const DDGISceneSubsystem& ddgiSubsystem);
+	DDGIVolumeRelitParameters(rg::RenderGraphBuilder& graphBuilder, const DDGIRelitGPUParams& gpurelitParams, const DDGISceneSubsystem& ddgiSubsystem, const DDGIVolume& volume);
 
-	lib::SharedPtr<rdr::TextureView> probesIlluminanceTextureView;
-	lib::SharedPtr<rdr::TextureView> probesHitDistanceTextureView;
+	const DDGIVolume& volume;
 
-	rdr::BufferView updateProbesParamsBuffer;
-	rdr::BufferView ddgiParamsBuffer;
+	rg::RGTextureViewHandle probesIlluminanceTextureView;
+	rg::RGTextureViewHandle probesHitDistanceTextureView;
+
+	rdr::BufferView relitParamsBuffer;
+	rdr::BufferView ddgiVolumeParamsBuffer;
 
 	Uint32 probesNumToUpdate;
 	Uint32 raysNumPerProbe;
 
 	math::Vector2u probeIlluminanceDataWithBorderRes;
 	math::Vector2u probeHitDistanceDataWithBorderRes;
+
+	lib::MTHandle<DDGISceneDS> ddgiSceneDS;
 
 	EDDGIDebugMode::Type debugMode;
 };
@@ -42,19 +49,28 @@ public:
 	DDGIRenderSystem();
 
 	// Begin SceneRenderSystem overrides
-	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpec) override;
+	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
 	// End SceneRenderSystem overrides
 
 private:
 
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
-	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
+	void RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const;
+	
+	void InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const;
 
-	rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const;
+	void RelitVolume(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIVolume& volume) const;
+	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const;
+
+	void InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume) const;
+
+	rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const;
 
 	void RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData) const;
 	void RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
+
+	DDGIRelitGPUParams CreateRelitParams(const DDGIVolume& volume, const DDGIConfig& config) const;
 };
 
-} // spt::rsc
+} // spt::rsc::ddgi

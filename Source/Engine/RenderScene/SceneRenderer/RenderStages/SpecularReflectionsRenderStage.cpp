@@ -131,8 +131,8 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	const LightsRenderSystem& lightsRenderSystem        = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
 
-	const DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-	lib::MTHandle<DDGIDS> ddgiDS = ddgiSceneSubsystem.GetDDGIDS();
+	const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Specular Reflections Trace Rays"),
 						   traceRaysPipeline,

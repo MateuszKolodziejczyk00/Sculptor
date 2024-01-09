@@ -13,7 +13,7 @@
 
 [[descriptor_set(RenderViewDS, 7)]]
 
-[[descriptor_set(DDGIDS, 8)]]
+[[descriptor_set(DDGISceneDS, 8)]]
 
 
 struct SpecularReflectionsRayPayload

@@ -18,7 +18,7 @@
 
 #ifdef ENABLE_DDGI
 
-[[descriptor_set(DDGIDS, 9)]]
+[[descriptor_set(DDGISceneDS, 9)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -209,7 +209,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(vertexInput.worldLocation, surface.geometryNormal, toView);
     ddgiSampleParams.sampleDirection = surface.shadingNormal;
-    indirectIlluminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams) * ambientOcclusion;
+    indirectIlluminance = DDGISampleIlluminance(ddgiSampleParams); //* ambientOcclusion;
 
 #endif // ENABLE_DDGI
 
@@ -235,7 +235,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     }
     else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_INDIRECT_LIGHTING)
     {
-        debug = indirectLighting;
+        debug = indirectLighting / (indirectLighting + 1.f);
     }
     else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_AMBIENT_OCCLUSION)
     {

@@ -166,7 +166,7 @@ void GenerateSpecularReflectionsRaysRTG()
             const float3 reflectedVector = reflect(-toView, normal);
             DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, normal, toView);
             ddgiSampleParams.sampleDirection = reflectedVector;
-            luminance = DDGISampleLuminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, u_probesHitDistanceTexture, u_probesDataSampler, ddgiSampleParams);
+            luminance = DDGISampleLuminance(ddgiSampleParams);
             hitDistance = 0.f;
         }
     }

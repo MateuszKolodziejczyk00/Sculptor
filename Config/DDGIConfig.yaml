@@ -1,14 +1,32 @@
-ProbesVolumeResolution:
-  - 12
-  - 12
-  - 12
-LocalProbesUpdateResolution:
+LocalRelitRaysNumPerProbe: 1024
+GlobalRelitRaysPerProbe: 400
+GlobalRelitHysteresis: 0.970000029
+LocalRelitHysteresis: 0.980000019
+LocalRelitProbeGridSize:
   - 6
   - 6
   - 6
-ProbesSpacing:
-  - 1
-  - 2
-  - 1
-LocalUpdateRaysPerProbe: 1024
-GlobalUpdateRaysPerProbe: 400
+RelitVolumesBudget: 3
+ProbeIlluminanceDataRes:
+  - 6
+  - 6
+ProbeHitDistanceDataRes:
+  - 16
+  - 16
+Lod0VolumeResolution:
+  - 12
+  - 12
+  - 12
+Lod0ProbesSpacing:
+  - 1.5
+  - 1.5
+  - 1.5
+Lod1VolumeResolution:
+  - 12
+  - 12
+  - 10
+Lod1ProbesSpacing:
+  - 2.4000001
+  - 2.4000001
+  - 2.4000001
+Lod1VolumesMinHeight: -2

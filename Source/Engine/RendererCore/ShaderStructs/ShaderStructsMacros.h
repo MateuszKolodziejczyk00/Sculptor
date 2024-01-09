@@ -51,7 +51,7 @@ public:
 
 	static constexpr Uint32 GetSize()
 	{
-		return sizeof(UnderlyingType);
+		return sizeof(typename ShaderStructMemberElementType<UnderlyingType>::Type);
 	}
 
 	static constexpr Uint32 GetAlignment()

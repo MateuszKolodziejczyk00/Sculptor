@@ -13,7 +13,7 @@ void DescriptorSetWriter::WriteBuffer(const rhi::RHIDescriptorSet& set, const rh
 {
 	const lib::SharedRef<Buffer> buffer = bufferView.GetBuffer();
 
-	SPT_CHECK(bufferView.GetOffset() + range <= bufferView.GetSize());
+	SPT_CHECK(range <= bufferView.GetSize());
 	
 	m_rhiWriter.WriteBuffer(set, writeDef, buffer->GetRHI(), bufferView.GetOffset(), range);
 }
@@ -21,10 +21,10 @@ void DescriptorSetWriter::WriteBuffer(const rhi::RHIDescriptorSet& set, const rh
 void DescriptorSetWriter::WriteBuffer(const rhi::RHIDescriptorSet& set, const rhi::WriteDescriptorDefinition& writeDef, const BufferView& bufferView, Uint64 range, const BufferView& countBufferView)
 {
 	const lib::SharedRef<Buffer> buffer = bufferView.GetBuffer();
-	SPT_CHECK(bufferView.GetOffset() + range <= bufferView.GetSize());
+	SPT_CHECK(range <= bufferView.GetSize());
 	
 	const lib::SharedRef<Buffer> countBuffer = bufferView.GetBuffer();
-	SPT_CHECK(countBufferView.GetOffset() + sizeof(Int32) <= countBufferView.GetSize());
+	SPT_CHECK(sizeof(Int32) <= countBufferView.GetSize());
 	
 	m_rhiWriter.WriteBuffer(set, writeDef, buffer->GetRHI(), bufferView.GetOffset(), range, countBuffer->GetRHI(), countBufferView.GetOffset());
 }

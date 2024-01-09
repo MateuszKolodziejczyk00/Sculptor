@@ -79,13 +79,17 @@ BufferView::BufferView(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint
 	: m_buffer(buffer.ToSharedPtr())
 	, m_offset(offset)
 	, m_size(size)
-{ }
+{
+	SPT_CHECK(offset + size <= buffer->GetSize());
+}
 
 void BufferView::Initialize(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 size)
 {
 	m_buffer = buffer;
 	m_offset = offset;
 	m_size = size;
+
+	SPT_CHECK(offset + size <= buffer->GetSize());
 }
 
 Bool BufferView::operator==(const BufferView& rhs) const

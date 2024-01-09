@@ -4,7 +4,7 @@
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(DDGIDebugDrawProbesDS, 1)]]
-[[descriptor_set(DDGIDS, 2)]]
+[[descriptor_set(DDGISceneDS, 2)]]
 
 #include "DDGI/DDGITypes.hlsli"
 
@@ -37,7 +37,9 @@ VS_OUTPUT DDGIDebugProbesVS(VS_INPUT input)
     const uint probeIdx = input.instanceIdx;
     const uint vertexIdx = input.vertexIdx;
 
-    const uint3 probesVolumeRes = u_ddgiParams.probesVolumeResolution;
+    const DDGIVolumeGPUParams ddgiParams = u_ddgiVolumes[u_ddgiProbesDebugParams.volumeIdx];
+
+    const uint3 probesVolumeRes = ddgiParams.probesVolumeResolution;
 
     const uint probesPerPlane = probesVolumeRes.x * probesVolumeRes.y;
 
@@ -47,13 +49,13 @@ VS_OUTPUT DDGIDebugProbesVS(VS_INPUT input)
 
     const uint3 probeCoords = uint3(x, y, z);
 
-    const float3 probeLocation = GetProbeWorldLocation(u_ddgiParams, probeCoords);
+    const float3 probeLocation = GetProbeWorldLocation(ddgiParams, probeCoords);
 
     const float3 vertexLocation = g_debugProbeVertices[vertexIdx] * u_ddgiProbesDebugParams.probeRadius;
 
     output.clipSpace    = mul(u_sceneView.viewProjectionMatrixNoJitter, float4(probeLocation + vertexLocation, 1.0f));
     output.normal       = normalize(vertexLocation);
-    output.probeCoords  = probeCoords;
+    output.probeCoords  = ComputeProbeWrappedCoords(ddgiParams, probeCoords);
 
     return output;
 }
@@ -71,21 +73,23 @@ PS_OUTPUT DDGIDebugProbesPS(VS_OUTPUT vertexInput)
 
     const float2 octahedronUV = GetProbeOctCoords(normalize(vertexInput.normal));
 
+    const DDGIVolumeGPUParams ddgiParams = u_ddgiVolumes[u_ddgiProbesDebugParams.volumeIdx];
+
     if(u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_ILLUMINANCE)
     {
-        float3 probeIlluminance = SampleProbeIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
+        float3 probeIlluminance = SampleProbeIlluminance(ddgiParams, vertexInput.probeCoords, octahedronUV);
 
-        probeIlluminance = pow(probeIlluminance, u_ddgiParams.probeIlluminanceEncodingGamma);
+        probeIlluminance = pow(probeIlluminance, ddgiParams.probeIlluminanceEncodingGamma);
 
-        probeIlluminance *= 0.01f;
+        probeIlluminance *= 0.001f;
     
         output.color = float4(probeIlluminance / (probeIlluminance + 1.f), 1.f);
     }
     else if (u_ddgiProbesDebugParams.debugMode == DDGI_DEBUG_MODE_HIT_DISTANCE)
     {
-        float2 hitDistance = SampleProbeHitDistance(u_ddgiParams, u_probesHitDistanceTexture, u_probesDataSampler, vertexInput.probeCoords, octahedronUV);
+        float2 hitDistance = SampleProbeHitDistance(ddgiParams, vertexInput.probeCoords, octahedronUV);
 
-        output.color = float4(hitDistance, 0.0f, 1.0f);
+        output.color = float4(hitDistance * 0.01f, 0.0f, 1.0f);
     }
     
     // gamma

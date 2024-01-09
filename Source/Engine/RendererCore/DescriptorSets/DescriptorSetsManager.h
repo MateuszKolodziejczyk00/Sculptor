@@ -21,6 +21,8 @@ public:
 
 	void BeginFrame();
 
+	void UpdatePersistentDescriptorSets();
+
 	rhi::RHIDescriptorSet GetDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& descriptorSetState) const;
 	rhi::RHIDescriptorSet GetOrCreateDescriptorSet(const lib::SharedRef<Pipeline>& pipeline, Uint32 descriptorSetIdx, const lib::MTHandle<DescriptorSetState>& descriptorSetState);
 

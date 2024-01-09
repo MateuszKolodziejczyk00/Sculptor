@@ -196,6 +196,13 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 	}
 }
 
+void Renderer::UpdatePersistentDescriptorSets()
+{
+	SPT_PROFILER_FUNCTION();
+
+	GetDescriptorSetsManager().UpdatePersistentDescriptorSets();
+}
+
 Uint64 Renderer::GetCurrentFrameIdx()
 {
 	return engn::GetRenderingFrame().GetFrameIdx();

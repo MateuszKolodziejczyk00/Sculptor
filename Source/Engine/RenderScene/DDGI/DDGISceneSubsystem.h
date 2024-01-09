@@ -7,6 +7,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "RenderSceneRegistry.h"
+#include "DDGIScene.h"
 
 
 namespace spt::rdr
@@ -15,26 +16,37 @@ class TextureView;
 } // spt::rdr
 
 
-namespace spt::rsc
+namespace spt::rsc::ddgi
 {
 
-DS_BEGIN(DDGIDS, rg::RGDescriptorSetState<DDGIDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIGPUParams>),					u_ddgiParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_probesIlluminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_probesHitDistanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_probesDataSampler)
-DS_END();
+class DDGIVolume;
 
 
 struct DDGIConfig
 {
-	math::Vector3u probesVolumeResolution = math::Vector3u::Constant(12u);
-	math::Vector3u localProbesUpdateResolution = math::Vector3u::Constant(6u);
-	
-	math::Vector3f probesSpacing = math::Vector3f(1.f, 2.f, 1.f);
+	Uint32 localRelitRaysNumPerProbe  = 1024u;
+	Uint32 globalRelitRaysPerProbe    = 400u;
 
-	Uint32 localUpdateRaysPerProbe = 1024u;
-	Uint32 globalUpdateRaysPerProbe = 380u;
+	Real32 globalRelitHysteresis = 0.97f;
+	Real32 localRelitHysteresis  = 0.98f;
+
+	math::Vector3u localRelitProbeGridSize = math::Vector3u(6, 6, 6);
+
+	Uint32 relitVolumesBudget = 3u;
+	
+	math::Vector2u probeIlluminanceDataRes = math::Vector2u::Constant(6u);
+	math::Vector2u probeHitDistanceDataRes = math::Vector2u::Constant(16u);
+
+	// Lod 0
+
+	math::Vector3u lod0VolumeResolution = math::Vector3u::Constant(12u);
+	math::Vector3f lod0ProbesSpacing    = math::Vector3f::Constant(1.5f);
+
+	// Lod 1
+
+	math::Vector3u lod1VolumeResolution = math::Vector3u(12u, 12u, 8u);
+	math::Vector3f lod1ProbesSpacing    = math::Vector3f::Constant(3.f);
+	Real32         lod1VolumesMinHeight = -2.f;
 };
 
 
@@ -47,64 +59,28 @@ protected:
 public:
 
 	explicit DDGISceneSubsystem(RenderScene& owningScene);
-	~DDGISceneSubsystem();
 
-	DDGIUpdateProbesGPUParams CreateUpdateProbesParams() const;
-
-	const lib::SharedPtr<rdr::TextureView>& GetProbesIlluminanceTexture() const;
-	
-	const lib::SharedPtr<rdr::TextureView>& GetProbesHitDistanceTexture() const;
-	
-	const DDGIGPUParams& GetDDGIParams() const;
+	void UpdateDDGIScene(const SceneView& mainView);
 
 	void SetDebugMode(EDDGIDebugMode::Type mode);
 	EDDGIDebugMode::Type GetDebugMode() const;
 
-	const lib::MTHandle<DDGIDS>& GetDDGIDS() const;
+	const lib::MTHandle<DDGISceneDS>& GetDDGISceneDS() const;
 
 	Bool IsDDGIEnabled() const;
 
-	Bool RequiresClearingData() const;
-	void PostClearingData();
+	const DDGIScene& GetDDGIScene() const;
+	DDGIScene& GetDDGIScene();
 
-	void PostUpdateProbes();
-
-	// Settings ==================================================================
-
-	Uint32 GetRaysNumPerProbe() const;
-
-	Uint32 GetProbesNum() const;
-
-	math::Vector3u GetProbesVolumeResolution() const;
-
-	math::Vector2u GetProbeIlluminanceDataRes() const;
-	math::Vector2u GetProbeIlluminanceWithBorderDataRes() const;
-	
-	math::Vector2u GetProbeDistancesDataRes() const;
-	math::Vector2u GetProbeDistancesDataWithBorderRes() const;
+	const DDGIConfig& GetConfig() const;
 
 private:
-
-	void InitializeDDGIParameters();
-
-	void InitializeTextures();
-
-	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
-
-	lib::SharedPtr<rdr::TextureView> m_probesIlluminanceTextureView;
-	lib::SharedPtr<rdr::TextureView> m_probesHitDistanceTextureView;
-
-	DDGIGPUParams m_ddgiParams;
 
 	DDGIConfig m_config;
 
 	EDDGIDebugMode::Type m_debugMode;
 
-	lib::MTHandle<DDGIDS> m_ddgiDS;
-
-	Bool m_requiresClearingData;
-
-	Bool m_wantsGlobalUpdate;
+	DDGIScene m_ddgiScene;
 };
 
-} // spt::rsc
+} // spt::rsc::ddgi

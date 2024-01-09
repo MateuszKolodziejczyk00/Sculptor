@@ -106,6 +106,40 @@ public:
 		}
 	}
 
+	std::variant<nullptr_t, lib::SharedPtr<rdr::TextureView>, rg::RGTextureViewHandle> GetBoundTexture(Uint32 textureArrayIdx) const
+	{
+		SPT_CHECK(textureArrayIdx != idxNone<Uint32>);
+
+		const auto boundTextureIt = std::find_if(std::cbegin(m_boundTextures), std::cend(m_boundTextures),
+												 [textureArrayIdx](const BoundTexture& boundTexture)
+												 {
+													 return boundTexture.arrayIndex == textureArrayIdx;
+												 });
+
+		if (boundTextureIt != std::cend(m_boundTextures))
+		{
+			if(boundTextureIt->textureInstance)
+			{
+				return boundTextureIt->textureInstance;
+			}
+			else
+			{
+				return boundTextureIt->rgTexture;
+			}
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+
+	template<typename TBoundTextureType>
+	TBoundTextureType GetBoundTexture(Uint32 textureArrayUdx) const
+	{
+		const auto boundTexture = GetBoundTexture(textureArrayUdx);
+		return std::holds_alternative<TBoundTextureType>(boundTexture) ? std::get<TBoundTextureType>(boundTexture) : TBoundTextureType{};
+	}
+
 private:
 
 	struct BoundTexture

@@ -86,6 +86,11 @@ public:
 		return m_storage;
 	}
 
+	SPT_NODISCARD WeakPtr<TType> AsWeakPtr() const
+	{
+		return m_storage;
+	}
+
 	SPT_NODISCARD TType* Get() const
 	{
 		return m_storage.get();

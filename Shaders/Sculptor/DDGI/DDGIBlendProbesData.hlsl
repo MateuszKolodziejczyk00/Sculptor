@@ -88,7 +88,7 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 #endif // DDGI_BLEND_TYPE
 
         rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
-        rayDirections[rayIdx] = mul(u_updateProbesParams.raysRotation, float4(rayDirections[rayIdx], 0.f)).xyz;
+        rayDirections[rayIdx] = mul(u_relitParams.raysRotation, float4(rayDirections[rayIdx], 0.f)).xyz;
     }
 }
 
@@ -103,16 +103,16 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
     GroupMemoryBarrierWithGroupSync();
 
-    const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, u_updateProbesParams.probesToUpdateCoords, u_updateProbesParams.probesToUpdateCount);
-    const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_ddgiParams, updatedProbeCoords);
+    const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
+    const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-    const uint2 probeDataOffset = ComputeProbeIlluminanceDataOffset(u_ddgiParams, probeWrappedCoords);
+    const uint2 probeDataOffset = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
     
-    const uint2 probeDataOffset = ComputeProbeHitDistanceDataOffset(u_ddgiParams, probeWrappedCoords);
+    const uint2 probeDataOffset = ComputeProbeHitDistanceDataOffset(u_volumeParams, probeWrappedCoords);
 
 #endif // DDGI_BLEND_TYPE
 
@@ -187,7 +187,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-            weight = pow(weight, 2.5f);
+            weight = pow(weight, 64);
 
             if(weight > WEIGHT_EPSILON)
             {
@@ -213,28 +213,36 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = luminanceSum / (2.f * weightSum);
         }
 
-        const float exponent = 1.f / u_ddgiParams.probeIlluminanceEncodingGamma;
+        const float exponent = 1.f / u_volumeParams.probeIlluminanceEncodingGamma;
         result = pow(result, exponent);
         
         const float3 prevIlluminance = u_probesIlluminanceTexture[dataCoords];
 
-        float hysteresis = u_updateProbesParams.blendHysteresis;
+        float hysteresis = u_relitParams.blendHysteresis;
 
         if (all(prevIlluminance) < 0.0001f)
         {
             hysteresis = 0.f;
         }
-
-        const float maxIlluminanceDiff = abs(MaxComponent(result - prevIlluminance));
-        const float histeresisDelta = maxIlluminanceDiff > u_updateProbesParams.illuminanceDiffThreshold ? 0.5f : 0.f;
-        hysteresis = max(hysteresis - histeresisDelta, 0.f);
-
+        
         float3 delta = result - prevIlluminance;
 
-        const float deltaLuminance = Luminance(abs(delta));
-        if(deltaLuminance > u_updateProbesParams.luminanceDiffThreshold)
+        const float maxIlluminanceDiff = abs(MaxComponent(result - prevIlluminance));
+        const float histeresisDelta = maxIlluminanceDiff > u_relitParams.illuminanceDiffThreshold ? 0.5f : 0.f;
+        hysteresis = max(hysteresis - histeresisDelta, 0.f);
+
+        const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
+        if (any(probeLocation < u_relitParams.prevAABBMin) || any(probeLocation > u_relitParams.prevAABBMax))
         {
-            delta *= 0.2f;
+            hysteresis = 0.f;
+        }
+        else
+        {
+            const float deltaLuminance = Luminance(abs(delta));
+            if(deltaLuminance > u_relitParams.luminanceDiffThreshold)
+            {
+                delta *= 0.2f;
+            }
         }
 
         float3 deltaThisFrame = delta * (1.f - hysteresis);
@@ -250,8 +258,21 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             result = float2(hitDistanceSum, hitDistanceSquaredSum) / weightSum;
         }
         
+        float hysteresis = u_relitParams.blendHysteresis;
+        const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
+        if (any(probeLocation < u_relitParams.prevAABBMin) || any(probeLocation > u_relitParams.prevAABBMax))
+        {
+            hysteresis = 0.f;
+        }
+        
         const float2 prevHitDistance = u_probesHitDistanceTexture[dataCoords];
-        result = lerp(result, prevHitDistance, u_updateProbesParams.blendHysteresis);
+
+        if(prevHitDistance.x < 0.f)
+        {
+            hysteresis = 0.f;
+        }
+
+        result = lerp(result, prevHitDistance, hysteresis);
         
         u_probesHitDistanceTexture[dataCoords] = result;
 

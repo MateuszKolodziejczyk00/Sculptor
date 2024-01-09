@@ -25,13 +25,13 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.09f, 0.f, 1.f);
+RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
-RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.4f, 0.f, 1.f);
+RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
 
-RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 20.f, 1.f, 50.f);
+RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 35.f, 1.f, 50.f);
 
 RendererBoolParameter enableDirectionalLightsInScattering("Enable Directional Lights Scattering", { "Volumetric Fog" }, true);
 RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directional Lights Volumetric RT Shadows", { "Volumetric Fog" }, true);
@@ -81,7 +81,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
     pariticipatingMediaParams.maxDensity			= parameters::fogMaxDensity;
     pariticipatingMediaParams.minDensity			= parameters::fogMinDensity;
 	pariticipatingMediaParams.densityNoiseThreshold = 0.45f;
-    pariticipatingMediaParams.densityNoiseZSigma	= -6.f;
+    pariticipatingMediaParams.densityNoiseZSigma	= -55.f;
     pariticipatingMediaParams.densityNoiseSpeed		= math::Vector3f(-0.5f, -0.5f, 0.1f);
 
 	const lib::MTHandle<RenderParticipatingMediaDS> participatingMediaDS = graphBuilder.CreateDescriptorSet<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
@@ -135,8 +135,8 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
-	lib::MTHandle<DDGIDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGIDS() : nullptr;
+	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGISceneDS() : nullptr;
 
 	if (!ddgiDS.IsValid())
 	{
@@ -148,15 +148,15 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(2u, 2u, 2u));
 
 	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
-																							   rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
+																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
 
 	IndirectInScatteringParams inScatteringParams;
-	inScatteringParams.jitter                                       = fogParams.fogJitter;
-	inScatteringParams.phaseFunctionAnisotrophy                     = parameters::localLightsPhaseFunctionAnisotrophy;
-	inScatteringParams.fogNearPlane                                 = fogParams.nearPlane;
-	inScatteringParams.fogFarPlane                                  = fogParams.farPlane;
-	inScatteringParams.randomRotation                               = math::Matrix4f::Identity();
-	inScatteringParams.randomRotation.topLeftCorner<3, 3>()         = lib::rnd::RandomRotationMatrix();
+	inScatteringParams.jitter                               = fogParams.fogJitter;
+	inScatteringParams.phaseFunctionAnisotrophy             = parameters::localLightsPhaseFunctionAnisotrophy;
+	inScatteringParams.fogNearPlane                         = fogParams.nearPlane;
+	inScatteringParams.fogFarPlane                          = fogParams.farPlane;
+	inScatteringParams.randomRotation                       = math::Matrix4f::Identity();
+	inScatteringParams.randomRotation.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
 
 	const rg::RGTextureViewHandle ddgiScatteringPhaseFunctionLUT = DDGIScatteringPhaseFunctionLUT::Get().GetLUT(graphBuilder);
 
@@ -243,8 +243,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	computeInScatteringDS->u_inScatteringParams          = inScatteringParams;
 	computeInScatteringDS->u_indirectInScatteringTexture = indirectInScattering;
 
-	const lib::SharedPtr<DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<DDGISceneSubsystem>();
-	lib::MTHandle<DDGIDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGIDS() : nullptr;
+	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGISceneDS() : nullptr;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 

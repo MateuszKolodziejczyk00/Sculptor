@@ -23,6 +23,7 @@
 #include "MaterialsUnifiedData.h"
 #include "Lights/LightsRenderSystem.h"
 #include "DescriptorSetBindings/ChildDSBinding.h"
+#include "DDGIVolume.h"
 
 
 #ifdef SPT_RELEASE
@@ -31,7 +32,7 @@
 #define DDGI_DEBUGGING 1
 #endif // SPT_RELEASE
 
-namespace spt::rsc
+namespace spt::rsc::ddgi
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,10 +55,8 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_traceRaysResultTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),           u_updateProbesParams)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),                       u_ddgiParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_probesIlluminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_probesHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIRelitGPUParams>),                  u_relitParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>),                 u_volumeParams)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
 
@@ -67,16 +66,31 @@ DS_END();
 
 
 DS_BEGIN(DDGIBlendProbesDataDS, rg::RGDescriptorSetState<DDGIBlendProbesDataDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_traceRaysResultTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_traceRaysResultSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIUpdateProbesGPUParams>),				u_updateProbesParams)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIGPUParams>),							u_ddgiParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_traceRaysResultTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_traceRaysResultSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIRelitGPUParams>),                   u_relitParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>),                  u_volumeParams)
+DS_END();
+
+
+BEGIN_SHADER_STRUCT(DDGIVolumeInvalidateParams)
+	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMin)
+	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMax)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(DDGIInvalidateProbesDS, rg::RGDescriptorSetState<DDGIInvalidateProbesDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeInvalidateParams>), u_invalidateParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeGPUParams>),        u_volumeParams)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_probesHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                u_probesIlluminanceTexture)
 DS_END();
 
 
 BEGIN_SHADER_STRUCT(DDGIProbesDebugParams)
 	SHADER_STRUCT_FIELD(Real32, probeRadius)
 	SHADER_STRUCT_FIELD(Uint32, debugMode)
+	SHADER_STRUCT_FIELD(Uint32, volumeIdx)
 END_SHADER_STRUCT();
 
 
@@ -153,6 +167,17 @@ static rdr::PipelineStateID CreateDDGIBlendProbesHitDistancePipeline(math::Vecto
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Blend Probes Hit Distance Pipeline"), shader);
 }
 
+static rdr::PipelineStateID CreateDDGIInvalidateProbesPipeline(math::Vector2u groupSize)
+{
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GROUP_SIZE_X", std::to_string(groupSize.x())));
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GROUP_SIZE_Y", std::to_string(groupSize.y())));
+
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIInvalidateProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DDGIInvalidateProbesCS"), compilationSettings);
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Invalidate Probes Pipeline"), shader);
+}
+
 static rdr::PipelineStateID CreateDDGIDrawDebugProbesPipeline(rhi::EFragmentFormat colorRTFormat, rhi::EFragmentFormat depthFormat)
 {
 	rdr::GraphicsPipelineShaders shaders;
@@ -189,15 +214,17 @@ static rdr::PipelineStateID CreateDDGIDrawDebugRaysPipeline(rhi::EFragmentFormat
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIUpdateParameters ==========================================================================
 
-DDGIUpdateParameters::DDGIUpdateParameters(const DDGIUpdateProbesGPUParams& gpuUpdateParams, const DDGISceneSubsystem& ddgiSubsystem)
-	: probesIlluminanceTextureView(ddgiSubsystem.GetProbesIlluminanceTexture())
-	, probesHitDistanceTextureView(ddgiSubsystem.GetProbesHitDistanceTexture())
-	, updateProbesParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIUpdateProbesGPUParams>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesGPUParams"), gpuUpdateParams))
-	, ddgiParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIGPUParams>(RENDERER_RESOURCE_NAME("DDGIGPUParams"), ddgiSubsystem.GetDDGIParams()))
-	, probesNumToUpdate(gpuUpdateParams.probesNumToUpdate)
-	, raysNumPerProbe(gpuUpdateParams.raysNumPerProbe)
-	, probeIlluminanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeIlluminanceDataWithBorderRes)
-	, probeHitDistanceDataWithBorderRes(ddgiSubsystem.GetDDGIParams().probeHitDistanceDataWithBorderRes)
+DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& graphBuilder, const DDGIRelitGPUParams& relitParams, const DDGISceneSubsystem& ddgiSubsystem, const DDGIVolume& inVolume)
+	: volume(inVolume)
+	, probesIlluminanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesIlluminanceTexture()))
+	, probesHitDistanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesHitDistanceTexture()))
+	, relitParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIRelitGPUParams>(RENDERER_RESOURCE_NAME("DDGIRelitGPUParams"), relitParams))
+	, ddgiVolumeParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIVolumeGPUParams>(RENDERER_RESOURCE_NAME("DDGIVolumeGPUParams"), volume.GetVolumeGPUParams()))
+	, probesNumToUpdate(relitParams.probesNumToUpdate)
+	, raysNumPerProbe(relitParams.raysNumPerProbe)
+	, probeIlluminanceDataWithBorderRes(volume.GetVolumeGPUParams().probeIlluminanceDataWithBorderRes)
+	, probeHitDistanceDataWithBorderRes(volume.GetVolumeGPUParams().probeHitDistanceDataWithBorderRes)
+	, ddgiSceneDS(ddgiSubsystem.GetDDGISceneDS())
 	, debugMode(ddgiSubsystem.GetDebugMode())
 { }
 
@@ -224,13 +251,16 @@ DDGIRenderSystem::DDGIRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::ForwardOpaque);
 }
 
-void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecsb)
+void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecsb);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 
-	for (ViewRenderingSpec* view : viewSpecsb)
+	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
+	ddgiSubsystem.UpdateDDGIScene(viewSpecs[0]->GetRenderView());
+
+	for (ViewRenderingSpec* view : viewSpecs)
 	{
 		SPT_CHECK(!!view);
 		RenderPerView(graphBuilder, renderScene, *view);
@@ -259,46 +289,128 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 #endif // DDGI_DEBUGGING
 }
 
-void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const
+void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGTextureViewHandle probesTraceResultTexture = TraceRays(graphBuilder, renderScene, viewSpec, updateParams);
+	InvalidateVolumes(graphBuilder, renderScene, viewSpec, ddgiSubsystem, scene);
+
+	Int32 relitBudget = static_cast<Int32>(ddgiSubsystem.GetConfig().relitVolumesBudget);
+
+	const lib::DynamicArray<DDGIVolume*>& volumes = scene.GetVolumes();
+
+	for (DDGIVolume* volume : volumes)
+	{
+		SPT_CHECK(!!volume);
+		RelitVolume(graphBuilder, renderScene, viewSpec, ddgiSubsystem, *volume);
+
+		if (--relitBudget == 0)
+		{
+			break;
+		}
+	}
+
+	scene.PostRelit();
+}
+
+void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::DynamicArray<DDGIVolume*>& volumes = scene.GetVolumes();
+
+	for (DDGIVolume* volume : volumes)
+	{
+		SPT_CHECK(!!volume);
+
+		if (volume->RequiresInvalidation())
+		{
+			InvalidateOutOfBoundsProbes(graphBuilder, renderScene, viewSpec, *volume);
+		}
+	}
+}
+
+void DDGIRenderSystem::RelitVolume(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIVolume& volume) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(volume, ddgiSubsystem.GetConfig()), ddgiSubsystem, volume);
+
+	UpdateProbes(graphBuilder, renderScene, viewSpec, relitParams);
+
+	volume.PostVolumeRelit();
+}
+
+void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rg::RGTextureViewHandle probesTraceResultTexture = TraceRays(graphBuilder, renderScene, viewSpec, relitParams);
 
 	const lib::MTHandle<DDGIBlendProbesDataDS> updateProbesDS = graphBuilder.CreateDescriptorSet<DDGIBlendProbesDataDS>(RENDERER_RESOURCE_NAME("DDGIBlendProbesDataDS"));
-	updateProbesDS->u_traceRaysResultTexture	= probesTraceResultTexture;
-	updateProbesDS->u_updateProbesParams		= updateParams.updateProbesParamsBuffer;
-	updateProbesDS->u_ddgiParams				= updateParams.ddgiParamsBuffer;
+	updateProbesDS->u_traceRaysResultTexture = probesTraceResultTexture;
+	updateProbesDS->u_relitParams            = relitParams.relitParamsBuffer;
+	updateProbesDS->u_volumeParams           = relitParams.ddgiVolumeParamsBuffer;
 
 	lib::MTHandle<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
-	updateProbesIlluminanceDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
+	updateProbesIlluminanceDS->u_probesIlluminanceTexture = relitParams.probesIlluminanceTextureView;
 
-	const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(updateParams.probeIlluminanceDataWithBorderRes, updateParams.raysNumPerProbe);
+	const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(relitParams.probeIlluminanceDataWithBorderRes, relitParams.raysNumPerProbe);
 	
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Illuminance"),
 						  updateProbesIlluminancePipelineID,
-						  math::Vector3u(updateParams.probesNumToUpdate, 1u, 1u),
+						  math::Vector3u(relitParams.probesNumToUpdate, 1u, 1u),
 						  rg::BindDescriptorSets(updateProbesDS,
 												 std::move(updateProbesIlluminanceDS)));
 
 	lib::MTHandle<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
-	updateProbesHitDistanceDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
+	updateProbesHitDistanceDS->u_probesHitDistanceTexture = relitParams.probesHitDistanceTextureView;
 	
-	const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(updateParams.probeHitDistanceDataWithBorderRes, updateParams.raysNumPerProbe);;
+	const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(relitParams.probeHitDistanceDataWithBorderRes, relitParams.raysNumPerProbe);;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Hit Distance"),
 						  updateProbesDistancesPipelineID,
-						  math::Vector3u(updateParams.probesNumToUpdate, 1u, 1u),
+						  math::Vector3u(relitParams.probesNumToUpdate, 1u, 1u),
 						  rg::BindDescriptorSets(updateProbesDS,
 												 std::move(updateProbesHitDistanceDS)));
 }
 
-rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIUpdateParameters& updateParams) const
+void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Uint32 probesToUpdateNum	= updateParams.probesNumToUpdate;
-	const Uint32 raysNumPerProbe	= updateParams.raysNumPerProbe;
+	const math::Vector3u volumeRes = volume.GetProbesVolumeResolution();
+
+	const DDGIVolumeGPUParams& volumeParams = volume.GetVolumeGPUParams();
+
+	const math::AlignedBox3f prevAABB = volume.GetPrevAABB();
+
+	DDGIVolumeInvalidateParams invalidateParams;
+	invalidateParams.prevAABBMin = prevAABB.min();
+	invalidateParams.prevAABBMax = prevAABB.max();
+
+	const lib::MTHandle<DDGIInvalidateProbesDS> invalidateProbesDS = graphBuilder.CreateDescriptorSet<DDGIInvalidateProbesDS>(RENDERER_RESOURCE_NAME("DDGIInvalidateProbesDS"));
+	invalidateProbesDS->u_invalidateParams         = invalidateParams;
+	invalidateProbesDS->u_volumeParams             = volumeParams;
+	invalidateProbesDS->u_probesHitDistanceTexture = volume.GetProbesHitDistanceTexture();
+	invalidateProbesDS->u_probesIlluminanceTexture = volume.GetProbesIlluminanceTexture();
+
+	static const rdr::PipelineStateID invalidateProbesPipelineID = pipelines::CreateDDGIInvalidateProbesPipeline(volumeParams.probeHitDistanceDataWithBorderRes);
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Invalidate Probes"),
+						  invalidateProbesPipelineID,
+						  volumeRes,
+						  rg::BindDescriptorSets(invalidateProbesDS));
+
+	volume.PostInvalidation();
+}
+
+rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Uint32 probesToUpdateNum	= relitParams.probesNumToUpdate;
+	const Uint32 raysNumPerProbe	= relitParams.raysNumPerProbe;
 
 	const math::Vector2u probesResultRes = math::Vector2u(probesToUpdateNum, raysNumPerProbe);
 	const rg::RGTextureViewHandle probesTraceResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Probes Trace Result"), rg::TextureDef(probesResultRes, rhi::EFragmentFormat::RGBA16_S_Float));
@@ -315,14 +427,12 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysDS->u_skyViewLUT               = viewAtmosphereData.skyViewLUT;
 	traceRaysDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_traceRaysResultTexture   = probesTraceResultTexture;
-	traceRaysDS->u_updateProbesParams       = updateParams.updateProbesParamsBuffer;
-	traceRaysDS->u_ddgiParams               = updateParams.ddgiParamsBuffer;
-	traceRaysDS->u_probesIlluminanceTexture = updateParams.probesIlluminanceTextureView;
-	traceRaysDS->u_probesHitDistanceTexture = updateParams.probesHitDistanceTextureView;
-	traceRaysDS->rayTracingDS	            = rayTracingSubsystem.GetSceneRayTracingDS();
+	traceRaysDS->u_relitParams              = relitParams.relitParamsBuffer;
+	traceRaysDS->u_volumeParams             = relitParams.ddgiVolumeParamsBuffer;
+	traceRaysDS->rayTracingDS               = rayTracingSubsystem.GetSceneRayTracingDS();
 
 #if DDGI_DEBUGGING
-	if (updateParams.debugMode == EDDGIDebugMode::DebugRays)
+	if (relitParams.debugMode == EDDGIDebugMode::DebugRays)
 	{
 		const Uint32 debugRaysNum = probesToUpdateNum * raysNumPerProbe;
 		const Uint64 debugRaysBufferSize = debugRaysNum * sizeof(DDGIDebugRay);
@@ -357,8 +467,9 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("DDGI Trace Rays"),
 						   traceRaysPipelineID,
-						   math::Vector3u(probesToUpdateNum, updateParams.raysNumPerProbe, 1u),
+						   math::Vector3u(probesToUpdateNum, relitParams.raysNumPerProbe, 1u),
 						   rg::BindDescriptorSets(traceRaysDS,
+												  relitParams.ddgiSceneDS,
 												  lightsRenderSystem.GetGlobalLightsDS(),
 												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 												  GeometryManager::Get().GetGeometryDSState(),
@@ -376,20 +487,7 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 
 	if (ddgiSubsystem.IsDDGIEnabled())
 	{
-		if (ddgiSubsystem.RequiresClearingData())
-		{
-			const rg::RGTextureViewHandle probesIlluminanceTextureView = graphBuilder.AcquireExternalTextureView(ddgiSubsystem.GetProbesIlluminanceTexture());
-
-			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear DDGI Data"), probesIlluminanceTextureView, rhi::ClearColor());
-
-			ddgiSubsystem.PostClearingData();
-		}
-
-		const DDGIUpdateParameters updateParams(ddgiSubsystem.CreateUpdateProbesParams(), ddgiSubsystem);
-
-		UpdateProbes(graphBuilder, renderScene, viewSpec, updateParams);
-
-		ddgiSubsystem.PostUpdateProbes();
+		RelitScene(graphBuilder, renderScene, viewSpec, ddgiSubsystem, ddgiSubsystem.GetDDGIScene());
 	}
 }
 
@@ -403,7 +501,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	
 	const math::Vector2u renderingArea = renderView.GetRenderingResolution();
 
-	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
+	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), renderingArea);
 	rg::RGRenderTargetDef depthRTDef;
@@ -426,7 +524,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Pass"),
 							renderPassDef,
 							rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-												   ddgiSubsystem.GetDDGIDS()),
+												   ddgiSubsystem.GetDDGISceneDS()),
 							[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 							{
 								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
@@ -443,7 +541,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 		const Uint32 raysNum = debugRaysViewData.raysNum;
 
 		graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Rays Subpass"),
-																rg::BindDescriptorSets(std::move(debugRaysDS)),
+								rg::BindDescriptorSets(std::move(debugRaysDS)),
 								[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 								{
 									static const rdr::PipelineStateID drawDebugRaysPipeline = pipelines::CreateDDGIDrawDebugRaysPipeline(colorFormat, depthFormat);
@@ -458,22 +556,75 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 		debugParams.probeRadius	= 0.075f;
 		debugParams.debugMode	= ddgiSubsystem.GetDebugMode();
 
-		lib::MTHandle<DDGIDebugDrawProbesDS> debugDrawProbesDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
-		debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
-		
-		const Uint32 probesNum			= ddgiSubsystem.GetProbesNum();
-		const Uint32 probeVerticesNum	= 144u;
+		const DDGIScene& ddgiScene = ddgiSubsystem.GetDDGIScene();
 
-		graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Probes Subpass"),
-								rg::BindDescriptorSets(std::move(debugDrawProbesDS)),
-								[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-								{
-									static const rdr::PipelineStateID drawDebugProbesPipeline = pipelines::CreateDDGIDrawDebugProbesPipeline(colorFormat, depthFormat);
-									recorder.BindGraphicsPipeline(drawDebugProbesPipeline);
+		const lib::DynamicArray<DDGIVolume*>& volumes = ddgiScene.GetVolumes();
 
-									recorder.DrawInstances(probeVerticesNum, probesNum);
-								});
+		for (const DDGIVolume* volume : volumes)
+		{
+			debugParams.volumeIdx = volume->GetVolumeIdx();
+
+			lib::MTHandle<DDGIDebugDrawProbesDS> debugDrawProbesDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
+			debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
+
+			const Uint32 probesNum = volume->GetProbesNum();
+			const Uint32 probeVerticesNum = 144u;
+
+			graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Probes Subpass"),
+									rg::BindDescriptorSets(std::move(debugDrawProbesDS)),
+									[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+									{
+										static const rdr::PipelineStateID drawDebugProbesPipeline = pipelines::CreateDDGIDrawDebugProbesPipeline(colorFormat, depthFormat);
+										recorder.BindGraphicsPipeline(drawDebugProbesPipeline);
+
+										recorder.DrawInstances(probeVerticesNum, probesNum);
+									});
+		}
 	}
 }
 
-} // spt::rsc
+DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume, const DDGIConfig& config) const
+{
+	const Bool fullVolumeRelit = volume.WantsFullVolumeRelit();
+
+	const DDGIVolumeGPUParams& ddgiParams = volume.GetVolumeGPUParams();
+
+	const math::Vector3u probesToUpdate = fullVolumeRelit ? ddgiParams.probesVolumeResolution : config.localRelitProbeGridSize.cwiseMin(ddgiParams.probesVolumeResolution);
+
+	const math::Vector3u blocksNum = math::Utils::DivideCeil(volume.GetProbesVolumeResolution(), probesToUpdate);
+
+	math::Vector3u updateCoords(lib::rnd::Random<Uint32>(0, blocksNum.x()),
+								lib::rnd::Random<Uint32>(0, blocksNum.y()),
+								lib::rnd::Random<Uint32>(0, blocksNum.z()));
+
+	updateCoords = updateCoords.cwiseProduct(probesToUpdate);
+	updateCoords.x() = std::min(updateCoords.x(), volume.GetProbesVolumeResolution().x() - probesToUpdate.x());
+	updateCoords.y() = std::min(updateCoords.y(), volume.GetProbesVolumeResolution().y() - probesToUpdate.y());
+	updateCoords.z() = std::min(updateCoords.z(), volume.GetProbesVolumeResolution().z() - probesToUpdate.z());
+
+	const Uint32 raysNumPerProbe = fullVolumeRelit ? config.globalRelitRaysPerProbe : config.localRelitRaysNumPerProbe;
+
+	const math::AlignedBox3f previousAABB = volume.GetPrevAABB();
+
+	DDGIRelitGPUParams params;
+	params.probesToUpdateCoords     = updateCoords;
+	params.probesToUpdateCount      = probesToUpdate;
+	params.probeRaysMaxT            = 100.f;
+	params.probeRaysMinT            = 0.0f;
+	params.raysNumPerProbe          = raysNumPerProbe;
+	params.probesNumToUpdate        = params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
+	params.rcpRaysNumPerProbe       = 1.f / static_cast<Real32>(params.raysNumPerProbe);
+	params.rcpProbesNumToUpdate     = 1.f / static_cast<Real32>(params.probesNumToUpdate);
+	params.blendHysteresis          = fullVolumeRelit ? config.globalRelitHysteresis : config.localRelitHysteresis;
+	params.illuminanceDiffThreshold = 3400.f;
+	params.luminanceDiffThreshold   = 500.f;
+	params.prevAABBMin              = previousAABB.min();
+	params.prevAABBMax              = previousAABB.max();
+	
+	params.raysRotation                       = math::Matrix4f::Identity();
+	params.raysRotation.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
+
+	return params;
+}
+
+} // spt::rsc::ddgi

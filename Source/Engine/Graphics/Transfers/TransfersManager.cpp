@@ -70,6 +70,8 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 	submitBatch.waitSemaphores.AddTimelineSemaphore(transfersSemaphoresRef, semaphorePrevValue, rhi::EPipelineStage::ALL_TRANSFER);
 	submitBatch.signalSemaphores.AddTimelineSemaphore(transfersSemaphoresRef, semaphoreNewValue, rhi::EPipelineStage::ALL_TRANSFER);
 
+	submitBatch.waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_TRANSFER);
+
 	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Transfer, submitBatches);
 
 	return semaphoreNewValue;

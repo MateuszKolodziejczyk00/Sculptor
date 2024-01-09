@@ -15,19 +15,18 @@ void DDGIProbeRaysRTG()
     const uint2 dispatchIdx = DispatchRaysIndex().xy;
     
     const uint rayIdx = dispatchIdx.y;
-    const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, u_updateProbesParams.probesToUpdateCoords, u_updateProbesParams.probesToUpdateCount);
-    const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_ddgiParams, probeCoords);
+    const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
 
-    float3 rayDirection = GetProbeRayDirection(rayIdx, u_updateProbesParams.raysNumPerProbe);
-    rayDirection = mul(u_updateProbesParams.raysRotation, float4(rayDirection, 0.f)).xyz;
+    float3 rayDirection = GetProbeRayDirection(rayIdx, u_relitParams.raysNumPerProbe);
+    rayDirection = mul(u_relitParams.raysRotation, float4(rayDirection, 0.f)).xyz;
 
-    const float3 probeWorldLocation = GetProbeWorldLocation(u_ddgiParams, probeCoords);
+    const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, probeCoords);
 
     DDGIRayPayload payload;
 
     RayDesc rayDesc;
-    rayDesc.TMin        = u_updateProbesParams.probeRaysMinT;
-    rayDesc.TMax        = u_updateProbesParams.probeRaysMaxT;
+    rayDesc.TMin        = u_relitParams.probeRaysMinT;
+    rayDesc.TMax        = u_relitParams.probeRaysMaxT;
     rayDesc.Origin      = probeWorldLocation;
     rayDesc.Direction   = rayDirection;
 
@@ -42,7 +41,7 @@ void DDGIProbeRaysRTG()
 
     float3 luminance = 0.f;
 
-    const bool isValidHit = payload.hitDistance > 0.f && payload.hitDistance <= u_updateProbesParams.probeRaysMaxT;
+    const bool isValidHit = payload.hitDistance > 0.f && payload.hitDistance <= u_relitParams.probeRaysMaxT;
 
     if(isValidHit)
     {
@@ -64,20 +63,20 @@ void DDGIProbeRaysRTG()
         luminance = CalcReflectedLuminance(surface, -rayDirection);
 
         const DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, payload.normal, -rayDirection);
-        const float3 illuminance = DDGISampleIlluminance(u_ddgiParams, u_probesIlluminanceTexture, u_linearSampler, u_probesHitDistanceTexture, u_linearSampler, ddgiSampleParams);
+        const float3 illuminance = DDGISampleIlluminance(ddgiSampleParams);
 
         luminance += payload.emissive;
 
         luminance += Diffuse_Lambert(illuminance) * min(surface.diffuseColor, 0.9f);
     }
-    else if (payload.hitDistance > u_updateProbesParams.probeRaysMaxT)
+    else if (payload.hitDistance > u_relitParams.probeRaysMaxT)
     {
         const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
         luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
     }
 
 #if DDGI_DEBUG_RAYS
-    const uint debugRayIdx = dispatchIdx.x * u_updateProbesParams.raysNumPerProbe + rayIdx;
+    const uint debugRayIdx = dispatchIdx.x * u_relitParams.raysNumPerProbe + rayIdx;
 
     DDGIDebugRay debugRay;
     debugRay.traceOrigin        = probeWorldLocation;
@@ -97,7 +96,7 @@ void DDGIProbeRaysRTM(inout DDGIRayPayload payload)
     payload.normal              = 0.f;
     payload.roughness           = 0.f;
     payload.baseColorMetallic   = PackFloat4x8(float4(0.f, 0.5f, 1.f, 0.f));
-    payload.hitDistance         = u_updateProbesParams.probeRaysMaxT + 1000.f;
+    payload.hitDistance         = u_relitParams.probeRaysMaxT + 1000.f;
 }
 
 
