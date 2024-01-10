@@ -233,14 +233,21 @@ DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& gra
 
 struct DDGIDebugRaysViewData
 {
-	explicit DDGIDebugRaysViewData(rg::RGBufferViewHandle inDebugRays, Uint32 inRaysNum)
-		: debugRays(inDebugRays)
-		, raysNum(inRaysNum)
-	{ }
+	struct DebugRaysBuffer
+	{
+		explicit DebugRaysBuffer(rg::RGBufferViewHandle inDebugRays, Uint32 inRaysNum)
+			: debugRays(inDebugRays)
+			, raysNum(inRaysNum)
+		{ }
 
-	rg::RGBufferViewHandle debugRays;
+		rg::RGBufferViewHandle debugRays;
 
-	Uint32 raysNum;
+		Uint32 raysNum;
+	};
+
+	DDGIDebugRaysViewData() = default;
+
+	lib::DynamicArray<DebugRaysBuffer> debugRaysBuffers;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -441,7 +448,8 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 		traceRaysDS->u_debugRays.Set<rg::RGBufferViewHandle>(debugRaysBuffer);
 
-		viewSpec.GetData().Create<DDGIDebugRaysViewData>(debugRaysBuffer, debugRaysNum);
+		DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().GetOrCreate<DDGIDebugRaysViewData>();
+		debugRaysViewData.debugRaysBuffers.emplace_back(DDGIDebugRaysViewData::DebugRaysBuffer(debugRaysBuffer, debugRaysNum));
 	}
 #endif // DDGI_DEBUGGING
 
@@ -535,20 +543,23 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	{
 		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().Get<DDGIDebugRaysViewData>();
 
-		const lib::MTHandle<DDGIDebugDrawRaysDS> debugRaysDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
-		debugRaysDS->u_debugRays = debugRaysViewData.debugRays;
+		for (const DDGIDebugRaysViewData::DebugRaysBuffer& debugRaysInfo : debugRaysViewData.debugRaysBuffers)
+		{
+			const lib::MTHandle<DDGIDebugDrawRaysDS> debugRaysDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
+			debugRaysDS->u_debugRays = debugRaysInfo.debugRays;
 
-		const Uint32 raysNum = debugRaysViewData.raysNum;
+			const Uint32 raysNum = debugRaysInfo.raysNum;
 
-		graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Rays Subpass"),
-								rg::BindDescriptorSets(std::move(debugRaysDS)),
-								[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-								{
-									static const rdr::PipelineStateID drawDebugRaysPipeline = pipelines::CreateDDGIDrawDebugRaysPipeline(colorFormat, depthFormat);
-									recorder.BindGraphicsPipeline(drawDebugRaysPipeline);
+			graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Rays Subpass"),
+									rg::BindDescriptorSets(std::move(debugRaysDS)),
+									[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+									{
+										static const rdr::PipelineStateID drawDebugRaysPipeline = pipelines::CreateDDGIDrawDebugRaysPipeline(colorFormat, depthFormat);
+										recorder.BindGraphicsPipeline(drawDebugRaysPipeline);
 
-									recorder.DrawInstances(2u, raysNum);
-								});
+										recorder.DrawInstances(2u, raysNum);
+									});
+		}
 	}
 	else
 	{
@@ -606,6 +617,8 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume,
 
 	const math::AlignedBox3f previousAABB = volume.GetPrevAABB();
 
+	const Real32 hysteresis = ComputeRelitHysteresis(volume, config, fullVolumeRelit);
+
 	DDGIRelitGPUParams params;
 	params.probesToUpdateCoords     = updateCoords;
 	params.probesToUpdateCount      = probesToUpdate;
@@ -615,7 +628,7 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume,
 	params.probesNumToUpdate        = params.probesToUpdateCount.x() * params.probesToUpdateCount.y() * params.probesToUpdateCount.z();
 	params.rcpRaysNumPerProbe       = 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate     = 1.f / static_cast<Real32>(params.probesNumToUpdate);
-	params.blendHysteresis          = fullVolumeRelit ? config.globalRelitHysteresis : config.localRelitHysteresis;
+	params.blendHysteresis          = hysteresis;
 	params.illuminanceDiffThreshold = 3400.f;
 	params.luminanceDiffThreshold   = 500.f;
 	params.prevAABBMin              = previousAABB.min();
@@ -625,6 +638,13 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume,
 	params.raysRotation.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
 
 	return params;
+}
+
+Real32 DDGIRenderSystem::ComputeRelitHysteresis(const DDGIVolume& volume, const DDGIConfig& config, Bool isFullVolumeRelit) const
+{
+	Real32 hysteresis = isFullVolumeRelit ? config.defaultGlobalRelitHysteresis : config.defaultLocalRelitHysteresis;
+	hysteresis += volume.GetRelitHysteresisDelta();
+	return std::clamp(hysteresis, config.minHysteresis, config.maxHysteresis);
 }
 
 } // spt::rsc::ddgi

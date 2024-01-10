@@ -20,9 +20,15 @@ struct TypeSerializer<rsc::ddgi::DDGIConfig>
 	{
 		serializer.Serialize("LocalRelitRaysNumPerProbe", data.localRelitRaysNumPerProbe);
 		serializer.Serialize("GlobalRelitRaysPerProbe", data.globalRelitRaysPerProbe);
-		serializer.Serialize("GlobalRelitHysteresis", data.globalRelitHysteresis);
-		serializer.Serialize("LocalRelitHysteresis", data.localRelitHysteresis);
+
+		serializer.Serialize("LocalRelitHysteresis", data.defaultGlobalRelitHysteresis);
+		serializer.Serialize("LocalRelitHysteresis", data.defaultLocalRelitHysteresis);
+
+		serializer.Serialize("LocalRelitHysteresis", data.minHysteresis);
+		serializer.Serialize("LocalRelitHysteresis", data.maxHysteresis);
+
 		serializer.Serialize("LocalRelitProbeGridSize", data.localRelitProbeGridSize);
+
 		serializer.Serialize("RelitVolumesBudget", data.relitVolumesBudget);
 		serializer.Serialize("ProbeIlluminanceDataRes", data.probeIlluminanceDataRes);
 		serializer.Serialize("ProbeHitDistanceDataRes", data.probeHitDistanceDataRes);

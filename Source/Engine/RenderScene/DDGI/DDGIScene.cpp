@@ -444,11 +444,12 @@ void DDGIScene::UpdatePriorities(const SceneView& mainView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32 deltaTime = engn::GetRenderingFrame().GetDeltaTime();
+	const Real32 currentTime = engn::GetRenderingFrame().GetTime();
+	const Real32 deltaTime   = engn::GetRenderingFrame().GetDeltaTime();
 
 	for (DDGIVolume* volume : m_volumes)
 	{
-		volume->UpdateRelitPriority(mainView, deltaTime);
+		volume->UpdateRelitPriority(mainView, currentTime, deltaTime);
 	}
 }
 
@@ -467,7 +468,7 @@ void DDGIScene::OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderS
 {
 	for (DDGIVolume* volume : m_volumes)
 	{
-		volume->RequestGlobalRelit();
+		volume->MarkSunDirectionAsDirty();
 	}
 }
 

@@ -71,6 +71,7 @@ private:
 	void RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
 
 	DDGIRelitGPUParams CreateRelitParams(const DDGIVolume& volume, const DDGIConfig& config) const;
+	Real32             ComputeRelitHysteresis(const DDGIVolume& volume, const DDGIConfig& config, Bool isFullVolumeRelit) const;
 };
 
 } // spt::rsc::ddgi

@@ -43,7 +43,7 @@ public:
 
 	void PostVolumeRelit();
 
-	void RequestGlobalRelit();
+	void MarkSunDirectionAsDirty();
 
 	math::AlignedBox3f GetPrevAABB() const;
 
@@ -69,13 +69,17 @@ public:
 
 	const DDGIVolumeGPUParams& GetVolumeGPUParams() const;
 
+	Real32 GetRelitHysteresisDelta() const;
+
 	const math::Vector3u& GetProbesVolumeResolution() const;
 	Uint32 GetProbesNum() const;
 
-	void   UpdateRelitPriority(const SceneView& sceneView, Real32 deltaTime);
+	void   UpdateRelitPriority(const SceneView& sceneView, Real32 currentTime, Real32 deltaTime);
 	Real32 GetRelitPriority() const;
 
 private:
+
+	Real32 ComputeRelitPriorityFactor(const SceneView& sceneView, Real32 currentTime, Real32 deltaTime) const;
 
 	void TranslateImpl(const math::Vector3i& wrapDelta);
 
@@ -97,7 +101,9 @@ private:
 
 	Real32 m_relitPriority = 0.0f;
 
-	Bool m_wantsGlobalRelit = false;
+	Real32 m_lastRelitTime = 0.0f;
+
+	Bool m_isSunLightDirectionDirty = false;
 };
 
 } // ddgi

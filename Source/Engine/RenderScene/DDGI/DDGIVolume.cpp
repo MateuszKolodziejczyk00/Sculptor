@@ -3,15 +3,18 @@
 #include "ResourcesManager.h"
 #include "Types/Texture.h"
 #include "View/SceneView.h"
+#include "EngineFrame.h"
 
 namespace spt::rsc::ddgi
 {
 
 namespace priority_statics
 {
-static constexpr Real32 deltaPriorityAfterMove        = 50.f;
-static constexpr Real32 deltaPriorityAfterTeleport    = 60.f;
-static constexpr Real32 deltaPriorityAfterGlobalRelit = 10.f;
+static constexpr Real32 deltaPriorityAfterMove                              = 50.f;
+static constexpr Real32 deltaPriorityAfterTeleport                          = 60.f;
+static constexpr Real32 deltaPriorityOnSunDirectionDirty                    = 10.f;
+static constexpr Real32 priorityPerTickMultiplierWhenSunDirectionDirty      = 6.f;
+static constexpr Real32 priorityPerTickMultiplierAfterEverySecondSinceRelit = 6.f;
 } // priority_statics
 
 DDGIVolume::DDGIVolume(DDGIScene& owningScene)
@@ -55,10 +58,11 @@ void DDGIVolume::Initialize(DDGIGPUVolumeHandle gpuVolumeHandle, const DDGIVolum
 	m_state = EDDGIVolumeState::Ready;
 
 	m_relitPriority = 0.f;
+	m_lastRelitTime = 0.f;
 	
 	m_requiresInvalidation = false;
 
-	m_wantsGlobalRelit = false;
+	m_isSunLightDirectionDirty = false;
 }
 
 Bool DDGIVolume::Translate(const math::Translation3f& requestedTranslation)
@@ -117,15 +121,17 @@ void DDGIVolume::PostVolumeRelit()
 	m_prevAABB.reset();
 
 	m_relitPriority = 0.f;
+
+	m_lastRelitTime = engn::GetRenderingFrame().GetTime();
 }
 
-void DDGIVolume::RequestGlobalRelit()
+void DDGIVolume::MarkSunDirectionAsDirty()
 {
 	SPT_CHECK(IsReady());
 
-	m_wantsGlobalRelit = true;
+	m_isSunLightDirectionDirty = true;
 
-	m_relitPriority += priority_statics::deltaPriorityAfterGlobalRelit;
+	m_relitPriority += priority_statics::deltaPriorityOnSunDirectionDirty;
 }
 
 math::AlignedBox3f DDGIVolume::GetPrevAABB() const
@@ -145,7 +151,7 @@ void DDGIVolume::PostInvalidation()
 
 Bool DDGIVolume::WantsFullVolumeRelit() const
 {
-	return MovedSinceLastRelit() || m_wantsGlobalRelit;
+	return MovedSinceLastRelit() || m_isSunLightDirectionDirty;
 }
 
 Bool DDGIVolume::MovedSinceLastRelit() const
@@ -209,16 +215,43 @@ Uint32 DDGIVolume::GetProbesNum() const
 	return gpuParams.probesVolumeResolution.x() * gpuParams.probesVolumeResolution.y() * gpuParams.probesVolumeResolution.z();
 }
 
+Real32 DDGIVolume::GetRelitHysteresisDelta() const
+{
+	Real32 hysteresisDelta = 0.f;
+	if (m_isSunLightDirectionDirty)
+	{
+		const Real32 currentTime = engn::GetRenderingFrame().GetTime();
+		const Real32 timeSinceRelit = currentTime - m_lastRelitTime;
+		hysteresisDelta -= std::min(std::max(timeSinceRelit - 0.08f, 0.f) * 1.2f, 1.f);
+	}
+
+	return hysteresisDelta;
+}
+
 const math::Vector3u& DDGIVolume::GetProbesVolumeResolution() const
 {
 	SPT_CHECK(IsReady());
 	return m_gpuVolumeHandle.GetGPUParams().probesVolumeResolution;
 }
 
-void DDGIVolume::UpdateRelitPriority(const SceneView& sceneView, Real32 deltaTime)
+void DDGIVolume::UpdateRelitPriority(const SceneView& sceneView, Real32 currentTime, Real32 deltaTime)
 {
 	SPT_CHECK(IsReady());
 
+	const Real32 priorityFactor = ComputeRelitPriorityFactor(sceneView, currentTime, deltaTime);
+	
+	const Real32 priority = m_volumePriority * priorityFactor;
+
+	m_relitPriority += priority * deltaTime;
+}
+
+Real32 DDGIVolume::GetRelitPriority() const
+{
+	return m_relitPriority;
+}
+
+Real32 DDGIVolume::ComputeRelitPriorityFactor(const SceneView& sceneView, Real32 currentTime, Real32 deltaTime) const
+{
 	Real32 priorityFactor = 1.f;
 	if (m_volumeAABB.contains(sceneView.GetLocation()))
 	{
@@ -230,15 +263,16 @@ void DDGIVolume::UpdateRelitPriority(const SceneView& sceneView, Real32 deltaTim
 
 		priorityFactor += cameraToVolume.dot(sceneView.GetForwardVector());
 	}
-	
-	const Real32 priority = m_volumePriority * priorityFactor;
 
-	m_relitPriority += priority * deltaTime;
-}
+	if (m_isSunLightDirectionDirty)
+	{
+		priorityFactor += priority_statics::priorityPerTickMultiplierWhenSunDirectionDirty;
+	}
 
-Real32 DDGIVolume::GetRelitPriority() const
-{
-	return m_relitPriority;
+	const Real32 secondsSinceRelit = currentTime - m_lastRelitTime;
+	priorityFactor += secondsSinceRelit * priority_statics::priorityPerTickMultiplierAfterEverySecondSinceRelit;
+
+	return priorityFactor;
 }
 
 void DDGIVolume::TranslateImpl(const math::Vector3i& wrapDelta)
