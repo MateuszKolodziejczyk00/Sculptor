@@ -26,9 +26,9 @@ void TemporalFilterCS(CS_INPUT input)
 
         float neighbourhoodMean = 0.f;
         float neighbourhoodVariance = 0.f;
-        if(u_params.hasValidMomentsTexture)
+        if(u_params.hasValidSpatialMomentsTexture)
         {
-            const float2 moments = u_momentsTexture.SampleLevel(u_nearestSampler, uv, 0.f).xx;
+            const float2 moments = u_spatialMomentsTexture.SampleLevel(u_nearestSampler, uv, 0.f).xx;
             neighbourhoodMean = moments.x;
             neighbourhoodVariance = abs(moments.x - Pow2(moments.y));
         }
@@ -72,20 +72,17 @@ void TemporalFilterCS(CS_INPUT input)
                     currentFrameWeight = max(currentFrameWeight, rcp(float(historySampleCount + 1)));
                 }
                 
-                const float currentMomentsWeight = 0.25f;
-                const float2 moments = float2(currentValue, Pow2(currentValue));
-                const float2 historyMoments = u_temporalMomentsHistoryTexture.SampleLevel(u_nearestSampler, historyUV, 0.f).xy;
+                const float currentMomentsWeight = 0.1f;
+                const float2 temporalMoments = float2(currentValue, Pow2(currentValue));
+                const float2 historyTemporalMoments = u_temporalMomentsHistoryTexture.SampleLevel(u_nearestSampler, historyUV, 0.f).xy;
 
-                const float2 newMoments = lerp(historyMoments, moments, currentMomentsWeight);
+                const float2 newTemporalMoments = lerp(historyTemporalMoments, temporalMoments, currentMomentsWeight);
 
-                u_temporalMomentsTexture[pixel] = newMoments;
-
-                const float temporalVariance = abs(newMoments.x - Pow2(newMoments.y));
-                currentFrameWeight = saturate(max(currentFrameWeight, 0.02f * rcp(temporalVariance + 0.001f)));
+                u_temporalMomentsTexture[pixel] = newTemporalMoments;
                 
                 float historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
 
-                if (u_params.hasValidMomentsTexture)
+                if (u_params.hasValidSpatialMomentsTexture)
                 {
                     const float stdDev = sqrt(neighbourhoodVariance);
                     const float extent = 0.5f;
@@ -110,7 +107,13 @@ void TemporalFilterCS(CS_INPUT input)
 
             if(u_params.hasValidSamplesCountTexture)
             {
-                u_accumulatedSamplesNumTexture[pixel] = wasSampleAccepted ? min(historySampleCount + 1u, 80u) : 0u;
+                const uint newSampleCount = wasSampleAccepted ? min(historySampleCount + 1u, 80u) : 0u;
+                u_accumulatedSamplesNumTexture[pixel] = newSampleCount;
+            }
+
+            if(!wasSampleAccepted)
+            {
+                u_temporalMomentsTexture[pixel] = 0.f;
             }
         }
     }

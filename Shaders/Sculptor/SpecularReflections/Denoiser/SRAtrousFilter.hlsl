@@ -25,12 +25,6 @@ float WorldLocationWeight(in float3 centerWS, in float3 sampleWS)
     const float dist2 = dot(diff, diff);
     return saturate(1.f - sqrt(dist2) / 0.015f);
 }
-//float WorldLocationWeight(in float3 centerWS, in float3 sampleWS)
-//{
-//    const float3 diff = centerWS - sampleWS;
-//    const float dist2 = dot(diff, diff);
-//    return saturate(1.f - sqrt(dist2) / 0.15f);
-//}
 
 
 [numthreads(8, 8, 1)]

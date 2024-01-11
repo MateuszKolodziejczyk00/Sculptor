@@ -14,27 +14,26 @@ namespace spt::rsc::visibility_denoiser::temporal_accumulation
 
 BEGIN_SHADER_STRUCT(TemporalFilterShaderParams)
 	SHADER_STRUCT_FIELD(Real32, currentFrameWeight)
-	SHADER_STRUCT_FIELD(Real32, linearAndNearestSamplesMaxDepthDiff)
-	SHADER_STRUCT_FIELD(Bool, hasValidMomentsTexture)
+	SHADER_STRUCT_FIELD(Bool, hasValidSpatialMomentsTexture)
 	SHADER_STRUCT_FIELD(Bool, hasValidSamplesCountTexture)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_currentTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_historyTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_historyDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_momentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Uint32>),								u_accumulatedSamplesNumTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Uint32>),								u_accumulatedSamplesNumHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_temporalMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_temporalMomentsHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<TemporalFilterShaderParams>),		u_params)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_currentTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyDepthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Uint32>),                             u_accumulatedSamplesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Uint32>),                            u_accumulatedSamplesNumHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                            u_spatialMomentsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_temporalMomentsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_temporalMomentsHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<TemporalFilterShaderParams>),     u_params)
 DS_END();
 
 
@@ -56,10 +55,9 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	const Bool hasValidSamplesCountTexture = params.accumulatedSamplesNumTexture.IsValid() && params.accumulatedSamplesNumHistoryTexture.IsValid();
 
 	TemporalFilterShaderParams shaderParams;
-	shaderParams.currentFrameWeight						= params.currentFrameWeight;
-	shaderParams.linearAndNearestSamplesMaxDepthDiff	= params.linearAndNearestSamplesMaxDepthDiff;
-	shaderParams.hasValidMomentsTexture					= params.momentsTexture.IsValid();
-	shaderParams.hasValidSamplesCountTexture			= hasValidSamplesCountTexture;
+	shaderParams.currentFrameWeight                 = params.currentFrameWeight;
+	shaderParams.hasValidSpatialMomentsTexture      = params.spatialMomentsTexture.IsValid();
+	shaderParams.hasValidSamplesCountTexture        = hasValidSamplesCountTexture;
 
 	lib::MTHandle<TemporalFilterDS> ds = graphBuilder.CreateDescriptorSet<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
 	ds->u_currentTexture                      = params.currentTexture;
@@ -68,9 +66,9 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	ds->u_depthTexture                        = params.currentDepthTexture;
 	ds->u_motionTexture                       = params.motionTexture;
 	ds->u_normalsTexture                      = params.normalsTexture;
-	ds->u_momentsTexture                      = params.momentsTexture;
 	ds->u_accumulatedSamplesNumTexture        = params.accumulatedSamplesNumTexture;
 	ds->u_accumulatedSamplesNumHistoryTexture = params.accumulatedSamplesNumHistoryTexture;
+	ds->u_spatialMomentsTexture               = params.spatialMomentsTexture;
 	ds->u_temporalMomentsTexture              = params.temporalMomentsTexture;
 	ds->u_temporalMomentsHistoryTexture       = params.temporalMomentsHistoryTexture;
 	ds->u_params                              = shaderParams;

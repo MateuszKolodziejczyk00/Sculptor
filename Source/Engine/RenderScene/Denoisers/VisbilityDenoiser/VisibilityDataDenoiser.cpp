@@ -84,15 +84,14 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	moments::VisibilityMomentsParameters visibilityMomentsParams;
 	visibilityMomentsParams.debugName   = m_debugName;
 	visibilityMomentsParams.dataTexture = denoisedTexture;
-	const rg::RGTextureViewHandle momentsTexture = moments::ComputeMoments(graphBuilder, visibilityMomentsParams);
+	const rg::RGTextureViewHandle spatialMomentsTexture = moments::ComputeMoments(graphBuilder, visibilityMomentsParams);
 
 	if (m_hasValidHistory && params.useTemporalFilter)
 	{
 		temporal_accumulation::TemporalFilterParams temporalParams(denoiserParams);
-		temporalParams.momentsTexture                      = momentsTexture;
+		temporalParams.spatialMomentsTexture               = spatialMomentsTexture;
 		temporalParams.accumulatedSamplesNumTexture        = accumulatedSamplesNum;
 		temporalParams.accumulatedSamplesNumHistoryTexture = accumulatedSamplesNumHistory;
-		temporalParams.linearAndNearestSamplesMaxDepthDiff = params.reprojectionLinearAndNearestSamplesMaxDepthDiff;
 		temporalParams.temporalMomentsTexture              = temporalMoments;
 		temporalParams.temporalMomentsHistoryTexture       = temporalMomentsHistory;
 		temporal_accumulation::ApplyTemporalFilter(graphBuilder, temporalParams);
@@ -100,7 +99,7 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 
 	graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy History Texture", m_debugName.AsString()), denoisedTexture, historyTexture);
 
-	ApplySpatialFilters(graphBuilder, denoiserParams, momentsTexture);
+	ApplySpatialFilters(graphBuilder, denoiserParams, temporalMoments, accumulatedSamplesNum);
 
 	m_hasValidHistory = true;
 
@@ -108,7 +107,7 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	std::swap(m_temporalMoments, m_temporalMomentsHistory);
 }
 
-void Denoiser::ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle momentsTexture)
+void Denoiser::ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle temporalMomentsTexture, rg::RGTextureViewHandle accumulatedSamplesNumTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -117,7 +116,8 @@ void Denoiser::ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const d
 	const rg::RGTextureViewHandle tempTexture2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture (2)", m_debugName.AsString()), textureDef);
 
 	spatial::SpatialATrousFilterParams spatialParams = params;
-	spatialParams.momentsTexture = momentsTexture;
+	spatialParams.temporalMomentsTexture       = temporalMomentsTexture;
+	spatialParams.accumulatedSamplesNumTexture = accumulatedSamplesNumTexture;
 
 	Uint32 iterationIdx = 0;
 	spatial::ApplyATrousFilter(graphBuilder, spatialParams, params.currentTexture, tempTexture, iterationIdx++);

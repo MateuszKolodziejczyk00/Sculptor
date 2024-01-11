@@ -47,6 +47,20 @@ void SpatialATrousFilterCS(CS_INPUT input)
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         const float3 centerWS = NDCToWorldSpaceNoJitter(ndc, u_sceneView);
 
+        const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(uint3(pixel, 0));
+
+        const float2 temporalMoments = u_temporalMomentsTexture.Load(uint3(pixel, 0));
+        const float temporalVariance = temporalMoments.y - Pow2(temporalMoments.x);
+        const float stdev = sqrt(max(temporalVariance, 0.0001f)) + (accumulatedSamplesNum <= 16 ? 100.f : 0.f);
+
+        const float visibilityCenter = u_inputTexture.Load(uint3(pixel, 0));
+
+        if(stdev < 0.001f)
+        {
+            u_outputTexture[pixel] = visibilityCenter;
+            return;
+        }
+
         const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
         float valueSum = 0.0f;
@@ -68,10 +82,14 @@ void SpatialATrousFilterCS(CS_INPUT input)
 
                 const float wn = NormalWeight(normal, sampleNormal);
                 const float wl = WorldLocationWeight(centerWS, sampleWS);
-                
-                const float weight = w * wn * wl;
 
-                valueSum += u_inputTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f) * weight;
+                const float sampleVisibility = u_inputTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f);
+
+                const float lw = min(abs(visibilityCenter - sampleVisibility) / (3.f * stdev + 0.001f), 5.f);
+                
+                const float weight = exp(-lw) * w * wn * wl;
+
+                valueSum += sampleVisibility * weight;
                 weightSum += weight;
             }
         }

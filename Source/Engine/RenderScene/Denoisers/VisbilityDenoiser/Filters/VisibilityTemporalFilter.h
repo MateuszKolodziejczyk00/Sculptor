@@ -23,9 +23,7 @@ struct TemporalFilterParams : public denoising::DenoiserBaseParams
 
 	Real32 currentFrameWeight = 0.02f;
 
-	Real32 linearAndNearestSamplesMaxDepthDiff = 0.02f;
-
-	rg::RGTextureViewHandle momentsTexture;
+	rg::RGTextureViewHandle spatialMomentsTexture;
 
 	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
 	rg::RGTextureViewHandle accumulatedSamplesNumHistoryTexture;

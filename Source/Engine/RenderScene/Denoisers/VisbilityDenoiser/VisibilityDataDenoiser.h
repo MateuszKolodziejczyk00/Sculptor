@@ -45,8 +45,6 @@ public:
 
 		rg::RGTextureViewHandle geometryNormalsTexture;
 
-		Real32 reprojectionLinearAndNearestSamplesMaxDepthDiff = 0.02f;
-
 		Bool useTemporalFilter = true;
 	};
 
@@ -60,7 +58,7 @@ private:
 
 	void DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	void ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle momentsTexture);
+	void ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle temporalMomentsTexture, rg::RGTextureViewHandle accumulatedSamplesNumTexture);
 
 	rg::RenderGraphDebugName m_debugName;
 

@@ -202,10 +202,10 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		const rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks.at(entity);
 
 		visibility_denoiser::Denoiser::Params denoiserParams(renderView);
-		denoiserParams.historyDepthTexture		= depthPrepassData.historyDepthNoJitterHalfRes;
-		denoiserParams.currentDepthTexture		= depthPrepassData.depthNoJitterHalfRes;
-		denoiserParams.motionTexture			= motionData.motionHalfRes;
-		denoiserParams.geometryNormalsTexture	= shadingInputData.geometryNormalsHalfRes;
+		denoiserParams.historyDepthTexture    = depthPrepassData.historyDepthNoJitterHalfRes;
+		denoiserParams.currentDepthTexture    = depthPrepassData.depthNoJitterHalfRes;
+		denoiserParams.motionTexture          = motionData.motionHalfRes;
+		denoiserParams.geometryNormalsTexture = shadingInputData.geometryNormalsHalfRes;
 
 		shadowsData.denoiser.Denoise(graphBuilder, shadowMask, denoiserParams);
 	}
