@@ -41,6 +41,10 @@
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
+#if SPT_SHADERS_DEBUG_FEATURES
+#include "Debug/ShaderDebugCommandBuffer.h"
+#endif // SPT_SHADERS_DEBUG_FEATURES
+
 namespace spt::ed
 {
 
@@ -148,7 +152,18 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	rsc::SceneRendererSettings rendererSettings;
 	rendererSettings.outputFormat = m_window->GetRHI().GetFragmentFormat();
 
-	const rg::RGTextureViewHandle sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
+	rg::RGTextureViewHandle sceneRenderingResultTextureView;
+
+	{
+#if SPT_SHADERS_DEBUG_FEATURES
+		gfx::dbg::ShaderDebugParameters shaderDebugParameters;
+		shaderDebugParameters.mousePosition = m_mousePositionOnViewport;
+		const gfx::dbg::ShaderDebugCommandsCollectingScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
+#endif // SPT_SHADERS_DEBUG_FEATURES
+
+		sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);
+	}
+
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(m_sceneUITextureView);
@@ -278,6 +293,11 @@ void SandboxRenderer::SetCameraSpeed(Real32 speed)
 Real32 SandboxRenderer::GetCameraSpeed()
 {
 	return m_cameraSpeed;
+}
+
+void SandboxRenderer::SetMousePositionOnViewport(const math::Vector2i& mousePosition)
+{
+	m_mousePositionOnViewport = mousePosition;
 }
 
 void SandboxRenderer::CreateRenderGraphCapture()

@@ -219,8 +219,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		const rg::RGTextureViewHandle& shadowMask = directionalLightShadowMasks.at(entity);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
-		upsampleParams.debugName	= RG_DEBUG_NAME("Directional Shadows Upsample");
-		upsampleParams.depth		= depthPrepassData.depth;
+		upsampleParams.debugName    = RG_DEBUG_NAME("Directional Shadows Upsample");
+		upsampleParams.depth        = depthPrepassData.depth;
 		upsampleParams.depthHalfRes = depthPrepassData.depthNoJitterHalfRes;
 		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
 		frameShadowMasks.shadowMasks[entity] = upsampler::DepthBasedUpsample(graphBuilder, shadowMask, upsampleParams);

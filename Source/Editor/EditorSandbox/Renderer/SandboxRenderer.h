@@ -59,6 +59,8 @@ public:
 	void	SetCameraSpeed(Real32 speed);
 	Real32	GetCameraSpeed();
 
+	void SetMousePositionOnViewport(const math::Vector2i& mousePosition);
+
 	void CreateRenderGraphCapture();
 
 private:
@@ -83,6 +85,8 @@ private:
 	Real32								m_farPlane;
 	
 	Real32								m_cameraSpeed;
+
+	math::Vector2i						m_mousePositionOnViewport;
 
 	Bool m_wantsCaptureNextFrame;
 };

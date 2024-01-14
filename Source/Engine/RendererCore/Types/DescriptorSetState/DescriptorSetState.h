@@ -136,8 +136,8 @@ protected:
 		bindingIdxChars[0] = '0' + static_cast<char>(bindingIdx / 10);
 		bindingIdxChars[1] = '0' + static_cast<char>(bindingIdx % 10);
 		return bindingIdxChars[0] == '0'
-			? lib::String("[[vk::binding(") + bindingIdxChars[1] + ", X)]] " + bindingVariable.data() + ";\n"
-			: lib::String("[[vk::binding(") + bindingIdxChars[0] + bindingIdxChars[1] + ", X)]] " + bindingVariable.data() + ";\n";
+			? lib::String("[[vk::binding(") + bindingIdxChars[1] + ", XX)]] " + bindingVariable.data() + ";\n"
+			: lib::String("[[vk::binding(") + bindingIdxChars[0] + bindingIdxChars[1] + ", XX)]] " + bindingVariable.data() + ";\n";
 	}
 
 private:

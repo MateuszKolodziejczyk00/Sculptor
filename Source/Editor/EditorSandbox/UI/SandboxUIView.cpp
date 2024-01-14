@@ -59,6 +59,10 @@ void SandboxUIView::DrawUI()
 	const ui::TextureID sceneTexture = m_renderer->GetUITextureID();
 	if (sceneTexture)
 	{
+		const math::Vector2f imagePosition = ImGui::GetCurrentWindow()->DC.CursorPos;
+		const math::Vector2f offset = math::Vector2f(ImGui::GetMousePos()) - imagePosition;
+		m_renderer->SetMousePositionOnViewport((offset + math::Vector2f::Constant(0.5f)).cast<Int32>());
+
 		const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
 
 		m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
@@ -141,11 +145,12 @@ void SandboxUIView::DrawJobSystemTestsUI()
 	{
 		lib::DynamicArray<js::Job> jobs;
 
-		for (SizeType i = 0; i < 5; ++i)
+		for (SizeType i = 0; i < 50; ++i)
 		{
 			jobs.emplace_back(js::Launch(SPT_GENERIC_JOB_NAME, []
 										 {
-											 for (Int64 x = 0; x < 1000000; ++x)
+											 SPT_PROFILER_SCOPE("Job 1");
+											 for (Int64 x = 0; x < 4000; ++x)
 											 {
 												 SPT_MAYBE_UNUSED
 												 float s = std::sin(std::cos(std::sin(std::cos(static_cast<float>(x)))));
@@ -153,6 +158,7 @@ void SandboxUIView::DrawJobSystemTestsUI()
 												 {
 													 js::Launch(SPT_GENERIC_JOB_NAME, []
 																{
+																	SPT_PROFILER_SCOPE("Job 2");
 																	for (Int64 x = 0; x < 100; ++x)
 																	{
 																		SPT_MAYBE_UNUSED
