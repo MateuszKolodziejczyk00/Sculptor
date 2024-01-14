@@ -21,4 +21,4 @@ using AlignedBox2u = AlignedBox<uint32_t, 2>;
 using AlignedBox3u = AlignedBox<uint32_t, 3>;
 using AlignedBox4u = AlignedBox<uint32_t, 4>;
 
-}
+} // spt::math

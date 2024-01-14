@@ -275,6 +275,55 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	AddNodeInternal(node, dependencies);
 }
 
+void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, Uint64 sourceOffset, RGBufferViewHandle destBufferView, Uint64 destOffset, Uint64 range)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(sourceBufferView.IsValid());
+	SPT_CHECK(sourceOffset + range <= sourceBufferView->GetSize());
+	SPT_CHECK(destBufferView.IsValid());
+	SPT_CHECK(destOffset + range <= destBufferView->GetSize());
+
+	SPT_CHECK(sourceBufferView != destBufferView);
+
+	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const Uint64 copySourceOffset = sourceBufferView->GetOffset() + sourceOffset;
+		const Uint64 copyDestOffset   = destBufferView->GetOffset() + destOffset;
+
+		const lib::SharedPtr<rdr::Buffer>& sourceBuffer = sourceBufferView->GetBuffer()->GetResource();
+		const lib::SharedPtr<rdr::Buffer>& destBuffer   = destBufferView->GetBuffer()->GetResource();
+
+		recorder.CopyBuffer(lib::Ref(sourceBuffer), copySourceOffset, lib::Ref(destBuffer), copyDestOffset, range);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(commandName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddBufferAccess(sourceBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::Transfer);
+	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
+
+	AddNodeInternal(node, dependencies);
+}
+
+lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range)
+{
+	SPT_PROFILER_FUNCTION();
+
+	rhi::BufferDefinition resultBufferDefinition;
+	resultBufferDefinition.size = range;
+	resultBufferDefinition.usage = rhi::EBufferUsage::TransferDst;
+	const lib::SharedRef<rdr::Buffer> result = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Buffer", commandName.AsString()), resultBufferDefinition, rhi::EMemoryUsage::GPUToCpu);
+
+	CopyBuffer(commandName, bufferView, offset, AcquireExternalBufferView(result->CreateFullView()), 0, range);
+
+	return result;
+}
+
 void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent)
 {
 	SPT_PROFILER_FUNCTION();
