@@ -32,6 +32,8 @@ function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPrivateAbsoluteIncludePath("$(Vulkan_SDK)/Include")
 
     self:SetupPlatformConfiguration(configuration, platform)
+
+    self:AddPublicDefine("SPT_SHADERS_DEBUG_FEATURES=1")
 end
 
 function ShaderCompiler:GetAdditionalLibPaths()

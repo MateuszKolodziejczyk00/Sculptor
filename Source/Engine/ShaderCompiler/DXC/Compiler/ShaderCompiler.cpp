@@ -173,7 +173,7 @@ public:
 
 	CompilerImpl();
 
-	CompiledShader			CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const;
+	CompiledShader CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderCompilationMetaData& outCompilationMetaData) const;
 
 private:
 
@@ -184,9 +184,9 @@ private:
 	DxcArguments BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
 	void         PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const;
 
-	ComPtr<IDxcUtils>			m_utils;
-	ComPtr<IDxcCompiler3>		m_compiler;
-	ComPtr<IDxcIncludeHandler>	m_defaultIncludeHandler;
+	ComPtr<IDxcUtils>          m_utils;
+	ComPtr<IDxcCompiler3>      m_compiler;
+	ComPtr<IDxcIncludeHandler> m_defaultIncludeHandler;
 };
 
 
@@ -200,7 +200,7 @@ CompilerImpl::CompilerImpl()
 	m_utils->CreateDefaultIncludeHandler(m_defaultIncludeHandler.GetAddressOf());
 }
 
-CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderCompilationMetaData& outCompilationMetaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -215,7 +215,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 		return result;
 	}
 
-	outParamsMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedHLSL);
+	outCompilationMetaData = ShaderMetaDataPrerpocessor::PreprocessShader(preprocessedHLSL);
 
 	// preprocess again to expand descriptor set macros
 	preprocessedHLSL = PreprocessShader(shaderPath, preprocessedHLSL, stageCompilationDef, compilerArgs);
@@ -375,6 +375,16 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 		macrosAsWideString.emplace_back(L"WITH_DEBUGS=0");
 	}
 
+	const Bool compileDebugFeatures = ShaderCompilationEnvironment::ShouldCompileWithDebugs() && SPT_SHADERS_DEBUG_FEATURES;
+	if (compileDebugFeatures)
+	{
+		macrosAsWideString.emplace_back(L"SPT_SHADERS_DEBUG_FEATURES=1");
+	}
+	else
+	{
+		macrosAsWideString.emplace_back(L"SPT_SHADERS_DEBUG_FEATURES=0");
+	}
+
 	for(const lib::WString& macro : macrosAsWideString)
 	{
 		args.Append(lib::WString(L"-D"), macro.c_str());
@@ -385,9 +395,9 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const
 {
 	const lib::String preprocessed = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, args);
-	const ShaderCompilationMetaData compilationMetaData = ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(preprocessed);
+	const ShaderPreprocessingMetaData preprocessingMetaData = ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(preprocessed);
 
-	for(const lib::HashedString& macro : compilationMetaData.macroDefinitions)
+	for(const lib::HashedString& macro : preprocessingMetaData.macroDefinitions)
 	{
 		args.Append(lib::WString(L"-D"), lib::StringUtils::ToWideString(macro.GetView()));
 	}
@@ -405,11 +415,11 @@ ShaderCompiler::ShaderCompiler()
 
 ShaderCompiler::~ShaderCompiler() = default;
 
-CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderParametersMetaData& outParamsMetaData) const
+CompiledShader ShaderCompiler::CompileShader(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, ShaderCompilationMetaData& outCompilationMetaData) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return m_impl->CompileShader(shaderPath, sourceCode, stageCompilationDef, compilationSettings, outParamsMetaData);
+	return m_impl->CompileShader(shaderPath, sourceCode, stageCompilationDef, compilationSettings, outCompilationMetaData);
 }
 
 } // spt::sc

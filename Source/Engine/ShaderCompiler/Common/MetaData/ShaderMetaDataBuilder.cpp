@@ -36,9 +36,9 @@ static SpirvResourceData GetResourceData(const spirv_cross::Compiler& compiler, 
 	return SpirvResourceData{ setIdx, bindingIdx, paramName };
 }
 
-static void InitializeBinding(smd::CommonBindingData& binding, SpirvResourceData resourceData, const ShaderParametersMetaData& parametersMetaData)
+static void InitializeBinding(smd::CommonBindingData& binding, SpirvResourceData resourceData, const ShaderCompilationMetaData& compilationMetaData)
 {
-	binding.AddFlag(parametersMetaData.GetAdditionalBindingFlags(resourceData.setIdx, resourceData.bindingIdx));
+	binding.AddFlag(compilationMetaData.GetAdditionalBindingFlags(resourceData.setIdx, resourceData.bindingIdx));
 }
 
 
@@ -50,13 +50,13 @@ public:
 								  Uint32 bindingIdx,
 								  const spirv_cross::Compiler& compiler,
 								  rhi::EShaderStage shaderStage,
-								  const ShaderParametersMetaData& parametersMetaData,
+								  const ShaderCompilationMetaData& compilationMetaData,
 								  smd::ShaderMetaData& outShaderMetaData)
 		: m_setIdx(setIdx)
 		, m_bindingIdx(bindingIdx)
 		, m_compiler(compiler)
 		, m_shaderStage(shaderStage)
-		, m_parametersMetaData(parametersMetaData)
+		, m_compilationMetaData(compilationMetaData)
 		, m_outShaderMetaData(outShaderMetaData)
 	{ }
 
@@ -73,7 +73,7 @@ private:
 	Uint32							m_bindingIdx;
 	const spirv_cross::Compiler&	m_compiler;
 	rhi::EShaderStage				m_shaderStage;
-	const ShaderParametersMetaData& m_parametersMetaData;
+	const ShaderCompilationMetaData& m_compilationMetaData;
 	smd::ShaderMetaData&			m_outShaderMetaData;
 };
 
@@ -103,7 +103,7 @@ void SpirvExposedParametersBuilder::AddMemberParameterImpl(const spirv_cross::SP
 	const Uint32 memberOffset			= offset + m_compiler.type_struct_member_offset(type, memberIdx);
 	const lib::HashedString memberName	= m_compiler.get_member_name(type.self, memberIdx);
 
-	if (m_parametersMetaData.HasMeta(memberName, meta::exposeInner))
+	if (m_compilationMetaData.HasMeta(memberName, meta::exposeInner))
 	{
 		// send most nested stride to next recursion calls
 		const Uint32 elementsStride = isArray ? m_compiler.type_struct_member_array_stride(type, memberIdx) : stride;
@@ -140,7 +140,7 @@ const spirv_cross::SPIRType& SpirvExposedParametersBuilder::GetSingleElementType
 
 } // helper
 
-static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& uniformBufferResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& uniformBufferResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -151,7 +151,7 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 
 	smd::BufferBindingData uniformBufferBinding;
 	uniformBufferBinding.SetSize(static_cast<Uint32>(uniformSize));
-	helper::InitializeBinding(uniformBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(uniformBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, uniformBufferBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -159,14 +159,14 @@ static void AddUniformBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	const smd::ShaderBufferParamEntry bufferParam(setIdx, bindingIdx);
 	outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
 
-	if (parametersMetaData.HasMeta(paramName, meta::exposeInner))
+	if (compilationMetaData.HasMeta(paramName, meta::exposeInner))
 	{
-		const helper::SpirvExposedParametersBuilder exposedParamsBuilder(setIdx, bindingIdx, compiler, shaderStage, parametersMetaData, outShaderMetaData);
+		const helper::SpirvExposedParametersBuilder exposedParamsBuilder(setIdx, bindingIdx, compiler, shaderStage, compilationMetaData, outShaderMetaData);
 		exposedParamsBuilder.AddMembersParameters(bufferType);
 	}
 }
 
-static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& storageBufferResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& storageBufferResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -186,7 +186,7 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 	{
 		storageBufferBinding.SetSize(static_cast<Uint32>(bufferSize));
 	}
-	helper::InitializeBinding(storageBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(storageBufferBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, storageBufferBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -199,21 +199,21 @@ static void AddStorageBuffer(const spirv_cross::Compiler& compiler, const spirv_
 		outShaderMetaData.AddShaderParamEntry(paramName, bufferParam);
 	}
 
-	if (parametersMetaData.HasMeta(paramName, meta::exposeInner))
+	if (compilationMetaData.HasMeta(paramName, meta::exposeInner))
 	{
-		const helper::SpirvExposedParametersBuilder exposedParamsBuilder(setIdx, bindingIdx, compiler, shaderStage, parametersMetaData, outShaderMetaData);
+		const helper::SpirvExposedParametersBuilder exposedParamsBuilder(setIdx, bindingIdx, compiler, shaderStage, compilationMetaData, outShaderMetaData);
 		exposedParamsBuilder.AddMembersParameters(bufferType);
 	}
 }
 
-static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& combinedTextureSamplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& combinedTextureSamplerResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, combinedTextureSamplerResource);
 	
 	smd::CombinedTextureSamplerBindingData combinedTextureSamplerBinding;
-	helper::InitializeBinding(combinedTextureSamplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(combinedTextureSamplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, combinedTextureSamplerBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -222,7 +222,7 @@ static void AddCombinedTextureSampler(const spirv_cross::Compiler& compiler, con
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
-static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -230,7 +230,7 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	
 	smd::TextureBindingData textureBinding;
 	textureBinding.AddFlag(smd::EBindingFlags::Storage);
-	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, textureBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -239,7 +239,7 @@ static void AddStorageTexture(const spirv_cross::Compiler& compiler, const spirv
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
-static void AddSampledTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddSampledTexture(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& textureResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -254,7 +254,7 @@ static void AddSampledTexture(const spirv_cross::Compiler& compiler, const spirv
 		textureBinding.elementsNum = resourceType.array[0];
 	}
 
-	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(textureBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, textureBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -263,14 +263,14 @@ static void AddSampledTexture(const spirv_cross::Compiler& compiler, const spirv
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
-static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, samplerResource);
 
 	smd::SamplerBindingData samplerBinding;
-	helper::InitializeBinding(samplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(samplerBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	if (!samplerBinding.IsImmutable())
 	{
@@ -279,21 +279,21 @@ static void AddSampler(const spirv_cross::Compiler& compiler, const spirv_cross:
 	}
 	else
 	{
-		samplerBinding.SetImmutableSamplerDefinition(parametersMetaData.GetImmutableSamplerDefinition(setIdx, bindingIdx));
+		samplerBinding.SetImmutableSamplerDefinition(compilationMetaData.GetImmutableSamplerDefinition(setIdx, bindingIdx));
 	}
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, samplerBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
 }
 
-static void AddAccelerationStructure(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void AddAccelerationStructure(const spirv_cross::Compiler& compiler, const spirv_cross::Resource& samplerResource, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const auto [setIdx, bindingIdx, paramName] = helper::GetResourceData(compiler, samplerResource);
 
 	smd::AccelerationStructureBindingData asBinding;
-	helper::InitializeBinding(asBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, parametersMetaData);
+	helper::InitializeBinding(asBinding, helper::SpirvResourceData{ setIdx, bindingIdx, paramName }, compilationMetaData);
 
 	outShaderMetaData.AddShaderBindingData(setIdx, bindingIdx, asBinding);
 	outShaderMetaData.AddShaderStageToBinding(setIdx, bindingIdx, shaderStage);
@@ -302,7 +302,7 @@ static void AddAccelerationStructure(const spirv_cross::Compiler& compiler, cons
 	outShaderMetaData.AddShaderParamEntry(paramName, paramEntry);
 }
 
-static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::EShaderStage shaderStage, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -311,55 +311,55 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 	std::for_each(std::cbegin(resources.uniform_buffers), std::cend(resources.uniform_buffers),
 				  [&](const spirv_cross::Resource& uniformBuffer)
 				  {
-					  AddUniformBuffer(compiler, uniformBuffer, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddUniformBuffer(compiler, uniformBuffer, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.storage_buffers), std::cend(resources.storage_buffers),
 				  [&](const spirv_cross::Resource& storageBuffer)
 				  {
-					  AddStorageBuffer(compiler, storageBuffer, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddStorageBuffer(compiler, storageBuffer, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.sampled_images), std::cend(resources.sampled_images),
 				  [&](const spirv_cross::Resource& combinedTextureSampler)
 				  {
-					  AddCombinedTextureSampler(compiler, combinedTextureSampler, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddCombinedTextureSampler(compiler, combinedTextureSampler, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.storage_images), std::cend(resources.storage_images),
 				  [&](const spirv_cross::Resource& texture)
 				  {
-					  AddStorageTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddStorageTexture(compiler, texture, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.sampled_images), std::cend(resources.sampled_images),
 				  [&](const spirv_cross::Resource& texture)
 				  {
-					  AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddSampledTexture(compiler, texture, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.separate_images), std::cend(resources.separate_images),
 				  [&](const spirv_cross::Resource& texture)
 				  {
-					  AddSampledTexture(compiler, texture, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddSampledTexture(compiler, texture, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.separate_samplers), std::cend(resources.separate_samplers),
 				  [&](const spirv_cross::Resource& sampler)
 				  {
-					  AddSampler(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddSampler(compiler, sampler, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 
 	std::for_each(std::cbegin(resources.acceleration_structures), std::cend(resources.acceleration_structures),
 				  [&](const spirv_cross::Resource& sampler)
 				  {
-					  AddAccelerationStructure(compiler, sampler, shaderStage, parametersMetaData, outShaderMetaData);
+					  AddAccelerationStructure(compiler, sampler, shaderStage, compilationMetaData, outShaderMetaData);
 				  });
 	
 	const Uint32 descriptorSetsNum = outShaderMetaData.GetDescriptorSetsNum();
 	for (Uint32 dsIdx = 0; dsIdx < descriptorSetsNum; ++dsIdx)
 	{
-		const SizeType overridingHash = parametersMetaData.GetDSRegisteredHash(dsIdx);
+		const SizeType overridingHash = compilationMetaData.GetDSRegisteredHash(dsIdx);
 		if (overridingHash != idxNone<SizeType>)
 		{
 			outShaderMetaData.SetDescriptorSetStateTypeHash(dsIdx, overridingHash);
@@ -369,12 +369,12 @@ static void BuildShaderMetaData(const spirv_cross::Compiler& compiler, rhi::ESha
 
 } // priv
 
-void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, const ShaderParametersMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData)
+void ShaderMetaDataBuilder::BuildShaderMetaData(const CompiledShader& shader, const ShaderCompilationMetaData& compilationMetaData, smd::ShaderMetaData& outShaderMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const spirv_cross::Compiler compiler(shader.binary);
-	priv::BuildShaderMetaData(compiler, shader.stage, parametersMetaData, outShaderMetaData);
+	priv::BuildShaderMetaData(compiler, shader.stage, compilationMetaData, outShaderMetaData);
 }
 
 void ShaderMetaDataBuilder::FinishBuildingMetaData(smd::ShaderMetaData& outShaderMetaData)

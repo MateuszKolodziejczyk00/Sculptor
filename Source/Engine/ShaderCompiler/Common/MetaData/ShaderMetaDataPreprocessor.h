@@ -7,7 +7,7 @@
 namespace spt::sc
 {
 
-struct ShaderCompilationMetaData
+struct ShaderPreprocessingMetaData
 {
 	lib::DynamicArray<lib::HashedString> macroDefinitions;
 };
@@ -17,14 +17,19 @@ class ShaderMetaDataPrerpocessor
 {
 public:
 
-	SPT_NODISCARD static ShaderCompilationMetaData PreprocessAdditionalCompilerArgs(const lib::String& sourceCode);
-	SPT_NODISCARD static ShaderParametersMetaData  PreprocessShader(lib::String& sourceCode);
+	SPT_NODISCARD static ShaderPreprocessingMetaData PreprocessAdditionalCompilerArgs(const lib::String& sourceCode);
+	SPT_NODISCARD static ShaderCompilationMetaData   PreprocessShader(lib::String& sourceCode);
 
 private:
 
-	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
-	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
-	static void PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderParametersMetaData& outMetaData);
+	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+	static void PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+
+
+#if SPT_SHADERS_DEBUG_FEATURES
+	static void PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+#endif // SPT_SHADERS_DEBUG_FEATURES
 };
 
 } // spt::sc

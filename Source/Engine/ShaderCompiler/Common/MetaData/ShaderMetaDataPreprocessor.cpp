@@ -90,7 +90,7 @@ static lib::StringView ExtractMetaParametersString(tkn::TokenInfo beginMetaParam
 	return metaParametersString;
 }
 
-static void BuildParameterMetaData(lib::HashedString paramName, lib::StringView metaParametersString, ShaderParametersMetaData& outMetaData)
+static void BuildParameterMetaData(lib::HashedString paramName, lib::StringView metaParametersString, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_CHECK_NO_ENTRY();
 
@@ -117,7 +117,7 @@ enum class EDSIteratorFuncResult
 template<typename TFunctor>
 static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode)
 {
-	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d)\s*\)\]\])~");
+	static const std::regex descriptorSetRegex(R"~(\[\[descriptor_set\((\w+)\s*,\s*(\d+)\s*\)\]\])~");
 
 	auto descriptorSetIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), descriptorSetRegex);
 
@@ -158,11 +158,11 @@ static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderMetaDataPrerpocessor ====================================================================
 
-ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
+ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShaderCompilationMetaData metaData;
+	ShaderPreprocessingMetaData metaData;
 
 	helper::IterateDescriptorSets([&metaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
 								  {
@@ -177,20 +177,24 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompil
 	return metaData;
 }
 
-ShaderParametersMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
+ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::String& sourceCode)
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShaderParametersMetaData metaData;
+	ShaderCompilationMetaData metaData;
 
-	PreprocessShaderDescriptorSets(sourceCode, metaData);
-	PreprocessShaderStructs(sourceCode, metaData);
-	PreprocessShaderParametersMetaData(sourceCode, metaData);
+	PreprocessShaderDescriptorSets(sourceCode, OUT metaData);
+	PreprocessShaderStructs(sourceCode, OUT metaData);
+	PreprocessShaderParametersMetaData(sourceCode, OUT metaData);
+
+#if SPT_SHADERS_DEBUG_FEATURES
+	PreprocessShaderLiterals(sourceCode, OUT metaData);
+#endif // SPT_SHADERS_DEBUG_FEATURES
 
 	return metaData;
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -222,7 +226,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 	}
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 	
@@ -240,7 +244,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sou
 								  sourceCode);
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderParametersMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -267,5 +271,37 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderParametersMetaData(lib::String&
 	const tkn::TokensProcessor tokensProcessor(tokensArray);
 	tokensProcessor.VisitAllTokens(metaDataVisitor);
 }
+
+#if SPT_SHADERS_DEBUG_FEATURES
+void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex shaderLiteralRegex(R"~(\[\[literal\(\s*\"(.*)"\s*\)\]\])~");
+
+	auto shaderLiteralsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderLiteralRegex);
+
+	while (shaderLiteralsIt != std::sregex_iterator())
+	{
+		const std::smatch literalMatch = *shaderLiteralsIt;
+		SPT_CHECK(literalMatch.size() == 2); // should be whole match + literalMatch
+		const lib::HashedString literal = literalMatch[1].str();
+
+		const Uint64 literalHash = static_cast<Uint64>(literal.GetKey());
+
+		const Uint32 literalLow = static_cast<Uint32>(literalHash & 0xFFFFFFFF);
+		const Uint32 literalHigh = static_cast<Uint32>(literalHash >> 32);
+
+		const lib::String literalShaderCode = std::format("debug::CreateLiteral(uint2({}, {}))", literalLow, literalHigh);
+
+		sourceCode.replace(shaderLiteralsIt->prefix().length(), literalMatch.length(), literalShaderCode);
+
+		// Always search for new struct from the beginning, because we're modifying source code during loop
+		shaderLiteralsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderLiteralRegex);
+
+		outMetaData.AddDebugLiteral(literal);
+	}
+}
+#endif // SPT_SHADERS_DEBUG_FEATURES
 
 } // spt::sc

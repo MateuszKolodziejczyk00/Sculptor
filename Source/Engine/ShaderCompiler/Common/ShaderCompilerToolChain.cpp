@@ -51,14 +51,18 @@ CompiledShader ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::St
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShaderParametersMetaData paramsMetaData;
-	CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, shaderStageDef, compilationSettings, paramsMetaData);
+	ShaderCompilationMetaData compilationMetaData;
+	CompiledShader compiledShader = compiler.CompileShader(shaderRelativePath, shaderCode, shaderStageDef, compilationSettings, compilationMetaData);
 
 	if (compiledShader.IsValid())
 	{
-		ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, paramsMetaData, compiledShader.metaData);
+		ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, compilationMetaData, compiledShader.metaData);
 		
 		ShaderMetaDataBuilder::FinishBuildingMetaData(compiledShader.metaData);
+
+#if SPT_SHADERS_DEBUG_FEATURES
+		compiledShader.debugMetaData = compilationMetaData.GetDebugMetaData();
+#endif // SPT_SHADERS_DEBUG_FEATURES
 	}
 
 	return compiledShader;

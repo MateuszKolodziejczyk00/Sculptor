@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefTypes.h"
+#include "ShaderDebugMetaData.h"
 
 
 namespace spt::sc
@@ -37,11 +38,11 @@ private:
 };
 
 
-struct ShaderParametersMetaData
+struct ShaderCompilationMetaData
 {
 public:
 
-	ShaderParametersMetaData() = default;
+	ShaderCompilationMetaData() = default;
 
 	void AddParamMetaData(lib::HashedString param, const ShaderParamMetaData& metaData)
 	{
@@ -105,11 +106,27 @@ public:
 		return m_dsMetaData[properDSIdx].bindingToImmutableSampler.at(bindingIdx);
 	}
 
+#if SPT_SHADERS_DEBUG_FEATURES
+	void AddDebugLiteral(lib::HashedString literal)
+	{
+		debugMetaData.literals.emplace_back(literal);
+	}
+
+	const ShaderDebugMetaData& GetDebugMetaData() const
+	{
+		return debugMetaData;
+	}
+#endif // SPT_SHADERS_DEBUG_FEATURES
+
 private:
 
 	lib::HashMap<lib::HashedString, ShaderParamMetaData> m_paramsMetaData;
 
 	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
+
+#if SPT_SHADERS_DEBUG_FEATURES
+	ShaderDebugMetaData debugMetaData;
+#endif // SPT_SHADERS_DEBUG_FEATURES
 };
 
 } // spt::sc

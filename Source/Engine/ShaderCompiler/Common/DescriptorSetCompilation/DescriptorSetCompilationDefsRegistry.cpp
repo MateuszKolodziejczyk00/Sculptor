@@ -35,14 +35,18 @@ lib::String DescriptorSetCompilationDef::GetShaderCode(Uint32 dsIdx) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(dsIdx <= 9); // currently only single-digit indices are supported
-
 	lib::String resultShaderCode = m_shaderCode;
 
 	std::for_each(std::cbegin(m_dsIdxPositions), std::cend(m_dsIdxPositions),
 				  [&resultShaderCode, dsIdx](SizeType idxPosition)
 				  {
-					  resultShaderCode[idxPosition] = ('0' + static_cast<char>(dsIdx));
+					  std::string idxString = std::to_string(dsIdx);
+					  SPT_CHECK(idxString.size() <= 2); // We don't support indices larger than 99
+					  if (idxString.size() == 1)
+					  {
+						  idxString = " " + idxString;
+					  }
+					  resultShaderCode.replace(idxPosition, 2, idxString);
 				  });
 
 	return resultShaderCode;
@@ -66,7 +70,7 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 	// clear previous indices - every time we find all of them
 	m_dsIdxPositions.clear();
 
-	static const std::regex dsIdxRegex(R"~(vk::binding\(\d+\s*,\s*X\s*\))~");
+	static const std::regex dsIdxRegex(R"~(vk::binding\(\d+\s*,\s*XX\s*\))~");
 		
 	auto dsIndicesIt = std::sregex_iterator(std::cbegin(m_shaderCode), std::cend(m_shaderCode), dsIdxRegex);
 
@@ -77,7 +81,7 @@ void DescriptorSetCompilationDef::BuildDSIdxPositionsArray()
 		const std::smatch dsIdxMatch = *dsIndicesIt;
 		const lib::String dsIdxString = dsIdxMatch.str();
 
-		const SizeType dsIdxPosition = m_shaderCode.find_first_of('X', dsIndicesIt->position()); // find 'X' for which set idx should be substituted
+		const SizeType dsIdxPosition = m_shaderCode.find("XX", dsIndicesIt->position()); // find "XX" for which set idx should be substituted
 		SPT_CHECK(dsIdxPosition != lib::String::npos);
 
 		m_dsIdxPositions.push_back(dsIdxPosition);

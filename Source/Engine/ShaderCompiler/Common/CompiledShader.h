@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderCompilerTypes.h"
 #include "ShaderMetaData.h"
+#include "MetaData/ShaderDebugMetaData.h"
 
 
 namespace spt::sc
@@ -19,10 +20,14 @@ public:
 
 	Bool IsValid() const;
 
-	Binary					binary;
-	rhi::EShaderStage		stage;
-	lib::HashedString		entryPoint;
-	smd::ShaderMetaData		metaData;
+	Binary              binary;
+	rhi::EShaderStage   stage;
+	lib::HashedString   entryPoint;
+	smd::ShaderMetaData metaData;
+
+#if SPT_SHADERS_DEBUG_FEATURES
+	ShaderDebugMetaData debugMetaData;
+#endif // SPT_SHADERS_DEBUG_FEATURES
 };
 
 } // spt::sc

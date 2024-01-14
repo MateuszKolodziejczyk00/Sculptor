@@ -14,6 +14,17 @@
 namespace spt::srl
 {
 
+// spt::sc::ShaderDebugMetaData =========================================================
+
+template<>
+struct TypeSerializer<sc::ShaderDebugMetaData>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& metaData)
+	{
+		serializer.Serialize("Literals", metaData.literals);
+	}
+};
 // spt::sc::CompiledShader ==============================================================
 
 template<>
@@ -22,8 +33,8 @@ struct TypeSerializer<sc::CompiledShader>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& shader)
 	{
-		using ShaderBinary			= typename Param::Binary;
-		using ShaderBinaryElement	= typename ShaderBinary::value_type;
+		using ShaderBinary        = typename Param::Binary;
+		using ShaderBinaryElement = typename ShaderBinary::value_type;
 
 		if constexpr (Serializer::IsSaving())
 		{
@@ -47,11 +58,14 @@ struct TypeSerializer<sc::CompiledShader>
 		serializer.Serialize("EntryPoint", shader.entryPoint);
 			
 		serializer.Serialize("MetaData", shader.metaData);
+		
+		serializer.Serialize("DebugMetaData", shader.debugMetaData);
 	}
 };
 
 } // spt::srl
 
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::ShaderDebugMetaData)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompiledShader)
 
 namespace spt::sc
