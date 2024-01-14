@@ -75,11 +75,16 @@ void AdaptedLuminanceCS(CS_INPUT input)
 
     const float pixelsNum = float(u_exposureSettings.textureSize.x * u_exposureSettings.textureSize.y);
 
-    const float rejectedPixelsNum = pixelsNum * u_exposureSettings.rejectedPixelsPercentage;
-    const float importantPixelsNum = pixelsNum - rejectedPixelsNum;
+    const float rejectedDarkPixelsNum   = pixelsNum * u_exposureSettings.rejectedDarkPixelsPercentage;
+    const float rejectedBrightPixelsNum = pixelsNum * u_exposureSettings.rejectedBrightPixelsPercentage;
+    const float importantPixelsNum      = pixelsNum - rejectedDarkPixelsNum - rejectedBrightPixelsNum;
 
     const uint prefix = groupHistogramBinsPrefix[histogramLocalBinIdx];
-    countForLocalBin = clamp(prefix + countForLocalBin - rejectedPixelsNum, 0.f, countForLocalBin);
+    const uint suffix = pixelsNum - prefix - countForLocalBin;
+
+    countForLocalBin = clamp(prefix + countForLocalBin - rejectedDarkPixelsNum, 0.f, countForLocalBin);
+    countForLocalBin = clamp(suffix + countForLocalBin - rejectedBrightPixelsNum, 0.f, countForLocalBin);
+
     groupHistogramBins[histogramLocalBinIdx] = countForLocalBin * histogramLocalBinIdx;
 
     GroupMemoryBarrierWithGroupSync();
