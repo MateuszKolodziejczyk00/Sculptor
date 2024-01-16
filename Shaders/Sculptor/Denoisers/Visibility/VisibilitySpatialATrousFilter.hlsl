@@ -51,7 +51,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 
         const float2 temporalMoments = u_temporalMomentsTexture.Load(uint3(pixel, 0));
         const float temporalVariance = temporalMoments.y - Pow2(temporalMoments.x);
-        const float stdev = sqrt(max(temporalVariance, 0.0001f)) + (accumulatedSamplesNum <= 16 ? 100.f : 0.f);
+        const float stdev = sqrt(max(temporalVariance, 0.0001f)) + (accumulatedSamplesNum <= 16 ? u_params.disoccusionTemporalStdDevBoost * exp(-1.f - accumulatedSamplesNum) : 0.f);
 
         const float visibilityCenter = u_inputTexture.Load(uint3(pixel, 0));
 

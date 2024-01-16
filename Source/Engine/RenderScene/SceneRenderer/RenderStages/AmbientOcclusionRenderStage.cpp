@@ -147,10 +147,11 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	const rg::RGTextureViewHandle aoHalfResTexture = trace_rays::TraceAmbientOcclusionRays(graphBuilder, context, aoRenderingResolution);
 
 	visibility_denoiser::Denoiser::Params denoiserParams(renderView);
-	denoiserParams.historyDepthTexture    = context.historyDepthTextureHalfRes;
-	denoiserParams.currentDepthTexture    = context.depthTextureHalfRes;
-	denoiserParams.motionTexture          = context.motionTextureHalfRes;
-	denoiserParams.geometryNormalsTexture = context.geometryNormalsTextureHalfRes;
+	denoiserParams.historyDepthTexture            = context.historyDepthTextureHalfRes;
+	denoiserParams.currentDepthTexture            = context.depthTextureHalfRes;
+	denoiserParams.motionTexture                  = context.motionTextureHalfRes;
+	denoiserParams.geometryNormalsTexture         = context.geometryNormalsTextureHalfRes;
+	denoiserParams.disoccusionTemporalStdDevBoost = 3.f;
 	viewTemporalData->denoiser.Denoise(graphBuilder, aoHalfResTexture, denoiserParams);
 
 	upsampler::DepthBasedUpsampleParams upsampleParams;

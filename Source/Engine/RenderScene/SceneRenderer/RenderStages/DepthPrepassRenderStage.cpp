@@ -82,10 +82,10 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	if (!viewDepthData->currentDepthTexture || viewDepthData->currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
 	{
-		const math::Vector2u renderinHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
+		const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
 
 		viewDepthData->currentDepthTexture                = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
-		viewDepthData->currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderinHalfRes, false);
+		viewDepthData->currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
 		
 		viewDepthData->currentDepthNoJitterTexture = wantsSeparateNoJitterTextures
 			                                       ? utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true)

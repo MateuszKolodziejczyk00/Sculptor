@@ -16,6 +16,7 @@ namespace spt::rsc::visibility_denoiser::spatial
 BEGIN_SHADER_STRUCT(SpatialATrousFilteringParams)
 	SHADER_STRUCT_FIELD(Uint32, samplesOffset)
 	SHADER_STRUCT_FIELD(Uint32, hasValidMomentsTexture)
+	SHADER_STRUCT_FIELD(Real32, disoccusionTemporalStdDevBoost)
 END_SHADER_STRUCT();
 
 
@@ -47,8 +48,9 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	static const rdr::PipelineStateID pipeline = CreateSpatialATrousFilterPipeline();
 
 	SpatialATrousFilteringParams dispatchParams;
-	dispatchParams.samplesOffset          = 1u << iterationIdx;
-	dispatchParams.hasValidMomentsTexture = params.temporalMomentsTexture.IsValid();
+	dispatchParams.samplesOffset                  = 1u << iterationIdx;
+	dispatchParams.hasValidMomentsTexture         = params.temporalMomentsTexture.IsValid();
+	dispatchParams.disoccusionTemporalStdDevBoost = params.disoccusionTemporalStdDevBoost;
 
 	lib::MTHandle<SpatialATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
 	ds->u_inputTexture                 = input;

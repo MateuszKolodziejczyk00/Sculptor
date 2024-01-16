@@ -26,7 +26,7 @@ namespace parameters
 {
 
 RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
-RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
+RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
@@ -81,7 +81,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
     pariticipatingMediaParams.maxDensity			= parameters::fogMaxDensity;
     pariticipatingMediaParams.minDensity			= parameters::fogMinDensity;
 	pariticipatingMediaParams.densityNoiseThreshold = 0.45f;
-    pariticipatingMediaParams.densityNoiseZSigma	= -55.f;
+    pariticipatingMediaParams.densityNoiseZSigma	= -8.f;
     pariticipatingMediaParams.densityNoiseSpeed		= math::Vector3f(-0.5f, -0.5f, 0.1f);
 
 	const lib::MTHandle<RenderParticipatingMediaDS> participatingMediaDS = graphBuilder.CreateDescriptorSet<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));

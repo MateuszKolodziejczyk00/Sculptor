@@ -1,6 +1,8 @@
 #include "SculptorShader.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
+#include "Utils/BlueNoiseSamples.hlsli"
+
 #include "Utils/RTVisibilityCommon.hlsli"
 
 [[descriptor_set(TraceShadowRaysDS, 2)]]
@@ -35,7 +37,8 @@ void GenerateShadowRaysRTG()
 
         const float maxConeAngle = u_params.shadowRayConeAngle;
         
-        const float2 noise = float2(InterleavedGradientNoise(float2(pixel) + u_params.time), InterleavedGradientNoise(float2(pixel.yx) + u_params.time));
+        const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x &15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
+        const float2 noise = frac(g_BlueNoiseSamples[sampleIdx]);
         const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
 
         RayDesc rayDesc;

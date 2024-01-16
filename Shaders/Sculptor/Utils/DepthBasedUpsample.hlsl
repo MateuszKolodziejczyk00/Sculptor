@@ -11,12 +11,12 @@ struct CS_INPUT
 };
 
 
-static const float depthDiffThreshold = 0.035f;
+static const float depthDiffThreshold = 0.065f;
 
 
 float ComputeSampleWeight(float sampleDepthDiff)
 {
-    return sampleDepthDiff <= depthDiffThreshold ? rcp(Pow2(sampleDepthDiff / depthDiffThreshold + 1.f)) : 0.f;
+    return sampleDepthDiff <= depthDiffThreshold ? rcp(sampleDepthDiff / depthDiffThreshold + 0.01f) : 0.f;
 }
 
 

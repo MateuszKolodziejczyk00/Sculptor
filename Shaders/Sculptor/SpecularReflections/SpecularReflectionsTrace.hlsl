@@ -23,7 +23,7 @@ float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 t
     }
     else
     {
-        const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 1u)) & 255u;
+        const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
         const float2 noise = frac(g_BlueNoiseSamples[sampleIdx] + u_traceParams.random);
 
         const float3 h = ImportanceSampleGGX(noise, normal, roughness);

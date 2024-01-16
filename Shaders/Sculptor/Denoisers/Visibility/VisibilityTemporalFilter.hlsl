@@ -47,14 +47,20 @@ void TemporalFilterCS(CS_INPUT input)
 
             const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
 
-            const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
+            const float2 historySampleUV = round(historyUV * float2(outputRes)) * pixelSize;
+            const float3 historySampleNDC = float3(historySampleUV * 2.f - 1.f, historySampleDepth);
             const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
-            const float sampleDistance = distance(historySampleWS, currentSampleWS);
-            const float historySampleDepthLinear = ComputeLinearDepth(historySampleDepth, u_prevFrameSceneView);
+            float sampleDistance = distance(historySampleWS, currentSampleWS);
+
+            const float historyDepth = u_historyDepthTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+            const float3 historyNDC = float3(historyUV * 2.f - 1.f, historyDepth);
+            const float3 historyWS = NDCToWorldSpaceNoJitter(historyNDC, u_prevFrameSceneView);
 
             const float VdotN = max(dot(u_sceneView.viewForward, currentSampleNormal), 0.f);
             const float distanceThreshold = lerp(0.0225f, 0.103f, 1.f - VdotN);
+
+            sampleDistance = max(sampleDistance, distance(historyWS, currentSampleWS));
 
             uint historySampleCount = 0;
 
