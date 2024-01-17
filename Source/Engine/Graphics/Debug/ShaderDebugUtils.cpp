@@ -1,6 +1,6 @@
-#include "ShaderDebugCommandBuffer.h"
+#include "ShaderDebugUtils.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderPrintfExecutor.h"
+#include "ShaderMessageCommandsExecutor.h"
 #include "ShaderDebugCommandsProcessor.h"
 #include "JobSystem.h"
 #include "EngineFrame.h"
@@ -11,13 +11,13 @@ namespace spt::gfx::dbg
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderDebugCommandBuffer ======================================================================
 
-ShaderDebugCommandBuffer& ShaderDebugCommandBuffer::Get()
+ShaderDebugUtils& ShaderDebugUtils::Get()
 {
-	static ShaderDebugCommandBuffer instance;
+	static ShaderDebugUtils instance;
 	return instance;
 }
 
-void ShaderDebugCommandBuffer::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters)
+void ShaderDebugUtils::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -30,7 +30,7 @@ void ShaderDebugCommandBuffer::Bind(rg::RenderGraphBuilder& graphBuilder, const 
 	graphBuilder.BindDescriptorSetState(m_ds);
 }
 
-void ShaderDebugCommandBuffer::Unbind(rg::RenderGraphBuilder& graphBuilder)
+void ShaderDebugUtils::Unbind(rg::RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -44,14 +44,14 @@ void ShaderDebugCommandBuffer::Unbind(rg::RenderGraphBuilder& graphBuilder)
 	ScheduleCommandsExecution(debugCommandsBuffer, debugCommandsBufferOffset);
 }
 
-void ShaderDebugCommandBuffer::BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsExecutor> commandsExecutor)
+void ShaderDebugUtils::BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsExecutor> commandsExecutor)
 {
 	const lib::LockGuard lockGuard(m_commandsExecutorsLock);
 
 	m_commandsExecutors.emplace_back(std::move(commandsExecutor));
 }
 
-ShaderDebugCommandBuffer::ShaderDebugCommandBuffer()
+ShaderDebugUtils::ShaderDebugUtils()
 	: m_ds(rdr::ResourcesManager::CreateDescriptorSetState<ShaderDebugCommandBufferDS>(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferDS"), rdr::EDescriptorSetStateFlags::Persistent))
 {
 	const Uint32 bufferSize = 1024 * 1024 * 4;
@@ -81,12 +81,12 @@ ShaderDebugCommandBuffer::ShaderDebugCommandBuffer()
 															});
 }
 
-void ShaderDebugCommandBuffer::InitializeDefaultExecutors()
+void ShaderDebugUtils::InitializeDefaultExecutors()
 {
-	BindCommandsExecutor(lib::MakeShared<ShaderPrintfExecutor>());
+	BindCommandsExecutor(lib::MakeShared<ShaderMessageCommandsExecutor>());
 }
 
-void ShaderDebugCommandBuffer::CleanupResources()
+void ShaderDebugUtils::CleanupResources()
 {
 	{
 		const lib::LockGuard lockGuard(m_commandsExecutorsLock);
@@ -99,7 +99,7 @@ void ShaderDebugCommandBuffer::CleanupResources()
 	m_ds.Reset();
 }
 
-void ShaderDebugCommandBuffer::SetDebugParameters(const ShaderDebugParameters& debugParameters)
+void ShaderDebugUtils::SetDebugParameters(const ShaderDebugParameters& debugParameters)
 {
 	SPT_CHECK(m_ds.IsValid());
 
@@ -111,7 +111,7 @@ void ShaderDebugCommandBuffer::SetDebugParameters(const ShaderDebugParameters& d
 	m_ds->u_debugCommandsBufferParams = gpuParams;
 }
 
-void ShaderDebugCommandBuffer::PrepareBuffers(rg::RenderGraphBuilder& graphBuilder)
+void ShaderDebugUtils::PrepareBuffers(rg::RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -120,7 +120,7 @@ void ShaderDebugCommandBuffer::PrepareBuffers(rg::RenderGraphBuilder& graphBuild
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Zero Debug Commands Buffer Offset"), debugCommandsBufferView, 0, debugCommandsBufferView->GetSize(), 0);
 }
 
-lib::SharedRef<rdr::Buffer> ShaderDebugCommandBuffer::ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer)
+lib::SharedRef<rdr::Buffer> ShaderDebugUtils::ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -129,7 +129,7 @@ lib::SharedRef<rdr::Buffer> ShaderDebugCommandBuffer::ExtractData(rg::RenderGrap
 	return graphBuilder.DownloadBuffer(RG_DEBUG_NAME("ShaderDebugCommandBuffer::ExtractData"), sourceBufferView, 0, sourceBufferView->GetSize());
 }
 
-void ShaderDebugCommandBuffer::ScheduleCommandsExecution(const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const
+void ShaderDebugUtils::ScheduleCommandsExecution(const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -157,19 +157,19 @@ void ShaderDebugCommandBuffer::ScheduleCommandsExecution(const lib::SharedRef<rd
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderDebugCommandsCollectingScope ============================================================
 
-ShaderDebugCommandsCollectingScope::ShaderDebugCommandsCollectingScope(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters)
+ShaderDebugScope::ShaderDebugScope(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters)
 	: m_graphBuilder(graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShaderDebugCommandBuffer::Get().Bind(graphBuilder, debugParameters);
+	ShaderDebugUtils::Get().Bind(graphBuilder, debugParameters);
 }
 
-ShaderDebugCommandsCollectingScope::~ShaderDebugCommandsCollectingScope()
+ShaderDebugScope::~ShaderDebugScope()
 {
 	SPT_PROFILER_FUNCTION();
 
-	ShaderDebugCommandBuffer::Get().Unbind(m_graphBuilder);
+	ShaderDebugUtils::Get().Unbind(m_graphBuilder);
 }
 
 } // spt::gfx::dbg

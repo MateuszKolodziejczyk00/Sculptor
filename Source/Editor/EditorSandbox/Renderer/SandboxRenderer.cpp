@@ -42,7 +42,7 @@
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
-#include "Debug/ShaderDebugCommandBuffer.h"
+#include "Debug/ShaderDebugUtils.h"
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
 namespace spt::ed
@@ -158,7 +158,7 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 #if SPT_SHADERS_DEBUG_FEATURES
 		gfx::dbg::ShaderDebugParameters shaderDebugParameters;
 		shaderDebugParameters.mousePosition = m_mousePositionOnViewport;
-		const gfx::dbg::ShaderDebugCommandsCollectingScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
+		const gfx::dbg::ShaderDebugScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
 		sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);

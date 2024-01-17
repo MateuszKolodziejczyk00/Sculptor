@@ -25,6 +25,7 @@ DS_BEGIN(ShaderDebugCommandBufferDS, rg::RGDescriptorSetState<ShaderDebugCommand
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBufferOffset)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),             u_pageFaultTriggerBuffer)
 DS_END();
 
 
@@ -41,11 +42,11 @@ struct ShaderDebugParameters
 };
 
 
-class ShaderDebugCommandBuffer
+class ShaderDebugUtils
 {
 public:
 	
-	static ShaderDebugCommandBuffer& Get();
+	static ShaderDebugUtils& Get();
 
 	void Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
 	void Unbind(rg::RenderGraphBuilder& graphBuilder);
@@ -54,7 +55,7 @@ public:
 
 private:
 
-	ShaderDebugCommandBuffer();
+	ShaderDebugUtils();
 
 	void InitializeDefaultExecutors();
 	void CleanupResources();
@@ -76,13 +77,13 @@ private:
 };
 
 
-class GRAPHICS_API ShaderDebugCommandsCollectingScope
+class GRAPHICS_API ShaderDebugScope
 {
 public:
 
-	ShaderDebugCommandsCollectingScope(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
+	ShaderDebugScope(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
 
-	~ShaderDebugCommandsCollectingScope();
+	~ShaderDebugScope();
 
 private:
 

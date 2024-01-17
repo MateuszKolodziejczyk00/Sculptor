@@ -124,9 +124,32 @@ public:
 		}
 	}
 
+	lib::HashedString ReadLiteral()
+	{
+		const Uint64 literalHash = Read<Uint64>();
+		static_assert(sizeof(Uint64) == sizeof(typename lib::HashedString::KeyType));
+		const lib::HashedString literal(static_cast<typename lib::HashedString::KeyType>(literalHash));
+		return literal;
+	}
+
 	Bool Ended() const
 	{
 		return m_currentOffset >= m_bufferSize;
+	}
+
+	Uint32 GetReadPosition() const
+	{
+		return m_currentOffset;
+	}
+
+	Uint32 GetSize() const
+	{
+		return m_bufferSize;
+	}
+
+	void MoveTo(Uint32 readPosition)
+	{
+		m_currentOffset = readPosition;
 	}
 
 private:

@@ -277,15 +277,17 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCod
 {
 	SPT_PROFILER_FUNCTION();
 
-	static const std::regex shaderLiteralRegex(R"~(\[\[literal\(\s*\"(.*)"\s*\)\]\])~");
+	static const std::regex shaderLiteralRegex(R"~(L"[^"]*")~");
 
 	auto shaderLiteralsIt = std::sregex_iterator(std::cbegin(sourceCode), std::cend(sourceCode), shaderLiteralRegex);
 
 	while (shaderLiteralsIt != std::sregex_iterator())
 	{
 		const std::smatch literalMatch = *shaderLiteralsIt;
-		SPT_CHECK(literalMatch.size() == 2); // should be whole match + literalMatch
-		const lib::HashedString literal = literalMatch[1].str();
+		SPT_CHECK(literalMatch.size() == 1);
+		const lib::String matchString = literalMatch[0].str();
+		const lib::StringView literalString(matchString.cbegin() + 2, matchString.cbegin() + matchString.length() - 1);
+		const lib::HashedString literal = literalString;
 
 		const Uint64 literalHash = static_cast<Uint64>(literal.GetKey());
 

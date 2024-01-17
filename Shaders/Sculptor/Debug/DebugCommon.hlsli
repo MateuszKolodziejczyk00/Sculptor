@@ -20,6 +20,15 @@ Literal CreateLiteral(uint2 val)
 
 #if SPT_SHADERS_DEBUG_FEATURES
 
+
+#define SPT_LITERAL_INTERNAL(literal) L##literal
+#define SPT_LITERAL(literal) SPT_LITERAL_INTERNAL(literal)
+
+#define SPT_FILE SPT_LITERAL(__FILE__)
+
+#define SPT_LINE __LINE__
+
+
 [[descriptor_set(ShaderDebugCommandBufferDS, 15)]]
 
 
