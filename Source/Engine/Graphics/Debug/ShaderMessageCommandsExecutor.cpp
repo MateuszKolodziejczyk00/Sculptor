@@ -45,9 +45,11 @@ void ShaderMessageCommandsExecutor::ExecuteFailedAssertionMessage(ShaderDebugCom
 
 	const Uint32 lineNumber = commandsStream.Read<Uint32>();
 
+	const lib::HashedString condition = commandsStream.ReadLiteral();
+
 	const lib::String string = ReadString(commandsStream);
 
-	SPT_LOG_ERROR(ShaderMessage, "Assertion failed in file {} at line {}:\n{}", fileName.GetData(), lineNumber, string.c_str());
+	SPT_LOG_FATAL(ShaderMessage, "Assertion \"{}\" failed in file {} at line {}:\n{}", condition.GetData(), fileName.GetData(), lineNumber, string.c_str());
 
 	SPT_CHECK_NO_ENTRY();
 }

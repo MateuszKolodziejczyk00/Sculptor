@@ -24,6 +24,7 @@ debug::DebugCommandsWriter writer = debug::CreateDebugCommandsWriter(); \
 writer.Write(ASSERTION_FAILED_MESSAGE_OP_CODE); \
 writer.WriteLiteral(SPT_FILE); \
 writer.Write(uint(SPT_LINE)); \
+writer.WriteLiteral(SPT_LITERAL(#condition)); \
 writer.WriteLiteral(message); \
 writer.WriteWithCodes(__VA_ARGS__); \
 writer.Flush(); \
