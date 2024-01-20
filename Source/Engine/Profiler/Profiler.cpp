@@ -82,7 +82,8 @@ public:
 		const lib::String capturePath = utils::GetCaptureFilePathWithoutExtension() + ".opt";
 		priv::g_currentCaptureStream = lib::File::OpenOutputStream(capturePath, lib::Flags(lib::EFileOpenFlags::Binary, lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::ForceCreate));
 
-		OPTICK_SAVE_CAPTURE(&OptickProfilerBackend::SaveCaptureImpl, true);
+		const Bool success = OPTICK_SAVE_CAPTURE(&OptickProfilerBackend::SaveCaptureImpl, true);
+		SPT_CHECK_MSG(success, "Failed to save capture {}", capturePath.c_str());
 
 		priv::g_currentCaptureStream.close();
 

@@ -132,13 +132,16 @@ void ShadersManager::HotReloadShaders()
 							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.shaderStageDef, params.compilationSettings, sc::EShaderCompilationFlags::UpdateOnly, params.flags);
 							if (shader)
 							{
-								const lib::WriteLockGuard lockGuard(m_lock);
-								m_cachedShaders[params.shaderHash] = shader;
+								{
+									const lib::WriteLockGuard lockGuard(m_lock);
+									m_cachedShaders[params.shaderHash] = shader;
+								}
 								
 								const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
 								Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
 							}
-						});
+						},
+						js::EJobPriority::Low);
 
 }
 #endif // WITH_SHADERS_HOT_RELOAD

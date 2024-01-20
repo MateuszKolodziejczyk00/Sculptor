@@ -106,10 +106,10 @@ void PersistentDescriptorSetsManager::RemoveInvalidSets()
 	SPT_PROFILER_FUNCTION();
 
 	// remove all sets with expired descriptor set states
-	const auto removedBegin = std::remove_if(std::begin(m_dsData), std::end(m_dsData),
+	const auto removedBegin = std::partition(std::begin(m_dsData), std::end(m_dsData),
 											 [this](const PersistentDSData& ds)
 											 {
-												 return m_destroyedDescriptors.contains(ds.state) || ds.pipeline.expired();
+												 return !m_destroyedDescriptors.contains(ds.state) && !ds.pipeline.expired();
 											 });
 
 	// destroy descriptor sets
