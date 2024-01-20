@@ -23,6 +23,12 @@ class RenderView;
 } // spt::rsc
 
 
+namespace spt::rsc::ddgi
+{
+class DDGISceneDS;
+} // spt::rsc::ddgi
+
+
 namespace spt::rsc::sr_denoiser
 {
 
@@ -46,6 +52,8 @@ public:
 		rg::RGTextureViewHandle motionTexture;
 
 		rg::RGTextureViewHandle normalsTexture;
+
+		lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
 	};
 
 	explicit Denoiser(rg::RenderGraphDebugName debugName);

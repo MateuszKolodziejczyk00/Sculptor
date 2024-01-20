@@ -60,7 +60,7 @@ void DDGIProbeRaysRTG()
         surface.roughness       = payload.roughness;
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
         
-        luminance = CalcReflectedLuminance(surface, -rayDirection);
+        luminance = CalcReflectedLuminance(surface, -rayDirection, -rayDirection);
 
         const DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, payload.normal, -rayDirection);
         const float3 illuminance = DDGISampleIlluminance(ddgiSampleParams);

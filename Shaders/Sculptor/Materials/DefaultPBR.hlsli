@@ -39,7 +39,7 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     
     if(materialData.metallicRoughnessTextureIdx != IDX_NONE_32)
     {
-        float2 metallicRoughness = u_materialsTextures[materialData.metallicRoughnessTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).xy;
+        const float2 metallicRoughness = u_materialsTextures[materialData.metallicRoughnessTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).xy;
         metallic *= metallicRoughness.x;
         roughness *= metallicRoughness.y;
     }

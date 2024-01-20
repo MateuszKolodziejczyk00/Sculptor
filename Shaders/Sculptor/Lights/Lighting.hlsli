@@ -3,9 +3,9 @@
 #include "Lights/Shadows.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 
-#ifdef DS_DDGIDS
+#ifdef DS_DDGISceneDS
 #include "DDGI/DDGITypes.hlsli"
-#endif // DS_DDGIDS
+#endif // DS_DDGISceneDS
 
 #ifdef DS_ViewShadingInputDS
 
@@ -217,7 +217,7 @@ struct ShadowRayPayload
 };
 
 
-float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
+float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in float3 specularGIOffsetDir)
 {
     float3 luminance = 0.f;
 
@@ -291,7 +291,7 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
     }
 
     // Indirect diffuse
-#ifdef DS_DDGIDS
+#ifdef DS_DDGISceneDS
     DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
     diffuseSampleParams.sampleDirection = surface.shadingNormal;
     const float3 indirectIlluminance = DDGISampleIlluminance(diffuseSampleParams);
@@ -300,11 +300,15 @@ float3 CalcReflectedLuminance(ShadedSurface surface, float3 viewDir)
     const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
     const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
 
-    DDGISampleParams specularSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
-    specularSampleParams.sampleDirection = reflect(-viewDir, surface.shadingNormal);
+    const float3 specularQueryWS = surface.location + normalize(0.7f * specularGIOffsetDir + 0.3f * surface.geometryNormal) * 1.f;
+
+    DDGISampleParams specularSampleParams = CreateDDGISampleParams(specularQueryWS, surface.geometryNormal, viewDir);
+    specularSampleParams.sampleDirection = reflect(-viewDir, surface.geometryNormal);
+    specularSampleParams.sampleLocationBiasMultiplier = 0.3f;
+    specularSampleParams.minVisibility                = 0.95f;
     const float3 specularReflections = DDGISampleLuminance(specularSampleParams);
     luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
-#endif // DS_DDGIDS
+#endif // DS_DDGISceneDS
 
     return luminance;
 }

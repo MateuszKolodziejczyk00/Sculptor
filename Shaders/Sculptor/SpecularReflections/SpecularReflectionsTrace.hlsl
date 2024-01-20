@@ -49,7 +49,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
  
     RayDesc rayDesc;
     rayDesc.TMin = 0.02f;
-    rayDesc.TMax = 100.f;
+    rayDesc.TMax = 200.f;
     rayDesc.Origin = surfWorldLocation;
     rayDesc.Direction = reflectedRayDirection;
 
@@ -87,7 +87,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
         surface.roughness = payload.roughness;
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
-        result.luminance = CalcReflectedLuminance(surface, -reflectedRayDirection);
+        result.luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, surfNormal);
 
         const float3 emissive = payload.emissive;
         result.luminance += emissive;

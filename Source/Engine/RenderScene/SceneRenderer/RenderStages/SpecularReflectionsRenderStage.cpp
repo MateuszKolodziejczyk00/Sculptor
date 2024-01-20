@@ -154,9 +154,12 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 namespace denoise
 {
 
-static void Denoise(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle denoisedTexture, const SpecularReflectionsParams& params)
+static void Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle denoisedTexture, const SpecularReflectionsParams& params)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	const RenderSceneEntityHandle viewEntityHandle = renderView.GetViewEntity();
@@ -169,6 +172,7 @@ static void Denoise(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& vie
 	denoiserParams.motionTexture                    = params.motionTexture;
 	denoiserParams.normalsTexture                   = params.normalsTexture;
 	denoiserParams.specularColorAndRoughnessTexture = params.specularColorRoughnessTexture;
+	denoiserParams.ddgiSceneDS                      = ddgiDS;
 
 	srViewData.denoiser.Denoise(graphBuilder, denoisedTexture, denoiserParams);
 }
@@ -276,7 +280,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const rg::RGTextureViewHandle specularReflectionsTexture = trace::TraceRays(graphBuilder, renderScene, viewSpec, params);
 		
-		denoise::Denoise(graphBuilder, viewSpec, specularReflectionsTexture, params);
+		denoise::Denoise(graphBuilder, renderScene, viewSpec, specularReflectionsTexture, params);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");

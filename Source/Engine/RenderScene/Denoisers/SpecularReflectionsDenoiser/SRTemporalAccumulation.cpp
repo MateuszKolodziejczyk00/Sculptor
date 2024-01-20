@@ -6,6 +6,7 @@
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
+#include "DDGI/DDGITypes.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -59,7 +60,9 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: SR Temporal Accumulation", params.name.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds),
+												 params.renderView.GetRenderViewDS(),
+												 params.ddgiSceneDS));
 }
 
 } // spt::rsc::sr_denoiser

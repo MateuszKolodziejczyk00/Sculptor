@@ -10,6 +10,12 @@ class RenderGraphBuilder;
 } // spt::rg
 
 
+namespace spt::rsc::ddgi
+{
+class DDGISceneDS;
+} // spt::rsc::ddgi
+
+
 namespace spt::rsc::sr_denoiser
 {
 
@@ -26,6 +32,8 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture;
 	rg::RGTextureViewHandle temporalVarianceTexture;
 	rg::RGTextureViewHandle historyTemporalVarianceTexture;
+
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
 };
 
 

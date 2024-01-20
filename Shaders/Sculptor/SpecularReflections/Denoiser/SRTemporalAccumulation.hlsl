@@ -1,12 +1,14 @@
 #include "SculptorShader.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(SRTemporalAccumulationDS, 1)]]
 
+[[descriptor_set(DDGISceneDS, 2)]]
+
+#include "DDGI/DDGITypes.hlsli"
 
 struct CS_INPUT
 {
@@ -46,10 +48,10 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
         bool acceptReprojection = false;
 
+        const float3 currentSampleNormal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+
         if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
         {
-            const float3 currentSampleNormal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
-
             const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
 
             const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
@@ -92,9 +94,17 @@ void SRTemporalAccumulationCS(CS_INPUT input)
             const uint3 historyPixel = uint3(historyUV * outputRes.xy, 0u);
 
             historySamplesNum += u_historyAccumulatedSamplesNumTexture.Load(historyPixel);
+            
+            const float minHistoryWeight = lerp(0.05f, 0.1f, Pow3(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS));
+            float currentFrameWeight = max(minHistoryWeight, rcp(float(historySamplesNum + 3u)));
 
-            const float minHistoryWeight = lerp(0.05f, 0.3f, Pow3(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS));
-            const float currentFrameWeight = max(minHistoryWeight, rcp(float(historySamplesNum)));
+            const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
+            moments = lerp(historyMoments, moments, currentFrameWeight);
+            
+            const float stdDev = sqrt(abs(moments.y - moments.x * moments.x));
+            const float temporalStabilityBoost = saturate(stdDev / 200.f) * (historySamplesNum * 0.1f);
+
+            currentFrameWeight /= (1.f + temporalStabilityBoost);
             
             const float4 historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
 
@@ -102,10 +112,25 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
             u_currentTexture[pixel] = newValue;
 
-            const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
-            moments = lerp(historyMoments, moments, currentFrameWeight);
-
             historySamplesNum = max(historySamplesNum, 128u);
+        }
+        else if(roughness > 0.1f) // additional ddgi sample for disocclusion
+        {
+            const float distToView = distance(currentSampleWS, u_sceneView.viewLocation);
+            const float3 toViewDir = (u_sceneView.viewLocation - currentSampleWS) / distToView;
+            const float3 reflectedVector = reflect(-toViewDir, currentSampleNormal);
+            const float3 ddgiQueryWS = currentSampleWS + toViewDir * min(distToView * 0.9f, 1.3f);
+            DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, currentSampleNormal, toViewDir);
+            ddgiSampleParams.sampleDirection = reflectedVector;
+            ddgiSampleParams.minVisibility = 0.95f;
+            ddgiSampleParams.sampleLocationBiasMultiplier = 0.0f;
+            const float3 ddgiLuminance = DDGISampleLuminance(ddgiSampleParams);
+
+            const float ddgiSampleWeight = saturate(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS);
+
+            const float4 newValue = lerp(luminanceAndHitDist, float4(ddgiLuminance, luminanceAndHitDist.w), ddgiSampleWeight);
+
+            u_currentTexture[pixel] = newValue;
         }
 
         u_accumulatedSamplesNumTexture[pixel] = historySamplesNum;

@@ -95,6 +95,7 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 		temporalAccumulationParameters.historyAccumulatedSamplesNumTexture = historyAccumulatedSamplesNumTexture;
 		temporalAccumulationParameters.temporalVarianceTexture             = temporalVarianceTexture;
 		temporalAccumulationParameters.historyTemporalVarianceTexture      = historyTemporalVarianceTexture;
+		temporalAccumulationParameters.ddgiSceneDS                         = params.ddgiSceneDS;
 
 		ApplyTemporalAccumulation(graphBuilder, temporalAccumulationParameters);
 	}
