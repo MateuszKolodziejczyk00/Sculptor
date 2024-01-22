@@ -67,8 +67,8 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_shadingNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_specularAndRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SpecularTraceShaderParams>),     u_traceParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpecularTraceShaderParams>),              u_traceParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                           u_integratedInScatteringTexture)
 DS_END();
 
 

@@ -161,12 +161,12 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 
 	SMBatchesBuilder batchesBuilder(cachedBatches.batches);
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<StaticMeshInstanceRenderData, EntityGPUDataHandle, mat::MaterialSlotsComponent>();
+	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const mat::MaterialSlotsComponent>();
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
 		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
 
-		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<StaticMeshRenderingDefinition>();
+		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<const StaticMeshRenderingDefinition>();
 
 		const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
 		batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);

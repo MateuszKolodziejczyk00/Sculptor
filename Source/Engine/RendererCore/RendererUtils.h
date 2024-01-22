@@ -87,6 +87,10 @@ public:
 
 	const rhi::RHISemaphoresArray&		GetRHISemaphores() const;
 
+	void								Reset();
+
+	void								Append(const SemaphoresArray& other);
+
 private:
 
 	rhi::RHISemaphoresArray				m_rhiSemaphores;

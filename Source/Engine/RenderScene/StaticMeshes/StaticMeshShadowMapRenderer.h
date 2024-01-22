@@ -14,15 +14,15 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SMShadowMapCullingDS, rg::RGDescriptorSetState<SMShadowMapCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMLightShadowMapsData>),		u_shadowMapsData)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SceneViewCullingData>),				u_viewsCullingData)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),							u_drawsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthOnlyDrawCallData>),			u_drawCommandsFace0)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommandsFace1)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommandsFace2)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommandsFace3)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommandsFace4)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>),	u_drawCommandsFace5)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMLightShadowMapsData>),               u_shadowMapsData)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SceneViewCullingData>),              u_viewsCullingData)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                          u_drawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SMDepthOnlyDrawCallData>),         u_drawCommandsFace0)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>), u_drawCommandsFace1)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>), u_drawCommandsFace2)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>), u_drawCommandsFace3)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>), u_drawCommandsFace4)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<SMDepthOnlyDrawCallData>), u_drawCommandsFace5)
 DS_END();
 
 

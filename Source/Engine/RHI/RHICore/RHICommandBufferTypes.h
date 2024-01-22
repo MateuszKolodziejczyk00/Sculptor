@@ -13,11 +13,12 @@ enum class ECommandBufferType
 };
 
 
-enum class ECommandBufferQueueType
+enum class EDeviceCommandQueueType
 {
 	Graphics,
 	AsyncCompute,
-	Transfer
+	Transfer,
+	NUM
 };
 
 
@@ -39,18 +40,18 @@ enum Type : Uint32
 struct CommandBufferDefinition
 {
 	CommandBufferDefinition()
-		: queueType(ECommandBufferQueueType::Graphics)
+		: queueType(EDeviceCommandQueueType::Graphics)
 		, cmdBufferType(ECommandBufferType::Primary)
 		, complexityClass(ECommandBufferComplexityClass::Default)
 	{ }
 
-	CommandBufferDefinition(ECommandBufferQueueType inQueueType, ECommandBufferType inCmdBufferType, ECommandBufferComplexityClass::Type inComplexityClass = ECommandBufferComplexityClass::Default)
+	CommandBufferDefinition(EDeviceCommandQueueType inQueueType, ECommandBufferType inCmdBufferType, ECommandBufferComplexityClass::Type inComplexityClass = ECommandBufferComplexityClass::Default)
 		: queueType(inQueueType)
 		, cmdBufferType(inCmdBufferType)
 		, complexityClass(inComplexityClass)
 	{ }
 
-	ECommandBufferQueueType					queueType;
+	EDeviceCommandQueueType					queueType;
 	ECommandBufferType						cmdBufferType;
 	ECommandBufferComplexityClass::Type		complexityClass;
 };

@@ -32,8 +32,9 @@ private:
 
 	TransfersManager();
 
-	lib::SharedPtr<rdr::Semaphore>	m_transferFinishedSemaphore;
-	std::atomic<Uint64>				m_lastSubmitCountValue;
+	lib::Lock                      m_lock;
+	lib::SharedPtr<rdr::Semaphore> m_transferFinishedSemaphore;
+	std::atomic<Uint64>            m_lastSubmitCountValue;
 };
 
 } // spt::gfx

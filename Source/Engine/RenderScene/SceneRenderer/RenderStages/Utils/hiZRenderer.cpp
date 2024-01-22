@@ -21,14 +21,14 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(BuildHiZDS, rg::RGDescriptorSetState<BuildHiZDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BuildHiZParams>),					u_buildParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_HiZMip0)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),								u_HiZMip1)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),								u_HiZMip2)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),								u_HiZMip3)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),								u_HiZMip4)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BuildHiZParams>),                            u_buildParams)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_depthSampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                       u_HiZMip0)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip1)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip2)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip3)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                               u_HiZMip4)
 DS_END();
 
 

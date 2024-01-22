@@ -94,7 +94,7 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 	const auto directionalLightsView = registry.view<DirectionalLightData>();
 	const SizeType directionalLightsNum = directionalLightsView.size();
 
-	const Uint64 requiredBufferSize = directionalLightsNum * sizeof(DirectionalLightGPUData);
+	const Uint64 requiredBufferSize = std::max<SizeType>(directionalLightsNum, 1) * sizeof(DirectionalLightGPUData);
 	if (!m_atmosphereContext.directionalLightsBuffer || m_atmosphereContext.directionalLightsBuffer->GetSize() < requiredBufferSize)
 	{
 		m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Lights Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);

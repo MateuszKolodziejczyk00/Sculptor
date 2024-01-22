@@ -30,10 +30,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(FilterMSMDS, rg::RGDescriptorSetState<FilterMSMDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_input)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_output)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<FilterMSMParams>),					u_params)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_input)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_inputSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_output)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<FilterMSMParams>),                         u_params)
 DS_END();
 
 static rdr::PipelineStateID CompileHorizontalMSMFilterPipeline()

@@ -30,10 +30,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DOFGenerateCoCDS, rg::RGDescriptorSetState<DOFGenerateCoCDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DOFShaderParameters>),				u_params)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_cocTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFShaderParameters>),                     u_params)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_cocTexture)
 DS_END();
 
 
@@ -86,10 +86,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DOFNearCoCBlurDS, rg::RGDescriptorSetState<DOFNearCoCBlurDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_cocTextureBlurred)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DOFNearCoCBlurParams>),				u_params)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_cocTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_cocTextureBlurred)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFNearCoCBlurParams>),                    u_params)
 DS_END();
 
 
@@ -207,13 +207,13 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DOFDownsampleDS, rg::RGDescriptorSetState<DOFDownsampleDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DOFDownsampleParams>),				u_params)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_cocTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_cocHalfTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_linearColorHalfTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_linearColorMulFarHalfTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DOFDownsampleParams>),                     u_params)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_linearColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_cocTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_cocHalfTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_linearColorHalfTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_linearColorMulFarHalfTexture)
 DS_END();
 
 

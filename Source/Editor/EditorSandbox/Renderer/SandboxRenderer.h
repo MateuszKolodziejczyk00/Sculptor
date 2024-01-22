@@ -31,7 +31,7 @@ public:
 
 	void Tick(Real32 deltaTime);
 
-	lib::SharedPtr<rdr::Semaphore> RenderFrame();
+	void RenderFrame();
 
 	ui::TextureID GetUITextureID() const;
 

@@ -25,6 +25,7 @@ class Event;
 class TopLevelAS;
 class BottomLevelAS;
 class QueryPool;
+class GPUWorkload;
 
 
 struct CommandsRecordingInfo
@@ -50,13 +51,8 @@ class RENDERER_CORE_API CommandRecorder
 public:
 
 	CommandRecorder();
-	~CommandRecorder();
 
-	Bool	IsBuildingCommands() const;
-	Bool	IsRecording() const;
-	Bool	IsPending() const;
-
-	void									RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+	lib::SharedRef<GPUWorkload>				RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
@@ -144,8 +140,6 @@ private:
 
 	CommandQueue							m_commandQueue;
 
-	ECommandsRecorderState					m_state;
-
 	PipelinePendingState					m_pipelineState;
 };
 
@@ -170,8 +164,6 @@ void CommandRecorder::UnbindDescriptorSetStates(TDescriptorSetStatesRange&& stat
 template<CRenderCommand RenderCommand>
 void CommandRecorder::EnqueueRenderCommand(RenderCommand&& command)
 {
-	SPT_CHECK(IsBuildingCommands());
-
 	m_commandQueue.Enqueue(std::move(command));
 }
 

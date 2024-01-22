@@ -94,7 +94,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	rhi::TLASDefinition tlasDefinition;
 
-	const auto rayTracedObjectsEntities = sceneRegistry.view<EntityGPUDataHandle, TransformComponent, mat::MaterialSlotsComponent, RayTracingGeometryProviderComponent>();
+	const auto rayTracedObjectsEntities = sceneRegistry.view<const EntityGPUDataHandle, const TransformComponent, const mat::MaterialSlotsComponent, const RayTracingGeometryProviderComponent>();
 	const SizeType rayTracedEntitiesNum = static_cast<SizeType>(rayTracedObjectsEntities.size_hint() * 2.2f);
 	tlasDefinition.instances.reserve(rayTracedEntitiesNum);
 
@@ -103,7 +103,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	for (const auto& [entity, gpuEntity, transform, materialsSlots, rtGeoProvider] : rayTracedObjectsEntities.each())
 	{
-		const RayTracingGeometryComponent& rayTracingGeoComp = rtGeoProvider.entity.get<RayTracingGeometryComponent>();
+		const RayTracingGeometryComponent& rayTracingGeoComp = rtGeoProvider.entity.get<const RayTracingGeometryComponent>();
 
 		const rhi::TLASInstanceDefinition::TransformMatrix transformMatrix = transform.GetTransform().matrix().topLeftCorner<3, 4>();
 
@@ -113,7 +113,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 		{
 			const RayTracingGeometryDefinition& rtGeometry		= rayTracingGeoComp.geometries[idx];
 			const ecs::EntityHandle material					= materialsSlots.slots[idx];
-			const mat::MaterialProxyComponent& materialProxy	= material.get<mat::MaterialProxyComponent>();
+			const mat::MaterialProxyComponent& materialProxy	= material.get<const mat::MaterialProxyComponent>();
 
 			if(materialProxy.SupportsRayTracing())
 			{
@@ -160,12 +160,10 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("BuildTLASCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-		rdr::CommandsSubmitBatch submitBatch;
-		submitBatch.recordedCommands.emplace_back(std::move(recorder));
-		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
 		m_tlas->ReleaseInstancesBuildData();
 

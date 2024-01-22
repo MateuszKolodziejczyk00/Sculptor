@@ -63,11 +63,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(ShadowMapsDS, rg::RGDescriptorSetState<ShadowMapsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),				u_shadowMapViews)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>),	u_shadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearShadowMapSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),							u_shadowMaps)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ShadowsSettings>),					u_shadowsSettings)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),               u_shadowMapViews)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMaxClampToEdge>), u_shadowMapSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),    u_linearShadowMapSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<256, true>),                           u_shadowMaps)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ShadowsSettings>),                           u_shadowsSettings)
 DS_END();
 
 

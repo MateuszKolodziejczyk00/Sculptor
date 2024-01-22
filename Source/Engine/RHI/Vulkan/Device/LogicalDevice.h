@@ -3,6 +3,7 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
+#include "../VulkanTypes/RHIDeviceQueue.h"
 
 
 namespace spt::vulkan
@@ -23,17 +24,15 @@ public:
 
 	void		WaitIdle() const;
 
-	VkQueue		GetGfxQueueHandle() const;
-	VkQueue		GetAsyncComputeQueueHandle() const;
-	VkQueue		GetTransferQueueHandle() const;
+	RHIDeviceQueue GetGfxQueue() const;
+	RHIDeviceQueue GetAsyncComputeQueue() const;
+	RHIDeviceQueue GetTransferQueue() const;
+	RHIDeviceQueue GetQueue(rhi::EDeviceCommandQueueType queueType) const;
 
-	VkQueue		GetQueueHandle(rhi::ECommandBufferQueueType queueType) const;
-
-	Uint32		GetGfxQueueFamilyIdx() const;
-	Uint32		GetAsyncComputeQueueFamilyIdx() const;
-	Uint32		GetTransferQueueFamilyIdx() const;
-
-	Uint32		GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const;
+	Uint32 GetGfxQueueFamilyIdx() const;
+	Uint32 GetAsyncComputeQueueFamilyIdx() const;
+	Uint32 GetTransferQueueFamilyIdx() const;
+	Uint32 GetQueueFamilyIdx(rhi::EDeviceCommandQueueType queueType) const;
 
 private:
 
@@ -41,13 +40,13 @@ private:
 
 	VkDevice	m_deviceHandle;
 
-	Uint32		m_gfxFamilyIdx;
-	Uint32		m_asyncComputeFamilyIdx;
-	Uint32		m_transferFamilyIdx;
+	Uint32 m_gfxFamilyIdx;
+	Uint32 m_asyncComputeFamilyIdx;
+	Uint32 m_transferFamilyIdx;
 
-	VkQueue		m_gfxQueueHandle;
-	VkQueue		m_asyncComputeQueueHandle;
-	VkQueue		m_transferQueueHandle;
+	RHIDeviceQueue m_gfxQueue;
+	RHIDeviceQueue m_asyncComputeQueue;
+	RHIDeviceQueue m_transferQueue;
 };
 
-}
+} // spt::vulkan

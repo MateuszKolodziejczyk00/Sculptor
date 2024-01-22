@@ -57,6 +57,10 @@ public:
 
 	SizeType											GetSemaphoresNum() const;
 
+	void												Reset();
+
+	void												Append(const RHISemaphoresArray& other);
+
 	// Vulkan =====================================================================
 
 	const lib::DynamicArray<VkSemaphoreSubmitInfo>&		GetSubmitInfos() const;
@@ -69,4 +73,4 @@ private:
 
 };
 
-}
+} // spt::vulkan

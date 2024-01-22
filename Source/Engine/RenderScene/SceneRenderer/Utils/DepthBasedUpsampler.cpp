@@ -26,7 +26,7 @@ DS_BEGIN(DepthBasedUpsampleDS, rg::RGDescriptorSetState<DepthBasedUpsampleDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DepthBasedUpsampleShaderParams>), u_params)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthBasedUpsampleShaderParams>),          u_params)
 DS_END()
 
 

@@ -105,7 +105,7 @@ DS_END();
 
 
 DS_BEGIN(DDGIDebugDrawProbesDS, rg::RGDescriptorSetState<DDGIDebugDrawProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DDGIProbesDebugParams>), u_ddgiProbesDebugParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIProbesDebugParams>), u_ddgiProbesDebugParams)
 DS_END();
 
 

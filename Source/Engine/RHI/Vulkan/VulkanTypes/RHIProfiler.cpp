@@ -12,7 +12,7 @@ namespace impl
 {
 
 #if ENABLE_PROFILER
-#if WITH_OPTICK
+#if USE_OPTICK
 
 class OptickGPUProfiler
 {
@@ -36,8 +36,8 @@ public:
 		};
 
 		VkQueue queues[] = {
-			logicalDevice.GetGfxQueueHandle(),
-			logicalDevice.GetAsyncComputeQueueHandle()
+			logicalDevice.GetGfxQueue().GetHandleChecked(),
+			logicalDevice.GetAsyncComputeQueue().GetHandleChecked()
 		};
 
 		Uint32 queueFamilies[] = {
@@ -92,7 +92,7 @@ private:
 	}
 };
 
-#endif // WITH_OPTICK
+#endif // USE_OPTICK
 #endif // ENABLE_PROFILER
 
 class NullGPUProfiler
@@ -107,7 +107,7 @@ public:
 
 #if ENABLE_PROFILER
 
-#if WITH_OPTCK
+#if USE_OPTICK
 
 using GPUProfiler = OptickGPUProfiler;
 
@@ -115,7 +115,7 @@ using GPUProfiler = OptickGPUProfiler;
 
 using GPUProfiler = NullGPUProfiler;
 
-#endif // WITH_OPTICK
+#endif // USE_OPTICK
 
 #else
 

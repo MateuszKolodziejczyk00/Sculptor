@@ -21,14 +21,14 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(MipsBuildPassDS, rg::RGDescriptorSetState<MipsBuildPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<MipsBuildPassParams>),				u_mipsBuildParams)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_textureMip0)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),						u_textureMip1)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),						u_textureMip2)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),						u_textureMip3)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),						u_textureMip4)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<MipsBuildPassParams>),                    u_mipsBuildParams)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_inputSampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_textureMip0)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip1)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip2)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip3)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                    u_textureMip4)
 DS_END();
 
 

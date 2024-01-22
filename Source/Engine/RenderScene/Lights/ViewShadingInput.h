@@ -32,20 +32,20 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(ViewShadingInputDS, rg::RGDescriptorSetState<ViewShadingInputDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LightsRenderingData>),				u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<math::Vector2u>),				u_clustersRanges) // min,max light idx for each z cluster
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),				u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<Uint32>),							u_tilesLightsMask)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),			u_directionalLights)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<4, true>),								u_shadowMasks)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),								u_ambientOcclusionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                     u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<math::Vector2u>),              u_clustersRanges) // min,max light idx for each z cluster
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<PointLightGPUData>),             u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<Uint32>),                        u_tilesLightsMask)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<DirectionalLightGPUData>),       u_directionalLights)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<4, true>),                           u_shadowMasks)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                            u_ambientOcclusionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_transmittanceLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                     u_atmosphereParams)
 	
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<8, true>),								u_shadowMapCascades)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>),				u_shadowMapCascadeViews)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<8, true>),               u_shadowMapCascades)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<ShadowMapViewData>), u_shadowMapCascadeViews)
 DS_END();
 
 

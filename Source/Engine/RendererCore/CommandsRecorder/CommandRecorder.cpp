@@ -11,41 +11,17 @@
 #include "Types/Buffer.h"
 #include "Types/AccelerationStructure.h"
 #include "Types/QueryPool.h"
+#include "DeviceQueues/GPUWorkload.h"
 
 namespace spt::rdr
 {
 
 CommandRecorder::CommandRecorder()
-	: m_state(ECommandsRecorderState::BuildingCommands)
 { }
 
-CommandRecorder::~CommandRecorder()
-{
-	SPT_CHECK(m_state == ECommandsRecorderState::Pending);
-}
-
-Bool CommandRecorder::IsBuildingCommands() const
-{
-	return m_state == ECommandsRecorderState::BuildingCommands;
-}
-
-Bool CommandRecorder::IsRecording() const
-{
-	return m_state == ECommandsRecorderState::Recording;
-}
-
-Bool CommandRecorder::IsPending() const
-{
-	return m_state == ECommandsRecorderState::Pending;
-}
-
-void CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+lib::SharedRef<GPUWorkload> CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(IsBuildingCommands());
-
-	m_state = ECommandsRecorderState::Recording;
 
 	m_pipelineState.PrepareForExecution(context);
 	
@@ -57,7 +33,7 @@ void CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& contex
 
 	m_commandsBuffer->FinishRecording();
 
-	m_state = ECommandsRecorderState::Pending;
+	return lib::MakeShared<GPUWorkload>(lib::Ref(m_commandsBuffer), commandBufferUsage);
 }
 
 const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const

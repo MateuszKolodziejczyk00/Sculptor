@@ -37,6 +37,8 @@ SamplersCache samplersCache;
 
 OnRendererCleanupDelegate cleanupDelegate;
 
+DeviceQueuesManager deviceQueuesManager;
+
 };
 
 static RendererData g_data;
@@ -65,6 +67,8 @@ void Renderer::PostCreatedWindow()
 	CurrentFrameContext::Initialize(RendererSettings::Get().framesInFlight);
 
 	GPUProfiler::Initialize();
+
+	GetDeviceQueuesManager().Initialize();
 }
 
 void Renderer::Uninitialize()
@@ -72,6 +76,8 @@ void Renderer::Uninitialize()
 	CurrentFrameContext::ReleaseAllResources();
 
 	GetOnRendererCleanupDelegate().Broadcast();
+
+	GetDeviceQueuesManager().Uninitialize();
 
 	GetSamplersCache().Uninitialize();
 
@@ -122,57 +128,16 @@ SamplersCache& Renderer::GetSamplersCache()
 	return priv::g_data.samplersCache;
 }
 
+DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
+{
+	return priv::g_data.deviceQueuesManager;
+}
+
 lib::UniquePtr<CommandRecorder> Renderer::StartRecordingCommands()
 {
 	SPT_PROFILER_FUNCTION();
 
 	return std::make_unique<CommandRecorder>();
-}
-
-void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches)
-{
-	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(!submitBatches.empty());
-
-	lib::DynamicArray<rhi::SubmitBatchData> rhiSubmitBatches(submitBatches.size());
-
-	for (SizeType idx = 0; idx < submitBatches.size(); ++idx)
-	{
-		const CommandsSubmitBatch& submitBatch = submitBatches[idx];
-
-		rhi::SubmitBatchData& rhiSubmitBatch = rhiSubmitBatches[idx];
-
-		rhiSubmitBatch.waitSemaphores = &submitBatch.waitSemaphores.GetRHISemaphores();
-		rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
-		std::transform(submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
-					   std::back_inserter(rhiSubmitBatch.commandBuffers),
-					   [](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
-					   {
-						   return &recorder->GetCommandBuffer()->GetRHI();
-					   });
-	}
-
-	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
-}
-
-void Renderer::SubmitCommands(rhi::ECommandBufferQueueType queueType, CommandsSubmitBatch submitBatch)
-{
-	SPT_PROFILER_FUNCTION();
-
-	lib::DynamicArray<rhi::SubmitBatchData> rhiSubmitBatches(1);
-
-	rhi::SubmitBatchData& rhiSubmitBatch = rhiSubmitBatches[0];
-	rhiSubmitBatch.waitSemaphores = &submitBatch.waitSemaphores.GetRHISemaphores();
-	rhiSubmitBatch.signalSemaphores = &submitBatch.signalSemaphores.GetRHISemaphores();
-	std::transform(submitBatch.recordedCommands.cbegin(), submitBatch.recordedCommands.cend(),
-				   std::back_inserter(rhiSubmitBatch.commandBuffers),
-				   [](const lib::UniquePtr<CommandRecorder>& recorder) -> const rhi::RHICommandBuffer*
-				   {
-					   return &recorder->GetCommandBuffer()->GetRHI();
-				   });
-
-	rhi::RHI::SubmitCommands(queueType, rhiSubmitBatches);
 }
 
 void Renderer::PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)

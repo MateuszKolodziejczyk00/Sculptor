@@ -31,7 +31,7 @@ namespace params
 
 RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows", { "Lighting", "Shadows", "Directional"}, true);
 RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
-RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 30.f, 0.f, 100.f);
+RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 70.f, 0.f, 200.f);
 RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 0.1f);
 
 } // params
@@ -56,8 +56,8 @@ DS_END();
 
 
 DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLightShadowMaskDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),											u_shadowMask)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DirectionalLightShadowUpdateParams>),	u_params)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                u_shadowMask)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DirectionalLightShadowUpdateParams>), u_params)
 DS_END();
 
 

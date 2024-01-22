@@ -6,6 +6,7 @@
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHIBridge/RHIImpl.h"
 #include "Delegates/MulticastDelegate.h"
+#include "DeviceQueues/DeviceQueuesManager.h"
 
 
 namespace spt::rdr
@@ -60,11 +61,10 @@ public:
 	static DescriptorSetsManager&				GetDescriptorSetsManager();
 
 	static SamplersCache&						GetSamplersCache();
+	
+	static DeviceQueuesManager&					GetDeviceQueuesManager();
 
 	static lib::UniquePtr<CommandRecorder>		StartRecordingCommands();
-
-	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<CommandsSubmitBatch>& submitBatches);
-	static void									SubmitCommands(rhi::ECommandBufferQueueType queueType, CommandsSubmitBatch submitBatch);
 
 	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 

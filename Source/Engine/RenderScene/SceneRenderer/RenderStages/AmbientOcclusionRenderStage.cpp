@@ -57,12 +57,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_ambientOcclusionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<RTAOTraceRaysParams>),				u_rtaoParams)
-	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),										u_worldAccelerationStructure)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_ambientOcclusionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTAOTraceRaysParams>),                     u_rtaoParams)
+	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),                                   u_worldAccelerationStructure)
 DS_END();
 
 

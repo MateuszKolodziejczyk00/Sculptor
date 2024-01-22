@@ -6,6 +6,7 @@
 #include "Types/RenderContext.h"
 #include "Vulkan/VulkanTypes/RHIBuffer.h"
 #include "RenderGraphDebugDecorator.h"
+#include "DeviceQueues/GPUWorkload.h"
 
 namespace spt::rg
 {
@@ -453,11 +454,11 @@ void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescript
 	}
 }
 
-void RenderGraphBuilder::Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores)
+void RenderGraphBuilder::Execute()
 {
 	PostBuild();
 
-	ExecuteGraph(waitSemaphores, signalSemaphores);
+	ExecuteGraph();
 }
 
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
@@ -585,7 +586,7 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 
 		// Buffers may be used in multiple ways in the same node, for example as a indirect buffer and storage buffer
 		// Because of that, we need to merge transitions of same buffer views
-		if (accessedBufferView->GetLastAccessNode() == &node)
+		if (accessedBuffer->GetLastAccessNode() == &node)
 		{
 			rhi::EAccessType destAccessType = rhi::EAccessType::None;
 			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
@@ -593,16 +594,16 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			continue;
 		}
 
-		const ERGBufferAccess prevAccess							= accessedBufferView->GetLastAccessType();
-		const rhi::EPipelineStage prevAccessStages					= accessedBufferView->GetLastAccessPipelineStages();
+		const ERGBufferAccess prevAccess           = accessedBufferView->GetLastAccessType();
+		const rhi::EPipelineStage prevAccessStages = accessedBufferView->GetLastAccessPipelineStages();
 
 		if (RequiresSynchronization(accessedBuffer, prevAccessStages, prevAccess, nextAccess, nextAccessStages))
 		{
 			rhi::EAccessType sourceAccessType = rhi::EAccessType::None;
-			GetSynchronizationParamsForBuffer(prevAccess, sourceAccessType);
+			GetSynchronizationParamsForBuffer(prevAccess, OUT sourceAccessType);
 			
 			rhi::EAccessType destAccessType = rhi::EAccessType::None;
-			GetSynchronizationParamsForBuffer(nextAccess, destAccessType);
+			GetSynchronizationParamsForBuffer(nextAccess, OUT destAccessType);
 
 			node.AddBufferSynchronization(accessedBuffer, offset, size, prevAccessStages, sourceAccessType, nextAccessStages, destAccessType);
 		}
@@ -723,18 +724,18 @@ Bool RenderGraphBuilder::RequiresSynchronization(const rhi::BarrierTextureTransi
 
 Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, rhi::EPipelineStage prevAccessStage, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess, rhi::EPipelineStage nextAccessStage) const
 {
-	// Assume that we don't need synchronization for buffers that were not used before in this render graph and host cannot write to them
-	// This type of buffers should be already properly synchronized using semaphores if wrote on GPU
-	if (!buffer->AllowsHostWrites() && prevAccess == ERGBufferAccess::Unknown)
-	{
-		return false;
-	}
-
 	const auto isWriteAccess = [](ERGBufferAccess access)
 	{
 		return access == ERGBufferAccess::ReadWrite
 			|| access == ERGBufferAccess::Write;
 	};
+
+	// Assume that we don't need synchronization for buffers that were not used before in this render graph and host cannot write to them
+	// This type of buffers should be already properly synchronized using semaphores if wrote on GPU
+	if (!buffer->AllowsHostWrites() && prevAccess == ERGBufferAccess::Unknown && !isWriteAccess(nextAccess))
+	{
+		return false;
+	}
 
 	const Bool prevAccessIsWrite = isWriteAccess(prevAccess);
 	const Bool nextAccessIsWrite = isWriteAccess(nextAccess);
@@ -761,7 +762,7 @@ void RenderGraphBuilder::PostBuild()
 	ResolveTextureProperties();
 }
 
-void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores)
+void RenderGraphBuilder::ExecuteGraph()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -779,16 +780,9 @@ void RenderGraphBuilder::ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores
 
 	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("RenderGraphCommandBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-	commandRecorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
-
-	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
-	submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
-	submitBatch.waitSemaphores = waitSemaphores;
-	submitBatch.signalSemaphores = signalSemaphores;
-
-	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 }
 
 void RenderGraphBuilder::AddReleaseResourcesNode()

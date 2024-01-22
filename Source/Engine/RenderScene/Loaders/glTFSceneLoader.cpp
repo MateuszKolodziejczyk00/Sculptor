@@ -16,6 +16,8 @@
 #include "Types/AccelerationStructure.h"
 #include "RayTracing/RayTracingSceneTypes.h"
 #include "MaterialsSubsystem.h"
+#include "DeviceQueues/DeviceQueuesManager.h"
+#include "DeviceQueues/GPUWorkload.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -229,6 +231,8 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	}
 
 	math::Affine3f transform = math::Affine3f::Identity();
+	//transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
+	//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
 	
 	if (!node.scale.empty())
 	{
@@ -348,10 +352,6 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 		textures.emplace_back(CreateImage(image));
 	}
 
-	// Transition barrier to transfer dst
-	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Timeline);
-	const lib::SharedRef<rdr::Semaphore> readyForTransferSemaphore = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("ReadyForTransferSemaphore"), semaphoreDef);
-
 	{
 		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
 
@@ -365,16 +365,13 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PreTransferDependencyCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-		rdr::CommandsSubmitBatch submitBatch;
-		submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
-		submitBatch.signalSemaphores.AddTimelineSemaphore(readyForTransferSemaphore, 1, rhi::EPipelineStage::BottomOfPipe);
-		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+		rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload);
+
+		gpuWorkload->Wait();
 	}
-
-	readyForTransferSemaphore->GetRHI().Wait(1);
 
 	// Upload data to textures
 	for (Uint32 imageIdx = 0; imageIdx < imagesNum; ++imageIdx)
@@ -400,13 +397,10 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PostTransferDependencyCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-		commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+		const lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-		rdr::CommandsSubmitBatch submitBatch;
-		submitBatch.recordedCommands.emplace_back(std::move(commandRecorder));
-		gfx::TransfersManager::WaitForTransfersFinished(submitBatch.waitSemaphores);
-		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 	}
 
 	lib::DynamicArray<Uint32> textureIndicesInMaterialDS;
@@ -498,13 +492,10 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("BuildBLASesCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-		recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-		rdr::CommandsSubmitBatch submitBatch;
-		submitBatch.recordedCommands.emplace_back(std::move(recorder));
-		gfx::TransfersManager::WaitForTransfersFinished(submitBatch.waitSemaphores);
-		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, std::move(submitBatch));
+		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 	}
 }
 

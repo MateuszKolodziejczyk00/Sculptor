@@ -51,10 +51,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderViewDS, rg::RGDescriptorSetState<RenderViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>),				u_prevFrameSceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewData>),				u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SceneViewCullingData>),			u_cullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<RenderViewData>),				u_viewRenderingParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),        u_prevFrameSceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),        u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>), u_cullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderViewData>),       u_viewRenderingParams)
 DS_END()
 
 

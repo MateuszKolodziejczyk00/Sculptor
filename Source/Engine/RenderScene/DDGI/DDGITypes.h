@@ -117,10 +117,10 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                      u_probesTextures)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                 u_probesDataSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGILOD0Definition>),                                                     u_ddgiLOD0)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGILOD1Definition>),                                                     u_ddgiLOD1)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                            u_probesTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGILOD0Definition>),                                                           u_ddgiLOD0)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGILOD1Definition>),                                                           u_ddgiLOD1)
 DS_END();
 
 

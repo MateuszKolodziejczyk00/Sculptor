@@ -59,7 +59,9 @@ struct TypeSerializer<sc::CompiledShader>
 			
 		serializer.Serialize("MetaData", shader.metaData);
 		
+#if SPT_SHADERS_DEBUG_FEATURES
 		serializer.Serialize("DebugMetaData", shader.debugMetaData);
+#endif // SPT_SHADERS_DEBUG_FEATURES
 	}
 };
 

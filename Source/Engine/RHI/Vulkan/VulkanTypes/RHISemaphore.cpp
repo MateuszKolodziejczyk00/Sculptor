@@ -153,6 +153,16 @@ void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uin
 	AddSemaphoreInfo(semaphore.GetHandle(), value, submitStage);
 }
 
+void RHISemaphoresArray::Reset()
+{
+	m_submitInfos.clear();
+}
+
+void RHISemaphoresArray::Append(const RHISemaphoresArray& other)
+{
+	m_submitInfos.insert(m_submitInfos.end(), other.m_submitInfos.begin(), other.m_submitInfos.end());
+}
+
 const lib::DynamicArray<VkSemaphoreSubmitInfo>& RHISemaphoresArray::GetSubmitInfos() const
 {
 	return m_submitInfos;
@@ -174,4 +184,4 @@ void RHISemaphoresArray::AddSemaphoreInfo(VkSemaphore semaphore, Uint64 value, r
 	m_submitInfos.push_back(submitInfo);
 }
 
-}
+} // spt::vulkan

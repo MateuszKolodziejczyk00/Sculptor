@@ -1,0 +1,77 @@
+#pragma once
+
+#include "RendererCoreMacros.h"
+#include "SculptorCoreTypes.h"
+#include "Types/CommandBuffer.h"
+#include "RHICore/RHICommandBufferTypes.h"
+#include "RendererUtils.h"
+
+
+namespace spt::rdr
+{
+
+class DeviceQueue;
+
+
+class RENDERER_CORE_API GPUWorkload
+{
+public:
+
+	explicit GPUWorkload(lib::SharedRef<CommandBuffer> recordedBuffer, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+
+	Bool IsSubmitted() const;
+
+	// Resets workload submitted state and allows to reuse it
+	void Reset();
+
+	void Wait();
+
+	void ReleaseBuffer();
+
+	void OnSubmitted(lib::SharedPtr<Semaphore> signalSemaphore, Uint64 signalValue, DeviceQueue* queue);
+
+	const lib::SharedPtr<CommandBuffer>& GetRecordedBuffer() const;
+	rhi::EDeviceCommandQueueType         GetQueueType() const;
+
+	const lib::SharedPtr<Semaphore>& GetSignaledSemaphore() const;
+	Uint64                           GetSignaledSemaphoreValue() const;
+	DeviceQueue*                     GetSubmissionQueue() const;
+
+	Bool IsReadyToSubmit() const;
+
+	SemaphoresArray& GetWaitSemaphores();
+	SemaphoresArray& GetSignalSemaphores();
+
+	lib::SharedRef<rdr::Semaphore> AddBinarySignalSemaphore(RendererResourceName name, rhi::EPipelineStage stages);
+
+	void AddPrerequisite(lib::SharedPtr<GPUWorkload> workload);
+
+	// This function is not thread-safe. It cannot by called when prerequisites can be added (before submission of this workload)
+	const lib::DynamicArray<lib::SharedPtr<GPUWorkload>>& GetPrerequisites_Unsafe() const;
+
+private:
+
+	void AddSubsequent(GPUWorkload* workload);
+
+	void OnPrerequisiteSubmitted();
+
+	lib::SharedPtr<CommandBuffer> m_recordedBuffer;
+
+	lib::SharedPtr<Semaphore> m_signalSemaphore;
+	Uint64                    m_signalSemaphoreValue;
+	DeviceQueue*              m_submissionQueue;
+
+	lib::Lock                                      m_prerequisitesLock;
+	lib::DynamicArray<lib::SharedPtr<GPUWorkload>> m_prerequisites;
+
+	std::atomic<Uint32> m_remainingPrerequisitesNum;
+
+	lib::DynamicArray<GPUWorkload*> m_subsequents;
+
+	SemaphoresArray m_waitSemaphores;
+	SemaphoresArray m_signalSemaphores;
+
+	Bool m_canBeReused;
+};
+
+} // spt::rdr

@@ -29,8 +29,8 @@ namespace params
 RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.65f, 0.f, 1.f);
 RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 20.f, -20.f, 20.f);
-RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.7f, 0.f, 0.8f);
-RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.03f, 0.f, 0.1f);
+RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.5f, 0.f, 0.8f);
+RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
 RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);
@@ -76,10 +76,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(LuminanceHistogramDS, rg::RGDescriptorSetState<LuminanceHistogramDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_sampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ExposureSettings>),					u_exposureSettings)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),								u_luminanceHistogram)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_linearColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_sampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ExposureSettings>),                        u_exposureSettings)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                              u_luminanceHistogram)
 DS_END();
 
 
@@ -120,9 +120,9 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 
 
 DS_BEGIN(ComputeAdaptedLuminanceDS, rg::RGDescriptorSetState<ComputeAdaptedLuminanceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ExposureSettings>),	u_exposureSettings)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),					u_luminanceHistogram)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Real32>),				u_adaptedLuminance)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ExposureSettings>), u_exposureSettings)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),         u_luminanceHistogram)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Real32>),       u_adaptedLuminance)
 DS_END();
 
 
@@ -194,10 +194,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(LensFlaresPassDS, rg::RGDescriptorSetState<LensFlaresPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LensFlaresParams>),					u_lensFlaresParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LensFlaresParams>),                       u_lensFlaresParams)
 DS_END();
 
 
@@ -207,10 +207,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(LensFlaresBlurDS, rg::RGDescriptorSetState<LensFlaresBlurDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inputSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<LensFlaresBlurParams>),				u_blurParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_inputSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LensFlaresBlurParams>),                   u_blurParams)
 DS_END();
 
 
@@ -305,10 +305,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(BloomPassDS, rg::RGDescriptorSetState<BloomPassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomPassInfo>),					u_bloomInfo)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BloomPassInfo>),                          u_bloomInfo)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 DS_END();
 
 
@@ -323,9 +323,9 @@ END_SHADER_STRUCT()
 
 
 DS_BEGIN(BloomCompositePassDS, rg::RGDescriptorSetState<BloomCompositePassDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),				u_lensDirtTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),				u_lensFlaresTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<BloomCompositePassInfo>),	u_bloomCompositeInfo)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),   u_lensDirtTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),   u_lensFlaresTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BloomCompositePassInfo>), u_bloomCompositeInfo)
 DS_END();
 
 

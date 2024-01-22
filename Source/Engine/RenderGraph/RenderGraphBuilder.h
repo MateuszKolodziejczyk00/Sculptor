@@ -149,7 +149,7 @@ public:
 	void BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 	void UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 
-	void Execute(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
+	void Execute();
 
 private:
 
@@ -189,7 +189,7 @@ private:
 	Bool RequiresSynchronization(RGBufferHandle buffer, rhi::EPipelineStage prevAccessStage, ERGBufferAccess prevAccess, ERGBufferAccess nextAccess, rhi::EPipelineStage nextAccessStage) const;
 
 	void PostBuild();
-	void ExecuteGraph(const rdr::SemaphoresArray& waitSemaphores, const rdr::SemaphoresArray& signalSemaphores);
+	void ExecuteGraph();
 
 	void AddReleaseResourcesNode();
 

@@ -818,6 +818,8 @@ public:
 		{
 			SPT_PROFILER_SCOPE("Allocate Job");
 			job = new JobInstance(name);
+
+			SPT_CHECK(job.IsValid());
 		}
 		job->Init(std::forward<TCallable>(callable), priority, flags);
 		return job;

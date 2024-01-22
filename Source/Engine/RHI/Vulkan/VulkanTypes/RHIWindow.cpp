@@ -221,7 +221,7 @@ Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& wai
     presentInfo.pImageIndices = &imageIdx;
     presentInfo.pResults = &result;
 
-	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueueHandle(), &presentInfo);
+	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueue().GetHandleChecked(), &presentInfo);
 	
 	SPT_CHECK(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR);
 

@@ -19,13 +19,13 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                     u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                      u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                              u_luminanceStdDevTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                             u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                     u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                     u_specularColorRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SRATrousFilteringParams>), u_params)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),             u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_luminanceStdDevTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_specularColorRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRATrousFilteringParams>), u_params)
 DS_END();
 
 

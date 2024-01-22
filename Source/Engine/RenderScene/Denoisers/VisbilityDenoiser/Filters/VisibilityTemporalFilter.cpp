@@ -33,7 +33,7 @@ DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_temporalMomentsHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<TemporalFilterShaderParams>),     u_params)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TemporalFilterShaderParams>),              u_params)
 DS_END();
 
 

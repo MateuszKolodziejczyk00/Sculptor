@@ -25,12 +25,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(ApplyVolumetricFogDS, rg::RGDescriptorSetState<ApplyVolumetricFogDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_integratedInScatteringSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_depthSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<ApplyVolumetricFogParams>),			u_applyVolumetricFogParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_integratedInScatteringSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_luminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_depthSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ApplyVolumetricFogParams>),                u_applyVolumetricFogParams)
 DS_END();
 
 

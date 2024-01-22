@@ -111,20 +111,9 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 	}
 }
 
-lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
+void SandboxRenderer::RenderFrame()
 {
 	SPT_PROFILER_FUNCTION();
-
-	js::JobWithResult createFinishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
-															{
-																const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-																return rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
-															});
-
-	js::Job flushPendingBufferUploads = js::Launch(SPT_GENERIC_JOB_NAME, []()
-												   {
-													   return gfx::FlushPendingUploads();
-												   });
 
 	UpdateSceneUITextureForView(*m_renderView);
 
@@ -176,21 +165,8 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 	// prepare for UI pass
 	graphBuilder.ReleaseTextureWithTransition(sceneUItextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
 
-	rdr::SemaphoresArray waitSemaphores;
-#if !WITH_NSIGHT_CRASH_FIX
-	// Wait for previous frame as we're reusing resources
-	waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetGPUFrame().GetFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
-#endif // !WITH_NSIGHT_CRASH_FIX
+	graphBuilder.Execute();
 	
-	flushPendingBufferUploads.Wait();
-	gfx::TransfersManager::WaitForTransfersFinished(waitSemaphores);
-
-	const lib::SharedRef<rdr::Semaphore> finishSemaphore = createFinishSemaphoreJob.Await();
-	rdr::SemaphoresArray signalSemaphores;
-	signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
-
-	graphBuilder.Execute(waitSemaphores, signalSemaphores);
-
 	if (capturer.HasValidCapture())
 	{
 		using GPUFinishedDelegate = engn::OnGPUFinished::Delegate;
@@ -205,8 +181,6 @@ lib::SharedPtr<rdr::Semaphore> SandboxRenderer::RenderFrame()
 
 		engn::GetRenderingFrame().AddOnGPUFinishedDelegate(std::move(delegate));
 	}
-
-	return finishSemaphore.ToSharedPtr();
 }
 
 ui::TextureID SandboxRenderer::GetUITextureID() const

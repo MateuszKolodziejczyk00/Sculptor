@@ -32,6 +32,7 @@ class RHIBottomLevelAS;
 class RHIShaderBindingTable;
 class RHIQueryPool;
 class RHIGPUMemoryPool;
+class RHIDeviceQueue;
 
 }
 

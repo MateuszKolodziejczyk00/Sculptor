@@ -39,8 +39,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>),	u_batchElements)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SMGPUBatchData>),	u_batchData)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>), u_batchElements)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMGPUBatchData>),           u_batchData)
 DS_END();
 
 

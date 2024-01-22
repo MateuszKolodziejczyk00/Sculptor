@@ -28,7 +28,7 @@ DS_BEGIN(SpatialATrousFilterDS, rg::RGDescriptorSetState<SpatialATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                            u_temporalMomentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Uint32>),                            u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<SpatialATrousFilteringParams>),   u_params)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpatialATrousFilteringParams>),            u_params)
 DS_END();
 
 

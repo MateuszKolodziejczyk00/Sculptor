@@ -47,7 +47,7 @@ public:
     VkPhysicalDevice            physicalDevice;
     LogicalDevice               device;
 
-    VulkanMemoryManager               memoryManager;
+    VulkanMemoryManager         memoryManager;
 
     VkSurfaceKHR                surface;
     
@@ -269,68 +269,6 @@ rhi::ERHIType VulkanRHI::GetRHIType()
     return rhi::ERHIType::Vulkan_1_3;
 }
 
-void VulkanRHI::SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches)
-{
-    SPT_PROFILER_FUNCTION();
-
-    SPT_CHECK(!submitBatches.empty());
-
-    lib::DynamicArray<VkSubmitInfo2> submitInfos;
-    submitInfos.resize(submitBatches.size());
-
-    lib::DynamicArray<lib::DynamicArray<VkCommandBufferSubmitInfo>> commandBuffersBatches;
-    commandBuffersBatches.resize(submitBatches.size());
-
-    for (SizeType idx = 0; idx < submitBatches.size(); ++idx)
-    {
-        const RHISemaphoresArray* waitSemaphores                    = submitBatches[idx].waitSemaphores;
-        const RHISemaphoresArray* signalSemaphores                  = submitBatches[idx].signalSemaphores;
-        const lib::DynamicArray<const RHICommandBuffer*> cmdBuffers = submitBatches[idx].commandBuffers;
-
-        SPT_CHECK(!cmdBuffers.empty());
-
-        lib::DynamicArray<VkCommandBufferSubmitInfo>& cmdBuffersSubmitBatch = commandBuffersBatches[idx];
-        cmdBuffersSubmitBatch.resize(cmdBuffers.size());
-
-        for (SizeType batchIdx = 0; batchIdx < cmdBuffers.size(); ++batchIdx)
-        {
-            SPT_CHECK(cmdBuffers[batchIdx]->GetQueueType() == queueType);
-
-            VkCommandBufferSubmitInfo& cmdBufferSubmit  = cmdBuffersSubmitBatch[batchIdx];
-            cmdBufferSubmit.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            cmdBufferSubmit.commandBuffer               = cmdBuffers[batchIdx]->GetHandle();
-            cmdBufferSubmit.deviceMask                  = 0;
-        }
-
-        VkSubmitInfo2& submitInfo = submitInfos[idx];
-        submitInfo.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfo.flags                    = 0;
-        submitInfo.waitSemaphoreInfoCount   = waitSemaphores ? static_cast<Uint32>(waitSemaphores->GetSemaphoresNum()) : 0;
-        submitInfo.pWaitSemaphoreInfos      = waitSemaphores ? waitSemaphores->GetSubmitInfos().data() : nullptr;
-        submitInfo.commandBufferInfoCount   = static_cast<Uint32>(cmdBuffersSubmitBatch.size());
-        submitInfo.pCommandBufferInfos      = cmdBuffersSubmitBatch.data();
-        submitInfo.signalSemaphoreInfoCount = signalSemaphores ? static_cast<Uint32>(signalSemaphores->GetSemaphoresNum()) : 0;;
-        submitInfo.pSignalSemaphoreInfos    = signalSemaphores ? signalSemaphores->GetSubmitInfos().data() : nullptr;
-    }
-
-    VkResult submitResult = VK_SUCCESS;
-    {
-        SPT_PROFILER_SCOPE("vkQueueSubmit2");
-        submitResult = vkQueueSubmit2(GetLogicalDevice().GetQueueHandle(queueType), static_cast<Uint32>(submitInfos.size()), submitInfos.data(), VK_NULL_HANDLE);
-    }
-    if (submitResult == VK_ERROR_DEVICE_LOST)
-    {
-#if WITH_GPU_CRASH_DUMPS
-        if (GetSettings().AreGPUCrashDumpsEnabled())
-        {
-            GPUCrashTracker::SaveGPUCrashDump();
-        }
-#endif // WITH_GPU_CRASH_DUMPS
-
-        SPT_CHECK_NO_ENTRY();
-    }
-}
-
 void VulkanRHI::WaitIdle()
 {
     priv::g_data.device.WaitIdle();
@@ -344,6 +282,11 @@ const rhi::RHISettings& VulkanRHI::GetSettings()
 Bool VulkanRHI::IsRayTracingEnabled()
 {
     return GetSettings().IsRayTracingEnabled();
+}
+
+RHIDeviceQueue VulkanRHI::GetDeviceQueue(rhi::EDeviceCommandQueueType queueType)
+{
+    return priv::g_data.device.GetQueue(queueType);
 }
 
 RHIDescriptorSet VulkanRHI::AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID)

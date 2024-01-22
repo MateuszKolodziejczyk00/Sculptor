@@ -111,9 +111,9 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DepthCullingDS, rg::RGDescriptorSetState<DepthCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_hiZTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>),	u_hiZSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<DepthCullingParams>),				u_depthCullingParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_hiZTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthCullingParams>),                        u_depthCullingParams)
 DS_END();
 
 

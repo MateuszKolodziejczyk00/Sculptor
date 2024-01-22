@@ -8,6 +8,7 @@
 #include "RHICore/RHISettings.h"
 #include "RHICore/RHIDescriptorTypes.h"
 #include "VulkanTypes/RHIDescriptorSet.h"
+#include "VulkanTypes/RHIDeviceQueue.h"
 
 
 namespace spt::rhi
@@ -44,12 +45,14 @@ public:
 
 	static rhi::ERHIType	GetRHIType();
 
-	static void				SubmitCommands(rhi::ECommandBufferQueueType queueType, const lib::DynamicArray<rhi::SubmitBatchData>& submitBatches);
-
 	static void				WaitIdle();
 
 	static const rhi::RHISettings&	GetSettings();
 	static Bool						IsRayTracingEnabled();
+
+	// Device Queues ==================================================================
+
+	static RHIDeviceQueue	GetDeviceQueue(rhi::EDeviceCommandQueueType queueType);	
 
 	// Descriptor Sets =================================================================
 

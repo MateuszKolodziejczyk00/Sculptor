@@ -36,7 +36,7 @@ public:
 
 	Bool							IsValid() const;
 
-	rhi::ECommandBufferQueueType	GetQueueType() const;
+	rhi::EDeviceCommandQueueType	GetQueueType() const;
 
 	void							StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition);
 	void							StopRecording();
@@ -129,7 +129,7 @@ private:
 
 	VkCommandBuffer					m_cmdBufferHandle;
 
-	rhi::ECommandBufferQueueType	m_queueType;
+	rhi::EDeviceCommandQueueType	m_queueType;
 	rhi::ECommandBufferType			m_cmdBufferType;
 
 	DebugName						m_name;

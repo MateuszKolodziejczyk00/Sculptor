@@ -13,9 +13,6 @@ LogicalDevice::LogicalDevice()
 	, m_gfxFamilyIdx(idxNone<Uint32>)
 	, m_asyncComputeFamilyIdx(idxNone<Uint32>)
 	, m_transferFamilyIdx(idxNone<Uint32>)
-	, m_gfxQueueHandle(VK_NULL_HANDLE)
-	, m_asyncComputeQueueHandle(VK_NULL_HANDLE)
-	, m_transferQueueHandle(VK_NULL_HANDLE)
 { }
 
 void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* allocator)
@@ -121,20 +118,26 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
+	VkQueue gfxQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 gfxQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
     gfxQueueInfo.queueFamilyIndex = m_gfxFamilyIdx;
     gfxQueueInfo.queueIndex = 0;
-	vkGetDeviceQueue2(m_deviceHandle, &gfxQueueInfo, &m_gfxQueueHandle);
+	vkGetDeviceQueue2(m_deviceHandle, &gfxQueueInfo, &gfxQueueHandle);
+	m_gfxQueue.InitializeRHI(rhi::EDeviceCommandQueueType::Graphics, gfxQueueHandle);
 
+	VkQueue asyncComputeQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 asyncComputeQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
     asyncComputeQueueInfo.queueFamilyIndex = m_asyncComputeFamilyIdx;
     asyncComputeQueueInfo.queueIndex = 0;
-	vkGetDeviceQueue2(m_deviceHandle, &asyncComputeQueueInfo, &m_asyncComputeQueueHandle);
+	vkGetDeviceQueue2(m_deviceHandle, &asyncComputeQueueInfo, &asyncComputeQueueHandle);
+	m_asyncComputeQueue.InitializeRHI(rhi::EDeviceCommandQueueType::AsyncCompute, asyncComputeQueueHandle);
 
+	VkQueue transferQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 transferQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
     transferQueueInfo.queueFamilyIndex = m_transferFamilyIdx;
     transferQueueInfo.queueIndex = 0;
-	vkGetDeviceQueue2(m_deviceHandle, &transferQueueInfo, &m_transferQueueHandle);
+	vkGetDeviceQueue2(m_deviceHandle, &transferQueueInfo, &transferQueueHandle);
+	m_transferQueue.InitializeRHI(rhi::EDeviceCommandQueueType::Transfer, transferQueueHandle);
 
 	volkLoadDevice(m_deviceHandle);
 }
@@ -240,32 +243,32 @@ lib::DynamicArray<VkDeviceQueueCreateInfo> LogicalDevice::CreateQueueInfos(VkPhy
 	return queuesInfo;
 }
 
-VkQueue LogicalDevice::GetGfxQueueHandle() const
+RHIDeviceQueue LogicalDevice::GetGfxQueue() const
 {
-	return m_gfxQueueHandle;
+	return m_gfxQueue;
 }
 
-VkQueue LogicalDevice::GetAsyncComputeQueueHandle() const
+RHIDeviceQueue LogicalDevice::GetAsyncComputeQueue() const
 {
-	return m_asyncComputeQueueHandle;
+	return m_asyncComputeQueue;
 }
 
-VkQueue LogicalDevice::GetTransferQueueHandle() const
+RHIDeviceQueue LogicalDevice::GetTransferQueue() const
 {
-	return m_transferQueueHandle;
+	return m_transferQueue;
 }
 
-VkQueue LogicalDevice::GetQueueHandle(rhi::ECommandBufferQueueType queueType) const
+RHIDeviceQueue LogicalDevice::GetQueue(rhi::EDeviceCommandQueueType queueType) const
 {
 	switch (queueType)
 	{
-	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueHandle();
-	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueHandle();
-	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueHandle();
+	case rhi::EDeviceCommandQueueType::Graphics:			return GetGfxQueue();
+	case rhi::EDeviceCommandQueueType::AsyncCompute:		return GetAsyncComputeQueue();
+	case rhi::EDeviceCommandQueueType::Transfer:			return GetTransferQueue();
 	}
 
 	SPT_CHECK_NO_ENTRY();
-	return VK_NULL_HANDLE;
+	return RHIDeviceQueue();
 }
 
 Uint32 LogicalDevice::GetGfxQueueFamilyIdx() const
@@ -278,13 +281,13 @@ Uint32 LogicalDevice::GetAsyncComputeQueueFamilyIdx() const
 	return m_asyncComputeFamilyIdx;
 }
 
-Uint32 LogicalDevice::GetQueueFamilyIdx(rhi::ECommandBufferQueueType queueType) const
+Uint32 LogicalDevice::GetQueueFamilyIdx(rhi::EDeviceCommandQueueType queueType) const
 {
 	switch (queueType)
 	{
-	case rhi::ECommandBufferQueueType::Graphics:			return GetGfxQueueFamilyIdx();
-	case rhi::ECommandBufferQueueType::AsyncCompute:		return GetAsyncComputeQueueFamilyIdx();
-	case rhi::ECommandBufferQueueType::Transfer:			return GetTransferQueueFamilyIdx();
+	case rhi::EDeviceCommandQueueType::Graphics:			return GetGfxQueueFamilyIdx();
+	case rhi::EDeviceCommandQueueType::AsyncCompute:		return GetAsyncComputeQueueFamilyIdx();
+	case rhi::EDeviceCommandQueueType::Transfer:			return GetTransferQueueFamilyIdx();
 	}
 
 	SPT_CHECK_NO_ENTRY();

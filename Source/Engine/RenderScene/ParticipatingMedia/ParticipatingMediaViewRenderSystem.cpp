@@ -25,8 +25,8 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
-RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
+RendererFloatParameter fogMinDensity("Fog Min Density", { "Volumetric Fog" }, 0.04f, 0.f, 1.f);
+RendererFloatParameter fogMaxDensity("Fog Max Density", { "Volumetric Fog" }, 0.05f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
 RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
@@ -55,8 +55,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderParticipatingMediaDS, rg::RGDescriptorSetState<RenderParticipatingMediaDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_participatingMediaTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<RenderParticipatingMediaParams>),	u_participatingMediaParams)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                    u_participatingMediaTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderParticipatingMediaParams>), u_participatingMediaParams)
 DS_END();
 
 
@@ -116,10 +116,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(IndirectInScatteringDS, rg::RGDescriptorSetState<IndirectInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                               u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<IndirectInScatteringParams>),       u_inScatteringParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                      u_ddgiScatteringPhaseFunctionLUT)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),    u_phaseFunctionLUTSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                            u_inScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<IndirectInScatteringParams>),             u_inScatteringParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_ddgiScatteringPhaseFunctionLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_phaseFunctionLUTSampler)
 DS_END();
 
 
@@ -197,14 +197,14 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_participatingMediaTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_participatingMediaSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),						u_inScatteringHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_inScatteringHistorySampler)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),						u_indirectInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_indirectInScatteringSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<VolumetricFogInScatteringParams>),	u_inScatteringParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_participatingMediaTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_participatingMediaSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_inScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),                    u_inScatteringHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_inScatteringHistorySampler)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),                    u_indirectInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_indirectInScatteringSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogInScatteringParams>),         u_inScatteringParams)
 DS_END();
 
 
@@ -271,10 +271,10 @@ BEGIN_SHADER_STRUCT(IntegrateInScatteringParams)
 END_SHADER_STRUCT();
 
 DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScatteringDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),								u_inScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_inScatteringSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),								u_integratedInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableConstantBufferBinding<IntegrateInScatteringParams>),		u_integrateInScatteringParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_inScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_inScatteringSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<IntegrateInScatteringParams>),             u_integrateInScatteringParams)
 DS_END();
 
 

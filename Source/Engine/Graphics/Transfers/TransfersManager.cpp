@@ -3,6 +3,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Renderer.h"
 #include "ResourcesManager.h"
+#include "DeviceQueues/GPUWorkload.h"
 
 namespace spt::gfx
 {
@@ -51,28 +52,26 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 
 	TransfersManager& instance = Get();
 
+	// This lock is currently needed to make sure that workloads are submitted in order
+	// otherwise if they end up on same queue, we may end up with deadlock because of transfers semaphore
+	const lib::LockGuard lock(instance.m_lock);
+
 	const Uint64 semaphorePrevValue	= instance.m_lastSubmitCountValue.fetch_add(1);
 	const Uint64 semaphoreNewValue	= semaphorePrevValue + 1;
 
 	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransfersCommandBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Transfer, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
-
-	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-	rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back();
-	submitBatch.recordedCommands.emplace_back(std::move(recorder));
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Transfer, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
 	const lib::SharedRef<rdr::Semaphore> transfersSemaphoresRef = lib::Ref(instance.m_transferFinishedSemaphore);
 
 	// We must wait for previous transfers
 	// Without it signal value might have been smaller than current value when signaling
-	submitBatch.waitSemaphores.AddTimelineSemaphore(transfersSemaphoresRef, semaphorePrevValue, rhi::EPipelineStage::ALL_TRANSFER);
-	submitBatch.signalSemaphores.AddTimelineSemaphore(transfersSemaphoresRef, semaphoreNewValue, rhi::EPipelineStage::ALL_TRANSFER);
-
-	submitBatch.waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), rdr::Renderer::GetCurrentFrameIdx() - 1, rhi::EPipelineStage::ALL_TRANSFER);
-
-	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Transfer, submitBatches);
+	workload->GetWaitSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphorePrevValue, rhi::EPipelineStage::ALL_TRANSFER);
+	workload->GetSignalSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphoreNewValue, rhi::EPipelineStage::ALL_TRANSFER);
+	
+	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::WaitForPrevFrameEnd, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 
 	return semaphoreNewValue;
 }

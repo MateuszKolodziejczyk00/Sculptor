@@ -44,7 +44,7 @@ VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(rhi::ECommandBufferBe
 
 RHICommandBuffer::RHICommandBuffer()
 	: m_cmdBufferHandle(VK_NULL_HANDLE)
-	, m_queueType(rhi::ECommandBufferQueueType::Graphics)
+	, m_queueType(rhi::EDeviceCommandQueueType::Graphics)
 	, m_cmdBufferType(rhi::ECommandBufferType::Primary)
 { }
 
@@ -74,7 +74,7 @@ Bool RHICommandBuffer::IsValid() const
 	return m_cmdBufferHandle != VK_NULL_HANDLE;
 }
 
-rhi::ECommandBufferQueueType RHICommandBuffer::GetQueueType() const
+rhi::EDeviceCommandQueueType RHICommandBuffer::GetQueueType() const
 {
 	return m_queueType;
 }

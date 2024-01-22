@@ -29,4 +29,14 @@ const rhi::RHISemaphoresArray& SemaphoresArray::GetRHISemaphores() const
 	return m_rhiSemaphores;
 }
 
+void SemaphoresArray::Reset()
+{
+	m_rhiSemaphores.Reset();
 }
+
+void SemaphoresArray::Append(const SemaphoresArray& other)
+{
+	m_rhiSemaphores.Append(other.m_rhiSemaphores);
+}
+
+} // spt::rdr

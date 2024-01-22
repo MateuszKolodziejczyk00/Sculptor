@@ -21,6 +21,7 @@
 #include "RenderGraphManager.h"
 #include "Paths.h"
 #include "ECSRegistry.h"
+#include "DeviceQueues/GPUWorkload.h"
 
 
 namespace spt::ed
@@ -97,16 +98,12 @@ void SculptorEdApplication::OnRun()
 
 		rdr::CommandsRecordingInfo recordingInfo;
 		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("InitializeUICommandBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(renderingContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-		lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-		rdr::CommandsSubmitBatch& submitBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
-		submitBatch.recordedCommands.emplace_back(std::move(recorder));
-
-		rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
-
-		rdr::Renderer::WaitIdle();
+		rdr::Renderer::GetDeviceQueuesManager().Submit(workload);
+		
+		workload->Wait();
 
 		rdr::UIBackend::DestroyFontsTemporaryObjects();
 	}
@@ -207,26 +204,17 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		return;
 	}
 
-	js::JobWithResult rendererWaitSemaphore = js::Launch(SPT_GENERIC_JOB_NAME, [&renderer]
-														 {
-															 const auto res = renderer.RenderFrame();
-															 return res;
-														 });
+	js::Job rendererJob = js::Launch(SPT_GENERIC_JOB_NAME, [&renderer]
+									 {
+										 renderer.RenderFrame();
+									 });
 
 	const js::JobWithResult createRenderingContextJob = js::Launch(SPT_GENERIC_JOB_NAME, []
 																   {
 																	   const auto res = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("MainThreadContext"), rhi::ContextDefinition());
-																		return res;
+																	   return res;
 																   });
 		
-
-	js::JobWithResult finishSemaphoreJob = js::Launch(SPT_GENERIC_JOB_NAME, []() -> lib::SharedRef<rdr::Semaphore>
-													  {
-														  const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-														  const auto res = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("FinishCommandsSemaphore"), semaphoreDef);
-														  return res;
-													  });
-
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
 	{
@@ -290,21 +278,20 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 	rdr::CommandsRecordingInfo recordingInfo;
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::ECommandBufferQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	recorder->RecordCommands(createRenderingContextJob.Await(), recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(createRenderingContextJob.Await(), recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
-	lib::SharedRef<rdr::Semaphore> finishSemaphore = finishSemaphoreJob.Await();
+	const lib::SharedRef<rdr::Semaphore> uiFinishedSemaphore = workload->AddBinarySignalSemaphore(RENDERER_RESOURCE_NAME("UI Finished Semaphore"), rhi::EPipelineStage::ALL_COMMANDS);
+	// extend lifetime of this semaphore to the end of the frame
+	// normally we're going to destroy all resources from this frame after flip workload will finish
+	// but this semaphore must be valid until present is done (spec is a bit loose here but it's better to be safe)
+	engn::GetRenderingFrame().AddFinalizeGPUDelegate(engn::OnFinalizeGPU::Delegate::CreateLambda([uiFinishedSemaphore](engn::FrameContext& context) {}));
 
-	lib::DynamicArray<rdr::CommandsSubmitBatch> submitBatches;
-	rdr::CommandsSubmitBatch& submitUIBatch = submitBatches.emplace_back(rdr::CommandsSubmitBatch());
-	submitUIBatch.recordedCommands.emplace_back(std::move(recorder));
-	submitUIBatch.waitSemaphores.AddBinarySemaphore(rendererWaitSemaphore.Await(), rhi::EPipelineStage::ALL_COMMANDS);
-	submitUIBatch.signalSemaphores.AddBinarySemaphore(finishSemaphore, rhi::EPipelineStage::ALL_COMMANDS);
-	submitUIBatch.signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetRenderingFrame().GetFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
+	rendererJob.Wait();
 
-	rdr::Renderer::SubmitCommands(rhi::ECommandBufferQueueType::Graphics, submitBatches);
+	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::FlipFrame, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 
-	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { finishSemaphore });
+	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { uiFinishedSemaphore });
 
 	if (m_window->IsSwapchainOutOfDate())
 	{
