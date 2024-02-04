@@ -79,6 +79,8 @@ void ProfilerUIView::DrawGPUProfilerUI()
 
 	if (ImGui::CollapsingHeader("GPU Stats"))
 	{
+		prf::Profiler::Get().FlushNewGPUFrameStatistics();
+
 		const GPUProfilerStatistics& gpuFrameStatistics = prf::Profiler::Get().GetGPUFrameStatistics();
 
 		if (gpuFrameStatistics.IsValid())

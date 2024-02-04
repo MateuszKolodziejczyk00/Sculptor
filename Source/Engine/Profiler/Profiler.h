@@ -59,6 +59,9 @@ public:
 	// GPU ========================================================
 
 	void SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics);
+
+	void FlushNewGPUFrameStatistics();
+
 	const GPUProfilerStatistics& GetGPUFrameStatistics() const;
 
 private:
@@ -77,6 +80,9 @@ private:
 	lib::DelegateHandle m_captureDelegateHandle;
 
 	GPUProfilerStatistics m_gpuFrameStatistics;
+
+	std::optional<GPUProfilerStatistics> m_newFrameStatistics;
+	mutable lib::Lock                    m_newFrameStatisticsLock;
 };
 
 } // spt::prf

@@ -6,7 +6,7 @@ namespace spt::lib
 
 TickingTimer::TickingTimer()
 {
-	m_lastTimestamp = GenerateNewTimestamp();
+	m_originTimestamp = m_lastTimestamp = GenerateNewTimestamp();
 }
 
 Real32 TickingTimer::Tick()
@@ -16,6 +16,11 @@ Real32 TickingTimer::Tick()
 	m_lastTimestamp = newTimestamp;
 
 	return deltaTime;
+}
+
+Real32 TickingTimer::GetCurrentTimeSeconds() const
+{
+	return std::chrono::duration<Real32, std::chrono::seconds::period>(GenerateNewTimestamp() - m_originTimestamp).count();
 }
 
 std::chrono::steady_clock::time_point TickingTimer::GenerateNewTimestamp() const

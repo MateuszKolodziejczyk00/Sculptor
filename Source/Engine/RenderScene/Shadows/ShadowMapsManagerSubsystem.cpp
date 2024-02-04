@@ -138,6 +138,8 @@ void ShadowMapsManagerSubsystem::UpdateVisibleLocalLights(const lib::SharedPtr<r
 {
 	SPT_PROFILER_FUNCTION();
 
+	const lib::LockGuard lock(m_visibleLocalLightsLock);
+
 	SPT_CHECK(!!visibleLightsBuffer);
 
 	m_visibleLocalLightsSet.clear();
@@ -563,7 +565,7 @@ void ShadowMapsManagerSubsystem::FindShadowMapsToUpdate()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32 deltaTime = engn::GetRenderingFrame().GetDeltaTime();
+	const Real32 deltaTime = GetOwningScene().GetCurrentFrameRef().GetDeltaTime();
 
 	const auto GetPriorityMultiplierForQuality = [](EShadowMapQuality quality)
 	{
@@ -666,6 +668,10 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapsDSViewsData()
 
 Bool ShadowMapsManagerSubsystem::IsLocalLightVisible(RenderSceneEntity light) const
 {
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_visibleLocalLightsLock);
+
 	return m_visibleLocalLightsSet.contains(light);
 }
 

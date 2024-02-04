@@ -38,6 +38,13 @@ void GPUWorkload::Wait()
 	m_signalSemaphore->GetRHI().Wait(m_signalSemaphoreValue);
 }
 
+Bool GPUWorkload::IsFinished() const
+{
+	SPT_CHECK(IsSubmitted());
+
+	return m_signalSemaphore->GetRHI().GetValue() >= m_signalSemaphoreValue;
+}
+
 void GPUWorkload::ReleaseBuffer()
 {
 	SPT_CHECK(IsSubmitted());
@@ -69,6 +76,16 @@ void GPUWorkload::OnSubmitted(lib::SharedPtr<Semaphore> signalSemaphore, Uint64 
 	if (!m_canBeReused)
 	{
 		ReleaseBuffer();
+	}
+}
+
+void GPUWorkload::OnExecutionFinished()
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (js::Event& event : m_eventsOnFinished)
+	{
+		event.Signal();
 	}
 }
 
@@ -146,6 +163,13 @@ void GPUWorkload::AddPrerequisite(lib::SharedPtr<GPUWorkload> workload)
 const lib::DynamicArray<lib::SharedPtr<GPUWorkload>>& GPUWorkload::GetPrerequisites_Unsafe() const
 {
 	return m_prerequisites;
+}
+
+void GPUWorkload::BindEvent(js::Event event)
+{
+	SPT_CHECK(!IsSubmitted());
+
+	m_eventsOnFinished.emplace_back(std::move(event));
 }
 
 void GPUWorkload::AddSubsequent(GPUWorkload* workload)

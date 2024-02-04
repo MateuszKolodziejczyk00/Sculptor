@@ -453,6 +453,11 @@ math::Vector3u RHITexture::GetMipResolution(Uint32 mipLevel) const
 	return math::Utils::ComputeMipResolution(GetResolution(), mipLevel);
 }
 
+rhi::EFragmentFormat RHITexture::GetFormat() const
+{
+	return GetDefinition().format;
+}
+
 rhi::ETextureType RHITexture::GetType() const
 {
 	return m_type;

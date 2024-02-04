@@ -16,6 +16,7 @@
 #include "Transfers/UploadUtils.h"
 #include "EngineFrame.h"
 #include "Camera/CameraSettings.h"
+#include "RenderScene.h"
 
 namespace spt::rsc
 {
@@ -546,7 +547,6 @@ DS_END();
 static rdr::PipelineStateID CompileTonemappingPipeline()
 {
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Tonemapping.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TonemappingCS"));
-
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TonemappingPipeline"), shader);
 }
 
@@ -626,7 +626,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	exposure::ExposureSettings exposureSettings;
 	exposureSettings.textureSize                    = renderingRes;
 	exposureSettings.inputPixelSize                 = inputPixelSize;
-	exposureSettings.deltaTime                      = engn::GetRenderingFrame().GetDeltaTime();
+	exposureSettings.deltaTime                      = renderScene.GetCurrentFrameRef().GetDeltaTime();
 	exposureSettings.minLogLuminance                = params::minLogLuminance;
 	exposureSettings.maxLogLuminance                = params::maxLogLuminance;
 	exposureSettings.logLuminanceRange              = exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;

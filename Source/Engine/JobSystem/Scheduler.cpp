@@ -20,10 +20,12 @@ public:
 
 	void DestroyWorkers();
 
+	SizeType GetWorkerThreadsNum() const;
+
 private:
 
-	lib::DynamicArray<WorkerContext>				m_workersContexts;
-	lib::DynamicArray<std::thread>					m_workers;
+	lib::DynamicArray<WorkerContext> m_workersContexts;
+	lib::DynamicArray<std::thread>   m_workers;
 };
 
 SchedulerImpl::~SchedulerImpl()
@@ -78,6 +80,11 @@ void SchedulerImpl::DestroyWorkers()
 	m_workers.clear();
 }
 
+SizeType SchedulerImpl::GetWorkerThreadsNum() const
+{
+	return m_workers.size();
+}
+
 static SchedulerImpl& GetInstance()
 {
 	static SchedulerImpl instance;
@@ -100,6 +107,7 @@ void Scheduler::ScheduleJob(lib::MTHandle<JobInstance> job)
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(job.IsValid());
 	SPT_CHECK(!job->IsInline());
 
 	if (JobsQueueManagerTls::IsWorkerThread() && !job->IsForcedToGlobalQueue())
@@ -110,7 +118,7 @@ void Scheduler::ScheduleJob(lib::MTHandle<JobInstance> job)
 	{
 		const EJobPriority::Type priority = job->GetPriority();
 
-		while (!JobsQueueManagerTls::EnqueueGlobal(std::move(job)))
+		while (!JobsQueueManagerTls::EnqueueGlobal(job))
 		{
 			// Execute job locally if couldn't enqueue global job
 			Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal(priority));
@@ -127,6 +135,11 @@ Bool Scheduler::TryExecuteScheduledJob(Bool allowLocalQueueJobs)
 	const Bool isWorkerThread = JobsQueueManagerTls::IsWorkerThread();
 	return (isWorkerThread && allowLocalQueueJobs && Worker::TryExecuteJob(JobsQueueManagerTls::DequeueLocal()))
 		|| Worker::TryExecuteJob(JobsQueueManagerTls::DequeueGlobal());
+}
+
+SizeType Scheduler::GetWorkerThreadsNum()
+{
+	return impl::GetInstance().GetWorkerThreadsNum();
 }
 
 void Scheduler::WakeWorker()

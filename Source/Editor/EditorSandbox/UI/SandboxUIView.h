@@ -2,13 +2,11 @@
 
 #include "EditorSandboxMacros.h"
 #include "UILayers/UIView.h"
+#include "Renderer/SandboxRenderer.h"
 
 
 namespace spt::ed
 {
-
-class SandboxRenderer;
-
 
 class EDITOR_SANDBOX_API SandboxUIView : public scui::UIView
 {
@@ -18,7 +16,7 @@ protected:
 
 public:
 
-	explicit SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer);
+	explicit SandboxUIView(const scui::ViewDefinition& definition);
 
 protected:
 
@@ -33,7 +31,9 @@ private:
 
 	void DrawJobSystemTestsUI();
 
-	SandboxRenderer* m_renderer;
+	ui::TextureID PrepareViewportTexture(math::Vector2u resolution);
+
+	SandboxRenderer m_renderer;
 
 	lib::HashedString m_sceneViewName;
 	lib::HashedString m_sanboxUIViewName;
@@ -41,6 +41,8 @@ private:
 	lib::HashedString m_renderViewSettingsName;
 	lib::HashedString m_renderSceneSettingsName;
 	lib::HashedString m_profilerPanelName;
+
+	lib::SharedPtr<rdr::TextureView> m_viewportTexture;
 };
 
 } // spt::ed

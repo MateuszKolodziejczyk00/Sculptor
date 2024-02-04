@@ -12,7 +12,7 @@ std::atomic<Int32> JobsQueueManagerTls::s_activeWorkers = 0;
 
 Bool JobsQueueManagerTls::EnqueueGlobal(lib::MTHandle<JobInstance> job)
 {
-	SizeType priority = static_cast<SizeType>(job->GetPriority());
+	const SizeType priority = static_cast<SizeType>(job->GetPriority());
 
 	return s_globalQueues[priority].Enqueue(std::move(job));
 }
@@ -67,14 +67,18 @@ lib::MTHandle<JobInstance> JobsQueueManagerTls::DequeueLocal()
 	SPT_CHECK(IsWorkerThread());
 
 	lib::MTHandle<JobInstance> job;
-	for (SizeType priority = 0; !job.IsValid() && priority < EJobPriority::Num; ++priority)
-	{
-		job = s_localQueues[tls_localQueueIdx]->at(priority).Dequeue().value_or(nullptr);
-	}
 
-	if (job.IsValid())
+	if (tls_localQueueIdx != idxNone<SizeType>)
 	{
-		job->Release();
+		for (SizeType priority = 0; !job.IsValid() && priority < EJobPriority::Num; ++priority)
+		{
+			job = s_localQueues[tls_localQueueIdx]->at(priority).Dequeue().value_or(nullptr);
+		}
+
+		if (job.IsValid())
+		{
+			job->Release();
+		}
 	}
 
 	return job;
@@ -98,6 +102,22 @@ lib::MTHandle<JobInstance> JobsQueueManagerTls::Steal()
 	{
 		job->Release();
 	}
+
+	return job;
+}
+
+lib::MTHandle<JobInstance> JobsQueueManagerTls::Steal(Int32 attempts)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::MTHandle<JobInstance> job;
+
+	while (attempts > 0 && !job.IsValid())
+	{
+		job = Steal();
+		--attempts;
+	}
+
 	return job;
 }
 

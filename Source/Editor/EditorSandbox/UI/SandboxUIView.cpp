@@ -14,6 +14,8 @@
 #include "DDGI/DDGITypes.h"
 #include "ImGui/DockBuilder.h"
 #include "ProfilerUIView.h"
+#include "UIElements/ApplicationUI.h"
+#include "EngineFrame.h"
 
 namespace spt::ed
 {
@@ -21,14 +23,13 @@ namespace spt::ed
 SPT_DEFINE_LOG_CATEGORY(SandboxUI, true);
 
 
-SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition, SandboxRenderer& renderer)
+SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	: Super(definition)
-	, m_renderer(&renderer)
 	, m_sceneViewName(CreateUniqueName("Scene"))
 	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), renderer.GetRenderView()));
-	m_renderSceneSettingsName = AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), renderer.GetRenderScene()));
+	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), m_renderer.GetRenderView()));
+	m_renderSceneSettingsName = AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), m_renderer.GetRenderScene()));
 	m_profilerPanelName = AddChild(lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView")));
 }
 
@@ -56,20 +57,29 @@ void SandboxUIView::DrawUI()
 	
 	ImGui::Begin(m_sceneViewName.GetData());
 
-	const ui::TextureID sceneTexture = m_renderer->GetUITextureID();
-	if (sceneTexture)
+	const math::Vector2f imagePosition = ImGui::GetCurrentWindow()->DC.CursorPos;
+	const math::Vector2f offset = math::Vector2f(ImGui::GetMousePos()) - imagePosition;
+	m_renderer.SetMousePositionOnViewport((offset + math::Vector2f::Constant(0.5f)).cast<Int32>());
+	
+	const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
+
+	if (sceneContentSize.x() >= 2.f && sceneContentSize.y() >= 2.f)
 	{
-		const math::Vector2f imagePosition = ImGui::GetCurrentWindow()->DC.CursorPos;
-		const math::Vector2f offset = math::Vector2f(ImGui::GetMousePos()) - imagePosition;
-		m_renderer->SetMousePositionOnViewport((offset + math::Vector2f::Constant(0.5f)).cast<Int32>());
+		const ui::TextureID texture = PrepareViewportTexture(sceneContentSize.cast<Uint32>());
 
-		const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
+		engn::FrameContext& frame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
 
-		m_renderer->SetImageSize(sceneContentSize.cast<Uint32>());
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [this, &frame, texture = m_viewportTexture]
+				   {
+					   m_renderer.ProcessView(frame, lib::Ref(texture));
+				   },
+				   js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::ProcessViewsRendering)),
+				   js::JobDef()
+					   .SetPriority(js::EJobPriority::High)
+					   .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::ProcessViewsRendering)));
 
-		const math::Vector2u fullTextureResolution = m_renderer->GetDisplayTextureResolution();
-		const math::Vector2f imageMaxUV = sceneContentSize.array() / fullTextureResolution.cast<Real32>().array();
-		ImGui::Image(sceneTexture, sceneContentSize, ImVec2{}, ImVec2{ imageMaxUV.x(), imageMaxUV.y() });
+		ImGui::Image(texture, sceneContentSize, ImVec2{}, ImVec2{ 1.f, 1.f });
 	}
 
 	ImGui::End();
@@ -98,41 +108,33 @@ void SandboxUIView::DrawRendererSettings()
 {
 	ImGui::Text("Renderer Settings");
 
-	const lib::SharedPtr<rdr::Window>& window = m_renderer->GetWindow();
-
-	Bool vsyncEnabled = window->GetRHI().IsVSyncEnabled();
-	if (ImGui::Checkbox("Enable VSync", &vsyncEnabled))
-	{
-		window->GetRHI().SetVSyncEnabled(vsyncEnabled);
-	}
-
-	Real32 fov = m_renderer->GetFov();
+	Real32 fov = m_renderer.GetFov();
 	if (ImGui::SliderFloat("FOV (Degrees)", &fov, 40.f, 90.f))
 	{
-		m_renderer->SetFov(fov);
+		m_renderer.SetFov(fov);
 	}
 	
-	Real32 cameraSpeed = m_renderer->GetCameraSpeed();
+	Real32 cameraSpeed = m_renderer.GetCameraSpeed();
 	if (ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.1f, 100.f))
 	{
-		m_renderer->SetCameraSpeed(cameraSpeed);
+		m_renderer.SetCameraSpeed(cameraSpeed);
 	}
 
-	Real32 nearPlane = m_renderer->GetNearPlane();
+	Real32 nearPlane = m_renderer.GetNearPlane();
 	if (ImGui::SliderFloat("Near Plane", &nearPlane, 0.01f, 10.f))
 	{
-		m_renderer->SetNearPlane(nearPlane);
+		m_renderer.SetNearPlane(nearPlane);
 	}
 
-	Real32 farPlane = m_renderer->GetFarPlane();
+	Real32 farPlane = m_renderer.GetFarPlane();
 	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 100.f))
 	{
-		m_renderer->SetFarPlane(farPlane);
+		m_renderer.SetFarPlane(farPlane);
 	}
 
 	if (ImGui::Button("Capture Render Graph"))
 	{
-		m_renderer->CreateRenderGraphCapture();
+		m_renderer.CreateRenderGraphCapture();
 	}
 
 }
@@ -167,7 +169,7 @@ void SandboxUIView::DrawJobSystemTestsUI()
 																});
 												 }
 											 }
-										 }, js::EJobPriority::High));
+										 }, js::JobDef().SetPriority(js::EJobPriority::High)));
 
 			js::Launch(SPT_GENERIC_JOB_NAME, [i]
 					   {
@@ -195,6 +197,20 @@ void SandboxUIView::DrawJobSystemTestsUI()
 					   SPT_LOG_TRACE(SandboxUI, "5");
 				   });
 	}
+}
+
+ui::TextureID SandboxUIView::PrepareViewportTexture(math::Vector2u resolution)
+{
+	if (!m_viewportTexture || m_viewportTexture->GetResolution2D() != resolution)
+	{
+		rhi::TextureDefinition textureDef;
+		textureDef.resolution = resolution;
+		textureDef.format     = scui::ApplicationUI::GetCurrentContext().GetBackBufferFormat();
+		textureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
+		m_viewportTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Viewport Texture"), textureDef, rhi::EMemoryUsage::GPUOnly);
+	}
+
+	return rdr::UIBackend::GetUITextureID(lib::Ref(m_viewportTexture));
 }
 
 } // spt::ed

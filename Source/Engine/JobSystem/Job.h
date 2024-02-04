@@ -8,6 +8,7 @@
 #include "MathUtils.h"
 #include "ThreadInfo.h"
 #include "Event.h"
+#include "Worker.h"
 
 
 namespace spt::js
@@ -308,6 +309,8 @@ class JobInstance : public lib::MTRefCounted
 {
 	enum class EJobState : Uint8
 	{
+		// Job is created but it's waiting for external signal to be ready to be scheduled
+		Inactive,
 		// Job is created but not scheduled yet
 		// That means that we either wait for prerequisites to be finished or job is not initialized yet
 		Pending,
@@ -327,38 +330,54 @@ public:
 
 	explicit JobInstance(const char* name)
 		: m_remainingPrerequisitesNum(0)
-		, m_jobState(EJobState::Pending)
+		, m_jobState(EJobState::Inactive)
 		, m_priority(EJobPriority::Default)
 		, m_flags(EJobFlags::Default)
 		, m_name(name)
 	{ }
 
+	~JobInstance()
+	{
+		SPT_CHECK(m_jobState == EJobState::Finished);
+	}
+
 	template<typename TCallable>
-	void Init(TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
+	void Init(TCallable&& callable, const JobDefinitionInternal& def)
 	{
 		SPT_PROFILER_FUNCTION();
 
 		SetCallable(std::forward<TCallable>(callable));
 
-		m_priority = priority;
-		m_flags = flags;
+		InitInternal(def);
 
 		OnConstructed();
 	}
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
+	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, const JobDefinitionInternal& def)
 	{
 		SPT_PROFILER_FUNCTION();
 
 		SetCallable(std::forward<TCallable>(callable));
 
-		m_priority = priority;
-		m_flags = flags;
-		
+		InitInternal(def);
+
 		AddPrerequisites(std::forward<TPrerequisitesRange>(prerequisites));
 
 		OnConstructed();
+	}
+
+	Bool IsSignaled() const
+	{
+		return m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Inactive;
+	}
+
+	void Signal()
+	{
+		SPT_CHECK(IsEventJob());
+		SPT_CHECK(m_jobState.load(impl::MemoryOrderSequencial) == EJobState::Inactive);
+		
+		Activate();
 	}
 
 	Bool TryExecute()
@@ -371,6 +390,7 @@ public:
 
 		EJobState previous = EJobState::Scheduled;
 		Bool executeThisThread = false;
+
 		while (!executeThisThread && (previous == EJobState::Pending || previous == EJobState::Scheduled))
 		{
 			executeThisThread = m_jobState.compare_exchange_strong(previous, EJobState::Executing, impl::MemoryOrderSequencial);
@@ -399,15 +419,22 @@ public:
 		return state == EJobState::Finishing || state == EJobState::Finished;
 	}
 
-	void Wait()
+	Bool IsFinished() const
 	{
+		return m_jobState.load(impl::MemoryOrderSequencial) == EJobState::Finished;
+	}
+
+	void Wait(bool activeWait = false)
+	{
+		SPT_PROFILER_FUNCTION();
+
 		const EJobState loadedState = m_jobState.load(impl::MemoryOrderSequencial);
 		if (loadedState == EJobState::Finished)
 		{
 			return;
 		}
 
-		if (loadedState == EJobState::Pending)
+		if (loadedState == EJobState::Pending || loadedState == EJobState::Inactive)
 		{
 			TryExecutePrerequisites_Locked();
 
@@ -461,27 +488,38 @@ public:
 			return;
 		}
 
-		platf::Event finishEvent(true);
-
-		JobInstance finishEventJob("WaitEventJob");
-		finishEventJob.AddRef();
-
-		finishEventJob.Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(this), GetPriority(), lib::Flags(EJobFlags::Local, EJobFlags::Inline));
-		
-		finishEvent.Wait();
-
-		// We have to wait for the job to reach "Finished" state before we destroy it
-		// We do this without any events because it should be very fast after signaling the event
-		// Other option would be to not use local job here, but this would require memory allocation
-		while(finishEventJob.m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
+		if (activeWait)
 		{
-			platf::Platform::SwitchToThread();
+			while (m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished);
+			{
+				Worker::TryActiveWait();
+			}
 		}
+		else
+		{
+			platf::Event finishEvent(true);
 
-		const Bool canDestroy = finishEventJob.Release();
-		SPT_CHECK(canDestroy);
+			JobInstance finishEventJob("WaitEventJob");
+			finishEventJob.AddRef();
 
-		return;
+			JobDefinitionInternal waitJobDef;
+			waitJobDef.priority = GetPriority();
+			waitJobDef.flags    = lib::Flags(EJobFlags::Local, EJobFlags::Inline);
+			finishEventJob.Init([&finishEvent] { finishEvent.Trigger(); }, Prerequisites(this), waitJobDef);
+
+			finishEvent.Wait();
+
+			// We have to wait for the job to reach "Finished" state before we destroy it
+			// We do this without any events because it should be very fast after signaling the event
+			// Other option would be to not use local job here, but this would require memory allocation
+			while (finishEventJob.m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Finished)
+			{
+				platf::Platform::SwitchToThread();
+			}
+
+			const Bool canDestroy = finishEventJob.Release();
+			SPT_CHECK(canDestroy);
+		}
 	}
 
 	template<typename TResultType>
@@ -521,6 +559,11 @@ public:
 		return lib::HasAnyFlag(GetFlags(), EJobFlags::ForceGlobalQueue);
 	}
 
+	Bool IsEventJob() const
+	{
+		return lib::HasAnyFlag(GetFlags(), EJobFlags::EventJob);
+	}
+
 	void AddNested(lib::MTHandle<JobInstance> job)
 	{
 		AddPrerequisite(std::move(job));
@@ -553,20 +596,22 @@ private:
 
 	void AddPrerequisite(lib::MTHandle<JobInstance> job)
 	{
-		const Bool useLock = m_jobState.load(impl::MemoryOrderSequencial) != EJobState::Pending;
-		if (useLock)
-		{
-			m_prerequisitesLock.lock();
-		}
+		const EJobState currentState = m_jobState.load(impl::MemoryOrderSequencial);
+
+		// Executing is allowed for "Nested" jobs
+		const Bool canAddPrerequisite = currentState == EJobState::Inactive || currentState == EJobState::Pending || currentState == EJobState::Executing;
+
+		SPT_CHECK_MSG(canAddPrerequisite, "AddPrerequisite called in invalid state ({}) on job \"{}\". Prerequisite - \"{}\"",
+					  static_cast<Uint32>(currentState), GetName(), job->GetName());
+
+		const lib::LockGuard prerequisitesLockGuard(m_prerequisitesLock);
 
 		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderAcquireRelease);
 		m_prerequisites.emplace_back(job);
 		job->AddConsequent(this);
 
-		if (useLock)
-		{
-			m_prerequisitesLock.unlock();
-		}
+		// Sanity check if we're still in valid state
+		SPT_CHECK(m_jobState.load(impl::MemoryOrderSequencial) == currentState);
 	}
 
 	void AddConsequent(lib::MTHandle<JobInstance> next)
@@ -602,16 +647,9 @@ private:
 
 	void OnConstructed()
 	{
-		if (m_remainingPrerequisitesNum.load() == 0)
+		if (!IsEventJob())
 		{
-			if(IsInline())
-			{
-				TryExecute();
-			}
-			else
-			{
-				TrySchedule();
-			}
+			Activate();
 		}
 	}
 
@@ -646,7 +684,10 @@ private:
 		// Nested jobs should tread this job as "Inline"
 		lib::RemoveFlag(m_flags, EJobFlags::Inline);
 
-		m_prerequisites.clear();
+		{
+			const lib::LockGuard lockGuard(m_prerequisitesLock);
+			m_prerequisites.clear();
+		}
 
 		m_remainingPrerequisitesNum.fetch_add(1, impl::MemoryOrderRelease);
 		DoExecute();
@@ -654,8 +695,7 @@ private:
 
 		if (!CanFinishExecution())
 		{
-			// We can use lockless function because we're on executing thread
-			TryExecutePrerequisites_Lockless(m_prerequisites);
+			TryExecutePrerequisites_Locked();
 		}
 
 		m_jobState.store(EJobState::Executed, impl::MemoryOrderSequencial);
@@ -681,7 +721,7 @@ private:
 		EJobState expected = EJobState::Executed;
 		const Bool finishThisThread = m_jobState.compare_exchange_strong(expected, EJobState::Finishing, impl::MemoryOrderSequencial);
 
-		SPT_CHECK(expected != EJobState::Pending && expected != EJobState::Scheduled);
+		SPT_CHECK(expected != EJobState::Inactive && expected != EJobState::Pending && expected != EJobState::Scheduled);
 
 		if (finishThisThread)
 		{
@@ -763,6 +803,37 @@ private:
 		}
 	}
 
+	void InitInternal(const JobDefinitionInternal& def)
+	{
+		m_priority = def.priority;
+		m_flags    = def.flags;
+
+		if (def.executeBeforeEvent.IsValid())
+		{
+			def.executeBeforeEvent->AddPrerequisite(this);
+		}
+
+	}
+
+	void Activate()
+	{
+		EJobState previous = EJobState::Inactive;
+		m_jobState.compare_exchange_strong(OUT previous, EJobState::Pending, impl::MemoryOrderSequencial);
+		SPT_CHECK(previous == EJobState::Inactive);
+
+		if (m_remainingPrerequisitesNum.load() == 0)
+		{
+			if(IsInline())
+			{
+				TryExecute();
+			}
+			else
+			{
+				TrySchedule();
+			}
+		}
+	}
+
 	void TrySchedule()
 	{
 		EJobState previous = EJobState::Pending;
@@ -796,21 +867,7 @@ class JobInstanceBuilder
 public:
 
 	template<typename TCallable, typename TPrerequisitesRange>
-	static auto Build(const char* name, TCallable&& callable, TPrerequisitesRange&& prerequisites, EJobPriority::Type priority, EJobFlags flags)
-	{
-		SPT_PROFILER_FUNCTION();
-
-		lib::MTHandle<JobInstance> job;
-		{
-			SPT_PROFILER_SCOPE("Allocate Job");
-			job = new JobInstance(name);
-		}
-		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites), priority, flags);
-		return job;
-	}
-
-	template<typename TCallable>
-	static auto Build(const char* name, TCallable&& callable, EJobPriority::Type priority, EJobFlags flags)
+	static auto Build(const char* name, TCallable&& callable, TPrerequisitesRange&& prerequisites, const JobDefinitionInternal& def)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -821,12 +878,28 @@ public:
 
 			SPT_CHECK(job.IsValid());
 		}
-		job->Init(std::forward<TCallable>(callable), priority, flags);
+		job->Init(std::forward<TCallable>(callable), std::forward<TPrerequisitesRange>(prerequisites), def);
 		return job;
 	}
 
 	template<typename TCallable>
-	static auto InitLocal(JobInstance& job, TCallable&& callable, EJobPriority::Type priority, EJobFlags flags, Byte* resultPtr = nullptr)
+	static auto Build(const char* name, TCallable&& callable, const JobDefinitionInternal& def)
+	{
+		SPT_PROFILER_FUNCTION();
+
+		lib::MTHandle<JobInstance> job;
+		{
+			SPT_PROFILER_SCOPE("Allocate Job");
+			job = new JobInstance(name);
+
+			SPT_CHECK(job.IsValid());
+		}
+		job->Init(std::forward<TCallable>(callable), def);
+		return job;
+	}
+
+	template<typename TCallable>
+	static auto InitLocal(JobInstance& job, TCallable&& callable, const JobDefinitionInternal& def, Byte* resultPtr = nullptr)
 	{
 		SPT_PROFILER_FUNCTION();
 
@@ -847,7 +920,7 @@ public:
 			}
 		};
 
-		job.Init(callableWrapper, priority, flags);
+		job.Init(callableWrapper, def);
 	}
 };
 
@@ -855,6 +928,10 @@ public:
 class Job
 {
 public:
+
+	Job()
+		: m_instance(nullptr)
+	{ }
 
 	explicit Job(lib::MTHandle<JobInstance> inInstance)
 		: m_instance(std::move(inInstance))
@@ -873,11 +950,20 @@ public:
 	template<typename TCallable>
 	Job Then(const char* name, TCallable&& callable)
 	{
-		lib::MTHandle<JobInstance> instance =  JobInstanceBuilder::Build(name, callable, Prerequisites(*this), m_instance->GetPriority(), m_instance->GetFlags());
+		js::JobDefinitionInternal def;
+		def.priority = m_instance->GetPriority();
+		def.flags    = m_instance->GetFlags();
+		lib::MTHandle<JobInstance> instance =  JobInstanceBuilder::Build(name, callable, Prerequisites(*this), def);
 		return Job(std::move(instance));
 	}
 
 protected:
+
+	void SetJobInstance(lib::MTHandle<JobInstance> inInstance)
+	{
+		SPT_CHECK(!m_instance.IsValid());
+		m_instance = std::move(inInstance);
+	}
 
 	void ClearJobHandle()
 	{
@@ -939,6 +1025,28 @@ public:
 };
 
 
+class Event : public Job
+{
+public:
+
+	Event() = default;
+
+	explicit Event(lib::MTHandle<JobInstance> inInstance)
+	{
+		SPT_CHECK(inInstance.IsValid());
+		SPT_CHECK(inInstance->IsEventJob());
+
+		SetJobInstance(std::move(inInstance));
+	}
+
+	void Signal() const
+	{
+		SPT_CHECK(GetJobInstance().IsValid());
+		GetJobInstance()->Signal();
+	}
+};
+
+
 template<typename TResultType>
 JobWithResult<TResultType> AsJobWithResult(const Job& job)
 {
@@ -965,6 +1073,9 @@ struct JobInstanceGetter<JobWithResult<TResultType>> : public JobInstanceGetter<
 
 template<typename TUnderlyingJobType>
 struct JobInstanceGetter<LocalJob<TUnderlyingJobType>> : public JobInstanceGetter<TUnderlyingJobType> {};
+
+template<>
+struct JobInstanceGetter<Event> : public JobInstanceGetter<Job> {};
 
 template<>
 struct JobInstanceGetter<lib::MTHandle<JobInstance>>
@@ -999,6 +1110,11 @@ public:
 	static auto Build(lib::MTHandle<JobInstance> job)
 	{
 		return CreateJobWrapper<TCallable, isLocal>(std::move(job));
+	}
+
+	static Event BuildEvent(lib::MTHandle<JobInstance> job)
+	{
+		return Event(job);
 	}
 
 private:

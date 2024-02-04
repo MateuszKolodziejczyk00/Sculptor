@@ -63,4 +63,12 @@ void Event::Wait()
 	WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), INFINITE);
 }
 
+Bool Event::Wait(Uint64 milliseconds)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const DWORD result = WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), static_cast<DWORD>(milliseconds));
+	return result == WAIT_OBJECT_0;
+}
+
 } // spt::platf

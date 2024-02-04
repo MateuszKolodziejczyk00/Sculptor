@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "Commands/RHIRenderingDefinition.h"
 
 
 namespace spt::rhi
@@ -75,7 +76,8 @@ struct CommandBufferUsageDefinition
 		: beginFlags(inBeginFlags)
 	{ }
 
-	ECommandBufferBeginFlags beginFlags;
+	ECommandBufferBeginFlags                      beginFlags;
+	std::optional<RenderingInheritanceDefinition> renderingInheritance;
 };
 
 } // spt::rhi

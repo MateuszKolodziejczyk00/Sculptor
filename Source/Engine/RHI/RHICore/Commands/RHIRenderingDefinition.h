@@ -122,4 +122,21 @@ public:
 	RHIRenderTargetDefinition						stencilRT;
 };
 
+
+struct RenderingInheritanceDefinition
+{
+public:
+
+	RenderingInheritanceDefinition()
+		: flags(ERenderingFlags::Default)
+		, depthRTFormat(EFragmentFormat::None)
+		, stencilRTFormat(EFragmentFormat::None)
+	{ }
+
+	ERenderingFlags                    flags;
+	lib::DynamicArray<EFragmentFormat> colorRTFormats;
+	EFragmentFormat                    depthRTFormat;
+	EFragmentFormat                    stencilRTFormat;
+};
+
 } // spt::rhi

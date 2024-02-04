@@ -26,12 +26,11 @@ public:
 	RHIWindow(const RHIWindow& rhs) = delete;
 	RHIWindow&					operator=(const RHIWindow& rhs) = delete;
 
-	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount);
+	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount, IntPtr surfaceHandle);
 	void						ReleaseRHI();
 
 	Bool						IsValid() const;
-
-	void						BeginFrame();
+	Bool						IsSwapchainValid() const;
 
 	Uint32						AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout = idxNone<Uint64>);
 	RHITexture					GetSwapchinImage(Uint32 imageIdx) const;
@@ -43,12 +42,16 @@ public:
 	Bool						PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);
 
 	Bool						IsSwapchainOutOfDate() const;
-	void						RebuildSwapchain(math::Vector2u framebufferSize);
+	void						RebuildSwapchain(math::Vector2u framebufferSize, IntPtr surfaceHandle);
+
+	void						ReleaseSwapchain();
 
 	math::Vector2u				GetSwapchainSize() const;
 
 	Bool						IsVSyncEnabled() const;
 	void						SetVSyncEnabled(Bool newValue);
+
+	void						SetSwapchainOutOfDate();
 
 	// Vulkan Specific ============================================
 
@@ -58,12 +61,10 @@ public:
 
 private:
 
-	VkSwapchainKHR				CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);
+	VkSwapchainKHR				CreateSwapchain_Locked(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);
 
-	void						CacheSwapchainImages(VkSwapchainKHR m_swapchain);
-	void						ReleaseSwapchainImages();
-
-	void						SetSwapchainOutOfDate();
+	void						CacheSwapchainImages_Locked(VkSwapchainKHR m_swapchain);
+	void						ReleaseSwapchainImages_Locked();
 
 	VkSwapchainKHR				m_swapchain;
 
@@ -81,6 +82,8 @@ private:
 	Bool						m_swapchainOutOfDate;
 
 	math::Vector2u				m_swapchainSize;
+
+	mutable lib::Lock			m_swapchainLock;
 };
 
 } // spt::vulkan

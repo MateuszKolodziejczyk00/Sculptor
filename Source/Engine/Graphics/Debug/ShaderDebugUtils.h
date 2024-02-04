@@ -65,7 +65,7 @@ private:
 	void                        PrepareBuffers(rg::RenderGraphBuilder& graphBuilder);
 	lib::SharedRef<rdr::Buffer> ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer);
 
-	void ScheduleCommandsExecution(const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const;
+	void ScheduleCommandsExecution(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const;
 
 	lib::MTHandle<ShaderDebugCommandBufferDS> m_ds;
 

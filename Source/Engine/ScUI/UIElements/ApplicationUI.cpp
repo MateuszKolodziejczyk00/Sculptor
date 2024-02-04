@@ -39,15 +39,17 @@ void ApplicationUI::CloseAllViews()
 	instance.m_views.ClearViews();
 }
 
-void ApplicationUI::Draw(ui::UIContext context)
+void ApplicationUI::Draw(const Context& context)
 {
 	SPT_PROFILER_FUNCTION();
 
 	ApplicationUI& instance = GetInstance();
 
-	SPT_CHECK(context.IsValid());
+	instance.m_currentContext = &context;
 
-	ImGui::SetCurrentContext(context.GetHandle());
+	SPT_CHECK(context.GetUIContext().IsValid());
+
+	ImGui::SetCurrentContext(context.GetUIContext().GetHandle());
 
 	const ImGuiID mainDockspace = ImGui::GetID("ApplicationDockspace");
 
@@ -59,6 +61,17 @@ void ApplicationUI::Draw(ui::UIContext context)
 	params.parentClass = mainWindowDockspaceClass;
 
 	instance.m_views.DrawViews(params);
+
+	instance.m_currentContext = nullptr;
+}
+
+const Context& ApplicationUI::GetCurrentContext()
+{
+	ApplicationUI& instance = GetInstance();
+
+	SPT_CHECK(instance.m_currentContext != nullptr);
+
+	return *instance.m_currentContext;
 }
 
 } // spt::scui

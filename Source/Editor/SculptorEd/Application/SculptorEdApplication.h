@@ -7,10 +7,19 @@
 #include "EngineFrame.h"
 
 
+
+namespace spt::rdr
+{
+class GPUWorkload;
+class RenderContext;
+} // spt::rdr
+
+
 namespace spt::ed
 {
 
 class SandboxRenderer;
+class EditorFrameContext;
 
 
 class SculptorEdApplication : public lib::Application
@@ -33,18 +42,19 @@ protected:
 
 private:
 
-	void RenderFrame(SandboxRenderer& renderer);
+	void ExecuteFrame(EditorFrameContext& frame);
 
-	void PreExecuteFrame();
-	void ExecuteSimulationFrame(engn::FrameContext& context);
-	void ExecuteRenderingFrame(engn::FrameContext& context);
+	void UpdateUI(EditorFrameContext& frame);
+
+	std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> RecordUICommands(rhi::EFragmentFormat rtFormat) const;
+
+	rdr::SwapchainTextureHandle AcquireSwapchainTexture(EditorFrameContext& frame);
+	
+	void RenderFrame(EditorFrameContext& frame, rdr::SwapchainTextureHandle swapchainTextureHandle, const lib::SharedRef<rdr::GPUWorkload>& recordedUIWorkload);
 
 	lib::SharedPtr<rdr::Window> m_window;
-	lib::UniquePtr<SandboxRenderer> m_renderer;
 
 	ui::UIContext uiContext;
-
-	Bool isSwapchainValid;
 };
 
-}
+} // spt::ed

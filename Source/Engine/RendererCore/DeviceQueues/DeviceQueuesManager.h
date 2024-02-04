@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDeviceQueueImpl.h"
 #include "RendererUtils.h"
+#include "Containers/Queue.h"
 
 
 namespace spt::rdr
@@ -19,21 +20,19 @@ enum class EGPUWorkloadSubmitFlags
 
 	// This workload won't be executed until workload which flips previous frame is finished
 	WaitForPrevFrameEnd      = BIT(0),
-	// GPU frame is going to be considered as "finished" after this workload is executed
-	FlipFrame                = BIT(1),
 	// This workload will wait for all previous workloads that were part of "core pipe" to finish
-	CorePipeWait             = BIT(2),
+	CorePipeWait             = BIT(1),
 	// All subsequent workloads that wait for "core pipe" will wait for this workload to finish
 	// Warning: This flag must be used with CorePipeWait flag to ensure correct ordering
-	CorePipeSignal           = BIT(3),
+	CorePipeSignal           = BIT(2),
 	CorePipe                 = CorePipeWait | CorePipeSignal,
 	// This workload will wait for all previous memory transfers to finish
 	// E.g. Wait for all already requested streaming operations to finish before rendering
-	MemoryTransfersWait      = BIT(4),
+	MemoryTransfersWait      = BIT(3),
 	// This workload is part of memory transfers
 	// E.g. This workload transfers vertex buffer to GPU memory
 	// Warning: This flag must be used with MemoryTransfersWait flag to ensure correct ordering
-	MemoryTransfersSignal    = BIT(5),
+	MemoryTransfersSignal    = BIT(4),
 	MemoryTransfers          = MemoryTransfersWait | MemoryTransfersSignal,
 
 	Default = None
@@ -59,9 +58,6 @@ public:
 
 	void SubmitGPUWorkload(WorkloadSubmitDefinition&& definition);
 
-	Bool CanOverlapWithPrevFrame() const;
-	void SetCanOverlapWithPrevFrame(Bool canOverlap);
-
 private:
 
 	const rhi::RHICommandBuffer& GetCommandBuffer(const GPUWorkload& workload) const;
@@ -72,8 +68,25 @@ private:
 
 	lib::SharedPtr<rdr::Semaphore> m_semaphore;
 	Uint64                         m_lastSignaledSemaphoreValue;
+};
 
-	Bool m_canOverlapWithPrevFrame;
+
+class SubmittedWorkloadsQueue
+{
+public:
+
+	SubmittedWorkloadsQueue();
+
+	void Push(lib::SharedRef<GPUWorkload> workload);
+	void Flush();
+
+	Real32 GetTimeSinceLastFlush() const;
+
+private:
+
+	lib::Queue<lib::SharedRef<GPUWorkload>> m_submittedWorkloadsQueue;
+	Real32                                  m_submittedWorkloadsLastFlushTime;
+	lib::Lock                               m_submittedWorkloadsLock;
 };
 
 
@@ -87,6 +100,8 @@ public:
 	void Uninitialize();
 
 	void Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
+
+	void FlushSubmittedWorkloads();
 
 private:
 
@@ -106,6 +121,8 @@ private:
 
 	lib::SharedPtr<rdr::Semaphore> m_memoryTransfersSemaphore;
 	Uint64                         m_memoryTransfersSemaphoreValue;
+
+	SubmittedWorkloadsQueue m_submittedWorkloadsQueue;
 };
 
 } // spt::rdr

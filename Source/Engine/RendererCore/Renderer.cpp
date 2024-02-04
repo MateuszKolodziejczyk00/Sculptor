@@ -39,6 +39,8 @@ OnRendererCleanupDelegate cleanupDelegate;
 
 DeviceQueuesManager deviceQueuesManager;
 
+Uint64 currentFrameIdx = 0;
+
 };
 
 static RendererData g_data;
@@ -73,6 +75,8 @@ void Renderer::PostCreatedWindow()
 
 void Renderer::Uninitialize()
 {
+	WaitIdle();
+
 	CurrentFrameContext::ReleaseAllResources();
 
 	GetOnRendererCleanupDelegate().Broadcast();
@@ -90,9 +94,19 @@ void Renderer::Uninitialize()
 	rhi::RHI::Uninitialize();
 }
 
-void Renderer::BeginFrame()
+void Renderer::BeginFrame(Uint64 frameIdx)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const Uint64 framesInFlight         = RendererSettings::Get().framesInFlight;
+	const Uint64 renderedFramesInFlight = framesInFlight - 1;
+
+	if (frameIdx >= renderedFramesInFlight)
+	{
+		CurrentFrameContext::FlushFrameReleases(frameIdx - renderedFramesInFlight);
+	}
+
+	priv::g_data.currentFrameIdx = frameIdx;
 	
 	rhi::RHI::BeginFrame();
 
@@ -101,11 +115,6 @@ void Renderer::BeginFrame()
 	GetSamplersCache().FlushPendingSamplers();
 	
 	GetPipelinesLibrary().FlushCreatedPipelines();
-}
-
-void Renderer::WaitForFrameRendered(Uint64 frameIdx)
-{
-	CurrentFrameContext::WaitForFrameRendered(frameIdx);
 }
 
 ShadersManager& Renderer::GetShadersManager()
@@ -140,13 +149,18 @@ lib::UniquePtr<CommandRecorder> Renderer::StartRecordingCommands()
 	return std::make_unique<CommandRecorder>();
 }
 
-void Renderer::PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+void Renderer::PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
 
 	GPUProfiler::FlipFrame(window);
 	
-	window->PresentTexture(waitSemaphores);
+	window->PresentTexture(swapchainTexture, waitSemaphores);
+}
+
+void Renderer::FlushPendingEvents()
+{
+	GetDeviceQueuesManager().FlushSubmittedWorkloads();
 }
 
 void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
@@ -154,6 +168,8 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 	SPT_PROFILER_FUNCTION();
 
 	rhi::RHI::WaitIdle();
+
+	FlushPendingEvents();
 
 	if (releaseRuntimeResources)
 	{
@@ -170,20 +186,7 @@ void Renderer::UpdatePersistentDescriptorSets()
 
 Uint64 Renderer::GetCurrentFrameIdx()
 {
-	return engn::GetRenderingFrame().GetFrameIdx();
-}
-
-const lib::SharedPtr<Semaphore>& Renderer::GetReleaseFrameSemaphore()
-{
-	return CurrentFrameContext::GetReleaseFrameSemaphore();
-}
-
-void Renderer::IncrementFrameReleaseSemaphore(Uint64 frameIdx)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::SharedPtr<Semaphore>& releaseFrameSemaphore = GetReleaseFrameSemaphore();
-	releaseFrameSemaphore->GetRHI().Signal(frameIdx);
+	return priv::g_data.currentFrameIdx;
 }
 
 OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()

@@ -6,6 +6,7 @@
 #include "RendererResource.h"
 #include "Window/PlatformWindowImpl.h"
 #include "UITypes.h"
+#include "Utility/NamedType.h"
 
 
 namespace spt::rdr
@@ -14,6 +15,41 @@ namespace spt::rdr
 class Semaphore;
 class Texture;
 class SemaphoresArray;
+
+
+class SwapchainTextureHandle
+{
+public:
+
+	SwapchainTextureHandle()
+		: m_imageIdx{ idxNone<Uint32> }
+	{ }
+
+	SwapchainTextureHandle(Uint32 imageIdx, lib::SharedPtr<Semaphore> acquireSemaphore)
+		: m_imageIdx{ imageIdx }
+		, m_acquireSemaphore{ std::move(acquireSemaphore) }
+	{ }
+
+	Bool IsValid() const
+	{
+		return m_imageIdx != idxNone<Uint32> && m_acquireSemaphore;
+	}
+
+	const lib::SharedPtr<Semaphore>& GetAcquireSemaphore() const
+	{
+		return m_acquireSemaphore;
+	}
+
+	Uint32 GetImageIdx() const
+	{
+		return m_imageIdx;
+	}
+
+private:
+
+	lib::SharedPtr<rdr::Semaphore> m_acquireSemaphore;
+	Uint32 m_imageIdx;
+};
 
 
 class RENDERER_CORE_API Window : public RendererResource<rhi::RHIWindow>
@@ -29,14 +65,18 @@ public:
 	Bool						ShouldClose() const;
 
 	void						BeginFrame();
-	void						Update(Real32 deltaTime);
+	void						Update();
 
-	lib::SharedPtr<Texture>		AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout = maxValue<Uint64>);
+	SwapchainTextureHandle		AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout = maxValue<Uint64>);
 
-	void						PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+	lib::SharedPtr<Texture>		GetSwapchainTexture(SwapchainTextureHandle handle) const;
+
+	void						PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	Bool						IsSwapchainOutOfDate() const;
 	Bool						RebuildSwapchain();
+
+	Bool						IsSwapchainValid() const;
 
 	void						InitializeUI(ui::UIContext context);
 	void						UninitializeUI();
@@ -47,9 +87,10 @@ public:
 
 private:
 
-	lib::UniquePtr<platf::PlatformWindow>	m_platformWindow;
+	void						OnWindowResized(Uint32 newWidth, Uint32 newHeight);
+	void						OnRHISurfaceUpdate(IntPtr prevSufaceHandle, IntPtr newSurfaceHandle);
 
-	Uint32									m_acquiredImageIdx;
+	lib::UniquePtr<platf::PlatformWindow>	m_platformWindow;
 };
 
-}
+} // spt::rdr

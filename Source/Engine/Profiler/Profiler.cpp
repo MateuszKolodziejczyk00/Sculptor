@@ -186,7 +186,18 @@ Real32 Profiler::GetAverageFrameTime() const
 
 void Profiler::SetGPUFrameStatistics(GPUProfilerStatistics frameStatistics)
 {
-	m_gpuFrameStatistics = std::move(frameStatistics);
+	const lib::LockGuard lock(m_newFrameStatisticsLock);
+	m_newFrameStatistics = std::move(frameStatistics);
+}
+
+void Profiler::FlushNewGPUFrameStatistics()
+{
+	const lib::LockGuard lock(m_newFrameStatisticsLock);
+	if (m_newFrameStatistics)
+	{
+		m_gpuFrameStatistics = std::move(*m_newFrameStatistics);
+		m_newFrameStatistics = std::nullopt;
+	}
 }
 
 const GPUProfilerStatistics& Profiler::GetGPUFrameStatistics() const

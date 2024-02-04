@@ -12,6 +12,7 @@ namespace spt::rg
 {
 
 RenderGraphBuilder::RenderGraphBuilder()
+	: m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
 { }
 
 RenderGraphBuilder::~RenderGraphBuilder()
@@ -454,6 +455,11 @@ void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescript
 	}
 }
 
+const js::Event& RenderGraphBuilder::GetGPUFinishedEvent() const
+{
+	return m_onGraphExecutionFinished;
+}
+
 void RenderGraphBuilder::Execute()
 {
 	PostBuild();
@@ -782,6 +788,9 @@ void RenderGraphBuilder::ExecuteGraph()
 	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("RenderGraphCommandBuffer");
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
 	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+
+	workload->BindEvent(m_onGraphExecutionFinished);
+
 	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 }
 
@@ -849,7 +858,7 @@ void RenderGraphBuilder::ResolveTextureProperties()
 													   const RGTextureSubresourceAccessState& accessState = textureAccesses.GetForSubresource(subresource);
 													   if (!lastAccessNode.IsValid() || lastAccessNode->GetID() < accessState.lastAccessNode->GetID())
 													   {
-														   lastAccessNode = accessState.lastAccessNode;
+														   lastAccessNode = accessState.lastAccessNode; 
 													   }
 												   });
 			}

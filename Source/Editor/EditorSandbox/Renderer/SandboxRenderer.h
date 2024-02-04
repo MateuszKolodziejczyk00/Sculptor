@@ -17,7 +17,15 @@ namespace spt::rdr
 class Texture;
 class Window;
 class Semaphore;
+class TextureView;
 } // spt::rdr
+
+
+namespace spt::engn
+{
+class FrameContext;
+} // spt::engn
+
 
 namespace spt::ed
 {
@@ -26,26 +34,18 @@ class EDITOR_SANDBOX_API SandboxRenderer
 {
 public:
 
-	explicit SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow);
+	explicit SandboxRenderer();
 	~SandboxRenderer();
 
 	void Tick(Real32 deltaTime);
 
-	void RenderFrame();
-
-	ui::TextureID GetUITextureID() const;
-
-	const lib::SharedPtr<rdr::Window>& GetWindow() const;
+	void ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output);
 
 	const lib::SharedPtr<rsc::RenderView>& GetRenderView() const;
 
 	const lib::SharedPtr<rsc::RenderScene>& GetRenderScene();
 
 	rsc::SceneRenderer& GetSceneRenderer();
-
-	void SetImageSize(const math::Vector2u& imageSize);
-
-	math::Vector2u GetDisplayTextureResolution() const;
 
 	void	SetFov(Real32 fovDegrees);
 	Real32	GetFov();
@@ -67,12 +67,7 @@ private:
 
 	void InitializeRenderScene();
 
-	void UpdateSceneUITextureForView(const rsc::RenderView& renderView);
-
-	lib::SharedPtr<rdr::Window>			m_window;
-
-	lib::SharedPtr<rdr::Texture>		m_sceneUITexture;
-	lib::SharedPtr<rdr::TextureView>	m_sceneUITextureView;
+	void PrepareRenderView(math::Vector2u renderingResolution);
 
 	lib::SharedPtr<rsc::RenderScene>	m_renderScene;
 	lib::SharedPtr<rsc::RenderView>		m_renderView;
@@ -87,6 +82,8 @@ private:
 	Real32								m_cameraSpeed;
 
 	math::Vector2i						m_mousePositionOnViewport;
+
+	rsc::RenderSceneEntityHandle m_directionalLightEntity;
 
 	Bool m_wantsCaptureNextFrame;
 };

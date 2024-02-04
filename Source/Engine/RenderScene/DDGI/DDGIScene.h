@@ -102,6 +102,8 @@ public:
 	
 	lib::SharedRef<DDGIVolume> BuildVolume(const DDGIVolumeParams& params);
 
+	RenderScene& GetOwningScene() const;
+
 private:
 
 	// Volume Initialization

@@ -4,6 +4,7 @@
 #include "Types/Texture.h"
 #include "View/SceneView.h"
 #include "EngineFrame.h"
+#include "RenderScene.h"
 
 namespace spt::rsc::ddgi
 {
@@ -122,7 +123,8 @@ void DDGIVolume::PostVolumeRelit()
 
 	m_relitPriority = 0.f;
 
-	m_lastRelitTime = engn::GetRenderingFrame().GetTime();
+	const RenderScene& renderScene = GetDDGIScene().GetOwningScene();
+	m_lastRelitTime = renderScene.GetCurrentFrameRef().GetTime();
 }
 
 void DDGIVolume::MarkSunDirectionAsDirty()
@@ -159,7 +161,7 @@ Bool DDGIVolume::MovedSinceLastRelit() const
 	return m_prevAABB.has_value();
 }
 
-DDGIScene& DDGIVolume::GetOwningScene() const
+DDGIScene& DDGIVolume::GetDDGIScene() const
 {
 	return m_owningScene;
 }
@@ -220,7 +222,8 @@ Real32 DDGIVolume::GetRelitHysteresisDelta() const
 	Real32 hysteresisDelta = 0.f;
 	if (m_isSunLightDirectionDirty)
 	{
-		const Real32 currentTime = engn::GetRenderingFrame().GetTime();
+		const engn::FrameContext& currentFrame = GetDDGIScene().GetOwningScene().GetCurrentFrameRef();
+		const Real32 currentTime = currentFrame.GetTime();
 		const Real32 timeSinceRelit = currentTime - m_lastRelitTime;
 		hysteresisDelta -= std::min(std::max(timeSinceRelit - 0.08f, 0.f) * 1.2f, 1.f);
 	}

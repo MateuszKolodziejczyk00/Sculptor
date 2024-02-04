@@ -12,6 +12,7 @@
 #include "CommandsRecorder/CommandRecorder.h"
 #include "RGNodeParametersStruct.h"
 #include "Utility/Templates/Overload.h"
+#include "JobSystem.h"
 
 #define SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME 0
 
@@ -149,6 +150,8 @@ public:
 	void BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 	void UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState);
 
+	const js::Event& GetGPUFinishedEvent() const;
+
 	void Execute();
 
 private:
@@ -222,6 +225,8 @@ private:
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_allocatedDSStates;
 #endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
+
+	js::Event m_onGraphExecutionFinished;
 
 	RGAllocator m_allocator;
 };

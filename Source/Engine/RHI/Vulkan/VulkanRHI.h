@@ -37,7 +37,7 @@ public:
 
 	static void				Initialize(const rhi::RHIInitializationInfo& initInfo);
 
-	static void				InitializeGPUForWindow();
+	static void				InitializeGPUForWindow(IntPtr windowSurfaceHandle);
 
 	static void				Uninitialize();
 
@@ -94,15 +94,11 @@ public:
 
 	static PipelineLayoutsManager&			GetPipelineLayoutsManager();
 
-	static VkSurfaceKHR						GetSurfaceHandle();
-
 	static const LogicalDevice&				GetLogicalDevice();
 
-	static VulkanMemoryManager&					GetMemoryManager();
+	static VulkanMemoryManager&				GetMemoryManager();
 
 	static VmaAllocator						GetAllocatorHandle();
-
-	static void								SetSurfaceHandle(VkSurfaceKHR surface);
 
 	static const VkAllocationCallbacks*		GetAllocationCallbacks();
 };

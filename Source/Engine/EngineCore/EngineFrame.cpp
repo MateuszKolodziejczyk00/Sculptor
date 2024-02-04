@@ -5,160 +5,167 @@
 namespace spt::engn
 {
 
-namespace globals
-{
-
-static lib::UniquePtr<EngineFramesManager> g_engineFramesManager;
-
-} // globals
+SPT_DEFINE_LOG_CATEGORY(EngineFrame, true);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // FrameContext ==================================================================================
 
 FrameContext::FrameContext()
-	: m_frameState(EFrameState::Simulation)
+	: m_frameState(EFrameState::Updating)
+	, m_currentStage(EFrameStage::PreFrame)
 { }
 
-void FrameContext::AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate)
+FrameContext::~FrameContext()
 {
-	m_finalizeSimulation.Add(std::move(delegate));
+	SPT_CHECK(m_currentStage == EFrameStage::Finished);
 }
 
-void FrameContext::AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegate delegate)
-{
-	m_onSimulationFinished.Add(std::move(delegate));
-}
-
-void FrameContext::AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate)
-{
-	m_finalizeRendering.Add(std::move(delegate));
-}
-
-void FrameContext::AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate delegate)
-{
-	m_onRenderingFinished.Add(std::move(delegate));
-}
-
-void FrameContext::AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate)
-{
-	m_finalizeGPU.Add(std::move(delegate));
-}
-
-void FrameContext::AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate)
-{
-	m_onGPUFinished.Add(std::move(delegate));
-}
-
-void FrameContext::BeginFrame(const FrameDefinition& definition)
+void FrameContext::BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame)
 {
 	m_frameDefinition = definition;
+
+	m_prevFrame = std::move(prevFrame);
+
+	for (Int32 frameStageIdx = 0; frameStageIdx < static_cast<Int32>(EFrameStage::NUM); ++frameStageIdx)
+	{
+		m_stageEndedEvents[frameStageIdx] = js::CreateEvent("Advance Frame Stage",
+															[this, frameStageIdx]()
+															{
+																const EFrameStage::Type currentStage = static_cast<EFrameStage::Type>(frameStageIdx);
+																const EFrameStage::Type nextStage    = static_cast<EFrameStage::Type>(frameStageIdx + 1);
+																
+																DoStagesTransition(currentStage, nextStage);
+
+																if (currentStage != EFrameStage::Last)
+																{
+																	m_stageEndedEvents[nextStage].Signal();
+																}
+															});
+													   
+	}
 }
 
-void FrameContext::SetFrameState(EFrameState state)
-{
-	m_frameState = state;
-}
-
-void FrameContext::FinalizeSimulation()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_finalizeSimulation.ResetAndBroadcast(*this);
-}
-
-void FrameContext::EndSimulation()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_onSimulationFinished.ResetAndBroadcast(*this);
-}
-
-void FrameContext::FinalizeRendering()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_finalizeRendering.ResetAndBroadcast(*this);
-}
-
-void FrameContext::EndRendering()
+void FrameContext::WaitUpdateEnded()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_onRenderingFinished.ResetAndBroadcast(*this);
+	m_stageEndedEvents[EFrameStage::UpdatingEnd].Wait();
 }
 
-void FrameContext::FinalizeGPU()
+void FrameContext::WaitRenderingEnded()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_finalizeGPU.ResetAndBroadcast(*this);
+	m_stageEndedEvents[EFrameStage::RenderingEnd].Wait();
 }
 
-void FrameContext::EndGPU()
+void FrameContext::WaitFrameFinished()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_onGPUFinished.ResetAndBroadcast(*this);
+	m_stageEndedEvents[EFrameStage::Last].Wait();
+
+	// Accessing this right now is thread-safe because all cpu work should be done by now (EFrameStage::Last is finished)
+	if (m_frameFinishedOnGPUWaitable)
+	{
+		m_frameFinishedOnGPUWaitable->Wait();
+		m_frameFinishedOnGPUWaitable.reset();
+	}
 }
 
-void FrameContext::EndFrame()
+void FrameContext::SetFrameFinishedOnGPUWaitable(lib::SharedPtr<lib::Waitable> waitable)
 {
+	SPT_CHECK(!m_frameFinishedOnGPUWaitable);
+	m_frameFinishedOnGPUWaitable = std::move(waitable);
 }
 
-void FrameContext::Reset()
+void FrameContext::FlushPreviousFrames()
 {
-	m_finalizeSimulation.Reset();
-	m_onSimulationFinished.Reset();
-	m_finalizeRendering.Reset();
-	m_onRenderingFinished.Reset();
-	m_finalizeGPU.Reset();
-	m_onGPUFinished.Reset();
+	SPT_PROFILER_FUNCTION();
+
+	if (m_prevFrame)
+	{
+		m_prevFrame->WaitFrameFinished();
+		m_prevFrame.reset();
+	}
+}
+
+const js::Event& FrameContext::GetStageBeginEvent(EFrameStage::Type stage)
+{
+	static js::Event invalid;
+	const Int32 stageIdx = static_cast<Uint32>(stage);
+	return stageIdx > 0 ? m_stageEndedEvents[stageIdx - 1] : invalid;
+}
+
+const js::Event& FrameContext::GetStageFinishedEvent(EFrameStage::Type stage)
+{
+	return m_stageEndedEvents[static_cast<Uint32>(stage)];
+}
+
+void FrameContext::BeginAdvancingStages()
+{
+	DoStagesTransition(EFrameStage::PreFrame, EFrameStage::Begin);
+	m_stageEndedEvents[EFrameStage::Begin].Signal();
+}
+
+void FrameContext::DoStagesTransition(EFrameStage::Type prevStage, EFrameStage::Type nextStage)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (nextStage == EFrameStage::UpdatingBegin)
+	{
+		if (m_prevFrame)
+		{
+			m_prevFrame->WaitUpdateEnded();
+		}
+
+		m_frameState = EFrameState::Updating;
+	}
+
+	if (prevStage == EFrameStage::UpdatingEnd)
+	{
+		//
+	}
+
+	if (nextStage == EFrameStage::RenderingBegin)
+	{
+		if (m_prevFrame)
+		{
+			m_prevFrame->WaitRenderingEnded();
+		}
+
+		m_frameState = EFrameState::Rendering;
+	}
+	
+	if (prevStage == EFrameStage::RenderingEnd)
+	{
+		if (m_prevFrame)
+		{
+			m_prevFrame->WaitFrameFinished();
+		}
+		m_prevFrame.reset();
+
+		m_frameState = EFrameState::GPU;
+	}
+
+	m_currentStage = nextStage;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Buffer ========================================================================================
 
-void EngineFramesManager::Initialize(FramesManagerInitializationInfo& info)
+EngineFramesManager& EngineFramesManager::GetInstance()
 {
-	globals::g_engineFramesManager.reset(new EngineFramesManager());
-	globals::g_engineFramesManager->InitializeImpl(info);
+	static EngineFramesManager manager;
+	return manager;
 }
 
 void EngineFramesManager::Shutdown()
 {
-	GetInstance().ShutdownImpl();
-}
+	EngineFramesManager& manager = GetInstance();
 
-EngineFramesManager& EngineFramesManager::GetInstance()
-{
-	SPT_CHECK(!!globals::g_engineFramesManager);
-	return *globals::g_engineFramesManager;
-}
-
-FrameContext& EngineFramesManager::GetSimulationFrame()
-{
-	FrameContext* frame = GetInstance().m_simulationFrame;
-	SPT_CHECK(!!frame);
-	return *frame;
-}
-
-FrameContext& EngineFramesManager::GetRenderingFrame()
-{
-	FrameContext* frame = GetInstance().m_renderingFrame;
-	SPT_CHECK(!!frame);
-	return *frame;
-}
-
-FrameContext& EngineFramesManager::GetGPUFrame()
-{
-	FrameContext* frame = GetInstance().m_gpuFrame;
-	SPT_CHECK(!!frame);
-	return *frame;
-}
-
-void EngineFramesManager::ExecuteFrame()
-{
-	GetInstance().ExecuteFrameImpl();
+	manager.m_lastFrame->WaitFrameFinished();
+	manager.m_lastFrame.reset();
 }
 
 void EngineFramesManager::DispatchTickFrame(const FrameContext& context)
@@ -183,134 +190,7 @@ void EngineFramesManager::RemoveOnFrameTick(EFrameState frameState, lib::Delegat
 }
 
 EngineFramesManager::EngineFramesManager()
-	: m_frameCounter(0)
-	, m_simulationFrame(nullptr)
-	, m_renderingFrame(nullptr)
-	, m_gpuFrame(nullptr)
+	: m_frameCounter(1)
 { }
-
-void EngineFramesManager::InitializeImpl(FramesManagerInitializationInfo& info)
-{
-	m_preExecuteFrame			= std::move(info.preExecuteFrame);
-	m_executeSimulationFrame	= std::move(info.executeSimulationFrame);
-	m_executeRenderingFrame		= std::move(info.executeRenderingFrame);
-
-	// We initialize dummy frames to avoid null pointers
-	// This way we have valid frames through the whole engine lifetime
-	FrameDefinition frameDef;
-	frameDef.deltaTime			= Engine::Get().BeginFrame();
-	frameDef.time				= Engine::Get().GetEngineTimer().GetTime();
-	
-	frameDef.frameIdx = 1;
-	m_frames[1].BeginFrame(frameDef);
-	m_gpuFrame = &m_frames[1];
-
-	frameDef.frameIdx = 2;
-	m_frames[2].BeginFrame(frameDef);
-	m_renderingFrame = &m_frames[2];
-
-	frameDef.frameIdx = 3;
-	m_frames[0].BeginFrame(frameDef);
-	m_simulationFrame = &m_frames[0];
-
-	m_frameCounter = 4;
-}
-
-void EngineFramesManager::ShutdownImpl()
-{
-	SPT_PROFILER_FUNCTION();
-
-	// We need to flush GPU frame before shutting down
-	// to make sure that all resources can be safely released
-	m_gpuFrame->FinalizeGPU();
-	m_gpuFrame->EndFrame();
-	
-	m_simulationFrame->Reset();
-	m_renderingFrame->Reset();
-	m_gpuFrame->Reset();
-}
-
-void EngineFramesManager::ExecuteFrameImpl()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_simulationFrame->SetFrameState(EFrameState::Simulation);
-	m_renderingFrame->SetFrameState(EFrameState::Rendering);
-	m_gpuFrame->SetFrameState(EFrameState::GPU);
-
-	js::LaunchInline("Pre Execute Frame",
-					 [this]
-					 {
-						 m_preExecuteFrame.ExecuteIfBound();
-					 });
-	
-	js::LaunchInline("Execute Frame",
-					 [this]
-					 {
-						 js::AddNested("Execute Simulation",
-									   [this]
-									   {
-										   m_executeSimulationFrame.ExecuteIfBound(*m_simulationFrame);
-										   m_simulationFrame->FinalizeSimulation();
-									   },
-									   js::EJobPriority::High);
-
-						 js::AddNested("Execute Rendering",
-									   [this]
-									   {
-										   m_executeRenderingFrame.ExecuteIfBound(*m_renderingFrame);
-										   m_renderingFrame->FinalizeRendering();
-									   },
-									   js::EJobPriority::High);
-
-						 js::AddNested("Execute GPU",
-									   [this]
-									   {
-										   m_gpuFrame->FinalizeGPU();
-									   },
-									   js::EJobPriority::High);
-
-					 });
-
-	js::LaunchInline("End Frame",
-					 [this]
-					 {
-						 js::AddNested("End Simulation",
-									   [this]
-									   {
-										   m_simulationFrame->EndSimulation();
-									   },
-									   js::EJobPriority::High);
-
-						 js::AddNested("End Rendering",
-									   [this]
-									   {
-										   m_renderingFrame->EndRendering();
-									   },
-									   js::EJobPriority::High);
-
-						 js::AddNested("End GPU",
-									   [this]
-									   {
-										   m_gpuFrame->EndGPU();
-										   m_gpuFrame->EndFrame();
-									   },
-									   js::EJobPriority::High);
-
-					 });
-
-	FrameDefinition frameDef;
-	frameDef.deltaTime	= Engine::Get().BeginFrame();
-	frameDef.time		= Engine::Get().GetEngineTimer().GetTime();
-	frameDef.frameIdx	= m_frameCounter;
-
-	m_gpuFrame			= m_renderingFrame;
-	m_renderingFrame	= m_simulationFrame;
-	m_simulationFrame	= &m_frames[m_frameCounter % parallelFramesNum];
-
-	m_simulationFrame->BeginFrame(frameDef);
-
-	++m_frameCounter;
-}
 
 } // spt::engn

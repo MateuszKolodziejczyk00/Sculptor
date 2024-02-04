@@ -11,6 +11,13 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 
+
+namespace spt::engn
+{
+class FrameContext;
+} // spt::engn
+
+
 namespace spt::rsc
 {
 
@@ -164,7 +171,12 @@ public:
 	RenderSceneRegistry& GetRegistry();
 	const RenderSceneRegistry& GetRegistry() const;
 
+	void BeginFrame(const engn::FrameContext& frame);
+	void EndFrame();
+
 	void Update();
+
+	const engn::FrameContext& GetCurrentFrameRef() const;
 
 	// Entities =============================================================
 
@@ -263,6 +275,8 @@ private:
 	RenderSceneSubsystemsRegistry m_renderSceneSubsystems;
 
 	RenderSystemsRegistry<SceneRenderSystem> m_renderSystems;
+
+	lib::SharedPtr<const engn::FrameContext> m_currentFrame;
 };
 
 } // spt::rsc

@@ -27,6 +27,7 @@ public:
 	Bool IsTriggered() const;
 
 	void Wait();
+	Bool Wait(Uint64 milliseconds);
 
 private:
 

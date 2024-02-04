@@ -29,8 +29,11 @@ public:
 
 	math::Vector2u						GetFramebufferSize() const;
 
+	void								UpdateRHISurface() const;
+	IntPtr								GetRHISurfaceHandle() const;
+
 	void								BeginFrame();
-	void								Update(Real32 deltaTime);
+	void								Update();
 
 	Bool								ShouldClose();
 
@@ -39,6 +42,9 @@ public:
 
 	using OnWindowClosedDelegate		= lib::MulticastDelegate<void()>;
 	OnWindowClosedDelegate&				GetOnClosedCallback();
+
+	using OnRHISurfaceUpdate			= lib::MulticastDelegate<void(IntPtr /*prevSurfaceHandle*/, IntPtr /*newSurfaceHandle*/)>;
+	OnRHISurfaceUpdate&					OnRHISurfaceUpdateCallback();
 
 	void								InitializeUI(ui::UIContext context);
 	void								UninitializeUI();

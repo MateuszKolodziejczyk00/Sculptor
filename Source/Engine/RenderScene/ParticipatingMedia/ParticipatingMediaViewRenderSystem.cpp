@@ -370,7 +370,7 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 		inScatteringHistoryTextureView = graphBuilder.AcquireExternalTextureView(m_prevFrameInScatteringTexture);
 	}
 
-	const Uint64 frameIdx = engn::GetRenderingFrame().GetFrameIdx();
+	const Uint64 frameIdx = renderScene.GetCurrentFrameRef().GetFrameIdx();
 	const Uint32 jitterSequenceIdx = static_cast<Uint32>(frameIdx) & 7u;
 
 	const math::Vector3f jitterSequence = math::Vector3f(math::Sequences::Halton<Real32>(jitterSequenceIdx, 2),

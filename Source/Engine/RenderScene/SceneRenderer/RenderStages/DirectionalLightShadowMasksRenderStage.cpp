@@ -170,7 +170,7 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 		updateParams.lightDirection		= directionalLight.direction;
 		updateParams.minTraceDistance	= params::directionalLightMinShadowTraceDist;
 		updateParams.maxTraceDistance	= params::directionalLightMaxShadowTraceDist;
-		updateParams.time				= engn::GetRenderingFrame().GetTime();
+		updateParams.time				= renderScene.GetCurrentFrameRef().GetTime();
 		updateParams.shadowRayConeAngle = directionalLight.lightConeAngle;
 		updateParams.enableShadows		= params::directionalLightEnableShadows;
 		updateParams.shadowRayBias		= params::directionalLightShadowRayBias;

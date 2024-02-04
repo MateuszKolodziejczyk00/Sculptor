@@ -101,6 +101,8 @@ public:
 	template<typename TDescriptorSetStatesRange>
 	void									UnbindDescriptorSetStates(TDescriptorSetStatesRange&& states);
 
+	void									ExecuteCommands(const lib::SharedRef<rdr::GPUWorkload>& workload);
+
 	void									BlitTexture(const lib::SharedRef<Texture>& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const lib::SharedRef<Texture>& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode);
 
 	void									ClearTexture(const lib::SharedRef<Texture>& texture, const rhi::ClearColor& clearColor, const rhi::TextureSubresourceRange& subresourceRange);

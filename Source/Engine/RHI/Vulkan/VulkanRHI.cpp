@@ -38,7 +38,6 @@ public:
     VulkanInstanceData()
         : instance(VK_NULL_HANDLE)
         , physicalDevice(VK_NULL_HANDLE)
-        , surface(VK_NULL_HANDLE)
         , debugMessenger(VK_NULL_HANDLE)
     { }
 
@@ -48,8 +47,6 @@ public:
     LogicalDevice               device;
 
     VulkanMemoryManager         memoryManager;
-
-    VkSurfaceKHR                surface;
     
     VkDebugUtilsMessengerEXT    debugMessenger;
 
@@ -141,10 +138,7 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = DebugMessenger::CreateDebugMessengerInfo();
 
-    if (GetSettings().IsValidationEnabled())
-    {
-        instanceInfoLinkedList.Append(debugMessengerInfo);
-    }
+    instanceInfoLinkedList.Append(debugMessengerInfo);
 
 #endif // RHI_DEBUG
 
@@ -206,12 +200,14 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 #endif // WITH_GPU_CRASH_DUMPS
 }
 
-void VulkanRHI::InitializeGPUForWindow()
+void VulkanRHI::InitializeGPUForWindow(IntPtr windowSurfaceHandle)
 {
     SPT_CHECK(!!priv::g_data.instance);
-    SPT_CHECK(!!priv::g_data.surface);
 
-    priv::g_data.physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.instance, priv::g_data.surface);
+    const VkSurfaceKHR surface = reinterpret_cast<VkSurfaceKHR>(windowSurfaceHandle);
+    SPT_CHECK(!!surface);
+
+    priv::g_data.physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.instance, surface);
 
     if (SPT_IS_LOG_CATEGORY_ENABLED(VulkanRHI))
     {
@@ -348,11 +344,6 @@ PipelineLayoutsManager& VulkanRHI::GetPipelineLayoutsManager()
     return priv::g_data.pipelineLayoutsManager;
 }
 
-VkSurfaceKHR VulkanRHI::GetSurfaceHandle()
-{
-    return priv::g_data.surface;
-}
-
 const LogicalDevice& VulkanRHI::GetLogicalDevice()
 {
     return priv::g_data.device;
@@ -366,11 +357,6 @@ VulkanMemoryManager& VulkanRHI::GetMemoryManager()
 VmaAllocator VulkanRHI::GetAllocatorHandle()
 {
     return priv::g_data.memoryManager.GetAllocatorHandle();
-}
-
-void VulkanRHI::SetSurfaceHandle(VkSurfaceKHR surface)
-{
-    priv::g_data.surface = surface;
 }
 
 const VkAllocationCallbacks* VulkanRHI::GetAllocationCallbacks()

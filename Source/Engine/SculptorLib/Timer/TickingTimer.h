@@ -16,10 +16,13 @@ public:
 
 	Real32 Tick();
 
+	Real32 GetCurrentTimeSeconds() const;
+
 private:
 
 	std::chrono::steady_clock::time_point GenerateNewTimestamp() const;
 
+	std::chrono::steady_clock::time_point m_originTimestamp;
 	std::chrono::steady_clock::time_point m_lastTimestamp;
 };
 

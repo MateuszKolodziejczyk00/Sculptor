@@ -54,7 +54,7 @@ public:
 
 	Bool MovedSinceLastRelit() const;
 
-	DDGIScene& GetOwningScene() const;
+	DDGIScene& GetDDGIScene() const;
 
 	EDDGIVolumeState GetState() const;
 	Bool             IsReady() const;

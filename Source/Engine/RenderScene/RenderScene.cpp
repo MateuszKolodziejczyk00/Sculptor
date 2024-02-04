@@ -62,6 +62,18 @@ const RenderSceneRegistry& RenderScene::GetRegistry() const
 	return m_registry;
 }
 
+void RenderScene::BeginFrame(const engn::FrameContext& frame)
+{
+	SPT_CHECK(!m_currentFrame);
+	m_currentFrame = frame.shared_from_this();
+}
+
+void RenderScene::EndFrame()
+{
+	SPT_CHECK(!!m_currentFrame);
+	m_currentFrame.reset();
+}
+
 void RenderScene::Update()
 {
 	SPT_PROFILER_FUNCTION();
@@ -75,11 +87,19 @@ void RenderScene::Update()
 								  system->Update();
 							  });
 
+	const engn::FrameContext& frame = GetCurrentFrameRef();
+
 	GPUSceneFrameData frameData;
-	frameData.deltaTime = engn::GetRenderingFrame().GetDeltaTime();
-	frameData.time      = engn::GetRenderingFrame().GetTime();
-	frameData.frameIdx  = static_cast<Uint32>(engn::GetRenderingFrame().GetFrameIdx());
+	frameData.deltaTime = frame.GetDeltaTime();
+	frameData.time      = frame.GetTime();
+	frameData.frameIdx  = static_cast<Uint32>(frame.GetFrameIdx());
 	m_renderSceneDS->u_gpuSceneFrameConstants = frameData;
+}
+
+const engn::FrameContext& RenderScene::GetCurrentFrameRef() const
+{
+	SPT_CHECK_MSG(m_currentFrame, "No current frame!");
+	return *m_currentFrame;
 }
 
 RenderSceneEntityHandle RenderScene::CreateEntity()

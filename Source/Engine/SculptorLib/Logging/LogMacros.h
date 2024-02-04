@@ -1,5 +1,8 @@
 #pragma once
 
+#include "SculptorAliases.h"
+
+
 #if WITH_LOGGER
 #define SPT_DEFINE_LOG_CATEGORY(Category, Enabled)							\
 class LogCategory_##Category##												\

@@ -4,6 +4,8 @@
 #include "Renderer.h"
 #include "EngineFrame.h"
 #include "GPUWorkload.h"
+#include "Engine.h"
+#include "JobSystem.h"
 
 
 namespace spt::rdr
@@ -14,7 +16,6 @@ namespace spt::rdr
 
 DeviceQueue::DeviceQueue()
 	: m_lastSignaledSemaphoreValue(0)
-	, m_canOverlapWithPrevFrame(false)
 {
 }
 
@@ -60,19 +61,61 @@ void DeviceQueue::SubmitGPUWorkload(WorkloadSubmitDefinition&& definition)
 	definition.workload->OnSubmitted(m_semaphore, m_lastSignaledSemaphoreValue, this);
 }
 
-Bool DeviceQueue::CanOverlapWithPrevFrame() const
-{
-	return m_canOverlapWithPrevFrame;
-}
-
-void DeviceQueue::SetCanOverlapWithPrevFrame(Bool canOverlap)
-{
-	m_canOverlapWithPrevFrame = canOverlap;
-}
-
 const rhi::RHICommandBuffer& DeviceQueue::GetCommandBuffer(const GPUWorkload& workload) const
 {
 	return workload.GetRecordedBuffer()->GetRHI();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// SubmittedWorkloadsQueue =======================================================================
+
+SubmittedWorkloadsQueue::SubmittedWorkloadsQueue()
+	: m_submittedWorkloadsLastFlushTime(-999.f)
+{ }
+
+void SubmittedWorkloadsQueue::Push(lib::SharedRef<GPUWorkload> workload)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+	m_submittedWorkloadsQueue.push(std::move(workload));
+}
+
+void SubmittedWorkloadsQueue::Flush()
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::DynamicArray<lib::SharedRef<GPUWorkload>> finishedWorkloads;
+
+	{
+		const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+		while (!m_submittedWorkloadsQueue.empty())
+		{
+			if (m_submittedWorkloadsQueue.front()->IsFinished())
+			{
+				finishedWorkloads.emplace_back(std::move(m_submittedWorkloadsQueue.front()));
+				m_submittedWorkloadsQueue.pop();
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	m_submittedWorkloadsLastFlushTime = engn::Engine::Get().GetEngineTimer().GetCurrentTimeSeconds();
+
+	for (const lib::SharedRef<GPUWorkload>& workload : finishedWorkloads)
+	{
+		workload->OnExecutionFinished();
+	}
+}
+
+Real32 SubmittedWorkloadsQueue::GetTimeSinceLastFlush() const
+{
+	return engn::Engine::Get().GetEngineTimer().GetCurrentTimeSeconds() - m_submittedWorkloadsLastFlushTime;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +156,13 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 	SubmitWorkloadInternal(workload, flags);
 }
 
+void DeviceQueuesManager::FlushSubmittedWorkloads()
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_submittedWorkloadsQueue.Flush();
+}
+
 void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
 {
 	SPT_PROFILER_FUNCTION();
@@ -137,25 +187,25 @@ void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkloa
 	CollectSignalSemaphores(workload, submissionQueue, flags, INOUT definition.signalSemaphores);
 
 	submissionQueue.SubmitGPUWorkload(std::move(definition));
-	
-	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::WaitForPrevFrameEnd))
-	{
-		submissionQueue.SetCanOverlapWithPrevFrame(false);
-	}
 
-	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::FlipFrame))
+	m_submittedWorkloadsQueue.Push(workload);
+
+	constexpr Real32 flushSubmittedWorkloadsInterval = 0.002f;
+
+	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal)
+		|| m_submittedWorkloadsQueue.GetTimeSinceLastFlush() >= flushSubmittedWorkloadsInterval)
 	{
-		m_graphicsQueue.SetCanOverlapWithPrevFrame(true);
-		m_computeQueue.SetCanOverlapWithPrevFrame(true);
-		m_transferQueue.SetCanOverlapWithPrevFrame(true);
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [workloadsQueue = &m_submittedWorkloadsQueue]()
+				   {
+					   workloadsQueue->Flush();
+				   });
 	}
 }
 
 void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
-
-	Bool needToWaitForFrame = lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::FlipFrame) && submissionQueue.CanOverlapWithPrevFrame();
 
 	const lib::DynamicArray<lib::SharedPtr<GPUWorkload>>& prerequisites = workload->GetPrerequisites_Unsafe();
 
@@ -166,18 +216,7 @@ void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload
 		if (prerequisite->GetSubmissionQueue() != &submissionQueue)
 		{
 			waitSemaphores.AddTimelineSemaphore(prerequisite->GetSignaledSemaphore(), prerequisite->GetSignaledSemaphoreValue(), rhi::EPipelineStage::ALL_COMMANDS);
-
-			const DeviceQueue* prerequisiteQueue = prerequisite->GetSubmissionQueue();
-			if (needToWaitForFrame && !prerequisiteQueue->CanOverlapWithPrevFrame())
-			{
-				needToWaitForFrame = false;
-			}
 		}
-	}
-
-	if (needToWaitForFrame)
-	{
-		waitSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetGPUFrame().GetFrameIdx(), rhi::EPipelineStage::ALL_COMMANDS);
 	}
 
 	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeWait) && m_corePipeSemaphoreValue > 0)
@@ -194,11 +233,6 @@ void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload
 void DeviceQueuesManager::CollectSignalSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& signalSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
-
-	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::FlipFrame))
-	{
-		signalSemaphores.AddTimelineSemaphore(rdr::Renderer::GetReleaseFrameSemaphore(), engn::GetGPUFrame().GetFrameIdx() + 1, rhi::EPipelineStage::ALL_COMMANDS);
-	}
 
 	if(lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal))
 	{

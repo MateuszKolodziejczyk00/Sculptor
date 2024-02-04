@@ -92,6 +92,7 @@ private:
 	SceneViewData			m_prevFrameRenderingData;
 
 	Bool m_wantsJitter;
+	Uint32 m_jitterIndex;
 };
 
 } // spt::rsc

@@ -27,6 +27,7 @@ SceneView::SceneView()
 	, m_nearPlane(0.f)
 	, m_farPlane(0.f)
 	, m_wantsJitter(false)
+	, m_jitterIndex(0)
 { }
 
 void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
@@ -223,9 +224,7 @@ void SceneView::CachePrevFrameRenderingData()
 
 void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 {
-	const Uint64 currentFrameIdx = engn::GetRenderingFrame().GetFrameIdx();
-
-	const math::Vector2f jitter = IsJittering() ? jitter::GetJitter(currentFrameIdx, resolution) : math::Vector2f::Zero();
+	const math::Vector2f jitter = IsJittering() ? jitter::GetJitter(m_jitterIndex++, resolution) : math::Vector2f::Zero();
 
 	math::Matrix4f projectionMatrixWithJitter = m_projectionMatrix;
 	projectionMatrixWithJitter(0, 0) += jitter.x();

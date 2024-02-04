@@ -164,6 +164,7 @@ private:
 
 	lib::WeakPtr<RenderView> m_mainView;
 
+	mutable lib::Lock               m_visibleLocalLightsLock;
 	lib::HashSet<RenderSceneEntity> m_visibleLocalLightsSet;
 
 	EShadowMappingTechnique m_shadowMapTechnique;

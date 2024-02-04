@@ -11,6 +11,7 @@
 #include "RHIAccelerationStructure.h"
 #include "RHIShaderBindingTable.h"
 #include "RHIQueryPool.h"
+#include "Vulkan/VulkanUtils.h"
 
 namespace spt::vulkan
 {
@@ -81,10 +82,42 @@ rhi::EDeviceCommandQueueType RHICommandBuffer::GetQueueType() const
 
 void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition)
 {
+	SPT_PROFILER_FUNCTION();
+
 	SPT_CHECK(IsValid());
 
+	VkCommandBufferInheritanceInfo inheritanceInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
+	VulkanStructsLinkedList inheritanceInfoLinkedData(inheritanceInfo);
+
 	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	beginInfo.flags = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.beginFlags);
+	beginInfo.flags            = priv::GetVulkanCommandBufferUsageFlags(usageDefinition.beginFlags);
+	beginInfo.pInheritanceInfo = &inheritanceInfo;
+
+	VkCommandBufferInheritanceRenderingInfo vkInheritanceRenderingInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO };
+
+	lib::DynamicArray<VkFormat> colorRTFormats;
+
+	if (usageDefinition.renderingInheritance)
+	{
+		const rhi::RenderingInheritanceDefinition& renderingInheritance = *usageDefinition.renderingInheritance;
+
+		colorRTFormats.reserve(renderingInheritance.colorRTFormats.size());
+		std::transform(renderingInheritance.colorRTFormats.cbegin(), renderingInheritance.colorRTFormats.cend(),
+					   std::back_inserter(colorRTFormats),
+					   [](rhi::EFragmentFormat format)
+					   {
+						   return RHIToVulkan::GetVulkanFormat(format);
+					   });
+
+		vkInheritanceRenderingInfo.flags                   = RHIToVulkan::GetRenderingFlags(renderingInheritance.flags);
+		vkInheritanceRenderingInfo.colorAttachmentCount    = static_cast<Uint32>(renderingInheritance.colorRTFormats.size());
+		vkInheritanceRenderingInfo.pColorAttachmentFormats = colorRTFormats.data();
+		vkInheritanceRenderingInfo.depthAttachmentFormat   = RHIToVulkan::GetVulkanFormat(renderingInheritance.depthRTFormat);
+		vkInheritanceRenderingInfo.stencilAttachmentFormat = RHIToVulkan::GetVulkanFormat(renderingInheritance.stencilRTFormat);
+		vkInheritanceRenderingInfo.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
+
+		inheritanceInfoLinkedData.Append(vkInheritanceRenderingInfo);
+	}
 
 	vkBeginCommandBuffer(m_cmdBufferHandle, &beginInfo);
 
@@ -544,6 +577,17 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
     copyInfo.pRegions		= &copyRegion;
 
 	vkCmdCopyBufferToImage2(m_cmdBufferHandle, &copyInfo);
+}
+
+void RHICommandBuffer::ExecuteCommands(const RHICommandBuffer& secondaryCommandBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(secondaryCommandBuffer.IsValid());
+
+	const VkCommandBuffer secondaryCommandBufferHandle = secondaryCommandBuffer.GetHandle();
+	vkCmdExecuteCommands(m_cmdBufferHandle, 1, &secondaryCommandBufferHandle);
 }
 
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)

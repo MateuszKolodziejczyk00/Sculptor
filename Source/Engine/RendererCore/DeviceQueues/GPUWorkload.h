@@ -5,6 +5,7 @@
 #include "Types/CommandBuffer.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RendererUtils.h"
+#include "Job.h"
 
 
 namespace spt::rdr
@@ -25,10 +26,12 @@ public:
 	void Reset();
 
 	void Wait();
+	Bool IsFinished() const;
 
 	void ReleaseBuffer();
 
 	void OnSubmitted(lib::SharedPtr<Semaphore> signalSemaphore, Uint64 signalValue, DeviceQueue* queue);
+	void OnExecutionFinished();
 
 	const lib::SharedPtr<CommandBuffer>& GetRecordedBuffer() const;
 	rhi::EDeviceCommandQueueType         GetQueueType() const;
@@ -48,6 +51,8 @@ public:
 
 	// This function is not thread-safe. It cannot by called when prerequisites can be added (before submission of this workload)
 	const lib::DynamicArray<lib::SharedPtr<GPUWorkload>>& GetPrerequisites_Unsafe() const;
+
+	void BindEvent(js::Event event);
 
 private:
 
@@ -72,6 +77,8 @@ private:
 	SemaphoresArray m_signalSemaphores;
 
 	Bool m_canBeReused;
+
+	lib::DynamicArray<js::Event> m_eventsOnFinished;
 };
 
 } // spt::rdr

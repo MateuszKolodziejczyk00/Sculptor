@@ -41,7 +41,7 @@ void ShaderDebugUtils::Unbind(rg::RenderGraphBuilder& graphBuilder)
 	const lib::SharedRef<rdr::Buffer> debugCommandsBuffer       = ExtractData(graphBuilder, lib::Ref(m_debugCommandsBuffer));
 	const lib::SharedRef<rdr::Buffer> debugCommandsBufferOffset = ExtractData(graphBuilder, lib::Ref(m_debugCommandsBufferOffset));
 
-	ScheduleCommandsExecution(debugCommandsBuffer, debugCommandsBufferOffset);
+	ScheduleCommandsExecution(graphBuilder, debugCommandsBuffer, debugCommandsBufferOffset);
 }
 
 void ShaderDebugUtils::BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsExecutor> commandsExecutor)
@@ -129,7 +129,7 @@ lib::SharedRef<rdr::Buffer> ShaderDebugUtils::ExtractData(rg::RenderGraphBuilder
 	return graphBuilder.DownloadBuffer(RG_DEBUG_NAME("ShaderDebugCommandBuffer::ExtractData"), sourceBufferView, 0, sourceBufferView->GetSize());
 }
 
-void ShaderDebugUtils::ScheduleCommandsExecution(const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const
+void ShaderDebugUtils::ScheduleCommandsExecution(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -141,17 +141,12 @@ void ShaderDebugUtils::ScheduleCommandsExecution(const lib::SharedRef<rdr::Buffe
 		commandsProcessor->BindExecutors(m_commandsExecutors);
 	}
 
-	engn::OnGPUFinished::Delegate delegate;
-	delegate.BindLambda([processor = std::move(commandsProcessor)](engn::FrameContext& context) mutable
-					   {
-						   js::Launch(SPT_GENERIC_JOB_NAME,
-									  [jobProcessor = std::move(processor)]
-									  {
-										  jobProcessor->ProcessCommands();
-									  });
-					   });
-
-	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(std::move(delegate));
+	js::Launch(SPT_GENERIC_JOB_NAME,
+			   [jobProcessor = std::move(commandsProcessor)]
+			   {
+				   jobProcessor->ProcessCommands();
+			   },
+			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -71,7 +71,7 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 	workload->GetWaitSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphorePrevValue, rhi::EPipelineStage::ALL_TRANSFER);
 	workload->GetSignalSemaphores().AddTimelineSemaphore(transfersSemaphoresRef, semaphoreNewValue, rhi::EPipelineStage::ALL_TRANSFER);
 	
-	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::WaitForPrevFrameEnd, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
+	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers);
 
 	return semaphoreNewValue;
 }

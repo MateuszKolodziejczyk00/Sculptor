@@ -7,6 +7,7 @@
 #include "RHIBridge/RHIImpl.h"
 #include "Delegates/MulticastDelegate.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
+#include "Types/Window.h"
 
 
 namespace spt::rdr
@@ -51,8 +52,7 @@ public:
 
 	static void									Uninitialize();
 
-	static void									BeginFrame();
-	static void									WaitForFrameRendered(Uint64 frameIdx);
+	static void									BeginFrame(Uint64 frameIdx);
 
 	static ShadersManager&						GetShadersManager();
 
@@ -66,17 +66,15 @@ public:
 
 	static lib::UniquePtr<CommandRecorder>		StartRecordingCommands();
 
-	static void									PresentTexture(const lib::SharedRef<Window>& window, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+	static void									PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+
+	static void									FlushPendingEvents();
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);
 
 	static void									UpdatePersistentDescriptorSets();
 	
 	static Uint64								GetCurrentFrameIdx();
-
-	static const lib::SharedPtr<Semaphore>&		GetReleaseFrameSemaphore();
-
-	static void									IncrementFrameReleaseSemaphore(Uint64 frameIdx);
 
 	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
 

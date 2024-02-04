@@ -18,6 +18,8 @@ public:
 
 	Real32 GetDeltaTime() const;
 
+	Real32 GetCurrentTimeSeconds() const;
+
 private:
 
 	Real32 m_currentTime;

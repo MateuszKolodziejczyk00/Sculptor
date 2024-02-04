@@ -35,6 +35,8 @@ public:
 	const math::Vector3u&			GetResolution() const;
 	math::Vector3u					GetMipResolution(Uint32 mipLevel) const;
 
+	rhi::EFragmentFormat			GetFormat() const;
+
 	rhi::ETextureType				GetType() const;
 	
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;

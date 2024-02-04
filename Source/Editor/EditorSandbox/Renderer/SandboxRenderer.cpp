@@ -50,9 +50,8 @@ namespace spt::ed
 
 SPT_DEFINE_LOG_CATEGORY(Sandbox, true)
 
-SandboxRenderer::SandboxRenderer(lib::SharedPtr<rdr::Window> owningWindow)
-	: m_window(std::move(owningWindow))
-	, m_fovDegrees(80.f)
+SandboxRenderer::SandboxRenderer()
+	: m_fovDegrees(90.f)
 	, m_nearPlane(0.1f)
 	, m_farPlane(50.f)
 	, m_cameraSpeed(5.f)
@@ -109,13 +108,27 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 			m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
 		}
 	}
+
+	//m_directionalLightEntity.patch<rsc::DirectionalLightData>([](rsc::DirectionalLightData& data)
+	//														  {
+	//															  const Real32 angle = engn::GetRenderingFrame().GetTime() * 0.08f;
+	//															  //const Real32 angle = engn::GetRenderingFrame().GetTime() * 0.04f;
+	//															  const Real32 sin = std::sin(angle);
+	//															  const Real32 cos = std::cos(angle);
+	//															  data.direction = math::Vector3f(sin, 0.1f, cos).normalized();
+	//															  //data.direction = math::Vector3f(sin, cos, -4.f).normalized();
+	//														  });
 }
 
-void SandboxRenderer::RenderFrame()
+void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output)
 {
 	SPT_PROFILER_FUNCTION();
 
-	UpdateSceneUITextureForView(*m_renderView);
+	m_renderScene->BeginFrame(frame);
+
+	Tick(frame.GetDeltaTime());
+
+	PrepareRenderView(output->GetTexture()->GetResolution2D());
 
 	const lib::SharedRef<rdr::GPUStatisticsCollector> gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>();
 
@@ -130,16 +143,18 @@ void SandboxRenderer::RenderFrame()
 		m_wantsCaptureNextFrame = false;
 	}
 
-	engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ resolution = m_renderView->GetRenderingResolution(), gpuStatisticsCollector ](engn::FrameContext& context)
-																								   {
-																									   prf::GPUProfilerStatistics statistics;
-																									   statistics.resolution      = resolution;
-																									   statistics.frameStatistics = gpuStatisticsCollector->CollectStatistics();
-																									   prf::Profiler::Get().SetGPUFrameStatistics(std::move(statistics));
-																								   }));
+	js::Launch(SPT_GENERIC_JOB_NAME,
+			   [resolution = m_renderView->GetRenderingResolution(), gpuStatisticsCollector]
+			   {
+				   prf::GPUProfilerStatistics statistics;
+				   statistics.resolution = resolution;
+				   statistics.frameStatistics = gpuStatisticsCollector->CollectStatistics();
+				   prf::Profiler::Get().SetGPUFrameStatistics(std::move(statistics));
+			   },
+			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 
 	rsc::SceneRendererSettings rendererSettings;
-	rendererSettings.outputFormat = m_window->GetRHI().GetFragmentFormat();
+	rendererSettings.outputFormat = output->GetTexture()->GetRHI().GetFormat();
 
 	rg::RGTextureViewHandle sceneRenderingResultTextureView;
 
@@ -155,7 +170,7 @@ void SandboxRenderer::RenderFrame()
 
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
-	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(m_sceneUITextureView);
+	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(output);
 
 	graphBuilder.CopyTexture(RG_DEBUG_NAME("Copy Scene Result Texture"),
 							 sceneRenderingResultTextureView, math::Vector3i::Zero(),
@@ -166,31 +181,21 @@ void SandboxRenderer::RenderFrame()
 	graphBuilder.ReleaseTextureWithTransition(sceneUItextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
 
 	graphBuilder.Execute();
-	
+
 	if (capturer.HasValidCapture())
 	{
-		using GPUFinishedDelegate = engn::OnGPUFinished::Delegate;
-
-		GPUFinishedDelegate delegate = GPUFinishedDelegate::CreateLambda([rgCapture = lib::Ref(capturer.GetCapture())](engn::FrameContext& context)
-																		 {
-																			 scui::ViewDefinition viewDef("Render Graph Capture Viewer");
-																			 viewDef.minimumSize = math::Vector2u(800, 600);
-																			 lib::SharedRef<rg::capture::RenderGraphCaptureUIView> captureView = lib::MakeShared<rg::capture::RenderGraphCaptureUIView>(viewDef, std::move(rgCapture));
-																			 scui::ApplicationUI::AddView(std::move(captureView));
-																		 });
-
-		engn::GetRenderingFrame().AddOnGPUFinishedDelegate(std::move(delegate));
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [rgCapture = lib::Ref(capturer.GetCapture())]
+				   {
+					   scui::ViewDefinition viewDef("Render Graph Capture Viewer");
+					   viewDef.minimumSize = math::Vector2u(800, 600);
+					   lib::SharedRef<rg::capture::RenderGraphCaptureUIView> captureView = lib::MakeShared<rg::capture::RenderGraphCaptureUIView>(viewDef, std::move(rgCapture));
+					   scui::ApplicationUI::AddView(std::move(captureView));
+				   },
+				   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 	}
-}
 
-ui::TextureID SandboxRenderer::GetUITextureID() const
-{
-	return m_sceneUITextureView ? rdr::UIBackend::GetUITextureID(lib::Ref(m_sceneUITextureView)) : ui::TextureID{};
-}
-
-const lib::SharedPtr<rdr::Window>& SandboxRenderer::GetWindow() const
-{
-	return m_window;
+	m_renderScene->EndFrame();
 }
 
 rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
@@ -201,27 +206,6 @@ rsc::SceneRenderer& SandboxRenderer::GetSceneRenderer()
 const lib::SharedPtr<rsc::RenderScene>& SandboxRenderer::GetRenderScene()
 {
 	return m_renderScene;
-}
-
-void SandboxRenderer::SetImageSize(const math::Vector2u& imageSize)
-{
-	math::Vector2u renderingResolution = imageSize;
-	// we want to have some minimal resolution as image size may be sometimes 0 (for example when imgui layout is resetted)
-	renderingResolution.x() = std::max<Uint32>(renderingResolution.x(), 2);
-	renderingResolution.y() = std::max<Uint32>(renderingResolution.y(), 2);
-	m_renderView->SetRenderingResolution(renderingResolution);
-
-	const Uint32 windowWidth = m_window->GetSwapchainSize().x();
-	const Real32 renderingFov = (renderingResolution.x() / static_cast<Real32>(windowWidth)) * m_fovDegrees;
-	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
-	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
-
-	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane, m_farPlane);
-}
-
-math::Vector2u SandboxRenderer::GetDisplayTextureResolution() const
-{
-	return m_sceneUITexture->GetResolution().head<2>();
 }
 
 const lib::SharedPtr<rsc::RenderView>& SandboxRenderer::GetRenderView() const
@@ -344,7 +328,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(-3.9f, -8.30f, 4.45f);
+			pointLightData.location = math::Vector3f(3.9f, -8.30f, 4.45f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -364,40 +348,36 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(-3.8f, -9.30f, 1.55f);
+			pointLightData.location = math::Vector3f(2.6f, -9.30f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
 		{
-			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
+			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color			= math::Vector3f(0.9569f, 0.9137f, 0.6078f);
 			directionalLightData.illuminance	= 95000.f;
-			directionalLightData.direction		= math::Vector3f(0.5f, 0.3f, -1.9f).normalized();
-			//directionalLightData.direction		= math::Vector3f(0.5f, 0.3f, 0.1f).normalized();
+			directionalLightData.direction		= math::Vector3f(-0.5f, -0.3f, -1.6f).normalized();
 			directionalLightData.lightConeAngle = 0.0046f;
-			lightSceneEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
+			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}
 }
 
-void SandboxRenderer::UpdateSceneUITextureForView(const rsc::RenderView& renderView)
+void SandboxRenderer::PrepareRenderView(math::Vector2u renderingResolution)
 {
-	const math::Vector2u& renderingResolution = renderView.GetRenderingResolution();
-	if (!m_sceneUITexture || (m_sceneUITexture->GetResolution().head<2>().array() != renderingResolution.head<2>().array()).any())
-	{
-		rhi::TextureDefinition textureDef;
-		textureDef.resolution	= renderingResolution;
-		textureDef.usage		= lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
-		textureDef.format		= m_window->GetRHI().GetFragmentFormat();
+	m_renderView->SetRenderingResolution(renderingResolution);
 
-		rhi::TextureViewDefinition viewDef;
-		viewDef.subresourceRange.aspect = rhi::ETextureAspect::Color;
+	const Real32 defaultAspectRatio = 16.f / 9.f;
 
-		m_sceneUITexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("DisplayTexture"), textureDef, rhi::EMemoryUsage::GPUOnly);
-		m_sceneUITextureView = m_sceneUITexture->CreateView(RENDERER_RESOURCE_NAME("DisplayTextureView"), viewDef);
-	}
+	const Real32 imageAspectRatio = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
+
+	const Real32 renderingFov = m_fovDegrees * std::min<Real32>((imageAspectRatio / defaultAspectRatio), 1.f);
+	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
+	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
+
+	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane, m_farPlane);
 }
 
 } // spt::ed

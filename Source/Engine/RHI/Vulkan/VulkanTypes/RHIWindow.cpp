@@ -80,23 +80,21 @@ RHIWindow& RHIWindow::operator=(RHIWindow&& rhs)
 	return *this;
 }
 
-void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount)
+void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount, IntPtr surfaceHandle)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsValid());
 
-	m_minImagesNum	= minImagesCount;
-	m_enableVSync	= windowInfo.enableVSync;
+	m_minImagesNum = minImagesCount;
+	m_enableVSync  = windowInfo.enableVSync;
+	m_surface      = reinterpret_cast<VkSurfaceKHR>(surfaceHandle);
 
 	const LogicalDevice& device						= VulkanRHI::GetLogicalDevice();
 	const VkPhysicalDevice physicalDeviceHandle		= VulkanRHI::GetPhysicalDeviceHandle();
-	const VkSurfaceKHR surfaceHandle				= VulkanRHI::GetSurfaceHandle();
 
 	const Bool success = ImGui_ImplVulkan_LoadFunctions(&priv::LoadVulkanFunction, nullptr);
 	SPT_CHECK(success);
-
-	m_surface = surfaceHandle;
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities{ VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT };
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDeviceHandle, m_surface, &surfaceCapabilities);
@@ -127,7 +125,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 	const VkColorSpaceKHR requestedColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 	m_surfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(physicalDeviceHandle, m_surface, requestSurfaceImageFormats, SPT_ARRAY_SIZE(requestSurfaceImageFormats), requestedColorSpace);
 
-	RebuildSwapchain(windowInfo.framebufferSize);
+	RebuildSwapchain(windowInfo.framebufferSize, reinterpret_cast<IntPtr>(m_surface));
 }
 
 void RHIWindow::ReleaseRHI()
@@ -136,31 +134,33 @@ void RHIWindow::ReleaseRHI()
 
 	SPT_CHECK(!!IsValid());
 
-	ReleaseSwapchainImages();
+	ReleaseSwapchain();
 
-	vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
-	m_swapchain = VK_NULL_HANDLE;
-
-	vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), m_surface, VulkanRHI::GetAllocationCallbacks());
-	m_surface = VK_NULL_HANDLE;
+	if (m_surface != VK_NULL_HANDLE)
+	{
+		vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), m_surface, VulkanRHI::GetAllocationCallbacks());
+		m_surface = VK_NULL_HANDLE;
+	}
 }
 
 Bool RHIWindow::IsValid() const
 {
+	return m_surface != VK_NULL_HANDLE;
+}
+
+Bool RHIWindow::IsSwapchainValid() const
+{
 	return m_swapchain != VK_NULL_HANDLE;
 }
 
-void RHIWindow::BeginFrame()
-{
-	SPT_PROFILER_FUNCTION();
-
-}
 
 Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout /*= idxNone<Uint64>*/)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsSwapchainOutOfDate());
+
+	const lib::LockGuard lock(m_swapchainLock);
 
 	Uint32 imageIdx = idxNone<Uint32>;
 	const VkResult result = vkAcquireNextImageKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, timeout, acquireSemaphore.GetHandle(), nullptr, &imageIdx);
@@ -179,6 +179,8 @@ RHITexture RHIWindow::GetSwapchinImage(Uint32 imageIdx) const
 {
 	SPT_CHECK(imageIdx < static_cast<Uint32>(m_swapchainImages.size()));
 
+	const lib::LockGuard lock(m_swapchainLock);
+
 	RHITexture texture;
 	texture.InitializeRHI(m_swapchainTextureDef, m_swapchainImages[imageIdx], rhi::EMemoryUsage::GPUOnly);
 
@@ -194,7 +196,9 @@ rhi::EFragmentFormat RHIWindow::GetFragmentFormat() const
 
 Uint32 RHIWindow::GetSwapchainImagesNum() const
 {
-	SPT_CHECK(IsValid());
+	SPT_CHECK(IsSwapchainValid());
+
+	const lib::LockGuard lock(m_swapchainLock);
 
 	return static_cast<Uint32>(m_swapchainImages.size());
 }
@@ -204,6 +208,8 @@ Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& wai
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsSwapchainOutOfDate());
+
+	const lib::LockGuard lock(m_swapchainLock);
 
 	lib::DynamicArray<VkSemaphore> waitSemaphoreHandles(waitSemaphores.size());
 	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
@@ -238,15 +244,49 @@ Bool RHIWindow::IsSwapchainOutOfDate() const
 	return m_swapchainOutOfDate;
 }
 
-void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize)
+void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize, IntPtr surfaceHandle)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_swapchain = CreateSwapchain(framebufferSize, m_swapchain);
+	m_swapchainSize = framebufferSize;
 
-	CacheSwapchainImages(m_swapchain);
+	const VkSurfaceKHR prevSurface = m_surface;
+	m_surface = reinterpret_cast<VkSurfaceKHR>(surfaceHandle);
+
+	if (framebufferSize.x() > 0 && framebufferSize.y() > 0)
+	{
+		const lib::LockGuard lock(m_swapchainLock);
+
+		m_swapchain = CreateSwapchain_Locked(framebufferSize, m_swapchain);
+
+		CacheSwapchainImages_Locked(m_swapchain);
+	}
+	else
+	{
+		ReleaseSwapchain();
+	}
+
+	if (m_surface != prevSurface && prevSurface != VK_NULL_HANDLE)
+	{
+		vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), prevSurface, VulkanRHI::GetAllocationCallbacks());
+	}
 	 
 	m_swapchainOutOfDate = false;
+}
+
+void RHIWindow::ReleaseSwapchain()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_swapchainLock);
+
+	ReleaseSwapchainImages_Locked();
+
+	if (m_swapchain != VK_NULL_HANDLE)
+	{
+		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
+		m_swapchain = VK_NULL_HANDLE;
+	}
 }
 
 math::Vector2u RHIWindow::GetSwapchainSize() const
@@ -268,6 +308,11 @@ void RHIWindow::SetVSyncEnabled(Bool newValue)
 	}
 }
 
+void RHIWindow::SetSwapchainOutOfDate()
+{
+	m_swapchainOutOfDate = true;
+}
+
 VkFormat RHIWindow::GetSurfaceFormat() const
 {
 	return m_surfaceFormat.format;
@@ -278,14 +323,12 @@ VkSwapchainKHR RHIWindow::GetSwapchainHandle() const
 	return m_swapchain;
 }
 
-VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)
+VkSwapchainKHR RHIWindow::CreateSwapchain_Locked(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const VkSurfaceKHR newSurface = VulkanRHI::GetSurfaceHandle();
-
 	const VkPresentModeKHR requestedPresentModes[] = { m_enableVSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR };
-	const VkPresentModeKHR presentMode = ImGui_ImplVulkanH_SelectPresentMode(VulkanRHI::GetPhysicalDeviceHandle(), newSurface, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
+	const VkPresentModeKHR presentMode = ImGui_ImplVulkanH_SelectPresentMode(VulkanRHI::GetPhysicalDeviceHandle(), m_surface, requestedPresentModes, SPT_ARRAY_SIZE(requestedPresentModes));
 
 	const VkFormat swapchainTextureFormat			= m_surfaceFormat.format;
 	const VkImageUsageFlags swapchainTextureUsage	= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -294,7 +337,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	const rhi::ETextureUsage rhiSwapchainTextureUsage		= RHITexture::GetRHITextureUsageFlags(swapchainTextureUsage);
 
 	VkSwapchainCreateInfoKHR swapchainInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-	swapchainInfo.surface					= newSurface;
+	swapchainInfo.surface					= m_surface;
 	swapchainInfo.minImageCount				= m_minImagesNum;
 	swapchainInfo.imageFormat				= m_surfaceFormat.format;
 	swapchainInfo.imageColorSpace			= m_surfaceFormat.colorSpace;
@@ -318,14 +361,8 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 
 	if (oldSwapchain)
 	{
-		ReleaseSwapchainImages();
+		ReleaseSwapchainImages_Locked();
 		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), oldSwapchain, VulkanRHI::GetAllocationCallbacks());
-	}
-
-	if (newSurface != m_surface)
-	{
-		vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), m_surface, VulkanRHI::GetAllocationCallbacks());
-		m_surface = newSurface;
 	}
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
@@ -336,7 +373,7 @@ VkSwapchainKHR RHIWindow::CreateSwapchain(math::Vector2u framebufferSize, VkSwap
 	return swapchain;
 }
 
-void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
+void RHIWindow::CacheSwapchainImages_Locked(VkSwapchainKHR swapchain)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -346,17 +383,12 @@ void RHIWindow::CacheSwapchainImages(VkSwapchainKHR swapchain)
 	SPT_VK_CHECK(vkGetSwapchainImagesKHR(VulkanRHI::GetDeviceHandle(), swapchain, &imagesNum, m_swapchainImages.data()));
 }
 
-void RHIWindow::ReleaseSwapchainImages()
+void RHIWindow::ReleaseSwapchainImages_Locked()
 {
 	for (VkImage image : m_swapchainImages)
 	{
 		VulkanRHI::GetLayoutsManager().UnregisterImage(image);
 	}
-}
-
-void RHIWindow::SetSwapchainOutOfDate()
-{
-	m_swapchainOutOfDate = true;
 }
 
 } // spt::vulkan

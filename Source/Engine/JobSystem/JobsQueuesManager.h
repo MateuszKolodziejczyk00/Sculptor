@@ -13,7 +13,7 @@ namespace spt::js
 class JobInstance;
 
 using LocalQueueType	= WorkStealingQueue<JobInstance*>;
-using GlobalQueueType	= lib::MPMCQueue<lib::MTHandle<JobInstance>, 64>;
+using GlobalQueueType	= lib::MPMCQueue<lib::MTHandle<JobInstance>, 256>;
 
 
 class JobsQueueManagerTls
@@ -35,6 +35,7 @@ public:
 	static lib::MTHandle<JobInstance> DequeueLocal();
 
 	static lib::MTHandle<JobInstance> Steal();
+	static lib::MTHandle<JobInstance> Steal(Int32 attempts);
 
 	// Sleep Events =======================================
 

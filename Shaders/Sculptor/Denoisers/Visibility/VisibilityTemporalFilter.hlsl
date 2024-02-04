@@ -58,7 +58,7 @@ void TemporalFilterCS(CS_INPUT input)
             const float3 historyWS = NDCToWorldSpaceNoJitter(historyNDC, u_prevFrameSceneView);
 
             const float VdotN = max(dot(u_sceneView.viewForward, currentSampleNormal), 0.f);
-            const float distanceThreshold = lerp(0.0225f, 0.103f, 1.f - VdotN);
+            const float distanceThreshold = lerp(0.0125f, 0.033f, 1.f - VdotN);
 
             sampleDistance = max(sampleDistance, distance(historyWS, currentSampleWS));
 

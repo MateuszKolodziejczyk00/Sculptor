@@ -27,4 +27,9 @@ Real32 EngineTimer::GetDeltaTime() const
 	return m_lastDeltaTime;
 }
 
+Real32 EngineTimer::GetCurrentTimeSeconds() const
+{
+	return m_tickingTimer.GetCurrentTimeSeconds();
+}
+
 } // spt::engn

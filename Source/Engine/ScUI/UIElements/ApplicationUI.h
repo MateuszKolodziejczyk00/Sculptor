@@ -4,6 +4,7 @@
 #include "ScUIMacros.h"
 #include "UIContext.h"
 #include "UILayers/UIView.h"
+#include "ScUITypes.h"
 
 
 namespace spt::scui
@@ -30,13 +31,18 @@ public:
 
 	static void CloseAllViews();
 
-	static void Draw(ui::UIContext context);
+	static void Draw(const Context& context);
+
+	// Can be called only during Draw()
+	static const Context& GetCurrentContext();
 
 private:
 
 	ApplicationUI() = default;
 
 	UIViewsContainer m_views;
+
+	const Context* m_currentContext = nullptr;
 };
 
 } // spt::scui

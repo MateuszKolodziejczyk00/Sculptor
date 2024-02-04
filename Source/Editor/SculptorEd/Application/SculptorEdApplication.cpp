@@ -22,6 +22,8 @@
 #include "Paths.h"
 #include "ECSRegistry.h"
 #include "DeviceQueues/GPUWorkload.h"
+#include "Utils/GPUWaitableEvent.h"
+#include "EditorFrame.h"
 
 
 namespace spt::ed
@@ -31,7 +33,6 @@ SPT_DEFINE_LOG_CATEGORY(AppLog, true)
 
 
 SculptorEdApplication::SculptorEdApplication()
-	: isSwapchainValid(true)
 { }
 
 void SculptorEdApplication::OnInit(int argc, char** argv)
@@ -40,7 +41,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	engn::EngineInitializationParams engineInitializationParams;
 	engineInitializationParams.cmdLineArgsNum = argc;
-	engineInitializationParams.cmdLineArgs = argv;
+	engineInitializationParams.cmdLineArgs    = argv;
 	engn::Engine::Get().Initialize(engineInitializationParams);
 
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());
@@ -55,7 +56,7 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 
 	rhi::RHIWindowInitializationInfo windowInitInfo;
 	windowInitInfo.framebufferSize = math::Vector2u(1920, 1080);
-	windowInitInfo.enableVSync = false;
+	windowInitInfo.enableVSync     = false;
 	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", windowInitInfo);
 
 	rdr::Renderer::PostCreatedWindow();
@@ -79,14 +80,6 @@ void SculptorEdApplication::OnRun()
 
 	rdr::UIBackend::Initialize(uiContext, lib::Ref(m_window));
 
-	engn::FramesManagerInitializationInfo framesManagerInitInfo;
-	framesManagerInitInfo.preExecuteFrame.BindRawMember(this, &SculptorEdApplication::PreExecuteFrame);
-	framesManagerInitInfo.executeSimulationFrame.BindRawMember(this, &SculptorEdApplication::ExecuteSimulationFrame);
-	framesManagerInitInfo.executeRenderingFrame.BindRawMember(this, &SculptorEdApplication::ExecuteRenderingFrame);
-	engn::EngineFramesManager::Initialize(framesManagerInitInfo);
-
-	rdr::Renderer::IncrementFrameReleaseSemaphore(engn::GetGPUFrame().GetFrameIdx());
-
 	ImGui::SetCurrentContext(uiContext.GetHandle());
 
 	{
@@ -108,18 +101,20 @@ void SculptorEdApplication::OnRun()
 		rdr::UIBackend::DestroyFontsTemporaryObjects();
 	}
 
-	m_renderer = std::make_unique<SandboxRenderer>(m_window);
-
 	scui::ViewDefinition sandboxViewDef;
 	sandboxViewDef.name = "SandboxView";
 	sandboxViewDef.minimumSize = m_window->GetSwapchainSize();
-	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef, *m_renderer);
+	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef);
+
+	lib::SharedPtr<EditorFrameContext> currentFrame;
 
 	while (true)
 	{
 		SPT_PROFILER_FRAME("EditorFrame");
 
-		m_window->Update(engn::GetSimulationFrame().GetDeltaTime());
+		currentFrame = engn::EngineFramesManager::CreateFrame<EditorFrameContext>();
+
+		m_window->Update();
 
 		if (m_window->ShouldClose())
 		{
@@ -127,37 +122,33 @@ void SculptorEdApplication::OnRun()
 		}
 
 		m_window->BeginFrame();
-	
-		engn::EngineFramesManager::ExecuteFrame();
 
-		if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-		    // Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-		    RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-		 	ImGui::UpdatePlatformWindows();
-		    ImGui::RenderPlatformWindowsDefault();
-		}
+		ExecuteFrame(*currentFrame);
+	}
+
+	if (currentFrame)
+	{
+		currentFrame->BeginAdvancingStages();
+		currentFrame->WaitFrameFinished();
 	}
 }
 
 void SculptorEdApplication::OnShutdown()
 {
+	rdr::Renderer::WaitIdle();
+
 	scui::ApplicationUI::CloseAllViews();
 
 	engn::EngineFramesManager::Shutdown();
-
-	m_renderer.reset();
 
 	ecs::GetRegistry().clear();
 	
 	rdr::UIBackend::Uninitialize();
 
-	rdr::Renderer::WaitIdle();
-	
 	m_window->UninitializeUI();
 
 	m_window.reset();
-
+	
 	rdr::Renderer::Uninitialize();
 
 	js::JobSystem::Shutdown();
@@ -165,7 +156,132 @@ void SculptorEdApplication::OnShutdown()
 	Super::OnShutdown();
 }
 
-void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
+void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const rdr::SwapchainTextureHandle swapchainTexture = AcquireSwapchainTexture(frame);
+	if (!swapchainTexture.IsValid())
+	{
+		// skip frame
+		frame.BeginAdvancingStages();
+		return;
+	}
+
+	const js::Event uiFinishedEvent = js::CreateEvent("UI FinishedEvent", frame.GetStageFinishedEvent(engn::EFrameStage::UI));
+
+	frame.BeginAdvancingStages();
+
+	UpdateUI(frame);
+
+	const rhi::EFragmentFormat swapchainFormat = m_window->GetRHI().GetFragmentFormat();
+
+	js::JobWithResult recordUICommandsJob = js::Launch(SPT_GENERIC_JOB_NAME,
+													   [this, swapchainFormat]
+													   {
+														   return RecordUICommands(swapchainFormat);
+													   },
+													   js::JobDef().ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
+
+	js::Job renderWindowJob = js::Launch(SPT_GENERIC_JOB_NAME,
+										 [this, &frame, swapchainTexture, recordUICommandsJob]
+										 {
+											 const auto [uiCommandsWorkload, uiRenderContext] = recordUICommandsJob.GetResult();
+											 RenderFrame(frame, swapchainTexture, uiCommandsWorkload);
+										 },
+										 js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::RenderWindow),
+														   recordUICommandsJob),
+										 js::JobDef()
+											 .SetPriority(js::EJobPriority::High)
+											 .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow)));
+
+	uiFinishedEvent.Signal();
+
+	frame.WaitUpdateEnded();
+}
+
+void SculptorEdApplication::UpdateUI(EditorFrameContext& frame)
+{
+	SPT_PROFILER_FUNCTION();
+	
+	rdr::UIBackend::BeginFrame();
+
+	ImGui::NewFrame();
+
+	scui::Context uiDrawContext(frame, uiContext, m_window->GetRHI().GetFragmentFormat());
+	scui::ApplicationUI::Draw(uiDrawContext);
+}
+
+std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> SculptorEdApplication::RecordUICommands(rhi::EFragmentFormat rtFormat) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const js::JobWithResult createRenderingContextJob = js::Launch(SPT_GENERIC_JOB_NAME,
+																   []
+																   {
+																	   const auto res = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("UI Render Context"), rhi::ContextDefinition());
+																	   return res;
+																   });
+
+
+	ImGui::Render();
+
+	ImGuiIO& imGuiIO = ImGui::GetIO();
+	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		// Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
+		RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
+
+	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+	recorder->RenderUI();
+
+	rdr::CommandsRecordingInfo recordingInfo;
+	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("Render UI Secondary Cmd Buffer");
+	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Secondary, rhi::ECommandBufferComplexityClass::Low);
+
+	rhi::RenderingInheritanceDefinition renderingInheritanceDef;
+	renderingInheritanceDef.colorRTFormats.emplace_back(rtFormat);
+	
+	rhi::CommandBufferUsageDefinition cmdBufferUsageDef;
+	cmdBufferUsageDef.beginFlags           = lib::Flags(rhi::ECommandBufferBeginFlags::OneTimeSubmit, rhi::ECommandBufferBeginFlags::ContinueRendering);
+	cmdBufferUsageDef.renderingInheritance = std::move(renderingInheritanceDef);
+
+	const lib::SharedRef<rdr::RenderContext> renderContext = createRenderingContextJob.Await();
+		
+	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(renderContext, recordingInfo, cmdBufferUsageDef);
+
+	return std::make_pair(workload, renderContext);
+}
+
+rdr::SwapchainTextureHandle SculptorEdApplication::AcquireSwapchainTexture(EditorFrameContext& frame)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (m_window->IsSwapchainOutOfDate())
+	{
+		frame.FlushPreviousFrames();
+		m_window->RebuildSwapchain();
+	}
+
+	// swapchain still may be invalid after rebuild if window is minimized
+	if (!m_window->IsSwapchainValid())
+	{
+		return rdr::SwapchainTextureHandle{};
+	}
+
+	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
+	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
+
+	const rdr::SwapchainTextureHandle swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
+
+	return swapchainTexture;
+}
+
+void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::SwapchainTextureHandle swapchainTextureHandle, const lib::SharedRef<rdr::GPUWorkload>& recordedUIWorkload)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -173,41 +289,14 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 	rdr::Renderer::WaitIdle();
 #endif // WITH_NSIGHT_CRASH_FIX
 
-	const auto onSwapchainOutOfDateBeforeRendering = [this]()
-	{
-		ImGui::EndFrame();
-		rdr::Renderer::WaitIdle();
-		isSwapchainValid = m_window->RebuildSwapchain();
-		rdr::Renderer::IncrementFrameReleaseSemaphore(engn::EngineFramesManager::GetRenderingFrame().GetFrameIdx());
-	};
+	rg::RenderGraphManager::OnBeginFrame();
 
-	// Additional check in case of changing swapchain settings in application
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		onSwapchainOutOfDateBeforeRendering();
-		return;
-	}
-
-	if (!isSwapchainValid)
+	if (!swapchainTextureHandle.IsValid() || m_window->IsSwapchainOutOfDate())
 	{
 		return;
 	}
 
-	const rhi::SemaphoreDefinition semaphoreDef(rhi::ESemaphoreType::Binary);
-	const lib::SharedRef<rdr::Semaphore> acquireSemaphore = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("AcquireSemaphore"), semaphoreDef);
-
-	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->AcquireNextSwapchainTexture(acquireSemaphore);
-
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		onSwapchainOutOfDateBeforeRendering();
-		return;
-	}
-
-	js::Job rendererJob = js::Launch(SPT_GENERIC_JOB_NAME, [&renderer]
-									 {
-										 renderer.RenderFrame();
-									 });
+	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->GetSwapchainTexture(swapchainTextureHandle);
 
 	const js::JobWithResult createRenderingContextJob = js::Launch(SPT_GENERIC_JOB_NAME, []
 																   {
@@ -237,7 +326,7 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 
 		{
-			rdr::RenderingDefinition renderingDef( math::Vector2i(0, 0), m_window->GetSwapchainSize());
+			rdr::RenderingDefinition renderingDef( math::Vector2i(0, 0), m_window->GetSwapchainSize(), lib::Flags(rhi::ERenderingFlags::Default, rhi::ERenderingFlags::ContentsSecondaryCmdBuffers));
 			rdr::RTDefinition renderTarget;
 			renderTarget.textureView = swapchainTextureView;
 			renderTarget.loadOperation = rhi::ERTLoadOperation::Clear;
@@ -254,13 +343,14 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 
 			recorder->BeginRendering(renderingDef);
 
-			recorder->RenderUI();
+			recorder->ExecuteCommands(recordedUIWorkload);
 
 			recorder->EndRendering();
 		}
 
 		{
 			rhi::RHIDependency dependency;
+
 			const SizeType RTBarrierIdx = dependency.AddTextureDependency(swapchainTexture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			dependency.SetLayoutTransition(RTBarrierIdx, rhi::TextureTransition::PresentSource);
 
@@ -274,65 +364,25 @@ void SculptorEdApplication::RenderFrame(SandboxRenderer& renderer)
 		}
 	}
 
-	ImGui::Render();
-
 	rdr::CommandsRecordingInfo recordingInfo;
-	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransferCmdBuffer");
+	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("Render Window UI Cmd Buffer");
 	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(createRenderingContextJob.Await(), recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
 
+	workload->GetWaitSemaphores().AddBinarySemaphore(swapchainTextureHandle.GetAcquireSemaphore(), rhi::EPipelineStage::TopOfPipe);
+
 	const lib::SharedRef<rdr::Semaphore> uiFinishedSemaphore = workload->AddBinarySignalSemaphore(RENDERER_RESOURCE_NAME("UI Finished Semaphore"), rhi::EPipelineStage::ALL_COMMANDS);
+
 	// extend lifetime of this semaphore to the end of the frame
 	// normally we're going to destroy all resources from this frame after flip workload will finish
 	// but this semaphore must be valid until present is done (spec is a bit loose here but it's better to be safe)
-	engn::GetRenderingFrame().AddFinalizeGPUDelegate(engn::OnFinalizeGPU::Delegate::CreateLambda([uiFinishedSemaphore](engn::FrameContext& context) {}));
+	workload->BindEvent(js::CreateEvent(SPT_GENERIC_JOB_NAME, [uiFinishedSemaphore] {}));
 
-	rendererJob.Wait();
+	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
 
-	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::FlipFrame, rdr::EGPUWorkloadSubmitFlags::CorePipe));
+	frame.SetFrameFinishedOnGPUWaitable(lib::MakeShared<rdr::GPUWaitableEvent>(workload));
 
-	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), { uiFinishedSemaphore });
-
-	if (m_window->IsSwapchainOutOfDate())
-	{
-		rdr::Renderer::WaitIdle();
-		isSwapchainValid = m_window->RebuildSwapchain();
-	}
-}
-
-void SculptorEdApplication::PreExecuteFrame()
-{
-	rdr::UIBackend::BeginFrame();
-
-	ImGui::NewFrame();
-
-	scui::ApplicationUI::Draw(uiContext);
-}
-
-void SculptorEdApplication::ExecuteSimulationFrame(engn::FrameContext& context)
-{
-	engn::EngineFramesManager::DispatchTickFrame(context);
-}
-
-void SculptorEdApplication::ExecuteRenderingFrame(engn::FrameContext& context)
-{
-	SPT_PROFILER_FUNCTION();
-	
-	context.AddFinalizeGPUDelegate(engn::OnFinalizeGPU::Delegate::CreateLambda([](engn::FrameContext& context)
-																			   {
-																				   rdr::Renderer::WaitForFrameRendered(context.GetFrameIdx());
-																			   }));
-
-	const Real32 deltaTime = context.GetDeltaTime();
-
-	rdr::Renderer::BeginFrame();
-
-	rg::RenderGraphManager::OnBeginFrame();
-
-	engn::EngineFramesManager::DispatchTickFrame(context);
-	m_renderer->Tick(deltaTime);
-
-	RenderFrame(*m_renderer);
+	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
 }
 
 } // spt::ed

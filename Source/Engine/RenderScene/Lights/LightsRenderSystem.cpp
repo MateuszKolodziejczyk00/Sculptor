@@ -476,14 +476,16 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		if (shadowMapsSystem->IsMainView(viewSpec.GetRenderView()))
 		{
 			const lib::WeakPtr<ShadowMapsManagerSubsystem> weakShadowMapsManager = shadowMapsSystem;
-			engn::GetRenderingFrame().AddOnGPUFinishedDelegate(engn::OnGPUFinished::Delegate::CreateLambda([ weakShadowMapsManager, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer ](engn::FrameContext& context)
-																										   {
-																											   const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = weakShadowMapsManager.lock();
-																											   if (shadowMapsManager)
-																											   {
-																												   shadowMapsManager->UpdateVisibleLocalLights(visibleLightsBuffer);
-																											   }
-																										   }));
+			js::Launch("Update Visible Local Lights",
+					   [weakShadowMapsManager, visibleLightsBuffer = lightsRenderingData.visibleLightsReadbackBuffer]
+					   {
+						   const lib::SharedPtr<ShadowMapsManagerSubsystem> shadowMapsManager = weakShadowMapsManager.lock();
+						   if (shadowMapsManager)
+						   {
+							   shadowMapsManager->UpdateVisibleLocalLights(visibleLightsBuffer);
+						   }
+					   },
+					   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 		}
 
 		RenderView& renderView = viewSpec.GetRenderView();

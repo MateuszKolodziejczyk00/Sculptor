@@ -3,6 +3,10 @@
 #include "EngineCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
+#include "Job.h"
+#include "Event.h"
+#include "Utility/Threading/Waitable.h"
+#include "Engine.h"
 
 
 namespace spt::engn
@@ -10,31 +14,54 @@ namespace spt::engn
 
 class FrameContext;
 
-
 enum class EFrameState
 {
-	Simulation,
+	Updating,
 	Rendering,
 	GPU,
-	NUM_TICKABLE_FRAMES = GPU,
-	NUM_PARALLEL_FRAMES
+
+	NUM_TICKABLE_FRAMES = 2,
 };
 
 
-/**
- * These delegates are called when given state of frame is finished
- * Finalize delegates are called to finalize the state of frame and make sure that all data is ready for next state (e.g. here You can wait for GPU semaphore)
- * OnFinished delegates are called when We're sure that current state is finished and next state can be started
- */
+namespace EFrameStage
+{
 
-using OnFinalizeSimulation	= lib::MulticastDelegate<void(FrameContext& context)>;
-using OnSimulationFinished	= lib::MulticastDelegate<void(FrameContext& context)>;
+enum Type : Int32
+{
+	PreFrame = -1,
 
-using OnFinalizeRendering	= lib::MulticastDelegate<void(FrameContext& context)>;
-using OnRenderingFinished	= lib::MulticastDelegate<void(FrameContext& context)>;
+	Begin,
+	
+	// Render UI and request next stages jobs
+	// e.g. update world that is visible on screen
+	UI,
+	AsyncWithUI = UI,
+	
+	ProcessViewsUpdate,
 
-using OnFinalizeGPU			= lib::MulticastDelegate<void(FrameContext& context)>;
-using OnGPUFinished			= lib::MulticastDelegate<void(FrameContext& context)>;
+	ProcessViewsRendering,
+
+	// Render UI
+	RenderWindow,
+
+	Finalize,
+
+	Last = Finalize,
+
+	Finished,
+	NUM = Finished,
+
+	First = Begin,
+
+	UpdatingBegin = First,
+	UpdatingEnd   = ProcessViewsUpdate,
+
+	RenderingBegin = ProcessViewsRendering,
+	RenderingEnd   = RenderWindow
+};
+
+} // EFrameStage
 
 
 struct FrameDefinition
@@ -52,22 +79,24 @@ struct FrameDefinition
 };
 
 
-class ENGINE_CORE_API FrameContext
+class ENGINE_CORE_API FrameContext : public std::enable_shared_from_this<FrameContext>
 {
 public:
 
-	FrameContext();
+	explicit FrameContext();
+	virtual ~FrameContext();
 
-	// Frame Delegates ================================================
+	// Frame Flow =====================================================
 
-	void AddFinalizeSimulationDelegate(OnFinalizeSimulation::Delegate delegate);
-	void AddOnSimulationFinishedDelegate(OnSimulationFinished::Delegate delegate);
+	void BeginFrame(const FrameDefinition& definition, lib::SharedPtr<FrameContext> prevFrame);
 
-	void AddFinalizeRenderingDelegate(OnFinalizeRendering::Delegate delegate);
-	void AddOnRenderingFinishedDelegate(OnRenderingFinished::Delegate delegate);
+	void WaitUpdateEnded();
+	void WaitRenderingEnded();
+	void WaitFrameFinished();
 
-	void AddFinalizeGPUDelegate(OnFinalizeGPU::Delegate delegate);
-	void AddOnGPUFinishedDelegate(OnGPUFinished::Delegate delegate);
+	void SetFrameFinishedOnGPUWaitable(lib::SharedPtr<lib::Waitable> waitable);
+
+	void FlushPreviousFrames();
 
 	// Frame Data =====================================================
 
@@ -78,75 +107,46 @@ public:
 
 	EFrameState GetFrameState() const { return m_frameState; }
 
+	// Frame Stages ===================================================
+
+	const js::Event& GetStageBeginEvent(EFrameStage::Type stage);
+	const js::Event& GetStageFinishedEvent(EFrameStage::Type stage);
+
+	void BeginAdvancingStages();
+
+protected:
+
+	virtual void DoStagesTransition(EFrameStage::Type prevStage, EFrameStage::Type nextStage);
+
 private:
 
-	// Frame Flow =====================================================
+	FrameDefinition m_frameDefinition;
 
-	void BeginFrame(const FrameDefinition& definition);
+	EFrameState m_frameState;
 
-	void SetFrameState(EFrameState state);
+	js::Event m_stageEndedEvents[EFrameStage::NUM];
 
-	void FinalizeSimulation();
-	void EndSimulation();
+	lib::SharedPtr<lib::Waitable> m_frameFinishedOnGPUWaitable;
 
-	void FinalizeRendering();
-	void EndRendering();
+	EFrameStage::Type m_currentStage;
 
-	void FinalizeGPU();
-	void EndGPU();
-
-	void EndFrame();
-
-	void Reset();
-
-	FrameDefinition			m_frameDefinition;
-
-	OnFinalizeSimulation	m_finalizeSimulation;
-	OnSimulationFinished	m_onSimulationFinished;
-	
-	OnFinalizeRendering		m_finalizeRendering;
-	OnRenderingFinished		m_onRenderingFinished;
-
-	OnFinalizeGPU			m_finalizeGPU;
-	OnGPUFinished			m_onGPUFinished;
-
-	EFrameState				m_frameState;
-
-	friend class EngineFramesManager;
+	lib::SharedPtr<FrameContext> m_prevFrame;
 };
-
-
-using PreExecuteFrame			= lib::Delegate<void()>;
-using ExecuteSimulationFrame	= lib::Delegate<void(FrameContext& context)>;
-using ExecuteRenderingFrame		= lib::Delegate<void(FrameContext& context)>;
 
 
 using OnFrameTick = lib::MulticastDelegate<void(Real32 deltaTime)>;
-
-
-struct FramesManagerInitializationInfo
-{
-	PreExecuteFrame			preExecuteFrame;
-	ExecuteSimulationFrame	executeSimulationFrame;
-	ExecuteRenderingFrame	executeRenderingFrame;
-};
 
 
 class ENGINE_CORE_API EngineFramesManager
 {
 public:
 
-	static void Initialize(FramesManagerInitializationInfo& info);
+	static EngineFramesManager& GetInstance();
 
 	static void Shutdown();
 
-	static EngineFramesManager& GetInstance();
-
-	static FrameContext& GetSimulationFrame();
-	static FrameContext& GetRenderingFrame();
-	static FrameContext& GetGPUFrame();
-
-	static void ExecuteFrame();
+	template<typename TFrameContextType>
+	static lib::SharedPtr<TFrameContextType> CreateFrame();
 
 	static void DispatchTickFrame(const FrameContext& context);
 
@@ -155,51 +155,42 @@ public:
 
 private:
 
-	static constexpr Uint32 parallelFramesNum = (Uint32)EFrameState::NUM_PARALLEL_FRAMES;
 	static constexpr Uint32 tickableFramesNum = (Uint32)EFrameState::NUM_TICKABLE_FRAMES;
 
 	EngineFramesManager();
-
-	void InitializeImpl(FramesManagerInitializationInfo& info);
-
-	void ShutdownImpl();
-
-	void ExecuteFrameImpl();
-	
-	PreExecuteFrame			m_preExecuteFrame;
-
-	ExecuteSimulationFrame	m_executeSimulationFrame;
-	ExecuteRenderingFrame	m_executeRenderingFrame;
 
 	OnFrameTick m_onFrameTick[tickableFramesNum];
 
 	Uint64 m_frameCounter;
 
-	FrameContext* m_simulationFrame;
-	FrameContext* m_renderingFrame;
-	FrameContext* m_gpuFrame;
-
-	FrameContext m_frames[parallelFramesNum];
+	lib::SharedPtr<FrameContext> m_lastFrame;
 };
 
-
-inline FrameContext& GetSimulationFrame()
+template<typename TFrameContextType>
+static lib::SharedPtr<TFrameContextType> EngineFramesManager::CreateFrame()
 {
-	return EngineFramesManager::GetSimulationFrame();
+	SPT_PROFILER_FUNCTION();
+
+	EngineFramesManager& manager = GetInstance();
+
+	const Uint64 frameIdx = manager.m_frameCounter++;
+
+	lib::SharedPtr<TFrameContextType> frame = lib::MakeShared<TFrameContextType>();
+
+	const Real32 deltaTime = Engine::Get().BeginFrame();
+	const Real32 time      = Engine::Get().GetTime();
+
+	FrameDefinition def;
+	def.frameIdx  = frameIdx;
+	def.deltaTime = deltaTime;
+	def.time      = time;
+
+	frame->BeginFrame(def, std::move(manager.m_lastFrame));
+
+	manager.m_lastFrame = frame;
+
+	return frame;
 }
-
-
-inline FrameContext& GetRenderingFrame()
-{
-	return EngineFramesManager::GetRenderingFrame();
-}
-
-
-inline FrameContext& GetGPUFrame()
-{
-	return EngineFramesManager::GetGPUFrame();
-}
-
 
 template<EFrameState frameState, typename TDerived>
 class EngineTickable

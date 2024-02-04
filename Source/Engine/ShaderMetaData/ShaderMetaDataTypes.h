@@ -790,7 +790,7 @@ public:
 		return std::visit(
 			[](const auto data) -> Uint8
 			{
-				return data.setIdx;
+				return static_cast<Uint8>(data.setIdx);
 			},
 			m_data);
 	}
@@ -800,7 +800,7 @@ public:
 		return std::visit(
 			[](const auto data) -> Uint8
 			{
-				return data.bindingIdx;
+				return static_cast<Uint8>(data.bindingIdx);
 			},
 			m_data);
 	}

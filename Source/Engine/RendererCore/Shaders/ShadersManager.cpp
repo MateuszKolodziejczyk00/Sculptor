@@ -141,7 +141,8 @@ void ShadersManager::HotReloadShaders()
 								Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
 							}
 						},
-						js::EJobPriority::Low);
+						js::JobDef().SetPriority(js::EJobPriority::Low),
+						js::JobDef().SetPriority(js::EJobPriority::Low));
 
 }
 #endif // WITH_SHADERS_HOT_RELOAD

@@ -31,6 +31,8 @@ public:
 
 	static Bool TryExecuteScheduledJob(Bool allowLocalQueueJobs);
 
+	static SizeType GetWorkerThreadsNum();
+
 private:
 
 	static void WakeWorker();

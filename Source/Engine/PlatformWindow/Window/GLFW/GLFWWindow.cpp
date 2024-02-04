@@ -21,12 +21,16 @@ struct GLFWWindowData
 {
 	GLFWWindowData()
 		: windowHandle(nullptr)
+		, rhiSurfaceHandle(0)
 	{ }
 
 	GLFWwindow* windowHandle;
 
 	GLFWWindow::OnWindowResizedDelegate onResized;
 	GLFWWindow::OnWindowClosedDelegate onClosed;
+	GLFWWindow::OnRHISurfaceUpdate onRHISurfaceUpdate;
+
+	IntPtr rhiSurfaceHandle;
 
 	GLFWInputAdapter inputAdapter;
 };
@@ -48,11 +52,18 @@ static RequiredExtensionsInfo GetRequiredExtensions()
 
 static void InitializeRHIWindow(GLFWwindow* windowHandle)
 {
+	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(windowHandle));
+	SPT_CHECK(!!windowData);
+
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	glfwCreateWindowSurface(rhi::RHI::GetInstanceHandle(), windowHandle, rhi::RHI::GetAllocationCallbacks(), &surface);
 	SPT_CHECK(!!surface);
 
-	rhi::RHI::SetSurfaceHandle(surface);
+	const IntPtr newSurfaceHandle = reinterpret_cast<IntPtr>(surface);
+
+	windowData->onRHISurfaceUpdate.Broadcast(windowData->rhiSurfaceHandle, newSurfaceHandle);
+
+	windowData->rhiSurfaceHandle = newSurfaceHandle;
 }
 
 #else
@@ -80,8 +91,6 @@ static void OnWindowResized(GLFWwindow* window, int newWidth, int newHeight)
 
 	GLFWWindowData* windowData = static_cast<GLFWWindowData*>(glfwGetWindowUserPointer(window));
 	SPT_CHECK(!!windowData);
-
-	InitializeRHIWindow(window);
 
 	windowData->onResized.Broadcast(static_cast<Uint32>(newWidth), static_cast<Uint32>(newHeight));
 }
@@ -168,6 +177,16 @@ math::Vector2u GLFWWindow::GetFramebufferSize() const
 	return math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
 }
 
+void GLFWWindow::UpdateRHISurface() const
+{
+	priv::InitializeRHISurface(m_windowData->windowHandle);
+}
+
+IntPtr GLFWWindow::GetRHISurfaceHandle() const
+{
+	return m_windowData->rhiSurfaceHandle;
+}
+
 void GLFWWindow::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();
@@ -178,7 +197,7 @@ void GLFWWindow::BeginFrame()
 	}
 }
 
-void GLFWWindow::Update(Real32 deltaTime)
+void GLFWWindow::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -200,6 +219,11 @@ GLFWWindow::OnWindowResizedDelegate& GLFWWindow::GetOnResizedCallback()
 GLFWWindow::OnWindowClosedDelegate& GLFWWindow::GetOnClosedCallback()
 {
 	return m_windowData->onClosed;
+}
+
+GLFWWindow::OnRHISurfaceUpdate& GLFWWindow::OnRHISurfaceUpdateCallback()
+{
+	return m_windowData->onRHISurfaceUpdate;
 }
 
 void GLFWWindow::InitializeUI(ui::UIContext context)
@@ -244,11 +268,11 @@ void GLFWWindow::InitializeWindow(lib::StringView name, math::Vector2u resolutio
 {
 	GLFWwindow* windowHandle = glfwCreateWindow(resolution.x(), resolution.y(), name.data(), NULL, NULL);
 
-	priv::InitializeRHISurface(windowHandle);
-
 	m_windowData->windowHandle = windowHandle;
 
 	glfwSetWindowUserPointer(windowHandle, m_windowData.get());
+
+	priv::InitializeRHISurface(windowHandle);
 
 	glfwSetWindowSizeCallback(windowHandle, &priv::OnWindowResized);
 	glfwSetWindowCloseCallback(windowHandle, &priv::OnWindowClosed);

@@ -15,10 +15,7 @@ void UIBackend::Initialize(ui::UIContext context, const lib::SharedRef<Window>& 
 
 void UIBackend::Uninitialize()
 {
-	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda([rhiBackend = GetRHI()]() mutable
-																	{
-																		rhiBackend.ReleaseRHI();
-																	});
+	GetRHI().ReleaseRHI();
 }
 
 Bool UIBackend::IsValid()

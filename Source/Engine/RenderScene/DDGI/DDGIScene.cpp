@@ -308,6 +308,11 @@ lib::SharedRef<DDGIVolume> DDGIScene::BuildVolume(const DDGIVolumeParams& params
 	return volume;
 }
 
+RenderScene& DDGIScene::GetOwningScene() const
+{
+	return m_owningScene;
+}
+
 Uint32 DDGIScene::FindAvailableVolumeIdx() const
 {
 	const SizeType volumesCount = m_ddgiSceneDS->u_ddgiVolumes.GetSize();
@@ -444,8 +449,10 @@ void DDGIScene::UpdatePriorities(const SceneView& mainView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Real32 currentTime = engn::GetRenderingFrame().GetTime();
-	const Real32 deltaTime   = engn::GetRenderingFrame().GetDeltaTime();
+	const engn::FrameContext& currentFrame = m_owningScene.GetCurrentFrameRef();
+
+	const Real32 currentTime = currentFrame.GetTime();
+	const Real32 deltaTime   = currentFrame.GetDeltaTime();
 
 	for (DDGIVolume* volume : m_volumes)
 	{

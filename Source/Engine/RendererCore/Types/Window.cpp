@@ -11,9 +11,14 @@ namespace spt::rdr
 Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)
 	: m_platformWindow(std::make_unique<platf::PlatformWindow>(name, windowInfo.framebufferSize))
 {
-	rhi::RHI::InitializeGPUForWindow();
+	const IntPtr surfaceHandle = m_platformWindow->GetRHISurfaceHandle();
 
-	GetRHI().InitializeRHI(windowInfo, RendererSettings::Get().framesInFlight);
+	rhi::RHI::InitializeGPUForWindow(surfaceHandle);
+
+	GetRHI().InitializeRHI(windowInfo, RendererSettings::Get().framesInFlight, surfaceHandle);
+
+	m_platformWindow->GetOnResizedCallback().AddRawMember(this, &Window::OnWindowResized);
+	m_platformWindow->OnRHISurfaceUpdateCallback().AddRawMember(this, &Window::OnRHISurfaceUpdate);
 }
 
 Bool Window::ShouldClose() const
@@ -28,36 +33,43 @@ void Window::BeginFrame()
 	m_platformWindow->BeginFrame();
 }
 
-void Window::Update(Real32 deltaTime)
+void Window::Update()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_platformWindow->Update(deltaTime);
+	m_platformWindow->Update();
 }
 
-lib::SharedPtr<Texture> Window::AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout /*= maxValue<Uint64>*/)
+SwapchainTextureHandle Window::AcquireNextSwapchainTexture(const lib::SharedPtr<Semaphore>& acquireSemaphore, Uint64 timeout /*= maxValue<Uint64>*/)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const rhi::RHISemaphore rhiSemaphore = acquireSemaphore ? acquireSemaphore->GetRHI() : rhi::RHISemaphore();
 
-	m_acquiredImageIdx = GetRHI().AcquireSwapchainImage(rhiSemaphore, timeout);
+	const Uint32 imageIdx = GetRHI().AcquireSwapchainImage(rhiSemaphore, timeout);
 
-	lib::SharedPtr<Texture> acquiredTexture;
-
-	if (!GetRHI().IsSwapchainOutOfDate())
-	{
-		const rhi::RHITexture acquiredRHITexture = GetRHI().GetSwapchinImage(m_acquiredImageIdx);
-
-		acquiredTexture = std::make_shared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), acquiredRHITexture);
-	}
-
-	return acquiredTexture;
+	return SwapchainTextureHandle(imageIdx, acquireSemaphore);
 }
 
-void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+lib::SharedPtr<Texture> Window::GetSwapchainTexture(SwapchainTextureHandle handle) const
 {
 	SPT_PROFILER_FUNCTION();
+
+	lib::SharedPtr<Texture> texture;
+
+	if (handle.IsValid())
+	{
+		texture = lib::MakeShared<Texture>(RENDERER_RESOURCE_NAME("SwapchainImage"), GetRHI().GetSwapchinImage(handle.GetImageIdx()));
+	}
+
+	return texture;
+}
+
+void Window::PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(handle.IsValid());
 
 	lib::DynamicArray<rhi::RHISemaphore> rhiWaitSemaphores(waitSemaphores.size());
 	for (SizeType idx = 0; idx < waitSemaphores.size(); ++idx)
@@ -65,7 +77,7 @@ void Window::PresentTexture(const lib::DynamicArray<lib::SharedPtr<Semaphore>>& 
 		rhiWaitSemaphores[idx] = waitSemaphores[idx]->GetRHI();
 	}
 
-	GetRHI().PresentSwapchainImage(rhiWaitSemaphores, m_acquiredImageIdx);
+	GetRHI().PresentSwapchainImage(rhiWaitSemaphores, handle.GetImageIdx());
 }
 
 Bool Window::IsSwapchainOutOfDate() const
@@ -79,15 +91,18 @@ Bool Window::RebuildSwapchain()
 
 	SPT_CHECK(IsSwapchainOutOfDate());
 
+	m_platformWindow->UpdateRHISurface();
+
 	const math::Vector2u framebufferSize = m_platformWindow->GetFramebufferSize();
-	const Bool isValidSwapchainSize = framebufferSize.x() > 0 && framebufferSize.y() > 0;
 
-	if (isValidSwapchainSize)
-	{
-		GetRHI().RebuildSwapchain(framebufferSize);
-	}
+	GetRHI().RebuildSwapchain(framebufferSize, m_platformWindow->GetRHISurfaceHandle());
 
-	return isValidSwapchainSize;
+	return IsSwapchainValid();
+}
+
+Bool Window::IsSwapchainValid() const
+{
+	return GetRHI().IsSwapchainValid();
 }
 
 void Window::InitializeUI(ui::UIContext context)
@@ -110,4 +125,17 @@ math::Vector2u Window::GetSwapchainSize() const
 	return GetRHI().GetSwapchainSize();
 }
 
+void Window::OnWindowResized(Uint32 newWidth, Uint32 newHeight)
+{
+	GetRHI().SetSwapchainOutOfDate();
 }
+
+void Window::OnRHISurfaceUpdate(IntPtr prevSufaceHandle, IntPtr newSurfaceHandle)
+{
+	if (prevSufaceHandle != newSurfaceHandle)
+	{
+		GetRHI().SetSwapchainOutOfDate();
+	}
+}
+
+} // spt::rdr

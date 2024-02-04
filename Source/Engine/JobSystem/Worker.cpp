@@ -84,6 +84,15 @@ Bool Worker::TryExecuteJob(lib::MTHandle<JobInstance> job)
 	return false;
 }
 
+Bool Worker::TryActiveWait()
+{
+	const SizeType workersNum = Scheduler::GetWorkerThreadsNum();
+
+	return TryExecuteJob(JobsQueueManagerTls::DequeueLocal())
+		|| TryExecuteJob(JobsQueueManagerTls::DequeueGlobal())
+		|| TryExecuteJob(JobsQueueManagerTls::Steal(static_cast<Uint32>(workersNum)));
+}
+
 Worker::Worker(WorkerContext& inContext)
 	: m_workerContext(inContext)
 { }

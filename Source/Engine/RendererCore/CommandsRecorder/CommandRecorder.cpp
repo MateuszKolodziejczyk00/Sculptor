@@ -332,6 +332,18 @@ void CommandRecorder::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSet
 	m_pipelineState.UnbindDescriptorSetState(state);
 }
 
+void CommandRecorder::ExecuteCommands(const lib::SharedRef<rdr::GPUWorkload>& workload)
+{
+	SPT_PROFILER_FUNCTION();
+
+	EnqueueRenderCommand([recordedBuffer = workload->GetRecordedBuffer()](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
+						 {
+							 SPT_PROFILER_SCOPE("ExecuteCommands Command");
+
+							 cmdBuffer->GetRHI().ExecuteCommands(recordedBuffer->GetRHI());
+						 });
+}
+
 void CommandRecorder::BlitTexture(const lib::SharedRef<Texture>& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const lib::SharedRef<Texture>& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
 {
 	SPT_PROFILER_FUNCTION();

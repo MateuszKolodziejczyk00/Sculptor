@@ -1,5 +1,6 @@
 #pragma once
 
+#include "JobSystemMacros.h"
 #include "SculptorCoreTypes.h"
 #include "JobsQueuesManager.h"
 
@@ -28,12 +29,14 @@ struct WorkerContext
 };
 
 
-class Worker
+class JOB_SYSTEM_API Worker
 {
 public:
 
 	static void WorkerMain(WorkerContext& inContext);
 	static Bool TryExecuteJob(lib::MTHandle<JobInstance> job);
+
+	static Bool TryActiveWait();
 
 	explicit Worker(WorkerContext& inContext);
 

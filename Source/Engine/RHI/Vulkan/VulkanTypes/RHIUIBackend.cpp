@@ -11,6 +11,7 @@ namespace spt::vulkan
 {
 
 RHIUIBackend::RHIUIBackend()
+	: m_lastPoolIdx(0)
 { }
 
 void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
@@ -143,7 +144,22 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 	SPT_CHECK(textureView.IsValid());
 	SPT_CHECK(sampler.IsValid());
 
-	return ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+#if RHI_DEBUG
+	const VkDescriptorSet* textureDS = reinterpret_cast<const VkDescriptorSet*>(&uiTexture);
+
+	const lib::HashedString name = lib::String("UI Texture: ") + textureView.GetName().GetData();
+
+	VkDebugUtilsObjectNameInfoEXT objectNameInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+    objectNameInfo.objectType   = VK_OBJECT_TYPE_DESCRIPTOR_SET;
+    objectNameInfo.objectHandle = reinterpret_cast<uint64_t>(*textureDS);
+	objectNameInfo.pObjectName  = name.GetData();
+
+    SPT_VK_CHECK(vkSetDebugUtilsObjectNameEXT(rhi::VulkanRHI::GetDeviceHandle(), &objectNameInfo));
+#endif // RHI_DEBUG
+
+	return uiTexture;
 }
 
 DescriptorPool RHIUIBackend::InitializeDescriptorPool()

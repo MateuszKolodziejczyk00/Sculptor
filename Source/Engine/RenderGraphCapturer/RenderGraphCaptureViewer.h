@@ -17,7 +17,7 @@ struct RGCapture;
 struct RGNodeCapture;
 
 
-class RenderGraphCaptureViewer : private engn::EngineTickable<engn::EFrameState::Simulation, RenderGraphCaptureViewer>
+class RenderGraphCaptureViewer : private engn::EngineTickable<engn::EFrameState::Updating, RenderGraphCaptureViewer>
 {
 public:
 
