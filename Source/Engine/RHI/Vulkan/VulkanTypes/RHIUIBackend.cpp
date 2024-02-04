@@ -146,7 +146,7 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 
 	const ui::TextureID uiTexture = ImGui_ImplVulkan_AddTexture(sampler.GetHandle(), textureView.GetHandle(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 	const VkDescriptorSet* textureDS = reinterpret_cast<const VkDescriptorSet*>(&uiTexture);
 
 	const lib::HashedString name = lib::String("UI Texture: ") + textureView.GetName().GetData();
@@ -157,7 +157,7 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 	objectNameInfo.pObjectName  = name.GetData();
 
     SPT_VK_CHECK(vkSetDebugUtilsObjectNameEXT(rhi::VulkanRHI::GetDeviceHandle(), &objectNameInfo));
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 	return uiTexture;
 }

@@ -4,7 +4,7 @@
 namespace spt::vulkan
 {
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 void DebugUtils::SetObjectName(VkDevice device, Uint64 object, VkObjectType objectType, const char* name)
 {
@@ -18,42 +18,42 @@ void DebugUtils::SetObjectName(VkDevice device, Uint64 object, VkObjectType obje
     SPT_VK_CHECK(vkSetDebugUtilsObjectNameEXT(device, &objectNameInfo));
 }
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 DebugName::DebugName()
 { }
 
 void DebugName::Set(const lib::HashedString& name, Uint64 object, VkObjectType objectType)
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     m_name = name;
     SetToObject(object, objectType);
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 void DebugName::SetWithoutObject(const lib::HashedString& name)
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     m_name = name;
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 void DebugName::SetToObject(Uint64 object, VkObjectType objectType) const
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     DebugUtils::SetObjectName(VulkanRHI::GetDeviceHandle(), object, objectType, m_name.GetData());
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 const spt::lib::HashedString& DebugName::Get() const
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     return m_name;
 
@@ -62,12 +62,12 @@ const spt::lib::HashedString& DebugName::Get() const
     static const lib::HashedString dummyName{};
     return dummyName;
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 Bool DebugName::HasName() const
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     return m_name.IsValid();
 
@@ -75,12 +75,12 @@ Bool DebugName::HasName() const
 
     return false;
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 void DebugName::Reset(Uint64 object, VkObjectType objectType)
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
     if (HasName() && object != 0)
     {
@@ -92,7 +92,7 @@ void DebugName::Reset(Uint64 object, VkObjectType objectType)
     
     m_name.Reset();
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 } // spt::vulkan

@@ -309,13 +309,13 @@ void RHIBuffer::SetName(const lib::HashedString& name)
 {
 	m_name.Set(name, reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
 	
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 	if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 	{
 		const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
 		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, name.GetData());
 	}
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 const lib::HashedString& RHIBuffer::GetName() const
@@ -421,12 +421,12 @@ rhi::RHIResourceAllocationHandle RHIBuffer::DoCommittedAllocation(const rhi::RHI
 
 	vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), allocation, 0, m_bufferHandle, nullptr);
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 	if (m_name.HasName())
 	{
 		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), allocation, m_name.Get().GetData());
 	}
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 	return rhi::RHICommittedAllocation(reinterpret_cast<Uint64>(allocation));
 }

@@ -464,7 +464,7 @@ void CommandRecorder::EndDebugRegion()
 						 });
 }
 
-#if WITH_GPU_CRASH_DUMPS
+#if SPT_ENABLE_GPU_CRASH_DUMPS
 void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 {
 	SPT_PROFILER_FUNCTION();
@@ -477,7 +477,7 @@ void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 						 });
 }
 
-#endif // WITH_GPU_CRASH_DUMPS
+#endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
 void CommandRecorder::ResetQueryPool(const lib::SharedRef<QueryPool>& queryPool, Uint32 firstQueryIdx, Uint32 queryCount)
 {

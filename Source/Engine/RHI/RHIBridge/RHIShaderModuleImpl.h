@@ -1,7 +1,7 @@
 
 #pragma once
 
-#if VULKAN_RHI
+#if SPT_VULKAN_RHI
 
 #include "Vulkan/VulkanTypes/RHIShaderModule.h"
 

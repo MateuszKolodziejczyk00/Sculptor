@@ -63,7 +63,7 @@ public:
 
 	// Debug ===========================================================================
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 	static void EnableValidationWarnings(Bool enable);
 
@@ -80,7 +80,7 @@ public:
 		}
 	};
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 	// Vulkan Getters ==================================================================
 
@@ -104,7 +104,7 @@ public:
 };
 
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 #define RHI_DISABLE_VALIDATION_WARNINGS_SCOPE const vulkan::VulkanRHI::DisableValidationWarningsScope SPT_SCOPE_NAME(_rhi_disable_val_warnings_);
 
@@ -112,6 +112,6 @@ public:
 
 #define RHI_DISABLE_VALIDATION_WARNINGS_SCOPE
 
-#endif //RHI_DEBUG
+#endif //SPT_RHI_DEBUG
 
 } // spt::vulkan

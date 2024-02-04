@@ -1,7 +1,7 @@
 #pragma once
 
 
-#if VULKAN_RHI
+#if SPT_VULKAN_RHI
 
 namespace spt::vulkan
 {
@@ -50,4 +50,4 @@ using namespace spt::vulkan;
 
 #error Only Vulkan RHI is supported
 
-#endif// VULKAN_RHI
+#endif// SPT_VULKAN_RHI

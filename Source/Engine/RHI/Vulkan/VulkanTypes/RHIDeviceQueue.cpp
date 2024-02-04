@@ -103,12 +103,12 @@ void RHIDeviceQueue::OnSubmitted(VkResult submitResult)
     {
         if (submitResult == VK_ERROR_DEVICE_LOST)
         {
-#if WITH_GPU_CRASH_DUMPS
+#if SPT_ENABLE_GPU_CRASH_DUMPS
             if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
             {
                 GPUCrashTracker::SaveGPUCrashDump();
             }
-#endif // WITH_GPU_CRASH_DUMPS
+#endif // SPT_ENABLE_GPU_CRASH_DUMPS
         }
 
         SPT_CHECK_NO_ENTRY_MSG("Submitting command buffer failed with result {}", static_cast<Uint32>(submitResult));

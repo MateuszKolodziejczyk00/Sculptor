@@ -41,7 +41,7 @@ namespace priv
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
 
-#if VULKAN_RHI
+#if SPT_VULKAN_RHI
 
 static RequiredExtensionsInfo GetRequiredExtensions()
 {
@@ -70,7 +70,7 @@ static void InitializeRHIWindow(GLFWwindow* windowHandle)
 
 #error Only Vulkan is supported
 
-#endif // VULKAN_RHI
+#endif // SPT_VULKAN_RHI
 
 static void InitializeRHISurface(GLFWwindow* windowHandle)
 {
@@ -232,7 +232,7 @@ void GLFWWindow::InitializeUI(ui::UIContext context)
 
 	ImGui::SetCurrentContext(context.GetHandle());
 
-#if VULKAN_RHI
+#if SPT_VULKAN_RHI
 
 	ImGui_ImplGlfw_InitForVulkan(m_windowData->windowHandle, true);
 

@@ -13,13 +13,13 @@ void RHISettings::Initialize()
 
 	const engn::CommandLineArguments& cmdLineArgs = engn::Engine::Get().GetCmdLineArgs();
 
-	enableValidation		= cmdLineArgs.Contains(enableValidationCmdArgName);
-	enableStrictValidation	= cmdLineArgs.Contains(enableStrictValidationCmdArgName);
-	enableValidation |= enableStrictValidation;
+	enableValidation       = cmdLineArgs.Contains(enableValidationCmdArgName);
+	enableStrictValidation = cmdLineArgs.Contains(enableStrictValidationCmdArgName);
+	enableValidation       |= enableStrictValidation;
 
-	enableRayTracing	= cmdLineArgs.Contains(enableRayTracingCmdArgName);
+	enableRayTracing = cmdLineArgs.Contains(enableRayTracingCmdArgName);
 
-	enableGPUCrashDumps	= cmdLineArgs.Contains(enableGPUCrashDumpsCmdArgName);
+	enableGPUCrashDumps = cmdLineArgs.Contains(enableGPUCrashDumpsCmdArgName);
 	
 	enablePersistentDebugNames = cmdLineArgs.Contains(enablePersistentDebugNamesCmdArgName);
 }

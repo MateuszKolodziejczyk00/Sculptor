@@ -1,6 +1,6 @@
 #pragma once
 
-#if VULKAN_RHI
+#if SPT_VULKAN_RHI
 
 #include "Vulkan/VulkanTypes/RHIDescriptorSetManager.h"
 #include "Vulkan/VulkanTypes/RHIDescriptorSet.h"

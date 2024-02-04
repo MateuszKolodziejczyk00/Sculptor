@@ -61,12 +61,12 @@ void RHIGPUMemoryPool::SetName(const lib::HashedString& name)
 {
 	m_name.SetWithoutObject(name);
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 	if (m_allocation)
 	{
 		vmaSetAllocationName(VulkanRHI::GetAllocatorHandle(), m_allocation, name.GetData());
 	}
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 const lib::HashedString& RHIGPUMemoryPool::GetName() const

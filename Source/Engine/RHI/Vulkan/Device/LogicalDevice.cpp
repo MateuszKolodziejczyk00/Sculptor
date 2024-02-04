@@ -71,7 +71,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(vulkan13Features);
 
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 
 	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
@@ -83,7 +83,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 		
 		deviceInfoLinkedData.Append(aftermathInfo);
 	}
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 
 	const Bool rayTracingEnabled = VulkanRHI::GetSettings().IsRayTracingEnabled();
 
@@ -188,9 +188,9 @@ lib::DynamicArray<VkDeviceQueueCreateInfo> LogicalDevice::CreateQueueInfos(VkPhy
 		}
 
 		if (m_asyncComputeFamilyIdx == idxNone<Uint32>
-#if VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
+#if SPT_VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
 			|| m_asyncComputeFamilyIdx == m_gfxFamilyIdx
-#endif // VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
+#endif // SPT_VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
 			)
 		{
 			if ((queueFlags & VK_QUEUE_COMPUTE_BIT) != 0)
@@ -200,9 +200,9 @@ lib::DynamicArray<VkDeviceQueueCreateInfo> LogicalDevice::CreateQueueInfos(VkPhy
 		}
 
 		if (m_transferFamilyIdx == idxNone<Uint32> 
-#if VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
+#if SPT_VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
 			|| m_transferFamilyIdx == m_gfxFamilyIdx || m_transferFamilyIdx == m_asyncComputeFamilyIdx
-#endif // VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
+#endif // SPT_VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES
 			)
 		{
 			if ((queueFlags & VK_QUEUE_TRANSFER_BIT) != 0)

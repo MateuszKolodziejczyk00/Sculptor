@@ -14,7 +14,7 @@
 
 #define VMA_DEBUG_LOG_FORMAT(format, ...) printf(format, __VA_ARGS__)
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 #include "volk.h"
 #include "vk_mem_alloc.h"

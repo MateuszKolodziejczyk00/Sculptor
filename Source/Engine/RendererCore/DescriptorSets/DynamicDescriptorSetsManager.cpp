@@ -60,7 +60,7 @@ void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderCont
 
 	SPT_CHECK(allocatedDescriptorSets.size() == dsInfosToAllocate.size());
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 	// give proper names to allocated descriptor sets
 	for (SizeType idx = 0; idx < dsInfosToAllocate.size(); ++idx)
@@ -68,7 +68,7 @@ void DynamicDescriptorSetsManager::BuildDescriptorSets(RenderContext& renderCont
 		allocatedDescriptorSets[idx].SetName(dsInfosToAllocate[idx].state->GetName());
 	}
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 
 	// write to descriptor sets
 	DescriptorSetWriter writer = ResourcesManager::CreateDescriptorSetWriter();

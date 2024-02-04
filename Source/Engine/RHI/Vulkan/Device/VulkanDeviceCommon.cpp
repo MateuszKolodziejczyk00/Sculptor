@@ -11,11 +11,7 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 
     requiredExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-#if RHI_DEBUG
-    requiredExtensions.emplace_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-#endif // RHI_DEBUG
-
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 
     if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
     {
@@ -23,7 +19,7 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
         requiredExtensions.emplace_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
     }
 
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 
     if (VulkanRHI::GetSettings().IsRayTracingEnabled())
     {

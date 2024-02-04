@@ -11,11 +11,11 @@ class DebugUtils
 {
 public:
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 	static void SetObjectName(VkDevice device, Uint64 object, VkObjectType objectType, const char* name);
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 };
 
 
@@ -38,9 +38,9 @@ public:
 
 private:
 
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 	lib::HashedString m_name;
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 };
 
 }

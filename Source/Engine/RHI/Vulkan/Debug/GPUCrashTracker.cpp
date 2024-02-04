@@ -2,10 +2,10 @@
 #include "FileSystem/File.h"
 #include "Paths.h"
 
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 #include "GFSDK_Aftermath_GpuCrashDump.h"
 #include "GFSDK_Aftermath_GpuCrashDumpDecoding.h"
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 
 #include <ctime>
 #include <iomanip>
@@ -14,7 +14,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
 
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 namespace std
 {
     template<typename T>
@@ -56,14 +56,14 @@ bool operator==(GFSDK_Aftermath_ShaderDebugInfoIdentifier lhs, GFSDK_Aftermath_S
         && lhs.id[1] == rhs.id[1];
 }
 
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 
 namespace spt::vulkan
 {
 
 SPT_DEFINE_LOG_CATEGORY(GPUCrashTracker, true)
 
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 
 #define AFTERMATH_CHECK(expr) { const GFSDK_Aftermath_Result result = expr; SPT_CHECK(GFSDK_Aftermath_SUCCEED(result)); }
 
@@ -299,14 +299,14 @@ static void ResolveMarkerCallback(const void* marker, void* userData, void** res
     GPUCrashTrackerInstance* gpuCrashTracker = reinterpret_cast<GPUCrashTrackerInstance*>(userData);
     gpuCrashTracker->ResolveMarker(marker, userData, resolvedMarkerData, markerSize);
 }
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GPUCrashTracker ===============================================================================
 
 void GPUCrashTracker::EnableGPUCrashDumps()
 {
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 	const GFSDK_Aftermath_Result result = GFSDK_Aftermath_EnableGpuCrashDumps(GFSDK_Aftermath_Version_API,
 																			  GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
 																			  GFSDK_Aftermath_GpuCrashDumpFeatureFlags_Default,
@@ -317,14 +317,14 @@ void GPUCrashTracker::EnableGPUCrashDumps()
 																			  &trackerInstnace);
 
 	SPT_CHECK(result == GFSDK_Aftermath_Result_Success);
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 }
 
 void GPUCrashTracker::SaveGPUCrashDump()
 {
 	SPT_PROFILER_FUNCTION();
 
-#if WITH_NSIGHT_AFTERMATH
+#if SPT_ENABLE_NSIGHT_AFTERMATH
 	GFSDK_Aftermath_CrashDump_Status status = GFSDK_Aftermath_CrashDump_Status_Unknown;
 
     AFTERMATH_CHECK(GFSDK_Aftermath_GetCrashDumpStatus(&status));
@@ -353,7 +353,7 @@ void GPUCrashTracker::SaveGPUCrashDump()
     {
         SPT_LOG_FATAL(GPUCrashTracker, "Unexpected crash dump status after timeout: {0}", static_cast<Uint32>(status));
     }
-#endif // WITH_NSIGHT_AFTERMATH
+#endif // SPT_ENABLE_NSIGHT_AFTERMATH
 }
 
 } // spt::vulkan

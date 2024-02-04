@@ -122,9 +122,9 @@ public:
 	void	BeginDebugRegion(const lib::HashedString& name, const lib::Color& color);
 	void	EndDebugRegion();
 
-#if WITH_GPU_CRASH_DUMPS
+#if SPT_ENABLE_GPU_CRASH_DUMPS
 	void	SetDebugCheckpoint(const lib::HashedString& marker);
-#endif // WITH_GPU_CRASH_DUMPS
+#endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
 	void	ResetQueryPool(const lib::SharedRef<QueryPool>& queryPool, Uint32 firstQueryIdx, Uint32 queryCount);
 

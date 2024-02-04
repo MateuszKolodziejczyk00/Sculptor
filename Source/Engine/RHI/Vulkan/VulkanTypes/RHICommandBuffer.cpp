@@ -592,38 +592,38 @@ void RHICommandBuffer::ExecuteCommands(const RHICommandBuffer& secondaryCommandB
 
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
-	const VkDebugMarkerMarkerInfoEXT markerInfo
+	VkDebugUtilsLabelEXT labelInfo
 	{
-		.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
-		.pMarkerName = name.GetData(),
+		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+		.pLabelName = name.GetData(),
 		.color = { color.r, color.g, color.b, color.a }
 	};
 
-	vkCmdDebugMarkerBeginEXT(m_cmdBufferHandle, &markerInfo);
+	vkCmdBeginDebugUtilsLabelEXT(m_cmdBufferHandle, &labelInfo);
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
 void RHICommandBuffer::EndDebugRegion()
 {
-#if RHI_DEBUG
+#if SPT_RHI_DEBUG
 
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
-	vkCmdDebugMarkerEndEXT(m_cmdBufferHandle);
+	vkCmdEndDebugUtilsLabelEXT(m_cmdBufferHandle);
 
-#endif // RHI_DEBUG
+#endif // SPT_RHI_DEBUG
 }
 
-#if WITH_GPU_CRASH_DUMPS
+#if SPT_ENABLE_GPU_CRASH_DUMPS
 void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 {
 	SPT_PROFILER_FUNCTION();
@@ -635,7 +635,7 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 		vkCmdSetCheckpointNV(m_cmdBufferHandle, markerPtr);
 	}
 }
-#endif // WITH_GPU_CRASH_DUMPS
+#endif // SPT_ENABLE_GPU_CRASH_DUMPS
 
 void RHICommandBuffer::ResetQueryPool(const RHIQueryPool& queryPool, Uint32 firstQueryIdx, Uint32 queryCount)
 {
