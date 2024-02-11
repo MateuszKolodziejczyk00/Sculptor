@@ -3,17 +3,18 @@
 #include "SculptorCoreTypes.h"
 #include "RenderGraphTypes.h"
 #include "Types/Texture.h"
+#include "RenderGraphMacros.h"
 
 namespace spt::rg
 {
 
-class RenderGraphResourcesPool
+class RENDER_GRAPH_API RenderGraphResourcesPool
 {
 public:
 
-	static RenderGraphResourcesPool& Get();
+	RenderGraphResourcesPool();
 
-	void OnBeginFrame();
+	void Prepare();
 
 	lib::SharedPtr<rdr::Texture> AcquireTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 	void ReleaseTexture(lib::SharedPtr<rdr::Texture> texture);
@@ -27,8 +28,6 @@ private:
 		Uint64 currentMemoryUsage = 0u;
 		Uint64 maxMemoryUsage     = 0u;
 	};
-
-	RenderGraphResourcesPool();
 
 	MemoryPoolData& GetMemoryPoolData(const rhi::RHIAllocationInfo& allocationInfo);
 

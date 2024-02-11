@@ -26,6 +26,7 @@ namespace spt::rg
 {
 
 class RenderGraphDebugDecorator;
+class RenderGraphResourcesPool;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Descriptor Sets Helpers =======================================================================
@@ -51,7 +52,7 @@ class RENDER_GRAPH_API RenderGraphBuilder
 {
 public:
 
-	RenderGraphBuilder();
+	RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool);
 	~RenderGraphBuilder();
 
 	// Utility ================================================
@@ -95,6 +96,8 @@ public:
 	void ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination);
 	
 	// Utilities ==============================================
+
+	RenderGraphResourcesPool& GetResourcesPool() const;
 
 	template<typename TType, typename... TArgs>
 	TType* Allocate(TArgs&&... args);
@@ -227,6 +230,8 @@ private:
 #endif // SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 
 	js::Event m_onGraphExecutionFinished;
+
+	RenderGraphResourcesPool& m_resourcesPool;
 
 	RGAllocator m_allocator;
 };
@@ -398,7 +403,7 @@ TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ER
 
 	const RGNodeID nodeID = m_nodes.size();
 	
-	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(name, nodeID, type, std::forward<TArgs>(args)...);
+	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);
 	SPT_CHECK(!!allocatedNode);
 
 	return *allocatedNode;

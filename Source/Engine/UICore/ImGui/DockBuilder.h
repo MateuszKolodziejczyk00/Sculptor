@@ -31,7 +31,18 @@ public:
 		const ImGuiDir dir = m_direction == ESplit::Horizontal ? ImGuiDir_Left : ImGuiDir_Up;
 
 		ImGuiID firstNode, secondNode;
-		ImGui::DockBuilderSplitNode(parentNodeID, dir, m_splitRatio, OUT &firstNode, OUT &secondNode);
+
+		ImGuiContext& g = *GImGui;
+		ImGuiDockNode* dockNode = ImGui::DockContextFindNodeByID(&g, parentNodeID);
+		if(dockNode->IsSplitNode())
+		{
+			firstNode  = dockNode->ChildNodes[0]->ID;
+			secondNode = dockNode->ChildNodes[1]->ID;
+		}
+		else
+		{
+			ImGui::DockBuilderSplitNode(parentNodeID, dir, m_splitRatio, OUT &firstNode, OUT &secondNode);
+		}
 
 		m_first.Execute(firstNode);
 		m_second.Execute(secondNode);
@@ -39,11 +50,32 @@ public:
 
 private:
 
-	TFirst	m_first;
-	TSecond	m_second;
+	TFirst  m_first;
+	TSecond m_second;
 
-	ESplit	m_direction;
-	Real32	m_splitRatio;
+	ESplit m_direction;
+	Real32 m_splitRatio;
+};
+
+
+// Useful if we want to call execute with non-const or non-temporary objects
+template<typename TPrimitive>
+class DockPrimitive
+{
+public:
+
+	explicit DockPrimitive(TPrimitive& primitive)
+		: m_primitive(primitive)
+	{ }
+
+	void Execute(ImGuiID parentNodeID) const
+	{
+		m_primitive.Execute(parentNodeID);
+	}
+
+private:
+
+	TPrimitive& m_primitive;
 };
 
 
@@ -57,7 +89,13 @@ public:
 
 	void Execute(ImGuiID parentNodeID) const
 	{
-		ImGui::DockBuilderDockWindow(m_windowName.GetData(), parentNodeID);
+		ImGuiWindow* window           = ImGui::FindWindowByName(m_windowName.GetData());
+		ImGuiWindowSettings* settings = window ? ImGui::FindWindowSettings(window->ID) : nullptr;
+
+		if (!settings)
+		{
+			ImGui::DockBuilderDockWindow(m_windowName.GetData(), parentNodeID);
+		}
 	}
 
 private:
@@ -84,13 +122,10 @@ public:
 template<typename TFirst, typename TSecond>
 Split(ESplit direction, Real32 splitRatio, const TFirst& first, const TSecond& second)->Split<TFirst, TSecond>;
 
+template<typename TPrimitive>
+DockPrimitive(TPrimitive& primitive)->DockPrimitive<TPrimitive>;
+
 template<typename TOperators>
 Build(ImGuiID nodeID, const TOperators& operators)->Build<TOperators>;
-
-
-inline Bool ShouldBuildDock(ImGuiID id)
-{
-	return !ImGui::DockBuilderGetNode(id)->IsSplitNode();
-}
 
 } // spt::ui

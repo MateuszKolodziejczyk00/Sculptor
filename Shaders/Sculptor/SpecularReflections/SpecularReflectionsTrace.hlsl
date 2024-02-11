@@ -171,6 +171,8 @@ void GenerateSpecularReflectionsRaysRTG()
         }
     }
 
+    luminance *= u_viewRenderingParams.preExposure;
+
     u_reflectedLuminanceTexture[pixel] = float4(luminance, hitDistance);
 }
 

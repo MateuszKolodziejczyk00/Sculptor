@@ -221,7 +221,9 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     indirectLighting = indirectIlluminance;
 #endif // WITH_DEBUGS
 
-    output.luminance = float4(luminance, 1.f);
+    luminance *= u_viewRenderingParams.preExposure;
+
+    output.luminance =  float4(luminance, 1.f);
     
     output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
     output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);

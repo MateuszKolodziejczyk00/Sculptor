@@ -1,7 +1,9 @@
 #pragma once
 
-#include "SculptorCoreTypes.h"
-#include "EngineFrame.h"
+#include "RenderGraphCaptuererMacros.h"
+#include "UILayers/UIView.h"
+#include "UITypes.h"
+#include "ImGui/DockStack.h"
 
 
 namespace spt::rdr
@@ -15,35 +17,68 @@ namespace spt::rg::capture
 
 struct RGCapture;
 struct RGNodeCapture;
+struct RGTextureCapture;
 
 
-class RenderGraphCaptureViewer : private engn::EngineTickable<engn::EFrameState::Updating, RenderGraphCaptureViewer>
+class RGNodeCaptureViewer : public scui::UIView
 {
+protected:
+
+	using Super = scui::UIView;
+
 public:
 
-	explicit RenderGraphCaptureViewer(lib::SharedRef<RGCapture> capture);
+	RGNodeCaptureViewer(const scui::ViewDefinition& definition, const RGNodeCapture& node);
 
-	void Tick(Real32 deltaTime);
-
-	const RGCapture& GetCapture() const;
-
-	void SelectNode(const RGNodeCapture* node);
-	const RGNodeCapture* GetSelectedNode() const;
-
-	void SelectTexture(lib::SharedPtr<rdr::TextureView> texture);
-	const lib::SharedPtr<rdr::TextureView>& GetSelectedTexture() const;
-
-	Real32 GetZoom() const;
+	// Begin UIView overrides
+	virtual void             BuildDefaultLayout(ImGuiID dockspaceID) override;
+	virtual void             DrawUI() override;
+	virtual ImGuiWindowFlags GetWindowFlags() const override;
+	// End UIView overrides
 
 private:
 
+	void DrawNodeDetails(const RGNodeCapture& node);
+
+	void OpenTextureCapture(const RGTextureCapture& textureCapture);
+
+	lib::HashedString m_nodeDetailsPanelName;
+
+	ui::DockStack m_textureInspectorsStack;
+
+	const RGNodeCapture& m_capturedNode;
+};
+
+
+class RENDER_GRAPH_CAPTURER_API RenderGraphCaptureViewer : public scui::UIView
+{
+protected:
+
+	using Super = scui::UIView;
+
+public:
+
+	RenderGraphCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture);
+
+	// Begin UIView overrides
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) override;
+	virtual void DrawUI() override;
+	// End UIView overrides
+
+	const RGCapture& GetCapture() const { return *m_capture; }
+
+private:
+
+	void DrawNodesList(const RGCapture& capture);
+
+	lib::HashedString m_nodesListPanelName;
+	lib::HashedString m_nodesListFilterName;
+
+	ui::DockStack m_nodeDetailsDockStack;
+
+	char m_nodesListFilter[64];
+
 	lib::SharedRef<RGCapture> m_capture;
-
-	const RGNodeCapture* m_selectedNode;
-
-	lib::SharedPtr<rdr::TextureView> m_selectedTexture;
-
-	Real32 m_zoom;
 };
 
 } // spt::rg::capture

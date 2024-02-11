@@ -106,6 +106,8 @@ public:
 	math::Vector3u						GetResolution() const;
 	math::Vector2u						GetResolution2D() const;
 
+	rhi::EFragmentFormat				GetFormat() const;
+
 	const rhi::TextureSubresourceRange&	GetSubresourceRange() const;
 
 	void								SetName(const lib::HashedString& name);

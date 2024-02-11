@@ -723,6 +723,12 @@ math::Vector2u RHITextureView::GetResolution2D() const
 	return GetResolution().head<2>();
 }
 
+rhi::EFragmentFormat RHITextureView::GetFormat() const
+{
+	SPT_CHECK(m_texture);
+	return m_texture->GetFormat();
+}
+
 const rhi::TextureSubresourceRange& RHITextureView::GetSubresourceRange() const
 {
 	return m_subresourceRange;

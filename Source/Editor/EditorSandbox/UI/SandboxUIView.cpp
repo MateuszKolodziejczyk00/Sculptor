@@ -33,7 +33,7 @@ SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	m_profilerPanelName = AddChild(lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView")));
 }
 
-void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
 

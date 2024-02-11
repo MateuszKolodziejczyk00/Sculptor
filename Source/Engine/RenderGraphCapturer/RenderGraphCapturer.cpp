@@ -48,7 +48,7 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 	}
 
 	RGNodeCapture& nodeCapture = m_capture->nodes.emplace_back(RGNodeCapture());
-	nodeCapture.name = node.GetName().Get();
+	nodeCapture.name = std::format("{}: {}", node.GetID(), node.GetName().AsString());
 
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{

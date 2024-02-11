@@ -90,7 +90,12 @@ private:
 	void						OnWindowResized(Uint32 newWidth, Uint32 newHeight);
 	void						OnRHISurfaceUpdate(IntPtr prevSufaceHandle, IntPtr newSurfaceHandle);
 
-	lib::UniquePtr<platf::PlatformWindow>	m_platformWindow;
+	lib::UniquePtr<platf::PlatformWindow> m_platformWindow;
+
+	// extend lifetime of this semaphore until we present same image second time
+	// normally we're going to destroy all resources from this frame after flip workload will finish
+	// but these semaphores must be valid until present is done (spec is a bit loose here but it's better to be safe)
+	lib::DynamicArray<lib::DynamicArray<lib::SharedPtr<Semaphore>>> m_presentWaitSemaphores;
 };
 
 } // spt::rdr

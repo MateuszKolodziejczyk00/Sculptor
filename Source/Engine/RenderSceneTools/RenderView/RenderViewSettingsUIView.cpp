@@ -13,7 +13,7 @@ RenderViewSettingsUIView::RenderViewSettingsUIView(const scui::ViewDefinition& d
 	, m_renderViewSettingsName(CreateUniqueName("Render View"))
 { }
 
-void RenderViewSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+void RenderViewSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
 

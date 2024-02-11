@@ -46,9 +46,11 @@ void ApplyAtmosphereCS(CS_INPUT input)
                 {
                     const float alpha = (rayLightDot - minRayLightDot) / (1.f - minRayLightDot);
                     const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, rayDirection);
-                    skyLuminance += directionalLight.illuminance * alpha * transmittance;
+                    skyLuminance += directionalLight.illuminance * alpha * transmittance * directionalLight.sunDiskIntensity;
                 }
             }
+
+            skyLuminance *= u_viewRenderingParams.preExposure;
             
             u_luminanceTexture[pixel] = skyLuminance;
         }

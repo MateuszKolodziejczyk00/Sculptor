@@ -14,7 +14,7 @@ RenderSceneSettingsUIView::RenderSceneSettingsUIView(const scui::ViewDefinition&
 	, m_renderSceneSettingsName(CreateUniqueName("Render Scene"))
 { }
 
-void RenderSceneSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+void RenderSceneSettingsUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
 

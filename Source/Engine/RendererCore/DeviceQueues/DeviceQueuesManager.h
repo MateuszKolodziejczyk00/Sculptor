@@ -123,6 +123,8 @@ private:
 	Uint64                         m_memoryTransfersSemaphoreValue;
 
 	SubmittedWorkloadsQueue m_submittedWorkloadsQueue;
+
+	lib::Lock m_lock;
 };
 
 } // spt::rdr

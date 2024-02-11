@@ -10,6 +10,7 @@ RenderView::RenderView(RenderScene& renderScene)
 	, m_renderingResolution(0, 0)
 	, m_renderScene(renderScene)
 	, m_aaMode(EAntiAliasingMode::None)
+	, m_preExposure(0.04f)
 #if RENDERER_DEBUG
 	, m_debugFeature(EDebugFeature::None)
 #endif // RENDERER_DEBUG
@@ -83,6 +84,16 @@ EAntiAliasingMode::Type RenderView::GetAntiAliasingMode() const
 	return m_aaMode;
 }
 
+void RenderView::SetPreExposure(Real32 preExposure)
+{
+	m_preExposure = preExposure;
+}
+
+Real32 RenderView::GetPreExposure() const
+{
+	return m_preExposure;
+}
+
 #if RENDERER_DEBUG
 void RenderView::SetDebugFeature(EDebugFeature::Type debugFeature)
 {
@@ -122,6 +133,7 @@ void RenderView::CreateRenderViewDS()
 
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingResolution();
+	renderViewData.preExposure         = GetPreExposure();
 
 #if RENDERER_DEBUG
 	renderViewData.debugFeatureIndex = GetDebugFeature();

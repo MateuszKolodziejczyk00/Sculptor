@@ -18,7 +18,6 @@
 #include "Renderer/SandboxRenderer.h"
 #include "UIUtils.h"
 #include "ProfilerUIView.h"
-#include "RenderGraphManager.h"
 #include "Paths.h"
 #include "ECSRegistry.h"
 #include "DeviceQueues/GPUWorkload.h"
@@ -195,6 +194,28 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 											 .SetPriority(js::EJobPriority::High)
 											 .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow)));
 
+	ImGuiIO& imGuiIO = ImGui::GetIO();
+	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		recordUICommandsJob.Wait();
+
+		// Flush previous frames if we need to close any window
+		const ImGuiContext* context = ImGui::GetCurrentContext();
+		for (int i = 1; i < context->Viewports.Size; i++)
+		{
+			ImGuiViewportP* viewport = context->Viewports[i];
+			ImGuiWindow* window = viewport->Window;
+			if (window && (!window->Active || window->Hidden))
+			{
+				frame.FlushPreviousFrames();
+				break;
+			}
+		}
+
+		// This has to be called from main thread
+		ImGui::UpdatePlatformWindows();
+	}
+
 	uiFinishedEvent.Signal();
 
 	frame.WaitUpdateEnded();
@@ -225,15 +246,6 @@ std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> 
 
 
 	ImGui::Render();
-
-	ImGuiIO& imGuiIO = ImGui::GetIO();
-	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		// Disable warnings, so that they are not spamming when ImGui backend allocates memory not from pools
-		RENDERER_DISABLE_VALIDATION_WARNINGS_SCOPE
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-	}
 
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
 
@@ -288,8 +300,6 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 #if WITH_NSIGHT_CRASH_FIX
 	rdr::Renderer::WaitIdle();
 #endif // WITH_NSIGHT_CRASH_FIX
-
-	rg::RenderGraphManager::OnBeginFrame();
 
 	if (!swapchainTextureHandle.IsValid() || m_window->IsSwapchainOutOfDate())
 	{
@@ -372,11 +382,6 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 	workload->GetWaitSemaphores().AddBinarySemaphore(swapchainTextureHandle.GetAcquireSemaphore(), rhi::EPipelineStage::TopOfPipe);
 
 	const lib::SharedRef<rdr::Semaphore> uiFinishedSemaphore = workload->AddBinarySignalSemaphore(RENDERER_RESOURCE_NAME("UI Finished Semaphore"), rhi::EPipelineStage::ALL_COMMANDS);
-
-	// extend lifetime of this semaphore to the end of the frame
-	// normally we're going to destroy all resources from this frame after flip workload will finish
-	// but this semaphore must be valid until present is done (spec is a bit loose here but it's better to be safe)
-	workload->BindEvent(js::CreateEvent(SPT_GENERIC_JOB_NAME, [uiFinishedSemaphore] {}));
 
 	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, rdr::EGPUWorkloadSubmitFlags::CorePipe);
 

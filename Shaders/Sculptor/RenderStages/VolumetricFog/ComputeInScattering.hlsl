@@ -59,6 +59,8 @@ void ComputeInScatteringCS(CS_INPUT input)
             inScattering += u_indirectInScatteringTexture.SampleLevel(u_indirectInScatteringSampler, fogFroxelUVW, 0.f) * scatteringExtinction.rgb;
         }
 
+        inScattering *= u_viewRenderingParams.preExposure;
+
         float4 inScatteringExtinction = float4(inScattering, scatteringExtinction.w);
 
         if (u_inScatteringParams.hasValidHistory)

@@ -27,6 +27,7 @@ namespace spt::rg
 {
 
 using RGNodeID = SizeType;
+class RenderGraphBuilder;
 
 
 struct RGExecutionContext
@@ -39,8 +40,9 @@ class RENDER_GRAPH_API RGNode : public RGTrackedObject
 {
 public:
 
-	RGNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type);
+	RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type);
 
+	RenderGraphBuilder&			GetOwningGraphBuilder() const;
 	RGNodeID					GetID() const;
 	const RenderGraphDebugName& GetName() const;
 	ERenderGraphNodeType		GetType() const;
@@ -129,6 +131,8 @@ private:
 		rhi::EAccessType	destAccess;
 	};
 
+	RenderGraphBuilder& m_owningGraphBuilder;
+
 	RenderGraphDebugName m_name;
 
 	RGNodeID m_id;
@@ -163,8 +167,8 @@ public:
 
 	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, rdr::CommandRecorder&>));
 
-	explicit RGLambdaNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, TCallable callable)
-		: Super(name, id, type)
+	explicit RGLambdaNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, TCallable callable)
+		: Super(owningGraphBuilder, name, id, type)
 		, m_callable(std::move(callable))
 	{ }
 
@@ -240,7 +244,7 @@ protected:
 
 public:
 
-	explicit RGRenderPassNodeBase(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef);
+	explicit RGRenderPassNodeBase(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef);
 
 	void AppendSubpass(RGSubpassHandle subpass);
 
@@ -269,8 +273,8 @@ public:
 
 	SPT_STATIC_CHECK((std::invocable<TCallable&, const lib::SharedRef<rdr::RenderContext>&, rdr::CommandRecorder&>));
 
-	explicit RGRenderPassNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef, TCallable callable)
-		: Super(name, id, type, renderPassDef)
+	explicit RGRenderPassNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef, TCallable callable)
+		: Super(owningGraphBuilder, name, id, type, renderPassDef)
 		, m_callable(std::move(callable))
 	{ }
 
@@ -295,8 +299,8 @@ protected:
 
 public:
 
-	RGEmptyNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
-		: Super(name, id, type)
+	RGEmptyNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
+		: Super(owningGraphBuilder, name, id, type)
 	{ }
 
 protected:

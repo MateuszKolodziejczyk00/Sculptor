@@ -9,6 +9,7 @@ namespace spt::scui
 UIView::UIView(const ViewDefinition& definition)
 	: m_id(UIViewID::GenerateID())
 	, m_minimumSize(definition.minimumSize.cast<Real32>())
+	, m_BuiltDefaultLayout(false)
 {
 	m_name = CreateUniqueName(definition.name);
 }
@@ -33,7 +34,7 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 	Bool isOpen = true;
 
 	// "Master" window of this view
-	if(ImGui::Begin(m_name.GetData(), &isOpen))
+	if(ImGui::Begin(m_name.GetData(), &isOpen, GetWindowFlags()))
 	{
 		const math::Vector2f windowSize = m_minimumSize.cwiseMax(math::Vector2f(ImGui::GetWindowSize()));
 		ImGui::SetWindowSize(windowSize);
@@ -54,9 +55,11 @@ EViewDrawResultActions UIView::Draw(const UIViewDrawParams& params)
 
 		m_children.DrawViews(childDrawParams);
 
-		if (ui::ShouldBuildDock(dockspaceID))
+		if (!m_BuiltDefaultLayout)
 		{
 			BuildDefaultLayout(dockspaceID);
+
+			m_BuiltDefaultLayout = true;
 		}
 
 		DrawUI();
@@ -91,7 +94,7 @@ void UIView::RemoveChild(const lib::SharedPtr<UIView>& view)
 	m_children.RemoveView(view);
 }
 
-void UIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+void UIView::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 
 }
@@ -99,6 +102,11 @@ void UIView::BuildDefaultLayout(ImGuiID dockspaceID) const
 void UIView::DrawUI()
 {
 
+}
+
+ImGuiWindowFlags UIView::GetWindowFlags() const
+{
+	return ImGuiWindowFlags_None;
 }
 
 lib::HashedString UIView::CreateUniqueName(const lib::HashedString& name)

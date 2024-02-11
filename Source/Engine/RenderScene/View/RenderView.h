@@ -44,6 +44,7 @@ enum Type
 
 BEGIN_SHADER_STRUCT(RenderViewData)
 	SHADER_STRUCT_FIELD(math::Vector2u, renderingResolution)
+	SHADER_STRUCT_FIELD(Real32, preExposure)
 #if RENDERER_DEBUG
 	SHADER_STRUCT_FIELD(Uint32, debugFeatureIndex)
 #endif // RENDERER_DEBUG
@@ -86,6 +87,9 @@ public:
 
 	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
 	EAntiAliasingMode::Type GetAntiAliasingMode() const;
+
+	void SetPreExposure(Real32 preExposure);
+	Real32 GetPreExposure() const;
 
 #if RENDERER_DEBUG
 	void SetDebugFeature(EDebugFeature::Type debugFeature);
@@ -158,6 +162,8 @@ private:
 	// Rendering settings
 
 	EAntiAliasingMode::Type m_aaMode;
+
+	Real32 m_preExposure;
 
 #if RENDERER_DEBUG
 	EDebugFeature::Type m_debugFeature;

@@ -11,7 +11,7 @@ ProfilerUIView::ProfilerUIView(const scui::ViewDefinition& definition)
 	, m_profilerPanelName(CreateUniqueName("Profiler"))
 { }
 
-void ProfilerUIView::BuildDefaultLayout(ImGuiID dockspaceID) const
+void ProfilerUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
 

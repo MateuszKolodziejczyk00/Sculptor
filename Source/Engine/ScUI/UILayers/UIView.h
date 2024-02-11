@@ -44,8 +44,9 @@ public:
 
 protected:
 
-	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const;
-	virtual void DrawUI();
+	virtual void             BuildDefaultLayout(ImGuiID dockspaceID);
+	virtual void             DrawUI();
+	virtual ImGuiWindowFlags GetWindowFlags() const;
 
 	lib::HashedString CreateUniqueName(const lib::HashedString& name);
 
@@ -57,6 +58,8 @@ private:
 	math::Vector2f 		m_minimumSize;
 
 	UIViewsContainer m_children;
+
+	Bool m_BuiltDefaultLayout;
 };
 
 } // spt::scui

@@ -15,10 +15,14 @@ Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& win
 
 	rhi::RHI::InitializeGPUForWindow(surfaceHandle);
 
-	GetRHI().InitializeRHI(windowInfo, RendererSettings::Get().framesInFlight, surfaceHandle);
+	const Uint32 framesInFlight = RendererSettings::Get().framesInFlight;
+
+	GetRHI().InitializeRHI(windowInfo, framesInFlight, surfaceHandle);
 
 	m_platformWindow->GetOnResizedCallback().AddRawMember(this, &Window::OnWindowResized);
 	m_platformWindow->OnRHISurfaceUpdateCallback().AddRawMember(this, &Window::OnRHISurfaceUpdate);
+
+	m_presentWaitSemaphores.resize(static_cast<SizeType>(framesInFlight));
 }
 
 Bool Window::ShouldClose() const
@@ -78,6 +82,8 @@ void Window::PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArr
 	}
 
 	GetRHI().PresentSwapchainImage(rhiWaitSemaphores, handle.GetImageIdx());
+
+	m_presentWaitSemaphores[handle.GetImageIdx()] = waitSemaphores;
 }
 
 Bool Window::IsSwapchainOutOfDate() const

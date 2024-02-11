@@ -87,7 +87,7 @@ void SpatialATrousFilterCS(CS_INPUT input)
 
                 const float lw = min(abs(visibilityCenter - sampleVisibility) / (3.f * stdev + 0.001f), 5.f);
                 
-                const float weight = exp(-lw) * w * wn * wl;
+                const float weight = max(exp(-lw), 0.1f) * w * wn * wl;
 
                 valueSum += sampleVisibility * weight;
                 weightSum += weight;

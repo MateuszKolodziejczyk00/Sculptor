@@ -153,6 +153,8 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 {
 	SPT_PROFILER_FUNCTION();
 
+	const lib::LockGuard lock(m_lock);
+
 	SubmitWorkloadInternal(workload, flags);
 }
 

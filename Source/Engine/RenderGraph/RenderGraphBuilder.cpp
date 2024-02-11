@@ -7,13 +7,17 @@
 #include "Vulkan/VulkanTypes/RHIBuffer.h"
 #include "RenderGraphDebugDecorator.h"
 #include "DeviceQueues/GPUWorkload.h"
+#include "RenderGraphResourcesPool.h"
 
 namespace spt::rg
 {
 
-RenderGraphBuilder::RenderGraphBuilder()
+RenderGraphBuilder::RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool)
 	: m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
-{ }
+	, m_resourcesPool(resourcesPool)
+{
+	m_resourcesPool.Prepare();
+}
 
 RenderGraphBuilder::~RenderGraphBuilder()
 {
@@ -232,6 +236,11 @@ void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr
 
 	buffer->SetExtractionDest(&extractDestination);
 	m_extractedBuffers.emplace_back(buffer);
+}
+
+RenderGraphResourcesPool& RenderGraphBuilder::GetResourcesPool() const
+{
+	return m_resourcesPool;
 }
 
 void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)

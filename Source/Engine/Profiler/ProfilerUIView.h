@@ -29,7 +29,7 @@ public:
 protected:
 
 	//~ Begin  UIView overrides
-	virtual void BuildDefaultLayout(ImGuiID dockspaceID) const override;
+	virtual void BuildDefaultLayout(ImGuiID dockspaceID) override;
 	virtual void DrawUI() override;
 	//~ End  UIView overrides
 

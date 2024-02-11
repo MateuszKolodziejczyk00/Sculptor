@@ -124,7 +124,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
             ddgiSampleParams.sampleDirection = reflectedVector;
             ddgiSampleParams.minVisibility = 0.95f;
             ddgiSampleParams.sampleLocationBiasMultiplier = 0.0f;
-            const float3 ddgiLuminance = DDGISampleLuminance(ddgiSampleParams);
+            const float3 ddgiLuminance = DDGISampleLuminance(ddgiSampleParams) * u_viewRenderingParams.preExposure;
 
             const float ddgiSampleWeight = saturate(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS);
 

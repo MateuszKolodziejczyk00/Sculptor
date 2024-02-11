@@ -11,6 +11,7 @@
 #include "RenderScene.h"
 #include "View/RenderView.h"
 #include "SceneRenderer/SceneRenderer.h"
+#include "RenderGraphResourcesPool.h"
 
 namespace spt::rdr
 {
@@ -82,6 +83,8 @@ private:
 	Real32								m_cameraSpeed;
 
 	math::Vector2i						m_mousePositionOnViewport;
+
+	rg::RenderGraphResourcesPool		m_resourcesPool;
 
 	rsc::RenderSceneEntityHandle m_directionalLightEntity;
 

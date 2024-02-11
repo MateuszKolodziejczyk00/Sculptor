@@ -326,4 +326,17 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	}
 }
 
+inline Bool IsIntegerFormat(EFragmentFormat format)
+{
+	switch (format)
+	{
+	case EFragmentFormat::R8_U_Int:
+	case EFragmentFormat::R32_U_Int:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 } // spt::rhi

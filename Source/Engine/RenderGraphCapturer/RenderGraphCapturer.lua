@@ -8,6 +8,8 @@ function RenderGraphCapturer:SetupConfiguration(configuration, platform)
 
 	self:AddPrivateDependency("EngineCore")
 	self:AddPrivateDependency("RenderGraph")
+	
+    self:AddPrivateDependency("Graphics")
 end
 
 RenderGraphCapturer:SetupProject()

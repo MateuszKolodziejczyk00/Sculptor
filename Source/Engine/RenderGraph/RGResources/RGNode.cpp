@@ -6,6 +6,7 @@
 #include "ResourcesManager.h"
 #include "RGResources.h"
 #include "GPUDiagnose/Profiler/GPUStatisticsCollector.h"
+#include "RenderGraphBuilder.h"
 
 namespace spt::rg
 {
@@ -31,12 +32,18 @@ rdr::EQueryFlags GetQueryFlags(ERenderGraphNodeType nodeType)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RGNode ========================================================================================
 
-RGNode::RGNode(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
-	: m_name(name)
+RGNode::RGNode(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type)
+	: m_owningGraphBuilder(owningGraphBuilder)
+	, m_name(name)
 	, m_id(id)
 	, m_type(type)
 	, m_executed(false)
 { }
+
+RenderGraphBuilder& RGNode::GetOwningGraphBuilder() const
+{
+	return m_owningGraphBuilder;
+}
 
 RGNodeID RGNode::GetID() const
 {
@@ -229,7 +236,8 @@ void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
 
 void RGNode::AcquireTextures()
 {
-	RenderGraphResourcesPool& resourcesPool = RenderGraphResourcesPool::Get();
+	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
+	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
 
 	for (RGTextureHandle textureToAcquire : m_texturesToAcquire)
 	{
@@ -242,7 +250,8 @@ void RGNode::AcquireTextures()
 
 void RGNode::ReleaseTextures()
 {
-	RenderGraphResourcesPool& resourcesPool = RenderGraphResourcesPool::Get();
+	const RenderGraphBuilder& graphBuilder = GetOwningGraphBuilder();
+	RenderGraphResourcesPool& resourcesPool = graphBuilder.GetResourcesPool();
 
 	for (RGTextureHandle textureToRelease : m_texturesToRelease)
 	{
@@ -313,8 +322,8 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 	}
 }
 
-RGRenderPassNodeBase::RGRenderPassNodeBase(const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef)
-	: Super(name, id, type)
+RGRenderPassNodeBase::RGRenderPassNodeBase(RenderGraphBuilder& owningGraphBuilder, const RenderGraphDebugName& name, RGNodeID id, ERenderGraphNodeType type, const RGRenderPassDefinition& renderPassDef)
+	: Super(owningGraphBuilder, name, id, type)
 	, m_renderPassDef(renderPassDef)
 { }
 

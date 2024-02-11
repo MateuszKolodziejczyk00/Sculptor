@@ -36,7 +36,7 @@
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphCapturer.h"
-#include "RenderGraphCaptureUIView.h"
+#include "RenderGraphCaptureViewer.h"
 #include "UIElements/ApplicationUI.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
@@ -132,7 +132,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	const lib::SharedRef<rdr::GPUStatisticsCollector> gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>();
 
-	rg::RenderGraphBuilder graphBuilder;
+	rg::RenderGraphBuilder graphBuilder(m_resourcesPool);
 	graphBuilder.BindGPUStatisticsCollector(gpuStatisticsCollector);
 
 	rg::capture::RenderGraphCapturer capturer;
@@ -189,7 +189,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 				   {
 					   scui::ViewDefinition viewDef("Render Graph Capture Viewer");
 					   viewDef.minimumSize = math::Vector2u(800, 600);
-					   lib::SharedRef<rg::capture::RenderGraphCaptureUIView> captureView = lib::MakeShared<rg::capture::RenderGraphCaptureUIView>(viewDef, std::move(rgCapture));
+					   lib::SharedRef<rg::capture::RenderGraphCaptureViewer> captureView = lib::MakeShared<rg::capture::RenderGraphCaptureViewer>(viewDef, std::move(rgCapture));
 					   scui::ApplicationUI::AddView(std::move(captureView));
 				   },
 				   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
@@ -356,10 +356,11 @@ void SandboxRenderer::InitializeRenderScene()
 		{
 			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
-			directionalLightData.color			= math::Vector3f(0.9569f, 0.9137f, 0.6078f);
-			directionalLightData.illuminance	= 95000.f;
-			directionalLightData.direction		= math::Vector3f(-0.5f, -0.3f, -1.6f).normalized();
-			directionalLightData.lightConeAngle = 0.0046f;
+			directionalLightData.color            = math::Vector3f(0.9569f, 0.9137f, 0.6078f);
+			directionalLightData.illuminance      = 95000.f;
+			directionalLightData.direction        = math::Vector3f(-0.5f, -0.3f, -2.6f).normalized();
+			directionalLightData.lightConeAngle   = 0.0046f;
+			directionalLightData.sunDiskIntensity = 20.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}

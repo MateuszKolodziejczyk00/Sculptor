@@ -7,13 +7,11 @@
 namespace spt::rg
 {
 
-RenderGraphResourcesPool& RenderGraphResourcesPool::Get()
+RenderGraphResourcesPool::RenderGraphResourcesPool()
 {
-	static RenderGraphResourcesPool instance;
-	return instance;
 }
 
-void RenderGraphResourcesPool::OnBeginFrame()
+void RenderGraphResourcesPool::Prepare()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -74,15 +72,6 @@ void RenderGraphResourcesPool::ReleaseTexture(lib::SharedPtr<rdr::Texture> textu
 	{
 		texture->ReleasePlacedAllocation();
 	}
-}
-
-RenderGraphResourcesPool::RenderGraphResourcesPool()
-{
-	// This is singleton object so we can capture this safely
-	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
-															{
-																DestroyResources();
-															});
 }
 
 RenderGraphResourcesPool::MemoryPoolData& RenderGraphResourcesPool::GetMemoryPoolData(const rhi::RHIAllocationInfo& allocationInfo)
