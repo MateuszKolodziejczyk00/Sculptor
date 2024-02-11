@@ -7,6 +7,13 @@
 namespace spt::rg::capture
 {
 
+enum class ETextureInspectorVisualizationMode
+{
+	Color,
+	Alpha
+};
+
+
 BEGIN_SHADER_STRUCT(TextureInspectorFilterParams)
 	SHADER_STRUCT_FIELD(math::Vector2i, hoveredPixel)
 	SHADER_STRUCT_FIELD(Real32, minValue)
@@ -15,6 +22,7 @@ BEGIN_SHADER_STRUCT(TextureInspectorFilterParams)
 	SHADER_STRUCT_FIELD(Uint32, gChannelVisible)
 	SHADER_STRUCT_FIELD(Uint32, bChannelVisible)
 	SHADER_STRUCT_FIELD(Uint32, isIntTexture)
+	SHADER_STRUCT_FIELD(Uint32, visualizationMode)
 END_SHADER_STRUCT();
 
 

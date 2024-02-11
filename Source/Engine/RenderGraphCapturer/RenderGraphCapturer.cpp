@@ -82,7 +82,6 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 				rhi::TextureViewDefinition captureTextureViewDef;
 				captureTextureViewDef.subresourceRange.aspect = rgTextureView->GetSubresourceRange().aspect;
-				captureTextureViewDef.componentMappings.a = rhi::ETextureComponentMapping::One;
 				const lib::SharedRef<rdr::TextureView> captureTextureView = captureTexture->CreateView(RENDERER_RESOURCE_NAME(rgTextureView->GetName()),
 																									   captureTextureViewDef);
 

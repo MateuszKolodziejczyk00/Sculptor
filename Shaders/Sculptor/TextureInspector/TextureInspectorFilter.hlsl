@@ -3,6 +3,10 @@
 [[descriptor_set(TextureInspectorFilterDS, 0)]]
 
 
+#define VISUALIZATION_MODE_COLOR 0
+#define VISUALIZATION_MODE_ALPHA 1
+
+
 struct CS_INPUT
 {
 	uint3 globalID : SV_DispatchThreadID;
@@ -19,41 +23,49 @@ void TextureInspectorFilterCS(CS_INPUT input)
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		float3 color = 0.f;
+		float4 color = 0.f;
 		if(u_params.isIntTexture)
 		{
-			color = u_intTexture.Load(pixel).rgb;
+			color = u_intTexture.Load(pixel);
 		}
 		else
 		{
-			color = u_floatTexture.Load(pixel).rgb;
+			color = u_floatTexture.Load(pixel);
 		}
 
 		if (all(pixel.xy == u_params.hoveredPixel))
 		{
-			u_readbackBuffer[0].hoveredPixelValue = float4(color, 1.f);
+			u_readbackBuffer[0].hoveredPixelValue = color;
 		}
 
-
-		if (!u_params.rChannelVisible)
+		if (u_params.visualizationMode == VISUALIZATION_MODE_COLOR)
 		{
-			color.r = 0.f;
+			if (!u_params.rChannelVisible)
+			{
+				color.r = 0.f;
+			}
+			if (!u_params.gChannelVisible)
+			{
+				color.g = 0.f;
+			}
+			if (!u_params.bChannelVisible)
+			{
+				color.b = 0.f;
+			}
+
+			color.rgb = clamp(color.rgb, u_params.minValue, u_params.maxValue);
+
+			color.rgb = (color.rgb - u_params.minValue) / (u_params.maxValue - u_params.minValue);
 		}
-		if (!u_params.gChannelVisible)
+		else if(u_params.visualizationMode == VISUALIZATION_MODE_ALPHA)
 		{
-			color.g = 0.f;
-		}
-		if (!u_params.bChannelVisible)
-		{
-			color.b = 0.f;
+			color.rgb = color.aaa;
 		}
 
-		color = clamp(color, u_params.minValue, u_params.maxValue);
+		color.rgb = pow(color.rgb, 0.4545f);
 
-		color = (color - u_params.minValue) / (u_params.maxValue - u_params.minValue);
+		color.a = 1.f;
 
-		color = pow(color, 0.4545f);
-
-		u_outputTexture[pixel.xy] = float4(color, 1.f);
+		u_outputTexture[pixel.xy] = color;
 	}
 }

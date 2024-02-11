@@ -16,11 +16,11 @@ namespace spt::rg::capture
 // Utilities =====================================================================================
 
 DS_BEGIN(TextureInspectorFilterDS, rg::RGDescriptorSetState<TextureInspectorFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),             u_floatTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4i>),             u_intTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TextureInspectorFilterParams>),     u_params)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                      u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<TextureInspectorReadbackData>), u_readbackBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),                    u_floatTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4i>),                    u_intTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TextureInspectorFilterParams>),            u_params)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<TextureInspectorReadbackData>),        u_readbackBuffer)
 DS_END();
 
 
@@ -57,7 +57,6 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<TextureInspectorReadb
 
 	const rg::RGTextureViewHandle inputTextureView  = graphBuilder.AcquireExternalTextureView(m_inputTexture.ToSharedPtr());
 	const rg::RGTextureViewHandle outputTextureView = graphBuilder.AcquireExternalTextureView(m_outputTexture.ToSharedPtr());
-
 
 	const Bool isIntTexture = m_parameters.isIntTexture;
 	

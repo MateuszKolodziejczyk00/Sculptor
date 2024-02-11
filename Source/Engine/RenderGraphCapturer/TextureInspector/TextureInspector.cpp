@@ -12,7 +12,7 @@
 #include "UIUtils.h"
 #include "InputManager.h"
 
-
+#pragma optimize("", off)
 namespace spt::rg::capture
 {
 
@@ -184,28 +184,35 @@ void TextureInspector::DrawTextureViewSettingPanel()
 
 	ImGui::Text("View Details");
 
-	ImGui::Columns(3);
+	const char* visualizationModes[] = { "Color", "Alpha" };
+	ImGui::Combo("Visualization Mode", reinterpret_cast<int*>(&m_viewParameters.visualizationMode), visualizationModes, SPT_ARRAY_SIZE(visualizationModes));
 
-	ImGui::Text("R");
-	ImGui::Checkbox("##R", reinterpret_cast<Bool*>(&m_viewParameters.rChannelVisible));
-	ImGui::NextColumn();
+	const ETextureInspectorVisualizationMode visualizationMode = static_cast<ETextureInspectorVisualizationMode>(m_viewParameters.visualizationMode);
+	if (visualizationMode == ETextureInspectorVisualizationMode::Color)
+	{
+		ImGui::Columns(3);
 
-	ImGui::Text("G");
-	ImGui::Checkbox("##G", reinterpret_cast<Bool*>(&m_viewParameters.gChannelVisible));
-	ImGui::NextColumn();
+		ImGui::Text("R");
+		ImGui::Checkbox("##R", reinterpret_cast<Bool*>(&m_viewParameters.rChannelVisible));
+		ImGui::NextColumn();
 
-	ImGui::Text("B");
-	ImGui::Checkbox("##B", reinterpret_cast<Bool*>(&m_viewParameters.bChannelVisible));
+		ImGui::Text("G");
+		ImGui::Checkbox("##G", reinterpret_cast<Bool*>(&m_viewParameters.gChannelVisible));
+		ImGui::NextColumn();
 
-	ImGui::EndColumns();
+		ImGui::Text("B");
+		ImGui::Checkbox("##B", reinterpret_cast<Bool*>(&m_viewParameters.bChannelVisible));
 
-	ImGui::Columns(2);
+		ImGui::EndColumns();
 
-	ImGui::DragFloat("Min Value", &m_viewParameters.minValue, 0.01f);
-	ImGui::NextColumn();
-	ImGui::DragFloat("Max Value", &m_viewParameters.maxValue, 0.01f);
+		ImGui::Columns(2);
 
-	ImGui::EndColumns();
+		ImGui::DragFloat("Min Value", &m_viewParameters.minValue, 0.01f);
+		ImGui::NextColumn();
+		ImGui::DragFloat("Max Value", &m_viewParameters.maxValue, 0.01f);
+
+		ImGui::EndColumns();
+	}
 
 	ImGui::End();
 }
