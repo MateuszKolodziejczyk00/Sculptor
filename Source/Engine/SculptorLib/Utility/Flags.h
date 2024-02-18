@@ -30,7 +30,7 @@ constexpr Bool HasAllFlags(TFlagsType flags, TFlagType queriedFlag)
 template<typename TFlagsType, typename TFlagType,
 		 typename = std::enable_if_t<std::is_integral_v<TFlagsType>, void>,
 		 typename = std::enable_if_t<std::is_convertible_v<TFlagType, TFlagsType>, void>>
-void AddFlag(TFlagsType& flags, TFlagType flagToAdd)
+constexpr void AddFlag(TFlagsType& flags, TFlagType flagToAdd)
 {
 	flags |= static_cast<TFlagsType>(flagToAdd);
 }
@@ -39,7 +39,7 @@ void AddFlag(TFlagsType& flags, TFlagType flagToAdd)
 template<typename TFlagsType, typename TFlagType,
 		 typename = std::enable_if_t<std::is_integral_v<TFlagsType>, void>,
 		 typename = std::enable_if_t<std::is_convertible_v<TFlagType, TFlagsType>, void>>
-void RemoveFlag(TFlagsType& flags, TFlagType flagToRemove)
+constexpr void RemoveFlag(TFlagsType& flags, TFlagType flagToRemove)
 {
 	flags &= ~static_cast<TFlagsType>(flagToRemove);
 }
@@ -107,7 +107,7 @@ constexpr Bool HasAllFlags(TEnumType flags, TEnumType queriedFlag)
 
 template<typename TEnumType,
 		 typename isEnum = std::enable_if_t<std::is_enum_v<TEnumType>, void>>
-void AddFlag(TEnumType& flags, TEnumType flagToAdd)
+constexpr void AddFlag(TEnumType& flags, TEnumType flagToAdd)
 {
 	flags = Union(flags, flagToAdd);
 }
@@ -115,7 +115,7 @@ void AddFlag(TEnumType& flags, TEnumType flagToAdd)
 
 template<typename TEnumType, typename... TEnums,
 		 typename isEnum = std::enable_if_t<std::is_enum_v<TEnumType>, void>>
-void AddFlags(TEnumType& flags, TEnumType flagToAdd, TEnums... otherFlagsToAdd)
+constexpr void AddFlags(TEnumType& flags, TEnumType flagToAdd, TEnums... otherFlagsToAdd)
 {
 	flags = Union(flags, flagToAdd, otherFlagsToAdd...);
 }
@@ -123,7 +123,7 @@ void AddFlags(TEnumType& flags, TEnumType flagToAdd, TEnums... otherFlagsToAdd)
 
 template<typename TEnumType,
 		 typename = std::enable_if_t<std::is_enum_v<TEnumType>, void>>
-void RemoveFlag(TEnumType& flags, TEnumType flagToRemove)
+constexpr void RemoveFlag(TEnumType& flags, TEnumType flagToRemove)
 {
 	flags = Difference(flags, flagToRemove);
 }

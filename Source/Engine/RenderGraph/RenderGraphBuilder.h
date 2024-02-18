@@ -233,6 +233,8 @@ private:
 
 	RenderGraphResourcesPool& m_resourcesPool;
 
+	lib::SharedPtr<rdr::DescriptorSetStackAllocator> m_dsAllocator;
+
 	RGAllocator m_allocator;
 };
 
@@ -245,7 +247,9 @@ TType* RenderGraphBuilder::Allocate(TArgs&&... args)
 template<typename TDSType>
 lib::MTHandle<TDSType> RenderGraphBuilder::CreateDescriptorSet(const rdr::RendererResourceName& name)
 {
-	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, rdr::EDescriptorSetStateFlags::None);
+	rdr::DescriptorSetStateParams params;
+	params.stackAllocator = m_dsAllocator;
+	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, params);
 	ds->DisableDeleteOnZeroRefCount();
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME
 	m_allocatedDSStates.emplace_back(ds);

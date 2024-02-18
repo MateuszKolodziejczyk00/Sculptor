@@ -55,9 +55,10 @@ void RHISemaphore::ReleaseRHI()
 
 	if (m_semaphore)
 	{
+		m_name.Reset(reinterpret_cast<Uint64>(m_semaphore), VK_OBJECT_TYPE_SEMAPHORE);
+
 		vkDestroySemaphore(VulkanRHI::GetDeviceHandle(), m_semaphore, VulkanRHI::GetAllocationCallbacks());
 		m_semaphore = VK_NULL_HANDLE;
-		m_name.Reset(reinterpret_cast<Uint64>(m_semaphore), VK_OBJECT_TYPE_SEMAPHORE);
 	}
 }
 

@@ -9,6 +9,8 @@ function ImGui:SetupConfiguration(configuration, platform)
 
     self:AddPrivateDefine("IMGUI_BUILD_DLL=1");
 
+	self:AddPublicDefine("_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS=1")
+
     if platform == EPlatform.Windows then
         self:AddPublicDefine("IMGUI_PLATFORM_WINDOWS")
     end

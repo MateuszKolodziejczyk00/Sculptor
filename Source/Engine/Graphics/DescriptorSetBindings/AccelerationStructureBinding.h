@@ -28,7 +28,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateAccelerationStructure(GetName(), lib::Ref(m_tlas));
+		context.UpdateAccelerationStructure(GetBaseBindingIdx(), lib::Ref(m_tlas));
 	}
 
 	AccelerationStructureBinding& operator=(const lib::SharedRef<rdr::TopLevelAS>& tlas)
@@ -48,7 +48,7 @@ public:
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData() };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::AccelerationStructure) };
 	}
 
 private:

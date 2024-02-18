@@ -22,8 +22,6 @@ CommandRecorder::CommandRecorder()
 lib::SharedRef<GPUWorkload> CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
 	SPT_PROFILER_FUNCTION();
-
-	m_pipelineState.PrepareForExecution(context);
 	
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, context, recordingInfo.commandBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);

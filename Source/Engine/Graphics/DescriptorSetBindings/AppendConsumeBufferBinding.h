@@ -28,7 +28,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind(), m_boundCountBuffer.GetBufferToBind());
+		context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind(), m_boundCountBuffer.GetBufferToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -49,7 +49,8 @@ public:
 	// We need to take two bindings - first for buffer and second for count (storage buffer)
 	static constexpr std::array<rdr::ShaderBindingMetaData, 2> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(lib::Flags(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound)), rdr::ShaderBindingMetaData(smd::EBindingFlags::Storage) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::StorageBuffer, lib::Flags(smd::EBindingFlags::Storage, smd::EBindingFlags::Unbound)),
+			rdr::ShaderBindingMetaData(rhi::EDescriptorType::StorageBuffer, smd::EBindingFlags::Storage) };
 	}
 
 	template<CInstanceOrRGBufferView TBufferType, CInstanceOrRGBufferView TCountBufferType>

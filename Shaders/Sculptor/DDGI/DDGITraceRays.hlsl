@@ -2,7 +2,6 @@
 #include "SculptorShader.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
-
 #include "DDGI/DDGITraceRaysCommon.hlsli"
 
 #include "DDGI/DDGITypes.hlsli"
@@ -74,17 +73,6 @@ void DDGIProbeRaysRTG()
         const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
         luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
     }
-
-#if DDGI_DEBUG_RAYS
-    const uint debugRayIdx = dispatchIdx.x * u_relitParams.raysNumPerProbe + rayIdx;
-
-    DDGIDebugRay debugRay;
-    debugRay.traceOrigin        = probeWorldLocation;
-    debugRay.isValidHit         = isValidHit;
-    debugRay.traceEnd           = probeWorldLocation + rayDirection * abs(payload.hitDistance);
-    debugRay.luminance          = luminance;
-    u_debugRays[debugRayIdx]    = debugRay;
-#endif // DDGI_DEBUG_RAYS
 
     u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);
 }

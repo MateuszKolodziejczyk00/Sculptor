@@ -1,8 +1,8 @@
 #include "RHIDeviceQueue.h"
 #include "RHICommandBuffer.h"
 #include "RHISemaphore.h"
-#include "../VulkanRHI.h"
-#include "../Debug/GPUCrashTracker.h"
+#include "Vulkan/VulkanRHI.h"
+#include "Vulkan/Debug/GPUCrashTracker.h"
 
 
 namespace spt::vulkan

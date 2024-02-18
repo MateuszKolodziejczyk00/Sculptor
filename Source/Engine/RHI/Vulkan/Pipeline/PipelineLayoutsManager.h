@@ -23,10 +23,8 @@ public:
 
 private:
 
-	VkDescriptorSetLayout			GetOrCreateDSLayout_AssumesLocked(const rhi::DescriptorSetDefinition& dsDef);
-	VkDescriptorSetLayout			CreateDSLayout(const rhi::DescriptorSetDefinition& dsDef) const;
 
-	lib::SharedRef<PipelineLayout>	CreatePipelineLayout_AssumesLocked(const rhi::PipelineLayoutDefinition& definition);
+	lib::SharedRef<PipelineLayout>	CreatePipelineLayout(const rhi::PipelineLayoutDefinition& definition);
 
 	/**
 	 * Cached handles that were flushed.
@@ -39,7 +37,6 @@ private:
 	 * Access to these objects is slower, as it has to be synchronized using lock (because some thread may modify its content by creating new layout)
 	 */
 	lib::HashMap<SizeType, lib::SharedPtr<PipelineLayout>>	m_pipelinesPendingFlush;
-	lib::HashMap<SizeType, VkDescriptorSetLayout>			m_cachedDSLayouts;
 	lib::Lock												m_pipelinesPendingFlushLock;
 };
 

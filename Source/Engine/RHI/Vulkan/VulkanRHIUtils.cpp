@@ -2,11 +2,6 @@
 
 namespace spt::vulkan
 {
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Helpers =======================================================================================
-
-	
-static_assert(sizeof(rhi::DescriptorSetLayoutID) == sizeof(VkDescriptorSetLayout), "Couldn't store vulkan layout handle as id");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIToVulkan ===================================================================================
@@ -550,16 +545,6 @@ VkColorComponentFlags RHIToVulkan::GetColorComponentFlags(rhi::ERenderTargetComp
 	return flags;
 }
 
-VkDescriptorSetLayout RHIToVulkan::GetDSLayout(rhi::DescriptorSetLayoutID layoutID)
-{
-	return reinterpret_cast<VkDescriptorSetLayout>(layoutID);
-}
-
-const VkDescriptorSetLayout* RHIToVulkan::GetDSLayoutsPtr(const rhi::DescriptorSetLayoutID* layoutIDs)
-{
-	return reinterpret_cast<const VkDescriptorSetLayout*>(layoutIDs);
-}
-
 VkSamplerCreateFlags RHIToVulkan::GetSamplerCreateFlags(rhi::ESamplerFlags flags)
 {
 	return 0;
@@ -723,19 +708,6 @@ VkQueryPipelineStatisticFlags RHIToVulkan::GetPipelineStatistic(rhi::EQueryStati
 	}
 
 	return flags;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// VulkanToRHI ===================================================================================
-
-rhi::DescriptorSetLayoutID VulkanToRHI::GetDSLayoutID(VkDescriptorSetLayout layoutHandle)
-{
-	return reinterpret_cast<rhi::DescriptorSetLayoutID>(layoutHandle);
-}
-
-const rhi::DescriptorSetLayoutID* VulkanToRHI::GetDSLayoutIDsPtr(VkDescriptorSetLayout layoutHandle)
-{
-	return reinterpret_cast<const rhi::DescriptorSetLayoutID*>(layoutHandle);
 }
 
 } // rhi::vulkan

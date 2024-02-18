@@ -270,6 +270,7 @@ BEGIN_SHADER_STRUCT(IntegrateInScatteringParams)
 	SHADER_STRUCT_FIELD(Real32, fogFarPlane)
 END_SHADER_STRUCT();
 
+
 DS_BEGIN(IntegrateInScatteringDS, rg::RGDescriptorSetState<IntegrateInScatteringDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_inScatteringSampler)

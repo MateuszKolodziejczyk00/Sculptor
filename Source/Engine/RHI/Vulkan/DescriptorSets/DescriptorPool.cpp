@@ -71,6 +71,30 @@ void DescriptorPool::FreeDescriptorSets(const lib::DynamicArray<VkDescriptorSet>
 	vkFreeDescriptorSets(VulkanRHI::GetDeviceHandle(), m_poolHandle, static_cast<Uint32>(descriptorSets.size()), descriptorSets.data());
 }
 
+VkDescriptorSet DescriptorPool::AllocateDescriptorSet(VkDescriptorSetLayout layout)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	VkDescriptorSetAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	allocateInfo.descriptorPool     = m_poolHandle;
+	allocateInfo.descriptorSetCount = 1;
+	allocateInfo.pSetLayouts        = &layout;
+
+	VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+	SPT_VK_CHECK(vkAllocateDescriptorSets(VulkanRHI::GetDeviceHandle(), &allocateInfo, &descriptorSet));
+
+	return descriptorSet;
+}
+
+void DescriptorPool::FreeDescriptorSet(VkDescriptorSet descriptorSet)
+{
+	SPT_PROFILER_FUNCTION();
+
+	vkFreeDescriptorSets(VulkanRHI::GetDeviceHandle(), m_poolHandle, 1, &descriptorSet);
+}
+
 void DescriptorPool::ResetPool()
 {
 	SPT_PROFILER_FUNCTION();

@@ -1,5 +1,5 @@
 #include "RHIRenderContext.h"
-#include "RHIDescriptorSetManager.h"
+#include "Vulkan/DescriptorSets/RHIDescriptorSetManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/CommandPool/RHICommandPoolsManager.h"
@@ -73,7 +73,7 @@ const lib::HashedString& RHIRenderContext::GetName() const
 	return m_name.Get();
 }
 
-lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
+lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(const lib::Span<const RHIDescriptorSetLayout> layouts)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -83,9 +83,15 @@ lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(con
 	}
 
 	lib::DynamicArray<RHIDescriptorSet> outSets;
-	outSets.reserve(static_cast<SizeType>(descriptorSetsNum));
+	outSets.reserve(layouts.size());
 
-	m_dynamicDescriptorsPool->AllocateDescriptorSets(RHIToVulkan::GetDSLayoutsPtr(layoutIDs), descriptorSetsNum, outSets);
+	lib::DynamicArray<VkDescriptorSetLayout> layoutHandles;
+	layoutHandles.reserve(layouts.size());
+	std::transform(layouts.begin(), layouts.end(),
+				   std::back_inserter(layoutHandles),
+				   [](const RHIDescriptorSetLayout& layout) { return layout.GetHandle(); });
+
+	m_dynamicDescriptorsPool->AllocateDescriptorSets(layoutHandles.data(), static_cast<Uint32>(layoutHandles.size()), outSets);
 
 	return outSets;
 }

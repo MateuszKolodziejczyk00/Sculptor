@@ -11,16 +11,14 @@ namespace spt::sc
 struct DescriptorSetCompilationMetaData
 {
 	DescriptorSetCompilationMetaData()
-		: hash(0)
+		: typeID(idxNone<SizeType>)
 	{ }
 
 	lib::DynamicArray<lib::HashedString> additionalMacros;
 
-	lib::DynamicArray<smd::EBindingFlags> bindingsFlags;
-
 	lib::HashMap<Uint32, rhi::SamplerDefinition> bindingToImmutableSampler;
 
-	SizeType hash;
+	SizeType typeID;
 };
 
 } // spt::sc

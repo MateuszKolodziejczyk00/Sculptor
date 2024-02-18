@@ -2,13 +2,16 @@
 
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
-#include "RHIDescriptorSet.h"
 #include "Vulkan/DescriptorSets/DescriptorPoolSet.h"
 #include "RHICore/RHIDescriptorTypes.h"
+#include "Vulkan/VulkanTypes/RHIDescriptorSet.h"
 
 
 namespace spt::vulkan
 {
+
+class RHIDescriptorSetLayout;
+
 
 class RHIDescriptorSetManager
 {
@@ -19,10 +22,8 @@ public:
 	void InitializeRHI();
 	void ReleaseRHI();
 
-	SPT_NODISCARD RHIDescriptorSet						AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID);
-	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
-	void												FreeDescriptorSet(const RHIDescriptorSet& set);
-	void												FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
+	SPT_NODISCARD RHIDescriptorSet AllocateDescriptorSet(const RHIDescriptorSetLayout& layout);
+	void                           FreeDescriptorSet(const RHIDescriptorSet& set);
 
 	// Dynamic descriptor pools ===================================
 

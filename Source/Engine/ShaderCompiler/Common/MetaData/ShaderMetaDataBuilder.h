@@ -20,7 +20,6 @@ class ShaderMetaDataBuilder
 public:
 
 	static void BuildShaderMetaData(const CompiledShader& shader, const ShaderCompilationMetaData& parametersMetaData, smd::ShaderMetaData& outShaderMetaData);
-	static void FinishBuildingMetaData(smd::ShaderMetaData& outShaderMetaData);
 };
 
 } // spt:sc

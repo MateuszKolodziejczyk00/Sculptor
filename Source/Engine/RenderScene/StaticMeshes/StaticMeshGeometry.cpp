@@ -90,7 +90,7 @@ StaticMeshUnifiedData::StaticMeshUnifiedData()
 	m_submeshesBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Submeshes Buffer"), 1024 * 32 * sizeof(SubmeshGPUData));
 	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
 
-	m_unifiedDataDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshUnifiedDataDS>(RENDERER_RESOURCE_NAME("Static Mesh Unified Data DS"), rdr::EDescriptorSetStateFlags::Persistent);
+	m_unifiedDataDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshUnifiedDataDS>(RENDERER_RESOURCE_NAME("Static Mesh Unified Data DS"));
 	m_unifiedDataDS->u_submeshes	= m_submeshesBuffer->CreateFullView();
 	m_unifiedDataDS->u_meshlets		= m_meshletsBuffer->CreateFullView();
 

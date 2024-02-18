@@ -32,7 +32,7 @@ public:
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
 		SPT_CHECK(!IsDirty());
-		context.UpdateBuffer(GetName(), CreateBufferViewToBind());
+		context.UpdateBuffer(GetBaseBindingIdx(), CreateBufferViewToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -49,7 +49,7 @@ public:
 	
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(smd::EBindingFlags::Storage) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::StorageBuffer, smd::EBindingFlags::Storage) };
 	}
 
 	const TStruct& operator[](SizeType idx) const

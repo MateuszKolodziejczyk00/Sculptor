@@ -632,7 +632,7 @@ void ShadowMapsManagerSubsystem::ReleaseAllShadowMaps()
 
 void ShadowMapsManagerSubsystem::CreateShadowMapsDescriptorSet()
 {
-	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"), rdr::EDescriptorSetStateFlags::Persistent);
+	m_shadowMapsDS = rdr::ResourcesManager::CreateDescriptorSetState<ShadowMapsDS>(RENDERER_RESOURCE_NAME("ShadowMapsDS"));
 	for (const lib::SharedPtr<rdr::Texture>& shadowMap : m_shadowMaps)
 	{
 		rhi::TextureViewDefinition shadowMapViewDef;

@@ -38,9 +38,6 @@ enum class EDescriptorSetFlags
 };
 
 
-using DescriptorSetLayoutID = SizeType;
-
-
 struct WriteDescriptorDefinition
 {
 	WriteDescriptorDefinition()

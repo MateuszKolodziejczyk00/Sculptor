@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "RHIDescriptorSetDefinition.h"
+#include "RHIBridge/RHIDescriptorSetLayoutImpl.h"
 
 namespace spt::rhi
 {
@@ -10,9 +11,8 @@ struct PipelineLayoutDefinition
 {
 	PipelineLayoutDefinition() = default;
 
-	lib::DynamicArray<DescriptorSetDefinition>		descriptorSets;
+	lib::DynamicArray<RHIDescriptorSetLayout> descriptorSetLayouts;
 };
-
 
 } // spt::rhi
 
@@ -24,8 +24,13 @@ struct hash<spt::rhi::PipelineLayoutDefinition>
 {
     size_t operator()(const spt::rhi::PipelineLayoutDefinition& pipelineLayoutDefinition) const
     {
+		const auto dsLayoutHasher = [](const spt::rhi::RHIDescriptorSetLayout& layout)
+		{
+			return layout.GetHash();
+		};
+
 		size_t seed = 0;
-		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.descriptorSets), std::cend(pipelineLayoutDefinition.descriptorSets));
+		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.descriptorSetLayouts), std::cend(pipelineLayoutDefinition.descriptorSetLayouts), dsLayoutHasher);
 		return seed;
     }
 };

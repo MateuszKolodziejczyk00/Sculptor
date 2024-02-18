@@ -17,6 +17,8 @@
 #include "Types/Event.h"
 #include "Types/QueryPool.h"
 #include "Types/GPUMemoryPool.h"
+#include "Types/DescriptorSetLayout.h"
+#include "Types/DescriptorSetState/DescriptorSetStackAllocator.h"
 
 
 namespace spt::rdr
@@ -113,9 +115,14 @@ lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefini
 	return Renderer::GetSamplersCache().GetOrCreateSampler(def);
 }
 
-DescriptorSetWriter ResourcesManager::CreateDescriptorSetWriter()
+lib::SharedRef<DescriptorSetLayout> ResourcesManager::CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def)
 {
-	return DescriptorSetWriter();
+	return lib::MakeShared<DescriptorSetLayout>(name, def);
+}
+
+lib::SharedRef<DescriptorSetStackAllocator> ResourcesManager::CreateDescriptorSetAllocator(const RendererResourceName& name)
+{
+	return lib::MakeShared<DescriptorSetStackAllocator>(name);
 }
 
 lib::SharedRef<QueryPool> ResourcesManager::CreateQueryPool(const rhi::QueryPoolDefinition& def)

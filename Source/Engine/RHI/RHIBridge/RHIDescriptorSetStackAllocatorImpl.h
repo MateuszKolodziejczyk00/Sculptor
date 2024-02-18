@@ -2,7 +2,7 @@
 
 #if SPT_VULKAN_RHI
 
-#include "Vulkan/VulkanTypes/RHIDescriptorSet.h"
+#include "Vulkan/VulkanTypes/RHIDescriptorSetStackAllocator.h"
 
 #endif
 

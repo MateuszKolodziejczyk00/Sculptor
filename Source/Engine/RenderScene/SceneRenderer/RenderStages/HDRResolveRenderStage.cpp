@@ -40,7 +40,7 @@ RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", {
 
 
 RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
-RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.04f, 0.f, 1.f);
+RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.006f, 0.f, 1.f);
 RendererFloatParameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, 45000.f, 0.f, 1000000.f);
 
 RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 6, 0, 10);

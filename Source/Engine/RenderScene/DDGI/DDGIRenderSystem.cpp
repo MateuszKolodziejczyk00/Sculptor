@@ -59,9 +59,6 @@ DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>),                 u_volumeParams)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
-
-	DS_BINDING(BINDING_TYPE(gfx::ConditionalBinding<"DDGI_DEBUG_RAYS",
-													gfx::OptionalRWStructuredBufferBinding<DDGIDebugRay>>),	u_debugRays)
 DS_END();
 
 
@@ -122,9 +119,6 @@ namespace pipelines
 static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
-#if DDGI_DEBUGGING
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DDGI_DEBUG_RAYS", "1"));
-#endif // DDGI_DEBUGGING
 	compilationSettings.DisableGeneratingDebugSource();
 
 	rdr::RayTracingPipelineShaders rtShaders;
@@ -437,21 +431,6 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	traceRaysDS->u_relitParams              = relitParams.relitParamsBuffer;
 	traceRaysDS->u_volumeParams             = relitParams.ddgiVolumeParamsBuffer;
 	traceRaysDS->rayTracingDS               = rayTracingSubsystem.GetSceneRayTracingDS();
-
-#if DDGI_DEBUGGING
-	if (relitParams.debugMode == EDDGIDebugMode::DebugRays)
-	{
-		const Uint32 debugRaysNum = probesToUpdateNum * raysNumPerProbe;
-		const Uint64 debugRaysBufferSize = debugRaysNum * sizeof(DDGIDebugRay);
-		const rhi::BufferDefinition debugRaysBufferDef(debugRaysBufferSize, rhi::EBufferUsage::Storage);
-		const rg::RGBufferViewHandle debugRaysBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Debug Rays Buffer"), debugRaysBufferDef, rhi::EMemoryUsage::GPUOnly);
-
-		traceRaysDS->u_debugRays.Set<rg::RGBufferViewHandle>(debugRaysBuffer);
-
-		DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().GetOrCreate<DDGIDebugRaysViewData>();
-		debugRaysViewData.debugRaysBuffers.emplace_back(DDGIDebugRaysViewData::DebugRaysBuffer(debugRaysBuffer, debugRaysNum));
-	}
-#endif // DDGI_DEBUGGING
 
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 

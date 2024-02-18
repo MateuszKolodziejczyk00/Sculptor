@@ -7,7 +7,6 @@
 #include "CurrentFrameContext.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
-#include "DescriptorSets/DescriptorSetsManager.h"
 #include "Samplers/SamplersCache.h"
 #include "GPUDiagnose/Diagnose.h"
 #include "Window/PlatformWindowImpl.h"
@@ -30,8 +29,6 @@ struct RendererData
 ShadersManager shadersManager;
 
 PipelinesLibrary pipelinesLibrary;
-
-DescriptorSetsManager descriptorSetsManager;
 
 SamplersCache samplersCache;
 
@@ -71,11 +68,15 @@ void Renderer::PostCreatedWindow()
 	GPUProfiler::Initialize();
 
 	GetDeviceQueuesManager().Initialize();
+
+	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
 }
 
 void Renderer::Uninitialize()
 {
 	WaitIdle();
+
+	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
 
 	CurrentFrameContext::ReleaseAllResources();
 
@@ -110,8 +111,6 @@ void Renderer::BeginFrame(Uint64 frameIdx)
 	
 	rhi::RHI::BeginFrame();
 
-	GetDescriptorSetsManager().BeginFrame();
-
 	GetSamplersCache().FlushPendingSamplers();
 	
 	GetPipelinesLibrary().FlushCreatedPipelines();
@@ -125,11 +124,6 @@ ShadersManager& Renderer::GetShadersManager()
 PipelinesLibrary& Renderer::GetPipelinesLibrary()
 {
 	return priv::g_data.pipelinesLibrary;
-}
-
-DescriptorSetsManager& Renderer::GetDescriptorSetsManager()
-{
-	return priv::g_data.descriptorSetsManager;
 }
 
 SamplersCache& Renderer::GetSamplersCache()
@@ -175,13 +169,6 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 	{
 		CurrentFrameContext::ReleaseAllResources();
 	}
-}
-
-void Renderer::UpdatePersistentDescriptorSets()
-{
-	SPT_PROFILER_FUNCTION();
-
-	GetDescriptorSetsManager().UpdatePersistentDescriptorSets();
 }
 
 Uint64 Renderer::GetCurrentFrameIdx()

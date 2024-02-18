@@ -15,6 +15,7 @@ namespace spt::rg
 RenderGraphBuilder::RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool)
 	: m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
 	, m_resourcesPool(resourcesPool)
+	, m_dsAllocator(rdr::ResourcesManager::CreateDescriptorSetAllocator(RENDERER_RESOURCE_NAME("RG Descriptor Set Allocator")))
 {
 	m_resourcesPool.Prepare();
 }

@@ -163,6 +163,10 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
 	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().Get().GetData(), helpers::GetQueryFlags(GetType()));
 
+#if SPT_ENABLE_GPU_CRASH_DUMPS
+	recorder.SetDebugCheckpoint(GetName().Get());
+#endif // SPT_ENABLE_GPU_CRASH_DUMPS
+
 	SPT_CHECK(!m_executed);
 
 	AcquireResources();

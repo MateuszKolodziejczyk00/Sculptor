@@ -24,7 +24,9 @@ public:
 	{
 		if (IsValid())
 		{
+			context.AddBindingsOffset(GetBaseBindingIdx());
 			m_boundDS->UpdateDescriptors(context);
+			context.RemoveBindingsOffset(GetBaseBindingIdx());
 		}
 	}
 	

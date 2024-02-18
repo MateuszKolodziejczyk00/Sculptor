@@ -57,8 +57,6 @@ CompiledShader ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::St
 	if (compiledShader.IsValid())
 	{
 		ShaderMetaDataBuilder::BuildShaderMetaData(compiledShader, compilationMetaData, compiledShader.metaData);
-		
-		ShaderMetaDataBuilder::FinishBuildingMetaData(compiledShader.metaData);
 
 #if SPT_SHADERS_DEBUG_FEATURES
 		compiledShader.debugMetaData = compilationMetaData.GetDebugMetaData();

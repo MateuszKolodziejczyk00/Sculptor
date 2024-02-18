@@ -29,6 +29,39 @@ void DescriptorPoolSet::ReleaseAllPools()
 	m_descriptorPools.clear();
 }
 
+RHIDescriptorSet DescriptorPoolSet::AllocateDescriptorSet(VkDescriptorSetLayout layout)
+{
+	SPT_PROFILER_FUNCTION();
+
+	// first try allocate from existing pools
+	for (SizeType idx = 0; idx < m_descriptorPools.size(); ++idx)
+	{
+		const VkDescriptorSet descriptorSet = m_descriptorPools[idx].AllocateDescriptorSet(layout);
+		if (descriptorSet != VK_NULL_HANDLE)
+		{
+			return RHIDescriptorSet(descriptorSet, m_thisSetIdx, static_cast<Uint16>(idx));
+		}
+	}
+
+	// if none of existing pools could allocate descriptors, create new pool
+	DescriptorPool& newPool = m_descriptorPools.emplace_back();
+	InitializeDescriptorPool(newPool);
+
+	const VkDescriptorSet descriptorSet = newPool.AllocateDescriptorSet(layout);
+	SPT_CHECK(descriptorSet != VK_NULL_HANDLE);
+	return RHIDescriptorSet(descriptorSet, m_thisSetIdx, static_cast<Uint16>(m_descriptorPools.size() - 1));
+}
+
+void DescriptorPoolSet::FreeDescriptorSet(VkDescriptorSet descriptorSet, Uint16 poolIdx)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const SizeType poolIdxST = static_cast<SizeType>(poolIdx);
+	SPT_CHECK(poolIdxST < m_descriptorPools.size());
+
+	m_descriptorPools[poolIdxST].FreeDescriptorSet(descriptorSet);
+}
+
 void DescriptorPoolSet::AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<RHIDescriptorSet>& outDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();

@@ -28,7 +28,7 @@ public:
 	{
 		if (IsValid())
 		{
-			context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
+			context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
 		}
 	}
 	
@@ -63,7 +63,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
 		}
 
-		return { rdr::ShaderBindingMetaData(flags) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::StorageBuffer, flags) };
 	}
 
 	static constexpr Bool IsByteBuffer()

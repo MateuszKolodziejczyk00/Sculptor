@@ -3,9 +3,6 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
-#include "DescriptorSets/DynamicDescriptorSetsTypes.h"
-
-namespace spt { namespace rdr { class RenderContext; } }
 
 
 namespace spt::rdr
@@ -17,6 +14,7 @@ class RayTracingPipeline;
 class Pipeline;
 class DescriptorSetState;
 class CommandQueue;
+class RenderContext;
 
 
 class PipelinePendingState
@@ -55,39 +53,28 @@ public:
 	void BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 	void UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 
-	// ==================================================================
-
-	void PrepareForExecution(const lib::SharedRef<RenderContext>& renderContext);
-
 private:
 
 	using DynamicOffsetsArray = lib::DynamicArray<Uint32>;
 
-	struct PersistentDSBindCommand
+	struct DSBindCommand
 	{
-		Uint32					idx;
-		rhi::RHIDescriptorSet	ds;
-		DynamicOffsetsArray		dynamicOffsets;
-	};
-
-	struct DynamicDSBindCommand
-	{
-		Uint32					idx;
-		DSStateID				dsHash;
-		DynamicOffsetsArray		dynamicOffsets;
+		Uint32                idx;
+		rhi::RHIDescriptorSet ds;
+		DynamicOffsetsArray   dynamicOffsets;
 	};
 
 	struct DSBindCommands
 	{
-		lib::DynamicArray<PersistentDSBindCommand>	persistentDSBinds;
-		lib::DynamicArray<DynamicDSBindCommand>		dynamicDSBinds;
+		lib::DynamicArray<DSBindCommand>            descriptorSetBinds;
 	};
 
 	struct BoundDescriptorSetState
 	{
-		lib::MTHandle<DescriptorSetState>	instance;
+		DSStateTypeID         typeID;
+		rhi::RHIDescriptorSet ds;
 		// snapshotted state of dynamic offsets during bound
-		DynamicOffsetsArray					dynamicOffsets;
+		DynamicOffsetsArray   dynamicOffsets;
 	};
 
 	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);
@@ -97,7 +84,7 @@ private:
 
 	DSBindCommands FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
 
-	const BoundDescriptorSetState* GetBoundDescriptorSetState(SizeType dsTypeHash) const;
+	const BoundDescriptorSetState* GetBoundDescriptorSetState(DSStateTypeID dsTypeID) const;
 
 	lib::SharedPtr<GraphicsPipeline>	m_boundGfxPipeline;
 	lib::SharedPtr<ComputePipeline>		m_boundComputePipeline;
@@ -108,10 +95,6 @@ private:
 	lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
 	lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
 	lib::DynamicArray<Bool> m_dirtyRayTracingDescriptorSets;
-
-	// Dynamic descriptor sets that were bound to the pipeline. Later, used to batch and initialize all of them at once
-	lib::DynamicArray<DynamicDescriptorSetInfo>		m_dynamicDescriptorSetInfos;
-	lib::HashSet<DSStateID>							m_cachedDynamicDescriptorSets;
 };
 
 } // spt::rdr

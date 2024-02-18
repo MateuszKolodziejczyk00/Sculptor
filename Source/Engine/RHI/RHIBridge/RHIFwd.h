@@ -26,6 +26,7 @@ class RHIPipeline;
 class RHIProfiler;
 class RHIDescriptorSetManager;
 class RHIDescriptorSet;
+class RHIDescriptorSetLayout;
 class RHISampler;
 class RHITopLevelAS;
 class RHIBottomLevelAS;
@@ -33,8 +34,9 @@ class RHIShaderBindingTable;
 class RHIQueryPool;
 class RHIGPUMemoryPool;
 class RHIDeviceQueue;
+class RHIDescriptorSetStackAllocator;
 
-}
+} // namespace spt::vulkan
 
 namespace spt::rhi
 {

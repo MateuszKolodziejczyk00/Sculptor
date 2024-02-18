@@ -28,7 +28,7 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetName(), m_boundBuffer.GetBufferToBind());
+		context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -44,7 +44,7 @@ public:
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(smd::EBindingFlags::None) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::UniformBuffer, smd::EBindingFlags::None) };
 	}
 
 	template<priv::CInstanceOrRGBufferView TType>

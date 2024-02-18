@@ -18,7 +18,12 @@ enum class EShaderStageFlags : Flags32
 	RTAnyHit		= BIT(4),
 	RTClosestHit	= BIT(5),
 	RTMiss			= BIT(6),
-	RTIntersection	= BIT(7)
+	RTIntersection	= BIT(7),
+
+	AllGraphics		= Vertex | Fragment,
+	AllCompute		= Compute,
+	AllRayTracing	= RTGeneration | RTAnyHit | RTClosestHit | RTMiss | RTIntersection,
+	All				= AllGraphics | AllCompute | AllRayTracing
 };
 
 

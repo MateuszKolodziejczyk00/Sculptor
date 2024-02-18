@@ -1,9 +1,9 @@
 #include "DescriptorSetState.h"
-#include "ShaderMetaData.h"
-#include "Types/DescriptorSetWriter.h"
-#include "Types/Buffer.h"
 #include "Renderer.h"
-#include "DescriptorSets/DescriptorSetsManager.h"
+#include "ShaderMetaData.h"
+#include "Types/DescriptorSetLayout.h"
+#include "DescriptorSetStackAllocator.h"
+#include "Types/DescriptorSetWriter.h"
 
 namespace spt::rdr
 {
@@ -22,114 +22,13 @@ static DSStateID GenerateStateID()
 
 } // utils
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// DescriptorSetUpdateContext ====================================================================
-
-DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const smd::ShaderMetaData& metaData)
-	: m_descriptorSet(descriptorSet)
-	, m_writer(writer)
-	, m_metaData(metaData)
-{ }
-
-void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const smd::ShaderBufferParamEntry bufferParam = GetMetaData().FindParamEntry<smd::ShaderBufferParamEntry>(name);
-	
-	if (bufferParam.IsValid())
-	{
-		const smd::GenericShaderBinding binding = GetMetaData().GetBindingData(bufferParam);
-		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
-
-		rhi::WriteDescriptorDefinition writeDefinition;
-		writeDefinition.bindingIdx		= bufferParam.bindingIdx;
-		writeDefinition.arrayElement	= 0;
-		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
-
-		SPT_CHECK_MSG(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize(), "Invalid access to {} binding. Please Remove cached shaders from Saved/Shaders directory", name.GetData());
-
-		const Uint64 range = bufferBinding.IsUnbound() ? buffer.GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
-		SPT_CHECK(range > 0);
-
-		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range);
-	}
-}
-
-void DescriptorSetUpdateContext::UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const smd::ShaderBufferParamEntry bufferParam = GetMetaData().FindParamEntry<smd::ShaderBufferParamEntry>(name);
-	
-	if (bufferParam.IsValid())
-	{
-		const smd::GenericShaderBinding binding = GetMetaData().GetBindingData(bufferParam);
-		const smd::BufferBindingData& bufferBinding = binding.As<smd::BufferBindingData>();
-
-		rhi::WriteDescriptorDefinition writeDefinition;
-		writeDefinition.bindingIdx		= bufferParam.bindingIdx;
-		writeDefinition.arrayElement	= 0;
-		writeDefinition.descriptorType	= bufferBinding.GetDescriptorType();
-
-		SPT_CHECK(bufferBinding.IsUnbound() || bufferBinding.GetSize() <= buffer.GetSize());
-
-		const Uint64 range = bufferBinding.IsUnbound() ? buffer.GetSize() : static_cast<Uint64>(bufferBinding.GetSize());
-		SPT_CHECK(range > 0);
-
-		m_writer.WriteBuffer(m_descriptorSet, writeDefinition, buffer, range, countBuffer);
-	}
-}
-
-void DescriptorSetUpdateContext::UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex /*= 0*/) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const smd::ShaderTextureParamEntry textureParam = GetMetaData().FindParamEntry<smd::ShaderTextureParamEntry>(name);
-
-	if (textureParam.IsValid())
-	{
-		const smd::GenericShaderBinding& binding = GetMetaData().GetBindingData(textureParam);
-
-		rhi::WriteDescriptorDefinition writeDefinition;
-		writeDefinition.bindingIdx		= textureParam.bindingIdx;
-		writeDefinition.arrayElement	= arrayIndex;
-		writeDefinition.descriptorType	= binding.GetDescriptorType();
-
-		m_writer.WriteTexture(m_descriptorSet, writeDefinition, texture);
-	}
-}
-
-void DescriptorSetUpdateContext::UpdateAccelerationStructure(const lib::HashedString& name, const lib::SharedRef<TopLevelAS>& tlas) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const smd::ShaderAccelerationStructureParamEntry accelerationStructureParam = GetMetaData().FindParamEntry<smd::ShaderAccelerationStructureParamEntry>(name);
-
-	if (accelerationStructureParam.IsValid())
-	{
-		const smd::GenericShaderBinding& binding = GetMetaData().GetBindingData(accelerationStructureParam);
-
-		rhi::WriteDescriptorDefinition writeDefinition;
-		writeDefinition.bindingIdx		= accelerationStructureParam.bindingIdx;
-		writeDefinition.arrayElement	= 0;
-		writeDefinition.descriptorType	= binding.GetDescriptorType();
-
-		m_writer.WriteAccelerationStructure(m_descriptorSet, writeDefinition, tlas);
-	}
-}
-
-const smd::ShaderMetaData& DescriptorSetUpdateContext::GetMetaData() const
-{
-	return m_metaData;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
 DescriptorSetBinding::DescriptorSetBinding(const lib::HashedString& name)
 	: m_name(name)
 	, m_owningState(nullptr)
+	, m_baseBindingIdx(idxNone<Uint32>)
 { }
 
 const lib::HashedString& DescriptorSetBinding::GetName() const
@@ -137,10 +36,11 @@ const lib::HashedString& DescriptorSetBinding::GetName() const
 	return m_name;
 }
 
-void DescriptorSetBinding::SetOwningDSState(DescriptorSetState& state)
+void DescriptorSetBinding::PreInit(DescriptorSetState& state, Uint32 baseBindingIdx)
 {
 	SPT_CHECK(m_owningState == nullptr);
-	m_owningState = &state;
+	m_owningState    = &state;
+	m_baseBindingIdx = baseBindingIdx;
 }
 
 void DescriptorSetBinding::MarkAsDirty()
@@ -149,24 +49,26 @@ void DescriptorSetBinding::MarkAsDirty()
 	m_owningState->SetDirty();
 }
 
+Uint32 DescriptorSetBinding::GetBaseBindingIdx() const
+{
+	return m_baseBindingIdx;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 
-DescriptorSetState::DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags)
+DescriptorSetState::DescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params)
 	: m_id(utils::GenerateStateID())
-	, m_lastFrameDirty(0)
-	, m_flags(flags)
-	, m_descriptorSetHash(idxNone<SizeType>)
+	, m_typeID(DSStateTypeID(idxNone<SizeType>))
+	, m_dirty(true)
+	, m_flags(params.flags)
+	, m_stackAllocator(params.stackAllocator)
 	, m_name(name)
 { }
 
 DescriptorSetState::~DescriptorSetState()
 {
-	if (lib::HasAnyFlag(m_flags, EDescriptorSetStateFlags::Persistent))
-	{
-		DescriptorSetsManager& dsManager = Renderer::GetDescriptorSetsManager();
-		dsManager.UnregisterDescriptorSet(*this);
-	}
+	SwapDescriptorSet(rhi::RHIDescriptorSet{});
 }
 
 DSStateID DescriptorSetState::GetID() const
@@ -174,15 +76,43 @@ DSStateID DescriptorSetState::GetID() const
 	return m_id;
 }
 
+DSStateTypeID DescriptorSetState::GetTypeID() const
+{
+	return m_typeID;
+}
+
 Bool DescriptorSetState::IsDirty() const
 {
-	return m_lastFrameDirty >= rdr::Renderer::GetCurrentFrameIdx();
+	return m_dirty;
+;
 }
 
 void DescriptorSetState::SetDirty()
 {
-	// +1 because we want to mark it as dirty for the next frame (because we are in the middle of the current frame and persistent ds updates will be at the beginning of next frame)
-	m_lastFrameDirty = rdr::Renderer::GetCurrentFrameIdx() + 1;
+	m_dirty = true;
+}
+
+const rhi::RHIDescriptorSet& DescriptorSetState::Flush()
+{
+	if (m_dirty)
+	{
+		const rhi::RHIDescriptorSet newDS = AllocateDescriptorSet();
+		DescriptorSetWriter writer;
+		DescriptorSetUpdateContext context(newDS, writer, *m_layout);
+		UpdateDescriptors(context);
+		writer.Flush();
+
+		SwapDescriptorSet(newDS);
+
+		m_dirty = false;
+	}
+
+	return GetDescriptorSet();
+}
+
+const rhi::RHIDescriptorSet& DescriptorSetState::GetDescriptorSet() const
+{
+	return m_descriptorSet;
 }
 
 EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
@@ -190,9 +120,9 @@ EDescriptorSetStateFlags DescriptorSetState::GetFlags() const
 	return m_flags;
 }
 
-SizeType DescriptorSetState::GetDescriptorSetHash() const
+const lib::SharedPtr<DescriptorSetLayout>& DescriptorSetState::GetLayout() const
 {
-	return m_descriptorSetHash;
+	return m_layout;
 }
 
 Uint32* DescriptorSetState::AddDynamicOffset()
@@ -212,47 +142,62 @@ const lib::DynamicArray<Uint32>& DescriptorSetState::GetDynamicOffsets() const
 	return m_dynamicOffsets;
 }
 
-SizeType DescriptorSetState::GetDynamicOffsetsNum() const
-{
-	return m_dynamicOffsets.size();
-}
-
-lib::DynamicArray<Uint32> DescriptorSetState::GetDynamicOffsetsForShader(const lib::DynamicArray<Uint32>& cachedOffsets, const smd::ShaderMetaData& shaderMetaData, Uint32 dsIdx) const
-{
-	SPT_CHECK(m_dynamicOffsets.size() == cachedOffsets.size());
-
-	lib::DynamicArray<Uint32> outOffsets;
-	outOffsets.reserve(m_dynamicOffsets.size());
-
-	for (const DynamicOffsetDef& offsetDef : m_dynamicOffsetDefs)
-	{
-		if (shaderMetaData.ContainsBinding(dsIdx, offsetDef.bindingIdx))
-		{
-			outOffsets.emplace_back(cachedOffsets[offsetDef.offsetIdx]);
-		}
-	}
-
-	return outOffsets;
-}
-
 const lib::HashedString& DescriptorSetState::GetName() const
 {
 	return m_name.Get();
 }
 
-void DescriptorSetState::SetDescriptorSetHash(SizeType hash)
+void DescriptorSetState::SetTypeID(DSStateTypeID id, const DescriptorSetStateParams& params)
 {
-	m_descriptorSetHash = hash;
+	m_typeID = id;
+
+	m_layout = DescriptorSetStateLayoutsRegistry::Get().GetLayoutChecked(m_typeID);
 }
 
-void DescriptorSetState::AddDynamicOffsetDefinition(Uint32 bindingIdx)
+void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
 {
-	m_dynamicOffsetDefs.emplace_back(DynamicOffsetDef{ bindingIdx, m_dynamicOffsetDefs.size() });
+
+	m_dynamicOffsets.reserve(dynamicOffsetsNum);
 }
 
-void DescriptorSetState::InitDynamicOffsetsArray()
+rhi::RHIDescriptorSet DescriptorSetState::AllocateDescriptorSet() const
 {
-	m_dynamicOffsets.reserve(m_dynamicOffsetDefs.size());
+	SPT_PROFILER_FUNCTION();
+
+	rhi::RHIDescriptorSet descriptorSet;
+
+	if (m_stackAllocator)
+	{
+		descriptorSet = m_stackAllocator->GetRHI().AllocateDescriptorSet(m_layout->GetRHI());
+	}
+	else
+	{
+		descriptorSet = rhi::RHI::AllocateDescriptorSet(m_layout->GetRHI());
+	}
+
+	descriptorSet.SetName(GetName());
+
+	return descriptorSet;
+}
+
+void DescriptorSetState::SwapDescriptorSet(rhi::RHIDescriptorSet newDescriptorSet)
+{
+	if (m_descriptorSet.IsValid())
+	{
+		m_descriptorSet.ResetName();
+
+		// We need to free descriptor set if it was allocated from global pool
+		if (!m_stackAllocator)
+		{
+			CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
+				[ds = m_descriptorSet]
+				{
+					rhi::RHI::FreeDescriptorSet(ds);
+				});
+		}
+	}
+
+	m_descriptorSet = newDescriptorSet;
 }
 
 } // spt::rdr

@@ -57,9 +57,6 @@ public:
 
 	static VkColorComponentFlags			GetColorComponentFlags(rhi::ERenderTargetComponentFlags componentFlags);
 
-	static VkDescriptorSetLayout			GetDSLayout(rhi::DescriptorSetLayoutID layoutID);
-	static const VkDescriptorSetLayout*		GetDSLayoutsPtr(const rhi::DescriptorSetLayoutID* layoutIDs);
-
     static VkSamplerCreateFlags				GetSamplerCreateFlags(rhi::ESamplerFlags flags);
 
     static VkFilter							GetSamplerFilterType(rhi::ESamplerFilterType type);
@@ -81,14 +78,6 @@ public:
 	static VkQueryType						GetQueryType(rhi::EQueryType queryType);
 
 	static VkQueryPipelineStatisticFlags	GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType);
-};
-
-struct VulkanToRHI
-{
-public:
-
-	static rhi::DescriptorSetLayoutID			GetDSLayoutID(VkDescriptorSetLayout layoutHandle);
-	static const rhi::DescriptorSetLayoutID*	GetDSLayoutIDsPtr(VkDescriptorSetLayout layoutHandle);
 };
 
 } // rhi::vulkan

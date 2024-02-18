@@ -222,7 +222,7 @@ void DDGILOD1::UpdateLODDefinition(DDGIScene& scene)
 
 DDGIScene::DDGIScene(RenderScene& renderScene)
 	: m_owningScene(renderScene)
-	, m_ddgiSceneDS(rdr::ResourcesManager::CreateDescriptorSetState<DDGISceneDS>(RENDERER_RESOURCE_NAME("DDGI Scene DS"), rdr::EDescriptorSetStateFlags::Persistent))
+	, m_ddgiSceneDS(rdr::ResourcesManager::CreateDescriptorSetState<DDGISceneDS>(RENDERER_RESOURCE_NAME("DDGI Scene DS")))
 {
 	RenderSceneRegistry& registry = m_owningScene.GetRegistry();
 

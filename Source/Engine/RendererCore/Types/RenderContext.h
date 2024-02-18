@@ -4,7 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHIRenderContextImpl.h"
 #include "RendererResource.h"
-#include "DescriptorSets/DynamicDescriptorSetsManager.h"
 
 
 namespace spt::rdr
@@ -22,13 +21,6 @@ protected:
 public:
 
 	RenderContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
-
-	void BuildDescriptorSets(const lib::DynamicArray<DynamicDescriptorSetInfo>& setInfos);
-	rhi::RHIDescriptorSet GetDescriptorSet(SizeType hash) const;
-
-private:
-
-	DynamicDescriptorSetsManager m_dynamicDescriptorSets;
 };
 
 } // spt::rdr

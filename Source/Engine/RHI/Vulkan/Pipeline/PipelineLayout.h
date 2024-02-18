@@ -8,32 +8,22 @@
 namespace spt::vulkan
 {
 
-struct VulkanPipelineLayoutDefinition
-{
-	VulkanPipelineLayoutDefinition() = default;
-
-	lib::DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
-};
-
-
 class PipelineLayout
 {
 public:
 
-	explicit PipelineLayout(const VulkanPipelineLayoutDefinition& layoutDef);
+	explicit PipelineLayout(const rhi::PipelineLayoutDefinition& layoutDef);
 	~PipelineLayout();
 
-	VkPipelineLayout	GetHandle() const;
+	VkPipelineLayout GetHandle() const;
 
-	SPT_NODISCARD VkDescriptorSetLayout	GetDescriptorSetLayout(Uint32 descriptorSetIdx) const;
-	SPT_NODISCARD Uint32				GetDescriptorSetsNum() const;
-
-	SPT_NODISCARD const lib::DynamicArray<VkDescriptorSetLayout>& GetDescriptorSetLayouts() const;
+	SPT_NODISCARD const RHIDescriptorSetLayout& GetDescriptorSetLayout(Uint32 descriptorSetIdx) const;
+	SPT_NODISCARD Uint32                        GetDescriptorSetsNum() const;
 
 private:
 
 	VkPipelineLayout							m_layoutHandle;
-	lib::DynamicArray<VkDescriptorSetLayout>	m_descriptorSetLayouts;
+	lib::DynamicArray<RHIDescriptorSetLayout>	m_descriptorSetLayouts;
 };
 
 } // spt::vulkan

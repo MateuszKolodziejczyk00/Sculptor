@@ -66,16 +66,10 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		if constexpr (isDynamicOffset)
-		{
-			context.UpdateBuffer(GetName(), m_buffer->CreateFullView());
-		}
-		else
-		{
-			constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
-			const rdr::BufferView boundBufferView(lib::Ref(m_buffer), GetCurrentOffset(), structSize);
-			context.UpdateBuffer(GetName(), boundBufferView);
-		}
+		constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
+		const Uint64 offset = isDynamicOffset ? 0 : GetCurrentOffset();
+		const rdr::BufferView boundBufferView(lib::Ref(m_buffer), offset, structSize);
+		context.UpdateBuffer(GetBaseBindingIdx(), boundBufferView);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
@@ -93,7 +87,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::DynamicOffset);
 		}
 
-		return { rdr::ShaderBindingMetaData(flags) };
+		return { rdr::ShaderBindingMetaData(isDynamicOffset ? rhi::EDescriptorType::UniformBufferDynamicOffset : rhi::EDescriptorType::UniformBuffer, flags) };
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
@@ -214,14 +208,13 @@ private:
 
 		constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
 
-		const Bool isMultiFrame = lib::HasAnyFlag(owningState.GetFlags(), rdr::EDescriptorSetStateFlags::Persistent);
-		const Uint32 structsCopiesNum = isMultiFrame ? rdr::RendererSettings::Get().framesInFlight : 1;
-
 		Uint64 bufferSize = 0;
-		if (structsCopiesNum > 1)
+		if constexpr (isDynamicOffset)
 		{
 			const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
 			const Uint64 structStride = math::Utils::RoundUp(structSize, minOffsetAlignment);
+
+			const Uint32 structsCopiesNum = isDynamicOffset ? rdr::RendererSettings::Get().framesInFlight : 1;
 
 			bufferSize = (structsCopiesNum - 1) * structStride + structSize;
 

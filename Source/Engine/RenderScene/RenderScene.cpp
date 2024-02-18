@@ -179,7 +179,7 @@ lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 
 lib::MTHandle<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
 {
-	const lib::MTHandle<RenderSceneDS> sceneDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"), rdr::EDescriptorSetStateFlags::Persistent);
+	const lib::MTHandle<RenderSceneDS> sceneDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderSceneDS>(RENDERER_RESOURCE_NAME("RenderSceneDS"));
 	sceneDS->u_renderEntitiesData = m_renderEntitiesBuffer->CreateFullView();
 	return sceneDS;
 }

@@ -17,21 +17,12 @@ struct IsLargerThanRef
 };
 
 template<typename TType> 
-struct AsParameter
-{
-	using Type = std::conditional_t<IsLargerThanRef<TType>::value, TType&, TType>;
-};
-
-template<typename TType> 
 struct AsConstParameter
 {
 	using Type = std::conditional_t<IsLargerThanRef<TType>::value, const TType&, const TType>;
 };
 
 } // details
-
-template<typename TType>
-using AsParameter = details::AsParameter<TType>::Type;
 
 template<typename TType>
 using AsConstParameter = details::AsConstParameter<TType>::Type;

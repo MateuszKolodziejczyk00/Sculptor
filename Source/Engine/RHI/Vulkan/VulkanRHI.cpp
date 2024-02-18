@@ -10,7 +10,7 @@
 #include "VulkanUtils.h"
 #include "LayoutsManager.h"
 #include "Pipeline/PipelineLayoutsManager.h"
-#include "VulkanTypes/RHIDescriptorSetManager.h"
+#include "DescriptorSets/RHIDescriptorSetManager.h"
 #include "Engine.h"
 
 #include "RHICore/RHIInitialization.h"
@@ -272,24 +272,14 @@ RHIDeviceQueue VulkanRHI::GetDeviceQueue(rhi::EDeviceCommandQueueType queueType)
 	return priv::g_data.device.GetQueue(queueType);
 }
 
-RHIDescriptorSet VulkanRHI::AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID)
+RHIDescriptorSet VulkanRHI::AllocateDescriptorSet(const RHIDescriptorSetLayout& layout)
 {
-	return RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(layoutID);
-}
-
-lib::DynamicArray<RHIDescriptorSet> VulkanRHI::AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum)
-{
-	return RHIDescriptorSetManager::GetInstance().AllocateDescriptorSets(layoutIDs, descriptorSetsNum);
+	return RHIDescriptorSetManager::GetInstance().AllocateDescriptorSet(layout);
 }
 
 void VulkanRHI::FreeDescriptorSet(const RHIDescriptorSet& set)
 {
 	RHIDescriptorSetManager::GetInstance().FreeDescriptorSet(set);
-}
-
-void VulkanRHI::FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets)
-{
-	RHIDescriptorSetManager::GetInstance().FreeDescriptorSets(sets);
 }
 
 #if SPT_RHI_DEBUG

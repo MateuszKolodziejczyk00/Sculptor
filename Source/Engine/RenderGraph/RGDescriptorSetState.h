@@ -19,8 +19,8 @@ protected:
 
 public:
 
-	RGDescriptorSetStateBase(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
-		: Super(name, flags)
+	RGDescriptorSetStateBase(const rdr::RendererResourceName& name, const rdr::DescriptorSetStateParams& params)
+		: Super(name, params)
 	{ }
 
 	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const = 0;
@@ -36,8 +36,8 @@ protected:
 
 public:
 
-	RGDescriptorSetState(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags)
-		: Super(name, flags)
+	RGDescriptorSetState(const rdr::RendererResourceName& name, const rdr::DescriptorSetStateParams& params)
+		: Super(name, params)
 	{ }
 
 	virtual void BuildRGDependencies(RGDependenciesBuilder& builder) const override

@@ -58,8 +58,6 @@ public:
 
 	static PipelinesLibrary&					GetPipelinesLibrary();
 
-	static DescriptorSetsManager&				GetDescriptorSetsManager();
-
 	static SamplersCache&						GetSamplersCache();
 	
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
@@ -71,8 +69,6 @@ public:
 	static void									FlushPendingEvents();
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);
-
-	static void									UpdatePersistentDescriptorSets();
 	
 	static Uint64								GetCurrentFrameIdx();
 

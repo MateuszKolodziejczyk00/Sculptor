@@ -52,7 +52,7 @@ void ShaderDebugUtils::BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsEx
 }
 
 ShaderDebugUtils::ShaderDebugUtils()
-	: m_ds(rdr::ResourcesManager::CreateDescriptorSetState<ShaderDebugCommandBufferDS>(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferDS"), rdr::EDescriptorSetStateFlags::Persistent))
+	: m_ds(rdr::ResourcesManager::CreateDescriptorSetState<ShaderDebugCommandBufferDS>(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferDS")))
 {
 	const Uint32 bufferSize = 1024 * 1024 * 4;
 

@@ -56,10 +56,8 @@ public:
 
 	// Descriptor Sets =================================================================
 
-	SPT_NODISCARD static RHIDescriptorSet						AllocateDescriptorSet(const rhi::DescriptorSetLayoutID layoutID);
-	SPT_NODISCARD static lib::DynamicArray<RHIDescriptorSet>	AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
+	SPT_NODISCARD static RHIDescriptorSet AllocateDescriptorSet(const RHIDescriptorSetLayout& layout);
 	static void	FreeDescriptorSet(const RHIDescriptorSet& set);
-	static void	FreeDescriptorSets(const lib::DynamicArray<RHIDescriptorSet>& sets);
 
 	// Debug ===========================================================================
 

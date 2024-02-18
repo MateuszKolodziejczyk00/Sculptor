@@ -14,6 +14,8 @@ function RHI:SetupRHIConfiguration(configuration, platform)
 
     -- Vulkan
     self:AddPrivateDefine("SPT_VULKAN_PREFER_DIFFERENT_QUEUE_FAMILIES=1")
+
+	self:AddPublicDefine("VK_USE_64_BIT_PTR_DEFINES=1")
 end
 
 function RHI:GetRHIDirectoryName()

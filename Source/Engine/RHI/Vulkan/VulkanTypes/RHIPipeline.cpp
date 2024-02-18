@@ -558,14 +558,6 @@ rhi::EPipelineType RHIPipeline::GetPipelineType() const
 	return m_pipelineType;
 }
 
-rhi::DescriptorSetLayoutID RHIPipeline::GetDescriptorSetLayoutID(Uint32 dsIdx) const
-{
-	SPT_CHECK(IsValid());
-	SPT_CHECK(!!m_layout);
-
-	return VulkanToRHI::GetDSLayoutID(m_layout->GetDescriptorSetLayout(dsIdx));
-}
-
 void RHIPipeline::SetName(const lib::HashedString& name)
 {
 	SPT_CHECK(IsValid());

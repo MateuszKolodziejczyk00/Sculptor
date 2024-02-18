@@ -3,102 +3,15 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RendererUtils.h"
-#include "RHIBridge/RHIDescriptorSetImpl.h"
-#include "ShaderMetaDataTypes.h"
 #include "DescriptorSetStateTypes.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefRegistration.h"
-
-
-namespace spt::smd
-{
-class ShaderMetaData;
-struct GenericShaderBinding;
-} // spt::smd
 
 
 namespace spt::rdr
 {
 
-class DescriptorSetWriter;
 class DescriptorSetState;
-class BufferView;
-class TextureView;
-class TopLevelAS;
-
-
-using DSStateID = Uint64;
-
-
-enum class EDescriptorSetStateFlags
-{
-	None			= 0,
-
-	/**
-	 * Persistent descriptor sets are more costly to create (require lock, not batched), but are cached between frames
-	 * Also they are updated only once per frame
-	 * This makes them good candidates for data that frequently used, but not frequently updated and shared between views/render stages e.g. meshes data, meterials data
-	 */
-	Persistent		= BIT(0),
-
-	Default = None
-};
-
-
-struct ShaderBindingMetaData
-{
-	constexpr ShaderBindingMetaData(smd::EBindingFlags inFlags = smd::EBindingFlags::None)
-		: flags(inFlags)
-	{ }
-	
-	constexpr ShaderBindingMetaData(const rhi::SamplerDefinition& inImmutableSamplerDef, smd::EBindingFlags inFlags = smd::EBindingFlags::ImmutableSampler)
-		: flags(inFlags)
-		, immutableSamplerDef(inImmutableSamplerDef)
-	{ }
-
-	smd::EBindingFlags flags;
-
-	std::optional<rhi::SamplerDefinition> immutableSamplerDef;
-};
-
-
-class ShaderCompilationAdditionalArgsBuilder
-{
-public:
-
-	explicit ShaderCompilationAdditionalArgsBuilder(lib::DynamicArray<lib::HashedString>& macroDefinitions)
-		: m_macroDefinitions(macroDefinitions)
-	{  }
-
-	void AddDescriptorSet(const lib::HashedString& dsName)
-	{
-		m_macroDefinitions.emplace_back("DS_" + dsName.ToString());
-	}
-
-private:
-
-	lib::DynamicArray<lib::HashedString>& m_macroDefinitions;
-};
-
-
-class RENDERER_CORE_API DescriptorSetUpdateContext
-{
-public:
-
-	DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const smd::ShaderMetaData& metaData);
-
-	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer) const;
-	void UpdateBuffer(const lib::HashedString& name, const BufferView& buffer, const BufferView& countBuffer) const;
-	void UpdateTexture(const lib::HashedString& name, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex = 0) const;
-	void UpdateAccelerationStructure(const lib::HashedString& name, const lib::SharedRef<TopLevelAS>& tlas) const;
-
-	const smd::ShaderMetaData& GetMetaData() const;
-
-private:
-
-	rhi::RHIDescriptorSet		m_descriptorSet;
-	DescriptorSetWriter&		m_writer;
-	const smd::ShaderMetaData&	m_metaData;
-};
+class DescriptorSetStackAllocator;
 
 
 class RENDERER_CORE_API DescriptorSetBinding abstract
@@ -122,11 +35,13 @@ public:
 	// Children classes MUST also define this function (with arbitrary N)
 	//static constexpr std::array<ShaderBindingMetaData, N> GetShaderBindingsMetaData();
 
-	void SetOwningDSState(DescriptorSetState& state);
+	void PreInit(DescriptorSetState& state, Uint32 baseBindingIdx);
 
 protected:
 
 	void MarkAsDirty();
+
+	Uint32 GetBaseBindingIdx() const;
 
 	// Helpers =========================================
 	static constexpr lib::String BuildBindingVariableCode(lib::StringView bindingVariable, Uint32 bindingIdx)
@@ -145,6 +60,15 @@ private:
 	lib::HashedString m_name;
 
 	DescriptorSetState* m_owningState;
+
+	Uint32 m_baseBindingIdx;
+};
+
+
+struct DescriptorSetStateParams
+{
+	lib::SharedPtr<DescriptorSetStackAllocator> stackAllocator;
+	EDescriptorSetStateFlags                    flags = EDescriptorSetStateFlags::Default;
 };
 
 
@@ -155,53 +79,54 @@ class RENDERER_CORE_API DescriptorSetState abstract : public lib::MTRefCounted
 {
 public:
 
-	DescriptorSetState(const RendererResourceName& name, EDescriptorSetStateFlags flags);
+	DescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params);
 	virtual ~DescriptorSetState();
 
 	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 
-	DSStateID GetID() const;
+	DSStateID     GetID() const;
+	DSStateTypeID GetTypeID() const;
 
 	Bool IsDirty() const;
 	void SetDirty();
 
+	const rhi::RHIDescriptorSet& Flush();
+	const rhi::RHIDescriptorSet& GetDescriptorSet() const;
+
 	EDescriptorSetStateFlags GetFlags() const;
 
-	SizeType GetDescriptorSetHash() const;
+	const lib::SharedPtr<DescriptorSetLayout>& GetLayout() const;
 
-	Uint32*								AddDynamicOffset();
-	const lib::DynamicArray<Uint32>&	GetDynamicOffsets() const;
-	SizeType							GetDynamicOffsetsNum() const;
-
-	lib::DynamicArray<Uint32>			GetDynamicOffsetsForShader(const lib::DynamicArray<Uint32>& cachedOffsets, const smd::ShaderMetaData& shaderMetaData, Uint32 dsIdx) const;
+	Uint32*                          AddDynamicOffset();
+	const lib::DynamicArray<Uint32>& GetDynamicOffsets() const;
 
 	const lib::HashedString& GetName() const;
 
 protected:
 
-	void SetDescriptorSetHash(SizeType hash);
+	void SetTypeID(DSStateTypeID id, const DescriptorSetStateParams& params);
 
-	void AddDynamicOffsetDefinition(Uint32 bindingIdx);
-	void InitDynamicOffsetsArray();
+	void InitDynamicOffsetsArray(SizeType dynamicOffsetsNum);
 
 private:
 
+	rhi::RHIDescriptorSet AllocateDescriptorSet() const;
+	void                  SwapDescriptorSet(rhi::RHIDescriptorSet newDescriptorSet);
+
 	const DSStateID	m_id;
 
-	Uint64 m_lastFrameDirty;
+	DSStateTypeID m_typeID;
+
+	Bool  m_dirty;
 
 	EDescriptorSetStateFlags m_flags;
 
-	struct DynamicOffsetDef
-	{
-		Uint32 bindingIdx;
-		SizeType offsetIdx;
-	};
+	lib::SharedPtr<DescriptorSetStackAllocator> m_stackAllocator;
 
-	lib::DynamicArray<Uint32>			m_dynamicOffsets;
-	lib::DynamicArray<DynamicOffsetDef>	m_dynamicOffsetDefs;
+	lib::DynamicArray<Uint32> m_dynamicOffsets;
 
-	SizeType m_descriptorSetHash;
+	lib::SharedPtr<DescriptorSetLayout> m_layout;
+	rhi::RHIDescriptorSet m_descriptorSet;
 
 	RendererResourceName m_name;
 };
@@ -371,15 +296,12 @@ public:
 	public:																														\
 	using ThisClass = className;																								\
 	using Super = parentClass;																									\
-	className(const rdr::RendererResourceName& name, rdr::EDescriptorSetStateFlags flags = rdr::EDescriptorSetStateFlags::None)	\
-		: Super(name, flags)																									\
+	className(const rdr::RendererResourceName& name, const rdr::DescriptorSetStateParams& params)								\
+		: Super(name, params)																									\
 	{																															\
-		SetDescriptorSetHash(GetTypeHash());																					\
-		rdr::bindings_refl::ForEachBindingWithDynamicOffset<ReflHeadBindingType>([this](Uint32 bindingIdx)						\
-																				  {												\
-																				      AddDynamicOffsetDefinition(bindingIdx);	\
-																				  });											\
-		InitDynamicOffsetsArray();																								\
+		SetTypeID(GetStaticTypeID(), params);																					\
+		const SizeType dynamicOffsetsNum = rdr::bindings_refl::GetDynamicOffsetBindingsNum<ReflHeadBindingType>();				\
+		InitDynamicOffsetsArray(dynamicOffsetsNum);																				\
 		rdr::bindings_refl::InitializeBindings(GetBindingsBegin(), *this);														\
 	}																															\
 	static lib::HashedString GetDescriptorSetName()																				\
@@ -391,10 +313,10 @@ public:
 	{																															\
 		return nullptr;																											\
 	}																															\
-	static SizeType GetTypeHash()																								\
+	static rdr::DSStateTypeID GetStaticTypeID()																					\
 	{																															\
 		static lib::HashedString staticName(#className);																		\
-		return staticName.GetKey();																								\
+		return rdr::DSStateTypeID(staticName.GetKey());																			\
 	}																															\
 	typedef rdr::bindings_refl::BindingHandle<void,	/*line ended in next macros */
 
@@ -408,27 +330,29 @@ public:
 									}																																								\
 									typedef rdr::bindings_refl::BindingHandle<Refl##Name##BindingType,
 
-#define DS_END()	rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;														\
-					ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
-					template<>																														\
-					ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
-					{																																\
-						return &reflHead;																											\
-					}																																\
-					const ReflHeadBindingType& GetBindingsBegin() const																				\
-					{																																\
-						return reflHead;																											\
-					}																																\
-					virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final											\
-					{																																\
-						rdr::bindings_refl::ForEachBinding(GetBindingsBegin(), [&context](const auto& binding)										\
-														   {																						\
-															   binding.UpdateDescriptors(context);													\
-														   });																						\
-					}																																\
-					private:																														\
-					inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;								\
-					};
+#define DS_END()																												\
+rdr::bindings_refl::HeadBindingUnderlyingType, "head"> ReflHeadBindingType;														\
+ReflHeadBindingType reflHead = ReflHeadBindingType(ReflGetBindingImpl<typename ReflHeadBindingType::NextBindingHandleType>());	\
+template<>																														\
+ReflHeadBindingType* ReflGetBindingImpl<ReflHeadBindingType>()																	\
+{																																\
+	return &reflHead;																											\
+}																																\
+const ReflHeadBindingType& GetBindingsBegin() const																				\
+{																																\
+	return reflHead;																											\
+}																																\
+virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final											\
+{																																\
+	rdr::bindings_refl::ForEachBinding(GetBindingsBegin(), [&context](const auto& binding)										\
+									   {																						\
+										   binding.UpdateDescriptors(context);													\
+									   });																						\
+}																																\
+private:																														\
+inline static rdr::DescriptorSetStateCompilationDefRegistration<ThisClass> CompilationRegistration;								\
+inline static rdr::DescriptorSetStateLayoutRegistration<ThisClass> layoutFactoryRegistration;									\
+};
 
 #define DS_STAGES(...) lib::Flags<rhi::EShaderStageFlags>(__VA_ARGS__)
 
@@ -452,7 +376,7 @@ template<typename TBindingType>
 constexpr Uint32 GetShaderBindingsNumForBinding()
 {
 	// use helper lambda to get nicer compile errors
-	const auto helper = [] { return TBindingType::GetShaderBindingsMetaData(); };
+	const auto helper = [] { return std::decay_t<TBindingType>::GetShaderBindingsMetaData(); };
 	using TBindingsMetaDataType = std::invoke_result_t<decltype(helper)>;
 	return (Uint32)lib::StaticArrayTraits<TBindingsMetaDataType>::Size;
 }
@@ -505,27 +429,27 @@ constexpr void ForEachBinding(TCallable callable)
 	}
 }
 
-template<typename TBindingHandle, typename TCallable>
-void ForEachBindingWithDynamicOffset(TCallable callable)
+template<typename TBindingHandle>
+constexpr SizeType GetDynamicOffsetBindingsNum()
 {
-	SPT_PROFILER_FUNCTION();
+	SizeType dynamicOffsetBindingsNum = 0u;
 
-	ForEachBinding<TBindingHandle>([&callable, shaderBindingIdx = Uint32(0)]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&dynamicOffsetBindingsNum]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
 
-		const auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
+		auto shaderBindingsMetaData = CurrentBindingType::GetShaderBindingsMetaData();
 
 		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
 		{
 			if (lib::HasAnyFlag(shaderBindingMetaData.flags, smd::EBindingFlags::DynamicOffset))
 			{
-				callable(shaderBindingIdx);
+				++dynamicOffsetBindingsNum;
 			}
-
-			shaderBindingIdx++;
 		}
 	});
+
+	return dynamicOffsetBindingsNum;
 }
 
 template<typename TDescriptorSetType>
@@ -575,10 +499,12 @@ void InitializeBindings(TBindingHandle& bindingHandle, DescriptorSetState& ownin
 	SPT_PROFILER_FUNCTION();
 
 	ForEachBinding(bindingHandle,
-				   [&owningState](auto& binding)
+				   [&owningState, bindingIdx = 0u](auto& binding) mutable
 				   {
-					   binding.SetOwningDSState(owningState);
+					   binding.PreInit(owningState, bindingIdx);
 					   binding.Initialize(owningState);
+
+					   bindingIdx += GetShaderBindingsNumForBinding<decltype(binding)>();
 				   });
 }
 
@@ -653,8 +579,6 @@ sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 
 		for (const ShaderBindingMetaData& shaderBindingMetaData : shaderBindingsMetaData)
 		{
-			dsMetaData.bindingsFlags.emplace_back(shaderBindingMetaData.flags);
-
 			if (shaderBindingMetaData.immutableSamplerDef)
 			{
 				dsMetaData.bindingToImmutableSampler.emplace(shaderBindingIdx, *shaderBindingMetaData.immutableSamplerDef);
@@ -664,12 +588,36 @@ sc::DescriptorSetCompilationMetaData BuildCompilationMetaData()
 		}
 	});
 
-	dsMetaData.hash = TDSType::GetTypeHash();
+	dsMetaData.typeID = TDSType::GetStaticTypeID();
 
 	return dsMetaData;
 }
 
 } // bindings_refl
+
+
+template<typename TDSStateType>
+class DescriptorSetStateLayoutRegistration
+{
+public:
+
+	DescriptorSetStateLayoutRegistration()
+	{
+		DescriptorSetStateLayoutsRegistry::Get().RegisterFactoryMethod(TDSStateType::GetStaticTypeID(), &DescriptorSetStateLayoutRegistration<TDSStateType>::CreateDescriptorSetStateLayout);
+	}
+
+private:
+
+	static void CreateDescriptorSetStateLayout(DescriptorSetStateLayoutsRegistry& layoutsRegistry)
+	{
+		const auto bindingsMetaData = bindings_refl::GetShaderBindingsMetaData<TDSStateType>();
+	
+		DescriptorSetStateLayoutDefinition layoutDef;
+		layoutDef.bindings = { bindingsMetaData };
+	
+		layoutsRegistry.RegisterLayout(TDSStateType::GetStaticTypeID(), RENDERER_RESOURCE_NAME(TDSStateType::GetDescriptorSetName()), layoutDef);
+	}
+};
 
 
 template<typename TDSStateType>

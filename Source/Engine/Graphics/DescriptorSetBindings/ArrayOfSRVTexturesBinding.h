@@ -33,7 +33,7 @@ public:
 		for (const BoundTexture& boundTexture : m_boundTextures)
 		{
 			const lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance ? boundTexture.textureInstance : boundTexture.rgTexture->GetViewInstance();
-			context.UpdateTexture(GetName(), lib::Ref(textureView), boundTexture.arrayIndex);
+			context.UpdateTexture(GetBaseBindingIdx(), lib::Ref(textureView), boundTexture.arrayIndex);
 		}
 	}
 	
@@ -63,7 +63,7 @@ public:
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound)) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::SampledTexture, lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound), arraySize) };
 	}
 
 	static constexpr Bool IsUnbound()

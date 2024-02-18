@@ -38,7 +38,7 @@ public:
 			ValidateTexture(textureView);
 #endif // DO_CHECKS
 
-			context.UpdateTexture(GetName(), textureView);
+			context.UpdateTexture(GetBaseBindingIdx(), textureView);
 		}
 	}
 	
@@ -71,7 +71,7 @@ public:
 			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
 		}
 
-		return { rdr::ShaderBindingMetaData(flags) };
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::SampledTexture, flags) };
 	}
 
 	template<priv::CTextureInstanceOrRGTextureView TType>

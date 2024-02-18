@@ -6,6 +6,7 @@
 #include "RHICore/RHIDescriptorTypes.h"
 #include "Vulkan/Debug/DebugUtils.h"
 #include "RHIDescriptorSet.h"
+#include "RHIDescriptorSetLayout.h"
 
 
 namespace spt::rhi
@@ -44,7 +45,7 @@ public:
 	// Descriptor sets ======================================================
 
 	/** Allocates dynamic descriptor sets bound to this context. These descriptors are automatically destroyed with this context */
-	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet> AllocateDescriptorSets(const rhi::DescriptorSetLayoutID* layoutIDs, Uint32 descriptorSetsNum);
+	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet> AllocateDescriptorSets(const lib::Span<const RHIDescriptorSetLayout> layouts);
 
 	// Command Buffers ======================================================
 	

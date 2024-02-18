@@ -32,8 +32,6 @@ public:
 
 	SPT_NODISCARD rhi::EPipelineType GetPipelineType() const;
 
-	SPT_NODISCARD rhi::DescriptorSetLayoutID GetDescriptorSetLayoutID(Uint32 dsIdx) const;
-
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 
