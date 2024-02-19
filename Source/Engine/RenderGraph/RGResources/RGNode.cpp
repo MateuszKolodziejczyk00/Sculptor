@@ -213,7 +213,7 @@ void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 		barrierDependency.SetBufferDependencyStages(barrierIdx, transition.sourceStage, transition.sourceAccess, transition.destStage, transition.destAccess);
 	}
 
-	recorder.ExecuteBarrier(std::move(barrierDependency));
+	recorder.ExecuteBarrier(barrierDependency);
 }
 
 void RGNode::ReleaseResources()

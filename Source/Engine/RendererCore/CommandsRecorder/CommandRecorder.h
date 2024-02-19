@@ -3,7 +3,6 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
-#include "CommandQueue/CommandQueue.h"
 #include "Pipelines/PipelineState.h"
 #include "PipelinePendingState.h"
 #include "RendererUtils.h"
@@ -28,38 +27,20 @@ class QueryPool;
 class GPUWorkload;
 
 
-struct CommandsRecordingInfo
-{
-	RendererResourceName				commandsBufferName;
-	rhi::CommandBufferDefinition		commandBufferDef;
-};
-
-
-enum class ECommandsRecorderState
-{
-	/** Recording didn't started */
-	BuildingCommands,
-	/** Currently recording */
-	Recording,
-	/** Finished recording */
-	Pending
-};
-
-
 class RENDERER_CORE_API CommandRecorder
 {
 public:
 
-	CommandRecorder();
+	CommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
 
-	lib::SharedRef<GPUWorkload>				RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+	lib::SharedRef<GPUWorkload> 			FinishRecording();
 
 	const lib::SharedPtr<CommandBuffer>&	GetCommandBuffer() const;
 
-	void									ExecuteBarrier(rhi::RHIDependency dependency);
+	void									ExecuteBarrier(rhi::RHIDependency& dependency);
 
-	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
-	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency);
+	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
+	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
 
 	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
 	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer);
@@ -135,14 +116,13 @@ public:
 
 private:
 
-	template<CRenderCommand RenderCommand>
-	void EnqueueRenderCommand(RenderCommand&& command);
+	rhi::RHICommandBuffer& GetCommandBufferRHI() const;
 
-	lib::SharedPtr<CommandBuffer>			m_commandsBuffer;
+	lib::SharedPtr<CommandBuffer> m_commandsBuffer;
 
-	CommandQueue							m_commandQueue;
+	Bool m_canReuseCommandBuffer;
 
-	PipelinePendingState					m_pipelineState;
+	PipelinePendingState m_pipelineState;
 };
 
 template<typename TDescriptorSetStatesRange>
@@ -161,12 +141,6 @@ void CommandRecorder::UnbindDescriptorSetStates(TDescriptorSetStatesRange&& stat
 	{
 		UnbindDescriptorSetState(state);
 	}
-}
-
-template<CRenderCommand RenderCommand>
-void CommandRecorder::EnqueueRenderCommand(RenderCommand&& command)
-{
-	m_commandQueue.Enqueue(std::move(command));
 }
 
 } // spt::rdr

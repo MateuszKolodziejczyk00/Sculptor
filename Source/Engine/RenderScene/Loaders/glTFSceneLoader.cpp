@@ -353,7 +353,10 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 	}
 
 	{
-		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
+		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("PreTransferDependencyCmdBuffer"),
+																											context,
+																											cmdBufferDef);
 
 		rhi::RHIDependency preTransferDependency;
 		for (const auto& texture : textures)
@@ -361,12 +364,9 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 			const SizeType dependencyIdx = preTransferDependency.AddTextureDependency(texture->GetRHI(), rhi::TextureSubresourceRange(rhi::ETextureAspect::Color));
 			preTransferDependency.SetLayoutTransition(dependencyIdx, rhi::TextureTransition::TransferDest);
 		}
-		commandRecorder->ExecuteBarrier(std::move(preTransferDependency));
+		commandRecorder->ExecuteBarrier(preTransferDependency);
 
-		rdr::CommandsRecordingInfo recordingInfo;
-		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PreTransferDependencyCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-		const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		const lib::SharedRef<rdr::GPUWorkload> gpuWorkload = commandRecorder->FinishRecording();
 
 		rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload);
 
@@ -388,17 +388,17 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 
 	// Transition barrier to shader read only
 	{
-		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
+		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+		lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("PostTransferDependencyCmdBuffer"),
+																											context,
+																											cmdBufferDef);
 
 		for (const auto& texture : textures)
 		{
 			rdr::utils::GenerateMipMaps(*commandRecorder, texture, rhi::ETextureAspect::Color, 0, rhi::TextureTransition::ReadOnly);
 		}
 
-		rdr::CommandsRecordingInfo recordingInfo;
-		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("PostTransferDependencyCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-		const lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		const lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();
 
 		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 	}
@@ -486,14 +486,15 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 	if (!builder.IsEmpty())
 	{
 		lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("BuildBLASesContext"), rhi::ContextDefinition());
-		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+		const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);;
+		lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("BuildBLASesCmdBuffer"),
+																									 context,
+																									 cmdBufferDef);
 
 		builder.Build(*recorder);
 
-		rdr::CommandsRecordingInfo recordingInfo;
-		recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("BuildBLASesCmdBuffer");
-		recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+		const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
 		rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
 	}

@@ -12,6 +12,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "Pipelines/PipelineState.h"
 #include "Common/ShaderCompilationInput.h"
+#include "RHICore/RHICommandBufferTypes.h"
 
 
 namespace spt::rhi
@@ -20,7 +21,6 @@ struct ContextDefinition;
 struct RHIAllocationInfo;
 struct TextureDefinition;
 struct SemaphoreDefinition;
-struct CommandBufferDefinition;
 struct ShaderModuleDefinition;
 struct GraphicsPipelineDefinition;
 struct ShaderModuleDefinition;
@@ -46,6 +46,7 @@ namespace spt::rdr
 
 struct DescriptorSetStateParams;
 class RenderContext;
+class CommandRecorder;
 class Window;
 class Event;
 class AllocationDefinition;
@@ -71,6 +72,8 @@ class RENDERER_CORE_API ResourcesManager
 public:
 
 	SPT_NODISCARD static lib::SharedRef<RenderContext> CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef);
+
+	SPT_NODISCARD static lib::UniquePtr<CommandRecorder> CreateCommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage = rhi::CommandBufferUsageDefinition());
 	
 	SPT_NODISCARD static lib::SharedRef<Window> CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
 

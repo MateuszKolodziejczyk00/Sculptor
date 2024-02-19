@@ -62,8 +62,6 @@ public:
 	
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
 
-	static lib::UniquePtr<CommandRecorder>		StartRecordingCommands();
-
 	static void									PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	static void									FlushPendingEvents();

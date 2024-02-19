@@ -6,12 +6,12 @@
 namespace spt::rdr
 {
 
-GPUWorkload::GPUWorkload(lib::SharedRef<CommandBuffer> recordedBuffer, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+GPUWorkload::GPUWorkload(lib::SharedRef<CommandBuffer> recordedBuffer, const GPUWorkloadInfo& workloadInfo)
 	: m_recordedBuffer(std::move(recordedBuffer))
 	, m_signalSemaphoreValue(idxNone<Uint64>)
 	, m_submissionQueue(nullptr)
 	, m_remainingPrerequisitesNum(0u)
-	, m_canBeReused(!lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit))
+	, m_info(workloadInfo)
 { }
 
 Bool GPUWorkload::IsSubmitted() const
@@ -73,7 +73,7 @@ void GPUWorkload::OnSubmitted(lib::SharedPtr<Semaphore> signalSemaphore, Uint64 
 	m_subsequents.clear();
 	m_prerequisites.clear();
 
-	if (!m_canBeReused)
+	if (!m_info.canBeReused)
 	{
 		ReleaseBuffer();
 	}

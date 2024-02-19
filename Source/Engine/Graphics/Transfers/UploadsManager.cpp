@@ -228,7 +228,9 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 	SPT_PROFILER_FUNCTION();
 
 	lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition());
-	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::Renderer::StartRecordingCommands();
+
+	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Transfer, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("TransfersCommandBuffer"), context, cmdBufferDef);
 
 	for (const CopyCommand& command : m_bufferCommands)
 	{
@@ -255,7 +257,7 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 		recorder->CopyBufferToTexture(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destTexture), command.aspect, command.copyExtent, command.copyOffset, command.mipLevel, command.arrayLayer);
 	}
 
-	const Uint64 transferFinishedSingalValue = TransfersManager::RecordAndSubmitTransfers(context, std::move(recorder));
+	const Uint64 transferFinishedSingalValue = TransfersManager::SubmitTransfers(context, std::move(recorder));
 
 	for (SizeType stagingBufferIdx : m_stagingBuffersPendingFlush)
 	{

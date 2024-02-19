@@ -19,6 +19,7 @@
 #include "Types/GPUMemoryPool.h"
 #include "Types/DescriptorSetLayout.h"
 #include "Types/DescriptorSetState/DescriptorSetStackAllocator.h"
+#include "CommandsRecorder/CommandRecorder.h"
 
 
 namespace spt::rdr
@@ -27,6 +28,11 @@ namespace spt::rdr
 lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef)
 {
 	return lib::MakeShared<RenderContext>(name, contextDef);
+}
+
+lib::UniquePtr<rdr::CommandRecorder> ResourcesManager::CreateCommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage /*= rhi::CommandBufferUsageDefinition()*/)
+{
+	return std::make_unique<rdr::CommandRecorder>(name, context, cmdBufferDef, commandBufferUsage);
 }
 
 lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo)

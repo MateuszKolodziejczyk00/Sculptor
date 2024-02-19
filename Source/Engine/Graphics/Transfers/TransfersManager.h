@@ -26,7 +26,7 @@ public:
 	static void WaitForTransfersFinished(Uint64 transferSignalValue);
 	static void WaitForTransfersFinished(rdr::SemaphoresArray& waitSemaphoresArray);
 
-	static Uint64 RecordAndSubmitTransfers(const lib::SharedRef<rdr::RenderContext>& context, lib::UniquePtr<rdr::CommandRecorder> recorder);
+	static Uint64 SubmitTransfers(const lib::SharedRef<rdr::RenderContext>& context, lib::UniquePtr<rdr::CommandRecorder> recorder);
 
 private:
 

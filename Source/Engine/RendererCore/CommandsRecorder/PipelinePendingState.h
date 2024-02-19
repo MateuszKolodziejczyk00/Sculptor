@@ -30,7 +30,7 @@ public:
 	void									UnbindGraphicsPipeline();
 	const lib::SharedPtr<GraphicsPipeline>&	GetBoundGraphicsPipeline() const;
 
-	void									EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& cmdQueue);
+	void									FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer& cmdBuffer);
 
 	// Compute Pipeline =================================================
 	
@@ -38,7 +38,7 @@ public:
 	void									UnbindComputePipeline();
 	const lib::SharedPtr<ComputePipeline>&	GetBoundComputePipeline() const;
 
-	void									EnqueueFlushDirtyDSForComputePipeline(CommandQueue& cmdQueue);
+	void									FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer& cmdBuffer);
 
 	// Ray Tracing Pipeline =============================================
 	
@@ -46,7 +46,7 @@ public:
 	void										UnbindRayTracingPipeline();
 	const lib::SharedPtr<RayTracingPipeline>&	GetBoundRayTracingPipeline() const;
 
-	void										EnqueueFlushDirtyDSForRayTracingPipeline(CommandQueue& cmdQueue);
+	void										FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuffer& cmdBuffer);
 	
 	// Descriptor Set States ============================================
 	
@@ -64,10 +64,7 @@ private:
 		DynamicOffsetsArray   dynamicOffsets;
 	};
 
-	struct DSBindCommands
-	{
-		lib::DynamicArray<DSBindCommand>            descriptorSetBinds;
-	};
+	using DSBindCommands = lib::DynamicArray<DSBindCommand>;
 
 	struct BoundDescriptorSetState
 	{

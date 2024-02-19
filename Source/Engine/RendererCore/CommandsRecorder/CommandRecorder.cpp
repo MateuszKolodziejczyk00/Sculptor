@@ -16,22 +16,25 @@
 namespace spt::rdr
 {
 
-CommandRecorder::CommandRecorder()
-{ }
-
-lib::SharedRef<GPUWorkload> CommandRecorder::RecordCommands(const lib::SharedRef<RenderContext>& context, const CommandsRecordingInfo& recordingInfo, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
+CommandRecorder::CommandRecorder(const rdr::RendererResourceName& name, const lib::SharedRef<RenderContext>& context, const rhi::CommandBufferDefinition& cmdBufferDef, const rhi::CommandBufferUsageDefinition& commandBufferUsage)
 {
 	SPT_PROFILER_FUNCTION();
-	
-	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(recordingInfo.commandsBufferName, context, recordingInfo.commandBufferDef);
+
+	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(name, context, cmdBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
 
-	CommandQueueExecutor executor(lib::Ref(m_commandsBuffer), context);
-	m_commandQueue.ExecuteAndReset(executor);
+	m_canReuseCommandBuffer = !lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit);
+}
+
+lib::SharedRef<GPUWorkload> CommandRecorder::FinishRecording()
+{
+	SPT_PROFILER_FUNCTION();
 
 	m_commandsBuffer->FinishRecording();
 
-	return lib::MakeShared<GPUWorkload>(lib::Ref(m_commandsBuffer), commandBufferUsage);
+	GPUWorkloadInfo m_pendingWorkloadInfo = GPUWorkloadInfo();
+	m_pendingWorkloadInfo.canBeReused = m_canReuseCommandBuffer;
+	return lib::MakeShared<GPUWorkload>(lib::Ref(m_commandsBuffer), m_pendingWorkloadInfo);
 }
 
 const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const
@@ -39,126 +42,76 @@ const lib::SharedPtr<CommandBuffer>& CommandRecorder::GetCommandBuffer() const
 	return m_commandsBuffer;
 }
 
-void CommandRecorder::ExecuteBarrier(rhi::RHIDependency dependency)
+void CommandRecorder::ExecuteBarrier(rhi::RHIDependency& dependency)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
-						 {
-							 SPT_PROFILER_SCOPE("ExecuteBarrier Command");
-							
-							 localDependency.ExecuteBarrier(cmdBuffer->GetRHI());
-						 });
+	dependency.ExecuteBarrier(GetCommandBufferRHI());
 }
 
-void CommandRecorder::SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency)
+void CommandRecorder::SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([event, localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
-						 {
-							 SPT_PROFILER_SCOPE("SetEvent Command");
-							
-							 localDependency.SetEvent(cmdBuffer->GetRHI(), event->GetRHI());
-						 });
+	dependency.SetEvent(GetCommandBufferRHI(), event->GetRHI());
 }
 
-void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency dependency)
+void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([event, localDependency = std::move(dependency)](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
-						 {
-							 SPT_PROFILER_SCOPE("WaitEvent Command");
-							
-							 localDependency.WaitEvent(cmdBuffer->GetRHI(), event->GetRHI());
-						 });
+	dependency.WaitEvent(GetCommandBufferRHI(), event->GetRHI());
 }
 
 void CommandRecorder::BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
-						 {
-							 SPT_PROFILER_SCOPE("BuildBLAS Command");
-							
-							 cmdBuffer->GetRHI().BuildBLAS(blas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset);
-						 });
+	GetCommandBufferRHI().BuildBLAS(blas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset);
 }
 
 void CommandRecorder::BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext) mutable
-						 {
-							 SPT_PROFILER_SCOPE("BuildTLAS Command");
-							
-							 cmdBuffer->GetRHI().BuildTLAS(tlas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset, instancesBuildDataBuffer->GetRHI());
-						 });
+	GetCommandBufferRHI().BuildTLAS(tlas->GetRHI(), scratchBuffer->GetRHI(), scratchBufferOffset, instancesBuildDataBuffer->GetRHI());
 }
 
 void CommandRecorder::BeginRendering(const RenderingDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([definition](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BeginRendering Command");
-
-							 cmdBuffer->GetRHI().BeginRendering(definition.GetRHI());
-						 });
+	 GetCommandBufferRHI().BeginRendering(definition.GetRHI());
 }
 
 void CommandRecorder::EndRendering()
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("EndRendering Command");
-
-							 cmdBuffer->GetRHI().EndRendering();
-						 });
+	 GetCommandBufferRHI().EndRendering();
 }
 
 void CommandRecorder::SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("SetScissor Command");
-
-							 cmdBuffer->GetRHI().SetViewport(renderingViewport, minDepth, maxDepth);
-						 });
+	 GetCommandBufferRHI().SetViewport(renderingViewport, minDepth, maxDepth);
 }
 
 void CommandRecorder::SetScissor(const math::AlignedBox2u& renderingScissor)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("SetScissor Command");
-
-							 cmdBuffer->GetRHI().SetScissor(renderingScissor);
-						 });
+	 GetCommandBufferRHI().SetScissor(renderingScissor);
 }
 
 void CommandRecorder::DrawIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_pipelineState.EnqueueFlushDirtyDSForGraphicsPipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("DrawIndirectCount Command");
-
-							 cmdBuffer->GetRHI().DrawIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
-						 });
+	GetCommandBufferRHI().DrawIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
 }
 
 void CommandRecorder::DrawIndirectCount(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, const BufferView& countBufferView, Uint64 countOffset, Uint32 maxDrawsCount)
@@ -172,14 +125,9 @@ void CommandRecorder::DrawIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Ui
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_pipelineState.EnqueueFlushDirtyDSForGraphicsPipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("DrawIndirect Command");
-
-							 cmdBuffer->GetRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
-						 });
+	GetCommandBufferRHI().DrawIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
 }
 
 void CommandRecorder::DrawIndirect(const BufferView& drawsBufferView, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
@@ -193,14 +141,9 @@ void CommandRecorder::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uin
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_pipelineState.EnqueueFlushDirtyDSForGraphicsPipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("DrawInstances Command");
-
-							 cmdBuffer->GetRHI().DrawInstances(verticesNum, instancesNum, firstVertex, firstInstance);
-						 });
+	GetCommandBufferRHI().DrawInstances(verticesNum, instancesNum, firstVertex, firstInstance);
 }
 
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
@@ -212,12 +155,7 @@ void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 
 	m_pipelineState.BindGraphicsPipeline(lib::Ref(pipeline));
 
-	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BindGraphicsPipeline Command");
-
-							 cmdBuffer->GetRHI().BindGfxPipeline(pipeline->GetRHI());
-						 });
+	GetCommandBufferRHI().BindGfxPipeline(pipeline->GetRHI());
 }
 
 void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
@@ -229,12 +167,7 @@ void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
 
 	m_pipelineState.BindComputePipeline(lib::Ref(pipeline));
 
-	EnqueueRenderCommand([pipeline](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BindComputePipeline Command");
-
-							 cmdBuffer->GetRHI().BindComputePipeline(pipeline->GetRHI());
-						 });
+	GetCommandBufferRHI().BindComputePipeline(pipeline->GetRHI());
 }
 
 void CommandRecorder::BindComputePipeline(const ShaderID& shader)
@@ -254,12 +187,7 @@ void CommandRecorder::BindRayTracingPipeline(PipelineStateID pipelineID)
 
 	m_pipelineState.BindRayTracingPipeline(lib::Ref(pipeline));
 
-	EnqueueRenderCommand([ pipeline ](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BindRayTracingPipeline Command");
-
-							 cmdBuffer->GetRHI().BindRayTracingPipeline(pipeline->GetRHI());
-						 });
+	GetCommandBufferRHI().BindRayTracingPipeline(pipeline->GetRHI());
 }
 
 void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
@@ -268,14 +196,9 @@ void CommandRecorder::Dispatch(const math::Vector3u& groupCount)
 
 	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
 
-	m_pipelineState.EnqueueFlushDirtyDSForComputePipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForComputePipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([groupCount](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("Dispatch Command");
-
-							 cmdBuffer->GetRHI().Dispatch(groupCount);
-						 });
+	GetCommandBufferRHI().Dispatch(groupCount);
 }
 
 void CommandRecorder::DispatchIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset)
@@ -284,14 +207,9 @@ void CommandRecorder::DispatchIndirect(const lib::SharedRef<Buffer>& indirectArg
 
 	SPT_CHECK(!!m_pipelineState.GetBoundComputePipeline());
 
-	m_pipelineState.EnqueueFlushDirtyDSForComputePipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForComputePipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("DispatchIndirect Command");
-
-							 cmdBuffer->GetRHI().DispatchIndirect(indirectArgsBuffer->GetRHI(), indirectArgsOffset);
-						 });
+	GetCommandBufferRHI().DispatchIndirect(indirectArgsBuffer->GetRHI(), indirectArgsOffset);
 }
 
 void CommandRecorder::DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset)
@@ -306,14 +224,9 @@ void CommandRecorder::TraceRays(const math::Vector3u& traceCount)
 	const lib::SharedPtr<RayTracingPipeline>& boundPipeline = m_pipelineState.GetBoundRayTracingPipeline();
 	SPT_CHECK(!!boundPipeline);
 
-	m_pipelineState.EnqueueFlushDirtyDSForRayTracingPipeline(m_commandQueue);
+	m_pipelineState.FlushDirtyDSForRayTracingPipeline(GetCommandBufferRHI());
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("TraceRays Command");
-
-							 cmdBuffer->GetRHI().TraceRays(boundPipeline->GetShaderBindingTable(), traceCount);
-						 });
+	GetCommandBufferRHI().TraceRays(boundPipeline->GetShaderBindingTable(), traceCount);
 }
 
 void CommandRecorder::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
@@ -334,132 +247,78 @@ void CommandRecorder::ExecuteCommands(const lib::SharedRef<rdr::GPUWorkload>& wo
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([recordedBuffer = workload->GetRecordedBuffer()](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("ExecuteCommands Command");
-
-							 cmdBuffer->GetRHI().ExecuteCommands(recordedBuffer->GetRHI());
-						 });
+	const lib::SharedPtr<rdr::CommandBuffer> cmdBufferToExecute = workload->GetRecordedBuffer();
+	GetCommandBufferRHI().ExecuteCommands(cmdBufferToExecute->GetRHI());
 }
 
 void CommandRecorder::BlitTexture(const lib::SharedRef<Texture>& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const lib::SharedRef<Texture>& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BlitTexture Command");
-
-							 cmdBuffer->GetRHI().BlitTexture(source->GetRHI(), sourceMipLevel, sourceArrayLayer, dest->GetRHI(), destMipLevel, destArrayLayer, aspect, filterMode);
-						 });
+	GetCommandBufferRHI().BlitTexture(source->GetRHI(), sourceMipLevel, sourceArrayLayer, dest->GetRHI(), destMipLevel, destArrayLayer, aspect, filterMode);
 }
 
 void CommandRecorder::ClearTexture(const lib::SharedRef<Texture>& texture, const rhi::ClearColor& clearColor, const rhi::TextureSubresourceRange& subresourceRange)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("ClearTexture Command");
-
-							 cmdBuffer->GetRHI().ClearTexture(texture->GetRHI(), clearColor, subresourceRange);
-						 });
+	GetCommandBufferRHI().ClearTexture(texture->GetRHI(), clearColor, subresourceRange);
 }
 
 void CommandRecorder::CopyTexture(const lib::SharedRef<Texture>& source, const rhi::TextureCopyRange& sourceRange, const lib::SharedRef<Texture>& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([source, sourceRange, target, targetRange, extent](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("CopyTexture Command");
-
-							 cmdBuffer->GetRHI().CopyTexture(source->GetRHI(), sourceRange, target->GetRHI(), targetRange, extent);
-						 });
+	GetCommandBufferRHI().CopyTexture(source->GetRHI(), sourceRange, target->GetRHI(), targetRange, extent);
 }
 
 void CommandRecorder::CopyBuffer(const lib::SharedRef<Buffer>& sourceBuffer, Uint64 sourceOffset, const lib::SharedRef<Buffer>& destBuffer, Uint64 destOffset, Uint64 size)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([sourceBuffer, sourceOffset, destBuffer, destOffset, size](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("CopyBuffer Command");
-
-							 cmdBuffer->GetRHI().CopyBuffer(sourceBuffer->GetRHI(), sourceOffset, destBuffer->GetRHI(), destOffset, size);
-						 });
+	GetCommandBufferRHI().CopyBuffer(sourceBuffer->GetRHI(), sourceOffset, destBuffer->GetRHI(), destOffset, size);
 }
 
 void CommandRecorder::FillBuffer(const lib::SharedRef<Buffer>& buffer, Uint64 offset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([buffer, offset, range, data](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("FillBuffer Command");
-
-							 cmdBuffer->GetRHI().FillBuffer(buffer->GetRHI(), offset, range, data);
-						 });
+	GetCommandBufferRHI().FillBuffer(buffer->GetRHI(), offset, range, data);
 }
 
 void CommandRecorder::CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("CopyBufferToTexture Command");
-
-							 cmdBuffer->GetRHI().CopyBufferToTexture(buffer->GetRHI(), bufferOffset, texture->GetRHI(), aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
-						 });
+	GetCommandBufferRHI().CopyBufferToTexture(buffer->GetRHI(), bufferOffset, texture->GetRHI(), aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
 }
 
 void CommandRecorder::InitializeUIFonts()
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("InitializeUIFonts Command");
-
-							 UIBackend::GetRHI().InitializeFonts(cmdBuffer->GetRHI());
-						 });
+	UIBackend::GetRHI().InitializeFonts(GetCommandBufferRHI());
 }
 
 void CommandRecorder::RenderUI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("RenderUI Command");
-
-							 UIBackend::GetRHI().Render(cmdBuffer->GetRHI());
-						 });
+	UIBackend::GetRHI().Render(GetCommandBufferRHI());
 }
 
 void CommandRecorder::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([name, color](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BeginDebugRegion Command");
-
-							 cmdBuffer->GetRHI().BeginDebugRegion(name, color);
-						 });
+	GetCommandBufferRHI().BeginDebugRegion(name, color);
 }
 
 void CommandRecorder::EndDebugRegion()
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("EndDebugRegion Command");
-
-							 cmdBuffer->GetRHI().EndDebugRegion();
-						 });
+	GetCommandBufferRHI().EndDebugRegion();
 }
 
 #if SPT_ENABLE_GPU_CRASH_DUMPS
@@ -467,12 +326,7 @@ void CommandRecorder::SetDebugCheckpoint(const lib::HashedString& marker)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([marker](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("SetDebugCheckpoint Command");
-
-							 cmdBuffer->GetRHI().SetDebugCheckpoint(reinterpret_cast<const void*>(marker.GetKey()));
-						 });
+	GetCommandBufferRHI().SetDebugCheckpoint(reinterpret_cast<const void*>(marker.GetKey()));
 }
 
 #endif // SPT_ENABLE_GPU_CRASH_DUMPS
@@ -481,48 +335,33 @@ void CommandRecorder::ResetQueryPool(const lib::SharedRef<QueryPool>& queryPool,
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("ResetQueryPool Command");
-
-							 cmdBuffer->GetRHI().ResetQueryPool(queryPool->GetRHI(), firstQueryIdx, queryCount);
-						 });
+	GetCommandBufferRHI().ResetQueryPool(queryPool->GetRHI(), firstQueryIdx, queryCount);
 }
 
 void CommandRecorder::WriteTimestamp(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("WriteTimestamp Command");
-
-							 cmdBuffer->GetRHI().WriteTimestamp(queryPool->GetRHI(), queryIdx, stage);
-						 });
+	GetCommandBufferRHI().WriteTimestamp(queryPool->GetRHI(), queryIdx, stage);
 }
 
 void CommandRecorder::BeginQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("BeginQuery Command");
-
-							 cmdBuffer->GetRHI().BeginQuery(queryPool->GetRHI(), queryIdx);
-						 });
+	GetCommandBufferRHI().BeginQuery(queryPool->GetRHI(), queryIdx);
 }
 
 void CommandRecorder::EndQuery(const lib::SharedRef<QueryPool>& queryPool, Uint32 queryIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
-	EnqueueRenderCommand([=](const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 SPT_PROFILER_SCOPE("EndQuery Command");
+	GetCommandBufferRHI().EndQuery(queryPool->GetRHI(), queryIdx);
+}
 
-							 cmdBuffer->GetRHI().EndQuery(queryPool->GetRHI(), queryIdx);
-						 });
+rhi::RHICommandBuffer& CommandRecorder::GetCommandBufferRHI() const
+{
+	return m_commandsBuffer->GetRHI();
 }
 
 } // spt::rdr

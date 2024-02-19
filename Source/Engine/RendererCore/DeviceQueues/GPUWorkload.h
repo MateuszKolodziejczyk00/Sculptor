@@ -14,11 +14,17 @@ namespace spt::rdr
 class DeviceQueue;
 
 
+struct GPUWorkloadInfo
+{
+	Bool canBeReused = true;
+};
+
+
 class RENDERER_CORE_API GPUWorkload
 {
 public:
 
-	explicit GPUWorkload(lib::SharedRef<CommandBuffer> recordedBuffer, const rhi::CommandBufferUsageDefinition& commandBufferUsage);
+	explicit GPUWorkload(lib::SharedRef<CommandBuffer> recordedBuffer, const GPUWorkloadInfo& workloadInfo);
 
 	Bool IsSubmitted() const;
 
@@ -62,6 +68,8 @@ private:
 
 	lib::SharedPtr<CommandBuffer> m_recordedBuffer;
 
+	GPUWorkloadInfo m_info;
+
 	lib::SharedPtr<Semaphore> m_signalSemaphore;
 	Uint64                    m_signalSemaphoreValue;
 	DeviceQueue*              m_submissionQueue;
@@ -75,8 +83,6 @@ private:
 
 	SemaphoresArray m_waitSemaphores;
 	SemaphoresArray m_signalSemaphores;
-
-	Bool m_canBeReused;
 
 	lib::DynamicArray<js::Event> m_eventsOnFinished;
 };

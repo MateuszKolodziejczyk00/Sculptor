@@ -46,24 +46,17 @@ const lib::SharedPtr<GraphicsPipeline>& PipelinePendingState::GetBoundGraphicsPi
 	return m_boundGfxPipeline;
 }
 
-void PipelinePendingState::EnqueueFlushDirtyDSForGraphicsPipeline(CommandQueue& cmdQueue)
+void PipelinePendingState::FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!m_boundGfxPipeline);
 
-	DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
 
-	if (!descriptorSetsToBind.descriptorSetBinds.empty())
+	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundGfxPipeline]
-						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 for (const DSBindCommand& bindCommand : pendingDescriptors.descriptorSetBinds)
-							 {
-								 cmdBuffer->GetRHI().BindGfxDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-							 }
-						 });
+		cmdBuffer.BindGfxDescriptorSet(m_boundGfxPipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 	}
 }
 
@@ -94,24 +87,17 @@ const lib::SharedPtr<ComputePipeline>& PipelinePendingState::GetBoundComputePipe
 	return m_boundComputePipeline;
 }
 
-void PipelinePendingState::EnqueueFlushDirtyDSForComputePipeline(CommandQueue& cmdQueue)
+void PipelinePendingState::FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!m_boundComputePipeline);
 
-	DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
 
-	if (!descriptorSetsToBind.descriptorSetBinds.empty())
+	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundComputePipeline]
-						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 for (const DSBindCommand& bindCommand : pendingDescriptors.descriptorSetBinds)
-							 {
-								 cmdBuffer->GetRHI().BindComputeDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-							 }
-						 });
+		cmdBuffer.BindComputeDescriptorSet(m_boundComputePipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 	}
 }
 
@@ -142,24 +128,17 @@ const lib::SharedPtr<rdr::RayTracingPipeline>& PipelinePendingState::GetBoundRay
 	return m_boundRayTracingPipeline;
 }
 
-void PipelinePendingState::EnqueueFlushDirtyDSForRayTracingPipeline(CommandQueue& cmdQueue)
+void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!!m_boundRayTracingPipeline);
 
-	DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
 
-	if (!descriptorSetsToBind.descriptorSetBinds.empty())
+	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-		cmdQueue.Enqueue([pendingDescriptors = std::move(descriptorSetsToBind), pipeline = m_boundRayTracingPipeline]
-						 (const lib::SharedRef<CommandBuffer>& cmdBuffer, const CommandExecuteContext& executionContext)
-						 {
-							 for (const DSBindCommand& bindCommand : pendingDescriptors.descriptorSetBinds)
-							 {
-								 cmdBuffer->GetRHI().BindRayTracingDescriptorSet(pipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-							 }
-						 });
+		cmdBuffer.BindRayTracingDescriptorSet(m_boundRayTracingPipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
 	}
 }
 
@@ -258,7 +237,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			bindCommand.ds             = foundState->ds;
 			bindCommand.dynamicOffsets = foundState->dynamicOffsets;
 
-			descriptorSetsToBind.descriptorSetBinds.emplace_back(std::move(bindCommand));
+			descriptorSetsToBind.emplace_back(std::move(bindCommand));
 		}
 	}
 

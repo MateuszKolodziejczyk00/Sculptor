@@ -787,17 +787,17 @@ void RenderGraphBuilder::ExecuteGraph()
 
 	rhi::ContextDefinition renderContextDefinition;
 	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("Render Graph Context"), renderContextDefinition);
-	lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::Renderer::StartRecordingCommands();
+
+	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
+	lib::UniquePtr<rdr::CommandRecorder> commandRecorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("RenderGraphCommandBuffer"),
+																										renderContext,
+																										cmdBufferDef);
 
 	for (const RGNodeHandle node : m_nodes)
 	{
 		node->Execute(renderContext, *commandRecorder, graphExecutionContext);
 	}
-
-	rdr::CommandsRecordingInfo recordingInfo;
-	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("RenderGraphCommandBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Default);
-	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->RecordCommands(renderContext, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();
 
 	workload->BindEvent(m_onGraphExecutionFinished);
 

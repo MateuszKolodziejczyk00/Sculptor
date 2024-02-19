@@ -60,19 +60,21 @@ struct CommandBufferDefinition
 
 enum class ECommandBufferBeginFlags : Flags32
 {
-	None							= 0,
-	OneTimeSubmit					= BIT(0),
-	ContinueRendering				= BIT(1)
+	None              = 0,
+	OneTimeSubmit     = BIT(0),
+	ContinueRendering = BIT(1),
+
+	Default = OneTimeSubmit
 };
 
 
 struct CommandBufferUsageDefinition
 {
 	CommandBufferUsageDefinition()
-		: beginFlags(ECommandBufferBeginFlags::None)
+		: beginFlags(ECommandBufferBeginFlags::Default)
 	{ }
 
-	explicit CommandBufferUsageDefinition(ECommandBufferBeginFlags inBeginFlags)
+	CommandBufferUsageDefinition(ECommandBufferBeginFlags inBeginFlags)
 		: beginFlags(inBeginFlags)
 	{ }
 

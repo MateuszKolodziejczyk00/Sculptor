@@ -136,13 +136,6 @@ DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
 	return priv::g_data.deviceQueuesManager;
 }
 
-lib::UniquePtr<CommandRecorder> Renderer::StartRecordingCommands()
-{
-	SPT_PROFILER_FUNCTION();
-
-	return std::make_unique<CommandRecorder>();
-}
-
 void Renderer::PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();

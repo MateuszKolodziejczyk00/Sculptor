@@ -46,7 +46,7 @@ void TransfersManager::WaitForTransfersFinished(rdr::SemaphoresArray& waitSemaph
 #endif // WITH_NSIGHT_CRASH_FIX
 }
 
-Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::RenderContext>& context, lib::UniquePtr<rdr::CommandRecorder> recorder)
+Uint64 TransfersManager::SubmitTransfers(const lib::SharedRef<rdr::RenderContext>& context, lib::UniquePtr<rdr::CommandRecorder> recorder)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -59,10 +59,7 @@ Uint64 TransfersManager::RecordAndSubmitTransfers(const lib::SharedRef<rdr::Rend
 	const Uint64 semaphorePrevValue	= instance.m_lastSubmitCountValue.fetch_add(1);
 	const Uint64 semaphoreNewValue	= semaphorePrevValue + 1;
 
-	rdr::CommandsRecordingInfo recordingInfo;
-	recordingInfo.commandsBufferName = RENDERER_RESOURCE_NAME("TransfersCommandBuffer");
-	recordingInfo.commandBufferDef = rhi::CommandBufferDefinition(rhi::EDeviceCommandQueueType::Transfer, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
-	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->RecordCommands(context, recordingInfo, rhi::CommandBufferUsageDefinition(rhi::ECommandBufferBeginFlags::OneTimeSubmit));
+	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
 	const lib::SharedRef<rdr::Semaphore> transfersSemaphoresRef = lib::Ref(instance.m_transferFinishedSemaphore);
 
