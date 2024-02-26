@@ -101,13 +101,13 @@ void RenderSkyViewLUTCS(CS_INPUT input)
 
         const float3 rayDirection = float3(cosAzimuth * cosAltitude, sinAzimuth * cosAltitude, sinAltitude);
 
-        const Sphere groundSphere = { ZERO_VECTOR, u_atmosphereParams.groundRadiusMM };
-        const Sphere atmosphereSphere = { ZERO_VECTOR, u_atmosphereParams.atmosphereRadiusMM };
+        const Sphere groundSphere     = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.groundRadiusMM);
+        const Sphere atmosphereSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.atmosphereRadiusMM);
 
         const Ray ray = { viewLocation, rayDirection };
 
-        const float atmosphereDist = RaySphereIntersect(ray, atmosphereSphere);
-        const float distToGround = RaySphereIntersect(ray, groundSphere);
+        const float atmosphereDist = ray.IntersectSphere(atmosphereSphere).GetTime();
+        const float distToGround   = ray.IntersectSphere(groundSphere).GetTime();
         
         const float rayDistance = distToGround > 0.f ? distToGround : atmosphereDist;
 

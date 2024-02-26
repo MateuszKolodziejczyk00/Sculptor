@@ -185,7 +185,7 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 	js::Job renderWindowJob = js::Launch(SPT_GENERIC_JOB_NAME,
 										 [this, &frame, swapchainTexture, recordUICommandsJob]
 										 {
-											 const auto [uiCommandsWorkload, uiRenderContext] = recordUICommandsJob.GetResult();
+											 const auto [uiRenderContext, uiCommandsWorkload] = recordUICommandsJob.GetResult();
 											 RenderFrame(frame, swapchainTexture, uiCommandsWorkload);
 										 },
 										 js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::RenderWindow),
@@ -233,7 +233,7 @@ void SculptorEdApplication::UpdateUI(EditorFrameContext& frame)
 	scui::ApplicationUI::Draw(uiDrawContext);
 }
 
-std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> SculptorEdApplication::RecordUICommands(rhi::EFragmentFormat rtFormat) const
+std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> SculptorEdApplication::RecordUICommands(rhi::EFragmentFormat rtFormat) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -258,7 +258,7 @@ std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> 
 		
 	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
-	return std::make_pair(workload, renderContext);
+	return std::make_pair(renderContext, workload);
 }
 
 rdr::SwapchainTextureHandle SculptorEdApplication::AcquireSwapchainTexture(EditorFrameContext& frame)

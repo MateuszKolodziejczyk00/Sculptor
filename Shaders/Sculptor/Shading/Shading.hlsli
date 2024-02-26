@@ -146,3 +146,12 @@ float3 IntegrateSpecularGGX(in float3 specularColor, in float3 shadingNormal, in
 
     return (specularColor * fresnel * GGXMasking(a2, dotNL)) * peakIlluminance;
 }
+
+
+// Based on "Moving Frostbite to PBR" by Sebastien Lagarde", section 4.9.3
+float3 GetSpecularDominantDirection(in float3 normal, in float3 reflected, float roughness)
+{
+	const float smoothness = 1.f - roughness;
+	const float lerpFactor = smoothness * (sqrt(smoothness)  + roughness);
+	return normalize(lerp(normal, reflected, lerpFactor));
+}

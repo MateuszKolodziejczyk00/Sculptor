@@ -161,7 +161,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	{
 #if SPT_SHADERS_DEBUG_FEATURES
 		gfx::dbg::ShaderDebugParameters shaderDebugParameters;
-		shaderDebugParameters.mousePosition = m_mousePositionOnViewport;
+		shaderDebugParameters.mousePosition = inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift) ? m_mousePositionOnViewport : math::Vector2i::Constant(-2);
 		const gfx::dbg::ShaderDebugScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
 #endif // SPT_SHADERS_DEBUG_FEATURES
 

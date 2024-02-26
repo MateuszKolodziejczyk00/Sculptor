@@ -164,8 +164,10 @@ void GenerateSpecularReflectionsRaysRTG()
         else
         {
             const float3 reflectedVector = reflect(-toView, normal);
-            DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, normal, toView);
-            ddgiSampleParams.sampleDirection = reflectedVector;
+			const float3 specularDominantDir = GetSpecularDominantDirection(normal, reflectedVector, specularAndRoughness.w);
+            const float3 ddgiQueryWS = worldLocation;
+            DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, normal, toView);
+            ddgiSampleParams.sampleDirection = specularDominantDir;
             luminance = DDGISampleLuminance(ddgiSampleParams);
             hitDistance = 0.f;
         }

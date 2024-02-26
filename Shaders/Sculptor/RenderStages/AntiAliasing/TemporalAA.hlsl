@@ -261,7 +261,7 @@ void TemporalAACS(CS_INPUT input)
             const float3 clampedhistorySample = clamp(historySample, neighborhoodMin, neighborhoodMax);
             historySample = ClipAABB(minc, maxc, clampedhistorySample);
 
-            float3 historyWeight = 0.85f;
+            float3 historyWeight = 0.9f;
             float3 currentWeight = 1.f - historyWeight;
 
             const float currentLuminance = u_params.useYCoCg ? currentSample.r : Luminance(currentSample);

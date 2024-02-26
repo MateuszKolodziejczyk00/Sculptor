@@ -212,6 +212,11 @@ void SceneView::SetJittering(Bool enableJittering)
 	m_wantsJitter = enableJittering;
 }
 
+math::Vector2f SceneView::GetCurrentJitter(math::Vector2u resolution) const
+{
+	return IsJittering() ? jitter::GetJitter(m_jitterIndex, resolution) : math::Vector2f::Zero();
+}
+
 Bool SceneView::IsPerspectiveMatrix() const
 {
 	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));
@@ -224,23 +229,28 @@ void SceneView::CachePrevFrameRenderingData()
 
 void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 {
-	const math::Vector2f jitter = IsJittering() ? jitter::GetJitter(m_jitterIndex++, resolution) : math::Vector2f::Zero();
+	const math::Vector2f prevJitter = m_prevFrameRenderingData.jitter;
+
+	++m_jitterIndex;
+	const math::Vector2f jitter = GetCurrentJitter(resolution);
 
 	math::Matrix4f projectionMatrixWithJitter = m_projectionMatrix;
 	projectionMatrixWithJitter(0, 0) += jitter.x();
 	projectionMatrixWithJitter(1, 0) += jitter.y();
 
-	m_viewRenderingData.viewMatrix						= GenerateViewMatrix();
-	m_viewRenderingData.viewProjectionMatrix			= projectionMatrixWithJitter * m_viewRenderingData.viewMatrix;
-	m_viewRenderingData.projectionMatrix				= projectionMatrixWithJitter;
-	m_viewRenderingData.viewProjectionMatrixNoJitter	= m_projectionMatrix * m_viewRenderingData.viewMatrix;
-	m_viewRenderingData.projectionMatrixNoJitter		= m_projectionMatrix;
-	m_viewRenderingData.viewLocation					= m_viewLocation;
-	m_viewRenderingData.viewForward						= GetForwardVector();
-	m_viewRenderingData.inverseView						= m_viewRenderingData.viewMatrix.inverse();
-	m_viewRenderingData.inverseProjection				= projectionMatrixWithJitter.inverse();
-	m_viewRenderingData.inverseViewProjection			= m_viewRenderingData.viewProjectionMatrix.inverse();
-	m_viewRenderingData.inverseViewProjectionNoJitter	= m_viewRenderingData.viewProjectionMatrixNoJitter.inverse();
+	m_viewRenderingData.viewMatrix                    = GenerateViewMatrix();
+	m_viewRenderingData.viewProjectionMatrix          = projectionMatrixWithJitter * m_viewRenderingData.viewMatrix;
+	m_viewRenderingData.projectionMatrix              = projectionMatrixWithJitter;
+	m_viewRenderingData.viewProjectionMatrixNoJitter  = m_projectionMatrix * m_viewRenderingData.viewMatrix;
+	m_viewRenderingData.projectionMatrixNoJitter      = m_projectionMatrix;
+	m_viewRenderingData.viewLocation                  = m_viewLocation;
+	m_viewRenderingData.viewForward                   = GetForwardVector();
+	m_viewRenderingData.inverseView                   = m_viewRenderingData.viewMatrix.inverse();
+	m_viewRenderingData.inverseProjection             = projectionMatrixWithJitter.inverse();
+	m_viewRenderingData.inverseProjectionNoJitter     = m_projectionMatrix.inverse();
+	m_viewRenderingData.inverseViewProjection         = m_viewRenderingData.viewProjectionMatrix.inverse();
+	m_viewRenderingData.inverseViewProjectionNoJitter = m_viewRenderingData.viewProjectionMatrixNoJitter.inverse();
+	m_viewRenderingData.jitter                        = jitter;
 }
 
 void SceneView::UpdateCullingData()

@@ -20,6 +20,8 @@ writer.Flush(); \
 
 #define SPT_CHECK_MSG(condition, message, ...) \
 { \
+if(!(condition)) \
+{ \
 debug::DebugCommandsWriter writer = debug::CreateDebugCommandsWriter(); \
 writer.Write(ASSERTION_FAILED_MESSAGE_OP_CODE); \
 writer.WriteLiteral(SPT_FILE); \
@@ -28,12 +30,8 @@ writer.WriteLiteral(SPT_LITERAL(#condition)); \
 writer.WriteLiteral(message); \
 writer.WriteWithCodes(__VA_ARGS__); \
 writer.Flush(); \
+} \
 }
-
-#else
-
-#define SPT_DEBUG_PRINTF(literal, ...)
-#define SPT_CHECK_MSG(condition, message, ...)
 
 #endif // SPT_SHADERS_DEBUG_FEATURES
 

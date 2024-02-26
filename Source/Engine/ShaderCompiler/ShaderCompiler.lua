@@ -33,7 +33,7 @@ function ShaderCompiler:SetupConfiguration(configuration, platform)
 
     self:SetupPlatformConfiguration(configuration, platform)
 
-    self:AddPublicDefine("SPT_SHADERS_DEBUG_FEATURES=0")
+    self:AddPublicDefine("SPT_SHADERS_DEBUG_FEATURES=1")
 end
 
 function ShaderCompiler:GetAdditionalLibPaths()

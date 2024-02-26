@@ -94,6 +94,11 @@ Real32 RenderView::GetPreExposure() const
 	return m_preExposure;
 }
 
+math::Vector2f RenderView::GetCurrentJitter() const
+{
+	return SceneView::GetCurrentJitter(m_renderingResolution);
+}
+
 #if RENDERER_DEBUG
 void RenderView::SetDebugFeature(EDebugFeature::Type debugFeature)
 {

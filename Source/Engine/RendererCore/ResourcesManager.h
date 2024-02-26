@@ -65,6 +65,7 @@ class TopLevelAS;
 class QueryPool;
 class DescriptorSetLayout;
 class DescriptorSetStackAllocator;
+class Pipeline;
 
 
 class RENDERER_CORE_API ResourcesManager
@@ -94,9 +95,10 @@ public:
 	SPT_NODISCARD static ShaderID               CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD static lib::SharedRef<Shader> GetShaderObject(ShaderID shaderID);
 
-	SPT_NODISCARD static PipelineStateID CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
-	SPT_NODISCARD static PipelineStateID CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	SPT_NODISCARD static PipelineStateID CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
+	SPT_NODISCARD static PipelineStateID          CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	SPT_NODISCARD static PipelineStateID          CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	SPT_NODISCARD static PipelineStateID          CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
+	SPT_NODISCARD static lib::SharedPtr<Pipeline> GetPipelineObject(PipelineStateID id);
 	
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>    CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);

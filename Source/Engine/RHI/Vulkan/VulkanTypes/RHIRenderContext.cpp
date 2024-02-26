@@ -40,11 +40,6 @@ void RHIRenderContext::ReleaseRHI()
 
 	m_id = idxNone<rhi::ContextID>;
 
-	if (m_dynamicDescriptorsPool)
-	{
-		RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(std::move(m_dynamicDescriptorsPool));
-	}
-
 	if (m_commandPoolsLibrary)
 	{
 		VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
@@ -71,29 +66,6 @@ void RHIRenderContext::SetName(const lib::HashedString& name)
 const lib::HashedString& RHIRenderContext::GetName() const
 {
 	return m_name.Get();
-}
-
-lib::DynamicArray<RHIDescriptorSet> RHIRenderContext::AllocateDescriptorSets(const lib::Span<const RHIDescriptorSetLayout> layouts)
-{
-	SPT_PROFILER_FUNCTION();
-
-	if (!m_dynamicDescriptorsPool)
-	{
-		m_dynamicDescriptorsPool = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
-	}
-
-	lib::DynamicArray<RHIDescriptorSet> outSets;
-	outSets.reserve(layouts.size());
-
-	lib::DynamicArray<VkDescriptorSetLayout> layoutHandles;
-	layoutHandles.reserve(layouts.size());
-	std::transform(layouts.begin(), layouts.end(),
-				   std::back_inserter(layoutHandles),
-				   [](const RHIDescriptorSetLayout& layout) { return layout.GetHandle(); });
-
-	m_dynamicDescriptorsPool->AllocateDescriptorSets(layoutHandles.data(), static_cast<Uint32>(layoutHandles.size()), outSets);
-
-	return outSets;
 }
 
 VkCommandBuffer RHIRenderContext::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)

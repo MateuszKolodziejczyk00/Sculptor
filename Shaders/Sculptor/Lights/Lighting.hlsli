@@ -303,7 +303,8 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in fl
     const float3 specularQueryWS = surface.location + normalize(0.7f * specularGIOffsetDir + 0.3f * surface.geometryNormal) * 1.f;
 
     DDGISampleParams specularSampleParams = CreateDDGISampleParams(specularQueryWS, surface.geometryNormal, viewDir);
-    specularSampleParams.sampleDirection = reflect(-viewDir, surface.geometryNormal);
+	// Use geometry normal because DDGI can leak quite a bit of light if we sample with normal that is different from actual geometry normal
+	specularSampleParams.sampleDirection = GetSpecularDominantDirection(surface.geometryNormal, reflect(-viewDir, surface.geometryNormal), surface.roughness);
     specularSampleParams.sampleLocationBiasMultiplier = 0.3f;
     specularSampleParams.minVisibility                = 0.95f;
     const float3 specularReflections = DDGISampleLuminance(specularSampleParams);

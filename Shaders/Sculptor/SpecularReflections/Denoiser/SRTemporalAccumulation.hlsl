@@ -48,7 +48,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
         bool acceptReprojection = false;
 
-        const float3 currentSampleNormal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+        const float3 currentSampleNormal = normalize(u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f);
 
         if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
         {
@@ -57,10 +57,10 @@ void SRTemporalAccumulationCS(CS_INPUT input)
             const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
             const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
-            const float4 currentSamplePlane = float4(currentSampleNormal, -dot(currentSampleNormal, currentSampleWS));
-            const float historySampleDistToCurrentSamplePlane = dot(float4(historySampleWS, 1.f), currentSamplePlane);
+			const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
+            const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
 
-            if (abs(historySampleDistToCurrentSamplePlane) < 0.011f)
+            if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
             {
                 acceptReprojection = true;
             }

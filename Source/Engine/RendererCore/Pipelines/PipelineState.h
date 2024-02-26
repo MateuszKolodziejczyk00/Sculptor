@@ -67,33 +67,42 @@ struct PipelineStateID
 public:
 
 	PipelineStateID()
-		: ID(idxNone<SizeType>)
+		: m_ID(idxNone<SizeType>)
+		, m_type(rhi::EPipelineType::None)
 	{ }
 
-	explicit PipelineStateID(SizeType inID)
-		: ID(inID)
+	explicit PipelineStateID(SizeType inID, rhi::EPipelineType inType)
+		: m_ID(inID)
+		, m_type(inType)
 	{ }
 
 	void Reset()
 	{
-		ID = idxNone<SizeType>;
+		m_ID   = idxNone<SizeType>;
+		m_type = rhi::EPipelineType::None;
 	}
 
 	Bool IsValid() const
 	{
-		return ID != idxNone<SizeType>;
+		return m_ID != idxNone<SizeType>;
 	}
 
 	SizeType GetID() const
 	{
-		return ID;
+		return m_ID;
+	}
+
+	rhi::EPipelineType GetPipelineType() const
+	{
+		return m_type;
 	}
 
 	friend auto operator<=>(const PipelineStateID& rhs, const PipelineStateID& lhs) = default;
 
 private:
 
-	SizeType ID;
+	SizeType           m_ID;
+	rhi::EPipelineType m_type;
 };
 
 } // spt::rdr

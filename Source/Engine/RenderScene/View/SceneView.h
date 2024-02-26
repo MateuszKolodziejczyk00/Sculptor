@@ -15,10 +15,12 @@ BEGIN_SHADER_STRUCT(SceneViewData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseView)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseProjection)
+	SHADER_STRUCT_FIELD(math::Matrix4f, inverseProjectionNoJitter)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjection)
 	SHADER_STRUCT_FIELD(math::Matrix4f, inverseViewProjectionNoJitter)
 	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
 	SHADER_STRUCT_FIELD(math::Vector3f, viewForward)
+	SHADER_STRUCT_FIELD(math::Vector2f, jitter)
 END_SHADER_STRUCT();
 
 
@@ -51,6 +53,7 @@ public:
 
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
+	
 	Bool IsJittering() const;
 
 	const SceneViewData&		GetViewRenderingData() const;
@@ -69,7 +72,8 @@ public:
 
 protected:
 
-	void SetJittering(Bool enableJittering);
+	void           SetJittering(Bool enableJittering);
+	math::Vector2f GetCurrentJitter(math::Vector2u resolution) const;
 
 	Bool IsPerspectiveMatrix() const;
 

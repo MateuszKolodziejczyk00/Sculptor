@@ -42,11 +42,6 @@ public:
 	void						SetName(const lib::HashedString& name);
 	const lib::HashedString&	GetName() const;
 	
-	// Descriptor sets ======================================================
-
-	/** Allocates dynamic descriptor sets bound to this context. These descriptors are automatically destroyed with this context */
-	SPT_NODISCARD lib::DynamicArray<RHIDescriptorSet> AllocateDescriptorSets(const lib::Span<const RHIDescriptorSetLayout> layouts);
-
 	// Command Buffers ======================================================
 	
 	VkCommandBuffer AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef);
@@ -54,8 +49,6 @@ public:
 private:
 
 	rhi::ContextID m_id;
-
-	lib::UniquePtr<DescriptorPoolSet> m_dynamicDescriptorsPool;
 
 	lib::UniquePtr<CommandPoolsLibrary> m_commandPoolsLibrary;
 

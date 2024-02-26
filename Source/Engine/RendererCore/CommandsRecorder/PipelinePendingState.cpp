@@ -6,7 +6,6 @@
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/CommandBuffer.h"
 #include "Types/RenderContext.h"
-#include "CommandQueue/CommandQueue.h"
 #include "ShaderMetaData.h"
 
 namespace spt::rdr

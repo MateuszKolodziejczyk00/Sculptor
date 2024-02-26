@@ -5,6 +5,8 @@ function Spdlog:SetupConfiguration(configuration, platform)
     self:AddPublicDefine("SPDLOG_NO_EXCEPTIONS")
 
     self:AddPublicRelativeIncludePath("/include")
+
+	self:AddPublicDefine("_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING=1")
 end
 
 function Spdlog:GetProjectFiles()

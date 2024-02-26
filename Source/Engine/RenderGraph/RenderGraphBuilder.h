@@ -22,6 +22,12 @@ struct BarrierTextureTransitionDefinition;
 } // spt::rhi
 
 
+namespace spt::rdr
+{
+class Pipeline;
+} // spt::rdr
+
+
 namespace spt::rg
 {
 
@@ -165,17 +171,13 @@ private:
 	template<typename TDescriptorSetStatesRange, typename TCallable>
 	RGNode& CreateRenderPassNodeInternal(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, TCallable&& callable);
 
-	template<typename TDescriptorSetStatesRange>
-	void AddDescriptorSetStatesToNode(RGNodeHandle node, TDescriptorSetStatesRange&& dsStatesRange);
-
-	template<typename TDescriptorSetStatesRange>
-	void BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const;
-
 	template<typename TParametersTuple>
 	void BuildParametersDependencies(const TParametersTuple& parametersStructs, RGDependenciesBuilder& dependenciesBuilder) const;
 	
 	template<typename TParameters>
 	void BuildParametersStructDependencies(const TParameters& parameters, RGDependenciesBuilder& dependenciesBuilder) const;
+
+	void AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder);
 
 	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
 	void PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies);
@@ -205,6 +207,8 @@ private:
 
 	rdr::PipelineStateID GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const;
 
+	lib::SharedPtr<rdr::Pipeline> GetPipelineObject(rdr::PipelineStateID psoID) const;
+
 	lib::DynamicArray<RGTextureHandle> m_textures;
 	lib::DynamicArray<RGBufferHandle> m_buffers;
 
@@ -217,7 +221,6 @@ private:
 	lib::DynamicArray<RGNodeHandle> m_nodes;
 
 	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_boundDSStates;
-	lib::DynamicArray<lib::MTHandle<RGDescriptorSetStateBase>> m_boundDSStatesWithDependencies;
 
 	lib::DynamicArray<lib::SharedPtr<RenderGraphDebugDecorator>> m_debugDecorators;
 
@@ -279,11 +282,11 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
-	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
-	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+	
+	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -303,11 +306,12 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
-	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
-	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+
+	AssignDescriptorSetsToNode(node, GetPipelineObject(computePipelineID), { dsStatesRange }, dependenciesBuilder);
+
 	dependenciesBuilder.AddBufferAccess(indirectArgsBuffer, ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect);
 
 	AddNodeInternal(node, dependencies);
@@ -325,11 +329,12 @@ void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, 
 	SPT_PROFILER_FUNCTION();
 	
 	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<TCallable>(callable));
-	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
-	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+	
+	AssignDescriptorSetsToNode(node, nullptr, { dsStatesRange }, dependenciesBuilder);
+	
 	renderPassDef.BuildDependencies(dependenciesBuilder);
 	BuildParametersDependencies(parameters, dependenciesBuilder);
 
@@ -370,8 +375,9 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 
 	RGDependeciesContainer subpassDependencies;
 	RGDependenciesBuilder subpassDependenciesBuilder(*this, subpassDependencies, rhi::EPipelineStage::ALL_GRAPHICS_SHADERS);
-	BuildDescriptorSetDependencies(dsStatesRange, subpassDependenciesBuilder);
+	
 	BuildParametersDependencies(parameters, subpassDependenciesBuilder);
+	AssignDescriptorSetsToNode(*m_lastRenderPassNode, nullptr, { dsStatesRange }, subpassDependenciesBuilder);
 
 	ResolveNodeDependecies(*m_lastRenderPassNode, subpassDependencies);
 }
@@ -391,11 +397,11 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(traceName, ERenderGraphNodeType::TraceRays, std::move(executeLambda));
-	AddDescriptorSetStatesToNode(&node, dsStatesRange);
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::RayTracingShader);
-	BuildDescriptorSetDependencies(dsStatesRange, dependenciesBuilder);
+	
+	AssignDescriptorSetsToNode(node, GetPipelineObject(rayTracingPipelineID), { dsStatesRange }, dependenciesBuilder);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -420,44 +426,6 @@ RGNode& RenderGraphBuilder::CreateRenderPassNodeInternal(const RenderGraphDebugN
 	using NodeType = RGRenderPassNode<LambdaType>;
 
 	return AllocateNode<NodeType>(renderPassName, ERenderGraphNodeType::RenderPass, renderPassDef, callable);
-}
-
-template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::AddDescriptorSetStatesToNode(RGNodeHandle node, TDescriptorSetStatesRange&& dsStatesRange)
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const lib::MTHandle<rdr::DescriptorSetState>& state : dsStatesRange)
-	{
-		if (state.IsValid())
-		{
-			node->AddDescriptorSetState(state);
-		}
-	}
-
-	for (const lib::MTHandle<rdr::DescriptorSetState>& state : m_boundDSStates)
-	{
-		node->AddDescriptorSetState(state);
-	}
-}
-
-template<typename TDescriptorSetStatesRange>
-void RenderGraphBuilder::BuildDescriptorSetDependencies(const TDescriptorSetStatesRange& dsStatesRange, RGDependenciesBuilder& dependenciesBuilder) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	for (const lib::MTHandle<RGDescriptorSetStateBase>& stateToBind : dsStatesRange)
-	{
-		if (stateToBind.IsValid())
-		{
-			stateToBind->BuildRGDependencies(dependenciesBuilder);
-		}
-	}
-	
-	for (const lib::MTHandle<RGDescriptorSetStateBase>& stateToBind : m_boundDSStatesWithDependencies)
-	{
-		stateToBind->BuildRGDependencies(dependenciesBuilder);
-	}
 }
 
 template<typename TParametersTuple>
@@ -496,7 +464,7 @@ public:
 		: m_graphBuilder(graphBuilder)
 		, m_descriptorSets(descriptorSets)
 	{
-		for (const lib::MTHandle<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
+		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
 			if (ds.IsValid())
 			{
@@ -507,7 +475,7 @@ public:
 
 	~BindDescriptorSetsScope()
 	{
-		for (const lib::MTHandle<rg::RGDescriptorSetStateBase>& ds : m_descriptorSets)
+		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : m_descriptorSets)
 		{
 			if (ds.IsValid())
 			{

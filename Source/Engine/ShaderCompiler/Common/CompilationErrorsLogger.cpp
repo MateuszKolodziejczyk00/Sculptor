@@ -9,6 +9,8 @@
 namespace spt::sc
 {
 
+SPT_DEFINE_LOG_CATEGORY(CompilationErrorsLogger, true)
+
 namespace priv
 {
 
@@ -73,6 +75,8 @@ void CompilationErrorsLogger::OutputShaderPreprocessedCode(const lib::String& sh
 void CompilationErrorsLogger::OutputShaderPreprocessingErrors(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const lib::String& errors)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_LOG_ERROR(CompilationErrorsLogger, "Compiling {} failed:\n{}", shaderPath, errors);
 
 	const lib::String logFilePath = GetShaderPreprocesingErrorsLogsPath(shaderPath, sourceCode, stageCompilationDef);
 	priv::LoggerStreamGuard streamGuard(logFilePath);

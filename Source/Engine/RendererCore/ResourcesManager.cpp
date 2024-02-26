@@ -91,6 +91,11 @@ lib::SharedRef<Shader> ResourcesManager::GetShaderObject(ShaderID shaderID)
 	return Renderer::GetShadersManager().GetShader(shaderID);
 }
 
+lib::SharedPtr<Pipeline> ResourcesManager::GetPipelineObject(PipelineStateID id)
+{
+	return Renderer::GetPipelinesLibrary().GetPipeline(id);
+}
+
 lib::SharedRef<BottomLevelAS> ResourcesManager::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition)
 {
 	return lib::MakeShared<BottomLevelAS>(name, definition);

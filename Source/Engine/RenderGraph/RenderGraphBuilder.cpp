@@ -8,6 +8,7 @@
 #include "RenderGraphDebugDecorator.h"
 #include "DeviceQueues/GPUWorkload.h"
 #include "RenderGraphResourcesPool.h"
+#include "Types/Pipeline/Pipeline.h"
 
 namespace spt::rg
 {
@@ -434,34 +435,16 @@ void RenderGraphBuilder::BindDescriptorSetState(const lib::MTHandle<RGDescriptor
 	SPT_PROFILER_FUNCTION();
 
 	m_boundDSStates.emplace_back(dsState);
-
-	RGDependeciesContainer dependencies;
-	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
-	dsState->BuildRGDependencies(dependenciesBuilder);
-
-	if (dependencies.HasAnyDependencies())
-	{
-		m_boundDSStatesWithDependencies.emplace_back(dsState);
-	}
 }
 
 void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
 	SPT_PROFILER_FUNCTION();
 
+	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
+	if (foundDS != std::cend(m_boundDSStates))
 	{
-		const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
-		if (foundDS != std::cend(m_boundDSStates))
-		{
-			m_boundDSStates.erase(foundDS);
-		}
-	}
-	{
-		const auto foundDS = std::find(std::cbegin(m_boundDSStatesWithDependencies), std::cend(m_boundDSStatesWithDependencies), dsState);
-		if (foundDS != std::cend(m_boundDSStatesWithDependencies))
-		{
-			m_boundDSStatesWithDependencies.erase(foundDS);
-		}
+		m_boundDSStates.erase(foundDS);
 	}
 }
 
@@ -475,6 +458,28 @@ void RenderGraphBuilder::Execute()
 	PostBuild();
 
 	ExecuteGraph();
+}
+
+void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
+
+	const auto processDSStatesRange = [&metaData, &node, &dependenciesBuilder](const auto& range)
+		{
+			for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
+			{
+				if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
+				{
+					node.AddDescriptorSetState(ds);
+					ds->BuildRGDependencies(dependenciesBuilder);
+				}
+			}
+		};
+
+	processDSStatesRange(dsStatesRange);
+	processDSStatesRange(m_boundDSStates);
 }
 
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
@@ -904,6 +909,13 @@ rdr::PipelineStateID RenderGraphBuilder::GetOrCreateComputePipelineStateID(rdr::
 	SPT_PROFILER_FUNCTION();
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
+}
+
+lib::SharedPtr<rdr::Pipeline> RenderGraphBuilder::GetPipelineObject(rdr::PipelineStateID psoID) const
+{
+	SPT_CHECK(psoID.IsValid());
+
+	return rdr::ResourcesManager::GetPipelineObject(psoID);
 }
 
 } // spt::rg

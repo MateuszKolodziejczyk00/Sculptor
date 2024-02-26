@@ -162,6 +162,20 @@ lib::SharedPtr<RayTracingPipeline> PipelinesLibrary::GetRayTracingPipeline(Pipel
 	return GetPipelineImpl<RayTracingPipeline>(id, m_cachedRayTracingPipelines, m_rayTracingPipelinesPendingFlush, m_rayTracingPipelinesPendingFlushLock);
 }
 
+lib::SharedPtr<Pipeline> PipelinesLibrary::GetPipeline(PipelineStateID id) const
+{
+	switch (id.GetPipelineType())
+	{
+	case rhi::EPipelineType::Graphics:
+		return GetGraphicsPipeline(id);
+	case rhi::EPipelineType::Compute:
+		return GetComputePipeline(id);
+	case rhi::EPipelineType::RayTracing:
+		return GetRayTracingPipeline(id);
+	default:
+		return nullptr;
+	}}
+
 void PipelinesLibrary::FlushCreatedPipelines()
 {
 	SPT_PROFILER_FUNCTION();
@@ -215,21 +229,21 @@ PipelineStateID PipelinesLibrary::GetStateID(const GraphicsPipelineShaders& shad
 {
 	SPT_PROFILER_FUNCTION();
 
-	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef));
+	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef), rhi::EPipelineType::Graphics);
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const ShaderID& shader) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return PipelineStateID(lib::GetHash(shader));
+	return PipelineStateID(lib::GetHash(shader), rhi::EPipelineType::Compute);
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef));
+	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef), rhi::EPipelineType::RayTracing);
 }
 
 lib::SharedRef<GraphicsPipeline> PipelinesLibrary::CreateGfxPipelineObject(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)

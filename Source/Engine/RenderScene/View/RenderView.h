@@ -91,6 +91,8 @@ public:
 	void SetPreExposure(Real32 preExposure);
 	Real32 GetPreExposure() const;
 
+	math::Vector2f GetCurrentJitter() const;
+
 #if RENDERER_DEBUG
 	void SetDebugFeature(EDebugFeature::Type debugFeature);
 	EDebugFeature::Type GetDebugFeature() const;

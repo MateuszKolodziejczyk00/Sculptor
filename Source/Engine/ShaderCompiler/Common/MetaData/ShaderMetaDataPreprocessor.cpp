@@ -7,6 +7,8 @@
 
 #include <regex>
 
+SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
+
 namespace spt::sc
 {
 
@@ -104,6 +106,8 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalComp
 								  },
 								  sourceCode);
 
+	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
+
 	return metaData;
 }
 
@@ -116,11 +120,60 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 	PreprocessShaderDescriptorSets(sourceCode, OUT metaData);
 	PreprocessShaderStructs(sourceCode, OUT metaData);
 
+	RemoveMetaParameters(sourceCode);
+
 #if SPT_SHADERS_DEBUG_FEATURES
 	PreprocessShaderLiterals(sourceCode, OUT metaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
 	return metaData;
+}
+
+void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::String& sourceCode, ShaderPreprocessingMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::HashMap<lib::HashedString, lib::HashedString> m_definedParams =
+	{
+		{"debug", "SPT_META_PARAM_DEBUG"}
+	};
+
+	static const std::regex metaDataRegex(R"~(\[\[meta\((.*?)\)\]\])~");
+    std::smatch match;
+
+	if (std::regex_search(sourceCode, match, metaDataRegex))
+	{
+		const std::string params = match[1];
+		const std::regex paramRegex(",\\s*");
+
+		std::sregex_token_iterator iter(params.begin(), params.end(), paramRegex, -1);
+		const std::sregex_token_iterator end;
+
+		for (; iter != end; ++iter)
+		{
+			const lib::HashedString param = std::string(*iter);
+			if (param.IsValid())
+			{
+				const auto paramMacroDef = m_definedParams.find(param);
+				if (paramMacroDef != m_definedParams.cend())
+				{
+					outMetaData.macroDefinitions.emplace_back(paramMacroDef->second);
+				}
+				else
+				{
+					SPT_LOG_ERROR(ShaderMetaDataPrerpocessor, "Unknown meta parameter: {}", param.GetView());
+				}
+			}
+		}
+	}
+}
+
+void ShaderMetaDataPrerpocessor::RemoveMetaParameters(lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex metaDataRegex(R"~(\[\[meta\((.*?)\)\]\])~");
+	sourceCode = std::regex_replace(sourceCode, metaDataRegex, "");
 }
 
 void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)

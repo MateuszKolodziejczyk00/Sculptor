@@ -17,7 +17,7 @@ class ShaderDebugCommandsExecutor;
 BEGIN_SHADER_STRUCT(ShaderDebugCommandBufferParams)
 	SHADER_STRUCT_FIELD(math::Vector2i, mousePosition)
 	SHADER_STRUCT_FIELD(math::Vector2i, mousePositionHalfRes)
-	SHADER_STRUCT_FIELD(Uint32, bufferSize)
+	SHADER_STRUCT_FIELD(Uint32,         bufferSize)
 END_SHADER_STRUCT();
 
 

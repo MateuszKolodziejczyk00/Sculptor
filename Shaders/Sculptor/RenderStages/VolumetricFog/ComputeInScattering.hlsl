@@ -51,7 +51,7 @@ void ComputeInScatteringCS(CS_INPUT input)
         params.toViewNormal             = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
         params.phaseFunctionAnisotrophy = u_inScatteringParams.localLightsPhaseFunctionAnisotrophy;
         params.inScatteringColor        = scatteringExtinction.rgb;
-
+        
         float3 inScattering = ComputeLocalLightsInScattering(params);
 
         if(u_inScatteringParams.enableIndirectInScattering)

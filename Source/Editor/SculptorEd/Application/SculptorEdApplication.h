@@ -46,7 +46,7 @@ private:
 
 	void UpdateUI(EditorFrameContext& frame);
 
-	std::pair<lib::SharedRef<rdr::GPUWorkload>, lib::SharedRef<rdr::RenderContext>> RecordUICommands(rhi::EFragmentFormat rtFormat) const;
+	std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> RecordUICommands(rhi::EFragmentFormat rtFormat) const;
 
 	rdr::SwapchainTextureHandle AcquireSwapchainTexture(EditorFrameContext& frame);
 	

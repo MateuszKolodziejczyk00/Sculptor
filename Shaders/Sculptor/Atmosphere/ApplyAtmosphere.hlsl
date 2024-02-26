@@ -29,7 +29,7 @@ void ApplyAtmosphereCS(CS_INPUT input)
 
         if(depth < 0.00001f)
         {
-            const float3 rayDirection = ComputeViewRayDirection(u_sceneView, uv);
+            const float3 rayDirection = ComputeViewRayDirectionWS(u_sceneView, uv);
 
             const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
 

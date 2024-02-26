@@ -43,20 +43,9 @@ public:
 
 	void AddRGDependency(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access) const
 	{
-		std::visit(lib::Overload
+		std::visit([&builder, access](const auto& buffer)
 				   {
-				       [&builder, access](const rdr::BufferView& buffer)
-				       {
-					       // If we're only reading from external buffer, we don't need to have any dependency
-						   if (access == rg::ERGBufferAccess::Write || access == rg::ERGBufferAccess::ReadWrite)
-						   {
-						       builder.AddBufferAccess(buffer, access);
-						   }
-				       },
-				       [&builder, access](rg::RGBufferViewHandle buffer)
-				       {
-				           builder.AddBufferAccess(buffer, access);
-				       }
+					   builder.AddBufferAccess(buffer, access);
 				   },
 				   m_buffer);
 	}

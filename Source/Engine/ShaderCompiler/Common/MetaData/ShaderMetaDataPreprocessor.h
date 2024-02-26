@@ -21,10 +21,13 @@ public:
 	SPT_NODISCARD static ShaderCompilationMetaData   PreprocessShader(lib::String& sourceCode);
 
 private:
+	
+	static void PreprocessShaderMetaParameters(const lib::String& sourceCode, ShaderPreprocessingMetaData& outMetaData);
+
+	static void RemoveMetaParameters(lib::String& sourceCode);
 
 	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
 	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
-
 
 #if SPT_SHADERS_DEBUG_FEATURES
 	static void PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
