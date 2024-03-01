@@ -394,13 +394,26 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 
 void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const
 {
+	SPT_PROFILER_FUNCTION();
+
+	const auto applyMetaData = [](const ShaderPreprocessingMetaData& metaData, INOUT DxcArguments& args)
+	{
+		for(const lib::HashedString& macro : metaData.macroDefinitions)
+		{
+			args.Append(lib::WString(L"-D"), lib::StringUtils::ToWideString(macro.GetView()));
+		}
+	};
+
+	{
+		// First preprocess only main file to find meta parameters
+		const ShaderPreprocessingMetaData preprocessingMetaData = ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(sourceCode);
+		applyMetaData(preprocessingMetaData, args);
+	}
+
 	const lib::String preprocessed = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, args);
 	const ShaderPreprocessingMetaData preprocessingMetaData = ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(preprocessed);
 
-	for(const lib::HashedString& macro : preprocessingMetaData.macroDefinitions)
-	{
-		args.Append(lib::WString(L"-D"), lib::StringUtils::ToWideString(macro.GetView()));
-	}
+	applyMetaData(preprocessingMetaData, args);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -35,12 +35,12 @@ void ProcessRenderStage(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene
 {
 	SPT_PROFILER_FUNCTION();
 
-	TRenderStage stageInstance;
-
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
 		if (viewSpec->SupportsStage(TRenderStage::GetStageEnum()))
 		{
+			TRenderStage& stageInstance = viewSpec->GetRenderStageChecked<TRenderStage>();
+
 			stageInstance.Render(graphBuilder, scene, *viewSpec, settings);
 		}
 	}
@@ -65,10 +65,9 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	SizeType mainViewIdx = idxNone<SizeType>;
 	lib::DynamicArray<ViewRenderingSpec*> renderViewsSpecs = CollectRenderViews(graphBuilder, scene, view, OUT mainViewIdx);
 
-	// Update all relevant views data
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		viewSpec->GetRenderView().OnBeginRendering();
+		viewSpec->GetRenderView().BeginFrame(scene);
 	}
 	
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
@@ -134,20 +133,15 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 		renderSystem->FinishRenderingFrame(graphBuilder, scene);
 	}
 
+	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
+	{
+		viewSpec->GetRenderView().EndFrame(scene);
+	}
+	
 	ViewRenderingSpec& mainViewSpec = *renderViewsSpecs[mainViewIdx];
 
-	const HDRResolvePassData& mainViewRenderingResult = mainViewSpec.GetData().Get<HDRResolvePassData>();
-
-	rg::RGTextureViewHandle output = mainViewRenderingResult.tonemappedTexture;
-
-#if RENDERER_DEBUG
-	if (view.IsAnyDebugFeatureEnabled())
-	{
-		output = mainViewRenderingResult.debug;
-	}
-#endif // RENDERER_DEBUG
-
-	return output;
+	const ShadingViewContext& mainViewContext = mainViewSpec.GetShadingViewContext();
+	return mainViewContext.output;
 }
 
 lib::DynamicArray<ViewRenderingSpec*> SceneRenderer::CollectRenderViews(rg::RenderGraphBuilder& graphBuilder, RenderScene& scene, RenderView& mainRenderView, SizeType& OUT mainViewIdx) const

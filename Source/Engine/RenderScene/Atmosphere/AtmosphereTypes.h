@@ -44,10 +44,4 @@ struct AtmosphereContext
 	lib::SharedPtr<rdr::TextureView>	multiScatteringLUT;
 };
 
-
-struct ViewAtmosphereRenderData
-{
-	rg::RGTextureViewHandle skyViewLUT;
-};
-
 } // spt::rsc

@@ -11,6 +11,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::GenerateGeometryNormals, GenerateGeometryNormalsRenderStage);
+
 DS_BEGIN(GenerateGeometryNormalsDS, rg::RGDescriptorSetState<GenerateGeometryNormalsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
@@ -32,28 +34,25 @@ void GenerateGeometryNormalsRenderStage::OnRender(rg::RenderGraphBuilder& graphB
 {
 	SPT_PROFILER_FUNCTION();
 
-	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
-	SPT_CHECK(depthPrepassData.depth.IsValid());
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+	SPT_CHECK(viewContext.depth.IsValid());
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const math::Vector3u renderingResolution = renderView.GetRenderingResolution3D();
-
-	const rg::RGTextureViewHandle geometryNormalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderingResolution, rhi::EFragmentFormat::RGBA16_UN_Float));
+	const rhi::EFragmentFormat normalsFormat = rhi::EFragmentFormat::RGBA16_UN_Float;
+	viewContext.geometryNormals        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderView.GetRenderingRes(), normalsFormat));
+	viewContext.geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderView.GetRenderingHalfRes(), normalsFormat));
 
 	static rdr::PipelineStateID pipelineState = CompileGenerateGeometryNormalsPipeline();
 
 	lib::MTHandle<GenerateGeometryNormalsDS> generateGeometryNormalsDS = graphBuilder.CreateDescriptorSet<GenerateGeometryNormalsDS>(RENDERER_RESOURCE_NAME("GenerateGeometryNormalsDS"));
-	generateGeometryNormalsDS->u_depthTexture			= depthPrepassData.depth;
-	generateGeometryNormalsDS->u_geometryNormalsTexture	= geometryNormalsTexture;
+	generateGeometryNormalsDS->u_depthTexture			= viewContext.depth;
+	generateGeometryNormalsDS->u_geometryNormalsTexture	= viewContext.geometryNormals;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Generate Geometry Normals"),
 						  pipelineState,
-						  math::Utils::DivideCeil(renderingResolution, math::Vector3u(8u, 8u, 1u)),
+						  math::Utils::DivideCeil(renderView.GetRenderingRes(), math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(generateGeometryNormalsDS), renderView.GetRenderViewDS()));
-
-	ShadingInputData& shadingInputData = viewSpec.GetData().GetOrCreate<ShadingInputData>();
-	shadingInputData.geometryNormals = geometryNormalsTexture;
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }

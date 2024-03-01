@@ -26,6 +26,7 @@
 
 namespace spt::rsc
 {
+REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRenderStage);
 
 struct SpecularReflectionsParams
 {
@@ -36,6 +37,7 @@ struct SpecularReflectionsParams
 	rg::RGTextureViewHandle motionTexture;
 	rg::RGTextureViewHandle normalsTexture;
 	rg::RGTextureViewHandle specularColorRoughnessTexture;
+	rg::RGTextureViewHandle skyViewLUT;
 };
 
 
@@ -103,9 +105,6 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	}
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-
-	const ViewAtmosphereRenderData& viewAtmosphereData = viewSpec.GetData().Get<ViewAtmosphereRenderData>();
-	SPT_CHECK(viewAtmosphereData.skyViewLUT.IsValid());
 	
 	const rg::RGTextureViewHandle reflectedLuminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
@@ -118,7 +117,7 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	shaderParams.volumetricFogFar  = fogParams.farPlane;
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->u_skyViewLUT                    = viewAtmosphereData.skyViewLUT;
+	traceRaysDS->u_skyViewLUT                    = params.skyViewLUT;
 	traceRaysDS->u_atmosphereParams              = atmosphereSubsystem.GetAtmosphereContext().atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_reflectedLuminanceTexture     = reflectedLuminanceTexture;
 	traceRaysDS->rayTracingDS                    = rayTracingSubsystem.GetSceneRayTracingDS();
@@ -250,22 +249,20 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 	{
 		const RenderView& renderView = viewSpec.GetRenderView();
 
-		ShadingData& shadingData    = viewSpec.GetData().Get<ShadingData>();
-		DepthPrepassData& depthData = viewSpec.GetData().Get<DepthPrepassData>();
-		MotionData& motionData      = viewSpec.GetData().Get<MotionData>();
+		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-		const math::Vector2u halfResolution = depthData.depthNoJitterHalfRes->GetResolution2D();
+		const math::Vector2u halfResolution = viewSpec.GetRenderingHalfRes();
 
 		const rg::RGTextureViewHandle shadingNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shading Normals Half Res"),
-																							 rg::TextureDef(halfResolution, shadingData.normalsTexture->GetFormat()));
+																							 rg::TextureDef(halfResolution, viewContext.normals->GetFormat()));
 
 		const rg::RGTextureViewHandle specularAndRoughnessHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Color And Roughness Half Res"),
-																							 rg::TextureDef(halfResolution, shadingData.specularAndRoughness->GetFormat()));
+																							 rg::TextureDef(halfResolution, viewContext.specularAndRoughness->GetFormat()));
 
 		DownsampledShadingTexturesParams downsampleParams;
-		downsampleParams.depth                         = depthData.depthNoJitter;
-		downsampleParams.specularColorRoughness        = shadingData.specularAndRoughness;
-		downsampleParams.shadingNormals                = shadingData.normalsTexture;
+		downsampleParams.depth                         = viewContext.depthNoJitter;
+		downsampleParams.specularColorRoughness        = viewContext.specularAndRoughness;
+		downsampleParams.shadingNormals                = viewContext.normals;
 		downsampleParams.specularColorRoughnessHalfRes = specularAndRoughnessHalfRes;
 		downsampleParams.shadingNormalsHalfRes         = shadingNormalsHalfRes;
 		DownsampleShadingTextures(graphBuilder, renderView, downsampleParams);
@@ -274,9 +271,10 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		params.resolution                    = specularAndRoughnessHalfRes->GetResolution2D();
 		params.normalsTexture                = shadingNormalsHalfRes;
 		params.specularColorRoughnessTexture = specularAndRoughnessHalfRes;
-		params.depthTexture                  = depthData.depthNoJitterHalfRes;
-		params.depthHistoryTexture           = depthData.historyDepthNoJitterHalfRes;
-		params.motionTexture                 = motionData.motionHalfRes;
+		params.depthTexture                  = viewContext.depthNoJitterHalfRes;
+		params.depthHistoryTexture           = viewContext.historyDepthNoJitterHalfRes;
+		params.motionTexture                 = viewContext.motionHalfRes;
+		params.skyViewLUT                    = viewContext.skyViewLUT;
 
 		const rg::RGTextureViewHandle specularReflectionsTexture = trace::TraceRays(graphBuilder, renderScene, viewSpec, params);
 		
@@ -285,8 +283,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");
 		// Use no jitter depth for upsampling - this should help with edge artifacts
-		upsampleParams.depth              = depthData.depth;
-		upsampleParams.depthHalfRes       = depthData.depthNoJitterHalfRes;
+		upsampleParams.depth              = viewContext.depth;
+		upsampleParams.depthHalfRes       = viewContext.depthNoJitterHalfRes;
 		upsampleParams.renderViewDS       = renderView.GetRenderViewDS();
 		upsampleParams.eliminateFireflies = true;
 		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, specularReflectionsTexture, upsampleParams);
@@ -294,12 +292,12 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 
 		apply::ApplySpecularReflectionsParams applyParams;
-		applyParams.luminanceTexture            = shadingData.luminanceTexture;
+		applyParams.luminanceTexture            = viewContext.luminance;
 		applyParams.specularReflectionsTexture  = specularReflectionsFullRes;
-		applyParams.specularAndRoughnessTexture = shadingData.specularAndRoughness;
+		applyParams.specularAndRoughnessTexture = viewContext.specularAndRoughness;
 		applyParams.brdfIntegrationLUT          = brdfIntegrationLUT;
-		applyParams.depthTexture                = depthData.depthNoJitter;
-		applyParams.normalsTexture              = shadingData.normalsTexture;
+		applyParams.depthTexture                = viewContext.depthNoJitter;
+		applyParams.normalsTexture              = viewContext.normals;
 		apply::ApplySpecularReflections(graphBuilder, viewSpec, applyParams);
 	}
 

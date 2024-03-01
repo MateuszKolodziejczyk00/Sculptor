@@ -90,6 +90,17 @@ static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderMetaDataPrerpocessor ====================================================================
 
+ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(const lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ShaderPreprocessingMetaData metaData;
+
+	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
+
+	return metaData;
+}
+
 ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalCompilerArgs(const lib::String& sourceCode)
 {
 	SPT_PROFILER_FUNCTION();
@@ -105,8 +116,6 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessAdditionalComp
 									  return helper::EDSIteratorFuncResult::Continue;
 								  },
 								  sourceCode);
-
-	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
 
 	return metaData;
 }

@@ -21,6 +21,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::HDRResolve, HDRResolveRenderStage);
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Paramters =====================================================================================
 
@@ -376,7 +378,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
 
@@ -417,7 +419,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
 
@@ -454,7 +456,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 
 	static const rdr::PipelineStateID combinePipeline = CompileBloomCompositePipeline();
 
@@ -499,7 +501,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
 
 	rg::TextureDef bloomTextureDef;
@@ -571,7 +573,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"), pipelineState, dispatchGroupsNum, rg::BindDescriptorSets(tonemappingDS));
@@ -623,31 +625,32 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ShadingData& shadingData		= viewSpec.GetData().Get<ShadingData>();
-	HDRResolvePassData& passData		= viewSpec.GetData().Create<HDRResolvePassData>();
-	
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const RenderView& renderView = viewSpec.GetRenderView();
+
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const math::Vector3u textureRes(renderingRes.x(), renderingRes.y(), 1);
 	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
-	
-	passData.tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), rg::TextureDef(textureRes, stageContext.rendererSettings.outputFormat));
+
+	const rg::RGTextureViewHandle tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), rg::TextureDef(textureRes, stageContext.rendererSettings.outputFormat));
 
 	exposure::ExposureSettings exposureSettings;
-	exposureSettings.textureSize                    = renderingRes;
-	exposureSettings.inputPixelSize                 = inputPixelSize;
-	exposureSettings.deltaTime                      = renderScene.GetCurrentFrameRef().GetDeltaTime();
-	exposureSettings.minLogLuminance                = params::minLogLuminance;
-	exposureSettings.maxLogLuminance                = params::maxLogLuminance;
-	exposureSettings.logLuminanceRange              = exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;
-	exposureSettings.inverseLogLuminanceRange       = 1.f / exposureSettings.logLuminanceRange;
-	exposureSettings.adaptationSpeed                = params::adaptationSpeed;
-	exposureSettings.rejectedDarkPixelsPercentage   = params::rejectedDarkPixelsPercentage;
+	exposureSettings.textureSize = renderingRes;
+	exposureSettings.inputPixelSize = inputPixelSize;
+	exposureSettings.deltaTime = renderScene.GetCurrentFrameRef().GetDeltaTime();
+	exposureSettings.minLogLuminance = params::minLogLuminance;
+	exposureSettings.maxLogLuminance = params::maxLogLuminance;
+	exposureSettings.logLuminanceRange = exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;
+	exposureSettings.inverseLogLuminanceRange = 1.f / exposureSettings.logLuminanceRange;
+	exposureSettings.adaptationSpeed = params::adaptationSpeed;
+	exposureSettings.rejectedDarkPixelsPercentage = params::rejectedDarkPixelsPercentage;
 	exposureSettings.rejectedBrightPixelsPercentage = params::rejectedBrightPixelsPercentage;
 
-	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, shadingData.luminanceTexture);
-	const rg::RGBufferViewHandle adaptedLuminance = exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram);
+	const rg::RGTextureViewHandle linearColorTexture = viewContext.luminance;
 
-	rg::RGTextureViewHandle linearColorTexture = shadingData.luminanceTexture;
+	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, linearColorTexture);
+	const rg::RGBufferViewHandle adaptedLuminance = exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram);
 
 	if (params::enableBloom)
 	{
@@ -657,17 +660,22 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemapping::TonemappingPassSettings tonemappingSettings;
 	tonemappingSettings.enableColorDithering = params::enableColorDithering;
 
-	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, linearColorTexture, tonemappingSettings, passData.tonemappedTexture, adaptedLuminance);
+	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, linearColorTexture, tonemappingSettings, tonemappedTexture, adaptedLuminance);
+
+	viewContext.output = tonemappedTexture;
 
 #if RENDERER_DEBUG
-	gamma::DoGammaCorrection(graphBuilder, shadingData.debugTexture);
-	passData.debug = shadingData.debugTexture;
+	if (renderView.GetDebugFeature() != EDebugFeature::None)
+	{
+		gamma::DoGammaCorrection(graphBuilder, viewContext.debug);
+		viewContext.output = viewContext.debug;
+	}
 #endif // RENDERER_DEBUG
 	
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 	
 	RenderViewEntryContext context;
-	context.texture = passData.tonemappedTexture;
+	context.texture = tonemappedTexture;
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).Broadcast(graphBuilder, renderScene, viewSpec, context);
 }
 

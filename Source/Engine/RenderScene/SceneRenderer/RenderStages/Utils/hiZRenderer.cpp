@@ -43,7 +43,7 @@ rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const math::Vector2u hiZRes = math::Vector2u(math::Utils::PreviousPowerOf2(renderingRes.x()), math::Utils::PreviousPowerOf2(renderingRes.y()));
 
 	const Uint32 mipLevels = math::Utils::ComputeMipLevelsNumForResolution(hiZRes);

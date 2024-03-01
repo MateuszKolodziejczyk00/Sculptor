@@ -66,14 +66,14 @@ void StaticMeshForwardOpaqueRenderer::CullPerView(rg::RenderGraphBuilder& graphB
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const DepthPrepassData& prepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 																					  renderView.GetRenderViewDS(),
-																					  prepassData.depthCullingDS));
+																					  viewContext.depthCullingDS));
 
 	for (const SMForwardOpaqueBatch& batch : forwardOpaqueBatches.batches)
 	{
@@ -234,7 +234,6 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 
 	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
 
-	const ShadingInputData& shadingInputData = viewSpec.GetData().Get<ShadingInputData>();
 	
 	mat::MaterialShadersParameters materialShadersParameters;
 	if (ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled())
@@ -242,7 +241,7 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_DDGI", "1"));
 	}
 
-	if (shadingInputData.ambientOcclusion.IsValid())
+	if (viewSpec.SupportsStage(ERenderStage::AmbientOcclusion))
 	{
 		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_AMBIENT_OCCLUSION", "1"));
 	}

@@ -16,7 +16,7 @@ namespace spt::rsc
 class RenderView;
 
 
-enum class ERenderStage
+enum class ERenderStage : Flags32
 {
 	None							= 0,
 	GlobalIllumination				= BIT(0),
@@ -45,6 +45,14 @@ enum class ERenderStage
 	ForwardRendererStages			= DepthPrepassStages | ForwardLightingStages | PostProcessStages,
 	ShadowMapRendererStages			= ShadowMap,
 };
+
+
+inline Uint32 RenderStageToIndex(ERenderStage stage)
+{
+	 const Uint32 idx = math::Utils::LowestSetBitIdx(static_cast<Flags32>(stage));
+	 SPT_CHECK_MSG(1u << idx == static_cast<Uint32>(stage), "Multiple stage bits are set! stage = {}", static_cast<Flags32>(stage));
+	 return idx;
+}
 
 
 struct SceneRendererSettings
@@ -115,67 +123,5 @@ DS_BEGIN(DepthCullingDS, rg::RGDescriptorSetState<DepthCullingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthCullingParams>),                        u_depthCullingParams)
 DS_END();
-
-
-struct DepthPrepassData
-{
-	rg::RGTextureViewHandle depth;
-	rg::RGTextureViewHandle depthNoJitter;
-	rg::RGTextureViewHandle depthNoJitterHalfRes;
-
-	rg::RGTextureViewHandle hiZ;
-	
-	rg::RGTextureViewHandle historyDepthNoJitter;
-	rg::RGTextureViewHandle historyDepthNoJitterHalfRes;
-
-	lib::MTHandle<DepthCullingDS> depthCullingDS;
-
-};
-
-
-struct MotionData
-{
-	rg::RGTextureViewHandle motion;
-	rg::RGTextureViewHandle motionHalfRes;
-};
-
-
-struct ShadingInputData
-{
-	// Normals created from the depth buffer
-	rg::RGTextureViewHandle geometryNormals;
-
-	rg::RGTextureViewHandle geometryNormalsHalfRes;
-
-	rg::RGTextureViewHandle ambientOcclusion;
-};
-
-
-struct ShadingData
-{
-	rg::RGTextureViewHandle luminanceTexture;
-	rg::RGTextureViewHandle normalsTexture;
-	rg::RGTextureViewHandle specularAndRoughness;
-	
-#if RENDERER_DEBUG
-	rg::RGTextureViewHandle debugTexture;
-#endif // RENDERER_DEBUG
-};
-
-
-struct AntiAliasingData
-{
-	rg::RGTextureViewHandle outputTexture;
-};
-
-
-struct HDRResolvePassData
-{
-	rg::RGTextureViewHandle tonemappedTexture;
-
-#if RENDERER_DEBUG
-	rg::RGTextureViewHandle debug;
-#endif // RENDERER_DEBUG
-};
 
 } // spt::rsc

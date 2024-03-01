@@ -14,6 +14,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::MotionAndDepth, MotionAndDepthRenderStage);
+
 namespace camera_motion
 {
 
@@ -31,14 +33,14 @@ static rdr::PipelineStateID CompileCameraMotionPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CameraMotionPipeline"), shader);
 }
 
-void ComputeCameraMotion(rg::RenderGraphBuilder& graphBuilder, const RenderView& renderView, const rg::RGTextureViewHandle& depthView, const rg::RGTextureViewHandle motionTextureView, const rg::RGTextureViewHandle depthTextureView)
+void ComputeCameraMotion(rg::RenderGraphBuilder& graphBuilder, const RenderView& renderView, const rg::RGTextureViewHandle motionTextureView, const rg::RGTextureViewHandle depthTextureView)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(motionTextureView.IsValid());
 	SPT_CHECK(depthTextureView.IsValid());
 
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 
 	static const rdr::PipelineStateID pipeline = CompileCameraMotionPipeline();
 
@@ -70,34 +72,33 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
-	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+	const math::Vector2u halfRes      = renderView.GetRenderingHalfRes();
 
-	DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	MotionData& motionData = viewSpec.GetData().Create<MotionData>();
-
-	motionData.motion = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), rg::TextureDef(texturesRes, GetMotionFormat()));
+	viewContext.motion        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), rg::TextureDef(renderingRes, GetMotionFormat()));
+	viewContext.motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture Half Res"), rg::TextureDef(halfRes, GetMotionFormat()));
 
 	// Render camera only motion as default
-	camera_motion::ComputeCameraMotion(graphBuilder, renderView, depthPrepassData.depth, motionData.motion, depthPrepassData.depth);
+	camera_motion::ComputeCameraMotion(graphBuilder, renderView, viewContext.motion, viewContext.depth);
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
 	rg::RGRenderTargetDef velocityRTDef;
-	velocityRTDef.textureView		= motionData.motion;
+	velocityRTDef.textureView		= viewContext.motion;
 	velocityRTDef.loadOperation		= rhi::ERTLoadOperation::Load;
 	velocityRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	velocityRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(velocityRTDef);
 
 	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= depthPrepassData.depth;
+	depthRTDef.textureView		= viewContext.depth;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
 	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
-	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingRes();
 	
 	// Render pass to render dynamic objects with custom velocity calculations
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Velocity And Depth Pass"),
@@ -111,16 +112,17 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 
-	depthPrepassData.hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, depthPrepassData.depth, rhi::EFragmentFormat::R32_S_Float);
+	rg::RGTextureViewHandle hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, viewContext.depth, rhi::EFragmentFormat::R32_S_Float);
 
 	DepthCullingParams depthCullingParams;
-	depthCullingParams.hiZResolution = depthPrepassData.hiZ->GetResolution2D().cast<Real32>();
+	depthCullingParams.hiZResolution = hiZ->GetResolution2D().cast<Real32>();
 
-	const lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
-	depthCullingDS->u_hiZTexture			= depthPrepassData.hiZ;
-	depthCullingDS->u_depthCullingParams	= depthCullingParams;
+	lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
+	depthCullingDS->u_hiZTexture         = hiZ;
+	depthCullingDS->u_depthCullingParams = depthCullingParams;
 
-	depthPrepassData.depthCullingDS = depthCullingDS;
+	viewContext.hiZ            = std::move(hiZ);
+	viewContext.depthCullingDS = std::move(depthCullingDS);
 }
 
 } // spt::rsc

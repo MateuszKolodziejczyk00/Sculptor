@@ -8,6 +8,10 @@ namespace spt::rsc
 
 class GenerateGeometryNormalsRenderStage : public RenderStage<GenerateGeometryNormalsRenderStage, ERenderStage::GenerateGeometryNormals>
 {
+protected:
+
+	using Super = RenderStage<GenerateGeometryNormalsRenderStage, ERenderStage::GenerateGeometryNormals>;
+
 public:
 
 	GenerateGeometryNormalsRenderStage();

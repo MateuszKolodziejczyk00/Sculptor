@@ -111,7 +111,7 @@ std::pair<lib::SharedRef<RenderView>, lib::SharedRef<rdr::Texture>> CascadedShad
 	lib::SharedRef<RenderView> renderView = lib::MakeShared<RenderView>(owningScene);
 	renderView->AddRenderStages(ERenderStage::ShadowMapRendererStages);
 
-	renderView->SetRenderingResolution(m_params.cascadesResolution);
+	renderView->SetRenderingRes(m_params.cascadesResolution);
 
 	const rhi::TextureDefinition shadowMapTextureDefinition = ShadowMapUtils::CreateShadowMapDefinition(m_params.cascadesResolution, m_params.shadowsTechnique);
 	const lib::SharedRef<rdr::Texture> shadowMap = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Shadow Map Cascade"), shadowMapTextureDefinition, rhi::EMemoryUsage::GPUOnly);

@@ -19,6 +19,7 @@ namespace spt::rsc
 class RenderScene;
 class RenderView;
 class ViewRenderingSpec;
+class DepthCullingDS;
 
 
 class ViewRenderingDataElement
@@ -357,6 +358,42 @@ inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
 } // RenderViewEntryDelegates
 
 
+struct ShadingViewContext
+{
+	rg::RGTextureViewHandle depth;
+	rg::RGTextureViewHandle depthNoJitter;
+	rg::RGTextureViewHandle depthNoJitterHalfRes;
+
+	rg::RGTextureViewHandle hiZ;
+
+	rg::RGTextureViewHandle historyDepthNoJitter;
+	rg::RGTextureViewHandle historyDepthNoJitterHalfRes;
+
+	lib::MTHandle<DepthCullingDS> depthCullingDS;
+
+	rg::RGTextureViewHandle motion;
+	rg::RGTextureViewHandle motionHalfRes;
+
+	// Normals created from the depth buffer
+	rg::RGTextureViewHandle geometryNormals;
+	rg::RGTextureViewHandle geometryNormalsHalfRes;
+
+	rg::RGTextureViewHandle ambientOcclusion;
+	
+	rg::RGTextureViewHandle skyViewLUT;
+
+	rg::RGTextureViewHandle luminance;
+	rg::RGTextureViewHandle normals;
+	rg::RGTextureViewHandle specularAndRoughness;
+
+#if RENDERER_DEBUG
+	rg::RGTextureViewHandle debug;
+#endif // RENDERER_DEBUG
+
+	rg::RGTextureViewHandle output;
+};
+
+
 class ViewRenderingSpec : public rg::RGTrackedObject
 {
 public:
@@ -368,6 +405,24 @@ public:
 	RenderView& GetRenderView() const;
 	ERenderStage GetSupportedStages() const;
 	Bool SupportsStage(ERenderStage stage) const;
+
+	math::Vector2u GetRenderingRes() const;
+	math::Vector2u GetRenderingHalfRes() const;
+
+	ShadingViewContext&       GetShadingViewContext();
+	const ShadingViewContext& GetShadingViewContext() const;
+
+	template<typename TRenderStage>
+	TRenderStage* GetRenderStage() const
+	{
+		return GetRenderView().GetRenderStage<TRenderStage>();
+	}
+
+	template<typename TRenderStage>
+	TRenderStage& GetRenderStageChecked() const
+	{
+		return GetRenderView().GetRenderStageChecked<TRenderStage>();
+	}
 
 	const ViewRenderingDataContainer&	GetData() const;
 	ViewRenderingDataContainer&			GetData();

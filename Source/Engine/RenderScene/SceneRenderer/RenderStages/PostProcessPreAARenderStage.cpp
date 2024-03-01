@@ -5,6 +5,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::PostProcessPreAA, PostProcessPreAARenderStage);
+
 namespace params
 {
 
@@ -25,12 +27,11 @@ void PostProcessPreAARenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 	
 	if (params::enableDOF)
 	{
-		const ShadingData& shadingData		= viewSpec.GetData().Get<ShadingData>();
-		const DepthPrepassData& depthData	= viewSpec.GetData().Get<DepthPrepassData>();
+		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 		dof::GatherBasedDOFParameters dofParameters;
-		dofParameters.linearColorTexture		= shadingData.luminanceTexture;
-		dofParameters.depthTexture				= depthData.depth;
+		dofParameters.linearColorTexture		= viewContext.luminance;
+		dofParameters.depthTexture				= viewContext.depth;
 		dofParameters.viewDS					= viewSpec.GetRenderView().GetRenderViewDS();
 		dofParameters.focalPlane				= params::focalPlane;
 		dofParameters.fullFocusRange			= params::fullFocusRange;

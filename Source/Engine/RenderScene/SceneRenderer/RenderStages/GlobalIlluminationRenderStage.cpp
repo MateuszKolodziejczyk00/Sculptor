@@ -3,6 +3,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::GlobalIllumination, GlobalIlluminationRenderStage);
+
 GlobalIlluminationRenderStage::GlobalIlluminationRenderStage()
 { }
 

@@ -10,6 +10,10 @@ namespace spt::rsc
 
 class MotionAndDepthRenderStage : public RenderStage<MotionAndDepthRenderStage, ERenderStage::MotionAndDepth>
 {
+protected:
+
+	using Super = RenderStage<MotionAndDepthRenderStage, ERenderStage::MotionAndDepth>;
+
 public:
 
 	static rhi::EFragmentFormat GetMotionFormat();

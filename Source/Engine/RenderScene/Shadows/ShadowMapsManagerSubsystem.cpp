@@ -555,7 +555,7 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 		renderView->SetLocation(pointLight.location);
 		renderView->SetRotation(faceRotations[faceIdx]);
 
-		renderView->SetRenderingResolution(shadowMapResolution);
+		renderView->SetRenderingRes(shadowMapResolution);
 
 		m_shadowMapViewsData[renderViewIdx].viewProjectionMatrix = renderView->GenerateViewProjectionMatrix();
 	}

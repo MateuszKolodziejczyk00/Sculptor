@@ -271,7 +271,7 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);
 	}
-	m_renderView->SetRenderingResolution(math::Vector2u(1920, 1080));
+	m_renderView->SetRenderingRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
@@ -368,7 +368,7 @@ void SandboxRenderer::InitializeRenderScene()
 
 void SandboxRenderer::PrepareRenderView(math::Vector2u renderingResolution)
 {
-	m_renderView->SetRenderingResolution(renderingResolution);
+	m_renderView->SetRenderingRes(renderingResolution);
 
 	const Real32 defaultAspectRatio = 16.f / 9.f;
 

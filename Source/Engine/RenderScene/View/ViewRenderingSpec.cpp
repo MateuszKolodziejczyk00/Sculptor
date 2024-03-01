@@ -63,6 +63,12 @@ void ViewRenderingSpec::Initialize(RenderView& renderView)
 			m_stagesEntries.emplace(stage, RenderStageEntries());
 		}
 	}
+
+	const Bool isShadingView = lib::HasAnyFlag(renderView.GetSupportedStages(), ERenderStage::ForwardRendererStages);
+	if (isShadingView)
+	{
+		m_viewRenderingData.Create<ShadingViewContext>();
+	}
 }
 
 RenderView& ViewRenderingSpec::GetRenderView() const
@@ -81,6 +87,28 @@ Bool ViewRenderingSpec::SupportsStage(ERenderStage stage) const
 {
 	SPT_CHECK(!!m_renderView);
 	return lib::HasAnyFlag(m_renderView->GetSupportedStages(), stage);
+}
+
+math::Vector2u ViewRenderingSpec::GetRenderingRes() const
+{
+	SPT_CHECK(!!m_renderView);
+	return m_renderView->GetRenderingRes();
+}
+
+math::Vector2u ViewRenderingSpec::GetRenderingHalfRes() const
+{
+	SPT_CHECK(!!m_renderView);
+	return m_renderView->GetRenderingHalfRes();
+}
+
+ShadingViewContext& ViewRenderingSpec::GetShadingViewContext()
+{
+	return m_viewRenderingData.Get<ShadingViewContext>();
+}
+
+const ShadingViewContext& ViewRenderingSpec::GetShadingViewContext() const
+{
+	return m_viewRenderingData.Get<ShadingViewContext>();
 }
 
 const ViewRenderingDataContainer& ViewRenderingSpec::GetData() const

@@ -9,6 +9,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::ForwardOpaque, ForwardOpaqueRenderStage);
+
 RenderTargetFormatsDef ForwardOpaqueRenderStage::GetRenderTargetFormats(const SceneRendererSettings& sceneRendererSettings)
 {
 	RenderTargetFormatsDef formats;
@@ -31,50 +33,45 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 {
 	SPT_PROFILER_FUNCTION();
 
-	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
-	ShadingData& passData						= viewSpec.GetData().Create<ShadingData>();
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	SPT_CHECK(depthPrepassData.depth.IsValid());
-
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 	
-	passData.luminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
-	
-	passData.normalsTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
-	
-	passData.specularAndRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
+	viewContext.luminance            = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
+	viewContext.normals              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
+	viewContext.specularAndRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 
 #if RENDERER_DEBUG
 	const rhi::EFragmentFormat debugFormat = stageContext.rendererSettings.outputFormat;
-	passData.debugTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, debugFormat));
+	viewContext.debug = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Texture"), rg::TextureDef(texturesRes, debugFormat));
 #endif // RENDERER_DEBUG
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
 	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= depthPrepassData.depth;
+	depthRTDef.textureView		= viewContext.depth;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
 	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
 	rg::RGRenderTargetDef luminanceRTDef;
-	luminanceRTDef.textureView		= passData.luminanceTexture;
+	luminanceRTDef.textureView		= viewContext.luminance;
 	luminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
 
 	rg::RGRenderTargetDef normalsRTDef;
-	normalsRTDef.textureView	= passData.normalsTexture;
+	normalsRTDef.textureView	= viewContext.normals;
 	normalsRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	normalsRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
 
 	rg::RGRenderTargetDef specularAndRoughnessRTDef;
-	specularAndRoughnessRTDef.textureView    = passData.specularAndRoughness;
+	specularAndRoughnessRTDef.textureView    = viewContext.specularAndRoughness;
 	specularAndRoughnessRTDef.loadOperation  = rhi::ERTLoadOperation::Clear;
 	specularAndRoughnessRTDef.storeOperation = rhi::ERTStoreOperation::Store;
 	specularAndRoughnessRTDef.clearColor     = rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
@@ -82,14 +79,14 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 
 #if RENDERER_DEBUG
 	rg::RGRenderTargetDef debugRTDef;
-	debugRTDef.textureView		= passData.debugTexture;
+	debugRTDef.textureView		= viewContext.debug;
 	debugRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	debugRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	debugRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(debugRTDef);
 #endif // RENDERER_DEBUG
 	
-	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingRes();
 
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetData().Get<ViewSpecShadingParameters>();
 

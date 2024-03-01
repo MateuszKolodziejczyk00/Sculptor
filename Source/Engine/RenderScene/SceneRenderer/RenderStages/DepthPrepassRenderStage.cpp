@@ -6,21 +6,7 @@
 namespace spt::rsc
 {
 
-struct SceneViewDepthDataComponent
-{
-	lib::SharedPtr<rdr::TextureView> currentDepthTexture;
-	lib::SharedPtr<rdr::TextureView> currentDepthNoJitterTexture;
-	lib::SharedPtr<rdr::TextureView> currentDepthNoJitterTextureHalfRes;
-	lib::SharedPtr<rdr::TextureView> historyDepthTexture;
-	lib::SharedPtr<rdr::TextureView> historyDepthNoJitterTexture;
-	lib::SharedPtr<rdr::TextureView> historyDepthNoJitterTextureHalfRes;
-
-	Bool HasSeparateNoJitterTextures() const
-	{
-		return !!currentDepthNoJitterTexture && !!historyDepthNoJitterTexture;
-	}
-};
-
+REGISTER_RENDER_STAGE(ERenderStage::DepthPrepass, DepthPrepassRenderStage);
 
 namespace utils
 {
@@ -54,70 +40,72 @@ rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
 DepthPrepassRenderStage::DepthPrepassRenderStage()
 { }
 
+void DepthPrepassRenderStage::BeginFrame(const RenderScene& renderScene, const RenderView& renderView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	Super::BeginFrame(renderScene, renderView);
+
+	PrepareDepthTextures(renderView);
+}
+
 void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-	const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	SceneViewDepthDataComponent* viewDepthData = viewEntity.try_get<SceneViewDepthDataComponent>();
-	if (!viewDepthData)
+	viewContext.depth         = graphBuilder.AcquireExternalTextureView(m_currentDepthTexture);
+	viewContext.depthNoJitter = graphBuilder.AcquireExternalTextureView(m_currentDepthNoJitterTexture);
+
+	viewContext.depthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(m_currentDepthNoJitterTextureHalfRes);
+
+	if (m_historyDepthTexture)
 	{
-		viewDepthData = &viewEntity.emplace<SceneViewDepthDataComponent>();
-	}
-	SPT_CHECK(!!viewDepthData);
-
-	const Bool wantsSeparateNoJitterTextures = renderView.GetAntiAliasingMode() == EAntiAliasingMode::TemporalAA;
-
-	std::swap(viewDepthData->currentDepthTexture, viewDepthData->historyDepthTexture);
-	std::swap(viewDepthData->currentDepthNoJitterTextureHalfRes, viewDepthData->historyDepthNoJitterTextureHalfRes);
-
-	if (viewDepthData->currentDepthTexture != viewDepthData->currentDepthNoJitterTexture)
-	{
-		std::swap(viewDepthData->currentDepthNoJitterTexture, viewDepthData->historyDepthNoJitterTexture);
-	}
-
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
-
-	if (!viewDepthData->currentDepthTexture || viewDepthData->currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
-	{
-		const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
-
-		viewDepthData->currentDepthTexture                = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
-		viewDepthData->currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
-		
-		viewDepthData->currentDepthNoJitterTexture = wantsSeparateNoJitterTextures
-			                                       ? utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true)
-			                                       : viewDepthData->currentDepthTexture;
-	}
-
-	DepthPrepassData& depthPrepassData = viewSpec.GetData().Create<DepthPrepassData>();
-
-	depthPrepassData.depth         = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthTexture);
-	depthPrepassData.depthNoJitter = wantsSeparateNoJitterTextures
-		                           ? graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthNoJitterTexture)
-		                           : depthPrepassData.depth;
-
-	depthPrepassData.depthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(viewDepthData->currentDepthNoJitterTextureHalfRes);
-
-	if (viewDepthData->historyDepthTexture)
-	{
-		depthPrepassData.historyDepthNoJitter        = graphBuilder.AcquireExternalTextureView(viewDepthData->historyDepthNoJitterTexture);
-		depthPrepassData.historyDepthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(viewDepthData->historyDepthNoJitterTextureHalfRes);
+		viewContext.historyDepthNoJitter        = graphBuilder.AcquireExternalTextureView(m_historyDepthNoJitterTexture);
+		viewContext.historyDepthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(m_historyDepthNoJitterTextureHalfRes);
 	}
 
 	{
 		DepthPrepassMetaData metaData;
 		metaData.allowJittering = true;
-		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, depthPrepassData.depth, metaData);
+		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, viewContext.depth, metaData);
 	}
 
-	if (wantsSeparateNoJitterTextures)
+	if (viewContext.depth != viewContext.depthNoJitter)
 	{
 		DepthPrepassMetaData metaData;
 		metaData.allowJittering = false;
-		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, depthPrepassData.depthNoJitter, metaData);
+		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, viewContext.depthNoJitter, metaData);
+	}
+}
+
+void DepthPrepassRenderStage::PrepareDepthTextures(const RenderView& renderView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Bool wantsSeparateNoJitterTextures = renderView.GetAntiAliasingMode() == EAntiAliasingMode::TemporalAA;
+
+	std::swap(m_currentDepthTexture, m_historyDepthTexture);
+	std::swap(m_currentDepthNoJitterTextureHalfRes, m_historyDepthNoJitterTextureHalfRes);
+
+	if (m_currentDepthTexture != m_currentDepthNoJitterTexture)
+	{
+		std::swap(m_currentDepthNoJitterTexture, m_historyDepthNoJitterTexture);
+	}
+
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+
+	if (!m_currentDepthTexture || m_currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
+	{
+		const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
+
+		m_currentDepthTexture                = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
+		m_currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
+		
+		m_currentDepthNoJitterTexture = wantsSeparateNoJitterTextures
+			                          ? utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true)
+			                          : m_currentDepthTexture;
 	}
 }
 

@@ -19,6 +19,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::ShadowMap, ShadowMapRenderStage);
+
 namespace msm
 {
 
@@ -125,7 +127,7 @@ void ShadowMapRenderStage::RenderDepth(rg::RenderGraphBuilder& graphBuilder, con
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
@@ -162,7 +164,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 
 	const rg::RGTextureHandle depthRenderTarget = graphBuilder.CreateTexture(RG_DEBUG_NAME("MSM Depth RT"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D16_UN_Float));
 
@@ -188,7 +190,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 
 	static rdr::PipelineStateID horizontalBlurPipeline = msm::CompileHorizontalMSMFilterPipeline();
 
-	const math::Vector3u horizontalBlurWorkCount = math::Utils::DivideCeil(renderView.GetRenderingResolution3D(), math::Vector3u(256, 1, 1));
+	const math::Vector3u horizontalBlurWorkCount = math::Utils::DivideCeil(renderView.GetRenderingRes3D(), math::Vector3u(256, 1, 1));
 	graphBuilder.Dispatch(RG_DEBUG_NAME("MSM Horizontal Blur"),
 						  horizontalBlurPipeline,
 						  horizontalBlurWorkCount,
@@ -208,7 +210,7 @@ void ShadowMapRenderStage::RenderMSM(rg::RenderGraphBuilder& graphBuilder, const
 
 	static rdr::PipelineStateID verticalBlurPipeline = msm::CompileVerticalMSMFilterPipeline();
 
-	const math::Vector3u verticalBlurWorkCount = math::Utils::DivideCeil(renderView.GetRenderingResolution3D(), math::Vector3u(1, 256, 1));
+	const math::Vector3u verticalBlurWorkCount = math::Utils::DivideCeil(renderView.GetRenderingRes3D(), math::Vector3u(1, 256, 1));
 	graphBuilder.Dispatch(RG_DEBUG_NAME("MSM Vertical Blur"),
 						  verticalBlurPipeline,
 						  verticalBlurWorkCount,
@@ -222,7 +224,7 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 	const rg::RGTextureViewHandle depthRenderTarget = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Depth RT"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D16_UN_Float));
 	RenderDepth(graphBuilder, renderScene, viewSpec, stageContext, depthRenderTarget);
 

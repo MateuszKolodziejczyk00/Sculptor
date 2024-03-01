@@ -14,6 +14,8 @@
 namespace spt::rsc
 {
 
+REGISTER_RENDER_STAGE(ERenderStage::VolumetricFog, VolumetricFogRenderStage);
+
 namespace apply_volumetric_fog
 {
 
@@ -48,8 +50,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const DepthPrepassData& depthPrepassData	= viewSpec.GetData().Get<DepthPrepassData>();
-	const ShadingData& shadingData				= viewSpec.GetData().Get<ShadingData>();
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	ApplyVolumetricFogParams params;
 	params.fogNearPlane			= fogParams.nearPlane;
@@ -57,12 +58,12 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	params.blendPixelsOffset	= 8.f;
 
 	const lib::MTHandle<ApplyVolumetricFogDS> applyVolumetricFogDS = graphBuilder.CreateDescriptorSet<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
-	applyVolumetricFogDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
-	applyVolumetricFogDS->u_luminanceTexture				= shadingData.luminanceTexture;
-	applyVolumetricFogDS->u_depthTexture					= depthPrepassData.depth;
-	applyVolumetricFogDS->u_applyVolumetricFogParams		= params;
+	applyVolumetricFogDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
+	applyVolumetricFogDS->u_luminanceTexture              = viewContext.luminance;
+	applyVolumetricFogDS->u_depthTexture                  = viewContext.depth;
+	applyVolumetricFogDS->u_applyVolumetricFogParams      = params;
 
-	const math::Vector3u dispatchSize = math::Utils::DivideCeil(renderView.GetRenderingResolution3D(), math::Vector3u(8u, 8u, 1u));
+	const math::Vector3u dispatchSize = math::Utils::DivideCeil(renderView.GetRenderingRes3D(), math::Vector3u(8u, 8u, 1u));
 
 	static const rdr::PipelineStateID applyVolumetricFogPipeline = CompileApplyVolumetricFogPipeline();
 

@@ -418,14 +418,13 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
-	const ViewAtmosphereRenderData& viewAtmosphereData = viewSpec.GetData().Get<ViewAtmosphereRenderData>();
-	SPT_CHECK(viewAtmosphereData.skyViewLUT.IsValid());
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
-	traceRaysDS->u_skyViewLUT               = viewAtmosphereData.skyViewLUT;
+	traceRaysDS->u_skyViewLUT               = viewContext.skyViewLUT;
 	traceRaysDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_traceRaysResultTexture   = probesTraceResultTexture;
 	traceRaysDS->u_relitParams              = relitParams.relitParamsBuffer;
@@ -486,13 +485,13 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 
 	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 	
-	const math::Vector2u renderingArea = renderView.GetRenderingResolution();
+	const math::Vector2u renderingArea = renderView.GetRenderingRes();
 
-	const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), renderingArea);
 	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= depthPrepassData.depth;
+	depthRTDef.textureView		= viewContext.depth;
 	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
 	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	depthRTDef.clearColor		= rhi::ClearColor(0.f);
@@ -506,7 +505,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
 
 	const rhi::EFragmentFormat colorFormat = context.texture->GetFormat();
-	const rhi::EFragmentFormat depthFormat = depthPrepassData.depth->GetFormat();
+	const rhi::EFragmentFormat depthFormat = viewContext.depth->GetFormat();
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Pass"),
 							renderPassDef,

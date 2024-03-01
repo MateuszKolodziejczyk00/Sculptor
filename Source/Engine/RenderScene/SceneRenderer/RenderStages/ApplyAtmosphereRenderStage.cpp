@@ -2,6 +2,7 @@
 
 namespace spt::rsc
 {
+REGISTER_RENDER_STAGE(ERenderStage::ApplyAtmosphere, ApplyAtmosphereRenderStage);
 
 ApplyAtmosphereRenderStage::ApplyAtmosphereRenderStage()
 { }

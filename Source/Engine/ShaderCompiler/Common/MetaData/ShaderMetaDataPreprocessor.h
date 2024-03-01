@@ -17,6 +17,7 @@ class ShaderMetaDataPrerpocessor
 {
 public:
 
+	SPT_NODISCARD static ShaderPreprocessingMetaData PreprocessMainShaderFile(const lib::String& sourceCode);
 	SPT_NODISCARD static ShaderPreprocessingMetaData PreprocessAdditionalCompilerArgs(const lib::String& sourceCode);
 	SPT_NODISCARD static ShaderCompilationMetaData   PreprocessShader(lib::String& sourceCode);
 

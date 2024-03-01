@@ -8,6 +8,10 @@ namespace spt::rsc
 
 class ForwardOpaqueRenderStage : public RenderStage<ForwardOpaqueRenderStage, ERenderStage::ForwardOpaque>
 {
+protected:
+
+	using Super = RenderStage<ForwardOpaqueRenderStage, ERenderStage::ForwardOpaque>;
+
 public:
 
 	static RenderTargetFormatsDef GetRenderTargetFormats(const SceneRendererSettings& sceneRendererSettings);

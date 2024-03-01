@@ -14,6 +14,38 @@ namespace spt::rsc
 {
 
 class RenderScene;
+class RenderStageBase;
+
+
+class RenderStagesRegistry
+{
+public:
+
+	RenderStagesRegistry();
+
+	void OnRenderStagesAdded(ERenderStage newStages);
+	void OnRenderStagesRemoved(ERenderStage removedStages);
+
+	RenderStageBase* GetRenderStage(ERenderStage stage) const;
+
+	template<typename TCallable>
+	void ForEachRenderStage(TCallable&& callable) const
+	{
+		for (size_t stageIndex = 0; stageIndex < s_maxStages; ++stageIndex)
+		{
+			if (m_renderStages[stageIndex])
+			{
+				callable(*m_renderStages[stageIndex]);
+			}
+		}
+	}
+
+private:
+
+	static constexpr size_t s_maxStages = sizeof(ERenderStage) * 8;
+
+	lib::StaticArray<lib::UniquePtr<RenderStageBase>, s_maxStages> m_renderStages;
+};
 
 
 namespace EDebugFeature
@@ -76,9 +108,25 @@ public:
 
 	ERenderStage GetSupportedStages() const;
 
-	void SetRenderingResolution(const math::Vector2u& resolution);
-	const math::Vector2u& GetRenderingResolution() const;
-	math::Vector3u GetRenderingResolution3D() const;
+	template<typename TStageType>
+	TStageType* GetRenderStage() const
+	{
+		return static_cast<TStageType*>(m_renderStages.GetRenderStage(TStageType::GetStageEnum()));
+	}
+
+	template<typename TStageType>
+	TStageType& GetRenderStageChecked() const
+	{
+		TStageType* renderStage = GetRenderStage<TStageType>();
+		SPT_CHECK_MSG(!!renderStage, "Render stage not found");
+		return *renderStage;
+	}
+
+	void SetRenderingRes(const math::Vector2u& resolution);
+	const math::Vector2u& GetRenderingRes() const;
+	math::Vector3u GetRenderingRes3D() const;
+
+	const math::Vector2u GetRenderingHalfRes() const;
 
 	RenderScene&                   GetRenderScene() const;
 	const RenderSceneEntityHandle& GetViewEntity() const;
@@ -100,7 +148,8 @@ public:
 	Bool IsAnyDebugFeatureEnabled() const;
 #endif // RENDERER_DEBUG
 
-	void OnBeginRendering();
+	void BeginFrame(const RenderScene& renderScene);
+	void EndFrame(const RenderScene& renderScene);
 
 	// Render systems
 
@@ -146,6 +195,8 @@ private:
 
 	void CreateRenderViewDS();
 
+	void OnBeginRendering();
+
 	void InitializeRenderSystem(ViewRenderSystem& renderSystem);
 	void DeinitializeRenderSystem(ViewRenderSystem& renderSystem);
 
@@ -160,6 +211,8 @@ private:
 	lib::MTHandle<RenderViewDS> m_renderViewDS;
 
 	RenderSystemsRegistry<ViewRenderSystem> m_renderSystems;
+
+	RenderStagesRegistry m_renderStages;
 
 	// Rendering settings
 

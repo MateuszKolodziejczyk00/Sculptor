@@ -202,7 +202,6 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-	const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
 
 	const ViewDirectionalShadowMasksData* viewShadowMasks = viewSpec.GetData().Find<ViewDirectionalShadowMasksData>();
 
@@ -292,7 +291,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	if (lightsRenderingDataPerView.HasAnyLocalLightsToRender())
 	{
-		const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingResolution();
+		const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 		const math::Vector2u tilesNum = (renderingRes - math::Vector2u(1, 1)) / 8 + math::Vector2u(1, 1);
 		const math::Vector2f tileSize = math::Vector2f(1.f / static_cast<Real32>(tilesNum.x()), 1.f / static_cast<Real32>(tilesNum.y()));
 
@@ -362,8 +361,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 	const Uint32 directionalLightsNum = CreateDirectionalLightsData(graphBuilder, renderScene, viewSpec, INOUT shadingInputDS);
 	lightsData.directionalLightsNum = directionalLightsNum;
 
-	const ShadingInputData& viewShadingInputData = viewSpec.GetData().Get<ShadingInputData>();
-	shadingInputDS->u_ambientOcclusionTexture = viewShadingInputData.ambientOcclusion;
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+	shadingInputDS->u_ambientOcclusionTexture = viewContext.ambientOcclusion;
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
@@ -490,8 +489,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 
 		RenderView& renderView = viewSpec.GetRenderView();
 
-		const DepthPrepassData& depthPrepassData = viewSpec.GetData().Get<DepthPrepassData>();
-		SPT_CHECK(depthPrepassData.depthCullingDS.IsValid());
+		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
@@ -503,7 +501,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		graphBuilder.Dispatch(RG_DEBUG_NAME("GenerateLightsDrawCommands"),
 							  m_generateLightsDrawCommandsPipeline,
 							  dispatchLightsGroupsNum,
-							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, depthPrepassData.depthCullingDS, renderView.GetRenderViewDS()));
+							  rg::BindDescriptorSets(lightsRenderingData.generateLightsDrawCommnadsDS, viewContext.depthCullingDS, renderView.GetRenderViewDS()));
 
 		const math::Vector2u renderingArea = lightsRenderingData.tilesNum;
 

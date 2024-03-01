@@ -339,7 +339,7 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	SPT_PROFILER_FUNCTION();
 
 	const rsc::RenderView& renderView = viewSpec.GetRenderView();
-	const math::Vector2u renderingRes = renderView.GetRenderingResolution();
+	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 	
 	const Uint32 volumetricTileSize = 8u;
 

@@ -24,8 +24,61 @@ struct RenderTargetFormatsDef
 };
 
 
+class RenderStageBase
+{
+public:
+
+	virtual ~RenderStageBase() = default;
+
+	virtual void BeginFrame(const RenderScene& renderScene, const RenderView& renderView) {}
+	virtual void EndFrame(const RenderScene& renderScene, const RenderView& renderView)   {}
+};
+
+
+using CreateRenderStageFunc = lib::RawCallable<lib::UniquePtr<RenderStageBase>()>;
+
+
+class RenderStagesFactory
+{
+public:
+
+	static RenderStagesFactory& Get();
+
+	void RegisterStage(ERenderStage stage, CreateRenderStageFunc createStageFunc);
+
+	lib::UniquePtr<RenderStageBase> CreateStage(ERenderStage stage);
+
+private:
+
+	RenderStagesFactory();
+
+	static constexpr size_t s_stagesNum = sizeof(ERenderStage) * 8;
+
+	lib::StaticArray<CreateRenderStageFunc, s_stagesNum> m_createStageFuncs;
+};
+
+
+template<ERenderStage stage, typename TRenderStageType>
+struct RenderStageRegistration
+{
+	RenderStageRegistration()
+	{
+		RenderStagesFactory::Get().RegisterStage(stage, &RenderStageRegistration::CreateStage);
+	}
+
+	static lib::UniquePtr<RenderStageBase> CreateStage()
+	{
+		return std::make_unique<TRenderStageType>();
+	}
+};
+
+
+#define REGISTER_RENDER_STAGE(stage, renderStageType) \
+	static RenderStageRegistration<stage, renderStageType> s_renderStageRegistration_##renderStageType;
+
+
 template<typename TRenderStageType, ERenderStage stage>
-class RenderStage
+class RenderStage : public RenderStageBase
 {
 public:
 
