@@ -1,6 +1,9 @@
 #include "SculptorShader.hlsli"
 
 [[descriptor_set(LuminanceHistogramDS, 0)]]
+[[descriptor_set(RenderViewDS, 1)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 // Based on https://bruop.github.io/exposure/
 
@@ -48,7 +51,7 @@ void LuminanceHistogramCS(CS_INPUT input)
         const float2 uv = pixel * u_exposureSettings.inputPixelSize + u_exposureSettings.inputPixelSize * 0.5f;
         const float3 linearColor = u_linearColorTexture.SampleLevel(u_sampler, uv, 0).xyz;
 
-        const float luminance = Luminance(linearColor);
+        const float luminance = Luminance(linearColor) * rcp(GetViewExposure());;
 
         const uint binIdx = LuminanceToBinIdx(luminance, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
 

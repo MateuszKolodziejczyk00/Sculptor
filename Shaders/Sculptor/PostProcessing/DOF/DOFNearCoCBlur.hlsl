@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(DOFNearCoCBlurDS, 0)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 #define DOF_BLUR_OP_MAX 1

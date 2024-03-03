@@ -12,7 +12,6 @@
 
 [[descriptor_set(DDGIInvalidateProbesDS, 0)]]
 
-
 #include "DDGI/DDGItypes.hlsli"
 
 

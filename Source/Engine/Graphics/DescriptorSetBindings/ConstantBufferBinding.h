@@ -16,7 +16,17 @@ namespace spt::gfx
 namespace priv
 {
 
-template<typename TStruct, Bool isDynamicOffset>
+enum class EConstantBufferBindingType
+{
+	// updating data will create new buffer
+	Static,
+	// updating data will change static offset and mark descriptor as dirty
+	StaticOffset,
+	// updating data will only change dynamic offset
+	DynamicOffset
+};
+
+template<typename TStruct, EConstantBufferBindingType type>
 class ConstantBufferBinding : public rdr::DescriptorSetBinding 
 {
 protected:
@@ -29,7 +39,7 @@ public:
 		: Super(name)
 		, m_bufferMappedPtr(nullptr)
 		, m_structsStride(0)
-		, m_lastDynamicOffsetChangeFrameIdx(rdr::Renderer::GetCurrentFrameIdx())
+		, m_lastDynamicOffsetChangeFrameIdx(idxNone<Uint64>)
 		, m_offset(nullptr)
 	{ }
 
@@ -50,7 +60,7 @@ public:
 
 		InitResources(owningState);
 
-		if constexpr (isDynamicOffset)
+		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
 		{
 			m_offset = owningState.AddDynamicOffset();
 			*std::get<DynamicOffset>(m_offset) = 0u;
@@ -60,14 +70,17 @@ public:
 			m_offset = StaticOffset(0u);
 		}
 
-		// construct default value
-		new (&GetImpl()) TStruct();
+		if (m_bufferMappedPtr)
+		{
+			// construct default value
+			new (m_bufferMappedPtr + GetCurrentOffset()) TStruct();
+		}
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
-		const Uint64 offset = isDynamicOffset ? 0 : GetCurrentOffset();
+		constexpr Uint64 structSize = GetStructSize();
+		const Uint64 offset         = GetStaticOffset();
 		const rdr::BufferView boundBufferView(lib::Ref(m_buffer), offset, structSize);
 		context.UpdateBuffer(GetBaseBindingIdx(), boundBufferView);
 	}
@@ -82,6 +95,7 @@ public:
 	{
 		smd::EBindingFlags flags = smd::EBindingFlags::None;
 
+		constexpr Bool isDynamicOffset = (type == EConstantBufferBindingType::DynamicOffset);
 		if constexpr (isDynamicOffset)
 		{
 			lib::AddFlag(flags, smd::EBindingFlags::DynamicOffset);
@@ -100,7 +114,7 @@ public:
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>
 	void Set(TAssignable&& value)
 	{
-		SwitchBufferOffsetIfNecessary();
+		SwitchBufferMemoryIfNecessary();
 		GetImpl() = std::forward<TAssignable>(value);
 	}
 
@@ -128,42 +142,60 @@ private:
 	using DynamicOffset = Uint32*;
 	using StaticOffset  = Uint32;
 
-	Bool ShouldSwitchBufferOffsetOnChange() const
+	static constexpr Bool hasVariableOffset = (type == EConstantBufferBindingType::DynamicOffset || type == EConstantBufferBindingType::StaticOffset);
+
+	static constexpr Uint64 GetStructSize()
 	{
-		return m_structsStride > 0 && rdr::Renderer::GetCurrentFrameIdx() != m_lastDynamicOffsetChangeFrameIdx;
+		return std::max<Uint64>(sizeof(TStruct), 4u);
 	}
 
-	void SwitchBufferOffsetIfNecessary()
+	Bool ShouldSwitchBufferOffsetOnChange() const
+	{
+		return rdr::Renderer::GetCurrentFrameIdx() != m_lastDynamicOffsetChangeFrameIdx;
+	}
+
+	void SwitchBufferMemoryIfNecessary()
 	{
 		if (ShouldSwitchBufferOffsetOnChange())
 		{
-			SPT_CHECK_MSG(m_structsStride != 0, "Buffer {} is not initialized to be updated!", GetName().ToString());
-			Uint32& offset = GetCurrentOffsetRef();
-			offset += m_structsStride;
-			if (offset >= m_buffer->GetRHI().GetSize())
+			if constexpr (hasVariableOffset)
 			{
-				offset = 0;
-			}
-			m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+				SPT_CHECK_MSG(m_structsStride != 0, "Buffer {} is not initialized to be updated!", GetName().ToString());
+				Uint32& offset = GetCurrentOffsetRef();
+				offset += m_structsStride;
+				if (offset >= m_buffer->GetRHI().GetSize())
+				{
+					offset = 0;
+				}
+				m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
 
-			// If we don't use dynamic offset, we need to wark descriptor as dirty
-			if constexpr (!isDynamicOffset)
+				// If we don't use dynamic offset, we need to mark descriptor as dirty
+				if constexpr (type == EConstantBufferBindingType::StaticOffset)
+				{
+					MarkAsDirty();
+				}
+			}
+			else
 			{
-				MarkAsDirty();
+				CreateNewBuffer(GetStructSize());
+				SPT_CHECK(!!m_bufferMappedPtr);
+				// construct default value
+				new (m_bufferMappedPtr + GetCurrentOffset()) TStruct();
 			}
 		}
 	}
 
 	void SwitchBufferOffsetPreservingData()
 	{
-		const TStruct& oldValue = GetImpl();
-		SwitchBufferOffsetIfNecessary();
+		const TStruct& oldValueAddress = GetImpl();
+		const TStruct oldValueCopy = oldValueAddress;
+		SwitchBufferMemoryIfNecessary();
 		TStruct& newValue = GetImpl();
 		
 		// If struct offset was changed and we're using other copy, copy prev instance to new, so that changes to value will be incremental
-		if (&newValue != &oldValue)
+		if (&newValue != &oldValueAddress)
 		{
-			memcpy_s(&newValue, sizeof(TStruct), &oldValue, sizeof(TStruct));
+			memcpy_s(&newValue, GetStructSize(), &oldValueCopy, GetStructSize());
 		}
 	}
 	
@@ -174,23 +206,41 @@ private:
 		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + offset);
 	}
 
+	Uint32 GetStaticOffset() const
+	{
+		if constexpr (type == EConstantBufferBindingType::StaticOffset)
+		{
+			return std::get<StaticOffset>(m_offset);
+		}
+		else
+		{
+			return 0u;
+		}
+	}
+
 	Uint32 GetCurrentOffset() const
 	{
-		if constexpr (isDynamicOffset)
+		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
 		{
 			const Uint32* offset = std::get<DynamicOffset>(m_offset);
 			SPT_CHECK(!!offset);
 			return *offset;
 		}
-		else
+		else if constexpr (type == EConstantBufferBindingType::StaticOffset)
 		{
 			return std::get<StaticOffset>(m_offset);
+		}
+		else
+		{
+			return 0u;
 		}
 	}
 
 	Uint32& GetCurrentOffsetRef()
 	{
-		if constexpr (isDynamicOffset)
+		SPT_CHECK(hasVariableOffset);
+
+		if constexpr (type == EConstantBufferBindingType::DynamicOffset)
 		{
 			Uint32* offset = std::get<DynamicOffset>(m_offset);
 			SPT_CHECK(!!offset);
@@ -206,39 +256,42 @@ private:
 	{
 		SPT_PROFILER_FUNCTION();
 
-		constexpr Uint64 structSize = std::max<Uint64>(sizeof(TStruct), 4u);
+		m_name = RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer"));
 
-		Uint64 bufferSize = 0;
-		if constexpr (isDynamicOffset)
+		if constexpr (hasVariableOffset)
 		{
+			constexpr Uint64 structSize = GetStructSize();
+
 			const Uint64 minOffsetAlignment = rhi::RHILimits::GetMinUniformBufferOffsetAlignment();
 			const Uint64 structStride = math::Utils::RoundUp(structSize, minOffsetAlignment);
 
-			const Uint32 structsCopiesNum = isDynamicOffset ? rdr::RendererSettings::Get().framesInFlight : 1;
+			const Uint32 structsCopiesNum = rdr::RendererSettings::Get().framesInFlight;
 
-			bufferSize = (structsCopiesNum - 1) * structStride + structSize;
+			const Uint64 bufferSize = (structsCopiesNum - 1) * structStride + structSize;
 
 			SPT_CHECK(structStride <= maxValue<Uint32>);
 			m_structsStride = static_cast<Uint32>(structStride);
-		}
-		else
-		{
-			bufferSize = structSize;
-		}
 
-		const rhi::BufferDefinition bufferDef(bufferSize, rhi::EBufferUsage::Uniform);
+			CreateNewBuffer(bufferSize);
+		}
+	}
+
+	void CreateNewBuffer(Uint64 size)
+	{
+		const rhi::BufferDefinition bufferDef(size, rhi::EBufferUsage::Uniform);
 
 		rhi::RHIAllocationInfo allocationInfo;
 		allocationInfo.allocationFlags = rhi::EAllocationFlags::CreateMapped;
 		allocationInfo.memoryUsage     = rhi::EMemoryUsage::CPUToGPU;
-		m_buffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer")),
-												  bufferDef, allocationInfo);
+		m_buffer = rdr::ResourcesManager::CreateBuffer(m_name, bufferDef, allocationInfo);
 
 		m_bufferMappedPtr = m_buffer->GetRHI().MapPtr();
 	}
 
 	lib::SharedPtr<rdr::Buffer> m_buffer;
 	Byte*                       m_bufferMappedPtr;
+
+	rdr::RendererResourceName   m_name;
 
 	Uint32 m_structsStride;
 
@@ -253,9 +306,12 @@ private:
 
 
 template<typename TStruct>
-using ConstantBufferBindingDynamic = priv::ConstantBufferBinding<TStruct, true>;
+using ConstantBufferBindingDynamicOffset = priv::ConstantBufferBinding<TStruct, priv::EConstantBufferBindingType::DynamicOffset>;
 
 template<typename TStruct>
-using ConstantBufferBinding = priv::ConstantBufferBinding<TStruct, false>;
+using ConstantBufferBindingStaticOffset = priv::ConstantBufferBinding<TStruct, priv::EConstantBufferBindingType::StaticOffset>;
+
+template<typename TStruct>
+using ConstantBufferBinding = priv::ConstantBufferBinding<TStruct, priv::EConstantBufferBindingType::Static>;
 
 } // spt::gfx

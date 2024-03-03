@@ -1,10 +1,10 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-
-#include "Utils/RTVisibilityCommon.hlsli"
 
 [[descriptor_set(RTAOTraceRaysDS, 2)]]
 [[descriptor_set(RenderViewDS, 3)]]
+
+#include "Utils/SceneViewUtils.hlsli"
+#include "Utils/RTVisibilityCommon.hlsli"
 
 
 [shader("raygeneration")]

@@ -58,8 +58,8 @@ public:
 	{ }
 
 	// Begin AntiAliasingTechniqueInterface interface
-	virtual void                    BeginFrame(const RenderView& renderView) override;
-	virtual rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) override;
+	virtual void BeginFrame(const RenderView& renderView) override;
+	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) override;
 	// End AntiAliasingTechniqueInterface interface
 
 private:
@@ -92,7 +92,7 @@ void TAATechnique::BeginFrame(const RenderView& renderView)
 	}
 }
 
-rg::RGTextureViewHandle TAATechnique::Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input)
+void TAATechnique::Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -120,7 +120,7 @@ rg::RGTextureViewHandle TAATechnique::Render(rg::RenderGraphBuilder& graphBuilde
 		graphBuilder.Dispatch(RG_DEBUG_NAME("Temporal AA"),
 							  temporalAAPipelineStateID,
 							  math::Utils::DivideCeil(viewSpec.GetRenderingRes(), math::Vector2u(8u, 8u)),
-							  rg::BindDescriptorSets(temporalAADS));
+							  rg::BindDescriptorSets(temporalAADS, renderView.GetRenderViewDS()));
 
 		graphBuilder.CopyTexture(RG_DEBUG_NAME("Apply Temporal AA result"),
 								 outputTexture, math::Vector3i::Zero(),
@@ -136,8 +136,6 @@ rg::RGTextureViewHandle TAATechnique::Render(rg::RenderGraphBuilder& graphBuilde
 								 outputTexture, math::Vector3i::Zero(),
 								 renderView.GetRenderingRes3D());
 	}
-
-	return outputTexture;
 }
 
 } // temporal
@@ -169,7 +167,7 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	if (m_technique)
 	{
-		viewContext.luminance = m_technique->Render(graphBuilder, viewSpec, viewContext.luminance);
+		m_technique->Render(graphBuilder, viewSpec, viewContext.luminance);
 	}
 	
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);

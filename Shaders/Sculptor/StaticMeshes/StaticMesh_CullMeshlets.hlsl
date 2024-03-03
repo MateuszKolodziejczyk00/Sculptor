@@ -1,8 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "StaticMeshes/StaticMesh_Workload.hlsli"
-#include "Utils/Wave.hlsli"
-#include "Utils/Culling.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -11,6 +7,11 @@
 [[descriptor_set(DepthCullingDS, 4)]]
 
 [[descriptor_set(SMCullMeshletsDS, 5)]]
+
+#include "Utils/SceneViewUtils.hlsli"
+#include "StaticMeshes/StaticMesh_Workload.hlsli"
+#include "Utils/Wave.hlsli"
+#include "Utils/Culling.hlsli"
 
 
 int ToInt8Value(uint bits)

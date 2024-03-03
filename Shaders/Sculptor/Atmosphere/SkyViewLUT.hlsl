@@ -1,9 +1,10 @@
 #include "SculptorShader.hlsli"
-#include "Atmosphere/Atmosphere.hlsli"
-#include "Utils/Shapes.hlsli"
 
 [[descriptor_set(RenderSkyViewLUTDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
+
+#include "Atmosphere/Atmosphere.hlsli"
+#include "Utils/Shapes.hlsli"
 
 
 struct CS_INPUT

@@ -1,13 +1,12 @@
 #include "SculptorShader.hlsli"
-#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(IndirectInScatteringDS, 1)]]
 [[descriptor_set(DDGISceneDS, 2)]]
 
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "DDGI/DDGITypes.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 
 struct CS_INPUT

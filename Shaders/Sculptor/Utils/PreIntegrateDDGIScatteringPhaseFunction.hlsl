@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
 
-#include "Lights/LightingUtils.hlsli"
-
 [[descriptor_set(PreIntegrateDDGIScatteringPhaseFunctionDS, 0)]]
+
+#include "Lights/LightingUtils.hlsli"
 
 
 struct CS_INPUT

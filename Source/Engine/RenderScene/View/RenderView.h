@@ -6,6 +6,7 @@
 #include "RenderSceneRegistry.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "ViewRenderSystem.h"
 #include "RenderSystemsRegistry.h"
 
@@ -23,8 +24,8 @@ public:
 
 	RenderStagesRegistry();
 
-	void OnRenderStagesAdded(ERenderStage newStages);
-	void OnRenderStagesRemoved(ERenderStage removedStages);
+	void OnRenderStagesAdded(RenderView& renderView, ERenderStage newStages);
+	void OnRenderStagesRemoved(RenderView& renderView, ERenderStage removedStages);
 
 	RenderStageBase* GetRenderStage(ERenderStage stage) const;
 
@@ -74,9 +75,17 @@ enum Type
 } // EAntiAliasingMode
 
 
+BEGIN_SHADER_STRUCT(ViewExposureData)
+	SHADER_STRUCT_FIELD(Real32, exposureLastFrame)
+	SHADER_STRUCT_FIELD(Real32, rcpExposureLastFrame)
+	SHADER_STRUCT_FIELD(Real32, exposure)
+	SHADER_STRUCT_FIELD(Real32, rcpExposure)
+	SHADER_STRUCT_FIELD(Real32, EV100)
+END_SHADER_STRUCT();
+
+
 BEGIN_SHADER_STRUCT(RenderViewData)
 	SHADER_STRUCT_FIELD(math::Vector2u, renderingResolution)
-	SHADER_STRUCT_FIELD(Real32, preExposure)
 #if RENDERER_DEBUG
 	SHADER_STRUCT_FIELD(Uint32, debugFeatureIndex)
 #endif // RENDERER_DEBUG
@@ -84,10 +93,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderViewDS, rg::RGDescriptorSetState<RenderViewDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),        u_prevFrameSceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewData>),        u_sceneView)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>), u_cullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderViewData>),       u_viewRenderingParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<SceneViewData>),        u_prevFrameSceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<SceneViewData>),        u_sceneView)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<SceneViewCullingData>), u_cullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<RenderViewData>),       u_viewRenderingParams)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalConstantBufferRefBinding<ViewExposureData>),      u_viewExposure)
 DS_END()
 
 
@@ -136,8 +146,8 @@ public:
 	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
 	EAntiAliasingMode::Type GetAntiAliasingMode() const;
 
-	void SetPreExposure(Real32 preExposure);
-	Real32 GetPreExposure() const;
+	void SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer);
+	void ResetExposureDataBuffer();
 
 	math::Vector2f GetCurrentJitter() const;
 
@@ -193,7 +203,7 @@ public:
 
 private:
 
-	void CreateRenderViewDS();
+	void UpdateRenderViewDS();
 
 	void OnBeginRendering();
 
@@ -217,8 +227,6 @@ private:
 	// Rendering settings
 
 	EAntiAliasingMode::Type m_aaMode;
-
-	Real32 m_preExposure;
 
 #if RENDERER_DEBUG
 	EDebugFeature::Type m_debugFeature;

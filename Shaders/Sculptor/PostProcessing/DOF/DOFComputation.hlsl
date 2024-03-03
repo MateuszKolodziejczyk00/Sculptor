@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(DOComputationPassDS, 0)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 #define DOF_SAMPLES_NUM 49

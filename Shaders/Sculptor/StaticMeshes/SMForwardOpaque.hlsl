@@ -1,6 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "StaticMeshes/StaticMesh_Workload.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -24,7 +22,9 @@
 
 #endif // ENABLE_DDGI
 
+#include "StaticMeshes/StaticMesh_Workload.hlsli"
 #include "Lights/Lighting.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 
 #include "Materials/MaterialSystem.hlsli"
@@ -221,9 +221,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     indirectLighting = indirectIlluminance;
 #endif // WITH_DEBUGS
 
-    luminance *= u_viewRenderingParams.preExposure;
-
-    output.luminance =  float4(luminance, 1.f);
+    output.luminance =  float4(LuminanceToExposedLuminance(luminance), 1.f);
     
     output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
     output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);

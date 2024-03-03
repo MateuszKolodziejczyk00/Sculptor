@@ -1,5 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "RenderStages/DepthPrepass/DepthPrepass.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -11,6 +10,8 @@
 
 [[descriptor_set(StaticMeshBatchDS, 5)]]
 [[descriptor_set(SMDepthOnlyDrawInstancesDS, 6)]]
+
+#include "RenderStages/DepthPrepass/DepthPrepass.hlsli"
 
 
 #ifdef SPT_MATERIAL_CUSTOM_OPACITY

@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(DOFFillPassDS, 0)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 struct CS_INPUT

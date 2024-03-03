@@ -16,8 +16,8 @@ public:
 
 	virtual ~AntiAliasingTechniqueInterface() = default;
 
-	virtual void                    BeginFrame(const RenderView& renderView) {};
-	virtual rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) { return nullptr; };
+	virtual void BeginFrame(const RenderView& renderView) {};
+	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) { };
 
 
 	EAntiAliasingMode::Type GetMode() const { return m_mode; }

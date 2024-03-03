@@ -1,11 +1,11 @@
-
 #include "SculptorShader.hlsli"
-#include "Atmosphere/Atmosphere.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
+
 #include "DDGI/DDGITraceRaysCommon.hlsli"
 
+#include "Atmosphere/Atmosphere.hlsli"
 #include "DDGI/DDGITypes.hlsli"
 #include "Lights/Lighting.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 
 [shader("raygeneration")]

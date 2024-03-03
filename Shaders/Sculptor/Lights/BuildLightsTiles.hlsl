@@ -1,10 +1,11 @@
 #include "SculptorShader.hlsli"
-#include "Lights/PointLightSphereVertices.hlsli"
-#include "Lights/LightsTiles.hlsli"
 
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(BuildLightTilesDS, 1)]]
+
+#include "Lights/PointLightSphereVertices.hlsli"
+#include "Lights/LightsTiles.hlsli"
 
 
 struct VS_INPUT

@@ -58,6 +58,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.descriptorBindingSampledImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;
+	vulkan12Features.descriptorBindingUniformBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingPartiallyBound				= VK_TRUE;
 	vulkan12Features.samplerFilterMinmax	= VK_TRUE;
 	vulkan12Features.hostQueryReset			= VK_TRUE;

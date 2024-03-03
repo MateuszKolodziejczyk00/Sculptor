@@ -1,5 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 #include "Utils/BlueNoiseSamples.hlsli"
 
@@ -11,6 +10,8 @@
 #include "DDGI/DDGITypes.hlsli"
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 toView, in uint2 pixel)
@@ -173,7 +174,7 @@ void GenerateSpecularReflectionsRaysRTG()
         }
     }
 
-    luminance *= u_viewRenderingParams.preExposure;
+    luminance = LuminanceToExposedLuminance(luminance);
 
     u_reflectedLuminanceTexture[pixel] = float4(luminance, hitDistance);
 }

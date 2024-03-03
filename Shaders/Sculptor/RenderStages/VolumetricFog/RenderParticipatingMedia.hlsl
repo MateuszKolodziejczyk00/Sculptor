@@ -1,11 +1,12 @@
 #include "SculptorShader.hlsli"
-#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-#include "Utils/PerlinNoise.hlsli"
 
 [[descriptor_set(RenderParticipatingMediaDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
 [[descriptor_set(RenderSceneDS, 2)]]
+
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
+#include "Utils/PerlinNoise.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 
 struct CS_INPUT

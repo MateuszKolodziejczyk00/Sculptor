@@ -1,12 +1,12 @@
 #include "SculptorShader.hlsli"
-#include "Utils/Wave.hlsli"
-#include "Utils/Culling.hlsli"
-#include "Lights/LightProxyVerticesInfo.hlsli"
-
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(GenerateLightsDrawCommnadsDS, 1)]]
 [[descriptor_set(DepthCullingDS, 2)]]
+
+#include "Utils/Wave.hlsli"
+#include "Utils/Culling.hlsli"
+#include "Lights/LightProxyVerticesInfo.hlsli"
 
 
 struct CS_INPUT

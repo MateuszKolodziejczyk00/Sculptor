@@ -1,10 +1,10 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
 [[descriptor_set(SRATrousFilterDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
+
+#include "Utils/SceneViewUtils.hlsli"
+#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
 
 struct CS_INPUT

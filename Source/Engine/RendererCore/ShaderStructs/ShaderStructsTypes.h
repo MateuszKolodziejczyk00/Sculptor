@@ -21,7 +21,7 @@ constexpr lib::String GetShaderTypeName()
 template<>
 constexpr lib::String GetShaderTypeName<Bool>()
 {
-	return lib::String("bool");
+	return lib::String("uint");
 }
 
 template<>

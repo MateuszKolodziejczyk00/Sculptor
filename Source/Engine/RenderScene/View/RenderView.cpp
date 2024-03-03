@@ -13,7 +13,7 @@ RenderStagesRegistry::RenderStagesRegistry()
 {
 }
 
-void RenderStagesRegistry::OnRenderStagesAdded(ERenderStage newStages)
+void RenderStagesRegistry::OnRenderStagesAdded(RenderView& renderView, ERenderStage newStages)
 {
 	Uint32 stagesToAdd = static_cast<Uint32>(newStages);
 	while(stagesToAdd != 0)
@@ -25,10 +25,11 @@ void RenderStagesRegistry::OnRenderStagesAdded(ERenderStage newStages)
 
 		SPT_CHECK(!m_renderStages[stageIdx]);
 		m_renderStages[stageIdx] = RenderStagesFactory::Get().CreateStage(static_cast<ERenderStage>(stageFlag));
+		m_renderStages[stageIdx]->Initialize(renderView);
 	}
 }
 
-void RenderStagesRegistry::OnRenderStagesRemoved(ERenderStage removedStages)
+void RenderStagesRegistry::OnRenderStagesRemoved(RenderView& renderView, ERenderStage removedStages)
 {
 	Uint32 stagesToRemove = static_cast<Uint32>(removedStages);
 	while(stagesToRemove != 0)
@@ -38,6 +39,7 @@ void RenderStagesRegistry::OnRenderStagesRemoved(ERenderStage removedStages)
 		lib::RemoveFlag(stagesToRemove, 1u << stageIdx);
 
 		SPT_CHECK(!!m_renderStages[stageIdx]);
+		m_renderStages[stageIdx]->Deinitialize(renderView);
 		m_renderStages[stageIdx].reset();
 	}
 }
@@ -55,12 +57,13 @@ RenderView::RenderView(RenderScene& renderScene)
 	, m_renderingResolution(0, 0)
 	, m_renderScene(renderScene)
 	, m_aaMode(EAntiAliasingMode::None)
-	, m_preExposure(0.04f)
 #if RENDERER_DEBUG
 	, m_debugFeature(EDebugFeature::None)
 #endif // RENDERER_DEBUG
 {
 	m_viewEntity = renderScene.CreateEntity();
+
+	m_renderViewDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
 }
 
 RenderView::~RenderView()
@@ -76,8 +79,8 @@ void RenderView::SetRenderStages(ERenderStage stages)
 
 	m_supportedStages = stages;
 
-	m_renderStages.OnRenderStagesAdded(lib::Difference(m_supportedStages, prevStages));
-	m_renderStages.OnRenderStagesRemoved(lib::Difference(prevStages, m_supportedStages));
+	m_renderStages.OnRenderStagesAdded(*this, lib::Difference(m_supportedStages, prevStages));
+	m_renderStages.OnRenderStagesRemoved(*this, lib::Difference(prevStages, m_supportedStages));
 }
 
 void RenderView::AddRenderStages(ERenderStage stagesToAdd)
@@ -88,7 +91,7 @@ void RenderView::AddRenderStages(ERenderStage stagesToAdd)
 
 	lib::AddFlag(m_supportedStages, stagesToAdd);
 
-	m_renderStages.OnRenderStagesAdded(lib::Difference(m_supportedStages, prevStages));
+	m_renderStages.OnRenderStagesAdded(*this, lib::Difference(m_supportedStages, prevStages));
 }
 
 void RenderView::RemoveRenderStages(ERenderStage stagesToRemove)
@@ -99,7 +102,7 @@ void RenderView::RemoveRenderStages(ERenderStage stagesToRemove)
 
 	lib::RemoveFlag(m_supportedStages, stagesToRemove);
 
-	m_renderStages.OnRenderStagesRemoved(lib::Difference(prevStages, m_supportedStages));
+	m_renderStages.OnRenderStagesRemoved(*this, lib::Difference(prevStages, m_supportedStages));
 }
 
 ERenderStage RenderView::GetSupportedStages() const
@@ -153,14 +156,16 @@ EAntiAliasingMode::Type RenderView::GetAntiAliasingMode() const
 	return m_aaMode;
 }
 
-void RenderView::SetPreExposure(Real32 preExposure)
+void RenderView::SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer)
 {
-	m_preExposure = preExposure;
+	SPT_CHECK(m_renderViewDS.IsValid() && !m_renderViewDS->u_viewExposure.IsValid());
+	m_renderViewDS->u_viewExposure = buffer->CreateFullView();
 }
 
-Real32 RenderView::GetPreExposure() const
+void RenderView::ResetExposureDataBuffer()
 {
-	return m_preExposure;
+	SPT_CHECK(m_renderViewDS->u_viewExposure.IsValid());
+	m_renderViewDS->u_viewExposure.Reset();
 }
 
 math::Vector2f RenderView::GetCurrentJitter() const
@@ -206,19 +211,16 @@ const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& RenderView::GetRender
 	return m_renderSystems.GetRenderSystems();
 }
 
-void RenderView::CreateRenderViewDS()
+void RenderView::UpdateRenderViewDS()
 {
 	SPT_PROFILER_FUNCTION();
 
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingRes();
-	renderViewData.preExposure         = GetPreExposure();
 
 #if RENDERER_DEBUG
 	renderViewData.debugFeatureIndex = GetDebugFeature();
 #endif // RENDERER_DEBUG
-
-	m_renderViewDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
 	m_renderViewDS->u_prevFrameSceneView	= GetPrevFrameRenderingData();
 	m_renderViewDS->u_sceneView				= GetViewRenderingData();
 	m_renderViewDS->u_cullingData			= GetCullingData();

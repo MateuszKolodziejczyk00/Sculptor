@@ -356,11 +356,12 @@ void SandboxRenderer::InitializeRenderScene()
 		{
 			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
-			directionalLightData.color            = math::Vector3f(0.9569f, 0.9137f, 0.6078f);
-			directionalLightData.illuminance      = 95000.f;
-			directionalLightData.direction        = math::Vector3f(-0.5f, -0.3f, -2.6f).normalized();
-			directionalLightData.lightConeAngle   = 0.0046f;
-			directionalLightData.sunDiskIntensity = 20.f;
+			directionalLightData.color                  = math::Vector3f(0.9569f, 0.9137f, 0.6078f);
+			directionalLightData.illuminance            = 95000.f;
+			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.2f).normalized();
+			directionalLightData.lightConeAngle         = 0.0046f;
+			directionalLightData.sunDiskAngleMultiplier = 2.3f;
+			directionalLightData.sunDiskEC              = 8.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}

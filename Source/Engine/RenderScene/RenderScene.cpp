@@ -192,7 +192,7 @@ void RenderView::OnBeginRendering()
 	UpdateViewRenderingData(GetRenderingRes());
 	UpdateCullingData();
 
-	CreateRenderViewDS();
+	UpdateRenderViewDS();
 }
 
 void RenderScene::InitializeRenderSystem(SceneRenderSystem& system)

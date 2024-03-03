@@ -13,8 +13,8 @@
 namespace spt::gfx
 {
 
-template<typename TStruct>
-class ConstantBufferRefBinding : public rdr::DescriptorSetBinding 
+template<typename TStruct, bool isOptional>
+class GenericConstantBufferRefBinding : public rdr::DescriptorSetBinding 
 {
 protected:
 
@@ -22,18 +22,34 @@ protected:
 
 public:
 
-	explicit ConstantBufferRefBinding(const lib::HashedString& name)
+	explicit GenericConstantBufferRefBinding(const lib::HashedString& name)
 		: Super(name)
 	{ }
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
-		context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK(IsValid());
+		}
+
+		if (IsValid())
+		{
+			context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
+		}
 	}
 	
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
-		m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::Read);
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK(IsValid());
+		}
+
+		if (IsValid())
+		{
+			m_boundBuffer.AddRGDependency(builder, rg::ERGBufferAccess::Read);
+		}
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
@@ -44,7 +60,14 @@ public:
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::UniformBuffer, smd::EBindingFlags::None) };
+		smd::EBindingFlags flags = smd::EBindingFlags::None;
+
+		if constexpr (isOptional)
+		{
+			lib::AddFlag(flags, smd::EBindingFlags::PartiallyBound);
+		}
+
+		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::UniformBuffer, flags) };
 	}
 
 	template<priv::CInstanceOrRGBufferView TType>
@@ -67,15 +90,33 @@ public:
 	}
 
 	template<priv::CInstanceOrRGBufferView TType>
-	ConstantBufferRefBinding& operator=(const TType& buffer)
+	GenericConstantBufferRefBinding& operator=(const TType& buffer)
 	{
 		Set<TType>(buffer);
 		return *this;
+	}
+
+	void Reset()
+	{
+		m_boundBuffer.Reset();
+		MarkAsDirty();
+	}
+
+	Bool IsValid() const
+	{
+		return m_boundBuffer.IsValid();
 	}
 
 private:
 
 	priv::BoundBufferVariant m_boundBuffer;
 };
+
+
+template<typename TStruct>
+using ConstantBufferRefBinding = GenericConstantBufferRefBinding<TStruct, false>;
+
+template<typename TStruct>
+using OptionalConstantBufferRefBinding = GenericConstantBufferRefBinding<TStruct, true>;
 
 } // spt::gfx

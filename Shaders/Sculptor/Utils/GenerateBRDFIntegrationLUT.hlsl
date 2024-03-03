@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
-#include "Shading/Shading.hlsli"
 
 [[descriptor_set(BRDFIntegrationLUTGenerationDS, 0)]]
+
+#include "Shading/Shading.hlsli"
 
 
 struct CS_INPUT

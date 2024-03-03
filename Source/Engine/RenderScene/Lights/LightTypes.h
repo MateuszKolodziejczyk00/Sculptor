@@ -14,7 +14,8 @@ BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(Uint32, shadowMaskIdx)
 	SHADER_STRUCT_FIELD(Uint32, firstShadowCascadeIdx)
 	SHADER_STRUCT_FIELD(Uint32, shadowCascadesNum)
-	SHADER_STRUCT_FIELD(Real32, sunDiskIntensity)
+	SHADER_STRUCT_FIELD(Real32, sunDiskMinCosAngle)
+	SHADER_STRUCT_FIELD(Real32, sunDiskEC)
 END_SHADER_STRUCT();
 
 
@@ -35,16 +36,18 @@ struct DirectionalLightData
 		, illuminance(1.f)
 		, direction(-math::Vector3f::UnitZ())
 		, lightConeAngle(0.f)
-		, sunDiskIntensity(1.f)
+		, sunDiskAngleMultiplier(1.f)
+		, sunDiskEC(0.f)
 	{ }
 
 	DirectionalLightGPUData GenerateGPUData() const
 	{
 		DirectionalLightGPUData gpuData;
-		gpuData.color            = color;
-		gpuData.illuminance      = illuminance;
-		gpuData.direction        = direction;
-		gpuData.sunDiskIntensity = sunDiskIntensity;
+		gpuData.color              = color;
+		gpuData.illuminance        = illuminance;
+		gpuData.direction          = direction;
+		gpuData.sunDiskEC          = sunDiskEC;
+		gpuData.sunDiskMinCosAngle = lightConeAngle * sunDiskAngleMultiplier;
 
 		return gpuData;
 	}
@@ -57,7 +60,9 @@ struct DirectionalLightData
 	math::Vector3f	direction;
 	Real32			lightConeAngle;
 	
-	Real32			sunDiskIntensity;
+	Real32			sunDiskAngleMultiplier;
+	
+	Real32			sunDiskEC;
 };
 
 

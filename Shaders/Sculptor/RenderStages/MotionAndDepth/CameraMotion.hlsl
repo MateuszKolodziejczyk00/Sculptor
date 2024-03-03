@@ -1,8 +1,9 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
 
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(CameraMotionDS, 1)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 struct CS_INPUT

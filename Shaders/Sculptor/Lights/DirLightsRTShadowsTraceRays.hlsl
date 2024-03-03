@@ -1,13 +1,12 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-
-#include "Utils/BlueNoiseSamples.hlsli"
-
-#include "Utils/RTVisibilityCommon.hlsli"
 
 [[descriptor_set(TraceShadowRaysDS, 2)]]
 [[descriptor_set(DirectionalLightShadowMaskDS, 3)]]
 [[descriptor_set(RenderViewDS, 4)]]
+
+#include "Utils/BlueNoiseSamples.hlsli"
+#include "Utils/RTVisibilityCommon.hlsli"
+#include "Utils/SceneViewUtils.hlsli"
 
 
 [shader("raygeneration")]

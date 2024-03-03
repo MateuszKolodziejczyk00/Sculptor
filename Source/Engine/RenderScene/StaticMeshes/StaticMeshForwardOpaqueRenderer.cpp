@@ -234,7 +234,6 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 
 	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
 
-	
 	mat::MaterialShadersParameters materialShadersParameters;
 	if (ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled())
 	{

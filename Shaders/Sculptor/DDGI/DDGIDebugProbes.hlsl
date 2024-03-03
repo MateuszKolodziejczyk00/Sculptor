@@ -1,5 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "DDGI/DDGIDebugProbesShape.hlsli"
 
 
 [[descriptor_set(RenderViewDS, 0)]]
@@ -7,6 +6,7 @@
 [[descriptor_set(DDGISceneDS, 2)]]
 
 #include "DDGI/DDGITypes.hlsli"
+#include "DDGI/DDGIDebugProbesShape.hlsli"
 
 
 #define DDGI_DEBUG_MODE_ILLUMINANCE 1

@@ -1,8 +1,9 @@
 #include "SculptorShader.hlsli"
-#include "Utils/Exposure.hlsli"
-#include "Utils/TonemappingOperators.hlsli"
 
 [[descriptor_set(TonemappingDS, 0)]]
+
+#include "Utils/Exposure.hlsli"
+#include "Utils/TonemappingOperators.hlsli"
 
 
 struct CS_INPUT
@@ -21,14 +22,10 @@ void TonemappingCS(CS_INPUT input)
 
     if(pixel.x < outputRes.x && pixel.y < outputRes.y)
     {
-        const float EV100 = ComputeEV100FromAvgLuminance(u_adaptedLuminance[0] + 0.0001);
-        const float exposure = ConvertEV100ToExposure(EV100);
-
         const float2 pixelSize = rcp(float2(outputRes));
   
         const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
         float3 color = u_linearColorTexture.SampleLevel(u_sampler, uv, 0).xyz;
-        color *= exposure;
 
         color = float3(GTTonemapper(color.r), GTTonemapper(color.g), GTTonemapper(color.b));
 

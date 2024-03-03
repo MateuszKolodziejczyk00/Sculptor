@@ -202,4 +202,44 @@ float ComputeJitteredDepthTemporalWindow(in SceneViewData prevSceneView, in Scen
 	return additionalWindow;
 }
 
+
+#ifdef DS_RenderViewDS
+
+float GetViewExposure()
+{
+	return u_viewExposure.exposure;
+}
+
+float3 LuminanceToExposedLuminance(float3 linearLuminance)
+{
+	return linearLuminance * u_viewExposure.exposure;
+}
+
+float3 ExposedLuminanceToLuminance(float3 exposedLuminance)
+{
+	return exposedLuminance * u_viewExposure.rcpExposure;
+}
+
+float3 HistoryLuminanceToExposedLuminance(float3 linearLuminance)
+{
+	return linearLuminance * u_viewExposure.exposureLastFrame;
+}
+
+float3 HistoryExposedLuminanceToLuminance(float3 exposedLuminance)
+{
+	return exposedLuminance * u_viewExposure.rcpExposureLastFrame;
+}
+
+float3 ExposedHistoryLuminanceToCurrentExposedLuminance(float3 exposedLuminance)
+{
+	return exposedLuminance * (u_viewExposure.exposure / u_viewExposure.exposureLastFrame);
+}
+
+float ComputeLuminanceFromEC(float EC)
+{
+	return pow(2.f, u_viewExposure.EV100 + EC);
+}
+
+#endif // DS_RenderViewDS
+
 #endif // SCENE_VIEW_UTILS_H

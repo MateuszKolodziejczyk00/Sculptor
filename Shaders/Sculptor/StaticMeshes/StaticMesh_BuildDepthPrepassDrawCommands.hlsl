@@ -1,6 +1,4 @@
 #include "SculptorShader.hlsli"
-#include "Utils/Wave.hlsli"
-#include "Utils/Culling.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -8,6 +6,9 @@
 [[descriptor_set(RenderViewDS, 3)]]
 
 [[descriptor_set(SMDepthPrepassCullInstancesDS, 4)]]
+
+#include "Utils/Wave.hlsli"
+#include "Utils/Culling.hlsli"
 
 
 struct CS_INPUT

@@ -1,8 +1,9 @@
 #include "SculptorShader.hlsli"
-#include "Atmosphere/Atmosphere.hlsli"
-#include "Utils/Shapes.hlsli"
 
 [[descriptor_set(RenderMultiScatteringLUTDS, 0)]]
+
+#include "Atmosphere/Atmosphere.hlsli"
+#include "Utils/Shapes.hlsli"
 
 
 struct CS_INPUT

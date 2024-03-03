@@ -1,8 +1,8 @@
 #include "SculptorShader.hlsli"
-#include "Utils/SceneViewUtils.hlsli"
-
 
 [[descriptor_set(FilterVSMDS, 0)]]
+
+#include "Utils/SceneViewUtils.hlsli"
 
 
 #ifndef FILTER_DEPTH
