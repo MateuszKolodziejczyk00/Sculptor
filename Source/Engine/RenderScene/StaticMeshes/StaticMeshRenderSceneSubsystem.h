@@ -8,6 +8,7 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "Geometry/GeometryTypes.h"
 
 
 namespace spt::rsc
@@ -42,7 +43,6 @@ DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<StaticMeshBatchElement>), u_batchElements)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SMGPUBatchData>),           u_batchData)
 DS_END();
-
 
 
 struct StaticMeshBatchDefinition
@@ -124,11 +124,15 @@ public:
 	const lib::DynamicArray<StaticMeshBatchDefinition>& BuildBatchesForView(const RenderView& view) const;
 	lib::DynamicArray<StaticMeshBatchDefinition>        BuildBatchesForPointLight(const PointLightData& pointLight) const;
 
+	const GeometryPassDataCollection& GetCachedGeometryPassData() const;
+
 private:
 
 	struct CachedSMBatches
 	{
 		lib::DynamicArray<StaticMeshBatchDefinition> batches;
+
+		GeometryPassDataCollection geometryPassData;
 	};
 
 	CachedSMBatches CacheStaticMeshBatches() const;

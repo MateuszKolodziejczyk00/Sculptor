@@ -11,6 +11,8 @@ namespace spt::rdr
 struct GraphicsPipelineShadersDefinition
 {
 	lib::SharedPtr<Shader> vertexShader;
+	lib::SharedPtr<Shader> taskShader;
+	lib::SharedPtr<Shader> meshShader;
 	lib::SharedPtr<Shader> fragmentShader;
 };
 

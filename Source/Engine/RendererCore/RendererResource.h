@@ -73,6 +73,7 @@ struct NullAllocationDef { };
 struct CommittedAllocationDef
 {
 	rhi::RHIAllocationInfo allocationInfo;
+	Uint64                 alignment = 0;
 };
 
 

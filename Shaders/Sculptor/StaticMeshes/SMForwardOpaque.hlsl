@@ -49,12 +49,12 @@ struct VS_OUTPUT
     float2  uv                  : VERTEX_UV;
     
     float3  worldLocation       : WORLD_LOCATION;
-    float4  pixelClipSpace      : CLIP_SPACE;
-
 
 #if WITH_DEBUGS
     uint    meshletIdx          : MESHLET_IDX;
 #endif // WITH_DEBUGS
+
+    float4  pixelClipSpace      : CLIP_SPACE;
 };
 
 
@@ -221,7 +221,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     indirectLighting = indirectIlluminance;
 #endif // WITH_DEBUGS
 
-    output.luminance =  float4(LuminanceToExposedLuminance(luminance), 1.f);
+    output.luminance = float4(LuminanceToExposedLuminance(luminance), 1.f);
     
     output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
     output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);

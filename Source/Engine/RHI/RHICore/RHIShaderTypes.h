@@ -11,16 +11,18 @@ enum class EShaderStageFlags : Flags32
 {
 	None			= 0,
 	Vertex			= BIT(0),
-	Fragment		= BIT(1),
-	Compute			= BIT(2),
+	Task			= BIT(1),
+	Mesh			= BIT(2),
+	Fragment		= BIT(3),
+	Compute			= BIT(4),
 
-	RTGeneration	= BIT(3),
-	RTAnyHit		= BIT(4),
-	RTClosestHit	= BIT(5),
-	RTMiss			= BIT(6),
-	RTIntersection	= BIT(7),
+	RTGeneration	= BIT(5),
+	RTAnyHit		= BIT(6),
+	RTClosestHit	= BIT(7),
+	RTMiss			= BIT(8),
+	RTIntersection	= BIT(9),
 
-	AllGraphics		= Vertex | Fragment,
+	AllGraphics		= Vertex | Task | Mesh | Fragment,
 	AllCompute		= Compute,
 	AllRayTracing	= RTGeneration | RTAnyHit | RTClosestHit | RTMiss | RTIntersection,
 	All				= AllGraphics | AllCompute | AllRayTracing
@@ -32,6 +34,8 @@ enum class EShaderStage : Flags32
 {
 	None,
 	Vertex,
+	Task,
+	Mesh,
 	Fragment,
 	Compute,
 	RTGeneration,
@@ -65,6 +69,8 @@ inline EPipelineType GetPipelineTypeForShaderStage(EShaderStage stage)
 	{
 	case EShaderStage::None:			return EPipelineType::None;
 	case EShaderStage::Vertex:			return EPipelineType::Graphics;
+	case EShaderStage::Task:			return EPipelineType::Graphics;
+	case EShaderStage::Mesh:			return EPipelineType::Graphics;
 	case EShaderStage::Fragment:		return EPipelineType::Graphics;
 
 	case EShaderStage::Compute:			return EPipelineType::Compute;

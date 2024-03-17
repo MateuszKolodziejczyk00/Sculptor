@@ -5,6 +5,7 @@
 #include "UIUtils.h"
 #include "ImGui/DockBuilder.h"
 #include "TextureInspector/TextureInspector.h"
+#include "Utility/Templates/Overload.h"
 
 
 namespace spt::rg::capture
@@ -16,6 +17,7 @@ namespace spt::rg::capture
 RGNodeCaptureViewer::RGNodeCaptureViewer(const scui::ViewDefinition& definition, const RGNodeCapture& node)
 	: Super(definition)
 	, m_nodeDetailsPanelName(CreateUniqueName(std::format("Node Details")))
+	, m_nodePropertiesPanelName(CreateUniqueName(std::format("Node Properties")))
 	, m_capturedNode(node)
 {
 }
@@ -27,7 +29,9 @@ void RGNodeCaptureViewer::BuildDefaultLayout(ImGuiID dockspaceID)
 	ui::Build(dockspaceID,
 			 ui::Split(ui::ESplit::Vertical, 0.75f, 
 					   ui::DockPrimitive(m_textureInspectorsStack),
-					   ui::DockWindow(m_nodeDetailsPanelName)));
+					   ui::Split(ui::ESplit::Horizontal, 0.75f,
+						   ui::DockWindow(m_nodeDetailsPanelName),
+						   ui::DockWindow(m_nodePropertiesPanelName))));
 }
 
 void RGNodeCaptureViewer::DrawUI()
@@ -35,6 +39,8 @@ void RGNodeCaptureViewer::DrawUI()
 	Super::DrawUI();
 
 	DrawNodeDetails(m_capturedNode);
+
+	DrawNodeProperties(m_capturedNode);
 }
 
 ImGuiWindowFlags RGNodeCaptureViewer::GetWindowFlags() const
@@ -71,6 +77,62 @@ void RGNodeCaptureViewer::DrawNodeDetails(const RGNodeCapture& node)
 	ImGui::End();
 }
 
+void RGNodeCaptureViewer::DrawNodeProperties(const RGNodeCapture& node)
+{
+	SPT_PROFILER_FUNCTION();
+
+	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
+	ImGui::Begin(m_nodePropertiesPanelName.GetData());
+
+	std::visit(lib::Overload
+			   {
+				   [this](const RGCapturedComputeProperties& properties) { DrawNodeComputeProperties(properties); },
+				   [](const RGCapturedNullProperties& properties) { ImGui::Text("No properties were captured"); }
+			   },
+			   node.properties);
+
+	ImGui::End();
+}
+
+void RGNodeCaptureViewer::DrawNodeComputeProperties(const RGCapturedComputeProperties& properties)
+{
+	if (ImGui::CollapsingHeader("Pipeline State Statistics"))
+	{
+		const auto displayStatisticValue = [](rhi::PipelineStatisticValue value)
+			{
+				std::visit(lib::Overload
+						   {
+							   [](Bool value) { ImGui::Text("%s", value ? "true" : "false"); },
+							   [](Uint64 value) { ImGui::Text("%llu", value); },
+							   [](Int64 value) { ImGui::Text("%ll", value); },
+							   [](Real64 value) { ImGui::Text("%f", static_cast<Real32>(value)); }
+						   },
+						   value);
+			};
+
+		ImGui::Columns(2);
+
+		for (const rhi::PipelineStatistic& stat : properties.pipelineStatistics.statistics)
+		{
+			ImGui::Text(stat.name.c_str());
+			if(ImGui::IsItemHovered())
+			{
+				ImGui::BeginTooltip();
+				ImGui::Text(stat.description.c_str());
+				ImGui::EndTooltip();
+			}
+
+			ImGui::NextColumn();
+
+			displayStatisticValue(stat.value);
+
+			ImGui::NextColumn();
+		}
+
+		ImGui::EndColumns();
+	}
+}
+
 void RGNodeCaptureViewer::OpenTextureCapture(const RGTextureCapture& textureCapture)
 {
 	scui::ViewDefinition nodeViewDefinition;
@@ -85,10 +147,9 @@ void RGNodeCaptureViewer::OpenTextureCapture(const RGTextureCapture& textureCapt
 RenderGraphCaptureViewer::RenderGraphCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture)
 	: Super(definition)
 	, m_nodesListPanelName(CreateUniqueName("Nodes List"))
-	, m_nodesListFilterName(CreateUniqueName("Nodes Filter"))
+	, m_nodesListFilter(CreateUniqueName("Nodes Filter"))
 	, m_capture(std::move(capture))
 {
-	m_nodesListFilter[0] = '\0';
 }
 
 void RenderGraphCaptureViewer::BuildDefaultLayout(ImGuiID dockspaceID)
@@ -117,28 +178,18 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 
 	if (ImGui::CollapsingHeader("Filter"))
 	{
-		ImGui::Columns(2);
-		ImGui::InputText(m_nodesListFilterName.GetData(), m_nodesListFilter, SPT_ARRAY_SIZE(m_nodesListFilter));
-		ImGui::NextColumn();
-		if (ImGui::Button("Clear"))
-		{
-			m_nodesListFilter[0] = '\0';
-		}
-
-		ImGui::EndColumns();
+		m_nodesListFilter.Draw();
 	}
 
 	ImGui::Dummy(ImVec2(0.f, 30.f));
 
 	ImGui::BeginChild("Nodes", ImVec2{}, true);
 
-	const lib::StringView filterText = m_nodesListFilter;
-
 	const math::Vector2f contentSize = ui::UIUtils::GetWindowContentSize();
 
 	for (const RGNodeCapture& node : capture.nodes)
 	{
-		if (filterText.empty() || node.name.GetView().find(filterText) != lib::StringView::npos)
+		if (m_nodesListFilter.IsMatching(node.name.GetView()))
 		{
 			if (ImGui::Button(node.name.GetData(), ImVec2(contentSize.x(), 26.f)))
 			{

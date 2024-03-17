@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include "RHI/RHICore/RHIPipelineTypes.h"
+
 
 namespace spt::rdr
 {
@@ -29,11 +31,27 @@ struct RGTextureCapture : public RGResourceCapture
 };
 
 
+struct RGCapturedNullProperties
+{
+
+};
+
+struct RGCapturedComputeProperties
+{
+	rhi::PipelineStatistics pipelineStatistics;
+};
+
+
+using RGNodeExecutionStatistics = std::variant<RGCapturedNullProperties, RGCapturedComputeProperties>;
+
+
 struct RGNodeCapture
 {
 	lib::HashedString name;
 
 	lib::DynamicArray<RGTextureCapture> outputTextures;
+
+	RGNodeExecutionStatistics properties;
 };
 
 

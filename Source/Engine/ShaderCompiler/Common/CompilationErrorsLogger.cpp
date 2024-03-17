@@ -14,12 +14,14 @@ SPT_DEFINE_LOG_CATEGORY(CompilationErrorsLogger, true)
 namespace priv
 {
 
-lib::String getShaderStageName(rhi::EShaderStage stage)
+lib::String GetShaderStageName(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
 	case rhi::EShaderStage::None:			return "None";
 	case rhi::EShaderStage::Vertex:			return "Vertex";
+	case rhi::EShaderStage::Task:			return "Task";
+	case rhi::EShaderStage::Mesh:			return "Mesh";
 	case rhi::EShaderStage::Fragment:		return "Fragment";
 	case rhi::EShaderStage::Compute:		return "Compute";
 	case rhi::EShaderStage::RTGeneration:	return "RTGeneration";
@@ -102,7 +104,7 @@ lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shader
 {
 	const lib::String& logsPath = ShaderCompilationEnvironment::GetErrorLogsPath();
 
-	return logsPath + '/' + lib::File::DiscardExtension(shaderPath) + '/' + priv::getShaderStageName(stageCompilationDef.stage) + '/' + stageCompilationDef.entryPoint.GetData();
+	return logsPath + '/' + lib::File::DiscardExtension(shaderPath) + '/' + priv::GetShaderStageName(stageCompilationDef.stage) + '/' + stageCompilationDef.entryPoint.GetData();
 }
 
 lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)

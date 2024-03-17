@@ -19,7 +19,15 @@ class ViewRenderingSpec;
 namespace HiZ
 {
 
-rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle depthTexture, rhi::EFragmentFormat depthFormat);
+struct HiZSizeInfo
+{
+	math::Vector2u resolution = {};
+	Uint32         mipLevels  = 0u;
+};
+
+HiZSizeInfo ComputeHiZSizeInfo(const math::Vector2u& resolution);
+
+void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle depthTexture, rg::RGTextureHandle hiZ);
 
 } // HiZ
 

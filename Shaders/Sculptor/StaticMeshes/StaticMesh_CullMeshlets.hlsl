@@ -14,21 +14,6 @@
 #include "Utils/Culling.hlsli"
 
 
-int ToInt8Value(uint bits)
-{
-    return int(bits & 127) - int(bits & 128);
-}
-
-
-void UnpackConeAxisAndCutoff(uint packedData, out float3 coneAxis, out float coneCutoff)
-{
-    coneCutoff = float(ToInt8Value(packedData >> 24)) / 127.f;
-    coneAxis.x = float(ToInt8Value(packedData >> 16)) / 127.f;
-    coneAxis.y = float(ToInt8Value(packedData >>  8)) / 127.f;
-    coneAxis.z = float(ToInt8Value(packedData      )) / 127.f;
-}
-
-
 struct CS_INPUT
 {
     uint3 globalID : SV_DispatchThreadID;

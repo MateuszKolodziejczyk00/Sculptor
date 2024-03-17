@@ -10,6 +10,8 @@ namespace spt::sc
 struct ShaderPreprocessingMetaData
 {
 	lib::DynamicArray<lib::HashedString> macroDefinitions;
+
+	Bool forceDebugMode = false;
 };
 
 

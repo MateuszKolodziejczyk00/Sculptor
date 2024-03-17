@@ -5,6 +5,7 @@
 #include "Transfers/UploadUtils.h"
 #include "RenderStages/GlobalIlluminationRenderStage.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
+#include "RenderStages/VisibilityBufferRenderStage.h"
 #include "RenderStages/SpecularReflectionsRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
 #include "RenderStages/HDRResolveRenderStage.h"
@@ -103,6 +104,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<ShadowMapRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<DepthPrepassRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
+	
+	renderer_utils::ProcessRenderStage<VisibilityBufferRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<MotionAndDepthRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	

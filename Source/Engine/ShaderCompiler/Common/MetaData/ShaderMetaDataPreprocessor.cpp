@@ -144,7 +144,7 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::Strin
 
 	const lib::HashMap<lib::HashedString, lib::HashedString> m_definedParams =
 	{
-		{"debug", "SPT_META_PARAM_DEBUG"}
+		{"debug_features", "SPT_META_PARAM_DEBUG_FEATURES"}
 	};
 
 	static const std::regex metaDataRegex(R"~(\[\[meta\((.*?)\)\]\])~");
@@ -167,6 +167,10 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderMetaParameters(const lib::Strin
 				if (paramMacroDef != m_definedParams.cend())
 				{
 					outMetaData.macroDefinitions.emplace_back(paramMacroDef->second);
+				}
+				else if (param == lib::StringView("force_debug_mode"))
+				{
+					outMetaData.forceDebugMode = true;
 				}
 				else
 				{

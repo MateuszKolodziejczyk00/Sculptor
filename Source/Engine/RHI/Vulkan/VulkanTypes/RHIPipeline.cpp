@@ -7,6 +7,10 @@
 namespace spt::vulkan
 {
 
+#define RHI_DEBUG_PIPELINE_INFO (0 && SPT_RHI_DEBUG)
+
+SPT_DEFINE_LOG_CATEGORY(RHIPipeline, RHI_DEBUG_PIPELINE_INFO)
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
 
@@ -42,17 +46,18 @@ namespace gfx
 
 struct GraphicsPipelineBuildDefinition
 {
-	GraphicsPipelineBuildDefinition(const rhi::GraphicsPipelineShadersDefinition&	inShaderStagesDef,
-									const rhi::GraphicsPipelineDefinition&		inPipelineDefinition,
-									const PipelineLayout&						inLayout)
+	GraphicsPipelineBuildDefinition(const rhi::GraphicsPipelineShadersDefinition& inShaderStagesDef,
+									const rhi::GraphicsPipelineDefinition& inPipelineDefinition,
+									const PipelineLayout& inLayout)
 		: shaderStagesDef(inShaderStagesDef)
 		, pipelineDefinition(inPipelineDefinition)
 		, layout(inLayout)
-	{ }
-	
-	const rhi::GraphicsPipelineShadersDefinition&	shaderStagesDef;
-	const rhi::GraphicsPipelineDefinition&		pipelineDefinition;
-	const PipelineLayout&						layout;
+	{
+	}
+
+	const rhi::GraphicsPipelineShadersDefinition& shaderStagesDef;
+	const rhi::GraphicsPipelineDefinition& pipelineDefinition;
+	const PipelineLayout& layout;
 };
 
 
@@ -63,9 +68,24 @@ static lib::DynamicArray<VkPipelineShaderStageCreateInfo> BuildShaderInfos(const
 	const rhi::GraphicsPipelineShadersDefinition& shadersDef = pipelineBuildDef.shaderStagesDef;
 
 	lib::DynamicArray<VkPipelineShaderStageCreateInfo> outShaderStageInfos;
-	outShaderStageInfos.reserve(2);
+	outShaderStageInfos.reserve(3);
 
-	outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.vertexShader));
+	if (shadersDef.vertexShader.IsValid())
+	{
+		outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.vertexShader));
+	}
+
+	if (shadersDef.taskShader.IsValid())
+	{
+		outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.taskShader));
+	}
+
+	if (shadersDef.meshShader.IsValid())
+	{
+		outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.meshShader));
+	}
+
+	SPT_CHECK(shadersDef.fragmentShader.IsValid());
 	outShaderStageInfos.emplace_back(BuildPipelineShaderStageInfo(shadersDef.fragmentShader));
 
 	return outShaderStageInfos;
@@ -192,13 +212,21 @@ static VkPipelineColorBlendStateCreateInfo BuildColorBlendStateInfo(const Graphi
 
 	std::transform(std::cbegin(colorRTsDefinition), std::cend(colorRTsDefinition),
 				   std::back_inserter(outBlendAttachmentStates),
-				   [](const rhi::ColorRenderTargetDefinition& colorRTDefinition)
+				   [](const rhi::ColorRenderTargetDefinition& colorRTDef)
 				   {
+					   SPT_CHECK_MSG((colorRTDef.colorBlendType == rhi::ERenderTargetBlendType::Disabled) == (colorRTDef.alphaBlendType == rhi::ERenderTargetBlendType::Disabled),
+									 "Incompatible blend states (both color and alpha blends must be enbled or disabled");
+
+						const Bool enableBlend = colorRTDef.colorBlendType != rhi::ERenderTargetBlendType::Disabled;
+
 					   VkPipelineColorBlendAttachmentState attachmentBlendState{};
-					   attachmentBlendState.blendEnable = VK_TRUE;
-					   SetVulkanBlendType(colorRTDefinition.colorBlendType, attachmentBlendState.srcColorBlendFactor, attachmentBlendState.dstColorBlendFactor, attachmentBlendState.colorBlendOp);
-					   SetVulkanBlendType(colorRTDefinition.alphaBlendType, attachmentBlendState.srcAlphaBlendFactor, attachmentBlendState.dstAlphaBlendFactor, attachmentBlendState.alphaBlendOp);
-					   attachmentBlendState.colorWriteMask = RHIToVulkan::GetColorComponentFlags(colorRTDefinition.colorWriteMask);;
+					   attachmentBlendState.blendEnable = enableBlend ? VK_TRUE : VK_FALSE;
+					   if (enableBlend)
+					   {
+						   SetVulkanBlendType(colorRTDef.colorBlendType, attachmentBlendState.srcColorBlendFactor, attachmentBlendState.dstColorBlendFactor, attachmentBlendState.colorBlendOp);
+						   SetVulkanBlendType(colorRTDef.alphaBlendType, attachmentBlendState.srcAlphaBlendFactor, attachmentBlendState.dstAlphaBlendFactor, attachmentBlendState.alphaBlendOp);
+					   }
+					   attachmentBlendState.colorWriteMask = RHIToVulkan::GetColorComponentFlags(colorRTDef.colorWriteMask);;
 
 					   return attachmentBlendState;
 				   });
@@ -281,7 +309,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	const VkPipelineRenderingCreateInfo pipelineRenderingInfo = BuildPipelineRenderingInfo(pipelineBuildDef, OUT colorRTFormats);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-    pipelineInfo.flags					= 0;
+    pipelineInfo.flags					= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
     pipelineInfo.stageCount				= static_cast<Uint32>(shaderStages.size());
     pipelineInfo.pStages				= shaderStages.data();
     pipelineInfo.pVertexInputState		= &vertexInputState;
@@ -340,6 +368,7 @@ static VkPipeline BuildComputePipeline(const ComputePipelineBuildDefinition& pip
 	SPT_PROFILER_FUNCTION();
 
 	VkComputePipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+	pipelineInfo.flags				= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
 	pipelineInfo.stage				= BuildPipelineShaderStageInfo(pipelineBuildDef.computeShaderModule);
 	pipelineInfo.layout				= pipelineBuildDef.layout.GetHandle();
     pipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
@@ -467,6 +496,7 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	std::generate_n(std::back_inserter(shaderGroups), shadersDef.missModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
 
 	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
+	pipelineInfo.flags							= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
 	pipelineInfo.stageCount						= static_cast<Uint32>(shaderStages.size());
 	pipelineInfo.pStages						= shaderStages.data();
 	pipelineInfo.groupCount						= static_cast<Uint32>(shaderGroups.size());
@@ -484,6 +514,17 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 }
 
 } // ray_tracing
+
+void LogPipelineStatistics(const RHIPipeline& pipeline)
+{
+	SPT_LOG_INFO(RHIPipeline, "Pipeline {} statistics:", pipeline.GetName().GetData());
+
+	for (const rhi::PipelineStatistic& statistic : pipeline.GetPipelineStatistics().statistics)
+	{
+		const lib::String statValue = std::visit([](const auto& value) -> lib::String { return std::to_string(value); }, statistic.value);
+		SPT_LOG_INFO(RHIPipeline, "    {} - {}", statistic.name.data(), statValue.data());
+	}
+}
 
 } // helpers
 
@@ -558,11 +599,68 @@ rhi::EPipelineType RHIPipeline::GetPipelineType() const
 	return m_pipelineType;
 }
 
+rhi::PipelineStatistics RHIPipeline::GetPipelineStatistics() const
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+
+	VkPipelineExecutableInfoKHR pipelineExecutableInfo{ VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR };
+    pipelineExecutableInfo.pipeline = GetHandle();
+
+	Uint32 statisticsNum = 0;
+	vkGetPipelineExecutableStatisticsKHR(VulkanRHI::GetDeviceHandle(), &pipelineExecutableInfo, &statisticsNum, nullptr);
+
+	lib::DynamicArray<VkPipelineExecutableStatisticKHR> statistics(statisticsNum, VkPipelineExecutableStatisticKHR{ VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR });
+	vkGetPipelineExecutableStatisticsKHR(VulkanRHI::GetDeviceHandle(), &pipelineExecutableInfo, &statisticsNum, statistics.data());
+
+	rhi::PipelineStatistics outStats;
+
+	const auto getStatisticValue = [](const VkPipelineExecutableStatisticKHR& statistic) -> rhi::PipelineStatisticValue
+	{
+		switch (statistic.format)
+		{
+		case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_BOOL32_KHR:
+			return rhi::PipelineStatisticValue{ static_cast<Bool>(statistic.value.b32) };
+		case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_INT64_KHR:
+			return rhi::PipelineStatisticValue{ statistic.value.i64 };
+		case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR:
+			return rhi::PipelineStatisticValue{ statistic.value.u64 };
+		case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_FLOAT64_KHR:
+			return rhi::PipelineStatisticValue{ statistic.value.f64 };
+		default:
+			SPT_CHECK_NO_ENTRY();
+			return rhi::PipelineStatisticValue{};
+		}
+	};
+
+	for (const VkPipelineExecutableStatisticKHR& statistic : statistics)
+	{
+		const rhi::PipelineStatisticValue value = getStatisticValue(statistic);
+
+		rhi::PipelineStatistic newStat;
+		newStat.name        = statistic.name;
+		newStat.description = statistic.description;
+		newStat.value       = value;
+
+		outStats.statistics.emplace_back(newStat);
+	}
+
+	return outStats;
+}
+
 void RHIPipeline::SetName(const lib::HashedString& name)
 {
 	SPT_CHECK(IsValid());
 
 	m_debugName.Set(name, reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_PIPELINE);
+
+#if RHI_DEBUG_PIPELINE_INFO
+	if (IsValid() && (m_pipelineType == rhi::EPipelineType::Graphics || m_pipelineType == rhi::EPipelineType::Compute))
+	{
+		helpers::LogPipelineStatistics(*this);
+	}
+#endif // RHI_DEBUG_PIPELINE_INFO
 }
 
 const lib::HashedString& RHIPipeline::GetName() const

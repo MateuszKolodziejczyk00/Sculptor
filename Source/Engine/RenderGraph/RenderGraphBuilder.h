@@ -276,12 +276,19 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 	{
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.Dispatch(groupCount.AsVector());
+		recorder.UnbindComputePipeline();
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
+
+#if DEBUG_RENDER_GRAPH
+	RGNodeComputeDebugMetaData debugMetaData;
+	debugMetaData.pipelineStateID = computePipelineID;
+	node.SetDebugMetaData(debugMetaData);
+#endif // DEBUG_RENDER_GRAPH
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
@@ -300,12 +307,19 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	{
 		recorder.BindComputePipeline(computePipelineID);
 		recorder.DispatchIndirect(indirectArgsBuffer->GetResource(), indirectArgsOffset);
+		recorder.UnbindComputePipeline();
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
 	using NodeType = RGLambdaNode<LambdaType>;
 
 	NodeType& node = AllocateNode<NodeType>(dispatchName, ERenderGraphNodeType::Dispatch, std::move(executeLambda));
+
+#if DEBUG_RENDER_GRAPH
+	RGNodeComputeDebugMetaData debugMetaData;
+	debugMetaData.pipelineStateID = computePipelineID;
+	node.SetDebugMetaData(debugMetaData);
+#endif // DEBUG_RENDER_GRAPH
 
 	RGDependeciesContainer dependencies;
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::ComputeShader);
@@ -391,6 +405,7 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 	{
 		recorder.BindRayTracingPipeline(rayTracingPipelineID);
 		recorder.TraceRays(traceCount.AsVector());
+		recorder.UnbindRayTracingPipeline();
 	};
 
 	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;

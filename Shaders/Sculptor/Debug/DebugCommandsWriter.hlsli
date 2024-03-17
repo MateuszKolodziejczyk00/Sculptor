@@ -1,7 +1,7 @@
 #ifndef DEBUG_COMMANDS_WRITER_HLSLI
 #define DEBUG_COMMANDS_WRITER_HLSLI
 
-#if SPT_SHADERS_DEBUG_FEATURES
+#if SPT_META_PARAM_DEBUG_FEATURES
 
 #include "Debug/DebugCommon.hlsli"
 
@@ -216,6 +216,6 @@ DebugCommandsWriter CreateDebugCommandsWriter()
 
 } // debug
 
-#endif // SPT_SHADERS_DEBUG_FEATURES
+#endif // SPT_META_PARAM_DEBUG_FEATURES
 
 #endif // DEBUG_COMMANDS_WRITER_HLSLI

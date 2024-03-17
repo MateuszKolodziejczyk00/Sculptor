@@ -60,6 +60,16 @@ ERenderGraphNodeType RGNode::GetType() const
 	return m_type;
 }
 
+void RGNode::SetDebugMetaData(RGNodeDebugMetaData metaData)
+{
+	m_debugMetaData = std::move(metaData);
+}
+
+const RGNodeDebugMetaData& RGNode::GetDebugMetaData() const
+{
+	return m_debugMetaData;
+}
+
 void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 {
 	SPT_PROFILER_FUNCTION();

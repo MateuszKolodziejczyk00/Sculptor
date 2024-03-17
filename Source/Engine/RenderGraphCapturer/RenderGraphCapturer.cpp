@@ -5,6 +5,7 @@
 #include "Types/Texture.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphDebugDecorator.h"
+#include "Types/Pipeline/Pipeline.h"
 
 
 namespace spt::rg::capture
@@ -49,6 +50,20 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 	RGNodeCapture& nodeCapture = m_capture->nodes.emplace_back(RGNodeCapture());
 	nodeCapture.name = std::format("{}: {}", node.GetID(), node.GetName().AsString());
+
+	if (node.GetType() == ERenderGraphNodeType::Dispatch)
+	{
+#if DEBUG_RENDER_GRAPH
+		const rg::RGNodeDebugMetaData& nodeExecutionMetaData = node.GetDebugMetaData();
+		const rg::RGNodeComputeDebugMetaData& computeExecutionMetaData = std::get<rg::RGNodeComputeDebugMetaData>(nodeExecutionMetaData);
+		lib::SharedPtr<rdr::Pipeline> pipeline = rdr::ResourcesManager::GetPipelineObject(computeExecutionMetaData.pipelineStateID);
+
+		RGCapturedComputeProperties capturedProperties;
+		capturedProperties.pipelineStatistics = pipeline->GetRHI().GetPipelineStatistics();
+
+		nodeCapture.properties = capturedProperties;
+#endif // DEBUG_RENDER_GRAPH
+	}
 
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{

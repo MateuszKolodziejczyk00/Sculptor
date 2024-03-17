@@ -18,7 +18,7 @@ Literal CreateLiteral(uint2 val)
 
 } // debug
 
-#if SPT_SHADERS_DEBUG_FEATURES
+#if SPT_META_PARAM_DEBUG_FEATURES
 
 
 #define SPT_LITERAL_INTERNAL(literal) L##literal
@@ -47,6 +47,6 @@ bool IsPixelHoveredHalfRes(uint2 pixelPos)
 
 } // debug
 
-#endif // SPT_SHADERS_DEBUG_FEATURES
+#endif // SPT_META_PARAM_DEBUG_FEATURES
 
 #endif // DEBUG_COMMON_HLSLI

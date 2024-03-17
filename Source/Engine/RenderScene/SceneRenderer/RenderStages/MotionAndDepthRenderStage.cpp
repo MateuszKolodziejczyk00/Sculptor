@@ -112,16 +112,22 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 
-	rg::RGTextureViewHandle hiZ = HiZ::CreateHierarchicalZ(graphBuilder, viewSpec, viewContext.depth, rhi::EFragmentFormat::R32_S_Float);
+	HiZ::HiZSizeInfo hiZSizeInfo = HiZ::ComputeHiZSizeInfo(renderingRes);
+	rg::TextureDef hiZDef(hiZSizeInfo.resolution, rhi::EFragmentFormat::R32_S_Float);
+	hiZDef.mipLevels = hiZSizeInfo.mipLevels;
+	rg::RGTextureHandle hiZ = graphBuilder.CreateTexture(RG_DEBUG_NAME("HiZ"), hiZDef);
+	HiZ::CreateHierarchicalZ(graphBuilder, viewContext.depth, hiZ);
+
+	const rg::RGTextureViewHandle hiZView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("HiZ View"), hiZ);
 
 	DepthCullingParams depthCullingParams;
 	depthCullingParams.hiZResolution = hiZ->GetResolution2D().cast<Real32>();
 
 	lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
-	depthCullingDS->u_hiZTexture         = hiZ;
+	depthCullingDS->u_hiZTexture         = hiZView;
 	depthCullingDS->u_depthCullingParams = depthCullingParams;
 
-	viewContext.hiZ            = std::move(hiZ);
+	viewContext.hiZ            = std::move(hiZView);
 	viewContext.depthCullingDS = std::move(depthCullingDS);
 }
 

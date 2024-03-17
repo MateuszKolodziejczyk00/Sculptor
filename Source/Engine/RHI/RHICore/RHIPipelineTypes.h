@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include <variant>
 
 namespace spt::rhi
 {
@@ -34,6 +35,22 @@ enum class EPipelineStage : Flags64
 	ALL_GRAPHICS					= BIT64(50),
 	ALL_TRANSFER					= BIT64(51),
 	ALL_COMMANDS					= BIT64(52)
+};
+
+using PipelineStatisticValue = std::variant<Bool, Uint64, Int64, Real64>;
+
+
+struct PipelineStatistic
+{
+	lib::String            name;
+	lib::String            description;
+	PipelineStatisticValue value;
+};
+
+
+struct PipelineStatistics
+{
+	lib::DynamicArray<PipelineStatistic> statistics;
 };
 
 } // spt::rhi

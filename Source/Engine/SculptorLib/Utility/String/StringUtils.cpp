@@ -1,5 +1,6 @@
 #include "StringUtils.h"
 #include "ProfilerCore.h"
+#include <algorithm>
 
 namespace spt::lib
 {
@@ -46,6 +47,17 @@ String StringUtils::ToMultibyteString(lib::WStringView view)
 	wcstombs_s(&converted, mutlibyteString.data(), mutlibyteString.size(), view.data(), view.size());
 
 	return mutlibyteString;
+}
+
+lib::String StringUtils::ToLower(lib::StringView view)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::String result(view.size(), '\0');
+
+	std::transform(view.begin(), view.end(), result.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });
+
+	return result;
 }
 
 } // spt::lib

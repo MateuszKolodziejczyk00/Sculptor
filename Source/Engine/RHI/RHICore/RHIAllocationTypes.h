@@ -227,8 +227,9 @@ struct RHICommittedAllocationDefinition
 {
 	RHICommittedAllocationDefinition() = default;
 
-	explicit RHICommittedAllocationDefinition(RHIAllocationInfo inAllocationInfo)
+	explicit RHICommittedAllocationDefinition(RHIAllocationInfo inAllocationInfo, Uint64 inAlignment)
 		: allocationInfo(inAllocationInfo)
+		, alignment(inAlignment)
 	{ }
 
 	RHICommittedAllocationDefinition(EMemoryUsage inMemoryUsage, EAllocationFlags inAllocationFlags = EAllocationFlags::None)
@@ -236,6 +237,7 @@ struct RHICommittedAllocationDefinition
 	{ }
 
 	RHIAllocationInfo allocationInfo;
+	Uint64            alignment = 0u;
 };
 
 

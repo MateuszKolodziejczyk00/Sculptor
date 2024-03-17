@@ -2,7 +2,7 @@
 #define DEBUG_MESSAGE_HLSLI
 
 
-#if SPT_SHADERS_DEBUG_FEATURES
+#if SPT_META_PARAM_DEBUG_FEATURES
 
 #include "Debug/DebugCommandsWriter.hlsli"
 
@@ -33,6 +33,8 @@ writer.Flush(); \
 } \
 }
 
-#endif // SPT_SHADERS_DEBUG_FEATURES
+#define SPT_CHECK_NO_ENTRY_MSG(message, ...) SPT_CHECK_MSG(false, message, __VA_ARGS__)
+
+#endif // SPT_META_PARAM_DEBUG_FEATURES
 
 #endif // DEBUG_MESSAGE_HLSLI

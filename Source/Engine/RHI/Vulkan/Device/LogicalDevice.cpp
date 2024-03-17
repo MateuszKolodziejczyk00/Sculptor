@@ -72,6 +72,18 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(vulkan13Features);
 
+	VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
+    meshShaderFeatures.taskShader        = VK_TRUE;
+    meshShaderFeatures.meshShader        = VK_TRUE;
+    meshShaderFeatures.meshShaderQueries = VK_TRUE;
+	
+	deviceInfoLinkedData.Append(meshShaderFeatures);
+
+	VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR pipelineExecutablePropertiesFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR };
+	pipelineExecutablePropertiesFeatures.pipelineExecutableInfo = VK_TRUE;
+
+	deviceInfoLinkedData.Append(pipelineExecutablePropertiesFeatures);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 
@@ -109,12 +121,6 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	{
 		rayQueryFeatures.rayQuery = VK_TRUE;
 		deviceInfoLinkedData.Append(rayQueryFeatures);
-	}
-
-	VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
-	if (rayTracingEnabled)
-	{
-		deviceInfoLinkedData.Append(meshShaderFeatures);
 	}
 
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));

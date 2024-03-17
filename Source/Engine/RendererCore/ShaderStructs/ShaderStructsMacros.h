@@ -51,7 +51,12 @@ public:
 
 	static constexpr Uint32 GetSize()
 	{
-		return sizeof(typename ShaderStructMemberElementType<UnderlyingType>::Type);
+		return sizeof(UnderlyingType);
+	}
+
+	static constexpr Uint32 GetElementsNum()
+	{
+		return ShaderStructMemberElementsNum<UnderlyingType>::value;
 	}
 
 	static constexpr Uint32 GetAlignment()
@@ -63,10 +68,47 @@ public:
 		}
 		else
 		{
-			constexpr Uint32 thisMemberSize = GetSize();
-			return std::clamp(math::Utils::RoundUpToPowerOf2(thisMemberSize), 4u, 16u);
+			if constexpr (GetElementsNum() == 1u)
+			{
+				constexpr Uint32 thisMemberSize = GetSize();
+				constexpr Uint32 prevMemberEnd = TPrev::s_memberOffset + TPrev::s_memberSize;
+
+				constexpr Uint32 alignofUnderlyingType = shader_translator::GetTypeAlignment<TType>();
+
+				return ((prevMemberEnd % 16) + thisMemberSize) > 16 ? 16 : alignofUnderlyingType;
+			}
+			else
+			{
+				// handle HLSL arrays alignment
+				// In HLSL each element of array is aligned to 16 bytes
+				using ElementType = typename ShaderStructMemberElementType<UnderlyingType>::Type;
+				static_assert(shader_translator::GetTypeAlignment<TType>() == 16u, "Invalid alignment of array element in C++");
+				return 16u;
+			}
 		}
 	}
+
+	static constexpr Uint32 GetOffset()
+	{
+		if constexpr (std::is_same_v<TPrev, void>)
+		{
+			// 0 offset for first variable
+			return 0;
+		}
+		else
+		{
+			constexpr Uint32 alignment = GetAlignment();
+			constexpr Uint32 prevMemberOffset = TPrev::s_memberOffset;
+			constexpr Uint32 prevMemberSize = TPrev::s_memberSize;
+
+			constexpr Uint32 padding = (alignment - ((prevMemberOffset + prevMemberSize) % alignment)) % alignment;
+			return prevMemberOffset + prevMemberSize + padding;
+		}
+	}
+
+	static constexpr Uint32 s_memberSize      = GetSize();
+	static constexpr Uint32 s_memberAlignment = GetAlignment();
+	static constexpr Uint32 s_memberOffset    = GetOffset();
 
 	static constexpr lib::String GetTypeName()
 	{
@@ -190,6 +232,36 @@ consteval SizeType GetShaderStructCodeLength()
 	lib::String structCode;
 	priv::BuildShaderStructCodeImpl<TStruct>(structCode);
 	return structCode.size();
+}
+
+template<typename TShaderStructMemberMetaData>
+constexpr void AppendMemberInfo(lib::String& inOutString)
+{
+	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
+	{
+		AppendMemberInfo<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(inOutString);
+	}
+	
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		inOutString += "[ ";
+		inOutString += TShaderStructMemberMetaData::GetVariableName();
+		inOutString += " - size: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberSize);
+		inOutString += ", offset: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberOffset);
+		inOutString += ", alignment: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberAlignment);
+		inOutString += " ]";
+	}
+}
+
+template<typename TStruct>
+lib::String DumpStructInfo()
+{
+	lib::String dump;
+	priv::AppendMemberInfo<typename TStruct::HeadMemberMetaData>(dump);
+	return dump;
 }
 
 } // priv

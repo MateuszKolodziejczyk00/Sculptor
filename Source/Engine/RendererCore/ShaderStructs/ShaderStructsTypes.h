@@ -21,7 +21,7 @@ constexpr lib::String GetShaderTypeName()
 template<>
 constexpr lib::String GetShaderTypeName<Bool>()
 {
-	return lib::String("uint");
+	return lib::String("bool");
 }
 
 template<>
@@ -155,6 +155,18 @@ constexpr lib::String GetTypeName()
 	{
 		return GetShaderTypeName<TType>();
 	}
+}
+
+template<typename TType>
+constexpr Uint32 GetTypeAlignment()
+{
+	return alignof(TType);
+}
+
+template<>
+constexpr Uint32 GetTypeAlignment<Bool>() // bool is aligned to 4 bytes in HLSL
+{
+	return 4;
 }
 
 } // shader_translator

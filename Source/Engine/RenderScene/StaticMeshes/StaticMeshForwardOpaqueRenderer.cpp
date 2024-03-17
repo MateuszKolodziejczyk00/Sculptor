@@ -230,6 +230,8 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 {
 	SPT_PROFILER_FUNCTION();
 
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
 	const RenderTargetFormatsDef forwardOpaqueRTFormats = ForwardOpaqueRenderStage::GetRenderTargetFormats(rendererSettings);
 
 	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
@@ -240,7 +242,7 @@ rdr::PipelineStateID StaticMeshForwardOpaqueRenderer::GetShadingPipeline(const S
 		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_DDGI", "1"));
 	}
 
-	if (viewSpec.SupportsStage(ERenderStage::AmbientOcclusion))
+	if (viewContext.ambientOcclusion)
 	{
 		materialShadersParameters.macroDefinitions.emplace_back(sc::MacroDefinition("ENABLE_AMBIENT_OCCLUSION", "1"));
 	}

@@ -270,9 +270,10 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 	for (SizeType meshletIdx = 0; meshletIdx < finalMeshletsNum; ++meshletIdx)
 	{
 		const SizeType meshletBuildDataIdx = submeshMeshletsBegin + meshletIdx;
-		m_meshlets[meshletBuildDataIdx].triangleCount = moMeshlets[meshletIdx].triangle_count;
-		m_meshlets[meshletBuildDataIdx].meshletPrimitivesOffset = (moMeshlets[meshletIdx].triangle_offset);
-		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset = moMeshlets[meshletIdx].vertex_offset * 4;
+		m_meshlets[meshletBuildDataIdx].triangleCount           = static_cast<Uint16>(moMeshlets[meshletIdx].triangle_count);
+		m_meshlets[meshletBuildDataIdx].vertexCount             = static_cast<Uint16>(moMeshlets[meshletIdx].vertex_count);
+		m_meshlets[meshletBuildDataIdx].meshletPrimitivesOffset = moMeshlets[meshletIdx].triangle_offset;
+		m_meshlets[meshletBuildDataIdx].meshletVerticesOffset   = moMeshlets[meshletIdx].vertex_offset * 4;
 	}
 
 	BuildMeshletsCullingData(submeshBuildData);

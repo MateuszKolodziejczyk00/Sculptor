@@ -52,8 +52,22 @@ PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceN
 			hotReloadData.pipelineDef	= pipelineDef;
 			m_graphicsPipelineHotReloadData[stateID] = hotReloadData;
 
-			m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
-			m_shaderToPipelineStates[shaders.fragmentShader].emplace_back(stateID);
+			if (shaders.vertexShader.IsValid())
+			{
+				m_shaderToPipelineStates[shaders.vertexShader].emplace_back(stateID);
+			}
+			if (shaders.taskShader.IsValid())
+			{
+				m_shaderToPipelineStates[shaders.taskShader].emplace_back(stateID);
+			}
+			if (shaders.meshShader.IsValid())
+			{
+				m_shaderToPipelineStates[shaders.meshShader].emplace_back(stateID);
+			}
+			if (shaders.fragmentShader.IsValid())
+			{
+				m_shaderToPipelineStates[shaders.fragmentShader].emplace_back(stateID);
+			}
 #endif // WITH_SHADERS_HOT_RELOAD
 		}
 	}
@@ -249,8 +263,27 @@ PipelineStateID PipelinesLibrary::GetStateID(const RayTracingPipelineShaders& sh
 lib::SharedRef<GraphicsPipeline> PipelinesLibrary::CreateGfxPipelineObject(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
 	GraphicsPipelineShadersDefinition shadersDef;
-	shadersDef.vertexShader		= Renderer::GetShadersManager().GetShader(shaders.vertexShader);
+
+	SPT_CHECK(shaders.vertexShader.IsValid() || shaders.meshShader.IsValid());
+
+	if (shaders.vertexShader.IsValid())
+	{
+		shadersDef.vertexShader = Renderer::GetShadersManager().GetShader(shaders.vertexShader);
+	}
+
+	if (shaders.taskShader.IsValid())
+	{
+		shadersDef.taskShader = Renderer::GetShadersManager().GetShader(shaders.taskShader);
+	}
+
+	if (shaders.meshShader.IsValid())
+	{
+		shadersDef.meshShader = Renderer::GetShadersManager().GetShader(shaders.meshShader);
+	}
+
+	SPT_CHECK(shaders.fragmentShader.IsValid());
 	shadersDef.fragmentShader	= Renderer::GetShadersManager().GetShader(shaders.fragmentShader);
+
 	return lib::MakeShared<GraphicsPipeline>(nameInNotCached, shadersDef, pipelineDef);
 }
 

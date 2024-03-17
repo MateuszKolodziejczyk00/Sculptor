@@ -23,19 +23,26 @@ void TextureInspectorFilterCS(CS_INPUT input)
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
+		float4 textureValue = 0.f;
+
 		float4 color = 0.f;
 		if(u_params.isIntTexture)
 		{
-			color = u_intTexture.Load(pixel);
+			textureValue = u_intTexture.Load(pixel);
+
+			const uint intValue = textureValue.x;
+			const uint valueHash = HashPCG(intValue);
+			color.rgb = float3((valueHash >> 16) & 0xFF, (valueHash >> 8) & 0xFF, valueHash & 0xFF) / 255.f;
 		}
 		else
 		{
-			color = u_floatTexture.Load(pixel);
+			textureValue = u_floatTexture.Load(pixel);
+			color = textureValue;
 		}
 
 		if (all(pixel.xy == u_params.hoveredPixel))
 		{
-			u_readbackBuffer[0].hoveredPixelValue = color;
+			u_readbackBuffer[0].hoveredPixelValue = textureValue;
 		}
 
 		if (u_params.visualizationMode == VISUALIZATION_MODE_COLOR)

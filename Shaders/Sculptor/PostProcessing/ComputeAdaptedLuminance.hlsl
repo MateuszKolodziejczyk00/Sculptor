@@ -30,7 +30,7 @@ void AdaptedLuminanceCS(CS_INPUT input)
 {
 	const uint histogramLocalBinIdx = input.localID.x;
 	uint countForLocalBin = u_luminanceHistogram[histogramLocalBinIdx];
-	groupHistogramBins[histogramLocalBinIdx] = countForLocalBin/* * histogramLocalBinIdx*/;
+	groupHistogramBins[histogramLocalBinIdx] = countForLocalBin;
 
 	if (input.localID.x == 0)
 	{

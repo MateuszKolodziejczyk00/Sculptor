@@ -43,16 +43,18 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
-	case rhi::EShaderStage::Vertex:			return L"vs_6_4";
-	case rhi::EShaderStage::Fragment:		return L"ps_6_4";
-	case rhi::EShaderStage::Compute:		return L"cs_6_4";
+	case rhi::EShaderStage::Vertex:		return L"vs_6_5";
+	case rhi::EShaderStage::Task:		return L"as_6_5";
+	case rhi::EShaderStage::Mesh:		return L"ms_6_5";
+	case rhi::EShaderStage::Fragment:	return L"ps_6_5";
+	case rhi::EShaderStage::Compute:	return L"cs_6_5";
 	
 	case rhi::EShaderStage::RTGeneration:	
 	case rhi::EShaderStage::RTAnyHit:		
 	case rhi::EShaderStage::RTClosestHit:	
 	case rhi::EShaderStage::RTMiss:			
 	case rhi::EShaderStage::RTIntersection:	
-		return L"lib_6_4";
+		return L"lib_6_5";
 
 	default:
 
@@ -67,6 +69,12 @@ lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
 	{
 	case rhi::EShaderStage::Vertex:
 		return lib::WString(L"SPT_VERTEX_SHADER");
+
+	case rhi::EShaderStage::Task:
+		return lib::WString(L"SPT_TASK_SHADER");
+
+	case rhi::EShaderStage::Mesh:
+		return lib::WString(L"SPT_MESH_SHADER");
 
 	case rhi::EShaderStage::Fragment:
 		return lib::WString(L"SPT_FRAGMENT_SHADER");
@@ -100,11 +108,21 @@ lib::WString GetShaderStageMacro(rhi::EShaderStage stage)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DxcArguments ==================================================================================
 
+enum class EOptimizationLevel
+{
+	None,
+	NoneWithDebug,
+	OptimizeForSpeed
+};
+
+
 class DxcArguments
 {
 public:
 
 	DxcArguments();
+
+	void SetOptimizationLevel(EOptimizationLevel level) { m_optimizationLevel = level; }
 
 	void Append(const char* name, const char* value = nullptr);
 	void Append(const wchar_t* name, const wchar_t* value = nullptr);
@@ -117,6 +135,8 @@ private:
 
 	lib::DynamicArray<const wchar_t*> m_args;
 	lib::DynamicArray<lib::WString> m_argStrings;
+
+	EOptimizationLevel m_optimizationLevel = EOptimizationLevel::None;
 };
 
 DxcArguments::DxcArguments()
@@ -154,8 +174,9 @@ void DxcArguments::Append(lib::WString name, lib::WString value /*= lib::WString
 
 std::pair<const wchar_t**, Uint32> DxcArguments::GetArgs()
 {
+	const SizeType startIdx = m_args.size();
 	m_args.reserve(m_argStrings.size());
-	std::transform(std::cbegin(m_argStrings), std::cend(m_argStrings), std::back_inserter(m_args),
+	std::transform(std::cbegin(m_argStrings) + startIdx, std::cend(m_argStrings), std::back_inserter(m_args),
 				   [](const lib::WString& arg)
 				   {
 					   return arg.c_str();
@@ -182,7 +203,7 @@ private:
 	ComPtr<IDxcResult> CompileToSPIRV(const lib::String& sourceCode, DxcArguments& args) const;
 
 	DxcArguments BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
-	void         PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const;
+	void         PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, INOUT DxcArguments& args) const;
 
 	ComPtr<IDxcUtils>          m_utils;
 	ComPtr<IDxcCompiler3>      m_compiler;
@@ -207,7 +228,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 	CompiledShader result{};
 
 	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, stageCompilationDef, compilationSettings);
-	PreprocessAdditionalCompilerArgs(shaderPath, sourceCode, stageCompilationDef, INOUT compilerArgs);
+	PreprocessAdditionalCompilerArgs(shaderPath, sourceCode, stageCompilationDef, compilationSettings, INOUT compilerArgs);
 
 	lib::String preprocessedHLSL = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, compilerArgs);
 	if (preprocessedHLSL.empty())
@@ -237,7 +258,7 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 		compilationResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errorsBlob.GetAddressOf()), nullptr);
 		const lib::String errors(static_cast<const char*>(errorsBlob->GetBufferPointer()), static_cast<SizeType>(errorsBlob->GetStringLength()));
 		CompilationErrorsLogger::OutputShaderCompilationErrors(shaderPath, preprocessedHLSL, stageCompilationDef, errors);
-		SPT_LOG_TRACE(ShaderCompiler, "Failed to compile shader {0}", shaderPath.c_str());
+		SPT_LOG_TRACE(ShaderCompiler, "Failed to compile shader {}\nErrors:\n{}", shaderPath.c_str(), errors.c_str());
 		return result;
 	}
 
@@ -338,21 +359,6 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	args.Append(lib::WString(L"-I"), absoluteShadersPath);
 	args.Append(lib::WString(L"-I"), absoluteShadersPath + L"/Sculptor");
 
-	if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo())
-	{
-		args.Append(lib::WString(L"-Zi"));
-		args.Append(lib::WString(L"-O0"));
-
-		if (compilationSettings.ShouldGenerateDebugSource())
-		{
-			args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
-		}
-	}
-	else
-	{
-		args.Append(lib::WString(L"-O3"));
-	}
-
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
 	lib::DynamicArray<lib::WString> macrosAsWideString;
@@ -375,16 +381,6 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 		macrosAsWideString.emplace_back(L"WITH_DEBUGS=0");
 	}
 
-	const Bool compileDebugFeatures = ShaderCompilationEnvironment::ShouldCompileWithDebugs() && SPT_SHADERS_DEBUG_FEATURES;
-	if (compileDebugFeatures)
-	{
-		macrosAsWideString.emplace_back(L"SPT_SHADERS_DEBUG_FEATURES=1");
-	}
-	else
-	{
-		macrosAsWideString.emplace_back(L"SPT_SHADERS_DEBUG_FEATURES=0");
-	}
-
 	for(const lib::WString& macro : macrosAsWideString)
 	{
 		args.Append(lib::WString(L"-D"), macro.c_str());
@@ -392,7 +388,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	return args;
 }
 
-void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, INOUT DxcArguments& args) const
+void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, INOUT DxcArguments& args) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -408,6 +404,22 @@ void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPat
 		// First preprocess only main file to find meta parameters
 		const ShaderPreprocessingMetaData preprocessingMetaData = ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(sourceCode);
 		applyMetaData(preprocessingMetaData, args);
+
+
+		if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo() || preprocessingMetaData.forceDebugMode)
+		{
+			args.Append(lib::WString(L"-Zi"));
+			args.Append(lib::WString(L"-O0"));
+
+			if (compilationSettings.ShouldGenerateDebugSource() || preprocessingMetaData.forceDebugMode)
+			{
+				args.Append(lib::WString(L"-fspv-debug=vulkan-with-source"));
+			}
+		}
+		else
+		{
+			args.Append(lib::WString(L"-O3"));
+		}
 	}
 
 	const lib::String preprocessed = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, args);

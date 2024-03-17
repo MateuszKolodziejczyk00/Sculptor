@@ -5,6 +5,7 @@
 #include "View/RenderView.h"
 #include "Lights/LightTypes.h"
 #include "Transfers/UploadUtils.h"
+#include "Geometry/GeometryDrawer.h"
 
 namespace spt::rsc
 {
@@ -153,6 +154,11 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 	return batches;
 }
 
+const GeometryPassDataCollection& StaticMeshRenderSceneSubsystem::GetCachedGeometryPassData() const
+{
+	return m_cachedSMBatches.geometryPassData;
+}
+
 StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::CacheStaticMeshBatches() const
 {
 	SPT_PROFILER_FUNCTION();
@@ -160,6 +166,8 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 	CachedSMBatches cachedBatches;
 
 	SMBatchesBuilder batchesBuilder(cachedBatches.batches);
+
+	GeometryDrawer geometryDrawer(OUT cachedBatches.geometryPassData);
 
 	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const mat::MaterialSlotsComponent>();
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
@@ -172,7 +180,30 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 		batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
 	}
 
+	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
+	{
+		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
+
+		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<const StaticMeshRenderingDefinition>();
+
+		for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
+		{
+			const ecs::EntityHandle material = materialsSlots.slots[idx];
+			const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
+
+			const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
+
+			GeometryDefinition geometryDef;
+			geometryDef.entityGPUIdx     = entityGPUDataHandle.GetEntityIdx();
+			geometryDef.submeshGlobalIdx = meshRenderingDef.submeshesBeginIdx + idx;
+			geometryDef.meshletsNum      = submeshDef.meshletsNum;
+
+			geometryDrawer.Draw(geometryDef, materialProxy);
+		}
+	}
+
 	batchesBuilder.FinalizeBatches();
+	geometryDrawer.FinalizeDraws();
 
 	return cachedBatches;
 

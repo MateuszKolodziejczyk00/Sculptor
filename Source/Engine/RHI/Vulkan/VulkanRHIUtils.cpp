@@ -379,12 +379,14 @@ VkShaderStageFlagBits RHIToVulkan::GetShaderStage(rhi::EShaderStage stage)
 	{
 	case rhi::EShaderStage::None:			return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 	case rhi::EShaderStage::Vertex:			return VK_SHADER_STAGE_VERTEX_BIT;
+	case rhi::EShaderStage::Task:			return VK_SHADER_STAGE_TASK_BIT_EXT;
+	case rhi::EShaderStage::Mesh:			return VK_SHADER_STAGE_MESH_BIT_EXT;
 	case rhi::EShaderStage::Fragment:		return VK_SHADER_STAGE_FRAGMENT_BIT;
 	case rhi::EShaderStage::Compute:		return VK_SHADER_STAGE_COMPUTE_BIT;
 	case rhi::EShaderStage::RTGeneration:	return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 	case rhi::EShaderStage::RTAnyHit:		return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-	case  rhi::EShaderStage::RTClosestHit:	return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-	case  rhi::EShaderStage::RTMiss:		return VK_SHADER_STAGE_MISS_BIT_KHR;
+	case rhi::EShaderStage::RTClosestHit:	return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+	case rhi::EShaderStage::RTMiss:			return VK_SHADER_STAGE_MISS_BIT_KHR;
 	case rhi::EShaderStage::RTIntersection:	return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
 
 	default:
@@ -401,6 +403,14 @@ VkShaderStageFlags RHIToVulkan::GetShaderStages(rhi::EShaderStageFlags stages)
 	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Vertex))
 	{
 		lib::AddFlag(flags, VK_SHADER_STAGE_VERTEX_BIT);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Task))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_TASK_BIT_EXT);
+	}
+	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Mesh))
+	{
+		lib::AddFlag(flags, VK_SHADER_STAGE_MESH_BIT_EXT);
 	}
 	if (lib::HasAnyFlag(stages, rhi::EShaderStageFlags::Fragment))
 	{

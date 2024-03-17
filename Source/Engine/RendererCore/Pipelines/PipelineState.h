@@ -14,10 +14,12 @@ struct GraphicsPipelineShaders
 
 	SizeType Hash() const
 	{
-		return lib::HashCombine(vertexShader.GetID(), fragmentShader.GetID());
+		return lib::HashCombine(vertexShader.GetID(), taskShader.GetID(), meshShader.GetID(), fragmentShader.GetID());
 	}
 
 	ShaderID vertexShader;
+	ShaderID taskShader;
+	ShaderID meshShader;
 	ShaderID fragmentShader;
 };
 

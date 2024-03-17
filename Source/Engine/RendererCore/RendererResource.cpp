@@ -55,7 +55,7 @@ rhi::RHIResourceAllocationDefinition AllocationDefinition::GetRHIAllocationDef()
 									  },
 									  [](const CommittedAllocationDef& def) -> rhi::RHIResourceAllocationDefinition
 									  {
-										  return rhi::RHICommittedAllocationDefinition(def.allocationInfo);
+										  return rhi::RHICommittedAllocationDefinition(def.allocationInfo, def.alignment);
 									  },
 									  [](const PlacedAllocationDef& def) -> rhi::RHIResourceAllocationDefinition
 									  {

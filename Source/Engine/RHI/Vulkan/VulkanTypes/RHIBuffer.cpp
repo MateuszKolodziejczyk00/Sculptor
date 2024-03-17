@@ -415,11 +415,18 @@ rhi::RHIResourceAllocationHandle RHIBuffer::DoCommittedAllocation(const rhi::RHI
 	VmaAllocationCreateInfo allocationInfo{};
 	allocationInfo.flags = memory_utils::GetVMAAllocationFlags(committedAllocation.allocationInfo.allocationFlags);
 	allocationInfo.usage = memory_utils::GetVMAMemoryUsage(committedAllocation.allocationInfo.memoryUsage);
-	SPT_VK_CHECK(vmaAllocateMemoryForBuffer(VulkanRHI::GetAllocatorHandle(), m_bufferHandle, &allocationInfo, OUT &allocation, nullptr));
+
+	VkMemoryRequirements memoryRequirements = {};
+	vkGetBufferMemoryRequirements(VulkanRHI::GetDeviceHandle(), m_bufferHandle, &memoryRequirements);
+
+	memoryRequirements.alignment = std::max(memoryRequirements.alignment, committedAllocation.alignment);
+
+	SPT_VK_CHECK(vmaAllocateMemory(VulkanRHI::GetAllocatorHandle(), &memoryRequirements, &allocationInfo, OUT &allocation, nullptr));
 
 	SPT_CHECK(allocation != VK_NULL_HANDLE);
+	
+	SPT_VK_CHECK(vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), allocation, 0, m_bufferHandle, nullptr));
 
-	vmaBindBufferMemory2(VulkanRHI::GetAllocatorHandle(), allocation, 0, m_bufferHandle, nullptr);
 
 #if SPT_RHI_DEBUG
 	if (m_name.HasName())

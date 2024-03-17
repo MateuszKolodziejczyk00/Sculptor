@@ -88,7 +88,9 @@ void CommandRecorder::EndRendering()
 {
 	SPT_PROFILER_FUNCTION();
 
-	 GetCommandBufferRHI().EndRendering();
+	UnbindGraphicsPipeline();
+
+	GetCommandBufferRHI().EndRendering();
 }
 
 void CommandRecorder::SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth)
@@ -146,6 +148,24 @@ void CommandRecorder::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uin
 	GetCommandBufferRHI().DrawInstances(verticesNum, instancesNum, firstVertex, firstInstance);
 }
 
+void CommandRecorder::DrawMeshTasks(const math::Vector3u& groupCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+
+	GetCommandBufferRHI().DrawMeshTasks(groupCount);
+}
+
+void CommandRecorder::DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+
+	GetCommandBufferRHI().DrawMeshTasksIndirectCount(drawsBuffer->GetRHI(), drawsOffset, drawsStride, countBuffer->GetRHI(), countOffset, maxDrawsCount);
+}
+
 void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
@@ -156,6 +176,11 @@ void CommandRecorder::BindGraphicsPipeline(PipelineStateID pipelineID)
 	m_pipelineState.BindGraphicsPipeline(lib::Ref(pipeline));
 
 	GetCommandBufferRHI().BindGfxPipeline(pipeline->GetRHI());
+}
+
+void CommandRecorder::UnbindGraphicsPipeline()
+{
+	m_pipelineState.UnbindGraphicsPipeline();
 }
 
 void CommandRecorder::BindComputePipeline(PipelineStateID pipelineID)
@@ -178,6 +203,11 @@ void CommandRecorder::BindComputePipeline(const ShaderID& shader)
 	BindComputePipeline(pipelineID);
 }
 
+void CommandRecorder::UnbindComputePipeline()
+{
+	m_pipelineState.UnbindComputePipeline();
+}
+
 void CommandRecorder::BindRayTracingPipeline(PipelineStateID pipelineID)
 {
 	SPT_PROFILER_FUNCTION();
@@ -188,6 +218,11 @@ void CommandRecorder::BindRayTracingPipeline(PipelineStateID pipelineID)
 	m_pipelineState.BindRayTracingPipeline(lib::Ref(pipeline));
 
 	GetCommandBufferRHI().BindRayTracingPipeline(pipeline->GetRHI());
+}
+
+void CommandRecorder::UnbindRayTracingPipeline()
+{
+	m_pipelineState.UnbindRayTracingPipeline();
 }
 
 void CommandRecorder::Dispatch(const math::Vector3u& groupCount)

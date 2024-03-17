@@ -26,7 +26,7 @@
 #define UP_VECTOR       (float3(0.f, 0.f, 1.f))
 
 
-#if defined(SPT_META_PARAM_DEBUG) && SPT_SHADERS_DEBUG_FEATURES
+#if defined(SPT_META_PARAM_DEBUG_FEATURES)
 
 #define SPT_ENABLE_CHECKS true
 
@@ -38,7 +38,7 @@
 #define SPT_CHECK_MSG(...)
 #define SPT_ENABLE_CHECKS false
 
-#endif // defined(SPT_META_PARAM_DEBUG) && SPT_SHADERS_DEBUG_FEATURES
+#endif // defined(SPT_META_PARAM_DEBUG_FEATURES)
 
 template<typename TType>
 TType Pow2(TType val)

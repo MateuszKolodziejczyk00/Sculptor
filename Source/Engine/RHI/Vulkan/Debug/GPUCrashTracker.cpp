@@ -285,7 +285,6 @@ static void ShaderDebugInfoCallback(const void* shaderDebugInfo, const Uint32 sh
 {
     GPUCrashTrackerInstance* gpuCrashTracker = reinterpret_cast<GPUCrashTrackerInstance*>(userData);
     gpuCrashTracker->OnShaderDebugInfo(shaderDebugInfo, shaderDebugInfoSize);
-	SPT_LOG_INFO(GPUCrashTracker, "ShaderDebugInfoCallback");
 }
 
 static void CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription, void* userData)
@@ -309,7 +308,7 @@ void GPUCrashTracker::EnableGPUCrashDumps()
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	const GFSDK_Aftermath_Result result = GFSDK_Aftermath_EnableGpuCrashDumps(GFSDK_Aftermath_Version_API,
 																			  GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
-																			  GFSDK_Aftermath_GpuCrashDumpFeatureFlags_Default,
+																			  GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,
 																			  &GpuCrashDumpCallback,
 																			  &ShaderDebugInfoCallback,
 																			  &CrashDumpDescriptionCallback,

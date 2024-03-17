@@ -39,22 +39,21 @@ static rdr::PipelineStateID CompileBuildHiZPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BuildHiZPipeline"), shader);
 }
 
-rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle depthTexture, rhi::EFragmentFormat depthFormat)
+HiZSizeInfo ComputeHiZSizeInfo(const math::Vector2u& resolution)
+{
+	HiZSizeInfo result;
+	result.resolution = math::Vector2u(math::Utils::PreviousPowerOf2(resolution.x()), math::Utils::PreviousPowerOf2(resolution.y()));
+	result.mipLevels = math::Utils::ComputeMipLevelsNumForResolution(result.resolution);
+	return result;
+}
+
+void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle depthTexture, rg::RGTextureHandle hiZ)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
-	const math::Vector2u hiZRes = math::Vector2u(math::Utils::PreviousPowerOf2(renderingRes.x()), math::Utils::PreviousPowerOf2(renderingRes.y()));
+	const math::Vector2u hiZRes = hiZ->GetResolution2D();
+	const Uint32 mipLevels      = hiZ->GetTextureDefinition().mipLevels;
 
-	const Uint32 mipLevels = math::Utils::ComputeMipLevelsNumForResolution(hiZRes);
-
-	rg::TextureDef hiZTextureDef;
-	hiZTextureDef.resolution	= math::Vector3u(hiZRes.x(), hiZRes.y(), 1u);
-	hiZTextureDef.format		= depthFormat;
-	hiZTextureDef.mipLevels		= mipLevels;
-
-	const rg::RGTextureHandle hiZTexture = graphBuilder.CreateTexture(RG_DEBUG_NAME("HiZ Texture"), hiZTextureDef);
-	
 	lib::DynamicArray<rg::RGTextureViewHandle> hiZMipViews;
 	hiZMipViews.reserve(static_cast<SizeType>(mipLevels));
 
@@ -62,7 +61,7 @@ rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder
 	{
 		rhi::TextureViewDefinition viewDef;
 		viewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, mipIdx, 1);
-		hiZMipViews.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("HiZ Mip({})", mipIdx)), hiZTexture, viewDef));
+		hiZMipViews.emplace_back(graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("HiZ Mip({})", mipIdx)), hiZ, viewDef));
 	}
 
 	static const rdr::PipelineStateID buildHiZPipeline = CompileBuildHiZPipeline();
@@ -112,7 +111,6 @@ rg::RGTextureViewHandle CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder
 
 	rhi::TextureViewDefinition viewDefinition;
 	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
-	return graphBuilder.CreateTextureView(RG_DEBUG_NAME("HiZ Texture"), hiZTexture, viewDefinition);
 }
 
 } // HiZ

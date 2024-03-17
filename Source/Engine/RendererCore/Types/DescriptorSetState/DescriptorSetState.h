@@ -117,7 +117,7 @@ private:
 
 	DSStateTypeID m_typeID;
 
-	Bool  m_dirty;
+	Bool m_dirty;
 
 	EDescriptorSetStateFlags m_flags;
 

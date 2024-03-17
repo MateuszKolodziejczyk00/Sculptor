@@ -8,8 +8,9 @@ namespace spt::ecs
 
 using namespace entt;
 
-using GenericRegistry = entt::registry;
-using GenericEntity = entt::entity;
+using GenericRegistry   = entt::registry;
+using GenericEntity     = entt::entity;
+using GenericNullEntity = entt::null_t;
 
 } // spt::ecs
 

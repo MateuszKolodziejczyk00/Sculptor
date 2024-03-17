@@ -57,6 +57,10 @@ public:
 
 	void	DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex, Uint32 firstInstance);
 
+	void	DrawMeshTasks(const math::Vector3u& groupCount);
+
+	void	DrawMeshTasksIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
+
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
 	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);

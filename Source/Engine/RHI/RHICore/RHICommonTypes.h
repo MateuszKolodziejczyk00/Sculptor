@@ -3,7 +3,7 @@
 namespace spt::rhi
 {
 
-enum class ECompareOp
+enum class ECompareOp : Uint8
 {
 	None,
 	Less,

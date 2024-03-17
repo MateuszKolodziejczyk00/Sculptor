@@ -2,6 +2,7 @@
 #define CULLING_H
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Shapes.hlsli"
 
 
 bool IsSphereInFrustum(float4 frustumPlanes[5], float3 sphereCenterWS, float sphereRadius)
@@ -12,6 +13,21 @@ bool IsSphereInFrustum(float4 frustumPlanes[5], float3 sphereCenterWS, float sph
         isInFrustum = isInFrustum && dot(frustumPlanes[planeIdx], float4(sphereCenterWS, 1.f)) > -sphereRadius;
     }
     return isInFrustum;
+}
+
+
+int ToInt8Value(uint bits)
+{
+	return int(bits & 127) - int(bits & 128);
+}
+
+
+void UnpackConeAxisAndCutoff(uint packedData, out float3 coneAxis, out float coneCutoff)
+{
+	coneCutoff = float(ToInt8Value(packedData >> 24)) / 127.f;
+	coneAxis.x = float(ToInt8Value(packedData >> 16)) / 127.f;
+	coneAxis.y = float(ToInt8Value(packedData >>  8)) / 127.f;
+	coneAxis.z = float(ToInt8Value(packedData      )) / 127.f;
 }
 
 
@@ -92,5 +108,40 @@ bool IsSphereBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, float2 hiZ
     float4 aabb;
     return IsSphereBehindHiZ(hiZ, hiZSampler, hiZResolution, sphereCenterVS, sphereRadius, near, p01, p12, aabb);
 }
+
+
+class HiZCullingProcessor
+{
+	static HiZCullingProcessor Create(in Texture2D<float> inHiZ, in float2 inRes, in SamplerState inSampler, in SceneViewData inView)
+	{
+		HiZCullingProcessor processor;
+		processor.hiZTexture = inHiZ;
+		processor.hiZRes     = inRes;
+		processor.hiZSampler = inSampler;
+		processor.nearPlane  = GetNearPlane(u_sceneView);
+		processor.p01        = u_sceneView.projectionMatrix[0][1];
+		processor.p12        = u_sceneView.projectionMatrix[1][2];
+		processor.viewMatrix = u_sceneView.viewMatrix;
+		return processor;
+	}
+
+	bool DoCulling(in Sphere sphere)
+	{
+		sphere.center = mul(viewMatrix, float4(sphere.center, 1.f)).xyz;
+		return !IsSphereBehindHiZ(hiZTexture, hiZSampler, hiZRes, sphere.center, sphere.radius, nearPlane, p01, p12);
+	}
+
+	Texture2D<float> hiZTexture;
+	SamplerState     hiZSampler;
+
+	float2 hiZRes;
+
+	// View parameters
+	float p01;
+	float p12;
+	float nearPlane;
+
+	float4x4 viewMatrix;
+};
 
 #endif // CULLING_H

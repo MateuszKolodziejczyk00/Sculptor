@@ -34,6 +34,8 @@ public:
 	static WString		ToWideString(lib::StringView view);
 	static String		ToMultibyteString(lib::WStringView view);
 
+	static String		ToLower(lib::StringView view);
+
     template<Uint32 number>
 	static constexpr String ToString();
 };

@@ -6,6 +6,7 @@
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 
+
 namespace spt::rsc
 {
 
@@ -60,7 +61,8 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(MeshletGPUData)
-	SHADER_STRUCT_FIELD(Uint32, triangleCount)
+	SHADER_STRUCT_FIELD(Uint16, triangleCount)
+	SHADER_STRUCT_FIELD(Uint16, vertexCount)
 	SHADER_STRUCT_FIELD(Uint32, meshletPrimitivesOffset)
 	SHADER_STRUCT_FIELD(Uint32, meshletVerticesOffset)
 	SHADER_STRUCT_FIELD(Uint32, packedConeAxisAndCutoff) /* {[uint8 cone cutoff][3 x uint8 cone axis]} */

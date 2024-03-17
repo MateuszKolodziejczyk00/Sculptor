@@ -13,11 +13,13 @@ namespace spt::rhi
 struct GraphicsPipelineShadersDefinition
 {
 	RHIShaderModule vertexShader;
+	RHIShaderModule taskShader;
+	RHIShaderModule meshShader;
 	RHIShaderModule fragmentShader;
 };
 
 
-enum class EPrimitiveTopology
+enum class EPrimitiveTopology : Uint8
 {
 	PointList,
 	LineList,
@@ -28,14 +30,14 @@ enum class EPrimitiveTopology
 };
 
 
-enum class EPolygonMode
+enum class EPolygonMode : Uint8
 {
 	Fill,
 	Wireframe
 };
 
 
-enum class ECullMode
+enum class ECullMode : Uint8
 {
 	Back,
 	Front,
@@ -44,7 +46,7 @@ enum class ECullMode
 };
 
 
-enum class ERasterizationType
+enum class ERasterizationType : Uint8
 {
 	Default,
 	ConservativeOverestimate,
@@ -72,18 +74,19 @@ struct MultisamplingDefinition
 		: samplesNum(inSamplesNum)
 	{ }
 
-	Uint32	samplesNum;
+	Uint32 samplesNum;
 };
 
 
-enum class ERenderTargetBlendType
+enum class ERenderTargetBlendType : Uint8
 {
+	Disabled,
 	Copy,
 	Add
 };
 
 
-enum class ERenderTargetComponentFlags
+enum class ERenderTargetComponentFlags : Uint8
 {
 	R = BIT(0),
 	G = BIT(1),
@@ -104,10 +107,10 @@ struct ColorRenderTargetDefinition
 		, colorWriteMask(inWriteMask)
 	{ }
 
-	EFragmentFormat				format;
-	ERenderTargetBlendType		colorBlendType;
-	ERenderTargetBlendType		alphaBlendType;
-	ERenderTargetComponentFlags	colorWriteMask;
+	EFragmentFormat             format;
+	ERenderTargetBlendType      colorBlendType;
+	ERenderTargetBlendType      alphaBlendType;
+	ERenderTargetComponentFlags colorWriteMask;
 };
 
 

@@ -4,6 +4,7 @@
 #include "UILayers/UIView.h"
 #include "UITypes.h"
 #include "ImGui/DockStack.h"
+#include "Utils/FilterText.h"
 
 
 namespace spt::rdr
@@ -18,6 +19,7 @@ namespace spt::rg::capture
 struct RGCapture;
 struct RGNodeCapture;
 struct RGTextureCapture;
+struct RGCapturedComputeProperties;
 
 
 class RGNodeCaptureViewer : public scui::UIView
@@ -40,9 +42,13 @@ private:
 
 	void DrawNodeDetails(const RGNodeCapture& node);
 
+	void DrawNodeProperties(const RGNodeCapture& node);
+	void DrawNodeComputeProperties(const RGCapturedComputeProperties& properties);
+
 	void OpenTextureCapture(const RGTextureCapture& textureCapture);
 
 	lib::HashedString m_nodeDetailsPanelName;
+	lib::HashedString m_nodePropertiesPanelName;
 
 	ui::DockStack m_textureInspectorsStack;
 
@@ -72,11 +78,10 @@ private:
 	void DrawNodesList(const RGCapture& capture);
 
 	lib::HashedString m_nodesListPanelName;
-	lib::HashedString m_nodesListFilterName;
 
 	ui::DockStack m_nodeDetailsDockStack;
 
-	char m_nodesListFilter[64];
+	scui::FilterText m_nodesListFilter;
 
 	lib::SharedRef<RGCapture> m_capture;
 };

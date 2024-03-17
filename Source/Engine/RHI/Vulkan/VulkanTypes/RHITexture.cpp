@@ -654,6 +654,11 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(!IsValid());
+	SPT_CHECK(texture.IsValid());
+	SPT_CHECK_MSG(!lib::HasAnyFlag(viewDefinition.subresourceRange.aspect, rhi::ETextureAspect::Auto)
+			  || viewDefinition.subresourceRange.aspect == rhi::ETextureAspect::Auto, "Auto Aspect cannot be used with other flags");
+
 	const rhi::TextureDefinition& textureDef = texture.GetDefinition();
 
 	m_texture = &texture;

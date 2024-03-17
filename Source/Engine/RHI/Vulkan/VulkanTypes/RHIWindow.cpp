@@ -43,6 +43,7 @@ PFN_vkVoidFunction LoadVulkanFunction(const char* functionName, void* userData)
 RHIWindow::RHIWindow()
 	: m_swapchain(VK_NULL_HANDLE)
 	, m_surface(VK_NULL_HANDLE)
+	, m_surfaceFormat{}
 	, m_minImagesNum(idxNone<Uint32>)
 	, m_enableVSync(false)
 	, m_swapchainOutOfDate(false)

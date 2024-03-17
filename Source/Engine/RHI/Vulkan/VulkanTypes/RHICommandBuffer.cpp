@@ -306,6 +306,29 @@ void RHICommandBuffer::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Ui
 	vkCmdDraw(m_cmdBufferHandle, verticesNum, instancesNum, firstVertex, firstInstance);
 }
 
+void RHICommandBuffer::DrawMeshTasks(const math::Vector3u& groupCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
+
+	vkCmdDrawMeshTasksEXT(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.y());
+}
+
+void RHICommandBuffer::DrawMeshTasksIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(drawsBuffer.IsValid());
+	SPT_CHECK(drawsOffset + drawsStride * maxDrawsCount <= drawsBuffer.GetSize());
+	SPT_CHECK(countBuffer.IsValid());
+	SPT_CHECK(countOffset + sizeof(Uint32) <= drawsBuffer.GetSize());
+
+	vkCmdDrawMeshTasksIndirectCountEXT(m_cmdBufferHandle, drawsBuffer.GetHandle(), drawsOffset, countBuffer.GetHandle(), countOffset, maxDrawsCount, drawsStride);
+}
+
 void RHICommandBuffer::BindGfxPipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

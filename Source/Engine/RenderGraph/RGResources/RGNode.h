@@ -7,6 +7,7 @@
 #include "RGRenderPassDefinition.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "RenderGraphTypes.h"
+#include "Pipelines/PipelineState.h"
 
 
 namespace spt::rhi
@@ -36,6 +37,16 @@ struct RGExecutionContext
 };
 
 
+struct RGNodeNullDebugMetaData { };
+
+struct RGNodeComputeDebugMetaData
+{
+	rdr::PipelineStateID pipelineStateID;
+};
+
+using RGNodeDebugMetaData = std::variant<RGNodeNullDebugMetaData, RGNodeComputeDebugMetaData>;
+
+
 class RENDER_GRAPH_API RGNode : public RGTrackedObject
 {
 public:
@@ -46,6 +57,11 @@ public:
 	RGNodeID					GetID() const;
 	const RenderGraphDebugName& GetName() const;
 	ERenderGraphNodeType		GetType() const;
+
+#if DEBUG_RENDER_GRAPH
+	void                       SetDebugMetaData(RGNodeDebugMetaData metaData);
+	const RGNodeDebugMetaData& GetDebugMetaData() const;
+#endif // DEBUG_RENDER_GRAPH
 
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
@@ -151,6 +167,10 @@ private:
 	lib::DynamicArray<BufferTransitionDef>	m_preExecuteBufferTransitions;
 
 	lib::DynamicArray<lib::MTHandle<rdr::DescriptorSetState>> m_dsStates;
+
+#if DEBUG_RENDER_GRAPH
+	RGNodeDebugMetaData m_debugMetaData;
+#endif // DEBUG_RENDER_GRAPH
 
 	Bool m_executed;
 };

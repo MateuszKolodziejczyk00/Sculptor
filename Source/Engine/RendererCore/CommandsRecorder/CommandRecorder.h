@@ -59,12 +59,19 @@ public:
 	
 	void									DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex = 0, Uint32 firstInstance = 0);
 
+	void									DrawMeshTasks(const math::Vector3u& groupCount);
+
+	void									DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
+
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);
+	void									UnbindGraphicsPipeline();
 
 	void									BindComputePipeline(PipelineStateID pipelineID);
 	void									BindComputePipeline(const ShaderID& shader);
+	void									UnbindComputePipeline();
 
 	void									BindRayTracingPipeline(PipelineStateID pipelineID);
+	void									UnbindRayTracingPipeline();
 
 	void									Dispatch(const math::Vector3u& groupCount);
 
