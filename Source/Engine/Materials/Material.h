@@ -30,13 +30,20 @@ class MaterialShadersHash
 {
 public:
 
-	MaterialShadersHash()
-		: m_hash(0u)
+	static constexpr MaterialShadersHash NoMaterial()
+	{
+		return MaterialShadersHash();
+	}
+
+	constexpr MaterialShadersHash()
+		: m_hash(idxNone<Uint64>)
 	{ }
 
-	explicit MaterialShadersHash(Uint64 hash)
+	explicit constexpr MaterialShadersHash(Uint64 hash)
 		: m_hash(hash)
-	{ }
+	{
+		SPT_CHECK(hash != idxNone<Uint64>);
+	}
 
 	MaterialShadersHash& operator=(const MaterialShadersHash& other)
 	{
@@ -54,6 +61,11 @@ public:
 		return m_hash;
 	}
 
+	Bool IsValid() const
+	{
+		return m_hash != idxNone<Uint64>;
+	}
+
 private:
 
 	Uint64 m_hash;
@@ -67,6 +79,11 @@ struct MaterialStaticParameters
 		, customOpacity(false)
 	{ }
 
+	Bool IsValidMaterial() const
+	{
+		return materialType != EMaterialType::Invalid;
+	}
+
 	MaterialShadersHash GenerateShaderID() const
 	{
 		const Uint64 hash = lib::HashCombine(static_cast<SizeType>(materialShaderHandle.entity()),
@@ -79,11 +96,11 @@ struct MaterialStaticParameters
 
 	EMaterialType materialType;
 
+	Uint8 customOpacity : 1;
+
 	lib::HashedString materialDataStructName;
 
 	ecs::EntityHandle materialShaderHandle;
-
-	Uint8 customOpacity : 1;
 };
 
 

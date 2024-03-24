@@ -73,6 +73,17 @@ std::pair<MaterialShadersCache::CachedShaders&, Bool> MaterialShadersCache::GetO
 	return { it2->second, !success };
 }
 
+MaterialStaticParameters MaterialShadersCache::GetMaterialStaticParameters(MaterialShadersHash shaderHash) const
+{
+	if (shaderHash.IsValid())
+	{
+		return m_materialParamsCache.at(shaderHash);
+	}
+
+	MaterialStaticParameters noMaterialParams;
+	return noMaterialParams;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // MaterialsManager ==============================================================================
 

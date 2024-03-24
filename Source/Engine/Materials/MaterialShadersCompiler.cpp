@@ -14,6 +14,9 @@ struct TypeSerializer<mat::MaterialTechniqueConfig>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
 		serializer.Serialize("ShadersPath", data.shadersPath);
+		serializer.Serialize("AllowsNoMaterial", data.allowsNoMaterial);
+		serializer.Serialize("UseMeshShadersPipeline", data.useMeshShadersPipeline);
+		serializer.Serialize("UseTaskShader", data.useTaskShader);
 		serializer.Serialize("RayTracingWithClosestHit", data.rayTracingWithClosestHit);
 	}
 };
@@ -60,9 +63,11 @@ void IMaterialShadersCompiler::LoadTechniquesRegistry()
 
 void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT MaterialRayTracingShaders& rayTracingShaders)
 {
-	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(materialParams, parameters);
+	SPT_PROFILER_FUNCTION();
 
 	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
+
+	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(techniqueConfig, materialParams, parameters);
 	
 	const lib::String shadersPath = techniqueConfig.shadersPath.ToString();
 
@@ -85,15 +90,33 @@ void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techn
 
 void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT MaterialGraphicsShaders& graphicsShaders)
 {
-	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(materialParams, parameters);
+	SPT_PROFILER_FUNCTION();
 
 	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
+
+	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(techniqueConfig, materialParams, parameters);
 	
 	const lib::String shadersPath = techniqueConfig.shadersPath.ToString();
 
-	graphicsShaders.vertexShader = rdr::ResourcesManager::CreateShader(shadersPath,
-																	   GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Vertex),
-																	   compilationSettings);
+	if (techniqueConfig.useMeshShadersPipeline)
+	{
+		if (techniqueConfig.useTaskShader)
+		{
+			graphicsShaders.taskShader = rdr::ResourcesManager::CreateShader(shadersPath,
+																			 GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Task),
+																			 compilationSettings);
+		}
+
+		graphicsShaders.meshShader = rdr::ResourcesManager::CreateShader(shadersPath,
+																		GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Mesh),
+																		compilationSettings);
+	}
+	else
+	{
+		graphicsShaders.vertexShader = rdr::ResourcesManager::CreateShader(shadersPath,
+																		   GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Vertex),
+																		   compilationSettings);
+	}
 
 	graphicsShaders.fragmentShader = rdr::ResourcesManager::CreateShader(shadersPath,
 																		 GetShaderStageCompilationDef(techniqueName, rhi::EShaderStage::Fragment),
@@ -121,11 +144,49 @@ sc::ShaderStageCompilationDef IMaterialShadersCompiler::GetShaderStageCompilatio
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // MaterialShadersCompiler =======================================================================
 
-sc::ShaderCompilationSettings MaterialShadersCompiler::CreateCompilationSettings(const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters) const
+sc::ShaderCompilationSettings MaterialShadersCompiler::CreateCompilationSettings(const MaterialTechniqueConfig& techniqueConfig, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters) const
+{
+	sc::ShaderCompilationSettings compilationSettings;
+
+	if (materialParams.IsValidMaterial())
+	{
+		compilationSettings = CreateMaterialCompilationSettings(materialParams);
+	}
+	else
+	{
+		SPT_CHECK(techniqueConfig.allowsNoMaterial);
+		compilationSettings = CreateNoMaterialCompilationSettings();
+	}
+
+	for (const sc::MacroDefinition& macroDef : parameters.macroDefinitions)
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition(macroDef));
+	}
+
+	return compilationSettings;
+}
+
+void MaterialShadersCompiler::LoadTechniquesRegistry(MaterialTechniquesRegistry& OUT registry)
+{
+	engn::ConfigUtils::LoadConfigData(OUT registry, "MaterialTechniquesRegistry.yaml");
+}
+
+sc::ShaderCompilationSettings MaterialShadersCompiler::CreateNoMaterialCompilationSettings() const
+{
+	sc::ShaderCompilationSettings compilationSettings;
+
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_ENABLED", "0"));
+
+	return compilationSettings;
+}
+
+sc::ShaderCompilationSettings MaterialShadersCompiler::CreateMaterialCompilationSettings(const MaterialStaticParameters& materialParams) const
 {
 	const MaterialShaderSourceComponent& shaderSourceComp = materialParams.materialShaderHandle.get<MaterialShaderSourceComponent>();
 
 	sc::ShaderCompilationSettings compilationSettings;
+	
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_ENABLED", "1"));
 
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_SHADER_PATH", "\"" + shaderSourceComp.shaderPath.ToString() + "\""));
 
@@ -141,17 +202,7 @@ sc::ShaderCompilationSettings MaterialShadersCompiler::CreateCompilationSettings
 		compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_CUSTOM_OPACITY"));
 	}
 
-	for (const sc::MacroDefinition& macroDef : parameters.macroDefinitions)
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition(macroDef));
-	}
-	
 	return compilationSettings;
-}
-
-void MaterialShadersCompiler::LoadTechniquesRegistry(MaterialTechniquesRegistry& OUT registry)
-{
-	engn::ConfigUtils::LoadConfigData(OUT registry, "MaterialTechniquesRegistry.yaml");
 }
 
 } // spt::mat

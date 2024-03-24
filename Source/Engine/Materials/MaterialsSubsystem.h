@@ -34,6 +34,8 @@ private:
 
 	std::pair<CachedShaders&, Bool> GetOrAddCachedShaders(SizeType hash);
 
+	MaterialStaticParameters GetMaterialStaticParameters(MaterialShadersHash shaderHash) const;
+
 	lib::UniquePtr<IMaterialShadersCompiler> m_shadersCompiler;
 	
 	lib::HashMap<SizeType, CachedShaders> m_shadersCache;
@@ -51,7 +53,8 @@ TMaterialShaders MaterialShadersCache::GetMaterialShaders(lib::HashedString tech
 	if (!foundExisting)
 	{
 		cachedShaders = TMaterialShaders{};
-		m_shadersCompiler->CreateMaterialShaders(techniqueName, m_materialParamsCache.at(shaderHash), parameters, OUT std::get<TMaterialShaders>(cachedShaders));
+		const MaterialStaticParameters materialParams = GetMaterialStaticParameters(shaderHash);
+		m_shadersCompiler->CreateMaterialShaders(techniqueName, materialParams, parameters, OUT std::get<TMaterialShaders>(cachedShaders));
 	}
 
 	return std::get<TMaterialShaders>(cachedShaders);
