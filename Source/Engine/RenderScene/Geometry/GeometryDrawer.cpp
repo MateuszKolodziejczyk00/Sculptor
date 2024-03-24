@@ -21,11 +21,6 @@ void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, 
 	SPT_CHECK(geometry.submeshGlobalIdx != idxNone<Uint32>);
 	SPT_CHECK(geometry.meshletsNum > 0u);
 
-	if (materialProxy.params.customOpacity) // TEMP
-	{
-		return;
-	}
-
 	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialProxy.materialShadersHash);
 
 	GeometryBatchElement newBatchElement;
@@ -67,7 +62,6 @@ Uint16 GeometryBatchesBuilder::GetMaterialBatchIdx(mat::MaterialShadersHash mate
 	if (wasEmplaced)
 	{
 		m_batches.materialBatches.emplace_back(materialShadersHash);
-
 	}
 
 	return materialIt->second;

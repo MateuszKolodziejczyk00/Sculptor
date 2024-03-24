@@ -11,6 +11,8 @@
 #include "View/ViewRenderingSpec.h"
 #include "GeometryManager.h"
 #include "SceneRenderer/RenderStages/Utils/hiZRenderer.h"
+#include "MaterialsSubsystem.h"
+#include "MaterialsUnifiedData.h"
 
 
 namespace spt::rsc
@@ -268,10 +270,28 @@ static lib::MTHandle<VisCullingDS> CreateCullingDS(const VisPassParams& visPassP
 
 
 template<EGeometryVisPass passIdx>
-static void ApplyPassShaderCompilationSettings(sc::ShaderCompilationSettings& INOUT compilationSettings)
+static sc::MacroDefinition GetPassIdxMacroDef()
 {
 	static constexpr const char* value[] = { "0", "1", "2" };
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GEOMETRY_PASS_IDX", value[static_cast<Uint32>(passIdx)]));
+	return sc::MacroDefinition("GEOMETRY_PASS_IDX", value[static_cast<Uint32>(passIdx)]);
+}
+
+
+static mat::MaterialShadersHash GetMaterialShadersHash(const GeometryBatch& batch)
+{
+	if (batch.shader.IsDefaultShader())
+	{
+		switch (batch.shader.GetDefaultShader())
+		{
+		case GeometryBatchShader::EDefault::Opaque:
+			return mat::MaterialShadersHash::NoMaterial();
+		default:
+			SPT_CHECK_MSG(false, "Unsupported default shader");
+			return mat::MaterialShadersHash::NoMaterial();
+		}
+	}
+
+	return batch.shader.GetCustomShader();
 }
 
 
@@ -280,24 +300,20 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 {
 	SPT_PROFILER_FUNCTION();
 
-	sc::ShaderCompilationSettings compilationSettings;
-	ApplyPassShaderCompilationSettings<passIdx>(compilationSettings);
+	mat::MaterialShadersParameters shaderParams;
+	shaderParams.macroDefinitions.emplace_back(GetPassIdxMacroDef<passIdx>());
 
-	const rdr::ShaderID taskShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Task, "GeometryVisibilityTS"), compilationSettings);
-	const rdr::ShaderID meshShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Mesh, "GeometryVisibilityMS"), compilationSettings);
-	const rdr::ShaderID fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "GeometryVisibilityFS"), compilationSettings);
-
-	rdr::GraphicsPipelineShaders shaders;
-	shaders.taskShader = taskShader;
-	shaders.meshShader = meshShader;
-	shaders.fragmentShader = fragmentShader;
+	const mat::MaterialShadersHash materialShadersHash = GetMaterialShadersHash(batch);
+	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("GeometryVisibility", materialShadersHash, shaderParams);
 
 	rhi::GraphicsPipelineDefinition pipelineDef;
 	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Greater);
 	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::R32_U_Int, rhi::ERenderTargetBlendType::Disabled));
 	
-	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry Visibility Pipeline"), shaders, pipelineDef);
+	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry Visibility Pipeline"),
+																				   shaders.GetGraphicsPipelineShaders(),
+																				   pipelineDef);
 
 	return pipeline;
 }
@@ -330,7 +346,8 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 	using CullSubmeshesDS = std::conditional_t<passIdx == EGeometryVisPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassDS, GeometryCullSubmeshes_DisoccludedGeometryPassDS>;
 
 	sc::ShaderCompilationSettings compilationSettings;
-	ApplyPassShaderCompilationSettings<passIdx>(compilationSettings);
+	compilationSettings.AddMacroDefinition(GetPassIdxMacroDef<passIdx>());
+
 	const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/Geometry_CullSubmeshes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"), compilationSettings);
 	static const rdr::PipelineStateID cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Geometry_CullSubmeshesPipeline"), cullSubmeshesShader);
 	
@@ -554,6 +571,7 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Vi
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
 															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																					mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 																					renderView.GetRenderViewDS(),
 																					cullingDS));
 
