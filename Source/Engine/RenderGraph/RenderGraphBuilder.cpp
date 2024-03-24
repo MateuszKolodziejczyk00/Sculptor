@@ -288,6 +288,13 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	AddNodeInternal(node, dependencies);
 }
 
+void RenderGraphBuilder::FillFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint32 data)
+{
+	SPT_CHECK(bufferView.IsValid());
+
+	FillBuffer(commandName, bufferView, 0, bufferView->GetSize(), data);
+}
+
 void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, Uint64 sourceOffset, RGBufferViewHandle destBufferView, Uint64 destOffset, Uint64 range)
 {
 	SPT_PROFILER_FUNCTION();

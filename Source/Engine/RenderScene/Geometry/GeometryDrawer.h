@@ -39,6 +39,7 @@ private:
 		}
 
 		lib::DynamicArray<GeometryBatchElement> batchElements;
+		Uint32                                  meshletsNum = 0;
 	};
 
 	Uint16 GetMaterialBatchIdx(mat::MaterialShadersHash materialShadersHash);

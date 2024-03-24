@@ -1,4 +1,9 @@
 #include "SculptorShader.hlsli"
+#include "GeometryRendering/GeometryCommon.h"
+
+#if GEOMETRY_PASS_IDX != SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS && GEOMETRY_PASS_IDX != SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+	#error "Invalid geometry pass index"
+#endif
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -8,10 +13,52 @@
 
 [[descriptor_set(VisCullingDS, 4)]]
 
-[[descriptor_set(GeometryCullSubmeshesDS, 5)]]
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+[[descriptor_set(GeometryCullSubmeshes_VisibleGeometryPassDS, 5)]]
+#elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+[[descriptor_set(GeometryCullSubmeshes_DisoccludedGeometryPassDS, 5)]]
+#endif // GEOMETRY_PASS_IDX
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
+
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+void AppendOccludedBatchElement(in OccludedBatchElement occludedBatchElem)
+{
+	const uint2 submeshOccludedBallot = WaveActiveBallot(true).xy;
+	const uint occludedSubmeshesNum = countbits(submeshOccludedBallot.x) + countbits(submeshOccludedBallot.y);
+	uint outputOccludedBatchElemIdx = 0;
+	if (WaveIsFirstLane())
+	{
+		InterlockedAdd(u_occludedBatchElementsCount[0], occludedSubmeshesNum, outputOccludedBatchElemIdx);
+
+		const uint newOccludedSubmeshesCount = outputOccludedBatchElemIdx + occludedSubmeshesNum;
+		const uint groupsToDispatch = (newOccludedSubmeshesCount + 63u) / 64u;
+
+		uint prevGroups = 0;
+		InterlockedMax(u_dispatchOccludedElementsCommand[0].dispatchGroupsX, groupsToDispatch, prevGroups);
+	}
+	outputOccludedBatchElemIdx = WaveReadLaneFirst(outputOccludedBatchElemIdx) + GetCompactedIndex(submeshOccludedBallot, WaveGetLaneIndex());
+
+	u_occludedBatchElements[outputOccludedBatchElemIdx] = occludedBatchElem;
+}
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+
+
+void AppendDrawCommand(in GeometryDrawMeshTaskCommand drawCommand)
+{
+	const uint2 submeshVisibleBallot = WaveActiveBallot(true).xy;
+	const uint visibleSubmeshesNum = countbits(submeshVisibleBallot.x) + countbits(submeshVisibleBallot.y);
+	uint outputCommandIdx = 0;
+	if (WaveIsFirstLane())
+	{
+		InterlockedAdd(u_drawCommandsCount[0], visibleSubmeshesNum, outputCommandIdx);
+	}
+	outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
+
+	u_drawCommands[outputCommandIdx] = drawCommand;
+}
 
 
 struct CS_INPUT
@@ -20,15 +67,29 @@ struct CS_INPUT
 };
 
 
-#define SPT_GEOM_PASS_IDX_VISIBLE_LAST_FRAME        0
-#define SPT_GEOM_PASS_IDX_DISOCCLUDED_CURRENT_FRAME 1
-#define SPT_GEOM_PASSES_NUM                         2
-
-
 [numthreads(64, 1, 1)]
 void CullSubmeshesCS(CS_INPUT input)
 {
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 	const uint batchElementIdx = input.globalID.x;
+#elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+	if(input.globalID.x >= u_occludedBatchElementsCount[0])
+	{
+		return;
+	}
+
+	const OccludedBatchElement occludedBatchElem = u_occludedBatchElements[input.globalID.x];
+	const uint batchElementIdx = occludedBatchElem.batchElemIdx;
+#endif // GEOMETRY_PASS_IDX
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+	if(input.globalID.x == 0)
+	{
+		u_dispatchOccludedElementsCommand[0].dispatchGroupsX = 0u;
+		u_dispatchOccludedElementsCommand[0].dispatchGroupsY = 1u;
+		u_dispatchOccludedElementsCommand[0].dispatchGroupsZ = 1u;
+	}
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 
 	if(batchElementIdx < u_batchData.elementsNum)
 	{
@@ -39,51 +100,51 @@ void CullSubmeshesCS(CS_INPUT input)
 		const float3 submeshBoundingSphereCenter = mul(entityData.transform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
 		const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;
 
-		bool isSubmeshVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, submeshBoundingSphereCenter, submeshBoundingSphereRadius);
+		bool isSubmeshVisible = false;
 
-		SPT_CHECK_MSG(u_visCullingParams.passIdx < SPT_GEOM_PASSES_NUM, "Invalid geom pass idx ({})", u_visCullingParams.passIdx);
+		const Sphere submeshBoundingSphere = Sphere::Create(submeshBoundingSphereCenter, submeshBoundingSphereRadius);
 
-		const bool wantsOcclusionCulling = (u_visCullingParams.passIdx != SPT_GEOM_PASS_IDX_VISIBLE_LAST_FRAME || u_visCullingParams.hasHistoryHiZ);
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 
-		if(isSubmeshVisible && wantsOcclusionCulling)
+		const bool isSubmeshInFrustum = IsSphereInFrustum(u_cullingData.cullingPlanes, submeshBoundingSphere.center, submeshBoundingSphere.radius);
+
+		if(isSubmeshInFrustum)
 		{
-			// @Warning: Don't merge these two if statements into one (oclusionCullingProcessor cannot be shared)
-			// Otherwise, DXC generates invalid spir-v
-			if(u_visCullingParams.passIdx == SPT_GEOM_PASS_IDX_VISIBLE_LAST_FRAME)
+			bool isOccluded = false;
+			if(u_visCullingParams.hasHistoryHiZ)
 			{
 				const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_historyHiZTexture, u_visCullingParams.historyHiZResolution, u_hiZSampler, u_prevFrameSceneView);
-				isSubmeshVisible = occlusionCullingProcessor.DoCulling(Sphere::Create(submeshBoundingSphereCenter, submeshBoundingSphereRadius));
+				isOccluded = !occlusionCullingProcessor.DoCulling(submeshBoundingSphere);
 			}
-			else //if(passIdx == SPT_GEOM_PASS_IDX_DISOCCLUDED_CURRENT_FRAME)
+
+			if(isOccluded)
 			{
-				const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_hiZTexture, u_visCullingParams.hiZResolution, u_hiZSampler, u_sceneView);
-				isSubmeshVisible = occlusionCullingProcessor.DoCulling(Sphere::Create(submeshBoundingSphereCenter, submeshBoundingSphereRadius));
+				OccludedBatchElement occludedBatchElem;
+				occludedBatchElem.batchElemIdx = batchElementIdx;
+				AppendOccludedBatchElement(occludedBatchElem);
 			}
+
+			isSubmeshVisible = !isOccluded;
 		}
+
+#elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+
+		const HiZCullingProcessor occlusionCullingProcessor = HiZCullingProcessor::Create(u_hiZTexture, u_visCullingParams.hiZResolution, u_hiZSampler, u_sceneView);
+		isSubmeshVisible = occlusionCullingProcessor.DoCulling(submeshBoundingSphere);
+
+#endif // GEOMETRY_PASS_IDX
 
 		if(isSubmeshVisible)
 		{
-			const uint2 submeshVisibleBallot = WaveActiveBallot(isSubmeshVisible).xy;
-		
-			const uint visibleSubmeshesNum = countbits(submeshVisibleBallot.x) + countbits(submeshVisibleBallot.y);
-
-			uint outputCommandIdx = 0;
-			if (WaveIsFirstLane())
-			{
-				InterlockedAdd(u_drawCommandsCount[0], visibleSubmeshesNum, outputCommandIdx);
-			}
-
-			outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + GetCompactedIndex(submeshVisibleBallot, WaveGetLaneIndex());
-
-			const uint submeshMeshletsNum = submesh.meshletsNum;
-			const uint taskGroupsNum = (submeshMeshletsNum + 31u) / 32u;
+			const uint taskGroupsNum = (submesh.meshletsNum + 31u) / 32u;
 
 			GeometryDrawMeshTaskCommand drawCommand;
 			drawCommand.dispatchGroupsX = taskGroupsNum;
 			drawCommand.dispatchGroupsY = 1u;
 			drawCommand.dispatchGroupsZ = 1u;
 			drawCommand.batchElemIdx    = batchElementIdx;
-			u_drawCommands[outputCommandIdx] = drawCommand;
+
+			AppendDrawCommand(drawCommand);
 		}
 	}
 }

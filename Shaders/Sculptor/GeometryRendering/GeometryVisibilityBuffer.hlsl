@@ -1,4 +1,5 @@
 #include "SculptorShader.hlsli"
+#include "GeometryRendering/GeometryCommon.h"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -10,16 +11,17 @@
 
 [[descriptor_set(GeometryDS, 5)]]
 
-[[descriptor_set(GeometryDrawMeshesDS, 6)]]
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+[[descriptor_set(GeometryDrawMeshes_VisibleGeometryPassDS, 6)]]
+#elif GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+[[descriptor_set(GeometryDrawMeshes_DisoccludedGeometryPassDS, 6)]]
+#else
+[[descriptor_set(GeometryDrawMeshes_DisoccludedMeshletsPassDS, 6)]]
+#endif // GEOMETRY_PASS_IDX
 
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
-
-
-#define SPT_GEOM_PASS_IDX_VISIBLE_LAST_FRAME        0
-#define SPT_GEOM_PASS_IDX_DISOCCLUDED_CURRENT_FRAME 1
-#define SPT_GEOM_PASSES_NUM                         2
 
 
 #define TS_GROUP_SIZE 32
@@ -40,30 +42,73 @@ bool IsOccludedCurrentFrame(in Sphere sphere)
 }
 
 
-struct TSInput
+#ifdef DS_GeometryDrawMeshes_VisibleGeometryPassDS
+void AppendOccludedMeshlet(in OccludedMeshletData occludedMeshlet)
 {
-	uint3 globalID : SV_DispatchThreadID;
-	[[vk::builtin("DrawIndex")]] uint drawCommandIndex : DRAW_INDEX;
-};
+	const uint2 meshletOccludedBallot = WaveActiveBallot(true).xy;
+	const uint occludedmeshletsNum = countbits(meshletOccludedBallot.x) + countbits(meshletOccludedBallot.y);
+	uint outputOccludedMeshletIdx = 0;
+	if (WaveIsFirstLane())
+	{
+		InterlockedAdd(u_occludedMeshletsCount[0], occludedmeshletsNum, outputOccludedMeshletIdx);
+
+		const uint occludedMeshletsNum = outputOccludedMeshletIdx + occludedmeshletsNum;
+		const uint requiredOccludedMeshletsGroups = (occludedMeshletsNum + TS_GROUP_SIZE - 1) / TS_GROUP_SIZE;
+		uint prevGroups = 0;
+		InterlockedMax(u_occludedMeshletsDispatchCommand[0].dispatchGroupsX, requiredOccludedMeshletsGroups, prevGroups);
+	}
+	outputOccludedMeshletIdx = WaveReadLaneFirst(outputOccludedMeshletIdx) + GetCompactedIndex(meshletOccludedBallot, WaveGetLaneIndex());
+
+	u_occludedMeshlets[outputOccludedMeshletIdx] = occludedMeshlet;
+}
+#endif // DS_GeometryDrawMeshes_VisibleGeometryPassDS
+
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+	#define ENCODED_MESHLET_COMMAND_TYPE uint2
+	#define MESHLETS_SHARE_ENTITY 1
+#else
+	#define ENCODED_MESHLET_COMMAND_TYPE uint4
+	#define MESHLETS_SHARE_ENTITY 0
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 
 
 struct MeshletRenderCommand
 {
-	uint2 Encode()
+	ENCODED_MESHLET_COMMAND_TYPE Encode()
 	{
-		return uint2(localMeshletIdx, visibleMeshletIdx);
+		ENCODED_MESHLET_COMMAND_TYPE data;
+		data.x = localMeshletIdx;
+		data.y = visibleMeshletIdx;
+
+#if !MESHLETS_SHARE_ENTITY
+		data.z = entityIdx;
+		data.w = submeshGlobalIdx;
+#endif // !MESHLETS_SHARE_ENTITY
+
+		return data;
 	}
 
-	static MeshletRenderCommand Decode(uint2 data)
+	static MeshletRenderCommand Decode(ENCODED_MESHLET_COMMAND_TYPE data)
 	{
 		MeshletRenderCommand command;
 		command.localMeshletIdx   = data.x;
 		command.visibleMeshletIdx = data.y;
+#if !MESHLETS_SHARE_ENTITY
+		command.entityIdx         = data.z;
+		command.submeshGlobalIdx  = data.w;
+#endif // !MESHLETS_SHARE_ENTITY
+
 		return command;
 	}
 
 	uint localMeshletIdx;
 	uint visibleMeshletIdx;
+
+#if !MESHLETS_SHARE_ENTITY
+	uint entityIdx;
+	uint submeshGlobalIdx;
+#endif // !MESHLETS_SHARE_ENTITY
 };
 
 
@@ -72,10 +117,12 @@ struct MeshPayload
 	//MeshletRenderCommand commands[TS_GROUP_SIZE];
 	// looks like we can't use structs in payloads - validation layers are crashing when creating shader module
 	// This is MeshletRenderCommand 
-	uint2 commands[TS_GROUP_SIZE];
+	ENCODED_MESHLET_COMMAND_TYPE commands[TS_GROUP_SIZE];
 	//GeometryBatchElement batchElement;
+#if MESHLETS_SHARE_ENTITY
 	uint entityIdx;
 	uint submeshGlobalIdx;
+#endif // MESHLETS_SHARE_ENTITY
 	uint numCommands;
 };
 
@@ -83,19 +130,78 @@ struct MeshPayload
 groupshared MeshPayload s_payload;
 
 
+void AppendMeshletRenderCommand(in GPUVisibleMeshlet visibleMeshletInfo, in GeometryBatchElement batchElement, in uint localMeshletIdx)
+{
+	uint outputCommandIdx = 0;
+	const uint2 meshletVisibleBallot = WaveActiveBallot(true).xy;
+	const uint visibleMeshletsNum = countbits(meshletVisibleBallot.x) + countbits(meshletVisibleBallot.y);
+	uint visibleMeshletIdx = 0u;
+	if (WaveIsFirstLane())
+	{
+		InterlockedAdd(s_payload.numCommands, visibleMeshletsNum, outputCommandIdx);
+		InterlockedAdd(u_visibleMeshletsCount[0], visibleMeshletsNum, visibleMeshletIdx);
+	}
+	const uint localIdxOffset = GetCompactedIndex(meshletVisibleBallot, WaveGetLaneIndex());
+	outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + localIdxOffset;
+	visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + localIdxOffset;
+
+	u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
+
+	MeshletRenderCommand command;
+	command.localMeshletIdx   = localMeshletIdx;
+	command.visibleMeshletIdx = visibleMeshletIdx;
+#if !MESHLETS_SHARE_ENTITY
+	command.entityIdx         = batchElement.entityIdx;
+	command.submeshGlobalIdx  = batchElement.submeshGlobalIdx;
+#endif // !MESHLETS_SHARE_ENTITY
+	s_payload.commands[outputCommandIdx] = command.Encode();
+}
+
+
+struct TSInput
+{
+	uint3 globalID : SV_DispatchThreadID;
+	[[vk::builtin("DrawIndex")]] uint drawCommandIndex : DRAW_INDEX;
+};
+
+
 [numthreads(TS_GROUP_SIZE, 1, 1)]
 void GeometryVisibilityTS(in TSInput input)
 {
+	s_payload.numCommands = 0;
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 	const GeometryDrawMeshTaskCommand drawCommand = u_drawCommands[input.drawCommandIndex];
-	const GeometryBatchElement batchElement       = u_batchElements[drawCommand.batchElemIdx];
-	const SubmeshGPUData submesh                  = u_submeshes[batchElement.submeshGlobalIdx];
-	const RenderEntityGPUData entityData          = u_renderEntitiesData[batchElement.entityIdx];
-
+	const uint batchElementIdx = drawCommand.batchElemIdx;
 	const uint localMeshletIdx = input.globalID.x;
+#else
+	if(input.globalID.x >= u_occludedMeshletsCount[0])
+	{
+		return;
+	}
 
-	s_payload.numCommands      = 0;
+	const OccludedMeshletData occludedMeshlet = u_occludedMeshlets[input.globalID.x];
+	const uint batchElementIdx = occludedMeshlet.batchElemIdx;
+	const uint localMeshletIdx = occludedMeshlet.localMeshletIdx;
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+	if(input.globalID.x == 0)
+	{
+		u_occludedMeshletsDispatchCommand[0].dispatchGroupsX = 0u;
+		u_occludedMeshletsDispatchCommand[0].dispatchGroupsY = 1u;
+		u_occludedMeshletsDispatchCommand[0].dispatchGroupsZ = 1u;
+	}
+#endif	// GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+
+	const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
+	const SubmeshGPUData submesh            = u_submeshes[batchElement.submeshGlobalIdx];
+	const RenderEntityGPUData entityData    = u_renderEntitiesData[batchElement.entityIdx];
+
+#if MESHLETS_SHARE_ENTITY
 	s_payload.entityIdx	       = batchElement.entityIdx;
 	s_payload.submeshGlobalIdx = batchElement.submeshGlobalIdx;
+#endif // MESHLETS_SHARE_ENTITY
 
 	GroupMemoryBarrierWithGroupSync();
 
@@ -110,6 +216,7 @@ void GeometryVisibilityTS(in TSInput input)
 		const float3 meshletBoundingSphereCenter = mul(entityData.transform, float4(meshlet.boundingSphereCenter, 1.f)).xyz;
 		const float meshletBoundingSphereRadius = meshlet.boundingSphereRadius * entityData.uniformScale;
 
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 		isMeshletVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
 
 		if(isMeshletVisible)
@@ -129,47 +236,41 @@ void GeometryVisibilityTS(in TSInput input)
 				isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
 			}
 		}
+#endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 
 		if(isMeshletVisible)
 		{
 			const Sphere meshletBoundingSphere = Sphere::Create(meshletBoundingSphereCenter, meshletBoundingSphereRadius);
-			if(u_visCullingParams.passIdx == SPT_GEOM_PASS_IDX_VISIBLE_LAST_FRAME)
+
+#if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
+
+			const bool isOccluded = WasOccludedLastFrame(meshletBoundingSphere);
+
+			if(isOccluded)
 			{
-				isMeshletVisible = !WasOccludedLastFrame(meshletBoundingSphere);
+				OccludedMeshletData occludedMeshlet;
+				occludedMeshlet.batchElemIdx    = batchElementIdx;
+				occludedMeshlet.localMeshletIdx = localMeshletIdx;
+				AppendOccludedMeshlet(occludedMeshlet);
 			}
-			else //if(passIdx == SPT_GEOM_PASS_IDX_DISOCCLUDED_CURRENT_FRAME)
-			{
-				isMeshletVisible = !IsOccludedCurrentFrame(meshletBoundingSphere) && WasOccludedLastFrame(meshletBoundingSphere);;
-			
-			}
+
+			isMeshletVisible = !isOccluded;
+#else
+
+			isMeshletVisible = !IsOccludedCurrentFrame(meshletBoundingSphere);
+
+#endif // GEOMETRY_PASS_IDX
 		}
 
 		if(isMeshletVisible)
 		{
-			uint outputCommandIdx = 0;
-			const uint2 meshletVisibleBallot = WaveActiveBallot(isMeshletVisible).xy;
-			const uint visibleMeshletsNum = countbits(meshletVisibleBallot.x) + countbits(meshletVisibleBallot.y);
-			uint visibleMeshletIdx = 0u;
-			if (WaveIsFirstLane())
-			{
-				InterlockedAdd(s_payload.numCommands, visibleMeshletsNum, outputCommandIdx);
-				InterlockedAdd(u_visibleMeshletsCount[0], visibleMeshletsNum, visibleMeshletIdx);
-			}
-			const uint localIdxOffset = GetCompactedIndex(meshletVisibleBallot, WaveGetLaneIndex());
-			outputCommandIdx = WaveReadLaneFirst(outputCommandIdx) + localIdxOffset;
-			visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + localIdxOffset;
-
 			GPUVisibleMeshlet visibleMeshletInfo;
 			visibleMeshletInfo.entityIdx          = batchElement.entityIdx;
 			visibleMeshletInfo.meshletGlobalIdx   = globalMeshletIdx;
 			visibleMeshletInfo.materialDataOffset = batchElement.materialDataOffset;
 			visibleMeshletInfo.materialBatchIdx   = batchElement.materialBatchIdx;
-			u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
 
-			MeshletRenderCommand command;
-			command.localMeshletIdx   = localMeshletIdx;
-			command.visibleMeshletIdx = visibleMeshletIdx;
-			s_payload.commands[outputCommandIdx] = command.Encode();
+			AppendMeshletRenderCommand(visibleMeshletInfo, batchElement, localMeshletIdx);
 		}
 	}
 
@@ -214,30 +315,10 @@ uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriang
 	return traingleIndices;
 }
 
-
-// This gets read from the user vertex SRV
-struct InputVertex
-{
-	float3 location : LOCATION;
-};
-
 // This is a bunch of outparams for the Mesh shader. At least SV_Position must be present.
 struct OutputVertex
 {
 	float4 locationCS : SV_Position;
-};
-
-
-#define MS_GROUP_SIZE 32
-#define MAX_NUM_PRIMS 64
-#define MAX_NUM_VERTS 64
-
-
-struct MSSharedData
-{
-	OutputVertex vertices[MAX_NUM_VERTS];
-	uint triangles[MAX_NUM_PRIMS];
-	uint trianglesNum;
 };
 
 
@@ -257,6 +338,19 @@ uint3 UnpackTriangleVertices(uint packedVertices)
 	vertices.z = packedVertices & 0x000003ff;
 	return vertices;
 }
+
+
+#define MS_GROUP_SIZE 32
+#define MAX_NUM_PRIMS 64
+#define MAX_NUM_VERTS 64
+
+
+struct MSSharedData
+{
+	OutputVertex vertices[MAX_NUM_VERTS];
+	uint triangles[MAX_NUM_PRIMS];
+	uint trianglesNum;
+};
 
 
 groupshared MSSharedData s_sharedData;
@@ -332,7 +426,7 @@ struct PrimitiveOutput
 	uint packedVisibilityInfo : PACKED_VISBILITY_INFO;
 	// TODO - this is not implemented in DXC version used by current vulkan SDK, it seems that there was some on this after vulkan SDK was updated
 	// If it's supported in newer version of DXC, we should use it instead of using shared data to compute triangles count and indices
-	//uint culled            : SV_CullPrimitive;
+	//bool culled            : SV_CullPrimitive;
 };
 
 
@@ -343,16 +437,25 @@ void GeometryVisibilityMS(
 	in uint3 localID : SV_GroupThreadID,
 	in uint3 groupID : SV_GroupID,
 	in payload MeshPayload payload,
-	out vertices OutputVertex verts[MAX_NUM_VERTS],
-	out indices uint3 triangles[MAX_NUM_PRIMS],
-	out primitives PrimitiveOutput prims[MAX_NUM_PRIMS]
+	out vertices OutputVertex outVerts[MAX_NUM_VERTS],
+	out indices uint3 outTriangles[MAX_NUM_PRIMS],
+	out primitives PrimitiveOutput outPrims[MAX_NUM_PRIMS]
 	)
 {
-	const MeshletRenderCommand command   = MeshletRenderCommand::Decode(payload.commands[groupID.x]);
-	const SubmeshGPUData submesh         = u_submeshes[payload.submeshGlobalIdx];
+	const MeshletRenderCommand command = MeshletRenderCommand::Decode(payload.commands[groupID.x]);
+
+#if MESHLETS_SHARE_ENTITY
+	const uint submeshGlobalIdx = payload.submeshGlobalIdx;
+	const uint entityIdx        = payload.entityIdx;
+#else
+	const uint submeshGlobalIdx = command.submeshGlobalIdx;
+	const uint entityIdx        = command.entityIdx;
+#endif // MESHLETS_SHARE_ENTITY
+
+	const SubmeshGPUData submesh         = u_submeshes[submeshGlobalIdx];
 	const uint globalMeshletIdx          = submesh.meshletsBeginIdx + command.localMeshletIdx;
 	const MeshletGPUData meshlet         = u_meshlets[globalMeshletIdx];
-	const RenderEntityGPUData entityData = u_renderEntitiesData[payload.entityIdx];
+	const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
 
 	if (localID.x == 0)
 	{
@@ -362,6 +465,8 @@ void GeometryVisibilityMS(
 	const uint primitiveIndicesOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset;
 	const uint locationsOffset = submesh.locationsOffset;
 	const uint meshletGlobalVertexIndicesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
+
+	GroupMemoryBarrierWithGroupSync();
 
 	for (uint meshletVertexIdx = localID.x; meshletVertexIdx < meshlet.vertexCount; meshletVertexIdx += MS_GROUP_SIZE)
 	{
@@ -384,7 +489,6 @@ void GeometryVisibilityMS(
 	for (uint meshletTriangleIdx = localID.x; meshletTriangleIdx < meshlet.triangleCount; meshletTriangleIdx += MS_GROUP_SIZE)
 	{
 		const uint3 triangleVertices = LoadTriangleVertexIndices(primitiveIndicesOffset, meshletTriangleIdx);
-		triangles[meshletTriangleIdx] = triangleVertices;
 
 		MeshletTriangle tri;
 		[unroll]
@@ -411,22 +515,22 @@ void GeometryVisibilityMS(
 		}
 	}
 
-	GroupMemoryBarrierWithGroupSync();
-
 	SetMeshOutputCounts(meshlet.vertexCount, s_sharedData.trianglesNum);
 
+	// Write triangles
 	for (uint meshletTriangleIdx = localID.x; meshletTriangleIdx < s_sharedData.trianglesNum; meshletTriangleIdx += MS_GROUP_SIZE)
 	{
-		triangles[meshletTriangleIdx] = UnpackTriangleVertices(s_sharedData.triangles[meshletTriangleIdx]);
+		outTriangles[meshletTriangleIdx] = UnpackTriangleVertices(s_sharedData.triangles[meshletTriangleIdx]);
 
 		PrimitiveOutput primitiveOutput;
 		primitiveOutput.packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
-		prims[meshletTriangleIdx] = primitiveOutput;
+		outPrims[meshletTriangleIdx] = primitiveOutput;
 	}
 
+	// Write vertices
 	for (uint meshletVertexIdx = localID.x; meshletVertexIdx < meshlet.vertexCount; meshletVertexIdx += MS_GROUP_SIZE)
 	{
-		verts[meshletVertexIdx] = s_sharedData.vertices[meshletVertexIdx];
+		outVerts[meshletVertexIdx] = s_sharedData.vertices[meshletVertexIdx];
 	}
 }
 

@@ -21,35 +21,50 @@ namespace geometry_rendering
 
 enum class EGeometryVisPass
 {
-	// 1st pass: Renders geometry that was visible in the previous frame
-	First,
-	// 2nd pass: Renders geometry that was disoccluded in the current frame
-	Second,
+	// Renders geometry that was visible in the previous frame
+	// Performs all culling operations + occlusion culling with last frame's HiZ
+	// Outputs occluded batch elements that are in frustum for DisoccludedGeometryPass pass
+	VisibleGeometryPass,
+	// Renders batch elements that were disoccluded in the current frame
+	// Performs occlusion culling with current frame's HiZ
+	DisoccludedGeometryPass,
+	// Renders meshlets that were disoccluded in the current frame
+	// Note that this is different from DisoccludedGeometryPass pass, because it doesn't process whole batch elements
+	DisoccludedMeshletsPass,
 	Num
 };
 
 
-struct VisibleMeshletsOutput
+struct GeometryPassContext
 {
+	GeometryPassContext(rg::RGBufferViewHandle visibleMeshlets, rg::RGBufferViewHandle visibleMeshletsCount)
+		: visibleMeshlets(visibleMeshlets)
+		, visibleMeshletsCount(visibleMeshletsCount)
+	{ }
+
 	rg::RGBufferViewHandle visibleMeshlets;
 	rg::RGBufferViewHandle visibleMeshletsCount;
-};
-
-
-struct GeometryPassParams
-{
-	EGeometryVisPass      passIdx = EGeometryVisPass::Num;
-	VisibleMeshletsOutput visibleMeshletsOutput;
 };
 
 namespace priv
 {
 
-struct BatchDrawCommands
-{
-	rg::RGBufferViewHandle drawCommands;
-	rg::RGBufferViewHandle drawCommandsCount;
-};
+BEGIN_SHADER_STRUCT(DispatchOccludedBatchElementsCommand)
+	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsX)
+	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsY)
+	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsZ)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(OccludedBatchElement)
+	SHADER_STRUCT_FIELD(Uint32, batchElemIdx)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(OccludedMeshletData)
+	SHADER_STRUCT_FIELD(Uint32, batchElemIdx)
+	SHADER_STRUCT_FIELD(Uint32, localMeshletIdx)
+END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(GeometryDrawMeshTaskCommand)
@@ -60,9 +75,22 @@ BEGIN_SHADER_STRUCT(GeometryDrawMeshTaskCommand)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(GeometryCullSubmeshesDS, rg::RGDescriptorSetState<GeometryCullSubmeshesDS>)
+DS_BEGIN(GeometryCullSubmeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryCullSubmeshes_VisibleGeometryPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
+	
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedBatchElement>),                 u_occludedBatchElements)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                               u_occludedBatchElementsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<DispatchOccludedBatchElementsCommand>), u_dispatchOccludedElementsCommand)
+DS_END();
+
+
+DS_BEGIN(GeometryCullSubmeshes_DisoccludedGeometryPassDS, rg::RGDescriptorSetState<GeometryCullSubmeshes_DisoccludedGeometryPassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
+
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<OccludedBatchElement>), u_occludedBatchElements)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),               u_occludedBatchElementsCount)
 DS_END();
 
 
@@ -70,7 +98,6 @@ BEGIN_SHADER_STRUCT(VisCullingParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, historyHiZResolution)
 	SHADER_STRUCT_FIELD(Bool,           hasHistoryHiZ)
-	SHADER_STRUCT_FIELD(Uint32,         passIdx)
 END_SHADER_STRUCT();
 
 
@@ -88,24 +115,148 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(IndirectGeometryBatchDrawParams)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
-DS_BEGIN(GeometryDrawMeshesDS, rg::RGDescriptorSetState<GeometryDrawMeshesDS>)
+DS_BEGIN(GeometryDrawMeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_VisibleGeometryPassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUVisibleMeshlet>),         u_visibleMeshlets)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                    u_visibleMeshletsCount)
+	
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedMeshletData>),                  u_occludedMeshlets)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                               u_occludedMeshletsCount)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<DispatchOccludedBatchElementsCommand>), u_occludedMeshletsDispatchCommand)
+DS_END();
+
+
+DS_BEGIN(GeometryDrawMeshes_DisoccludedGeometryPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_DisoccludedGeometryPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUVisibleMeshlet>),         u_visibleMeshlets)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                    u_visibleMeshletsCount)
 DS_END();
 
 
-static lib::MTHandle<VisCullingDS> CreateCullingDS(const VisPassParams& visPassParams, EGeometryVisPass passIdx)
-{
-	SPT_CHECK(passIdx < EGeometryVisPass::Num);
+DS_BEGIN(GeometryDrawMeshes_DisoccludedMeshletsPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_DisoccludedMeshletsPassDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<OccludedMeshletData>),       u_occludedMeshlets)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                    u_occludedMeshletsCount)
 
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GPUVisibleMeshlet>),         u_visibleMeshlets)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                    u_visibleMeshletsCount)
+DS_END();
+
+
+template<EGeometryVisPass passIdx>
+struct GeometryPassTraits
+{
+};
+
+template<>
+struct GeometryPassTraits<EGeometryVisPass::VisibleGeometryPass>
+{
+	using DrawMeshesDSType = GeometryDrawMeshes_VisibleGeometryPassDS;
+
+	static constexpr const char* GetPassName() { return "Visible Geometry Pass"; }
+};
+
+template<>
+struct GeometryPassTraits<EGeometryVisPass::DisoccludedGeometryPass>
+{
+	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedGeometryPassDS;
+
+	static constexpr const char* GetPassName() { return "Disoccluded Geometry Pass"; }
+};
+
+template<>
+struct GeometryPassTraits<EGeometryVisPass::DisoccludedMeshletsPass>
+{
+	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedMeshletsPassDS;
+
+	static constexpr const char* GetPassName() { return "Disoccluded Meshlets Pass"; }
+};
+
+
+struct BatchGPUData
+{
+	rg::RGBufferViewHandle drawCommands;
+	rg::RGBufferViewHandle drawCommandsCount;
+	
+	rg::RGBufferViewHandle occludedBatchElements;
+	rg::RGBufferViewHandle occludedBatchElementsCount;
+	rg::RGBufferViewHandle dispatchOccludedBatchElementsCommand;
+
+	rg::RGBufferViewHandle occludedMeshlets;
+	rg::RGBufferViewHandle occludedMeshletsCount;
+	rg::RGBufferViewHandle dispatchOccludedMeshletsCommand;
+};
+
+
+static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const GeometryBatch& batch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	BatchGPUData batchGPUData;
+
+	rhi::BufferDefinition drawCommandsBufferDef;
+	drawCommandsBufferDef.size  = sizeof(GeometryDrawMeshTaskCommand) * batch.batchElementsNum;
+	drawCommandsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
+	const rg::RGBufferViewHandle drawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands"), drawCommandsBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition drawCommandsCountBufferDef;
+	drawCommandsCountBufferDef.size  = sizeof(Uint32);
+	drawCommandsCountBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle drawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands Count"), drawCommandsCountBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition occludedBatchElements;
+	occludedBatchElements.size  = sizeof(OccludedBatchElement) * batch.batchElementsNum;
+	occludedBatchElements.usage = rhi::EBufferUsage::Storage;
+	const rg::RGBufferViewHandle occludedBatchElementsView = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Occluded Batch Elements"), occludedBatchElements, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition occludedBatchElementsCount;
+	occludedBatchElementsCount.size  = sizeof(Uint32);
+	occludedBatchElementsCount.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle occludedBatchElementsCountView = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Occluded Batch Elements Count"), occludedBatchElementsCount, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition dispatchOccludedBatchElementsCommandDef;
+	dispatchOccludedBatchElementsCommandDef.size  = sizeof(DispatchOccludedBatchElementsCommand);
+	dispatchOccludedBatchElementsCommandDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
+	const rg::RGBufferViewHandle dispatchOccludedBatchElementsCommand = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Dispatch Occluded Batch Elements Command"), dispatchOccludedBatchElementsCommandDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition occludedMeshlets;
+	occludedMeshlets.size  = sizeof(OccludedMeshletData) * batch.batchMeshletsNum;
+	occludedMeshlets.usage = rhi::EBufferUsage::Storage;
+	const rg::RGBufferViewHandle occludedMeshletsView = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Occluded Meshlets"), occludedMeshlets, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition occludedMeshletsCount;
+	occludedMeshletsCount.size  = sizeof(Uint32);
+	occludedMeshletsCount.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle occludedMeshletsCountView = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Occluded Meshlets Count"), occludedMeshletsCount, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition dispatchOccludedMeshletsCommandDef;
+	dispatchOccludedMeshletsCommandDef.size  = sizeof(DispatchOccludedBatchElementsCommand);
+	dispatchOccludedMeshletsCommandDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
+	const rg::RGBufferViewHandle dispatchOccludedMeshletsCommand = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Dispatch Occluded Meshlets Command"), dispatchOccludedMeshletsCommandDef, rhi::EMemoryUsage::GPUOnly);
+
+	batchGPUData.drawCommands                         = drawCommands;
+	batchGPUData.drawCommandsCount                    = drawCommandsCount;
+	batchGPUData.occludedBatchElements                = occludedBatchElementsView;
+	batchGPUData.occludedBatchElementsCount           = occludedBatchElementsCountView;
+	batchGPUData.dispatchOccludedBatchElementsCommand = dispatchOccludedBatchElementsCommand;
+	batchGPUData.occludedMeshlets                     = occludedMeshletsView;
+	batchGPUData.occludedMeshletsCount                = occludedMeshletsCountView;
+	batchGPUData.dispatchOccludedMeshletsCommand      = dispatchOccludedMeshletsCommand;
+
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Occluded Batch Elements Count"), batchGPUData.occludedBatchElementsCount, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Occluded Meshlets Count"), batchGPUData.occludedMeshletsCount, 0u);
+
+	return batchGPUData;
+}
+
+
+static lib::MTHandle<VisCullingDS> CreateCullingDS(const VisPassParams& visPassParams)
+{
 	const Bool hasHistoryHiZ = visPassParams.historyHiZ.IsValid();
 
 	VisCullingParams visCullingParams;
 	visCullingParams.hiZResolution        = visPassParams.hiZ->GetResolution2D().cast<Real32>();
 	visCullingParams.historyHiZResolution = hasHistoryHiZ ? visPassParams.historyHiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
 	visCullingParams.hasHistoryHiZ        = hasHistoryHiZ;
-	visCullingParams.passIdx              = static_cast<Uint32>(passIdx);
 
 	lib::MTHandle<VisCullingDS> visCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<VisCullingDS>(RENDERER_RESOURCE_NAME("VisCullingDS"));
 	visCullingDS->u_hiZTexture        = visPassParams.hiZ;
@@ -116,19 +267,21 @@ static lib::MTHandle<VisCullingDS> CreateCullingDS(const VisPassParams& visPassP
 }
 
 
-static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassParams, const GeometryPassParams& geometryPass, const GeometryBatch& batch)
+template<EGeometryVisPass passIdx>
+static void ApplyPassShaderCompilationSettings(sc::ShaderCompilationSettings& INOUT compilationSettings)
+{
+	static constexpr const char* value[] = { "0", "1", "2" };
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("GEOMETRY_PASS_IDX", value[static_cast<Uint32>(passIdx)]));
+}
+
+
+template<EGeometryVisPass passIdx>
+static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassParams, const GeometryPassContext& passContext, const GeometryBatch& batch)
 {
 	SPT_PROFILER_FUNCTION();
 
 	sc::ShaderCompilationSettings compilationSettings;
-	if (geometryPass.passIdx == EGeometryVisPass::First)
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("GEOMETRY_PASS_IDX", "1"));
-	}
-	else
-	{
-		compilationSettings.AddMacroDefinition(sc::MacroDefinition("GEOMETRY_PASS_IDX", "2"));
-	}
+	ApplyPassShaderCompilationSettings<passIdx>(compilationSettings);
 
 	const rdr::ShaderID taskShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Task, "GeometryVisibilityTS"), compilationSettings);
 	const rdr::ShaderID meshShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Mesh, "GeometryVisibilityMS"), compilationSettings);
@@ -150,50 +303,78 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 }
 
 
-static lib::DynamicArray<BatchDrawCommands> BuildBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
+lib::DynamicArray<BatchGPUData> BuildGPUBatches(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/Geometry_CullSubmeshes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"));
-	static const rdr::PipelineStateID cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Geometry_CullSubmeshesPipeline"), cullSubmeshesShader);
-	
-	lib::DynamicArray<BatchDrawCommands> batchDrawCommands;
-	batchDrawCommands.reserve(visPassParams.geometryPassData.geometryBatches.size());
+	lib::DynamicArray<BatchGPUData> batchesGPUData;
+	batchesGPUData.reserve(visPassParams.geometryPassData.geometryBatches.size());
 
 	for (const GeometryBatch& batch : visPassParams.geometryPassData.geometryBatches)
 	{
-		rhi::BufferDefinition drawCommandsBufferDef;
-		drawCommandsBufferDef.size  = sizeof(GeometryDrawMeshTaskCommand) * batch.batchElementsNum;
-		drawCommandsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
-		const rg::RGBufferViewHandle drawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands"), drawCommandsBufferDef, rhi::EMemoryUsage::GPUOnly);
-
-		rhi::BufferDefinition drawCommandsCountBufferDef;
-		drawCommandsCountBufferDef.size  = sizeof(Uint32);
-		drawCommandsCountBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
-		const rg::RGBufferViewHandle drawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands Count"), drawCommandsCountBufferDef, rhi::EMemoryUsage::GPUOnly);
-
-		graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Draw Commands Count"), drawCommandsCount, 0u, drawCommandsCount->GetSize(), 0u);
-
-		const lib::MTHandle<GeometryCullSubmeshesDS> cullSubmeshesDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryCullSubmeshesDS>(RENDERER_RESOURCE_NAME("GeometryCullSubmeshesDS"));
-		cullSubmeshesDS->u_drawCommands         = drawCommands;
-		cullSubmeshesDS->u_drawCommandsCount    = drawCommandsCount;
-
-		const Uint32 groupSize = 64u;
-		const Uint32 dispatchGroups = math::Utils::DivideCeil(batch.batchElementsNum, groupSize);
-
-		graphBuilder.Dispatch(RG_DEBUG_NAME("Cull Submeshes"),
-							  cullSubmeshesPipeline,
-							  dispatchGroups,
-							  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
-
-		batchDrawCommands.emplace_back(BatchDrawCommands{ drawCommands, drawCommandsCount });
+		BatchGPUData batchGPUData = CreateGPUBatch(graphBuilder, batch);
+		batchesGPUData.emplace_back(std::move(batchGPUData));
 	}
 
-	return batchDrawCommands;
+	return batchesGPUData;
 }
 
 
-static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassParams& geometryPass)
+template<EGeometryVisPass passIdx>
+void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, lib::Span<const BatchGPUData> gpuBatches)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static_assert(passIdx == EGeometryVisPass::VisibleGeometryPass || passIdx == EGeometryVisPass::DisoccludedGeometryPass);
+
+	using CullSubmeshesDS = std::conditional_t<passIdx == EGeometryVisPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassDS, GeometryCullSubmeshes_DisoccludedGeometryPassDS>;
+
+	sc::ShaderCompilationSettings compilationSettings;
+	ApplyPassShaderCompilationSettings<passIdx>(compilationSettings);
+	const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/Geometry_CullSubmeshes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"), compilationSettings);
+	static const rdr::PipelineStateID cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Geometry_CullSubmeshesPipeline"), cullSubmeshesShader);
+	
+	for(SizeType batchIdx = 0u; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
+	{
+		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
+		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
+
+		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Draw Commands Count"), batchGPUData.drawCommandsCount, 0u);
+
+		const lib::MTHandle<CullSubmeshesDS> cullSubmeshesDS = graphBuilder.CreateDescriptorSet<CullSubmeshesDS>(RENDERER_RESOURCE_NAME("CullSubmeshesDS"));
+		cullSubmeshesDS->u_drawCommands               = batchGPUData.drawCommands;
+		cullSubmeshesDS->u_drawCommandsCount          = batchGPUData.drawCommandsCount;
+		cullSubmeshesDS->u_occludedBatchElements      = batchGPUData.occludedBatchElements;
+		cullSubmeshesDS->u_occludedBatchElementsCount = batchGPUData.occludedBatchElementsCount;
+		if constexpr (passIdx == EGeometryVisPass::VisibleGeometryPass)
+		{
+			cullSubmeshesDS->u_dispatchOccludedElementsCommand = batchGPUData.dispatchOccludedBatchElementsCommand;
+		}
+
+		if constexpr (passIdx == EGeometryVisPass::VisibleGeometryPass)
+		{
+			const Uint32 groupSize = 64u;
+			const Uint32 dispatchGroups = math::Utils::DivideCeil(batch.batchElementsNum, groupSize);
+
+			graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryPassTraits<passIdx>::GetPassName()),
+								  cullSubmeshesPipeline,
+								  dispatchGroups,
+								  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
+		}
+		else if constexpr (passIdx == EGeometryVisPass::DisoccludedGeometryPass)
+		{
+			graphBuilder.DispatchIndirect(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryPassTraits<passIdx>::GetPassName()),
+										  cullSubmeshesPipeline,
+										  batchGPUData.dispatchOccludedBatchElementsCommand,
+										  0u,
+										  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
+		}
+	}
+}
+
+
+template<EGeometryVisPass passIdx>
+static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -203,7 +384,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), resolution);
 
-	const rhi::ERTLoadOperation renderTargetLoadOp = geometryPass.passIdx == EGeometryVisPass::First ? rhi::ERTLoadOperation::Clear : rhi::ERTLoadOperation::Load;
+	const rhi::ERTLoadOperation renderTargetLoadOp = passIdx == EGeometryVisPass::VisibleGeometryPass ? rhi::ERTLoadOperation::Clear : rhi::ERTLoadOperation::Load;
 
 	rg::RGRenderTargetDef depthRTDef;
 	depthRTDef.textureView    = visPassParams.depth;
@@ -222,7 +403,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 		renderPassDef.AddColorRenderTarget(visibilityRTDef);
 	}
 	
-	graphBuilder.RenderPass(RG_DEBUG_NAME("Visibility Pass"),
+	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Visibility Pass ({})", GeometryPassTraits<passIdx>::GetPassName()),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),
 							[resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -233,31 +414,43 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 }
 
 
-static void ExecuteBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassParams& geometryPass, lib::Span<const BatchDrawCommands> commands)
+template<EGeometryVisPass passIdx>
+static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
-	CreateRenderPass(graphBuilder, visPassParams, geometryPass);
+	static_assert(passIdx == EGeometryVisPass::VisibleGeometryPass || passIdx == EGeometryVisPass::DisoccludedGeometryPass);
+
+	using GeometryDrawMeshesDS = typename GeometryPassTraits<passIdx>::DrawMeshesDSType;
+
+	CreateRenderPass<passIdx>(graphBuilder, visPassParams, passContext);
 
 	for (SizeType batchIdx = 0; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
-		const GeometryBatch& batch            = visPassParams.geometryPassData.geometryBatches[batchIdx];
-		const BatchDrawCommands& drawCommands = commands[batchIdx];
+		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
+		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
-		IndirectGeometryBatchDrawParams indirectDrawParams;
-		indirectDrawParams.drawCommands      = drawCommands.drawCommands;
-		indirectDrawParams.drawCommandsCount = drawCommands.drawCommandsCount;
+		lib::MTHandle<GeometryDrawMeshesDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshesDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshesDS"));
+		drawMeshesDS->u_visibleMeshlets      = passContext.visibleMeshlets;
+		drawMeshesDS->u_visibleMeshletsCount = passContext.visibleMeshletsCount;
+		drawMeshesDS->u_drawCommands = batchGPUData.drawCommands;
 
-		lib::MTHandle<GeometryDrawMeshesDS> drawMeshesDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDrawMeshesDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshesDS"));
-		drawMeshesDS->u_drawCommands         = drawCommands.drawCommands;
-		drawMeshesDS->u_visibleMeshlets      = geometryPass.visibleMeshletsOutput.visibleMeshlets;
-		drawMeshesDS->u_visibleMeshletsCount = geometryPass.visibleMeshletsOutput.visibleMeshletsCount;
+		if constexpr (passIdx == EGeometryVisPass::VisibleGeometryPass)
+		{
+			drawMeshesDS->u_occludedMeshlets                = batchGPUData.occludedMeshlets;
+			drawMeshesDS->u_occludedMeshletsCount           = batchGPUData.occludedMeshletsCount;
+			drawMeshesDS->u_occludedMeshletsDispatchCommand = batchGPUData.dispatchOccludedMeshletsCommand;
+		}
 
-		const rdr::PipelineStateID pipeline = CreatePipelineForBatch(visPassParams, geometryPass, batch);
+		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, passContext, batch);
 
 		const Uint32 maxDrawsCount = batch.batchElementsNum;
 
-		graphBuilder.AddSubpass(RG_DEBUG_NAME("Batch Subpass"),
+		IndirectGeometryBatchDrawParams indirectDrawParams;
+		indirectDrawParams.drawCommands      = batchGPUData.drawCommands;
+		indirectDrawParams.drawCommandsCount = batchGPUData.drawCommandsCount;
+
+		graphBuilder.AddSubpass(RG_DEBUG_NAME_FORMATTED("Batch Subpass ({})", GeometryPassTraits<passIdx>::GetPassName()),
 								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS, GeometryManager::Get().GetGeometryDSState()),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline, maxDrawsCount]
@@ -278,33 +471,99 @@ static void ExecuteBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const
 	}
 }
 
-} // priv
 
-static void RenderGeometryPrologue(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const VisibleMeshletsOutput& visibleMeshletsOutput)
+static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
-	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Visible Meshlets Count"), visibleMeshletsOutput.visibleMeshletsCount, 0u, visibleMeshletsOutput.visibleMeshletsCount->GetSize(), 0u);
+	constexpr EGeometryVisPass passIdx = EGeometryVisPass::DisoccludedMeshletsPass;
+
+	CreateRenderPass<passIdx>(graphBuilder, visPassParams, passContext);
+
+	for (SizeType batchIdx = 0; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
+	{
+		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
+		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
+
+		lib::MTHandle<GeometryDrawMeshes_DisoccludedMeshletsPassDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshes_DisoccludedMeshletsPassDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshes_DisoccludedMeshletsPassDS"));
+		drawMeshesDS->u_visibleMeshlets       = passContext.visibleMeshlets;
+		drawMeshesDS->u_visibleMeshletsCount  = passContext.visibleMeshletsCount;
+		drawMeshesDS->u_occludedMeshlets      = batchGPUData.occludedMeshlets;
+		drawMeshesDS->u_occludedMeshletsCount = batchGPUData.occludedMeshletsCount;
+
+		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, passContext, batch);
+
+		IndirectGeometryBatchDrawParams indirectDrawParams;
+		indirectDrawParams.drawCommands = batchGPUData.dispatchOccludedMeshletsCommand;
+
+		graphBuilder.AddSubpass(RG_DEBUG_NAME("Batch Subpass"),
+								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS, GeometryManager::Get().GetGeometryDSState()),
+								std::tie(indirectDrawParams),
+								[indirectDrawParams, pipeline]
+								(const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								{
+									recorder.BindGraphicsPipeline(pipeline);
+
+									const rdr::BufferView& dispatchCommandView = indirectDrawParams.drawCommands->GetResource();
+
+									recorder.DrawMeshTasksIndirect(dispatchCommandView.GetBuffer(),
+																   dispatchCommandView.GetOffset(),
+																   sizeof(DispatchOccludedBatchElementsCommand),
+																   1u);
+								});
+	}
 }
 
 
-static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassParams& geometryPass)
+static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+{
+	SPT_PROFILER_FUNCTION();
+
+	CullBatchElements<EGeometryVisPass::VisibleGeometryPass>(graphBuilder, visPassParams, gpuBatches);
+	DrawBatchElements<EGeometryVisPass::VisibleGeometryPass>(graphBuilder, visPassParams, passContext, gpuBatches);
+}
+
+
+static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+{
+	SPT_PROFILER_FUNCTION();
+
+	CullBatchElements<EGeometryVisPass::DisoccludedGeometryPass>(graphBuilder, visPassParams, gpuBatches);
+	DrawBatchElements<EGeometryVisPass::DisoccludedGeometryPass>(graphBuilder, visPassParams, passContext, gpuBatches);
+	DrawDisoccludedMeshlets(graphBuilder, visPassParams, passContext, gpuBatches);
+}
+
+} // priv
+
+static void RenderGeometryPrologue(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext)
+{
+	SPT_PROFILER_FUNCTION();
+
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Visible Meshlets Count"), passContext.visibleMeshletsCount, 0u, passContext.visibleMeshletsCount->GetSize(), 0u);
+}
+
+
+static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const ViewRenderingSpec& viewSpec = visPassParams.viewSpec;
 	const RenderView& renderView      = viewSpec.GetRenderView();
 
-	const lib::MTHandle<priv::VisCullingDS> cullingDS = priv::CreateCullingDS(visPassParams, geometryPass.passIdx);
+	const lib::MTHandle<priv::VisCullingDS> cullingDS = priv::CreateCullingDS(visPassParams);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
 															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 																					renderView.GetRenderViewDS(),
 																					cullingDS));
 
-	const lib::DynamicArray<priv::BatchDrawCommands> batchDrawCommands = priv::BuildBatchDrawCommands(graphBuilder, visPassParams);
+	const lib::DynamicArray<priv::BatchGPUData> gpuBatches = priv::BuildGPUBatches(graphBuilder, visPassParams);
 
-	priv::ExecuteBatchDrawCommands(graphBuilder, visPassParams, geometryPass, { batchDrawCommands });
+	priv::DrawGeometryVisibleLastFrame(graphBuilder, visPassParams, passContext, gpuBatches);
+
+	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.depth, visPassParams.hiZ->GetTexture());
+
+	priv::DrawDisoccludedGeometry(graphBuilder, visPassParams, passContext, gpuBatches);
 
 	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.depth, visPassParams.hiZ->GetTexture());
 }
@@ -336,26 +595,13 @@ void GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, co
 	SPT_CHECK(visPassParams.hiZ.IsValid());
 	SPT_CHECK(visPassParams.visibilityTexture.IsValid());
 
-	geometry_rendering::VisibleMeshletsOutput visibleMeshletsOutput;
-	visibleMeshletsOutput.visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->CreateFullView());;
-	visibleMeshletsOutput.visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->CreateFullView());;
+	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->CreateFullView());
+	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->CreateFullView());
 
-	geometry_rendering::RenderGeometryPrologue(graphBuilder, visPassParams, visibleMeshletsOutput);
+	geometry_rendering::GeometryPassContext passContext(visibleMeshlets, visibleMeshletsCount);
 
-	// 1st pass: Renders geometry that was visible in the previous frame
-	geometry_rendering::GeometryPassParams firstPassParams;
-	firstPassParams.passIdx = geometry_rendering::EGeometryVisPass::First;
-	firstPassParams.visibleMeshletsOutput = visibleMeshletsOutput;
-
-	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, firstPassParams);
-
-	// 2nd pass: Renders geometry that was disoccluded in the current frame
-
-	geometry_rendering::GeometryPassParams secondPassParams;
-	secondPassParams.passIdx = geometry_rendering::EGeometryVisPass::Second;
-	secondPassParams.visibleMeshletsOutput = visibleMeshletsOutput;
-
-	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, secondPassParams);
-}
+	geometry_rendering::RenderGeometryPrologue(graphBuilder, visPassParams, passContext);
+	
+	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, passContext);}
 
 } // spt::rsc

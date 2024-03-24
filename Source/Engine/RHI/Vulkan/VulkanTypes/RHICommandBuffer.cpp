@@ -316,6 +316,17 @@ void RHICommandBuffer::DrawMeshTasks(const math::Vector3u& groupCount)
 	vkCmdDrawMeshTasksEXT(m_cmdBufferHandle, groupCount.x(), groupCount.y(), groupCount.y());
 }
 
+void RHICommandBuffer::DrawMeshTasksIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(drawsBuffer.IsValid());
+	SPT_CHECK(drawsOffset + drawsStride * drawsCount <= drawsBuffer.GetSize());
+
+	vkCmdDrawMeshTasksIndirectEXT(m_cmdBufferHandle, drawsBuffer.GetHandle(), drawsOffset, drawsCount, drawsStride);
+}
+
 void RHICommandBuffer::DrawMeshTasksIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
 	SPT_PROFILER_FUNCTION();

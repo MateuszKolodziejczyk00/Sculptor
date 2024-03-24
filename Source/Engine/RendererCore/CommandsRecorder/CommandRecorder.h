@@ -61,6 +61,8 @@ public:
 
 	void									DrawMeshTasks(const math::Vector3u& groupCount);
 
+	void									DrawMeshTasksIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount);
+
 	void									DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
 
 	void									BindGraphicsPipeline(PipelineStateID pipelineID);

@@ -107,6 +107,7 @@ private:
 struct GeometryBatch
 {
 	Uint32 batchElementsNum = 0u;
+	Uint32 batchMeshletsNum = 0u;
 	GeometryBatchShader shader;
 
 	lib::MTHandle<GeometryBatchDS> batchDS;

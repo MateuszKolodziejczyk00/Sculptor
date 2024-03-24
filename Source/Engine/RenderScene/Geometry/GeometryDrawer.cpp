@@ -36,6 +36,7 @@ void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, 
 
 	GeometryBatchBuildData& geometryBatchData = GetGeometryBatchBuildData(materialProxy);
 	geometryBatchData.batchElements.emplace_back(newBatchElement);
+	geometryBatchData.meshletsNum += geometry.meshletsNum;
 }
 
 void GeometryBatchesBuilder::FinalizeBatches()
@@ -123,6 +124,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(GeometryBatchShade
 
 	GeometryBatch newBatch;
 	newBatch.batchElementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
+	newBatch.batchMeshletsNum = batchBuildData.meshletsNum;
 	newBatch.shader           = shader;
 	newBatch.batchDS          = batchDS;
 

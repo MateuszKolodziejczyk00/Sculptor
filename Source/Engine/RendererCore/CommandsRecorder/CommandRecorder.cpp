@@ -157,6 +157,15 @@ void CommandRecorder::DrawMeshTasks(const math::Vector3u& groupCount)
 	GetCommandBufferRHI().DrawMeshTasks(groupCount);
 }
 
+void CommandRecorder::DrawMeshTasksIndirect(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
+{
+	SPT_PROFILER_FUNCTION();
+
+	m_pipelineState.FlushDirtyDSForGraphicsPipeline(GetCommandBufferRHI());
+
+	GetCommandBufferRHI().DrawMeshTasksIndirect(drawsBuffer->GetRHI(), drawsOffset, drawsStride, drawsCount);
+}
+
 void CommandRecorder::DrawMeshTasksIndirectCount(const lib::SharedRef<Buffer>& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const lib::SharedRef<Buffer>& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
 	SPT_PROFILER_FUNCTION();

@@ -59,6 +59,8 @@ public:
 
 	void	DrawMeshTasks(const math::Vector3u& groupCount);
 
+	void	DrawMeshTasksIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount);
+
 	void	DrawMeshTasksIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount);
 
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
