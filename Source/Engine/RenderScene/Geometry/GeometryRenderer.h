@@ -41,17 +41,21 @@ struct VisPassParams
 };
 
 
+struct GeometryPassResult
+{
+	rg::RGBufferViewHandle visibleMeshlets;
+};
+
+
 class GeometryRenderer
 {
 public:
 
 	GeometryRenderer();
 
-	void RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams);
+	GeometryPassResult RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams);
 
 private:
-
-	rdr::PipelineStateID CreatePipelineForBatch(const GeometryBatch& batch) const;
 
 	lib::SharedPtr<rdr::Buffer> m_visibleMeshlets;
 	lib::SharedPtr<rdr::Buffer> m_visibleMeshletsCount;

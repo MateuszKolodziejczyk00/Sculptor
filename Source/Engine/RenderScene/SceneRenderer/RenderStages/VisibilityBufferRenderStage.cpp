@@ -4,6 +4,7 @@
 #include "RenderScene.h"
 #include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "Utils/hiZRenderer.h"
+#include "Utils/VisibilityBuffer/MaterialDepthRenderer.h"
 
 namespace spt::rsc
 {
@@ -107,7 +108,15 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	visPassParams.hiZ               = hiZ;
 	visPassParams.visibilityTexture = visibilityTexture;
 
-	m_geometryVisRenderer.RenderVisibility(graphBuilder, visPassParams);
+	const GeometryPassResult geometryPassesResult = m_geometryVisRenderer.RenderVisibility(graphBuilder, visPassParams);
+
+	const rg::RGTextureViewHandle materialDepth = material_depth_renderer::CreateMaterialDepthTexture(graphBuilder, visibilityTexture->GetResolution2D());
+
+	material_depth_renderer::MaterialDepthParameters materialDepthParams;
+	materialDepthParams.visibilityTexture = visibilityTexture;
+	materialDepthParams.visibleMeshlets   = geometryPassesResult.visibleMeshlets;
+
+	material_depth_renderer::RenderMaterialDepth(graphBuilder, materialDepthParams, materialDepth);
 }
 
 } // spt::rsc

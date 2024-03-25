@@ -416,7 +416,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 		visibilityRTDef.textureView = visPassParams.visibilityTexture;
 		visibilityRTDef.loadOperation = renderTargetLoadOp;
 		visibilityRTDef.storeOperation = rhi::ERTStoreOperation::Store;
-		visibilityRTDef.clearColor = rhi::ClearColor(0, 0, 0, 0);
+		visibilityRTDef.clearColor = rhi::ClearColor(idxNone<Uint32>, 0u, 0u, 0u);
 		renderPassDef.AddColorRenderTarget(visibilityRTDef);
 	}
 	
@@ -605,7 +605,7 @@ GeometryRenderer::GeometryRenderer()
 	m_visibleMeshlets = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Visible Meshlets"), meshletsBufferDef, rhi::EMemoryUsage::GPUOnly);
 }
 
-void GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
+GeometryPassResult GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -613,13 +613,19 @@ void GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, co
 	SPT_CHECK(visPassParams.hiZ.IsValid());
 	SPT_CHECK(visPassParams.visibilityTexture.IsValid());
 
-	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->CreateFullView());
+	const rg::RGBufferViewHandle visibleMeshlets = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->CreateFullView());
 	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->CreateFullView());
 
 	geometry_rendering::GeometryPassContext passContext(visibleMeshlets, visibleMeshletsCount);
 
 	geometry_rendering::RenderGeometryPrologue(graphBuilder, visPassParams, passContext);
-	
-	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, passContext);}
+
+	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, passContext);
+
+	GeometryPassResult result;
+	result.visibleMeshlets = visibleMeshlets;
+
+	return result;
+}
 
 } // spt::rsc
