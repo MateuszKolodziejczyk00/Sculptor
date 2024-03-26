@@ -5,6 +5,8 @@
 namespace spt::rdr
 {
 
+SPT_DEFINE_LOG_CATEGORY(PipelinesLibrary, true)
+
 #if WITH_SHADERS_HOT_RELOAD
 #define READ_LOCK_IF_WITH_HOT_RELOAD const lib::ReadLockGuard hotReloadLockGuard(m_hotReloadLock);
 #else
@@ -353,6 +355,7 @@ void PipelinesLibrary::FlushPipelinesHotReloads()
 					lib::SharedPtr<ComputePipeline>& computePipeline = computePipelineIt->second;
 					computePipeline = CreateComputePipelineObject(RENDERER_RESOURCE_NAME(computePipeline->GetRHI().GetName()), shader);
 
+					SPT_LOG_INFO(PipelinesLibrary, "Hot reloaded compute pipeline: {}", computePipeline->GetRHI().GetName().GetData());
 				}
 				else
 				{
@@ -363,6 +366,8 @@ void PipelinesLibrary::FlushPipelinesHotReloads()
 
 						lib::SharedPtr<GraphicsPipeline>& graphicsPipeline = graphicsPipelineIt->second;
 						graphicsPipeline = CreateGfxPipelineObject(RENDERER_RESOURCE_NAME(graphicsPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
+					
+						SPT_LOG_INFO(PipelinesLibrary, "Hot reloaded graphics pipeline: {}", graphicsPipeline->GetRHI().GetName().GetData());
 					}
 					else
 					{
@@ -370,6 +375,8 @@ void PipelinesLibrary::FlushPipelinesHotReloads()
 
 						lib::SharedPtr<RayTracingPipeline>& rayTracingPipeline = m_cachedRayTracingPipelines[pipelineID];
 						rayTracingPipeline = CreateRayTracingPipelineObject(RENDERER_RESOURCE_NAME(rayTracingPipeline->GetRHI().GetName()), hotReloadData.shaders, hotReloadData.pipelineDef);
+					
+						SPT_LOG_INFO(PipelinesLibrary, "Hot reloaded ray tracing pipeline: {}", rayTracingPipeline->GetRHI().GetName().GetData());
 					}
 				}
 			}

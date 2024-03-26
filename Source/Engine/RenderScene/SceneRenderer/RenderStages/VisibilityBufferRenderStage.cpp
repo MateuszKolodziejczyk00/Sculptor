@@ -92,6 +92,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 {
 	SPT_PROFILER_FUNCTION();
 
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+
 	const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
 	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedGeometryPassData();
 	
@@ -110,13 +112,17 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	const GeometryPassResult geometryPassesResult = m_geometryVisRenderer.RenderVisibility(graphBuilder, visPassParams);
 
-	const rg::RGTextureViewHandle materialDepth = material_depth_renderer::CreateMaterialDepthTexture(graphBuilder, visibilityTexture->GetResolution2D());
+	const rg::RGTextureViewHandle materialDepth = material_depth_renderer::CreateMaterialDepthTexture(graphBuilder, resolution);
 
 	material_depth_renderer::MaterialDepthParameters materialDepthParams;
 	materialDepthParams.visibilityTexture = visibilityTexture;
 	materialDepthParams.visibleMeshlets   = geometryPassesResult.visibleMeshlets;
 
 	material_depth_renderer::RenderMaterialDepth(graphBuilder, materialDepthParams, materialDepth);
+
+	const rg::RGTextureViewHandle materialTiles = material_depth_tiles_renderer::CreateMaterialDepthTilesTexture(graphBuilder, resolution);
+
+	material_depth_tiles_renderer::RenderMaterialDepthTiles(graphBuilder, materialDepth, materialTiles);
 }
 
 } // spt::rsc

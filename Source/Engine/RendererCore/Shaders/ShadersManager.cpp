@@ -41,6 +41,8 @@ SPT_YAML_SERIALIZATION_TEMPLATES(spt::sc::CompilationEnvironmentDef)
 namespace spt::rdr
 {
 
+SPT_DEFINE_LOG_CATEGORY(ShadersManager, true)
+
 namespace priv
 {
 
@@ -132,6 +134,8 @@ void ShadersManager::HotReloadShaders()
 							const lib::SharedPtr<rdr::Shader> shader = CompileShader(params.shaderRelativePath, params.shaderStageDef, params.compilationSettings, sc::EShaderCompilationFlags::UpdateOnly, params.flags);
 							if (shader)
 							{
+								SPT_LOG_INFO(ShadersManager, "Hot reloaded shader: {} ({})", params.shaderRelativePath.data(), params.shaderStageDef.entryPoint.GetData());
+
 								{
 									const lib::WriteLockGuard lockGuard(m_lock);
 									m_cachedShaders[params.shaderHash] = shader;

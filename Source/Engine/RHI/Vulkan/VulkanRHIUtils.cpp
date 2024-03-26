@@ -209,46 +209,47 @@ VkImageLayout RHIToVulkan::GetImageLayout(rhi::ETextureLayout layout)
 
 VkFormat RHIToVulkan::GetVulkanFormat(rhi::EFragmentFormat format)
 {
-    switch (format)
-    {
+	switch (format)
+	{
 	case rhi::EFragmentFormat::None:					return VK_FORMAT_UNDEFINED;
 
-    case rhi::EFragmentFormat::R8_UN_Float:				return VK_FORMAT_R8_UNORM;
-    case rhi::EFragmentFormat::R8_U_Int:				return VK_FORMAT_R8_UINT;
-    case rhi::EFragmentFormat::R16_UN_Float:			return VK_FORMAT_R16_UNORM;
-    case rhi::EFragmentFormat::R16_S_Float:			    return VK_FORMAT_R16_SFLOAT;
-    case rhi::EFragmentFormat::R32_S_Float:				return VK_FORMAT_R32_SFLOAT;
+	case rhi::EFragmentFormat::R8_UN_Float:				return VK_FORMAT_R8_UNORM;
+	case rhi::EFragmentFormat::R8_U_Int:				return VK_FORMAT_R8_UINT;
+	case rhi::EFragmentFormat::R16_UN_Float:			return VK_FORMAT_R16_UNORM;
+	case rhi::EFragmentFormat::R16_S_Float:				return VK_FORMAT_R16_SFLOAT;
+	case rhi::EFragmentFormat::R32_S_Float:				return VK_FORMAT_R32_SFLOAT;
 	case rhi::EFragmentFormat::R32_U_Int:				return VK_FORMAT_R32_UINT;
-														
-    case rhi::EFragmentFormat::RG8_UN_Float:			return VK_FORMAT_R8G8_UNORM;
-    case rhi::EFragmentFormat::RG16_UN_Float:			return VK_FORMAT_R16G16_UNORM;
-    case rhi::EFragmentFormat::RG16_SN_Float:			return VK_FORMAT_R16G16_SNORM;
-    case rhi::EFragmentFormat::RG16_S_Float:			return VK_FORMAT_R16G16_SFLOAT;
-    case rhi::EFragmentFormat::RG32_S_Float:			return VK_FORMAT_R32G32_SFLOAT;
-														
-    case rhi::EFragmentFormat::RGB8_UN_Float:			return VK_FORMAT_R8G8B8_UNORM;
-    case rhi::EFragmentFormat::BGR8_UN_Float:			return VK_FORMAT_B8G8R8_UNORM;
-    case rhi::EFragmentFormat::RGB16_UN_Float:			return VK_FORMAT_R16G16B16_UNORM;
-    case rhi::EFragmentFormat::RGB32_S_Float:			return VK_FORMAT_R32G32B32_SFLOAT;
-    
+
+	case rhi::EFragmentFormat::RG8_UN_Float:			return VK_FORMAT_R8G8_UNORM;
+	case rhi::EFragmentFormat::RG16_U_Int:				return VK_FORMAT_R16G16_UINT;
+	case rhi::EFragmentFormat::RG16_UN_Float:			return VK_FORMAT_R16G16_UNORM;
+	case rhi::EFragmentFormat::RG16_SN_Float:			return VK_FORMAT_R16G16_SNORM;
+	case rhi::EFragmentFormat::RG16_S_Float:			return VK_FORMAT_R16G16_SFLOAT;
+	case rhi::EFragmentFormat::RG32_S_Float:			return VK_FORMAT_R32G32_SFLOAT;
+
+	case rhi::EFragmentFormat::RGB8_UN_Float:			return VK_FORMAT_R8G8B8_UNORM;
+	case rhi::EFragmentFormat::BGR8_UN_Float:			return VK_FORMAT_B8G8R8_UNORM;
+	case rhi::EFragmentFormat::RGB16_UN_Float:			return VK_FORMAT_R16G16B16_UNORM;
+	case rhi::EFragmentFormat::RGB32_S_Float:			return VK_FORMAT_R32G32B32_SFLOAT;
+
 	case rhi::EFragmentFormat::B10G11R11_U_Float:		return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
-    case rhi::EFragmentFormat::A2B10G10R10_UN_Float:	return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-													
-    case rhi::EFragmentFormat::RGBA8_UN_Float:			return VK_FORMAT_R8G8B8A8_UNORM;
-    case rhi::EFragmentFormat::BGRA8_UN_Float:			return VK_FORMAT_B8G8R8A8_UNORM;
-    case rhi::EFragmentFormat::RGBA16_UN_Float:			return VK_FORMAT_R16G16B16A16_UNORM;
-    case rhi::EFragmentFormat::RGBA16_S_Float:			return VK_FORMAT_R16G16B16A16_SFLOAT;
-                                               
-    case rhi::EFragmentFormat::RGBA32_S_Float:			return VK_FORMAT_R32G32B32A32_SFLOAT;
-    
+	case rhi::EFragmentFormat::A2B10G10R10_UN_Float:	return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+
+	case rhi::EFragmentFormat::RGBA8_UN_Float:			return VK_FORMAT_R8G8B8A8_UNORM;
+	case rhi::EFragmentFormat::BGRA8_UN_Float:			return VK_FORMAT_B8G8R8A8_UNORM;
+	case rhi::EFragmentFormat::RGBA16_UN_Float:			return VK_FORMAT_R16G16B16A16_UNORM;
+	case rhi::EFragmentFormat::RGBA16_S_Float:			return VK_FORMAT_R16G16B16A16_SFLOAT;
+
+	case rhi::EFragmentFormat::RGBA32_S_Float:			return VK_FORMAT_R32G32B32A32_SFLOAT;
+
 	case rhi::EFragmentFormat::D16_UN_Float:			return VK_FORMAT_D16_UNORM;
-    case rhi::EFragmentFormat::D32_S_Float:				return VK_FORMAT_D32_SFLOAT;
+	case rhi::EFragmentFormat::D32_S_Float:				return VK_FORMAT_D32_SFLOAT;
 
-    default:
+	default:
 
-        SPT_CHECK_NO_ENTRY();
-        return VK_FORMAT_UNDEFINED;
-    }
+		SPT_CHECK_NO_ENTRY();
+		return VK_FORMAT_UNDEFINED;
+	}
 }
 
 VkImageAspectFlags RHIToVulkan::GetAspectFlags(rhi::ETextureAspect flags)

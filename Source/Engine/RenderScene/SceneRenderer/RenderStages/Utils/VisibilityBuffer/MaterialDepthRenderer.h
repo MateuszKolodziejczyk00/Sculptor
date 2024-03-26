@@ -16,13 +16,9 @@ namespace spt::rsc
 
 class ViewRenderingSpec;
 
+
 namespace material_depth_renderer
 {
-
-namespace constants
-{
-static constexpr rhi::EFragmentFormat materialDepthFormat = rhi::EFragmentFormat::D16_UN_Float;
-} // constants
 
 rg::RGTextureViewHandle CreateMaterialDepthTexture(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& resolution);
 
@@ -35,5 +31,15 @@ struct MaterialDepthParameters
 void RenderMaterialDepth(rg::RenderGraphBuilder& graphBuilder, const MaterialDepthParameters& parameters, rg::RGTextureViewHandle materialDepth);
 
 } // material_depth_renderer
+
+
+namespace material_depth_tiles_renderer
+{
+
+rg::RGTextureViewHandle CreateMaterialDepthTilesTexture(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& resolution);
+
+void RenderMaterialDepthTiles(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle materialDepth, rg::RGTextureViewHandle materialDepthTiles);
+
+} // material_depth_tiles_renderer
 
 } // spt::rsc

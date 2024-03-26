@@ -71,6 +71,7 @@ enum class EFragmentFormat : Uint32
 	R32_U_Int,
 
 	RG8_UN_Float,
+	RG16_U_Int,
 	RG16_UN_Float,
 	RG16_SN_Float,
 	RG16_S_Float,
@@ -302,6 +303,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::R32_U_Int:
 	case EFragmentFormat::RG8_UN_Float:
 	case EFragmentFormat::RG16_UN_Float:
+	case EFragmentFormat::RG16_U_Int:
 	case EFragmentFormat::RG16_SN_Float:
 	case EFragmentFormat::RG16_S_Float:
 	case EFragmentFormat::RG32_S_Float:
@@ -332,6 +334,7 @@ inline Bool IsIntegerFormat(EFragmentFormat format)
 	{
 	case EFragmentFormat::R8_U_Int:
 	case EFragmentFormat::R32_U_Int:
+	case EFragmentFormat::RG16_U_Int:
 		return true;
 
 	default:

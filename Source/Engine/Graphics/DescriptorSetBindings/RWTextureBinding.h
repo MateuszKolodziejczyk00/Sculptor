@@ -52,8 +52,14 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		const lib::String formatString = lib::String("[[vk::image_format(\"") + GetTextureFormatString() + "\")]]\n";
-		return BuildBindingVariableCode(formatString + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
+		const lib::String format = GetTextureFormatString();
+		lib::String formatAnnotation;
+		if (!format.empty())
+		{
+			formatAnnotation = lib::String("[[vk::image_format(\"") + GetTextureFormatString() + "\")]]\n";
+		}
+
+		return BuildBindingVariableCode(formatAnnotation + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
 										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
 	}
 	
@@ -112,7 +118,6 @@ private:
 			return "r32ui";
 		}
 
-		SPT_CHECK_NO_ENTRY_MSG("Unspecified format for pixel type");
 		return lib::String();
 	}
 };
