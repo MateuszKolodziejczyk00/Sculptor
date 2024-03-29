@@ -31,9 +31,9 @@ void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInsta
 		const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
 
 		StaticMeshBatchElement batchElement;
-		batchElement.entityIdx			= entityIdx;
-		batchElement.submeshGlobalIdx	= globalSubmeshIdx;
-		batchElement.materialDataOffset	= static_cast<Uint32>(materialProxy.materialDataSuballocation.GetOffset());
+		batchElement.entityIdx        = entityIdx;
+		batchElement.submeshGlobalIdx = globalSubmeshIdx;
+		batchElement.materialDataID   = materialProxy.GetMaterialDataID();
 		batch.batchElements.emplace_back(batchElement);
 
 		batch.maxMeshletsNum	+= submeshDef.meshletsNum;

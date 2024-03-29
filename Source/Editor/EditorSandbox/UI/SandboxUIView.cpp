@@ -132,11 +132,14 @@ void SandboxUIView::DrawRendererSettings()
 		m_renderer.SetFarPlane(farPlane);
 	}
 
+	const ImGuiID id = ImGui::GetID("Capture Render Graph");
+	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
+	ui::UIUtils::SetShortcut(uiContext, id, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::C));
+
 	if (ImGui::Button("Capture Render Graph"))
 	{
 		m_renderer.CreateRenderGraphCapture();
 	}
-
 }
 
 void SandboxUIView::DrawJobSystemTestsUI()

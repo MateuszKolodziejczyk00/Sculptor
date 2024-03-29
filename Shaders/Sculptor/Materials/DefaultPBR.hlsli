@@ -1,8 +1,5 @@
 
 
-[[shader_struct(MaterialPBRData)]]
-
-
 CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParams, SPT_MATERIAL_DATA_TYPE materialData)
 {
     CustomOpacityOutput output;

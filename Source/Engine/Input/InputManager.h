@@ -15,6 +15,7 @@ public:
 	static InputManager& Get();
 
 	Bool IsKeyPressed(EKey key) const;
+	Bool WasKeyJustPressed(EKey key) const;
 
 	math::Vector2i GetMousePosition() const;
 	math::Vector2i GetMouseMoveDelta() const;
@@ -34,7 +35,13 @@ private:
 
 	static constexpr SizeType keysNum = static_cast<SizeType>(EKey::Num);
 
-	lib::StaticArray<Bool, keysNum> m_keysPressStatus;
+	struct KeyState
+	{
+		Bool m_isDown         = false;
+		Bool m_wasJustPressed = false;
+	};
+
+	lib::StaticArray<KeyState, keysNum> m_keysPressStatus;
 
 	math::Vector2i m_mouseCurrentPosition;
 	math::Vector2i m_mousePrevPosition;

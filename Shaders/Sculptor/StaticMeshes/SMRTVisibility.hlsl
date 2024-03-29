@@ -34,7 +34,7 @@ void RTVisibility_RT_AHS(inout RTVisibilityPayload payload, in BuiltInTriangleIn
         uv += u_geometryData.Load<float2>(submesh.uvsOffset + offset) * barycentricCoords[idx];
     }
 
-    const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(instanceData.materialDataOffset);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(instanceData.materialDataID);
 
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.clipSpace = -1.f;

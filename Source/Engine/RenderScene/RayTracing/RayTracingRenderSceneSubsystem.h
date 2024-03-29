@@ -22,8 +22,8 @@ namespace spt::rsc
 
 BEGIN_ALIGNED_SHADER_STRUCT(16, RTInstanceData)
 	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, materialDataOffset)
 	SHADER_STRUCT_FIELD(Uint32, geometryDataID)
+	SHADER_STRUCT_FIELD(Uint16, materialDataID)
 END_SHADER_STRUCT();
 
 

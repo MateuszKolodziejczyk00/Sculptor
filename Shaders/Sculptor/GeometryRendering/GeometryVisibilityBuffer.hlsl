@@ -279,10 +279,11 @@ void GeometryVisibility_TS(in TSInput input)
 		if(isMeshletVisible)
 		{
 			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityIdx          = batchElement.entityIdx;
-			visibleMeshletInfo.meshletGlobalIdx   = globalMeshletIdx;
-			visibleMeshletInfo.materialDataOffset = batchElement.materialDataOffset;
-			visibleMeshletInfo.materialBatchIdx   = batchElement.materialBatchIdx;
+			visibleMeshletInfo.entityIdx        = batchElement.entityIdx;
+			visibleMeshletInfo.meshletGlobalIdx = globalMeshletIdx;
+			visibleMeshletInfo.submeshGlobalIdx = batchElement.submeshGlobalIdx;
+			visibleMeshletInfo.materialDataID   = batchElement.materialDataID;
+			visibleMeshletInfo.materialBatchIdx = batchElement.materialBatchIdx;
 			AppendMeshletRenderCommand(visibleMeshletInfo, batchElementIdx, localMeshletIdx);
 		}
 	}
@@ -370,7 +371,7 @@ struct MSSharedData
 
 
 groupshared MSSharedData s_sharedData;
-	uint materialDataOffset : MATERIAL_DATA_OFFSET;
+	uint materialDataID : MATERIAL_DATA_ID;
 
 
 struct MeshletTriangle
@@ -439,7 +440,7 @@ struct PrimitiveOutput
 	//bool culled            : SV_CullPrimitive;
 
 #if MATERIAL_CAN_DISCARD
-	uint materialDataOffset : MATERIAL_DATA_OFFSET;
+	uint16_t materialDataID : MATERIAL_DATA_ID;
 #endif // MATERIAL_CAN_DISCARD
 };
 
@@ -541,7 +542,7 @@ void GeometryVisibility_MS(
 		PrimitiveOutput primitiveOutput;
 		primitiveOutput.packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
 #if MATERIAL_CAN_DISCARD
-		primitiveOutput.materialDataOffset = batchElement.materialDataOffset;
+		primitiveOutput.materialDataID = batchElement.materialDataID;
 #endif // MATERIAL_CAN_DISCARD
 		outPrims[meshletTriangleIdx] = primitiveOutput;
 	}
@@ -573,7 +574,7 @@ VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in Primitiv
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(primData.materialDataOffset);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(primData.materialDataID);
 
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
     if(opacityOutput.shouldDiscard)

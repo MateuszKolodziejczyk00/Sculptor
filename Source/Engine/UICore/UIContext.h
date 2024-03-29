@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 
 struct ImGuiContext;
+using ImGuiID = unsigned int;
 
 
 namespace spt::ui
@@ -20,24 +21,24 @@ public:
 		: m_context(context)
 	{ }
 
-	Bool					IsValid() const
+	Bool IsValid() const
 	{
 		return m_context != nullptr;
 	}
 
-	ImGuiContext*			GetHandle() const
+	ImGuiContext* GetHandle() const
 	{
 		return m_context;
 	}
 
-	void					Reset()
+	void Reset()
 	{
 		m_context = nullptr;
 	}
 
 private:
 
-	ImGuiContext*			m_context;
+	ImGuiContext* m_context;
 };
 
 } // spt::ui

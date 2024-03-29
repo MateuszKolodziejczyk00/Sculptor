@@ -24,10 +24,10 @@ void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, 
 	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialProxy.materialShadersHash);
 
 	GeometryBatchElement newBatchElement;
-	newBatchElement.entityIdx          = geometry.entityGPUIdx;
-	newBatchElement.submeshGlobalIdx   = geometry.submeshGlobalIdx;
-	newBatchElement.materialDataOffset = static_cast<Uint32>(materialProxy.materialDataSuballocation.GetOffset());
-	newBatchElement.materialBatchIdx   = materialBatchIdx;
+	newBatchElement.entityIdx        = geometry.entityGPUIdx;
+	newBatchElement.submeshGlobalIdx = geometry.submeshGlobalIdx;
+	newBatchElement.materialDataID   = materialProxy.GetMaterialDataID();
+	newBatchElement.materialBatchIdx = materialBatchIdx;
 
 	GeometryBatchBuildData& geometryBatchData = GetGeometryBatchBuildData(materialProxy);
 	geometryBatchData.batchElements.emplace_back(newBatchElement);

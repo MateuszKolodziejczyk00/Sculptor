@@ -118,10 +118,10 @@ class HiZCullingProcessor
 		processor.hiZTexture = inHiZ;
 		processor.hiZRes     = inRes;
 		processor.hiZSampler = inSampler;
-		processor.nearPlane  = GetNearPlane(u_sceneView);
-		processor.p01        = u_sceneView.projectionMatrix[0][1];
-		processor.p12        = u_sceneView.projectionMatrix[1][2];
-		processor.viewMatrix = u_sceneView.viewMatrix;
+		processor.nearPlane  = GetNearPlane(inView);
+		processor.p01        = inView.projectionMatrix[0][1];
+		processor.p12        = inView.projectionMatrix[1][2];
+		processor.viewMatrix = inView.viewMatrix;
 		return processor;
 	}
 

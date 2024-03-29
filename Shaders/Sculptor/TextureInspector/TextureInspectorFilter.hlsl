@@ -5,6 +5,7 @@
 
 #define VISUALIZATION_MODE_COLOR 0
 #define VISUALIZATION_MODE_ALPHA 1
+#define VISUALIZATION_MODE_HASH  2
 
 
 struct CS_INPUT
@@ -30,9 +31,16 @@ void TextureInspectorFilterCS(CS_INPUT input)
 		{
 			textureValue = u_intTexture.Load(pixel);
 
-			const uint intValue = textureValue.x;
-			const uint valueHash = HashPCG(intValue);
-			color.rgb = float3((valueHash >> 16) & 0xFF, (valueHash >> 8) & 0xFF, valueHash & 0xFF) / 255.f;
+			if (u_params.visualizationMode == VISUALIZATION_MODE_HASH)
+			{
+				const uint intValue = textureValue.x;
+				const uint valueHash = HashPCG(intValue);
+				color.rgb = float3((valueHash >> 16) & 0xFF, (valueHash >> 8) & 0xFF, valueHash & 0xFF) / 255.f;
+			}
+			else
+			{
+				color = textureValue;
+			}
 		}
 		else
 		{

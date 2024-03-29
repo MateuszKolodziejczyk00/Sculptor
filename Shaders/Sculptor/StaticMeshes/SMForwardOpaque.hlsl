@@ -42,7 +42,7 @@ struct VS_OUTPUT
     float4  clipSpace           : SV_POSITION;
 
     float3  normal              : VERTEX_NORMAL;
-    uint    materialDataOffset  : MATERIAL_DATA;
+    uint16_t    materialDataID  : MATERIAL_DATA;
     float3  tangent             : VERTEX_TANGENT;
     bool    hasTangent          : VERTEX_HAS_TANGENT;
     float3  bitangent           : VERTEX_BITANGENT;
@@ -129,7 +129,7 @@ VS_OUTPUT SMForwardOpaque_VS(VS_INPUT input)
         output.uv = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
     }
 
-    output.materialDataOffset = u_visibleBatchElements[batchElementIdx].materialDataOffset;
+    output.materialDataID = u_visibleBatchElements[batchElementIdx].materialDataID;
 
     output.worldLocation = vertexWorldLocation;
     output.pixelClipSpace = output.clipSpace;
@@ -163,7 +163,7 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     materialEvalParams.worldLocation = vertexInput.worldLocation;
     materialEvalParams.clipSpace = vertexInput.pixelClipSpace;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(vertexInput.materialDataOffset);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(vertexInput.materialDataID);
 
 #ifdef SPT_MATERIAL_CUSTOM_OPACITY
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);

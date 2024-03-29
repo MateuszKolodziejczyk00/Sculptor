@@ -37,7 +37,7 @@ struct VS_OUTPUT
     float4 clipSpace                : SV_POSITION;
 #if FRAGMENT_SHADER_NEEDS_MATERIAL
     float2 uv                       : UV;
-    uint materialDataOffset         : MATERIAL_DATA_OFFSET;
+    uint16_t materialDataID         : MATERIAL_DATA_ID;
 #endif // FRAGMENT_SHADER_NEEDS_MATERIAL
 };
 
@@ -62,7 +62,7 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
 
 #if FRAGMENT_SHADER_NEEDS_MATERIAL
-    output.materialDataOffset = u_batchElements[drawCall.batchElementIdx].materialDataOffset;
+    output.materialDataID = u_batchElements[drawCall.batchElementIdx].materialDataID;
 
     const float2 vertexUV = u_geometryData.Load<float2>(submesh.uvsOffset + vertexIdx * 8);
     output.uv = vertexUV;
@@ -86,7 +86,7 @@ DP_PS_OUTPUT SMDepthOnly_FS(VS_OUTPUT vertexInput)
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = u_materialsData.Load<SPT_MATERIAL_DATA_TYPE>(vertexInput.materialDataOffset);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(vertexInput.materialDataID);
 
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
     if(opacityOutput.shouldDiscard)

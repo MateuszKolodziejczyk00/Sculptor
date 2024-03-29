@@ -1,5 +1,8 @@
 #include "FilterText.h"
 #include "Utility/String/StringUtils.h"
+#include "UIElements/ApplicationUI.h"
+#include "InputManager.h"
+#include "UIUtils.h"
 
 
 namespace spt::scui
@@ -13,6 +16,10 @@ FilterText::FilterText(lib::HashedString name)
 
 void FilterText::Draw()
 {
+	const ImGuiID id = ImGui::GetID(m_name.GetData());
+	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
+	ui::UIUtils::SetShortcut(uiContext, id, ui::ShortcutBinding::Create(inp::EKey::LCtrl, inp::EKey::F));
+
 	ImGui::Columns(2);
 	if (ImGui::InputText(m_name.GetData(), m_text.data(), m_text.size()))
 	{

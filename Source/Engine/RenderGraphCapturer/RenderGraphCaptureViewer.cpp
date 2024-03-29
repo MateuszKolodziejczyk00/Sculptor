@@ -176,10 +176,7 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_nodesListPanelName.GetData());
 
-	if (ImGui::CollapsingHeader("Filter"))
-	{
-		m_nodesListFilter.Draw();
-	}
+	m_nodesListFilter.Draw();
 
 	ImGui::Dummy(ImVec2(0.f, 30.f));
 

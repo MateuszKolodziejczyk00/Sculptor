@@ -2,6 +2,7 @@
 #include "ResourcesManager.h"
 #include "Transfers/UploadUtils.h"
 #include "Renderer.h"
+#include "MaterialTypes.h"
 
 namespace spt::mat
 {
@@ -23,7 +24,7 @@ rhi::RHIVirtualAllocation MaterialsUnifiedData::CreateMaterialDataSuballocation(
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rhi::VirtualAllocationDefinition virtualAllocationDef(dataSize, 4, rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::VirtualAllocationDefinition virtualAllocationDef(dataSize, constants::materialDataAlignment, rhi::EVirtualAllocationFlags::PreferMinMemory);
 
 	return m_materialsUnifiedBuffer->GetRHI().CreateSuballocation(virtualAllocationDef);
 }

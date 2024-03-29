@@ -184,8 +184,13 @@ void TextureInspector::DrawTextureViewSettingPanel()
 
 	ImGui::Text("View Details");
 
-	const char* visualizationModes[] = { "Color", "Alpha" };
-	ImGui::Combo("Visualization Mode", reinterpret_cast<int*>(&m_viewParameters.visualizationMode), visualizationModes, SPT_ARRAY_SIZE(visualizationModes));
+	const char* visualizationModes[] = { "Color", "Alpha", "Hash" };
+
+	const int visualizationModesCount = m_viewParameters.isIntTexture
+		                              ? static_cast<int>(ETextureInspectorVisualizationMode::IntTextureModesCount)
+		                              : static_cast<int>(ETextureInspectorVisualizationMode::FloatTextureModesCount);
+
+	ImGui::Combo("Visualization Mode", reinterpret_cast<int*>(&m_viewParameters.visualizationMode), visualizationModes, visualizationModesCount);
 
 	const ETextureInspectorVisualizationMode visualizationMode = static_cast<ETextureInspectorVisualizationMode>(m_viewParameters.visualizationMode);
 	if (visualizationMode == ETextureInspectorVisualizationMode::Color)

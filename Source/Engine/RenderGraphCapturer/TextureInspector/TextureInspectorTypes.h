@@ -10,7 +10,12 @@ namespace spt::rg::capture
 enum class ETextureInspectorVisualizationMode
 {
 	Color,
-	Alpha
+	Alpha,
+	
+	FloatTextureModesCount,
+	Hash = FloatTextureModesCount,
+
+	IntTextureModesCount,
 };
 
 

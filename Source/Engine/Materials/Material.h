@@ -5,6 +5,7 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "ECSRegistry.h"
 #include "Utility/NamedType.h"
+#include "MaterialTypes.h"
 
 
 namespace spt::mat
@@ -113,6 +114,15 @@ struct MaterialProxyComponent
 	Bool SupportsRayTracing() const
 	{
 		return true;
+	}
+
+	Uint16 GetMaterialDataID() const
+	{
+		const Uint64 materialDataOffset = materialDataSuballocation.GetOffset();
+		SPT_CHECK((materialDataOffset & constants::materialDataAlignmentMask) == 0u);
+		const Uint16 materialDataID = static_cast<Uint16>(materialDataOffset >> constants::materialDataAlignmentBits);
+		SPT_CHECK((Uint64(materialDataID) << constants::materialDataAlignmentBits) == materialDataOffset);
+		return materialDataID;
 	}
 
 	rhi::RHIVirtualAllocation materialDataSuballocation;
