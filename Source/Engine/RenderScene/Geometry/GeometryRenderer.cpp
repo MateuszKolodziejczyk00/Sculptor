@@ -246,6 +246,7 @@ static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const G
 
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Occluded Batch Elements Count"), batchGPUData.occludedBatchElementsCount, 0u);
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Occluded Meshlets Count"), batchGPUData.occludedMeshletsCount, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Occluded Meshlets Command"), batchGPUData.dispatchOccludedMeshletsCommand, 0u);
 
 	return batchGPUData;
 }

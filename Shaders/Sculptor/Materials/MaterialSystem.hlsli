@@ -1,3 +1,5 @@
+#ifndef MATERIAL_SYSTEM_HLSLI
+#define MATERIAL_SYSTEM_HLSLI
 
 
 struct MaterialEvaluationParameters
@@ -8,7 +10,11 @@ struct MaterialEvaluationParameters
 	float3  bitangent;
 	bool    hasTangent;
 
+#ifdef SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES
+	TextureCoord uv;
+#else
 	float2  uv;
+#endif // SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES
 
 	float3  worldLocation;
 	
@@ -48,15 +54,19 @@ struct MaterialEvaluationOutput
  */
 
 
-#ifdef SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL
+#if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
 
 #define SPT_MATERIAL_SAMPLE(sampler, uv) SampleLevel(sampler, uv, SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
+
+#elif defined(SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES)
+
+#define SPT_MATERIAL_SAMPLE(sampler, coord) SampleGrad(sampler, coord.uv, coord.duv_dx, coord.duv_dy)
 
 #else
 
 #define SPT_MATERIAL_SAMPLE(sampler, uv) Sample(sampler, uv)
 
-#endif // SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL
+#endif
 
 
 [[shader_struct(SPT_MATERIAL_DATA_TYPE)]]
@@ -79,3 +89,5 @@ SPT_MATERIAL_DATA_TYPE LoadMaterialData(in uint16_t materialDataID)
 }
 
 #endif // DS_MaterialsDS
+
+#endif // MATERIAL_SYSTEM_HLSLI

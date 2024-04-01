@@ -108,6 +108,59 @@ private:
 };
 
 
+
+// GBuffer layout:
+// 0 - 4 bytes [baseColor - 24bits] [metallic - 8bits]
+// 1 - 4 bytes [tangent frame - 32bits]
+// 2 - 2 bytes [roughness - 16 its]
+// 3 - 4 bytes [emissive - 32bits]
+// 4 - 1 byte  [flags - 8bits] - 0: tangent frame handedness, other bits are reserved
+class GBuffer
+{
+public:
+
+	enum class Texture
+	{
+		BaseColorMetallic,
+		TangentFrame,
+		Roughness,
+		Emissive,
+		Flags,
+		NUM
+	};
+
+	static constexpr Uint32 texturesNum = static_cast<Uint32>(Texture::NUM);
+
+	static constexpr rhi::EFragmentFormat formats[texturesNum] =
+	{
+		rhi::EFragmentFormat::RGBA8_UN_Float,
+		rhi::EFragmentFormat::RGB10A2_UN_Float,
+		rhi::EFragmentFormat::R16_UN_Float,
+		rhi::EFragmentFormat::B10G11R11_U_Float,
+		rhi::EFragmentFormat::R8_U_Int
+	};
+
+	GBuffer();
+
+	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
+
+	rg::RGTextureViewHandle operator[](Texture textureType) const
+	{
+		return m_textures[static_cast<SizeType>(textureType)];
+	}
+
+	const auto cbegin() const { return std::cbegin(m_textures); }
+	const auto begin() const  { return std::begin(m_textures); }
+
+	const auto cend() const { return std::cend(m_textures); }
+	const auto end() const  { return std::end(m_textures); }
+
+private:
+
+	rg::RGTextureViewHandle m_textures[texturesNum];
+};
+
+
 struct SceneRendererStatics
 {
 	static constexpr rhi::EFragmentFormat hdrFormat = rhi::EFragmentFormat::RGBA16_S_Float;

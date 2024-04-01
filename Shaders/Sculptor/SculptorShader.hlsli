@@ -40,6 +40,15 @@
 
 #endif // defined(SPT_META_PARAM_DEBUG_FEATURES)
 
+
+struct TextureCoord
+{
+	float2 uv;
+	float2 duv_dx;
+	float2 duv_dy;
+};
+
+
 template<typename TType>
 TType Pow2(TType val)
 {

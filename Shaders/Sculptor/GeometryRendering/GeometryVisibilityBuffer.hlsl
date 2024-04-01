@@ -1,5 +1,5 @@
 #include "SculptorShader.hlsli"
-#include "GeometryRendering/GeometryCommon.hlsli"
+#include "GeometryRendering/GeometryDefines.hlsli"
 
 [[descriptor_set(StaticMeshUnifiedDataDS, 0)]]
 [[descriptor_set(RenderSceneDS, 1)]]
@@ -24,6 +24,7 @@
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
+#include "GeometryRendering/GeometryCommon.hlsli"
 
 
 #if SPT_MATERIAL_ENABLED && SPT_MATERIAL_CUSTOM_OPACITY
@@ -291,44 +292,6 @@ void GeometryVisibility_TS(in TSInput input)
 	DispatchMesh(s_payload.numCommands, 1, 1, s_payload);
 }
 
-
-uint3 LoadTriangleVertexIndices(uint meshletPrimitivesOffset, uint meshletTriangleIdx)
-{
-	const uint triangleStride = 3;
-	const uint primitiveOffset = meshletPrimitivesOffset + meshletTriangleIdx * triangleStride;
-
-	// Load multiple of 4
-	const uint primitiveOffsetToLoad = primitiveOffset & 0xfffffffc;
-
-	// Load uint2 to be sure that we will have all 3 indices
-	const uint2 meshletPrimitivesIndices = u_geometryData.Load<uint2>(primitiveOffsetToLoad);
-
-	uint primitiveIndicesByteOffset = primitiveOffset - primitiveOffsetToLoad;
-
-	uint3 traingleIndices;
-
-	for (int idx = 0; idx < 3; ++idx, ++primitiveIndicesByteOffset)
-	{
-		uint indices4;
-		uint offset;
-		
-		if(primitiveIndicesByteOffset >= 4)
-		{
-			indices4 = meshletPrimitivesIndices[1];
-			offset = primitiveIndicesByteOffset - 4;
-		}
-		else
-		{
-			indices4 = meshletPrimitivesIndices[0];
-			offset = primitiveIndicesByteOffset;
-		}
-
-		traingleIndices[idx] = (indices4 >> (offset * 8)) & 0x000000ff;
-	}
-
-	return traingleIndices;
-}
-
 // This is a bunch of outparams for the Mesh shader. At least SV_Position must be present.
 struct OutputVertex
 {
@@ -339,20 +302,22 @@ struct OutputVertex
 };
 
 
-uint PackTriangleVertices(uint3 vertices)
+uint PackTriangleVertices(in uint3 vertices, in uint triangleIdx)
 {
-	const uint maxIndex = 0x000003ff;
-	SPT_CHECK_MSG(all(vertices < maxIndex), "PackTriangleIndices: Invalid triangle vertices - {}", vertices);
-	return (vertices.x << 20) | (vertices.y << 10) | vertices.z;
+	const uint maxIndex = 0x000003f;
+	SPT_CHECK_MSG(all(vertices <= maxIndex), "PackTriangleIndices: Invalid triangle vertices - {}", vertices);
+	SPT_CHECK_MSG(triangleIdx < maxIndex, "PackTriangleIndices: Invalid triangle idx - {}", triangleIdx)
+	return (triangleIdx << 18) | (vertices.x << 12) | (vertices.y << 6) | vertices.z;
 }
 
 
-uint3 UnpackTriangleVertices(uint packedVertices)
+uint3 UnpackTriangleVertices(in uint packedVertices, out uint triangleIdx)
 {
+	triangleIdx = (packedVertices >> 18) & 0x000003f;
 	uint3 vertices;
-	vertices.x = (packedVertices >> 20) & 0x000003ff;
-	vertices.y = (packedVertices >> 10) & 0x000003ff;
-	vertices.z = packedVertices & 0x000003ff;
+	vertices.x = (packedVertices >> 12) & 0x000003f;
+	vertices.y = (packedVertices >> 6) & 0x000003f;
+	vertices.z = packedVertices & 0x000003f;
 	return vertices;
 }
 
@@ -528,23 +493,24 @@ void GeometryVisibility_MS(
 			outputTriangleIdx = WaveReadLaneFirst(outputTriangleIdx) + GetCompactedIndex(triangleVisibleBallot, WaveGetLaneIndex());
 
 			SPT_CHECK_MSG(SPT_SINGLE_ARG(all(triangleVertices < meshlet.vertexCount)), L"Invalid triangle vertices - {}", triangleVertices);
-			s_sharedData.triangles[outputTriangleIdx] = PackTriangleVertices(triangleVertices);
+			s_sharedData.triangles[outputTriangleIdx] = PackTriangleVertices(triangleVertices, meshletTriangleIdx);
 		}
 	}
 
 	SetMeshOutputCounts(meshlet.vertexCount, s_sharedData.trianglesNum);
 
 	// Write triangles
-	for (uint meshletTriangleIdx = localID.x; meshletTriangleIdx < s_sharedData.trianglesNum; meshletTriangleIdx += MS_GROUP_SIZE)
+	for (uint outputTriangleIdx = localID.x; outputTriangleIdx < s_sharedData.trianglesNum; outputTriangleIdx += MS_GROUP_SIZE)
 	{
-		outTriangles[meshletTriangleIdx] = UnpackTriangleVertices(s_sharedData.triangles[meshletTriangleIdx]);
+		uint meshletTriangleIdx = 0;
+		outTriangles[outputTriangleIdx] = UnpackTriangleVertices(s_sharedData.triangles[outputTriangleIdx], OUT meshletTriangleIdx);
 
 		PrimitiveOutput primitiveOutput;
 		primitiveOutput.packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
 #if MATERIAL_CAN_DISCARD
 		primitiveOutput.materialDataID = batchElement.materialDataID;
 #endif // MATERIAL_CAN_DISCARD
-		outPrims[meshletTriangleIdx] = primitiveOutput;
+		outPrims[outputTriangleIdx] = primitiveOutput;
 	}
 
 	// Write vertices

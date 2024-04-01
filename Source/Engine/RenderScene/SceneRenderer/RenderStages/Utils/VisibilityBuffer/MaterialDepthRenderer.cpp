@@ -126,6 +126,11 @@ static rdr::PipelineStateID CompileMaterialDepthTilesPipeline()
 }
 
 
+Uint32 GetMaterialDepthTileSize()
+{
+	return constants::materialDepthTileSize;
+}
+
 rg::RGTextureViewHandle CreateMaterialDepthTilesTexture(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& resolution)
 {
 	const math::Vector2u tileSize = math::Vector2u::Constant(constants::materialDepthTileSize);

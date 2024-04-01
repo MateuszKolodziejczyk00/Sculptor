@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "GeometryTypes.h"
 #include "RGResources/RGResourceHandles.h"

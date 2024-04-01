@@ -92,6 +92,7 @@ static rhi::EFragmentFormat GetRHIFormat(VkFormat format)
 	case VK_FORMAT_R16G16B16_UNORM:                 return rhi::EFragmentFormat::RGB16_UN_Float;
 	case VK_FORMAT_R32G32B32_SFLOAT:                return rhi::EFragmentFormat::RGB32_S_Float;
 
+	case VK_FORMAT_A2R10G10B10_UNORM_PACK32:        return rhi::EFragmentFormat::RGB10A2_UN_Float;
 	case VK_FORMAT_B10G11R11_UFLOAT_PACK32:         return rhi::EFragmentFormat::B10G11R11_U_Float;
 	case VK_FORMAT_A2B10G10R10_UNORM_PACK32:        return rhi::EFragmentFormat::A2B10G10R10_UN_Float;
 

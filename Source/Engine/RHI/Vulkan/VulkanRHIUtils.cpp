@@ -232,6 +232,7 @@ VkFormat RHIToVulkan::GetVulkanFormat(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::RGB16_UN_Float:			return VK_FORMAT_R16G16B16_UNORM;
 	case rhi::EFragmentFormat::RGB32_S_Float:			return VK_FORMAT_R32G32B32_SFLOAT;
 
+	case rhi::EFragmentFormat::RGB10A2_UN_Float:		return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 	case rhi::EFragmentFormat::B10G11R11_U_Float:		return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 	case rhi::EFragmentFormat::A2B10G10R10_UN_Float:	return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 

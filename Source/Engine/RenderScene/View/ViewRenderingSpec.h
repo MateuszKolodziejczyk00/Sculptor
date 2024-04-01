@@ -382,6 +382,8 @@ struct ShadingViewContext
 	
 	rg::RGTextureViewHandle skyViewLUT;
 
+	GBuffer gBuffer;
+
 	rg::RGTextureViewHandle luminance;
 	rg::RGTextureViewHandle normals;
 	rg::RGTextureViewHandle specularAndRoughness;

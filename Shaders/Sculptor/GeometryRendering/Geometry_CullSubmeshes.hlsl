@@ -1,5 +1,5 @@
 #include "SculptorShader.hlsli"
-#include "GeometryRendering/GeometryCommon.hlsli"
+#include "GeometryRendering/GeometryDefines.hlsli"
 
 #if GEOMETRY_PASS_IDX != SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS && GEOMETRY_PASS_IDX != SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 	#error "Invalid geometry pass index"
@@ -21,6 +21,7 @@
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
+#include "GeometryRendering/GeometryCommon.hlsli"
 
 
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS

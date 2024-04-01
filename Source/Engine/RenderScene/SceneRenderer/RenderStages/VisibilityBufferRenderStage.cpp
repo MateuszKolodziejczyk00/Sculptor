@@ -5,6 +5,7 @@
 #include "StaticMeshes/StaticMeshRenderSceneSubsystem.h"
 #include "Utils/hiZRenderer.h"
 #include "Utils/VisibilityBuffer/MaterialDepthRenderer.h"
+#include "Geometry/MaterialsRenderer.h"
 
 namespace spt::rsc
 {
@@ -93,6 +94,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+	
+	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 
 	const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
 	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedGeometryPassData();
@@ -123,6 +126,18 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	const rg::RGTextureViewHandle materialTiles = material_depth_tiles_renderer::CreateMaterialDepthTilesTexture(graphBuilder, resolution);
 
 	material_depth_tiles_renderer::RenderMaterialDepthTiles(graphBuilder, materialDepth, materialTiles);
+
+	shadingContext.gBuffer.Create(graphBuilder, resolution);
+
+	materials_renderer::MaterialsPassParams materialsPassParams(viewSpec, cachedGeometryPassData);
+	materialsPassParams.materialDepthTileSize    = material_depth_tiles_renderer::GetMaterialDepthTileSize();
+	materialsPassParams.materialDepthTexture     = materialDepth;
+	materialsPassParams.materialDepthTileTexture = materialTiles;
+	materialsPassParams.depthTexture             = depth;
+	materialsPassParams.visibleMeshletsBuffer    = geometryPassesResult.visibleMeshlets;
+	materialsPassParams.visibilityTexture        = visibilityTexture;
+
+	materials_renderer::ExecuteMaterialsPass(graphBuilder, materialsPassParams);
 }
 
 } // spt::rsc

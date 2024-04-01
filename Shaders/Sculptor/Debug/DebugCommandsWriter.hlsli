@@ -180,6 +180,16 @@ class DebugCommandsWriter
 		WriteSingleWithCode(val4);
 	}
 
+	template<typename TType1, typename TType2, typename TType3, typename TType4, typename TType5>
+	void WriteWithCodes(TType1 val1, TType2 val2, TType3 val3, TType4 val4, TType5 val5)
+	{
+		WriteSingleWithCode(val1);
+		WriteSingleWithCode(val2);
+		WriteSingleWithCode(val3);
+		WriteSingleWithCode(val4);
+		WriteSingleWithCode(val5);
+	}
+
 	void Flush()
 	{
 		if(m_hasValidSequence)

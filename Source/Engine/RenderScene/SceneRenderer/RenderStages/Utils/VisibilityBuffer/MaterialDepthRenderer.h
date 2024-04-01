@@ -36,6 +36,8 @@ void RenderMaterialDepth(rg::RenderGraphBuilder& graphBuilder, const MaterialDep
 namespace material_depth_tiles_renderer
 {
 
+Uint32 GetMaterialDepthTileSize();
+
 rg::RGTextureViewHandle CreateMaterialDepthTilesTexture(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& resolution);
 
 void RenderMaterialDepthTiles(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle materialDepth, rg::RGTextureViewHandle materialDepthTiles);
