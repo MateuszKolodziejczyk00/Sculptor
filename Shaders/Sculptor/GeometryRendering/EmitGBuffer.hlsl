@@ -34,8 +34,6 @@
 #define MAX_NUM_PRIMS 64
 #define MAX_NUM_VERTS 45
 
-[[meta(debug_features)]]
-
 
 struct OutputVertex
 {

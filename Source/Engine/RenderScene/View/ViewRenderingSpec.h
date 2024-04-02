@@ -20,6 +20,8 @@ class RenderScene;
 class RenderView;
 class ViewRenderingSpec;
 class DepthCullingDS;
+class ViewShadingInputDS;
+class ShadowMapsDS;
 
 
 class ViewRenderingDataElement
@@ -383,6 +385,9 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle skyViewLUT;
 
 	GBuffer gBuffer;
+
+	lib::MTHandle<ViewShadingInputDS> shadingInputDS;
+	lib::MTHandle<ShadowMapsDS>       shadowMapsDS;
 
 	rg::RGTextureViewHandle luminance;
 	rg::RGTextureViewHandle normals;

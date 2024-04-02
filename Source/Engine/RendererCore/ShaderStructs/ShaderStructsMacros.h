@@ -5,6 +5,7 @@
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "MathUtils.h"
 
+
 namespace spt::rdr
 {
 

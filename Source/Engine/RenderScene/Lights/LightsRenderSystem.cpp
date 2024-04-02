@@ -465,6 +465,8 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
 	SPT_PROFILER_FUNCTION();
+
+	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 	
 	const LightsRenderingDataPerView lightsRenderingData = utils::CreateLightsRenderingData(graphBuilder, renderScene, viewSpec);
 
@@ -488,8 +490,6 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 		}
 
 		RenderView& renderView = viewSpec.GetRenderView();
-
-		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 		const math::Vector3u dispatchZClustersGroupsNum = math::Vector3u(lightsRenderingData.zClustersNum, 1, 1);
 		graphBuilder.Dispatch(RG_DEBUG_NAME("BuildLightsZClusters"),
@@ -530,6 +530,9 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(LightIndirectDrawCommand), drawCountBufferView, 0, maxLightDrawsCount);
 								});
 	}
+
+	viewContext.shadingInputDS = lightsRenderingData.shadingInputDS;
+	viewContext.shadowMapsDS   = m_shadowMapsDS;
 
 	ViewSpecShadingParameters shadingParams;
 	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;

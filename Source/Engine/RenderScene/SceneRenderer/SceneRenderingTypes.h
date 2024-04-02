@@ -29,12 +29,13 @@ enum class ERenderStage : Flags32
 	AmbientOcclusion				= BIT(7),
 	DirectionalLightsShadowMasks	= BIT(8),
 	ForwardOpaque					= BIT(9),
-	SpecularReflections				= BIT(10),
-	ApplyAtmosphere					= BIT(11),
-	VolumetricFog					= BIT(12),
-	PostProcessPreAA				= BIT(13),
-	AntiAliasing					= BIT(14),
-	HDRResolve						= BIT(15),
+	DeferredShading					= BIT(10),
+	SpecularReflections				= BIT(11),
+	ApplyAtmosphere					= BIT(12),
+	VolumetricFog					= BIT(13),
+	PostProcessPreAA				= BIT(14),
+	AntiAliasing					= BIT(15),
+	HDRResolve						= BIT(16),
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
@@ -147,6 +148,11 @@ public:
 	rg::RGTextureViewHandle operator[](Texture textureType) const
 	{
 		return m_textures[static_cast<SizeType>(textureType)];
+	}
+
+	rg::RGTextureViewHandle operator[](SizeType idx) const
+	{
+		return m_textures[idx];
 	}
 
 	const auto cbegin() const { return std::cbegin(m_textures); }

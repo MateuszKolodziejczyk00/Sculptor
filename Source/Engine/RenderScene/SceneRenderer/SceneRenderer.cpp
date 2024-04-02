@@ -5,6 +5,7 @@
 #include "Transfers/UploadUtils.h"
 #include "RenderStages/GlobalIlluminationRenderStage.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
+#include "SceneRenderer/RenderStages/DeferredShadingRenderStage.h"
 #include "RenderStages/VisibilityBufferRenderStage.h"
 #include "RenderStages/SpecularReflectionsRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
@@ -118,6 +119,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<DirectionalLightShadowMasksRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<ForwardOpaqueRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
+	
+	renderer_utils::ProcessRenderStage<DeferredShadingRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<SpecularReflectionsRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
