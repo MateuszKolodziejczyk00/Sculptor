@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderGraphCaptuererMacros.h"
+#include "RenderGraphCapturerMacros.h"
 #include "UILayers/UIView.h"
 #include "UITypes.h"
 #include "ImGui/DockStack.h"
@@ -30,7 +30,7 @@ protected:
 
 public:
 
-	RGNodeCaptureViewer(const scui::ViewDefinition& definition, const RGNodeCapture& node);
+	RGNodeCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGNodeCapture& node);
 
 	// Begin UIView overrides
 	virtual void             BuildDefaultLayout(ImGuiID dockspaceID) override;
@@ -53,6 +53,8 @@ private:
 	ui::DockStack m_textureInspectorsStack;
 
 	const RGNodeCapture& m_capturedNode;
+
+	lib::SharedRef<RGCapture> m_capture;
 };
 
 

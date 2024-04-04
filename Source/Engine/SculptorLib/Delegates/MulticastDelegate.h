@@ -31,6 +31,11 @@ public:
 		return id != -1;
 	}
 
+	void Reset()
+	{
+		id = -1;
+	}
+
 	Bool operator==(const DelegateHandle& rhs) const
 	{
 		return id == rhs.id;

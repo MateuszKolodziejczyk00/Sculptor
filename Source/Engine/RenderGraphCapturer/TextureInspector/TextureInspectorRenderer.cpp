@@ -33,9 +33,8 @@ static rdr::PipelineStateID CompileTextureViewerFilterPipeline()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ViewedTextureRenderer =========================================================================
 
-TextureInspectorRenderer::TextureInspectorRenderer(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<rdr::TextureView>& outputTexture)
-	: m_inputTexture(inputTexture)
-	, m_outputTexture(outputTexture)
+TextureInspectorRenderer::TextureInspectorRenderer(const lib::SharedRef<rdr::TextureView>& outputTexture)
+	: m_outputTexture(outputTexture)
 { }
 
 void TextureInspectorRenderer::SetParameters(const TextureInspectorFilterParams& parameters)
@@ -43,7 +42,7 @@ void TextureInspectorRenderer::SetParameters(const TextureInspectorFilterParams&
 	m_parameters = parameters;
 }
 
-void TextureInspectorRenderer::Render(const lib::SharedRef<TextureInspectorReadback>& readback)
+void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<TextureInspectorReadback>& readback)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -55,7 +54,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<TextureInspectorReadb
 																						   rhi::BufferDefinition(sizeof(TextureInspectorReadbackData), rhi::EBufferUsage::Storage),
 																						   rhi::EMemoryUsage::GPUToCpu);
 
-	const rg::RGTextureViewHandle inputTextureView  = graphBuilder.AcquireExternalTextureView(m_inputTexture.ToSharedPtr());
+	const rg::RGTextureViewHandle inputTextureView  = graphBuilder.AcquireExternalTextureView(inputTexture.ToSharedPtr());
 	const rg::RGTextureViewHandle outputTextureView = graphBuilder.AcquireExternalTextureView(m_outputTexture.ToSharedPtr());
 
 	const Bool isIntTexture = m_parameters.isIntTexture;

@@ -11,22 +11,27 @@
 #include "Types/UIBackend.h"
 #include "UIUtils.h"
 #include "InputManager.h"
+#include "TextureInspector/TextureLiveCapturer.h"
+#include "RenderGraphCaptureSourceContext.h"
+#include "RenderGraphBuilder.h"
 
-#pragma optimize("", off)
+
 namespace spt::rg::capture
 {
 
-TextureInspector::TextureInspector(const scui::ViewDefinition& definition, const RGTextureCapture& textureCapture)
+TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGTextureCapture& textureCapture)
 	: Super(definition)
 	, m_textureDetailsPanelName(CreateUniqueName("TextureDetails"))
 	, m_textureViewPanelName(CreateUniqueName("TextureView"))
 	, m_textureViewSettingsPanelName(CreateUniqueName("TextureViewSettings"))
-	, m_capturedTexture(textureCapture.textureView)
 	, m_textureCapture(textureCapture)
+	, m_capture(std::move(capture))
+	, m_capturedTexture(textureCapture.textureView)
 	, m_readback(lib::MakeShared<TextureInspectorReadback>())
 	, m_viewportMin(math::Vector2f::Zero())
 	, m_zoom(1.0f)
 	, m_zoomSpeed(0.075f)
+	, m_liveCaptureEnabled(false)
 {
 	m_viewParameters.minValue        = 0.0f;
 	m_viewParameters.maxValue        = 1.0f;
@@ -36,6 +41,14 @@ TextureInspector::TextureInspector(const scui::ViewDefinition& definition, const
 	m_viewParameters.isIntTexture    = rhi::IsIntegerFormat(m_capturedTexture->GetRHI().GetFormat());
 
 	InitializeTextureView(textureCapture);
+}
+
+TextureInspector::~TextureInspector()
+{
+	if (m_liveCaptureEnabled)
+	{
+		OnLiveCaptureDisabled();
+	}
 }
 
 void TextureInspector::BuildDefaultLayout(ImGuiID dockspaceID)
@@ -95,18 +108,36 @@ void TextureInspector::DrawTextureViewPanel()
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_textureViewPanelName.GetData(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
 
-	ImGui::Columns(2);
-	ImGui::Text("Zoom : %f", m_zoom);
-	ImGui::NextColumn();
-	ImGui::SliderFloat("Zoom Speed", &m_zoomSpeed, 0.01f, 1.f);
-	ImGui::EndColumns();
+	const lib::SharedRef<rdr::TextureView>& inspectedTexture = GetInspectedTexture();
+
+	{
+		ImGui::Columns(3);
+		ImGui::Text("Zoom : %f", m_zoom);
+		ImGui::NextColumn();
+		ImGui::SliderFloat("Zoom Speed", &m_zoomSpeed, 0.01f, 1.f);
+		ImGui::NextColumn();
+
+		if (ImGui::Checkbox("Live Capture", &m_liveCaptureEnabled))
+		{
+			if (m_liveCaptureEnabled)
+			{
+				OnLiveCaptureEnabled();
+			}
+			else
+			{
+				OnLiveCaptureDisabled();
+			}
+		}
+
+		ImGui::EndColumns();
+	}
 
 	const math::Vector2f panelSize = ui::UIUtils::GetWindowContentSize();
 	
 	const math::Vector2f windowSize = panelSize - math::Vector2f(0.f, 50.f);
 
 	ImGui::BeginChild("TextureView", windowSize, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
-	const math::Vector2f textureResolution = m_capturedTexture->GetResolution2D().cast<Real32>();
+	const math::Vector2f textureResolution = inspectedTexture->GetResolution2D().cast<Real32>();
 
 	const inp::InputManager& inputManager = inp::InputManager::Get();
 
@@ -153,7 +184,7 @@ void TextureInspector::DrawTextureViewPanel()
 
 	if (windowSize.x() > 1.f && windowSize.y() > 1.f)
 	{
-		const ui::TextureID textureID = RenderDisplayedTexture(hoveredPixel);
+		const ui::TextureID textureID = RenderDisplayedTexture(inspectedTexture, hoveredPixel);
 
 		ImGui::Image(textureID, windowSize, uv0, uv1);
 	}
@@ -222,7 +253,7 @@ void TextureInspector::DrawTextureViewSettingPanel()
 	ImGui::End();
 }
 
-ui::TextureID TextureInspector::RenderDisplayedTexture(math::Vector2i hoveredPixel)
+ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& texture, math::Vector2i hoveredPixel)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -231,10 +262,10 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(math::Vector2i hoveredPix
 	engn::FrameContext& currentFrame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [renderParams = m_viewParameters, renderer = m_renderer, readback = m_readback]
+			   [renderParams = m_viewParameters, renderer = m_renderer, readback = m_readback, texture]
 			   {
 					renderer->SetParameters(renderParams);
-					renderer->Render(readback);
+					renderer->Render(texture, readback);
 			   },
 			   js::Prerequisites(currentFrame.GetStageBeginEvent(engn::EFrameStage::ProcessViewsRendering)),
 			   js::JobDef()
@@ -257,7 +288,54 @@ void TextureInspector::InitializeTextureView(const RGTextureCapture& textureCapt
 
 	m_displayTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Texture Inspector Output"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 
-	m_renderer = lib::MakeShared<TextureInspectorRenderer>(m_capturedTexture, lib::Ref(m_displayTexture));
+	m_renderer = lib::MakeShared<TextureInspectorRenderer>(lib::Ref(m_displayTexture));
+}
+
+void TextureInspector::OnLiveCaptureEnabled()
+{
+	SPT_CHECK(!m_liveCaptureTexture);
+
+	m_liveCaptureTexture = lib::MakeShared<LiveTextureOutput>();
+
+	const RGCaptureSourceInfo& sourceInfo = m_capture->captureSource;
+	lib::SharedPtr<RGCaptureSourceContext> sourceContext = sourceInfo.sourceContext.lock();
+	if (sourceContext)
+	{
+		LiveCaptureDestTexture destTexture;
+		destTexture.textureName = m_textureCapture.textureView->GetRHI().GetName();
+		destTexture.passName    = m_textureCapture.passName;
+		destTexture.output      = m_liveCaptureTexture;
+
+		RGCaptureSourceContext::OnSetupNewGraph::Delegate delegate;
+		delegate.BindLambda([dest = destTexture](RenderGraphBuilder& graphBuilder)
+							{
+			graphBuilder.AddDebugDecorator(lib::MakeShared<TextureLiveCapturer>(dest));
+		});
+
+		m_liveCaptureDelegateHandle = sourceContext->AddOnSetupNewGraphBuilder(std::move(delegate));
+	}
+}
+
+void TextureInspector::OnLiveCaptureDisabled()
+{
+	SPT_CHECK(!!m_liveCaptureTexture);
+
+	m_liveCaptureTexture.reset();
+
+	const RGCaptureSourceInfo& sourceInfo = m_capture->captureSource;
+	lib::SharedPtr<RGCaptureSourceContext> sourceContext = sourceInfo.sourceContext.lock();
+
+	if (sourceContext)
+	{
+		sourceContext->RemoveOnSetupNewGraphBuilder(m_liveCaptureDelegateHandle);
+		m_liveCaptureDelegateHandle.Reset();
+	}
+}
+
+lib::SharedRef<rdr::TextureView> TextureInspector::GetInspectedTexture() const
+{
+	const lib::SharedPtr<rdr::TextureView> liveTexture = m_liveCaptureTexture ? m_liveCaptureTexture->GetTexture() : nullptr;
+	return liveTexture ? lib::Ref(liveTexture) : m_capturedTexture;
 }
 
 } // spt::rg::capture

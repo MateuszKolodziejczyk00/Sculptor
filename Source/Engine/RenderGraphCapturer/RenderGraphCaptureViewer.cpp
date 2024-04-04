@@ -14,11 +14,12 @@ namespace spt::rg::capture
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RGNodeCaptureViewer ===========================================================================
 
-RGNodeCaptureViewer::RGNodeCaptureViewer(const scui::ViewDefinition& definition, const RGNodeCapture& node)
+RGNodeCaptureViewer::RGNodeCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGNodeCapture& node)
 	: Super(definition)
 	, m_nodeDetailsPanelName(CreateUniqueName(std::format("Node Details")))
 	, m_nodePropertiesPanelName(CreateUniqueName(std::format("Node Properties")))
 	, m_capturedNode(node)
+	, m_capture(std::move(capture))
 {
 }
 
@@ -137,7 +138,7 @@ void RGNodeCaptureViewer::OpenTextureCapture(const RGTextureCapture& textureCapt
 {
 	scui::ViewDefinition nodeViewDefinition;
 	nodeViewDefinition.name = textureCapture.textureView->GetRHI().GetName();
-	const lib::HashedString& viewName = AddChild(lib::MakeShared<TextureInspector>(nodeViewDefinition, textureCapture));
+	const lib::HashedString& viewName = AddChild(lib::MakeShared<TextureInspector>(nodeViewDefinition, m_capture, textureCapture));
 	m_textureInspectorsStack.Push(viewName);
 }
 
@@ -192,7 +193,7 @@ void RenderGraphCaptureViewer::DrawNodesList(const RGCapture& capture)
 			{
 				scui::ViewDefinition nodeViewDefinition;
 				nodeViewDefinition.name = node.name;
-				const lib::HashedString& childName = AddChild(lib::MakeShared<RGNodeCaptureViewer>(nodeViewDefinition, node));
+				const lib::HashedString& childName = AddChild(lib::MakeShared<RGNodeCaptureViewer>(nodeViewDefinition, m_capture, node));
 				m_nodeDetailsDockStack.Push(childName);
 			}
 

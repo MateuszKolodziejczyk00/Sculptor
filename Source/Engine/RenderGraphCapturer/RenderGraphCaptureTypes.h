@@ -13,6 +13,15 @@ class TextureView;
 namespace spt::rg::capture
 {
 
+
+class RGCaptureSourceContext;
+
+
+struct RGCaptureSourceInfo
+{
+	lib::WeakPtr<RGCaptureSourceContext> sourceContext;
+};
+
 enum class ECapturedResourceFlags
 {
 	None = 0,
@@ -22,6 +31,7 @@ enum class ECapturedResourceFlags
 struct RGResourceCapture
 {
 	ECapturedResourceFlags flags;
+	lib::HashedString      passName;
 };
 
 
@@ -58,6 +68,8 @@ struct RGNodeCapture
 struct RGCapture
 {
 	lib::DynamicArray<RGNodeCapture> nodes;
+
+	RGCaptureSourceInfo captureSource;
 };
 
 } // spt::rg::capture

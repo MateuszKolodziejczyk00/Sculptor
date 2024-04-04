@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderGraphCaptuererMacros.h"
+#include "RenderGraphCapturerMacros.h"
 #include "RenderGraphCaptureTypes.h"
 
 namespace spt::rg
@@ -21,7 +21,7 @@ class RENDER_GRAPH_CAPTURER_API RenderGraphCapturer
 {
 public:
 
-	RenderGraphCapturer();
+	explicit RenderGraphCapturer(const RGCaptureSourceInfo& captureSource);
 
 	void Capture(RenderGraphBuilder& graphBuilder);
 
@@ -32,6 +32,8 @@ public:
 private:
 	
 	lib::SharedPtr<impl::RGCapturerDecorator> m_debugDecorator;
+
+	RGCaptureSourceInfo m_captureSource;
 };
 
 } // spt::rg::capture

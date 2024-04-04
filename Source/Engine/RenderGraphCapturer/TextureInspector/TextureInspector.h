@@ -3,6 +3,7 @@
 #include "UILayers/UIView.h"
 #include "TextureInspectorTypes.h"
 #include "UITypes.h"
+#include "Delegates/MulticastDelegate.h"
 
 
 namespace spt::rdr
@@ -16,6 +17,8 @@ namespace spt::rg::capture
 
 struct RGTextureCapture;
 class TextureInspectorRenderer;
+class LiveTextureOutput;
+struct RGCapture;
 
 
 class TextureInspector : public scui::UIView
@@ -26,7 +29,8 @@ protected:
 
 public:
 
-	TextureInspector(const scui::ViewDefinition& definition, const RGTextureCapture& textureCapture);
+	TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGTextureCapture& textureCapture);
+	virtual ~TextureInspector();
 
 	// Begin UIView overrides
 	virtual void             BuildDefaultLayout(ImGuiID dockspaceID) override;
@@ -40,15 +44,22 @@ private:
 	void DrawTextureViewPanel();
 	void DrawTextureViewSettingPanel();
 
-	ui::TextureID RenderDisplayedTexture(math::Vector2i hoveredPixel);
+	ui::TextureID RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& texture, math::Vector2i hoveredPixel);
 
 	void InitializeTextureView(const RGTextureCapture& textureCapture);
+
+	void OnLiveCaptureEnabled();
+	void OnLiveCaptureDisabled();
+
+	lib::SharedRef<rdr::TextureView> GetInspectedTexture() const;
 
 	lib::HashedString m_textureDetailsPanelName;
 	lib::HashedString m_textureViewPanelName;
 	lib::HashedString m_textureViewSettingsPanelName;
 
 	const RGTextureCapture& m_textureCapture;
+
+	lib::SharedRef<RGCapture> m_capture;
 
 	lib::SharedRef<rdr::TextureView> m_capturedTexture;
 
@@ -62,6 +73,10 @@ private:
 	math::Vector2f m_viewportMin;
 	Real32 m_zoom;
 	Real32 m_zoomSpeed;
+
+	Bool m_liveCaptureEnabled;
+	lib::SharedPtr<LiveTextureOutput> m_liveCaptureTexture;
+	lib::DelegateHandle m_liveCaptureDelegateHandle;
 };
 
 } // spt::rg::capture

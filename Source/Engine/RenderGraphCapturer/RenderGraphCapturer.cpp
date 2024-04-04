@@ -18,7 +18,7 @@ class RGCapturerDecorator : public RenderGraphDebugDecorator
 {
 public:
 
-	RGCapturerDecorator();
+	explicit RGCapturerDecorator(const RGCaptureSourceInfo& captureSource);
 
 	// Begin RenderGraphDebugDecorator interface
 	virtual void PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) override;
@@ -34,10 +34,12 @@ private:
 };
 
 
-RGCapturerDecorator::RGCapturerDecorator()
+RGCapturerDecorator::RGCapturerDecorator(const RGCaptureSourceInfo& captureSource)
 	: m_isAddingCaptureCopyNode(false)
 	, m_capture(lib::MakeShared<RGCapture>())
-{ }
+{
+	m_capture->captureSource = captureSource;
+}
 
 void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)
 {
@@ -102,6 +104,7 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 				RGTextureCapture& textureCapture = nodeCapture.outputTextures.emplace_back(RGTextureCapture());
 				textureCapture.textureView = captureTextureView.ToSharedPtr();
+				textureCapture.passName    = node.GetName().Get();
 
 				const RGTextureViewHandle rgTextureCapture = graphBuilder.AcquireExternalTextureView(captureTextureView.ToSharedPtr());
 
@@ -124,7 +127,8 @@ const lib::SharedRef<RGCapture>& RGCapturerDecorator::GetCapture() const
 
 } // impl
 
-RenderGraphCapturer::RenderGraphCapturer()
+RenderGraphCapturer::RenderGraphCapturer(const RGCaptureSourceInfo& captureSource)
+	: m_captureSource(captureSource)
 {
 }
 
@@ -132,7 +136,7 @@ void RenderGraphCapturer::Capture(RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_debugDecorator = lib::MakeShared<impl::RGCapturerDecorator>();
+	m_debugDecorator = lib::MakeShared<impl::RGCapturerDecorator>(m_captureSource);
 	graphBuilder.AddDebugDecorator(lib::Ref(m_debugDecorator));
 }
 

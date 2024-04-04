@@ -30,6 +30,7 @@ class SCUI_API UIView
 public:
 
 	explicit UIView(const ViewDefinition& definition);
+	virtual ~UIView() = default;
 
 	UIViewID GetID() const;
 
