@@ -5,7 +5,8 @@
 
 #define VISUALIZATION_MODE_COLOR 0
 #define VISUALIZATION_MODE_ALPHA 1
-#define VISUALIZATION_MODE_HASH  2
+#define VISUALIZATION_MODE_NANS  2
+#define VISUALIZATION_MODE_HASH  3
 
 
 struct CS_INPUT
@@ -75,6 +76,18 @@ void TextureInspectorFilterCS(CS_INPUT input)
 		else if(u_params.visualizationMode == VISUALIZATION_MODE_ALPHA)
 		{
 			color.rgb = color.aaa;
+		}
+
+		if (u_params.visualizationMode == VISUALIZATION_MODE_NANS)
+		{
+			if(any(isnan(textureValue)))
+			{
+				color.rgb = float3(1.f, 0.f, 0.f);
+			}
+			else
+			{
+				color.rgb = float3(0.f, 0.f, 0.f);
+			}
 		}
 
 		color.rgb = pow(color.rgb, 0.4545f);

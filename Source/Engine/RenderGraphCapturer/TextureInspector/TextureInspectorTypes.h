@@ -11,6 +11,7 @@ enum class ETextureInspectorVisualizationMode
 {
 	Color,
 	Alpha,
+	VisualizeNaNs,
 	
 	FloatTextureModesCount,
 	Hash = FloatTextureModesCount,

@@ -44,9 +44,11 @@ private:
 	void DrawTextureViewPanel();
 	void DrawTextureViewSettingPanel();
 
-	ui::TextureID RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& texture, math::Vector2i hoveredPixel);
+	ui::TextureID RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& inputTexture, math::Vector2i hoveredPixel);
 
-	void InitializeTextureView(const RGTextureCapture& textureCapture);
+	void CreateDisplayedTexture(const math::Vector2u& resolution);
+
+	void UpdateDisplayedTexture(const lib::SharedRef<rdr::TextureView> capturedTexture);
 
 	void OnLiveCaptureEnabled();
 	void OnLiveCaptureDisabled();

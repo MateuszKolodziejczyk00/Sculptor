@@ -40,7 +40,7 @@ TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::
 	m_viewParameters.bChannelVisible = true;
 	m_viewParameters.isIntTexture    = rhi::IsIntegerFormat(m_capturedTexture->GetRHI().GetFormat());
 
-	InitializeTextureView(textureCapture);
+	CreateDisplayedTexture(textureCapture.textureView->GetResolution2D());
 }
 
 TextureInspector::~TextureInspector()
@@ -110,11 +110,23 @@ void TextureInspector::DrawTextureViewPanel()
 
 	const lib::SharedRef<rdr::TextureView>& inspectedTexture = GetInspectedTexture();
 
+	UpdateDisplayedTexture(inspectedTexture);
+
 	{
-		ImGui::Columns(3);
+		ImGui::Columns(5);
 		ImGui::Text("Zoom : %f", m_zoom);
 		ImGui::NextColumn();
 		ImGui::SliderFloat("Zoom Speed", &m_zoomSpeed, 0.01f, 1.f);
+		ImGui::NextColumn();
+		if (ImGui::Button("Reset Zoom"))
+		{
+			m_zoom = 1.0f;
+		}
+		ImGui::NextColumn();
+		if (ImGui::Button("Reset Previewed Texture"))
+		{
+			m_liveCaptureTexture.reset();
+		}
 		ImGui::NextColumn();
 
 		if (ImGui::Checkbox("Live Capture", &m_liveCaptureEnabled))
@@ -215,7 +227,7 @@ void TextureInspector::DrawTextureViewSettingPanel()
 
 	ImGui::Text("View Details");
 
-	const char* visualizationModes[] = { "Color", "Alpha", "Hash" };
+	const char* visualizationModes[] = { "Color", "Alpha", "NaNs", "Hash" };
 
 	const int visualizationModesCount = m_viewParameters.isIntTexture
 		                              ? static_cast<int>(ETextureInspectorVisualizationMode::IntTextureModesCount)
@@ -253,7 +265,7 @@ void TextureInspector::DrawTextureViewSettingPanel()
 	ImGui::End();
 }
 
-ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& texture, math::Vector2i hoveredPixel)
+ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& inputTexture, math::Vector2i hoveredPixel)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -262,10 +274,10 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 	engn::FrameContext& currentFrame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [renderParams = m_viewParameters, renderer = m_renderer, readback = m_readback, texture]
+			   [renderParams = m_viewParameters, renderer = m_renderer, readback = m_readback, inputTexture, outputTexture = lib::Ref(m_displayTexture)]
 			   {
 					renderer->SetParameters(renderParams);
-					renderer->Render(texture, readback);
+					renderer->Render(inputTexture, outputTexture, readback);
 			   },
 			   js::Prerequisites(currentFrame.GetStageBeginEvent(engn::EFrameStage::ProcessViewsRendering)),
 			   js::JobDef()
@@ -275,11 +287,9 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), rhi::ESamplerFilterType::Nearest, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
 }
 
-void TextureInspector::InitializeTextureView(const RGTextureCapture& textureCapture)
+void TextureInspector::CreateDisplayedTexture(const math::Vector2u& resolution)
 {
 	SPT_PROFILER_FUNCTION();
-
-	const math::Vector2u resolution = textureCapture.textureView->GetResolution2D();
 
 	rhi::TextureDefinition textureDefinition;
 	textureDefinition.resolution = resolution;
@@ -288,14 +298,24 @@ void TextureInspector::InitializeTextureView(const RGTextureCapture& textureCapt
 
 	m_displayTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Texture Inspector Output"), textureDefinition, rhi::EMemoryUsage::GPUOnly);
 
-	m_renderer = lib::MakeShared<TextureInspectorRenderer>(lib::Ref(m_displayTexture));
+	m_renderer = lib::MakeShared<TextureInspectorRenderer>();
 }
+
+void TextureInspector::UpdateDisplayedTexture(const lib::SharedRef<rdr::TextureView> capturedTexture)
+{
+	if (m_displayTexture->GetResolution2D() != capturedTexture->GetResolution2D())
+	{
+		CreateDisplayedTexture(capturedTexture->GetResolution2D());
+	}
+}
+
 
 void TextureInspector::OnLiveCaptureEnabled()
 {
-	SPT_CHECK(!m_liveCaptureTexture);
-
-	m_liveCaptureTexture = lib::MakeShared<LiveTextureOutput>();
+	if (!m_liveCaptureTexture)
+	{
+		m_liveCaptureTexture = lib::MakeShared<LiveTextureOutput>();
+	}
 
 	const RGCaptureSourceInfo& sourceInfo = m_capture->captureSource;
 	lib::SharedPtr<RGCaptureSourceContext> sourceContext = sourceInfo.sourceContext.lock();
@@ -318,10 +338,6 @@ void TextureInspector::OnLiveCaptureEnabled()
 
 void TextureInspector::OnLiveCaptureDisabled()
 {
-	SPT_CHECK(!!m_liveCaptureTexture);
-
-	m_liveCaptureTexture.reset();
-
 	const RGCaptureSourceInfo& sourceInfo = m_capture->captureSource;
 	lib::SharedPtr<RGCaptureSourceContext> sourceContext = sourceInfo.sourceContext.lock();
 

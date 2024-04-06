@@ -13,15 +13,13 @@ class TextureInspectorRenderer : std::enable_shared_from_this<TextureInspectorRe
 {
 public:
 
-	explicit TextureInspectorRenderer(const lib::SharedRef<rdr::TextureView>& outputTexture);
+	explicit TextureInspectorRenderer();
 
 	void SetParameters(const TextureInspectorFilterParams& parameters);
 
-	void Render(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<TextureInspectorReadback>& readback);
+	void Render(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<rdr::TextureView>& outputTexture, const lib::SharedRef<TextureInspectorReadback>& readback);
 
 private:
-
-	lib::SharedRef<rdr::TextureView> m_outputTexture;
 
 	TextureInspectorFilterParams m_parameters;
 
