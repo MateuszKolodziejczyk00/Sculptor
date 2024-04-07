@@ -268,7 +268,6 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 
 			const rhi::RHIMappedByteBuffer mappedBuffer(rhiBuffer);
 			std::memset(mappedBuffer.GetPtr() + writeOffset, static_cast<int>(data), range);
-			rhiBuffer.Unmap();
 		}
 		else
 		{

@@ -390,6 +390,7 @@ struct ShadingViewContext
 	lib::MTHandle<ShadowMapsDS>       shadowMapsDS;
 
 	rg::RGTextureViewHandle luminance;
+	rg::RGTextureViewHandle eyeAdaptationLuminance;
 	rg::RGTextureViewHandle normals;
 	rg::RGTextureViewHandle specularAndRoughness;
 

@@ -32,8 +32,9 @@ namespace params
 RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.65f, 0.f, 1.f);
 RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 20.f, -20.f, 20.f);
-RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.5f, 0.f, 0.8f);
-RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
+RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
+RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.1f, 0.f, 0.1f);
+RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -2.1f, -10.f, 10.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
 RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f, 10.f);
@@ -75,6 +76,7 @@ BEGIN_SHADER_STRUCT(ExposureSettings)
 	SHADER_STRUCT_FIELD(Real32, adaptationSpeed)
 	SHADER_STRUCT_FIELD(Real32, rejectedDarkPixelsPercentage)
 	SHADER_STRUCT_FIELD(Real32, rejectedBrightPixelsPercentage)
+	SHADER_STRUCT_FIELD(Real32, evCompensation)
 END_SHADER_STRUCT();
 
 
@@ -662,22 +664,23 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	const rg::RGTextureViewHandle tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), rg::TextureDef(textureRes, stageContext.rendererSettings.outputFormat));
 
 	exposure::ExposureSettings exposureSettings;
-	exposureSettings.textureSize = renderingRes;
-	exposureSettings.inputPixelSize = inputPixelSize;
-	exposureSettings.deltaTime = renderScene.GetCurrentFrameRef().GetDeltaTime();
-	exposureSettings.minLogLuminance = params::minLogLuminance;
-	exposureSettings.maxLogLuminance = params::maxLogLuminance;
-	exposureSettings.logLuminanceRange = exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;
-	exposureSettings.inverseLogLuminanceRange = 1.f / exposureSettings.logLuminanceRange;
-	exposureSettings.adaptationSpeed = params::adaptationSpeed;
-	exposureSettings.rejectedDarkPixelsPercentage = params::rejectedDarkPixelsPercentage;
+	exposureSettings.textureSize                    = renderingRes;
+	exposureSettings.inputPixelSize                 = inputPixelSize;
+	exposureSettings.deltaTime                      = renderScene.GetCurrentFrameRef().GetDeltaTime();
+	exposureSettings.minLogLuminance                = params::minLogLuminance;
+	exposureSettings.maxLogLuminance                = params::maxLogLuminance;
+	exposureSettings.logLuminanceRange              = exposureSettings.maxLogLuminance - exposureSettings.minLogLuminance;
+	exposureSettings.inverseLogLuminanceRange       = 1.f / exposureSettings.logLuminanceRange;
+	exposureSettings.adaptationSpeed                = params::adaptationSpeed;
+	exposureSettings.rejectedDarkPixelsPercentage   = params::rejectedDarkPixelsPercentage;
 	exposureSettings.rejectedBrightPixelsPercentage = params::rejectedBrightPixelsPercentage;
+	exposureSettings.evCompensation                 = params::evCompensation;
 
 	const rg::RGTextureViewHandle linearColorTexture = viewContext.luminance;
 
 	const rg::RGBufferViewHandle viewExposureData = graphBuilder.AcquireExternalBufferView(m_viewExposureBuffer->CreateFullView());
 
-	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, linearColorTexture);
+	const rg::RGBufferViewHandle luminanceHistogram = exposure::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, viewContext.eyeAdaptationLuminance);
 	exposure::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram, viewExposureData);
 
 	if (params::enableBloom)

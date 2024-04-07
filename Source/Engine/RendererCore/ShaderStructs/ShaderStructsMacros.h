@@ -156,7 +156,7 @@ public:
 } // priv
 
 #define BEGIN_ALIGNED_SHADER_STRUCT(alignment, name) \
-struct name \
+struct alignas(alignment) name \
 { \
 private: \
 	using ThisClass = name; \

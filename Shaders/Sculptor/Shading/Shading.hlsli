@@ -71,20 +71,51 @@ float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shading function ==============================================================================
 
-float3 DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
+struct LightingContribution
 {
-    const float a = max(Pow2(surface.roughness), 0.01f);
+	static LightingContribution Create(in float3 inSceneLuminance, in float3 inEyeAdaptationLuminance)
+	{
+		LightingContribution res;
+		res.sceneLuminance         = inSceneLuminance;
+		res.eyeAdaptationLuminance = inEyeAdaptationLuminance;
+		return res;
+	}
 
-    const float dotNL = saturate(dot(surface.shadingNormal, lightDir));
-    const float3 h = normalize(viewDir + lightDir);
-    const float dotVH = dot(viewDir, h);
+	static LightingContribution Create(in float3 inLuminance)
+	{
+		return Create(inLuminance, inLuminance);
+	}
 
-    const float3 fresnel = F_Schlick(surface.specularColor, dotVH);
-    
-    const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
-    const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
+	LightingContribution operator*(float3 value)
+	{
+		LightingContribution res;
+		res.sceneLuminance         = sceneLuminance * value;
+		res.eyeAdaptationLuminance = eyeAdaptationLuminance * value;
+		return res;
+	}
 
-    return (diffuse + specular * fresnel) * dotNL * peakIlluminance;
+	float3 sceneLuminance;
+	float3 eyeAdaptationLuminance;
+};
+
+
+LightingContribution DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
+{
+	const float a = max(Pow2(surface.roughness), 0.01f);
+
+	const float dotNL = saturate(dot(surface.shadingNormal, lightDir));
+	const float3 h = normalize(viewDir + lightDir);
+	const float dotVH = dot(viewDir, h);
+
+	const float3 fresnel = F_Schlick(surface.specularColor, dotVH);
+
+	const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
+	const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
+
+	const float3 sceneLuminance = (diffuse + specular * fresnel) * dotNL * peakIlluminance;
+	const float3 eyeAdaptationLuminance = Diffuse_Lambert(1.f) * dotNL * peakIlluminance;
+
+	return LightingContribution::Create(sceneLuminance, eyeAdaptationLuminance);
 }
 
 float GeometrySchlickGGX(in float NdotV, in float a)

@@ -154,6 +154,7 @@ DS_BEGIN(ApplyAtmosphereDS, rg::RGDescriptorSetState<ApplyAtmosphereDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_luminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_eyeAdaptationLuminanceTexture)
 DS_END();
 
 
@@ -177,12 +178,13 @@ static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const Vi
 	static rdr::PipelineStateID pipeline = CompileApplyAtmospherePipeline();
 
 	lib::MTHandle<ApplyAtmosphereDS> ds = graphBuilder.CreateDescriptorSet<ApplyAtmosphereDS>(RENDERER_RESOURCE_NAME("Apply Atmosphere DS"));
-	ds->u_atmosphereParams	= context.atmosphereParamsBuffer->CreateFullView();
-	ds->u_directionalLights	= context.directionalLightsBuffer->CreateFullView();
-	ds->u_transmittanceLUT	= transmittanceLUT;
-	ds->u_skyViewLUT		= skyViewLUT;
-	ds->u_depthTexture		= viewContext.depth;
-	ds->u_luminanceTexture	= viewContext.luminance;
+	ds->u_atmosphereParams              = context.atmosphereParamsBuffer->CreateFullView();
+	ds->u_directionalLights             = context.directionalLightsBuffer->CreateFullView();
+	ds->u_transmittanceLUT              = transmittanceLUT;
+	ds->u_skyViewLUT                    = skyViewLUT;
+	ds->u_depthTexture                  = viewContext.depth;
+	ds->u_luminanceTexture              = viewContext.luminance;
+	ds->u_eyeAdaptationLuminanceTexture	= viewContext.eyeAdaptationLuminance;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Atmosphere"),
 						  pipeline,

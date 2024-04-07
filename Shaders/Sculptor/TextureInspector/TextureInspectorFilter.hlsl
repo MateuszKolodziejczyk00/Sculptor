@@ -15,6 +15,22 @@ struct CS_INPUT
 };
 
 
+#define HISTOGRAM_BINS_NUM 128
+
+
+void OutputHistogram(in float4 textureValue, in float minValue, in float maxValue)
+{
+	const float4 histogramValue = float4(textureValue.rgb, dot(textureValue.rgb, 0.3333f));
+	const uint4 bins = uint4(clamp((histogramValue - minValue) / (maxValue - minValue) * HISTOGRAM_BINS_NUM, 0.f, HISTOGRAM_BINS_NUM - 1.f));
+	
+	[unroll]
+	for(uint i = 0u; i < 4u; ++i)
+	{
+		InterlockedAdd(u_histogram[bins[i]][i], 1u);
+	}
+}
+
+
 [numthreads(8, 8, 1)]
 void TextureInspectorFilterCS(CS_INPUT input)
 {
@@ -88,6 +104,11 @@ void TextureInspectorFilterCS(CS_INPUT input)
 			{
 				color.rgb = float3(0.f, 0.f, 0.f);
 			}
+		}
+
+		if (u_params.shouldOutputHistogram)
+		{
+			OutputHistogram(textureValue, u_params.minValue, u_params.maxValue);
 		}
 
 		color.rgb = pow(color.rgb, 0.4545f);

@@ -21,6 +21,7 @@ DS_BEGIN(TextureInspectorFilterDS, rg::RGDescriptorSetState<TextureInspectorFilt
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TextureInspectorFilterParams>),            u_params)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<TextureInspectorReadbackData>),        u_readbackBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<math::Vector4u>),              u_histogram)
 DS_END();
 
 
@@ -71,6 +72,25 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 	}
 	filterDS->u_readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->CreateFullView());
 
+	const Bool wantsHistogram = m_parameters.shouldOutputHistogram;
+	lib::SharedPtr<rdr::Buffer> histogramReadbackBuffer;
+	rg::RGBufferViewHandle rgHistogram;
+	if (wantsHistogram)
+	{
+		rhi::BufferDefinition histogramDef;
+		histogramDef.size  = sizeof(math::Vector4u) * TextureHistogram::binsNum;
+		histogramDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
+		histogramReadbackBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Texture Histogram Readback"),
+															  histogramDef,
+															  rhi::EMemoryUsage::GPUToCpu);
+
+		rgHistogram = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Texture Histogram"), histogramDef, rhi::EMemoryUsage::GPUOnly);
+
+		filterDS->u_histogram = rgHistogram;
+
+		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Texture Histogram"), rgHistogram, 0u);
+	}
+
 	static const rdr::PipelineStateID pipelineState = CompileTextureViewerFilterPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Texture Viewer Filter Pass"),
@@ -78,16 +98,30 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(filterDS)));
 
+	if (wantsHistogram)
+	{
+		const rg::RGBufferViewHandle rgReadbackBuffer = graphBuilder.AcquireExternalBufferView(histogramReadbackBuffer->CreateFullView());
+
+		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Copy Histogram Readback"), rgHistogram, 0u, rgReadbackBuffer, 0u, rgReadbackBuffer->GetSize());
+	}
+
 	graphBuilder.ReleaseTextureWithTransition(outputTextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);
 
 	// Schedule readback
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [readbackData = readbackBuffer.ToSharedPtr(), weakReadback = readback.AsWeakPtr()]()
+			   [readbackData = readbackBuffer.ToSharedPtr(), weakReadback = readback.AsWeakPtr(), histogramReadbackBuffer]()
 			   {
 				   if (auto readback = weakReadback.lock())
 				   {
+					   TextureInspectorReadback::ReadbackPayload payload;
+					   if(histogramReadbackBuffer)
+					   {
+						   const rhi::RHIMappedBuffer<math::Vector4u> mappedHistogram(histogramReadbackBuffer->GetRHI());
+						   payload.histogram = TextureHistogram(mappedHistogram);
+					   }
+
 					   rhi::RHIMappedBuffer<TextureInspectorReadbackData> mappedReadback(readbackData->GetRHI());
-					   readback->SetData(mappedReadback[0]);
+					   readback->SetData(mappedReadback[0], payload);
 				   }
 			   },
 			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));

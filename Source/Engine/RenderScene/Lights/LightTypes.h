@@ -19,7 +19,7 @@ BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(PointLightGPUData)
+BEGIN_ALIGNED_SHADER_STRUCT(16, PointLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, color)
 	SHADER_STRUCT_FIELD(Real32, luminousPower) // Lumens
 	SHADER_STRUCT_FIELD(math::Vector3f, location)

@@ -24,10 +24,12 @@ TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::
 	, m_textureDetailsPanelName(CreateUniqueName("TextureDetails"))
 	, m_textureViewPanelName(CreateUniqueName("TextureView"))
 	, m_textureViewSettingsPanelName(CreateUniqueName("TextureViewSettings"))
+	, m_textureAdditionalInfoPanelName(CreateUniqueName("TextureAdditionalInfo"))
 	, m_textureCapture(textureCapture)
 	, m_capture(std::move(capture))
 	, m_capturedTexture(textureCapture.textureView)
 	, m_readback(lib::MakeShared<TextureInspectorReadback>())
+	, m_histogramVisualizationChannel(3)
 	, m_viewportMin(math::Vector2f::Zero())
 	, m_zoom(1.0f)
 	, m_zoomSpeed(0.075f)
@@ -54,10 +56,12 @@ TextureInspector::~TextureInspector()
 void TextureInspector::BuildDefaultLayout(ImGuiID dockspaceID)
 {
 	Super::BuildDefaultLayout(dockspaceID);
-
+	
 	ui::Build(dockspaceID,
 			  ui::Split(ui::ESplit::Horizontal, 0.75f,
-						ui::DockWindow(m_textureViewPanelName),
+						ui::Split(ui::ESplit::Vertical, 0.8f,
+								  ui::DockWindow(m_textureViewPanelName),
+								  ui::DockWindow(m_textureAdditionalInfoPanelName)),
 						ui::Split(ui::ESplit::Vertical, 0.5f,
 								  ui::DockWindow(m_textureViewSettingsPanelName),
 								  ui::DockWindow(m_textureDetailsPanelName))));
@@ -72,6 +76,8 @@ void TextureInspector::DrawUI()
 	DrawTextureDetails();
 
 	DrawTextureViewPanel();
+
+	DrawTextureAdditionalInfoPanel();
 }
 
 ImGuiWindowFlags TextureInspector::GetWindowFlags() const
@@ -262,7 +268,57 @@ void TextureInspector::DrawTextureViewSettingPanel()
 		ImGui::EndColumns();
 	}
 
+	if (ImGui::Button("Show Histogram"))
+	{
+		if (!m_histogram)
+		{
+			m_histogram = lib::MakeShared<TextureHistogram>();
+			m_viewParameters.shouldOutputHistogram = true;
+		}
+	}
+
 	ImGui::End();
+}
+
+void TextureInspector::DrawTextureAdditionalInfoPanel()
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (m_histogram)
+	{
+		const std::optional<TextureHistogram> readbackHistogram = m_readback->GetHistogram();
+		if (readbackHistogram)
+		{
+			*m_histogram = *readbackHistogram;
+		}
+
+		ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
+		Bool isOpen = true;
+		ImGui::Begin(m_textureAdditionalInfoPanelName.GetData(), &isOpen);
+
+		const math::Vector2f windowSize = ui::UIUtils::GetWindowContentSize();
+
+		const char* channels[] = { "R", "G", "B", "Average" };
+
+		ImGui::Columns(2);
+
+		const lib::String histogramName = lib::String(channels[m_histogramVisualizationChannel]) + " Histogram";
+		ImGui::PlotHistogram(histogramName.c_str(), m_histogram->histogram[m_histogramVisualizationChannel].data(), TextureHistogram::binsNum, 0, nullptr, FLT_MAX, FLT_MAX, math::Vector2f(0.f, windowSize.y()));
+
+		ImGui::NextColumn();
+
+		ImGui::Combo("Channel", &m_histogramVisualizationChannel, channels, SPT_ARRAY_SIZE(channels));
+
+		ImGui::EndColumns();
+
+		ImGui::End();
+
+		if (!isOpen)
+		{
+			m_viewParameters.shouldOutputHistogram = false;
+			m_histogram.reset();
+		}
+	}
 }
 
 ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& inputTexture, math::Vector2i hoveredPixel)

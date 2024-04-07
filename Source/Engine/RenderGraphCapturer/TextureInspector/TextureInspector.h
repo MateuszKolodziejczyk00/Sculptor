@@ -43,6 +43,7 @@ private:
 	void DrawTextureDetails();
 	void DrawTextureViewPanel();
 	void DrawTextureViewSettingPanel();
+	void DrawTextureAdditionalInfoPanel();
 
 	ui::TextureID RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& inputTexture, math::Vector2i hoveredPixel);
 
@@ -58,6 +59,8 @@ private:
 	lib::HashedString m_textureDetailsPanelName;
 	lib::HashedString m_textureViewPanelName;
 	lib::HashedString m_textureViewSettingsPanelName;
+	
+	lib::HashedString m_textureAdditionalInfoPanelName;
 
 	const RGTextureCapture& m_textureCapture;
 
@@ -71,6 +74,9 @@ private:
 	lib::SharedRef<TextureInspectorReadback> m_readback;
 
 	TextureInspectorFilterParams m_viewParameters;
+
+	lib::SharedPtr<TextureHistogram> m_histogram;
+	Int32 m_histogramVisualizationChannel;
 
 	math::Vector2f m_viewportMin;
 	Real32 m_zoom;

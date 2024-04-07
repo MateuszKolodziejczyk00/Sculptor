@@ -49,7 +49,7 @@ void DeferredShadingCS(CS_INPUT input)
 
 	if(all(pixel.xy < u_deferredShadingConstants.resolution))
 	{
-		const float depth = u_depthTexture.Load(int3(pixel.xy, 0)).x;
+		const float depth = u_depthTexture.Load(pixel).x;
 
 		if(depth > 0.f)
 		{
@@ -72,7 +72,10 @@ void DeferredShadingCS(CS_INPUT input)
 
 			const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);
 
-			luminance = CalcReflectedLuminance(surface, toView);
+			SceneLightingAccumulator lightingAccumulator = SceneLightingAccumulator::Create();
+			CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
+
+			luminance = lightingAccumulator.GetLuminance();
 
 			float3 indirectIlluminance = 0.f;
 

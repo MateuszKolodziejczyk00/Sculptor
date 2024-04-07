@@ -140,12 +140,13 @@ VS_OUTPUT SMForwardOpaque_VS(VS_INPUT input)
 
 struct FO_PS_OUTPUT
 {
-    float4 luminance            : SV_TARGET0;
-    float4 normal               : SV_TARGET1;
-    float4 specularAndRoguhness : SV_TARGET2;
+    float4 luminance              : SV_TARGET0;
+    float4 eyeAdaptationLuminance : SV_TARGET1;
+    float4 normal                 : SV_TARGET2;
+    float4 specularAndRoguhness   : SV_TARGET3;
     
 #if WITH_DEBUGS
-    float4 debug : SV_TARGET3;
+    float4 debug : SV_TARGET4;
 #endif // WITH_DEBUGS
 };
 
@@ -193,7 +194,8 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
     const float3 toView = normalize(u_sceneView.viewLocation - vertexInput.worldLocation);
 
-    float3 luminance = CalcReflectedLuminance(surface, toView);
+	ViewLightingAccumulator lightingAccumulator = ViewLightingAccumulator::Create();
+    CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
 
     float3 indirectIlluminance = 0.f;
 
@@ -213,15 +215,20 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
 #endif // ENABLE_DDGI
 
-    luminance += surface.diffuseColor * Diffuse_Lambert(indirectIlluminance);
+	const float3 indirectDiffuse = Diffuse_Lambert(indirectIlluminance);
+	lightingAccumulator.Accumulate(LightingContribution::Create(surface.diffuseColor * indirectDiffuse, indirectDiffuse));
 
-    luminance += evaluatedMaterial.emissiveColor;
+	lightingAccumulator.Accumulate(LightingContribution::Create(evaluatedMaterial.emissiveColor));
 
 #if WITH_DEBUGS
     indirectLighting = indirectIlluminance;
 #endif // WITH_DEBUGS
 
-    output.luminance = float4(LuminanceToExposedLuminance(luminance), 1.f);
+	const float3 luminance              = lightingAccumulator.GetLuminance();
+	const float3 eyeAdaptationLuminance = lightingAccumulator.GetEyeAdaptationLuminance();
+
+	output.luminance              = float4(LuminanceToExposedLuminance(luminance), 1.f);
+	output.eyeAdaptationLuminance = float4(LuminanceToExposedLuminance(eyeAdaptationLuminance), 1.f);
     
     output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
     output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);

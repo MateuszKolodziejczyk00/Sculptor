@@ -4,6 +4,65 @@
 #include "Shading/Shading.hlsli"
 
 
+class SceneLightingAccumulator
+{
+	static SceneLightingAccumulator Create()
+	{
+		SceneLightingAccumulator accumulator;
+		accumulator.sceneLuminance = 0.f;
+		return accumulator;
+	}
+
+	void Accumulate(in LightingContribution contribution)
+	{
+		sceneLuminance += contribution.sceneLuminance;
+	}
+
+	void Accumulate(in float3 luminance)
+	{
+		sceneLuminance += luminance;
+	}
+
+	float3 GetLuminance()
+	{
+		return sceneLuminance;
+	}
+
+	float3 sceneLuminance;
+};
+
+
+class ViewLightingAccumulator
+{
+	static ViewLightingAccumulator Create()
+	{
+		ViewLightingAccumulator accumulator;
+		accumulator.sceneLuminance         = 0.f;
+		accumulator.eyeAdaptationLuminance = 0.f;
+		return accumulator;
+	}
+
+	void Accumulate(in LightingContribution contribution)
+	{
+		sceneLuminance         += contribution.sceneLuminance;
+		eyeAdaptationLuminance += contribution.eyeAdaptationLuminance;
+	}
+
+	float3 GetLuminance()
+	{
+		return sceneLuminance;
+	}
+
+	float3 GetEyeAdaptationLuminance()
+	{
+		return eyeAdaptationLuminance;
+	}
+
+	float3 sceneLuminance;
+	float3 eyeAdaptationLuminance;
+};
+
+
 [[shader_struct(PointLightGPUData)]]
 
 
@@ -35,7 +94,7 @@ float3 GetPointLightIlluminanceAtLocation(PointLightGPUData pointLight, float3 l
 }
 
 
-float3 CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIlluminance)
+LightingContribution CalcLighting(ShadedSurface surface, float3 lightDir, float3 viewDir, float3 peakIlluminance)
 {
     return DoShading(surface, lightDir, viewDir, peakIlluminance);
 }

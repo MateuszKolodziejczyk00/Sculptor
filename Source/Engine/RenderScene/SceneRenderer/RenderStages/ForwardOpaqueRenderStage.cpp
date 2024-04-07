@@ -38,9 +38,10 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 	
-	viewContext.luminance            = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
-	viewContext.normals              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
-	viewContext.specularAndRoughness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
+	viewContext.luminance              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
+	viewContext.eyeAdaptationLuminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Eye Adaptation Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
+	viewContext.normals                = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
+	viewContext.specularAndRoughness   = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 
 #if RENDERER_DEBUG
 	const rhi::EFragmentFormat debugFormat = stageContext.rendererSettings.outputFormat;
@@ -62,6 +63,13 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
+
+	rg::RGRenderTargetDef eyeAdaptationLuminanceRTDef;
+	eyeAdaptationLuminanceRTDef.textureView		= viewContext.eyeAdaptationLuminance;
+	eyeAdaptationLuminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
+	eyeAdaptationLuminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
+	eyeAdaptationLuminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
+	renderPassDef.AddColorRenderTarget(eyeAdaptationLuminanceRTDef);
 
 	rg::RGRenderTargetDef normalsRTDef;
 	normalsRTDef.textureView	= viewContext.normals;

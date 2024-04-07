@@ -34,7 +34,9 @@ void ApplyAtmosphereCS(CS_INPUT input)
 
 			const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
 
-			float3 skyLuminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, viewLocation, rayDirection);
+			const float3 skyLuminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, viewLocation, rayDirection);
+
+			float3 sunLuminance = float3(0.0f, 0.0f, 0.0f);
 
 			for (int lightIdx = 0; lightIdx < u_atmosphereParams.directionalLightsNum; ++lightIdx)
 			{
@@ -48,13 +50,14 @@ void ApplyAtmosphereCS(CS_INPUT input)
 					const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, rayDirection);
 					const float cosHalfApex = 0.01f;
 					const float softEdge = saturate(2.0f * (rayLightDot - cosHalfApex) / (1.0f - cosHalfApex));
-					skyLuminance += directionalLight.color * softEdge * transmittance * ComputeLuminanceFromEC(directionalLight.sunDiskEC);
+					sunLuminance += directionalLight.color * softEdge * transmittance * ComputeLuminanceFromEC(directionalLight.sunDiskEC);
 				}
 			}
 
-			skyLuminance = LuminanceToExposedLuminance(skyLuminance);
-			
-			u_luminanceTexture[pixel] = skyLuminance;
+			const float skyEyeAdaptationMultiplier = 2.7f;
+
+			u_luminanceTexture[pixel]              = LuminanceToExposedLuminance(skyLuminance + sunLuminance);
+			u_eyeAdaptationLuminanceTexture[pixel] = LuminanceToExposedLuminance(skyLuminance * skyEyeAdaptationMultiplier);
 		}
 	}
 }
