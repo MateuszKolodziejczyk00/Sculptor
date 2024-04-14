@@ -419,6 +419,7 @@ void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPat
 		else
 		{
 			args.Append(lib::WString(L"-O3"));
+			args.Append(lib::WString(L"spirv-opt -O"));
 		}
 	}
 

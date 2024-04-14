@@ -115,12 +115,18 @@ BEGIN_SHADER_STRUCT(DDGILOD1Definition)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(DDGIVolumesDefinition)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<DDGIVolumeGPUParams, g_maxVolumesCount>), volumes)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                            u_probesTextures)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                               u_ddgiLOD0)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD1Definition>),                                               u_ddgiLOD1)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGIVolumesDefinition>),                                            u_volumesDef)
 DS_END();
 
 

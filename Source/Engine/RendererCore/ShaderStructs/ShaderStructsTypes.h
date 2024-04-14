@@ -132,6 +132,13 @@ constexpr lib::String GetShaderTypeName<math::Vector4u>()
 template<typename TType>
 concept CShaderStruct = std::is_same_v<decltype(TType::GetStructName()), const char*>;
 
+
+template<typename TType>
+constexpr Bool IsShaderStruct()
+{
+	return CShaderStruct<TType>;
+}
+
 template<typename TType>
 constexpr lib::String DefineType()
 {

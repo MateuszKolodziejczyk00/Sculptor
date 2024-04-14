@@ -35,12 +35,15 @@ TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::
 	, m_zoomSpeed(0.075f)
 	, m_liveCaptureEnabled(false)
 {
+	const Bool is3DTexture = m_capturedTexture->GetRHI().GetTextureType() == rhi::ETextureType::Texture3D;
+
 	m_viewParameters.minValue        = 0.0f;
 	m_viewParameters.maxValue        = 1.0f;
 	m_viewParameters.rChannelVisible = true;
 	m_viewParameters.gChannelVisible = true;
 	m_viewParameters.bChannelVisible = true;
 	m_viewParameters.isIntTexture    = rhi::IsIntegerFormat(m_capturedTexture->GetRHI().GetFormat());
+	m_viewParameters.depthSlice3D    = is3DTexture ? 0u : idxNone<Uint32>;
 
 	CreateDisplayedTexture(textureCapture.textureView->GetResolution2D());
 }
@@ -232,6 +235,15 @@ void TextureInspector::DrawTextureViewSettingPanel()
 	ImGui::Begin(m_textureViewSettingsPanelName.GetData());
 
 	ImGui::Text("View Details");
+
+	if (m_viewParameters.depthSlice3D != idxNone<Uint32>)
+	{
+		int dragValue = static_cast<int>(m_viewParameters.depthSlice3D);
+		if (ImGui::DragInt("Depth Slice", &dragValue, 1.f, 0u, m_capturedTexture->GetResolution().z() - 1u))
+		{
+			m_viewParameters.depthSlice3D = static_cast<Uint32>(dragValue);
+		}
+	}
 
 	const char* visualizationModes[] = { "Color", "Alpha", "NaNs", "Hash" };
 

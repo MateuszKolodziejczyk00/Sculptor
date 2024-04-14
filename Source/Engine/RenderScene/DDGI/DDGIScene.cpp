@@ -315,11 +315,11 @@ RenderScene& DDGIScene::GetOwningScene() const
 
 Uint32 DDGIScene::FindAvailableVolumeIdx() const
 {
-	const SizeType volumesCount = m_ddgiSceneDS->u_ddgiVolumes.GetSize();
+	const DDGIVolumesDefinition& volumesDef = m_ddgiSceneDS->u_volumesDef.Get();
 
-	for (SizeType i = 0; i < volumesCount; ++i)
+	for (SizeType i = 0; i < volumesDef.volumes.size(); ++i)
 	{
-		if (m_ddgiSceneDS->u_ddgiVolumes[i].isValid == false)
+		if (volumesDef.volumes[i].isValid == false)
 		{
 			return static_cast<Uint32>(i);
 		}

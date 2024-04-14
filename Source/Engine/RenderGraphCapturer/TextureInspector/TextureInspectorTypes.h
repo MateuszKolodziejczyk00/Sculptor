@@ -31,6 +31,7 @@ BEGIN_SHADER_STRUCT(TextureInspectorFilterParams)
 	SHADER_STRUCT_FIELD(Bool,   isIntTexture)
 	SHADER_STRUCT_FIELD(Uint32, visualizationMode)
 	SHADER_STRUCT_FIELD(Bool,   shouldOutputHistogram)
+	SHADER_STRUCT_FIELD(Uint32, depthSlice3D)
 END_SHADER_STRUCT();
 
 

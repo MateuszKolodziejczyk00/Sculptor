@@ -79,12 +79,7 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 			const RGTextureViewHandle rgTextureView = textureAccess.textureView;
 			const RGTextureHandle rgTexture = rgTextureView->GetTexture();
 
-			const Bool is3DTexture = rgTexture->GetTextureDefinition().type == rhi::ETextureType::Texture3D
-								  || (rgTexture->GetTextureDefinition().type == rhi::ETextureType::Auto && rgTexture->GetResolution().z() > 1u);
-
-			Bool canCapture = !is3DTexture;
-			canCapture = canCapture && rgTexture->TryAppendUsage(rhi::ETextureUsage::TransferSource);
-
+			const Bool canCapture = rgTexture->TryAppendUsage(rhi::ETextureUsage::TransferSource);
 			if (canCapture)
 			{
 				rhi::TextureDefinition captureTextureDef;
@@ -92,7 +87,6 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 				captureTextureDef.resolution	= rgTextureView->GetResolution();
 				captureTextureDef.format		= rgTextureView->GetFormat();
 				captureTextureDef.mipLevels		= 1u;
-				captureTextureDef.type			= rhi::ETextureType::Texture2D;
 				const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
 																										 captureTextureDef,
 																										 rhi::EMemoryUsage::GPUOnly);

@@ -107,11 +107,11 @@ namespace indirect
 {
 
 BEGIN_SHADER_STRUCT(IndirectInScatteringParams)
-	SHADER_STRUCT_FIELD(math::Vector3f,	jitter)
-	SHADER_STRUCT_FIELD(Real32,			phaseFunctionAnisotrophy)
-	SHADER_STRUCT_FIELD(Real32,			fogNearPlane)
-	SHADER_STRUCT_FIELD(Real32,			fogFarPlane)
-	SHADER_STRUCT_FIELD(math::Matrix4f,	randomRotation)
+	SHADER_STRUCT_FIELD(math::Vector3f, jitter)
+	SHADER_STRUCT_FIELD(Real32,         phaseFunctionAnisotrophy)
+	SHADER_STRUCT_FIELD(Real32,         fogNearPlane)
+	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 6>), sampleDirections)
 END_SHADER_STRUCT();
 
 
@@ -155,8 +155,24 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 	inScatteringParams.phaseFunctionAnisotrophy             = parameters::localLightsPhaseFunctionAnisotrophy;
 	inScatteringParams.fogNearPlane                         = fogParams.nearPlane;
 	inScatteringParams.fogFarPlane                          = fogParams.farPlane;
-	inScatteringParams.randomRotation                       = math::Matrix4f::Identity();
-	inScatteringParams.randomRotation.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
+
+	math::Matrix4f rotationMatrix = math::Matrix4f::Identity();
+	rotationMatrix.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
+
+	const math::Vector4f directions[6] =
+	{
+		math::Vector4f::UnitX(),
+		math::Vector4f::UnitY(),
+		math::Vector4f::UnitZ(),
+		-math::Vector4f::UnitX(),
+		-math::Vector4f::UnitY(),
+		-math::Vector4f::UnitZ()
+	};
+
+	for (Uint32 i = 0; i < 6; ++i)
+	{
+		inScatteringParams.sampleDirections[i] = rotationMatrix * directions[i];
+	}
 
 	const rg::RGTextureViewHandle ddgiScatteringPhaseFunctionLUT = DDGIScatteringPhaseFunctionLUT::Get().GetLUT(graphBuilder);
 
@@ -165,7 +181,7 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 	indirectInScatteringDS->u_inScatteringParams             = inScatteringParams;
 	indirectInScatteringDS->u_ddgiScatteringPhaseFunctionLUT = ddgiScatteringPhaseFunctionLUT;
 
-	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 4u));
+	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 2u));
 
 	static const rdr::PipelineStateID computeInScatteringPipeline = CompileComputeIndirectInScatteringPipeline();
 
@@ -406,6 +422,9 @@ void ParticipatingMediaViewRenderSystem::PrepareViewTextures(const math::Vector3
 		rhi::TextureDefinition inScatteringTextureDef;
 		inScatteringTextureDef.resolution	= volumetricFogResolution;
 		inScatteringTextureDef.usage		= lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+#if SPT_DEBUG || SPT_DEVELOPMENT
+		lib::AddFlag(inScatteringTextureDef.usage, rhi::ETextureUsage::TransferSource);
+#endif
 		inScatteringTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float; // [In-Scattering (RGB), Extinction (A)]
 		m_currentInScatteringTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("In-Scattering Texture"), inScatteringTextureDef, rhi::EMemoryUsage::GPUOnly);
 	}

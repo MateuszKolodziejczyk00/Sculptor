@@ -110,6 +110,8 @@ public:
 
 	const rhi::TextureSubresourceRange&	GetSubresourceRange() const;
 
+	rhi::ETextureType					GetTextureType() const;
+
 	void								SetName(const lib::HashedString& name);
 	const lib::HashedString&			GetName() const;
 

@@ -47,8 +47,9 @@ public:
 
 	constexpr ShaderStructMemberMetaData() = default;
 
-	using UnderlyingType			= TType;
-	using PrevMemberMetaDataType	= TPrev;
+	using ElementType            = typename ShaderStructMemberElementType<TType>::Type;
+	using UnderlyingType         = TType;
+	using PrevMemberMetaDataType = TPrev;
 
 	static constexpr Uint32 GetSize()
 	{
@@ -130,9 +131,11 @@ public:
 		{
 			line += '[';
 			// quick way to support int to string constexpr conversion (as currently std::to_string is not constexpr and we don't need anything more)
-			SPT_STATIC_CHECK(elementsNum <= 9);
-			const char elementsNumChar = '0' + static_cast<char>(elementsNum);
-			line += elementsNumChar;
+			SPT_STATIC_CHECK(elementsNum <= 99);
+			const char elementsNumChar0 = elementsNum >= 10 ? '0' + static_cast<char>(elementsNum / 10) : ' ';
+			const char elementsNumChar1 = '0' + static_cast<char>(elementsNum % 10);
+			line += elementsNumChar0;
+			line += elementsNumChar1;
 			line += ']';
 		}
 		line += ";\n";
@@ -205,6 +208,46 @@ consteval Bool IsTailMember()
 	return std::is_same_v<PrevMemberMetaDataType, void>;
 }
 
+class ShaderStructReferencer
+{
+public:
+
+	ShaderStructReferencer() = default;
+
+	void AddReferencedStruct(const lib::String& structName)
+	{
+		m_referencedStructs.emplace_back(structName);
+	}
+
+	const lib::DynamicArray<lib::String>& GetReferencedStructs() const
+	{
+		return m_referencedStructs;
+	}
+
+private:
+
+	lib::DynamicArray<lib::String> m_referencedStructs;
+};
+
+
+template<typename TShaderStructMemberMetaData>
+constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+{
+	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
+	{
+		CollectReferencedStructs<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(references);
+	}
+	
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		using MemberElementType = typename TShaderStructMemberMetaData::ElementType;
+		if constexpr (IsShaderStruct<MemberElementType>())
+		{
+			references.emplace_back(GetTypeName<MemberElementType>());
+		}
+	}
+}
+
 template<typename TShaderStructMemberMetaData>
 constexpr void AppendMemberSourceCode(lib::String& inOutString)
 {
@@ -222,6 +265,15 @@ constexpr void AppendMemberSourceCode(lib::String& inOutString)
 template<typename TStruct>
 constexpr void BuildShaderStructCodeImpl(lib::String& outStructCode)
 {
+	lib::DynamicArray<lib::String> references;
+	CollectReferencedStructs<typename TStruct::HeadMemberMetaData>(INOUT references);
+	for (const lib::String& structName : references)
+	{
+		outStructCode += "[[shader_struct(";
+		outStructCode += structName;
+		outStructCode += ")]]";
+	}
+
 	outStructCode += lib::String("struct ") + TStruct::GetStructName() + "\n{\n";
 	AppendMemberSourceCode<typename TStruct::HeadMemberMetaData>(outStructCode);
 	outStructCode += "};\n";

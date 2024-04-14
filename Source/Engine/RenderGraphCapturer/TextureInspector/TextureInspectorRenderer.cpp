@@ -18,6 +18,8 @@ namespace spt::rg::capture
 DS_BEGIN(TextureInspectorFilterDS, rg::RGDescriptorSetState<TextureInspectorFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),                    u_floatTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4i>),                    u_intTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),                    u_floatTexture3D)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4i>),                    u_intTexture3D)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TextureInspectorFilterParams>),            u_params)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<TextureInspectorReadbackData>),        u_readbackBuffer)
@@ -62,13 +64,27 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 	lib::MTHandle<TextureInspectorFilterDS> filterDS = graphBuilder.CreateDescriptorSet<TextureInspectorFilterDS>(RENDERER_RESOURCE_NAME("TextureInspectorFilterDS"));
 	filterDS->u_params = m_parameters;
 	filterDS->u_outputTexture = outputTextureView;
-	if (isIntTexture)
+	if (m_parameters.depthSlice3D != idxNone<Uint32>)
 	{
-		filterDS->u_intTexture = inputTextureView;
+		if (isIntTexture)
+		{
+			filterDS->u_intTexture3D = inputTextureView;
+		}
+		else
+		{
+			filterDS->u_floatTexture3D = inputTextureView;
+		}
 	}
 	else
 	{
-		filterDS->u_floatTexture = inputTextureView;
+		if (isIntTexture)
+		{
+			filterDS->u_intTexture = inputTextureView;
+		}
+		else
+		{
+			filterDS->u_floatTexture = inputTextureView;
+		}
 	}
 	filterDS->u_readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->CreateFullView());
 

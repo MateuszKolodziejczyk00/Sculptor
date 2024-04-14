@@ -240,6 +240,11 @@ float ComputeLuminanceFromEC(float EC)
 	return pow(2.f, u_viewExposure.EV100 + EC);
 }
 
+float GetAverageLogLuminance()
+{
+	return u_viewExposure.averageLogLuminance;
+}
+
 #endif // DS_RenderViewDS
 
 #endif // SCENE_VIEW_UTILS_H

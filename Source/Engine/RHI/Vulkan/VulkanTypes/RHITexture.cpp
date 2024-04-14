@@ -741,6 +741,12 @@ const rhi::TextureSubresourceRange& RHITextureView::GetSubresourceRange() const
 	return m_subresourceRange;
 }
 
+rhi::ETextureType RHITextureView::GetTextureType() const
+{
+	SPT_CHECK(m_texture);
+	return m_texture->GetType();
+}
+
 void RHITextureView::SetName(const lib::HashedString& name)
 {
 	m_name.Set(name, reinterpret_cast<Uint64>(m_viewHandle), VK_OBJECT_TYPE_IMAGE_VIEW);

@@ -15,7 +15,7 @@ struct CS_INPUT
 };
 
 
-[numthreads(4, 4, 4)]
+[numthreads(4, 4, 2)]
 void ComputeIndirectInScatteringCS(CS_INPUT input)
 {
     uint3 volumetricFogResolution;
@@ -45,25 +45,15 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
         const float3 toViewDir = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
         
         float3 inScattering = 0.f;
-        const float3 indirectSampleDirections[6] =
-        {
-            FORWARD_VECTOR,
-            UP_VECTOR,
-            RIGHT_VECTOR,
-            -FORWARD_VECTOR,
-            -UP_VECTOR,
-            -RIGHT_VECTOR
-        };
 
         [unroll]
         for(uint i = 0; i < 6; ++i)
         {
-            float3 direction = indirectSampleDirections[i];
-            direction = mul(u_inScatteringParams.randomRotation, float4(direction, 0.f)).xyz;
+            const float3 direction = u_inScatteringParams.sampleDirections[i].xyz;
 
             DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(fogFroxelWorldLocation, direction, toViewDir);
-            ddgiSampleParams.sampleLocationBiasMultiplier = 0.f;
-            ddgiSampleParams.minVisibility                = 0.9f;
+            ddgiSampleParams.sampleLocationBiasMultiplier = 0.h;
+            ddgiSampleParams.minVisibility                = 0.9h;
             const float3 indirect = DDGISampleIlluminance(ddgiSampleParams);
 
             float2 phaseFunctionLUTUV;
@@ -75,7 +65,7 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
             inScattering += indirect * phaseFunction;
         }
 
-        // We need to normalize it because we sample only 6 perpendicullar directions
+        // We need to normalize it because we sample only 6 perpendicular directions
         // This is based on the fact that ddgi uses max(0.f, dot(normal, dir)) as weight function
         const float normalizationFactor = 2.f / 3.f;
 

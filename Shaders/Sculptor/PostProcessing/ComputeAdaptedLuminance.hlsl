@@ -112,7 +112,9 @@ void AdaptedLuminanceCS(CS_INPUT input)
 		const float weightedLogAverage = (weightedSum / pixelsWithNonZeroLuminance) - 1.0;
 
 		// Map from our histogram space to actual luminance
-		const float weightedAvgLuminance = exp2(((weightedLogAverage / 254.0) * u_exposureSettings.logLuminanceRange) + u_exposureSettings.minLogLuminance);
+		const float averageLogLuminance = (weightedLogAverage / 254.0) * u_exposureSettings.logLuminanceRange + u_exposureSettings.minLogLuminance;
+
+		const float weightedAvgLuminance = exp2(averageLogLuminance);
 
 		const float luminanceLastFrame = u_adaptedLuminance[0];
 
@@ -125,11 +127,13 @@ void AdaptedLuminanceCS(CS_INPUT input)
 		const float exposure = ConvertEV100ToExposure(EV100);
 
 		ViewExposureData viewExposureData = u_viewExposureData[0];
-		viewExposureData.exposureLastFrame = viewExposureData.exposure;
+
+		viewExposureData.exposureLastFrame    = viewExposureData.exposure;
 		viewExposureData.rcpExposureLastFrame = viewExposureData.rcpExposure;
-		viewExposureData.exposure          = exposure;
-		viewExposureData.rcpExposure       = rcp(viewExposureData.exposure);
-		viewExposureData.EV100             = EV100;
+		viewExposureData.exposure             = exposure;
+		viewExposureData.rcpExposure          = rcp(viewExposureData.exposure);
+		viewExposureData.EV100                = EV100;
+		viewExposureData.averageLogLuminance  = averageLogLuminance;
 
 		u_viewExposureData[0] = viewExposureData;
 	}

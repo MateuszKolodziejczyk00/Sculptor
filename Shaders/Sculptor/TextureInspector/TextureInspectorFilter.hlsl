@@ -46,7 +46,14 @@ void TextureInspectorFilterCS(CS_INPUT input)
 		float4 color = 0.f;
 		if(u_params.isIntTexture)
 		{
-			textureValue = u_intTexture.Load(pixel);
+			if(u_params.depthSlice3D != IDX_NONE_32)
+			{
+				textureValue = u_intTexture.Load(pixel);
+			}
+			else
+			{
+				textureValue = u_intTexture3D.Load(int4(pixel.xy, u_params.depthSlice3D, 0));
+			}
 
 			if (u_params.visualizationMode == VISUALIZATION_MODE_HASH)
 			{
@@ -61,7 +68,15 @@ void TextureInspectorFilterCS(CS_INPUT input)
 		}
 		else
 		{
-			textureValue = u_floatTexture.Load(pixel);
+			if(u_params.depthSlice3D != IDX_NONE_32)
+			{
+				textureValue = u_floatTexture3D.Load(int4(pixel.xy, u_params.depthSlice3D, 0));
+			}
+			else
+			{
+				textureValue = u_floatTexture.Load(pixel);
+			}
+
 			color = textureValue;
 		}
 
