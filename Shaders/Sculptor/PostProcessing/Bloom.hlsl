@@ -110,8 +110,8 @@ void BloomDownsampleCS(CS_INPUT input)
 		if(u_bloomInfo.isSetupPass)
 		{
 			const float luminance = Luminance(input);
-			const float bloomThreshold = 5.8f;
-			const float bloomMultiplier = saturate((luminance - bloomThreshold) * 0.01f);
+			const float bloomThreshold = 9.2f;
+			const float bloomMultiplier = saturate((luminance - bloomThreshold) * 0.001f);
 			
 			input = bloomMultiplier * input;
 		}

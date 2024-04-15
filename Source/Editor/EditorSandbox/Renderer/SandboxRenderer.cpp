@@ -37,6 +37,7 @@
 #include "Atmosphere/AtmosphereRenderSystem.h"
 #include "RenderGraphCapturer.h"
 #include "RenderGraphCaptureViewer.h"
+#include "RenderGraphCaptureSourceContext.h"
 #include "UIElements/ApplicationUI.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
@@ -57,6 +58,7 @@ SandboxRenderer::SandboxRenderer()
 	, m_cameraSpeed(5.f)
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
 	, m_wantsCaptureNextFrame(false)
+	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
 {
 	InitializeRenderScene();
 }
@@ -135,7 +137,10 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	rg::RenderGraphBuilder graphBuilder(m_resourcesPool);
 	graphBuilder.BindGPUStatisticsCollector(gpuStatisticsCollector);
 
-	rg::capture::RenderGraphCapturer capturer;
+	rg::capture::RGCaptureSourceInfo captureSource;
+	captureSource.sourceContext = m_captureSourceContext;
+
+	rg::capture::RenderGraphCapturer capturer(captureSource);
 
 	if (m_wantsCaptureNextFrame)
 	{
@@ -143,8 +148,10 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 		m_wantsCaptureNextFrame = false;
 	}
 
+	m_captureSourceContext->ExecuteOnSetupNewGraphBuilder(graphBuilder);
+
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [resolution = m_renderView->GetRenderingResolution(), gpuStatisticsCollector]
+			   [resolution = m_renderView->GetRenderingRes(), gpuStatisticsCollector]
 			   {
 				   prf::GPUProfilerStatistics statistics;
 				   statistics.resolution = resolution;
@@ -162,6 +169,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 #if SPT_SHADERS_DEBUG_FEATURES
 		gfx::dbg::ShaderDebugParameters shaderDebugParameters;
 		shaderDebugParameters.mousePosition = inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift) ? m_mousePositionOnViewport : math::Vector2i::Constant(-2);
+		shaderDebugParameters.viewportSize  = output->GetResolution2D();
 		const gfx::dbg::ShaderDebugScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
 #endif // SPT_SHADERS_DEBUG_FEATURES
 

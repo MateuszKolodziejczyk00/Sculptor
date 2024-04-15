@@ -35,7 +35,7 @@ RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 1.65f
 RendererFloatParameter minLogLuminance("Min Log Luminance", { "Exposure" }, -10.f, -20.f, 20.f);
 RendererFloatParameter maxLogLuminance("Max Log Luminance", { "Exposure" }, 20.f, -20.f, 20.f);
 RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
-RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.1f, 0.f, 0.1f);
+RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
 RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -1.f, -10.f, 10.f);
 
 RendererBoolParameter enableBloom("Enable Bloom", { "Bloom" }, true);
@@ -110,6 +110,7 @@ static rdr::PipelineStateID CompileLuminanceHistogramPipeline()
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("LuminanceHistogramPipeline"), shader);
 }
+
 
 static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const ExposureSettings& exposureSettings, rg::RGTextureViewHandle linearColorTexture)
 {
@@ -562,24 +563,24 @@ namespace tonemapping
 {
 
 BEGIN_SHADER_STRUCT(TonemappingPassConstants)
-	SHADER_STRUCT_FIELD(Bool, enableColorDithering)
-	SHADER_STRUCT_FIELD(Real32, minLogLuminance)
-	SHADER_STRUCT_FIELD(Real32, logLuminanceRange)
-	SHADER_STRUCT_FIELD(Real32, inverseLogLuminanceRange)
-	SHADER_STRUCT_FIELD(Real32, contrastStrength)
-	SHADER_STRUCT_FIELD(Real32, detailStrength)
-	SHADER_STRUCT_FIELD(Real32, bilateralGridStrength)
+	SHADER_STRUCT_FIELD(math::Vector2f, bilateralGridUVPerPixel)
+	SHADER_STRUCT_FIELD(Bool,           enableColorDithering)
+	SHADER_STRUCT_FIELD(Real32,         minLogLuminance)
+	SHADER_STRUCT_FIELD(Real32,         logLuminanceRange)
+	SHADER_STRUCT_FIELD(Real32,         inverseLogLuminanceRange)
+	SHADER_STRUCT_FIELD(Real32,         contrastStrength)
+	SHADER_STRUCT_FIELD(Real32,         detailStrength)
+	SHADER_STRUCT_FIELD(Real32,         bilateralGridStrength)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_sampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_LDRTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector2f>),								u_luminanceBilateralGridTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_logLuminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingSettings)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingConstants)
 DS_END();
 
 
@@ -596,7 +597,7 @@ struct TonemappingParameters
 	rg::RGTextureViewHandle ldrTexture;
 	rg::RGTextureViewHandle luminanceBilateralGridTexture;
 	rg::RGTextureViewHandle logLuminanceTexture;
-	TonemappingPassConstants tonemappingSettings;
+	TonemappingPassConstants tonemappingConstants;
 };
 
 
@@ -616,7 +617,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	tonemappingDS->u_LDRTexture                    = tonemappingParameters.ldrTexture;
 	tonemappingDS->u_luminanceBilateralGridTexture = tonemappingParameters.luminanceBilateralGridTexture;
 	tonemappingDS->u_logLuminanceTexture           = tonemappingParameters.logLuminanceTexture;
-	tonemappingDS->u_tonemappingSettings           = tonemappingParameters.tonemappingSettings;
+	tonemappingDS->u_tonemappingConstants          = tonemappingParameters.tonemappingConstants;
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
 
@@ -703,8 +704,6 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
@@ -760,25 +759,18 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingSettings.contrastStrength         = params::contrastStrength;
 	tonemappingSettings.detailStrength           = params::detailStrength;
 	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
+	tonemappingSettings.bilateralGridUVPerPixel  = bilateral_grid::GetGridTileSize().cast<Real32>().cwiseQuotient(bilateralGridTexture->GetResolution2D().cast<Real32>());
 
 	tonemapping::TonemappingParameters tonemappingParameters;
 	tonemappingParameters.linearColorTexture            = linearColorTexture;
 	tonemappingParameters.ldrTexture                    = tonemappedTexture;
 	tonemappingParameters.luminanceBilateralGridTexture = bilateralGridBlurredTexture;
 	tonemappingParameters.logLuminanceTexture           = downsampledLogLuminanceBlurredTexture;
-	tonemappingParameters.tonemappingSettings           = tonemappingSettings;
+	tonemappingParameters.tonemappingConstants          = tonemappingSettings;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingParameters);
 
 	viewContext.output = tonemappedTexture;
-
-#if RENDERER_DEBUG
-	if (renderView.GetDebugFeature() != EDebugFeature::None)
-	{
-		gamma::DoGammaCorrection(graphBuilder, viewContext.debug);
-		viewContext.output = viewContext.debug;
-	}
-#endif // RENDERER_DEBUG
 	
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 	

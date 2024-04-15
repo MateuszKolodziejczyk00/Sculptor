@@ -87,9 +87,6 @@ END_SHADER_STRUCT();
 
 BEGIN_SHADER_STRUCT(RenderViewData)
 	SHADER_STRUCT_FIELD(math::Vector2u, renderingResolution)
-#if RENDERER_DEBUG
-	SHADER_STRUCT_FIELD(Uint32, debugFeatureIndex)
-#endif // RENDERER_DEBUG
 END_SHADER_STRUCT();
 
 
@@ -151,13 +148,6 @@ public:
 	void ResetExposureDataBuffer();
 
 	math::Vector2f GetCurrentJitter() const;
-
-#if RENDERER_DEBUG
-	void SetDebugFeature(EDebugFeature::Type debugFeature);
-	EDebugFeature::Type GetDebugFeature() const;
-
-	Bool IsAnyDebugFeatureEnabled() const;
-#endif // RENDERER_DEBUG
 
 	void BeginFrame(const RenderScene& renderScene);
 	void EndFrame(const RenderScene& renderScene);
@@ -228,10 +218,6 @@ private:
 	// Rendering settings
 
 	EAntiAliasingMode::Type m_aaMode;
-
-#if RENDERER_DEBUG
-	EDebugFeature::Type m_debugFeature;
-#endif // RENDERER_DEBUG
 };
 
 } // spt::rsc

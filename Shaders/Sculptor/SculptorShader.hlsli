@@ -1,5 +1,4 @@
 #include "Hashing.hlsli"
-#include "DebugFeatures.hlsli"
 
 #define SPT_SINGLE_ARG(...) __VA_ARGS__
 

@@ -44,7 +44,10 @@ void GeometryBatchesBuilder::FinalizeBatches()
 	{
 		const GeometryBatchShader shader = GeometryBatchShader::EDefault(i);
 		const GeometryBatchBuildData& batchBuildData = m_defaultGeometryBatchesData[i];
-		m_batches.geometryBatches.emplace_back(FinalizeBatchDefinition(shader, batchBuildData));
+		if (batchBuildData.IsValid())
+		{
+			m_batches.geometryBatches.emplace_back(FinalizeBatchDefinition(shader, batchBuildData));
+		}
 	}
 
 	for (const auto& [shader, batchBuildData] : m_customGeometryBatchesData)

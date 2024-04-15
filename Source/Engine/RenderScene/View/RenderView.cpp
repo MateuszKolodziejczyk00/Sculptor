@@ -57,9 +57,6 @@ RenderView::RenderView(RenderScene& renderScene)
 	, m_renderingResolution(0, 0)
 	, m_renderScene(renderScene)
 	, m_aaMode(EAntiAliasingMode::None)
-#if RENDERER_DEBUG
-	, m_debugFeature(EDebugFeature::None)
-#endif // RENDERER_DEBUG
 {
 	m_viewEntity = renderScene.CreateEntity();
 
@@ -173,23 +170,6 @@ math::Vector2f RenderView::GetCurrentJitter() const
 	return SceneView::GetCurrentJitter(m_renderingResolution);
 }
 
-#if RENDERER_DEBUG
-void RenderView::SetDebugFeature(EDebugFeature::Type debugFeature)
-{
-	m_debugFeature = debugFeature;
-}
-
-EDebugFeature::Type RenderView::GetDebugFeature() const
-{
-	return m_debugFeature;
-}
-
-Bool RenderView::IsAnyDebugFeatureEnabled() const
-{
-	return m_debugFeature != EDebugFeature::None;
-}
-#endif // RENDERER_DEBUG
-
 void RenderView::BeginFrame(const RenderScene& renderScene)
 {
 	SPT_PROFILER_FUNCTION();
@@ -218,9 +198,6 @@ void RenderView::UpdateRenderViewDS()
 	RenderViewData renderViewData;
 	renderViewData.renderingResolution = GetRenderingRes();
 
-#if RENDERER_DEBUG
-	renderViewData.debugFeatureIndex = GetDebugFeature();
-#endif // RENDERER_DEBUG
 	m_renderViewDS->u_prevFrameSceneView	= GetPrevFrameRenderingData();
 	m_renderViewDS->u_sceneView				= GetViewRenderingData();
 	m_renderViewDS->u_cullingData			= GetCullingData();

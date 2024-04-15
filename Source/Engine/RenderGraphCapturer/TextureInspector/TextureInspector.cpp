@@ -239,10 +239,22 @@ void TextureInspector::DrawTextureViewSettingPanel()
 	if (m_viewParameters.depthSlice3D != idxNone<Uint32>)
 	{
 		int dragValue = static_cast<int>(m_viewParameters.depthSlice3D);
-		if (ImGui::DragInt("Depth Slice", &dragValue, 1.f, 0u, m_capturedTexture->GetResolution().z() - 1u))
+		ImGui::Columns(3);
+		if (ImGui::ArrowButton("PrevDepthSlice", ImGuiDir_Left))
+		{
+			m_viewParameters.depthSlice3D = std::max(0u, m_viewParameters.depthSlice3D - 1u);
+		}
+		ImGui::NextColumn();
+		if (ImGui::SliderInt("Depth Slice", &dragValue, 0, m_capturedTexture->GetResolution().z() - 1u))
 		{
 			m_viewParameters.depthSlice3D = static_cast<Uint32>(dragValue);
 		}
+		ImGui::NextColumn();
+		if (ImGui::ArrowButton("NextDepthSlice", ImGuiDir_Right))
+		{
+			m_viewParameters.depthSlice3D = std::min(m_capturedTexture->GetResolution().z() - 1u, m_viewParameters.depthSlice3D + 1u);
+		}
+		ImGui::EndColumns();
 	}
 
 	const char* visualizationModes[] = { "Color", "Alpha", "NaNs", "Hash" };

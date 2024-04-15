@@ -24,6 +24,11 @@ static constexpr Uint32               numDepthSlices = 64;
 static constexpr rhi::EFragmentFormat gridFormat = rhi::EFragmentFormat::RG16_S_Float;
 } // constants
 
+math::Vector2u GetGridTileSize()
+{
+	return constants::tileSize;
+}
+
 namespace builder
 {
 

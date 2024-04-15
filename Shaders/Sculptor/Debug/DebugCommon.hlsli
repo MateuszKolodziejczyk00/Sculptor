@@ -6,14 +6,14 @@ namespace debug
 
 class Literal
 {
-    uint2 val;
+	uint2 val;
 };
 
 Literal CreateLiteral(uint2 val)
 {
-    Literal result;
-    result.val = val;
-    return result;
+	Literal result;
+	result.val = val;
+	return result;
 }
 
 } // debug
@@ -37,12 +37,17 @@ namespace debug
 
 bool IsPixelHovered(uint2 pixelPos)
 {
-    return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePosition);
+	return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePosition);
 }
 
 bool IsPixelHoveredHalfRes(uint2 pixelPos)
 {
-    return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePositionHalfRes);
+	return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePositionHalfRes);
+}
+
+void WriteDebugPixel(uint2 pixel, float4 value)
+{
+	u_debugOutputTexture[pixel] = value;
 }
 
 } // debug

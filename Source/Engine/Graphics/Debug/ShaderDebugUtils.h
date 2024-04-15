@@ -6,6 +6,7 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "DescriptorSetBindings/RWTextureBinding.h"
 
 
 namespace spt::gfx::dbg
@@ -25,7 +26,7 @@ DS_BEGIN(ShaderDebugCommandBufferDS, rg::RGDescriptorSetState<ShaderDebugCommand
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBufferOffset)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),             u_pageFaultTriggerBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),            u_debugOutputTexture)
 DS_END();
 
 
@@ -38,7 +39,8 @@ static constexpr Uint32 None = 1;
 
 struct ShaderDebugParameters
 {
-	math::Vector2i mousePosition;
+	math::Vector2i mousePosition = {};
+	math::Vector2u viewportSize  = {};
 };
 
 
@@ -63,6 +65,7 @@ private:
 	void SetDebugParameters(const ShaderDebugParameters& debugParameters);
 
 	void                        PrepareBuffers(rg::RenderGraphBuilder& graphBuilder);
+	void                        PrepareDebugOutputTexture(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
 	lib::SharedRef<rdr::Buffer> ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer);
 
 	void ScheduleCommandsExecution(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& commands, const lib::SharedRef<rdr::Buffer>& size) const;
@@ -71,6 +74,8 @@ private:
 
 	lib::SharedPtr<rdr::Buffer> m_debugCommandsBuffer;
 	lib::SharedPtr<rdr::Buffer> m_debugCommandsBufferOffset;
+
+	lib::SharedPtr<rdr::TextureView> m_debugOutputTexture;
 
 	mutable lib::Lock                                              m_commandsExecutorsLock;
 	lib::DynamicArray<lib::SharedPtr<ShaderDebugCommandsExecutor>> m_commandsExecutors;

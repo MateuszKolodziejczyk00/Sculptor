@@ -27,6 +27,8 @@ void ShaderDebugUtils::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDe
 
 	PrepareBuffers(graphBuilder);
 
+	PrepareDebugOutputTexture(graphBuilder, debugParameters);
+
 	graphBuilder.BindDescriptorSetState(m_ds);
 }
 
@@ -96,6 +98,8 @@ void ShaderDebugUtils::CleanupResources()
 	m_debugCommandsBuffer.reset();
 	m_debugCommandsBufferOffset.reset();
 
+	m_debugOutputTexture.reset();
+
 	m_ds.Reset();
 }
 
@@ -118,6 +122,26 @@ void ShaderDebugUtils::PrepareBuffers(rg::RenderGraphBuilder& graphBuilder)
 	const rg::RGBufferViewHandle debugCommandsBufferView = graphBuilder.AcquireExternalBufferView(m_debugCommandsBufferOffset->CreateFullView());
 
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Zero Debug Commands Buffer Offset"), debugCommandsBufferView, 0, debugCommandsBufferView->GetSize(), 0);
+}
+
+void ShaderDebugUtils::PrepareDebugOutputTexture(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u currentDebugTextureRes = m_debugOutputTexture ? m_debugOutputTexture->GetResolution2D() : math::Vector2u(0, 0);
+	if (currentDebugTextureRes.x() < debugParameters.viewportSize.x() || currentDebugTextureRes.y() < debugParameters.viewportSize.y())
+	{
+		rhi::TextureDefinition debugOutputTextureDefinition;
+		debugOutputTextureDefinition.resolution = debugParameters.viewportSize;
+		debugOutputTextureDefinition.format     = rhi::EFragmentFormat::RGBA32_S_Float;
+		debugOutputTextureDefinition.usage      = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
+		m_debugOutputTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Shader Debug Output Texture"), debugOutputTextureDefinition, rhi::EMemoryUsage::GPUOnly);
+
+		m_ds->u_debugOutputTexture = m_debugOutputTexture;
+	}
+
+	const rg::RGTextureViewHandle debugOutputTextureView = graphBuilder.AcquireExternalTextureView(m_debugOutputTexture);
+	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Debug Output Texture"), debugOutputTextureView, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 }
 
 lib::SharedRef<rdr::Buffer> ShaderDebugUtils::ExtractData(rg::RenderGraphBuilder& graphBuilder, const lib::SharedRef<rdr::Buffer>& sourceBuffer)

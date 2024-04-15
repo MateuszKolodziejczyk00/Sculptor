@@ -98,13 +98,6 @@ VS_OUTPUT SMForwardOpaque_VS(VS_INPUT input)
     const float3 vertexWorldLocation = mul(instanceTransform, float4(vertexLocation, 1.f)).xyz;
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(vertexWorldLocation, 1.f));
 
-#if WITH_DEBUGS
-    if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_MESHLETS)
-    {
-        output.meshletIdx = meshletIdx;
-    }
-#endif // WITH_DEBUGS
-
     output.hasTangent = false;
     if(submesh.normalsOffset != IDX_NONE_32)
     {
@@ -144,10 +137,6 @@ struct FO_PS_OUTPUT
     float4 eyeAdaptationLuminance : SV_TARGET1;
     float4 normal                 : SV_TARGET2;
     float4 specularAndRoguhness   : SV_TARGET3;
-    
-#if WITH_DEBUGS
-    float4 debug : SV_TARGET4;
-#endif // WITH_DEBUGS
 };
 
 
@@ -175,10 +164,6 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 #endif // SPT_MATERIAL_CUSTOM_OPACITY
 
     const MaterialEvaluationOutput evaluatedMaterial = EvaluateMaterial(materialEvalParams, materialData);
-
-#if WITH_DEBUGS
-    float3 indirectLighting = 0.f;
-#endif // WITH_DEBUGS
 
     const float2 screenUV = vertexInput.pixelClipSpace.xy / vertexInput.pixelClipSpace.w * 0.5f + 0.5f;
 
@@ -220,10 +205,6 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
 
 	lightingAccumulator.Accumulate(LightingContribution::Create(evaluatedMaterial.emissiveColor));
 
-#if WITH_DEBUGS
-    indirectLighting = indirectIlluminance;
-#endif // WITH_DEBUGS
-
 	const float3 luminance              = lightingAccumulator.GetLuminance();
 	const float3 eyeAdaptationLuminance = lightingAccumulator.GetEyeAdaptationLuminance();
 
@@ -232,24 +213,6 @@ FO_PS_OUTPUT SMForwardOpaque_FS(VS_OUTPUT vertexInput)
     
     output.normal               = float4(surface.shadingNormal * 0.5f + 0.5f, 1.f);
     output.specularAndRoguhness = float4(surface.specularColor, evaluatedMaterial.roughness);
-
-#if WITH_DEBUGS
-    float3 debug = 1.f;
-    if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_MESHLETS)
-    {
-        const uint meshletHash = HashPCG(vertexInput.meshletIdx);
-        debug = float3(float(meshletHash & 255), float((meshletHash >> 8) & 255), float((meshletHash >> 16) & 255)) / 255.0;
-    }
-    else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_INDIRECT_LIGHTING)
-    {
-        debug = indirectLighting / (indirectLighting + 1.f);
-    }
-    else if(u_viewRenderingParams.debugFeatureIndex == SPT_DEBUG_FEATURE_AMBIENT_OCCLUSION)
-    {
-        debug = ambientOcclusion;
-    }
-    output.debug = float4(debug, 1.f);
-#endif // WITH_DEBUGS
 
     return output;
 }

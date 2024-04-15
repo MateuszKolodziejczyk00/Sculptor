@@ -394,10 +394,6 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle normals;
 	rg::RGTextureViewHandle specularAndRoughness;
 
-#if RENDERER_DEBUG
-	rg::RGTextureViewHandle debug;
-#endif // RENDERER_DEBUG
-
 	rg::RGTextureViewHandle output;
 };
 

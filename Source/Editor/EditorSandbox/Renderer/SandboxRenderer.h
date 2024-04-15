@@ -28,6 +28,12 @@ class FrameContext;
 } // spt::engn
 
 
+namespace spt::rg::capture
+{
+class RGCaptureSourceContext;
+} // spt::rg::capture
+
+
 namespace spt::ed
 {
 
@@ -89,6 +95,8 @@ private:
 	rsc::RenderSceneEntityHandle m_directionalLightEntity;
 
 	Bool m_wantsCaptureNextFrame;
+
+	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
 };
 
 } // spt::ed

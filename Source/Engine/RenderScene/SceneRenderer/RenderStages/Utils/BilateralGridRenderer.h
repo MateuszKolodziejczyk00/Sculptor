@@ -19,6 +19,8 @@ class ViewRenderingSpec;
 namespace bilateral_grid
 {
 
+math::Vector2u GetGridTileSize();
+
 namespace builder
 {
 
