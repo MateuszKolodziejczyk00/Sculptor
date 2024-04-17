@@ -54,7 +54,7 @@ static rdr::PipelineStateID CompileRenderBilarteralGridPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Render Bilateral Grid Pipeline"), shader);
 }
 
-BilateralGridOutput RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, const BilateralGridParams& parameters)
+BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, const BilateralGridParams& parameters)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -94,7 +94,7 @@ BilateralGridOutput RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, co
 						  rg::BindDescriptorSets(std::move(bilateralGridDS),
 												 renderView.GetRenderViewDS()));
 
-	return { bilateralGrid, downsampledLogLuminance };
+	return { bilateralGrid, downsampledLogLuminance, GetGridTileSize() };
 }
 
 } // builder

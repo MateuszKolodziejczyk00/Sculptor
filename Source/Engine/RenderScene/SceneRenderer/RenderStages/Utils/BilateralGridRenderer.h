@@ -21,6 +21,14 @@ namespace bilateral_grid
 
 math::Vector2u GetGridTileSize();
 
+struct BilateralGridInfo
+{
+	rg::RGTextureViewHandle bilateralGrid;
+	rg::RGTextureViewHandle downsampledLogLuminance;
+
+	math::Vector2u tilesSize;
+};
+
 namespace builder
 {
 
@@ -40,13 +48,7 @@ struct BilateralGridParams
 };
 
 
-struct BilateralGridOutput
-{
-	rg::RGTextureViewHandle bilateralGrid;
-	rg::RGTextureViewHandle downsampledLogLuminance;
-};
-
-BilateralGridOutput RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, const BilateralGridParams& parameters);
+BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuilder& graphBuilder, const BilateralGridParams& parameters);
 
 } // builder
 

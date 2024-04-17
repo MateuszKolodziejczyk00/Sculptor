@@ -154,7 +154,7 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
 
 float3 DDGIGetSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
 {
-	const float3 biasVector = (sampleParams.surfaceNormal * 0.2f + sampleParams.viewNormal * 0.8f) * 0.75f * volumeParams.probesSpacing * 0.2f * sampleParams.sampleLocationBiasMultiplier;
+	const float3 biasVector = (sampleParams.surfaceNormal * 0.1f + sampleParams.viewNormal * 0.3f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
 	return sampleParams.worldLocation + biasVector;
 }
 

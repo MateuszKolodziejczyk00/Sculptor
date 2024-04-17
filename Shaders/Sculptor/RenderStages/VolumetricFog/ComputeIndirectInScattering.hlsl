@@ -52,8 +52,8 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
             const float3 direction = u_inScatteringParams.sampleDirections[i].xyz;
 
             DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(fogFroxelWorldLocation, direction, toViewDir);
-            ddgiSampleParams.sampleLocationBiasMultiplier = 0.h;
-            ddgiSampleParams.minVisibility                = 0.9h;
+            ddgiSampleParams.sampleLocationBiasMultiplier = 0.f;
+            ddgiSampleParams.minVisibility                = 0.9f;
             const float3 indirect = DDGISampleIlluminance(ddgiSampleParams);
 
             float2 phaseFunctionLUTUV;
