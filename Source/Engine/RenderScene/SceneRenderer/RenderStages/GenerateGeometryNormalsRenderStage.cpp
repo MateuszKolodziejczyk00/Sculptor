@@ -41,7 +41,7 @@ void GenerateGeometryNormalsRenderStage::OnRender(rg::RenderGraphBuilder& graphB
 
 	const rhi::EFragmentFormat normalsFormat = rhi::EFragmentFormat::RGBA16_UN_Float;
 	viewContext.geometryNormals        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderView.GetRenderingRes(), normalsFormat));
-	viewContext.geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTexture"), rg::TextureDef(renderView.GetRenderingHalfRes(), normalsFormat));
+	viewContext.geometryNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("GeometryNormalsTextureHalfRes"), rg::TextureDef(renderView.GetRenderingHalfRes(), normalsFormat));
 
 	static rdr::PipelineStateID pipelineState = CompileGenerateGeometryNormalsPipeline();
 

@@ -112,7 +112,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
                 const float wn = max(NormalWeight(normal, sampleNormal), 0.f);
                 const float dw = WorldLocationWeight(centerWS, sampleWS);
-                const float lw = min(abs(lumCenter - lum) / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f), 5.f);
+                const float lw = min(abs(lumCenter - lum) / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f) + 0.001f, 10.f);
                 
                 const float weight = exp(-lw) * wn * dw * w;
 

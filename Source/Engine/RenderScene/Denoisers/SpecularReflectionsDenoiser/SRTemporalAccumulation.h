@@ -33,6 +33,11 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle temporalVarianceTexture;
 	rg::RGTextureViewHandle historyTemporalVarianceTexture;
 
+	rg::RGTextureViewHandle historyNormalsTexture;
+
+	rg::RGTextureViewHandle historyRoughnessTexture;
+	rg::RGTextureViewHandle outputRoughnessTexture;
+
 	lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
 };
 

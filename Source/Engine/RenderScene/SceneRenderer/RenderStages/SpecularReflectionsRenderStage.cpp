@@ -36,6 +36,7 @@ struct SpecularReflectionsParams
 	rg::RGTextureViewHandle depthHistoryTexture;
 	rg::RGTextureViewHandle motionTexture;
 	rg::RGTextureViewHandle normalsTexture;
+	rg::RGTextureViewHandle historyNormalsTexture;
 	rg::RGTextureViewHandle specularColorRoughnessTexture;
 	rg::RGTextureViewHandle skyViewLUT;
 };
@@ -170,6 +171,7 @@ static void Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& ren
 	denoiserParams.historyDepthTexture              = params.depthHistoryTexture;
 	denoiserParams.motionTexture                    = params.motionTexture;
 	denoiserParams.normalsTexture                   = params.normalsTexture;
+	denoiserParams.historyNormalsTexture            = params.historyNormalsTexture;
 	denoiserParams.specularColorAndRoughnessTexture = params.specularColorRoughnessTexture;
 	denoiserParams.ddgiSceneDS                      = ddgiDS;
 
@@ -253,11 +255,16 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const math::Vector2u halfResolution = viewSpec.GetRenderingHalfRes();
 
-		const rg::RGTextureViewHandle shadingNormalsHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Shading Normals Half Res"),
-																							 rg::TextureDef(halfResolution, viewContext.normals->GetFormat()));
+		PrepareResources(halfResolution);
 
 		const rg::RGTextureViewHandle specularAndRoughnessHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Color And Roughness Half Res"),
 																							 rg::TextureDef(halfResolution, viewContext.specularAndRoughness->GetFormat()));
+
+		const rg::RGTextureViewHandle shadingNormalsHalfRes = graphBuilder.AcquireExternalTextureView(m_shadingNormalsHalfRes);
+
+		const rg::RGTextureViewHandle historyShadingNormalsHalfRes = m_historyShadingNormalsHalfRes
+			                                                       ? graphBuilder.AcquireExternalTextureView(m_historyShadingNormalsHalfRes)
+			                                                       : rg::RGTextureViewHandle{};
 
 		DownsampledShadingTexturesParams downsampleParams;
 		downsampleParams.depth                         = viewContext.depthNoJitter;
@@ -270,6 +277,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		SpecularReflectionsParams params;
 		params.resolution                    = specularAndRoughnessHalfRes->GetResolution2D();
 		params.normalsTexture                = shadingNormalsHalfRes;
+		params.historyNormalsTexture         = historyShadingNormalsHalfRes;
 		params.specularColorRoughnessTexture = specularAndRoughnessHalfRes;
 		params.depthTexture                  = viewContext.depthNoJitterHalfRes;
 		params.depthHistoryTexture           = viewContext.historyDepthNoJitterHalfRes;
@@ -302,6 +310,26 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 	}
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
+}
+
+void SpecularReflectionsRenderStage::PrepareResources(math::Vector2u renderingHalfRes)
+{
+	SPT_PROFILER_FUNCTION();
+
+	std::swap(m_shadingNormalsHalfRes, m_historyShadingNormalsHalfRes);
+
+	if (!m_shadingNormalsHalfRes || m_shadingNormalsHalfRes->GetResolution2D() != renderingHalfRes)
+	{
+		rhi::TextureDefinition textureDef;
+		textureDef.resolution = renderingHalfRes;
+		textureDef.format = rhi::EFragmentFormat::RGBA16_UN_Float;
+		textureDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+#if SPT_DEBUG || SPT_DEVELOPMENT
+		lib::AddFlag(textureDef.usage, rhi::ETextureUsage::TransferSource);
+#endif
+
+		m_shadingNormalsHalfRes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Shading Normals Half Res"), textureDef, rhi::EMemoryUsage::GPUOnly);
+	}
 }
 
 } // spt::rsc

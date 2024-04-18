@@ -21,6 +21,9 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_historyNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_destRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularColorRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historyAccumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyTemporalVarianceTexture)
@@ -51,6 +54,9 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_depthTexture                         = params.currentDepthTexture;
 	ds->u_motionTexture	                       = params.motionTexture;
 	ds->u_normalsTexture                       = params.normalsTexture;
+	ds->u_historyNormalsTexture                = params.historyNormalsTexture;
+	ds->u_destRoughnessTexture                 = params.outputRoughnessTexture;
+	ds->u_historyRoughnessTexture              = params.historyRoughnessTexture;
 	ds->u_specularColorRoughnessTexture        = params.specularColorAndRoughnessTexture;
 	ds->u_accumulatedSamplesNumTexture         = params.accumulatedSamplesNumTexture;
 	ds->u_historyAccumulatedSamplesNumTexture  = params.historyAccumulatedSamplesNumTexture;

@@ -15,6 +15,7 @@ struct CS_INPUT
 };
 
 
+
 [numthreads(8, 8, 1)]
 void SRTemporalAccumulationCS(CS_INPUT input)
 {
@@ -26,6 +27,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
 		const float roughness = u_specularColorRoughnessTexture.Load(uint3(pixel, 0)).w;
+		u_destRoughnessTexture[pixel] = roughness;
 
 		if(roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
 		{
@@ -52,7 +54,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
 			const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
-
 			const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
 			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
@@ -61,7 +62,13 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
 			{
-				acceptReprojection = true;
+				const float3 historyNormals = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
+				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+
+				if(dot(historyNormals, currentSampleNormal) >= 0.999f && abs(roughness - historyRoughness) < 0.1f)
+				{
+					acceptReprojection = true;
+				}
 			}
 		}
 

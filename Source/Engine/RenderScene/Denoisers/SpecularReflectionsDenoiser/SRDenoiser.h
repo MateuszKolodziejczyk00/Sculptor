@@ -52,6 +52,7 @@ public:
 		rg::RGTextureViewHandle motionTexture;
 
 		rg::RGTextureViewHandle normalsTexture;
+		rg::RGTextureViewHandle historyNormalsTexture;
 
 		lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
 	};
@@ -77,6 +78,9 @@ private:
 	
 	lib::SharedPtr<rdr::TextureView> m_temporalVarianceTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyTemporalVarianceTexture;
+	
+	lib::SharedPtr<rdr::TextureView> m_roughnessTexture;
+	lib::SharedPtr<rdr::TextureView> m_historyRoughnessTexture;
 
 	Bool m_hasValidHistory;
 };
