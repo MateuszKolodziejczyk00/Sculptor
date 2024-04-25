@@ -13,14 +13,15 @@ namespace spt::rsc
 
 REGISTER_RENDER_STAGE(ERenderStage::DownsampleGeometryTextures, DownsampleGeometryTexturesRenderStage);
 
+
 DS_BEGIN(DownsampleGeometryTexturesDS, rg::RGDescriptorSetState<DownsampleGeometryTexturesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),								u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_geometryNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),										u_depthTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),								u_motionTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_geometryNormalsTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_depthTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_motionTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_geometryNormalsTextureHalfRes)
 DS_END();
 
 
@@ -39,7 +40,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	SPT_PROFILER_FUNCTION();
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
-	SPT_CHECK(viewContext.depthNoJitter.IsValid());
+	SPT_CHECK(viewContext.depth.IsValid());
 	SPT_CHECK(viewContext.motion.IsValid());
 	SPT_CHECK(viewContext.geometryNormals.IsValid());
 
@@ -49,14 +50,14 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 
 	const math::Vector2u halfRes = math::Utils::DivideCeil(renderingResolution, math::Vector2u(2u, 2u));
 
-	SPT_CHECK(viewContext.depthNoJitterHalfRes.IsValid());
-	SPT_CHECK(viewContext.depthNoJitterHalfRes->GetResolution2D() == halfRes);
+	SPT_CHECK(viewContext.depthHalfRes.IsValid());
+	SPT_CHECK(viewContext.depthHalfRes->GetResolution2D() == halfRes);
 
 	const lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
-	ds->u_depthTexture                  = viewContext.depthNoJitter;
+	ds->u_depthTexture                  = viewContext.depth;
 	ds->u_motionTexture                 = viewContext.motion;
 	ds->u_geometryNormalsTexture        = viewContext.geometryNormals;
-	ds->u_depthTextureHalfRes           = viewContext.depthNoJitterHalfRes;
+	ds->u_depthTextureHalfRes           = viewContext.depthHalfRes;
 	ds->u_motionTextureHalfRes          = viewContext.motionHalfRes;
 	ds->u_geometryNormalsTextureHalfRes = viewContext.geometryNormalsHalfRes;
 

@@ -363,13 +363,12 @@ inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
 struct ShadingViewContext
 {
 	rg::RGTextureViewHandle depth;
-	rg::RGTextureViewHandle depthNoJitter;
-	rg::RGTextureViewHandle depthNoJitterHalfRes;
+	rg::RGTextureViewHandle depthHalfRes;
 
 	rg::RGTextureViewHandle hiZ;
 
-	rg::RGTextureViewHandle historyDepthNoJitter;
-	rg::RGTextureViewHandle historyDepthNoJitterHalfRes;
+	rg::RGTextureViewHandle historyDepth;
+	rg::RGTextureViewHandle historyDepthHalfRes;
 
 	lib::MTHandle<DepthCullingDS> depthCullingDS;
 

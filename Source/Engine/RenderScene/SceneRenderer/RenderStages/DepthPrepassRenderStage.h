@@ -37,12 +37,10 @@ private:
 
 	void ExecuteDepthPrepass(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, rg::RGTextureViewHandle depthTarget, const DepthPrepassMetaData& metaData);
 
-	lib::SharedPtr<rdr::TextureView> m_currentDepthTexture;
-	lib::SharedPtr<rdr::TextureView> m_currentDepthNoJitterTexture;
-	lib::SharedPtr<rdr::TextureView> m_currentDepthNoJitterTextureHalfRes;
-	lib::SharedPtr<rdr::TextureView> m_historyDepthTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyDepthNoJitterTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyDepthNoJitterTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> m_currentDepth;
+	lib::SharedPtr<rdr::TextureView> m_currentDepthHalfRes;
+	lib::SharedPtr<rdr::TextureView> m_historyDepth;
+	lib::SharedPtr<rdr::TextureView> m_historyDepthHalfRes;
 };
 
 } // spt::rsc

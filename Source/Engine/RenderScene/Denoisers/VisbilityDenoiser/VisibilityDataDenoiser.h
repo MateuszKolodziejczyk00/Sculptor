@@ -45,7 +45,9 @@ public:
 
 		rg::RGTextureViewHandle geometryNormalsTexture;
 
-		Real32 disoccusionTemporalStdDevBoost = 0.4f;
+		Real32 currentFrameDefaultWeight = 0.16f;
+
+		Real32 accumulatedFramesMaxCount = 12.f;
 
 		Bool useTemporalFilter = true;
 	};
@@ -60,7 +62,7 @@ private:
 
 	void DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	void ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle temporalMomentsTexture, rg::RGTextureViewHandle accumulatedSamplesNumTexture, Real32 disoccusionTemporalStdDevBoost);
+	void ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const denoising::DenoiserBaseParams& params, rg::RGTextureViewHandle denoisedTexture, rg::RGTextureViewHandle historyTexture, rg::RGTextureViewHandle varianceTexture);
 
 	rg::RenderGraphDebugName m_debugName;
 

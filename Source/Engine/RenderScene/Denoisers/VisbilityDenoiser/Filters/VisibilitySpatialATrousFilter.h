@@ -19,14 +19,9 @@ struct SpatialATrousFilterParams : public denoising::DenoiserGeometryParams
 
 	SpatialATrousFilterParams(const denoising::DenoiserGeometryParams& inParams)
 		: denoising::DenoiserGeometryParams(inParams)
-		, disoccusionTemporalStdDevBoost(0.f)
 	{  }
 
-	rg::RGTextureViewHandle temporalMomentsTexture;
-	
-	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
-
-	Real32 disoccusionTemporalStdDevBoost;
+	rg::RGTextureViewHandle varianceTexture;
 };
 
 RENDER_SCENE_API void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrousFilterParams& params, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 iterationIdx);

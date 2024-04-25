@@ -72,6 +72,11 @@ TType Pow5(TType val)
     return Pow4(val) * val;
 }
 
+bool IsNearlyZero(in float value, in float epsilon = 0.000001f)
+{
+	return abs(value) < epsilon;
+}
+
 float Luminance(float3 color)
 {
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));

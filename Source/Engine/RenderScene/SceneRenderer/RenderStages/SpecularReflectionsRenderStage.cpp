@@ -267,7 +267,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			                                                       : rg::RGTextureViewHandle{};
 
 		DownsampledShadingTexturesParams downsampleParams;
-		downsampleParams.depth                         = viewContext.depthNoJitter;
+		downsampleParams.depth                         = viewContext.depth;
 		downsampleParams.specularColorRoughness        = viewContext.specularAndRoughness;
 		downsampleParams.shadingNormals                = viewContext.normals;
 		downsampleParams.specularColorRoughnessHalfRes = specularAndRoughnessHalfRes;
@@ -279,8 +279,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		params.normalsTexture                = shadingNormalsHalfRes;
 		params.historyNormalsTexture         = historyShadingNormalsHalfRes;
 		params.specularColorRoughnessTexture = specularAndRoughnessHalfRes;
-		params.depthTexture                  = viewContext.depthNoJitterHalfRes;
-		params.depthHistoryTexture           = viewContext.historyDepthNoJitterHalfRes;
+		params.depthTexture                  = viewContext.depthHalfRes;
+		params.depthHistoryTexture           = viewContext.historyDepthHalfRes;
 		params.motionTexture                 = viewContext.motionHalfRes;
 		params.skyViewLUT                    = viewContext.skyViewLUT;
 
@@ -292,7 +292,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");
 		// Use no jitter depth for upsampling - this should help with edge artifacts
 		upsampleParams.depth              = viewContext.depth;
-		upsampleParams.depthHalfRes       = viewContext.depthNoJitterHalfRes;
+		upsampleParams.depthHalfRes       = viewContext.depthHalfRes;
 		upsampleParams.renderViewDS       = renderView.GetRenderViewDS();
 		upsampleParams.eliminateFireflies = true;
 		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, specularReflectionsTexture, upsampleParams);
@@ -304,7 +304,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		applyParams.specularReflectionsTexture  = specularReflectionsFullRes;
 		applyParams.specularAndRoughnessTexture = viewContext.specularAndRoughness;
 		applyParams.brdfIntegrationLUT          = brdfIntegrationLUT;
-		applyParams.depthTexture                = viewContext.depthNoJitter;
+		applyParams.depthTexture                = viewContext.depth;
 		applyParams.normalsTexture              = viewContext.normals;
 		apply::ApplySpecularReflections(graphBuilder, viewSpec, applyParams);
 	}

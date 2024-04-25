@@ -59,7 +59,7 @@ DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+static rdr::PipelineStateID CreateAORayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	compilationSettings.DisableGeneratingDebugSource();
@@ -87,7 +87,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	static rdr::PipelineStateID traceRaysPipeline;
 	if (!traceRaysPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
 	{
-		traceRaysPipeline = CreateShadowsRayTracingPipeline(rayTracingSceneSubsystem);
+		traceRaysPipeline = CreateAORayTracingPipeline(rayTracingSceneSubsystem);
 	}
 	
 	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
@@ -137,13 +137,13 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	denoiserParams.currentDepthTexture            = context.depthTextureHalfRes;
 	denoiserParams.motionTexture                  = context.motionTextureHalfRes;
 	denoiserParams.geometryNormalsTexture         = context.geometryNormalsTextureHalfRes;
-	denoiserParams.disoccusionTemporalStdDevBoost = 3.f;
+	denoiserParams.currentFrameDefaultWeight      = 0.045f;
+	denoiserParams.accumulatedFramesMaxCount      = 32.f;
 	context.denoiser.Denoise(graphBuilder, aoHalfResTexture, denoiserParams);
 
 	upsampler::DepthBasedUpsampleParams upsampleParams;
 	upsampleParams.debugName    = RG_DEBUG_NAME("RTAO Upsample");
 	upsampleParams.depth        = context.depthTexture;
-#include "Denoisers/VisbilityDenoiser/VisibilityDataDenoiser.h"
 	upsampleParams.depthHalfRes = context.depthTextureHalfRes;
 	upsampleParams.renderViewDS = renderView.GetRenderViewDS();
 	return upsampler::DepthBasedUpsample(graphBuilder, aoHalfResTexture, upsampleParams);
@@ -168,8 +168,8 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		rtao::AORenderingContext aoContext{ renderScene, renderView, m_denoiser };
 		aoContext.geometryNormalsTextureHalfRes = viewContext.geometryNormalsHalfRes;
 		aoContext.depthTexture					= viewContext.depth;
-		aoContext.depthTextureHalfRes			= viewContext.depthNoJitterHalfRes;
-		aoContext.historyDepthTextureHalfRes	= viewContext.historyDepthNoJitterHalfRes;
+		aoContext.depthTextureHalfRes			= viewContext.depthHalfRes;
+		aoContext.historyDepthTextureHalfRes	= viewContext.historyDepthHalfRes;
 		aoContext.motionTextureHalfRes			= viewContext.motionHalfRes;
 
 		viewContext.ambientOcclusion = rtao::RenderAO(graphBuilder, aoContext);

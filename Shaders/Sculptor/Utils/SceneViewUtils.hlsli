@@ -18,6 +18,13 @@ TDepthType ComputeLinearDepth(TDepthType depth, in SceneViewData sceneView)
 }
 
 
+template<typename TDepthType>
+TDepthType ComputeProjectionDepth(TDepthType linearDepth, in SceneViewData sceneView)
+{
+	return GetNearPlane(sceneView) / linearDepth;
+}
+
+
 // Based on: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 bool GetProjectedSphereAABB(float3 viewSpaceCenter, float radius, float znear, float P01, float P12, out float4 aabb)
 {
@@ -178,30 +185,6 @@ Ray CreateViewRayWSNoJitter(in SceneViewData sceneView, in float2 uv)
 {
 	return Ray::Create(sceneView.viewLocation, ComputeViewRayDirectionWSNoJitter(sceneView, uv));
 }
-
-float ComputeJitteredDepthTemporalWindow(in SceneViewData prevSceneView, in SceneViewData sceneView, in float2 uv, in float depth, in float3 normal)
-{
-	const float3 ndc = float3(uv * 2.f - 1.f, depth);
-
-	const float3 location = NDCToWorldSpace(ndc, sceneView);
-	const Plane plane = Plane::Create(normal, location);
-
-	const Ray viewRay = CreateViewRayWSNoJitter(sceneView, uv - sceneView.jitter);
-	const IntersectionResult currentIR = viewRay.IntersectPlane(plane);
-	const float3 currentLocation = viewRay.GetIntersectionLocation(currentIR);
-
-	const Ray prevViewRay = CreateViewRayWSNoJitter(prevSceneView, uv - prevSceneView.jitter);
-	const IntersectionResult prevIR = prevViewRay.IntersectPlane(plane);
-	const float3 prevLocation = prevViewRay.GetIntersectionLocation(prevIR);
-
-	const float3 currentNDC = WorldSpaceToNDC(currentLocation, sceneView);
-	const float3 prevNDC = WorldSpaceToNDC(prevLocation, prevSceneView);
-
-	const float additionalWindow = abs(ComputeLinearDepth(currentNDC.z, sceneView) - ComputeLinearDepth(prevNDC.z, prevSceneView));
-
-	return additionalWindow;
-}
-
 
 #ifdef DS_RenderViewDS
 

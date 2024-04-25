@@ -13,13 +13,13 @@ namespace spt::rsc::visibility_denoiser::temporal_accumulation
 {
 
 BEGIN_SHADER_STRUCT(TemporalFilterShaderParams)
-	SHADER_STRUCT_FIELD(Real32, currentFrameWeight)
-	SHADER_STRUCT_FIELD(Bool, hasValidSpatialMomentsTexture)
-	SHADER_STRUCT_FIELD(Bool, hasValidSamplesCountTexture)
+	SHADER_STRUCT_FIELD(Real32, currentFrameDefaultWeight)
+	SHADER_STRUCT_FIELD(Real32, accumulatedFramesMaxCount)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(TemporalFilterDS, rg::RGDescriptorSetState<TemporalFilterDS>)
+DS_BEGIN(VisibilityTemporalFilterDS, rg::RGDescriptorSetState<VisibilityTemporalFilterDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_varianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_currentTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyDepthTexture)
@@ -49,18 +49,18 @@ void ApplyTemporalFilter(rg::RenderGraphBuilder& graphBuilder, const TemporalFil
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(params.HasValidHistory());
+	SPT_CHECK(params.accumulatedSamplesNumTexture.IsValid());
+	SPT_CHECK(params.accumulatedSamplesNumHistoryTexture.IsValid());
 
 	const math::Vector3u resolution = params.currentTexture->GetResolution();
 
-	const Bool hasValidSamplesCountTexture = params.accumulatedSamplesNumTexture.IsValid() && params.accumulatedSamplesNumHistoryTexture.IsValid();
-
 	TemporalFilterShaderParams shaderParams;
-	shaderParams.currentFrameWeight                 = params.currentFrameWeight;
-	shaderParams.hasValidSpatialMomentsTexture      = params.spatialMomentsTexture.IsValid();
-	shaderParams.hasValidSamplesCountTexture        = hasValidSamplesCountTexture;
+	shaderParams.currentFrameDefaultWeight = params.currentFrameDefaultWeight;
+	shaderParams.accumulatedFramesMaxCount = params.accumulatedFramesMaxCount;
 
-	lib::MTHandle<TemporalFilterDS> ds = graphBuilder.CreateDescriptorSet<TemporalFilterDS>(RENDERER_RESOURCE_NAME("Temporal Filter DS"));
+	lib::MTHandle<VisibilityTemporalFilterDS> ds = graphBuilder.CreateDescriptorSet<VisibilityTemporalFilterDS>(RENDERER_RESOURCE_NAME("Visibility Temporal Filter DS"));
 	ds->u_currentTexture                      = params.currentTexture;
+	ds->u_varianceTexture                     = params.varianceTexture;
 	ds->u_historyTexture                      = params.historyTexture;
 	ds->u_historyDepthTexture                 = params.historyDepthTexture;
 	ds->u_depthTexture                        = params.currentDepthTexture;

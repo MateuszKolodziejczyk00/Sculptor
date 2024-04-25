@@ -56,8 +56,17 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 
         const float4 linearDepths = ComputeLinearDepth(depths, u_sceneView);
 
-        const float minLinearDepth = min(min(min(linearDepths.x, linearDepths.y), linearDepths.z), linearDepths.w);
-        const float4 sampleDepthDiff = abs(linearDepths - minLinearDepth);
+		const bool useMinDepth = ((pixel.x + pixel.y) & 1) == 1;
+        float mostImportantLinearDepth = 0.f;
+		if(useMinDepth)
+		{
+			mostImportantLinearDepth = min(min(min(linearDepths.x, linearDepths.y), linearDepths.z), linearDepths.w);
+		}
+		else
+		{
+			mostImportantLinearDepth = max(max(max(linearDepths.x, linearDepths.y), linearDepths.z), linearDepths.w);
+		}
+        const float4 sampleDepthDiff = abs(linearDepths - mostImportantLinearDepth);
 
         const float weight0 = ComputeSampleWeight(sampleDepthDiff.x);
         const float weight1 = ComputeSampleWeight(sampleDepthDiff.y);
@@ -69,8 +78,8 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
         const float2 motion = (motion0 * weight0 + motion1 * weight1 + motion2 * weight2 + motion3 * weight3) * rcpWeightSum;
         const float3 normal = normalize((normal0 * weight0 + normal1 * weight1 + normal2 * weight2 + normal3 * weight3) * rcpWeightSum);
 
-        const float closestDepth = max(max(max(depths.x, depths.y), depths.z), depths.w);
-        u_depthTextureHalfRes[pixel]           = closestDepth;
+        const float mostImportantDepth = ComputeProjectionDepth(mostImportantLinearDepth, u_sceneView);
+        u_depthTextureHalfRes[pixel]           = mostImportantDepth;
         u_motionTextureHalfRes[pixel]          = motion;
         u_geometryNormalsTextureHalfRes[pixel] = normal * 0.5f + 0.5f;
     }

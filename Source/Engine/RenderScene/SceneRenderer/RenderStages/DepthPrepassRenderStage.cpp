@@ -55,15 +55,13 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	viewContext.depth         = graphBuilder.AcquireExternalTextureView(m_currentDepthTexture);
-	viewContext.depthNoJitter = graphBuilder.AcquireExternalTextureView(m_currentDepthNoJitterTexture);
+	viewContext.depth        = graphBuilder.AcquireExternalTextureView(m_currentDepth);
+	viewContext.depthHalfRes = graphBuilder.AcquireExternalTextureView(m_currentDepthHalfRes);
 
-	viewContext.depthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(m_currentDepthNoJitterTextureHalfRes);
-
-	if (m_historyDepthTexture)
+	if (m_historyDepth)
 	{
-		viewContext.historyDepthNoJitter        = graphBuilder.AcquireExternalTextureView(m_historyDepthNoJitterTexture);
-		viewContext.historyDepthNoJitterHalfRes = graphBuilder.AcquireExternalTextureView(m_historyDepthNoJitterTextureHalfRes);
+		viewContext.historyDepth        = graphBuilder.AcquireExternalTextureView(m_historyDepth);
+		viewContext.historyDepthHalfRes = graphBuilder.AcquireExternalTextureView(m_historyDepthHalfRes);
 	}
 
 	{
@@ -71,41 +69,23 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 		metaData.allowJittering = true;
 		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, viewContext.depth, metaData);
 	}
-
-	if (viewContext.depth != viewContext.depthNoJitter)
-	{
-		DepthPrepassMetaData metaData;
-		metaData.allowJittering = false;
-		ExecuteDepthPrepass(graphBuilder, renderScene, viewSpec, stageContext, viewContext.depthNoJitter, metaData);
-	}
 }
 
 void DepthPrepassRenderStage::PrepareDepthTextures(const RenderView& renderView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Bool wantsSeparateNoJitterTextures = renderView.GetAntiAliasingMode() == EAntiAliasingMode::TemporalAA;
-
-	std::swap(m_currentDepthTexture, m_historyDepthTexture);
-	std::swap(m_currentDepthNoJitterTextureHalfRes, m_historyDepthNoJitterTextureHalfRes);
-
-	if (m_currentDepthTexture != m_currentDepthNoJitterTexture)
-	{
-		std::swap(m_currentDepthNoJitterTexture, m_historyDepthNoJitterTexture);
-	}
+	std::swap(m_currentDepth, m_historyDepth);
+	std::swap(m_currentDepthHalfRes, m_historyDepthHalfRes);
 
 	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 
-	if (!m_currentDepthTexture || m_currentDepthTexture->GetTexture()->GetResolution2D() != renderingRes)
+	if (!m_currentDepth || m_currentDepth->GetTexture()->GetResolution2D() != renderingRes)
 	{
 		const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2u, 2u));
 
-		m_currentDepthTexture                = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
-		m_currentDepthNoJitterTextureHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
-		
-		m_currentDepthNoJitterTexture = wantsSeparateNoJitterTextures
-			                          ? utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true)
-			                          : m_currentDepthTexture;
+		m_currentDepth        = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
+		m_currentDepthHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
 	}
 }
 
@@ -134,7 +114,6 @@ void DepthPrepassRenderStage::ExecuteDepthPrepass(rg::RenderGraphBuilder& graphB
 							});
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext, metaData);
-
 }
 
 } // spt::rsc

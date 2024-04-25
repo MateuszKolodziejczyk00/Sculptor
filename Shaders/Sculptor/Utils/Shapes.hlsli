@@ -28,7 +28,12 @@ struct Plane
 
 	float Distance(in float3 location)
 	{
-		return dot(normal, location) - dist;
+		return abs(dot(normal, location) - dist);
+	}
+
+	float3 Project(in float3 location)
+	{
+		return location - normal * Distance(location);
 	}
 
 	float3 normal;
