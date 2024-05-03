@@ -38,7 +38,7 @@ RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f,
 RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f, 0.f, 1.f);
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
 
-RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
+RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, false);
 RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.006f, 0.f, 1.f);
 RendererFloat3Parameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, math::Vector3f(360.f, 360.f, 220.f), 0.f, 1000.f);
 
@@ -53,10 +53,10 @@ RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Fla
 
 RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
 
-RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 0.9f, 0.f, 2.f);
-RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.7f, 0.f, 2.f);
+RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 0.95f, 0.f, 2.f);
+RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.75f, 0.f, 2.f);
 
-RendererFloatParameter bilateralGridStrength("Bilateral Grid Strength", { "LocalTonemap" }, 0.4f, 0.f, 1.f);
+RendererFloatParameter bilateralGridStrength("Bilateral Grid Strength", { "LocalTonemap" }, 0.5f, 0.f, 1.f);
 
 } // params
 
@@ -593,6 +593,8 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	const math::Vector2u gridTileSize     = automaticExposureOutputs.bilateralGridInfo.tilesSize;
 	const math::Vector2u gridResolution2D = automaticExposureOutputs.bilateralGridInfo.bilateralGrid->GetResolution2D();
 
+	const math::Vector2u gridSize2D = gridTileSize.cwiseProduct(gridResolution2D);
+
 	tonemapping::TonemappingPassConstants tonemappingSettings;
 	tonemappingSettings.enableColorDithering     = params::enableColorDithering;
 	tonemappingSettings.minLogLuminance          = minLogLuminance;
@@ -601,7 +603,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingSettings.contrastStrength         = params::contrastStrength;
 	tonemappingSettings.detailStrength           = params::detailStrength;
 	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
-	tonemappingSettings.bilateralGridUVPerPixel  = gridTileSize.cast<Real32>().cwiseQuotient(gridResolution2D.cast<Real32>());
+	tonemappingSettings.bilateralGridUVPerPixel  = gridSize2D.cast<Real32>().cwiseInverse();
 
 	tonemapping::TonemappingParameters tonemappingParameters;
 	tonemappingParameters.linearColorTexture            = linearColorTexture;

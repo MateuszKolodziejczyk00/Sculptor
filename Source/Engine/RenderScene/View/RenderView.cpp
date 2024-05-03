@@ -213,6 +213,17 @@ void RenderView::CollectRenderViews(const RenderScene& renderScene, INOUT Render
 	}
 }
 
+void RenderView::OnBeginRendering()
+{
+	SPT_PROFILER_FUNCTION();
+
+	CachePrevFrameRenderingData();
+	UpdateViewRenderingData(GetRenderingRes());
+	UpdateCullingData();
+
+	UpdateRenderViewDS();
+}
+
 void RenderView::InitializeRenderSystem(ViewRenderSystem& renderSystem)
 {
 	renderSystem.Initialize(*this);

@@ -59,14 +59,20 @@ GBufferData DecodeGBuffer(in GBufferInput input, in uint3 pixel)
 	const float4 baseColorMetallic = input.gBuffer0.Load(pixel);
 
 	data.baseColor = baseColorMetallic.rgb;
-	data.metallic = baseColorMetallic.a;
-	data.normal = tangentFrameMatrix[2];
-	data.tangent = tangentFrameMatrix[0];
+	data.metallic  = baseColorMetallic.a;
+	data.normal    = tangentFrameMatrix[2];
+	data.tangent   = tangentFrameMatrix[0];
 	data.bitangent = tangentFrameMatrix[1];
 	data.roughness = input.gBuffer2.Load(pixel);
-	data.emissive = input.gBuffer3.Load(pixel);
+	data.emissive  = input.gBuffer3.Load(pixel);
 
 	return data;
+}
+
+
+float3 DecodeGBufferNormal(in float4 tangentFrame)
+{
+	return QuatTo3x3(UnpackQuaternion(tangentFrame))[2];
 }
 
 

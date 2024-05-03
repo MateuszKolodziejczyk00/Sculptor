@@ -341,8 +341,14 @@ void ParticipatingMediaViewRenderSystem::PreRenderFrame(rg::RenderGraphBuilder& 
 
 	Super::PreRenderFrame(graphBuilder, renderScene, viewSpec);
 
-	SPT_CHECK(viewSpec.SupportsStage(ERenderStage::ForwardOpaque));
-	viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque).GetPostRenderStage().AddRawMember(this, &ParticipatingMediaViewRenderSystem::RenderParticipatingMedia);
+	if(viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
+	{
+		viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque).GetPostRenderStage().AddRawMember(this, &ParticipatingMediaViewRenderSystem::RenderParticipatingMedia);
+	}
+	else if (viewSpec.SupportsStage(ERenderStage::DeferredShading))
+	{
+		viewSpec.GetRenderStageEntries(ERenderStage::DeferredShading).GetPostRenderStage().AddRawMember(this, &ParticipatingMediaViewRenderSystem::RenderParticipatingMedia);
+	}
 }
 
 const VolumetricFogParams& ParticipatingMediaViewRenderSystem::GetVolumetricFogParams() const

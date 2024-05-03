@@ -72,10 +72,8 @@ void DeferredShadingCS(CS_INPUT input)
 
 			const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);
 
-			SceneLightingAccumulator lightingAccumulator = SceneLightingAccumulator::Create();
+			ViewLightingAccumulator lightingAccumulator = ViewLightingAccumulator::Create();
 			CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
-
-			luminance = lightingAccumulator.GetLuminance();
 
 			float3 indirectIlluminance = 0.f;
 
@@ -89,14 +87,15 @@ void DeferredShadingCS(CS_INPUT input)
 #ifdef ENABLE_DDGI
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
 			ddgiSampleParams.sampleDirection = surface.shadingNormal;
-			indirectIlluminance = DDGISampleIlluminance(ddgiSampleParams) * ambientOcclusion;
+			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams) * ambientOcclusion;
 #endif // ENABLE_DDGI
 
-			luminance += surface.diffuseColor * Diffuse_Lambert(indirectIlluminance);
+			const float3 indirectDiffuse = Diffuse_Lambert(indirectIlluminance);
+			lightingAccumulator.Accumulate(LightingContribution::Create(surface.diffuseColor * indirectDiffuse, indirectDiffuse));
 
-			luminance += gBufferData.emissive;
+			lightingAccumulator.Accumulate(LightingContribution::Create(gBufferData.emissive));
 
-			luminance = LuminanceToExposedLuminance(luminance);
+			luminance = LuminanceToExposedLuminance(lightingAccumulator.GetLuminance());
 		}
 	}
 

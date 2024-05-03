@@ -47,31 +47,32 @@ public:
 		rg::RGTextureViewHandle historyDepthTexture;
 		rg::RGTextureViewHandle currentDepthTexture;
 
-		rg::RGTextureViewHandle specularColorAndRoughnessTexture;
+		rg::RGTextureViewHandle roughnessTexture;
 
 		rg::RGTextureViewHandle motionTexture;
 
 		rg::RGTextureViewHandle normalsTexture;
 		rg::RGTextureViewHandle historyNormalsTexture;
-
-		lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
 	};
 
 	explicit Denoiser(rg::RenderGraphDebugName debugName);
 
-	void Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	rg::RGTextureViewHandle Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
 private:
 
 	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	void DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	rg::RGTextureViewHandle DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, rg::RGTextureViewHandle historyTexture, rg::RGTextureViewHandle stdDevTexture, const Params& params);
+	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, rg::RGTextureViewHandle stdDev, rg::RGTextureViewHandle historySamplesNum, rg::RGTextureViewHandle reprojectionConfidence, const Params& params);
 
 	rg::RenderGraphDebugName m_debugName;
 
 	lib::SharedPtr<rdr::TextureView> m_historyTexture;
+	
+	lib::SharedPtr<rdr::TextureView> m_fastHistoryTexture;
+	lib::SharedPtr<rdr::TextureView> m_fastHistoryOutputTexture;
 	
 	lib::SharedPtr<rdr::TextureView> m_accumulatedSamplesNumTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyAccumulatedSamplesNumTexture;

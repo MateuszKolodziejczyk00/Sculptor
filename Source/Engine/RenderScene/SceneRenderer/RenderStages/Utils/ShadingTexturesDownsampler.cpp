@@ -14,9 +14,9 @@ namespace spt::rsc
 DS_BEGIN(DownsampleShadingTexturesDS, rg::RGDescriptorSetState<DownsampleShadingTexturesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularColorRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_shadingNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_specularColorRoughnessTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_tangentFrame)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_roughnessTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_shadingNormalsTextureHalfRes)
 DS_END();
 
@@ -35,11 +35,11 @@ void DownsampleShadingTextures(rg::RenderGraphBuilder& graphBuilder, const Rende
 	const math::Vector2u halfRes = params.shadingNormalsHalfRes->GetResolution2D();
 
 	lib::MTHandle<DownsampleShadingTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleShadingTexturesDS>(RENDERER_RESOURCE_NAME("DownsampleShadingTexturesDS"));
-	ds->u_depthTexture                         = params.depth;
-	ds->u_specularColorRoughnessTexture        = params.specularColorRoughness;
-	ds->u_shadingNormalsTexture                = params.shadingNormals;
-	ds->u_specularColorRoughnessTextureHalfRes = params.specularColorRoughnessHalfRes;
-	ds->u_shadingNormalsTextureHalfRes         = params.shadingNormalsHalfRes;
+	ds->u_depthTexture                 = params.depth;
+	ds->u_roughnessTexture             = params.roughness;
+	ds->u_tangentFrame                 = params.tangentFrame;
+	ds->u_roughnessTextureHalfRes      = params.roughnessHalfRes;
+	ds->u_shadingNormalsTextureHalfRes = params.shadingNormalsHalfRes;
 
 	const rdr::PipelineStateID pipeline = CompileDownsampleShadingTexturesPipeline();
 

@@ -4,7 +4,8 @@
 [[descriptor_set(ApplySpecularReflectionsDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
-
+#include "Utils/GBuffer.hlsli"
+#include "Shading/Shading.hlsli"
 
 struct CS_INPUT
 {
@@ -33,10 +34,18 @@ void ApplySpecularReflectionsCS(CS_INPUT input)
 			return;
 		}
 
-		const float4 specularColorAndRoughness = u_specularAndRoughnessTexture.Load(uint3(pixel, 0));
+		GBufferInput gBufferInput;
+		gBufferInput.gBuffer0 = u_gBuffer0Texture;
+		gBufferInput.gBuffer1 = u_gBuffer1Texture;
+		gBufferInput.gBuffer2 = u_gBuffer2Texture;
+		gBufferInput.gBuffer3 = u_gBuffer3Texture;
+		gBufferInput.gBuffer4 = u_gBuffer4Texture;
 
-		const float3 specularColor = specularColorAndRoughness.rgb;
-		const float roughness      = specularColorAndRoughness.a;
+		const GBufferData gBufferData = DecodeGBuffer(gBufferInput, int3(pixel, 0));
+
+		float3 diffuseColor  = 0.f;
+		float3 specularColor = 0.f;
+		ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT diffuseColor, OUT specularColor);
 
 		const float3 viewLocation = u_sceneView.viewLocation;
 
@@ -44,11 +53,10 @@ void ApplySpecularReflectionsCS(CS_INPUT input)
 		const float3 worldLocation = NDCToWorldSpaceNoJitter(float3(uv * 2.f - 1.f, depth), u_sceneView);
 
 		const float3 viewDir = normalize(viewLocation - worldLocation);
-		const float3 normal  = u_normalsTexture.Load(uint3(pixel, 0)).rgb * 2.f - 1.f;
 
-		const float NdotV = saturate(dot(normal, viewDir));
+		const float NdotV = saturate(dot(gBufferData.normal, viewDir));
 
-		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_linearSampler, float2(NdotV, roughness), 0);
+		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_linearSampler, float2(NdotV, gBufferData.roughness), 0);
 
 		luminance += specularReflections * (specularColor * integratedBRDF.x + integratedBRDF.y);
 

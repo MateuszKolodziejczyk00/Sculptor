@@ -64,7 +64,7 @@ void ViewRenderingSpec::Initialize(RenderView& renderView)
 		}
 	}
 
-	const Bool isShadingView = lib::HasAnyFlag(renderView.GetSupportedStages(), ERenderStage::ForwardRendererStages);
+	const Bool isShadingView = lib::HasAnyFlag(renderView.GetSupportedStages(), ERenderStage::DeferredLightingStages);
 	if (isShadingView)
 	{
 		m_viewRenderingData.Create<ShadingViewContext>();

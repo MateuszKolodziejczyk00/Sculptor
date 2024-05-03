@@ -27,7 +27,7 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 		: denoising::DenoiserBaseParams(inParams)
 	{  }
 
-	rg::RGTextureViewHandle specularColorAndRoughnessTexture;
+	rg::RGTextureViewHandle currentRoughnessTexture;
 	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
 	rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture;
 	rg::RGTextureViewHandle temporalVarianceTexture;
@@ -38,9 +38,13 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle historyRoughnessTexture;
 	rg::RGTextureViewHandle outputRoughnessTexture;
 
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS;
+	rg::RGTextureViewHandle fastHistoryTexture;
+	rg::RGTextureViewHandle fastHistoryOutputTexture;
+
+	rg::RGTextureViewHandle reprojectionConfidenceTexture;
 };
 
+rg::RGTextureViewHandle CreateReprojectionConfidenceTexture(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
 
 void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const TemporalAccumulationParameters& params);
 

@@ -274,7 +274,7 @@ void SandboxRenderer::CreateRenderGraphCapture()
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
-	m_renderView->AddRenderStages(rsc::ERenderStage::ForwardRendererStages);
+	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);

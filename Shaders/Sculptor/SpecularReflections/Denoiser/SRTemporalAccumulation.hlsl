@@ -3,17 +3,15 @@
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(SRTemporalAccumulationDS, 1)]]
 
-[[descriptor_set(DDGISceneDS, 2)]]
-
-#include "DDGI/DDGITypes.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
+
 
 struct CS_INPUT
 {
 	uint3 globalID : SV_DispatchThreadID;
 };
-
 
 
 [numthreads(8, 8, 1)]
@@ -26,7 +24,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
-		const float roughness = u_specularColorRoughnessTexture.Load(uint3(pixel, 0)).w;
+		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 		u_destRoughnessTexture[pixel] = roughness;
 
 		if(roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
@@ -47,9 +45,11 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		float2 historyUV = prevFrameNDC.xy * 0.5f + 0.5f;
 
-		bool acceptReprojection = false;
+		float reprojectionConfidence = 0.f;
 
 		const float3 currentSampleNormal = normalize(u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f);
+
+		const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
 
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
@@ -57,60 +57,91 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
 			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
-			const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
 			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
-
 			if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
 			{
-				const float3 historyNormals = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
+				const float3 historyNormals  = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
 				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 
-				if(dot(historyNormals, currentSampleNormal) >= 0.999f && abs(roughness - historyRoughness) < 0.1f)
+				const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
+				if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < 0.01f)
 				{
-					acceptReprojection = true;
+					const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
+					const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
+					const float parallaxAngle = dot(historyViewDir, currentViewDir);
+					const float parallaxFilterStrength = 1.f;
+
+					reprojectionConfidence = 1.f - 0.2f * saturate(parallaxAngle * parallaxFilterStrength) * (1.f - roughness);
 				}
 			}
 		}
 
-		if(!acceptReprojection)
+		if(reprojectionConfidence < 1.f)
 		{
 			const float2 motion = u_motionTexture.Load(uint3(pixel, 0));
 			
-			historyUV = uv - motion;
+			const float2 surfaceHistoryUV = uv - motion;
 
-			if(all(historyUV >= 0.f) && all(historyUV <= 1.f))
+			if(all(surfaceHistoryUV >= 0.f) && all(surfaceHistoryUV <= 1.f))
 			{
 				const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
 				const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
 				const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
-
-				if (distance(historySampleWS, currentSampleWS) < 0.02f)
+			
+				const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
+				if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
 				{
-					acceptReprojection = true;
+					const float motionLength = length(motion);
+					if(IsNearlyZero(motionLength))
+					{
+						reprojectionConfidence = 1.f;
+						historyUV              = surfaceHistoryUV;
+					}
+					const float3 historyNormal = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
+					const float normalsSimilarity = dot(historyNormal, currentSampleNormal);
+					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+					const float roughnessDiff = abs(roughness - historyRoughness);
+
+					if(normalsSimilarity >= 0.95f && abs(roughness - historyRoughness) < 0.05f)
+					{
+						const float maxMotionLength = 0.11f * roughness;
+						const float confidence = 0.3f + 0.7f * saturate(1.f - motionLength / (maxMotionLength + 0.000001f));
+
+						if(confidence > reprojectionConfidence)
+						{
+							reprojectionConfidence = confidence;
+							historyUV              = surfaceHistoryUV;
+						}
+					}
 				}
 			}
 		}
-
-		uint historySamplesNum = 1u;
+		uint historySamplesNum = 0u;
 		const float lum = Luminance(luminanceAndHitDist.rgb);
 		float2 moments = float2(lum, lum * lum);
 
-		if (acceptReprojection)
+		if (reprojectionConfidence > 0.05f)
 		{
 			const uint3 historyPixel = uint3(historyUV * outputRes.xy, 0u);
 
-			historySamplesNum += u_historyAccumulatedSamplesNumTexture.Load(historyPixel);
+			historySamplesNum += max(u_historyAccumulatedSamplesNumTexture.Load(historyPixel), 1.f);
+
+			const float3 movementDelta = u_sceneView.viewLocation - u_prevFrameSceneView.viewLocation;
+			const float distToSample = distance(currentSampleWS, u_sceneView.viewLocation);
+			const float parallaxAngle = length(movementDelta) / (distToSample * u_constants.deltaTime);
+
+			const float3 toViewDir = (u_sceneView.viewLocation - currentSampleWS) / distToSample;
+			const float dotNV = saturate(dot(currentSampleNormal, toViewDir));
+
+			const float maxAccumulatedFrames = MAX_ACCUMULATED_FRAMES_NUM;
+
+			historySamplesNum = min(historySamplesNum, uint(maxAccumulatedFrames));
 			
-			const float minHistoryWeight = lerp(0.05f, 0.1f, Pow3(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS));
-			float currentFrameWeight = max(minHistoryWeight, rcp(float(historySamplesNum + 3u)));
+			float currentFrameWeight = rcp(float(historySamplesNum + 1u));
+			currentFrameWeight = currentFrameWeight + (1.f - currentFrameWeight) * (1.f - reprojectionConfidence);
 
 			const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
 			moments = lerp(historyMoments, moments, currentFrameWeight);
-			
-			const float stdDev = sqrt(abs(moments.y - moments.x * moments.x));
-			const float temporalStabilityBoost = saturate(stdDev / 200.f) * (historySamplesNum * 0.1f);
-
-			currentFrameWeight /= (1.f + temporalStabilityBoost);
 			
 			float4 historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
 			historyValue.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(historyValue.rgb);
@@ -119,28 +150,21 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			u_currentTexture[pixel] = newValue;
 
-			historySamplesNum = max(historySamplesNum, 128u);
+			// Fast history
+
+			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+			float currentFrameWeightFast = max(rcp(float(min(historySamplesNum + 1u, FAST_HISTORY_MAX_ACCUMULATED_FRAMES_NUM))), currentFrameWeight);
+			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
+
+			historySamplesNum = historySamplesNum + 1u;
 		}
-		else if(roughness > 0.1f) // additional ddgi sample for disocclusion
+		else
 		{
-			const float distToView = distance(currentSampleWS, u_sceneView.viewLocation);
-			const float3 toViewDir = (u_sceneView.viewLocation - currentSampleWS) / distToView;
-			const float3 reflectedVector = reflect(-toViewDir, currentSampleNormal);
-			const float3 ddgiQueryWS = currentSampleWS + toViewDir * min(distToView * 0.9f, 1.3f);
-			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, currentSampleNormal, toViewDir);
-			ddgiSampleParams.sampleDirection = reflectedVector;
-			ddgiSampleParams.minVisibility = 0.95f;
-			ddgiSampleParams.sampleLocationBiasMultiplier = 0.0f;
-			const float3 ddgiLuminance = LuminanceToExposedLuminance(DDGISampleLuminance(ddgiSampleParams));
-
-			const float ddgiSampleWeight = saturate(1.f - roughness / GLOSSY_TRACE_MAX_ROUGHNESS);
-
-			const float4 newValue = lerp(luminanceAndHitDist, float4(ddgiLuminance, luminanceAndHitDist.w), ddgiSampleWeight);
-
-			u_currentTexture[pixel] = newValue;
+			u_fastHistoryOutputTexture[pixel] = 0.f;
 		}
 
-		u_accumulatedSamplesNumTexture[pixel] = historySamplesNum;
-		u_temporalVarianceTexture[pixel]      = moments;
+		u_accumulatedSamplesNumTexture[pixel]  = historySamplesNum;
+		u_temporalVarianceTexture[pixel]       = moments;
+		u_reprojectionConfidenceTexture[pixel] = reprojectionConfidence;
 	}
 }

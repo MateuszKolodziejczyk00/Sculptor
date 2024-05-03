@@ -48,8 +48,7 @@ void TemporalFilterCS(CS_INPUT input)
 
 		bool wasSampleAccepted = false;
 		uint historySampleCount = 0;
-debug::WriteDebugPixel(pixel, 0.f);
-		
+
 		const float currentValue = u_currentTexture[pixel];
 
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
@@ -82,7 +81,6 @@ debug::WriteDebugPixel(pixel, 0.f);
 				const int2 historyPixel = round(historyUV * outputRes);
 				historySampleCount = u_accumulatedSamplesNumHistoryTexture.Load(int3(historyPixel, 0));
 				currentFrameWeight = max(currentFrameWeight * 0.1f, rcp(float(historySampleCount + 1)));
-				debug::WriteDebugPixel(pixel, historySampleCount);
 
 #if USE_CATMULL_ROM
 				float historyValue = SampleCatmullRom(u_historyTexture, u_linearSampler, historyUV, outputRes);

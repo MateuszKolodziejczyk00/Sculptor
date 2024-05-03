@@ -66,12 +66,15 @@ void VisibilityBufferRenderStage::PrepareDepthTextures(const RenderView& renderV
 
 	std::swap(m_currentDepthTexture, m_historyDepthTexture);
 	std::swap(m_currentHiZTexture, m_historyHiZTexture);
+	std::swap(m_currentDepthHalfRes, m_historyDepthHalfRes);
 
-	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+	const math::Vector2u renderingRes     = renderView.GetRenderingRes();
+	const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2, 2));
 
 	if (!m_currentDepthTexture || m_currentDepthTexture->GetResolution2D() != renderingRes)
 	{
 		m_currentDepthTexture = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
+		m_currentDepthHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
 	}
 
 	const HiZ::HiZSizeInfo hiZSizeInfo = HiZ::ComputeHiZSizeInfo(renderingRes);
@@ -138,6 +141,25 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	materialsPassParams.visibilityTexture        = visibilityTexture;
 
 	materials_renderer::ExecuteMaterialsPass(graphBuilder, materialsPassParams);
+
+	shadingContext.depth               = depth;
+	shadingContext.depthHalfRes        = graphBuilder.AcquireExternalTextureView(m_currentDepthHalfRes);
+
+	shadingContext.historyDepth        = historyDepth;
+	if (m_historyDepthHalfRes)
+	{
+		shadingContext.historyDepthHalfRes = graphBuilder.AcquireExternalTextureView(m_historyDepthHalfRes);
+	}
+
+	shadingContext.hiZ = hiZ;
+
+	DepthCullingParams depthCullingParams;
+	depthCullingParams.hiZResolution = hiZ->GetResolution2D().cast<Real32>();
+
+	lib::MTHandle<DepthCullingDS> depthCullingDS = graphBuilder.CreateDescriptorSet<DepthCullingDS>(RENDERER_RESOURCE_NAME("DepthCullingDS"));
+	depthCullingDS->u_hiZTexture         = hiZ;
+	depthCullingDS->u_depthCullingParams = depthCullingParams;
+	shadingContext.depthCullingDS = std::move(depthCullingDS);
 }
 
 } // spt::rsc

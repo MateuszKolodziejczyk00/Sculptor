@@ -249,7 +249,7 @@ struct DDGIDebugRaysViewData
 
 DDGIRenderSystem::DDGIRenderSystem()
 {
-	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::ForwardOpaque);
+	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::DeferredShading);
 }
 
 void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)

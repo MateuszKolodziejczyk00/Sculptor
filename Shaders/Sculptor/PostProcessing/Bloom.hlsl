@@ -105,16 +105,7 @@ void BloomDownsampleCS(CS_INPUT input)
 
 		const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
 		
-		float3 input = DownsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
-
-		if(u_bloomInfo.isSetupPass)
-		{
-			const float luminance = Luminance(input);
-			const float bloomThreshold = 9.2f;
-			const float bloomMultiplier = saturate((luminance - bloomThreshold) * 0.001f);
-			
-			input = bloomMultiplier * input;
-		}
+		const float3 input = DownsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
 
 		u_outputTexture[pixel] = float4(input, 1.f);
 	}
@@ -165,7 +156,7 @@ void BloomCompositeCS(CS_INPUT input)
 
 		const float3 imageColor = u_outputTexture[pixel].rgb;
 
-		bloom += imageColor;
+		bloom = lerp(bloom, imageColor, 0.955f);
 
 		float3 lensDirt = 0.f;
 		if (u_bloomCompositeInfo.hasLensDirtTexture)

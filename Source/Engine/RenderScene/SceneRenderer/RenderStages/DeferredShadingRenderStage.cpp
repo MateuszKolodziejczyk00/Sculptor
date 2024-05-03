@@ -73,7 +73,8 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = shadingParams.renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
 	const Bool isDDGIEnabled = ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled();
 
-	viewContext.luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(viewSpec.GetRenderingRes(), SceneRendererStatics::hdrFormat));
+	viewContext.luminance              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
+	viewContext.eyeAdaptationLuminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Eye Adaptation Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
 
 	DeferredShadingContstants shaderConstants;
 	shaderConstants.resolution = resolution;

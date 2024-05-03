@@ -20,11 +20,12 @@ struct DownsampledShadingTexturesParams
 {
 	// Input
 	rg::RGTextureViewHandle depth;
-	rg::RGTextureViewHandle specularColorRoughness;
-	rg::RGTextureViewHandle shadingNormals;
+	rg::RGTextureViewHandle roughness;
+	rg::RGTextureViewHandle tangentFrame;
+
 
 	// Output
-	rg::RGTextureViewHandle specularColorRoughnessHalfRes;
+	rg::RGTextureViewHandle roughnessHalfRes;
 	rg::RGTextureViewHandle shadingNormalsHalfRes;
 };
 

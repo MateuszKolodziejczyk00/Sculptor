@@ -37,8 +37,6 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	
 	viewContext.luminance              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
 	viewContext.eyeAdaptationLuminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Eye Adaptation Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
-	viewContext.normals                = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Normals Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA16_UN_Float));
-	viewContext.specularAndRoughness   = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Specular And Roughness Texture"), rg::TextureDef(texturesRes, rhi::EFragmentFormat::RGBA8_UN_Float));
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
@@ -63,15 +61,14 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	eyeAdaptationLuminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(eyeAdaptationLuminanceRTDef);
 
+	SPT_CHECK_NO_ENTRY_MSG("Forward Opaue is not supported");
 	rg::RGRenderTargetDef normalsRTDef;
-	normalsRTDef.textureView	= viewContext.normals;
 	normalsRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
 	normalsRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	normalsRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 0.f);
 	renderPassDef.AddColorRenderTarget(normalsRTDef);
 
 	rg::RGRenderTargetDef specularAndRoughnessRTDef;
-	specularAndRoughnessRTDef.textureView    = viewContext.specularAndRoughness;
 	specularAndRoughnessRTDef.loadOperation  = rhi::ERTLoadOperation::Clear;
 	specularAndRoughnessRTDef.storeOperation = rhi::ERTStoreOperation::Store;
 	specularAndRoughnessRTDef.clearColor     = rhi::ClearColor(0.f, 0.f, 0.f, 0.f);

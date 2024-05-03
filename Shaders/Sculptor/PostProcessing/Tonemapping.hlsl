@@ -7,7 +7,6 @@
 #include "Utils/TonemappingOperators.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 
-
 struct CS_INPUT
 {
 	uint3 globalID : SV_DispatchThreadID;
@@ -57,7 +56,7 @@ void TonemappingCS(CS_INPUT input)
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
 		const float2 pixelSize = rcp(float2(outputRes));
-  
+
 		float3 color = u_linearColorTexture.Load(int3(pixel, 0)).rgb;
 		color = ApplyLocalExposure(color, pixel);
 

@@ -387,7 +387,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 LightsRenderSystem::LightsRenderSystem()
 {
-	m_supportedStages = ERenderStage::ForwardOpaque;
+	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DeferredShading);
 	
 	m_globalLightsDS = rdr::ResourcesManager::CreateDescriptorSetState<GlobalLightsDS>(RENDERER_RESOURCE_NAME("Global Lights DS"));
 
@@ -458,8 +458,16 @@ void LightsRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, con
 	SPT_PROFILER_FUNCTION();
 
 	// if this view supports directional shadow masks, we need to render them before creating shading input to properly cache shadow masks
-	RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
-	stageEntries.GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+	if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
+	{
+		RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
+		stageEntries.GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+	}
+	else if (viewSpec.SupportsStage(ERenderStage::DeferredShading))
+	{
+		RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DeferredShading);
+		stageEntries.GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::BuildLightsTiles);
+	}
 }
 
 void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)

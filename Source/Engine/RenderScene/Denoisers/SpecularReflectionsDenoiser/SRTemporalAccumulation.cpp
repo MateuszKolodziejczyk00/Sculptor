@@ -3,32 +3,44 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
 #include "DDGI/DDGITypes.h"
+#include "RenderScene.h"
+#include "EngineFrame.h"
 
 
 namespace spt::rsc::sr_denoiser
 {
 
+BEGIN_SHADER_STRUCT(SRTemporalAccumulationConstants)
+	SHADER_STRUCT_FIELD(Real32, deltaTime)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulationDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_currentTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                     u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_temporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_reprojectionConfidenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_historyNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_fastHistoryOutputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_fastHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_destRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularColorRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historyAccumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRTemporalAccumulationConstants>),         u_constants)
 DS_END();
 
 
@@ -39,13 +51,23 @@ static rdr::PipelineStateID CreateTemporalAccumulationPipeline()
 }
 
 
+rg::RGTextureViewHandle CreateReprojectionConfidenceTexture(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution)
+{
+	return graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reprojection Confidence"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_UN_Float));
+}
+
+
 void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const TemporalAccumulationParameters& params)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = params.currentTexture->GetResolution2D();
 
-	static const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
+	const RenderScene& renderScene = params.renderView.GetRenderScene();
+	const engn::FrameContext& currentFrame = renderScene.GetCurrentFrameRef();
+
+	SRTemporalAccumulationConstants shaderConstants;
+	shaderConstants.deltaTime = currentFrame.GetDeltaTime();
 
 	lib::MTHandle<SRTemporalAccumulationDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalAccumulationDS>(RENDERER_RESOURCE_NAME("SRTemporalAccumulationDS"));
 	ds->u_currentTexture                       = params.currentTexture;
@@ -55,20 +77,25 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_motionTexture	                       = params.motionTexture;
 	ds->u_normalsTexture                       = params.normalsTexture;
 	ds->u_historyNormalsTexture                = params.historyNormalsTexture;
+	ds->u_fastHistoryOutputTexture             = params.fastHistoryOutputTexture;
+	ds->u_fastHistoryTexture                   = params.fastHistoryTexture;
 	ds->u_destRoughnessTexture                 = params.outputRoughnessTexture;
 	ds->u_historyRoughnessTexture              = params.historyRoughnessTexture;
-	ds->u_specularColorRoughnessTexture        = params.specularColorAndRoughnessTexture;
+	ds->u_roughnessTexture                     = params.currentRoughnessTexture;
 	ds->u_accumulatedSamplesNumTexture         = params.accumulatedSamplesNumTexture;
 	ds->u_historyAccumulatedSamplesNumTexture  = params.historyAccumulatedSamplesNumTexture;
 	ds->u_temporalVarianceTexture              = params.temporalVarianceTexture;
+	ds->u_reprojectionConfidenceTexture        = params.reprojectionConfidenceTexture;
 	ds->u_historyTemporalVarianceTexture       = params.historyTemporalVarianceTexture;
+	ds->u_constants                            = shaderConstants;
+
+	static const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: SR Temporal Accumulation", params.name.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS(),
-												 params.ddgiSceneDS));
+												 params.renderView.GetRenderViewDS()));
 }
 
 } // spt::rsc::sr_denoiser

@@ -184,17 +184,6 @@ lib::MTHandle<RenderSceneDS> RenderScene::CreateRenderSceneDS() const
 	return sceneDS;
 }
 
-void RenderView::OnBeginRendering()
-{
-	SPT_PROFILER_FUNCTION();
-
-	CachePrevFrameRenderingData();
-	UpdateViewRenderingData(GetRenderingRes());
-	UpdateCullingData();
-
-	UpdateRenderViewDS();
-}
-
 void RenderScene::InitializeRenderSystem(SceneRenderSystem& system)
 {
 	SPT_PROFILER_FUNCTION();

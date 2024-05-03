@@ -24,11 +24,25 @@ float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 t
 	}
 	else
 	{
-		const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
-		const float2 noise = frac(g_BlueNoiseSamples[sampleIdx] + u_traceParams.random);
+		uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
 
-		const float3 h = ImportanceSampleGGX(noise, normal, roughness);
-		return reflect(-toView, h);
+		uint attempt = 0;
+		while(true)
+		{
+			const uint currentSampleIdx = (sampleIdx + attempt) & 255u;
+			const float2 noise = frac(g_BlueNoiseSamples[currentSampleIdx] + u_traceParams.random);
+
+			const float3 h = SampleVNDFIsotropic(noise, toView, roughness * roughness, normal);
+
+			const float3 reflectedRay = reflect(-toView, h);
+
+			if(dot(reflectedRay, normal) > 0.f || attempt == 16u) 
+			{
+				return reflectedRay;
+			}
+
+			++attempt;
+		}
 	}
 }
 
@@ -78,11 +92,8 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 
 		const float3 hitNormal = normalize(payload.normal);
 
-		// Introduce additional bias as using just distance can have too low precision (which results in artifacts f.e. when using shadow maps)
-		const float locationBias = 0.03f;
-
 		ShadedSurface surface;
-		surface.location = surfWorldLocation + reflectedRayDirection * payload.distance + hitNormal * locationBias;
+		surface.location = surfWorldLocation + reflectedRayDirection * payload.distance;
 		surface.shadingNormal = hitNormal;
 		surface.geometryNormal = hitNormal;
 		surface.roughness = payload.roughness;
@@ -149,14 +160,13 @@ void GenerateSpecularReflectionsRaysRTG()
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float3 normal = u_shadingNormalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
-		const float4 specularAndRoughness = u_specularAndRoughnessTexture.Load(uint3(pixel, 0));
+		const float3 normal    = u_shadingNormalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 
 		const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);
 
-		if(specularAndRoughness.w <= GLOSSY_TRACE_MAX_ROUGHNESS)
+		if(roughness <= GLOSSY_TRACE_MAX_ROUGHNESS)
 		{
-			const float roughness = specularAndRoughness.w;
 			const RayResult rayResult = TraceReflectionRay(worldLocation, normal, roughness, toView, pixel);
 
 			luminance   = rayResult.luminance;
@@ -165,7 +175,7 @@ void GenerateSpecularReflectionsRaysRTG()
 		else
 		{
 			const float3 reflectedVector = reflect(-toView, normal);
-			const float3 specularDominantDir = GetSpecularDominantDirection(normal, reflectedVector, specularAndRoughness.w);
+			const float3 specularDominantDir = GetSpecularDominantDirection(normal, reflectedVector, roughness);
 			const float3 ddgiQueryWS = worldLocation;
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, normal, toView);
 			ddgiSampleParams.sampleDirection = specularDominantDir;
@@ -182,7 +192,7 @@ void GenerateSpecularReflectionsRaysRTG()
 [shader("miss")]
 void SpecularReflectionsRTM(inout SpecularReflectionsRayPayload payload)
 {
-	payload.distance = 20000.f;
+	payload.distance = 999999.f;
 }
 
 

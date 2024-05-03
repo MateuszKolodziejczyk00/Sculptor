@@ -39,12 +39,12 @@ enum class ERenderStage : Flags32
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
-	DepthPrepassStages				= DepthPrepass | MotionAndDepth,
-	ForwardLightingStages			= GlobalIllumination | GenerateGeometryNormals | DownsampleGeometryTextures | AmbientOcclusion | ForwardOpaque | SpecularReflections | ApplyAtmosphere | VolumetricFog,
+	VisibilityBufferStages			= VisibilityBuffer | MotionAndDepth,
+	DeferredLightingStages			= GlobalIllumination | GenerateGeometryNormals | DownsampleGeometryTextures | AmbientOcclusion | DeferredShading | SpecularReflections | ApplyAtmosphere | VolumetricFog,
 	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
 
 	// Presets
-	ForwardRendererStages			= DepthPrepassStages | ForwardLightingStages | PostProcessStages,
+	DeferredRendererStages			= VisibilityBufferStages | DeferredLightingStages | PostProcessStages,
 	ShadowMapRendererStages			= ShadowMap,
 };
 
@@ -141,6 +141,11 @@ public:
 		rhi::EFragmentFormat::R8_U_Int
 	};
 
+	static rhi::EFragmentFormat GetFormat(Texture textureType)
+	{
+		return formats[static_cast<SizeType>(textureType)];
+	}
+
 	GBuffer();
 
 	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
@@ -163,7 +168,7 @@ public:
 
 private:
 
-	rg::RGTextureViewHandle m_textures[texturesNum];
+	std::array<rg::RGTextureViewHandle, texturesNum> m_textures;
 };
 
 

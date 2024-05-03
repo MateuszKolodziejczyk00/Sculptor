@@ -19,12 +19,14 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),             u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_luminanceStdDevTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_specularColorRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_historyFramesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRATrousFilteringParams>), u_params)
 DS_END();
 
@@ -48,13 +50,15 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	dispatchParams.samplesOffset = 1u << iterationIdx;
 
 	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
-	ds->u_inputTexture           = input;
-	ds->u_outputTexture          = output;
-	ds->u_luminanceStdDevTexture = params.stdDevTexture;
-	ds->u_depthTexture           = params.depthTexture;
-	ds->u_normalsTexture         = params.normalsTexture;
-	ds->u_specularColorRoughnessTexture = params.specularColorRoughnessTexture;
-	ds->u_params                 = dispatchParams;
+	ds->u_inputTexture                  = input;
+	ds->u_outputTexture                 = output;
+	ds->u_luminanceStdDevTexture        = params.stdDevTexture;
+	ds->u_depthTexture                  = params.depthTexture;
+	ds->u_normalsTexture                = params.normalsTexture;
+	ds->u_roughnessTexture              = params.roughnessTexture;
+	ds->u_reprojectionConfidenceTexture = params.reprojectionConfidenceTexture;
+	ds->u_historyFramesNumTexture       = params.historyFramesNumTexture;
+	ds->u_params                        = dispatchParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),
 						  pipeline,

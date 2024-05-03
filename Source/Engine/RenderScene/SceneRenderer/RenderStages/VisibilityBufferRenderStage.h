@@ -36,6 +36,9 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_currentHiZTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyDepthTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyHiZTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_currentDepthHalfRes;
+	lib::SharedPtr<rdr::TextureView> m_historyDepthHalfRes;
 	
 	lib::SharedPtr<rdr::TextureView> m_visibilityTexture;
 
