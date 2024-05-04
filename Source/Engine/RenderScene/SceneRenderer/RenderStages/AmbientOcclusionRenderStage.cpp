@@ -34,7 +34,7 @@ struct AORenderingContext
 	rg::RGTextureViewHandle        depthTexture;
 	rg::RGTextureViewHandle        depthTextureHalfRes;
 	rg::RGTextureViewHandle        historyDepthTextureHalfRes;
-	rg::RGTextureViewHandle        geometryNormalsTextureHalfRes;
+	rg::RGTextureViewHandle        normalsTextureHalfRes;
 	rg::RGTextureViewHandle        motionTextureHalfRes;
 };
 
@@ -51,7 +51,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_geometryNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_ambientOcclusionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTAOTraceRaysParams>),                     u_rtaoParams)
@@ -99,11 +99,11 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	params.raysMinHitDistance	= 0.02f;
 
 	lib::MTHandle<RTAOTraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<RTAOTraceRaysDS>(RENDERER_RESOURCE_NAME("RTAOTraceRaysDS"));
-	traceRaysDS->u_depthTexture					= context.depthTextureHalfRes;
-	traceRaysDS->u_geometryNormalsTexture		= context.geometryNormalsTextureHalfRes;
-	traceRaysDS->u_ambientOcclusionTexture		= traceRaysResultTexture;
-	traceRaysDS->u_rtaoParams					= params;
-	traceRaysDS->u_worldAccelerationStructure	= lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
+	traceRaysDS->u_depthTexture               = context.depthTextureHalfRes;
+	traceRaysDS->u_normalsTexture             = context.normalsTextureHalfRes;
+	traceRaysDS->u_ambientOcclusionTexture    = traceRaysResultTexture;
+	traceRaysDS->u_rtaoParams                 = params;
+	traceRaysDS->u_worldAccelerationStructure = lib::Ref(rayTracingSceneSubsystem.GetSceneTLAS());
 
 	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
 	visibilityDS->u_rtInstances				= rayTracingSceneSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
@@ -136,16 +136,17 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	denoiserParams.historyDepthTexture            = context.historyDepthTextureHalfRes;
 	denoiserParams.currentDepthTexture            = context.depthTextureHalfRes;
 	denoiserParams.motionTexture                  = context.motionTextureHalfRes;
-	denoiserParams.geometryNormalsTexture         = context.geometryNormalsTextureHalfRes;
+	denoiserParams.normalsTexture         = context.normalsTextureHalfRes;
 	denoiserParams.currentFrameDefaultWeight      = 0.045f;
 	denoiserParams.accumulatedFramesMaxCount      = 32.f;
 	context.denoiser.Denoise(graphBuilder, aoHalfResTexture, denoiserParams);
 
 	upsampler::DepthBasedUpsampleParams upsampleParams;
-	upsampleParams.debugName    = RG_DEBUG_NAME("RTAO Upsample");
-	upsampleParams.depth        = context.depthTexture;
-	upsampleParams.depthHalfRes = context.depthTextureHalfRes;
-	upsampleParams.renderViewDS = renderView.GetRenderViewDS();
+	upsampleParams.debugName      = RG_DEBUG_NAME("RTAO Upsample");
+	upsampleParams.depth          = context.depthTexture;
+	upsampleParams.depthHalfRes   = context.depthTextureHalfRes;
+	upsampleParams.normalsHalfRes = context.normalsTextureHalfRes;
+	upsampleParams.renderViewDS   = renderView.GetRenderViewDS();
 	return upsampler::DepthBasedUpsample(graphBuilder, aoHalfResTexture, upsampleParams);
 }
 
@@ -166,7 +167,7 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		const RenderView& renderView = viewSpec.GetRenderView();
 
 		rtao::AORenderingContext aoContext{ renderScene, renderView, m_denoiser };
-		aoContext.geometryNormalsTextureHalfRes = viewContext.geometryNormalsHalfRes;
+		aoContext.normalsTextureHalfRes = viewContext.normalsHalfRes;
 		aoContext.depthTexture					= viewContext.depth;
 		aoContext.depthTextureHalfRes			= viewContext.depthHalfRes;
 		aoContext.historyDepthTextureHalfRes	= viewContext.historyDepthHalfRes;

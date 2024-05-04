@@ -195,6 +195,7 @@ DDGIVolumeSampleInfo GetDDGIVolumeSampleInfo(in float3 location)
 		}
 	}
 
+	// Lod 1
 	if(info.weights[0] < 1.h)
 	{
 		if(all(location >= u_ddgiLOD1.volumesAABBMin) && all(location <= u_ddgiLOD1.volumesAABBMax))
@@ -368,6 +369,13 @@ float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams)
 	}
 
 	return luminance / float(weightSum + 0.0001f);
+}
+
+float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams)
+{
+	const float3 luminance = DDGISampleLuminanceBlended(sampleParams);
+
+	return luminance * 2.f * PI; // multiply by integration domain area
 }
 
 

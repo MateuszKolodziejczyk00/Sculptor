@@ -375,9 +375,10 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle motion;
 	rg::RGTextureViewHandle motionHalfRes;
 
-	// Normals created from the depth buffer
-	rg::RGTextureViewHandle geometryNormals;
-	rg::RGTextureViewHandle geometryNormalsHalfRes;
+	rg::RGTextureViewHandle normalsHalfRes;
+	rg::RGTextureViewHandle historyNormalsHalfRes;
+
+	rg::RGTextureViewHandle roughnessHalfRes;
 
 	rg::RGTextureViewHandle ambientOcclusion;
 	

@@ -30,7 +30,7 @@ void GenerateShadowRaysRTG()
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		float3 worldLocation = NDCToWorldSpaceNoJitter(ndc, u_sceneView);
 
-		const float3 normal = u_geometryNormalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
+		const float3 normal = u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
 
 		if(dot(normal, u_params.lightDirection) <= 0.015f)
 		{

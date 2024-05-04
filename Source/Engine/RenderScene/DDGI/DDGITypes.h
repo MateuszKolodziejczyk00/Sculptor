@@ -78,7 +78,6 @@ BEGIN_SHADER_STRUCT(DDGIRelitGPUParams)
 	SHADER_STRUCT_FIELD(Real32,         blendHysteresis)
 	SHADER_STRUCT_FIELD(Real32,         illuminanceDiffThreshold)
 	SHADER_STRUCT_FIELD(Real32,         luminanceDiffThreshold)
-	SHADER_STRUCT_FIELD(math::Matrix4f, raysRotation)
 	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMin)
 	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMax)
 END_SHADER_STRUCT();

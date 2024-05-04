@@ -54,6 +54,7 @@ END_SHADER_STRUCT();
 DS_BEGIN(DDGITraceRaysDS, rg::RGDescriptorSetState<DDGITraceRaysDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_traceRaysResultTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIRelitGPUParams>),                  u_relitParams)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>),                 u_volumeParams)
@@ -425,6 +426,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
 	traceRaysDS->u_skyViewLUT               = viewContext.skyViewLUT;
+	traceRaysDS->u_transmittanceLUT         = atmosphereContext.transmittanceLUT;
 	traceRaysDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_traceRaysResultTexture   = probesTraceResultTexture;
 	traceRaysDS->u_relitParams              = relitParams.relitParamsBuffer;
@@ -611,9 +613,6 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume,
 	params.luminanceDiffThreshold   = 500.f;
 	params.prevAABBMin              = previousAABB.min();
 	params.prevAABBMax              = previousAABB.max();
-	
-	params.raysRotation                       = math::Matrix4f::Identity();
-	params.raysRotation.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
 
 	return params;
 }

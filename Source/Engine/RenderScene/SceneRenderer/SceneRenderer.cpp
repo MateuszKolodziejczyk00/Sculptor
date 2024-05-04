@@ -12,7 +12,6 @@
 #include "RenderStages/HDRResolveRenderStage.h"
 #include "RenderStages/ShadowMapRenderStage.h"
 #include "RenderStages/DownsampleGeometryTexturesRenderStage.h"
-#include "RenderStages/GenerateGeometryNormalsRenderStage.h"
 #include "RenderStages/AmbientOcclusionRenderStage.h"
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
@@ -109,8 +108,6 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<VisibilityBufferRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<MotionAndDepthRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
-	
-	renderer_utils::ProcessRenderStage<GenerateGeometryNormalsRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<DownsampleGeometryTexturesRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	

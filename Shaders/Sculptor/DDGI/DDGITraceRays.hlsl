@@ -17,7 +17,6 @@ void DDGIProbeRaysRTG()
     const uint3 probeCoords = ComputeUpdatedProbeCoords(dispatchIdx.x, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
 
     float3 rayDirection = GetProbeRayDirection(rayIdx, u_relitParams.raysNumPerProbe);
-    rayDirection = mul(u_relitParams.raysRotation, float4(rayDirection, 0.f)).xyz;
 
     const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, probeCoords);
 

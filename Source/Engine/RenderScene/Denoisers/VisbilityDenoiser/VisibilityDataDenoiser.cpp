@@ -81,7 +81,7 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	denoiserParams.historyDepthTexture = params.historyDepthTexture;
 	denoiserParams.currentDepthTexture = params.currentDepthTexture;
 	denoiserParams.motionTexture       = params.motionTexture;
-	denoiserParams.normalsTexture      = params.geometryNormalsTexture;
+	denoiserParams.normalsTexture      = params.normalsTexture;
 	denoiserParams.currentTexture      = denoisedTexture;
 	denoiserParams.historyTexture      = historyTexture;
 

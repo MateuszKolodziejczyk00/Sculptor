@@ -15,18 +15,13 @@ namespace spt::rsc
 namespace upsampler
 {
 
-BEGIN_SHADER_STRUCT(DepthBasedUpsampleShaderParams)
-	SHADER_STRUCT_FIELD(Bool, eliminateFireflies)
-END_SHADER_STRUCT();
-
-
 DS_BEGIN(DepthBasedUpsampleDS, rg::RGDescriptorSetState<DepthBasedUpsampleDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_normalsTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthBasedUpsampleShaderParams>),          u_params)
 DS_END()
 
 
@@ -43,6 +38,7 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 
 	SPT_CHECK(params.depth.IsValid());
 	SPT_CHECK(params.depthHalfRes.IsValid());
+	SPT_CHECK(params.normalsHalfRes.IsValid());
 	SPT_CHECK(params.renderViewDS.IsValid());
 	SPT_CHECK(texture.IsValid());
 
@@ -57,11 +53,11 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 	const rg::RGTextureViewHandle outputTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("{} (Upsampled)", texture->GetName().ToString())), outputTextureDef);
 
 	lib::MTHandle<DepthBasedUpsampleDS> descriptorSet = graphBuilder.CreateDescriptorSet<DepthBasedUpsampleDS>(RENDERER_RESOURCE_NAME("DepthBasedUpsampleDS"));
-	descriptorSet->u_depthTexture        = params.depth;
-	descriptorSet->u_depthTextureHalfRes = params.depthHalfRes;
-	descriptorSet->u_inputTexture        = texture;
-	descriptorSet->u_outputTexture       = outputTexture;
-	descriptorSet->u_params              = DepthBasedUpsampleShaderParams{ params.eliminateFireflies };
+	descriptorSet->u_depthTexture          = params.depth;
+	descriptorSet->u_depthTextureHalfRes   = params.depthHalfRes;
+	descriptorSet->u_normalsTextureHalfRes = params.normalsHalfRes;
+	descriptorSet->u_inputTexture          = texture;
+	descriptorSet->u_outputTexture         = outputTexture;
 
 	static const rdr::PipelineStateID pipeline = CompileDepthBasedUpsamplePipeline();
 

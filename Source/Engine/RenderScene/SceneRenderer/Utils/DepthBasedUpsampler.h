@@ -27,10 +27,9 @@ struct DepthBasedUpsampleParams
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle depthHalfRes;
 
-	lib::MTHandle<RenderViewDS> renderViewDS;
+	rg::RGTextureViewHandle normalsHalfRes;
 
-	//  Applies additional filtering to eliminate fireflies when upsampling hdr color values
-	Bool eliminateFireflies = false;
+	lib::MTHandle<RenderViewDS> renderViewDS;
 };
 
 rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle texture, const DepthBasedUpsampleParams& params);

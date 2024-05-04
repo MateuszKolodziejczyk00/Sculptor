@@ -45,7 +45,7 @@ struct IntersectionResult
 {
 	bool IsValid()
 	{
-		return t > 0.f;
+		return t >= 0.f;
 	}
 
 	float GetTime()
@@ -128,7 +128,7 @@ struct Ray
 		const float denom = dot(plane.normal, direction);
 		
 		// If the denominator is close to 0, the ray is parallel to the plane
-		if(abs(denom) < 0.0001f)
+		if(abs(denom) < 0.000001f)
 		{
 			return InvalidIntersectionResult();
 		}

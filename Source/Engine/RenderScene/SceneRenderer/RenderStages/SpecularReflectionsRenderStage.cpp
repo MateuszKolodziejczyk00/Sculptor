@@ -17,7 +17,6 @@
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "Denoisers/SpecularReflectionsDenoiser/SRDenoiser.h"
-#include "Utils/ShadingTexturesDownsampler.h"
 #include "SceneRenderer/Utils/DepthBasedUpsampler.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
@@ -63,6 +62,7 @@ END_SHADER_STRUCT()
 
 DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflectionsTraceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_reflectedLuminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
@@ -106,6 +106,7 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	}
 
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 	
 	const rg::RGTextureViewHandle reflectedLuminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
@@ -119,7 +120,8 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
 	traceRaysDS->u_skyViewLUT                    = params.skyViewLUT;
-	traceRaysDS->u_atmosphereParams              = atmosphereSubsystem.GetAtmosphereContext().atmosphereParamsBuffer->CreateFullView();
+	traceRaysDS->u_transmittanceLUT              = atmosphereContext.transmittanceLUT;
+	traceRaysDS->u_atmosphereParams              = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
 	traceRaysDS->u_reflectedLuminanceTexture     = reflectedLuminanceTexture;
 	traceRaysDS->rayTracingDS                    = rayTracingSubsystem.GetSceneRayTracingDS();
 	traceRaysDS->u_shadingNormalsTexture         = params.normalsTexture;
@@ -257,30 +259,11 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const math::Vector2u halfResolution = viewSpec.GetRenderingHalfRes();
 
-		PrepareResources(halfResolution);
-
-		const rg::RGTextureViewHandle roughnessHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Roughness Half Res"),
-																						rg::TextureDef(halfResolution, GBuffer::GetFormat(GBuffer::Texture::Roughness)));
-
-		const rg::RGTextureViewHandle shadingNormalsHalfRes = graphBuilder.AcquireExternalTextureView(m_shadingNormalsHalfRes);
-
-		const rg::RGTextureViewHandle historyShadingNormalsHalfRes = m_historyShadingNormalsHalfRes
-			                                                       ? graphBuilder.AcquireExternalTextureView(m_historyShadingNormalsHalfRes)
-			                                                       : rg::RGTextureViewHandle{};
-
-		DownsampledShadingTexturesParams downsampleParams;
-		downsampleParams.depth                 = viewContext.depth;
-		downsampleParams.roughness             = viewContext.gBuffer[GBuffer::Texture::Roughness];
-		downsampleParams.tangentFrame          = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
-		downsampleParams.roughnessHalfRes      = roughnessHalfRes;
-		downsampleParams.shadingNormalsHalfRes = shadingNormalsHalfRes;
-		DownsampleShadingTextures(graphBuilder, renderView, downsampleParams);
-
 		SpecularReflectionsParams params;
-		params.resolution            = roughnessHalfRes->GetResolution2D();
-		params.normalsTexture        = shadingNormalsHalfRes;
-		params.historyNormalsTexture = historyShadingNormalsHalfRes;
-		params.roughnessTexture      = roughnessHalfRes;
+		params.resolution            = halfResolution;
+		params.normalsTexture        = viewContext.normalsHalfRes;
+		params.historyNormalsTexture = viewContext.historyNormalsHalfRes;
+		params.roughnessTexture      = viewContext.roughnessHalfRes;
 		params.depthTexture          = viewContext.depthHalfRes;
 		params.depthHistoryTexture   = viewContext.historyDepthHalfRes;
 		params.motionTexture         = viewContext.motionHalfRes;
@@ -294,8 +277,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");
 		upsampleParams.depth              = viewContext.depth;
 		upsampleParams.depthHalfRes       = viewContext.depthHalfRes;
+		upsampleParams.normalsHalfRes     = viewContext.normalsHalfRes;
 		upsampleParams.renderViewDS       = renderView.GetRenderViewDS();
-		upsampleParams.eliminateFireflies = true;
 		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, specularReflectionsTexture, upsampleParams);
 
 		const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
@@ -310,26 +293,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 	}
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
-}
-
-void SpecularReflectionsRenderStage::PrepareResources(math::Vector2u renderingHalfRes)
-{
-	SPT_PROFILER_FUNCTION();
-
-	std::swap(m_shadingNormalsHalfRes, m_historyShadingNormalsHalfRes);
-
-	if (!m_shadingNormalsHalfRes || m_shadingNormalsHalfRes->GetResolution2D() != renderingHalfRes)
-	{
-		rhi::TextureDefinition textureDef;
-		textureDef.resolution = renderingHalfRes;
-		textureDef.format = rhi::EFragmentFormat::RGBA16_UN_Float;
-		textureDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-#if SPT_DEBUG || SPT_DEVELOPMENT
-		lib::AddFlag(textureDef.usage, rhi::ETextureUsage::TransferSource);
-#endif
-
-		m_shadingNormalsHalfRes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Shading Normals Half Res"), textureDef, rhi::EMemoryUsage::GPUOnly);
-	}
 }
 
 } // spt::rsc

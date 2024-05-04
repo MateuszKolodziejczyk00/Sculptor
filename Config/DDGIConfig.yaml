@@ -1,9 +1,9 @@
-LocalRelitRaysNumPerProbe: 1024
-GlobalRelitRaysPerProbe: 400
-LocalRelitHysteresis: 0.980000019
-LocalRelitHysteresis: 0.980000019
-LocalRelitHysteresis: 0.980000019
-LocalRelitHysteresis: 0.980000019
+LocalRelitRaysNumPerProbe: 400
+GlobalRelitRaysPerProbe: 300
+GlobalRelitHysteresis: 0.80000031
+LocalRelitHysteresis: 0.700000167
+MinHysteresis: 0.300000012
+MaxHysteresis: 0.850000024
 LocalRelitProbeGridSize:
   - 6
   - 6
@@ -31,4 +31,4 @@ Lod1ProbesSpacing:
   - 2.4000001
   - 2.4000001
   - 2.4000001
-Lod1VolumesMinHeight: -2
+Lod1VolumesMinHeight: -1.79999995

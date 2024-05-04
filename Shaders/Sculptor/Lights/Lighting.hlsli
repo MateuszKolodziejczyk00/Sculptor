@@ -217,11 +217,20 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in fl
 {
 	float3 luminance = 0.f;
 
+	const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, surface.location);
+
 	// Directional Lights
 
 	for (uint i = 0; i < u_lightsParams.directionalLightsNum; ++i)
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
+
+		const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
+
+		if (all(transmittance) == 0.f)
+		{
+			continue;
+		}
 
 		const float3 lightIlluminance = directionalLight.color * directionalLight.illuminance;
 

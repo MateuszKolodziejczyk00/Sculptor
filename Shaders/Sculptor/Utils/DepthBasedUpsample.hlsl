@@ -8,75 +8,71 @@
 
 struct CS_INPUT
 {
-    uint3 globalID : SV_DispatchThreadID;
+	uint3 globalID : SV_DispatchThreadID;
 };
 
 
-static const float depthDiffThreshold = 0.065f;
+static const float depthDiffThreshold = 0.05f;
 
 
 float ComputeSampleWeight(float sampleDepthDiff)
 {
-    return sampleDepthDiff <= depthDiffThreshold ? rcp(sampleDepthDiff / depthDiffThreshold + 0.01f) : 0.f;
+	return sampleDepthDiff <= depthDiffThreshold ? 1.f : 0.f;
 }
 
 
 [numthreads(8, 8, 1)]
 void DepthBasedUpsampleCS(CS_INPUT input)
 {
-    const int2 pixel = input.globalID.xy;
-    
-    uint2 outputRes;
-    u_depthTexture.GetDimensions(outputRes.x, outputRes.y);
+	const int2 pixel = input.globalID.xy;
+	
+	uint2 outputRes;
+	u_depthTexture.GetDimensions(outputRes.x, outputRes.y);
 
-    if(pixel.x < outputRes.x && pixel.y < outputRes.y)
-    {
-        const float2 outputPixelSize = rcp(float2(outputRes));
-        const float2 outputUV = (float2(pixel) + 0.5f) * outputPixelSize;
-        
-        uint2 inputRes;
-        u_depthTextureHalfRes.GetDimensions(inputRes.x, inputRes.y);
-        const float2 inputPixelSize = rcp(float2(inputRes));
+	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
+	{
+		const float2 outputPixelSize = rcp(float2(outputRes));
+		const float2 outputUV = (float2(pixel) + 0.5f) * outputPixelSize;
+		
+		uint2 inputRes;
+		u_depthTextureHalfRes.GetDimensions(inputRes.x, inputRes.y);
+		const float2 inputPixelSize = rcp(float2(inputRes));
 
-        const int2 inputPixel = pixel / 2 + (pixel & 1) - 1;
-        const float2 inputUV = float2(inputPixel + 0.5f) * inputPixelSize;
+		const int2 inputPixel = pixel / 2 + (pixel & 1) - 1;
+		const float2 inputUV = float2(inputPixel + 0.5f) * inputPixelSize;
 
-        const float2 uv0 = inputUV + float2(0.f, 1.f) * inputPixelSize;
-        const float2 uv1 = inputUV + float2(1.f, 1.f) * inputPixelSize;
-        const float2 uv2 = inputUV + float2(1.f, 0.f) * inputPixelSize;
-        const float2 uv3 = inputUV + float2(0.f, 0.f) * inputPixelSize;
+		const float4 inputDepths = u_depthTextureHalfRes.Gather(u_nearestSampler, inputUV, 0);
 
-        const float4 inputDepths = u_depthTextureHalfRes.Gather(u_nearestSampler, inputUV, 0);
-        const float4 inputLinearDepths = ComputeLinearDepth(inputDepths, u_sceneView);
+		const int2 offsets[4] = { int2(0, 1), int2(1, 1), int2(1, 0), int2(0, 0) };
 
-        const float4 input0 = u_inputTexture.SampleLevel(u_nearestSampler, uv0, 0);
-        const float4 input1 = u_inputTexture.SampleLevel(u_nearestSampler, uv1, 0);
-        const float4 input2 = u_inputTexture.SampleLevel(u_nearestSampler, uv2, 0);
-        const float4 input3 = u_inputTexture.SampleLevel(u_nearestSampler, uv3, 0);
+		const float outputDepth = u_depthTexture.Load(int3(pixel, 0)).x;
+		const float3 outputLocation = NDCToWorldSpace(float3(outputUV * 2.f - 1.f, outputDepth), u_sceneView);
 
-        const float outputDepth = u_depthTexture.SampleLevel(u_nearestSampler, outputUV, 0).x;
-        const float outputLinearDepth = ComputeLinearDepth(outputDepth, u_sceneView);
+		float4 sampleDistances;
+		[unroll]
+		for(int sampleIdx = 0; sampleIdx < 4; ++sampleIdx)
+		{
+			const float2 uv = inputUV + offsets[sampleIdx] * inputPixelSize;
+			const float3 sampleLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, inputDepths[sampleIdx]), u_sceneView);
+			const float3 sampleNormal = u_normalsTextureHalfRes.Load(int3(inputPixel + offsets[sampleIdx], 0)) * 2.f - 1.f;
+			const Plane samplePlane = Plane::Create(sampleNormal, sampleLocation);
+			sampleDistances[sampleIdx] = samplePlane.Distance(outputLocation);
+		}
 
-        const float4 depthDiff = abs(inputLinearDepths - outputLinearDepth);
-        const float minDepthDiff = min(min(depthDiff.x, depthDiff.y), min(depthDiff.z, depthDiff.w));
+		const float minDistance = min(min(sampleDistances[0], sampleDistances[1]), min(sampleDistances[2], sampleDistances[3]));
 
-        float weight0 = ComputeSampleWeight(abs(depthDiff.x - minDepthDiff));
-        float weight1 = ComputeSampleWeight(abs(depthDiff.y - minDepthDiff));
-        float weight2 = ComputeSampleWeight(abs(depthDiff.z - minDepthDiff));
-        float weight3 = ComputeSampleWeight(abs(depthDiff.w - minDepthDiff));
+		float4 weightsSum = 0.f;
+		float4 input = 0.f;
+		[unroll]
+		for(int sampleIdx = 0; sampleIdx < 4; ++sampleIdx)
+		{
+			const float weight = ComputeSampleWeight(sampleDistances[sampleIdx] - minDistance);
+			input += u_inputTexture.Load(int3(inputPixel + offsets[sampleIdx], 0)) * weight;
+			weightsSum += weight;
+		}
 
-        if(u_params.eliminateFireflies)
-        {
-            weight0 /= (1.f + Luminance(input0.rgb));
-            weight1 /= (1.f + Luminance(input1.rgb));
-            weight2 /= (1.f + Luminance(input2.rgb));
-            weight3 /= (1.f + Luminance(input3.rgb));
-        }
+		const float4 output = input / weightsSum;
 
-        const float rcpWeightSum = rcp(weight0 + weight1 + weight2 + weight3);
-
-        const float4 output = (input0 * weight0 + input1 * weight1 + input2 * weight2 + input3 * weight3) * rcpWeightSum;
-
-        u_outputTexture[pixel] = output;
-    }
+		u_outputTexture[pixel] = output;
+	}
 }

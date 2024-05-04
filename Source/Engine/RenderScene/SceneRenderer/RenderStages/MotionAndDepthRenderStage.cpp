@@ -77,8 +77,7 @@ void MotionAndDepthRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, c
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	viewContext.motion        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), rg::TextureDef(renderingRes, GetMotionFormat()));
-	viewContext.motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture Half Res"), rg::TextureDef(halfRes, GetMotionFormat()));
+	viewContext.motion = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture"), rg::TextureDef(renderingRes, GetMotionFormat()));
 
 	// Render camera only motion as default
 	camera_motion::ComputeCameraMotion(graphBuilder, renderView, viewContext.motion, viewContext.depth);

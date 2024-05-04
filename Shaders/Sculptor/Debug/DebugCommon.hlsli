@@ -50,6 +50,21 @@ void WriteDebugPixel(uint2 pixel, float4 value)
 	u_debugOutputTexture[pixel] = value;
 }
 
+void WriteDebugPixel(uint2 pixel, float3 value)
+{
+	WriteDebugPixel(pixel, float4(value, 0.f));
+}
+
+void WriteDebugPixel(uint2 pixel, float2 value)
+{
+	WriteDebugPixel(pixel, float4(value, 0.f, 0.f));
+}
+
+void WriteDebugPixel(uint2 pixel, float value)
+{
+	WriteDebugPixel(pixel, float4(value, 0.f, 0.f, 0.f));
+}
+
 } // debug
 
 #endif // SPT_META_PARAM_DEBUG_FEATURES

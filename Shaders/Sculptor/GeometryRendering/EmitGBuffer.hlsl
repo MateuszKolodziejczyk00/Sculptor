@@ -250,10 +250,12 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		GBufferData gBufferData;
 		gBufferData.baseColor = evaluatedMaterial.baseColor;
 		gBufferData.metallic  = evaluatedMaterial.metallic;
+		//gBufferData.metallic  = 1.f;
 		gBufferData.normal    = evaluatedMaterial.shadingNormal;
 		gBufferData.tangent   = vertexData.tangent;
 		gBufferData.bitangent = vertexData.bitangent;
 		gBufferData.roughness = evaluatedMaterial.roughness;
+		//gBufferData.roughness = evaluatedMaterial.roughness * 0.2f;
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		output = EncodeGBuffer(gBufferData);

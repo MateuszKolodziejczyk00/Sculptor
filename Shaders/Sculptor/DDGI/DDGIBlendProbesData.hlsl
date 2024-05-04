@@ -88,7 +88,6 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 #endif // DDGI_BLEND_TYPE
 
         rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
-        rayDirections[rayIdx] = mul(u_relitParams.raysRotation, float4(rayDirections[rayIdx], 0.f)).xyz;
     }
 }
 

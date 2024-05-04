@@ -43,7 +43,7 @@ public:
 
 		rg::RGTextureViewHandle motionTexture;
 
-		rg::RGTextureViewHandle geometryNormalsTexture;
+		rg::RGTextureViewHandle normalsTexture;
 
 		Real32 currentFrameDefaultWeight = 0.16f;
 
