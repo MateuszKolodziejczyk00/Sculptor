@@ -36,7 +36,7 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 	{
 		rhi::TextureDefinition historyTextureDefinition;
 		historyTextureDefinition.resolution = resolution;
-		historyTextureDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+		historyTextureDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 #if SPT_DEBUG || SPT_DEVELOPMENT
 		lib::AddFlag(historyTextureDefinition.usage, rhi::ETextureUsage::TransferSource);
 #endif
@@ -61,7 +61,7 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 
 		rhi::TextureDefinition temporalVarianceTextureDef;
 		temporalVarianceTextureDef.resolution = resolution;
-		temporalVarianceTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+		temporalVarianceTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 #if SPT_DEBUG || SPT_DEVELOPMENT
 		lib::AddFlag(temporalVarianceTextureDef.usage, rhi::ETextureUsage::TransferSource);
 #endif
@@ -76,11 +76,11 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 
 		rhi::TextureDefinition roughnessTextureDef;
 		roughnessTextureDef.resolution = resolution;
-		roughnessTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+		roughnessTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 #if SPT_DEBUG || SPT_DEVELOPMENT
 		lib::AddFlag(roughnessTextureDef.usage, rhi::ETextureUsage::TransferSource);
 #endif
-		roughnessTextureDef.format     = rhi::EFragmentFormat::R8_UN_Float;
+		roughnessTextureDef.format     = rhi::EFragmentFormat::R16_UN_Float;
 		m_roughnessTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Roughness"),
 																	  roughnessTextureDef, rhi::EMemoryUsage::GPUOnly);
 		

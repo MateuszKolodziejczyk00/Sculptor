@@ -22,6 +22,14 @@ VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
 	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::TaskShader))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT);
+	}
+	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::MeshShader))
+	{
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT);
+	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::FragmentShader))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
@@ -89,94 +97,6 @@ VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ALL_COMMANDS))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
-	}
-
-	return vulkanFlags;
-}
-
-VkPipelineStageFlags RHIToVulkan::GetStageFlagsLegacy(rhi::EPipelineStage flags)
-{
-	VkPipelineStageFlags vulkanFlags = 0;
-
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::TopOfPipe))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::DrawIndirect))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::VertexShader))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::FragmentShader))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::EarlyFragmentTest))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::LateFragmentTest))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ColorRTOutput))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ComputeShader))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Transfer))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::BottomOfPipe))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Copy))
-	{
-		SPT_CHECK_NO_ENTRY(); // No corresponding legacy flag
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Blit))
-	{
-		SPT_CHECK_NO_ENTRY(); // No corresponding legacy flag
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Clear))
-	{
-		SPT_CHECK_NO_ENTRY(); // No corresponding legacy flag
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::IndexInput))
-	{
-		SPT_CHECK_NO_ENTRY(); // No corresponding legacy flag
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ASBuild))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::RayTracingShader))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Host))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_HOST_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ALL_GRAPHICS))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ALL_TRANSFER))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	}
-	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::ALL_COMMANDS))
-	{
-		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 	}
 
 	return vulkanFlags;

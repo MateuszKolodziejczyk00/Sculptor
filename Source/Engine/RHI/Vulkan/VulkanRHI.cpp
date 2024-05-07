@@ -124,13 +124,31 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 	lib::DynamicArray<const char*> enabledLayers;
 
 #if SPT_RHI_DEBUG
-
 	if (GetSettings().IsValidationEnabled())
 	{
 		enabledLayers.emplace_back(VULKAN_VALIDATION_LAYER_NAME);
 	}
-
 #endif // SPT_RHI_DEBUG
+
+	// query supported layers
+	Uint32 supportedLayersCount = 0;
+	vkEnumerateInstanceLayerProperties(&supportedLayersCount, nullptr);
+	lib::DynamicArray<VkLayerProperties> supportedLayers(supportedLayersCount);
+	vkEnumerateInstanceLayerProperties(&supportedLayersCount, supportedLayers.data());
+
+	for (const char* layer : enabledLayers)
+	{
+		const auto layerIt = std::find_if(supportedLayers.begin(), supportedLayers.end(),
+										  [layer](const VkLayerProperties& layerProps)
+										  {
+											  return strcmp(layer, layerProps.layerName) == 0;
+										  });
+
+		if (layerIt == supportedLayers.end())
+		{
+			SPT_LOG_FATAL(VulkanRHI, "Requested layer '{0}' is not supported!", layer);
+		}
+	}
 
 	instanceInfo.enabledLayerCount = static_cast<Uint32>(enabledLayers.size());
 	instanceInfo.ppEnabledLayerNames = enabledLayers.data();

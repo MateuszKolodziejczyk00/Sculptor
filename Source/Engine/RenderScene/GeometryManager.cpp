@@ -36,7 +36,11 @@ rhi::RHIVirtualAllocation GeometryManager::CreateGeometry(Uint64 dataSize)
 
 GeometryManager::GeometryManager()
 {
-	const rhi::EBufferUsage ugbUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage, rhi::EBufferUsage::DeviceAddress, rhi::EBufferUsage::ASBuildInputReadOnly);
+	rhi::EBufferUsage ugbUsage = lib::Flags(rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage, rhi::EBufferUsage::DeviceAddress);
+	if (rdr::Renderer::IsRayTracingEnabled())
+	{
+		lib::AddFlag(ugbUsage, rhi::EBufferUsage::ASBuildInputReadOnly);
+	}
 	const rhi::EBufferFlags ugbFlags = rhi::EBufferFlags::WithVirtualSuballocations;
 
 	const rhi::RHIAllocationInfo ugbAllocationInfo(rhi::EMemoryUsage::GPUOnly);

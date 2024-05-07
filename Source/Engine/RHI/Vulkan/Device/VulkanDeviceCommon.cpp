@@ -11,6 +11,8 @@ lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 
 	requiredExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
+	requiredExtensions.emplace_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 
 	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())

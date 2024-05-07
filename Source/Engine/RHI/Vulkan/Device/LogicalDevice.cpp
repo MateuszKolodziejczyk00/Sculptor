@@ -60,9 +60,10 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingUniformBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingPartiallyBound				= VK_TRUE;
+	vulkan12Features.shaderSampledImageArrayNonUniformIndexing		= VK_TRUE;
 	vulkan12Features.samplerFilterMinmax	= VK_TRUE;
 	vulkan12Features.hostQueryReset			= VK_TRUE;
-	
+
 	deviceInfoLinkedData.Append(vulkan12Features);
 
 	VkPhysicalDeviceVulkan13Features vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
@@ -73,10 +74,10 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(vulkan13Features);
 
 	VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
-    meshShaderFeatures.taskShader        = VK_TRUE;
-    meshShaderFeatures.meshShader        = VK_TRUE;
-    meshShaderFeatures.meshShaderQueries = VK_TRUE;
-	
+	meshShaderFeatures.taskShader        = VK_TRUE;
+	meshShaderFeatures.meshShader        = VK_TRUE;
+	meshShaderFeatures.meshShaderQueries = VK_TRUE;
+
 	deviceInfoLinkedData.Append(meshShaderFeatures);
 
 	VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR pipelineExecutablePropertiesFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR };

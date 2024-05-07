@@ -232,7 +232,7 @@ static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const G
 
 	rhi::BufferDefinition dispatchOccludedMeshletsCommandDef;
 	dispatchOccludedMeshletsCommandDef.size  = sizeof(DispatchOccludedBatchElementsCommand);
-	dispatchOccludedMeshletsCommandDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
+	dispatchOccludedMeshletsCommandDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
 	const rg::RGBufferViewHandle dispatchOccludedMeshletsCommand = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Dispatch Occluded Meshlets Command"), dispatchOccludedMeshletsCommandDef, rhi::EMemoryUsage::GPUOnly);
 
 	batchGPUData.drawCommands                         = drawCommands;

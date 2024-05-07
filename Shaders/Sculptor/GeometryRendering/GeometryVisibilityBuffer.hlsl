@@ -305,8 +305,8 @@ struct OutputVertex
 uint PackTriangleVertices(in uint3 vertices, in uint triangleIdx)
 {
 	const uint maxIndex = 0x000003f;
-	SPT_CHECK_MSG(all(vertices <= maxIndex), "PackTriangleIndices: Invalid triangle vertices - {}", vertices);
-	SPT_CHECK_MSG(triangleIdx < maxIndex, "PackTriangleIndices: Invalid triangle idx - {}", triangleIdx)
+	SPT_CHECK_MSG(all(vertices <= maxIndex), L"PackTriangleIndices: Invalid triangle vertices - {}", vertices);
+	SPT_CHECK_MSG(triangleIdx <= maxIndex, L"PackTriangleIndices: Invalid triangle idx - {}", triangleIdx)
 	return (triangleIdx << 18) | (vertices.x << 12) | (vertices.y << 6) | vertices.z;
 }
 
@@ -405,7 +405,7 @@ struct PrimitiveOutput
 	//bool culled            : SV_CullPrimitive;
 
 #if MATERIAL_CAN_DISCARD
-	uint16_t materialDataID : MATERIAL_DATA_ID;
+	uint materialDataID : MATERIAL_DATA_ID;
 #endif // MATERIAL_CAN_DISCARD
 };
 
@@ -451,6 +451,9 @@ void GeometryVisibility_MS(
 	const uint meshletGlobalVertexIndicesOffset = submesh.meshletsVerticesDataOffset + meshlet.meshletVerticesOffset;
 
 	GroupMemoryBarrierWithGroupSync();
+
+	SPT_CHECK_MSG(meshlet.vertexCount <= MAX_NUM_VERTS, L"Invalid meshlet data (vertex count) - {}", meshlet.vertexCount);
+	SPT_CHECK_MSG(meshlet.triangleCount <= MAX_NUM_PRIMS, L"Invalid meshlet data (primitives count) - {}", meshlet.triangleCount);
 
 	for (uint meshletVertexIdx = localID.x; meshletVertexIdx < meshlet.vertexCount; meshletVertexIdx += MS_GROUP_SIZE)
 	{
@@ -508,7 +511,7 @@ void GeometryVisibility_MS(
 		PrimitiveOutput primitiveOutput;
 		primitiveOutput.packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
 #if MATERIAL_CAN_DISCARD
-		primitiveOutput.materialDataID = batchElement.materialDataID;
+		primitiveOutput.materialDataID = uint(batchElement.materialDataID);
 #endif // MATERIAL_CAN_DISCARD
 		outPrims[outputTriangleIdx] = primitiveOutput;
 	}
@@ -540,7 +543,7 @@ VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in Primitiv
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(primData.materialDataID);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(primData.materialDataID));
 
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
     if(opacityOutput.shouldDiscard)
