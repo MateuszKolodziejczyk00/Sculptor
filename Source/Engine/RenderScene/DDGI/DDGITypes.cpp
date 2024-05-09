@@ -25,8 +25,9 @@ void DDGIGPUVolumeHandle::Destroy()
 	{
 		DDGIVolumeGPUParams& gpuParams = m_ddgiSceneDS->u_volumesDef.GetMutable().volumes[m_index];
 
-		m_ddgiSceneDS->u_probesTextures.UnbindTexture(gpuParams.illuminanceTextureIdx);
-		m_ddgiSceneDS->u_probesTextures.UnbindTexture(gpuParams.hitDistanceTextureIdx);
+		m_ddgiSceneDS->u_probesTextures2D.UnbindTexture(gpuParams.illuminanceTextureIdx);
+		m_ddgiSceneDS->u_probesTextures2D.UnbindTexture(gpuParams.hitDistanceTextureIdx);
+		m_ddgiSceneDS->u_probesTextures3D.UnbindTexture(gpuParams.averageLuminanceTextureIdx);
 
 		gpuParams = DDGIVolumeGPUParams();
 		m_index = idxNone<Uint32>;
@@ -54,12 +55,17 @@ DDGIVolumeGPUParams& DDGIGPUVolumeHandle::GetGPUParamsMutable()
 
 lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesIlluminanceTexture() const
 {
-	return IsValid() ? m_ddgiSceneDS->u_probesTextures.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().illuminanceTextureIdx) : nullptr;
+	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().illuminanceTextureIdx) : nullptr;
 }
 
 lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesHitDistanceTexture() const
 {
-	return IsValid() ? m_ddgiSceneDS->u_probesTextures.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().hitDistanceTextureIdx) : nullptr;
+	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().hitDistanceTextureIdx) : nullptr;
+}
+
+lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesAverageLuminanceTexture() const
+{
+	return IsValid() ? m_ddgiSceneDS->u_probesTextures3D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().averageLuminanceTextureIdx) : nullptr;
 }
 
 } // spt::rsc::ddgi

@@ -193,4 +193,8 @@ using ArrayOfSRVTextures1DBinding = ArrayOfSRVTexturesBinding<priv::EBindingText
 template<SizeType arraySize, Bool trackInRenderGraph = false>
 using ArrayOfSRVTextures2DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_2D, arraySize, trackInRenderGraph>;
 
+
+template<SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTextures3DBinding = ArrayOfSRVTexturesBinding<priv::EBindingTextureDimensions::Dim_3D, arraySize, trackInRenderGraph>;
+
 } // spt::gfx

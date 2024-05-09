@@ -56,7 +56,8 @@ void ComputeInScatteringCS(CS_INPUT input)
 
 		if(u_inScatteringParams.enableIndirectInScattering)
 		{
-			inScattering += u_indirectInScatteringTexture.SampleLevel(u_indirectInScatteringSampler, fogFroxelUVW, 0.f) * scatteringExtinction.rgb;
+			const float3 indirectInScattering = u_indirectInScatteringTexture.SampleLevel(u_indirectInScatteringSampler, fogFroxelUVW, 0.f);
+			inScattering += indirectInScattering * scatteringExtinction.rgb;
 		}
 
 		float4 inScatteringExtinction = float4(inScattering, scatteringExtinction.w);

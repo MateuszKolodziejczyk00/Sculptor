@@ -82,6 +82,7 @@ DS_BEGIN(DDGIInvalidateProbesDS, rg::RGDescriptorSetState<DDGIInvalidateProbesDS
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeGPUParams>),        u_volumeParams)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_probesHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                u_probesIlluminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                u_probesAverageLuminanceTexture)
 DS_END();
 
 
@@ -99,6 +100,14 @@ DS_END();
 
 DS_BEGIN(DDGIUpdateProbesHitDistanceDS, rg::RGDescriptorSetState<DDGIUpdateProbesHitDistanceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>), u_probesHitDistanceTexture)
+DS_END();
+
+
+DS_BEGIN(DDGIUpdateProbesAverageLuminanceDS, rg::RGDescriptorSetState<DDGIUpdateProbesAverageLuminanceDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),           u_probesIlluminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),            u_probesAverageLuminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIRelitGPUParams>),  u_relitParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<DDGIVolumeGPUParams>), u_volumeParams)
 DS_END();
 
 
@@ -162,6 +171,12 @@ static rdr::PipelineStateID CreateDDGIBlendProbesHitDistancePipeline(math::Vecto
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Blend Probes Hit Distance Pipeline"), shader);
 }
 
+static rdr::PipelineStateID CreateDDGIUpdateProbesAverageLuminancePipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIUpdateProbesAverageLuminance.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DDGIUpdateProbesAverageLuminanceCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Update Probes Average Luminance Pipeline"), shader);
+}
+
 static rdr::PipelineStateID CreateDDGIInvalidateProbesPipeline(math::Vector2u groupSize)
 {
 	sc::ShaderCompilationSettings compilationSettings;
@@ -213,6 +228,7 @@ DDGIVolumeRelitParameters::DDGIVolumeRelitParameters(rg::RenderGraphBuilder& gra
 	: volume(inVolume)
 	, probesIlluminanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesIlluminanceTexture()))
 	, probesHitDistanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesHitDistanceTexture()))
+	, probesAverageLuminanceTextureView(graphBuilder.AcquireExternalTextureView(volume.GetProbesAverageLuminanceTexture()))
 	, relitParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIRelitGPUParams>(RENDERER_RESOURCE_NAME("DDGIRelitGPUParams"), relitParams))
 	, ddgiVolumeParamsBuffer(rdr::utils::CreateConstantBufferView<DDGIVolumeGPUParams>(RENDERER_RESOURCE_NAME("DDGIVolumeGPUParams"), volume.GetVolumeGPUParams()))
 	, probesNumToUpdate(relitParams.probesNumToUpdate)
@@ -375,6 +391,19 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 						  math::Vector3u(relitParams.probesNumToUpdate, 1u, 1u),
 						  rg::BindDescriptorSets(updateProbesDS,
 												 std::move(updateProbesHitDistanceDS)));
+
+	lib::MTHandle<DDGIUpdateProbesAverageLuminanceDS> updateProbesAverageLuminanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesAverageLuminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesAverageLuminanceDS"));
+	updateProbesAverageLuminanceDS->u_probesIlluminanceTexture      = relitParams.probesIlluminanceTextureView;
+	updateProbesAverageLuminanceDS->u_probesAverageLuminanceTexture = relitParams.probesAverageLuminanceTextureView;
+	updateProbesAverageLuminanceDS->u_relitParams                   = relitParams.relitParamsBuffer;
+	updateProbesAverageLuminanceDS->u_volumeParams                  = relitParams.ddgiVolumeParamsBuffer;
+
+	const rdr::PipelineStateID updateProbesAverageLuminancePipelineID = pipelines::CreateDDGIUpdateProbesAverageLuminancePipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("DDGI Update Probes Average Luminance"),
+						  updateProbesAverageLuminancePipelineID,
+						  math::Vector3u(relitParams.probesNumToUpdate, 1u, 1u),
+						  rg::BindDescriptorSets(std::move(updateProbesAverageLuminanceDS)));
 }
 
 void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume) const
@@ -392,10 +421,11 @@ void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graph
 	invalidateParams.prevAABBMax = prevAABB.max();
 
 	const lib::MTHandle<DDGIInvalidateProbesDS> invalidateProbesDS = graphBuilder.CreateDescriptorSet<DDGIInvalidateProbesDS>(RENDERER_RESOURCE_NAME("DDGIInvalidateProbesDS"));
-	invalidateProbesDS->u_invalidateParams         = invalidateParams;
-	invalidateProbesDS->u_volumeParams             = volumeParams;
-	invalidateProbesDS->u_probesHitDistanceTexture = volume.GetProbesHitDistanceTexture();
-	invalidateProbesDS->u_probesIlluminanceTexture = volume.GetProbesIlluminanceTexture();
+	invalidateProbesDS->u_invalidateParams              = invalidateParams;
+	invalidateProbesDS->u_volumeParams                  = volumeParams;
+	invalidateProbesDS->u_probesHitDistanceTexture      = volume.GetProbesHitDistanceTexture();
+	invalidateProbesDS->u_probesIlluminanceTexture      = volume.GetProbesIlluminanceTexture();
+	invalidateProbesDS->u_probesAverageLuminanceTexture = volume.GetProbesAverageLuminanceTexture();
 
 	static const rdr::PipelineStateID invalidateProbesPipelineID = pipelines::CreateDDGIInvalidateProbesPipeline(volumeParams.probeHitDistanceDataWithBorderRes);
 
@@ -425,13 +455,13 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
-	traceRaysDS->u_skyViewLUT               = viewContext.skyViewLUT;
-	traceRaysDS->u_transmittanceLUT         = atmosphereContext.transmittanceLUT;
-	traceRaysDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-	traceRaysDS->u_traceRaysResultTexture   = probesTraceResultTexture;
-	traceRaysDS->u_relitParams              = relitParams.relitParamsBuffer;
-	traceRaysDS->u_volumeParams             = relitParams.ddgiVolumeParamsBuffer;
-	traceRaysDS->rayTracingDS               = rayTracingSubsystem.GetSceneRayTracingDS();
+	traceRaysDS->u_skyViewLUT             = viewContext.skyViewLUT;
+	traceRaysDS->u_transmittanceLUT       = atmosphereContext.transmittanceLUT;
+	traceRaysDS->u_atmosphereParams       = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	traceRaysDS->u_traceRaysResultTexture = probesTraceResultTexture;
+	traceRaysDS->u_relitParams            = relitParams.relitParamsBuffer;
+	traceRaysDS->u_volumeParams           = relitParams.ddgiVolumeParamsBuffer;
+	traceRaysDS->rayTracingDS             = rayTracingSubsystem.GetSceneRayTracingDS();
 
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 

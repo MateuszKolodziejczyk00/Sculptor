@@ -19,7 +19,6 @@ BEGIN_SHADER_STRUCT(DownsampleGeometryTexturesConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f, inputPixelSize)
 	SHADER_STRUCT_FIELD(math::Vector2u, outputRes)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
-	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
 END_SHADER_STRUCT();
 
 
@@ -79,16 +78,11 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	const rhi::EFragmentFormat roughnessFormat = GBuffer::GetFormat(GBuffer::Texture::Roughness);
 	viewContext.roughnessHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Roughness Half Res"), rg::TextureDef(halfRes, roughnessFormat));
 
-	// TODO
-	static Uint32 testVal = 0;
-	testVal++;
-
 	DownsampleGeometryTexturesConstants shaderConstants;
 	shaderConstants.inputRes        = renderingResolution;
 	shaderConstants.inputPixelSize  = renderingResolution.cast<Real32>().cwiseInverse();
 	shaderConstants.outputRes       = halfRes;
 	shaderConstants.outputPixelSize = halfRes.cast<Real32>().cwiseInverse();
-	shaderConstants.frameIdx = testVal;
 
 	lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
 	ds->u_depthTexture            = viewContext.depth;

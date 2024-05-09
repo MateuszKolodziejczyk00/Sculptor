@@ -46,7 +46,7 @@ void SRATrousFilterCS(CS_INPUT input)
 			return;
 		}
 		
-		const float lumStdDevMultiplier = lerp(1.f, 1.f, roughness);
+		const float lumStdDevMultiplier = lerp(1.f, 3.f, roughness);
 		
 		const float3 centerWS = NDCToWorldSpaceNoJitter(float3(uv * 2.f - 1.f, centerDepth), u_sceneView);
 		

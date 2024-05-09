@@ -238,19 +238,25 @@ uint GetDDGIVolumeIdx(in float3 location)
 
 float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	const Texture2D<float4> probesIlluminanceTexture = u_probesTextures[volumeParams.illuminanceTextureIdx];
+	const Texture2D<float4> probesIlluminanceTexture = u_probesTextures2D[volumeParams.illuminanceTextureIdx];
 	return SampleProbeIlluminance(volumeParams, probesIlluminanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
 }
 
+float3 SampleProbeAverageLuminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
+{
+	const Texture3D<float4> probesAverageLuminanceTexture = u_probesTextures3D[volumeParams.averageLuminanceTextureIdx];
+	return probesAverageLuminanceTexture.Load(int4(probeWrappedCoords, 0)).rgb;
+}
 
 float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	const Texture2D<float4> probesHitDistanceTexture = u_probesTextures[volumeParams.hitDistanceTextureIdx];
+	const Texture2D<float4> probesHitDistanceTexture = u_probesTextures2D[volumeParams.hitDistanceTextureIdx];
 	return SampleProbeHitDistance(volumeParams, probesHitDistanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
 }
 
 
-float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
+template<typename TSampledDataType, typename TSampleCallback>
+TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TSampleCallback sampleCallback)
 {
 	const float3 biasedWorldLocation = DDGIGetSampleLocation(volumeParams, sampleParams);
 
@@ -259,7 +265,7 @@ float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in co
 
 	const float3 baseProbeDistAlpha = saturate((biasedWorldLocation - baseProbeWorldLocation) * volumeParams.rcpProbesSpacing);
 
-	float3 luminanceSum = 0.f;
+	TSampledDataType sampledDataSum = 0.f;
 	float weightSum = 0.f;
 
 	const float rcpMaxVisibility = rcp(1.f - sampleParams.minVisibility);
@@ -320,21 +326,39 @@ float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in co
 		
 		const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
-		float3 luminance = SampleProbeIlluminance(volumeParams, probeWrappedCoords, luminanceOctCoords);
+		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
 
-		luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
-
-		luminanceSum += luminance * weight;
+		sampledDataSum += probleSample * weight;
 		weightSum += weight;
 	}
 
-	float3 luminance = luminanceSum / weightSum;
+	TSampledDataType result = sampledDataSum / weightSum;
 
-	luminance = Pow2(luminance);
+	sampleCallback.PostProcess(result);
 
-	return luminance;
+	return result;
 }
 
+class DDGILuminanceSampleCallback
+{
+	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
+	{
+		float3 luminance = SampleProbeIlluminance(volumeParams, probeWrappedCoords, octahedronUV);
+		luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		return luminance;
+	}
+
+	void PostProcess(inout float3 result)
+	{
+		result = Pow2(result);
+	}
+};
+
+float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
+{
+	DDGILuminanceSampleCallback callback;
+	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
+}
 
 float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
 {
@@ -369,6 +393,39 @@ float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams)
 	}
 
 	return luminance / float(weightSum + 0.0001f);
+}
+
+class AverageLuminanceSampleCallback
+{
+	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
+	{
+		float3 luminance = SampleProbeAverageLuminance(volumeParams, probeWrappedCoords);
+		luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		return luminance;
+	}
+
+	void PostProcess(inout float3 result)
+	{
+		result = Pow2(result);
+	}
+};
+
+float3 DDGISampleAverageLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
+{
+	AverageLuminanceSampleCallback callback;
+	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
+}
+
+float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams)
+{
+	const uint volumeIdx = 0;
+	if (volumeIdx != IDX_NONE_32)
+	{
+		const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[volumeIdx];
+		return DDGISampleAverageLuminanceInternal(sampleParams, volumeParams);
+	}
+
+	return 0.f;
 }
 
 float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams)

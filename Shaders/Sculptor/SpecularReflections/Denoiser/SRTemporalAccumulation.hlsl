@@ -43,6 +43,11 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * luminanceAndHitDist.w;
 		const float3 prevFrameNDC = WorldSpaceToNDCNoJitter(projectedReflectionWS, u_prevFrameSceneView);
 
+		const float currentLinearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
+		const float maxPlaneDistance = max(0.015f * currentLinearDepth, 0.025f);
+
+		const float maxRoguhnessDiff = roughness * 0.1f;
+
 		float2 historyUV = prevFrameNDC.xy * 0.5f + 0.5f;
 
 		float reprojectionConfidence = 0.f;
@@ -58,13 +63,13 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
 			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
-			if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
+			if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 			{
 				const float3 historyNormals  = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
 				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 
 				const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
-				if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < 0.01f)
+				if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
 				{
 					const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
 					const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
@@ -89,7 +94,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 				const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 			
 				const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
-				if (abs(historySampleDistToCurrentSamplePlane) < 0.02f)
+				if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 				{
 					const float motionLength = length(motion);
 					if(IsNearlyZero(motionLength))
@@ -102,7 +107,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 					const float roughnessDiff = abs(roughness - historyRoughness);
 
-					if(normalsSimilarity >= 0.95f && abs(roughness - historyRoughness) < 0.05f)
+					if(normalsSimilarity >= 0.95f && abs(roughness - historyRoughness) < maxRoguhnessDiff * 3.f)
 					{
 						const float maxMotionLength = 0.11f * roughness;
 						const float confidence = 0.3f + 0.7f * saturate(1.f - motionLength / (maxMotionLength + 0.000001f));

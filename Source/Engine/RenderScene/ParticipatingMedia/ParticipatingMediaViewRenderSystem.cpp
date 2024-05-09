@@ -12,7 +12,6 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderScene.h"
 #include "ResourcesManager.h"
-#include "SceneRenderer/Utils/DDGIScatteringPhaseFunctionLUT.h"
 #include "Lights/ViewShadingInput.h"
 #include "EngineFrame.h"
 #include "Sequences.h"
@@ -108,17 +107,14 @@ namespace indirect
 
 BEGIN_SHADER_STRUCT(IndirectInScatteringParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, jitter)
-	SHADER_STRUCT_FIELD(Real32,         phaseFunctionAnisotrophy)
 	SHADER_STRUCT_FIELD(Real32,         fogNearPlane)
 	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
-	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4f, 6>), sampleDirections)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(IndirectInScatteringDS, rg::RGDescriptorSetState<IndirectInScatteringDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                            u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<IndirectInScatteringParams>),             u_inScatteringParams)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_ddgiScatteringPhaseFunctionLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_phaseFunctionLUTSampler)
 DS_END();
 
@@ -145,41 +141,19 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(2u, 2u, 2u));
+	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(1u, 2u, 1u));
 
 	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
 																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
 
 	IndirectInScatteringParams inScatteringParams;
 	inScatteringParams.jitter                               = fogParams.fogJitter;
-	inScatteringParams.phaseFunctionAnisotrophy             = parameters::localLightsPhaseFunctionAnisotrophy;
 	inScatteringParams.fogNearPlane                         = fogParams.nearPlane;
 	inScatteringParams.fogFarPlane                          = fogParams.farPlane;
 
-	math::Matrix4f rotationMatrix = math::Matrix4f::Identity();
-	rotationMatrix.topLeftCorner<3, 3>() = lib::rnd::RandomRotationMatrix();
-
-	const math::Vector4f directions[6] =
-	{
-		math::Vector4f::UnitX(),
-		math::Vector4f::UnitY(),
-		math::Vector4f::UnitZ(),
-		-math::Vector4f::UnitX(),
-		-math::Vector4f::UnitY(),
-		-math::Vector4f::UnitZ()
-	};
-
-	for (Uint32 i = 0; i < 6; ++i)
-	{
-		inScatteringParams.sampleDirections[i] = rotationMatrix * directions[i];
-	}
-
-	const rg::RGTextureViewHandle ddgiScatteringPhaseFunctionLUT = DDGIScatteringPhaseFunctionLUT::Get().GetLUT(graphBuilder);
-
 	const lib::MTHandle<IndirectInScatteringDS> indirectInScatteringDS = graphBuilder.CreateDescriptorSet<IndirectInScatteringDS>(RENDERER_RESOURCE_NAME("IndirectInScatteringDS"));
-	indirectInScatteringDS->u_inScatteringTexture            = indirectInScatteringTexture;
-	indirectInScatteringDS->u_inScatteringParams             = inScatteringParams;
-	indirectInScatteringDS->u_ddgiScatteringPhaseFunctionLUT = ddgiScatteringPhaseFunctionLUT;
+	indirectInScatteringDS->u_inScatteringTexture = indirectInScatteringTexture;
+	indirectInScatteringDS->u_inScatteringParams  = inScatteringParams;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 2u));
 
@@ -194,8 +168,6 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 
 	return indirectInScatteringTexture;
 }
-
-
 
 } // indirect
 
@@ -259,9 +231,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	computeInScatteringDS->u_inScatteringParams          = inScatteringParams;
 	computeInScatteringDS->u_indirectInScatteringTexture = indirectInScattering;
 
-	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS = ddgiSubsystem ? ddgiSubsystem->GetDDGISceneDS() : nullptr;
-
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
 	static const rdr::PipelineStateID computeInScatteringPipeline = CompileComputeInScatteringPipeline();
@@ -272,8 +241,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 						  rg::BindDescriptorSets(computeInScatteringDS,
 												 renderView.GetRenderViewDS(),
 												 shadingParams.shadingInputDS,
-												 shadingParams.shadowMapsDS,
-												 std::move(ddgiDS)));
+												 shadingParams.shadowMapsDS));
 }
 
 } // in_scattering

@@ -63,6 +63,7 @@ BEGIN_ALIGNED_SHADER_STRUCT(16, DDGIVolumeGPUParams)
 
 	SHADER_STRUCT_FIELD(Uint32,         illuminanceTextureIdx)
 	SHADER_STRUCT_FIELD(Uint32,         hitDistanceTextureIdx)
+	SHADER_STRUCT_FIELD(Uint32,         averageLuminanceTextureIdx)
 END_SHADER_STRUCT();
 
 
@@ -121,7 +122,8 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                            u_probesTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                            u_probesTextures2D)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<g_maxVolumesCount, true>),                                                u_probesTextures3D)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                               u_ddgiLOD0)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD1Definition>),                                               u_ddgiLOD1)
@@ -148,6 +150,7 @@ public:
 
 	lib::SharedPtr<rdr::TextureView> GetProbesIlluminanceTexture() const;
 	lib::SharedPtr<rdr::TextureView> GetProbesHitDistanceTexture() const;
+	lib::SharedPtr<rdr::TextureView> GetProbesAverageLuminanceTexture() const;
 
 private:
 

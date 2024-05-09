@@ -66,6 +66,7 @@ public:
 
 	const lib::SharedPtr<rdr::TextureView>& GetProbesIlluminanceTexture() const;
 	const lib::SharedPtr<rdr::TextureView>& GetProbesHitDistanceTexture() const;
+	const lib::SharedPtr<rdr::TextureView>& GetProbesAverageLuminanceTexture() const;
 
 	const DDGIVolumeGPUParams& GetVolumeGPUParams() const;
 
@@ -93,6 +94,7 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_cachedProbesIlluminanceTexture;
 	lib::SharedPtr<rdr::TextureView> m_cachedProbesHitDistanceTexture;
+	lib::SharedPtr<rdr::TextureView> m_cachedProbesAverageLuminanceTexture;
 
 	std::optional<math::AlignedBox3f> m_prevAABB;
 	Bool m_requiresInvalidation;

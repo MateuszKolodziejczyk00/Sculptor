@@ -22,6 +22,7 @@ struct DDGIVolumeRelitParameters
 
 	rg::RGTextureViewHandle probesIlluminanceTextureView;
 	rg::RGTextureViewHandle probesHitDistanceTextureView;
+	rg::RGTextureViewHandle probesAverageLuminanceTextureView;
 
 	rdr::BufferView relitParamsBuffer;
 	rdr::BufferView ddgiVolumeParamsBuffer;

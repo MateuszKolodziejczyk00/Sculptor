@@ -398,18 +398,30 @@ DDGIVolumeGPUParams DDGIScene::CreateGPUData(const DDGIVolumeParams& params) con
 		return rdr::ResourcesManager::CreateTextureView(name, textureDef, rhi::EMemoryUsage::GPUOnly);
 	};
 
-
 	const lib::SharedRef<rdr::TextureView> illuminanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Illuminance"), gpuParams.probeIlluminanceDataWithBorderRes, rhi::EFragmentFormat::B10G11R11_U_Float);
 	const lib::SharedRef<rdr::TextureView> hitDistanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Visibility"), gpuParams.probeHitDistanceDataWithBorderRes, rhi::EFragmentFormat::RG16_S_Float);;
 
-	const Uint32 illuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures.BindTexture(illuminanceTexture);
+	rhi::TextureDefinition probesAverageLuminanceTextureDef;
+	probesAverageLuminanceTextureDef.resolution = probesVolumeRes;
+	probesAverageLuminanceTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+	probesAverageLuminanceTextureDef.format     = rhi::EFragmentFormat::RGBA16_S_Float;
+#if RENDERER_VALIDATION
+	lib::AddFlag(probesAverageLuminanceTextureDef.usage, rhi::ETextureUsage::TransferSource);
+#endif // RENDERER_VALIDATION
+	const lib::SharedRef<rdr::TextureView> probeAverageLuminanceTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Average Luminance"), probesAverageLuminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
+
+	const Uint32 illuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures2D.BindTexture(illuminanceTexture);
 	SPT_CHECK(illuminanceTextureIdx != idxNone<Uint32>);
 
-	const Uint32 hitDistanceTextureIdx = m_ddgiSceneDS->u_probesTextures.BindTexture(hitDistanceTexture);
+	const Uint32 hitDistanceTextureIdx = m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture);
 	SPT_CHECK(hitDistanceTextureIdx != idxNone<Uint32>);
 
-	gpuParams.illuminanceTextureIdx = illuminanceTextureIdx;
-	gpuParams.hitDistanceTextureIdx = hitDistanceTextureIdx;
+	const Uint32 probeAverageLuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures3D.BindTexture(probeAverageLuminanceTexture);
+	SPT_CHECK(probeAverageLuminanceTextureIdx != idxNone<Uint32>);
+
+	gpuParams.illuminanceTextureIdx      = illuminanceTextureIdx;
+	gpuParams.hitDistanceTextureIdx      = hitDistanceTextureIdx;
+	gpuParams.averageLuminanceTextureIdx = probeAverageLuminanceTextureIdx;
 
 	return gpuParams;
 }

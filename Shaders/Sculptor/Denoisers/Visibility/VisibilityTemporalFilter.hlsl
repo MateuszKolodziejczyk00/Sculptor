@@ -70,8 +70,9 @@ void TemporalFilterCS(CS_INPUT input)
 			const float3 historySampleNDC = float3(historySampleUV * 2.f - 1.f, historySampleDepth);
 			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
+			const float linearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
 			const float VdotN = max(dot(u_sceneView.viewForward, currentSampleNormal), 0.f);
-			const float distanceThreshold = lerp(0.0125f, 0.033f, 1.f - VdotN);
+			const float distanceThreshold = linearDepth * lerp(0.01f, 0.025f, 1.f - VdotN);
 
 			const float sampleDistance = currentSamplePlane.Distance(historySampleWS);
 
