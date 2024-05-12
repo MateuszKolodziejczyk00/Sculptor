@@ -33,17 +33,21 @@ void ComputeInScatteringCS(CS_INPUT input)
 		const float fogNearPlane = u_inScatteringParams.fogNearPlane;
 		const float fogFarPlane = u_inScatteringParams.fogFarPlane;
 
-		const float4 scatteringExtinction = u_participatingMediaTexture.SampleLevel(u_participatingMediaSampler, fogFroxelUVW, 0);
+		const float4 scatteringExtinction = u_participatingMediaTexture.SampleLevel(u_nearestSample, fogFroxelUVW, 0);
 
 		const float3 jitter = u_inScatteringParams.jitter;
-
+ 
 		const float fogFroxelDepth = fogFroxelUVW.z + jitter.z;
 		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelDepth, fogNearPlane, fogFarPlane);
 
 		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy + jitter.xy, fogFroxelLinearDepth, projectionNearPlane);
-
 		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, u_sceneView);
 		
+		const float currentFogFroxelLinearDepthNoJitter = ComputeFogFroxelLinearDepth(fogFroxelUVW.z, fogNearPlane, fogFarPlane);
+		
+		const float froxelWDelta = 1.0f / volumetricFogResolution.z;
+		const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(max(fogFroxelUVW.z - froxelWDelta, 0.f), fogNearPlane, fogFarPlane);
+
 		InScatteringParams params;
 		params.uv                       = fogFroxelUVW.xy;
 		params.linearDepth              = fogFroxelLinearDepth;
@@ -51,12 +55,13 @@ void ComputeInScatteringCS(CS_INPUT input)
 		params.toViewNormal             = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
 		params.phaseFunctionAnisotrophy = u_inScatteringParams.localLightsPhaseFunctionAnisotrophy;
 		params.inScatteringColor        = scatteringExtinction.rgb;
+		params.froxelDepthRange         = currentFogFroxelLinearDepthNoJitter - prevFogFroxelLinearDepth;
 		
 		float3 inScattering = ComputeLocalLightsInScattering(params);
 
 		if(u_inScatteringParams.enableIndirectInScattering)
 		{
-			const float3 indirectInScattering = u_indirectInScatteringTexture.SampleLevel(u_indirectInScatteringSampler, fogFroxelUVW, 0.f);
+			const float3 indirectInScattering = u_indirectInScatteringTexture.SampleLevel(u_linearSampler, fogFroxelUVW, 0.f);
 			inScattering += indirectInScattering * scatteringExtinction.rgb;
 		}
 
@@ -79,7 +84,7 @@ void ComputeInScatteringCS(CS_INPUT input)
 
 				const float3 prevFrameFogFroxelUVW = ComputeFogFroxelUVW(prevFrameClipSpace.xy * 0.5f + 0.5f, prevFrameLinearDepth, fogNearPlane, fogFarPlane);
 
-				float4 inScatteringExtinctionHistory = u_inScatteringHistoryTexture.SampleLevel(u_inScatteringHistorySampler, prevFrameFogFroxelUVW, 0);
+				float4 inScatteringExtinctionHistory = u_inScatteringHistoryTexture.SampleLevel(u_linearSampler, prevFrameFogFroxelUVW, 0);
 				inScatteringExtinctionHistory.rgb = HistoryExposedLuminanceToLuminance(inScatteringExtinctionHistory.rgb);
 
 				if (inScatteringExtinctionHistory.w > 0.f)

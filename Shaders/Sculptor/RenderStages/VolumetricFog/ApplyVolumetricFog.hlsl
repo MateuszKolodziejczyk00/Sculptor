@@ -34,7 +34,8 @@ void ApplyVolumetricFogCS(CS_INPUT input)
 			fogFroxelUVW = ComputeFogFroxelUVW(uv, linearDepth, u_applyVolumetricFogParams.fogNearPlane, u_applyVolumetricFogParams.fogFarPlane);
 
 			// We use froxel that is closer to avoid light leaking
-			const float zBias = 0.009f;
+			const float froxelDepth = 1.f / u_applyVolumetricFogParams.fogResolution.z;
+			const float zBias = 1.5f * froxelDepth;
 			fogFroxelUVW.z -= zBias;
 		}
 		else

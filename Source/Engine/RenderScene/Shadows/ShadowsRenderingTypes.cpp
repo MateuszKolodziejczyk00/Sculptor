@@ -36,21 +36,31 @@ rhi::EFragmentFormat ShadowMapUtils::GetShadowMapFormat(EShadowMappingTechnique 
 
 rhi::ETextureUsage ShadowMapUtils::GetShadowMapUsage(EShadowMappingTechnique technique)
 {
+	rhi::ETextureUsage usage = rhi::ETextureUsage::None;
+
 	switch (technique)
 	{
 	case EShadowMappingTechnique::DPCF:
-		return lib::Flags(rhi::ETextureUsage::DepthSetncilRT, rhi::ETextureUsage::SampledTexture);
+		usage = lib::Flags(rhi::ETextureUsage::DepthSetncilRT, rhi::ETextureUsage::SampledTexture);
+		break;
 
 	case EShadowMappingTechnique::MSM:
-		return lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+		usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+		break;
 	
 	case EShadowMappingTechnique::VSM:
-		return lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+		usage = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+		break;
 
 	default:
 		SPT_CHECK_NO_ENTRY();
-		return rhi::ETextureUsage::None;
 	}
+
+#if SPT_DEBUG || SPT_DEVELOPMENT
+		lib::AddFlag(usage, rhi::ETextureUsage::TransferSource);
+#endif
+
+	return usage;
 }
 
 Uint32 ShadowMapUtils::GetShadowMapMipsNum(EShadowMappingTechnique technique)
@@ -64,7 +74,7 @@ Uint32 ShadowMapUtils::GetShadowMapMipsNum(EShadowMappingTechnique technique)
 		return 5u;
 	
 	case EShadowMappingTechnique::VSM:
-		return 1u;
+		return 5u;
 
 	default:
 		SPT_CHECK_NO_ENTRY();

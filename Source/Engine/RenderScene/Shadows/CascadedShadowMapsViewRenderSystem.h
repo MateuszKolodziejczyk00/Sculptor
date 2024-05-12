@@ -11,7 +11,7 @@ struct ShadowCascadesParams
 {
 	EShadowMappingTechnique shadowsTechnique = EShadowMappingTechnique::None;
 	lib::DynamicArray<Real32> cascadesRanges = { 5.f, 15.f, 40.f };
-	math::Vector2u cascadesResolution        = math::Vector2u::Constant(1024);
+	math::Vector2u cascadesResolution        = math::Vector2u::Constant(2048u);
 };
 
 

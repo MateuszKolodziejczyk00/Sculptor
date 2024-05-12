@@ -121,6 +121,8 @@ struct InScatteringParams
 	float phaseFunctionAnisotrophy;
 
 	float3 inScatteringColor;
+
+	float froxelDepthRange;
 };
 
 
@@ -141,7 +143,10 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 		float visibility = 1.f;
 		if(directionalLight.shadowCascadesNum != 0)
 		{
-			visibility = EvaluateCascadedShadowsAtLocation(params.worldLocation, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
+			const float3 beginSampleLocation = params.worldLocation + params.toViewNormal * (params.froxelDepthRange * 0.5f);
+			const float3 endSampleLocation   = params.worldLocation - params.toViewNormal * (params.froxelDepthRange * 0.5f);
+			const uint samplesNum = 8u;
+			visibility = EvaluateCascadedShadowsAtLine(beginSampleLocation, endSampleLocation, samplesNum, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
 		}
 
 		if(visibility > 0.f)

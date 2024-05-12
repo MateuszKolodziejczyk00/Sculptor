@@ -17,7 +17,6 @@
 #include "Sequences.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 
-
 namespace spt::rsc
 {
 
@@ -141,15 +140,15 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(1u, 2u, 1u));
+	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(2u, 2u, 1u));
 
 	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
 																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
 
 	IndirectInScatteringParams inScatteringParams;
-	inScatteringParams.jitter                               = fogParams.fogJitter;
-	inScatteringParams.fogNearPlane                         = fogParams.nearPlane;
-	inScatteringParams.fogFarPlane                          = fogParams.farPlane;
+	inScatteringParams.jitter       = fogParams.fogJitter;
+	inScatteringParams.fogNearPlane = fogParams.nearPlane;
+	inScatteringParams.fogFarPlane  = fogParams.farPlane;
 
 	const lib::MTHandle<IndirectInScatteringDS> indirectInScatteringDS = graphBuilder.CreateDescriptorSet<IndirectInScatteringDS>(RENDERER_RESOURCE_NAME("IndirectInScatteringDS"));
 	indirectInScatteringDS->u_inScatteringTexture = indirectInScatteringTexture;
@@ -186,12 +185,10 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(ComputeInScatteringDS, rg::RGDescriptorSetState<ComputeInScatteringDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                            u_participatingMediaTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_participatingMediaSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSample)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                             u_inScatteringTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector4f>),                    u_inScatteringHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_inScatteringHistorySampler)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),                    u_indirectInScatteringTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_indirectInScatteringSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogInScatteringParams>),         u_inScatteringParams)
 DS_END();
 
@@ -330,7 +327,7 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	const rsc::RenderView& renderView = viewSpec.GetRenderView();
 	const math::Vector2u renderingRes = renderView.GetRenderingRes();
-	
+
 	const Uint32 volumetricTileSize = 8u;
 
 	const math::Vector2u volumetricTileRes(volumetricTileSize, volumetricTileSize);
@@ -341,13 +338,13 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	const math::Vector3u volumetricFogRes(volumetricTilesNum.x(), volumetricTilesNum.y(), volumetricFogZRes);
 
 	rg::TextureDef participatingMediaTextureDef;
-	participatingMediaTextureDef.resolution	= volumetricFogRes;
-	participatingMediaTextureDef.format		= rhi::EFragmentFormat::RGBA16_UN_Float; // [Color (RGB), Extinction (A)]
+	participatingMediaTextureDef.resolution = volumetricFogRes;
+	participatingMediaTextureDef.format     = rhi::EFragmentFormat::RGBA16_UN_Float; // [Color (RGB), Extinction (A)]
 	const rg::RGTextureViewHandle participatingMediaTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Participating Media Texture"), participatingMediaTextureDef);
 
 	rg::TextureDef integratedInScatteringTextureDef;
-	integratedInScatteringTextureDef.resolution	= volumetricFogRes;
-	integratedInScatteringTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float; // [Integrated In-Scattering (RGB), Transmittance (A)]
+	integratedInScatteringTextureDef.resolution = volumetricFogRes;
+	integratedInScatteringTextureDef.format     = rhi::EFragmentFormat::RGBA16_S_Float; // [Integrated In-Scattering (RGB), Transmittance (A)]
 	const rg::RGTextureViewHandle integratedInScatteringTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Integrated In-Scattering Texture"), integratedInScatteringTextureDef);
 
 	PrepareViewTextures(volumetricFogRes);
@@ -368,17 +365,17 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 														 math::Sequences::Halton<Real32>(jitterSequenceIdx, 3),
 														 math::Sequences::Halton<Real32>(jitterSequenceIdx, 4));
 
-	const math::Vector3f jitter = (jitterSequence - math::Vector3f::Constant(1.0f)).cwiseProduct(volumetricFogRes.cast<Real32>().cwiseInverse());
+	const math::Vector3f jitter = (jitterSequence - math::Vector3f::Constant(0.5f)).cwiseProduct(math::Vector3f(2.f, 2.f, 1.f)).cwiseProduct(volumetricFogRes.cast<Real32>().cwiseInverse());
 
 	m_volumetricFogParams = VolumetricFogParams{};
-	m_volumetricFogParams.participatingMediaTextureView			= participatingMediaTextureView;
-	m_volumetricFogParams.inScatteringTextureView				= inScatteringTextureView;
-	m_volumetricFogParams.integratedInScatteringTextureView		= integratedInScatteringTextureView;
-	m_volumetricFogParams.inScatteringHistoryTextureView		= inScatteringHistoryTextureView;
-	m_volumetricFogParams.volumetricFogResolution				= volumetricFogRes;
-	m_volumetricFogParams.fogJitter								= jitter;
-	m_volumetricFogParams.nearPlane								= renderView.GetNearPlane();
-	m_volumetricFogParams.farPlane								= parameters::fogFarPlane;
+	m_volumetricFogParams.participatingMediaTextureView     = participatingMediaTextureView;
+	m_volumetricFogParams.inScatteringTextureView           = inScatteringTextureView;
+	m_volumetricFogParams.integratedInScatteringTextureView = integratedInScatteringTextureView;
+	m_volumetricFogParams.inScatteringHistoryTextureView    = inScatteringHistoryTextureView;
+	m_volumetricFogParams.volumetricFogResolution           = volumetricFogRes;
+	m_volumetricFogParams.fogJitter                         = jitter;
+	m_volumetricFogParams.nearPlane                         = renderView.GetNearPlane();
+	m_volumetricFogParams.farPlane                          = parameters::fogFarPlane;
 
 	participating_media::Render(graphBuilder, renderScene, viewSpec, m_volumetricFogParams);
 

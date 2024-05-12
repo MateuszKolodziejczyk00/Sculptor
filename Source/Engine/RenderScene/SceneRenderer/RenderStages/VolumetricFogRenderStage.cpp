@@ -20,9 +20,10 @@ namespace apply_volumetric_fog
 {
 
 BEGIN_SHADER_STRUCT(ApplyVolumetricFogParams)
-	SHADER_STRUCT_FIELD(Real32, fogNearPlane)
-	SHADER_STRUCT_FIELD(Real32, fogFarPlane)
-	SHADER_STRUCT_FIELD(Real32, blendPixelsOffset)
+	SHADER_STRUCT_FIELD(math::Vector3f, fogResolution)
+	SHADER_STRUCT_FIELD(Real32,         fogNearPlane)
+	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
+	SHADER_STRUCT_FIELD(Real32,         blendPixelsOffset)
 END_SHADER_STRUCT();
 
 
@@ -53,9 +54,10 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	ApplyVolumetricFogParams params;
-	params.fogNearPlane			= fogParams.nearPlane;
-	params.fogFarPlane			= fogParams.farPlane;
-	params.blendPixelsOffset	= 8.f;
+	params.fogResolution     = fogParams.volumetricFogResolution.cast<Real32>();
+	params.fogNearPlane      = fogParams.nearPlane;
+	params.fogFarPlane       = fogParams.farPlane;
+	params.blendPixelsOffset = 8.f;
 
 	const lib::MTHandle<ApplyVolumetricFogDS> applyVolumetricFogDS = graphBuilder.CreateDescriptorSet<ApplyVolumetricFogDS>(RENDERER_RESOURCE_NAME("ApplyVolumetricFogDS"));
 	applyVolumetricFogDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;

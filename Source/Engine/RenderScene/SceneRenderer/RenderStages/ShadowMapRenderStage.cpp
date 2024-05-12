@@ -225,7 +225,9 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+
 	const rg::RGTextureViewHandle depthRenderTarget = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Depth RT"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D16_UN_Float));
+
 	RenderDepth(graphBuilder, renderScene, viewSpec, stageContext, depthRenderTarget);
 
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Temp Texture"), rg::TextureDef(renderingRes, shadowMap->GetFormat()));
@@ -248,11 +250,13 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 	{
 		// Vertical pass
 
-		const rg::RGTextureViewHandle shadowMapView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Shadow Map View"), shadowMap);
+		rhi::TextureViewDefinition shadowMapMip0ViewDef;
+		shadowMapMip0ViewDef.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color, 0, 1);
+		const rg::RGTextureViewHandle shadowMapMip0View = graphBuilder.CreateTextureView(RG_DEBUG_NAME("VSM Shadow Map View"), shadowMap, shadowMapMip0ViewDef);
 
 		const lib::MTHandle<vsm::FilterVSMDS> verticalFilterDS = graphBuilder.CreateDescriptorSet<vsm::FilterVSMDS>(RENDERER_RESOURCE_NAME("FilterVSMDS (Vertical)"));
 		verticalFilterDS->u_moments.Set(tempTexture);
-		verticalFilterDS->u_output = shadowMapView;
+		verticalFilterDS->u_output = shadowMapMip0View;
 
 		static rdr::PipelineStateID verticalBlurPipeline = vsm::CompileVSMFilterPipeline(false);
 
@@ -261,6 +265,8 @@ void ShadowMapRenderStage::RenderVSM(rg::RenderGraphBuilder& graphBuilder, const
 							  math::Utils::DivideCeil(renderingRes, math::Vector2u(1u, 128u)),
 							  rg::BindDescriptorSets(verticalFilterDS));
 	}
+
+	MipsBuilder::BuildTextureMips(graphBuilder, shadowMap, 0, shadowMap->GetTextureDefinition().mipLevels);
 }
 
 } // spt::rsc

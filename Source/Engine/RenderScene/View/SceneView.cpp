@@ -13,7 +13,7 @@ static math::Vector2f GetJitter(Uint64 frameIdx, math::Vector2u resolution)
 {
 	SPT_CHECK(resolution.x() != 0 && resolution.y() != 0);
 
-	const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx % 8);
+	const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx & 7);
 	const math::Vector2f sequenceVal = math::Vector2f(math::Sequences::Halton<Real32>(sequenceIdx, 2), math::Sequences::Halton<Real32>(sequenceIdx, 3));
 	return (sequenceVal * 2.f - math::Vector2f::Constant(1.f)).cwiseProduct(resolution.cast<Real32>().cwiseInverse());
 }
