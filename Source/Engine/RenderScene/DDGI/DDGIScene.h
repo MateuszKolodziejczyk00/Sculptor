@@ -111,7 +111,7 @@ private:
 	Uint32                     FindAvailableVolumeIdx() const;
 
 	DDGIGPUVolumeHandle        CreateGPUVolume(const DDGIVolumeParams& params);
-	DDGIVolumeGPUParams        CreateGPUData(const DDGIVolumeParams& params) const;
+	DDGIVolumeGPUDefinition    CreateGPUDefinition(const DDGIVolumeParams& params) const;
 
 	// LODs
 

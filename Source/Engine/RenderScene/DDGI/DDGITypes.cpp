@@ -9,10 +9,20 @@ namespace spt::rsc::ddgi
 
 DDGIGPUVolumeHandle::DDGIGPUVolumeHandle() = default;
 
-DDGIGPUVolumeHandle::DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index)
+DDGIGPUVolumeHandle::DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, const DDGIVolumeGPUDefinition& volumeGPUDefinition)
 	: m_ddgiSceneDS(std::move(sceneDS))
 	, m_index(index)
-{ }
+{
+	SPT_CHECK(m_ddgiSceneDS.IsValid());
+	SPT_CHECK(m_index != idxNone<Uint32>);
+
+	DDGIVolumeGPUParams& gpuParams = m_ddgiSceneDS->u_volumesDef.GetMutable().volumes[m_index];
+
+	gpuParams = volumeGPUDefinition.gpuParams;
+
+	m_illuminanceTextureBindingsAllocation      = volumeGPUDefinition.illuminanceTexturesAllocation;
+	m_hitDistanceTextureBindingsAllocation      = volumeGPUDefinition.hitDistanceTexturesAllocation;
+}
 
 bool DDGIGPUVolumeHandle::IsValid() const
 {
@@ -25,12 +35,16 @@ void DDGIGPUVolumeHandle::Destroy()
 	{
 		DDGIVolumeGPUParams& gpuParams = m_ddgiSceneDS->u_volumesDef.GetMutable().volumes[m_index];
 
-		m_ddgiSceneDS->u_probesTextures2D.UnbindTexture(gpuParams.illuminanceTextureIdx);
-		m_ddgiSceneDS->u_probesTextures2D.UnbindTexture(gpuParams.hitDistanceTextureIdx);
+		m_ddgiSceneDS->u_probesTextures2D.UnbindAndDeallocateTexturesBlock(m_illuminanceTextureBindingsAllocation);
+		m_ddgiSceneDS->u_probesTextures2D.UnbindAndDeallocateTexturesBlock(m_hitDistanceTextureBindingsAllocation);
+
 		m_ddgiSceneDS->u_probesTextures3D.UnbindTexture(gpuParams.averageLuminanceTextureIdx);
 
 		gpuParams = DDGIVolumeGPUParams();
 		m_index = idxNone<Uint32>;
+
+		m_illuminanceTextureBindingsAllocation.Reset();
+		m_hitDistanceTextureBindingsAllocation.Reset();
 	}
 }
 

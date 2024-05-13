@@ -6,6 +6,7 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/StructuredCPUToGPUBufferBinding.h"
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
+#include "DescriptorSetBindings/ArrayOfSRVTextureBlocksBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
@@ -67,6 +68,15 @@ BEGIN_ALIGNED_SHADER_STRUCT(16, DDGIVolumeGPUParams)
 END_SHADER_STRUCT();
 
 
+struct DDGIVolumeGPUDefinition
+{
+	DDGIVolumeGPUParams gpuParams;
+
+	gfx::TexturesBindingsAllocationHandle illuminanceTexturesAllocation;
+	gfx::TexturesBindingsAllocationHandle hitDistanceTexturesAllocation;
+};
+
+
 BEGIN_SHADER_STRUCT(DDGIRelitGPUParams)
 	SHADER_STRUCT_FIELD(math::Vector3u, probesToUpdateCoords)
 	SHADER_STRUCT_FIELD(Real32,         probeRaysMaxT)
@@ -122,7 +132,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<g_maxVolumesCount * 2, true>),                                            u_probesTextures2D)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<g_maxVolumesCount * 2, true>),                                       u_probesTextures2D)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<g_maxVolumesCount, true>),                                                u_probesTextures3D)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                               u_ddgiLOD0)
@@ -137,7 +147,7 @@ public:
 
 	DDGIGPUVolumeHandle();
 
-	DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index);
+	DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, const DDGIVolumeGPUDefinition& volumeGPUDefinition);
 
 	bool IsValid() const;
 
@@ -157,6 +167,9 @@ private:
 	Uint32 m_index = idxNone<Uint32>;
 
 	lib::MTHandle<DDGISceneDS> m_ddgiSceneDS;
+
+	gfx::TexturesBindingsAllocationHandle m_illuminanceTextureBindingsAllocation;
+	gfx::TexturesBindingsAllocationHandle m_hitDistanceTextureBindingsAllocation;
 };
 
 } // spt::rsc::ddgi

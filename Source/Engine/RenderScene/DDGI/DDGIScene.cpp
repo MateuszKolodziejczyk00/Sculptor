@@ -302,6 +302,7 @@ lib::SharedRef<DDGIVolume> DDGIScene::BuildVolume(const DDGIVolumeParams& params
 	lib::SharedRef<DDGIVolume> volume = lib::MakeShared<DDGIVolume>(*this);
 
 	const DDGIGPUVolumeHandle gpuVolumeHandle = CreateGPUVolume(params);
+	SPT_CHECK(gpuVolumeHandle.IsValid());
 
 	volume->Initialize(gpuVolumeHandle, params);
 
@@ -339,14 +340,14 @@ DDGIGPUVolumeHandle DDGIScene::CreateGPUVolume(const DDGIVolumeParams& params)
 		return DDGIGPUVolumeHandle();
 	}
 
-	DDGIGPUVolumeHandle newVolumeHandle(m_ddgiSceneDS, volumeIdx);
+	const DDGIVolumeGPUDefinition volumeGPUDefinition = CreateGPUDefinition(params);
 
-	newVolumeHandle.GetGPUParamsMutable() = CreateGPUData(params);
+	DDGIGPUVolumeHandle newVolumeHandle(m_ddgiSceneDS, volumeIdx, volumeGPUDefinition);
 
 	return newVolumeHandle;
 }
 
-DDGIVolumeGPUParams DDGIScene::CreateGPUData(const DDGIVolumeParams& params) const
+DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& params) const
 {
 	const math::Vector3u probesVolumeRes = params.probesVolumeResolution;
 
@@ -410,20 +411,27 @@ DDGIVolumeGPUParams DDGIScene::CreateGPUData(const DDGIVolumeParams& params) con
 #endif // RENDERER_VALIDATION
 	const lib::SharedRef<rdr::TextureView> probeAverageLuminanceTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Average Luminance"), probesAverageLuminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
-	const Uint32 illuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures2D.BindTexture(illuminanceTexture);
-	SPT_CHECK(illuminanceTextureIdx != idxNone<Uint32>);
+	const gfx::TexturesBindingsAllocationHandle illuminanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(1);
+	SPT_CHECK(illuminanceTexturesBlockHandle.IsValid());
+	m_ddgiSceneDS->u_probesTextures2D.BindTexture(illuminanceTexture, illuminanceTexturesBlockHandle, 0);
 
-	const Uint32 hitDistanceTextureIdx = m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture);
-	SPT_CHECK(hitDistanceTextureIdx != idxNone<Uint32>);
+	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(1);
+	SPT_CHECK(hitDistanceTexturesBlockHandle.IsValid());
+	m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture, hitDistanceTexturesBlockHandle, 0);
 
 	const Uint32 probeAverageLuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures3D.BindTexture(probeAverageLuminanceTexture);
 	SPT_CHECK(probeAverageLuminanceTextureIdx != idxNone<Uint32>);
 
-	gpuParams.illuminanceTextureIdx      = illuminanceTextureIdx;
-	gpuParams.hitDistanceTextureIdx      = hitDistanceTextureIdx;
+	gpuParams.illuminanceTextureIdx      = illuminanceTexturesBlockHandle.GetOffset();
+	gpuParams.hitDistanceTextureIdx      = hitDistanceTexturesBlockHandle.GetOffset();
 	gpuParams.averageLuminanceTextureIdx = probeAverageLuminanceTextureIdx;
 
-	return gpuParams;
+	DDGIVolumeGPUDefinition volumeDefinition;
+	volumeDefinition.gpuParams                          = gpuParams;
+	volumeDefinition.illuminanceTexturesAllocation      = illuminanceTexturesBlockHandle;
+	volumeDefinition.hitDistanceTexturesAllocation      = hitDistanceTexturesBlockHandle;
+
+	return volumeDefinition;
 }
 
 void DDGIScene::InitializeLODs(const DDGIConfig& config)
