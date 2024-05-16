@@ -52,11 +52,11 @@ public:
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		const lib::String format = GetTextureFormatString();
+		const lib::String format = priv::GetTextureFormatString<TPixelFormatType>();
 		lib::String formatAnnotation;
 		if (!format.empty())
 		{
-			formatAnnotation = lib::String("[[vk::image_format(\"") + GetTextureFormatString() + "\")]]\n";
+			formatAnnotation = lib::String("[[vk::image_format(\"") + format + "\")]]\n";
 		}
 
 		return BuildBindingVariableCode(formatAnnotation + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
@@ -89,36 +89,6 @@ private:
 		const lib::SharedPtr<rdr::Texture> texture = textureView->GetTexture();
 		SPT_CHECK(!!texture);
 		SPT_CHECK(lib::HasAnyFlag(texture->GetRHI().GetDefinition().usage, rhi::ETextureUsage::StorageTexture));
-	}
-
-	static constexpr lib::String GetTextureFormatString()
-	{
-		if constexpr (std::is_same_v<TPixelFormatType, math::Vector4f>)
-		{
-			return "rgba32f";
-		}
-		else if constexpr (std::is_same_v<TPixelFormatType, math::Vector3f>)
-		{
-			return "r11g11b10f";
-		}
-		else if constexpr (std::is_same_v<TPixelFormatType, math::Vector2f>)
-		{
-			return "rg32f";
-		}
-		else if constexpr (std::is_same_v<TPixelFormatType, Real32>)
-		{
-			return "r32f";
-		}
-		else if constexpr (std::is_same_v<TPixelFormatType, Uint8>)
-		{
-			return "r8ui";
-		}
-		else if constexpr (std::is_same_v<TPixelFormatType, Uint32>)
-		{
-			return "r32ui";
-		}
-
-		return lib::String();
 	}
 };
 

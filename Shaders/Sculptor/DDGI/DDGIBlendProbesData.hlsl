@@ -107,11 +107,13 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-    const uint2 probeDataOffset = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
+    const DDGIProbeDataCoords probeDataOffset = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
+    const RWTexture2D<float4> probeIlluminanceTexture = u_volumeIlluminanceTextures[probeDataOffset.textureIdx];
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
-    
-    const uint2 probeDataOffset = ComputeProbeHitDistanceDataOffset(u_volumeParams, probeWrappedCoords);
+
+    const DDGIProbeDataCoords probeDataOffset = ComputeProbeHitDistanceDataOffset(u_volumeParams, probeWrappedCoords);
+    const RWTexture2D<float4> probeHitDistanceTexture = u_volumeHitDistanceTextures[probeDataOffset.textureIdx];
 
 #endif // DDGI_BLEND_TYPE
 
@@ -163,11 +165,11 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
                 {
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-                    u_probesIlluminanceTexture[probeDataOffset + localID] = 0.f;
+                    probeIlluminanceTexture[probeDataOffset.textureLocalCoords + localID] = 0.f;
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-                    u_probesHitDistanceTexture[probeDataOffset + localID] = -1.f;
+                    probeHitDistanceTexture[probeDataOffset.textureLocalCoords + localID] = -1.f;
 
 #endif // DDGI_BLEND_TYPE
                     return;
@@ -200,7 +202,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 #endif // DDGI_BLEND_TYPE
         }
 
-        const uint2 dataCoords = probeDataOffset + localID;
+        const uint2 dataCoords = probeDataOffset.textureLocalCoords + localID;
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
@@ -215,7 +217,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         const float exponent = 1.f / u_volumeParams.probeIlluminanceEncodingGamma;
         result = pow(result, exponent);
         
-        const float3 prevIlluminance = u_probesIlluminanceTexture[dataCoords];
+        const float3 prevIlluminance = probeIlluminanceTexture[dataCoords].xyz;
 
         float hysteresis = u_relitParams.blendHysteresis;
 
@@ -247,7 +249,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         float3 deltaThisFrame = delta * (1.f - hysteresis);
         result = prevIlluminance + deltaThisFrame;
 
-        u_probesIlluminanceTexture[dataCoords] = result;
+        probeIlluminanceTexture[dataCoords] = float4(result, 0.f);
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
@@ -264,7 +266,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             hysteresis = 0.f;
         }
         
-        const float2 prevHitDistance = u_probesHitDistanceTexture[dataCoords];
+        const float2 prevHitDistance = probeHitDistanceTexture[dataCoords].xy;
 
         if(prevHitDistance.x < 0.f)
         {
@@ -273,7 +275,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
         result = lerp(result, prevHitDistance, hysteresis);
         
-        u_probesHitDistanceTexture[dataCoords] = result;
+        probeHitDistanceTexture[dataCoords] = float4(result, 0.f, 0.f);
 
 #endif // DDGI_BLEND_TYPE
 
@@ -335,11 +337,11 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
-    u_probesIlluminanceTexture[probeDataOffset + localID] = u_probesIlluminanceTexture[probeDataOffset + sourcePixelCoord];
+    probeIlluminanceTexture[probeDataOffset.textureLocalCoords + localID] = probeIlluminanceTexture[probeDataOffset.textureLocalCoords + sourcePixelCoord];
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-    u_probesHitDistanceTexture[probeDataOffset + localID] = u_probesHitDistanceTexture[probeDataOffset + sourcePixelCoord];
+    probeHitDistanceTexture[probeDataOffset.textureLocalCoords + localID] = probeHitDistanceTexture[probeDataOffset.textureLocalCoords + sourcePixelCoord];
 
 #endif // DDGI_BLEND_TYPE
 }

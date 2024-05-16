@@ -38,6 +38,37 @@ constexpr lib::String GetTextureDimSuffix()
 }
 
 
+template<typename TPixelFormatType>
+constexpr lib::String GetTextureFormatString()
+{
+	if constexpr (std::is_same_v<TPixelFormatType, math::Vector4f>)
+	{
+		return "rgba32f";
+	}
+	else if constexpr (std::is_same_v<TPixelFormatType, math::Vector3f>)
+	{
+		return "r11g11b10f";
+	}
+	else if constexpr (std::is_same_v<TPixelFormatType, math::Vector2f>)
+	{
+		return "rg32f";
+	}
+	else if constexpr (std::is_same_v<TPixelFormatType, Real32>)
+	{
+		return "r32f";
+	}
+	else if constexpr (std::is_same_v<TPixelFormatType, Uint8>)
+	{
+		return "r8ui";
+	}
+	else if constexpr (std::is_same_v<TPixelFormatType, Uint32>)
+	{
+		return "r32ui";
+	}
+
+	return lib::String();
+}
+
 template<typename TType>
 concept CTextureInstanceOrRGTextureView = requires
 {

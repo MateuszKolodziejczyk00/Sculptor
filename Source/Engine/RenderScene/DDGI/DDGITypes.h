@@ -6,13 +6,20 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/StructuredCPUToGPUBufferBinding.h"
 #include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
-#include "DescriptorSetBindings/ArrayOfSRVTextureBlocksBinding.h"
+#include "DescriptorSetBindings/ArrayOfTextureBlocksBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc::ddgi
 {
+
+
+namespace constants
+{
+constexpr Uint32 maxTexturesPerVolume = 24u;
+} // constants
+
 
 struct DDGIVolumeParams
 {
@@ -132,7 +139,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<g_maxVolumesCount * 2, true>),                                       u_probesTextures2D)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, g_maxVolumesCount * 2, true>),                       u_probesTextures2D)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<g_maxVolumesCount, true>),                                                u_probesTextures3D)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                               u_ddgiLOD0)

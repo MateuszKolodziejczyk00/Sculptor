@@ -23,7 +23,10 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
 
 	// add 1 because of the border
-	const uint2 probeDataOffset = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords) + 1;
+	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
+
+	Texture2D<float3> probeIlluminanceTexture = u_probesIlluminanceTexture;
+	const uint2 probeDataOffset = probeDataCoords.textureLocalCoords + 1;
 
 	const uint samplesNum = u_volumeParams.probeIlluminanceDataRes.x * u_volumeParams.probeIlluminanceDataRes.y;
 
@@ -38,7 +41,7 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 			uint2 sampleOffset;
 			sampleOffset.y = sampleIdx / u_volumeParams.probeIlluminanceDataRes.x;
 			sampleOffset.x = sampleIdx - sampleOffset.y * u_volumeParams.probeIlluminanceDataRes.x;
-			sampleLuminance = u_probesIlluminanceTexture.Load(int3(probeDataOffset + sampleOffset, 0)).xyz;
+			sampleLuminance = probeIlluminanceTexture.Load(int3(probeDataOffset + sampleOffset, 0)).xyz;
 		}
 
 		const float3 samplesLumianceSum = WaveActiveSum(sampleLuminance);

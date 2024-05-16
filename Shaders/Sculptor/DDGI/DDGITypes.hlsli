@@ -62,61 +62,37 @@ uint3 OffsetProbe(in const DDGIVolumeGPUParams volumeParams, in uint3 probeCoord
 }
 
 
-uint2 ComputeProbeDataCoords(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
+struct DDGIProbeDataCoords
+{
+	uint2 textureLocalCoords;
+	uint textureIdx;
+};
+
+
+DDGIProbeDataCoords ComputeProbeDataCoords(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
 	const uint x = probeWrappedCoords.x + probeWrappedCoords.z * volumeParams.probesVolumeResolution.x;
 	const uint y = probeWrappedCoords.y;
-	return uint2(x, y);
+	DDGIProbeDataCoords coords;
+	coords.textureLocalCoords = uint2(x, y);
+	coords.textureIdx = 0;
+	return coords;
 }
 
 
-uint2 ComputeProbeIlluminanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
+DDGIProbeDataCoords ComputeProbeIlluminanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-	const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
-	return probeDataCoords * volumeParams.probeIlluminanceDataWithBorderRes;
+	DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+	probeDataCoords.textureLocalCoords *= volumeParams.probeIlluminanceDataWithBorderRes;
+	return probeDataCoords;
 }
 
 
-uint2 ComputeProbeHitDistanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
+DDGIProbeDataCoords ComputeProbeHitDistanceDataOffset(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-	const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
-	return probeDataCoords * volumeParams.probeHitDistanceDataWithBorderRes;
-}
-
-
-template<typename TSampledDataType>
-float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, Texture2D<TSampledDataType> probesIlluminanceTexture, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
-{
-	const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
-	
-	// Probe data begin UV
-	float2 uv = probeDataCoords * volumeParams.probesIlluminanceTextureUVDeltaPerProbe;
-	
-	// Add Border
-	uv += volumeParams.probesIlluminanceTexturePixelSize;
-
-	// add octahedron UV
-	uv += octahedronUV * volumeParams.probesIlluminanceTextureUVPerProbeNoBorder;
-
-	return probesIlluminanceTexture.SampleLevel(illuminanceSampler, uv, 0).rgb;
-}
-
-
-template<typename TSampledDataType>
-float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, Texture2D<TSampledDataType> probesHitDistanceTexture, SamplerState distancesSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
-{
-	const uint2 probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
-	
-	// Probe data begin UV
-	float2 uv = probeDataCoords * volumeParams.probesHitDistanceUVDeltaPerProbe;
-	
-	// Add Border
-	uv += volumeParams.probesHitDistanceTexturePixelSize;
-
-	// add octahedron UV
-	uv += octahedronUV * volumeParams.probesHitDistanceTextureUVPerProbeNoBorder;
-	
-	return probesHitDistanceTexture.SampleLevel(distancesSampler, uv, 0).xy;
+	DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+	probeDataCoords.textureLocalCoords *= volumeParams.probeHitDistanceDataWithBorderRes;
+	return probeDataCoords;
 }
 
 
@@ -159,6 +135,45 @@ float3 DDGIGetSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGIS
 }
 
 #ifdef DS_DDGISceneDS
+
+float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, SamplerState illuminanceSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
+{
+	const DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+
+	const Texture2D<float4> probesIlluminanceTexture = u_probesTextures2D[volumeParams.illuminanceTextureIdx + probeDataCoords.textureIdx];
+	
+	// Probe data begin UV
+	float2 uv = probeDataCoords.textureLocalCoords * volumeParams.probesIlluminanceTextureUVDeltaPerProbe;
+	
+	// Add Border
+	uv += volumeParams.probesIlluminanceTexturePixelSize;
+
+	// add octahedron UV
+	uv += octahedronUV * volumeParams.probesIlluminanceTextureUVPerProbeNoBorder;
+
+	return probesIlluminanceTexture.SampleLevel(illuminanceSampler, uv, 0).rgb;
+}
+
+
+float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, SamplerState distancesSampler, in uint3 probeWrappedCoords, float2 octahedronUV)
+{
+	const DDGIProbeDataCoords probeDataCoords = ComputeProbeDataCoords(volumeParams, probeWrappedCoords);
+
+	Texture2D<float4> probesHitDistanceTexture = u_probesTextures2D[volumeParams.hitDistanceTextureIdx + probeDataCoords.textureIdx];
+
+	// Probe data begin UV
+	float2 uv = probeDataCoords.textureLocalCoords * volumeParams.probesHitDistanceUVDeltaPerProbe;
+	
+	// Add Border
+	uv += volumeParams.probesHitDistanceTexturePixelSize;
+
+	// add octahedron UV
+	uv += octahedronUV * volumeParams.probesHitDistanceTextureUVPerProbeNoBorder;
+	
+	return probesHitDistanceTexture.SampleLevel(distancesSampler, uv, 0).xy;
+}
+
+
 struct DDGIVolumeSampleInfo
 {
 	uint2 volumeIndices;
@@ -238,9 +253,9 @@ uint GetDDGIVolumeIdx(in float3 location)
 
 float3 SampleProbeIlluminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	const Texture2D<float4> probesIlluminanceTexture = u_probesTextures2D[volumeParams.illuminanceTextureIdx];
-	return SampleProbeIlluminance(volumeParams, probesIlluminanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+	return SampleProbeIlluminance(volumeParams, u_probesDataSampler, probeWrappedCoords, octahedronUV);
 }
+
 
 float3 SampleProbeAverageLuminance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
@@ -248,10 +263,10 @@ float3 SampleProbeAverageLuminance(in const DDGIVolumeGPUParams volumeParams, in
 	return probesAverageLuminanceTexture.Load(int4(probeWrappedCoords, 0)).rgb;
 }
 
+
 float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, float2 octahedronUV)
 {
-	const Texture2D<float4> probesHitDistanceTexture = u_probesTextures2D[volumeParams.hitDistanceTextureIdx];
-	return SampleProbeHitDistance(volumeParams, probesHitDistanceTexture, u_probesDataSampler, probeWrappedCoords, octahedronUV);
+	return SampleProbeHitDistance(volumeParams, u_probesDataSampler, probeWrappedCoords, octahedronUV);
 }
 
 

@@ -78,11 +78,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGIInvalidateProbesDS, rg::RGDescriptorSetState<DDGIInvalidateProbesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeInvalidateParams>), u_invalidateParams)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeGPUParams>),        u_volumeParams)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_probesHitDistanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                u_probesIlluminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                u_probesAverageLuminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeInvalidateParams>),                                u_invalidateParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeGPUParams>),                                       u_volumeParams)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeHitDistanceTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeIlluminanceTextures)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                                               u_volumeProbesAverageLuminanceTexture)
 DS_END();
 
 
@@ -94,12 +94,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGIUpdateProbesIlluminanceDS, rg::RGDescriptorSetState<DDGIUpdateProbesIlluminanceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>), u_probesIlluminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeIlluminanceTextures)
 DS_END();
 
 
 DS_BEGIN(DDGIUpdateProbesHitDistanceDS, rg::RGDescriptorSetState<DDGIUpdateProbesHitDistanceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>), u_probesHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeHitDistanceTextures)
 DS_END();
 
 
@@ -371,7 +371,8 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 	updateProbesDS->u_volumeParams           = relitParams.ddgiVolumeParamsBuffer;
 
 	lib::MTHandle<DDGIUpdateProbesIlluminanceDS> updateProbesIlluminanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesIlluminanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesIlluminanceDS"));
-	updateProbesIlluminanceDS->u_probesIlluminanceTexture = relitParams.probesIlluminanceTextureView;
+	const gfx::TexturesBindingsAllocationHandle illuminanceTexturesBlock = updateProbesIlluminanceDS->u_volumeIlluminanceTextures.AllocateWholeBlock();
+	updateProbesIlluminanceDS->u_volumeIlluminanceTextures.BindTexture(relitParams.probesIlluminanceTextureView, illuminanceTexturesBlock, 0);
 
 	const rdr::PipelineStateID updateProbesIlluminancePipelineID = pipelines::CreateDDGIBlendProbesIlluminancePipeline(relitParams.probeIlluminanceDataWithBorderRes, relitParams.raysNumPerProbe);
 	
@@ -382,7 +383,8 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 												 std::move(updateProbesIlluminanceDS)));
 
 	lib::MTHandle<DDGIUpdateProbesHitDistanceDS> updateProbesHitDistanceDS = graphBuilder.CreateDescriptorSet<DDGIUpdateProbesHitDistanceDS>(RENDERER_RESOURCE_NAME("DDGIUpdateProbesHitDistanceDS"));
-	updateProbesHitDistanceDS->u_probesHitDistanceTexture = relitParams.probesHitDistanceTextureView;
+	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlock = updateProbesHitDistanceDS->u_volumeHitDistanceTextures.AllocateWholeBlock();
+	updateProbesHitDistanceDS->u_volumeHitDistanceTextures.BindTexture(relitParams.probesHitDistanceTextureView, hitDistanceTexturesBlock, 0);
 	
 	const rdr::PipelineStateID updateProbesDistancesPipelineID = pipelines::CreateDDGIBlendProbesHitDistancePipeline(relitParams.probeHitDistanceDataWithBorderRes, relitParams.raysNumPerProbe);;
 
@@ -421,11 +423,15 @@ void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graph
 	invalidateParams.prevAABBMax = prevAABB.max();
 
 	const lib::MTHandle<DDGIInvalidateProbesDS> invalidateProbesDS = graphBuilder.CreateDescriptorSet<DDGIInvalidateProbesDS>(RENDERER_RESOURCE_NAME("DDGIInvalidateProbesDS"));
-	invalidateProbesDS->u_invalidateParams              = invalidateParams;
-	invalidateProbesDS->u_volumeParams                  = volumeParams;
-	invalidateProbesDS->u_probesHitDistanceTexture      = volume.GetProbesHitDistanceTexture();
-	invalidateProbesDS->u_probesIlluminanceTexture      = volume.GetProbesIlluminanceTexture();
-	invalidateProbesDS->u_probesAverageLuminanceTexture = volume.GetProbesAverageLuminanceTexture();
+	invalidateProbesDS->u_invalidateParams                    = invalidateParams;
+	invalidateProbesDS->u_volumeParams                        = volumeParams;
+	invalidateProbesDS->u_volumeProbesAverageLuminanceTexture = volume.GetProbesAverageLuminanceTexture();
+
+	const gfx::TexturesBindingsAllocationHandle illuminanceTexturesBlock = invalidateProbesDS->u_volumeIlluminanceTextures.AllocateWholeBlock();
+	invalidateProbesDS->u_volumeIlluminanceTextures.BindTexture(lib::Ref(volume.GetProbesIlluminanceTexture()), illuminanceTexturesBlock, 0);
+
+	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlock = invalidateProbesDS->u_volumeHitDistanceTextures.AllocateWholeBlock();
+	invalidateProbesDS->u_volumeHitDistanceTextures.BindTexture(lib::Ref(volume.GetProbesHitDistanceTexture()), hitDistanceTexturesBlock, 0);
 
 	static const rdr::PipelineStateID invalidateProbesPipelineID = pipelines::CreateDDGIInvalidateProbesPipeline(volumeParams.probeHitDistanceDataWithBorderRes);
 

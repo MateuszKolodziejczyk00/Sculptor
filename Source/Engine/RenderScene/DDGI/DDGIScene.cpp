@@ -427,9 +427,9 @@ DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& p
 	gpuParams.averageLuminanceTextureIdx = probeAverageLuminanceTextureIdx;
 
 	DDGIVolumeGPUDefinition volumeDefinition;
-	volumeDefinition.gpuParams                          = gpuParams;
-	volumeDefinition.illuminanceTexturesAllocation      = illuminanceTexturesBlockHandle;
-	volumeDefinition.hitDistanceTexturesAllocation      = hitDistanceTexturesBlockHandle;
+	volumeDefinition.gpuParams                     = gpuParams;
+	volumeDefinition.illuminanceTexturesAllocation = illuminanceTexturesBlockHandle;
+	volumeDefinition.hitDistanceTexturesAllocation = hitDistanceTexturesBlockHandle;
 
 	return volumeDefinition;
 }

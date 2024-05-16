@@ -7,6 +7,8 @@
 #include "Utility/String/StringUtils.h"
 #include "Renderer.h"
 #include "RendererSettings.h"
+#include "ShaderStructs/ShaderStructsTypes.h"
+
 
 namespace spt::gfx
 {
@@ -83,6 +85,16 @@ public:
 		}
 		else
 		{
+			if (foundBlockIt != std::begin(m_availableBlocks))
+			{
+				const auto prevBlockIt = std::prev(foundBlockIt);
+				if (prevBlockIt->blockStart + prevBlockIt->blockSize == block.blockStart)
+				{
+					prevBlockIt->blockSize += block.blockSize;
+					return;
+				}
+			}
+
 			m_availableBlocks.insert(foundBlockIt, block);
 		}
 	}
@@ -90,6 +102,13 @@ public:
 private:
 
 	lib::DynamicArray<TexturesBlock> m_availableBlocks;
+};
+
+
+enum class ETextureResourceType
+{
+	SRVTexture,
+	RWTexture
 };
 
 } // priv
@@ -137,8 +156,8 @@ private:
 };
 
 
-template<priv::EBindingTextureDimensions dimensions, SizeType arraySize, Bool trackInRenderGraph>
-class ArrayOfSRVTextureBlocksBinding : public rdr::DescriptorSetBinding
+template<priv::ETextureResourceType resourceType, priv::EBindingTextureDimensions dimensions, typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph>
+class ArrayOfTextureBlocksBinding : public rdr::DescriptorSetBinding
 {
 protected:
 
@@ -148,7 +167,7 @@ public:
 const 
 	static constexpr SizeType unboundSize = idxNone<SizeType>;
 
-	explicit ArrayOfSRVTextureBlocksBinding(const lib::HashedString& name)
+	explicit ArrayOfTextureBlocksBinding(const lib::HashedString& name)
 		: Super(name)
 		, m_textureBindingsAllocator(arraySize)
 	{
@@ -179,15 +198,16 @@ const
 	{
 		if constexpr (trackInRenderGraph)
 		{
+			constexpr rg::ERGTextureAccess accessType = GetRGTextureAccessType();
 			for (const BoundTexture& texture : m_boundTextures)
 			{
 				if (texture.textureInstance)
 				{
-					builder.AddTextureAccessIfAcquired(lib::Ref(texture.textureInstance), rg::ERGTextureAccess::SampledTexture);
+					builder.AddTextureAccessIfAcquired(lib::Ref(texture.textureInstance), accessType);
 				}
 				else if (texture.rgTexture.IsValid())
 				{
-					builder.AddTextureAccess(texture.rgTexture, rg::ERGTextureAccess::SampledTexture);
+					builder.AddTextureAccess(texture.rgTexture, accessType);
 				}
 			}
 		}
@@ -196,12 +216,28 @@ const
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		const lib::String arraySizeNumber = IsUnbound() ? lib::String() : lib::StringUtils::ToString<arraySize>();
-		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>() + ' ' + name + '[' + arraySizeNumber + ']', bindingIdx);
+
+		SPT_STATIC_CHECK(SPT_SINGLE_ARG(resourceType != priv::ETextureResourceType::RWTexture || std::is_same_v<TPixelFormatType, math::Vector4f>));
+
+		return BuildBindingVariableCode(GetTextureTypeString() + priv::GetTextureDimSuffix<dimensions>() + 
+										'<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + '>'
+										+ ' ' + name + '[' + arraySizeNumber + ']', bindingIdx);
 	}
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
 	{
-		return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::SampledTexture, lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound), arraySize) };
+		if constexpr (resourceType == priv::ETextureResourceType::SRVTexture)
+		{
+			return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::SampledTexture, lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound), arraySize) };
+		}
+		else if constexpr (resourceType == priv::ETextureResourceType::RWTexture)
+		{
+			return { rdr::ShaderBindingMetaData(rhi::EDescriptorType::StorageTexture, lib::Flags(smd::EBindingFlags::PartiallyBound, smd::EBindingFlags::Unbound), arraySize) };
+		}
+		else
+		{
+			return {};
+		}
 	}
 
 	static constexpr Bool IsUnbound()
@@ -215,6 +251,13 @@ const
 
 		const auto allocatedBlock = m_textureBindingsAllocator.Allocate(texturesNum);
 		return TexturesBindingsAllocationHandle(allocatedBlock.value());
+	}
+
+	TexturesBindingsAllocationHandle AllocateWholeBlock()
+	{
+		const auto blockAllocation = AllocateTexturesBlock(arraySize);
+		SPT_CHECK(blockAllocation.GetOffset() == 0u);
+		return blockAllocation;
 	}
 
 	void DeallocateTexturesBlock(TexturesBindingsAllocationHandle allocationHandle)
@@ -326,20 +369,64 @@ private:
 		return true;
 	}
 
+	static constexpr rg::ERGTextureAccess GetRGTextureAccessType()
+	{
+		if constexpr (resourceType == priv::ETextureResourceType::SRVTexture)
+		{
+			return rg::ERGTextureAccess::SampledTexture;
+		}
+		else if constexpr (resourceType == priv::ETextureResourceType::RWTexture)
+		{
+			return rg::ERGTextureAccess::StorageWriteTexture;
+		}
+		else
+		{
+			return rg::ERGTextureAccess::SampledTexture;
+		}
+	}
+
+	static constexpr lib::String GetTextureTypeString()
+	{
+		if constexpr (resourceType == priv::ETextureResourceType::SRVTexture)
+		{
+			return "Texture";
+		}
+		else if constexpr (resourceType == priv::ETextureResourceType::RWTexture)
+		{
+			return "RWTexture";
+		}
+		else
+		{
+			return "UnknownTextureType";
+		}
+	}
+
 	lib::DynamicArray<BoundTexture> m_boundTextures;
 	priv::TexturesBindingAllocator  m_textureBindingsAllocator;
 };
 
 
-template<SizeType arraySize, Bool trackInRenderGraph = false>
-using ArrayOfSRVTexture1DBlocksBinding = ArrayOfSRVTextureBlocksBinding<priv::EBindingTextureDimensions::Dim_1D, arraySize, trackInRenderGraph>;
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTexture1DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::SRVTexture, priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType, arraySize, trackInRenderGraph>;
 
 
-template<SizeType arraySize, Bool trackInRenderGraph = false>
-using ArrayOfSRVTexture2DBlocksBinding = ArrayOfSRVTextureBlocksBinding<priv::EBindingTextureDimensions::Dim_2D, arraySize, trackInRenderGraph>;
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTexture2DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::SRVTexture, priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType, arraySize, trackInRenderGraph>;
 
 
-template<SizeType arraySize, Bool trackInRenderGraph = false>
-using ArrayOfSRVTexture3DBlocksBinding = ArrayOfSRVTextureBlocksBinding<priv::EBindingTextureDimensions::Dim_3D, arraySize, trackInRenderGraph>;
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = false>
+using ArrayOfSRVTexture3DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::SRVTexture, priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType, arraySize, trackInRenderGraph>;
+
+
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = true>
+using ArrayOfRWTexture1DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::RWTexture, priv::EBindingTextureDimensions::Dim_1D, TPixelFormatType, arraySize, trackInRenderGraph>;
+
+
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = true>
+using ArrayOfRWTexture2DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::RWTexture, priv::EBindingTextureDimensions::Dim_2D, TPixelFormatType, arraySize, trackInRenderGraph>;
+
+
+template<typename TPixelFormatType, SizeType arraySize, Bool trackInRenderGraph = true>
+using ArrayOfRWTexture3DBlocksBinding = ArrayOfTextureBlocksBinding<priv::ETextureResourceType::RWTexture, priv::EBindingTextureDimensions::Dim_3D, TPixelFormatType, arraySize, trackInRenderGraph>;
 
 } // spt::gfx

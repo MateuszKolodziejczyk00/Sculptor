@@ -198,6 +198,20 @@ float3 SampleVNDFIsotropic(float2 u, float3 wi, float alpha, float3 n)
 }
 
 
+float PDFVNDFIsotrpic(float3 wo, float3 wi, float alpha, float3 n)
+{
+	float alphaSquare = alpha * alpha;
+	float3 wm = normalize(wo + wi);
+	float zm = dot(wm, n);
+	float zi = dot(wi, n);
+	float nrm = rsqrt((zi * zi) * (1.0f - alphaSquare) + alphaSquare);
+	float sigmaStd = (zi * nrm) * 0.5f + 0.5f;
+	float sigmaI = sigmaStd / nrm;
+	float nrmN = (zm * zm) * (alphaSquare - 1.0f) + 1.0f;
+	return alphaSquare / (PI * 4.0f * nrmN * nrmN * sigmaI);
+}
+
+
 float3 IntegrateSpecularGGX(in float3 specularColor, in float3 shadingNormal, in float roughness, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
 {
 	const float a = max(roughness, 0.01f);
