@@ -176,6 +176,8 @@ const
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
+		SPT_PROFILER_FUNCTION();
+
 		for (SizeType arrayIdx = 0; arrayIdx < m_boundTextures.size(); ++arrayIdx)
 		{
 			const BoundTexture& boundTexture = m_boundTextures[arrayIdx];
@@ -196,6 +198,8 @@ const
 	
 	void BuildRGDependencies(class rg::RGDependenciesBuilder& builder) const
 	{
+		SPT_PROFILER_FUNCTION();
+
 		if constexpr (trackInRenderGraph)
 		{
 			constexpr rg::ERGTextureAccess accessType = GetRGTextureAccessType();
@@ -279,41 +283,55 @@ const
 		DeallocateTexturesBlock(allocationHandle);
 	}
 
-	void BindTexture(const lib::SharedRef<rdr::TextureView>& textureView, TexturesBindingsAllocationHandle allocation, Uint32 offset)
+	void BindTexture(const lib::SharedRef<rdr::TextureView>& textureView, TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx)
 	{
-		SPT_CHECK(offset < allocation.GetSize());
+		SPT_CHECK(allocation.IsValid());
+		SPT_CHECK(allocationLocalIdx < allocation.GetSize());
 
-		const Uint32 textureArrayIdx = allocation.GetOffset() + offset;
+		const Uint32 textureArrayIdx = allocation.GetOffset() + allocationLocalIdx;
 
 		BoundTexture textureToBind;
 		textureToBind.textureInstance = textureView;
 		return BindTextureImpl(textureToBind, textureArrayIdx);
 	}
 
-	void BindTexture(const rg::RGTextureViewHandle& textureView, TexturesBindingsAllocationHandle allocation, Uint32 offset)
+	void BindTexture(const rg::RGTextureViewHandle& textureView, TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx)
 	{
 		SPT_CHECK(trackInRenderGraph);
 
-		const Uint32 textureArrayIdx = allocation.GetOffset() + offset;
+		const Uint32 textureArrayIdx = allocation.GetOffset() + allocationLocalIdx;
 
 		BoundTexture textureToBind;
 		textureToBind.rgTexture = textureView;
 		return BindTextureImpl(textureToBind, textureArrayIdx);
 	}
 
-	void UnbindTexture(TexturesBindingsAllocationHandle allocation, Uint32 offset)
+	void BindTextures(lib::Span<const rg::RGTextureViewHandle> textureViews, TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx)
 	{
-		SPT_CHECK(offset != idxNone<Uint32>);
+		const Uint32 texturesNum = static_cast<Uint32>(textureViews.size());
+		for (Uint32 textureIdx = 0u; textureIdx < texturesNum; ++textureIdx)
+		{
+			BindTexture(textureViews[textureIdx], allocation, allocationLocalIdx + textureIdx);
+		}
+	}
 
-		const Uint32 textureArrayIdx = allocation.GetOffset() + offset;
+	void UnbindTexture(TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx)
+	{
+		SPT_CHECK(allocation.IsValid());
+		SPT_CHECK(allocationLocalIdx < allocation.GetSize());
+
+		const Uint32 textureArrayIdx = allocation.GetOffset() + allocationLocalIdx;
 		
 		m_boundTextures[textureArrayIdx] = BoundTexture{};
 		MarkAsDirty();
 	}
 
-	std::variant<nullptr_t, lib::SharedPtr<rdr::TextureView>, rg::RGTextureViewHandle> GetBoundTexture(Uint32 textureArrayIdx) const
+	std::variant<nullptr_t, lib::SharedPtr<rdr::TextureView>, rg::RGTextureViewHandle> GetBoundTexture(TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx) const
 	{
-		SPT_CHECK(textureArrayIdx != idxNone<Uint32>);
+		SPT_CHECK(allocation.IsValid());
+		SPT_CHECK(allocationLocalIdx < allocation.GetSize());
+
+		const Uint32 textureArrayIdx = allocation.GetOffset() + allocationLocalIdx;
 
 		const BoundTexture& boundTexture = m_boundTextures[textureArrayIdx];
 
@@ -332,9 +350,9 @@ const
 	}
 
 	template<typename TBoundTextureType>
-	TBoundTextureType GetBoundTexture(Uint32 textureArrayUdx) const
+	TBoundTextureType GetBoundTexture(TexturesBindingsAllocationHandle allocation, Uint32 allocationLocalIdx) const
 	{
-		const auto boundTexture = GetBoundTexture(textureArrayUdx);
+		const auto boundTexture = GetBoundTexture(allocation, allocationLocalIdx);
 		return std::holds_alternative<TBoundTextureType>(boundTexture) ? std::get<TBoundTextureType>(boundTexture) : TBoundTextureType{};
 	}
 

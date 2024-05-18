@@ -67,14 +67,19 @@ DDGIVolumeGPUParams& DDGIGPUVolumeHandle::GetGPUParamsMutable()
 	return volumesDef.volumes[m_index];
 }
 
-lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesIlluminanceTexture() const
+const Uint32 DDGIGPUVolumeHandle::GetProbesDataTexturesNum() const
 {
-	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().illuminanceTextureIdx) : nullptr;
+	return IsValid() ? GetGPUParams().probesVolumeResolution.z() : 0u;
 }
 
-lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesHitDistanceTexture() const
+lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesIlluminanceTexture(Uint32 textureIdx) const
 {
-	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(GetGPUParams().hitDistanceTextureIdx) : nullptr;
+	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(m_illuminanceTextureBindingsAllocation, textureIdx) : nullptr;
+}
+
+lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesHitDistanceTexture(Uint32 textureIdx) const
+{
+	return IsValid() ? m_ddgiSceneDS->u_probesTextures2D.GetBoundTexture<lib::SharedPtr<rdr::TextureView>>(m_hitDistanceTextureBindingsAllocation, textureIdx) : nullptr;
 }
 
 lib::SharedPtr<rdr::TextureView> DDGIGPUVolumeHandle::GetProbesAverageLuminanceTexture() const

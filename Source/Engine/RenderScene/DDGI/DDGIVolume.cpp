@@ -50,10 +50,6 @@ void DDGIVolume::Initialize(DDGIGPUVolumeHandle gpuVolumeHandle, const DDGIVolum
 
 	m_volumeAABB = math::AlignedBox3f(gpuParams.probesOriginWorldLocation, gpuParams.probesEndWorldLocation);
 
-	m_cachedProbesIlluminanceTexture      = gpuVolumeHandle.GetProbesIlluminanceTexture();
-	m_cachedProbesHitDistanceTexture      = gpuVolumeHandle.GetProbesHitDistanceTexture();
-	m_cachedProbesAverageLuminanceTexture = gpuVolumeHandle.GetProbesAverageLuminanceTexture();
-
 	m_gpuVolumeHandle = std::move(gpuVolumeHandle);
 
 	m_volumePriority = inParams.priority;
@@ -196,19 +192,24 @@ math::Vector3f DDGIVolume::GetVolumeCenter() const
 	return m_volumeAABB.center();
 }
 
-const lib::SharedPtr<rdr::TextureView>& DDGIVolume::GetProbesIlluminanceTexture() const
+Uint32 DDGIVolume::GetProbeDataTexturesNum() const
 {
-	return m_cachedProbesIlluminanceTexture;
+	return m_gpuVolumeHandle.GetProbesDataTexturesNum();
 }
 
-const lib::SharedPtr<rdr::TextureView>& DDGIVolume::GetProbesHitDistanceTexture() const
+lib::SharedPtr<rdr::TextureView> DDGIVolume::GetProbesIlluminanceTexture(Uint32 textureIdx) const
 {
-	return m_cachedProbesHitDistanceTexture;
+	return m_gpuVolumeHandle.GetProbesIlluminanceTexture(textureIdx);
 }
 
-const lib::SharedPtr<rdr::TextureView>& DDGIVolume::GetProbesAverageLuminanceTexture() const
+lib::SharedPtr<rdr::TextureView> DDGIVolume::GetProbesHitDistanceTexture(Uint32 textureIdx) const
 {
-	return m_cachedProbesAverageLuminanceTexture;
+	return m_gpuVolumeHandle.GetProbesHitDistanceTexture(textureIdx);
+}
+
+lib::SharedPtr<rdr::TextureView> DDGIVolume::GetProbesAverageLuminanceTexture() const
+{
+	return m_gpuVolumeHandle.GetProbesAverageLuminanceTexture();
 }
 
 const DDGIVolumeGPUParams& DDGIVolume::GetVolumeGPUParams() const

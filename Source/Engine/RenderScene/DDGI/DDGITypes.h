@@ -18,6 +18,8 @@ namespace spt::rsc::ddgi
 namespace constants
 {
 constexpr Uint32 maxTexturesPerVolume = 24u;
+constexpr Uint32 maxVolumesCount = 16u;
+
 } // constants
 
 
@@ -115,9 +117,6 @@ enum Type
 } // EDDDGIProbesDebugMode
 
 
-constexpr Uint32 g_maxVolumesCount = 32;
-
-
 BEGIN_SHADER_STRUCT(DDGILOD0Definition)
 	SHADER_STRUCT_FIELD(Uint32, lod0VolumeIdx)
 END_SHADER_STRUCT();
@@ -133,18 +132,18 @@ END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(DDGIVolumesDefinition)
-	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<DDGIVolumeGPUParams, g_maxVolumesCount>), volumes)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<DDGIVolumeGPUParams, constants::maxVolumesCount>), volumes)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, g_maxVolumesCount, rhi::EMemoryUsage::GPUOnly>), u_ddgiVolumes)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, g_maxVolumesCount * 2, true>),                       u_probesTextures2D)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<g_maxVolumesCount, true>),                                                u_probesTextures3D)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                       u_probesDataSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                               u_ddgiLOD0)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD1Definition>),                                               u_ddgiLOD1)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGIVolumesDefinition>),                                            u_volumesDef)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, constants::maxVolumesCount, rhi::EMemoryUsage::GPUOnly>),             u_ddgiVolumes)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, constants::maxVolumesCount * constants::maxTexturesPerVolume * 2, true>), u_probesTextures2D)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<constants::maxVolumesCount, true>),                                                            u_probesTextures3D)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                                            u_probesDataSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                                                    u_ddgiLOD0)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD1Definition>),                                                                    u_ddgiLOD1)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGIVolumesDefinition>),                                                                 u_volumesDef)
 DS_END();
 
 
@@ -165,8 +164,10 @@ public:
 	const DDGIVolumeGPUParams& GetGPUParams() const;
 	DDGIVolumeGPUParams&       GetGPUParamsMutable();
 
-	lib::SharedPtr<rdr::TextureView> GetProbesIlluminanceTexture() const;
-	lib::SharedPtr<rdr::TextureView> GetProbesHitDistanceTexture() const;
+	const Uint32 GetProbesDataTexturesNum() const;
+
+	lib::SharedPtr<rdr::TextureView> GetProbesIlluminanceTexture(Uint32 textureIdx) const;
+	lib::SharedPtr<rdr::TextureView> GetProbesHitDistanceTexture(Uint32 textureIdx) const;
 	lib::SharedPtr<rdr::TextureView> GetProbesAverageLuminanceTexture() const;
 
 private:

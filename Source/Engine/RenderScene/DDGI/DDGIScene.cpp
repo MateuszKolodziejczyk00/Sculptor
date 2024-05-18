@@ -351,7 +351,9 @@ DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& p
 {
 	const math::Vector3u probesVolumeRes = params.probesVolumeResolution;
 
-	const Uint32 probesTextureWidth  = probesVolumeRes.x() * probesVolumeRes.z();
+	const Uint32 probeDataTexturesNum = probesVolumeRes.z();
+
+	const Uint32 probesTextureWidth  = probesVolumeRes.x();
 	const Uint32 probesTextureHeight = probesVolumeRes.y();
 
 	const math::Vector3f volumeSize = (probesVolumeRes - math::Vector3u::Constant(1u)).cast<Real32>().cwiseProduct(params.probesSpacing);
@@ -399,8 +401,6 @@ DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& p
 		return rdr::ResourcesManager::CreateTextureView(name, textureDef, rhi::EMemoryUsage::GPUOnly);
 	};
 
-	const lib::SharedRef<rdr::TextureView> illuminanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Illuminance"), gpuParams.probeIlluminanceDataWithBorderRes, rhi::EFragmentFormat::B10G11R11_U_Float);
-	const lib::SharedRef<rdr::TextureView> hitDistanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Visibility"), gpuParams.probeHitDistanceDataWithBorderRes, rhi::EFragmentFormat::RG16_S_Float);;
 
 	rhi::TextureDefinition probesAverageLuminanceTextureDef;
 	probesAverageLuminanceTextureDef.resolution = probesVolumeRes;
@@ -411,13 +411,23 @@ DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& p
 #endif // RENDERER_VALIDATION
 	const lib::SharedRef<rdr::TextureView> probeAverageLuminanceTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("DDGI Volume Probes Average Luminance"), probesAverageLuminanceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
-	const gfx::TexturesBindingsAllocationHandle illuminanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(1);
+	const gfx::TexturesBindingsAllocationHandle illuminanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(probeDataTexturesNum);
 	SPT_CHECK(illuminanceTexturesBlockHandle.IsValid());
-	m_ddgiSceneDS->u_probesTextures2D.BindTexture(illuminanceTexture, illuminanceTexturesBlockHandle, 0);
 
-	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(1);
+	for (Uint32 textureIdx = 0u; textureIdx < probeDataTexturesNum; ++textureIdx)
+	{
+		const lib::SharedRef<rdr::TextureView> illuminanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME_FORMATTED("DDGI Volume Probes Illuminance {}", textureIdx), gpuParams.probeIlluminanceDataWithBorderRes, rhi::EFragmentFormat::B10G11R11_U_Float);
+		m_ddgiSceneDS->u_probesTextures2D.BindTexture(illuminanceTexture, illuminanceTexturesBlockHandle, textureIdx);
+	}
+
+	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlockHandle = m_ddgiSceneDS->u_probesTextures2D.AllocateTexturesBlock(probeDataTexturesNum);
 	SPT_CHECK(hitDistanceTexturesBlockHandle.IsValid());
-	m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture, hitDistanceTexturesBlockHandle, 0);
+
+	for (Uint32 textureIdx = 0u; textureIdx < probeDataTexturesNum; ++textureIdx)
+	{
+		const lib::SharedRef<rdr::TextureView> hitDistanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME_FORMATTED("DDGI Volume Probes Visibility {}", textureIdx), gpuParams.probeHitDistanceDataWithBorderRes, rhi::EFragmentFormat::RG16_S_Float);;
+		m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture, hitDistanceTexturesBlockHandle, textureIdx);
+	}
 
 	const Uint32 probeAverageLuminanceTextureIdx = m_ddgiSceneDS->u_probesTextures3D.BindTexture(probeAverageLuminanceTexture);
 	SPT_CHECK(probeAverageLuminanceTextureIdx != idxNone<Uint32>);

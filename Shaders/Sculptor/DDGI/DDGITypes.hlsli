@@ -71,11 +71,11 @@ struct DDGIProbeDataCoords
 
 DDGIProbeDataCoords ComputeProbeDataCoords(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords)
 {
-	const uint x = probeWrappedCoords.x + probeWrappedCoords.z * volumeParams.probesVolumeResolution.x;
+	const uint x = probeWrappedCoords.x;
 	const uint y = probeWrappedCoords.y;
 	DDGIProbeDataCoords coords;
 	coords.textureLocalCoords = uint2(x, y);
-	coords.textureIdx = 0;
+	coords.textureIdx = probeWrappedCoords.z;
 	return coords;
 }
 

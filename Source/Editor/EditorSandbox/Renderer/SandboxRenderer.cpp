@@ -284,7 +284,7 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
 	rsc::ShadowCascadesParams cascadesParams;
-	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::VSM;
+	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::DPCF;
 	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
 

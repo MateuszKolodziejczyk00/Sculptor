@@ -20,8 +20,8 @@ struct DDGIVolumeRelitParameters
 
 	const DDGIVolume& volume;
 
-	rg::RGTextureViewHandle probesIlluminanceTextureView;
-	rg::RGTextureViewHandle probesHitDistanceTextureView;
+	lib::DynamicArray<rg::RGTextureViewHandle> probesIlluminanceTextureViews;
+	lib::DynamicArray<rg::RGTextureViewHandle> probesHitDistanceTextureViews;
 	rg::RGTextureViewHandle probesAverageLuminanceTextureView;
 
 	rdr::BufferView relitParamsBuffer;

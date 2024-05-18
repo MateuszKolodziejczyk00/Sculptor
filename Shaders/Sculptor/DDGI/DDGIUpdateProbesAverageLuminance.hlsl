@@ -25,7 +25,7 @@ void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 	// add 1 because of the border
 	const DDGIProbeDataCoords probeDataCoords = ComputeProbeIlluminanceDataOffset(u_volumeParams, probeWrappedCoords);
 
-	Texture2D<float3> probeIlluminanceTexture = u_probesIlluminanceTexture;
+	Texture2D<float3> probeIlluminanceTexture = u_volumeIlluminanceTextures[probeDataCoords.textureIdx];
 	const uint2 probeDataOffset = probeDataCoords.textureLocalCoords + 1;
 
 	const uint samplesNum = u_volumeParams.probeIlluminanceDataRes.x * u_volumeParams.probeIlluminanceDataRes.y;

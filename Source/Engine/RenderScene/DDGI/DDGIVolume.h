@@ -64,9 +64,11 @@ public:
 	const math::AlignedBox3f& GetVolumeAABB() const;
 	math::Vector3f            GetVolumeCenter() const;
 
-	const lib::SharedPtr<rdr::TextureView>& GetProbesIlluminanceTexture() const;
-	const lib::SharedPtr<rdr::TextureView>& GetProbesHitDistanceTexture() const;
-	const lib::SharedPtr<rdr::TextureView>& GetProbesAverageLuminanceTexture() const;
+	Uint32 GetProbeDataTexturesNum() const;
+
+	lib::SharedPtr<rdr::TextureView> GetProbesIlluminanceTexture(Uint32 textureIdx) const;
+	lib::SharedPtr<rdr::TextureView> GetProbesHitDistanceTexture(Uint32 textureIdx) const;
+	lib::SharedPtr<rdr::TextureView> GetProbesAverageLuminanceTexture() const;
 
 	const DDGIVolumeGPUParams& GetVolumeGPUParams() const;
 
@@ -91,10 +93,6 @@ private:
 	math::AlignedBox3f m_volumeAABB;
 
 	DDGIGPUVolumeHandle m_gpuVolumeHandle;
-
-	lib::SharedPtr<rdr::TextureView> m_cachedProbesIlluminanceTexture;
-	lib::SharedPtr<rdr::TextureView> m_cachedProbesHitDistanceTexture;
-	lib::SharedPtr<rdr::TextureView> m_cachedProbesAverageLuminanceTexture;
 
 	std::optional<math::AlignedBox3f> m_prevAABB;
 	Bool m_requiresInvalidation;
