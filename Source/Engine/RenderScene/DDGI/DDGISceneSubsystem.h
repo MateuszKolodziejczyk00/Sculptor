@@ -38,16 +38,12 @@ struct DDGILODConfig
 
 struct DDGIConfig
 {
-	Uint32 localRelitRaysNumPerProbe  = 1024u;
-	Uint32 globalRelitRaysPerProbe    = 400u;
+	Uint32 relitRaysPerProbe    = 400u;
 
-	Real32 defaultGlobalRelitHysteresis = 0.97f;
-	Real32 defaultLocalRelitHysteresis  = 0.98f;
+	Real32 defaultRelitHysteresis = 0.97f;
 
 	Real32 minHysteresis         = 0.3f;
 	Real32 maxHysteresis         = 0.995f;
-
-	math::Vector3u localRelitProbeGridSize = math::Vector3u(6, 6, 6);
 
 	Uint32 relitVolumesBudget = 3u;
 	

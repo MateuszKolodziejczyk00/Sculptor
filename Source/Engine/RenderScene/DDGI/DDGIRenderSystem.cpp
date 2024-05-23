@@ -641,7 +641,7 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIRelitZone& zone
 
 	const math::AlignedBox3u& zoneProbesBoundingBox = zone.GetProbesBoundingBox();
 
-	const Uint32 raysNumPerProbe = config.localRelitRaysNumPerProbe;
+	const Uint32 raysNumPerProbe = config.relitRaysPerProbe;
 
 	const math::AlignedBox3f previousAABB = volume.GetPrevAABB();
 
@@ -667,7 +667,7 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIRelitZone& zone
 
 Real32 DDGIRenderSystem::ComputeRelitHysteresis(const DDGIRelitZone& zone, const DDGIConfig& config) const
 {
-	Real32 hysteresis = config.defaultLocalRelitHysteresis;
+	Real32 hysteresis = config.defaultRelitHysteresis;
 	hysteresis += zone.GetRelitHysteresisDelta();
 	return std::clamp(hysteresis, config.minHysteresis, config.maxHysteresis);
 }

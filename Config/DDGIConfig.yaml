@@ -1,13 +1,7 @@
-LocalRelitRaysNumPerProbe: 400
-GlobalRelitRaysPerProbe: 400
-GlobalRelitHysteresis: 0.80000031
-LocalRelitHysteresis: 0.700000167
+RelitRaysPerProbe: 400
+DefaultRelitHysteresis: 0.950000048
 MinHysteresis: 0.300000012
-MaxHysteresis: 0.850000024
-LocalRelitProbeGridSize:
-  - 6
-  - 6
-  - 6
+MaxHysteresis: 0.950000048
 RelitVolumesBudget: 3
 ProbeIlluminanceDataRes:
   - 6

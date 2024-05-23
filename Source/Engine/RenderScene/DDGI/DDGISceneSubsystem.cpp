@@ -33,16 +33,12 @@ struct TypeSerializer<rsc::ddgi::DDGIConfig>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("LocalRelitRaysNumPerProbe", data.localRelitRaysNumPerProbe);
-		serializer.Serialize("GlobalRelitRaysPerProbe", data.globalRelitRaysPerProbe);
+		serializer.Serialize("RelitRaysPerProbe", data.relitRaysPerProbe);
 
-		serializer.Serialize("GlobalRelitHysteresis", data.defaultGlobalRelitHysteresis);
-		serializer.Serialize("LocalRelitHysteresis", data.defaultLocalRelitHysteresis);
+		serializer.Serialize("DefaultRelitHysteresis", data.defaultRelitHysteresis);
 
 		serializer.Serialize("MinHysteresis", data.minHysteresis);
 		serializer.Serialize("MaxHysteresis", data.maxHysteresis);
-
-		serializer.Serialize("LocalRelitProbeGridSize", data.localRelitProbeGridSize);
 
 		serializer.Serialize("RelitVolumesBudget", data.relitVolumesBudget);
 		serializer.Serialize("ProbeIlluminanceDataRes", data.probeIlluminanceDataRes);
