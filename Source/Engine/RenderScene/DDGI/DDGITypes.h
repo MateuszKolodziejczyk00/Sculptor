@@ -18,26 +18,28 @@ namespace spt::rsc::ddgi
 namespace constants
 {
 constexpr Uint32 maxTexturesPerVolume = 24u;
-constexpr Uint32 maxVolumesCount = 16u;
+constexpr Uint32 maxVolumesCount      = 4u;
+constexpr Uint32 maxLODLevels         = 4u;
 
 } // constants
 
 
 struct DDGIVolumeParams
 {
-	math::Vector3u     probesVolumeResolution;
+	math::Vector3u probesVolumeResolution;
+	math::Vector3u relitZoneResolution;
 
-	math::Vector3f     probesOriginWorldLocation;
+	math::Vector3f probesOriginWorldLocation;
 
-	math::Vector3f     probesSpacing;
+	math::Vector3f probesSpacing;
 
-	math::Vector2u     probeIlluminanceDataRes;
+	math::Vector2u probeIlluminanceDataRes;
 	
-	math::Vector2u     probeHitDistanceDataRes;
+	math::Vector2u probeHitDistanceDataRes;
 
-	Real32             probeIlluminanceEncodingGamma = 1.f;
+	Real32         probeIlluminanceEncodingGamma = 1.f;
 
-	Real32             priority = 1.f;
+	Real32         priority = 1.f;
 };
 
 
@@ -117,17 +119,18 @@ enum Type
 } // EDDDGIProbesDebugMode
 
 
-BEGIN_SHADER_STRUCT(DDGILOD0Definition)
-	SHADER_STRUCT_FIELD(Uint32, lod0VolumeIdx)
+// Needs additional padding because it's used in array (so size must be multiple of 16)
+BEGIN_SHADER_STRUCT(DDGILODDefinition)
+	SHADER_STRUCT_FIELD(Uint32, volumeIdx)
+	SHADER_STRUCT_FIELD(Uint32, padding0)
+	SHADER_STRUCT_FIELD(Uint32, padding1)
+	SHADER_STRUCT_FIELD(Uint32, padding2)
 END_SHADER_STRUCT();
 
 
-BEGIN_SHADER_STRUCT(DDGILOD1Definition)
-	SHADER_STRUCT_FIELD(math::Vector3f, volumesAABBMin)
-	SHADER_STRUCT_FIELD(math::Vector3f, volumesAABBMax)
-	SHADER_STRUCT_FIELD(math::Vector3f, rcpSingleVolumeSize)
-	SHADER_STRUCT_FIELD(Uint32,         padding)
-	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<math::Vector4u, 9>), volumeIndices) // use uint4 because in hlsl array elements are aligned to 16 bytes
+BEGIN_SHADER_STRUCT(DDGILODsDefinition)
+	SHADER_STRUCT_FIELD(SPT_SINGLE_ARG(lib::StaticArray<DDGILODDefinition, constants::maxLODLevels>), lods)
+	SHADER_STRUCT_FIELD(Uint32,                                                                       lodsNum)
 END_SHADER_STRUCT();
 
 
@@ -141,8 +144,7 @@ DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, constants::maxVolumesCount * constants::maxTexturesPerVolume * 2, true>), u_probesTextures2D)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<constants::maxVolumesCount, true>),                                                            u_probesTextures3D)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                                            u_probesDataSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD0Definition>),                                                                    u_ddgiLOD0)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILOD1Definition>),                                                                    u_ddgiLOD1)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGILODsDefinition>),                                                                    u_ddgiLODs)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<DDGIVolumesDefinition>),                                                                 u_volumesDef)
 DS_END();
 

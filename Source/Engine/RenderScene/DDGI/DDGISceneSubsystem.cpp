@@ -13,6 +13,21 @@ namespace spt::srl
 {
 
 template<>
+struct TypeSerializer<rsc::ddgi::DDGILODConfig>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("VolumeResolution",    data.volumeResolution);
+		serializer.Serialize("RelitZoneResolution", data.relitZoneResolution);
+		serializer.Serialize("ProbesSpacing",       data.probesSpacing);
+		serializer.Serialize("RelitPriority",       data.relitPriority);
+		serializer.Serialize("ForwardAlignment",    data.forwardAlignment);
+		serializer.Serialize("HeightAlignment",     data.heightAlignment);
+	}
+};
+
+template<>
 struct TypeSerializer<rsc::ddgi::DDGIConfig>
 {
 	template<typename Serializer, typename Param>
@@ -33,17 +48,13 @@ struct TypeSerializer<rsc::ddgi::DDGIConfig>
 		serializer.Serialize("ProbeIlluminanceDataRes", data.probeIlluminanceDataRes);
 		serializer.Serialize("ProbeHitDistanceDataRes", data.probeHitDistanceDataRes);
 
-		serializer.Serialize("Lod0VolumeResolution", data.lod0VolumeResolution);
-		serializer.Serialize("Lod0ProbesSpacing", data.lod0ProbesSpacing);
-
-		serializer.Serialize("Lod1VolumeResolution", data.lod1VolumeResolution);
-		serializer.Serialize("Lod1ProbesSpacing", data.lod1ProbesSpacing);
-		serializer.Serialize("Lod1VolumesMinHeight", data.lod1VolumesMinHeight);
+		serializer.Serialize("LodsConfigs", data.lodsConfigs);
 	}
 };
 
 } // spt::srl
 
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ddgi::DDGILODConfig)
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::rsc::ddgi::DDGIConfig)
 
 namespace spt::rsc::ddgi

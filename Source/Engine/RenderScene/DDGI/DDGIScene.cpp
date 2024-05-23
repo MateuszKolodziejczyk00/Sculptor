@@ -11,212 +11,66 @@
 namespace spt::rsc::ddgi
 {
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// DDGILOD0 ======================================================================================
+SPT_DEFINE_LOG_CATEGORY(DDGIScene, true);
 
-DDGILOD0::DDGILOD0()
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DDGILOD =======================================================================================
+
+DDGILOD::DDGILOD()
 { }
 
-void DDGILOD0::Initialize(DDGIScene& scene, const DDGIConfig& config)
+void DDGILOD::Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel)
 {
+	SPT_CHECK(m_lodLevel == idxNone<Uint32>);
+
+	m_lodLevel = lodLevel;
+
+	const DDGILODConfig lodConfig = config.lodsConfigs[lodLevel];
+
 	DDGIVolumeParams params;
-	params.probesVolumeResolution        = config.lod0VolumeResolution;
+	params.probesVolumeResolution        = lodConfig.volumeResolution;
+	params.relitZoneResolution           = lodConfig.relitZoneResolution;
 	params.probesOriginWorldLocation     = math::Vector3f::Constant(0.f);
-	params.probesSpacing                 = config.lod0ProbesSpacing;
+	params.probesSpacing                 = lodConfig.probesSpacing;
 	params.probeIlluminanceDataRes       = config.probeIlluminanceDataRes;
 	params.probeHitDistanceDataRes       = config.probeHitDistanceDataRes;
 	params.probeIlluminanceEncodingGamma = 1.f;
-	params.priority                      = 5.f;
+	params.priority                      = lodConfig.relitPriority;
+
+	m_forwardAlignment = lodConfig.forwardAlignment;
+	m_heightAlignment  = lodConfig.heightAlignment;
 
 	m_volume = scene.BuildVolume(params);
 
-	DDGILOD0Definition lod0Def;
-	lod0Def.lod0VolumeIdx = m_volume->GetVolumeIdx();
+	DDGILODDefinition lodDef;
+	lodDef.volumeIdx = m_volume->GetVolumeIdx();
 
-	const lib::MTHandle<DDGISceneDS>& ddgiDS = scene.GetDDGIDS();
-	ddgiDS->u_ddgiLOD0 = lod0Def;
+	DDGILODsDefinition& lodsDefinition = scene.GetDDGIDS()->u_ddgiLODs.GetMutable();
+	lodsDefinition.lods[lodLevel] = lodDef;
 }
 
-void DDGILOD0::Deinitialize(DDGIScene& scene)
+void DDGILOD::Deinitialize(DDGIScene& scene)
 {
 	m_volume.reset();
 }
 
-void DDGILOD0::Update(DDGIScene& scene, const SceneView& mainView)
+void DDGILOD::Update(DDGIScene& scene, const SceneView& mainView)
 {
 	const math::AlignedBox3f& volumeAABB = m_volume->GetVolumeAABB();
-	const math::Vector3f volumeSize = volumeAABB.sizes();
+	const math::Vector3f volumeSize      = volumeAABB.sizes();
+	const math::Vector3f volumeSize2D    = math::Vector3f(volumeSize.x(), volumeSize.y(), 0.f);
 
-	const math::Vector3f newCenter = mainView.GetLocation() + mainView.GetForwardVector().cwiseProduct(volumeSize) * 0.45f + math::Vector3f(0.0f, 0.0f, volumeSize.x() * 0.25f);
+	const Real32 forwardVectorMultiplier = m_forwardAlignment * 0.5f;
+	const Real32 heightMultiplier        = m_heightAlignment * 0.5f;
+	const math::Vector3f newCenter = mainView.GetLocation() + mainView.GetForwardVector().cwiseProduct(volumeSize2D) * forwardVectorMultiplier + math::Vector3f(0.0f, 0.0f, volumeSize.z() * heightMultiplier);
 
 	m_volume->Translate(math::Translation3f(newCenter - volumeAABB.center()));
 }
 
-const DDGIVolume& DDGILOD0::GetVolume() const
+const DDGIVolume& DDGILOD::GetVolume() const
 {
 	return *m_volume;
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// DDGILOD1 ======================================================================================
-
-DDGILOD1::DDGILOD1()
-	: m_singleVolumeSize(math::Vector3f::Zero())
-{ }
-
-void DDGILOD1::Initialize(DDGIScene& scene, const DDGIConfig& config)
-{
-	DDGIVolumeParams params;
-	params.probesVolumeResolution        = config.lod1VolumeResolution;
-	params.probesOriginWorldLocation     = math::Vector3f::Zero();
-	params.probesSpacing                 = config.lod1ProbesSpacing;
-	params.probeIlluminanceDataRes       = config.probeIlluminanceDataRes;
-	params.probeHitDistanceDataRes       = config.probeHitDistanceDataRes;
-	params.probeIlluminanceEncodingGamma = 1.f;
-	params.priority                      = 1.f;
-
-	m_singleVolumeSize = params.probesSpacing.cwiseProduct((params.probesVolumeResolution - math::Vector3u::Constant(1)).cast<Real32>());
-
-	const math::Vector3f volumesOrigin = math::Vector3f(-m_singleVolumeSize.x() * 1.5f, -m_singleVolumeSize.y() * 1.5f, config.lod1VolumesMinHeight);
-
-	for (SizeType y = 0; y < 3; ++y)
-	{
-		for (SizeType x = 0; x < 3; ++x)
-		{
-			params.probesOriginWorldLocation = volumesOrigin + m_singleVolumeSize.cwiseProduct(math::Vector3f(static_cast<Real32>(x), static_cast<Real32>(y), 0.f));
-			m_volumes[x][y] = scene.BuildVolume(params);
-		}
-	}
-
-	UpdateLODDefinition(scene);
-}
-
-void DDGILOD1::Deinitialize(DDGIScene& scene)
-{
-	for (SizeType y = 0; y < 3; ++y)
-	{
-		for (SizeType x = 0; x < 3; ++x)
-		{
-			m_volumes[x][y].reset();
-		}
-	}
-
-	m_singleVolumeSize = math::Vector3f::Zero();
-}
-
-void DDGILOD1::Update(DDGIScene& scene, const SceneView& mainView)
-{
-	SPT_PROFILER_FUNCTION();
-
-	if (UpdateVolumesLocation(mainView.GetLocation()))
-	{
-		UpdateLODDefinition(scene);
-	}
-}
-
-Bool DDGILOD1::UpdateVolumesLocation(const math::Vector3f& desiredCenter)
-{
-	const lib::SharedPtr<DDGIVolume>& centerVolume = m_volumes[1][1];
-
-	const math::Vector3f offset = (desiredCenter - centerVolume->GetVolumeAABB().min()).cwiseQuotient(m_singleVolumeSize);
-	const math::Vector2i gridOffset(std::floor(offset.x()), std::floor(offset.y()));
-
-	if (gridOffset != math::Vector2i::Zero())
-	{
-		if (std::abs(gridOffset.x()) >= 3 || std::abs(gridOffset.y()) >= 3)
-		{
-			// Teleport whole grid
-			const math::Vector3f newVolumesOrigin = m_volumes[0][0]->GetVolumeAABB().min() + math::Vector3f(gridOffset.x() * m_singleVolumeSize.x(), gridOffset.y() * m_singleVolumeSize.y(), 0.f);
-
-			for (SizeType y = 0; y < 3; ++y)
-			{
-				for (SizeType x = 0; x < 3; ++x)
-				{
-					m_volumes[x][y]->TeleportTo(newVolumesOrigin + math::Vector3f(x * m_singleVolumeSize.x(), y * m_singleVolumeSize.y(), 0.f));
-				}
-			}
-		}
-		else
-		{
-			if(gridOffset.y() != 0)
-			{
-				if (gridOffset.y() > 0)
-				{
-					for (size_t x = 0; x < m_volumes.size(); ++x)
-					{
-						const auto rotated = std::rotate(m_volumes[x].begin(), m_volumes[x].begin() + 1, m_volumes[x].end());
-						(*rotated)->Translate(math::Translation3f(0.f, 3 * m_singleVolumeSize.y(), 0.f));
-					}
-				}
-				else if (gridOffset.y() < 0)
-				{
-					for (size_t x = 0; x < m_volumes.size(); ++x)
-					{
-						const auto rotated = std::rotate(m_volumes[x].rbegin(), m_volumes[x].rbegin() + 1, m_volumes[x].rend());
-						(*rotated)->Translate(math::Translation3f(0.f, -3 * m_singleVolumeSize.y(), 0.f));
-					}
-				}
-			}
-			else
-			{
-				const math::Translation3f translation(3 * m_singleVolumeSize.x(), 0.f, 0.f);
-
-				const auto shiftColumns = [translation](auto begin, auto end, int offset)
-				{
-					const auto rotated = std::rotate(begin, begin + offset, end);
-					for (auto current = rotated; current != end; ++current)
-					{
-						for (lib::SharedPtr<DDGIVolume>& volume : *current)
-						{
-							volume->Translate(translation);
-						}
-					}
-				};
-
-				if (gridOffset.x() > 0)
-				{
-					const auto rotated = std::rotate(m_volumes.begin(), m_volumes.begin() + 1, m_volumes.end());
-					for (const lib::SharedPtr<DDGIVolume>& volume : *rotated)
-					{
-						volume->Translate(math::Translation3f(3 * m_singleVolumeSize.x(), 0.f, 0.f));
-					}
-				}
-				else if (gridOffset.x() < 0)
-				{
-					const auto rotated = std::rotate(m_volumes.rbegin(), m_volumes.rbegin() + 1, m_volumes.rend());
-					for (const lib::SharedPtr<DDGIVolume>& volume : *rotated)
-					{
-						volume->Translate(math::Translation3f(-3 * m_singleVolumeSize.x(), 0.f, 0.f));
-					}
-				}
-			}
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-void DDGILOD1::UpdateLODDefinition(DDGIScene& scene)
-{
-	DDGILOD1Definition lod1Def;
-	lod1Def.volumesAABBMin      = m_volumes[0][0]->GetVolumeAABB().min();
-	lod1Def.volumesAABBMax      = m_volumes[2][2]->GetVolumeAABB().max();
-	lod1Def.rcpSingleVolumeSize = m_singleVolumeSize.cwiseInverse();
-
-	Uint32 volumeIdx = 0;
-	for (SizeType y = 0; y < 3; ++y)
-	{
-		for (SizeType x = 0; x < 3; ++x)
-		{
-			lod1Def.volumeIndices[volumeIdx++].x() = m_volumes[x][y]->GetVolumeIdx();
-		}
-	}
-
-	scene.GetDDGIDS()->u_ddgiLOD1 = lod1Def;
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DDGIScene =====================================================================================
 
@@ -256,8 +110,16 @@ void DDGIScene::Update(const SceneView& mainView)
 	FlushDataChanges();
 
 	UpdatePriorities(mainView);
+}
 
-	SortVolumes();
+void DDGIScene::CollectZonesToRelit(DDGIZonesCollector& zonesCollector) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (DDGIVolume* volume : GetVolumes())
+	{
+		volume->CollectZonesToRelit(zonesCollector);
+	}
 }
 
 void DDGIScene::PostRelit()
@@ -274,14 +136,14 @@ const lib::MTHandle<DDGISceneDS>& DDGIScene::GetDDGIDS() const
 	return m_ddgiSceneDS;
 }
 
-const DDGILOD0& DDGIScene::GetLOD0() const
+const Uint32 DDGIScene::GetLODsNum() const
 {
-	return m_lod0;
+	return static_cast<Uint32>(m_lods.size());
 }
 
-const DDGILOD1& DDGIScene::GetLOD1() const
+const DDGILOD& DDGIScene::GetLOD(Uint32 lod) const
 {
-	return m_lod1;
+	return m_lods[lod];
 }
 
 void DDGIScene::RegisterVolume(DDGIVolume& volume)
@@ -448,24 +310,45 @@ void DDGIScene::InitializeLODs(const DDGIConfig& config)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_lod0.Initialize(*this, config);
-	m_lod1.Initialize(*this, config);
+	Uint32 lodsNum = static_cast<Uint32>(config.lodsConfigs.size());
+
+	if (lodsNum > constants::maxLODLevels)
+	{
+		SPT_LOG_ERROR(DDGIScene, "Too many LODs requested ({}). Max supported number of LODs is {}", lodsNum, constants::maxLODLevels);
+		lodsNum = constants::maxLODLevels;
+	}
+
+	DDGILODsDefinition& lodsDef = GetDDGIDS()->u_ddgiLODs.GetMutable();
+	lodsDef.lodsNum = lodsNum;
+
+	m_lods.resize(lodsNum);
+
+	for (Uint32 lod = 0u; lod < lodsNum; ++lod)
+	{
+		m_lods[lod].Initialize(*this, config, lod);
+	}
 }
 
 void DDGIScene::DeinitializeLODs()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_lod0.Deinitialize(*this);
-	m_lod1.Deinitialize(*this);
+	for (DDGILOD& lod : m_lods)
+	{
+		lod.Deinitialize(*this);
+	}
+
+	m_lods.clear();
 }
 
 void DDGIScene::UpdateLODs(const SceneView& mainView)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_lod0.Update(*this, mainView);
-	m_lod1.Update(*this, mainView);
+	for (DDGILOD& lod : m_lods)
+	{
+		lod.Update(*this, mainView);
+	}
 }
 
 void DDGIScene::FlushDataChanges()
@@ -490,22 +373,11 @@ void DDGIScene::UpdatePriorities(const SceneView& mainView)
 	}
 }
 
-void DDGIScene::SortVolumes()
-{
-	SPT_PROFILER_FUNCTION();
-
-	std::sort(std::begin(m_volumes), std::end(m_volumes),
-			  [](const DDGIVolume* lhs, const DDGIVolume* rhs)
-			  {
-				  return lhs->GetRelitPriority() > rhs->GetRelitPriority();
-			  });
-}
-
 void DDGIScene::OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity)
 {
 	for (DDGIVolume* volume : m_volumes)
 	{
-		volume->MarkSunDirectionAsDirty();
+		volume->MarkSunLightDirectionDirty();
 	}
 }
 

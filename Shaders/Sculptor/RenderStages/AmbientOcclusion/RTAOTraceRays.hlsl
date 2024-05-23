@@ -35,10 +35,13 @@ void GenerateAmbientOcclusionRaysRTG()
         float pdf = 0.f;
         const float3 rayDirection = RandomVectorInCosineWeightedHemisphere(tangentSpace, random, OUT pdf);
 
+		const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
+		const float bias = 0.0001f + linearDepth * 0.0002f;
+
         RayDesc rayDesc;
         rayDesc.TMin        = u_rtaoParams.raysMinHitDistance;
         rayDesc.TMax        = u_rtaoParams.raysLength;
-        rayDesc.Origin      = worldLocation;
+        rayDesc.Origin      = worldLocation + normal * 0.02f;
         rayDesc.Direction   = rayDirection;
 
         TraceRay(u_worldAccelerationStructure,

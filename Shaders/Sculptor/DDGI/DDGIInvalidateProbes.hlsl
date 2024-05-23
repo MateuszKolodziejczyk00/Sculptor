@@ -30,7 +30,7 @@ void DDGIInvalidateProbesCS(CS_INPUT input)
 	
 	const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
 
-	if (any(probeWorldLocation < u_invalidateParams.prevAABBMin) || any(probeWorldLocation > u_invalidateParams.prevAABBMax))
+	if (any(probeWorldLocation < u_invalidateParams.prevAABBMin - 0.01f) || any(probeWorldLocation > u_invalidateParams.prevAABBMax + 0.01f))
 	{
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
 
@@ -41,11 +41,14 @@ void DDGIInvalidateProbesCS(CS_INPUT input)
 		const RWTexture2D<float4> illuminanceTexture = u_volumeIlluminanceTextures[probeIlluminanceDataCoords.textureIdx];
 		const RWTexture3D<float3> averageLuminanceTexture = u_volumeProbesAverageLuminanceTexture;
 
-		hitDistanceTexture[probeHitDistanceDataCoords.textureLocalCoords + input.localID.xy] = -1.f;
+		if(all(input.localID.xy < u_volumeParams.probeHitDistanceDataWithBorderRes))
+		{
+			hitDistanceTexture[probeHitDistanceDataCoords.textureLocalCoords + input.localID.xy] = -1.f;
+		}
 
 		if(all(input.localID.xy < u_volumeParams.probeIlluminanceDataWithBorderRes))
 		{
-			illuminanceTexture[probeIlluminanceDataCoords.textureLocalCoords + input.localID.xy] = -1.f;
+			illuminanceTexture[probeIlluminanceDataCoords.textureLocalCoords + input.localID.xy] = 0.f;
 		}
 
 		if(all(input.localID.xy == 0))

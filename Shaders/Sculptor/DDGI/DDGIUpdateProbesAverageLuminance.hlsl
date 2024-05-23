@@ -2,13 +2,12 @@
 
 [[descriptor_set(DDGIUpdateProbesAverageLuminanceDS, 0)]]
 
-#include "DDGI/DDGItypes.hlsli"
+#include "DDGI/DDGITypes.hlsli"
 
 
 struct CS_INPUT
 {
 	uint3 groupID : SV_GroupID;
-	uint3 localID : SV_GroupThreadID;
 };
 
 
@@ -16,8 +15,6 @@ struct CS_INPUT
 void DDGIUpdateProbesAverageLuminanceCS(CS_INPUT input)
 {
 	const uint updatedProbeIdx = input.groupID.x;
-
-	const uint2 localID = input.localID.xy;
 
 	const uint3 updatedProbeCoords = ComputeUpdatedProbeCoords(updatedProbeIdx, u_relitParams.probesToUpdateCoords, u_relitParams.probesToUpdateCount);
 	const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);

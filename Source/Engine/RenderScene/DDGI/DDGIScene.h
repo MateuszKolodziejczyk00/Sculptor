@@ -6,10 +6,6 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGDescriptorSetState.h"
-#include "DescriptorSetBindings/ArrayOfSRVTexturesBinding.h"
-#include "DescriptorSetBindings/SamplerBinding.h"
-#include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "DescriptorSetBindings/StructuredCPUToGPUBufferBinding.h"
 #include "RenderSceneRegistry.h"
 
 namespace spt::rdr
@@ -31,16 +27,17 @@ namespace ddgi
 
 class DDGIScene;
 class DDGIVolume;
+class DDGIZonesCollector;
 struct DDGIConfig;
 
 
-class DDGILOD0
+class DDGILOD
 {
 public:
 
-	DDGILOD0();
+	DDGILOD();
 
-	void Initialize(DDGIScene& scene, const DDGIConfig& config);
+	void Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel);
 	void Deinitialize(DDGIScene& scene);
 
 	void Update(DDGIScene& scene, const SceneView& mainView);
@@ -49,31 +46,12 @@ public:
 
 private:
 
+	Uint32 m_lodLevel = idxNone<Uint32>;
+
 	lib::SharedPtr<DDGIVolume> m_volume;
-};
 
-
-class DDGILOD1
-{
-public:
-
-	DDGILOD1();
-
-	void Initialize(DDGIScene& scene, const DDGIConfig& config);
-	void Deinitialize(DDGIScene& scene);
-
-	void Update(DDGIScene& scene, const SceneView& mainView);
-
-private:
-
-	Bool UpdateVolumesLocation(const math::Vector3f& desiredCenter);
-	void UpdateLODDefinition(DDGIScene& scene);
-
-	using DDGIGrid = lib::StaticArray<lib::StaticArray<lib::SharedPtr<DDGIVolume>, 3>, 3>;
-
-	DDGIGrid m_volumes;
-
-	math::Vector3f m_singleVolumeSize;
+	Real32 m_forwardAlignment = 0.f;
+	Real32 m_heightAlignment  = 0.f;
 };
 
 
@@ -88,14 +66,16 @@ public:
 
 	void Update(const SceneView& mainView);
 
+	void CollectZonesToRelit(DDGIZonesCollector& zonesCollector) const;
+
 	void PostRelit();
 
 	const lib::DynamicArray<DDGIVolume*>& GetVolumes() const;
 
 	const lib::MTHandle<DDGISceneDS>& GetDDGIDS() const;
 
-	const DDGILOD0& GetLOD0() const;
-	const DDGILOD1& GetLOD1() const;
+	const Uint32   GetLODsNum() const;
+	const DDGILOD& GetLOD(Uint32 lod) const;
 
 	void RegisterVolume(DDGIVolume& volume);
 	void UnregisterVolume(DDGIVolume& volume);
@@ -124,7 +104,6 @@ private:
 	void FlushDataChanges();
 
 	void UpdatePriorities(const SceneView& mainView);
-	void SortVolumes();
 
 	// Callbacks
 
@@ -136,8 +115,7 @@ private:
 
 	lib::DynamicArray<DDGIVolume*> m_volumes;
 
-	DDGILOD0 m_lod0;
-	DDGILOD1 m_lod1;
+	lib::DynamicArray<DDGILOD> m_lods;
 };
 
 } // ddgi

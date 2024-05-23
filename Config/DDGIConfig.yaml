@@ -1,5 +1,5 @@
 LocalRelitRaysNumPerProbe: 400
-GlobalRelitRaysPerProbe: 300
+GlobalRelitRaysPerProbe: 400
 GlobalRelitHysteresis: 0.80000031
 LocalRelitHysteresis: 0.700000167
 MinHysteresis: 0.300000012
@@ -13,22 +13,51 @@ ProbeIlluminanceDataRes:
   - 6
   - 6
 ProbeHitDistanceDataRes:
-  - 16
-  - 16
-Lod0VolumeResolution:
-  - 12
-  - 12
-  - 12
-Lod0ProbesSpacing:
-  - 1.5
-  - 1.5
-  - 1.5
-Lod1VolumeResolution:
-  - 12
-  - 12
-  - 10
-Lod1ProbesSpacing:
-  - 2.4000001
-  - 2.4000001
-  - 2.4000001
-Lod1VolumesMinHeight: -1.79999995
+  - 14
+  - 14
+LodsConfigs:
+  - VolumeResolution:
+      - 24
+      - 24
+      - 12
+    RelitZoneResolution:
+      - 12
+      - 12
+      - 12
+    ProbesSpacing:
+      - 1.10000002
+      - 1.10000002
+      - 1.10000002
+    RelitPriority: 2.5
+    ForwardAlignment: 0.5
+    HeightAlignment: 0.200000003
+  - VolumeResolution:
+      - 36
+      - 36
+      - 12
+    RelitZoneResolution:
+      - 12
+      - 12
+      - 12
+    ProbesSpacing:
+      - 2.4000001
+      - 2.4000001
+      - 2.4000001
+    RelitPriority: 1
+    ForwardAlignment: 0.5
+    HeightAlignment: 0.100000001
+  - VolumeResolution:
+      - 36
+      - 36
+      - 12
+    RelitZoneResolution:
+      - 12
+      - 12
+      - 12
+    ProbesSpacing:
+      - 5.00000095
+      - 5.00000095
+      - 5.00000095
+    RelitPriority: 0.5
+    ForwardAlignment: 0
+    HeightAlignment: 0.100000001

@@ -10,6 +10,7 @@ namespace spt::rsc::ddgi
 
 class DDGISceneSubsystem;
 class DDGIVolume;
+class DDGIRelitZone;
 class DDGIScene;
 struct DDGIConfig;
 
@@ -61,7 +62,7 @@ private:
 	
 	void InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const;
 
-	void RelitVolume(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIVolume& volume) const;
+	void RelitZone(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIRelitZone& zone) const;
 	void UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const;
 
 	void InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume) const;
@@ -71,8 +72,8 @@ private:
 	void RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData) const;
 	void RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
 
-	DDGIRelitGPUParams CreateRelitParams(const DDGIVolume& volume, const DDGIConfig& config) const;
-	Real32             ComputeRelitHysteresis(const DDGIVolume& volume, const DDGIConfig& config, Bool isFullVolumeRelit) const;
+	DDGIRelitGPUParams CreateRelitParams(const DDGIRelitZone& zone, const DDGIConfig& config) const;
+	Real32             ComputeRelitHysteresis(const DDGIRelitZone& zone, const DDGIConfig& config) const;
 };
 
 } // spt::rsc::ddgi

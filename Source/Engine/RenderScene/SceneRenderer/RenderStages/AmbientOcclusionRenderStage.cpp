@@ -167,11 +167,11 @@ void AmbientOcclusionRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder,
 		const RenderView& renderView = viewSpec.GetRenderView();
 
 		rtao::AORenderingContext aoContext{ renderScene, renderView, m_denoiser };
-		aoContext.normalsTextureHalfRes = viewContext.normalsHalfRes;
-		aoContext.depthTexture					= viewContext.depth;
-		aoContext.depthTextureHalfRes			= viewContext.depthHalfRes;
-		aoContext.historyDepthTextureHalfRes	= viewContext.historyDepthHalfRes;
-		aoContext.motionTextureHalfRes			= viewContext.motionHalfRes;
+		aoContext.normalsTextureHalfRes      = viewContext.normalsHalfRes;
+		aoContext.depthTexture               = viewContext.depth;
+		aoContext.depthTextureHalfRes        = viewContext.depthHalfRes;
+		aoContext.historyDepthTextureHalfRes = viewContext.historyDepthHalfRes;
+		aoContext.motionTextureHalfRes       = viewContext.motionHalfRes;
 
 		viewContext.ambientOcclusion = rtao::RenderAO(graphBuilder, aoContext);
 	}

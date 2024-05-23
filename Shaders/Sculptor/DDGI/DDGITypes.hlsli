@@ -51,7 +51,7 @@ uint3 ComputeProbeWrappedCoords(in const DDGIVolumeGPUParams volumeParams, in ui
 
 uint3 GetProbeCoordsAtWorldLocation(in const DDGIVolumeGPUParams volumeParams, in float3 worldLocation)
 {
-	return (worldLocation - volumeParams.probesOriginWorldLocation) * volumeParams.rcpProbesSpacing;
+	return min((worldLocation - volumeParams.probesOriginWorldLocation) * volumeParams.rcpProbesSpacing, volumeParams.probesVolumeResolution - 2);
 }
 
 
@@ -128,10 +128,12 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
 }
 
 
-float3 DDGIGetSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
+float3 ComputeDDGIBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
 {
 	const float3 biasVector = (sampleParams.surfaceNormal * 0.1f + sampleParams.viewNormal * 0.3f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
-	return sampleParams.worldLocation + biasVector;
+	const float3 minWorldLocation = volumeParams.probesOriginWorldLocation + volumeParams.probesSpacing * 0.02f;
+	const float3 maxWorldLocation = volumeParams.probesEndWorldLocation - volumeParams.probesSpacing * 0.02f;
+	return clamp(sampleParams.worldLocation + biasVector, minWorldLocation, maxWorldLocation);
 }
 
 #ifdef DS_DDGISceneDS
@@ -177,17 +179,17 @@ float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, Sampler
 struct DDGIVolumeSampleInfo
 {
 	uint2 volumeIndices;
-	half2 weights;
+	float2 weights;
 };
 
 
-half ComputeDDGIVolumeWeight(in const DDGIVolumeGPUParams volumeParams, in float3 location)
+float ComputeDDGIVolumeWeight(in const DDGIVolumeGPUParams volumeParams, in float3 location)
 {
 	float3 distToEdge = location - volumeParams.probesOriginWorldLocation;
 	distToEdge = min(volumeParams.probesEndWorldLocation - location, distToEdge);
 
 	distToEdge /= volumeParams.probesSpacing;
-	return half(min(min(distToEdge.x, distToEdge.y), distToEdge.z));
+	return min(min(distToEdge.x, distToEdge.y), distToEdge.z);
 }
 
 
@@ -195,59 +197,25 @@ DDGIVolumeSampleInfo GetDDGIVolumeSampleInfo(in float3 location)
 {
 	DDGIVolumeSampleInfo info;
 	info.volumeIndices = IDX_NONE_32;
-	info.weights = 0.0h;
+	info.weights = 0.0f;
 
 	uint outIdx = 0;
-
-	// Lod 0
+	
+	for(uint lodIdx = 0u; lodIdx < u_ddgiLODs.lodsNum && outIdx < 2u; ++lodIdx)
 	{
-		const DDGIVolumeGPUParams lod0Volume = u_volumesDef.volumes[u_ddgiLOD0.lod0VolumeIdx];
-		if (IsInsideDDGIVolume(lod0Volume, location))
+		const DDGILODDefinition lodDef = u_ddgiLODs.lods[lodIdx];
+		const DDGIVolumeGPUParams volume = u_volumesDef.volumes[lodDef.volumeIdx];
+
+		if (IsInsideDDGIVolume(volume, location))
 		{
-			info.volumeIndices[outIdx] = u_ddgiLOD0.lod0VolumeIdx;
-			info.weights[outIdx]       = ComputeDDGIVolumeWeight(lod0Volume, location);
+			info.volumeIndices[outIdx] = lodDef.volumeIdx;
+			info.volumeIndices[outIdx] = 0;
+			info.weights[outIdx] = ComputeDDGIVolumeWeight(volume, location);
 			++outIdx;
 		}
 	}
 
-	// Lod 1
-	if(info.weights[0] < 1.h)
-	{
-		if(all(location >= u_ddgiLOD1.volumesAABBMin) && all(location <= u_ddgiLOD1.volumesAABBMax))
-		{
-			const int2 coords = clamp(int2((location.xy - u_ddgiLOD1.volumesAABBMin.xy) * u_ddgiLOD1.rcpSingleVolumeSize.xy), 0, 2);
-			const int coordIdx = coords.x + coords.y * 3;
-			info.volumeIndices[outIdx] = u_ddgiLOD1.volumeIndices[coordIdx].x;
-			info.weights[outIdx]       = 1.h - info.weights[0];
-		}
-	}
-
 	return info;
-}
-
-
-uint GetDDGIVolumeIdx(in float3 location)
-{
-	// Lod 0
-	{
-		const DDGIVolumeGPUParams lod0Volume = u_volumesDef.volumes[u_ddgiLOD0.lod0VolumeIdx];
-		if (IsInsideDDGIVolume(lod0Volume, location))
-		{
-			return u_ddgiLOD0.lod0VolumeIdx;
-		}
-	}
-
-	// Lod 1
-	{
-		if(all(location >= u_ddgiLOD1.volumesAABBMin) && all(location <= u_ddgiLOD1.volumesAABBMax))
-		{
-			const int2 coords = clamp(int2((location.xy - u_ddgiLOD1.volumesAABBMin.xy) * u_ddgiLOD1.rcpSingleVolumeSize.xy), 0, 2);
-			const int coordIdx = coords.x + coords.y * 3;
-			return u_ddgiLOD1.volumeIndices[coordIdx].x;
-		}
-	}
-
-	return IDX_NONE_32;
 }
 
 
@@ -273,7 +241,7 @@ float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint
 template<typename TSampledDataType, typename TSampleCallback>
 TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TSampleCallback sampleCallback)
 {
-	const float3 biasedWorldLocation = DDGIGetSampleLocation(volumeParams, sampleParams);
+	const float3 biasedWorldLocation = ComputeDDGIBiasedSampleLocation(volumeParams, sampleParams);
 
 	const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(volumeParams, biasedWorldLocation);
 	const float3 baseProbeWorldLocation = GetProbeWorldLocation(volumeParams, baseProbeCoords);
@@ -311,7 +279,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 		
 		const float2 hitDistances = SampleProbeHitDistance(volumeParams, probeWrappedCoords, hitDistOctCoords);
 
-		if (hitDistances.x < 0.f)
+		if (hitDistances.y < 0.f)
 		{
 			// probe is inside geometry
 			weight = 0.0001f;
@@ -342,6 +310,10 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 		const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
 		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
+		if(!sampleCallback.IsValid(probleSample))
+		{
+			return sampleCallback.MakeInvalid();
+		}
 
 		sampledDataSum += probleSample * weight;
 		weightSum += weight;
@@ -354,13 +326,27 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 	return result;
 }
 
+
 class DDGILuminanceSampleCallback
 {
 	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
 	{
 		float3 luminance = SampleProbeIlluminance(volumeParams, probeWrappedCoords, octahedronUV);
-		luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		if(IsValid(luminance))
+		{
+			luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		}
 		return luminance;
+	}
+
+	bool IsValid(in float3 sampleValue)
+	{
+		return all(sampleValue >= 0.0f);
+	}
+
+	float3 MakeInvalid()
+	{
+		return -1.f;
 	}
 
 	void PostProcess(inout float3 result)
@@ -369,19 +355,29 @@ class DDGILuminanceSampleCallback
 	}
 };
 
+
 float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
 {
 	DDGILuminanceSampleCallback callback;
 	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
 }
 
+
 float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
 {
-	const uint volumeIdx = 0;
-	if (volumeIdx != IDX_NONE_32)
+	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
+
+	for(uint i = 0; i < 2; ++i)
 	{
-		const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[volumeIdx];
-		return DDGISampleLuminanceInternal(sampleParams, volumeParams);
+		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
+		{
+			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
+			const float3 luminance = DDGISampleLuminanceInternal(sampleParams, volumeParams);
+			if(all(luminance >= 0.0f))
+			{
+				return luminance;
+			}
+		}
 	}
 
 	return 0.f;
@@ -394,29 +390,47 @@ float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams)
 
 	float3 luminance = 0.f;
 
-	float weightSum = 0.h;
+	float weightSum = 0.f;
 
 	for (uint i = 0; i < 2; ++i)
 	{
-		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
+		if (sampleInfo.volumeIndices[i] != IDX_NONE_32 && weightSum < 0.999f)
 		{
 			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
-			const float weight = float(sampleInfo.weights[i]);
-			luminance += DDGISampleLuminanceInternal(sampleParams, volumeParams) * weight;
-			weightSum += weight;
+			const float3 luminanceSample = DDGISampleLuminanceInternal(sampleParams, volumeParams);
+			if(all(luminanceSample > 0.0f))
+			{
+				const float weight = sampleInfo.weights[i];
+				luminance += luminanceSample * weight;
+				weightSum += weight;
+			}
 		}
 	}
 
 	return luminance / float(weightSum + 0.0001f);
 }
 
+
 class AverageLuminanceSampleCallback
 {
 	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
 	{
 		float3 luminance = SampleProbeAverageLuminance(volumeParams, probeWrappedCoords);
-		luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		if(IsValid(luminance))
+		{
+			luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+		}
 		return luminance;
+	}
+
+	bool IsValid(in float3 sampleValue)
+	{
+		return all(sampleValue >= 0.0f);
+	}
+
+	float3 MakeInvalid()
+	{
+		return -1.f;
 	}
 
 	void PostProcess(inout float3 result)
@@ -425,23 +439,34 @@ class AverageLuminanceSampleCallback
 	}
 };
 
+
 float3 DDGISampleAverageLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
 {
 	AverageLuminanceSampleCallback callback;
 	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
 }
 
+
 float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams)
 {
-	const uint volumeIdx = 0;
-	if (volumeIdx != IDX_NONE_32)
+	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
+
+	for(uint i = 0; i < 2; ++i)
 	{
-		const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[volumeIdx];
-		return DDGISampleAverageLuminanceInternal(sampleParams, volumeParams);
+		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
+		{
+			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
+			const float3 luminance = DDGISampleAverageLuminanceInternal(sampleParams, volumeParams);
+			if(all(luminance >= 0.0f))
+			{
+				return luminance;
+			}
+		}
 	}
 
 	return 0.f;
 }
+
 
 float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams)
 {

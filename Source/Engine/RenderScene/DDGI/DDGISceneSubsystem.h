@@ -22,6 +22,20 @@ namespace spt::rsc::ddgi
 class DDGIVolume;
 
 
+struct DDGILODConfig
+{
+	math::Vector3u volumeResolution    = math::Vector3u::Constant(12u);
+	math::Vector3u relitZoneResolution = math::Vector3u::Constant(12u);
+	math::Vector3f probesSpacing       = math::Vector3f::Constant(1.f);
+
+	Real32 relitPriority = 1.f;
+
+	Real32 forwardAlignment = 0.5f;
+	Real32 heightAlignment  = 0.2f;
+
+};
+
+
 struct DDGIConfig
 {
 	Uint32 localRelitRaysNumPerProbe  = 1024u;
@@ -40,16 +54,7 @@ struct DDGIConfig
 	math::Vector2u probeIlluminanceDataRes = math::Vector2u::Constant(6u);
 	math::Vector2u probeHitDistanceDataRes = math::Vector2u::Constant(16u);
 
-	// Lod 0
-
-	math::Vector3u lod0VolumeResolution = math::Vector3u::Constant(12u);
-	math::Vector3f lod0ProbesSpacing    = math::Vector3f::Constant(1.5f);
-
-	// Lod 1
-
-	math::Vector3u lod1VolumeResolution = math::Vector3u(12u, 12u, 8u);
-	math::Vector3f lod1ProbesSpacing    = math::Vector3f::Constant(3.f);
-	Real32         lod1VolumesMinHeight = -2.f;
+	lib::DynamicArray<DDGILODConfig> lodsConfigs = { DDGILODConfig{} };
 };
 
 

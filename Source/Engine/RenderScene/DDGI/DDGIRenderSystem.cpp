@@ -321,19 +321,19 @@ void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const Re
 
 	InvalidateVolumes(graphBuilder, renderScene, viewSpec, ddgiSubsystem, scene);
 
-	Int32 relitBudget = static_cast<Int32>(ddgiSubsystem.GetConfig().relitVolumesBudget);
+	const SizeType relitBudget = ddgiSubsystem.GetConfig().relitVolumesBudget;
 
-	const lib::DynamicArray<DDGIVolume*>& volumes = scene.GetVolumes();
+	DDGIZonesCollector zonesCollector(relitBudget);
 
-	for (DDGIVolume* volume : volumes)
+	scene.CollectZonesToRelit(zonesCollector);
+
+	const lib::DynamicArray<DDGIRelitZone*>& zones = zonesCollector.GetZonesToRelit();
+
+	for (DDGIRelitZone* zone : zones)
 	{
-		SPT_CHECK(!!volume);
-		RelitVolume(graphBuilder, renderScene, viewSpec, ddgiSubsystem, *volume);
+		SPT_CHECK(!!zone);
 
-		if (--relitBudget == 0)
-		{
-			break;
-		}
+		RelitZone(graphBuilder, renderScene, viewSpec, ddgiSubsystem, *zone);
 	}
 
 	scene.PostRelit();
@@ -356,15 +356,15 @@ void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, c
 	}
 }
 
-void DDGIRenderSystem::RelitVolume(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIVolume& volume) const
+void DDGIRenderSystem::RelitZone(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIRelitZone& zone) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(volume, ddgiSubsystem.GetConfig()), ddgiSubsystem, volume);
+	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(zone, ddgiSubsystem.GetConfig()), ddgiSubsystem, zone.GetVolume());
 
 	UpdateProbes(graphBuilder, renderScene, viewSpec, relitParams);
 
-	volume.PostVolumeRelit();
+	zone.PostRelit();
 }
 
 void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGIVolumeRelitParameters& relitParams) const
@@ -451,12 +451,11 @@ void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graph
 		const rg::RGTextureViewHandle textureView = graphBuilder.AcquireExternalTextureView(volume.GetProbesIlluminanceTexture(textureIdx));
 		invalidateProbesDS->u_volumeIlluminanceTextures.BindTexture(textureView, illuminanceTexturesBlock, textureIdx);
 	}
-
 	const gfx::TexturesBindingsAllocationHandle hitDistanceTexturesBlock = invalidateProbesDS->u_volumeHitDistanceTextures.AllocateWholeBlock();
 	for (Uint32 textureIdx = 0u; textureIdx < probeDataTexturesNum; ++textureIdx)
 	{
 		const rg::RGTextureViewHandle textureView = graphBuilder.AcquireExternalTextureView(volume.GetProbesHitDistanceTexture(textureIdx));
-		invalidateProbesDS->u_volumeIlluminanceTextures.BindTexture(textureView, hitDistanceTexturesBlock, textureIdx);
+		invalidateProbesDS->u_volumeHitDistanceTextures.BindTexture(textureView, hitDistanceTexturesBlock, textureIdx);
 	}
 
 	static const rdr::PipelineStateID invalidateProbesPipelineID = pipelines::CreateDDGIInvalidateProbesPipeline(volumeParams.probeHitDistanceDataWithBorderRes);
@@ -636,34 +635,21 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	}
 }
 
-DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume, const DDGIConfig& config) const
+DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIRelitZone& zone, const DDGIConfig& config) const
 {
-	const Bool fullVolumeRelit = volume.WantsFullVolumeRelit();
+	const DDGIVolume& volume = zone.GetVolume();
 
-	const DDGIVolumeGPUParams& ddgiParams = volume.GetVolumeGPUParams();
+	const math::AlignedBox3u& zoneProbesBoundingBox = zone.GetProbesBoundingBox();
 
-	const math::Vector3u probesToUpdate = fullVolumeRelit ? ddgiParams.probesVolumeResolution : config.localRelitProbeGridSize.cwiseMin(ddgiParams.probesVolumeResolution);
-
-	const math::Vector3u blocksNum = math::Utils::DivideCeil(volume.GetProbesVolumeResolution(), probesToUpdate);
-
-	math::Vector3u updateCoords(lib::rnd::Random<Uint32>(0, blocksNum.x()),
-								lib::rnd::Random<Uint32>(0, blocksNum.y()),
-								lib::rnd::Random<Uint32>(0, blocksNum.z()));
-
-	updateCoords = updateCoords.cwiseProduct(probesToUpdate);
-	updateCoords.x() = std::min(updateCoords.x(), volume.GetProbesVolumeResolution().x() - probesToUpdate.x());
-	updateCoords.y() = std::min(updateCoords.y(), volume.GetProbesVolumeResolution().y() - probesToUpdate.y());
-	updateCoords.z() = std::min(updateCoords.z(), volume.GetProbesVolumeResolution().z() - probesToUpdate.z());
-
-	const Uint32 raysNumPerProbe = fullVolumeRelit ? config.globalRelitRaysPerProbe : config.localRelitRaysNumPerProbe;
+	const Uint32 raysNumPerProbe = config.localRelitRaysNumPerProbe;
 
 	const math::AlignedBox3f previousAABB = volume.GetPrevAABB();
 
-	const Real32 hysteresis = ComputeRelitHysteresis(volume, config, fullVolumeRelit);
+	const Real32 hysteresis = ComputeRelitHysteresis(zone, config);
 
 	DDGIRelitGPUParams params;
-	params.probesToUpdateCoords     = updateCoords;
-	params.probesToUpdateCount      = probesToUpdate;
+	params.probesToUpdateCoords     = zoneProbesBoundingBox.min();
+	params.probesToUpdateCount      = zoneProbesBoundingBox.sizes();
 	params.probeRaysMaxT            = 100.f;
 	params.probeRaysMinT            = 0.0f;
 	params.raysNumPerProbe          = raysNumPerProbe;
@@ -679,10 +665,10 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIVolume& volume,
 	return params;
 }
 
-Real32 DDGIRenderSystem::ComputeRelitHysteresis(const DDGIVolume& volume, const DDGIConfig& config, Bool isFullVolumeRelit) const
+Real32 DDGIRenderSystem::ComputeRelitHysteresis(const DDGIRelitZone& zone, const DDGIConfig& config) const
 {
-	Real32 hysteresis = isFullVolumeRelit ? config.defaultGlobalRelitHysteresis : config.defaultLocalRelitHysteresis;
-	hysteresis += volume.GetRelitHysteresisDelta();
+	Real32 hysteresis = config.defaultLocalRelitHysteresis;
+	hysteresis += zone.GetRelitHysteresisDelta();
 	return std::clamp(hysteresis, config.minHysteresis, config.maxHysteresis);
 }
 

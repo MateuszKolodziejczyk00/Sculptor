@@ -66,7 +66,7 @@ struct CS_INPUT
 void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 {
     const uint flatThreadLocalID = threadLocalID.y * GROUP_SIZE_X + threadLocalID.x;
- 
+
     uint2 traceResultTextureRes;
     u_traceRaysResultTexture.GetDimensions(traceResultTextureRes.x, traceResultTextureRes.y);
 
@@ -233,11 +233,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         hysteresis = max(hysteresis - histeresisDelta, 0.f);
 
         const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
-        if (any(probeLocation < u_relitParams.prevAABBMin) || any(probeLocation > u_relitParams.prevAABBMax))
-        {
-            hysteresis = 0.f;
-        }
-        else
+		if (hysteresis > 0.0001f)
         {
             const float deltaLuminance = Luminance(abs(delta));
             if(deltaLuminance > u_relitParams.luminanceDiffThreshold)

@@ -15,7 +15,7 @@ REGISTER_RENDER_STAGE(ERenderStage::VisibilityBuffer, VisibilityBufferRenderStag
 namespace utils
 {
 
-static lib::SharedPtr<rdr::TextureView> CreateDepthTexture(rhi::EFragmentFormat format, math::Vector2u resolution, Bool isRenderTarget)
+static lib::SharedPtr<rdr::TextureView> CreateDepthTexture(rdr::RendererResourceName name, rhi::EFragmentFormat format, math::Vector2u resolution, Bool isRenderTarget)
 {
 	rhi::TextureDefinition depthDef;
 	depthDef.resolution	= resolution;
@@ -26,11 +26,7 @@ static lib::SharedPtr<rdr::TextureView> CreateDepthTexture(rhi::EFragmentFormat 
 	lib::AddFlag(depthDef.usage, rhi::ETextureUsage::TransferSource);
 #endif // !SPT_RELEASE
 
-	const lib::SharedRef<rdr::Texture> depthTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME("Depth Texture"), depthDef, rhi::EMemoryUsage::GPUOnly);
-
-	rhi::TextureViewDefinition viewDefinition;
-	viewDefinition.subresourceRange = rhi::TextureSubresourceRange(isRenderTarget ? rhi::ETextureAspect::Depth : rhi::ETextureAspect::Color);
-	return depthTexture->CreateView(RENDERER_RESOURCE_NAME("Depth Texture View"), viewDefinition);
+	return rdr::ResourcesManager::CreateTextureView(name, depthDef, rhi::EMemoryUsage::GPUOnly);
 }
 
 } // utils
@@ -73,8 +69,8 @@ void VisibilityBufferRenderStage::PrepareDepthTextures(const RenderView& renderV
 
 	if (!m_currentDepthTexture || m_currentDepthTexture->GetResolution2D() != renderingRes)
 	{
-		m_currentDepthTexture = utils::CreateDepthTexture(GetDepthFormat(), renderingRes, true);
-		m_currentDepthHalfRes = utils::CreateDepthTexture(rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
+		m_currentDepthTexture = utils::CreateDepthTexture(RENDERER_RESOURCE_NAME("Depth Texture"), GetDepthFormat(), renderingRes, true);
+		m_currentDepthHalfRes = utils::CreateDepthTexture(RENDERER_RESOURCE_NAME("Depth Texture Half Res"), rhi::EFragmentFormat::R32_S_Float, renderingHalfRes, false);
 	}
 
 	const HiZ::HiZSizeInfo hiZSizeInfo = HiZ::ComputeHiZSizeInfo(renderingRes);
