@@ -90,7 +90,11 @@ void SRDisocclusionFixCS(CS_INPUT input)
 			}
 		}
 
-		const float3 outLuminance = luminanceSum / weightSum;
+		float3 outLuminance = luminanceSum / weightSum;
+		if(any(isnan(outLuminance)))
+		{
+			outLuminance = centerLuminanceHitDistance.rgb;
+		}
 		u_outputLuminanceTexture[pixel] = float4(outLuminance, centerLuminanceHitDistance.w);
 	}
 }

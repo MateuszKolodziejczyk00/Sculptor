@@ -134,6 +134,8 @@ public:
 	const math::Vector2u& GetRenderingRes() const;
 	math::Vector3u GetRenderingRes3D() const;
 
+	Uint32 GetRenderedFrameIdx() const;
+
 	const math::Vector2u GetRenderingHalfRes() const;
 
 	RenderScene&                   GetRenderScene() const;
@@ -218,6 +220,8 @@ private:
 	// Rendering settings
 
 	EAntiAliasingMode::Type m_aaMode;
+
+	Uint32 m_renderedFrameIdx;
 };
 
 } // spt::rsc

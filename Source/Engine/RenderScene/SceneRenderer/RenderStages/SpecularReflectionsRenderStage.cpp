@@ -21,6 +21,7 @@
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
+#include "SceneRenderer/RenderStages/Utils/SRSpatiotemporalResampler.h"
 
 
 namespace spt::rsc
@@ -37,6 +38,7 @@ struct SpecularReflectionsParams
 	rg::RGTextureViewHandle normalsTexture;
 	rg::RGTextureViewHandle historyNormalsTexture;
 	rg::RGTextureViewHandle roughnessTexture;
+	rg::RGTextureViewHandle specularColorTexture;
 	rg::RGTextureViewHandle skyViewLUT;
 };
 
@@ -55,8 +57,9 @@ namespace trace
 
 BEGIN_SHADER_STRUCT(SpecularTraceShaderParams)
 	SHADER_STRUCT_FIELD(math::Vector2f, random)
-	SHADER_STRUCT_FIELD(Real32, volumetricFogNear)
-	SHADER_STRUCT_FIELD(Real32, volumetricFogFar)
+	SHADER_STRUCT_FIELD(Real32,         volumetricFogNear)
+	SHADER_STRUCT_FIELD(Real32,         volumetricFogFar)
+	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 END_SHADER_STRUCT()
 
 
@@ -64,7 +67,6 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_reflectedLuminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_shadingNormalsTexture)
@@ -72,6 +74,7 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpecularTraceShaderParams>),              u_traceParams)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector4f>),                           u_integratedInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<sr_restir::SRPackedReservoir>),       u_reservoirsBuffer)
 DS_END();
 
 
@@ -91,7 +94,7 @@ static rdr::PipelineStateID CreateSpecularReflectionsTracePipeline(const RayTrac
 }
 
 
-static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& params)
+static rg::RGBufferViewHandle GenerateInitialReservoirs(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -108,27 +111,28 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
 	
-	const rg::RGTextureViewHandle reflectedLuminanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
-
 	ParticipatingMediaViewRenderSystem& participatingMediaViewSystem = renderView.GetRenderSystem<ParticipatingMediaViewRenderSystem>();
 	const VolumetricFogParams& fogParams = participatingMediaViewSystem.GetVolumetricFogParams();
+
+	const rg::RGBufferViewHandle reservoirsBuffer = sr_restir::CreateReservoirsBuffer(graphBuilder, params.resolution);
 
 	SpecularTraceShaderParams shaderParams;
 	shaderParams.random            = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
 	shaderParams.volumetricFogNear = fogParams.nearPlane;
 	shaderParams.volumetricFogFar  = fogParams.farPlane;
+	shaderParams.resolution        = params.resolution;
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
 	traceRaysDS->u_skyViewLUT                    = params.skyViewLUT;
 	traceRaysDS->u_transmittanceLUT              = atmosphereContext.transmittanceLUT;
 	traceRaysDS->u_atmosphereParams              = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-	traceRaysDS->u_reflectedLuminanceTexture     = reflectedLuminanceTexture;
 	traceRaysDS->rayTracingDS                    = rayTracingSubsystem.GetSceneRayTracingDS();
 	traceRaysDS->u_shadingNormalsTexture         = params.normalsTexture;
 	traceRaysDS->u_depthTexture                  = params.depthTexture;
 	traceRaysDS->u_roughnessTexture              = params.roughnessTexture;
 	traceRaysDS->u_traceParams                   = shaderParams;
 	traceRaysDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
+	traceRaysDS->u_reservoirsBuffer              = reservoirsBuffer;
 
 	const LightsRenderSystem& lightsRenderSystem        = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
@@ -148,7 +152,7 @@ static rg::RGTextureViewHandle TraceRays(rg::RenderGraphBuilder& graphBuilder, c
 												  GeometryManager::Get().GetGeometryDSState(),
 												  StaticMeshUnifiedData::Get().GetUnifiedDataDS()));
 
-	return reflectedLuminanceTexture;
+	return reservoirsBuffer;
 }
 
 } // trace
@@ -185,24 +189,14 @@ struct ApplySpecularReflectionsParams
 {
 	rg::RGTextureViewHandle luminanceTexture;
 	rg::RGTextureViewHandle specularReflectionsTexture;
-	GBuffer                 gBuffer;
-	rg::RGTextureViewHandle brdfIntegrationLUT;
-	rg::RGTextureViewHandle depthTexture;
-	rg::RGTextureViewHandle normalsTexture;
+	rg::RGTextureViewHandle baseColorMetallicTexture;
 };
 
 
 DS_BEGIN(ApplySpecularReflectionsDS, rg::RGDescriptorSetState<ApplySpecularReflectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_specularReflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_gBuffer0Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_gBuffer1Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_gBuffer2Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_gBuffer3Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                   u_gBuffer4Texture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),  u_luminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_specularReflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_baseColorMetallicTexture)
 DS_END();
 
 
@@ -227,13 +221,7 @@ static void ApplySpecularReflections(rg::RenderGraphBuilder& graphBuilder, ViewR
 	lib::MTHandle<ApplySpecularReflectionsDS> applySpecularReflectionsDS = graphBuilder.CreateDescriptorSet<ApplySpecularReflectionsDS>(RENDERER_RESOURCE_NAME("ApplySpecularReflectionsDS"));
 	applySpecularReflectionsDS->u_luminanceTexture           = params.luminanceTexture;
 	applySpecularReflectionsDS->u_specularReflectionsTexture = params.specularReflectionsTexture;
-	applySpecularReflectionsDS->u_gBuffer0Texture            = params.gBuffer[0];
-	applySpecularReflectionsDS->u_gBuffer1Texture            = params.gBuffer[1];
-	applySpecularReflectionsDS->u_gBuffer2Texture            = params.gBuffer[2];
-	applySpecularReflectionsDS->u_gBuffer3Texture            = params.gBuffer[3];
-	applySpecularReflectionsDS->u_gBuffer4Texture            = params.gBuffer[4];
-	applySpecularReflectionsDS->u_brdfIntegrationLUT         = params.brdfIntegrationLUT;
-	applySpecularReflectionsDS->u_depthTexture               = params.depthTexture;
+	applySpecularReflectionsDS->u_baseColorMetallicTexture   = params.baseColorMetallicTexture;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Specular Reflections"),
 						  applySpecularReflectionsPipeline,
@@ -264,14 +252,29 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		params.normalsTexture        = viewContext.normalsHalfRes;
 		params.historyNormalsTexture = viewContext.historyNormalsHalfRes;
 		params.roughnessTexture      = viewContext.roughnessHalfRes;
+		params.specularColorTexture  = viewContext.specularColorHalfRes;
 		params.depthTexture          = viewContext.depthHalfRes;
 		params.depthHistoryTexture   = viewContext.historyDepthHalfRes;
 		params.motionTexture         = viewContext.motionHalfRes;
 		params.skyViewLUT            = viewContext.skyViewLUT;
 
-		rg::RGTextureViewHandle specularReflectionsTexture = trace::TraceRays(graphBuilder, renderScene, viewSpec, params);
+		const rg::RGBufferViewHandle initialReservoirs = trace::GenerateInitialReservoirs(graphBuilder, renderScene, viewSpec, params);
+
+		const rg::RGTextureViewHandle luminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+
+		sr_restir::ResamplingParams resamplingParams(renderView);
+		resamplingParams.reservoirBuffer                = initialReservoirs;
+		resamplingParams.depthTexture                   = viewContext.depthHalfRes;
+		resamplingParams.normalsTexture                 = viewContext.normalsHalfRes;
+		resamplingParams.roughnessTexture               = viewContext.roughnessHalfRes;
+		resamplingParams.specularColorTexture           = viewContext.specularColorHalfRes;
+		resamplingParams.outLuminanceHitDistanceTexture = luminanceHitDistanceTexture;
+		resamplingParams.spatialResamplingIterations    = 0u; // disabled for now
+
+		sr_restir::SpatiotemporalResampler resampler;
+		resampler.Resample(graphBuilder, resamplingParams);
 		
-		specularReflectionsTexture = denoise::Denoise(graphBuilder, renderScene, viewSpec, specularReflectionsTexture, params);
+		const rg::RGTextureViewHandle denoisedLuminanceTexture = denoise::Denoise(graphBuilder, renderScene, viewSpec, luminanceHitDistanceTexture, params);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName          = RG_DEBUG_NAME("Upsample Specular Reflections");
@@ -279,16 +282,12 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		upsampleParams.depthHalfRes       = viewContext.depthHalfRes;
 		upsampleParams.normalsHalfRes     = viewContext.normalsHalfRes;
 		upsampleParams.renderViewDS       = renderView.GetRenderViewDS();
-		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, specularReflectionsTexture, upsampleParams);
-
-		const rg::RGTextureViewHandle brdfIntegrationLUT = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoisedLuminanceTexture, upsampleParams);
 
 		apply::ApplySpecularReflectionsParams applyParams;
-		applyParams.luminanceTexture            = viewContext.luminance;
-		applyParams.specularReflectionsTexture  = specularReflectionsFullRes;
-		applyParams.gBuffer                     = viewContext.gBuffer;
-		applyParams.brdfIntegrationLUT          = brdfIntegrationLUT;
-		applyParams.depthTexture                = viewContext.depth;
+		applyParams.luminanceTexture = viewContext.luminance;
+		applyParams.specularReflectionsTexture = specularReflectionsFullRes;
+		applyParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 		apply::ApplySpecularReflections(graphBuilder, viewSpec, applyParams);
 	}
 

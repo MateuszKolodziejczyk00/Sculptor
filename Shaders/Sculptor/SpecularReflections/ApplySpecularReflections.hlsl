@@ -34,31 +34,14 @@ void ApplySpecularReflectionsCS(CS_INPUT input)
 			return;
 		}
 
-		GBufferInput gBufferInput;
-		gBufferInput.gBuffer0 = u_gBuffer0Texture;
-		gBufferInput.gBuffer1 = u_gBuffer1Texture;
-		gBufferInput.gBuffer2 = u_gBuffer2Texture;
-		gBufferInput.gBuffer3 = u_gBuffer3Texture;
-		gBufferInput.gBuffer4 = u_gBuffer4Texture;
+		const float4 baseColorMetallic = u_baseColorMetallicTexture.Load(uint3(pixel, 0));
 
-		const GBufferData gBufferData = DecodeGBuffer(gBufferInput, int3(pixel, 0));
+		float3 diffuseColor;
+		float3 specularColor;
+		
+		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
 
-		float3 diffuseColor  = 0.f;
-		float3 specularColor = 0.f;
-		ComputeSurfaceColor(gBufferData.baseColor, gBufferData.metallic, OUT diffuseColor, OUT specularColor);
-
-		const float3 viewLocation = u_sceneView.viewLocation;
-
-		const float depth = u_depthTexture.Load(uint3(pixel, 0));
-		const float3 worldLocation = NDCToWorldSpaceNoJitter(float3(uv * 2.f - 1.f, depth), u_sceneView);
-
-		const float3 viewDir = normalize(viewLocation - worldLocation);
-
-		const float NdotV = saturate(dot(gBufferData.normal, viewDir));
-
-		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_linearSampler, float2(NdotV, gBufferData.roughness), 0);
-
-		luminance += specularReflections * (specularColor * integratedBRDF.x + integratedBRDF.y);
+		luminance += specularReflections * specularColor;
 
 		u_luminanceTexture[pixel] = float4(luminance, 1.f);
 	}

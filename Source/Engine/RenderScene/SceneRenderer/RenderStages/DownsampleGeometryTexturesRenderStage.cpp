@@ -26,10 +26,12 @@ DS_BEGIN(DownsampleGeometryTexturesDS, rg::RGDescriptorSetState<DownsampleGeomet
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_tangentFrameTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_baseColorMetallicTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_depthTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_motionTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_normalsTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_specularColorTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_roughnessTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DownsampleGeometryTexturesConstants>),     u_constants)
@@ -68,6 +70,8 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	const rhi::EFragmentFormat motionFormat = viewContext.motion->GetFormat();
 	viewContext.motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture Half Res"), rg::TextureDef(halfRes, motionFormat));
 
+	viewContext.specularColorHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Color Texture Half Res"), rg::TextureDef(halfRes, rhi::EFragmentFormat::B10G11R11_U_Float));
+
 	viewContext.normalsHalfRes = graphBuilder.AcquireExternalTextureView(m_normalsTextureHalfRes);
 
 	if (m_historyNormalsTextureHalfRes)
@@ -85,15 +89,17 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	shaderConstants.outputPixelSize = halfRes.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
-	ds->u_depthTexture            = viewContext.depth;
-	ds->u_motionTexture           = viewContext.motion;
-	ds->u_tangentFrameTexture     = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
-	ds->u_roughnessTexture        = viewContext.gBuffer[GBuffer::Texture::Roughness];
-	ds->u_depthTextureHalfRes     = viewContext.depthHalfRes;
-	ds->u_motionTextureHalfRes    = viewContext.motionHalfRes;
-	ds->u_normalsTextureHalfRes   = viewContext.normalsHalfRes;
-	ds->u_roughnessTextureHalfRes = viewContext.roughnessHalfRes;
-	ds->u_constants               = shaderConstants;
+	ds->u_depthTexture                = viewContext.depth;
+	ds->u_motionTexture               = viewContext.motion;
+	ds->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
+	ds->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
+	ds->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+	ds->u_depthTextureHalfRes         = viewContext.depthHalfRes;
+	ds->u_motionTextureHalfRes        = viewContext.motionHalfRes;
+	ds->u_normalsTextureHalfRes       = viewContext.normalsHalfRes;
+	ds->u_specularColorTextureHalfRes = viewContext.specularColorHalfRes;
+	ds->u_roughnessTextureHalfRes     = viewContext.roughnessHalfRes;
+	ds->u_constants                   = shaderConstants;
 
 	const rdr::PipelineStateID pipeline = CompileDownsampleGeometryTexturesPipeline();
 

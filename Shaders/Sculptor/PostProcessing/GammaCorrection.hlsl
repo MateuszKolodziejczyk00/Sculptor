@@ -2,6 +2,8 @@
 
 [[descriptor_set(GammaCorrectionDS, 0)]]
 
+#include "Utils/ColorSpaces.hlsli"
+
 
 struct CS_INPUT
 {

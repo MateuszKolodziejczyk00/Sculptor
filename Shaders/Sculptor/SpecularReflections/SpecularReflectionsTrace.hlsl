@@ -4,6 +4,7 @@
 
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/SpecularReflectionsTracingCommon.hlsli"
+#include "SpecularReflections/SRReservoir.hlsli"
 
 #include "Lights/Lighting.hlsli"
 
@@ -12,6 +13,7 @@
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Random.hlsli"
 
 
 float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 toView, in uint2 pixel)
@@ -32,7 +34,7 @@ float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 t
 			const uint currentSampleIdx = (sampleIdx + attempt) & 255u;
 			const float2 noise = frac(g_BlueNoiseSamples[currentSampleIdx] + u_traceParams.random);
 
-			const float3 h = SampleVNDFIsotropic(noise, toView, roughness * roughness, normal);
+			const float3 h = SampleVNDFIsotropic(noise, toView, RoughnessToAlpha(roughness), normal);
 
 			const float3 reflectedRay = reflect(-toView, h);
 
@@ -49,7 +51,7 @@ float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 t
 
 struct RayResult
 {
-	float3 luminance;
+	SRReservoir reservoir;
 	float hitDistance;
 };
 
@@ -59,8 +61,10 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 	const float3 reflectedRayDirection = GenerateReflectedRayDir(surfNormal, surfRoughness, toView, pixel);
 	
 	RayResult result;
-	result.luminance = 0.f;
-	result.luminance = 0.f;
+	result.hitDistance = 0.f;
+	result.reservoir = SRReservoir::CreateEmpty();
+
+	float3 luminance = 0.f;
  
 	RayDesc rayDesc;
 	rayDesc.TMin = 0.01f;
@@ -79,34 +83,33 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 			 rayDesc,
 			 payload);
 
-
 	const bool isBackface = payload.distance < 0.f;
-	const float maxHitDistnace = 400.f;
-	const bool isValidHit = !isBackface && payload.distance < maxHitDistnace;
+	const float maxHitDistance = 400.f;
+	const bool isValidHit = !isBackface && payload.distance < maxHitDistance;
+
+	result.hitDistance = isValidHit ? payload.distance : 2000.f;
+	const float3 hitLocation = surfWorldLocation + reflectedRayDirection * result.hitDistance;
+	const float3 hitNormal = isValidHit ? normalize(payload.normal) : 0.f;
 
 	if (isValidHit)
 	{
-		result.hitDistance = payload.distance;
-
 		const float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
 
-		const float3 hitNormal = normalize(payload.normal);
-
 		ShadedSurface surface;
-		surface.location = surfWorldLocation + reflectedRayDirection * payload.distance;
+		surface.location = hitLocation;
 		surface.shadingNormal = hitNormal;
 		surface.geometryNormal = hitNormal;
 		surface.roughness = payload.roughness;
 		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
-		result.luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, surfNormal);
+		luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, surfNormal);
 
 		const float3 emissive = payload.emissive;
-		result.luminance += emissive;
+		luminance += emissive;
 
-		if (any(isnan(result.luminance)))
+		if (any(isnan(luminance)))
 		{
-			result.luminance = 0.f;
+			luminance = 0.f;
 		}
 
 		// Try applying volumetric fog using screen space froxels data
@@ -130,15 +133,23 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 			inScatteringTransmittance.rgb *= intensityAmplifier;
 			inScatteringTransmittance.a    = pow(inScatteringTransmittance.a, intensityAmplifier);
 
-			result.luminance = inScatteringTransmittance.rgb + result.luminance * inScatteringTransmittance.a;
+			luminance = inScatteringTransmittance.rgb + luminance * inScatteringTransmittance.a;
 		}
 	}
 	else if (!isBackface)
 	{
-		result.hitDistance = 200.f;
 		const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, surfWorldLocation);
-		result.luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, reflectedRayDirection);
+		luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, reflectedRayDirection);
 	}
+
+	float pdf = 1.f;
+
+	if(surfRoughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
+	{
+		pdf = PDFVNDFIsotrpic(toView, reflectedRayDirection, RoughnessToAlpha(surfRoughness), surfNormal);
+	}
+
+	result.reservoir = SRReservoir::Create(hitLocation, hitNormal, luminance, pdf);
 
 	return result;
 }
@@ -151,8 +162,9 @@ void GenerateSpecularReflectionsRaysRTG()
 
 	const float depth = u_depthTexture.Load(uint3(pixel, 0));
 
-	float3 luminance = 0.f;
 	float hitDistance = 0.f;
+
+	SRReservoir reservoir = SRReservoir::CreateEmpty();
 
 	if (depth > 0.f)
 	{
@@ -169,8 +181,8 @@ void GenerateSpecularReflectionsRaysRTG()
 		{
 			const RayResult rayResult = TraceReflectionRay(worldLocation, normal, roughness, toView, pixel);
 
-			luminance   = rayResult.luminance;
 			hitDistance = rayResult.hitDistance;
+			reservoir   = rayResult.reservoir;
 		}
 		else
 		{
@@ -179,14 +191,19 @@ void GenerateSpecularReflectionsRaysRTG()
 			const float3 ddgiQueryWS = worldLocation;
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, normal, toView);
 			ddgiSampleParams.sampleDirection = specularDominantDir;
-			luminance = DDGISampleLuminance(ddgiSampleParams);
+			const float3 luminance = DDGISampleLuminance(ddgiSampleParams);
+
+			reservoir = SRReservoir::Create(0.f, 0.f, luminance, 1.f);
+			reservoir.AddFlag(SR_RESERVOIR_FLAGS_DDGI_TRACE);
+
 			hitDistance = 0.f;
 		}
 	}
 
-	luminance = LuminanceToExposedLuminance(luminance);
+	reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 
-	u_reflectedLuminanceTexture[pixel] = float4(luminance, hitDistance);
+	const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_traceParams.resolution);
+	u_reservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
 }
 
 [shader("miss")]

@@ -6,6 +6,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
+#include "Utils/ColorSpaces.hlsli"
 
 
 struct CS_INPUT

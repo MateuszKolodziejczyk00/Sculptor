@@ -310,13 +310,14 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in fl
 	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
 	const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
 
-	const float3 specularQueryWS = surface.location + normalize(0.7f * specularGIOffsetDir + 0.3f * surface.geometryNormal) * 1.f;
+	const float3 specularQueryWS = surface.location;
 
 	DDGISampleParams specularSampleParams = CreateDDGISampleParams(specularQueryWS, surface.geometryNormal, viewDir);
 	// Use geometry normal because DDGI can leak quite a bit of light if we sample with normal that is different from actual geometry normal
 	specularSampleParams.sampleDirection = GetSpecularDominantDirection(surface.geometryNormal, reflect(-viewDir, surface.geometryNormal), surface.roughness);
-	specularSampleParams.sampleLocationBiasMultiplier = 0.3f;
+	specularSampleParams.sampleLocationBiasMultiplier = 0.1f;
 	specularSampleParams.minVisibility                = 0.95f;
+	specularSampleParams.minVisibility                = 0.0f;
 	const float3 specularReflections = DDGISampleLuminance(specularSampleParams);
     luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
 #endif // DS_DDGISceneDS

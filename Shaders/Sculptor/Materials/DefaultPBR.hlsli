@@ -8,7 +8,7 @@ CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParam
     {
         float opacity = 1.f;
         opacity = u_materialsTextures[materialData.baseColorTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).a;
-        output.shouldDiscard = opacity < 0.9f;
+        output.shouldDiscard = opacity < 0.92f;
     }
     else
     {
@@ -67,8 +67,10 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     output.shadingNormal  = shadingNormal;
     output.geometryNormal = geometryNormal;
     output.roughness      = roughness;
+    //output.roughness      = 0.55f;
     output.baseColor      = baseColor;
     output.metallic       = metallic;
+    //output.metallic       = 1.f;
     output.emissiveColor  = emissiveColor;
 
     return output;

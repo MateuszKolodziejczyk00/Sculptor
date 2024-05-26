@@ -57,6 +57,7 @@ RenderView::RenderView(RenderScene& renderScene)
 	, m_renderingResolution(0, 0)
 	, m_renderScene(renderScene)
 	, m_aaMode(EAntiAliasingMode::None)
+	, m_renderedFrameIdx(0u)
 {
 	m_viewEntity = renderScene.CreateEntity();
 
@@ -120,6 +121,11 @@ const math::Vector2u& RenderView::GetRenderingRes() const
 math::Vector3u RenderView::GetRenderingRes3D() const
 {
 	return math::Vector3u(m_renderingResolution.x(), m_renderingResolution.y(), 1u);
+}
+
+Uint32 RenderView::GetRenderedFrameIdx() const
+{
+	return m_renderedFrameIdx;
 }
 
 const math::Vector2u RenderView::GetRenderingHalfRes() const
@@ -222,6 +228,8 @@ void RenderView::OnBeginRendering()
 	UpdateCullingData();
 
 	UpdateRenderViewDS();
+
+	++m_renderedFrameIdx;
 }
 
 void RenderView::InitializeRenderSystem(ViewRenderSystem& renderSystem)

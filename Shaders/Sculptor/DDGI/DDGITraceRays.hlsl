@@ -6,6 +6,7 @@
 #include "DDGI/DDGITypes.hlsli"
 #include "Lights/Lighting.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 [shader("raygeneration")]

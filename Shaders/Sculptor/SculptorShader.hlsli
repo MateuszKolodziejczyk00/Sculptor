@@ -77,54 +77,14 @@ bool IsNearlyZero(in float value, in float epsilon = 0.000001f)
 	return abs(value) < epsilon;
 }
 
+bool AreNearlyEqual(in float a, in float b, in float epsilon = 0.000001f)
+{
+	return abs(a - b) < epsilon;
+}
+
 float Luminance(float3 color)
 {
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
-}
-
-// Source: "NEXT GENERATION POST PROCESSING IN CALL OF DUTY: ADVANCED WARFARE"
-float InterleavedGradientNoise(float2 uv)
-{
-	const float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
-	return frac(magic.z * frac(dot(uv, magic.xy)));
-}
-
-float3 RGBToYCoCg(float3 rgb)
-{
-    const float Y = rgb.r * 0.25f + rgb.g * 0.5f + rgb.b * 0.25f;
-    const float Co = rgb.r * 0.5f + rgb.b * -0.5f;
-    const float Cg = rgb.r * -0.25f + rgb.g * 0.5f + rgb.b * -0.25f;
-    return float3(Y, Co, Cg);
-}
-
-float3 YCoCgToRGB(float3 ycocg)
-{
-    const float r = ycocg.x + ycocg.y - ycocg.z;
-    const float g = ycocg.x + ycocg.z;
-    const float b = ycocg.x - ycocg.y - ycocg.z;
-    return float3(r, g, b);
-}
-
-float2x2 NoiseRotation(float noise)
-{
-    float sin;
-    float cos;
-    sincos(2.f * PI * noise, sin, cos);
-
-    return float2x2(cos, -sin,
-                    sin, cos);
-
-}
-
-float2x2 InterleavedGradientNoiseRotation(float2 uv)
-{
-    return NoiseRotation(InterleavedGradientNoise(uv));
-}
-
-
-float Random(float2 seed)
-{
-    return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
 }
 
 
@@ -138,81 +98,6 @@ float S_Curve(float x, float steepness)
 {
     const float val = x * 2.f - 1.f;
     return saturate((atan(val * steepness) / atan(steepness)) * 0.5f + 0.5f);
-}
-
-// Source: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab
-float3 LinearTosRGB(in float3 color)
-{
-    float3 x = color * 12.92f;
-    float3 y = 1.055f * pow(saturate(color), 1.0f / 2.4f) - 0.055f;
-
-    float3 clr = color;
-    clr.r = color.r < 0.0031308f ? x.r : y.r;
-    clr.g = color.g < 0.0031308f ? x.g : y.g;
-    clr.b = color.b < 0.0031308f ? x.b : y.b;
-
-    return clr;
-}
-
-
-float3 VectorInCone(float3 coneDir, float coneHalfAngleRad, float2 random)
-{
-    // Compute the basis vectors for the cone
-    const float3 u = normalize(cross(coneDir, float3(0.f, 1.f, 0.f)));
-    const float3 v = normalize(cross(coneDir, u));
-    
-    const float phi = 2.f * PI * random.y;
-
-    const float minZ = cos(coneHalfAngleRad);
-    const float z = lerp(minZ, 1.f, random.x);
-
-    const float theta = acos(z);
-    
-    // Compute the random vector in spherical coordinates
-    const float3 randomVector = sin(theta) * (cos(phi) * u + sin(phi) * v) + cos(theta) * coneDir;
-    
-    // Normalize the vector and return it
-    return normalize(randomVector);
-}
-
-
-// Based on: Chapter 16.6.1 of "Ray Tracing Gems"
-float3 RandomVectorInCosineWeightedHemisphere(in float3x3 tangent, in float2 random, out float pdf)
-{
-    const float a2 = random.x;
-    const float a = sqrt(a2);
-    const float phi = 2.f * PI * random.y;
-    float sinPhi, cosPhi;
-    sincos(phi, OUT sinPhi, OUT cosPhi);
-
-    const float x = a * cosPhi;
-    const float y = a * sinPhi;
-    const float z = sqrt(1.f - a2);
-
-    const float3 direction = mul(tangent, float3(x, y, z));
-    pdf = z/ PI;
-
-    return direction;
-}
-
-
-// Based on: Chapter 16.6.2 of "Ray Tracing Gems"
-float3 RandomVectorInCosineWeightedHemisphere(in float3 direction, in float2 random, out float pdf)
-{
-    const float a = 1.f - 2.f * random.x;
-    const float b = sqrt(1.f - Pow2(a));
-    const float phi = 2.f * PI * random.y;
-
-    float sinPhi, cosPhi;
-    sincos(phi, OUT sinPhi, OUT cosPhi);
-
-    const float x = direction.x + b * cosPhi;
-    const float y = direction.y + b * sinPhi;
-    const float z = direction.z + a;
-
-    pdf = a / PI;
-
-    return float3(x, y, z);
 }
 
 
@@ -252,46 +137,6 @@ float SignNotZero(float v)
 float2 SignNotZero(float2 v)
 {
     return float2(SignNotZero(v.x), SignNotZero(v.y));
-}
-
-
-float2 OctahedronEncode(in float3 direction)
-{
-    const float l1norm = abs(direction.x) + abs(direction.y) + abs(direction.z);
-    float2 uv = direction.xy * (1.f / l1norm);
-    if (direction.z < 0.f)
-    {
-        uv = (1.f - abs(uv.yx)) * SignNotZero(uv.xy);
-    }
-    return uv * 0.5f + 0.5f;
-}
-
- 
-float3 OctahedronDecode(in float2 coords)
-{
-    coords = coords * 2.f - 1.f;
-
-    float3 direction = float3(coords.x, coords.y, 1.f - abs(coords.x) - abs(coords.y));
-    if (direction.z < 0.f)
-    {
-        direction.xy = (1.f - abs(direction.yx)) * SignNotZero(direction.xy);
-    }
-    return normalize(direction);
-}
-
-// Packing
-
-uint PackFloat4x8(float4 value)
-{
-    const uint4 asUints = value * 255.f;
-    return (asUints.r << 24) | (asUints.g << 16) | (asUints.b << 8) | asUints.a;
-}
-
-
-float4 UnpackFloat4x8(uint value)
-{
-    const uint4 asUints = uint4((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
-    return asUints / 255.f;
 }
 
 // Complex numbers

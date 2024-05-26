@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/GBuffer.hlsli"
+#include "Shading/Shading.hlsli"
 
 
 struct CS_INPUT
@@ -112,9 +113,16 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 
 		const float roughness = u_roughnessTexture.Load(inputPixel);
 
-		u_depthTextureHalfRes[pixel]     = depth;
-		u_motionTextureHalfRes[pixel]    = motion;
-		u_normalsTextureHalfRes[pixel]   = normal * 0.5f + 0.5f;
-		u_roughnessTextureHalfRes[pixel] = roughness;
+		const float4 baseColorMetalic = u_baseColorMetallicTexture.Load(inputPixel);
+
+		float3 diffuseColor = 0.f;
+		float3 specularColor = 0.f;
+		ComputeSurfaceColor(baseColorMetalic.rgb, baseColorMetalic.w, OUT diffuseColor, OUT specularColor);
+
+		u_depthTextureHalfRes[pixel]         = depth;
+		u_motionTextureHalfRes[pixel]        = motion;
+		u_normalsTextureHalfRes[pixel]       = normal * 0.5f + 0.5f;
+		u_roughnessTextureHalfRes[pixel]     = roughness;
+		u_specularColorTextureHalfRes[pixel] = specularColor;
 	}
 }

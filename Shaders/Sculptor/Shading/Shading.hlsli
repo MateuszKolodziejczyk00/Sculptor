@@ -1,3 +1,6 @@
+#ifndef SHADING_HLSLI
+#define SHADING_HLSLI
+
 struct ShadedSurface
 {
 	float3  location;
@@ -17,6 +20,12 @@ void ComputeSurfaceColor(in float3 baseColor, in float metallic, out float3 diff
 	specularColor = lerp(0.04f, baseColor, metallic);
 }
 
+
+float RoughnessToAlpha(in float roughness)
+{
+	return Pow2(roughness);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Diffuse =======================================================================================
 
@@ -26,7 +35,7 @@ float3 Diffuse_Lambert(in float3 diffuseColor)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Frenel ========================================================================================
+// Fresnel =======================================================================================
 
 float3 F_Schlick(in float3 f0, in float dotVH)
 {
@@ -52,20 +61,47 @@ float GGXMasking(in float a2, in float dotNL)
 	return 2.0f / (1.0f + sqrt((1.0f - a2) + a2 / Pow2(dotNL)));
 }
 
+float V_SmithGGXCorrelated(in float a2, in float dotNL, in float dotNV)
+{
+	const float lambda_v = (-1.f + sqrt(a2 * (1.f - Pow2(dotNL)) / Pow2(dotNL) + 1.f)) * 0.5f;
+	const float lambda_l = (-1.f + sqrt(a2 * (1.f - Pow2(dotNV)) / Pow2(dotNV) + 1.f)) * 0.5f;
+	const float g = 1.f / (1.f + lambda_v + lambda_l);
+	return g / (4.f * dotNL * dotNV);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// GGX Distribution ==============================================================================
+
+float D_GGX(in float a2, in float dotNH)
+{
+	const float f = (dotNH * a2 - dotNH) * dotNH + 1.0f;
+	return a2 / (PI * Pow2(f));
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GGX Specular ==================================================================================
 
-float GGX_Specular(in float roughness, in float3 n, in float3 h, in float3 v, in float3 l)
+float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0)
 {
-	float dotNH = clamp(dot(n, h), 0.001f, 1.f);
-	float dotNL = clamp(dot(n, l), 0.001f, 1.f);
-	float dotNV = clamp(dot(n, v), 0.001f, 1.f);
+	const float3 h = normalize(v + l);
+	const float dotNH = saturate(dot(n, h));
+	const float dotNL = saturate(dot(n, l));
+	const float dotNV = saturate(dot(n, v));
+	const float dotVH = saturate(dot(v, h));
 
-	float a2 = Pow2(roughness);
+	if(dotNL <= 0.0f || dotNV <= 0.0f)
+	{
+		return 0.0f;
+	}
 
-	float d = a2 / (PI * Pow2(dotNH * dotNH * (a2 - 1.f) + 1.f));
+	const float a = RoughnessToAlpha(roughness);
+	const float a2 = Pow2(roughness);
 
-	return d * GGXVisibility(a2, dotNL, dotNV);
+	const float3 f   = F_Schlick(f0, dotVH);
+	const float  d   = D_GGX(a2, dotNH);
+	const float  vis = V_SmithGGXCorrelated(a2, dotNL, dotNV);
+
+	return f * d * vis;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,18 +137,13 @@ struct LightingContribution
 
 LightingContribution DoShading(in ShadedSurface surface, in float3 lightDir, in float3 viewDir, in float3 peakIlluminance)
 {
-	const float a = max(Pow2(surface.roughness), 0.01f);
+	const float dotNL = clamp(dot(surface.shadingNormal, lightDir), 0.001f, 1.f);
 
-	const float dotNL = saturate(dot(surface.shadingNormal, lightDir));
-	const float3 h = normalize(viewDir + lightDir);
-	const float dotVH = dot(viewDir, h);
-
-	const float3 fresnel = F_Schlick(surface.specularColor, dotVH);
+	const float3 specular = GGX_Specular(surface.shadingNormal, viewDir, lightDir, surface.roughness, surface.specularColor);
 
 	const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
-	const float3 specular = GGX_Specular(a, surface.shadingNormal, h, viewDir, lightDir);
 
-	const float3 sceneLuminance = (diffuse + specular * fresnel) * dotNL * peakIlluminance;
+	const float3 sceneLuminance = (diffuse + specular) * dotNL * peakIlluminance;
 	const float3 eyeAdaptationLuminance = Diffuse_Lambert(1.f) * dotNL * peakIlluminance;
 
 	return LightingContribution::Create(sceneLuminance, eyeAdaptationLuminance);
@@ -235,3 +266,5 @@ float3 GetSpecularDominantDirection(in float3 normal, in float3 reflected, float
 	const float lerpFactor = smoothness * (sqrt(smoothness)  + roughness);
 	return normalize(lerp(normal, reflected, lerpFactor));
 }
+
+#endif // SHADING_HLSLI

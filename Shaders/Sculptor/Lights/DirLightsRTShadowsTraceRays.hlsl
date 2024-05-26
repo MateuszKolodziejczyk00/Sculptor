@@ -7,6 +7,7 @@
 #include "Utils/BlueNoiseSamples.hlsli"
 #include "Utils/RTVisibilityCommon.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Random.hlsli"
 
 
 [shader("raygeneration")]

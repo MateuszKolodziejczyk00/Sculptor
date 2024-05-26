@@ -1,6 +1,7 @@
 #include "SculptorShader.hlsli"
 
 #include "SpecularReflections/SpecularReflectionsTracingCommon.hlsli"
+#include "Utils/Packing.hlsli"
 
 #define SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL 2
 

@@ -6,6 +6,8 @@
 #include "Utils/Exposure.hlsli"
 #include "Utils/TonemappingOperators.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/ColorSpaces.hlsli"
+#include "Utils/Random.hlsli"
 
 struct CS_INPUT
 {

@@ -374,6 +374,8 @@ struct ShadingViewContext
 
 	rg::RGTextureViewHandle motion;
 	rg::RGTextureViewHandle motionHalfRes;
+	
+	rg::RGTextureViewHandle specularColorHalfRes;
 
 	rg::RGTextureViewHandle normalsHalfRes;
 	rg::RGTextureViewHandle historyNormalsHalfRes;

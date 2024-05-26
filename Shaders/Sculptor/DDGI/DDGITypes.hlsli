@@ -1,6 +1,8 @@
 #ifndef DDGI_TYPES_HLSLI
 #define DDGI_TYPES_HLSLI
 
+#include "Utils/Packing.hlsli"
+
 [[shader_struct(DDGIVolumeGPUParams)]]
 
 
@@ -11,13 +13,13 @@ float3 GetProbeRayDirection(in uint rayIdx, in uint raysNum)
 
 float2 GetProbeOctCoords(in float3 dir)
 {
-	return OctahedronEncode(dir);
+	return OctahedronEncodeNormal(dir);
 }
 
 
 float3 GetProbeOctDirection(in float2 coords)
 {
-	return OctahedronDecode(coords);
+	return OctahedronDecodeNormal(coords);
 }
 
 

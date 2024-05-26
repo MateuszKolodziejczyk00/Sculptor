@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/RTVisibilityCommon.hlsli"
+#include "Utils/Random.hlsli"
 
 
 [shader("raygeneration")]

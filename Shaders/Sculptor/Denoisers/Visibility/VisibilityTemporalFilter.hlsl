@@ -111,7 +111,12 @@ void TemporalFilterCS(CS_INPUT input)
 
 				const float currentMomentsWeight = min(0.1f, 1.f / (historySampleCount + 1));
 				const float2 temporalMoments = float2(currentValue, Pow2(currentValue));
-				const float2 historyTemporalMoments = u_temporalMomentsHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xy;
+
+#if USE_CATMULL_ROM
+				const float2 historyTemporalMoments = saturate(SampleCatmullRom(u_temporalMomentsHistoryTexture, u_linearSampler, historyUV, outputRes));
+#else
+				const float2 historyTemporalMoments = u_temporalMomentsHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
+#endif // USE_CATMULL_ROM
 
 				half2 newTemporalMoments = half2(lerp(historyTemporalMoments, temporalMoments, currentMomentsWeight));
 				newTemporalMoments.x = newTemporalMoments.x == historyTemporalMoments.x ? half(temporalMoments.x) : newTemporalMoments.x;

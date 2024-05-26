@@ -1,5 +1,8 @@
+#ifndef SHADOWS_HLSLI
+#define SHADOWS_HLSLI
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Random.hlsli"
 
 #define PCSS_SHADOW_SAMPLES_NUM 24
 
@@ -563,3 +566,5 @@ float EvaluateCascadedShadowsAtLocation(in float3 worldLocation, in uint firstCa
 }
 
 #endif // RENDER_VIEW_LIGHTING
+
+#endif // SHADOWS_HLSLI

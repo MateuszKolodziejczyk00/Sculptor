@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
+#include "Utils/ColorSpaces.hlsli"
 
 
 struct CS_INPUT
