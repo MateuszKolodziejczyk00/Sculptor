@@ -5,6 +5,12 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 
 
+namespace spt::rdr
+{
+class Buffer;
+} // spt::rdr
+
+
 namespace spt::rg
 {
 class RenderGraphBuilder;
@@ -15,6 +21,7 @@ namespace spt::rsc
 {
 
 class RenderView;
+class RenderScene;
 
 
 namespace sr_restir
@@ -29,28 +36,38 @@ BEGIN_ALIGNED_SHADER_STRUCT(16u, SRPackedReservoir)
 END_SHADER_STRUCT();
 
 
+Uint64                 ComputeReservoirsBufferSize(math::Vector2u resolution);
 rg::RGBufferViewHandle CreateReservoirsBuffer(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
 
 
 struct ResamplingParams
 {
-	explicit ResamplingParams(const RenderView& inRenderView)
-		: renderView(inRenderView)
-	{
-	}
+	explicit ResamplingParams(const RenderView& inRenderView, const RenderScene& inRenderScene);
 
-	const RenderView& renderView;
+	math::Vector2u GetResolution() const;
 
-	rg::RGBufferViewHandle reservoirBuffer;
+	const RenderView&  renderView;
+	const RenderScene& renderScene;
+
+	rg::RGBufferViewHandle initialReservoirBuffer;
 
 	rg::RGTextureViewHandle depthTexture;
 	rg::RGTextureViewHandle normalsTexture;
 	rg::RGTextureViewHandle roughnessTexture;
 	rg::RGTextureViewHandle specularColorTexture;
 
+	rg::RGTextureViewHandle historyDepthTexture;
+	rg::RGTextureViewHandle historyNormalsTexture;
+	rg::RGTextureViewHandle historyRoughnessTexture;
+	rg::RGTextureViewHandle historySpecularColorTexture;
+
 	rg::RGTextureViewHandle outLuminanceHitDistanceTexture;
+	
+	rg::RGTextureViewHandle motionTexture;
 
 	Uint32 spatialResamplingIterations = 1u;
+	Bool   enableTemporalResampling    = true;
+	Bool   enableFinalVisibilityCheck  = true;
 };
 
 
@@ -61,6 +78,19 @@ public:
 	explicit SpatiotemporalResampler();
 
 	void Resample(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params);
+
+private:
+
+	Bool HasValidTemporalData(const ResamplingParams& params) const;
+
+	void PrepareForResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params);
+
+	lib::SharedPtr<rdr::Buffer> CreateTemporalReservoirBuffer(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& resolution) const;
+
+	math::Vector2u m_historyResolution;
+
+	lib::SharedPtr<rdr::Buffer> m_inputTemporalReservoirBuffer;
+	lib::SharedPtr<rdr::Buffer> m_outputTemporalReservoirBuffer;
 };
 
 } // sr_restir

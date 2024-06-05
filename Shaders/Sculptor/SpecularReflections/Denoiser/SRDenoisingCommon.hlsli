@@ -2,7 +2,7 @@
 #define SR_DENOISING_COMMON_HLSLI
 
 
-#define MAX_ACCUMULATED_FRAMES_NUM 38.f
+#define MAX_ACCUMULATED_FRAMES_NUM 24.f
 #define FAST_HISTORY_MAX_ACCUMULATED_FRAMES_NUM 4.f
 
 float GetGGXSpecularLobeTanHalfAngle(in float roughness, in float lobeFraction)
@@ -21,7 +21,7 @@ float GetSpatialFilterMaxNormalAngleDiff(in float roughness, in float normalWeig
 	float maxAngle = atan(GetGGXSpecularLobeTanHalfAngle(roughness, specularLobeAngleFraction));
 	maxAngle *= 10.0 - 9.0 * filterStrength;
 	maxAngle += specularLobeAngleSlack;
-	return min(PI * 0.5f, maxAngle / angleRelaxation);;
+	return min(PI * 0.5f, maxAngle / angleRelaxation);
 }
 
 

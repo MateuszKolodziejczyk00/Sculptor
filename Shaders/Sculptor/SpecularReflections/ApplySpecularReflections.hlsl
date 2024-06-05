@@ -38,7 +38,6 @@ void ApplySpecularReflectionsCS(CS_INPUT input)
 
 		float3 diffuseColor;
 		float3 specularColor;
-		
 		ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
 
 		luminance += specularReflections * specularColor;

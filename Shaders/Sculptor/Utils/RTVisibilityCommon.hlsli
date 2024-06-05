@@ -10,7 +10,7 @@ struct RTVisibilityPayload
 
 
 [shader("miss")]
-void RTVIsibilityRTM(inout RTVisibilityPayload payload)
+void RTVisibilityRTM(inout RTVisibilityPayload payload)
 {
     payload.isVisible = true;
 }

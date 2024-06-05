@@ -8,6 +8,12 @@
 
 #define SR_RESERVOIR_FLAGS_NONE       0
 #define SR_RESERVOIR_FLAGS_DDGI_TRACE 1
+#define SR_RESERVOIR_FLAGS_MISS       2
+
+#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS)
+
+#define SR_RESERVOIR_MAX_M   (255)
+#define SR_RESERVOIR_MAX_AGE (255)
 
 
 class SRReservoir
@@ -21,6 +27,7 @@ class SRReservoir
 		reservoir.M           = 0;
 		reservoir.weightSum   = 0.f;
 		reservoir.flags       = 0;
+		reservoir.age         = 0;
 
 		return reservoir;
 	}
@@ -34,6 +41,7 @@ class SRReservoir
 		reservoir.M           = 1;
 		reservoir.weightSum   = !IsNearlyZero(pdf) ? rcp(pdf) : 0.f;
 		reservoir.flags       = 0;
+		reservoir.age         = 0;
 
 		return reservoir;
 	}
@@ -57,6 +65,10 @@ class SRReservoir
 			hitLocation = other.hitLocation;
 			hitNormal   = other.hitNormal;
 			luminance   = other.luminance;
+			age         = other.age;
+
+			flags &= ~(SR_RESERVOIR_FLAGS_TRANSIENT);
+			flags |= (other.flags & SR_RESERVOIR_FLAGS_TRANSIENT);
 		}
 
 		return updateReservoir;
@@ -88,22 +100,26 @@ class SRReservoir
 	}
 
 	float3 hitLocation;
-	uint flags;
+	uint   flags;
 	float3 hitNormal;
-	uint M;
+	uint   M;
 	float3 luminance;
-	float weightSum;
+	float  weightSum;
+	uint   age;
 };
 
 
 SRPackedReservoir PackReservoir(in SRReservoir reservoir)
 {
+	const int m   = min(reservoir.M,   SR_RESERVOIR_MAX_M);
+	const int age = min(reservoir.age, SR_RESERVOIR_MAX_AGE);
+
 	SRPackedReservoir packedReservoir;
 	packedReservoir.hitLocation     = reservoir.hitLocation;
 	packedReservoir.packedLuminance = EncodeRGBToLogLuv(reservoir.luminance);
 	packedReservoir.hitNormal       = OctahedronEncodeNormal(reservoir.hitNormal);
 	packedReservoir.weight          = reservoir.weightSum;
-	packedReservoir.MAndProps       = reservoir.M | (reservoir.flags << 16);
+	packedReservoir.MAndProps       = m | (reservoir.flags << 8) | (age << 16);
 
 	return packedReservoir;
 }
@@ -116,8 +132,9 @@ SRReservoir UnpackReservoir(in SRPackedReservoir packedReservoir)
 	reservoir.luminance   = DecodeRGBFromLogLuv(packedReservoir.packedLuminance);
 	reservoir.hitNormal   = OctahedronDecodeNormal(packedReservoir.hitNormal);
 	reservoir.weightSum   = packedReservoir.weight;
-	reservoir.M           = packedReservoir.MAndProps & ((1 << 16) - 1);
-	reservoir.flags       = packedReservoir.MAndProps >> 16;
+	reservoir.M           = (packedReservoir.MAndProps) & 255;
+	reservoir.flags       = (packedReservoir.MAndProps >> 8) & 255;
+	reservoir.age         = (packedReservoir.MAndProps >> 16) & 255;
 
 	return reservoir;
 }

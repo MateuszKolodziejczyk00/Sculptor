@@ -17,46 +17,12 @@ struct CS_INPUT
 };
 
 
-#define SPATIAL_RESAMPLING_SAMPLES_NUM 9
+#define SPATIAL_RESAMPLING_SAMPLES_NUM 2
 
 
-static const float2 resamplingSamples[SPATIAL_RESAMPLING_SAMPLES_NUM] = {
-	float2(-0.474, 0.054),
-	float2(0.650, -0.644),
-	float2(0.136, 0.580),
-	float2(0.914, 0.802),
-	float2(-0.753, -0.732),
-	float2(-0.216, -0.448),
-	float2(0.368, -0.864),
-	float2(-0.522, 0.742),
-	float2(0.484, 0.006)
-};
-
-
-#define RESAMPLE_RADIUS 5.f
-
-
-MinimalSurfaceInfo GetMinimalSurfaceInfo(in uint2 pixel)
+float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 {
-	const float depth = u_depthTexture.Load(uint3(pixel, 0));
-	const float2 uv = (pixel + 0.5f) * u_resamplingConstants.pixelSize;
-	const float3 ndc = float3(uv * 2.f - 1.f, depth);
-
-	const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
-	const float3 sampleNormal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
-	const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
-
-	const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
-	const float3 f0 = u_specularColorTexture.Load(uint3(pixel, 0)).rgb;
-
-	MinimalSurfaceInfo pixelSurface;
-	pixelSurface.location = sampleLocation;
-	pixelSurface.n = sampleNormal;
-	pixelSurface.v = toView;
-	pixelSurface.f0 = f0;
-	pixelSurface.roughness = roughness;
-
-	return pixelSurface;
+	return 32.f;
 }
 
 
@@ -82,30 +48,50 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		float selectedTargetPdf = 0.f;
 
-		const MinimalSurfaceInfo pixelSurface = GetMinimalSurfaceInfo(pixel);
-		{
-			const float targetPdf = EvaluateTargetPdf(pixelSurface, reservoir.hitLocation, reservoir.luminance);
+		MinimalGBuffer gBuffer;
+		gBuffer.depthTexture         = u_depthTexture;
+		gBuffer.normalsTexture       = u_normalsTexture;
+		gBuffer.specularColorTexture = u_specularColorTexture;
+		gBuffer.roughnessTexture     = u_roughnessTexture;
 
-			newReservoir.Update(reservoir, 1.f, targetPdf);
+		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
+		{
+			const float targetPdf = EvaluateTargetPdf(centerPixelSurface, reservoir.hitLocation, reservoir.luminance);
+
+			newReservoir.Update(reservoir, 0.f, targetPdf);
 
 			selectedTargetPdf = targetPdf;
 		}
 
-		RngState rng = RngState::Create(PCGHashFloat2(pixel, u_resamplingConstants.frameIdx));
+		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 
-		const float2x2 randomRotation = NoiseRotation(rng.Next());
+		const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.M);
 
 		for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 		{
-			const int2 offset = mul(resamplingSamples[sampleIdx] * RESAMPLE_RADIUS, randomRotation);
+			const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
+
+			int2 offsetInPixels = round(offset);
+			if(all(offsetInPixels == 0))
+			{
+				if(abs(offsetInPixels.x) > abs(offsetInPixels.y))
+				{
+					offsetInPixels.x = SignNotZero(offset.x);
+				}
+				else
+				{
+					offsetInPixels.y = SignNotZero(offset.y);
+				}
+			}
+
 			const int2 samplePixel = pixel + offset;
 
 			if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
 			{
-				const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(samplePixel);
+				const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
 
-				if(!AreSurfacesSimilar(pixelSurface, reuseSurface)
-					|| !AreMaterialsSimilar(pixelSurface, reuseSurface))
+				if(!AreSurfacesSimilar(centerPixelSurface, reuseSurface)
+					|| !AreMaterialsSimilar(centerPixelSurface, reuseSurface))
 				{
 					continue;
 				}
@@ -118,15 +104,20 @@ void ResampleSpatiallyCS(CS_INPUT input)
 					continue;
 				}
 
-				float jacobian = EvaluateJacobian(pixelSurface.location, reuseSurface.location, reuseReservoir);
+				if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
+				{
+					continue;
+				}
 
-				if(!ValidateJabobian(INOUT jacobian))
+				const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
+
+				if(jacobian < 0.f)
 				{
 					continue;
 				}
 
 				const float targetPdf = EvaluateTargetPdf(reuseSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
-				if(isnan(targetPdf) || isinf(targetPdf))
+				if(isnan(targetPdf) || isinf(targetPdf) || IsNearlyZero(targetPdf * jacobian))
 				{
 					continue;
 				}

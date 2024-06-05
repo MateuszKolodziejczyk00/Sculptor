@@ -8,7 +8,6 @@
 #include "Shading/Shading.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
-
 struct CS_INPUT
 {
 	uint3 globalID : SV_DispatchThreadID;
@@ -55,11 +54,17 @@ void ResolveReservoirsCS(CS_INPUT input)
 		else
 		{
 			const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
-			Lo = specular * luminance; 
+			Lo = specular * luminance * dot(sampleNormal, lightDir);
 		}
+
 
 		// demodulate specular
 		Lo /= max(0.01f, f0);
+
+		if(any(isnan(Lo)) || any(isinf(Lo)))
+		{
+			Lo = 0.f;
+		}
 
 		u_luminanceHitDistanceTexture[pixel] = float4(Lo, hitDistance);
 	}

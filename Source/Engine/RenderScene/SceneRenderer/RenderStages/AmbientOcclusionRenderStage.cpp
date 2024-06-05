@@ -66,7 +66,7 @@ static rdr::PipelineStateID CreateAORayTracingPipeline(const RayTracingRenderSce
 
 	rdr::RayTracingPipelineShaders rtShaders;
 	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateAmbientOcclusionRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVIsibilityRTM"), compilationSettings));
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVisibilityRTM"), compilationSettings));
 
 	const lib::HashedString materialTechnique = "RTVisibility";
 	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
@@ -133,12 +133,12 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 	const rg::RGTextureViewHandle aoHalfResTexture = trace_rays::TraceAmbientOcclusionRays(graphBuilder, context, aoRenderingResolution);
 
 	visibility_denoiser::Denoiser::Params denoiserParams(renderView);
-	denoiserParams.historyDepthTexture            = context.historyDepthTextureHalfRes;
-	denoiserParams.currentDepthTexture            = context.depthTextureHalfRes;
-	denoiserParams.motionTexture                  = context.motionTextureHalfRes;
-	denoiserParams.normalsTexture         = context.normalsTextureHalfRes;
-	denoiserParams.currentFrameDefaultWeight      = 0.045f;
-	denoiserParams.accumulatedFramesMaxCount      = 32.f;
+	denoiserParams.historyDepthTexture       = context.historyDepthTextureHalfRes;
+	denoiserParams.currentDepthTexture       = context.depthTextureHalfRes;
+	denoiserParams.motionTexture             = context.motionTextureHalfRes;
+	denoiserParams.normalsTexture            = context.normalsTextureHalfRes;
+	denoiserParams.currentFrameDefaultWeight = 0.045f;
+	denoiserParams.accumulatedFramesMaxCount = 32.f;
 	context.denoiser.Denoise(graphBuilder, aoHalfResTexture, denoiserParams);
 
 	upsampler::DepthBasedUpsampleParams upsampleParams;

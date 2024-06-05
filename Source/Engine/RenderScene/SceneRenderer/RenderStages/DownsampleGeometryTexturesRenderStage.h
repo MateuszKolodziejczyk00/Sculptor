@@ -20,6 +20,12 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_normalsTextureHalfRes;
 	lib::SharedPtr<rdr::TextureView> m_historyNormalsTextureHalfRes;
+
+	lib::SharedPtr<rdr::TextureView> m_roughnessTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> m_historyRoughnessTextureHalfRes;
+
+	lib::SharedPtr<rdr::TextureView> m_specularColorTextureHalfRes;
+	lib::SharedPtr<rdr::TextureView> m_historySpecularColorTextureHalfRes;
 };
 
 } // spt::rsc

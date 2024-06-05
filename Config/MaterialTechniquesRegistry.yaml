@@ -1,11 +1,4 @@
 Techniques:
-  ? Name: SMForwardOpaque
-  : ShadersPath:
-      Name: Sculptor/StaticMeshes/SMForwardOpaque.hlsl
-    AllowsNoMaterial: false
-    UseMeshShadersPipeline: false
-    UseTaskShader: false
-    RayTracingWithClosestHit: true
   ? Name: GeometryVisibility
   : ShadersPath:
       Name: Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl
@@ -13,16 +6,16 @@ Techniques:
     UseMeshShadersPipeline: true
     UseTaskShader: true
     RayTracingWithClosestHit: false
-  ? Name: SMDepthOnly
+  ? Name: SMForwardOpaque
   : ShadersPath:
-      Name: Sculptor/StaticMeshes/SMDepthOnly.hlsl
+      Name: Sculptor/StaticMeshes/SMForwardOpaque.hlsl
     AllowsNoMaterial: false
     UseMeshShadersPipeline: false
     UseTaskShader: false
     RayTracingWithClosestHit: true
-  ? Name: DDGI
+  ? Name: SMDepthOnly
   : ShadersPath:
-      Name: Sculptor/StaticMeshes/SMDDGI.hlsl
+      Name: Sculptor/StaticMeshes/SMDepthOnly.hlsl
     AllowsNoMaterial: false
     UseMeshShadersPipeline: false
     UseTaskShader: false
@@ -34,6 +27,13 @@ Techniques:
     UseMeshShadersPipeline: true
     UseTaskShader: false
     RayTracingWithClosestHit: false
+  ? Name: DDGI
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMDDGI.hlsl
+    AllowsNoMaterial: false
+    UseMeshShadersPipeline: false
+    UseTaskShader: false
+    RayTracingWithClosestHit: true
   ? Name: RTVisibility
   : ShadersPath:
       Name: Sculptor/StaticMeshes/SMRTVisibility.hlsl

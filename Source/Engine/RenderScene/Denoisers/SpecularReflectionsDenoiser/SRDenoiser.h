@@ -48,6 +48,7 @@ public:
 		rg::RGTextureViewHandle currentDepthTexture;
 
 		rg::RGTextureViewHandle roughnessTexture;
+		rg::RGTextureViewHandle historyRoughnessTexture;
 
 		rg::RGTextureViewHandle motionTexture;
 
@@ -79,9 +80,6 @@ private:
 	
 	lib::SharedPtr<rdr::TextureView> m_temporalVarianceTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyTemporalVarianceTexture;
-	
-	lib::SharedPtr<rdr::TextureView> m_roughnessTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyRoughnessTexture;
 
 	Bool m_hasValidHistory;
 };

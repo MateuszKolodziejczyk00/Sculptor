@@ -98,30 +98,23 @@ uint PCGHash(in uint input)
 }
 
 
-float2 PCGHashFloat2(in uint2 pixel, in uint frame)
-{
-	const uint state = pixel.x * 747796405u + 2891336453u + pixel.y * 277803737u + frame * 747796405u;
-	const uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-	return float2((word >> 22u) ^ word, (word >> 7u) ^ word);
-}
-
-
 class RngState
 {
-	static RngState Create(in float2 seed)
+	static RngState Create(in uint2 pixel, in uint frame)
 	{
 		RngState state;
-		state.seed = seed;
+		state.seed = PCGHash(pixel.x + frame * 23u) + PCGHash(pixel.y + frame * 17u);
+		state.seed = PCGHash(state.seed);
 		return state;
 	}
 
 	float Next()
 	{
-		seed = Random(seed);
-		return seed.x;
+		seed = PCGHash(seed);
+		return seed / 4294967296.f;
 	}
 
-	float2 seed;
+	uint seed;
 };
 
 #endif // RANDOM_HLSLI

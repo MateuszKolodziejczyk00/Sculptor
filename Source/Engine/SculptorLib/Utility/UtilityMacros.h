@@ -5,6 +5,7 @@
 #define SPT_NODISCARD [[nodiscard]]
 #define SPT_INLINE inline
 
+#define IN
 #define OUT
 #define INOUT
 

@@ -294,6 +294,17 @@ void RenderGraphBuilder::FillFullBuffer(const RenderGraphDebugName& commandName,
 	FillBuffer(commandName, bufferView, 0, bufferView->GetSize(), data);
 }
 
+void RenderGraphBuilder::CopyFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, RGBufferViewHandle destBufferView)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(sourceBufferView.IsValid());
+	SPT_CHECK(destBufferView.IsValid());
+	SPT_CHECK(sourceBufferView->GetSize() == destBufferView->GetSize());
+
+	CopyBuffer(commandName, sourceBufferView, 0, destBufferView, 0, sourceBufferView->GetSize());
+}
+
 void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, Uint64 sourceOffset, RGBufferViewHandle destBufferView, Uint64 destOffset, Uint64 range)
 {
 	SPT_PROFILER_FUNCTION();

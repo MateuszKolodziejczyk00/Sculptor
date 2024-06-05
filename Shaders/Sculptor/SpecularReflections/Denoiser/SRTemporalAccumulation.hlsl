@@ -25,7 +25,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
-		u_destRoughnessTexture[pixel] = roughness;
 
 		if(roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
 		{

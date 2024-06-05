@@ -4,7 +4,7 @@
 #include "Shading/Shading.hlsli"
 
 #define SPECULAR_TRACE_MAX_ROUGHNESS 0.05f
-#define GLOSSY_TRACE_MAX_ROUGHNESS 0.9f
+#define GLOSSY_TRACE_MAX_ROUGHNESS 1.99f
 
 
 float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0)
@@ -13,7 +13,7 @@ float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness
 
 	if(roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
-		specular = GGX_Specular(n, v, l, roughness, f0);
+		return GGX_Specular(n, v, l, roughness, f0);
 	}
 	else
 	{

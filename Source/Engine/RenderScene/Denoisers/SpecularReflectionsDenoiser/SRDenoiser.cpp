@@ -72,21 +72,6 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 		m_historyTemporalVarianceTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Temporal Variance"),
 																					temporalVarianceTextureDef, rhi::EMemoryUsage::GPUOnly);
 
-
-
-		rhi::TextureDefinition roughnessTextureDef;
-		roughnessTextureDef.resolution = resolution;
-		roughnessTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
-#if SPT_DEBUG || SPT_DEVELOPMENT
-		lib::AddFlag(roughnessTextureDef.usage, rhi::ETextureUsage::TransferSource);
-#endif
-		roughnessTextureDef.format     = rhi::EFragmentFormat::R16_UN_Float;
-		m_roughnessTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Roughness"),
-																	  roughnessTextureDef, rhi::EMemoryUsage::GPUOnly);
-		
-		m_historyRoughnessTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Roughness"),
-																			 roughnessTextureDef, rhi::EMemoryUsage::GPUOnly);
-
 		m_hasValidHistory = false;
 	}
 }
@@ -102,8 +87,6 @@ rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuild
 	const rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyAccumulatedSamplesNumTexture));
 	const rg::RGTextureViewHandle temporalVarianceTexture             = graphBuilder.AcquireExternalTextureView(lib::Ref(m_temporalVarianceTexture));
 	const rg::RGTextureViewHandle historyTemporalVarianceTexture      = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyTemporalVarianceTexture));
-	const rg::RGTextureViewHandle outputRoughnessTexture              = graphBuilder.AcquireExternalTextureView(lib::Ref(m_roughnessTexture));
-	const rg::RGTextureViewHandle historyRoughnessTexture             = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyRoughnessTexture));
 	const rg::RGTextureViewHandle fastHistoryTexture                  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_fastHistoryTexture));
 	const rg::RGTextureViewHandle fastHistoryOutputTexture            = graphBuilder.AcquireExternalTextureView(lib::Ref(m_fastHistoryOutputTexture));
 
@@ -127,8 +110,7 @@ rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuild
 		temporalAccumulationParameters.historyAccumulatedSamplesNumTexture = historyAccumulatedSamplesNumTexture;
 		temporalAccumulationParameters.temporalVarianceTexture             = temporalVarianceTexture;
 		temporalAccumulationParameters.historyTemporalVarianceTexture      = historyTemporalVarianceTexture;
-		temporalAccumulationParameters.historyRoughnessTexture             = historyRoughnessTexture;
-		temporalAccumulationParameters.outputRoughnessTexture              = outputRoughnessTexture;
+		temporalAccumulationParameters.historyRoughnessTexture             = params.historyRoughnessTexture;
 		temporalAccumulationParameters.reprojectionConfidenceTexture       = reprojectionConfidence;
 		temporalAccumulationParameters.fastHistoryTexture                  = fastHistoryTexture;
 		temporalAccumulationParameters.fastHistoryOutputTexture            = fastHistoryOutputTexture;
@@ -137,7 +119,6 @@ rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuild
 	}
 	else
 	{
-		graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy Roughness", m_debugName.AsString()), params.roughnessTexture, outputRoughnessTexture);
 		graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy Fast History", m_debugName.AsString()), denoisedTexture, fastHistoryOutputTexture);
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear reprojection confidence", m_debugName.AsString()), reprojectionConfidence, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Moments", m_debugName.AsString()), temporalVarianceTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
@@ -193,7 +174,6 @@ rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuild
 
 	std::swap(m_accumulatedSamplesNumTexture, m_historyAccumulatedSamplesNumTexture);
 	std::swap(m_temporalVarianceTexture, m_historyTemporalVarianceTexture);
-	std::swap(m_roughnessTexture, m_historyRoughnessTexture);
 	std::swap(m_fastHistoryTexture, m_fastHistoryOutputTexture);
 	m_hasValidHistory = true;
 

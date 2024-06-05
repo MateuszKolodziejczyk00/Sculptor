@@ -33,7 +33,6 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_historyNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_fastHistoryOutputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_fastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_destRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historyAccumulatedSamplesNumTexture)
@@ -79,7 +78,6 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_historyNormalsTexture                = params.historyNormalsTexture;
 	ds->u_fastHistoryOutputTexture             = params.fastHistoryOutputTexture;
 	ds->u_fastHistoryTexture                   = params.fastHistoryTexture;
-	ds->u_destRoughnessTexture                 = params.outputRoughnessTexture;
 	ds->u_historyRoughnessTexture              = params.historyRoughnessTexture;
 	ds->u_roughnessTexture                     = params.currentRoughnessTexture;
 	ds->u_accumulatedSamplesNumTexture         = params.accumulatedSamplesNumTexture;

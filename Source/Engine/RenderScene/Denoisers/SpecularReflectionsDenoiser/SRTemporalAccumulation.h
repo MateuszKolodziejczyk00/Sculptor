@@ -36,7 +36,6 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle historyNormalsTexture;
 
 	rg::RGTextureViewHandle historyRoughnessTexture;
-	rg::RGTextureViewHandle outputRoughnessTexture;
 
 	rg::RGTextureViewHandle fastHistoryTexture;
 	rg::RGTextureViewHandle fastHistoryOutputTexture;
