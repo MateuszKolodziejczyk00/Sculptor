@@ -7,8 +7,7 @@
 
 
 #define SR_RESERVOIR_FLAGS_NONE       0
-#define SR_RESERVOIR_FLAGS_DDGI_TRACE 1
-#define SR_RESERVOIR_FLAGS_MISS       2
+#define SR_RESERVOIR_FLAGS_MISS       1
 
 #define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS)
 
@@ -96,7 +95,7 @@ class SRReservoir
 
 	bool CanCombine(in SRReservoir other)
 	{
-		return !other.HasFlag(SR_RESERVOIR_FLAGS_DDGI_TRACE);
+		return true;
 	}
 
 	float3 hitLocation;

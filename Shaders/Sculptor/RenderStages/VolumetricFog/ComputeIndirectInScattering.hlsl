@@ -43,7 +43,7 @@ void ComputeIndirectInScatteringCS(CS_INPUT input)
 		DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(fogFroxelWorldLocation, 0.f, 0.f);
 		ddgiSampleParams.sampleLocationBiasMultiplier = 0.f;
 		ddgiSampleParams.minVisibility                = 0.95f;
-		const float3 indirect = DDGISampleAverageLuminance(ddgiSampleParams);
+		const float3 indirect = DDGISampleAverageLuminance(ddgiSampleParams, DDGISampleContext::Create());
 		const float phaseFunction = 1.f / (4.f * PI); // no anisotrophy
 
 		const float3 inScattering = indirect * phaseFunction;

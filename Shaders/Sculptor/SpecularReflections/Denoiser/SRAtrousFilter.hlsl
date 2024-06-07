@@ -40,7 +40,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 
-		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS || roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
+		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			u_outputTexture[pixel] = u_inputTexture.Load(uint3(pixel, 0));
 			return;

@@ -3,8 +3,7 @@
 
 #include "Shading/Shading.hlsli"
 
-#define SPECULAR_TRACE_MAX_ROUGHNESS 0.05f
-#define GLOSSY_TRACE_MAX_ROUGHNESS 1.99f
+#define SPECULAR_TRACE_MAX_ROUGHNESS 0.01f
 
 
 float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0)
@@ -18,7 +17,7 @@ float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness
 	else
 	{
 		const float3 h = normalize(v + l);
-		const float dotVH = saturate(dot(v, h));
+		const float dotVH = max(dot(v, h), 0.001f);
 		const float3 f = F_Schlick(f0, dotVH);
 		specular = f;
 	}

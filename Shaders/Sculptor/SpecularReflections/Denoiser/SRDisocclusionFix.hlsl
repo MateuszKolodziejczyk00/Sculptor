@@ -32,7 +32,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 		const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(int3(pixel, 0));
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 
-		if(accumulatedSamplesNum > 3 || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS || roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
+		if(accumulatedSamplesNum > 3 || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			u_outputLuminanceTexture[pixel] = u_inputLuminanceTexture.Load(uint3(pixel, 0));
 			return;

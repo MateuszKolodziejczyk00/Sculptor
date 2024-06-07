@@ -8,7 +8,7 @@ CustomOpacityOutput EvaluateCustomOpacity(MaterialEvaluationParameters evalParam
     {
         float opacity = 1.f;
         opacity = u_materialsTextures[materialData.baseColorTextureIdx].SPT_MATERIAL_SAMPLE(u_materialTexturesSampler, evalParams.uv).a;
-        output.shouldDiscard = opacity < 0.92f;
+        output.shouldDiscard = opacity < 0.8f;
     }
     else
     {

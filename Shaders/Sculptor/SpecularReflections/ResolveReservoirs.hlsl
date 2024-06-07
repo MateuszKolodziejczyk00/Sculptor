@@ -42,21 +42,8 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		float3 luminance = reservoir.luminance * reservoir.weightSum;
 
-		float3 Lo = 0.f;
-		if(reservoir.HasFlag(SR_RESERVOIR_FLAGS_DDGI_TRACE))
-		{
-			// use preintegrated brdf for ddgi traces
-			const float NdotV = saturate(dot(sampleNormal, toView));
-			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
-
-			Lo = luminance * (f0 * integratedBRDF.x + integratedBRDF.y);
-		}
-		else
-		{
-			const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
-			Lo = specular * luminance * dot(sampleNormal, lightDir);
-		}
-
+		const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
+		float3 Lo = specular * luminance * dot(sampleNormal, lightDir);
 
 		// demodulate specular
 		Lo /= max(0.01f, f0);

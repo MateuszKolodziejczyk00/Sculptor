@@ -36,16 +36,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.resolution);
 		const SRReservoir reservoir = UnpackReservoir(u_inReservoirsBuffer[reservoirIdx]);
 
-		SRReservoir newReservoir = SRReservoir::CreateEmpty();
-
-		if(reservoir.HasFlag(SR_RESERVOIR_FLAGS_DDGI_TRACE))
-		{
-			newReservoir = reservoir;
-
-			u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
-			return;
-		}
-
 		float selectedTargetPdf = 0.f;
 
 		MinimalGBuffer gBuffer;
@@ -55,6 +45,8 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		gBuffer.roughnessTexture     = u_roughnessTexture;
 
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
+
+		SRReservoir newReservoir = SRReservoir::CreateEmpty();
 		{
 			const float targetPdf = EvaluateTargetPdf(centerPixelSurface, reservoir.hitLocation, reservoir.luminance);
 

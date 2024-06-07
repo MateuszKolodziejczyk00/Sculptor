@@ -218,7 +218,15 @@ struct ShadowRayPayload
 };
 
 
-float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in float3 specularGIOffsetDir)
+
+#ifdef DS_DDGISceneDS
+template<typename TDDGISampleContext>
+#endif // DS_DDGISceneDS
+float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
+#ifdef DS_DDGISceneDS
+, in TDDGISampleContext ddgiSampleContext
+#endif // DS_DDGISceneDS
+)
 {
 	float3 luminance = 0.f;
 
@@ -304,7 +312,9 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in fl
 #ifdef DS_DDGISceneDS
 	DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
 	diffuseSampleParams.sampleDirection = surface.shadingNormal;
-	const float3 indirectIlluminance = DDGISampleIlluminance(diffuseSampleParams);
+	diffuseSampleParams.minVisibility   = 0.75f;
+	diffuseSampleParams.sampleLocationBiasMultiplier = 0.8f;
+	const float3 indirectIlluminance = DDGISampleIlluminance(diffuseSampleParams, DDGISampleContext::Create());
     luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor;
 
 	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
@@ -315,10 +325,9 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, in fl
 	DDGISampleParams specularSampleParams = CreateDDGISampleParams(specularQueryWS, surface.geometryNormal, viewDir);
 	// Use geometry normal because DDGI can leak quite a bit of light if we sample with normal that is different from actual geometry normal
 	specularSampleParams.sampleDirection = GetSpecularDominantDirection(surface.geometryNormal, reflect(-viewDir, surface.geometryNormal), surface.roughness);
-	specularSampleParams.sampleLocationBiasMultiplier = 0.1f;
-	specularSampleParams.minVisibility                = 0.95f;
-	specularSampleParams.minVisibility                = 0.0f;
-	const float3 specularReflections = DDGISampleLuminance(specularSampleParams);
+	specularSampleParams.minVisibility   = 0.75f;
+	specularSampleParams.sampleLocationBiasMultiplier = 0.8f;
+	const float3 specularReflections = DDGISampleLuminance(specularSampleParams, DDGISampleContext::Create());
     luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
 #endif // DS_DDGISceneDS
 

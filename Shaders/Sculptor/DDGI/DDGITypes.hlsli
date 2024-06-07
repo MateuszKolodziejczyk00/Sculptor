@@ -240,10 +240,59 @@ float2 SampleProbeHitDistance(in const DDGIVolumeGPUParams volumeParams, in uint
 }
 
 
-template<typename TSampledDataType, typename TSampleCallback>
-TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TSampleCallback sampleCallback)
+struct DDGISampleContext
 {
-	const float3 biasedWorldLocation = ComputeDDGIBiasedSampleLocation(volumeParams, sampleParams);
+	static DDGISampleContext Create()
+	{
+		DDGISampleContext context;
+		return context;
+	}
+
+	float3 ComputeBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
+	{
+		return ComputeDDGIBiasedSampleLocation(volumeParams, sampleParams);
+	}
+};
+
+
+struct DDGISecondaryBounceSampleContext
+{
+	static DDGISecondaryBounceSampleContext Create(in float3 inPrevBounceLocation, in float3 inPrevBounceViewDirection)
+	{
+		DDGISecondaryBounceSampleContext context;
+		context.prevBounceLocation      = inPrevBounceLocation;
+		context.prevBounceViewDirection = inPrevBounceViewDirection;
+		return context;
+	}
+
+	float3 ComputeBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
+	{
+		const float bias = length(volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier);
+
+		float3 toPrevBounce = prevBounceLocation - sampleParams.worldLocation;
+		const float distToPrevBounce = length(toPrevBounce);
+		toPrevBounce /= distToPrevBounce;
+
+		if(bias > distToPrevBounce)
+		{
+			const float biasFromPrevBounce = bias - distToPrevBounce;
+			return prevBounceLocation + prevBounceViewDirection * biasFromPrevBounce;
+		}
+		else
+		{
+			return sampleParams.worldLocation + toPrevBounce * bias;
+		}
+	}
+
+	float3 prevBounceLocation;
+	float3 prevBounceViewDirection;
+};
+
+
+template<typename TSampledDataType, typename TSampleCallback, typename TSampleContext>
+TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams, in TSampleContext sampleContext, in TSampleCallback sampleCallback)
+{
+	const float3 biasedWorldLocation = sampleContext.ComputeBiasedSampleLocation(volumeParams, sampleParams);
 
 	const uint3 baseProbeCoords = GetProbeCoordsAtWorldLocation(volumeParams, biasedWorldLocation);
 	const float3 baseProbeWorldLocation = GetProbeWorldLocation(volumeParams, baseProbeCoords);
@@ -358,14 +407,16 @@ class DDGILuminanceSampleCallback
 };
 
 
-float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
+template<typename TSampleContext>
+float3 DDGISampleLuminanceInternal(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
 {
 	DDGILuminanceSampleCallback callback;
-	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
+	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback);
 }
 
 
-float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
+template<typename TSampleContext>
+float3 DDGISampleLuminance(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -374,7 +425,7 @@ float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
 		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
 		{
 			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
-			const float3 luminance = DDGISampleLuminanceInternal(sampleParams, volumeParams);
+			const float3 luminance = DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
 			if(all(luminance >= 0.0f))
 			{
 				return luminance;
@@ -386,7 +437,8 @@ float3 DDGISampleLuminance(in DDGISampleParams sampleParams)
 }
 
 
-float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams)
+template<typename TSampleContext>
+float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -399,7 +451,7 @@ float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams)
 		if (sampleInfo.volumeIndices[i] != IDX_NONE_32 && weightSum < 0.999f)
 		{
 			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
-			const float3 luminanceSample = DDGISampleLuminanceInternal(sampleParams, volumeParams);
+			const float3 luminanceSample = DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
 			if(all(luminanceSample > 0.0f))
 			{
 				const float weight = sampleInfo.weights[i];
@@ -442,14 +494,16 @@ class AverageLuminanceSampleCallback
 };
 
 
-float3 DDGISampleAverageLuminanceInternal(in const DDGISampleParams sampleParams, in const DDGIVolumeGPUParams volumeParams)
+template<typename TSampleContext>
+float3 DDGISampleAverageLuminanceInternal(in const DDGISampleParams sampleParams, in const TSampleContext context, in const DDGIVolumeGPUParams volumeParams)
 {
 	AverageLuminanceSampleCallback callback;
-	return DDGISampleProbes<float3>(volumeParams, sampleParams, callback);
+	return DDGISampleProbes<float3>(volumeParams, sampleParams, context, callback);
 }
 
 
-float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams)
+template<typename TSampleContext>
+float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
@@ -458,7 +512,7 @@ float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams)
 		if (sampleInfo.volumeIndices[i] != IDX_NONE_32)
 		{
 			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
-			const float3 luminance = DDGISampleAverageLuminanceInternal(sampleParams, volumeParams);
+			const float3 luminance = DDGISampleAverageLuminanceInternal(sampleParams, context, volumeParams);
 			if(all(luminance >= 0.0f))
 			{
 				return luminance;
@@ -470,17 +524,19 @@ float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams)
 }
 
 
-float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams)
+template<typename TSampleContext>
+float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
-	const float3 luminance = DDGISampleLuminanceBlended(sampleParams);
+	const float3 luminance = DDGISampleLuminanceBlended(sampleParams, context);
 
 	return luminance * 2.f * PI; // multiply by integration domain area
 }
 
 
-float3 DDGISampleIlluminance(in DDGISampleParams sampleParams)
+template<typename TSampleContext>
+float3 DDGISampleIlluminance(in DDGISampleParams sampleParams, in const TSampleContext context)
 {
-	const float3 luminance = DDGISampleLuminance(sampleParams);
+	const float3 luminance = DDGISampleLuminance(sampleParams, context);
 
 	return luminance * 2.f * PI; // multiply by integration domain area
 }

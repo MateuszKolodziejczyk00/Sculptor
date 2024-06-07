@@ -87,7 +87,7 @@ void DeferredShadingCS(CS_INPUT input)
 #ifdef ENABLE_DDGI
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
 			ddgiSampleParams.sampleDirection = surface.shadingNormal;
-			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams) * ambientOcclusion;
+			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams, DDGISampleContext::Create()) * ambientOcclusion;
 #endif // ENABLE_DDGI
 
 			const float3 indirectDiffuse = Diffuse_Lambert(indirectIlluminance);

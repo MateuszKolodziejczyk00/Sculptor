@@ -70,7 +70,7 @@ void SRClampHistoryCS(CS_INPUT input)
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 	
 		const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(pixel);
-		if(accumulatedSamplesNum == 0 ||accumulatedSamplesNum >= MAX_ACCUMULATED_FRAMES_NUM || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS || roughness > GLOSSY_TRACE_MAX_ROUGHNESS)
+		if(accumulatedSamplesNum == 0 ||accumulatedSamplesNum >= MAX_ACCUMULATED_FRAMES_NUM || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			return;
 		}

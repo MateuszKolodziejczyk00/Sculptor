@@ -32,14 +32,15 @@ float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 t
 	}
 	else
 	{
-		uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
+#if USE_BLUE_NOISE_SAMPLES
+		const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
+#endif // USE_BLUE_NOISE_SAMPLES
 
 		uint attempt = 0;
 		while(true)
 		{
-			const uint currentSampleIdx = (sampleIdx + attempt) & 255u;
-
 #if USE_BLUE_NOISE_SAMPLES
+			const uint currentSampleIdx = (sampleIdx + attempt) & 255u;
 			const float2 noise = frac(g_BlueNoiseSamples[currentSampleIdx] + u_traceParams.random);
 #else
 			RngState rng = RngState::Create(pixel, u_gpuSceneFrameConstants.frameIdx * 3);
@@ -118,7 +119,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 			surface.roughness = payload.roughness;
 			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
-			luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, surfNormal);
+			luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, DDGISecondaryBounceSampleContext::Create(surfWorldLocation, toView));
 
 			const float3 emissive = payload.emissive;
 			luminance += emissive;
@@ -196,27 +197,10 @@ void GenerateSpecularReflectionsRaysRTG()
 
 		const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);
 
-		if(roughness <= GLOSSY_TRACE_MAX_ROUGHNESS)
-		{
-			const RayResult rayResult = TraceReflectionRay(worldLocation, normal, roughness, toView, pixel);
+		const RayResult rayResult = TraceReflectionRay(worldLocation, normal, roughness, toView, pixel);
 
-			hitDistance = rayResult.hitDistance;
-			reservoir   = rayResult.reservoir;
-		}
-		else
-		{
-			const float3 reflectedVector = reflect(-toView, normal);
-			const float3 specularDominantDir = GetSpecularDominantDirection(normal, reflectedVector, roughness);
-			const float3 ddgiQueryWS = worldLocation;
-			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(ddgiQueryWS, normal, toView);
-			ddgiSampleParams.sampleDirection = specularDominantDir;
-			const float3 luminance = DDGISampleLuminance(ddgiSampleParams);
-
-			reservoir = SRReservoir::Create(0.f, 0.f, luminance, 1.f);
-			reservoir.AddFlag(SR_RESERVOIR_FLAGS_DDGI_TRACE);
-
-			hitDistance = 0.f;
-		}
+		hitDistance = rayResult.hitDistance;
+		reservoir   = rayResult.reservoir;
 	}
 
 	reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
