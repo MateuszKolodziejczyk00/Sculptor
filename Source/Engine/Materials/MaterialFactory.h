@@ -20,6 +20,7 @@ struct MaterialDefinition
 	EMaterialType		materialType;
 
 	Uint8 customOpacity : 1;
+	Uint8 doubleSided   : 1;
 };
 
 

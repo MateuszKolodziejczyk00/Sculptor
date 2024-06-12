@@ -14,6 +14,7 @@ ecs::EntityHandle MaterialFactory::CreateMaterial(const MaterialDefinition& mate
 	materialProxy.params.materialShaderHandle		= materialShaderHandle;
 	materialProxy.params.materialDataStructName		= materialData.materialDataStructName;
 	materialProxy.params.customOpacity				= materialDef.customOpacity;
+	materialProxy.params.doubleSided				= materialDef.doubleSided;
 
 	materialProxy.materialShadersHash				= materialProxy.params.GenerateShaderID();
 

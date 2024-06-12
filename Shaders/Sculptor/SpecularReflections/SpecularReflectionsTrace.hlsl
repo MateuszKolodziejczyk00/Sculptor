@@ -20,7 +20,6 @@
 #include "Utils/BlueNoiseSamples.hlsli"
 #endif // USE_BLUE_NOISE_SAMPLES
 
-
 float3 GenerateReflectedRayDir(in float3 normal, in float roughness, in float3 toView, in uint2 pixel, out float pdf)
 {
 	float3 h;
@@ -119,7 +118,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 			surface.roughness = payload.roughness;
 			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
 
-			luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, DDGISecondaryBounceSampleContext::Create(surfWorldLocation, toView));
+			luminance = CalcReflectedLuminance(surface, -reflectedRayDirection, DDGISecondaryBounceSampleContext::Create(surfWorldLocation, toView), 1.f);
 
 			const float3 emissive = payload.emissive;
 			luminance += emissive;

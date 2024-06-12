@@ -49,9 +49,9 @@ LodsConfigs:
       - 12
       - 12
     ProbesSpacing:
-      - 5.00000095
-      - 5.00000095
-      - 5.00000095
+      - 3.700001
+      - 3.700001
+      - 3.700001
     RelitPriority: 0.5
     ForwardAlignment: 0
     HeightAlignment: 0.100000001

@@ -43,20 +43,16 @@ struct GeometryBatchShader
 {
 public:
 
-	enum class EDefault
+	enum class EGenericType : Uint16
 	{
 		Opaque,
 		Num
 	};
 
-	static constexpr SizeType GetDefaultShadersNum()
-	{
-		return static_cast<SizeType>(EDefault::Num);
-	}
+	GeometryBatchShader()
+	{ }
 
-	GeometryBatchShader() = default;
-
-	GeometryBatchShader(EDefault shader)
+	GeometryBatchShader(EGenericType shader)
 		: m_shader(shader)
 	{ }
 
@@ -64,7 +60,7 @@ public:
 		: m_shader(shader)
 	{ }
 
-	void SetDefaultShader(EDefault shader)
+	void SetGenericShader(EGenericType shader)
 	{
 		m_shader = shader;
 	}
@@ -74,9 +70,9 @@ public:
 		m_shader = shader;
 	}
 
-	Bool IsDefaultShader() const
+	Bool IsGenericShader() const
 	{
-		return std::holds_alternative<EDefault>(m_shader);
+		return std::holds_alternative<EGenericType>(m_shader);
 	}
 
 	Bool IsCustomShader() const
@@ -84,9 +80,9 @@ public:
 		return std::holds_alternative<mat::MaterialShadersHash>(m_shader);
 	}
 
-	EDefault GetDefaultShader() const
+	EGenericType GetGenericShader() const
 	{
-		return std::get<EDefault>(m_shader);
+		return std::get<EGenericType>(m_shader);
 	}
 
 	mat::MaterialShadersHash GetCustomShader() const
@@ -94,9 +90,41 @@ public:
 		return std::get<mat::MaterialShadersHash>(m_shader);
 	}
 
+	Bool operator<=>(const GeometryBatchShader& other) const = default;
+
 private:
 
-	std::variant<EDefault, mat::MaterialShadersHash> m_shader;
+	std::variant<EGenericType, mat::MaterialShadersHash> m_shader;
+};
+
+
+struct GeometryBatchPSOInfo
+{
+	struct Hasher
+	{
+		SizeType operator()(const GeometryBatchPSOInfo& psoInfo) const
+		{
+			if (psoInfo.shader.IsCustomShader())
+			{
+				return lib::GetHash(psoInfo.shader.GetCustomShader());
+			}
+			else
+			{
+				return lib::HashCombine(static_cast<Uint64>(psoInfo.shader.GetGenericShader()), psoInfo.isDoubleSided);
+			}
+		}
+
+	};
+
+	GeometryBatchPSOInfo()
+		: isDoubleSided(false)
+	{
+	}
+
+	Bool operator<=>(const GeometryBatchPSOInfo& other) const = default;
+
+	GeometryBatchShader shader;
+	Bool isDoubleSided : 1;
 };
 
 
@@ -104,7 +132,7 @@ struct GeometryBatch
 {
 	Uint32 batchElementsNum = 0u;
 	Uint32 batchMeshletsNum = 0u;
-	GeometryBatchShader shader;
+	GeometryBatchPSOInfo psoInfo;
 
 	lib::MTHandle<GeometryBatchDS> batchDS;
 };

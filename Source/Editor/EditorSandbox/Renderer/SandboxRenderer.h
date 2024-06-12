@@ -70,6 +70,13 @@ public:
 
 	void CreateRenderGraphCapture();
 
+	Bool sunMovement = false;
+	Real32 sunMovementSpeed = 0.08f;
+
+	Real32 sunAngleYaw = 0.0f;
+	Real32 sunAnglePitch = 0.0f;
+	Bool sunAngleDirty = false;
+
 private:
 
 	void InitializeRenderScene();

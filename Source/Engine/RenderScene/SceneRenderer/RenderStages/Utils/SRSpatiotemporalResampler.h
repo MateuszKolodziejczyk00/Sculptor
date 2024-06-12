@@ -65,6 +65,8 @@ struct ResamplingParams
 	
 	rg::RGTextureViewHandle motionTexture;
 
+	rg::RGTextureViewHandle preintegratedBRDFLUT;
+
 	Uint32 spatialResamplingIterations = 1u;
 	Bool   enableTemporalResampling    = true;
 	Bool   enableFinalVisibilityCheck  = true;

@@ -45,8 +45,11 @@ void ResolveReservoirsCS(CS_INPUT input)
 		const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
 		float3 Lo = specular * luminance * dot(sampleNormal, lightDir);
 
+		const float NdotV = saturate(dot(sampleNormal, toView));
+		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
+
 		// demodulate specular
-		Lo /= max(0.01f, f0);
+		Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
 		if(any(isnan(Lo)) || any(isinf(Lo)))
 		{

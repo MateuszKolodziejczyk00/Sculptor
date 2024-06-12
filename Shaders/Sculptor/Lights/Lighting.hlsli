@@ -224,7 +224,7 @@ template<typename TDDGISampleContext>
 #endif // DS_DDGISceneDS
 float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 #ifdef DS_DDGISceneDS
-, in TDDGISampleContext ddgiSampleContext
+, in TDDGISampleContext ddgiSampleContext, in float indirectMultiplier
 #endif // DS_DDGISceneDS
 )
 {
@@ -315,7 +315,7 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	diffuseSampleParams.minVisibility   = 0.75f;
 	diffuseSampleParams.sampleLocationBiasMultiplier = 0.8f;
 	const float3 indirectIlluminance = DDGISampleIlluminance(diffuseSampleParams, DDGISampleContext::Create());
-    luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor;
+	luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor * indirectMultiplier;
 
 	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
 	const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
@@ -328,7 +328,7 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	specularSampleParams.minVisibility   = 0.75f;
 	specularSampleParams.sampleLocationBiasMultiplier = 0.8f;
 	const float3 specularReflections = DDGISampleLuminance(specularSampleParams, DDGISampleContext::Create());
-    luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y);
+	luminance += specularReflections * (surface.specularColor * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier;
 #endif // DS_DDGISceneDS
 
     return luminance;

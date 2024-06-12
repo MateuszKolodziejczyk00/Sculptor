@@ -188,7 +188,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-            weight = pow(weight, 64);
+            weight = pow(weight, 128);
 
             if(weight > WEIGHT_EPSILON)
             {

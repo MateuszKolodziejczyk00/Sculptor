@@ -58,15 +58,12 @@ void DDGIProbeRaysRTG()
         surface.geometryNormal  = hitNormal;
         surface.roughness       = payload.roughness;
         ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, surface.diffuseColor, surface.specularColor);
-        
-        luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISampleContext::Create());
 
-        const DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, payload.normal, -rayDirection);
-        const float3 illuminance = DDGISampleIlluminance(ddgiSampleParams, DDGISampleContext::Create());
+		const float recursionMultiplier = 0.9f;
+        
+        luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISampleContext::Create(), recursionMultiplier);
 
         luminance += payload.emissive;
-
-        luminance += Diffuse_Lambert(illuminance) * min(surface.diffuseColor, 0.9f);
     }
     else if (payload.hitDistance > u_relitParams.probeRaysMaxT)
     {

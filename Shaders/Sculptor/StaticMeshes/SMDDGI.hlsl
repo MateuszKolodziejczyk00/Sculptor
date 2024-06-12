@@ -12,12 +12,14 @@
 [shader("closesthit")]
 void DDGI_RT_CHS(inout DDGIRayPayload payload, in BuiltInTriangleIntersectionAttributes attrib)
 {
+#ifndef SPT_MATERIAL_DOUBLE_SIDED
     if (HitKind() == HIT_KIND_TRIANGLE_BACK_FACE)
     {
         payload.hitDistance = -RayTCurrent();
         return;
     }
-    
+#endif // SPT_MATERIAL_DOUBLE_SIDED
+
     const RTInstanceData instanceData = u_rtInstances[InstanceID()];
 
     const SubmeshGPUData submesh = u_submeshes[instanceData.geometryDataID];
@@ -42,6 +44,13 @@ void DDGI_RT_CHS(inout DDGIRayPayload payload, in BuiltInTriangleIntersectionAtt
     }
     normal = mul(u_renderEntitiesData[instanceData.entityIdx].transform, float4(normal, 0.f)).xyz;
     normal = normalize(normal);
+
+#ifdef SPT_MATERIAL_DOUBLE_SIDED
+	if (HitKind() == HIT_KIND_TRIANGLE_BACK_FACE)
+	{
+		normal = -normal;
+	}
+#endif // SPT_MATERIAL_DOUBLE_SIDED
 
     float2 uv = 0.f;
     [unroll]

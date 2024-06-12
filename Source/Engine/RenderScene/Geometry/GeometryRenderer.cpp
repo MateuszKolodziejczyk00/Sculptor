@@ -280,19 +280,23 @@ static sc::MacroDefinition GetPassIdxMacroDef()
 
 static mat::MaterialShadersHash GetMaterialShadersHash(const GeometryBatch& batch)
 {
-	if (batch.shader.IsDefaultShader())
+	const GeometryBatchShader shader = batch.psoInfo.shader;
+
+	if (shader.IsGenericShader())
 	{
-		switch (batch.shader.GetDefaultShader())
+		switch (shader.GetGenericShader())
 		{
-		case GeometryBatchShader::EDefault::Opaque:
+		case GeometryBatchShader::EGenericType::Opaque:
 			return mat::MaterialShadersHash::NoMaterial();
 		default:
-			SPT_CHECK_MSG(false, "Unsupported default shader");
+			SPT_CHECK_MSG(false, "Unsupported generic shader");
 			return mat::MaterialShadersHash::NoMaterial();
 		}
 	}
-
-	return batch.shader.GetCustomShader();
+	else
+	{
+		return shader.GetCustomShader();
+	}
 }
 
 
@@ -301,8 +305,18 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 {
 	SPT_PROFILER_FUNCTION();
 
+	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
+
 	mat::MaterialShadersParameters shaderParams;
 	shaderParams.macroDefinitions.emplace_back(GetPassIdxMacroDef<passIdx>());
+
+	if (batch.psoInfo.shader.IsGenericShader())
+	{
+		if (psoInfo.isDoubleSided)
+		{
+			shaderParams.macroDefinitions.emplace_back("SPT_MATERIAL_DOUBLE_SIDED");
+		}
+	}
 
 	const mat::MaterialShadersHash materialShadersHash = GetMaterialShadersHash(batch);
 	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("GeometryVisibility", materialShadersHash, shaderParams);
@@ -311,6 +325,11 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Greater);
 	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::R32_U_Int, rhi::ERenderTargetBlendType::Disabled));
+
+	if (psoInfo.isDoubleSided)
+	{
+		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
+	}
 	
 	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry Visibility Pipeline"),
 																				   shaders.GetGraphicsPipelineShaders(),

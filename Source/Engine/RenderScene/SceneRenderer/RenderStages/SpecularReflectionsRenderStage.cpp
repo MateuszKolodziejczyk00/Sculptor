@@ -179,13 +179,21 @@ struct ApplySpecularReflectionsParams
 	rg::RGTextureViewHandle luminanceTexture;
 	rg::RGTextureViewHandle specularReflectionsTexture;
 	rg::RGTextureViewHandle baseColorMetallicTexture;
+	rg::RGTextureViewHandle roughnessTexture;
+	rg::RGTextureViewHandle depthTexture;
+	rg::RGTextureViewHandle tangentFrameTexture;
 };
 
 
 DS_BEGIN(ApplySpecularReflectionsDS, rg::RGDescriptorSetState<ApplySpecularReflectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),  u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_specularReflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_baseColorMetallicTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_luminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_specularReflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_baseColorMetallicTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_tangentFrameTexture)
 DS_END();
 
 
@@ -211,6 +219,10 @@ static void ApplySpecularReflections(rg::RenderGraphBuilder& graphBuilder, ViewR
 	applySpecularReflectionsDS->u_luminanceTexture           = params.luminanceTexture;
 	applySpecularReflectionsDS->u_specularReflectionsTexture = params.specularReflectionsTexture;
 	applySpecularReflectionsDS->u_baseColorMetallicTexture   = params.baseColorMetallicTexture;
+	applySpecularReflectionsDS->u_brdfIntegrationLUT         = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+	applySpecularReflectionsDS->u_roughnessTexture           = params.roughnessTexture;
+	applySpecularReflectionsDS->u_depthTexture               = params.depthTexture;
+	applySpecularReflectionsDS->u_tangentFrameTexture        = params.tangentFrameTexture;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Specular Reflections"),
 						  applySpecularReflectionsPipeline,
@@ -282,9 +294,12 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoisedLuminanceTexture, upsampleParams);
 
 		apply::ApplySpecularReflectionsParams applyParams;
-		applyParams.luminanceTexture = viewContext.luminance;
+		applyParams.luminanceTexture           = viewContext.luminance;
 		applyParams.specularReflectionsTexture = specularReflectionsFullRes;
-		applyParams.baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+		applyParams.baseColorMetallicTexture   = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+		applyParams.roughnessTexture           = viewContext.gBuffer[GBuffer::Texture::Roughness];
+		applyParams.depthTexture               = viewContext.depth;
+		applyParams.tangentFrameTexture        = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
 		apply::ApplySpecularReflections(graphBuilder, viewSpec, applyParams);
 	}
 

@@ -145,6 +145,19 @@ void SandboxUIView::DrawRendererSettings()
 	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
 	ui::UIUtils::SetShortcut(uiContext, id, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::C));
 
+	ImGui::Checkbox("Auto Sun Movement", &m_renderer.sunMovement);
+
+	if (m_renderer.sunMovement)
+	{
+		ImGui::SliderFloat("Sun Movement Speed", &m_renderer.sunMovementSpeed, 0.01f, 1.f);
+	}
+	else
+	{
+		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Pitch", &m_renderer.sunAnglePitch, -90.f, 90.f);
+		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Yaw", &m_renderer.sunAngleYaw, 0.f, 360.f);
+
+	}
+
 	if (ImGui::Button("Capture Render Graph"))
 	{
 		m_renderer.CreateRenderGraphCapture();

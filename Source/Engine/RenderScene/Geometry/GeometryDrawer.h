@@ -45,17 +45,16 @@ private:
 	Uint16 GetMaterialBatchIdx(mat::MaterialShadersHash materialShadersHash);
 
 	GeometryBatchBuildData& GetGeometryBatchBuildData(const mat::MaterialProxyComponent& materialProxy);
-	GeometryBatchBuildData& GetGeometryBatchBuildData(GeometryBatchShader shader);
-	GeometryBatchShader     GetGeometryBatchShader(const mat::MaterialProxyComponent& materialProxy) const;
+	GeometryBatchBuildData& GetGeometryBatchBuildData(const GeometryBatchPSOInfo& psoInfo);
+	GeometryBatchPSOInfo    GetGeometryBatchPSOInfo(const mat::MaterialProxyComponent& materialProxy) const;
 
-	GeometryBatch FinalizeBatchDefinition(GeometryBatchShader shader, const GeometryBatchBuildData& batchBuildData) const;
+	GeometryBatch FinalizeBatchDefinition(const GeometryBatchPSOInfo& psoInfo, const GeometryBatchBuildData& batchBuildData) const;
 
 	GeometryPassDataCollection& m_batches;
 
 	lib::HashMap<mat::MaterialShadersHash, Uint16> m_materialBatchesMap;
 
-	lib::StaticArray<GeometryBatchBuildData, GeometryBatchShader::GetDefaultShadersNum()> m_defaultGeometryBatchesData;
-	lib::HashMap<mat::MaterialShadersHash, GeometryBatchBuildData>                        m_customGeometryBatchesData;
+	lib::HashMap<GeometryBatchPSOInfo, GeometryBatchBuildData, GeometryBatchPSOInfo::Hasher> m_geometryBatchesData;
 };
 
 

@@ -234,6 +234,7 @@ void GeometryVisibility_TS(in TSInput input)
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 		isMeshletVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
 
+#ifndef SPT_MATERIAL_DOUBLE_SIDED
 		if(isMeshletVisible)
 		{
 			float3 coneAxis;
@@ -251,6 +252,7 @@ void GeometryVisibility_TS(in TSInput input)
 				isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
 			}
 		}
+#endif // SPT_MATERIAL_DOUBLE_SIDED
 #endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 
 		if(isMeshletVisible)
@@ -349,6 +351,7 @@ struct TriangleCullingParams
 {
 	float nearPlane;
 	float2 viewportResolution;
+	bool doubleSided;
 };
 
 
@@ -366,6 +369,7 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 		tri.verticesCS[2].xyz / tri.verticesCS[2].w
 	};
 
+#ifndef SPT_MATERIAL_DOUBLE_SIDED
 	// currently we're not handling case when some vertices are in front of near plane, so we just pass those triangles as visible
 	if(isInFrontOfPerspectivePlane && false)
 	{
@@ -375,7 +379,8 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 		// backface culling
 		isTriangleVisible = isTriangleVisible && (ca.x * cb.y >= ca.y * cb.x);
 	}
-	
+#endif // SPT_MATERIAL_DOUBLE_SIDED
+
 	if(isTriangleVisible && isInFrontOfPerspectivePlane)
 	{
 		float4 aabb;

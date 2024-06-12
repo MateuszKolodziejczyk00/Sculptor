@@ -250,6 +250,7 @@ rdr::PipelineStateID StaticMeshShadowMapRenderer::GetPipelineStateForBatch(const
 	rhi::GraphicsPipelineDefinition depthPrepassPipelineDef;
 	depthPrepassPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
 	depthPrepassPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetRenderedDepthFormat();
+	depthPrepassPipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
 	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthPrepassPipeline"), shaders, depthPrepassPipelineDef);
 }
 

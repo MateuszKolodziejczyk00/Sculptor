@@ -34,7 +34,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.resolution);
-		const SRReservoir reservoir = UnpackReservoir(u_inReservoirsBuffer[reservoirIdx]);
 
 		float selectedTargetPdf = 0.f;
 
@@ -45,6 +44,15 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		gBuffer.roughnessTexture     = u_roughnessTexture;
 
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
+
+		const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
+
+		if(centerPixelSurface.roughness <= 0.01f)
+		{
+			u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+			return;
+		}
+		const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 		SRReservoir newReservoir = SRReservoir::CreateEmpty();
 		{
@@ -57,7 +65,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 
-		const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.M);
+		const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.age);
 
 		for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 		{

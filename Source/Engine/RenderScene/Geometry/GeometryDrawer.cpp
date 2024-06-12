@@ -38,21 +38,11 @@ void GeometryBatchesBuilder::FinalizeBatches()
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_batches.geometryBatches.reserve(m_defaultGeometryBatchesData.size() + m_customGeometryBatchesData.size());
+	m_batches.geometryBatches.reserve(m_geometryBatchesData.size());
 
-	for (SizeType i = 0; i < m_defaultGeometryBatchesData.size(); ++i)
+	for (const auto& [psoInfo, batchBuildData] : m_geometryBatchesData)
 	{
-		const GeometryBatchShader shader = GeometryBatchShader::EDefault(i);
-		const GeometryBatchBuildData& batchBuildData = m_defaultGeometryBatchesData[i];
-		if (batchBuildData.IsValid())
-		{
-			m_batches.geometryBatches.emplace_back(FinalizeBatchDefinition(shader, batchBuildData));
-		}
-	}
-
-	for (const auto& [shader, batchBuildData] : m_customGeometryBatchesData)
-	{
-		m_batches.geometryBatches.emplace_back(FinalizeBatchDefinition(GeometryBatchShader(shader), batchBuildData));
+		m_batches.geometryBatches.emplace_back(FinalizeBatchDefinition(psoInfo, batchBuildData));
 	}
 }
 
@@ -72,34 +62,33 @@ Uint16 GeometryBatchesBuilder::GetMaterialBatchIdx(mat::MaterialShadersHash mate
 
 GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(const mat::MaterialProxyComponent& materialProxy)
 {
-	return GetGeometryBatchBuildData(GetGeometryBatchShader(materialProxy));
+	return GetGeometryBatchBuildData(GetGeometryBatchPSOInfo(materialProxy));
 }
 
-GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(GeometryBatchShader shader)
+GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(const GeometryBatchPSOInfo& psoInfo)
 {
-	if (shader.IsDefaultShader())
-	{
-		return m_defaultGeometryBatchesData[static_cast<SizeType>(shader.GetDefaultShader())];
-	}
-	else
-	{
-		return m_customGeometryBatchesData[shader.GetCustomShader()];
-	}
+	return m_geometryBatchesData[psoInfo];
 }
 
-GeometryBatchShader GeometryBatchesBuilder::GetGeometryBatchShader(const mat::MaterialProxyComponent& materialProxy) const
+GeometryBatchPSOInfo GeometryBatchesBuilder::GetGeometryBatchPSOInfo(const mat::MaterialProxyComponent& materialProxy) const
 {
+	GeometryBatchPSOInfo psoInfo;
+
 	if (!materialProxy.params.customOpacity)
 	{
-		return GeometryBatchShader::EDefault::Opaque;
+		psoInfo.shader = GeometryBatchShader::EGenericType::Opaque;
 	}
 	else
 	{
-		return GeometryBatchShader(materialProxy.materialShadersHash);
+		psoInfo.shader = GeometryBatchShader(materialProxy.materialShadersHash);
 	}
+
+	psoInfo.isDoubleSided = materialProxy.params.doubleSided;
+
+	return psoInfo;
 }
 
-GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(GeometryBatchShader shader, const GeometryBatchBuildData& batchBuildData) const
+GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatchPSOInfo& psoInfo, const GeometryBatchBuildData& batchBuildData) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -122,7 +111,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(GeometryBatchShade
 	GeometryBatch newBatch;
 	newBatch.batchElementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
 	newBatch.batchMeshletsNum = batchBuildData.meshletsNum;
-	newBatch.shader           = shader;
+	newBatch.psoInfo          = psoInfo;
 	newBatch.batchDS          = batchDS;
 
 	return newBatch;

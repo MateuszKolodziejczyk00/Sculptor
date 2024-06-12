@@ -29,9 +29,9 @@ void GenerateShadowRaysRTG()
 	if(depth > 0.f)
 	{
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-		float3 worldLocation = NDCToWorldSpaceNoJitter(ndc, u_sceneView);
+		float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float3 normal = u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
+		const float3 normal = u_normalsTexture.Load(uint3(pixel, 0)) * 2.f - 1.f;
 
 		if(dot(normal, u_params.lightDirection) <= 0.015f)
 		{
@@ -39,7 +39,7 @@ void GenerateShadowRaysRTG()
 
 			const float maxConeAngle = u_params.shadowRayConeAngle;
 			
-			const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x &15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
+			const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_gpuSceneFrameConstants.frameIdx * 23u)) & 255u;
 			const float2 noise = frac(g_BlueNoiseSamples[sampleIdx]);
 			const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
 

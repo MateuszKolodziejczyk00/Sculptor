@@ -111,15 +111,26 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 		}
 	}
 
-	//m_directionalLightEntity.patch<rsc::DirectionalLightData>([](rsc::DirectionalLightData& data)
-	//														  {
-	//															  const Real32 angle = engn::GetRenderingFrame().GetTime() * 0.08f;
-	//															  //const Real32 angle = engn::GetRenderingFrame().GetTime() * 0.04f;
-	//															  const Real32 sin = std::sin(angle);
-	//															  const Real32 cos = std::cos(angle);
-	//															  data.direction = math::Vector3f(sin, 0.1f, cos).normalized();
-	//															  //data.direction = math::Vector3f(sin, cos, -4.f).normalized();
-	//														  });
+	if (sunMovement)
+	{
+		m_directionalLightEntity.patch<rsc::DirectionalLightData>([speed = sunMovementSpeed](rsc::DirectionalLightData& data)
+																  {
+																	  const Real32 angle = engn::Engine::Get().GetTime() * speed;
+																	  const Real32 sin = std::sin(angle);
+																	  const Real32 cos = std::cos(angle);
+																	  data.direction = math::Vector3f(sin, 0.1f, cos).normalized();
+																  });
+}
+	else if (sunAngleDirty)
+	{
+		sunAngleDirty = false;
+
+		m_directionalLightEntity.patch<rsc::DirectionalLightData>([this](rsc::DirectionalLightData& data)
+																  {
+																	  const math::Quaternionf newDirection = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, sunAngleYaw);
+																	  data.direction = newDirection * math::Vector3f::UnitX();
+																  });
+	}
 }
 
 void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output)
@@ -364,13 +375,16 @@ void SandboxRenderer::InitializeRenderScene()
 		{
 			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
-			directionalLightData.color                  = math::Vector3f(0.9569f, 0.9137f, 0.6078f);
+			directionalLightData.color                  = math::Vector3f(1.f, 1.f, 1.f);
 			directionalLightData.illuminance            = 95000.f;
 			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.2f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
 			directionalLightData.sunDiskAngleMultiplier = 2.3f;
 			directionalLightData.sunDiskEC              = 8.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
+
+			sunAngleYaw = std::atan2(directionalLightData.direction.y(), directionalLightData.direction.x());
+			sunAnglePitch = std::asin(directionalLightData.direction.z());
 		}
 	}
 }

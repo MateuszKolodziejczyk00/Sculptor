@@ -147,6 +147,11 @@ VertexData ProcessVertex(in RenderEntityGPUData entityData, in const SubmeshGPUD
 			vertexData.tangent   = normalize(mul(entityData.transform, float4(vertexTangent.xyz, 0.f)).xyz);
 			vertexData.bitangent = normalize(cross(vertexData.normal, vertexData.tangent)) * vertexTangent.w;
 		}
+		else
+		{
+			vertexData.tangent = normalize(dot(vertexData.normal, UP_VECTOR) > 0.9f ? cross(vertexData.normal, RIGHT_VECTOR) : cross(vertexData.normal, UP_VECTOR));
+			vertexData.bitangent = normalize(cross(vertexData.normal, vertexData.tangent));
+		}
 	}
 
 	vertexData.uv = u_geometryData.Load<float2>(submesh.uvsOffset + globalVertexIdx * 8);
@@ -203,7 +208,21 @@ InterpolatedVertexData ProcessTriangle(in const GPUVisibleMeshlet visibleMeshlet
 
 	const Barycentrics barycentrics = ComputeTriangleBarycentrics(screenPositionClip, vertexData[0].clipSpace, vertexData[1].clipSpace, vertexData[2].clipSpace, u_emitGBufferConstants.invScreenResolution);
 
-	return Interpolate(vertexData, barycentrics, hasTangent);
+	InterpolatedVertexData interpolatedData = Interpolate(vertexData, barycentrics, hasTangent);
+
+#ifdef SPT_MATERIAL_DOUBLE_SIDED
+	const float det = determinant(float3x3(vertexData[0].clipSpace.xyw, vertexData[1].clipSpace.xyw, vertexData[2].clipSpace.xyw));
+	const bool isBackface = det < 0.f;
+
+	if(isBackface)
+	{
+		interpolatedData.normal    = -interpolatedData.normal;
+		interpolatedData.tangent   = -interpolatedData.tangent;
+		interpolatedData.bitangent = -interpolatedData.bitangent;
+	}
+#endif // SPT_MATERIAL_DOUBLE_SIDED
+
+	return interpolatedData;
 }
 
 
@@ -250,10 +269,12 @@ GBufferOutput EmitGBuffer_FS(in OutputVertex vertexInput)
 		GBufferData gBufferData;
 		gBufferData.baseColor = evaluatedMaterial.baseColor;
 		gBufferData.metallic  = evaluatedMaterial.metallic;
+		//gBufferData.metallic  = 1.f;
 		gBufferData.normal    = evaluatedMaterial.shadingNormal;
 		gBufferData.tangent   = vertexData.tangent;
 		gBufferData.bitangent = vertexData.bitangent;
 		gBufferData.roughness = evaluatedMaterial.roughness;
+		//gBufferData.roughness = 0.1f;
 		gBufferData.emissive  = evaluatedMaterial.emissiveColor;
 
 		output = EncodeGBuffer(gBufferData);

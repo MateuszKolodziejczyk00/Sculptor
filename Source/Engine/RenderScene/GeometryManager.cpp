@@ -44,7 +44,7 @@ GeometryManager::GeometryManager()
 	const rhi::EBufferFlags ugbFlags = rhi::EBufferFlags::WithVirtualSuballocations;
 
 	const rhi::RHIAllocationInfo ugbAllocationInfo(rhi::EMemoryUsage::GPUOnly);
-	const rhi::BufferDefinition ugbDef(512 * 1024 * 1024, ugbUsage, ugbFlags);
+	const rhi::BufferDefinition ugbDef(1024ull * 1024ull * 1024ull, ugbUsage, ugbFlags);
 	m_geometryBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("UnifiedGeometryBuffer"), ugbDef, ugbAllocationInfo);
 
 	m_geometryDSState = rdr::ResourcesManager::CreateDescriptorSetState<GeometryDS>(RENDERER_RESOURCE_NAME("UGB DS"));

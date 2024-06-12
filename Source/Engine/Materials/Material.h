@@ -11,11 +11,18 @@
 namespace spt::mat
 {
 
-enum class EMaterialType : Uint32
+enum class EMaterialType : Flags32
 {
 	Invalid,
 	Opaque,
 	AlphaMasked
+};
+
+
+enum class EMaterialFlags : Flags32
+{
+	None     = 0,
+	DoubleSided = BIT(0),
 };
 
 
@@ -98,6 +105,7 @@ struct MaterialStaticParameters
 	EMaterialType materialType;
 
 	Uint8 customOpacity : 1;
+	Uint8 doubleSided   : 1;
 
 	lib::HashedString materialDataStructName;
 

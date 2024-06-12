@@ -202,6 +202,11 @@ sc::ShaderCompilationSettings MaterialShadersCompiler::CreateMaterialCompilation
 		compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_CUSTOM_OPACITY"));
 	}
 
+	if (materialParams.doubleSided)
+	{
+		compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_MATERIAL_DOUBLE_SIDED"));
+	}
+
 	return compilationSettings;
 }
 
