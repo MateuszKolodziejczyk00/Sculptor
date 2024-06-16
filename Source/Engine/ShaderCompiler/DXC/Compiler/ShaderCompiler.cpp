@@ -31,7 +31,7 @@ LPCWSTR GetTargetEnvironment(ETargetEnvironment target)
 	switch (target)
 	{
 	case ETargetEnvironment::Vulkan_1_3:
-		return L"-fspv-target-env=vulkan1.3";
+		return L"-fspv-target-env=universal1.5";
 	
 	default:
 		SPT_CHECK_NO_ENTRY();
@@ -43,18 +43,18 @@ LPCWSTR GetShaderTargetProfile(rhi::EShaderStage stage)
 {
 	switch (stage)
 	{
-	case rhi::EShaderStage::Vertex:		return L"vs_6_5";
-	case rhi::EShaderStage::Task:		return L"as_6_5";
-	case rhi::EShaderStage::Mesh:		return L"ms_6_5";
-	case rhi::EShaderStage::Fragment:	return L"ps_6_5";
-	case rhi::EShaderStage::Compute:	return L"cs_6_5";
+	case rhi::EShaderStage::Vertex:		return L"vs_6_6";
+	case rhi::EShaderStage::Task:		return L"as_6_6";
+	case rhi::EShaderStage::Mesh:		return L"ms_6_6";
+	case rhi::EShaderStage::Fragment:	return L"ps_6_6";
+	case rhi::EShaderStage::Compute:	return L"cs_6_6";
 	
 	case rhi::EShaderStage::RTGeneration:	
 	case rhi::EShaderStage::RTAnyHit:		
 	case rhi::EShaderStage::RTClosestHit:	
 	case rhi::EShaderStage::RTMiss:			
 	case rhi::EShaderStage::RTIntersection:	
-		return L"lib_6_5";
+		return L"lib_6_6";
 
 	default:
 
@@ -205,11 +205,10 @@ private:
 	DxcArguments BuildArguments(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings) const;
 	void         PreprocessAdditionalCompilerArgs(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef, const ShaderCompilationSettings& compilationSettings, INOUT DxcArguments& args) const;
 
-	ComPtr<IDxcUtils>          m_utils;
+	ComPtr<IDxcUtils>         m_utils;
 	ComPtr<IDxcCompiler3>      m_compiler;
 	ComPtr<IDxcIncludeHandler> m_defaultIncludeHandler;
 };
-
 
 CompilerImpl::CompilerImpl()
 {
@@ -358,7 +357,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	args.Append(priv::GetTargetEnvironment(targetEnv));
 	args.Append(lib::WString(L"-I"), absoluteShadersPath);
 	args.Append(lib::WString(L"-I"), absoluteShadersPath + L"/Sculptor");
-
+	
 	const lib::DynamicArray<lib::HashedString>& macros = compilationSettings.GetMacros();
 
 	lib::DynamicArray<lib::WString> macrosAsWideString;

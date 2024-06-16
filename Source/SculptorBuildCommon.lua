@@ -374,7 +374,7 @@ function Project:SetLinkLibNames(names)
     projectToLinkLibNames[self.name][self.currentConfiguration] = names
 end
 
-function Project:CopyLibToOutputDir(libPath)
+function Project:CopyProjectLibToOutputDir(libPath)
     if self.targetType == ETargetType.None then
         localCommand = "{COPY} ".. "%{prj.location}/".. self:GetProjectReferencePath() .. libPath .. " " .. "%{cfg.buildtarget.directory}"
         projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
@@ -382,6 +382,18 @@ function Project:CopyLibToOutputDir(libPath)
         prelinkcommands
         {
             {"{COPY} %{prj.location}" .. libPath .. "%{cfg.buildtarget.directory}"}
+        }
+    end
+end
+
+function Project:CopyLibToOutputDir(libPath)
+    if self.targetType == ETargetType.None then
+        localCommand = "{COPY} " .. libPath .. " " .. "%{cfg.buildtarget.directory}"
+        projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
+    else
+        prelinkcommands
+        {
+            {"{COPY} " .. libPath .. " %{cfg.buildtarget.directory}"}
         }
     end
 end

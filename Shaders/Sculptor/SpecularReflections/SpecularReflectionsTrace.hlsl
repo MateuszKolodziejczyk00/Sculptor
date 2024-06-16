@@ -81,7 +81,7 @@ RayResult TraceReflectionRay(in float3 surfWorldLocation, in float3 surfNormal, 
 	float3 luminance = 0.f;
  
 	RayDesc rayDesc;
-	rayDesc.TMin = 0.01f;
+	rayDesc.TMin = 0.004f;
 	rayDesc.TMax = 200.f;
 	rayDesc.Origin = surfWorldLocation;
 	rayDesc.Direction = reflectedRayDirection;

@@ -153,7 +153,7 @@ void SandboxUIView::DrawRendererSettings()
 	}
 	else
 	{
-		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Pitch", &m_renderer.sunAnglePitch, -90.f, 90.f);
+		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Pitch", &m_renderer.sunAnglePitch, -180.f, 180.f);
 		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Yaw", &m_renderer.sunAngleYaw, 0.f, 360.f);
 
 	}

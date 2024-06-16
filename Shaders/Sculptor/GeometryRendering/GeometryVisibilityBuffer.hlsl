@@ -371,7 +371,7 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 
 #ifndef SPT_MATERIAL_DOUBLE_SIDED
 	// currently we're not handling case when some vertices are in front of near plane, so we just pass those triangles as visible
-	if(isInFrontOfPerspectivePlane && false)
+	if(isInFrontOfPerspectivePlane)
 	{
 		const float2 ca = verticesNDC[1].xy - verticesNDC[0].xy;
 		const float2 cb = verticesNDC[2].xy - verticesNDC[0].xy;
@@ -513,12 +513,10 @@ void GeometryVisibility_MS(
 		uint meshletTriangleIdx = 0;
 		outTriangles[outputTriangleIdx] = UnpackTriangleVertices(s_sharedData.triangles[outputTriangleIdx], OUT meshletTriangleIdx);
 
-		PrimitiveOutput primitiveOutput;
-		primitiveOutput.packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
+		outPrims[outputTriangleIdx].packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
 #if MATERIAL_CAN_DISCARD
-		primitiveOutput.materialDataID = uint(batchElement.materialDataID);
+		outPrims[outputTriangleIdx].materialDataID = uint(batchElement.materialDataID);
 #endif // MATERIAL_CAN_DISCARD
-		outPrims[outputTriangleIdx] = primitiveOutput;
 	}
 
 	// Write vertices

@@ -139,8 +139,6 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	m_renderScene->BeginFrame(frame);
 
-	Tick(frame.GetDeltaTime());
-
 	PrepareRenderView(output->GetTexture()->GetResolution2D());
 
 	const lib::SharedRef<rdr::GPUStatisticsCollector> gpuStatisticsCollector = lib::MakeShared<rdr::GPUStatisticsCollector>();

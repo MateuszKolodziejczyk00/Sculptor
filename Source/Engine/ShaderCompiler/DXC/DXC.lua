@@ -18,4 +18,6 @@ function ShaderCompiler:SetupPlatformConfiguration(configuration, platform)
         self:AddPrivateDependency("SPIRV-Tools")
         self:AddPrivateDependency("SPIRV-Tools-opt")
     end
+
+    self:CopyLibToOutputDir("$(Vulkan_SDK)/Bin/dxcompiler.dll")
 end
