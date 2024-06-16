@@ -370,14 +370,10 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 	};
 
 #ifndef SPT_MATERIAL_DOUBLE_SIDED
-	// currently we're not handling case when some vertices are in front of near plane, so we just pass those triangles as visible
-	if(isInFrontOfPerspectivePlane)
+	if(isTriangleVisible)
 	{
-		const float2 ca = verticesNDC[1].xy - verticesNDC[0].xy;
-		const float2 cb = verticesNDC[2].xy - verticesNDC[0].xy;
-
-		// backface culling
-		isTriangleVisible = isTriangleVisible && (ca.x * cb.y >= ca.y * cb.x);
+		const float det = determinant(float3x3(tri.verticesCS[0].xyw, tri.verticesCS[1].xyw, tri.verticesCS[2].xyw));
+		isTriangleVisible = det > 0.f;
 	}
 #endif // SPT_MATERIAL_DOUBLE_SIDED
 

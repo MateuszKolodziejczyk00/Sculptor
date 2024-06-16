@@ -22,7 +22,7 @@ struct CS_INPUT
 
 float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 {
-	return 32.f;
+	return lerp(32.f, 9.f, saturate(accumulatedSamplesNum / 12.f));
 }
 
 
