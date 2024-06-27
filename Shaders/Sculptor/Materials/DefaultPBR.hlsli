@@ -67,10 +67,8 @@ MaterialEvaluationOutput EvaluateMaterial(MaterialEvaluationParameters evalParam
     output.shadingNormal  = shadingNormal;
     output.geometryNormal = geometryNormal;
     output.roughness      = roughness;
-    //output.roughness      = 0.55f;
     output.baseColor      = baseColor;
     output.metallic       = metallic;
-    //output.metallic       = 1.f;
     output.emissiveColor  = emissiveColor;
 
     return output;

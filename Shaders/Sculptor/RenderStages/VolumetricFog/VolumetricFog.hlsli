@@ -1,3 +1,5 @@
+#ifndef VOLUMETRIC_FOG_HLSLI
+#define VOLUMETRIC_FOG_HLSLI
 
 float4 ComputeScatteringAndExtinction(in float3 fogColor, in float fogDensity, in float scatteringFactor)
 {
@@ -23,3 +25,5 @@ float3 ComputeFogFroxelUVW(in float2 uv, in float linearDepth, in float fogNearP
     const float w = log(linearDepth / fogNearPlane) / log(fogFarPlane / fogNearPlane);
     return float3(uv, w);
 }
+
+#endif // VOLUMETRIC_FOG_HLSLI
