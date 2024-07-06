@@ -91,7 +91,7 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const uint historyReservoirIdx = GetScreenReservoirIdx(historySamplePixel, u_resamplingConstants.resolution);
+		const uint historyReservoirIdx = GetScreenReservoirIdx(historySamplePixel, u_resamplingConstants.reservoirsResolution);
 		selectedHistoryReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
 		if(!selectedHistoryReservoir.IsValid() || !currentReservoir.CanCombine(selectedHistoryReservoir))
@@ -167,7 +167,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, u_sceneView);
 
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.resolution);
+		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 
 		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx * 3);
 

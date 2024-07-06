@@ -26,7 +26,6 @@ struct VolumetricFogParams
 {
 	VolumetricFogParams()
 		: volumetricFogResolution{}
-		, fogJitter{}
 		, nearPlane(0.f)
 		, farPlane(0.f)
 	{ }
@@ -38,8 +37,6 @@ struct VolumetricFogParams
 	rg::RGTextureViewHandle inScatteringHistoryTextureView;
 
 	math::Vector3u volumetricFogResolution;
-
-	math::Vector3f fogJitter;
 
 	Real32 nearPlane;
 	Real32 farPlane;

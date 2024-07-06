@@ -11,6 +11,9 @@
 #define INV_TWO_PI 0.15915494309
 
 
+#define SPT_GOLDEN_RATIO 1.61803398875
+
+
 #define SMALL_NUMBER 1.e-6f
 
 

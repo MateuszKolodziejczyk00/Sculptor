@@ -204,7 +204,7 @@ void GenerateSpecularReflectionsRaysRTG()
 
 	reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 
-	const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_traceParams.resolution);
+	const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_traceParams.reservoirsResolution);
 	u_reservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
 }
 

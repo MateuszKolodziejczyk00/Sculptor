@@ -13,7 +13,7 @@ void ResamplingFinalVisibilityTestRTG()
 {
 	const uint3 pixel = DispatchRaysIndex().xyz;
 
-	const float2 uv = (pixel.xy + 0.5f) * u_shaderConstants.pixelSize;
+	const float2 uv = (pixel.xy + 0.5f) * u_resamplingConstants.pixelSize;
 	const float depth = u_depthTexture.Load(pixel);
 
 	if(depth > 0.f)
@@ -29,7 +29,7 @@ void ResamplingFinalVisibilityTestRTG()
 
 		const float3 biasedWorldLocation = worldLocation + normal * bias;
 
-		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_shaderConstants.resolution);
+		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);
 
 		const float3 biasedHitLocation = reservoir.hitLocation + reservoir.hitNormal * bias;

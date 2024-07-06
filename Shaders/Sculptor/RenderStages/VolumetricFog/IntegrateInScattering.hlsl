@@ -1,7 +1,8 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(IntegrateInScatteringDS, 1)]]
+[[descriptor_set(RenderVolumetricFogDS, 0)]]
+[[descriptor_set(RenderViewDS, 1)]]
+[[descriptor_set(IntegrateInScatteringDS, 2)]]
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -16,25 +17,21 @@ struct CS_INPUT
 [numthreads(8, 8, 1)]
 void IntegrateInScatteringCS(CS_INPUT input)
 {
-	uint3 volumetricFogResolution;
-	u_integratedInScatteringTexture.GetDimensions(volumetricFogResolution.x, volumetricFogResolution.y, volumetricFogResolution.z);
-
-	if (all(input.globalID.xy < volumetricFogResolution.xy))
+	if (all(input.globalID.xy < u_fogConstants.fogGridRes.xy))
 	{
-		const float3 rcpFogResolution = rcp(float3(volumetricFogResolution));
-		const float2 uv = (input.globalID.xy + 0.5f) * rcpFogResolution.xy;
+		const float2 uv = (input.globalID.xy + 0.5f) * u_fogConstants.fogGridInvRes.xy;
 
 		float currentZ = 0.f;
 
 		float3 integratedScattering = 0.f;
 		float integratedTransmittance = 1.f;
 
-		for (uint z = 0; z < volumetricFogResolution.z; ++z)
+		for (uint z = 0; z < u_fogConstants.fogGridRes.z; ++z)
 		{
-			const float fogFroxelDepth = (z + 0.5f) * rcpFogResolution.z;
-			const float nextZ = ComputeFogFroxelLinearDepth(fogFroxelDepth, u_integrateInScatteringParams.fogNearPlane, u_integrateInScatteringParams.fogFarPlane);
+			const float fogFroxelDepth = (z + 0.5f) * u_fogConstants.fogGridInvRes.z;
+			const float nextZ = ComputeFogFroxelLinearDepth(fogFroxelDepth, u_fogConstants.fogNearPlane, u_fogConstants.fogFarPlane);
 			
-			const float4 inScatteringExtinction = u_inScatteringTexture.SampleLevel(u_inScatteringSampler, float3(uv, z * rcpFogResolution.z), 0);
+			const float4 inScatteringExtinction = u_inScatteringTexture.SampleLevel(u_inScatteringSampler, float3(uv, z * u_fogConstants.fogGridInvRes.z), 0);
 
 			const float3 inScattering = inScatteringExtinction.rgb;
 			const float extinction = inScatteringExtinction.a;

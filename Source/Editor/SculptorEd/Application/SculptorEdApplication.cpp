@@ -23,6 +23,7 @@
 #include "DeviceQueues/GPUWorkload.h"
 #include "Utils/GPUWaitableEvent.h"
 #include "EditorFrame.h"
+#include "GlobalResources/GlobalResourcesRegistry.h"
 
 
 namespace spt::ed
@@ -59,6 +60,8 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", windowInitInfo);
 
 	rdr::Renderer::PostCreatedWindow();
+
+	gfx::global::GlobalResourcesRegistry::Get().InitializeAll();
 }
 
 void SculptorEdApplication::OnRun()

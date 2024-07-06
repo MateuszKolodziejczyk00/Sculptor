@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SculptorLibMacros.h"
 #include "SculptorAliases.h"
 #include <atomic>
 #include "Assertions/Assertions.h"
@@ -268,8 +269,8 @@ private:
 } // priv
 
 
-using MTRefCounted = priv::RefCounted<std::atomic<Uint32>>;
-using RefCounted = priv::RefCounted<Uint32>;
+class SCULPTOR_LIB_API MTRefCounted : public priv::RefCounted<std::atomic<Uint32>> {};
+class SCULPTOR_LIB_API RefCounted : public priv::RefCounted<Uint32> {};
 
 template<typename TObject>
 using MTHandle = priv::Handle<TObject, MTRefCounted>;

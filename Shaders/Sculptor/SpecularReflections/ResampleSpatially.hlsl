@@ -33,7 +33,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.resolution);
+		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 
 		float selectedTargetPdf = 0.f;
 
@@ -96,7 +96,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 					continue;
 				}
 
-				const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.resolution);
+				const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
 				const SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
 
 				if(!newReservoir.CanCombine(reuseReservoir))

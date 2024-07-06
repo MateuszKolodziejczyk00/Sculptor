@@ -19,13 +19,13 @@ void ResolveReservoirsCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
 	
-	if(all(pixel < u_resolveConstants.resolution))
+	if(all(pixel < u_resamplingConstants.resolution))
 	{
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resolveConstants.resolution);
+		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_reservoirsBuffer[reservoirIdx]);
 
 		const float depth = u_depthTexture.Load(uint3(pixel, 0));
-		const float2 uv = (pixel + 0.5f) * u_resolveConstants.pixelSize;
+		const float2 uv = (pixel + 0.5f) * u_resamplingConstants.pixelSize;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 
 		const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);

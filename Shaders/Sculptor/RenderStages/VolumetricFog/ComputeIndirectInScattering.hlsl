@@ -1,13 +1,13 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(IndirectInScatteringDS, 1)]]
-[[descriptor_set(DDGISceneDS, 2)]]
+[[descriptor_set(RenderVolumetricFogDS, 0)]]
+[[descriptor_set(RenderViewDS, 1)]]
+[[descriptor_set(IndirectInScatteringDS, 2)]]
+[[descriptor_set(DDGISceneDS, 3)]]
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "DDGI/DDGITypes.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
-
 
 struct CS_INPUT
 {
@@ -18,25 +18,19 @@ struct CS_INPUT
 [numthreads(4, 4, 2)]
 void ComputeIndirectInScatteringCS(CS_INPUT input)
 {
-	uint3 volumetricFogResolution;
-	u_inScatteringTexture.GetDimensions(volumetricFogResolution.x, volumetricFogResolution.y, volumetricFogResolution.z);
-
-	if (all(input.globalID < volumetricFogResolution))
+	if (all(input.globalID < u_indirectInScatteringConstants.indirectGridRes))
 	{
-		const float3 fogResolutionRcp = rcp(float3(volumetricFogResolution));
-		const float3 fogFroxelUVW = (float3(input.globalID) + 0.5f) * fogResolutionRcp;
-
 		const float projectionNearPlane = GetNearPlane(u_sceneView);
 
-		const float fogNearPlane = u_inScatteringParams.fogNearPlane;
-		const float fogFarPlane = u_inScatteringParams.fogFarPlane;
-		
-		const float3 jitter = u_inScatteringParams.jitter;
+		const float fogNearPlane = u_fogConstants.fogNearPlane;
+		const float fogFarPlane = u_fogConstants.fogFarPlane;
 
-		const float fogFroxelDepth = fogFroxelUVW.z + jitter.z;
-		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelDepth, fogNearPlane, fogFarPlane);
+		const float bias = 0.2f;
+		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(u_fogConstants, u_sceneView, input.globalID.xyz, u_indirectInScatteringConstants.indirectGridRes, u_depthTexture, u_depthSampler, bias);
 
-		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy + jitter.xy, fogFroxelLinearDepth, projectionNearPlane);
+		const float fogFroxelLinearDepth = ComputeFogFroxelLinearDepth(fogFroxelUVW.z, fogNearPlane, fogFarPlane);
+
+		const float3 fogFroxelNDC = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepth, projectionNearPlane);
 
 		const float3 fogFroxelWorldLocation = NDCToWorldSpaceNoJitter(fogFroxelNDC, u_sceneView);
 		

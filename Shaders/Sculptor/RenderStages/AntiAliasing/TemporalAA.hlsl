@@ -163,7 +163,8 @@ void TemporalAACS(CS_INPUT input)
 					const int2 offset = int2(x, y);
 					const float2 neighborUV = uv + pixelSize * offset;
 
-					float3 neighborColor = ExposedLuminanceToLuminance(u_inputColor.SampleLevel(u_linearSampler, neighborUV, 0));
+					float3 neighborColor = u_inputColor.SampleLevel(u_linearSampler, neighborUV, 0);
+					neighborColor /= (Luminance(neighborColor) + 1.f);
 
 					if(u_params.useYCoCg)
 					{
@@ -197,7 +198,8 @@ void TemporalAACS(CS_INPUT input)
 			}
 
 			float3 historySample = SampleCatmullRom(u_historyColor, u_linearSampler, reporojectedUV, float2(outputRes));
-			historySample = HistoryExposedLuminanceToLuminance(historySample);
+			historySample = ExposedHistoryLuminanceToCurrentExposedLuminance(historySample);
+			historySample /= (Luminance(historySample) + 1.f);
 
 			if(u_params.useYCoCg)
 			{
@@ -227,13 +229,14 @@ void TemporalAACS(CS_INPUT input)
 			currentWeight = 1.f - historyWeight;
 			
 			float3 outputColor = (historyWeight * historySample + currentWeight * currentSample);
+			outputColor /= (1.f - Luminance(outputColor));
 
 			if(u_params.useYCoCg)
 			{
 				outputColor = YCoCgToRGB(outputColor);
 			}
 
-			u_outputColor[pixel] = LuminanceToExposedLuminance(outputColor);
+			u_outputColor[pixel] = (outputColor);
 		}
 		else
 		{

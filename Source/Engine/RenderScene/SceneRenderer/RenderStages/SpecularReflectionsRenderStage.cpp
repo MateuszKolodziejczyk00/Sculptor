@@ -50,6 +50,7 @@ BEGIN_SHADER_STRUCT(SpecularTraceShaderParams)
 	SHADER_STRUCT_FIELD(Real32,         volumetricFogNear)
 	SHADER_STRUCT_FIELD(Real32,         volumetricFogFar)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u, reservoirsResolution)
 END_SHADER_STRUCT()
 
 
@@ -104,13 +105,16 @@ static rg::RGBufferViewHandle GenerateInitialReservoirs(rg::RenderGraphBuilder& 
 	ParticipatingMediaViewRenderSystem& participatingMediaViewSystem = renderView.GetRenderSystem<ParticipatingMediaViewRenderSystem>();
 	const VolumetricFogParams& fogParams = participatingMediaViewSystem.GetVolumetricFogParams();
 
-	const rg::RGBufferViewHandle reservoirsBuffer = sr_restir::CreateReservoirsBuffer(graphBuilder, params.resolution);
+	const math::Vector2u reservoirsResolution = sr_restir::ComputeReservoirsResolution(params.resolution);
+
+	const rg::RGBufferViewHandle reservoirsBuffer = sr_restir::CreateReservoirsBuffer(graphBuilder, reservoirsResolution);
 
 	SpecularTraceShaderParams shaderParams;
-	shaderParams.random            = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
-	shaderParams.volumetricFogNear = fogParams.nearPlane;
-	shaderParams.volumetricFogFar  = fogParams.farPlane;
-	shaderParams.resolution        = params.resolution;
+	shaderParams.random               = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
+	shaderParams.volumetricFogNear    = fogParams.nearPlane;
+	shaderParams.volumetricFogFar     = fogParams.farPlane;
+	shaderParams.resolution           = params.resolution;
+	shaderParams.reservoirsResolution = reservoirsResolution;
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
 	traceRaysDS->u_skyViewLUT                    = params.skyViewLUT;

@@ -5,6 +5,8 @@
 
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Sampling.hlsli"
+
 
 struct CS_INPUT
 {
@@ -25,42 +27,18 @@ void ApplyVolumetricFogCS(CS_INPUT input)
 		const float2 pixelSize = rcp(float2(outputRes));
 		const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-		const float depth = u_depthTexture.SampleLevel(u_depthSampler, uv, 0);
+		const float depth = max(u_depthTexture.SampleLevel(u_depthSampler, uv, 0), 0.000001f);
 
 		float3 fogFroxelUVW = 0.f;
-		if(depth > 0.000001f)
-		{
-			const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
-			fogFroxelUVW = ComputeFogFroxelUVW(uv, linearDepth, u_applyVolumetricFogParams.fogNearPlane, u_applyVolumetricFogParams.fogFarPlane);
+		const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
+		fogFroxelUVW = ComputeFogFroxelUVW(uv, linearDepth, u_applyVolumetricFogParams.fogNearPlane, u_applyVolumetricFogParams.fogFarPlane);
 
-			// We use froxel that is closer to avoid light leaking
-			const float froxelDepth = 1.f / u_applyVolumetricFogParams.fogResolution.z;
-			const float zBias = 1.5f * froxelDepth;
-			fogFroxelUVW.z -= zBias;
-		}
-		else
-		{
-			fogFroxelUVW = float3(uv, 1.f);
-		}
+		// We use froxel that is closer to avoid light leaking
+		const float froxelDepth = 1.f / u_applyVolumetricFogParams.fogResolution.z;
+		const float zBias = 2 * froxelDepth;
+		fogFroxelUVW.z -= zBias;
 
-		float4 inScatteringTransmittance = u_integratedInScatteringTexture.SampleLevel(u_integratedInScatteringSampler, fogFroxelUVW, 0);
-
-		float weight = 1.f;
-
-		[unroll]
-		for (int i = -1; i <= 1; ++i)
-		{
-			[unroll]
-			for (int j = -1; j <= 1; ++j)
-			{
-				const float2 currentSampleUV = uv + float2(i, j) * pixelSize * u_applyVolumetricFogParams.blendPixelsOffset;
-
-				inScatteringTransmittance += u_integratedInScatteringTexture.SampleLevel(u_integratedInScatteringSampler, float3(currentSampleUV, fogFroxelUVW.z), 0);
-				weight += 1.f;
-			}
-		}
-		 
-		inScatteringTransmittance /= weight;
+		const float4 inScatteringTransmittance = SampleTricubic(u_integratedInScatteringTexture, u_integratedInScatteringSampler, fogFroxelUVW, u_applyVolumetricFogParams.fogResolution);
 
 		const float3 inScattering = inScatteringTransmittance.rgb;
 		const float transmittance = inScatteringTransmittance.a;

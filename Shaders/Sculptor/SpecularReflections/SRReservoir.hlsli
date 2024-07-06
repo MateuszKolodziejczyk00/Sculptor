@@ -2,6 +2,7 @@
 #define SRRESERVOIR_HLSLI
 
 #include "Utils/Packing.hlsli"
+#include "Utils/MortonCode.hlsli"
 
 [[shader_struct(SRPackedReservoir)]]
 
@@ -141,7 +142,16 @@ SRReservoir UnpackReservoir(in SRPackedReservoir packedReservoir)
 
 uint GetScreenReservoirIdx(in uint2 coords, in uint2 resolution)
 {
-	return coords.x + coords.y * resolution.x;
+	const uint2 tileSize = uint2(64u, 64u);
+	const uint2 tilesRes = resolution >> 6;
+	const uint2 tileCoords = coords >> 6;
+
+	const uint tileIdx = tileCoords.y * tilesRes.x + tileCoords.x;
+
+	const uint2 coordsInTile = coords & 63u;
+	const uint reservoirIdxInTile = EncodeMorton2(coordsInTile);
+
+	return tileIdx * Pow2(64u) + reservoirIdxInTile;
 }
 
 #endif // SRRESERVOIR_HLSLI

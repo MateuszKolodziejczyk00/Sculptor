@@ -37,7 +37,8 @@ END_SHADER_STRUCT();
 
 
 Uint64                 ComputeReservoirsBufferSize(math::Vector2u resolution);
-rg::RGBufferViewHandle CreateReservoirsBuffer(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
+math::Vector2u         ComputeReservoirsResolution(math::Vector2u resolution);
+rg::RGBufferViewHandle CreateReservoirsBuffer(rg::RenderGraphBuilder& graphBuilder, math::Vector2u rservoirsResolution);
 
 
 struct ResamplingParams
