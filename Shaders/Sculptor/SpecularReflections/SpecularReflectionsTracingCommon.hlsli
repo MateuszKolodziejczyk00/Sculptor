@@ -7,13 +7,7 @@
 
 [[descriptor_set(MaterialsDS, 4)]]
 
-[[descriptor_set(GlobalLightsDS, 5)]]
-
-[[descriptor_set(ShadowMapsDS, 6)]]
-
-[[descriptor_set(RenderViewDS, 7)]]
-
-[[descriptor_set(DDGISceneDS, 8)]]
+[[descriptor_set(RenderViewDS, 5)]]
 
 
 struct SpecularReflectionsRayPayload

@@ -11,7 +11,8 @@
 [shader("raygeneration")]
 void ResamplingFinalVisibilityTestRTG()
 {
-	const uint3 pixel = DispatchRaysIndex().xyz;
+	uint3 pixel = DispatchRaysIndex().xyz;
+	pixel.xy = min(pixel.xy * 2 + uint2((u_resamplingConstants.frameIdx & 2) >> 1, u_resamplingConstants.frameIdx & 1), u_resamplingConstants.resolution - 1);
 
 	const float2 uv = (pixel.xy + 0.5f) * u_resamplingConstants.pixelSize;
 	const float depth = u_depthTexture.Load(pixel);
@@ -31,31 +32,33 @@ void ResamplingFinalVisibilityTestRTG()
 
 		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);
-
-		const float3 biasedHitLocation = reservoir.hitLocation + reservoir.hitNormal * bias;
-
-		const float distance = length(biasedHitLocation - biasedWorldLocation);
-
-		const float3 rayDirection = (biasedHitLocation - biasedWorldLocation) / distance;
-
-		RayDesc rayDesc;
-		rayDesc.TMin        = 0.0f;
-		rayDesc.TMax        = distance;
-		rayDesc.Origin      = biasedWorldLocation;
-		rayDesc.Direction   = rayDirection;
-
-		TraceRay(u_worldAccelerationStructure,
-				 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-				 0xFF,
-				 0,
-				 1,
-				 0,
-				 rayDesc,
-				 payload);
-
-		if(!payload.isVisible)
+		if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_RECENT))
 		{
-			u_inOutReservoirsBuffer[reservoirIdx] = u_initialReservoirsBuffer[reservoirIdx];
+			const float3 biasedHitLocation = reservoir.hitLocation + reservoir.hitNormal * bias;
+
+			const float distance = length(biasedHitLocation - biasedWorldLocation);
+
+			const float3 rayDirection = (biasedHitLocation - biasedWorldLocation) / distance;
+
+			RayDesc rayDesc;
+			rayDesc.TMin        = 0.0f;
+			rayDesc.TMax        = distance;
+			rayDesc.Origin      = biasedWorldLocation;
+			rayDesc.Direction   = rayDirection;
+
+			TraceRay(u_sceneTLAS,
+					 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+					 0xFF,
+					 0,
+					 1,
+					 0,
+					 rayDesc,
+					 payload);
+
+			if(!payload.isVisible)
+			{
+				u_inOutReservoirsBuffer[reservoirIdx] = u_initialReservoirsBuffer[reservoirIdx];
+			}
 		}
 	}
 }

@@ -69,7 +69,7 @@ inline void ShaderMetaData::Append(const ShaderMetaData& other)
 		}
 		else
 		{
-			SPT_CHECK(m_dsStateTypeIDs[idx] == other.m_dsStateTypeIDs[idx]);
+			SPT_CHECK_MSG(m_dsStateTypeIDs[idx] == other.m_dsStateTypeIDs[idx], "Not matching Descriptor States at idx {}", idx);
 		}
 	}
 }

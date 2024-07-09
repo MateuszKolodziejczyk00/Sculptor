@@ -8,9 +8,10 @@
 
 
 #define SR_RESERVOIR_FLAGS_NONE       0
-#define SR_RESERVOIR_FLAGS_MISS       1
+#define SR_RESERVOIR_FLAGS_MISS       (1 << 0)
+#define SR_RESERVOIR_FLAGS_RECENT     (1 << 1) // Reservoir was traced recently and we can skip visibility check
 
-#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS)
+#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT)
 
 #define SR_RESERVOIR_MAX_M   (255)
 #define SR_RESERVOIR_MAX_AGE (255)
@@ -92,6 +93,11 @@ class SRReservoir
 	bool HasFlag(in uint flag)
 	{
 		return (flags & flag) != 0;
+	}
+
+	void RemoveFlag(in uint flag)
+	{
+		flags &= ~flag;
 	}
 
 	bool CanCombine(in SRReservoir other)

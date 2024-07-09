@@ -212,11 +212,15 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 
 #ifdef DS_GlobalLightsDS
 
+#ifndef SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX
+#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 0
+#endif // SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX
+
+
 struct ShadowRayPayload
 {
 	bool isShadowed;
 };
-
 
 
 #ifdef DS_DDGISceneDS
@@ -262,13 +266,13 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 					 0xFF,
 					 0,
 					 1,
-					 1,
+					 SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX,
 					 rayDesc,
 					 payload);
 			
 			if (!payload.isShadowed)
 			{
-                luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
+				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
 			}
 		}
 	}

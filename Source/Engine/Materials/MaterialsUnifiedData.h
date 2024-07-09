@@ -11,18 +11,29 @@
 namespace spt::mat
 {
 
-constexpr rhi::SamplerDefinition CreateMaterialTexturesSampler()
+constexpr rhi::SamplerDefinition CreateMaterialAnisoSampler()
 {
 	rhi::SamplerDefinition sampler = rhi::SamplerState::LinearRepeat;
-	sampler.mipLodBias = -0.5f;
+	sampler.mipLodBias       = -0.5f;
+	sampler.enableAnisotropy = true;
+	sampler.maxAnisotropy    = 8.f;
+	return sampler;
+}
+
+
+constexpr rhi::SamplerDefinition CreateMaterialLinearSampler()
+{
+	rhi::SamplerDefinition sampler = rhi::SamplerState::LinearRepeat;
+	sampler.mipLodBias       = -0.5f;
 	return sampler;
 }
 
 
 DS_BEGIN(MaterialsDS, rg::RGDescriptorSetState<MaterialsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),                                        u_materialsData)
-	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<1024>),                        u_materialsTextures)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateMaterialTexturesSampler()>), u_materialTexturesSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ByteAddressBuffer),                                      u_materialsData)
+	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures2DBinding<1024>),                      u_materialsTextures)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateMaterialAnisoSampler()>),  u_materialAnisoSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<CreateMaterialLinearSampler()>), u_materialLinearSampler)
 DS_END();
 
 

@@ -194,7 +194,6 @@ float3 ImportanceSampleGGX(in float2 Xi, in float3 N, in float roughness)
 }
 
 
-
 // Based on: https://auzaiffe.wordpress.com/2024/04/15/vndf-importance-sampling-an-isotropic-distribution/
 float3 SampleVNDFIsotropic(float2 u, float3 wi, float alpha, float3 n)
 {

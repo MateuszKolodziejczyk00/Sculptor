@@ -1,5 +1,7 @@
 #include "SculptorShader.hlsli"
 
+#define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 1
+
 #include "DDGI/DDGITraceRaysCommon.hlsli"
 
 #include "Atmosphere/Atmosphere.hlsli"

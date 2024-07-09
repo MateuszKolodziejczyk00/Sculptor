@@ -122,9 +122,11 @@ void ResampleSpatiallyCS(CS_INPUT input)
 					continue;
 				}
 
+
 				if(newReservoir.Update(reuseReservoir, rng.Next(), targetPdf * jacobian))
 				{
 					selectedTargetPdf = targetPdf;
+					newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
 				}
 			}
 		}

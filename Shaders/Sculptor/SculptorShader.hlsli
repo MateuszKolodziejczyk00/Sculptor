@@ -14,6 +14,9 @@
 #define SPT_GOLDEN_RATIO 1.61803398875
 
 
+#define SPT_NAN (0.f / 0.f)
+
+
 #define SMALL_NUMBER 1.e-6f
 
 

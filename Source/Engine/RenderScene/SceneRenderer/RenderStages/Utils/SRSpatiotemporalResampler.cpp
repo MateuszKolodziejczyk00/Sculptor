@@ -201,7 +201,6 @@ DS_BEGIN(SRResamplingFinalVisibilityTestDS, rg::RGDescriptorSetState<SRResamplin
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_inOutReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_initialReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
-	DS_BINDING(BINDING_TYPE(gfx::AccelerationStructureBinding),                 u_worldAccelerationStructure)
 DS_END();
 
 
@@ -230,16 +229,15 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 	lib::MTHandle<SRResamplingFinalVisibilityTestDS> ds = graphBuilder.CreateDescriptorSet<SRResamplingFinalVisibilityTestDS>(RENDERER_RESOURCE_NAME("SR Final Visibility Test DS"));
 	ds->u_depthTexture               = params.depthTexture;
 	ds->u_normalsTexture             = params.normalsTexture;
-	ds->u_inOutReservoirsBuffer      = params.initialReservoirBuffer;
-	ds->u_initialReservoirsBuffer    = reservoirsState.ReadReservoirs();
+	ds->u_inOutReservoirsBuffer      = reservoirsState.ReadReservoirs();
+	ds->u_initialReservoirsBuffer    = params.initialReservoirBuffer;
 	ds->u_resamplingConstants        = resamplingConstants;
-	ds->u_worldAccelerationStructure = lib::Ref(rayTracingSubsystem.GetSceneTLAS());
 
 	lib::MTHandle<RTVisibilityDS> rtVisibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
-	rtVisibilityDS->u_rtInstances             = rayTracingSubsystem.GetRTInstancesDataBuffer()->CreateFullView();
 	rtVisibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
 	rtVisibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
-	rtVisibilityDS->u_MaterialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
+	rtVisibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
+	rtVisibilityDS->u_sceneRayTracingDS       = rayTracingSubsystem.GetSceneRayTracingDS();
 
 	static rdr::PipelineStateID visibilityTestPipeline;
 	if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
@@ -249,7 +247,7 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
 						  visibilityTestPipeline,
-						  resolution,
+						  math::Utils::DivideCeil(resolution, math::Vector2u(2u, 2u)),
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.renderView.GetRenderViewDS(),
 												 std::move(rtVisibilityDS)));

@@ -134,6 +134,7 @@ struct SRTemporalResampler
 
 				if(currentReservoir.Update(selectedHistoryReservoir, rng.Next(), targetPdf))
 				{
+					currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
 					selectedTargetPdf = targetPdf;
 				}
 			}
