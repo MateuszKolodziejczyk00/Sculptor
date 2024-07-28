@@ -2,7 +2,7 @@ RelitRaysPerProbe: 400
 DefaultRelitHysteresis: 0.800000489
 MinHysteresis: 0.300000012
 MaxHysteresis: 0.800000489
-RelitVolumesBudget: 3
+RelitVolumesBudget: 2
 ProbeIlluminanceDataRes:
   - 6
   - 6

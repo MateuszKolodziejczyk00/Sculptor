@@ -15,7 +15,7 @@ DS_BEGIN(SRComputeStdDevDS, rg::RGDescriptorSetState<SRComputeStdDevDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),         u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>), u_momentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>), u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_luminanceTexture)
 DS_END();
 

@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -60,7 +61,7 @@ void TemporalFilterCS(CS_INPUT input)
 			const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(currentSampleWS, 1.f));
 			const float2 prevFrameUV = (prevFrameClip.xy / prevFrameClip.w) * 0.5f + 0.5f;
 		
-			const float3 currentSampleNormal = u_normalsTexture.SampleLevel(u_linearSampler, uv, 0.0f).xyz * 2.f - 1.f;
+			const float3 currentSampleNormal = OctahedronDecodeNormal(u_normalsTexture.SampleLevel(u_linearSampler, uv, 0.0f));
 
 			const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
 

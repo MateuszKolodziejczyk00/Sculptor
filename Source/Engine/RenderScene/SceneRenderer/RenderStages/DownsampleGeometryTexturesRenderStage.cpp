@@ -29,8 +29,9 @@ DS_BEGIN(DownsampleGeometryTexturesDS, rg::RGDescriptorSetState<DownsampleGeomet
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_baseColorMetallicTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_depthTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_linearDepthTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_motionTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_normalsTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_normalsTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_specularColorTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_roughnessTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
@@ -63,6 +64,8 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	const math::Vector2u halfRes = math::Utils::DivideCeil(renderingResolution, math::Vector2u(2u, 2u));
 
 	PrepareResources(halfRes);
+
+	viewContext.linearDepthHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Linear Depth Half Res"), rg::TextureDef(halfRes, rhi::EFragmentFormat::R32_S_Float));
 
 	SPT_CHECK(viewContext.depthHalfRes.IsValid());
 	SPT_CHECK(viewContext.depthHalfRes->GetResolution2D() == halfRes);
@@ -101,6 +104,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	ds->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
 	ds->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 	ds->u_depthTextureHalfRes         = viewContext.depthHalfRes;
+	ds->u_linearDepthTextureHalfRes   = viewContext.linearDepthHalfRes;
 	ds->u_motionTextureHalfRes        = viewContext.motionHalfRes;
 	ds->u_normalsTextureHalfRes       = viewContext.normalsHalfRes;
 	ds->u_specularColorTextureHalfRes = viewContext.specularColorHalfRes;
@@ -128,7 +132,7 @@ void DownsampleGeometryTexturesRenderStage::PrepareResources(math::Vector2u rend
 		rhi::TextureDefinition normalsDef;
 		normalsDef.resolution = renderingHalfRes;
 		normalsDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
-		normalsDef.format     = rhi::EFragmentFormat::RGBA16_UN_Float;
+		normalsDef.format     = rhi::EFragmentFormat::RG16_UN_Float;
 		m_normalsTextureHalfRes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Normals Texture Half Res"), normalsDef, rhi::EMemoryUsage::GPUOnly);
 	}
 

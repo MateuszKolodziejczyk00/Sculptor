@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/RTVisibilityCommon.hlsli"
+#include "Utils/Packing.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 
 
@@ -24,7 +25,7 @@ void ResamplingFinalVisibilityTestRTG()
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float3 normal = u_normalsTexture.Load(pixel).xyz * 2.f - 1.f;
+		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(pixel));
 
 		const float bias = 0.01f;
 

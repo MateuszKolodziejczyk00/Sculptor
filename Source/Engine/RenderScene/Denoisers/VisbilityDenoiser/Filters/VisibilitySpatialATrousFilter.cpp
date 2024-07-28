@@ -23,7 +23,7 @@ DS_BEGIN(SpatialATrousFilterDS, rg::RGDescriptorSetState<SpatialATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                  u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                  u_varianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                         u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                 u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                 u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpatialATrousFilteringParams>), u_params)
 DS_END();
 

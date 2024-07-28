@@ -424,6 +424,25 @@ void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::V
 					  traceCount.x(), traceCount.y(), traceCount.z());
 }
 
+void RHICommandBuffer::TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(IsValid());
+	SPT_CHECK(indirectArgsBuffer.IsValid() && indirectArgsOffset + sizeof(math::Vector3u) < indirectArgsBuffer.GetSize())
+
+	const VkStridedDeviceAddressRegionKHR callableRegion = {};
+
+	const VkDeviceAddress indirectArgsAddress = indirectArgsBuffer.GetDeviceAddress() + indirectArgsOffset;
+
+	vkCmdTraceRaysIndirectKHR(m_cmdBufferHandle,
+							  &sbt.GetRayGenRegion(),
+							  &sbt.GetMissRegion(),
+							  &sbt.GetClosestHitRegion(),
+							  &callableRegion,
+							  indirectArgsAddress);
+}
+
 void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
 {
 	SPT_PROFILER_FUNCTION();

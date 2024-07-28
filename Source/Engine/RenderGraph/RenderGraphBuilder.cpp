@@ -255,6 +255,8 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	const Bool isHostAccessible = bufferView->AllowsHostWrites();
 	const Bool canFillOnHost = isHostAccessible && !bufferView->GetLastAccessNode().IsValid();
 
+	SPT_CHECK(canFillOnHost || lib::HasAnyFlag(bufferView->GetUsageFlags(), rhi::EBufferUsage::TransferDst));
+
 	const Uint64 writeOffset = bufferView->GetOffset() + offset;
 	const auto executeLambda = [canFillOnHost, bufferView, writeOffset, range, data](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{

@@ -635,6 +635,11 @@ public:
 		return m_size;
 	}
 
+	rhi::EBufferUsage GetUsageFlags() const
+	{
+		return m_buffer->GetUsageFlags();
+	}
+
 	RGBufferHandle GetBuffer() const
 	{
 		return m_buffer;

@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/RTVisibilityCommon.hlsli"
+#include "Utils/Packing.hlsli"
 #include "Utils/Random.hlsli"
 
 
@@ -25,7 +26,7 @@ void GenerateAmbientOcclusionRaysRTG()
         const float3 ndc = float3(uv * 2.f - 1.f, depth);
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-        const float3 normal = u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0) * 2.f - 1.f;
+        const float3 normal = OctahedronDecodeNormal(u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0));
         const float3 tangent = dot(normal, UP_VECTOR) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);
         const float3 bitangent = cross(normal, tangent);
 

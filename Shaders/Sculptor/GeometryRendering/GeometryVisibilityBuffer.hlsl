@@ -433,7 +433,7 @@ struct PrimitiveOutput
 	uint packedVisibilityInfo : PACKED_VISBILITY_INFO;
 
 #if MATERIAL_CAN_DISCARD
-	uint16_t materialDataID : MATERIAL_DATA_ID;
+	uint materialDataID : MATERIAL_DATA_ID;
 #endif // MATERIAL_CAN_DISCARD
 
 	bool culled               : SV_CullPrimitive;
@@ -532,7 +532,7 @@ void GeometryVisibility_MS(
 		outPrims[meshletTriangleIdx].packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
 		outPrims[meshletTriangleIdx].culled = groupTriangleIdx + localID >= meshlet.triangleCount || !IsTriangleVisible(tri, cullingParams);
 #if MATERIAL_CAN_DISCARD
-		outPrims[meshletTriangleIdx].materialDataID = batchElement.materialDataID;
+		outPrims[meshletTriangleIdx].materialDataID = uint(batchElement.materialDataID);
 #endif // MATERIAL_CAN_DISCARD
 	}
 }
@@ -550,7 +550,7 @@ VIS_BUFFER_PS_OUT GeometryVisibility_FS(in OutputVertex vertexInput, in Primitiv
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
-    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(primData.materialDataID);
+    const SPT_MATERIAL_DATA_TYPE materialData = LoadMaterialData(uint16_t(primData.materialDataID));
 
     const CustomOpacityOutput opacityOutput = EvaluateCustomOpacity(materialEvalParams, materialData);
     if(opacityOutput.shouldDiscard)

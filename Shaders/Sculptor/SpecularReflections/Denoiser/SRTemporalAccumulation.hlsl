@@ -4,6 +4,7 @@
 [[descriptor_set(SRTemporalAccumulationDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
@@ -46,7 +47,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		float reprojectionConfidence = 0.f;
 
-		const float3 currentSampleNormal = normalize(u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f);
+		const float3 currentSampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 
 		const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
 
@@ -59,7 +60,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
 			if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 			{
-				const float3 historyNormals  = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
+				const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f));
 				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 
 				const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
@@ -96,7 +97,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 						reprojectionConfidence = 1.f;
 						historyUV              = surfaceHistoryUV;
 					}
-					const float3 historyNormal = u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f).xyz * 2.f - 1.f;
+					const float3 historyNormal = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f));
 					const float normalsSimilarity = dot(historyNormal, currentSampleNormal);
 					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 					const float roughnessDiff = abs(roughness - historyRoughness);

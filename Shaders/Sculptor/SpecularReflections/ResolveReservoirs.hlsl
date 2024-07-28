@@ -5,6 +5,7 @@
 
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 #include "Shading/Shading.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
@@ -30,7 +31,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float3 sampleNormal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+		const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 
 		const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
 

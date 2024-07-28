@@ -4,6 +4,7 @@
 [[descriptor_set(SRComputeStdDevDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -77,7 +78,7 @@ void SRComputeStdDevCS(CS_INPUT input)
 
 			const uint3 samplePixel = uint3(max(groupPixelOffset + int2(x, y) - KERNEL_RADIUS, int2(0, 0)), 0);
 
-			sharedSampleData[x][y].normal      = half3(u_normalsTexture.Load(samplePixel).xyz * 2.f - 1.f);
+			sharedSampleData[x][y].normal      = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
 			sharedSampleData[x][y].linearDepth = ComputeLinearDepth(u_depthTexture.Load(samplePixel).x, u_sceneView);
 			sharedSampleData[x][y].luminance   = Luminance(u_luminanceTexture.Load(samplePixel).xyz);
 		}

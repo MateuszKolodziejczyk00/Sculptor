@@ -35,7 +35,8 @@ float ComputeSpecularNormalWeight(in float maxAngle, in float3 centerNormal, in 
 
 float ComputeNormalWeight(in float3 centerNormal, in float3 sampleNormal)
 {
-	return saturate(pow(max(0.f, dot(centerNormal, sampleNormal)), 64.f));
+	const float dotProduct = dot(centerNormal, sampleNormal);
+	return dotProduct > 0.f ? pow(dotProduct, 64.f) : 0.f;
 }
 
 

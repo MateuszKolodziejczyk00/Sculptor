@@ -14,7 +14,9 @@ namespace spt::rsc::sr_denoiser
 {
 
 BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
-	SHADER_STRUCT_FIELD(Uint32, samplesOffset)
+	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
+	SHADER_STRUCT_FIELD(Uint32,         samplesOffset)
 END_SHADER_STRUCT();
 
 
@@ -23,7 +25,7 @@ DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_luminanceStdDevTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_historyFramesNumTexture)
@@ -42,12 +44,14 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector3u resolution = output->GetResolution();
+	const math::Vector2u resolution = output->GetResolution2D();
 
 	static const rdr::PipelineStateID pipeline = CreateSRATrousFilterPipeline();
 
 	SRATrousFilteringParams dispatchParams;
 	dispatchParams.samplesOffset = 1u << iterationIdx;
+	dispatchParams.resolution    = resolution;
+	dispatchParams.invResolution = resolution.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
 	ds->u_inputTexture                  = input;
@@ -62,7 +66,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector3u(8u, 8u, 1u)),
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
 }
 

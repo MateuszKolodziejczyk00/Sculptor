@@ -45,8 +45,8 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	deviceInfoLinkedData.Append(features);
 
 	VkPhysicalDeviceVulkan11Features vulkan11Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
-    vulkan11Features.shaderDrawParameters		= VK_TRUE;
-    vulkan11Features.storageBuffer16BitAccess	= VK_TRUE;
+    vulkan11Features.shaderDrawParameters     = VK_TRUE;
+    vulkan11Features.storageBuffer16BitAccess = VK_TRUE;
 
 	deviceInfoLinkedData.Append(vulkan11Features);
 

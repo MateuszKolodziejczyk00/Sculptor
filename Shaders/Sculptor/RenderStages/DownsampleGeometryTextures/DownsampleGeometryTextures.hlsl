@@ -6,6 +6,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/GBuffer.hlsli"
 #include "Shading/Shading.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -72,6 +73,7 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 		const Ray outputCameraRay = CreateViewRayWS(u_sceneView, outputUV);
 
 		float4 intersectionDepths = depths;
+		const float minDepth = min(min(min(depths.x, depths.y), depths.z), depths.w);
 
 		for(int sampleIdx = 0; sampleIdx < 4; ++sampleIdx)
 		{
@@ -93,7 +95,10 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 					const float3 intersectionWS = outputCameraRay.GetIntersectionLocation(intersection);
 					const float3 intersectionNDC = WorldSpaceToNDC(intersectionWS, u_sceneView);
 
-					intersectionDepths[sampleIdx] = intersectionNDC.z;
+					if(intersectionNDC.z > minDepth)
+					{
+						intersectionDepths[sampleIdx] = intersectionNDC.z;
+					}
 				}
 			}
 		}
@@ -120,8 +125,9 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 		ComputeSurfaceColor(baseColorMetalic.rgb, baseColorMetalic.w, OUT diffuseColor, OUT specularColor);
 
 		u_depthTextureHalfRes[pixel]         = depth;
+		u_linearDepthTextureHalfRes[pixel]   = ComputeLinearDepth(depth, u_sceneView);
 		u_motionTextureHalfRes[pixel]        = motion;
-		u_normalsTextureHalfRes[pixel]       = normal * 0.5f + 0.5f;
+		u_normalsTextureHalfRes[pixel]       = OctahedronEncodeNormal(normal);
 		u_roughnessTextureHalfRes[pixel]     = roughness;
 		u_specularColorTextureHalfRes[pixel] = specularColor;
 	}

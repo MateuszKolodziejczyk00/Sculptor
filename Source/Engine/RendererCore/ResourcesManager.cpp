@@ -57,7 +57,14 @@ lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName
 
 lib::SharedRef<Texture> ResourcesManager::CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
-	return lib::MakeShared<Texture>(name, textureDefinition, allocationDefinition);
+	rhi::TextureDefinition newDefinition = textureDefinition;
+
+	// In some configurations we add additional flags for debugging purposes
+#if SPT_DEBUG || SPT_DEVELOPMENT
+	lib::AddFlag(newDefinition.usage, rhi::ETextureUsage::TransferSource);
+#endif
+
+	return lib::MakeShared<Texture>(name, newDefinition, allocationDefinition);
 }
 
 lib::SharedRef<TextureView> ResourcesManager::CreateTextureView(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)

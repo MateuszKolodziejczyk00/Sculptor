@@ -69,13 +69,42 @@ TType Pow3(TType val)
 template<typename TType>
 TType Pow4(TType val)
 {
-    return Pow2(val) * Pow2(val);
+	const float p2 = Pow2(val);
+    return Pow2(p2);
 }
 
 template<typename TType>
 TType Pow5(TType val)
 {
     return Pow4(val) * val;
+}
+
+template<typename TType>
+TType Pow8(TType val)
+{
+    const TType p4 = Pow4(val);
+	return Pow2(p4);
+}
+
+template<typename TType>
+TType Pow16(TType val)
+{
+    const TType p4 = Pow4(val);
+	return Pow4(p4);
+}
+
+template<typename TType>
+TType Pow32(TType val)
+{
+    const TType p4 = Pow4(val);
+	return Pow8(p4);
+}
+
+template<typename TType>
+TType Pow64(TType val)
+{
+    const TType p8 = Pow8(val);
+	return Pow8(p8);
 }
 
 bool IsNearlyZero(in float value, in float epsilon = 0.000001f)

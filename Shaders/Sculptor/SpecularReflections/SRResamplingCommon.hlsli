@@ -4,6 +4,7 @@
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/Shapes.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct MinimalSurfaceInfo
@@ -19,7 +20,7 @@ struct MinimalSurfaceInfo
 struct MinimalGBuffer
 {
 	Texture2D<float>  depthTexture;
-	Texture2D<float3> normalsTexture;
+	Texture2D<float2> normalsTexture;
 	Texture2D<float3> specularColorTexture;
 	Texture2D<float>  roughnessTexture;
 };
@@ -32,7 +33,7 @@ MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in ui
 	const float3 ndc = float3(uv * 2.f - 1.f, depth);
 
 	const float3 sampleLocation = NDCToWorldSpace(ndc, sceneView);
-	const float3 sampleNormal = minimalGBuffer.normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+	const float3 sampleNormal = OctahedronDecodeNormal(minimalGBuffer.normalsTexture.Load(uint3(pixel, 0)));
 	const float3 toView = normalize(sceneView.viewLocation - sampleLocation);
 
 	const float roughness = minimalGBuffer.roughnessTexture.Load(uint3(pixel, 0));

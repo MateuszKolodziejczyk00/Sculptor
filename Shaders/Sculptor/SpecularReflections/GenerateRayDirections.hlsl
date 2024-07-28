@@ -89,7 +89,7 @@ void GenerateRayDirectionsCS(CS_INPUT input)
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float3 normal   = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+		const float3 normal   = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 
 		const float3 toView = normalize(u_sceneView.viewLocation - worldLocation);

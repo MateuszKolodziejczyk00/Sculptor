@@ -365,6 +365,8 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle depthHalfRes;
 
+	rg::RGTextureViewHandle linearDepthHalfRes;
+
 	rg::RGTextureViewHandle hiZ;
 
 	rg::RGTextureViewHandle historyDepth;

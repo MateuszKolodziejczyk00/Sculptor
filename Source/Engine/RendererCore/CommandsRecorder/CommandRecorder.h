@@ -81,6 +81,8 @@ public:
 	void									DispatchIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset);
 
 	void									TraceRays(const math::Vector3u& traceCount);
+	void									TraceRaysIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset);
+	void									TraceRaysIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset);
 
 	void									BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);
 	void									UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state);

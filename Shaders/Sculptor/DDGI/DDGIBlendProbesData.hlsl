@@ -141,7 +141,6 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         const uint maxBackfaces = 0.1f * RAYS_NUM_PER_PROBE;
         uint backfacesNum = 0;
 
-
         for (uint rayIdx = 0; rayIdx < RAYS_NUM_PER_PROBE; ++rayIdx)
         {
             float weight = max(dot(sampleDirection, rayDirections[rayIdx]), 0.f);

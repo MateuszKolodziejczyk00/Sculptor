@@ -273,6 +273,23 @@ void CommandRecorder::TraceRays(const math::Vector3u& traceCount)
 	GetCommandBufferRHI().TraceRays(boundPipeline->GetShaderBindingTable(), traceCount);
 }
 
+void CommandRecorder::TraceRaysIndirect(const lib::SharedRef<Buffer>& indirectArgsBuffer, Uint64 indirectArgsOffset)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::SharedPtr<RayTracingPipeline>& boundPipeline = m_pipelineState.GetBoundRayTracingPipeline();
+	SPT_CHECK(!!boundPipeline);
+
+	m_pipelineState.FlushDirtyDSForRayTracingPipeline(GetCommandBufferRHI());
+
+	GetCommandBufferRHI().TraceRaysIndirect(boundPipeline->GetShaderBindingTable(), indirectArgsBuffer->GetRHI(), indirectArgsOffset);
+}
+
+void CommandRecorder::TraceRaysIndirect(const BufferView& indirectArgsBufferView, Uint64 indirectArgsOffset)
+{
+	TraceRaysIndirect(indirectArgsBufferView.GetBuffer(), indirectArgsBufferView.GetOffset() + indirectArgsOffset);
+}
+
 void CommandRecorder::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
 	SPT_PROFILER_FUNCTION();

@@ -135,4 +135,4 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
 	}
-}
+} 

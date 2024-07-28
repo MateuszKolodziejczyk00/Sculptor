@@ -4,6 +4,7 @@
 [[descriptor_set(RenderViewDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CachedSample
@@ -56,7 +57,7 @@ void CacheLocalSamples(in uint2 groupID, in uint2 localID)
 
 		CachedSample sample;
 		sample.depth  = u_depthTexture.Load(samplePixel).x;
-		sample.normal = half3(u_normalsTexture.Load(samplePixel).xyz) * 2.h - 1.h;
+		sample.normal = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
 		sample.value  = half(u_inputTexture.Load(samplePixel));
 
 		cachedSamples[localPixel.x][localPixel.y] = sample;

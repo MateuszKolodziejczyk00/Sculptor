@@ -4,6 +4,7 @@
 [[descriptor_set(RenderViewDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -54,7 +55,7 @@ void DepthBasedUpsampleCS(CS_INPUT input)
 		{
 			const float2 uv = inputUV + offsets[sampleIdx] * inputPixelSize;
 			const float3 sampleLocation = NDCToWorldSpace(float3(uv * 2.f - 1.f, inputDepths[sampleIdx]), u_sceneView);
-			const float3 sampleNormal = u_normalsTextureHalfRes.Load(int3(inputPixel + offsets[sampleIdx], 0)) * 2.f - 1.f;
+			const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTextureHalfRes.Load(int3(inputPixel + offsets[sampleIdx], 0)));
 			const Plane samplePlane = Plane::Create(sampleNormal, sampleLocation);
 			sampleDistances[sampleIdx] = samplePlane.Distance(outputLocation);
 		}

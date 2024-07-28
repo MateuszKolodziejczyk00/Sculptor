@@ -88,6 +88,7 @@ public:
 	void 	BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
 	void 	TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount);
+	void 	TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
 
 	// Transfer =============================================
 

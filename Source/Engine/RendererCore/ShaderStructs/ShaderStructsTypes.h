@@ -5,6 +5,25 @@
 namespace spt::rdr
 {
 
+class alignas(2) Real16 
+{
+public:
+
+	Real16() = default;
+
+private:
+
+	char data[2];
+};
+static_assert(sizeof(Real16) == 2);
+static_assert(alignof(Real16) == 2);
+
+using Real16_1 = Real16;
+using Real16_2 = math::Vector2<Real16>;
+using Real16_3 = math::Vector3<Real16>;
+using Real16_4 = math::Vector4<Real16>;
+
+
 namespace shader_translator
 {
 
@@ -73,6 +92,30 @@ constexpr lib::String GetShaderTypeName<math::Vector4f>()
 }
 
 template<>
+constexpr lib::String GetShaderTypeName<Real16_1>()
+{
+	return lib::String("half");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<Real16_2>()
+{
+	return lib::String("half2");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<Real16_3>()
+{
+	return lib::String("half3");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<Real16_4>()
+{
+	return lib::String("half4");
+}
+
+template<>
 constexpr lib::String GetShaderTypeName<math::Matrix2f>()
 {
 	return lib::String("float2x2");
@@ -106,6 +149,24 @@ template<>
 constexpr lib::String GetShaderTypeName<math::Vector4i>()
 {
 	return lib::String("int4");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector16_2u>()
+{
+	return lib::String("uint16_t2");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector16_3u>()
+{
+	return lib::String("uint16_t3");
+}
+
+template<>
+constexpr lib::String GetShaderTypeName<math::Vector16_4u>()
+{
+	return lib::String("uint16_t4");
 }
 
 template<>

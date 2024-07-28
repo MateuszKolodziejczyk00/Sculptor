@@ -268,3 +268,4 @@ void ResampleTemporallyCS(CS_INPUT input)
 		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
 	}
 }
+

@@ -7,6 +7,7 @@
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "Utils/ColorSpaces.hlsli"
+#include "Utils/Packing.hlsli"
 
 
 struct CS_INPUT
@@ -61,7 +62,7 @@ void SRClampHistoryCS(CS_INPUT input)
 	{
 		const float2 uv = (float2(pixel) + 0.5f) * u_constants.pixelSize;
 
-		const float3 normal = u_normalsTexture.Load(uint3(pixel, 0)).xyz * 2.f - 1.f;
+		const float3 normal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 
 		const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
