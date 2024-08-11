@@ -24,7 +24,7 @@ DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_luminanceStdDevTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
@@ -57,7 +57,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	ds->u_inputTexture                  = input;
 	ds->u_outputTexture                 = output;
 	ds->u_luminanceStdDevTexture        = params.stdDevTexture;
-	ds->u_depthTexture                  = params.depthTexture;
+	ds->u_linearDepthTexture            = params.linearDepthTexture;
 	ds->u_normalsTexture                = params.normalsTexture;
 	ds->u_roughnessTexture              = params.roughnessTexture;
 	ds->u_reprojectionConfidenceTexture = params.reprojectionConfidenceTexture;

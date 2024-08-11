@@ -11,6 +11,9 @@
 
 #include "Shading/Shading.hlsli"
 
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
+
 #define USE_BLUE_NOISE_SAMPLES 0
 
 #if USE_BLUE_NOISE_SAMPLES
@@ -77,10 +80,20 @@ struct CS_INPUT
 };
 
 
-[numthreads(8, 4, 1)]
+[numthreads(32, 1, 1)]
 void GenerateRayDirectionsCS(CS_INPUT input)
 {
-	const uint2 pixel = input.globalID.xy;
+	const uint traceCommandIndex = input.globalID.x;
+
+	if(traceCommandIndex >= u_tracesNum[0])
+	{
+		return;
+	}
+
+	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
+
+	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
 	const float depth = u_depthTexture.Load(uint3(pixel, 0));
 	if (depth > 0.f)
@@ -96,7 +109,7 @@ void GenerateRayDirectionsCS(CS_INPUT input)
 
 		const RayDirectionInfo rayDirection = GenerateReflectionRayDir(normal, roughness, toView, pixel);
 
-		u_rwRaysDirectionTexture[pixel] = OctahedronEncodeNormal(rayDirection.direction);
-		u_rwRaysPdfTexture[pixel]       = rayDirection.pdf;
+		u_rwRaysDirections[traceCommandIndex] = PackHalf2x16Norm(OctahedronEncodeNormal(rayDirection.direction));
+		u_rwRaysPdfs[traceCommandIndex]       = rayDirection.pdf;
 	}
 }

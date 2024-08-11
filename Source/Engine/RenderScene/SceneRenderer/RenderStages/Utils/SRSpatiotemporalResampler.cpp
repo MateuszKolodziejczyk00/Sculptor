@@ -14,6 +14,7 @@
 #include "RenderScene.h"
 #include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "MaterialsUnifiedData.h"
+#include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 
 
 namespace spt::rsc::sr_restir
@@ -80,24 +81,42 @@ BEGIN_SHADER_STRUCT(SRResamplingConstants)
 END_SHADER_STRUCT();
 
 
+static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& params)
+{
+	const math::Vector2u resolution = params.GetResolution();
+
+	SRResamplingConstants resamplingConstants;
+	resamplingConstants.resolution           = resolution;
+	resamplingConstants.reservoirsResolution = ComputeReservoirsResolution(resolution);
+	resamplingConstants.pixelSize            = resolution.cast<Real32>().cwiseInverse();
+	resamplingConstants.frameIdx             = params.renderView.GetRenderedFrameIdx();
+
+	return resamplingConstants;
+}
+
 
 namespace temporal
 {
 
 DS_BEGIN(SRTemporalResamplingDS, rg::RGDescriptorSetState<SRTemporalResamplingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_specularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_historyNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_historySpecularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_inReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_historyReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_outReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_motionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_historyDepthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_historyNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_historyRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_historySpecularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),             u_inReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),             u_historyReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_outReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_rayTracesCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_commandsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                             u_rwVariableRateBlocksTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesDispatchGroupsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesNum)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),           u_resamplingConstants)
 DS_END();
 
 
@@ -109,9 +128,32 @@ static rdr::PipelineStateID CompileResolveReservoirsPipeline()
 }
 
 
-void ResampleTemporally(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
+vrt::TracesAllocation PrepareAdditionalTracesAllocationData(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const vrt::TracesAllocation& primaryTracesAllocaiton = params.tracesAllocation;
+
+	vrt::TracesAllocation additionalTracesAllocation;
+	additionalTracesAllocation.rayTraceCommands          = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Additional Ray Trace Commands Buffer"), primaryTracesAllocaiton.rayTraceCommands->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
+	additionalTracesAllocation.tracingIndirectArgs       = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Additional Tracing Indirect Args Buffer"), primaryTracesAllocaiton.tracingIndirectArgs->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
+	additionalTracesAllocation.variableRateBlocksTexture = primaryTracesAllocaiton.variableRateBlocksTexture;
+	additionalTracesAllocation.dispatchIndirectArgs      = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Additional Dispatch Indirect Args Buffer"), primaryTracesAllocaiton.dispatchIndirectArgs->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
+	additionalTracesAllocation.tracesNum                 = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Additional Traces Num Buffer"), primaryTracesAllocaiton.tracesNum->GetBufferDefinition(), rhi::EMemoryUsage::GPUOnly);
+
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Additional Traces Num"), additionalTracesAllocation.tracesNum, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Additional Tracing Indirect Args"), additionalTracesAllocation.tracingIndirectArgs, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Additional Dispatch Indirect Args"), additionalTracesAllocation.dispatchIndirectArgs, 1u);
+
+	return additionalTracesAllocation;
+}
+
+
+vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const vrt::TracesAllocation additionalTracesAllocation = PrepareAdditionalTracesAllocationData(graphBuilder, params);
 
 	const math::Vector2u resolution = params.GetResolution();
 
@@ -128,6 +170,11 @@ void ResampleTemporally(rg::RenderGraphBuilder& graphBuilder, const ResamplingPa
 	ds->u_inReservoirsBuffer          = params.initialReservoirBuffer;
 	ds->u_historyReservoirsBuffer     = reservoirsState.ReadReservoirs();
 	ds->u_outReservoirsBuffer         = reservoirsState.WriteReservoirs();
+	ds->u_rayTracesCommands           = additionalTracesAllocation.rayTraceCommands;
+	ds->u_commandsNum                 = additionalTracesAllocation.tracingIndirectArgs;
+	ds->u_rwVariableRateBlocksTexture = additionalTracesAllocation.variableRateBlocksTexture;
+	ds->u_tracesDispatchGroupsNum     = additionalTracesAllocation.dispatchIndirectArgs;
+	ds->u_tracesNum                   = additionalTracesAllocation.tracesNum;
 	ds->u_resamplingConstants         = resamplingConstants;
 
 	reservoirsState.RollBuffers();
@@ -138,6 +185,8 @@ void ResampleTemporally(rg::RenderGraphBuilder& graphBuilder, const ResamplingPa
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+
+	return additionalTracesAllocation;
 }
 
 } // temporal
@@ -146,13 +195,14 @@ namespace spatial
 {
 
 DS_BEGIN(SRSpatialResamplingDS, rg::RGDescriptorSetState<SRSpatialResamplingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_specularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_inReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_outReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                          u_variableRateBlocksTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                  u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),           u_inReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),         u_outReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),         u_resamplingConstants)
 DS_END();
 
 
@@ -170,15 +220,15 @@ void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingPar
 
 	const math::Vector2u resolution = params.GetResolution();
 
-
 	lib::MTHandle<SRSpatialResamplingDS> ds = graphBuilder.CreateDescriptorSet<SRSpatialResamplingDS>(RENDERER_RESOURCE_NAME("Resample Spatially DS"));
-	ds->u_depthTexture         = params.depthTexture;
-	ds->u_normalsTexture       = params.normalsTexture;
-	ds->u_roughnessTexture     = params.roughnessTexture;
-	ds->u_specularColorTexture = params.specularColorTexture;
-	ds->u_inReservoirsBuffer   = reservoirsState.ReadReservoirs();
-	ds->u_outReservoirsBuffer  = reservoirsState.WriteReservoirs();
-	ds->u_resamplingConstants  = resamplingConstants;
+	ds->u_depthTexture               = params.depthTexture;
+	ds->u_normalsTexture             = params.normalsTexture;
+	ds->u_roughnessTexture           = params.roughnessTexture;
+	ds->u_specularColorTexture       = params.specularColorTexture;
+	ds->u_variableRateBlocksTexture  = params.tracesAllocation.variableRateBlocksTexture;
+	ds->u_inReservoirsBuffer         = reservoirsState.ReadReservoirs();
+	ds->u_outReservoirsBuffer        = reservoirsState.WriteReservoirs();
+	ds->u_resamplingConstants        = resamplingConstants;
 
 	reservoirsState.RollBuffers();
 
@@ -186,7 +236,7 @@ void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingPar
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Spatially"),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
 }
 
@@ -196,11 +246,12 @@ namespace final_visibility
 {
 
 DS_BEGIN(SRResamplingFinalVisibilityTestDS, rg::RGDescriptorSetState<SRResamplingFinalVisibilityTestDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_inOutReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_initialReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),         u_inOutReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),           u_initialReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),         u_resamplingConstants)
 DS_END();
 
 
@@ -227,11 +278,12 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = params.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
 	lib::MTHandle<SRResamplingFinalVisibilityTestDS> ds = graphBuilder.CreateDescriptorSet<SRResamplingFinalVisibilityTestDS>(RENDERER_RESOURCE_NAME("SR Final Visibility Test DS"));
-	ds->u_depthTexture               = params.depthTexture;
-	ds->u_normalsTexture             = params.normalsTexture;
-	ds->u_inOutReservoirsBuffer      = reservoirsState.ReadReservoirs();
-	ds->u_initialReservoirsBuffer    = params.initialReservoirBuffer;
-	ds->u_resamplingConstants        = resamplingConstants;
+	ds->u_depthTexture            = params.depthTexture;
+	ds->u_normalsTexture          = params.normalsTexture;
+	ds->u_traceCommands           = params.tracesAllocation.rayTraceCommands;
+	ds->u_inOutReservoirsBuffer   = reservoirsState.ReadReservoirs();
+	ds->u_initialReservoirsBuffer = params.initialReservoirBuffer;
+	ds->u_resamplingConstants     = resamplingConstants;
 
 	lib::MTHandle<RTVisibilityDS> rtVisibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
 	rtVisibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
@@ -245,12 +297,12 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 		visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem);
 	}
 
-	graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
-						  visibilityTestPipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(2u, 2u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS(),
-												 std::move(rtVisibilityDS)));
+	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("SR Final Visibility Test"),
+								   visibilityTestPipeline,
+								   params.tracesAllocation.tracingIndirectArgs, 0,
+								   rg::BindDescriptorSets(std::move(ds),
+														  params.renderView.GetRenderViewDS(),
+														  std::move(rtVisibilityDS)));
 }
 
 } // final_visibility
@@ -263,6 +315,7 @@ DS_BEGIN(ResolveReservoirsDS, rg::RGDescriptorSetState<ResolveReservoirsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                   u_variableRateBlocksTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_luminanceHitDistanceTexture)
@@ -285,14 +338,15 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	const math::Vector2u resolution = params.GetResolution();
 
 	lib::MTHandle<ResolveReservoirsDS> ds = graphBuilder.CreateDescriptorSet<ResolveReservoirsDS>(RENDERER_RESOURCE_NAME("Resolve Reservoirs DS"));
-	ds->u_depthTexture                = params.depthTexture;
-	ds->u_normalsTexture              = params.normalsTexture;
-	ds->u_roughnessTexture            = params.roughnessTexture;
-	ds->u_specularColorTexture        = params.specularColorTexture;
-	ds->u_brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
-	ds->u_luminanceHitDistanceTexture = params.outLuminanceHitDistanceTexture;
-	ds->u_reservoirsBuffer            = reservoirsState.ReadReservoirs();
-	ds->u_resamplingConstants         = resamplingConstants;
+	ds->u_depthTexture                        = params.depthTexture;
+	ds->u_normalsTexture                      = params.normalsTexture;
+	ds->u_roughnessTexture                    = params.roughnessTexture;
+	ds->u_specularColorTexture                = params.specularColorTexture;
+	ds->u_variableRateBlocksTexture           = params.tracesAllocation.variableRateBlocksTexture;
+	ds->u_brdfIntegrationLUT                  = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+	ds->u_luminanceHitDistanceTexture         = params.outLuminanceHitDistanceTexture;
+	ds->u_reservoirsBuffer                    = reservoirsState.ReadReservoirs();
+	ds->u_resamplingConstants                 = resamplingConstants;
 
 	static const rdr::PipelineStateID pipeline = CompileResolveReservoirsPipeline();
 
@@ -325,7 +379,7 @@ rg::RGBufferViewHandle CreateReservoirsBuffer(rg::RenderGraphBuilder& graphBuild
 
 	rhi::BufferDefinition bufferDef;
 	bufferDef.size  = bufferSize;
-	bufferDef.usage = rhi::EBufferUsage::Storage;
+	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 
 	return graphBuilder.CreateBufferView(RG_DEBUG_NAME("Reservoir Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 }
@@ -351,9 +405,11 @@ SpatiotemporalResampler::SpatiotemporalResampler()
 	: m_historyResolution(0u, 0u)
 { }
 
-void SpatiotemporalResampler::Resample(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params)
+InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params)
 {
 	SPT_PROFILER_FUNCTION();
+
+	InitialResamplingResult result;
 
 	const math::Vector2u resolution = params.GetResolution();
 
@@ -362,11 +418,7 @@ void SpatiotemporalResampler::Resample(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->CreateFullView());
 	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->CreateFullView());
 
-	SRResamplingConstants resamplingConstants;
-	resamplingConstants.resolution           = resolution;
-	resamplingConstants.reservoirsResolution = ComputeReservoirsResolution(resolution);
-	resamplingConstants.pixelSize            = resolution.cast<Real32>().cwiseInverse();
-	resamplingConstants.frameIdx             = params.renderView.GetRenderedFrameIdx();
+	const SRResamplingConstants resamplingConstants = CreateResamplingConstants(params);
 
 	utils::ReservoirsState reservoirsState(historyReservoirsBuffer, outputReservoirsBuffer);
 	if (params.enableTemporalResampling && HasValidTemporalData(params))
@@ -376,11 +428,39 @@ void SpatiotemporalResampler::Resample(rg::RenderGraphBuilder& graphBuilder, con
 		SPT_CHECK(params.historySpecularColorTexture.IsValid());
 		SPT_CHECK(params.historyNormalsTexture.IsValid());
 
-		temporal::ResampleTemporally(graphBuilder, params, resamplingConstants, reservoirsState);
+		result.additionalTracesAllocation = temporal::ResampleTemporally(graphBuilder, params, resamplingConstants, reservoirsState);
+	
+		result.resampledReservoirsBuffer = reservoirsState.ReadReservoirs();
 	}
 	else
 	{
-		// if there's no temporal data, spatial pass should initially read from the initial reservoirs buffer
+		result.resampledReservoirsBuffer = params.initialReservoirBuffer;
+	}
+
+	return result;
+}
+
+void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = params.GetResolution();
+
+	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->CreateFullView());
+	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->CreateFullView());
+
+	const SRResamplingConstants resamplingConstants = CreateResamplingConstants(params);
+
+	utils::ReservoirsState reservoirsState(historyReservoirsBuffer, outputReservoirsBuffer);
+
+	if (initialResamplingResult.resampledReservoirsBuffer->GetBuffer() == outputReservoirsBuffer->GetBuffer())
+	{
+		// roll buffers if current reservoirs were already written to output buffer
+		reservoirsState.RollBuffers();
+	}
+	else if(initialResamplingResult.resampledReservoirsBuffer->GetBuffer() == params.initialReservoirBuffer->GetBuffer())
+	{
+		// if initial phase was skipped, we need to read initial reservoirs
 		reservoirsState.ReadNextFromInitialReservoirs(params.initialReservoirBuffer);
 	}
 

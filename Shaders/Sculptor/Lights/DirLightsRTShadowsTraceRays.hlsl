@@ -70,23 +70,6 @@ void OutputShadowMask(in RayTraceCommand command, in float shadowMaskValue)
 }
 
 
-void OutputVRBlockInfo(in RayTraceCommand command)
-{
-	const uint2 blockSize = GetVariableRateTileSize(command.variableRateMask);
-
-	const uint blockInfo = PackVRBlockInfo(command.localOffset, command.variableRateMask);
-
-	for(uint y = 0; y < blockSize.y; ++y)
-	{
-		for(uint x = 0; x < blockSize.x; ++x)
-		{
-			const uint2 outputCoords = command.blockCoords + uint2(x, y);
-			u_vrBlocksTexture[outputCoords] = blockInfo;
-		}
-	}
-}
-
-
 [shader("raygeneration")]
 void GenerateShadowRaysRTG()
 {
@@ -98,6 +81,4 @@ void GenerateShadowRaysRTG()
 	const float shadowMaskValue = TraceShadowRay(pixel);
 
 	OutputShadowMask(traceCommand, shadowMaskValue);
-
-	OutputVRBlockInfo(traceCommand);
 }

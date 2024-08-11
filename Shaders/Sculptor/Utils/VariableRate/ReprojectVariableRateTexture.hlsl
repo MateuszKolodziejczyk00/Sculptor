@@ -34,6 +34,32 @@ float2 SampleMotionTexture(in uint2 pixel)
 }
 
 
+uint GetReprojectionFailedVariableRate()
+{
+	if (u_constants.reprojectionFailedMode == 0)
+	{
+		return SPT_VARIABLE_RATE_1X1;
+	}
+	else if (u_constants.reprojectionFailedMode == 1)
+	{
+		return SPT_VARIABLE_RATE_2Y;
+	}
+	else if (u_constants.reprojectionFailedMode == 2)
+	{
+		return SPT_VARIABLE_RATE_2X2;
+	}
+#if SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
+	else if (u_constants.reprojectionFailedMode == 3)
+	{
+		return SPT_VARIABLE_RATE_4X4;
+	}
+#endif // SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
+
+	SPT_CHECK_MSG(false, L"Invalid reprojection failed mode");
+	return SPT_VARIABLE_RATE_1X1;
+}
+
+
 [numthreads(8 , 4 , 1)]
 void ReprojectVariableRateTextureCS(CS_INPUT input)
 {
@@ -43,7 +69,7 @@ void ReprojectVariableRateTextureCS(CS_INPUT input)
 
 	const float2 motion = SampleMotionTexture(pixel);
 
-	const uint variableRate = ReprojectVariableRate(u_inputTexture, uv, u_constants.resolution, motion);
+	const uint variableRate = ReprojectVariableRate(u_inputTexture, uv, u_constants.resolution, motion, GetReprojectionFailedVariableRate());
 
 	u_rwOutputTexture[pixel] = variableRate;
 }

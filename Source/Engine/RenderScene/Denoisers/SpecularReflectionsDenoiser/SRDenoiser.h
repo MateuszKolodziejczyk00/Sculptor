@@ -50,6 +50,8 @@ public:
 		rg::RGTextureViewHandle roughnessTexture;
 		rg::RGTextureViewHandle historyRoughnessTexture;
 
+		rg::RGTextureViewHandle linearDepthTexture;
+
 		rg::RGTextureViewHandle motionTexture;
 
 		rg::RGTextureViewHandle normalsTexture;

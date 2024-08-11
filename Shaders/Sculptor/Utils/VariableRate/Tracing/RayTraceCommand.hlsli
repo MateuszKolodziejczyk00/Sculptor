@@ -1,7 +1,6 @@
 #ifndef RAY_TRACE_COMMAND_HLSLI
 #define RAY_TRACE_COMMAND_HLSLI
 
-
 [[shader_struct(EncodedRayTraceCommand)]]
 
 

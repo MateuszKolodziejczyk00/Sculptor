@@ -303,6 +303,8 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 	float weightSum = 0.f;
 
 	const float rcpMaxVisibility = rcp(1.f - sampleParams.minVisibility);
+
+	const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 	
 	for (int i = 0; i < 8; ++i)
 	{
@@ -357,8 +359,6 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 		}
 
 		weight *= trilinearWeight;
-		
-		const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
 		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
 		if(!sampleCallback.IsValid(probleSample))
@@ -385,7 +385,7 @@ class DDGILuminanceSampleCallback
 		float3 luminance = SampleProbeIlluminance(volumeParams, probeWrappedCoords, octahedronUV);
 		if(IsValid(luminance))
 		{
-			luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
+			luminance = luminance;
 		}
 		return luminance;
 	}
@@ -402,7 +402,6 @@ class DDGILuminanceSampleCallback
 
 	void PostProcess(inout float3 result)
 	{
-		result = Pow2(result);
 	}
 };
 
@@ -470,10 +469,6 @@ class AverageLuminanceSampleCallback
 	float3 Sample(in const DDGIVolumeGPUParams volumeParams, in uint3 probeWrappedCoords, in float2 octahedronUV)
 	{
 		float3 luminance = SampleProbeAverageLuminance(volumeParams, probeWrappedCoords);
-		if(IsValid(luminance))
-		{
-			luminance = pow(luminance, volumeParams.probeIlluminanceEncodingGamma * 0.5f);
-		}
 		return luminance;
 	}
 
@@ -489,7 +484,6 @@ class AverageLuminanceSampleCallback
 
 	void PostProcess(inout float3 result)
 	{
-		result = Pow2(result);
 	}
 };
 

@@ -44,14 +44,6 @@ void SRDisocclusionFixCS(CS_INPUT input)
 		const float4 centerLuminanceHitDistance = u_inputLuminanceTexture.Load(uint3(pixel, 0));
 		const float3 centerV = normalize(u_sceneView.viewLocation - centerWS);
 
-		const float accumulatedFrames = accumulatedSamplesNum;
-		const float specularReprojectionConfidence = 0.2f;
-		const float normalEdgeStoppingStrength = 0.5f;
-		const float specularLobeAngleFraction = 0.5f;
-		const float specularLobeAngleSlack = 0.15f * 0.5f * PI;
-
-		const float maxNormalCosAngleDiff = GetSpatialFilterMaxNormalAngleDiff(roughness, normalEdgeStoppingStrength, specularReprojectionConfidence, accumulatedFrames, specularLobeAngleFraction, specularLobeAngleSlack);
-
 		float3 luminanceSum = 0.0f;
 		float weightSum = 0.000001f;
 
@@ -79,7 +71,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 				const float lum = Luminance(luminance);
 
 				const float3 sampleV = normalize(u_sceneView.viewLocation - sampleWS);
-				const float wn = ComputeSpecularNormalWeight(maxNormalCosAngleDiff, normal, sampleNormal, centerV, sampleV);
+				const float wn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
 				
 				const float weight = wn * dw * w;
 

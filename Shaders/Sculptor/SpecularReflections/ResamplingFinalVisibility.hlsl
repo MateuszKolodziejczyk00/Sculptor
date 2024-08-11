@@ -8,12 +8,19 @@
 #include "Utils/Packing.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
+
 
 [shader("raygeneration")]
 void ResamplingFinalVisibilityTestRTG()
 {
-	uint3 pixel = DispatchRaysIndex().xyz;
-	pixel.xy = min(pixel.xy * 2 + uint2((u_resamplingConstants.frameIdx & 2) >> 1, u_resamplingConstants.frameIdx & 1), u_resamplingConstants.resolution - 1);
+	const uint traceCommandIndex = DispatchRaysIndex().x;
+
+	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
+
+	const uint3 pixel = uint3(traceCommand.blockCoords + traceCommand.localOffset, 0);
 
 	const float2 uv = (pixel.xy + 0.5f) * u_resamplingConstants.pixelSize;
 	const float depth = u_depthTexture.Load(pixel);

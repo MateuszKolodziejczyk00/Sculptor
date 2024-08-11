@@ -5,7 +5,7 @@
 #define SPT_VARIABLE_RATE_MODE_4X4 1
 
 #ifndef SPT_VARIABLE_RATE_MODE
-#define SPT_VARIABLE_RATE_MODE SPT_VARIABLE_RATE_MODE_2X2
+#define SPT_VARIABLE_RATE_MODE SPT_VARIABLE_RATE_MODE_4X4
 #endif // SPT_VARIABLE_RATE_MODE
 
 #define SPT_VARIABLE_RATE_2X (1 << 0)
@@ -35,6 +35,10 @@
 	#define SPT_VARIABLE_RATE_4X4_MASK	SPT_VARIABLE_RATE_4X4
 #endif // SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
 
+#if SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
+#define SPT_INVALID_VARIABLE_RATE 0xF
+#endif // SPT_VARIABLE_RATE_MODE >= SPT_VARIABLE_RATE_MODE_4X4
+
 #if SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_2X2
 	#define SPT_VARIABLE_RATE_X_MASK (SPT_VARIABLE_RATE_2X)
 	#define SPT_VARIABLE_RATE_Y_MASK (SPT_VARIABLE_RATE_2Y)
@@ -48,9 +52,6 @@
 #elif SPT_VARIABLE_RATE_MODE == SPT_VARIABLE_RATE_MODE_4X4
 	#define SPT_MAX_VARIABLE_RATE SPT_VARIABLE_RATE_4X4
 #endif // SPT_VARIABLE_RATE_MODE
-
-#define SPT_VARIABLE_RATE_TILE_2x2 (0)
-#define SPT_VARIABLE_RATE_TILE_4x4 (1)
 
 
 uint2 GetVariableRateTileSize(in uint variableRateMask)
@@ -99,6 +100,19 @@ uint MinVariableRate(in uint a, in uint b)
 	return min(ax, bx) | min(ay, by);
 }
 
+
+uint MaxVariableRate(in uint a, in uint b)
+{
+	const uint ax = a & SPT_VARIABLE_RATE_X_MASK;
+	const uint ay = a & SPT_VARIABLE_RATE_Y_MASK;
+
+	const uint bx = b & SPT_VARIABLE_RATE_X_MASK;
+	const uint by = b & SPT_VARIABLE_RATE_Y_MASK;
+
+	return max(ax, bx) | max(ay, by);
+}
+
+
 uint DecompressVariableRateFromTexture(in uint variableRateData)
 {
 	uint decompressedMask = SPT_MAX_VARIABLE_RATE;
@@ -110,6 +124,19 @@ uint DecompressVariableRateFromTexture(in uint variableRateData)
 	return decompressedMask;
 }
 
+
+uint CreateCompressedVariableRateData(in uint variableRateMask)
+{
+	uint compressedData = 0;
+	compressedData |= variableRateMask << (SPT_VARIABLE_RATE_BITS * 0);
+	compressedData |= variableRateMask << (SPT_VARIABLE_RATE_BITS * 1);
+	compressedData |= variableRateMask << (SPT_VARIABLE_RATE_BITS * 2);
+	compressedData |= variableRateMask << (SPT_VARIABLE_RATE_BITS * 3);
+
+	return compressedData;
+}
+
+
 uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 {
 	const uint variableRateData = vrTexture.Load(uint3(pixel, 0));
@@ -118,11 +145,11 @@ uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 }
 
 
-uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion)
+uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion, in uint reprojectionFailedRate)
 {
 	const float2 reprojectedUV = uv - motion;
 
-	uint variableRateMask = SPT_VARIABLE_RATE_1X1;
+	uint variableRateMask = CreateCompressedVariableRateData(reprojectionFailedRate);
 
 	if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
@@ -207,6 +234,46 @@ void UnpackVRBlockInfo(in uint packedVRBlockInfo, out uint2 localOffset, out uin
 	localOffset.x = packedVRBlockInfo & 3;
 	localOffset.y = (packedVRBlockInfo >> 2) & 3;
 	vrMask        = packedVRBlockInfo >> 4;
+}
+
+
+uint2 GetVariableBlockCoords(in Texture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+{
+	const uint vrBlockInfo = variableRateBlocksTexture.Load(uint3(pixel, 0)).x;
+
+	uint2 localTraceOffset = 0;
+	uint vrMask = 0;
+	UnpackVRBlockInfo(vrBlockInfo, OUT localTraceOffset, OUT vrMask);
+	const uint2 blockSize = GetVariableRateTileSize(vrMask);
+	const uint2 blockCoords = uint2(pixel.x & ~(blockSize.x - 1), pixel.y & ~(blockSize.y - 1));
+
+	return blockCoords;
+}
+
+
+uint2 GetVariableTraceCoords(in uint vrBlockInfo, in uint2 pixel)
+{
+	uint2 localTraceOffset = 0;
+	uint vrMask = 0;
+	UnpackVRBlockInfo(vrBlockInfo, OUT localTraceOffset, OUT vrMask);
+	const uint2 blockSize = GetVariableRateTileSize(vrMask);
+	const uint2 blockCoords = uint2(pixel.x & ~(blockSize.x - 1), pixel.y & ~(blockSize.y - 1));
+
+	return blockCoords + localTraceOffset;
+}
+
+
+uint2 GetVariableTraceCoords(in Texture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+{
+	const uint vrBlockInfo = variableRateBlocksTexture.Load(uint3(pixel, 0)).x;
+	return GetVariableTraceCoords(vrBlockInfo, pixel);
+}
+
+
+uint2 GetVariableTraceCoords(in RWTexture2D<uint> variableRateBlocksTexture, in uint2 pixel)
+{
+	const uint vrBlockInfo = variableRateBlocksTexture[pixel];
+	return GetVariableTraceCoords(vrBlockInfo, pixel);
 }
 
 #endif // VARIABLE_RATE_HLSLI

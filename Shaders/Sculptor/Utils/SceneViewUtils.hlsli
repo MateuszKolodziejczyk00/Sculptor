@@ -143,6 +143,13 @@ float3 ComputeViewRayDirectionVS(in SceneViewData sceneView, in float2 uv)
 }
 
 
+float3 LinearDepthToWS(in SceneViewData sceneView, in float2 ndc, in float linearDepth)
+{
+	const float3 rayDir = (sceneView.viewForward + sceneView.upForLinearReconstruction * ndc.y) + sceneView.rightForLinearReconstruction * ndc.x;
+	return sceneView.viewLocation + rayDir * linearDepth;
+}
+
+
 float3 ComputeViewRayDirectionWS(in SceneViewData sceneView, in float2 uv)
 {
 	float3 dir = UnnormalizedRayDirFromProjection(sceneView.projectionMatrix, uv);
@@ -192,6 +199,7 @@ float GetViewExposure()
 {
 	return u_viewExposure.exposure;
 }
+
 
 float3 LuminanceToExposedLuminance(float3 linearLuminance)
 {

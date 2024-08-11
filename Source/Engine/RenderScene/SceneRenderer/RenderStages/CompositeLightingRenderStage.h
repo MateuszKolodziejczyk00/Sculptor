@@ -6,11 +6,11 @@
 namespace spt::rsc
 {
 
-class ApplyAtmosphereRenderStage : public RenderStage<ApplyAtmosphereRenderStage, ERenderStage::ApplyAtmosphere>
+class CompositeLightingRenderStage : public RenderStage<CompositeLightingRenderStage, ERenderStage::CompositeLighting>
 {
 public:
 
-	ApplyAtmosphereRenderStage();
+	CompositeLightingRenderStage();
 
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 };

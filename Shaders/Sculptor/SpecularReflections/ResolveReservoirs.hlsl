@@ -8,6 +8,7 @@
 #include "Utils/Packing.hlsli"
 #include "Shading/Shading.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
 
 struct CS_INPUT
 {
@@ -22,6 +23,8 @@ void ResolveReservoirsCS(CS_INPUT input)
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
+		const uint vrBlockInfo = u_variableRateBlocksTexture.Load(uint3(pixel, 0)).x;
+
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_reservoirsBuffer[reservoirIdx]);
 
@@ -49,13 +52,13 @@ void ResolveReservoirsCS(CS_INPUT input)
 		const float NdotV = saturate(dot(sampleNormal, toView));
 		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
 
-		// demodulate specular
-		Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
-
 		if(any(isnan(Lo)) || any(isinf(Lo)))
 		{
 			Lo = 0.f;
 		}
+
+		// demodulate specular
+		Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
 		u_luminanceHitDistanceTexture[pixel] = float4(Lo, hitDistance);
 	}

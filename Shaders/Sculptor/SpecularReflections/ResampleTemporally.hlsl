@@ -9,6 +9,9 @@
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/Wave.hlsli"
 
 struct CS_INPUT
 {
@@ -48,7 +51,9 @@ struct SRTemporalResampler
 
 	float selectedTargetPdf;
 
-	static SRTemporalResampler Create(in MinimalSurfaceInfo inSurface, in SRReservoir initialReservoir)
+	bool m_wasSampleTraced;
+
+	static SRTemporalResampler Create(in MinimalSurfaceInfo inSurface, in SRReservoir initialReservoir, bool wasSampleTraced)
 	{
 		SRTemporalResampler resampler;
 
@@ -67,6 +72,8 @@ struct SRTemporalResampler
 		const float targetPdf = EvaluateTargetPdf(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
 		resampler.currentReservoir.Update(initialReservoir, 0.f, targetPdf);
 		resampler.selectedTargetPdf = targetPdf;
+
+		resampler.m_wasSampleTraced = wasSampleTraced;
 
 		return resampler;
 	}
@@ -101,7 +108,7 @@ struct SRTemporalResampler
 
 		const uint maxAge = 32 * lerp(rng.Next(), 0.6f, 1.f);
 
-		if(selectedHistoryReservoir.age > maxAge)
+		if(m_wasSampleTraced && selectedHistoryReservoir.age > maxAge)
 		{
 			return false;
 		}
@@ -151,10 +158,43 @@ struct SRTemporalResampler
 };
 
 
+void AppendAdditionalTraceCommand(in uint2 traceCoords, in uint invalidReservoirsNumInWarp)
+{
+	uint appendOffset = 0u;
+	if (WaveIsFirstLane())
+	{
+		InterlockedAdd(u_commandsNum[0], invalidReservoirsNumInWarp, OUT appendOffset);
+
+		uint tracesNum = 0;
+		InterlockedAdd(u_tracesNum[0], invalidReservoirsNumInWarp, OUT tracesNum);
+		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + invalidReservoirsNumInWarp + 31) / 32);
+	}
+
+	const uint2 ballot = WaveActiveBallot(true).xy;
+	appendOffset = WaveReadLaneFirst(appendOffset) + GetCompactedIndex(ballot, WaveGetLaneIndex());
+
+	RayTraceCommand traceCommand;
+	traceCommand.blockCoords      = traceCoords;
+	traceCommand.localOffset      = uint2(0, 0);
+	traceCommand.variableRateMask = SPT_VARIABLE_RATE_1X1;
+	const EncodedRayTraceCommand encodedTraceCommand = EncodeTraceCommand(traceCommand);
+
+	u_rayTracesCommands[appendOffset] = encodedTraceCommand;
+
+	u_rwVariableRateBlocksTexture[traceCoords] = PackVRBlockInfo(uint2(0, 0), SPT_VARIABLE_RATE_1X1);
+}
+
+
 [numthreads(8, 8, 1)]
 void ResampleTemporallyCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
+
+	if(all(pixel == 0))
+	{
+		u_commandsNum[1] = 1;
+		u_commandsNum[2] = 1;
+	}
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
@@ -187,7 +227,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
 
-			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir);
+			const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
+			const bool wasSampleTraced = all(traceCoords == pixel);
+
+			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
 
@@ -226,7 +269,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
 					const float2 sampleUV = historyUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
-					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
+					int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
 					
 					if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
 					{
@@ -242,6 +285,11 @@ void ResampleTemporallyCS(CS_INPUT input)
 		resampler.ResampleSelectedHistorySample(INOUT rng);
 
 		SRReservoir newReservoir = resampler.FinishResampling();
+		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());
+		if(invalidReservoirs > 16u && !newReservoir.IsValid())
+		{
+			AppendAdditionalTraceCommand(pixel, invalidReservoirs);
+		}
 
 		// Firefly filter
 		const float finalReservoirWeight = Luminance(newReservoir.luminance) * newReservoir.weightSum;

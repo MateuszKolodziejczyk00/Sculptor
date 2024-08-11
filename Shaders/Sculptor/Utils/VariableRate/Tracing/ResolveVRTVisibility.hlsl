@@ -48,7 +48,7 @@ class VariableRateSolver
 
 		// Denoiser expects visibility to be either 0 or 1
 		// This also can help a bit with flickering
-		return visibility > 0.51f ? 1.f : 0.f;
+		return visibility > 0.49f ? 1.f : 0.f;
 	}
 
 	float m_sampleVisibility;

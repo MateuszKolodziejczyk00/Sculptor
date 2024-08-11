@@ -650,6 +650,11 @@ public:
 		return m_buffer->AllowsHostWrites();
 	}
 
+	const rhi::BufferDefinition& GetBufferDefinition() const
+	{
+		return m_buffer->GetBufferDefinition();
+	}
+
 	const rdr::BufferView& GetResource(Bool onlyIfAcquired = true) const
 	{
 		SPT_CHECK(!onlyIfAcquired || m_buffer->IsAcquired());

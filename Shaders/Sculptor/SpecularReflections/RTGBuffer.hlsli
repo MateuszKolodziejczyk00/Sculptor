@@ -33,25 +33,30 @@ struct RayHitResult
 };
 
 
-struct RTGBufferData
+uint PackHitNormal(in float3 normal)
 {
-	float2 normal;
-	float4 baseColorMetallic;
-	float roughness;
-	float hitDistance;
-};
+	const float2 encodedNormal = OctahedronEncodeNormal(normal);
+	return PackHalf2x16Norm(encodedNormal);
+}
 
 
-RTGBufferData PackRTGBuffer(in RayHitResult hitResult)
+float3 UnpackHitNormal(in uint packedNormal)
 {
-	RTGBufferData data;
+	const float2 encodedNormal = UnpackHalf2x16Norm(packedNormal);
+	return OctahedronDecodeNormal(encodedNormal);
+}
+
+
+RTHitMaterialInfo PackRTGBuffer(in RayHitResult hitResult)
+{
+	RTHitMaterialInfo data;
 
 	if(hitResult.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT)
 	{
-		data.hitDistance = hitResult.hitDistance;
-		data.normal            = OctahedronEncodeNormal(hitResult.normal);
-		data.baseColorMetallic = float4(hitResult.baseColor, hitResult.metallic);
-		data.roughness         = hitResult.roughness;
+		data.hitDistance       = hitResult.hitDistance;
+		data.normal            = PackHitNormal(hitResult.normal);
+		data.baseColorMetallic = PackFloat4x8(float4(hitResult.baseColor, hitResult.metallic));
+		data.roughness         = PackFloatNorm(hitResult.roughness);
 	}
 	else if (hitResult.hitType == RTGBUFFER_HIT_TYPE_BACKFACE)
 	{
@@ -66,7 +71,7 @@ RTGBufferData PackRTGBuffer(in RayHitResult hitResult)
 }
 
 
-RayHitResult UnpackRTGBuffer(in RTGBufferData data)
+RayHitResult UnpackRTGBuffer(in RTHitMaterialInfo data)
 {
 	RayHitResult hitResult;
 
@@ -76,10 +81,12 @@ RayHitResult UnpackRTGBuffer(in RTGBufferData data)
 	}
 	else if(data.hitDistance >= 0.f)
 	{
-		hitResult.normal    = OctahedronDecodeNormal(data.normal);
-		hitResult.baseColor = data.baseColorMetallic.xyz;
-		hitResult.metallic  = data.baseColorMetallic.w;
-		hitResult.roughness = data.roughness;
+		const float4 baseColorMetallic = UnpackFloat4x8(data.baseColorMetallic);
+
+		hitResult.normal    = UnpackHitNormal(data.normal);
+		hitResult.baseColor = baseColorMetallic.rgb;
+		hitResult.metallic  = baseColorMetallic.w;
+		hitResult.roughness = UnpackFloatNorm(data.roughness);
 		hitResult.hitType   = RTGBUFFER_HIT_TYPE_VALID_HIT;
 	}
 	else
@@ -89,45 +96,6 @@ RayHitResult UnpackRTGBuffer(in RTGBufferData data)
 
 	hitResult.hitDistance = data.hitDistance;
 	return hitResult;
-}
-
-
-template<template<typename TComponent> class TTextureType>
-struct RTGBuffer
-{
-	TTextureType<float2> hitNormal;
-	TTextureType<float4> hitBaseColorMetallic;
-	TTextureType<float>  hitRoughness;
-	TTextureType<float>  rayDistance;
-};
-
-
-void WriteRTGBuffer(in uint2 pixel, in RTGBufferData data, in RTGBuffer<RWTexture2D> rtgBuffer)
-{
-	if(!isnan(data.hitDistance) && data.hitDistance >= 0.f)
-	{
-		rtgBuffer.hitNormal[pixel]            = data.normal;
-		rtgBuffer.hitBaseColorMetallic[pixel] = data.baseColorMetallic;
-		rtgBuffer.hitRoughness[pixel]         = data.roughness;
-	}
-
-	rtgBuffer.rayDistance[pixel] = data.hitDistance;
-}
-
-
-RTGBufferData ReadRTGBuffer(in uint2 pixel, in RTGBuffer<Texture2D> rtgBuffer)
-{
-	RTGBufferData data;
-	data.hitDistance = rtgBuffer.rayDistance[pixel];
-
-	if(!isnan(data.hitDistance) && data.hitDistance >= 0.f)
-	{
-		data.normal            = rtgBuffer.hitNormal[pixel];
-		data.baseColorMetallic = rtgBuffer.hitBaseColorMetallic[pixel];
-		data.roughness         = rtgBuffer.hitRoughness[pixel];
-	}
-
-	return data;
 }
 
 #endif // RTGBUFFER_HLSLI

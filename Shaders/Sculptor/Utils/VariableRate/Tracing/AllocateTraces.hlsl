@@ -1,8 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TracesAllocatorDS, 0)]]
-[[descriptor_set(DirLightShadowRaysAllocatorDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+[[descriptor_set(AllocateTracesDS, 0)]]
 
 #include "Utils/VariableRate/Tracing/TracesAllocator.hlsli"
 
@@ -15,7 +13,7 @@ struct CS_INPUT
 
 
 [numthreads(TRACES_ALLOCATOR_GROUP_X , TRACES_ALLOCATOR_GROUP_Y , 1)]
-void AllocateDirLightsRTShadowTracesCS(CS_INPUT input)
+void AllocateTracesCS(CS_INPUT input)
 {
 	uint2 localID = input.localID.xy;
 	ReorderLocalIDForAllocating(INOUT localID);
@@ -31,8 +29,11 @@ void AllocateDirLightsRTShadowTracesCS(CS_INPUT input)
 
 	const uint variableRate = LoadVariableRate(u_variableRateTexture, globalID / 2);
 
-	TracesAllocator tracesAllocator = TracesAllocator::Create(u_rayTracesCommands, u_commandsNum);
+	TracesAllocator tracesAllocator = TracesAllocator::Create(u_rayTracesCommands, u_commandsNum, u_rwVariableRateBlocksTexture);
+#if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
+	tracesAllocator.SetTracesNumBuffers(u_tracesNum, u_tracesDispatchGroupsNum);
+#endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 
 	const bool maskOutOutput = isHelperLane;
-	tracesAllocator.AllocateTraces(input.groupID.xy, localID, variableRate, maskOutOutput);
+	tracesAllocator.AllocateTraces(input.groupID.xy, localID, variableRate, u_constants.traceIdx, maskOutOutput);
 }

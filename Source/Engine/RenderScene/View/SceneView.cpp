@@ -226,7 +226,7 @@ void SceneView::CachePrevFrameRenderingData()
 {
 	m_prevFrameRenderingData = m_viewRenderingData;
 }
-
+#pragma optimize("", off)
 void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 {
 	const math::Vector2f prevJitter = m_prevFrameRenderingData.jitter;
@@ -251,6 +251,12 @@ void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 	m_viewRenderingData.inverseViewProjection         = m_viewRenderingData.viewProjectionMatrix.inverse();
 	m_viewRenderingData.inverseViewProjectionNoJitter = m_viewRenderingData.viewProjectionMatrixNoJitter.inverse();
 	m_viewRenderingData.jitter                        = jitter;
+
+	const math::Vector3f upVectorForWSReconstruction = ComputeRayDirection(math::Vector2f(0.f, 1.f), m_viewRenderingData.inverseView) - m_viewRenderingData.viewForward;
+	const math::Vector3f rightVectorForWSReconstruction = ComputeRayDirection(math::Vector2f(1.f, 0.f), m_viewRenderingData.inverseView) - m_viewRenderingData.viewForward;
+
+	m_viewRenderingData.upForLinearReconstruction    = upVectorForWSReconstruction;
+	m_viewRenderingData.rightForLinearReconstruction = rightVectorForWSReconstruction;
 }
 
 void SceneView::UpdateCullingData()
@@ -278,6 +284,16 @@ void SceneView::UpdateCullingData()
 		const Real32 norm = cullingPlane.head<3>().norm();
 		cullingPlane /= norm;
 	}
+}
+
+math::Vector3f SceneView::ComputeRayDirection(math::Vector2f ndc, const math::Matrix4f& inverseView) const
+{
+	const Real32 x = 1.f;
+	const Real32 y = ndc.x() / (m_projectionMatrix(0, 1) - m_projectionMatrix(0, 0));
+	const Real32 z = ndc.y() / (m_projectionMatrix(1, 2) - m_projectionMatrix(1, 0));
+
+	const math::Vector3f dir = math::Vector3f(x, y, z);
+	return inverseView.topLeftCorner<3, 3>() * dir;
 }
 
 } // spt::rsc

@@ -119,7 +119,26 @@ float4 UnpackFloat4x8(uint value)
 	return asUints / 255.f;
 }
 
+uint PackHalf2x16Norm(in float2 value)
+{
+	const uint2 asUints = value * 65535.f;
+	return (asUints.x << 16) | asUints.y;
+}
 
+float2 UnpackHalf2x16Norm(uint value)
+{
+	const uint2 asUints = uint2((value >> 16) & 0xFFFF, value & 0xFFFF);
+	return asUints / 65535.f;
+}
 
+uint16_t PackFloatNorm(in float value)
+{
+	return uint16_t(clamp(value, 0.f, 1.f) * 65535.f);
+}
+
+float UnpackFloatNorm(in uint16_t value)
+{
+	return float(value) / 65535.f;
+}
 
 #endif // PACKING_HLSLI

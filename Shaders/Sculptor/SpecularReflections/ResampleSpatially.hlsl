@@ -10,6 +10,9 @@
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
 
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
+
 
 struct CS_INPUT
 {
@@ -22,14 +25,14 @@ struct CS_INPUT
 
 float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 {
-	return lerp(32.f, 9.f, saturate(accumulatedSamplesNum / 12.f));
+	return 32.f;
 }
 
 
-[numthreads(8, 8, 1)]
+[numthreads(8, 4, 1)]
 void ResampleSpatiallyCS(CS_INPUT input)
 {
-	const int2 pixel = input.globalID.xy;
+	const uint2 pixel = input.globalID.xy;
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
@@ -72,7 +75,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 			const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
 
 			int2 offsetInPixels = round(offset);
-			if(all(offsetInPixels == 0))
+			if(all(offsetInPixels <= 0))
 			{
 				if(abs(offsetInPixels.x) > abs(offsetInPixels.y))
 				{
@@ -83,8 +86,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 					offsetInPixels.y = SignNotZero(offset.y);
 				}
 			}
-
-			const int2 samplePixel = pixel + offset;
+			const int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offset);
 
 			if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
 			{
@@ -116,12 +118,11 @@ void ResampleSpatiallyCS(CS_INPUT input)
 					continue;
 				}
 
-				const float targetPdf = EvaluateTargetPdf(reuseSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
+				const float targetPdf = EvaluateTargetPdf(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
 				if(isnan(targetPdf) || isinf(targetPdf) || IsNearlyZero(targetPdf * jacobian))
 				{
 					continue;
 				}
-
 
 				if(newReservoir.Update(reuseReservoir, rng.Next(), targetPdf * jacobian))
 				{

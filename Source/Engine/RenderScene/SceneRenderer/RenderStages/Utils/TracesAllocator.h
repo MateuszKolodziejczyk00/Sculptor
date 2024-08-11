@@ -18,6 +18,9 @@ class RenderGraphBuilder;
 namespace spt::rsc
 {
 
+namespace vrt
+{
+
 BEGIN_SHADER_STRUCT(EncodedRayTraceCommand)
 	/*
 		Stores small block 4x4 offset, local offset of trace inside of this block and tracing rate
@@ -33,39 +36,41 @@ BEGIN_SHADER_STRUCT(EncodedRayTraceCommand)
 END_SHADER_STRUCT();
 
 
-DS_BEGIN(TracesAllocatorDS, rg::RGDescriptorSetState<TracesAllocatorDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<EncodedRayTraceCommand>), u_rayTracesCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                 u_commandsNum)
-DS_END();
+struct TracesAllocationDefinition
+{
+	rg::RenderGraphDebugName debugName;
+
+	math::Vector2u                       resolution;
+	rg::RGTextureViewHandle              variableRateTexture;
+	vrt::VariableRatePermutationSettings vrtPermutationSettings;
+
+	Uint32 traceIdx = 0u;
+
+	Bool outputTracesAndDispatchGroupsNum = false;
+};
 
 
 struct TracesAllocation
 {
-	rg::RGBufferViewHandle m_rayTracesCommands;
-	rg::RGBufferViewHandle m_commandsNum;
+	TracesAllocation() = default;
+
+	Bool IsValid() const
+	{
+		return rayTraceCommands.IsValid();
+	}
+
+	rg::RGBufferViewHandle rayTraceCommands;
+	rg::RGBufferViewHandle tracingIndirectArgs;
+
+	rg::RGTextureViewHandle variableRateBlocksTexture;
+
+	// Assumes 32 threads per group
+	rg::RGBufferViewHandle dispatchIndirectArgs;
+	rg::RGBufferViewHandle tracesNum;
 };
 
+TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const TracesAllocationDefinition& definition);
 
-class TracesAllocator
-{
-public:
-
-	static inline math::Vector2u s_groupSize = math::Vector2u(16u, 16u);
-
-	TracesAllocator();
-
-	void Initialize(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
-
-	TracesAllocation GetTracesAllocation() const { return TracesAllocation{ m_rayTracesCommands, m_commandsNum }; }
-
-	lib::MTHandle<TracesAllocatorDS> GetDescriptorSet() const { return m_descriptorSet; }
-
-private:
-
-	rg::RGBufferViewHandle m_rayTracesCommands;
-	rg::RGBufferViewHandle m_commandsNum;
-
-	lib::MTHandle<TracesAllocatorDS> m_descriptorSet;
-};
+} // vrt
 
 } // spt::rsc

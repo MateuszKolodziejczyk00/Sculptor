@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 
 
 namespace spt::rdr
@@ -57,6 +58,8 @@ struct ResamplingParams
 	rg::RGTextureViewHandle roughnessTexture;
 	rg::RGTextureViewHandle specularColorTexture;
 
+	vrt::TracesAllocation tracesAllocation;
+
 	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle historyNormalsTexture;
 	rg::RGTextureViewHandle historyRoughnessTexture;
@@ -74,13 +77,24 @@ struct ResamplingParams
 };
 
 
+
+struct InitialResamplingResult
+{
+	rg::RGBufferViewHandle resampledReservoirsBuffer;
+
+	vrt::TracesAllocation additionalTracesAllocation;
+};
+
+
 class SpatiotemporalResampler
 {
 public:
 
 	explicit SpatiotemporalResampler();
 
-	void Resample(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params);
+	InitialResamplingResult ExecuteInitialResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params);
+	
+	void ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult);
 
 private:
 

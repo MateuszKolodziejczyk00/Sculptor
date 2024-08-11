@@ -6,7 +6,8 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 
-#include "Utils/RayBinning/RayBinning.hlsli"
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
 
 
 RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
@@ -59,41 +60,30 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 }
 
 
-void ReorderThreads(inout uint2 threadID, Texture2D<uint> reorderingsTexture)
-{
-	ExecuteReordering(INOUT threadID, reorderingsTexture);
-}
-
-
 [shader("raygeneration")]
 void GenerateSpecularReflectionsRaysRTG()
 {
-	uint2 pixel = DispatchRaysIndex().xy;
+	const uint traceCommandIndex = DispatchRaysIndex().x;
 
-	ReorderThreads(INOUT pixel, u_reorderingsTexture);
+	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
+
+	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
 	const float depth = u_depthTexture.Load(uint3(pixel, 0));
 	if (depth > 0.f)
 	{
-		const float2 uv = (pixel + 0.5f) / float2(DispatchRaysDimensions().xy);
+		const float2 uv = (pixel + 0.5f) * u_constants.invResolution;
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float2 encodedRayDirection = u_rayDirectionsTexture.Load(uint3(pixel, 0)).xy;
+		const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
 
-		const float3 rayDirection = OctahedronDecodeNormal(encodedRayDirection);
+		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
 		const RayHitResult hitResult = TraceReflectionRay(worldLocation, rayDirection);
 
-		const RTGBufferData gBufferData = PackRTGBuffer(hitResult);
-
-		RTGBuffer<RWTexture2D> rtgBuffer;
-		rtgBuffer.hitNormal            = u_hitNormalTexture;
-		rtgBuffer.hitBaseColorMetallic = u_hitBaseColorMetallicTexture;
-		rtgBuffer.hitRoughness         = u_hitRoughnessTexture;
-		rtgBuffer.rayDistance          = u_rayDistanceTexture;
-
-		WriteRTGBuffer(pixel, gBufferData, rtgBuffer);
+		u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
 	}
 }
 

@@ -36,7 +36,6 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	const math::Vector3u texturesRes(renderingRes.x(), renderingRes.y(), 1);
 	
 	viewContext.luminance              = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
-	viewContext.eyeAdaptationLuminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Eye Adaptation Luminance Texture"), rg::TextureDef(texturesRes, SceneRendererStatics::hdrFormat));
 
 	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), renderingRes);
 
@@ -53,13 +52,6 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
-
-	rg::RGRenderTargetDef eyeAdaptationLuminanceRTDef;
-	eyeAdaptationLuminanceRTDef.textureView		= viewContext.eyeAdaptationLuminance;
-	eyeAdaptationLuminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Clear;
-	eyeAdaptationLuminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	eyeAdaptationLuminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
-	renderPassDef.AddColorRenderTarget(eyeAdaptationLuminanceRTDef);
 
 	SPT_CHECK_NO_ENTRY_MSG("Forward Opaue is not supported");
 	rg::RGRenderTargetDef normalsRTDef;

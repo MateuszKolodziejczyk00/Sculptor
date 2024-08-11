@@ -37,9 +37,6 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 		rhi::TextureDefinition historyTextureDefinition;
 		historyTextureDefinition.resolution = resolution;
 		historyTextureDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
-#if SPT_DEBUG || SPT_DEVELOPMENT
-		lib::AddFlag(historyTextureDefinition.usage, rhi::ETextureUsage::TransferSource);
-#endif
 		historyTextureDefinition.format     = denoisedTexture->GetFormat();
 		m_historyTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections History"), historyTextureDefinition, rhi::EMemoryUsage::GPUOnly);
 
@@ -49,9 +46,6 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 		rhi::TextureDefinition accumulatedSamplesNumTextureDef;
 		accumulatedSamplesNumTextureDef.resolution = resolution;
 		accumulatedSamplesNumTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-#if SPT_DEBUG || SPT_DEVELOPMENT
-		lib::AddFlag(accumulatedSamplesNumTextureDef.usage, rhi::ETextureUsage::TransferSource);
-#endif
 		accumulatedSamplesNumTextureDef.format     = rhi::EFragmentFormat::R8_U_Int;
 		m_accumulatedSamplesNumTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Accumulated Samples Num"),
 																				  accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
@@ -62,9 +56,6 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 		rhi::TextureDefinition temporalVarianceTextureDef;
 		temporalVarianceTextureDef.resolution = resolution;
 		temporalVarianceTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
-#if SPT_DEBUG || SPT_DEVELOPMENT
-		lib::AddFlag(temporalVarianceTextureDef.usage, rhi::ETextureUsage::TransferSource);
-#endif
 		temporalVarianceTextureDef.format     = rhi::EFragmentFormat::RG16_S_Float;
 		m_temporalVarianceTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("SR Reflections Temporal Variance"),
 																			 temporalVarianceTextureDef, rhi::EMemoryUsage::GPUOnly);
@@ -186,6 +177,7 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 
 	SRATrousFilterParams aTrousParams(params.renderView);
 	aTrousParams.name                          = m_debugName;
+	aTrousParams.linearDepthTexture            = params.linearDepthTexture;
 	aTrousParams.depthTexture                  = params.currentDepthTexture;
 	aTrousParams.normalsTexture                = params.normalsTexture;
 	aTrousParams.stdDevTexture                 = stdDev;

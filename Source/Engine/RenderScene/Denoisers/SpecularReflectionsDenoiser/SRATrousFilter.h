@@ -23,6 +23,7 @@ struct SRATrousFilterParams : public denoising::DenoiserGeometryParams
 		: denoising::DenoiserGeometryParams(inParams)
 	{  }
 
+	rg::RGTextureViewHandle linearDepthTexture;
 	rg::RGTextureViewHandle stdDevTexture;
 	rg::RGTextureViewHandle roughnessTexture;
 	rg::RGTextureViewHandle reprojectionConfidenceTexture;

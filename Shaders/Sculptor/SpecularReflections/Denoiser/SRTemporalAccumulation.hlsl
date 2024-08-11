@@ -15,6 +15,18 @@ struct CS_INPUT
 };
 
 
+#define HISTORY_SAMPLE_COUNT 5
+
+static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
+{
+	int2(0, 0),
+	int2(-1, 0),
+	int2(1, 0),
+	int2(0, 1),
+	int2(0, -1)
+};
+
+
 [numthreads(8, 8, 1)]
 void SRTemporalAccumulationCS(CS_INPUT input)
 {
@@ -54,26 +66,47 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
 			const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
-			const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
-			const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
 
-			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
-			if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
+			float2 bestHistoryUV = historyUV;
+
+			for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 			{
-				const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f));
-				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+				const float2 sampleUV = historyUV + g_historyOffsets[sampleIdx] * pixelSize;
 
-				const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
-				if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
+				const float3 historySampleNDC = float3(sampleUV * 2.f - 1.f, historySampleDepth);
+				const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
+
+				const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
+				if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 				{
-					const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
-					const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
-					const float parallaxAngle = dot(historyViewDir, currentViewDir);
-					const float parallaxFilterStrength = 1.f;
+					const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, sampleUV, 0.f));
+					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
 
-					reprojectionConfidence = 1.f - 0.2f * saturate(parallaxAngle * parallaxFilterStrength) * (1.f - roughness);
+					const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
+					if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
+					{
+						const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
+						const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
+						const float parallaxAngle = dot(historyViewDir, currentViewDir);
+						const float parallaxFilterStrength = 1.f;
+
+						const float sampleReprojectionConfidence = 1.f - 0.2f * saturate(parallaxAngle * parallaxFilterStrength) * (1.f - roughness);
+
+						if(sampleReprojectionConfidence > reprojectionConfidence)
+						{
+							reprojectionConfidence = sampleReprojectionConfidence;
+							bestHistoryUV = sampleUV;
+
+							if(reprojectionConfidence > 0.99f)
+							{
+								break;
+							}
+						}
+					}
 				}
 			}
+
+			historyUV = bestHistoryUV;
 		}
 
 		if(reprojectionConfidence < 1.f)
@@ -136,7 +169,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float maxAccumulatedFrames = MAX_ACCUMULATED_FRAMES_NUM;
 
 			historySamplesNum = min(historySamplesNum, uint(maxAccumulatedFrames));
-			
 			float currentFrameWeight = rcp(float(historySamplesNum + 1u));
 			currentFrameWeight = currentFrameWeight + (1.f - currentFrameWeight) * (1.f - reprojectionConfidence);
 
@@ -153,7 +185,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			// Fast history
 
 			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-			float currentFrameWeightFast = max(rcp(float(min(historySamplesNum + 1u, FAST_HISTORY_MAX_ACCUMULATED_FRAMES_NUM))), currentFrameWeight);
+			const float currentFrameWeightFast = max(0.25f, currentFrameWeight);
 			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
 
 			historySamplesNum = historySamplesNum + 1u;

@@ -119,20 +119,29 @@ groupshared uint gs_tracesAllocationOffset;
 
 struct TracesAllocator
 {
-	static TracesAllocator Create(in RWStructuredBuffer<EncodedRayTraceCommand> tracesCommands, in RWStructuredBuffer<uint> inTracesCount)
+	static TracesAllocator Create(in RWStructuredBuffer<EncodedRayTraceCommand> tracesCommands, in RWStructuredBuffer<uint> inTracesCommandsNum, in RWTexture2D<uint> inVariableRateBlocksTexture)
 	{
 		TracesAllocator allocator;
-		allocator.m_tracesCommands = tracesCommands;
-		allocator.m_tracesCount    = inTracesCount;
+		allocator.m_tracesCommands            = tracesCommands;
+		allocator.m_tracesCommandsNum         = inTracesCommandsNum;
+		allocator.m_variableRateBlocksTexture = inVariableRateBlocksTexture;
 		return allocator;
 	}
 
-	void AllocateTraces(in uint2 groupID, in uint2 localID, in uint variableRateMask, in bool maskOutOutput)
+#if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
+	void SetTracesNumBuffers(in RWStructuredBuffer<uint> inTracesNum, in RWStructuredBuffer<uint> inTracesDispatchGroupsNum)
+	{
+		m_tracesNum               = inTracesNum;
+		m_tracesDispatchGroupsNum = inTracesDispatchGroupsNum;
+	}
+#endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
+
+	void AllocateTraces(in uint2 groupID, in uint2 localID, in uint variableRateMask, in uint traceIdx, in bool maskOutOutput)
 	{
 		if(all(groupID + localID) == 0)
 		{
-			m_tracesCount[1] = 1;
-			m_tracesCount[2] = 1;
+			m_tracesCommandsNum[1] = 1;
+			m_tracesCommandsNum[2] = 1;
 		}
 
 		if(all(localID == 0))
@@ -146,7 +155,7 @@ struct TracesAllocator
 
 		const uint2 vrTileSize = GetVariableRateTileSize(variableRateMask);
 
-		const uint2 blockCoords = groupID * (TRACES_ALLOCATOR_GROUP_X, TRACES_ALLOCATOR_GROUP_Y) + localID;
+		const uint2 globalID = groupID * (TRACES_ALLOCATOR_GROUP_X, TRACES_ALLOCATOR_GROUP_Y) + localID;
 
 		{
 			// Allocate individual traces
@@ -169,8 +178,14 @@ struct TracesAllocator
 			{
 				uint allocationOffset = 0;
 				const uint tracesToAllocateNum = gs_tracesToAllocateNum;
-				InterlockedAdd(m_tracesCount[0], tracesToAllocateNum, OUT allocationOffset);
+				InterlockedAdd(m_tracesCommandsNum[0], tracesToAllocateNum, OUT allocationOffset);
 				gs_tracesAllocationOffset = allocationOffset;
+
+#if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
+				uint tracesNum = 0;
+				InterlockedAdd(m_tracesNum[0], tracesToAllocateNum, OUT tracesNum);
+				InterlockedMax(m_tracesDispatchGroupsNum[0], (tracesNum + tracesToAllocateNum + 31) / 32);
+#endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 			}
 
 			GroupMemoryBarrierWithGroupSync();
@@ -182,24 +197,38 @@ struct TracesAllocator
 
 			traceOutputIdx = WaveReadLaneFirst(traceOutputIdx) + GetCompactedIndex(wantsTraceBallot, WaveGetLaneIndex());
 
+			const uint tileArea = vrTileSize.x * vrTileSize.y;
+			const uint2 tileCoords = globalID & ~vrTileMask;
+			const float noise = u_blueNoiseTexture.Load(uint3(tileCoords & 255, 0));
+			const uint pixelIdx = frac(noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
+			uint2 localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
+
 			if(wantsToAllocateTrace)
 			{
-				const uint requestedLocalOffset = (blockCoords.x / vrTileSize.x + blockCoords.y / vrTileSize.y) & 1;
-				uint2 localOffset = 0;
-
 				RayTraceCommand traceCommand;
-				traceCommand.blockCoords      = blockCoords;
+				traceCommand.blockCoords      = globalID;
 				traceCommand.localOffset      = localOffset;
 				traceCommand.variableRateMask = variableRateMask;
 
 				const EncodedRayTraceCommand encodedTraceCommand = EncodeTraceCommand(traceCommand);
 				m_tracesCommands[traceOutputIdx] = encodedTraceCommand;
 			}
+
+			if(!maskOutOutput)
+			{
+				m_variableRateBlocksTexture[globalID] = PackVRBlockInfo(localOffset, variableRateMask);
+			}
 		}
 	}
 
 	RWStructuredBuffer<EncodedRayTraceCommand> m_tracesCommands;
-	RWStructuredBuffer<uint>                   m_tracesCount;
+	RWStructuredBuffer<uint>                   m_tracesCommandsNum;
+	RWTexture2D<uint>                          m_variableRateBlocksTexture;
+
+#if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
+	RWStructuredBuffer<uint>                   m_tracesNum;
+	RWStructuredBuffer<uint>                   m_tracesDispatchGroupsNum;
+#endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 };
 
 

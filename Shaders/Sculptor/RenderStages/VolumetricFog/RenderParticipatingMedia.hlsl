@@ -25,7 +25,6 @@ float ComputeDensityNoise(in float3 location)
 float EvaluateDensityAtLocation(in RenderParticipatingMediaParams params, in float3 location)
 {
 	const float noiseThreshold = params.densityNoiseThreshold + exp(params.densityNoiseZSigma / location.z) * (1.f - params.densityNoiseThreshold);
-	const float maxDensity = 0.5f;
 
 	const float3 noiseLocation = location + params.densityNoiseSpeed * u_gpuSceneFrameConstants.time;
 

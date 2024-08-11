@@ -130,6 +130,7 @@ void TextureInspector::DrawTextureViewPanel()
 		if (ImGui::Button("Reset Zoom"))
 		{
 			m_zoom = 1.0f;
+			m_viewportMin = math::Vector2f::Zero();
 		}
 		ImGui::NextColumn();
 		if (ImGui::Button("Reset Previewed Texture"))

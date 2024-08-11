@@ -21,6 +21,8 @@ BEGIN_SHADER_STRUCT(SceneViewData)
 	SHADER_STRUCT_FIELD(math::Vector3f, viewLocation)
 	SHADER_STRUCT_FIELD(math::Vector3f, viewForward)
 	SHADER_STRUCT_FIELD(math::Vector2f, jitter)
+	SHADER_STRUCT_FIELD(math::Vector3f, upForLinearReconstruction)
+	SHADER_STRUCT_FIELD(math::Vector3f, rightForLinearReconstruction)
 END_SHADER_STRUCT();
 
 
@@ -80,6 +82,8 @@ protected:
 	void CachePrevFrameRenderingData();
 	void UpdateViewRenderingData(math::Vector2u resolution);
 	void UpdateCullingData();
+
+	math::Vector3f ComputeRayDirection(math::Vector2f ndc, const math::Matrix4f& inverseView) const;
 
 private:
 

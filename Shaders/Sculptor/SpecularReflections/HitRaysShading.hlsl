@@ -16,12 +16,26 @@
 #include "Lights/Lighting.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
+#include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
+
+#include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
+#include "Utils/VariableRate/VariableRate.hlsli"
 
 
 [shader("raygeneration")]
 void HitRaysShadingRTG()
 {
-	const uint2 pixel = DispatchRaysIndex().xy;
+	const uint traceCommandIndex = DispatchRaysIndex().x;
+
+	if(traceCommandIndex >= u_tracesNum[0])
+	{
+		return;
+	}
+
+	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
+	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
+
+	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
 
 	const float depth = u_depthTexture.Load(uint3(pixel, 0));
 	if(depth == 0.f)
@@ -34,20 +48,12 @@ void HitRaysShadingRTG()
 
 	const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-	RTGBuffer<Texture2D> rtgBuffer;
-	rtgBuffer.hitNormal            = u_hitNormalTexture;
-	rtgBuffer.hitBaseColorMetallic = u_hitBaseColorMetallicTexture;
-	rtgBuffer.hitRoughness         = u_hitRoughnessTexture;
-	rtgBuffer.rayDistance          = u_rayDistanceTexture;
-
-	const RTGBufferData gBufferData = ReadRTGBuffer(pixel, rtgBuffer);
-
-	const RayHitResult hitResult = UnpackRTGBuffer(gBufferData);
+	const RayHitResult hitResult = UnpackRTGBuffer(u_hitMaterialInfos[traceCommandIndex]);
 
 	if(hitResult.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT)
 	{
-		const float2 encodedRayDirection = u_rayDirectionTexture.Load(uint3(pixel, 0));
-		const float3 rayDirection = OctahedronDecodeNormal(encodedRayDirection);
+		const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
+		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
 		const float3 hitLocation = worldLocation + rayDirection * hitResult.hitDistance;
 
@@ -62,7 +68,7 @@ void HitRaysShadingRTG()
 
 		const float3 luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
 
-		const float rayPdf = u_rayPdfTexture.Load(uint3(pixel, 0));
+		const float rayPdf = u_rayPdfs[traceCommandIndex];
 
 		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf);
 
@@ -70,8 +76,7 @@ void HitRaysShadingRTG()
 
 		reservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
 
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_constants.reservoirsResolution);
-		u_reservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
+		WriteReservoirToScreenBuffer(u_reservoirsBuffer, u_constants.reservoirsResolution, reservoir, traceCommand);
 	}
 }
 

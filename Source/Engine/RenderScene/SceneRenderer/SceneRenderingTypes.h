@@ -30,16 +30,15 @@ enum class ERenderStage : Flags32
 	ForwardOpaque					= BIT(8),
 	DeferredShading					= BIT(9),
 	SpecularReflections				= BIT(10),
-	ApplyAtmosphere					= BIT(11),
-	VolumetricFog					= BIT(12),
-	PostProcessPreAA				= BIT(13),
-	AntiAliasing					= BIT(14),
-	HDRResolve						= BIT(15),
+	CompositeLighting				= BIT(11),
+	PostProcessPreAA				= BIT(12),
+	AntiAliasing					= BIT(13),
+	HDRResolve						= BIT(14),
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
 	VisibilityBufferStages			= VisibilityBuffer | MotionAndDepth,
-	DeferredLightingStages			= GlobalIllumination | DownsampleGeometryTextures | AmbientOcclusion | DeferredShading | SpecularReflections | ApplyAtmosphere | VolumetricFog,
+	DeferredLightingStages			= GlobalIllumination | DownsampleGeometryTextures | AmbientOcclusion | DeferredShading | SpecularReflections | CompositeLighting,
 	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
 
 	// Presets
@@ -112,7 +111,7 @@ private:
 // GBuffer layout:
 // 0 - 4 bytes [baseColor - 24bits] [metallic - 8bits]
 // 1 - 4 bytes [tangent frame - 32bits]
-// 2 - 2 bytes [roughness - 16 its]
+// 2 - 2 bytes [roughness - 16bits]
 // 3 - 4 bytes [emissive - 32bits]
 // 4 - 1 byte  [flags - 8bits] - 0: tangent frame handedness, other bits are reserved
 class GBuffer

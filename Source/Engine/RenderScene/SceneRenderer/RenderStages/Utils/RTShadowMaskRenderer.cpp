@@ -58,72 +58,6 @@ struct ShadowTracingContext
 namespace trace_rays
 {
 
-namespace rays_allocator
-{
-
-BEGIN_SHADER_STRUCT(DirLightShadowRaysAllocatorConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(math::Vector2u, vrtResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, vrtInvResolution)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(DirLightShadowRaysAllocatorDS, rg::RGDescriptorSetState<DirLightShadowRaysAllocatorDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                 u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                 u_variableRateTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DirLightShadowRaysAllocatorConstants>), u_constants)
-DS_END();
-
-
-static rdr::PipelineStateID CreateShadowTracesAllocatorPipeline(const vrt::VariableRatePermutationSettings& permutationSettings)
-{
-	sc::ShaderCompilationSettings compilationSettings;
-	vrt::ApplyVariableRatePermutation(INOUT compilationSettings, permutationSettings);
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/AllocateDirLightsRTShadowTraces.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "AllocateDirLightsRTShadowTracesCS"), compilationSettings);
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("AllocateDirLightsRTShadowTraces"), shader);
-}
-
-
-TracesAllocation AllocateShadowTraces(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const ShadowTracingContext& tracingContext)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const RenderView& renderView = viewSpec.GetRenderView();
-
-	const math::Vector2u resolution = tracingContext.resolution;
-
-	TracesAllocator tracesAllocator;
-	tracesAllocator.Initialize(graphBuilder, resolution);
-
-	const TracesAllocation tracesAllocation = tracesAllocator.GetTracesAllocation();
-	const lib::MTHandle<TracesAllocatorDS> tracesAllocatorDS = tracesAllocator.GetDescriptorSet();
-
-	const math::Vector2u vrtResolution = tracingContext.variableRateTexture->GetResolution2D();
-
-	DirLightShadowRaysAllocatorConstants shaderConstants;
-	shaderConstants.resolution    = resolution;
-	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.vrtResolution    = vrtResolution;
-	shaderConstants.vrtInvResolution = vrtResolution.cast<Real32>().cwiseInverse();
-
-	lib::MTHandle<DirLightShadowRaysAllocatorDS> dirLightShadowRaysAllocatorDS = graphBuilder.CreateDescriptorSet<DirLightShadowRaysAllocatorDS>(RENDERER_RESOURCE_NAME("Dir Light Shadow Rays Allocator DS"));
-	dirLightShadowRaysAllocatorDS->u_depthTexture        = tracingContext.depthTexture;
-	dirLightShadowRaysAllocatorDS->u_constants           = shaderConstants;
-	dirLightShadowRaysAllocatorDS->u_variableRateTexture = tracingContext.variableRateTexture;
-
-	const rdr::PipelineStateID shadowRaysAllocatorPipeline = CreateShadowTracesAllocatorPipeline(tracingContext.vrtPermutationSettings);
-
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Allocate Shadow Traces"),
-						  shadowRaysAllocatorPipeline,
-						  math::Utils::DivideCeil(resolution, TracesAllocator::s_groupSize),
-						  rg::BindDescriptorSets(tracesAllocatorDS, dirLightShadowRaysAllocatorDS, renderView.GetRenderViewDS()));
-
-	return tracesAllocation;
-}
-
-} // rays_allocator
-
 namespace vrt_resolve
 {
 
@@ -195,10 +129,9 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(TraceShadowRaysDS, rg::RGDescriptorSetState<TraceShadowRaysDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                     u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),             u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                      u_vrBlocksTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<EncodedRayTraceCommand>), u_traceCommands)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
 DS_END();
 
 
@@ -229,17 +162,19 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 {
 	SPT_PROFILER_FUNCTION();
 
-	const auto [traceCommands, traceIndirectArgs] = rays_allocator::AllocateShadowTraces(graphBuilder, renderScene, viewSpec, tracingContext);
+	vrt::TracesAllocationDefinition tracesAllocationDefinition;
+	tracesAllocationDefinition.debugName                        = RG_DEBUG_NAME("Shadows");
+	tracesAllocationDefinition.resolution                       = tracingContext.resolution;
+	tracesAllocationDefinition.variableRateTexture              = tracingContext.variableRateTexture;
+	tracesAllocationDefinition.vrtPermutationSettings           = tracingContext.vrtPermutationSettings;
+	const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-
-	const rg::RGTextureViewHandle vrBlocksTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Variable Rate Blocks Texture"), rg::TextureDef(tracingContext.resolution, rhi::EFragmentFormat::R8_U_Int));
 
 	const lib::MTHandle<TraceShadowRaysDS> traceShadowRaysDS = graphBuilder.CreateDescriptorSet<TraceShadowRaysDS>(RENDERER_RESOURCE_NAME("Trace Shadow Rays DS"));
 	traceShadowRaysDS->u_depthTexture    = tracingContext.depthTexture;
 	traceShadowRaysDS->u_normalsTexture  = tracingContext.normalsTexture;
-	traceShadowRaysDS->u_traceCommands   = traceCommands;
-	traceShadowRaysDS->u_vrBlocksTexture = vrBlocksTexture;
+	traceShadowRaysDS->u_traceCommands   = tracesAllocation.rayTraceCommands;
 
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 	static rdr::PipelineStateID shadowsRayTracingPipeline;
@@ -272,7 +207,7 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
 								   shadowsRayTracingPipeline,
-								   traceIndirectArgs, 0,
+								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::BindDescriptorSets(traceShadowRaysDS,
 														  directionalLightShadowMaskDS,
 														  renderView.GetRenderViewDS(),
@@ -283,7 +218,7 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	vrt_resolve::VRTVisibilityResolveParams resolveParams;
 	resolveParams.inputTexture       = shadowMaskTexture;
 	resolveParams.outputTexture      = resolvedShadowMaskTexture;
-	resolveParams.vrBlocksTexture    = vrBlocksTexture;
+	resolveParams.vrBlocksTexture    = tracesAllocation.variableRateBlocksTexture;
 	resolveParams.linearDepthTexture = tracingContext.linearDepthTexture;
 	resolveParams.resolution         = tracingContext.resolution;
 
@@ -308,10 +243,10 @@ void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
 	m_lightEntity = entity;
 
 	vrt::VariableRateSettings vrtSettings;
-	vrtSettings.xThreshold2 = 0.04f;
-	vrtSettings.yThreshold2 = 0.04f;
-	vrtSettings.tileSize    = vrt::EVRTileSize::_2x2;
-	vrtSettings.signalType  = vrt::EVRTSignalType::Visibility;
+	vrtSettings.xThreshold2                         = 0.04f;
+	vrtSettings.yThreshold2                         = 0.04f;
+	vrtSettings.logFramesNumPerSlot                 = 2u;
+	vrtSettings.reprojectionFailedMode              = vrt::EReprojectionFailedMode::_2x2;
 	vrtSettings.permutationSettings.maxVariableRate = vrt::EMaxVariableRate::_2x2;
 	m_variableRateRenderer.Initialize(vrtSettings);
 }

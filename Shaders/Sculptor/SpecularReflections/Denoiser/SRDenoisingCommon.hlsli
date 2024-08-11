@@ -2,34 +2,12 @@
 #define SR_DENOISING_COMMON_HLSLI
 
 
-#define MAX_ACCUMULATED_FRAMES_NUM 24.f
-#define FAST_HISTORY_MAX_ACCUMULATED_FRAMES_NUM 4.f
+#define MAX_ACCUMULATED_FRAMES_NUM 20.f
 
-float GetGGXSpecularLobeTanHalfAngle(in float roughness, in float lobeFraction)
+float ComputeSpecularNormalWeight(in float3 centerNormal, in float3 sampleNormal, in float roughness)
 {
-	const float a2 = Pow2(roughness);
-	return a2 * lobeFraction / max( 1.0 - lobeFraction, SMALL_NUMBER);
-}
-
-
-float GetSpatialFilterMaxNormalAngleDiff(in float roughness, in float normalWeightsStrength, in float specularReprojectionConfidence, in float historyFramesNum, in float specularLobeAngleFraction, in float specularLobeAngleSlack)
-{
-	float filterStrength = saturate(historyFramesNum / 5.0);
-	filterStrength *= lerp(specularReprojectionConfidence, 1.f, normalWeightsStrength);
-	const float angleRelaxation = 0.9 + 0.1 * filterStrength;
-
-	float maxAngle = atan(GetGGXSpecularLobeTanHalfAngle(roughness, specularLobeAngleFraction));
-	maxAngle *= 10.0 - 9.0 * filterStrength;
-	maxAngle += specularLobeAngleSlack;
-	return min(PI * 0.5f, maxAngle / angleRelaxation);
-}
-
-
-float ComputeSpecularNormalWeight(in float maxAngle, in float3 centerNormal, in float3 sampleNormal, in float3 centerV, in float3 sampleV)
-{
-	float surfacesCos = dot(centerNormal, sampleNormal);
-	surfacesCos = min(surfacesCos, dot(centerV, sampleV));
-	return 1.f - smoothstep(0.f, maxAngle, acos(surfacesCos));
+	const float power = 1.f + 30.f * (1.f - roughness);
+	return pow(saturate(dot(centerNormal, sampleNormal)), uint(power));
 }
 
 

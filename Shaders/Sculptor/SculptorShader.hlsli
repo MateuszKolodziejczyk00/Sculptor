@@ -117,9 +117,22 @@ bool AreNearlyEqual(in float a, in float b, in float epsilon = 0.000001f)
 	return abs(a - b) < epsilon;
 }
 
+
 float Luminance(float3 color)
 {
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
+}
+
+
+half Luminance(half3 color)
+{
+    return dot(color, half3(0.2126729, 0.7151522, 0.0721750));
+}
+
+
+float AverageComponent(in float3 value)
+{
+	return (value.x + value.y + value.z) / 3.f;
 }
 
 

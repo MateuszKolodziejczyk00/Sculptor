@@ -142,63 +142,10 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 
 } // sky_view
 
-namespace apply_atmosphere
-{
-
-DS_BEGIN(ApplyAtmosphereDS, rg::RGDescriptorSetState<ApplyAtmosphereDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),						u_atmosphereParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),					u_directionalLights)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_transmittanceLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),								u_skyViewLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_luminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),								u_eyeAdaptationLuminanceTexture)
-DS_END();
-
-
-static rdr::PipelineStateID CompileApplyAtmospherePipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/ApplyAtmosphere.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ApplyAtmosphereCS"));
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ApplyAtmospherePipeline"), shader);
-}
-
-
-static void ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& view, const AtmosphereContext& context, rg::RGTextureViewHandle transmittanceLUT, rg::RGTextureViewHandle skyViewLUT)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const RenderView& renderView = view.GetRenderView();
-
-	const math::Vector2u renderingResolution = renderView.GetRenderingRes();
-
-	const ShadingViewContext& viewContext = view.GetShadingViewContext();
-
-	static rdr::PipelineStateID pipeline = CompileApplyAtmospherePipeline();
-
-	lib::MTHandle<ApplyAtmosphereDS> ds = graphBuilder.CreateDescriptorSet<ApplyAtmosphereDS>(RENDERER_RESOURCE_NAME("Apply Atmosphere DS"));
-	ds->u_atmosphereParams              = context.atmosphereParamsBuffer->CreateFullView();
-	ds->u_directionalLights             = context.directionalLightsBuffer->CreateFullView();
-	ds->u_transmittanceLUT              = transmittanceLUT;
-	ds->u_skyViewLUT                    = skyViewLUT;
-	ds->u_depthTexture                  = viewContext.depth;
-	ds->u_luminanceTexture              = viewContext.luminance;
-	ds->u_eyeAdaptationLuminanceTexture	= viewContext.eyeAdaptationLuminance;
-
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Atmosphere"),
-						  pipeline,
-						  math::Utils::DivideCeil(renderingResolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds),
-												 renderView.GetRenderViewDS()));
-}
-
-} // apply_atmosphere
-
 
 AtmosphereRenderSystem::AtmosphereRenderSystem()
 {
-	m_supportedStages = rsc::ERenderStage::ApplyAtmosphere;
+	m_supportedStages = rsc::ERenderStage::DeferredShading;
 }
 
 void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
@@ -244,23 +191,6 @@ void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder,
 	const rg::RGTextureViewHandle skyViewLUT = sky_view::RenderSkyViewLUT(graphBuilder, viewSpec, context, skyViewParams);
 	
 	viewSpec.GetShadingViewContext().skyViewLUT = skyViewLUT;
-
-	RenderStageEntries& atmosphereStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ApplyAtmosphere);
-	atmosphereStageEntries.GetOnRenderStage().AddRawMember(this, &AtmosphereRenderSystem::ApplyAtmosphereToView);
-}
-
-void AtmosphereRenderSystem::ApplyAtmosphereToView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
-	
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
-	const AtmosphereContext& atmosphereContext = atmosphereSubsystem.GetAtmosphereContext();
-
-	const rg::RGTextureViewHandle transmittanceLUT = graphBuilder.AcquireExternalTextureView(atmosphereContext.transmittanceLUT);
-
-	apply_atmosphere::ApplyAtmosphereToView(graphBuilder, viewSpec, atmosphereSubsystem.GetAtmosphereContext(), transmittanceLUT, viewContext.skyViewLUT);
 }
 
 } // spt::rsc

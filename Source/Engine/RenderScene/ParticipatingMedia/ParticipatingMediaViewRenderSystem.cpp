@@ -483,7 +483,7 @@ void ParticipatingMediaViewRenderSystem::PrepareViewTextures(const math::Vector3
 #if SPT_DEBUG || SPT_DEVELOPMENT
 		lib::AddFlag(inScatteringTextureDef.usage, rhi::ETextureUsage::TransferSource);
 #endif
-		inScatteringTextureDef.format		= rhi::EFragmentFormat::RGBA16_S_Float; // [In-Scattering (RGB), Extinction (A)]
+		inScatteringTextureDef.format = rhi::EFragmentFormat::RGBA16_S_Float; // [In-Scattering (RGB), Extinction (A)]
 		m_currentInScatteringTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("In-Scattering Texture"), inScatteringTextureDef, rhi::EMemoryUsage::GPUOnly);
 	}
 }
