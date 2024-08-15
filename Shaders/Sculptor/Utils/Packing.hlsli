@@ -82,11 +82,11 @@ float3 DecodeRGBFromLogLuv(uint x)
 
 float2 OctahedronEncodeNormal(in float3 direction)
 {
-	const float l1norm = abs(direction.x) + abs(direction.y) + abs(direction.z);
+	const float l1norm = dot(abs(direction), 1.f);
 	float2 uv = direction.xy * (1.f / l1norm);
 	if (direction.z < 0.f)
 	{
-		uv = (1.f - abs(uv.yx)) * SignNotZero(uv.xy);
+		uv = (1.f - abs(uv.yx)) * SignNotZero(direction.xy);
 	}
 	return uv * 0.5f + 0.5f;
 }

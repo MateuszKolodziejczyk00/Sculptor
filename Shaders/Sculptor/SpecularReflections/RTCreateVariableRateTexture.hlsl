@@ -34,6 +34,7 @@ struct RTVariableRateCallback
 		{
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 		}
+
 		return variableRate;
 	}
 };

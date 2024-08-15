@@ -190,7 +190,7 @@ float ComputeDDGIVolumeWeight(in const DDGIVolumeGPUParams volumeParams, in floa
 	float3 distToEdge = location - volumeParams.probesOriginWorldLocation;
 	distToEdge = min(volumeParams.probesEndWorldLocation - location, distToEdge);
 
-	distToEdge /= volumeParams.probesSpacing;
+	distToEdge *= volumeParams.rcpProbesSpacing;
 	return min(min(distToEdge.x, distToEdge.y), distToEdge.z);
 }
 
@@ -200,20 +200,25 @@ DDGIVolumeSampleInfo GetDDGIVolumeSampleInfo(in float3 location)
 	DDGIVolumeSampleInfo info;
 	info.volumeIndices = IDX_NONE_32;
 	info.weights = 0.0f;
-
-	uint outIdx = 0;
 	
-	for(uint lodIdx = 0u; lodIdx < u_ddgiLODs.lodsNum && outIdx < 2u; ++lodIdx)
+	for(uint lodIdx = 0u; lodIdx < u_ddgiLODs.lodsNum; ++lodIdx)
 	{
 		const DDGILODDefinition lodDef = u_ddgiLODs.lods[lodIdx];
 		const DDGIVolumeGPUParams volume = u_volumesDef.volumes[lodDef.volumeIdx];
 
 		if (IsInsideDDGIVolume(volume, location))
 		{
-			info.volumeIndices[outIdx] = lodDef.volumeIdx;
-			info.volumeIndices[outIdx] = 0;
-			info.weights[outIdx] = ComputeDDGIVolumeWeight(volume, location);
-			++outIdx;
+			info.volumeIndices[0] = lodDef.volumeIdx;
+			info.weights[0] = ComputeDDGIVolumeWeight(volume, location);
+
+			if(info.weights[0] < 0.99f && lodIdx + 1 < u_ddgiLODs.lodsNum)
+			{
+				const DDGILODDefinition nextLodDef = u_ddgiLODs.lods[lodIdx + 1];
+
+				info.volumeIndices[1] = nextLodDef.volumeIdx;
+				info.weights[1] = 1.f - info.weights[0];
+			}
+			break;
 		}
 	}
 
@@ -305,7 +310,10 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 	const float rcpMaxVisibility = rcp(1.f - sampleParams.minVisibility);
 
 	const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
-	
+
+	bool hasValidSamples = true;
+
+	[unroll]
 	for (int i = 0; i < 8; ++i)
 	{
 		const int3 probeOffset = int3(i, i >> 1, i >> 2) & int3(1, 1, 1);
@@ -313,7 +321,17 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(volumeParams, probeCoords);
 
+		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
+
 		const float3 probeWorldLocation = GetProbeWorldLocation(volumeParams, probeCoords);
+		
+		float3 probeToBiasedPointDir = biasedWorldLocation - probeWorldLocation;
+		const float distToBiasedPoint = length(probeToBiasedPointDir);
+		probeToBiasedPointDir /= distToBiasedPoint;
+
+		const float2 hitDistOctCoords = GetProbeOctCoords(probeToBiasedPointDir);
+		
+		const float2 hitDistances = SampleProbeHitDistance(volumeParams, probeWrappedCoords, hitDistOctCoords);
 
 		const float3 trilinear = max(lerp(1.f - baseProbeDistAlpha, baseProbeDistAlpha, probeOffset), 0.001f);
 		const float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
@@ -323,14 +341,6 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 		const float probeDirDotNormal = saturate(dot(dirToProbe, sampleParams.surfaceNormal) * 0.5f + 0.5f);
 		weight *= Pow2(probeDirDotNormal) + 0.2f;
-		
-		float3 probeToBiasedPointDir = biasedWorldLocation - probeWorldLocation;
-		const float distToBiasedPoint = length(probeToBiasedPointDir);
-		probeToBiasedPointDir /= distToBiasedPoint;
-
-		const float2 hitDistOctCoords = GetProbeOctCoords(probeToBiasedPointDir);
-		
-		const float2 hitDistances = SampleProbeHitDistance(volumeParams, probeWrappedCoords, hitDistOctCoords);
 
 		if (hitDistances.y < 0.f)
 		{
@@ -360,19 +370,26 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 		weight *= trilinearWeight;
 
-		const TSampledDataType probleSample = sampleCallback.Sample(volumeParams, probeWrappedCoords, luminanceOctCoords);
 		if(!sampleCallback.IsValid(probleSample))
 		{
-			return sampleCallback.MakeInvalid();
+			hasValidSamples = false;
 		}
 
 		sampledDataSum += probleSample * weight;
 		weightSum += weight;
 	}
 
-	TSampledDataType result = sampledDataSum / weightSum;
+	TSampledDataType result;
 
-	sampleCallback.PostProcess(result);
+	if (!hasValidSamples)
+	{
+		result = sampleCallback.MakeInvalid();
+	}
+	else
+	{
+		result = sampledDataSum / weightSum;
+		sampleCallback.PostProcess(result);
+	}
 
 	return result;
 }
@@ -437,30 +454,27 @@ float3 DDGISampleLuminance(in DDGISampleParams sampleParams, in const TSampleCon
 
 
 template<typename TSampleContext>
-float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams, in const TSampleContext context)
+float3 DDGISampleLuminanceBlended(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
 {
 	const DDGIVolumeSampleInfo sampleInfo = GetDDGIVolumeSampleInfo(sampleParams.worldLocation);
 
-	float3 luminance = 0.f;
+	uint sampledVolume = sampleInfo.volumeIndices[0];
 
-	float weightSum = 0.f;
-
-	for (uint i = 0; i < 2; ++i)
+	if (sampleInfo.weights[0] < 0.999f && sampleInfo.volumeIndices[1] != IDX_NONE_32)
 	{
-		if (sampleInfo.volumeIndices[i] != IDX_NONE_32 && weightSum < 0.999f)
+		if(random > sampleInfo.weights[0])
 		{
-			const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampleInfo.volumeIndices[i]];
-			const float3 luminanceSample = DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
-			if(all(luminanceSample > 0.0f))
-			{
-				const float weight = sampleInfo.weights[i];
-				luminance += luminanceSample * weight;
-				weightSum += weight;
-			}
+			sampledVolume = sampleInfo.volumeIndices[1];
 		}
 	}
 
-	return luminance / float(weightSum + 0.0001f);
+	if (sampledVolume == IDX_NONE_32)
+	{
+		return 0.f;
+	}
+
+	const DDGIVolumeGPUParams volumeParams = u_volumesDef.volumes[sampledVolume];
+	return DDGISampleLuminanceInternal(sampleParams, context, volumeParams);
 }
 
 
@@ -519,9 +533,9 @@ float3 DDGISampleAverageLuminance(in DDGISampleParams sampleParams, in const TSa
 
 
 template<typename TSampleContext>
-float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in const TSampleContext context)
+float3 DDGISampleIlluminanceBlended(in DDGISampleParams sampleParams, in float random, in const TSampleContext context)
 {
-	const float3 luminance = DDGISampleLuminanceBlended(sampleParams, context);
+	const float3 luminance = DDGISampleLuminanceBlended(sampleParams, random, context);
 
 	return luminance * 2.f * PI; // multiply by integration domain area
 }

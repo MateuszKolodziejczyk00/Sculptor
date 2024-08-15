@@ -109,10 +109,6 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 		RenderDPCF(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTexture);
 		break;
 	
-	case EShadowMappingTechnique::MSM:
-		RenderMSM(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTexture);
-		break;
-	
 	case EShadowMappingTechnique::VSM:
 		RenderVSM(graphBuilder, renderScene, viewSpec, stageContext, shadowMapTexture);
 		break;

@@ -8,6 +8,7 @@
 #include "RenderScene.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/ViewShadingInput.h"
+#include "GlobalResources/GlobalResources.h"
 
 
 namespace spt::rsc
@@ -28,6 +29,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(DeferredShadingDS, rg::RGDescriptorSetState<DeferredShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_blueNoise256Texture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),              u_gBuffer0Texture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),              u_gBuffer1Texture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                      u_gBuffer2Texture)
@@ -82,6 +84,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 
 	lib::MTHandle<DeferredShadingDS> deferredShadingDS = graphBuilder.CreateDescriptorSet<DeferredShadingDS>(RENDERER_RESOURCE_NAME("DeferredShadingDS"));
 	deferredShadingDS->u_depthTexture             = viewContext.depth;
+	deferredShadingDS->u_blueNoise256Texture      = gfx::global::Resources::Get().blueNoise256.GetView();
 	deferredShadingDS->u_gBuffer0Texture          = gBuffer[0];
 	deferredShadingDS->u_gBuffer1Texture          = gBuffer[1];
 	deferredShadingDS->u_gBuffer2Texture          = gBuffer[2];

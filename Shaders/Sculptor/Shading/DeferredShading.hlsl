@@ -87,7 +87,11 @@ void DeferredShadingCS(CS_INPUT input)
 #ifdef ENABLE_DDGI
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
 			ddgiSampleParams.sampleDirection = surface.shadingNormal;
-			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams, DDGISampleContext::Create()) * ambientOcclusion;
+
+			const float random = u_blueNoise256Texture.Load(uint3(pixel.xy & 255, 0)).x;
+
+			// Use blue noise to blend between the two volumes. This way we can sample only one volume per pixel.
+			indirectIlluminance = DDGISampleIlluminanceBlended(ddgiSampleParams, random, DDGISampleContext::Create()) * ambientOcclusion;
 #endif // ENABLE_DDGI
 
 			const float3 indirectDiffuse = Diffuse_Lambert(indirectIlluminance);

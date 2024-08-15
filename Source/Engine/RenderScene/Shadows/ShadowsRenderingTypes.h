@@ -20,7 +20,6 @@ enum class EShadowMappingTechnique
 {
 	None,
 	DPCF,
-	MSM,
 	VSM
 };
 

@@ -128,6 +128,11 @@ struct TracesAllocator
 		return allocator;
 	}
 
+	void SetNoiseValue(in float inValue)
+	{
+		m_noise = inValue;
+	}
+
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 	void SetTracesNumBuffers(in RWStructuredBuffer<uint> inTracesNum, in RWStructuredBuffer<uint> inTracesDispatchGroupsNum)
 	{
@@ -198,10 +203,8 @@ struct TracesAllocator
 			traceOutputIdx = WaveReadLaneFirst(traceOutputIdx) + GetCompactedIndex(wantsTraceBallot, WaveGetLaneIndex());
 
 			const uint tileArea = vrTileSize.x * vrTileSize.y;
-			const uint2 tileCoords = globalID & ~vrTileMask;
-			const float noise = u_blueNoiseTexture.Load(uint3(tileCoords & 255, 0));
-			const uint pixelIdx = frac(noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
-			uint2 localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
+			const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
+			const uint2 localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
 
 			if(wantsToAllocateTrace)
 			{
@@ -224,6 +227,8 @@ struct TracesAllocator
 	RWStructuredBuffer<EncodedRayTraceCommand> m_tracesCommands;
 	RWStructuredBuffer<uint>                   m_tracesCommandsNum;
 	RWTexture2D<uint>                          m_variableRateBlocksTexture;
+
+	float m_noise;
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 	RWStructuredBuffer<uint>                   m_tracesNum;
