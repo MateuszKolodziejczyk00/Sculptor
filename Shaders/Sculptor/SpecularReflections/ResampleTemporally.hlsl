@@ -24,16 +24,14 @@ struct CS_INPUT
 groupshared float s_averageReservoirWeight[2];
 
 
-#define HISTORY_SAMPLE_COUNT 5
+#define HISTORY_SAMPLE_COUNT 3
 
 
 static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 {
 	int2(0, 0),
-	int2(-1, 0),
 	int2(1, 0),
 	int2(0, 1),
-	int2(0, -1)
 };
 
 
@@ -45,10 +43,6 @@ struct SRTemporalResampler
 
 	MinimalGBuffer historyGBuffer;
 
-	bool               foundHistorySample;
-	SRReservoir        selectedHistoryReservoir;
-	MinimalSurfaceInfo selectedHistorySurface;
-
 	float selectedTargetPdf;
 
 	bool m_wasSampleTraced;
@@ -59,8 +53,6 @@ struct SRTemporalResampler
 
 		resampler.centerPixelSurface = inSurface;
 		resampler.currentReservoir = SRReservoir::CreateEmpty();
-
-		resampler.foundHistorySample = false;
 
 		resampler.selectedTargetPdf = 0.f;
 
@@ -78,19 +70,9 @@ struct SRTemporalResampler
 		return resampler;
 	}
 
-	bool FoundHistorySample()
-	{
-		return foundHistorySample;
-	}
-
 	bool TrySelectHistorySample(in uint2 historySamplePixel, inout RngState rng)
 	{
-		if (FoundHistorySample())
-		{
-			return true;
-		}
-
-		selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, u_prevFrameSceneView);
+		const MinimalSurfaceInfo selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, u_prevFrameSceneView);
 
 		if(!AreSurfacesSimilar(centerPixelSurface, selectedHistorySurface)
 			|| !AreMaterialsSimilar(centerPixelSurface, selectedHistorySurface))
@@ -99,53 +81,50 @@ struct SRTemporalResampler
 		}
 
 		const uint historyReservoirIdx = GetScreenReservoirIdx(historySamplePixel, u_resamplingConstants.reservoirsResolution);
-		selectedHistoryReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
+		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		if(!selectedHistoryReservoir.IsValid() || !currentReservoir.CanCombine(selectedHistoryReservoir))
+		if(!historyReservoir.IsValid() || !currentReservoir.CanCombine(historyReservoir))
 		{
 			return false;
 		}
 
 		const uint maxAge = 32 * lerp(rng.Next(), 0.6f, 1.f);
 
-		if(m_wasSampleTraced && selectedHistoryReservoir.age > maxAge)
+		if(m_wasSampleTraced && historyReservoir.age > maxAge)
 		{
 			return false;
 		}
 
-		if(!IsReservoirValidForSurface(selectedHistoryReservoir, centerPixelSurface))
+		if(!IsReservoirValidForSurface(historyReservoir, centerPixelSurface))
 		{
 			return false;
 		}
 
-		foundHistorySample = true;
-		return true;
-	}
+		const uint maxHistoryLength = 10;
+		historyReservoir.M = min(historyReservoir.M, maxHistoryLength);
 
-	void ResampleSelectedHistorySample(inout RngState rng)
-	{
-		if(foundHistorySample)
+		const float jacobian = EvaluateJacobian(centerPixelSurface.location, selectedHistorySurface.location, historyReservoir);
+
+		if(jacobian <= 0.f)
 		{
-			const uint maxHistoryLength = 10;
-			selectedHistoryReservoir.M = min(selectedHistoryReservoir.M, maxHistoryLength);
-
-			const float jacobian = EvaluateJacobian(centerPixelSurface.location, selectedHistorySurface.location, selectedHistoryReservoir);
-
-			if(jacobian > 0.f)
-			{
-				selectedHistoryReservoir.weightSum *= jacobian;
-
-				selectedHistoryReservoir.luminance = ExposedHistoryLuminanceToCurrentExposedLuminance(selectedHistoryReservoir.luminance);
-
-				const float targetPdf = EvaluateTargetPdf(centerPixelSurface, selectedHistoryReservoir.hitLocation, selectedHistoryReservoir.luminance);
-
-				if(currentReservoir.Update(selectedHistoryReservoir, rng.Next(), targetPdf))
-				{
-					currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
-					selectedTargetPdf = targetPdf;
-				}
-			}
+			return false;
 		}
+
+		historyReservoir.weightSum *= jacobian;
+
+		historyReservoir.luminance = ExposedHistoryLuminanceToCurrentExposedLuminance(historyReservoir.luminance);
+
+		const float targetPdf = EvaluateTargetPdf(centerPixelSurface, historyReservoir.hitLocation, historyReservoir.luminance);
+
+		if(currentReservoir.Update(historyReservoir, rng.Next(), targetPdf))
+		{
+			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
+			selectedTargetPdf = targetPdf;
+
+			return true;
+		}
+
+		return false;
 	}
 
 	SRReservoir FinishResampling()
@@ -236,13 +215,21 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
 
-		const float2x2 samplesRotation = NoiseRotation(rng.Next());
+		const float2 motion = u_motionTexture.Load(uint3(pixel, 0)).xy;
+		const float2 reprojectedSurfaceUV  = uv - motion;
 
 		const float3 virtualReflectedLocation = centerPixelSurface.location - centerPixelSurface.v * reflectedRayLength;
 		const float3 prevFrameNDCVirtual = WorldSpaceToNDC(virtualReflectedLocation, u_prevFrameSceneView);
-		if(prevFrameNDCVirtual.z > 0.f && all(prevFrameNDCVirtual.xy <= 1.f) && all(prevFrameNDCVirtual.xy >= -1.f))
+
+		const float2 reprojectedUVBasedOnVirtualPoint = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
+
+		const float surfaceReprojectionWeight = prevFrameNDCVirtual.z > 0.f ? saturate((centerPixelSurface.roughness - 0.1f) * 2.8f) : 1.f;
+
+		const float2 reprojectedUV = lerp(reprojectedUVBasedOnVirtualPoint, reprojectedSurfaceUV, surfaceReprojectionWeight);
+
+		if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 		{
-			const float2 reprojectedUV = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
+			const float2x2 samplesRotation = NoiseRotation(rng.Next());
 
 			for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 			{
@@ -251,38 +238,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 				
 				if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
 				{
-					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
-					{
-						break;
-					}
+					resampler.TrySelectHistorySample(samplePixel, INOUT rng);
 				}
 			}
 		}
-
-		if(!resampler.FoundHistorySample())
-		{
-			const float2 motion    = u_motionTexture.Load(uint3(pixel, 0)).xy;
-			const float2 historyUV = uv - motion;
-
-			if(all(historyUV >= 0.f) && all(historyUV <= 1.f))
-			{
-				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
-				{
-					const float2 sampleUV = historyUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
-					int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
-					
-					if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
-					{
-						if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
-						{
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		resampler.ResampleSelectedHistorySample(INOUT rng);
 
 		SRReservoir newReservoir = resampler.FinishResampling();
 		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());

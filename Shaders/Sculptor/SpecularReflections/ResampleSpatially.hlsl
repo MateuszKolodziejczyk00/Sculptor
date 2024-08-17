@@ -20,7 +20,7 @@ struct CS_INPUT
 };
 
 
-#define SPATIAL_RESAMPLING_SAMPLES_NUM 2
+#define SPATIAL_RESAMPLING_SAMPLES_NUM 4
 
 
 float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)

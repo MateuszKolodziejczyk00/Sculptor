@@ -567,6 +567,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.motionTexture                  = viewContext.motionHalfRes;
 		resamplingParams.tracesAllocation               = tracesAllocation;
 		resamplingParams.enableTemporalResampling       = hasValidHistory;
+		resamplingParams.spatialResamplingIterations    = 1u;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 

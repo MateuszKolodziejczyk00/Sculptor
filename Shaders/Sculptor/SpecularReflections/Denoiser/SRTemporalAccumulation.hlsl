@@ -55,13 +55,20 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		const float maxRoguhnessDiff = roughness * 0.1f;
 
-		float2 historyUV = prevFrameNDC.xy * 0.5f + 0.5f;
+		const float2 virtualPointHistoryUV = prevFrameNDC.xy * 0.5f + 0.5f;
 
-		float reprojectionConfidence = 0.f;
+		const float2 motion = u_motionTexture.Load(uint3(pixel, 0));
+		const float2 surfaceHistoryUV = uv - motion;
+
+		const float surfaceReprojectionWeight = prevFrameNDC.z > 0.f ? saturate((roughness - 0.1f) * 2.8f) : 1.f;
+
+		float2 historyUV = lerp(virtualPointHistoryUV, surfaceHistoryUV, surfaceReprojectionWeight);
 
 		const float3 currentSampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(pixel, 0)));
 
 		const Plane currentSamplePlane = Plane::Create(currentSampleNormal, currentSampleWS);
+
+		float reprojectionConfidence = 0.f;
 
 		if (all(historyUV >= 0.f) && all(historyUV <= 1.f))
 		{
@@ -109,46 +116,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			historyUV = bestHistoryUV;
 		}
 
-		if(reprojectionConfidence < 1.f)
-		{
-			const float2 motion = u_motionTexture.Load(uint3(pixel, 0));
-			
-			const float2 surfaceHistoryUV = uv - motion;
-
-			if(all(surfaceHistoryUV >= 0.f) && all(surfaceHistoryUV <= 1.f))
-			{
-				const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, historyUV, 0.f);
-				const float3 historySampleNDC = float3(historyUV * 2.f - 1.f, historySampleDepth);
-				const float3 historySampleWS = NDCToWorldSpaceNoJitter(historySampleNDC, u_prevFrameSceneView);
-			
-				const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
-				if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
-				{
-					const float motionLength = length(motion);
-					if(IsNearlyZero(motionLength))
-					{
-						reprojectionConfidence = 1.f;
-						historyUV              = surfaceHistoryUV;
-					}
-					const float3 historyNormal = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, historyUV, 0.f));
-					const float normalsSimilarity = dot(historyNormal, currentSampleNormal);
-					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-					const float roughnessDiff = abs(roughness - historyRoughness);
-
-					if(normalsSimilarity >= 0.95f && abs(roughness - historyRoughness) < maxRoguhnessDiff * 3.f)
-					{
-						const float maxMotionLength = 0.11f * roughness;
-						const float confidence = 0.3f + 0.7f * saturate(1.f - motionLength / (maxMotionLength + 0.000001f));
-
-						if(confidence > reprojectionConfidence)
-						{
-							reprojectionConfidence = confidence;
-							historyUV              = surfaceHistoryUV;
-						}
-					}
-				}
-			}
-		}
 		uint historySamplesNum = 0u;
 		const float lum = Luminance(luminanceAndHitDist.rgb);
 		float2 moments = float2(lum, lum * lum);
