@@ -16,7 +16,7 @@ namespace spt::rsc::sr_denoiser
 BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(Uint32,         samplesOffset)
+	SHADER_STRUCT_FIELD(Int32,          samplesOffset)
 END_SHADER_STRUCT();
 
 

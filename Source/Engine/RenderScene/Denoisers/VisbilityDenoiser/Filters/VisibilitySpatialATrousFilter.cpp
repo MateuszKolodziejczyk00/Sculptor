@@ -14,7 +14,7 @@ namespace spt::rsc::visibility_denoiser::spatial
 {
 
 BEGIN_SHADER_STRUCT(SpatialATrousFilteringParams)
-	SHADER_STRUCT_FIELD(Uint32, samplesOffset)
+	SHADER_STRUCT_FIELD(Int32, samplesOffset)
 END_SHADER_STRUCT();
 
 
@@ -44,7 +44,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialATrous
 	static const rdr::PipelineStateID pipeline = CreateSpatialATrousFilterPipeline();
 
 	SpatialATrousFilteringParams dispatchParams;
-	dispatchParams.samplesOffset         = 1u << iterationIdx;
+	dispatchParams.samplesOffset = static_cast<Int32>(1u << iterationIdx);
 
 	lib::MTHandle<SpatialATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SpatialATrousFilterDS>(RENDERER_RESOURCE_NAME("Spatial A-Trous Filter DS"));
 	ds->u_inputTexture    = input;

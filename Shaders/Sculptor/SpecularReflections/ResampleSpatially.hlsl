@@ -20,7 +20,7 @@ struct CS_INPUT
 };
 
 
-#define SPATIAL_RESAMPLING_SAMPLES_NUM 4
+#define SPATIAL_RESAMPLING_SAMPLES_NUM 3
 
 
 float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
@@ -36,6 +36,13 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
+		const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
+
+		if(depth <= 0.f)
+		{
+			return;
+		}
+
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 
 		float selectedTargetPdf = 0.f;

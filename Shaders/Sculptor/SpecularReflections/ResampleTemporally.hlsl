@@ -137,16 +137,18 @@ struct SRTemporalResampler
 };
 
 
-void AppendAdditionalTraceCommand(in uint2 traceCoords, in uint invalidReservoirsNumInWarp)
+void AppendAdditionalTraceCommand(in uint2 traceCoords)
 {
+	const uint commandsNum = WaveActiveCountBits(true);
+
 	uint appendOffset = 0u;
 	if (WaveIsFirstLane())
 	{
-		InterlockedAdd(u_commandsNum[0], invalidReservoirsNumInWarp, OUT appendOffset);
+		InterlockedAdd(u_commandsNum[0], commandsNum, OUT appendOffset);
 
 		uint tracesNum = 0;
-		InterlockedAdd(u_tracesNum[0], invalidReservoirsNumInWarp, OUT tracesNum);
-		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + invalidReservoirsNumInWarp + 31) / 32);
+		InterlockedAdd(u_tracesNum[0], commandsNum, OUT tracesNum);
+		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + commandsNum + 31) / 32);
 	}
 
 	const uint2 ballot = WaveActiveBallot(true).xy;
@@ -177,6 +179,12 @@ void ResampleTemporallyCS(CS_INPUT input)
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
+		const float depth = u_depthTexture.Load(uint3(pixel, 0));
+		if(depth <= 0.f)
+		{
+			return;
+		}
+
 		MinimalGBuffer currentGBuffer;
 		currentGBuffer.depthTexture         = u_depthTexture;
 		currentGBuffer.normalsTexture       = u_normalsTexture;
@@ -193,14 +201,9 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		float reflectedRayLength = -1.f;
 		SRTemporalResampler resampler;
+
 		{
 			const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
-
-			if(centerPixelSurface.roughness <= 0.01f)
-			{
-				u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
-				return;
-			}
 
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
@@ -212,42 +215,44 @@ void ResampleTemporallyCS(CS_INPUT input)
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
-
-		const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
-
-		const float2 motion = u_motionTexture.Load(uint3(pixel, 0)).xy;
-		const float2 reprojectedSurfaceUV  = uv - motion;
-
-		const float3 virtualReflectedLocation = centerPixelSurface.location - centerPixelSurface.v * reflectedRayLength;
-		const float3 prevFrameNDCVirtual = WorldSpaceToNDC(virtualReflectedLocation, u_prevFrameSceneView);
-
-		const float2 reprojectedUVBasedOnVirtualPoint = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
-
-		const float surfaceReprojectionWeight = prevFrameNDCVirtual.z > 0.f ? saturate((centerPixelSurface.roughness - 0.1f) * 2.8f) : 1.f;
-
-		const float2 reprojectedUV = lerp(reprojectedUVBasedOnVirtualPoint, reprojectedSurfaceUV, surfaceReprojectionWeight);
-
-		if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
+		if (centerPixelSurface.roughness > 0.01f)
 		{
-			const float2x2 samplesRotation = NoiseRotation(rng.Next());
+			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
 
-			for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
+			const float2 motion = u_motionTexture.Load(uint3(pixel, 0)).xy;
+			const float2 reprojectedSurfaceUV  = uv - motion;
+
+			const float3 virtualReflectedLocation = centerPixelSurface.location - centerPixelSurface.v * reflectedRayLength;
+			const float3 prevFrameNDCVirtual = WorldSpaceToNDC(virtualReflectedLocation, u_prevFrameSceneView);
+
+			const float2 reprojectedUVBasedOnVirtualPoint = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
+
+			const float surfaceReprojectionWeight = prevFrameNDCVirtual.z > 0.f ? saturate((centerPixelSurface.roughness - 0.1f) * 2.8f) : 1.f;
+
+			const float2 reprojectedUV = lerp(reprojectedUVBasedOnVirtualPoint, reprojectedSurfaceUV, surfaceReprojectionWeight);
+
+			if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 			{
-				const float2 sampleUV = reprojectedUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
-				const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
-				
-				if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
+				const float2x2 samplesRotation = NoiseRotation(rng.Next());
+
+				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
-					resampler.TrySelectHistorySample(samplePixel, INOUT rng);
+					const float2 sampleUV = reprojectedUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
+					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
+					
+					if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
+					{
+						resampler.TrySelectHistorySample(samplePixel, INOUT rng);
+					}
 				}
 			}
 		}
 
 		SRReservoir newReservoir = resampler.FinishResampling();
 		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());
-		if(invalidReservoirs > 16u && !newReservoir.IsValid())
+		if((invalidReservoirs > 16u || centerPixelSurface.roughness <= 0.01f) && !newReservoir.IsValid())
 		{
-			AppendAdditionalTraceCommand(pixel, invalidReservoirs);
+			AppendAdditionalTraceCommand(pixel);
 		}
 
 		// Firefly filter
@@ -267,7 +272,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		const float maxWeight = averageWeight * 15.f;
 
-		if(finalReservoirWeight > maxWeight)
+		if(centerPixelSurface.roughness > 0.01f && finalReservoirWeight > maxWeight)
 		{
 			newReservoir.weightSum = 0.f;
 		}
