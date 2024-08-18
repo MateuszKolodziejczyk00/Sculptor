@@ -24,14 +24,13 @@ struct CS_INPUT
 groupshared float s_averageReservoirWeight[2];
 
 
-#define HISTORY_SAMPLE_COUNT 3
+#define HISTORY_SAMPLE_COUNT 2
 
 
 static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 {
 	int2(0, 0),
 	int2(1, 0),
-	int2(0, 1),
 };
 
 
@@ -135,7 +134,6 @@ struct SRTemporalResampler
 		return currentReservoir;
 	}
 };
-
 
 void AppendAdditionalTraceCommand(in uint2 traceCoords)
 {

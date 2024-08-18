@@ -26,7 +26,7 @@ float ComputeWorldLocationWeight(float3 centerWS, float3 normal, float3 sampleWS
 
 float ComputeRoughnessFilterStrength(in float roughness, in float reprojectionConfidence, in float historyFramesNum)
 {
-	const float maxStrength = lerp(2.f, 12.f, saturate(1.f - roughness));
+	const float maxStrength = lerp(8.f, 18.f, saturate(1.f - roughness));
 	return clamp(1.f, maxStrength, 25.f * reprojectionConfidence * saturate(historyFramesNum / 8.f));
 }
 

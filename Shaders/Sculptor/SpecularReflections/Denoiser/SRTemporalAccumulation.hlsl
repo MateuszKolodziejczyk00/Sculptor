@@ -95,9 +95,10 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 						const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
 						const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
 						const float parallaxAngle = dot(historyViewDir, currentViewDir);
-						const float parallaxFilterStrength = 1.f;
 
-						const float sampleReprojectionConfidence = 1.f - 0.2f * saturate(parallaxAngle * parallaxFilterStrength) * (1.f - roughness);
+						const bool isCenterSample = sampleIdx == 0;
+
+						const float sampleReprojectionConfidence = saturate(1.f - 0.2f * saturate(1.f - parallaxAngle) + (isCenterSample ? 0.04f : 0.f));
 
 						if(sampleReprojectionConfidence > reprojectionConfidence)
 						{
@@ -137,7 +138,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			historySamplesNum = min(historySamplesNum, uint(maxAccumulatedFrames));
 			float currentFrameWeight = rcp(float(historySamplesNum + 1u));
-			currentFrameWeight = currentFrameWeight + (1.f - currentFrameWeight) * (1.f - reprojectionConfidence);
+			currentFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - reprojectionConfidence);
 
 			const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
 			moments = lerp(historyMoments, moments, currentFrameWeight);
@@ -152,7 +153,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			// Fast history
 
 			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-			const float currentFrameWeightFast = max(0.25f, currentFrameWeight);
+			const float currentFrameWeightFast = max(0.3f, currentFrameWeight);
 			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
 
 			historySamplesNum = historySamplesNum + 1u;
