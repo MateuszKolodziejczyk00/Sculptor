@@ -50,11 +50,15 @@ MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in ui
 }
 
 
-float EvaluateTargetPdf(in MinimalSurfaceInfo surface, in float3 sampleLocation, in float3 sampleLuminance)
+float EvaluateTargetFunction(in MinimalSurfaceInfo surface, in float3 sampleLocation, in float3 sampleLuminance)
 {
 	const float3 l = normalize(sampleLocation - surface.location);
 
-	const float3 specular = SR_GGX_Specular(surface.n, surface.v, l, surface.roughness, surface.f0);
+	float3 specular = SR_GGX_Specular(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0);
+	if(any(isnan(specular)))
+	{
+		return 0.f;
+	}
 
 	const float dotNL = saturate(dot(surface.n, l));
 
@@ -101,10 +105,10 @@ float EvaluateJacobian(in float3 destinationSampleLocation, in float3 reuseSampl
 }
 
 
-bool AreSurfacesSimilar(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo surfaceB)
+bool SurfacesAllowResampling(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo surfaceB)
 {
 	const float planeDistanceThreshold = 0.07f;
-	const float normalThreshold = 0.6f;
+	const float normalThreshold = 0.5f;
 
 	const Plane surfacePlane = Plane::Create(surfaceA.n, surfaceA.location);
 	const float distance = surfacePlane.Distance(surfaceB.location);
@@ -113,7 +117,7 @@ bool AreSurfacesSimilar(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo su
 }
 
 
-bool AreMaterialsSimilar(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo surfaceB)
+bool MaterialsAllowResampling(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo surfaceB)
 {
 	const float f0Threshold = 0.25f;
 	const float roughnessThreshold = 0.5f;

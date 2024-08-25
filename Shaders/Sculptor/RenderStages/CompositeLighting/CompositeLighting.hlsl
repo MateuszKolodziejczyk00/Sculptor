@@ -180,7 +180,6 @@ void CompositeLightingCS(CS_INPUT input)
 	integratedFog.transmittance = 1.f;
 #endif // VOLUMETRIC_FOG_ENABLED
 
-
 	float3 rtReflectionsLuminance = 0.f;
 #if RT_REFLECTIONS_ENABLED
 	rtReflectionsLuminance = ComputeRTReflectionsLuminance(pixel, uv);

@@ -12,7 +12,9 @@ float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness
 
 	if(roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
-		return GGX_Specular(n, v, l, roughness, f0);
+		const float minRoughness = 0.01f;
+		return GGX_Specular(n, v, l, max(roughness, minRoughness), f0);
+
 	}
 	else
 	{

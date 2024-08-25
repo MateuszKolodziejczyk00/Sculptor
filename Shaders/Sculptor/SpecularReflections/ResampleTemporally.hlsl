@@ -21,9 +21,6 @@ struct CS_INPUT
 };
 
 
-groupshared float s_averageReservoirWeight[2];
-
-
 #define HISTORY_SAMPLE_COUNT 2
 
 
@@ -34,6 +31,7 @@ static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 };
 
 
+
 struct SRTemporalResampler
 {
 	MinimalSurfaceInfo centerPixelSurface;
@@ -42,7 +40,15 @@ struct SRTemporalResampler
 
 	MinimalGBuffer historyGBuffer;
 
-	float selectedTargetPdf;
+	float m_selectedP_hat;
+
+	uint m_validSamplesMask;
+	int2 m_sampleCoords[HISTORY_SAMPLE_COUNT];
+	int m_selectedSampleIdx;
+
+	uint m_currentSampleIdx;
+
+	uint m_initialM;
 
 	bool m_wasSampleTraced;
 
@@ -53,34 +59,60 @@ struct SRTemporalResampler
 		resampler.centerPixelSurface = inSurface;
 		resampler.currentReservoir = SRReservoir::CreateEmpty();
 
-		resampler.selectedTargetPdf = 0.f;
-
 		resampler.historyGBuffer.depthTexture         = u_historyDepthTexture;
 		resampler.historyGBuffer.normalsTexture       = u_historyNormalsTexture;
 		resampler.historyGBuffer.specularColorTexture = u_historySpecularColorTexture;
 		resampler.historyGBuffer.roughnessTexture     = u_historyRoughnessTexture;
 
-		const float targetPdf = EvaluateTargetPdf(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
-		resampler.currentReservoir.Update(initialReservoir, 0.f, targetPdf);
-		resampler.selectedTargetPdf = targetPdf;
+		const float p_hat = EvaluateTargetFunction(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
+
+		if(resampler.currentReservoir.Update(initialReservoir, 0.f, p_hat))
+		{
+			resampler.m_selectedP_hat = p_hat;
+		}
 
 		resampler.m_wasSampleTraced = wasSampleTraced;
+
+		resampler.m_validSamplesMask = 0u;
+		resampler.m_selectedSampleIdx = -1;
+		resampler.m_currentSampleIdx = 0;
+		resampler.m_initialM = initialReservoir.M;
 
 		return resampler;
 	}
 
-	bool TrySelectHistorySample(in uint2 historySamplePixel, inout RngState rng)
+	SRReservoir LoadHistoryReservoir(in uint2 coords)
 	{
-		const MinimalSurfaceInfo selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, u_prevFrameSceneView);
+		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
+		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		if(!AreSurfacesSimilar(centerPixelSurface, selectedHistorySurface)
-			|| !AreMaterialsSimilar(centerPixelSurface, selectedHistorySurface))
+		const uint maxHistoryLength = 8u;
+		historyReservoir.M = min(historyReservoir.M, maxHistoryLength);
+
+		return historyReservoir;
+	}
+
+	bool TrySelectHistorySample(in int2 historySamplePixel, inout RngState rng)
+	{
+		const uint sampleIdx = m_currentSampleIdx++;
+
+		m_sampleCoords[sampleIdx] = -1;
+		if(all(historySamplePixel < 0) || all(historySamplePixel >= u_resamplingConstants.resolution))
 		{
 			return false;
 		}
 
-		const uint historyReservoirIdx = GetScreenReservoirIdx(historySamplePixel, u_resamplingConstants.reservoirsResolution);
-		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
+		m_sampleCoords[sampleIdx] = historySamplePixel;
+
+		const MinimalSurfaceInfo selectedHistorySurface = GetMinimalSurfaceInfo(historyGBuffer, historySamplePixel, u_prevFrameSceneView);
+
+		if(!SurfacesAllowResampling(centerPixelSurface, selectedHistorySurface)
+			|| !MaterialsAllowResampling(centerPixelSurface, selectedHistorySurface))
+		{
+			return false;
+		}
+
+		SRReservoir historyReservoir = LoadHistoryReservoir(historySamplePixel);
 
 		if(!historyReservoir.IsValid() || !currentReservoir.CanCombine(historyReservoir))
 		{
@@ -99,9 +131,6 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const uint maxHistoryLength = 10;
-		historyReservoir.M = min(historyReservoir.M, maxHistoryLength);
-
 		const float jacobian = EvaluateJacobian(centerPixelSurface.location, selectedHistorySurface.location, historyReservoir);
 
 		if(jacobian <= 0.f)
@@ -109,16 +138,23 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		historyReservoir.weightSum *= jacobian;
-
 		historyReservoir.luminance = ExposedHistoryLuminanceToCurrentExposedLuminance(historyReservoir.luminance);
 
-		const float targetPdf = EvaluateTargetPdf(centerPixelSurface, historyReservoir.hitLocation, historyReservoir.luminance);
+		const float p_hat = EvaluateTargetFunction(centerPixelSurface, historyReservoir.hitLocation, historyReservoir.luminance);
+		const float p_hatInOutputDomain = p_hat * jacobian;
 
-		if(currentReservoir.Update(historyReservoir, rng.Next(), targetPdf))
+		if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
+		{
+			return false;
+		}
+
+		m_validSamplesMask |= (1u << sampleIdx);
+
+		if(currentReservoir.Update(historyReservoir, rng.Next(), p_hatInOutputDomain))
 		{
 			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
-			selectedTargetPdf = targetPdf;
+			m_selectedP_hat     = p_hat;
+			m_selectedSampleIdx = sampleIdx;
 
 			return true;
 		}
@@ -126,10 +162,43 @@ struct SRTemporalResampler
 		return false;
 	}
 
-	SRReservoir FinishResampling()
+	SRReservoir FinishResampling(int2 pixel)
 	{
 		currentReservoir.age++;
-		currentReservoir.Normalize(selectedTargetPdf);
+
+		// MIS normalization based on equation 5.11 and 3.10 from A Gentle Introduction to Restir
+		float p_i    = m_selectedSampleIdx >= 0 ? 0.f : m_selectedP_hat;
+		float p_jSum = m_selectedP_hat * m_initialM; // initial sample
+
+		// Input domains Ommega_i may overlap so we need to compute MIS weight for final sample
+		// To do this, we map the sample to the input domains Omega_i
+		// See: Generalized Resampled Importance Sampling: Foundations of ReSTIR
+		[unroll]
+		for(uint sampleIdx = 0u; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
+		{
+			if((m_validSamplesMask & (1u << sampleIdx)) == 0u)
+			{
+				continue;
+			}
+	
+			const int2 samplePixel = m_sampleCoords[sampleIdx];
+	
+			const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(historyGBuffer, samplePixel, u_prevFrameSceneView);
+	
+			const SRReservoir reuseReservoir = LoadHistoryReservoir(samplePixel);
+	
+			// p_j in input domain Omega_j
+			const float p_j = EvaluateTargetFunction(reusedSurface, currentReservoir.hitLocation, currentReservoir.luminance);
+	
+			p_jSum += p_j * reuseReservoir.M;
+	
+			if(sampleIdx == m_selectedSampleIdx)
+			{
+				p_i = p_j;
+			}
+		}
+	
+		currentReservoir.Normalize_BalancedHeuristic(m_selectedP_hat, p_i, p_jSum);
 
 		return currentReservoir;
 	}
@@ -189,8 +258,6 @@ void ResampleTemporallyCS(CS_INPUT input)
 		currentGBuffer.specularColorTexture = u_specularColorTexture;
 		currentGBuffer.roughnessTexture     = u_roughnessTexture;
 
-		float selectedTargetPdf = 0.f;
-
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, u_sceneView);
 
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
@@ -202,7 +269,6 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		{
 			const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
-
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
@@ -213,7 +279,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
-		if (centerPixelSurface.roughness > 0.01f)
+		if (centerPixelSurface.roughness > SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
 
@@ -238,41 +304,17 @@ void ResampleTemporallyCS(CS_INPUT input)
 					const float2 sampleUV = reprojectedUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
 					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
 					
-					if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
-					{
-						resampler.TrySelectHistorySample(samplePixel, INOUT rng);
-					}
+					resampler.TrySelectHistorySample(samplePixel, INOUT rng);
 				}
 			}
 		}
 
-		SRReservoir newReservoir = resampler.FinishResampling();
+		SRReservoir newReservoir = resampler.FinishResampling(pixel);
+
 		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());
-		if((invalidReservoirs > 16u || centerPixelSurface.roughness <= 0.01f) && !newReservoir.IsValid())
+		if((invalidReservoirs > 16u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !newReservoir.IsValid())
 		{
 			AppendAdditionalTraceCommand(pixel);
-		}
-
-		// Firefly filter
-		const float finalReservoirWeight = Luminance(newReservoir.luminance) * newReservoir.weightSum;
-		const float weightSum = WaveActiveSum(finalReservoirWeight);
-		const float waveCount = WaveActiveCountBits(true);
-
-		const uint waveIdx = WaveActiveAnyTrue(all(input.localID == 0));
-		if(WaveIsFirstLane())
-		{
-			s_averageReservoirWeight[waveIdx] = weightSum / waveCount;
-		}
-
-		GroupMemoryBarrierWithGroupSync();
-
-		const float averageWeight = (s_averageReservoirWeight[0] + s_averageReservoirWeight[1]) * 0.5f;
-
-		const float maxWeight = averageWeight * 15.f;
-
-		if(centerPixelSurface.roughness > 0.01f && finalReservoirWeight > maxWeight)
-		{
-			newReservoir.weightSum = 0.f;
 		}
 
 		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);

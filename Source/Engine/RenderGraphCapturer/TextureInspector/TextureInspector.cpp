@@ -221,7 +221,7 @@ void TextureInspector::DrawTextureViewPanel()
 	ImGui::NextColumn();
 	ImGui::Text("Pixel: [%d, %d]", hoveredPixel.x(), hoveredPixel.y());
 	ImGui::NextColumn();
-	ImGui::Text("Value: [R: %f, G: %f, B: %f, A: %f]", hoveredPixelValue.x(), hoveredPixelValue.y(), hoveredPixelValue.z(), hoveredPixelValue.w());
+	ImGui::Text("Value: [R: %2.9f, G: %2.9f, B: %2.9f, A: %f]", hoveredPixelValue.x(), hoveredPixelValue.y(), hoveredPixelValue.z(), hoveredPixelValue.w());
 	ImGui::EndColumns();
 	
 

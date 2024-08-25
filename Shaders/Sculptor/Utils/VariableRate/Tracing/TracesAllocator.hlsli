@@ -125,6 +125,7 @@ struct TracesAllocator
 		allocator.m_tracesCommands            = tracesCommands;
 		allocator.m_tracesCommandsNum         = inTracesCommandsNum;
 		allocator.m_variableRateBlocksTexture = inVariableRateBlocksTexture;
+		allocator.m_noise                     = -1.f;
 		return allocator;
 	}
 
@@ -202,9 +203,13 @@ struct TracesAllocator
 
 			traceOutputIdx = WaveReadLaneFirst(traceOutputIdx) + GetCompactedIndex(wantsTraceBallot, WaveGetLaneIndex());
 
-			const uint tileArea = vrTileSize.x * vrTileSize.y;
-			const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
-			const uint2 localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
+			uint2 localOffset = 0u;
+			if(m_noise >= 0.f)
+			{
+				const uint tileArea = vrTileSize.x * vrTileSize.y;
+				const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
+				localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
+			}
 
 			if(wantsToAllocateTrace)
 			{

@@ -34,8 +34,11 @@ void AllocateTracesCS(CS_INPUT input)
 	tracesAllocator.SetTracesNumBuffers(u_tracesNum, u_tracesDispatchGroupsNum);
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 
-	const float noise = u_blueNoise256Texture.Load(uint3(globalID & 256, 0)).x;
-	tracesAllocator.SetNoiseValue(noise);
+	if(u_constants.enableBlueNoiseLocalOffset)
+	{
+		const float noise = u_blueNoise256Texture.Load(uint3(globalID & 255, 0)).x;
+		tracesAllocator.SetNoiseValue(noise);
+	}
 
 	const bool maskOutOutput = isHelperLane;
 	tracesAllocator.AllocateTraces(input.groupID.xy, localID, variableRate, u_constants.traceIdx, maskOutOutput);

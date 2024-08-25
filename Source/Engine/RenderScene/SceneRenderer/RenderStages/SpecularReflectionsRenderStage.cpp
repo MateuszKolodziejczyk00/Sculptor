@@ -35,8 +35,11 @@ REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRend
 
 namespace renderer_params
 {
-RendererFloatParameter specularTrace2x2Threshold("Specular Trace 2x2 Threshold", { "Specular Reflections" }, 0.055f, 0.f, 0.1f);
-RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold", { "Specular Reflections" }, 0.032f, 0.f, 0.1f);
+RendererFloatParameter specularTrace2x2Threshold("Specular Trace 2x2 Threshold", { "Specular Reflections" }, 0.15f, 0.f, 0.2f);
+RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold", { "Specular Reflections" }, 0.08f, 0.f, 0.2f);
+
+RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
+RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -522,6 +525,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		tracesAllocationDefinition.vrtPermutationSettings           = m_variableRateRenderer.GetPermutationSettings();
 		tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = true;
 		tracesAllocationDefinition.traceIdx                         = renderView.GetRenderedFrameIdx();
+		tracesAllocationDefinition.enableBlueNoiseLocalOffset       = true;
 		const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 		SpecularReflectionsParams params;
@@ -567,7 +571,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.motionTexture                  = viewContext.motionHalfRes;
 		resamplingParams.tracesAllocation               = tracesAllocation;
 		resamplingParams.enableTemporalResampling       = hasValidHistory;
-		resamplingParams.spatialResamplingIterations    = 1u;
+		resamplingParams.enableTemporalResampling       = hasValidHistory && renderer_params::enableTemporalResampling;
+		resamplingParams.spatialResamplingIterations    = static_cast<Uint32>(renderer_params::spatialResamplingIterationsNum);
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 

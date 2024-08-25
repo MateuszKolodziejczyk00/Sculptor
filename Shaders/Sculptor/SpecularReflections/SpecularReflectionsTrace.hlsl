@@ -14,10 +14,14 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 {
 	const float maxHitDistance = 200.f;
 
+	const float bias = 0.05f;
+
+	const float3 biasedRayOrigin = rayOrigin + normalize(u_sceneView.viewLocation - rayOrigin) * bias;
+
 	RayDesc rayDesc;
-	rayDesc.TMin      = 0.004f;
+	rayDesc.TMin      = 0.0f;
 	rayDesc.TMax      = maxHitDistance;
-	rayDesc.Origin    = rayOrigin;
+	rayDesc.Origin    = biasedRayOrigin;
 	rayDesc.Direction = rayDirection;
 
 	SpecularReflectionsRayPayload payload;

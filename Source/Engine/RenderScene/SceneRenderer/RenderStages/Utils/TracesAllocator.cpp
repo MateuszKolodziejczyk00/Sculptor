@@ -18,6 +18,7 @@ BEGIN_SHADER_STRUCT(AllocateTracesConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, vrtResolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, vrtInvResolution)
 	SHADER_STRUCT_FIELD(Uint32,         traceIdx)
+	SHADER_STRUCT_FIELD(Bool,           enableBlueNoiseLocalOffset)
 END_SHADER_STRUCT();
 
 
@@ -94,11 +95,12 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 	const math::Vector2u vrtResolution = definition.variableRateTexture->GetResolution2D();
 
 	AllocateTracesConstants shaderConstants;
-	shaderConstants.resolution       = definition.resolution;
-	shaderConstants.invResolution    = definition.resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.vrtResolution    = vrtResolution;
-	shaderConstants.vrtInvResolution = vrtResolution.cast<Real32>().cwiseInverse();
-	shaderConstants.traceIdx         = definition.traceIdx;
+	shaderConstants.resolution                 = definition.resolution;
+	shaderConstants.invResolution              = definition.resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.vrtResolution              = vrtResolution;
+	shaderConstants.vrtInvResolution           = vrtResolution.cast<Real32>().cwiseInverse();
+	shaderConstants.traceIdx                   = definition.traceIdx;
+	shaderConstants.enableBlueNoiseLocalOffset = definition.enableBlueNoiseLocalOffset;
 
 	lib::MTHandle<AllocateTracesDS> allocateTracesDS = graphBuilder.CreateDescriptorSet<AllocateTracesDS>(RENDERER_RESOURCE_NAME("AllocateTracesDS"));
 	allocateTracesDS->u_constants                   = shaderConstants;

@@ -53,14 +53,14 @@ class SRReservoir
 		return M > 0;
 	}
 
-	bool Update(in SRReservoir other, in float randomValue, in float targetPdf)
+	bool Update(in SRReservoir other, in float randomValue, in float p_hatInOutputDomain)
 	{
-		const float risWeight = other.M * other.weightSum * targetPdf;
+		const float w_i = other.M * other.weightSum * p_hatInOutputDomain;
 
-		weightSum += risWeight;
+		weightSum += w_i;
 		M += other.M;
 
-		const bool updateReservoir = (randomValue * weightSum <= risWeight);
+		const bool updateReservoir = (randomValue * weightSum <= w_i);
 
 		if(updateReservoir)
 		{
@@ -78,12 +78,23 @@ class SRReservoir
 
 	// Default normalization function
 	// uses 1/M as mis weight (which leads to bias)
-	void Normalize(in float selectedSampleTargetPdf)
+	void Normalize(in float selectedPhat)
 	{
 		// Equation (7) from Restir GI paper
-		// w = (1 / p_hat) * (1 / M) * sum(w_i)
-		const float denominator = selectedSampleTargetPdf * M;
-		weightSum = IsNearlyZero(denominator) ? 0.f : (weightSum * rcp(denominator));
+		// w = (1 / p_hat) * (1 / M) * sum(w_i) = sum(w_i) / (p_hat * M)
+		const float denominator = selectedPhat * M;
+		weightSum = denominator == 0.f ? 0.f : (weightSum / denominator);
+	}
+
+	void Normalize_BalancedHeuristic(in float selectedPhat, in float p_i, in float p_jSum)
+	{
+		// Normalization equation:
+		// w = (1 / p_hat) * m_i(x) * sum(w_i)
+		// We use balanced heuristic for m_i(x) which gives:
+		// m_i(x) = p_i / (p_jSum)
+		// w = (1 / p_hat) * (p_i / p_jSum) * sum(w_i) = sum(w_i) / (p_hat * p_jSum)
+		const float denominator = p_jSum * selectedPhat;
+		weightSum = denominator == 0.f ? 0.f : (weightSum * p_i / denominator);
 	}
 
 	void AddFlag(in uint flag)

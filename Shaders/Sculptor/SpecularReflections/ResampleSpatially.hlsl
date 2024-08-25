@@ -9,6 +9,7 @@
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
+#include "Utils/MortonCode.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -16,7 +17,8 @@
 
 struct CS_INPUT
 {
-	uint3 globalID : SV_DispatchThreadID;
+	uint3 groupID  : SV_GroupID;
+	uint3 localID  : SV_GroupThreadID;
 };
 
 
@@ -29,118 +31,225 @@ float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 }
 
 
-[numthreads(8, 4, 1)]
+float ComputeMedian4(in float x0, in float x1, in float x2, in float x3)
+{
+	const float max0 = max(x0, x1);
+	const float min0 = min(x0, x1);
+
+	const float max1 = max(x2, x3);
+	const float min1 = min(x2, x3);
+
+	const float allMax = max(max0, max1);
+	const float allMin = min(min0, min1);
+
+	return (x0 + x1 + x2 + x3 - allMax - allMin) * 0.5f;
+}
+
+
+float ComputeAverageReservoirWeight(in float reservoirWeight)
+{
+	const uint quad2x2FirstLaneIdx = WaveGetLaneIndex() & ~3u;
+
+	const float quad2x2Median = ComputeMedian4(WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 0u),
+		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 1u),
+		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 2u),
+		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 3u));
+
+	const uint quad4x4FirstLaneIdx = WaveGetLaneIndex() & ~15u;
+	const float quad4x4Median = ComputeMedian4(WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 0u),
+		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 4u),
+		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 8u),
+		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 12u));
+
+	return (WaveReadLaneAt(quad4x4Median, 0u) + WaveReadLaneAt(quad4x4Median, 16u)) * 0.5f;
+}
+
+
+void ExecuteFireflyFilter(inout SRReservoir reservoir)
+{
+	const float reservoirWeight = Luminance(reservoir.luminance) * reservoir.weightSum;
+	const float avgWeight = ComputeAverageReservoirWeight(reservoirWeight);
+
+	const float maxWeight = avgWeight * 15.f;
+
+	if(reservoirWeight > maxWeight)
+	{
+		reservoir.weightSum = 0.f;
+	}
+}
+
+
+[numthreads(32, 1, 1)]
 void ResampleSpatiallyCS(CS_INPUT input)
 {
-	const uint2 pixel = input.globalID.xy;
-	
-	if(all(pixel < u_resamplingConstants.resolution))
+	const uint localThreadID = input.localID.x;
+	const uint2 localID = DecodeMorton2D(localThreadID);
+
+	uint2 pixel = input.groupID.xy * uint2(8u, 4u) + localID;
+
+	bool isHelperLane = false;
+	if(any(pixel >= u_resamplingConstants.resolution))
 	{
-		const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
+		isHelperLane = true;
+		pixel = min(pixel, u_resamplingConstants.resolution - 1u);
+	}
+	
+	const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
 
-		if(depth <= 0.f)
+	if(depth <= 0.f)
+	{
+		return;
+	}
+
+	const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
+
+	float selectedP_hat = 0.f;
+
+	MinimalGBuffer gBuffer;
+	gBuffer.depthTexture         = u_depthTexture;
+	gBuffer.normalsTexture       = u_normalsTexture;
+	gBuffer.specularColorTexture = u_specularColorTexture;
+	gBuffer.roughnessTexture     = u_roughnessTexture;
+
+	const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
+
+	const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
+
+	SRReservoir reservoir = UnpackReservoir(packedReservoir);
+	ExecuteFireflyFilter(reservoir); // Must be before early out for roughness, it relies on wave intrinsics and all lanes being active
+
+	if(centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+	{
+		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+		return;
+	}
+
+	SRReservoir newReservoir = SRReservoir::CreateEmpty();
+	{
+		const float p_hat = EvaluateTargetFunction(centerPixelSurface, reservoir.hitLocation, reservoir.luminance);
+
+		newReservoir.Update(reservoir, 0.f, p_hat);
+
+		selectedP_hat = p_hat;
+	}
+
+
+	RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
+
+	const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.age);
+
+	int selectedSampleIdx = -1;
+	int2 sampleCoords[SPATIAL_RESAMPLING_SAMPLES_NUM];
+	uint validSamplesMask = 0u;
+
+	for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
+	{
+		const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
+
+		int2 offsetInPixels = round(offset);
+		if(all(offsetInPixels <= 0))
 		{
-			return;
-		}
-
-		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
-
-		float selectedTargetPdf = 0.f;
-
-		MinimalGBuffer gBuffer;
-		gBuffer.depthTexture         = u_depthTexture;
-		gBuffer.normalsTexture       = u_normalsTexture;
-		gBuffer.specularColorTexture = u_specularColorTexture;
-		gBuffer.roughnessTexture     = u_roughnessTexture;
-
-		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
-
-		const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
-
-		if(centerPixelSurface.roughness <= 0.01f)
-		{
-			u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
-			return;
-		}
-		const SRReservoir reservoir = UnpackReservoir(packedReservoir);
-
-		SRReservoir newReservoir = SRReservoir::CreateEmpty();
-		{
-			const float targetPdf = EvaluateTargetPdf(centerPixelSurface, reservoir.hitLocation, reservoir.luminance);
-
-			newReservoir.Update(reservoir, 0.f, targetPdf);
-
-			selectedTargetPdf = targetPdf;
-		}
-
-		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
-
-		const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.age);
-
-		for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
-		{
-			const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
-
-			int2 offsetInPixels = round(offset);
-			if(all(offsetInPixels <= 0))
+			if(abs(offsetInPixels.x) > abs(offsetInPixels.y))
 			{
-				if(abs(offsetInPixels.x) > abs(offsetInPixels.y))
-				{
-					offsetInPixels.x = SignNotZero(offset.x);
-				}
-				else
-				{
-					offsetInPixels.y = SignNotZero(offset.y);
-				}
+				offsetInPixels.x = SignNotZero(offset.x);
 			}
-			const int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offset);
-
-			if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
+			else
 			{
-				const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
-
-				if(!AreSurfacesSimilar(centerPixelSurface, reuseSurface)
-					|| !AreMaterialsSimilar(centerPixelSurface, reuseSurface))
-				{
-					continue;
-				}
-
-				const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
-				const SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
-
-				if(!newReservoir.CanCombine(reuseReservoir))
-				{
-					continue;
-				}
-
-				if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
-				{
-					continue;
-				}
-
-				const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
-
-				if(jacobian < 0.f)
-				{
-					continue;
-				}
-
-				const float targetPdf = EvaluateTargetPdf(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
-				if(isnan(targetPdf) || isinf(targetPdf) || IsNearlyZero(targetPdf * jacobian))
-				{
-					continue;
-				}
-
-				if(newReservoir.Update(reuseReservoir, rng.Next(), targetPdf * jacobian))
-				{
-					selectedTargetPdf = targetPdf;
-					newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
-				}
+				offsetInPixels.y = SignNotZero(offset.y);
 			}
 		}
+		const int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offset);
 
-		newReservoir.Normalize(selectedTargetPdf);
+		sampleCoords[sampleIdx] = -1;
 
+		if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
+		{
+			sampleCoords[sampleIdx] = samplePixel;
+
+			const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
+
+			if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
+				|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
+			{
+				continue;
+			}
+
+			const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
+			SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+
+			if(!newReservoir.CanCombine(reuseReservoir))
+			{
+				continue;
+			}
+
+			if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
+			{
+				continue;
+			}
+
+			const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
+
+			if(jacobian < 0.f)
+			{
+				continue;
+			}
+
+			const float p_hat = EvaluateTargetFunction(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
+			const float p_hatInOutputDomain = p_hat * jacobian;
+
+			if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
+			{
+				continue;
+			}
+
+			validSamplesMask |= 1u << sampleIdx;
+
+			if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
+			{
+				selectedP_hat = p_hat;
+				newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
+				selectedSampleIdx = sampleIdx;
+			}
+		}
+	}
+
+	// MIS normalization based on equation 5.11 and 3.10 from A Gentle Introduction to Restir
+	float p_i = selectedSampleIdx == -1 ? selectedP_hat : 0.f;
+	float p_jSum = selectedP_hat * reservoir.M; // center sample
+
+	// Input domains Ommega_i may overlap so we need to compute MIS weight for final sample
+	// To do this, we map the sample to the input domains Omega_i
+	// See: Generalized Resampled Importance Sampling: Foundations of ReSTIR
+	[unroll]
+	for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
+	{
+		if((validSamplesMask & (1u << sampleIdx)) == 0u)
+		{
+			continue;
+		}
+
+		const int2 samplePixel = sampleCoords[sampleIdx];
+
+		const MinimalSurfaceInfo reusedSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
+
+		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
+		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+
+		// p_j in input domain Omega_j
+		const float p_j = EvaluateTargetFunction(reusedSurface, newReservoir.hitLocation, newReservoir.luminance);
+
+		p_jSum += p_j * reuseReservoir.M;
+
+		if(sampleIdx == selectedSampleIdx)
+		{
+			p_i = p_j;
+		}
+	}
+
+	newReservoir.Normalize_BalancedHeuristic(selectedP_hat, p_i, p_jSum);
+
+	if(!isHelperLane)
+	{
 		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
 	}
 } 

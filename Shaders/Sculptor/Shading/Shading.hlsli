@@ -61,12 +61,13 @@ float GGXMasking(in float a2, in float dotNL)
 	return 2.0f / (1.0f + sqrt((1.0f - a2) + a2 / Pow2(dotNL)));
 }
 
+// Based on: Moving Frostbite to PBR by Sebastien Lagarde
 float V_SmithGGXCorrelated(in float a2, in float dotNL, in float dotNV)
 {
-	const float lambda_v = (-1.f + sqrt(a2 * (1.f - Pow2(dotNL)) / Pow2(dotNL) + 1.f)) * 0.5f;
-	const float lambda_l = (-1.f + sqrt(a2 * (1.f - Pow2(dotNV)) / Pow2(dotNV) + 1.f)) * 0.5f;
-	const float g = 1.f / (1.f + lambda_v + lambda_l);
-	return g / (4.f * dotNL * dotNV);
+	const float lambdaGGXV = dotNL * sqrt((-dotNV * a2 + dotNV) * dotNV + a2);
+	const float lambdaGGXL = dotNV * sqrt((-dotNL * a2 + dotNL) * dotNL + a2);
+	
+	return 0.5f / ( lambdaGGXV + lambdaGGXL );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +95,8 @@ float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, i
 		return 0.0f;
 	}
 
-	const float a = RoughnessToAlpha(roughness);
-	const float a2 = Pow2(roughness);
+	const float a  = RoughnessToAlpha(roughness);
+	const float a2 = Pow2(a);
 
 	const float3 f   = F_Schlick(f0, dotVH);
 	const float  d   = D_GGX(a2, dotNH);

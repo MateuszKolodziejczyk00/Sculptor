@@ -14,11 +14,6 @@
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
 
-#define USE_BLUE_NOISE_SAMPLES 0
-
-#if USE_BLUE_NOISE_SAMPLES
-#include "Utils/BlueNoiseSamples.hlsli"
-#endif // USE_BLUE_NOISE_SAMPLES
 
 struct RayDirectionInfo
 {
@@ -31,39 +26,38 @@ RayDirectionInfo GenerateReflectionRayDir(in float3 normal, in float roughness, 
 {
 	RayDirectionInfo result;
 
-	float3 h;
 	if(roughness < SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
-		result.pdf       = 1.f;
 		result.direction = reflect(-toView, normal);
+		result.pdf       = 1.f;
 	}
 	else
 	{
-#if USE_BLUE_NOISE_SAMPLES
-		const uint sampleIdx = (((pixel.y & 15u) * 16u + (pixel.x & 15u) + u_constants.frameIdx * 23u)) & 255u;
-#endif // USE_BLUE_NOISE_SAMPLES
+		RngState rng = RngState::Create(pixel, u_constants.frameIdx * 3);
 
-		uint attempt = 0;
+		uint attempt = 0u;
+
 		while(true)
 		{
-#if USE_BLUE_NOISE_SAMPLES
-			const uint currentSampleIdx = (sampleIdx + attempt) & 255u;
-			const float2 noise = frac(g_BlueNoiseSamples[currentSampleIdx] + u_constants.random);
-#else
-			RngState rng = RngState::Create(pixel, u_constants.frameIdx * 3);
 			const float2 noise = float2(rng.Next(), rng.Next());
-#endif // USE_BLUE_NOISE_SAMPLES
 
-			const float3 h = SampleVNDFIsotropic(noise, toView, RoughnessToAlpha(roughness), normal);
+			const float3 h = SampleVNDFIsotropic(noise, toView, roughness, normal);
 
 			const float3 reflectedRay = reflect(-toView, h);
 
-			if(dot(reflectedRay, normal) > 0.f || attempt == 16u) 
+			if(dot(reflectedRay, normal) > 0.f)
 			{
-				result.pdf       = PDFVNDFIsotrpic(toView, reflectedRay, RoughnessToAlpha(roughness), normal);
+				result.pdf       = PDFVNDFIsotrpic(toView, reflectedRay, roughness, normal);
 				result.direction = reflectedRay;
 
-				 break;
+				break;
+			}
+			else if (attempt == 16u)
+			{
+				result.direction = 0.f;
+				result.pdf       = 0.f;
+
+				break;
 			}
 
 			++attempt;

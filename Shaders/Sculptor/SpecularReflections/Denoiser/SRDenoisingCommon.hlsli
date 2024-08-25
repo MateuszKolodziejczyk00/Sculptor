@@ -6,8 +6,8 @@
 
 float ComputeSpecularNormalWeight(in float3 centerNormal, in float3 sampleNormal, in float roughness)
 {
-	const float power = 1.f + 30.f * (1.f - roughness);
-	return pow(saturate(dot(centerNormal, sampleNormal)), uint(power));
+	const float power = 1.f + 63.f * (1.f - roughness);
+	return pow(saturate(dot(centerNormal, sampleNormal)), power);
 }
 
 
