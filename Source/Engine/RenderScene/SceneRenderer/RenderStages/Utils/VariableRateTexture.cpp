@@ -127,8 +127,9 @@ void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const Va
 	const math::Vector2u resolution = sourceTexture->GetResolution2D();
 
 	ReprojectVariableRateTextureConstants shaderConstants;
-	shaderConstants.resolution    = resolution;
-	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.resolution             = resolution;
+	shaderConstants.invResolution          = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.reprojectionFailedMode = static_cast<Uint32>(vrSettings.reprojectionFailedMode);
 
 	lib::MTHandle<ReprojectVariableRateTextureDS> reprojectVariableRateTextureDS = graphBuilder.CreateDescriptorSet<ReprojectVariableRateTextureDS>(RENDERER_RESOURCE_NAME("ReprojectVariableRateTextureDS"));
 	reprojectVariableRateTextureDS->u_inputTexture    = sourceTexture;

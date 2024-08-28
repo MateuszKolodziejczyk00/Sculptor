@@ -35,8 +35,8 @@ REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRend
 
 namespace renderer_params
 {
-RendererFloatParameter specularTrace2x2Threshold("Specular Trace 2x2 Threshold", { "Specular Reflections" }, 0.15f, 0.f, 0.2f);
-RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold", { "Specular Reflections" }, 0.08f, 0.f, 0.2f);
+RendererFloatParameter specularTrace2x2Threshold("Specular Trace 2x2 Threshold", { "Specular Reflections" }, 0.09f, 0.f, 0.2f);
+RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold", { "Specular Reflections" }, 0.06f, 0.f, 0.2f);
 
 RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
 RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);

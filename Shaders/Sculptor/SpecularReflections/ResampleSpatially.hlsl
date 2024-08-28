@@ -31,44 +31,11 @@ float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 }
 
 
-float ComputeMedian4(in float x0, in float x1, in float x2, in float x3)
-{
-	const float max0 = max(x0, x1);
-	const float min0 = min(x0, x1);
-
-	const float max1 = max(x2, x3);
-	const float min1 = min(x2, x3);
-
-	const float allMax = max(max0, max1);
-	const float allMin = min(min0, min1);
-
-	return (x0 + x1 + x2 + x3 - allMax - allMin) * 0.5f;
-}
-
-
-float ComputeAverageReservoirWeight(in float reservoirWeight)
-{
-	const uint quad2x2FirstLaneIdx = WaveGetLaneIndex() & ~3u;
-
-	const float quad2x2Median = ComputeMedian4(WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 0u),
-		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 1u),
-		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 2u),
-		                                       WaveReadLaneAt(reservoirWeight, quad2x2FirstLaneIdx + 3u));
-
-	const uint quad4x4FirstLaneIdx = WaveGetLaneIndex() & ~15u;
-	const float quad4x4Median = ComputeMedian4(WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 0u),
-		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 4u),
-		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 8u),
-		                                       WaveReadLaneAt(quad2x2Median, quad4x4FirstLaneIdx + 12u));
-
-	return (WaveReadLaneAt(quad4x4Median, 0u) + WaveReadLaneAt(quad4x4Median, 16u)) * 0.5f;
-}
-
-
 void ExecuteFireflyFilter(inout SRReservoir reservoir)
 {
-	const float reservoirWeight = Luminance(reservoir.luminance) * reservoir.weightSum;
-	const float avgWeight = ComputeAverageReservoirWeight(reservoirWeight);
+	const float reservoirWeight = reservoir.IsValid() ? Luminance(reservoir.luminance) * reservoir.weightSum : 0.f;
+	const uint validReservoirsNum = max(WaveActiveCountBits(reservoir.IsValid()), 1u);
+	const float avgWeight = WaveActiveSum(reservoirWeight) / validReservoirsNum;
 
 	const float maxWeight = avgWeight * 15.f;
 

@@ -246,7 +246,7 @@ void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
 	vrtSettings.xThreshold2                         = 0.04f;
 	vrtSettings.yThreshold2                         = 0.04f;
 	vrtSettings.logFramesNumPerSlot                 = 2u;
-	vrtSettings.reprojectionFailedMode              = vrt::EReprojectionFailedMode::_2x2;
+	vrtSettings.reprojectionFailedMode              = vrt::EReprojectionFailedMode::_1x1;
 	vrtSettings.permutationSettings.maxVariableRate = vrt::EMaxVariableRate::_2x2;
 	m_variableRateRenderer.Initialize(vrtSettings);
 }
