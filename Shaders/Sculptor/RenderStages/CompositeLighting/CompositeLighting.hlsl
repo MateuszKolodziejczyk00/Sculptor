@@ -198,7 +198,6 @@ void CompositeLightingCS(CS_INPUT input)
 	{
 		const uint2 outputPixel = pixel / 2;
 		u_reflectionsInfluenceTexture[outputPixel] = downsampledRTReflectionsInfluence;
-		u_reservoirsBrightnessTexture[outputPixel] = AverageComponent(LuminanceToExposedLuminance(rtReflectionsLuminance));
 	}
 #endif // RT_REFLECTIONS_ENABLED
 

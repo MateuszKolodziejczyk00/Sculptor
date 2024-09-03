@@ -256,9 +256,9 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 			ShadowRayPayload payload = { true };
 
 			RayDesc rayDesc;
-			rayDesc.TMin        = 0.02f;
+			rayDesc.TMin        = 0.00f;
 			rayDesc.TMax        = 50.f;
-			rayDesc.Origin      = surface.location;
+			rayDesc.Origin      = surface.location + surface.geometryNormal * 0.03f;
 			rayDesc.Direction   = -directionalLight.direction;
 
 			TraceRay(u_sceneTLAS,

@@ -58,17 +58,36 @@ public:
 		rg::RGTextureViewHandle historyNormalsTexture;
 	};
 
+	struct Result
+	{
+		rg::RGTextureViewHandle denoisedTexture;
+		rg::RGTextureViewHandle temporalMomentsTexture;
+		rg::RGTextureViewHandle spatialStdDevTexture;
+		rg::RGTextureViewHandle geometryCoherence;
+	};
+
 	explicit Denoiser(rg::RenderGraphDebugName debugName);
 
-	rg::RGTextureViewHandle Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	Result Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
 private:
 
 	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	rg::RGTextureViewHandle DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	Result DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
 
-	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, rg::RGTextureViewHandle stdDev, rg::RGTextureViewHandle historySamplesNum, rg::RGTextureViewHandle reprojectionConfidence, const Params& params);
+	struct SpatialFilterParams
+	{
+		rg::RGTextureViewHandle input;
+		rg::RGTextureViewHandle output;
+		rg::RGTextureViewHandle history;
+		rg::RGTextureViewHandle stdDev;
+		rg::RGTextureViewHandle historySamplesNum;
+		rg::RGTextureViewHandle reprojectionConfidence;
+		rg::RGTextureViewHandle geometryCoherence;
+	};
+
+	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params);
 
 	rg::RenderGraphDebugName m_debugName;
 

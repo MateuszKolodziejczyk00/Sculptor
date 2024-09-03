@@ -41,7 +41,7 @@ void SRATrousFilterCS(CS_INPUT input)
 			return;
 		}
 		
-		const float lumStdDevMultiplier = lerp(1.f, 3.f, roughness);
+		const float lumStdDevMultiplier = 3.f;
 		
 		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
 
@@ -61,13 +61,15 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		float3 luminanceSum = centerLuminanceHitDistance.rgb * weightSum;
 
-		float lumSum = Luminance(centerLuminanceHitDistance.rgb) * weightSum;
-		float lumSquaredSum = lumSum * lumSum;
+		float lumSum = lumCenter * weightSum;
+		float lumSquaredSum = Pow2(lumCenter) * weightSum;
 
 		const float centerLuminanceStdDev = u_luminanceStdDevTexture[pixel];
 		const float rcpLuminanceStdDev = 1.f / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f);
 
 		const int radius = 1;
+
+		float geometrySpatialCoherence = 0;
 
 		[unroll]
 		for (int y = -radius; y <= radius; ++y)
@@ -102,8 +104,11 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float wn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
 				weight *= wn;
 
+				geometrySpatialCoherence += weight;
+
 				const float lum = Luminance(luminance);
-				const float lw = abs(lumCenter - lum) * rcpLuminanceStdDev + 0.001f;
+
+				const float lw = (abs(lumCenter - lum) * rcpLuminanceStdDev + 0.001f);
 				weight *= exp(-lw);
 
 				luminanceSum += luminance * weight;
@@ -111,11 +116,18 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float lumW = lum * weight;
 
 				lumSum += lumW;
-				lumSquaredSum += lumW * lumW;
+				lumSquaredSum += Pow2(lum) * weight;
 
 				weightSum += weight;
 			}
 		}
+
+		float prevCoherence = 0.f;
+		if(u_params.samplesOffset != 1)
+		{
+			prevCoherence = u_geometryCoherenceTexture[pixel].x;
+		}
+		u_geometryCoherenceTexture[pixel] = prevCoherence + geometrySpatialCoherence;
 
 		const float3 outLuminance = luminanceSum / weightSum;
 		u_outputTexture[pixel] = float4(outLuminance, centerLuminanceHitDistance.w);

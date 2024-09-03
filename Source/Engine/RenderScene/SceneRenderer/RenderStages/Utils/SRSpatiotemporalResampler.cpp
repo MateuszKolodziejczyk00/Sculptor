@@ -236,7 +236,7 @@ void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingPar
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Spatially"),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
 }
 

@@ -28,6 +28,7 @@ struct SRATrousFilterParams : public denoising::DenoiserGeometryParams
 	rg::RGTextureViewHandle roughnessTexture;
 	rg::RGTextureViewHandle reprojectionConfidenceTexture;
 	rg::RGTextureViewHandle historyFramesNumTexture;
+	rg::RGTextureViewHandle geometryCoherenceTexture;
 };
 
 void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilterParams& params, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, Uint32 iterationIdx);

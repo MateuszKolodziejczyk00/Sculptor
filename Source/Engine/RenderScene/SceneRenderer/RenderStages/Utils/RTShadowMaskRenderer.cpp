@@ -243,6 +243,7 @@ void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
 	m_lightEntity = entity;
 
 	vrt::VariableRateSettings vrtSettings;
+	vrtSettings.debugName                           = RG_DEBUG_NAME("RT Shadow Mask");
 	vrtSettings.xThreshold2                         = 0.04f;
 	vrtSettings.yThreshold2                         = 0.04f;
 	vrtSettings.logFramesNumPerSlot                 = 2u;

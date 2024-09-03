@@ -67,7 +67,6 @@ DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectio
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_baseColorMetallicTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_tangentFrameTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),          u_reservoirsBrightnessTexture)
 DS_END();
 
 
@@ -154,7 +153,6 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		compositeRTReflectionsDS->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 		compositeRTReflectionsDS->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
 		compositeRTReflectionsDS->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
-		compositeRTReflectionsDS->u_reservoirsBrightnessTexture = rtReflectionsData->reservoirsBrightnessTexture;
 	}
 
 	const rdr::ShaderID compositeLightingShader = CompileCompositeLightingShader(permutation);

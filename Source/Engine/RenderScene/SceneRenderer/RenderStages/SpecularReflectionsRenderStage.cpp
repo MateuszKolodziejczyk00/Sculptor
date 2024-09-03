@@ -450,7 +450,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Rende
 namespace denoise
 {
 
-static rg::RGTextureViewHandle Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, sr_denoiser::Denoiser& denoiser, const SpecularReflectionsParams& params, rg::RGTextureViewHandle denoisedTexture)
+static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, sr_denoiser::Denoiser& denoiser, const SpecularReflectionsParams& params, rg::RGTextureViewHandle denoisedTexture)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -481,8 +481,12 @@ static rdr::ShaderID CreateVariableRateTextureShader(const VariableRatePermutati
 }
 
 DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>), u_influenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>), u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_influenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>), u_temporalMomentsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_spatialStdDevTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_geometryCoherenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_reflectionsTexture)
 DS_END();
 
 } // vrt
@@ -492,6 +496,7 @@ SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
 	: m_denoiser(RG_DEBUG_NAME("SR Denoiser"))
 {
 	vrt::VariableRateSettings variableRateSettings;
+	variableRateSettings.debugName   = RG_DEBUG_NAME("RT Reflections");
 	variableRateSettings.xThreshold2 = renderer_params::specularTrace2x2Threshold;
 	variableRateSettings.yThreshold2 = renderer_params::specularTrace2x2Threshold;
 	variableRateSettings.xThreshold4 = renderer_params::specularTrace4x4Threshold;
@@ -555,8 +560,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const rg::RGTextureViewHandle luminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
-		const rg::RGTextureViewHandle reservoirsBrightness = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reservoirs Brightness Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
-
 		sr_restir::ResamplingParams resamplingParams(renderView, renderScene);
 		resamplingParams.initialReservoirBuffer         = reservoirsBuffer;
 		resamplingParams.depthTexture                   = viewContext.depthHalfRes;
@@ -589,7 +592,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
 		
-		const rg::RGTextureViewHandle denoisedLuminanceTexture = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, luminanceHitDistanceTexture);
+		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, luminanceHitDistanceTexture);
 
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName      = RG_DEBUG_NAME("Upsample Specular Reflections");
@@ -597,14 +600,17 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		upsampleParams.depthHalfRes   = viewContext.depthHalfRes;
 		upsampleParams.normalsHalfRes = viewContext.normalsHalfRes;
 		upsampleParams.renderViewDS   = renderView.GetRenderViewDS();
-		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoisedLuminanceTexture, upsampleParams);
+		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedTexture, upsampleParams);
 
 		const rg::RGTextureViewHandle specularReflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
+		reflectionsViewData.reflectionsTextureHalfRes    = denoiserResult.denoisedTexture;
 		reflectionsViewData.reflectionsTexture           = specularReflectionsFullRes;
 		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
-		reflectionsViewData.reservoirsBrightnessTexture  = reservoirsBrightness;
+		reflectionsViewData.temporalMomentsTexture       = denoiserResult.temporalMomentsTexture;
+		reflectionsViewData.spatialStdDevTexture         = denoiserResult.spatialStdDevTexture;
+		reflectionsViewData.geometryCoherenceTexture     = denoiserResult.geometryCoherence;
 
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
 
@@ -625,9 +631,13 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	const rdr::ShaderID vrtShader = vrt::CreateVariableRateTextureShader(m_variableRateRenderer.GetPermutationSettings());
 
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
-	vrtDS->u_influenceTexture = reflectionsViewData.reflectionsInfluenceTexture;
-	vrtDS->u_roughnessTexture = viewContext.roughnessHalfRes;
-	m_variableRateRenderer.Render(graphBuilder, reflectionsViewData.reservoirsBrightnessTexture, vrtShader, rg::BindDescriptorSets(vrtDS));
+	vrtDS->u_influenceTexture          = reflectionsViewData.reflectionsInfluenceTexture;
+	vrtDS->u_roughnessTexture          = viewContext.roughnessHalfRes;
+	vrtDS->u_temporalMomentsTexture    = reflectionsViewData.temporalMomentsTexture;
+	vrtDS->u_spatialStdDevTexture      = reflectionsViewData.spatialStdDevTexture;
+	vrtDS->u_geometryCoherenceTexture  = reflectionsViewData.geometryCoherenceTexture;
+	vrtDS->u_reflectionsTexture        = reflectionsViewData.reflectionsTextureHalfRes;
+	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 
 } // spt::rsc

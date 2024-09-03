@@ -16,8 +16,8 @@
 struct CS_INPUT
 {
 	uint3 globalID : SV_DispatchThreadID;
-    uint3 groupID  : SV_GroupID;
-    uint3 localID  : SV_GroupThreadID;
+	uint3 groupID  : SV_GroupID;
+	uint3 localID  : SV_GroupThreadID;
 };
 
 
@@ -29,7 +29,6 @@ static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 	int2(0, 0),
 	int2(1, 0),
 };
-
 
 
 struct SRTemporalResampler
@@ -86,7 +85,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 8u;
+		const uint maxHistoryLength = historyReservoir.age > 14u ? 2u : 8u;
 		historyReservoir.M = min(historyReservoir.M, maxHistoryLength);
 
 		return historyReservoir;
@@ -262,7 +261,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		const uint reservoirIdx = GetScreenReservoirIdx(pixel, u_resamplingConstants.reservoirsResolution);
 
-		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx * 3);
+		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 
 		float reflectedRayLength = -1.f;
 		SRTemporalResampler resampler;

@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "Shaders/ShaderTypes.h"
+#include "RenderGraphTypes.h"
 
 
 namespace spt::sc
@@ -56,6 +57,8 @@ struct VariableRateSettings
 {
 	VariableRateSettings() = default;
 
+	rg::RenderGraphDebugName debugName;
+
 	float xThreshold2 = 0.1f;
 	float yThreshold2 = 0.1f;
 
@@ -76,7 +79,7 @@ void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSett
 
 math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution);
 
-void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets);
+void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets);
 
 void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle sourceTexture, rg::RGTextureViewHandle targetTexture);
 
@@ -108,6 +111,8 @@ private:
 	VariableRateSettings m_vrSettings;
 
 	Uint32 m_frameIdx = 0u;
+
+	math::Vector2u m_resolution = {};
 };
 
 } // vrt

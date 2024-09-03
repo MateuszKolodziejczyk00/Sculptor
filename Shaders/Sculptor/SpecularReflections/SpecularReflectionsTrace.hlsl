@@ -16,10 +16,10 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 
 	const float bias = 0.05f;
 
-	const float3 biasedRayOrigin = rayOrigin + normalize(u_sceneView.viewLocation - rayOrigin) * bias;
+	const float3 biasedRayOrigin = rayOrigin;
 
 	RayDesc rayDesc;
-	rayDesc.TMin      = 0.0f;
+	rayDesc.TMin      = 0.04f;
 	rayDesc.TMax      = maxHitDistance;
 	rayDesc.Origin    = biasedRayOrigin;
 	rayDesc.Direction = rayDirection;

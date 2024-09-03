@@ -94,7 +94,7 @@ float EvaluateJacobian(in float3 destinationSampleLocation, in float3 reuseSampl
 		jacobian = -1.f;	
 	}
 
-	if(jacobian > 10.f || jacobian < 0.1f)
+	if(jacobian > 8.f || jacobian < 0.1f)
 	{
 		jacobian = -1.f;
 	}
@@ -107,7 +107,7 @@ float EvaluateJacobian(in float3 destinationSampleLocation, in float3 reuseSampl
 
 bool SurfacesAllowResampling(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceInfo surfaceB)
 {
-	const float planeDistanceThreshold = 0.07f;
+	const float planeDistanceThreshold = 0.045f;
 	const float normalThreshold = 0.5f;
 
 	const Plane surfacePlane = Plane::Create(surfaceA.n, surfaceA.location);

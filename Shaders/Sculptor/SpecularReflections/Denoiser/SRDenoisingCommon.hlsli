@@ -2,7 +2,7 @@
 #define SR_DENOISING_COMMON_HLSLI
 
 
-#define MAX_ACCUMULATED_FRAMES_NUM 20.f
+#define MAX_ACCUMULATED_FRAMES_NUM 30.f
 
 float ComputeSpecularNormalWeight(in float3 centerNormal, in float3 sampleNormal, in float roughness)
 {

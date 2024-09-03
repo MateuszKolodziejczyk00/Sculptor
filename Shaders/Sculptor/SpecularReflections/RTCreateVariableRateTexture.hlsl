@@ -15,16 +15,17 @@ struct CS_INPUT
 
 struct RTVariableRateCallback
 {
-	static uint ComputeVariableRateMask(in VariableRateProcessor processor, in float2 edgeFilter)
+	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
-		const float rtReflectionsInfluence = u_influenceTexture.Load(int3(processor.GetCoords(), 0)).x;
+		float rtReflectionsInfluence = u_influenceTexture.Load(int3(processor.GetCoords(), 0)).x;
+		rtReflectionsInfluence = processor.QuadMax(rtReflectionsInfluence);
 
-		const float roughness = u_roughnessTexture.Load(int3(processor.GetCoords(), 0)).x;
+		float roughness = u_roughnessTexture.Load(int3(processor.GetCoords(), 0)).x;
+		roughness = processor.QuadMin(roughness);
+
 		const float roughnessInfluence = lerp(1.f, 2.f, 1.f - roughness);
 
-		const float finalInfluence = rtReflectionsInfluence * roughnessInfluence;
-
-		uint variableRate = processor.ComputeEdgeBasedVariableRateMask(edgeFilter * finalInfluence);
+		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
 		if(roughness < 0.015f)
 		{
@@ -35,10 +36,53 @@ struct RTVariableRateCallback
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 		}
 
+		if(variableRate != SPT_VARIABLE_RATE_1X1)
+		{
+			float brightness = Luminance(u_reflectionsTexture.Load(int3(processor.GetCoords(), 0)));
+			brightness = processor.QuadMax(brightness);
+			const float rcpBrightness = 1.f / brightness;
+
+			const float2 temporalMoments = u_temporalMomentsTexture.Load(int3(processor.GetCoords(), 0)).xy;
+			float temporalVariance = abs(temporalMoments.y - Pow2(temporalMoments.x));
+			temporalVariance = processor.QuadMax(temporalVariance);
+			const float temporalStdDev = sqrt(temporalVariance) * rcpBrightness;
+
+			float spatialStdDev = u_spatialStdDevTexture.Load(int3(processor.GetCoords(), 0)).x;
+			spatialStdDev = processor.QuadMax(spatialStdDev);
+
+			float stdDev = lerp(temporalStdDev, spatialStdDev, 1.f);
+			stdDev *= saturate(temporalStdDev) * rtReflectionsInfluence;
+
+			if(stdDev >= 0.12f)
+			{
+				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
+			}
+			else if (stdDev >= 0.07f)
+			{
+				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X);
+			}
+			else if (stdDev >= 0.03f)
+			{
+				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
+			}
+
+			if (variableRate != SPT_VARIABLE_RATE_1X1)
+			{
+				float geometryCoherence = u_geometryCoherenceTexture.Load(int3(processor.GetCoords(), 0));
+				geometryCoherence = processor.QuadMin(geometryCoherence);
+
+				const float stdDevThreshold = lerp(0.0001f, 0.01f, roughness);
+
+				if(geometryCoherence < 0.25f && stdDev >= stdDevThreshold)
+				{
+					variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
+				}
+			}
+		}
+
 		return variableRate;
 	}
 };
-
 
 [numthreads(GROUP_SIZE_X * GROUP_SIZE_Y, 1, 1)]
 void CreateVariableRateTextureCS(CS_INPUT input)

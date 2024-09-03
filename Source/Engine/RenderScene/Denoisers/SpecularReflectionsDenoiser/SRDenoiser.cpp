@@ -17,7 +17,7 @@ Denoiser::Denoiser(rg::RenderGraphDebugName debugName)
 	: m_debugName(debugName)
 { }
 
-rg::RGTextureViewHandle Denoiser::Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params)
+Denoiser::Result Denoiser::Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -67,7 +67,7 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextu
 	}
 }
 
-rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params)
+Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -155,23 +155,34 @@ rg::RGTextureViewHandle Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuild
 	stdDevParams.luminanceTexture             = denoisedTexture;
 	const rg::RGTextureViewHandle stdDevTexture = ComputeStandardDeviation(graphBuilder, stdDevParams);
 
-	ApplySpatialFilter(graphBuilder,
-					   denoisedTexture,
-					   outputTexture,
-					   stdDevTexture,
-					   historyAccumulatedSamplesNumTexture,
-					   reprojectionConfidence,
-					   params);
+	const rg::RGTextureViewHandle geometryCoherence = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Geometry Coherence", m_debugName.AsString()), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
+
+	SpatialFilterParams spatialParams;
+	spatialParams.input                  = denoisedTexture;
+	spatialParams.output                 = outputTexture;
+	spatialParams.history                = historyTexture;
+	spatialParams.stdDev                 = stdDevTexture;
+	spatialParams.historySamplesNum      = historyAccumulatedSamplesNumTexture;
+	spatialParams.reprojectionConfidence = reprojectionConfidence;
+	spatialParams.geometryCoherence     = geometryCoherence;
+
+	ApplySpatialFilter(graphBuilder, spatialParams, params);
+
+	Result result;
+	result.denoisedTexture         = outputTexture;
+	result.temporalMomentsTexture  = temporalVarianceTexture;
+	result.geometryCoherence      = geometryCoherence;
+	result.spatialStdDevTexture    = stdDevTexture;
 
 	std::swap(m_accumulatedSamplesNumTexture, m_historyAccumulatedSamplesNumTexture);
 	std::swap(m_temporalVarianceTexture, m_historyTemporalVarianceTexture);
 	std::swap(m_fastHistoryTexture, m_fastHistoryOutputTexture);
 	m_hasValidHistory = true;
 
-	return outputTexture;
+	return result;
 }
 
-void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle input, rg::RGTextureViewHandle output, rg::RGTextureViewHandle stdDev, rg::RGTextureViewHandle historySamplesNum, rg::RGTextureViewHandle reprojectionConfidence, const Params& params)
+void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -180,17 +191,18 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 	aTrousParams.linearDepthTexture            = params.linearDepthTexture;
 	aTrousParams.depthTexture                  = params.currentDepthTexture;
 	aTrousParams.normalsTexture                = params.normalsTexture;
-	aTrousParams.stdDevTexture                 = stdDev;
+	aTrousParams.stdDevTexture                 = spatialParams.stdDev;
 	aTrousParams.roughnessTexture              = params.roughnessTexture;
-	aTrousParams.reprojectionConfidenceTexture = reprojectionConfidence;
-	aTrousParams.historyFramesNumTexture       = historySamplesNum;
+	aTrousParams.reprojectionConfidenceTexture = spatialParams.reprojectionConfidence;
+	aTrousParams.historyFramesNumTexture       = spatialParams.historySamplesNum;
+	aTrousParams.geometryCoherenceTexture      = spatialParams.geometryCoherence;
 
 	Uint32 iterationIdx = 0u;
-	ApplyATrousFilter(graphBuilder, aTrousParams, input, output, iterationIdx++);
-	ApplyATrousFilter(graphBuilder, aTrousParams, output, input, iterationIdx++);
-	ApplyATrousFilter(graphBuilder, aTrousParams, input, output, iterationIdx++);
-	ApplyATrousFilter(graphBuilder, aTrousParams, output, input, iterationIdx++);
-	ApplyATrousFilter(graphBuilder, aTrousParams, input, output, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.history, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.history, spatialParams.input, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.output, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.output, spatialParams.input, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.output, iterationIdx++);
 }
 
 } // spt::rsc::sr_denoiser

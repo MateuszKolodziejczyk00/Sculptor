@@ -125,6 +125,9 @@ void SRComputeStdDevCS(CS_INPUT input)
 
 			const float variance = abs(luminanceSquaredSum - luminanceSum * luminanceSum);
 			standardDeviation = sqrt(variance);
+			
+			standardDeviation = max(luminanceSum * 0.6f, standardDeviation);
+			standardDeviation *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum);
 		}
 
 		u_stdDevTexture[pixel] = standardDeviation;

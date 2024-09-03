@@ -31,13 +31,27 @@ float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
 }
 
 
-void ExecuteFireflyFilter(inout SRReservoir reservoir)
+groupshared float gs_reservoirWeightSum[2];
+groupshared float gs_validReservoirsNum[2];
+
+
+void ExecuteFireflyFilter(in uint threadIdx, inout SRReservoir reservoir)
 {
 	const float reservoirWeight = reservoir.IsValid() ? Luminance(reservoir.luminance) * reservoir.weightSum : 0.f;
-	const uint validReservoirsNum = max(WaveActiveCountBits(reservoir.IsValid()), 1u);
-	const float avgWeight = WaveActiveSum(reservoirWeight) / validReservoirsNum;
 
-	const float maxWeight = avgWeight * 15.f;
+	const float reservoirWeightSum = WaveActiveSum(reservoirWeight);
+	const uint validReservoirsNum  = WaveActiveCountBits(reservoir.IsValid());
+
+	const uint waveIdx = threadIdx / WaveGetLaneCount();
+
+	gs_reservoirWeightSum[waveIdx] = reservoirWeightSum;
+	gs_validReservoirsNum[waveIdx] = validReservoirsNum;
+
+	GroupMemoryBarrierWithGroupSync();
+
+	const float avgWeight = (gs_reservoirWeightSum[0] + gs_reservoirWeightSum[1]) / max(gs_validReservoirsNum[0] + gs_validReservoirsNum[1], 1u);
+
+	const float maxWeight = avgWeight * 12.f;
 
 	if(reservoirWeight > maxWeight)
 	{
@@ -46,13 +60,13 @@ void ExecuteFireflyFilter(inout SRReservoir reservoir)
 }
 
 
-[numthreads(32, 1, 1)]
+[numthreads(64, 1, 1)]
 void ResampleSpatiallyCS(CS_INPUT input)
 {
 	const uint localThreadID = input.localID.x;
 	const uint2 localID = DecodeMorton2D(localThreadID);
 
-	uint2 pixel = input.groupID.xy * uint2(8u, 4u) + localID;
+	uint2 pixel = input.groupID.xy * uint2(8u, 8u) + localID;
 
 	bool isHelperLane = false;
 	if(any(pixel >= u_resamplingConstants.resolution))
@@ -83,7 +97,12 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
 
 	SRReservoir reservoir = UnpackReservoir(packedReservoir);
-	ExecuteFireflyFilter(reservoir); // Must be before early out for roughness, it relies on wave intrinsics and all lanes being active
+	ExecuteFireflyFilter(localThreadID, reservoir); // Must be before early out for roughness, it relies on wave intrinsics and all lanes being active
+
+	if(WaveActiveAllTrue(isHelperLane))
+	{
+		return;
+	}
 
 	if(centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
@@ -99,7 +118,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		selectedP_hat = p_hat;
 	}
-
 
 	RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 

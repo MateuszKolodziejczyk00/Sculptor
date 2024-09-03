@@ -27,19 +27,19 @@ math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputT
 
 BEGIN_SHADER_STRUCT(CreateVariableRateTextureConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, inputResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u, outputResolution)
 	SHADER_STRUCT_FIELD(Uint32,         inputSignalType)
 	SHADER_STRUCT_FIELD(Real32,         xThreshold2)
 	SHADER_STRUCT_FIELD(Real32,         yThreshold2)
 	SHADER_STRUCT_FIELD(Real32,         xThreshold4)
 	SHADER_STRUCT_FIELD(Real32,         yThreshold4)
 	SHADER_STRUCT_FIELD(Uint32,         logFramesNumPerSlot)
-	SHADER_STRUCT_FIELD(Uint32,         signalType)
 	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(CreateVariableRateTextureDS, rg::RGDescriptorSetState<CreateVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                       u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                       u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                u_rwVariableRateTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CreateVariableRateTextureConstants>), u_constants)
 DS_END();
@@ -52,25 +52,30 @@ static rdr::ShaderID CreateGenericVariableRateTextureShader(const VariableRatePe
 	return rdr::ResourcesManager::CreateShader("Sculptor/Utils/VariableRate/CreateGenericVariableRateTexture.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CreateVariableRateTextureCS"), compilationSettings);
 }
 
-void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets)
+void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(inputTexture.IsValid());
 	SPT_CHECK(variableRateTexture.IsValid());
 
 	CreateVariableRateTextureConstants shaderConstants;
-	shaderConstants.inputResolution = inputTexture->GetResolution2D();
-	shaderConstants.xThreshold2     = vrSettings.xThreshold2;
-	shaderConstants.yThreshold2     = vrSettings.yThreshold2;
-	shaderConstants.xThreshold4     = vrSettings.xThreshold4;
-	shaderConstants.yThreshold4     = vrSettings.yThreshold4;
-	shaderConstants.frameIdx        = frameIdx;
+	shaderConstants.inputResolution     = inputResolution;
+	shaderConstants.outputResolution    = variableRateTexture->GetResolution2D();
+	shaderConstants.xThreshold2         = vrSettings.xThreshold2;
+	shaderConstants.yThreshold2         = vrSettings.yThreshold2;
+	shaderConstants.xThreshold4         = vrSettings.xThreshold4;
+	shaderConstants.yThreshold4         = vrSettings.yThreshold4;
+	shaderConstants.frameIdx            = frameIdx;
+	shaderConstants.logFramesNumPerSlot = vrSettings.logFramesNumPerSlot;
 
 	lib::MTHandle<CreateVariableRateTextureDS> variableRateTextureDS = graphBuilder.CreateDescriptorSet<CreateVariableRateTextureDS>(RENDERER_RESOURCE_NAME("VariableRateTextureDS"));
-	variableRateTextureDS->u_inputTexture          = inputTexture;
 	variableRateTextureDS->u_rwVariableRateTexture = variableRateTexture;
 	variableRateTextureDS->u_constants             = shaderConstants;
+
+	if (inputTexture.IsValid())
+	{
+		variableRateTextureDS->u_inputTexture = inputTexture;
+	}
 
 	rdr::ShaderID shader;
 	if (customShader.has_value())
@@ -86,7 +91,7 @@ void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const Varia
 
 	const rg::BindDescriptorSetsScope additionalDescriptorSetsScope(graphBuilder, additionalDescriptorSets);
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Create Variable Rate Texture"),
+	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Create Variable Rate Texture", vrSettings.debugName.AsString()),
 						  shader,
 						  math::Utils::DivideCeil(shaderConstants.inputResolution, math::Vector2u(8u, 4u)),
 						  rg::BindDescriptorSets(std::move(variableRateTextureDS)));
@@ -139,7 +144,7 @@ void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const Va
 
 	const rdr::PipelineStateID reprojectVariableRateTexturePipeline = CreateReprojectVariableRateTexturePipeline(vrSettings.permutationSettings);
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Reproject Variable Rate Texture"),
+	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Reproject Variable Rate Texture", vrSettings.debugName.AsString()),
 						  reprojectVariableRateTexturePipeline,
 						  math::Utils::DivideCeil(shaderConstants.resolution, math::Vector2u(8u, 4u)),
 						  rg::BindDescriptorSets(std::move(reprojectVariableRateTextureDS)));
@@ -186,7 +191,7 @@ void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 
 	const rg::RGTextureViewHandle variableRateTexture = graphBuilder.AcquireExternalTextureView(m_reprojectionSourceVRTexture);
 
-	RenderVariableRateTexture(graphBuilder, m_vrSettings, inputTexture, variableRateTexture, m_frameIdx, customShader, additionalDescriptorSets);
+	RenderVariableRateTexture(graphBuilder, m_vrSettings, inputTexture, m_resolution, variableRateTexture, m_frameIdx, customShader, additionalDescriptorSets);
 
 	m_frameIdx++;
 }
@@ -194,6 +199,8 @@ void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 Bool VariableRateRenderer::PrepareTextures(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture)
 {
 	SPT_PROFILER_FUNCTION();
+
+	m_resolution = inputTexture->GetResolution2D();
 
 	const math::Vector2u variableRateTextureResolution = ComputeVariableRateTextureResolution(inputTexture->GetResolution2D());
 

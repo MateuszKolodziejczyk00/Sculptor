@@ -20,24 +20,14 @@
 groupshared float gs_inputSamples[GS_SAMPLES_X][GS_SAMPLES_Y];
 
 
-void CacheInputSamples(in Texture2D<float3> texture, in int2 tileCoords, in int threadIdx)
+void CacheInputSamples(in Texture2D<float> texture, in int2 tileCoords, in int threadIdx)
 {
 	for(int i = threadIdx; i < (GS_SAMPLES_X * GS_SAMPLES_Y); i += WaveGetLaneCount())
 	{
 		const int2 sampleCoords = int2(i % GS_SAMPLES_X, i / GS_SAMPLES_X);
 		const int2 globalCoords = clamp(tileCoords + sampleCoords - int2(1, 1), int2(0, 0), u_constants.inputResolution);
 
-		const float3 inputSample = texture.Load(uint3(globalCoords, 0));
-
-		float signal = 0.0f;
-		if(u_constants.signalType == VRT_SIGNAL_VISIBILITY)
-		{
-			signal = inputSample.x;
-		}
-		else if(u_constants.signalType == VRT_SIGNAL_LIGHTING)
-		{
-			signal = Luminance(inputSample);
-		}
+		const float signal = texture.Load(uint3(globalCoords, 0));
 
 		gs_inputSamples[sampleCoords.x][sampleCoords.y] = signal;
 	}
@@ -98,10 +88,12 @@ void WriteCurrentFrameVariableRateData(in RWTexture2D<uint> vrTexture, in uint2 
 
 struct VariableRateProcessor
 {
-	static VariableRateProcessor Create(in uint2 globalCoords, in uint localThreadIdx)
+	static VariableRateProcessor Create(in uint2 groupID, in uint localThreadIdx)
 	{
 		VariableRateProcessor processor;
-		processor.m_globalCoords   = globalCoords;
+		processor.m_groupID        = groupID;
+		processor.m_localID        = DecodeMorton2D(localThreadIdx);
+		processor.m_globalCoords   = min(groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + processor.m_localID, u_constants.inputResolution - 1);
 		processor.m_localThreadIdx = localThreadIdx;
 		return processor;
 	}
@@ -166,8 +158,24 @@ struct VariableRateProcessor
 		return m_globalCoords;
 	}
 
+	float2 ComputeEdgeFilter(in Texture2D<float> texture)
+	{
+		const uint2 tileCoords = m_groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
+		CacheInputSamples(texture, tileCoords, m_localThreadIdx);
+
+		GroupMemoryBarrierWithGroupSync();
+
+		float2 edgeFilter = SobelFilter(m_localID);
+
+		edgeFilter = QuadMax(edgeFilter);
+
+		return edgeFilter;
+	}
+
+	uint2 m_groupID;
 	uint2 m_globalCoords;
-	uint m_localThreadIdx;
+	uint2 m_localID;
+	uint  m_localThreadIdx;
 };
 
 
@@ -176,24 +184,12 @@ struct VariableRateBuilder
 	template<typename TCallback>
 	static void BuildVariableRateTexture(in uint2 groupID, in int localThreadIdx)
 	{
-		const uint2 tileCoords = groupID.xy * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
-		CacheInputSamples(u_inputTexture, tileCoords, localThreadIdx);
+		VariableRateProcessor processor = VariableRateProcessor::Create(groupID, localThreadIdx);
 
-		GroupMemoryBarrierWithGroupSync();
+		const uint variableRate = TCallback::ComputeVariableRateMask(processor);
 
-		const uint2 localID = DecodeMorton2D(localThreadIdx);
-
-		const uint2 globalID = groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + localID;
-
-		float2 edgeFilter = SobelFilter(localID);
-
-		VariableRateProcessor processor = VariableRateProcessor::Create(globalID, localThreadIdx);
-		edgeFilter = processor.QuadMax(edgeFilter);
-
-		const uint variableRate = TCallback::ComputeVariableRateMask(processor, edgeFilter);
-
-		const uint2 outputCoords = groupID.xy * uint2(4, 2) + localID.xy / 2;
-		if ((localThreadIdx & 3) == 0)
+		const uint2 outputCoords = groupID.xy * uint2(4, 2) + processor.m_localID / 2;
+		if ((localThreadIdx & 3) == 0 && all(outputCoords < u_constants.outputResolution))
 		{
 			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, variableRate, u_constants.frameIdx);
 		}
@@ -203,8 +199,9 @@ struct VariableRateBuilder
 
 struct GenericVariableRateCallback
 {
-	static uint ComputeVariableRateMask(in VariableRateProcessor processor, in float2 edgeFilter)
+	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
+		const float2 edgeFilter = processor.ComputeEdgeFilter(u_inputTexture);
 		return processor.ComputeEdgeBasedVariableRateMask(edgeFilter);
 	}
 };

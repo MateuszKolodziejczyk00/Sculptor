@@ -29,6 +29,7 @@ DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_historyFramesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_geometryCoherenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRATrousFilteringParams>), u_params)
 DS_END();
 
@@ -62,6 +63,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	ds->u_roughnessTexture              = params.roughnessTexture;
 	ds->u_reprojectionConfidenceTexture = params.reprojectionConfidenceTexture;
 	ds->u_historyFramesNumTexture       = params.historyFramesNumTexture;
+	ds->u_geometryCoherenceTexture      = params.geometryCoherenceTexture;
 	ds->u_params                        = dispatchParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", params.name.Get().ToString(), iterationIdx)),

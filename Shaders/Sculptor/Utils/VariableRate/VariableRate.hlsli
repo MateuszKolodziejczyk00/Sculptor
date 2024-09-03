@@ -145,6 +145,11 @@ uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 }
 
 
+#ifndef USE_CONSERVATIVE_REPROJECTION
+#define USE_CONSERVATIVE_REPROJECTION 0
+#endif // USE_CONSERVATIVE_REPROJECTION
+
+
 uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion, in uint reprojectionFailedRate)
 {
 	const float2 reprojectedUV = uv - motion;
@@ -153,6 +158,7 @@ uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 
 
 	if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
+#if USE_CONSERVATIVE_REPROJECTION
 		if(IsNearlyZero(motion.x) && IsNearlyZero(motion.y))
 		{
 			variableRateMask = vrTexture.Load(uint3(uv * variableRateRes, 0));
@@ -183,6 +189,9 @@ uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 
 				variableRateMask |= vrSample << offset;
 			}
 		}
+#else
+		variableRateMask = vrTexture.Load(uint3(reprojectedUV * variableRateRes, 0));
+#endif // USE_CONSERVATIVE_REPROJECTION
 	}
 
 	return variableRateMask;
