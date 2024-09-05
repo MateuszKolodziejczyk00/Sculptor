@@ -158,7 +158,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	SpatialFilterParams spatialParams;
 	spatialParams.input                  = denoisedTexture;
 	spatialParams.output                 = outputTexture;
-	spatialParams.history                = historyTexture;
 	spatialParams.stdDev                 = stdDevTexture;
 	spatialParams.historySamplesNum      = historyAccumulatedSamplesNumTexture;
 	spatialParams.reprojectionConfidence = reprojectionConfidence;
