@@ -55,7 +55,7 @@ void SRATrousFilterCS(CS_INPUT input)
 			roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularReprojectionConfidence, accumulatedFrames);
 		}
 
-		const float kernel[2] = { 3.f / 8.f, 2.f / 8.f };
+		const float kernel[2] = { 3.f / 8.f, 1.f / 8.f };
 
 		float weightSum = Pow2(kernel[0]);
 
@@ -82,7 +82,7 @@ void SRATrousFilterCS(CS_INPUT input)
 				}
 
 				const int2 samplePixel = clamp(pixel + int2(x, y) * u_params.samplesOffset, int2(0, 0), int2(u_params.resolution - 1));
-				float weight = kernel[abs(x)] * kernel[abs(y)];
+				float weight = kernel[max(abs(x), abs(y))];
 
 				const float sampleLinearDepth = u_linearDepthTexture.Load(uint3(samplePixel, 0));
 				const float sampleRoughness = u_roughnessTexture.Load(uint3(samplePixel, 0));

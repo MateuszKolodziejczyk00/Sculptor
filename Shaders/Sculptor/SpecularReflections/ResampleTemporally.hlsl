@@ -57,6 +57,7 @@ struct SRTemporalResampler
 
 		resampler.centerPixelSurface = inSurface;
 		resampler.currentReservoir = SRReservoir::CreateEmpty();
+		resampler.currentReservoir.spatialResamplingRangeID = SR_RESERVOIR_DEFAULT_SPATIAL_RANGE_ID;
 
 		resampler.historyGBuffer.depthTexture         = u_historyDepthTexture;
 		resampler.historyGBuffer.normalsTexture       = u_historyNormalsTexture;
@@ -86,7 +87,7 @@ struct SRTemporalResampler
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
 		const uint maxHistoryLength = historyReservoir.age > 14u ? 2u : 8u;
-		historyReservoir.M = min(historyReservoir.M, maxHistoryLength);
+		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
 	}
@@ -118,7 +119,7 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const uint maxAge = 32 * lerp(rng.Next(), 0.6f, 1.f);
+		const uint maxAge = 30 * lerp(rng.Next(), 0.6f, 1.f);
 
 		if(m_wasSampleTraced && historyReservoir.age > maxAge)
 		{
@@ -154,6 +155,8 @@ struct SRTemporalResampler
 			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
 			m_selectedP_hat     = p_hat;
 			m_selectedSampleIdx = sampleIdx;
+
+			currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
 
 			return true;
 		}
@@ -303,7 +306,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 					const float2 sampleUV = reprojectedUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
 					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
 					
-					resampler.TrySelectHistorySample(samplePixel, INOUT rng);
+					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
+					{
+						break;
+					}
 				}
 			}
 		}
@@ -319,4 +325,3 @@ void ResampleTemporallyCS(CS_INPUT input)
 		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
 	}
 }
-

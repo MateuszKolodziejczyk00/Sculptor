@@ -45,25 +45,29 @@ struct RTVariableRateCallback
 			const float2 temporalMoments = u_temporalMomentsTexture.Load(int3(processor.GetCoords(), 0)).xy;
 			float temporalVariance = abs(temporalMoments.y - Pow2(temporalMoments.x));
 			temporalVariance = processor.QuadMax(temporalVariance);
-			const float temporalStdDev = sqrt(temporalVariance) * rcpBrightness;
+			const float temporalStdDev = sqrt(temporalVariance);
 
 			float spatialStdDev = u_spatialStdDevTexture.Load(int3(processor.GetCoords(), 0)).x;
 			spatialStdDev = processor.QuadMax(spatialStdDev);
 
-			float stdDev = lerp(temporalStdDev, spatialStdDev, 1.f);
-			stdDev *= saturate(temporalStdDev) * rtReflectionsInfluence;
+			float stdDev = spatialStdDev;
+			stdDev *= min(temporalStdDev, 2.f) * rtReflectionsInfluence;
 
-			if(stdDev >= 0.12f)
+			if(stdDev >= 0.15f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
 			}
-			else if (stdDev >= 0.07f)
+			else if (stdDev >= 0.1f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X);
 			}
-			else if (stdDev >= 0.03f)
+			else if (stdDev >= 0.07f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
+			}
+			else if(stdDev >= 0.03f)
+			{
+				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}
 
 			if (variableRate != SPT_VARIABLE_RATE_1X1)

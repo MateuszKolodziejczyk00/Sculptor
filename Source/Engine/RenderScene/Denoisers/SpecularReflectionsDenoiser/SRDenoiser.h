@@ -80,7 +80,6 @@ private:
 	{
 		rg::RGTextureViewHandle input;
 		rg::RGTextureViewHandle output;
-		rg::RGTextureViewHandle history;
 		rg::RGTextureViewHandle stdDev;
 		rg::RGTextureViewHandle historySamplesNum;
 		rg::RGTextureViewHandle reprojectionConfidence;

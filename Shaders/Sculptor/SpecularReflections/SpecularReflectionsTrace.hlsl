@@ -19,7 +19,7 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 	const float3 biasedRayOrigin = rayOrigin;
 
 	RayDesc rayDesc;
-	rayDesc.TMin      = 0.04f;
+	rayDesc.TMin      = 0.01f;
 	rayDesc.TMax      = maxHitDistance;
 	rayDesc.Origin    = biasedRayOrigin;
 	rayDesc.Direction = rayDirection;

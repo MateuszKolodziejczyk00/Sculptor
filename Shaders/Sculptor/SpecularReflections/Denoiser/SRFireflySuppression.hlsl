@@ -84,24 +84,18 @@ void SRFireflySuppressionCS(CS_INPUT input)
 					}
 				}
 			}
-
-			bool suppressed = false;
-			const float centerPerceivedBrightness = Luminance(centerSample.rgb);
-			if(centerPerceivedBrightness > maxLuminanceSample.w)
-			{
-				centerSample.rgb = maxLuminanceSample.rgb;
-				suppressed = true;
-			}
-			if(centerPerceivedBrightness < minLuminanceSample.w)
-			{
-				centerSample.rgb = minLuminanceSample.rgb;
-				suppressed = true;
-			}
-
-			if(suppressed)
-			{
-				u_outputLuminanceHitDisTexture[pixel] = centerSample;
-			}
 		}
+
+		const float centerPerceivedBrightness = Luminance(centerSample.rgb);
+		if(centerPerceivedBrightness > maxLuminanceSample.w)
+		{
+			centerSample.rgb = maxLuminanceSample.rgb;
+		}
+		if(centerPerceivedBrightness < minLuminanceSample.w)
+		{
+			centerSample.rgb = minLuminanceSample.rgb;
+		}
+
+		u_outputLuminanceHitDisTexture[pixel] = centerSample;
 	}
 }

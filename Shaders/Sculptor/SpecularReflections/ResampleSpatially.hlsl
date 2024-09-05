@@ -25,9 +25,10 @@ struct CS_INPUT
 #define SPATIAL_RESAMPLING_SAMPLES_NUM 2
 
 
-float ComputeResamplingRange(in float roughness, in float accumulatedSamplesNum)
+float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	return 32.f;
+	const float stepSize = lerp(1.f, 6.f, smoothstep(0.06f, 0.45f, roughness));
+	return max(reservoir.spatialResamplingRangeID * stepSize + stepSize, 3.f);
 }
 
 
@@ -116,12 +117,12 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		newReservoir.Update(reservoir, 0.f, p_hat);
 
+		newReservoir.spatialResamplingRangeID = reservoir.spatialResamplingRangeID;
+
 		selectedP_hat = p_hat;
 	}
 
 	RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
-
-	const float resamplingRange = ComputeResamplingRange(centerPixelSurface.roughness, newReservoir.age);
 
 	int selectedSampleIdx = -1;
 	int2 sampleCoords[SPATIAL_RESAMPLING_SAMPLES_NUM];
@@ -129,6 +130,8 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 	for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 	{
+		const float resamplingRange = ComputeResamplingRange(newReservoir, centerPixelSurface.roughness);
+
 		const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
 
 		int2 offsetInPixels = round(offset);
@@ -156,6 +159,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 			if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
 				|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
 			{
+				newReservoir.OnSpatialResamplingFailed();
 				continue;
 			}
 
@@ -164,11 +168,13 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 			if(!newReservoir.CanCombine(reuseReservoir))
 			{
+				newReservoir.OnSpatialResamplingFailed();
 				continue;
 			}
 
 			if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
 			{
+				newReservoir.OnSpatialResamplingFailed();
 				continue;
 			}
 
@@ -176,6 +182,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 			if(jacobian < 0.f)
 			{
+				newReservoir.OnSpatialResamplingFailed();
 				continue;
 			}
 
@@ -184,8 +191,11 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 			if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
 			{
+				newReservoir.OnSpatialResamplingFailed();
 				continue;
 			}
+
+			newReservoir.OnSpatialResamplingSucceeded();
 
 			validSamplesMask |= 1u << sampleIdx;
 

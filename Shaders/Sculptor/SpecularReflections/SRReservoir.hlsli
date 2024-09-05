@@ -17,6 +17,8 @@
 #define SR_RESERVOIR_MAX_M   (255)
 #define SR_RESERVOIR_MAX_AGE (255)
 
+#define SR_RESERVOIR_DEFAULT_SPATIAL_RANGE_ID (8)
+
 
 class SRReservoir
 {
@@ -26,10 +28,11 @@ class SRReservoir
 		reservoir.hitLocation = ZERO_VECTOR;
 		reservoir.hitNormal   = ZERO_VECTOR;
 		reservoir.luminance   = ZERO_VECTOR;
-		reservoir.M           = 0;
+		reservoir.M           = 0u;
 		reservoir.weightSum   = 0.f;
-		reservoir.flags       = 0;
-		reservoir.age         = 0;
+		reservoir.flags       = 0u;
+		reservoir.age         = 0u;
+		reservoir.spatialResamplingRangeID = 0u;
 
 		return reservoir;
 	}
@@ -40,10 +43,11 @@ class SRReservoir
 		reservoir.hitLocation = hitLocation;
 		reservoir.hitNormal   = hitNormal;
 		reservoir.luminance   = luminance;
-		reservoir.M           = 1;
+		reservoir.M           = 1u;
 		reservoir.weightSum   = !IsNearlyZero(pdf) ? rcp(pdf) : 0.f;
-		reservoir.flags       = 0;
-		reservoir.age         = 0;
+		reservoir.flags       = 0u;
+		reservoir.age         = 0u;
+		reservoir.spatialResamplingRangeID = 0u;
 
 		return reservoir;
 	}
@@ -99,17 +103,27 @@ class SRReservoir
 
 	void AddFlag(in uint flag)
 	{
-		flags |= flag;
+		flags |= uint16_t(flag);
 	}
 
 	bool HasFlag(in uint flag)
 	{
-		return (flags & flag) != 0;
+		return (flags & uint16_t(flag)) != 0;
 	}
 
 	void RemoveFlag(in uint flag)
 	{
-		flags &= ~flag;
+		flags &= ~uint16_t(flag);
+	}
+
+	void OnSpatialResamplingFailed()
+	{
+		spatialResamplingRangeID = uint16_t(max(spatialResamplingRangeID, 1u) - 1u);
+	}
+
+	void OnSpatialResamplingSucceeded()
+	{
+		spatialResamplingRangeID = uint16_t(min(spatialResamplingRangeID + 1u, 15u));
 	}
 
 	bool CanCombine(in SRReservoir other)
@@ -117,27 +131,30 @@ class SRReservoir
 		return true;
 	}
 
-	float3 hitLocation;
-	uint   flags;
-	float3 hitNormal;
-	uint   M;
-	float3 luminance;
-	float  weightSum;
-	uint   age;
+	float3     hitLocation;
+	uint16_t   flags;
+	uint16_t   age;
+	float3     hitNormal;
+	uint16_t   M;
+	uint16_t   spatialResamplingRangeID; // idx to range (0 - min, 15 - max)
+	float3     luminance;
+	float      weightSum;
 };
 
 
 SRPackedReservoir PackReservoir(in SRReservoir reservoir)
 {
-	const int m   = min(reservoir.M,   SR_RESERVOIR_MAX_M);
-	const int age = min(reservoir.age, SR_RESERVOIR_MAX_AGE);
+	const uint m                        = min(reservoir.M,   SR_RESERVOIR_MAX_M);
+	const uint age                      = min(reservoir.age, SR_RESERVOIR_MAX_AGE);
+	const uint flags                    = reservoir.flags;
+	const uint spatialResamplingRangeID = reservoir.spatialResamplingRangeID;
 
 	SRPackedReservoir packedReservoir;
 	packedReservoir.hitLocation     = reservoir.hitLocation;
 	packedReservoir.packedLuminance = EncodeRGBToLogLuv(reservoir.luminance);
 	packedReservoir.hitNormal       = OctahedronEncodeNormal(reservoir.hitNormal);
 	packedReservoir.weight          = reservoir.weightSum;
-	packedReservoir.MAndProps       = m | (reservoir.flags << 8) | (age << 16);
+	packedReservoir.MAndProps       = m | (flags << 8) | (age << 16) | (spatialResamplingRangeID << 24);
 
 	return packedReservoir;
 }
@@ -146,13 +163,14 @@ SRPackedReservoir PackReservoir(in SRReservoir reservoir)
 SRReservoir UnpackReservoir(in SRPackedReservoir packedReservoir)
 {
 	SRReservoir reservoir;
-	reservoir.hitLocation = packedReservoir.hitLocation;
-	reservoir.luminance   = DecodeRGBFromLogLuv(packedReservoir.packedLuminance);
-	reservoir.hitNormal   = OctahedronDecodeNormal(packedReservoir.hitNormal);
-	reservoir.weightSum   = packedReservoir.weight;
-	reservoir.M           = (packedReservoir.MAndProps) & 255;
-	reservoir.flags       = (packedReservoir.MAndProps >> 8) & 255;
-	reservoir.age         = (packedReservoir.MAndProps >> 16) & 255;
+	reservoir.hitLocation              = packedReservoir.hitLocation;
+	reservoir.luminance                = DecodeRGBFromLogLuv(packedReservoir.packedLuminance);
+	reservoir.hitNormal                = OctahedronDecodeNormal(packedReservoir.hitNormal);
+	reservoir.weightSum                = packedReservoir.weight;
+	reservoir.M                        = uint16_t((packedReservoir.MAndProps) & 255u);
+	reservoir.flags                    = uint16_t((packedReservoir.MAndProps >> 8u) & 255u);
+	reservoir.age                      = uint16_t((packedReservoir.MAndProps >> 16u) & 255u);
+	reservoir.spatialResamplingRangeID = uint16_t((packedReservoir.MAndProps >> 24u) & 15u);
 
 	return reservoir;
 }

@@ -57,11 +57,13 @@ void HitRaysShadingRTG()
 
 		const float3 hitLocation = worldLocation + rayDirection * hitResult.hitDistance;
 
+		const float minSecondaryRoughness = 0.6f;
+
 		ShadedSurface surface;
 		surface.location       = hitLocation;
 		surface.shadingNormal  = hitResult.normal;
 		surface.geometryNormal = hitResult.normal;
-		surface.roughness      = hitResult.roughness;
+		surface.roughness      = max(hitResult.roughness, minSecondaryRoughness);
 		ComputeSurfaceColor(hitResult.baseColor, hitResult.metallic, surface.diffuseColor, surface.specularColor);
 
 		const float3 primaryHitToView = normalize(u_sceneView.viewLocation - worldLocation);

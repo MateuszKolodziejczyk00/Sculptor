@@ -124,12 +124,12 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	disocclusionFixParams.depthTexture                 = params.currentDepthTexture;
 	disocclusionFixParams.roughnessTexture             = params.roughnessTexture;
 	disocclusionFixParams.luminanceTexture             = denoisedTexture;
-	disocclusionFixParams.outputLuminanceTexture       = outputTexture;
+	disocclusionFixParams.outputLuminanceTexture       = historyTexture;
 	DisocclusionFix(graphBuilder, disocclusionFixParams);
 
 	ClampHistoryParams clampHistoryParams(params.renderView);
 	clampHistoryParams.debugName                      = m_debugName;
-	clampHistoryParams.luminanceAndHitDistanceTexture = outputTexture;
+	clampHistoryParams.luminanceAndHitDistanceTexture = historyTexture;
 	clampHistoryParams.accumulatedSamplesNumTexture   = accumulatedSamplesNumTexture;
 	clampHistoryParams.fastHistoryLuminanceTexture    = fastHistoryOutputTexture;
 	clampHistoryParams.depthTexture                   = params.currentDepthTexture;
@@ -138,11 +138,9 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	clampHistoryParams.reprojectionConfidenceTexture  = reprojectionConfidence;
 	ClampHistory(graphBuilder, clampHistoryParams);
 
-	graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy History", m_debugName.AsString()), outputTexture, historyTexture);
-
 	FireflySuppressionParams fireflySuppressionParams;
 	fireflySuppressionParams.debugName                    = m_debugName;
-	fireflySuppressionParams.inputLuminanceHitDisTexture  = outputTexture;
+	fireflySuppressionParams.inputLuminanceHitDisTexture  = historyTexture;
 	fireflySuppressionParams.outputLuminanceHitDisTexture = denoisedTexture;
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
@@ -171,7 +169,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	Result result;
 	result.denoisedTexture         = outputTexture;
 	result.temporalMomentsTexture  = temporalVarianceTexture;
-	result.geometryCoherence      = geometryCoherence;
+	result.geometryCoherence       = geometryCoherence;
 	result.spatialStdDevTexture    = stdDevTexture;
 
 	std::swap(m_accumulatedSamplesNumTexture, m_historyAccumulatedSamplesNumTexture);
@@ -198,8 +196,9 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	aTrousParams.geometryCoherenceTexture      = spatialParams.geometryCoherence;
 
 	Uint32 iterationIdx = 0u;
-	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.history, iterationIdx++);
-	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.history, spatialParams.input, iterationIdx++);
+
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.output, iterationIdx++);
+	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.output, spatialParams.input, iterationIdx++);
 	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.output, iterationIdx++);
 	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.output, spatialParams.input, iterationIdx++);
 	ApplyATrousFilter(graphBuilder, aTrousParams, spatialParams.input, spatialParams.output, iterationIdx++);

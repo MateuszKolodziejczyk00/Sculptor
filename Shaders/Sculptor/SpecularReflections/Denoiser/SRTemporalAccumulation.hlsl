@@ -153,7 +153,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			// Fast history
 
 			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-			const float currentFrameWeightFast = max(0.25f, currentFrameWeight);
+			const float currentFrameWeightFast = max(0.22f, currentFrameWeight);
 			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
 
 			historySamplesNum = historySamplesNum + 1u;
