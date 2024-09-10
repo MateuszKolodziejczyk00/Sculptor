@@ -54,6 +54,11 @@ Uint32 DescriptorSetBinding::GetBaseBindingIdx() const
 	return m_baseBindingIdx;
 }
 
+lib::HashedString DescriptorSetBinding::GetDescriptorSetName() const
+{
+	return m_owningState ? m_owningState->GetName() : lib::HashedString{};
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetState ============================================================================
 

@@ -30,6 +30,8 @@ struct DepthBasedUpsampleParams
 	rg::RGTextureViewHandle normalsHalfRes;
 
 	lib::MTHandle<RenderViewDS> renderViewDS;
+
+	Bool fireflyFilteringEnabled = false;
 };
 
 rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle texture, const DepthBasedUpsampleParams& params);

@@ -151,7 +151,7 @@ public:
 
 	math::Vector2f GetCurrentJitter() const;
 
-	void BeginFrame(const RenderScene& renderScene);
+	void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void EndFrame(const RenderScene& renderScene);
 
 	// Render systems

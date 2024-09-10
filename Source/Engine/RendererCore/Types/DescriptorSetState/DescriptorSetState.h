@@ -43,6 +43,8 @@ protected:
 
 	Uint32 GetBaseBindingIdx() const;
 
+	lib::HashedString GetDescriptorSetName() const;
+
 	// Helpers =========================================
 	static constexpr lib::String BuildBindingVariableCode(lib::StringView bindingVariable, Uint32 bindingIdx)
 	{

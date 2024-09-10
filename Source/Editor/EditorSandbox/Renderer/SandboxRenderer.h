@@ -67,6 +67,8 @@ public:
 	Real32	GetCameraSpeed();
 
 	void SetMousePositionOnViewport(const math::Vector2i& mousePosition);
+	
+	void SetViewportFocused(Bool isFocused);
 
 	void CreateRenderGraphCapture();
 
@@ -102,6 +104,8 @@ private:
 	rsc::RenderSceneEntityHandle m_directionalLightEntity;
 
 	Bool m_wantsCaptureNextFrame;
+
+	Bool m_isViewportFocused;
 
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
 };

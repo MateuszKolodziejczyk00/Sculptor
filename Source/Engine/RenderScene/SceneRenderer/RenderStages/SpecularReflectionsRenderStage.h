@@ -12,9 +12,17 @@ namespace spt::rsc
 
 class SpecularReflectionsRenderStage : public RenderStage<SpecularReflectionsRenderStage, ERenderStage::SpecularReflections>
 {
+protected:
+
+	using Base = RenderStage<SpecularReflectionsRenderStage, ERenderStage::SpecularReflections>;
+
 public:
 
 	SpecularReflectionsRenderStage();
+
+	// Begin RenderStageBase overrides
+	virtual void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
+	// End RenderStageBase overrides
 
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
@@ -26,6 +34,8 @@ private:
 	sr_denoiser::Denoiser              m_denoiser;
 
 	vrt::VariableRateRenderer m_variableRateRenderer;
+
+	Bool m_renderHalfResReflections = false;
 };
 
 } // spt::rsc

@@ -58,7 +58,7 @@ public:
 	{ }
 
 	// Begin AntiAliasingTechniqueInterface interface
-	virtual void BeginFrame(const RenderView& renderView) override;
+	virtual void PrepareForRendering(const ViewRenderingSpec& viewSpec) override;
 	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) override;
 	// End AntiAliasingTechniqueInterface interface
 
@@ -68,15 +68,15 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_currentTextureView;
 };
 
-void TAATechnique::BeginFrame(const RenderView& renderView)
+void TAATechnique::PrepareForRendering(const ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::BeginFrame(renderView);
+	Super::PrepareForRendering(viewSpec);
 
 	std::swap(m_historyTextureView, m_currentTextureView);
 
-	const math::Vector2u renderingResolution = renderView.GetRenderingRes();
+	const math::Vector2u renderingResolution = viewSpec.GetRenderingRes();
 
 	if (!m_currentTextureView || m_currentTextureView->GetResolution2D() != renderingResolution)
 	{
@@ -145,23 +145,16 @@ void TAATechnique::Render(rg::RenderGraphBuilder& graphBuilder, const ViewRender
 AntiAliasingRenderStage::AntiAliasingRenderStage()
 { }
 
-void AntiAliasingRenderStage::BeginFrame(const RenderScene& renderScene, const RenderView& renderView)
-{
-	SPT_PROFILER_FUNCTION();
-
-	Super::BeginFrame(renderScene, renderView);
-
-	PrepareAntiAliasingTechnique(renderView);
-
-	if (m_technique)
-	{
-		m_technique->BeginFrame(renderView);
-	}
-}
-
 void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
+
+	PrepareAntiAliasingTechnique(viewSpec);
+
+	if (m_technique)
+	{
+		m_technique->PrepareForRendering(viewSpec);
+	}
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
@@ -173,9 +166,11 @@ void AntiAliasingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 }
 
-void AntiAliasingRenderStage::PrepareAntiAliasingTechnique(const RenderView& renderView)
+void AntiAliasingRenderStage::PrepareAntiAliasingTechnique(const ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const EAntiAliasingMode::Type aaMode = renderView.GetAntiAliasingMode();
 

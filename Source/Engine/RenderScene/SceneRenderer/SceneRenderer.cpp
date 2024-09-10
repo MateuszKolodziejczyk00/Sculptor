@@ -67,7 +67,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		viewSpec->GetRenderView().BeginFrame(scene);
+		viewSpec->GetRenderView().BeginFrame(scene, *viewSpec);
 	}
 	
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)

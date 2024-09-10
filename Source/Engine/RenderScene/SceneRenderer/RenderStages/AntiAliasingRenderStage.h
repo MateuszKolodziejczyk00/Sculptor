@@ -16,7 +16,7 @@ public:
 
 	virtual ~AntiAliasingTechniqueInterface() = default;
 
-	virtual void BeginFrame(const RenderView& renderView) {};
+	virtual void PrepareForRendering(const ViewRenderingSpec& viewSpec) {};
 	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const ViewRenderingSpec& viewSpec, rg::RGTextureViewHandle input) { };
 
 
@@ -38,15 +38,11 @@ public:
 
 	AntiAliasingRenderStage();
 
-	// Begin RenderStageBase interface
-	virtual void BeginFrame(const RenderScene& renderScene, const RenderView& renderView) override;
-	// End RenderStageBase interface
-
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
 private:
 
-	void PrepareAntiAliasingTechnique(const RenderView& renderView);
+	void PrepareAntiAliasingTechnique(const ViewRenderingSpec& viewSpec);
 
 	lib::UniquePtr<AntiAliasingTechniqueInterface> m_technique;
 };

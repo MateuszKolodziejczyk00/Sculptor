@@ -12,13 +12,25 @@ REGISTER_RENDER_STAGE(ERenderStage::DirectionalLightsShadowMasks, DirectionalLig
 DirectionalLightShadowMasksRenderStage::DirectionalLightShadowMasksRenderStage()
 { }
 
+void DirectionalLightShadowMasksRenderStage::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
+
+	Base::BeginFrame(renderScene, viewSpec);
+
+	PrepareRenderers(renderScene, viewSpec);
+
+	for (auto& [entity, renderer] : m_shadowMaskRenderers)
+	{
+		renderer.BeginFrame(renderScene, viewSpec);
+	}
+}
+
 void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(rdr::Renderer::IsRayTracingEnabled());
-
-	PrepareRenderers(renderScene, viewSpec);
 
 	ViewDirectionalShadowMasksData& frameShadowMasks = viewSpec.GetData().Create<ViewDirectionalShadowMasksData>();
 	for (auto& [entity, renderer] : m_shadowMaskRenderers)

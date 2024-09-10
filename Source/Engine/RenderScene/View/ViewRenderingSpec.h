@@ -335,7 +335,6 @@ private:
 	PostRenderStageDelegate	m_postRenderStage;
 };
 
-
 struct RenderViewEntryContext
 {
 	RenderViewEntryContext()
@@ -360,11 +359,26 @@ inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
 } // RenderViewEntryDelegates
 
 
+struct ShadingViewResourcesUsageInfo
+{
+	Bool useHalfResRoughnessWithHistory     = false;
+	Bool useHalfResSpecularColorWithHistory = false;
+
+	Bool useLinearDepthHalfRes = false;
+	Bool useLinearDepth        = false;
+
+	Bool useRoughnessHistory             = false;
+	Bool useSpecularColorWithHistory     = false;
+	Bool useOctahedronNormalsWithHistory = false;
+};
+
+
 struct ShadingViewContext
 {
 	rg::RGTextureViewHandle depth;
 	rg::RGTextureViewHandle depthHalfRes;
 
+	rg::RGTextureViewHandle linearDepth;
 	rg::RGTextureViewHandle linearDepthHalfRes;
 
 	rg::RGTextureViewHandle hiZ;
@@ -379,12 +393,20 @@ struct ShadingViewContext
 	
 	rg::RGTextureViewHandle specularColorHalfRes;
 	rg::RGTextureViewHandle historySpecularColorHalfRes;
+	
+	rg::RGTextureViewHandle octahedronNormals;
+	rg::RGTextureViewHandle historyOctahedronNormals;
+	
+	rg::RGTextureViewHandle specularColor;
+	rg::RGTextureViewHandle historySpecularColor;
 
 	rg::RGTextureViewHandle normalsHalfRes;
 	rg::RGTextureViewHandle historyNormalsHalfRes;
 
 	rg::RGTextureViewHandle roughnessHalfRes;
 	rg::RGTextureViewHandle historyRoughnessHalfRes;
+
+	rg::RGTextureViewHandle historyRoughness;
 
 	rg::RGTextureViewHandle ambientOcclusion;
 	

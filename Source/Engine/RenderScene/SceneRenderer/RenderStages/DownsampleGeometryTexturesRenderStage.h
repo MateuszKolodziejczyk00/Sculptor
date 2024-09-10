@@ -16,7 +16,7 @@ public:
 
 private:
 
-	void PrepareResources(math::Vector2u renderingHalfRes);
+	void PrepareResources(const ViewRenderingSpec& viewSpec);
 
 	lib::SharedPtr<rdr::TextureView> m_normalsTextureHalfRes;
 	lib::SharedPtr<rdr::TextureView> m_historyNormalsTextureHalfRes;

@@ -25,15 +25,11 @@ public:
 
 	DepthPrepassRenderStage();
 
-	// Begin RenderStageBase interface
-	virtual void BeginFrame(const RenderScene& renderScene, const RenderView& renderView) override;
-	// End RenderStageBase interface
-
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
 private:
 
-	void PrepareDepthTextures(const RenderView& renderView);
+	void PrepareDepthTextures(const ViewRenderingSpec& viewSpec);
 
 	void ExecuteDepthPrepass(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, rg::RGTextureViewHandle depthTarget, const DepthPrepassMetaData& metaData);
 

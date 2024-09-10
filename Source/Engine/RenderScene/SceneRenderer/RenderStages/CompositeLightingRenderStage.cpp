@@ -60,13 +60,19 @@ DS_BEGIN(CompositeFogDS, rg::RGDescriptorSetState<CompositeFogDS>)
 DS_END();
 
 
+BEGIN_SHADER_STRUCT(CompositeRTReflectionsConstants)
+	SHADER_STRUCT_FIELD(Uint32, halfResInfluence)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_reflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),          u_reflectionsInfluenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>), u_brdfIntegrationLUT)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_baseColorMetallicTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>), u_tangentFrameTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                             u_reflectionsInfluenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_brdfIntegrationLUT)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_baseColorMetallicTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_tangentFrameTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CompositeRTReflectionsConstants>), u_rtReflectionsConstants)
 DS_END();
 
 
@@ -146,6 +152,9 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	{
 		permutation.rtReflectionsEnabled = true;
 
+		CompositeRTReflectionsConstants rtReflectionsConstants;
+		rtReflectionsConstants.halfResInfluence = rtReflectionsData->halfResReflections;
+
 		compositeRTReflectionsDS = graphBuilder.CreateDescriptorSet<CompositeRTReflectionsDS>(RENDERER_RESOURCE_NAME("CompositeRTReflectionsDS"));
 		compositeRTReflectionsDS->u_reflectionsTexture          = rtReflectionsData->reflectionsTexture;
 		compositeRTReflectionsDS->u_reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
@@ -153,6 +162,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		compositeRTReflectionsDS->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 		compositeRTReflectionsDS->u_roughnessTexture            = viewContext.gBuffer[GBuffer::Texture::Roughness];
 		compositeRTReflectionsDS->u_tangentFrameTexture         = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
+		compositeRTReflectionsDS->u_rtReflectionsConstants      = rtReflectionsConstants;
 	}
 
 	const rdr::ShaderID compositeLightingShader = CompileCompositeLightingShader(permutation);

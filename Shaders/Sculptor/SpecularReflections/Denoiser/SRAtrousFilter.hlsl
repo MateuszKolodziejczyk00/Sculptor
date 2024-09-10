@@ -15,6 +15,15 @@ struct CS_INPUT
 };
 
 
+float ComputeDetailPreservationStrength(in float historyLength, in float reprojectionConfidence)
+{
+	const float historyLengthFactor = saturate(historyLength / 10.f);
+	const float reprojectionConfidenceFactor = saturate((reprojectionConfidence - 0.8f) * 5.f);
+
+	return historyLengthFactor * reprojectionConfidenceFactor;
+}
+
+
 [numthreads(8, 4, 1)]
 void SRATrousFilterCS(CS_INPUT input)
 {
@@ -48,14 +57,18 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float4 centerLuminanceHitDistance = u_inputTexture.Load(uint3(pixel, 0));
 		const float lumCenter = Luminance(centerLuminanceHitDistance.rgb);
 
+		const float accumulatedFrames = u_historyFramesNumTexture.Load(uint3(pixel, 0));
+		const float specularReprojectionConfidence = u_reprojectionConfidenceTexture.Load(uint3(pixel, 0));
+
 		float roughnessFilterStrength = 0.f;
 		{
-			const float accumulatedFrames = u_historyFramesNumTexture.Load(uint3(pixel, 0));
-			const float specularReprojectionConfidence = u_reprojectionConfidenceTexture.Load(uint3(pixel, 0));
 			roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularReprojectionConfidence, accumulatedFrames);
 		}
 
-		const float kernel[2] = { 3.f / 8.f, 1.f / 8.f };
+		const float detailPreservationStrength = ComputeDetailPreservationStrength(accumulatedFrames, specularReprojectionConfidence);
+		const float neighborWeight = lerp(1.f / 8.f, 1 / 32.f, detailPreservationStrength);
+
+		const float kernel[2] = { 3.f / 8.f, neighborWeight };
 
 		float weightSum = Pow2(kernel[0]);
 
@@ -82,7 +95,7 @@ void SRATrousFilterCS(CS_INPUT input)
 				}
 
 				const int2 samplePixel = clamp(pixel + int2(x, y) * u_params.samplesOffset, int2(0, 0), int2(u_params.resolution - 1));
-				float weight = kernel[max(abs(x), abs(y))];
+				float weight = 1.f;
 
 				const float sampleLinearDepth = u_linearDepthTexture.Load(uint3(samplePixel, 0));
 				const float sampleRoughness = u_roughnessTexture.Load(uint3(samplePixel, 0));
@@ -91,7 +104,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 				if(isinf(sampleLinearDepth))
 				{
-					weight = 0.f;
+					continue;
 				}
 
 				const float3 sampleWS = LinearDepthToWS(u_sceneView, samplePixel * u_params.invResolution * 2.f - 1.f, sampleLinearDepth);
@@ -105,6 +118,8 @@ void SRATrousFilterCS(CS_INPUT input)
 				weight *= wn;
 
 				geometrySpatialCoherence += weight;
+
+				weight *= kernel[max(abs(x), abs(y))];
 
 				const float lum = Luminance(luminance);
 

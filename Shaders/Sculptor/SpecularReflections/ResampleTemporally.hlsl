@@ -86,7 +86,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = historyReservoir.age > 14u ? 2u : 8u;
+		const uint maxHistoryLength = 16u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;

@@ -13,7 +13,7 @@ struct CS_INPUT
 };
 
 
-static const float depthDiffThreshold = 0.05f;
+static const float depthDiffThreshold = 0.08f;
 
 
 float ComputeSampleWeight(float sampleDepthDiff)
@@ -64,11 +64,19 @@ void DepthBasedUpsampleCS(CS_INPUT input)
 
 		float4 weightsSum = 0.f;
 		float4 input = 0.f;
+
 		[unroll]
 		for(int sampleIdx = 0; sampleIdx < 4; ++sampleIdx)
 		{
-			const float weight = ComputeSampleWeight(sampleDistances[sampleIdx] - minDistance);
-			input += u_inputTexture.Load(int3(inputPixel + offsets[sampleIdx], 0)) * weight;
+			float weight = ComputeSampleWeight(sampleDistances[sampleIdx] - minDistance);
+			const float4 sample = u_inputTexture.Load(int3(inputPixel + offsets[sampleIdx], 0));
+
+			if(u_constants.fireflyFilteringEnabled)
+			{
+				weight /= (1.f + Luminance(sample.rgb));
+			}
+
+			input += sample * weight;
 			weightsSum += weight;
 		}
 

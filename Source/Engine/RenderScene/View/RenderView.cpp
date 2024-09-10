@@ -176,13 +176,13 @@ math::Vector2f RenderView::GetCurrentJitter() const
 	return SceneView::GetCurrentJitter(m_renderingResolution);
 }
 
-void RenderView::BeginFrame(const RenderScene& renderScene)
+void RenderView::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
 	OnBeginRendering();
 
-	m_renderStages.ForEachRenderStage([this, &renderScene](RenderStageBase& stage) { stage.BeginFrame(renderScene, *this); });
+	m_renderStages.ForEachRenderStage([&renderScene, &viewSpec](RenderStageBase& stage) { stage.BeginFrame(renderScene, viewSpec); });
 }
 
 void RenderView::EndFrame(const RenderScene& renderScene)

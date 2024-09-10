@@ -6,6 +6,8 @@
 #include "Utils/hiZRenderer.h"
 #include "Utils/VisibilityBuffer/MaterialDepthRenderer.h"
 #include "Geometry/MaterialsRenderer.h"
+#include "SceneRenderer/Utils/LinearizeDepth.h"
+#include "SceneRenderer/Utils/GBufferUtils.h"
 
 namespace spt::rsc
 {
@@ -38,25 +40,34 @@ rhi::EFragmentFormat VisibilityBufferRenderStage::GetDepthFormat()
 }
 
 VisibilityBufferRenderStage::VisibilityBufferRenderStage()
-{ }
-
-void VisibilityBufferRenderStage::BeginFrame(const RenderScene& renderScene, const RenderView& renderView)
+	: m_octahedronNormalsTexture(RENDERER_RESOURCE_NAME("Octahedron Normals Texture"))
+	, m_specularColorTexture(RENDERER_RESOURCE_NAME("Specular Color Texture"))
 {
-	SPT_PROFILER_FUNCTION();
+	rhi::TextureDefinition octahedronNormalsDef;
+	octahedronNormalsDef.format = rhi::EFragmentFormat::RG16_UN_Float;
+	octahedronNormalsDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+	m_octahedronNormalsTexture.SetDefinition(octahedronNormalsDef);
 
-	Super::BeginFrame(renderScene, renderView);
-
-	PrepareDepthTextures(renderView);
+	rhi::TextureDefinition specularColorDef;
+	specularColorDef.format = rhi::EFragmentFormat::B10G11R11_U_Float;
+	specularColorDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+	m_specularColorTexture.SetDefinition(specularColorDef);
 }
 
 void VisibilityBufferRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
 
+	PrepareDepthTextures(viewSpec);
+
+	CreateGBuffer(graphBuilder, viewSpec);
+
 	ExecuteVisbilityBufferRendering(graphBuilder, renderScene, viewSpec, stageContext);
+
+	RenderGBufferAdditionalTextures(graphBuilder, viewSpec);
 }
 
-void VisibilityBufferRenderStage::PrepareDepthTextures(const RenderView& renderView)
+void VisibilityBufferRenderStage::PrepareDepthTextures(const ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -64,7 +75,7 @@ void VisibilityBufferRenderStage::PrepareDepthTextures(const RenderView& renderV
 	std::swap(m_currentHiZTexture, m_historyHiZTexture);
 	std::swap(m_currentDepthHalfRes, m_historyDepthHalfRes);
 
-	const math::Vector2u renderingRes     = renderView.GetRenderingRes();
+	const math::Vector2u renderingRes     = viewSpec.GetRenderingRes();
 	const math::Vector2u renderingHalfRes = math::Utils::DivideCeil(renderingRes, math::Vector2u(2, 2));
 
 	if (!m_currentDepthTexture || m_currentDepthTexture->GetResolution2D() != renderingRes)
@@ -126,8 +137,6 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 
 	material_depth_tiles_renderer::RenderMaterialDepthTiles(graphBuilder, materialDepth, materialTiles);
 
-	shadingContext.gBuffer.Create(graphBuilder, resolution);
-
 	materials_renderer::MaterialsPassParams materialsPassParams(viewSpec, cachedGeometryPassData);
 	materialsPassParams.materialDepthTileSize    = material_depth_tiles_renderer::GetMaterialDepthTileSize();
 	materialsPassParams.materialDepthTexture     = materialDepth;
@@ -156,6 +165,75 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	depthCullingDS->u_hiZTexture         = hiZ;
 	depthCullingDS->u_depthCullingParams = depthCullingParams;
 	shadingContext.depthCullingDS = std::move(depthCullingDS);
+}
+
+void VisibilityBufferRenderStage::CreateGBuffer(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+
+	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
+
+	GBuffer::GBufferExternalTextures externalTextures;
+	if (resourcesUsageInfo.useRoughnessHistory)
+	{
+		std::swap(m_externalRoughnessTexture, m_externalHistoryRoughnessTexture);
+
+		externalTextures[GBuffer::Texture::Roughness] = &m_externalRoughnessTexture;
+
+		if (m_externalHistoryRoughnessTexture)
+		{
+			if (m_externalHistoryRoughnessTexture->GetResolution2D() != resolution)
+			{
+				m_externalHistoryRoughnessTexture.reset();
+			}
+			else
+			{
+				shadingContext.historyRoughness = graphBuilder.AcquireExternalTextureView(m_externalHistoryRoughnessTexture);
+			}
+		}
+	}
+
+	shadingContext.gBuffer.Create(graphBuilder, resolution, externalTextures);
+
+}
+
+void VisibilityBufferRenderStage::RenderGBufferAdditionalTextures(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+
+	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
+
+	if (resourcesUsageInfo.useOctahedronNormalsWithHistory)
+	{
+		m_octahedronNormalsTexture.Update(resolution);
+		shadingContext.octahedronNormals        = graphBuilder.AcquireExternalTextureView(m_octahedronNormalsTexture.GetCurrent());
+		shadingContext.historyOctahedronNormals = graphBuilder.TryAcquireExternalTextureView(m_octahedronNormalsTexture.GetHistory());
+
+		gbuffer_utils::oct_normals::GenerateOctahedronNormals(graphBuilder, shadingContext.gBuffer, shadingContext.octahedronNormals);
+	}
+
+	if (resourcesUsageInfo.useSpecularColorWithHistory)
+	{
+		m_specularColorTexture.Update(resolution);
+
+		shadingContext.specularColor        = graphBuilder.AcquireExternalTextureView(m_specularColorTexture.GetCurrent());
+		shadingContext.historySpecularColor = graphBuilder.TryAcquireExternalTextureView(m_specularColorTexture.GetHistory());
+
+		gbuffer_utils::spec_color::GenerateSpecularColor(graphBuilder, shadingContext.gBuffer, shadingContext.specularColor);
+	}
+
+	if (resourcesUsageInfo.useLinearDepth)
+	{
+		shadingContext.linearDepth = ExecuteLinearizeDepth(graphBuilder, viewSpec.GetRenderView(), shadingContext.depth);
+	}
 }
 
 } // spt::rsc

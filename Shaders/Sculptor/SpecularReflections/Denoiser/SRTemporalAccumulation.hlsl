@@ -45,6 +45,11 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		const float4 luminanceAndHitDist = u_currentTexture[pixel];
 
 		const float currentDepth = u_depthTexture.Load(uint3(pixel, 0));
+		if(currentDepth == 0.f)
+		{
+			return;
+		}
+
 		const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
 		const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, u_sceneView);
 		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * luminanceAndHitDist.w;

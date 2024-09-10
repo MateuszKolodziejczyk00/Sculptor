@@ -17,7 +17,7 @@
 #endif // ENABLE_DDGI
 
 #include "Utils/SceneViewUtils.hlsli"
-#include "Utils/GBuffer.hlsli"
+#include "Utils/GBuffer/GBuffer.hlsli"
 #include "Lights/Lighting.hlsli"
 
 

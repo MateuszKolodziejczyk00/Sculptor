@@ -86,6 +86,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	if (m_hasValidHistory)
 	{
 		SPT_CHECK(params.historyNormalsTexture.IsValid());
+		SPT_CHECK(params.historyDepthTexture.IsValid());
+		SPT_CHECK(params.historyRoughnessTexture.IsValid());
 
 		TemporalAccumulationParameters temporalAccumulationParameters(params.renderView);
 		temporalAccumulationParameters.name                                = m_debugName;

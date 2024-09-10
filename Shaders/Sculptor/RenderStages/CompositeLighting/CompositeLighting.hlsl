@@ -20,7 +20,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
-#include "Utils/GBuffer.hlsli"
+#include "Utils/GBuffer/GBuffer.hlsli"
 #include "Utils/MortonCode.hlsli"
 #include "Shading/Shading.hlsli"
 
@@ -98,6 +98,12 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float dept
 #if RT_REFLECTIONS_ENABLED
 float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 {
+	const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
+	if(depth == 0.f)
+	{
+		return 0.f;
+	}
+
 	float3 specularReflections = u_reflectionsTexture.Load(uint3(pixel, 0)).rgb;
 
 	if(any(isnan(specularReflections)))
@@ -111,7 +117,6 @@ float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 	float3 specularColor;
 	ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT specularColor);
 
-	const float depth           = u_depthTexture.Load(uint3(pixel, 0)).x;
 	const float3 ndc            = float3(uv * 2.f - 1.f, depth);
 	const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
 	const float3 sampleNormal   = DecodeGBufferNormal(u_tangentFrameTexture.Load(uint3(pixel, 0)));
@@ -192,12 +197,20 @@ void CompositeLightingCS(CS_INPUT input)
 
 #if RT_REFLECTIONS_ENABLED
 	const float rtReflectionsInfluence = AverageComponent((rtReflectionsLuminance * integratedFog.transmittance) / luminance);
-	const float downsampledRTReflectionsInfluence = ComputeDownsampledRTReflectionsInfluence(rtReflectionsInfluence, threadIdx);
 
-	if(!isHelperLane && (threadIdx & 0x3) == 0)
+	if(u_rtReflectionsConstants.halfResInfluence)
 	{
-		const uint2 outputPixel = pixel / 2;
-		u_reflectionsInfluenceTexture[outputPixel] = downsampledRTReflectionsInfluence;
+		const float downsampledRTReflectionsInfluence = ComputeDownsampledRTReflectionsInfluence(rtReflectionsInfluence, threadIdx);
+
+		if(!isHelperLane && (threadIdx & 0x3) == 0)
+		{
+			const uint2 outputPixel = pixel / 2;
+			u_reflectionsInfluenceTexture[outputPixel] = downsampledRTReflectionsInfluence;
+		}
+	}
+	else
+	{
+		u_reflectionsInfluenceTexture[pixel] = rtReflectionsInfluence;
 	}
 #endif // RT_REFLECTIONS_ENABLED
 

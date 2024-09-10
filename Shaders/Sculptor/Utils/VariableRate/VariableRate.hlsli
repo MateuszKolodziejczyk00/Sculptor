@@ -208,17 +208,17 @@ float3 VariableRateMaskToDebugColor(in uint variableRateMask)
 	}
 	else if(variableRateMask > SPT_VARIABLE_RATE_2X2)
 	{
-		color = float3(0.1f, 0.1f, 0.6f);
+		color = float3(0.f, 0.f, 1.f);
 	}
 	else 
 #endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
 	if(variableRateMask == SPT_VARIABLE_RATE_2X2)
 	{
-		color = float3(0, 0, 1);
+		color = float3(0, 1, 0);
 	}
 	else if(variableRateMask > SPT_VARIABLE_RATE_1X1)
 	{
-		color = float3(0, 1, 0);
+		color = float3(1, 1, 0);
 	}
 	else
 	{

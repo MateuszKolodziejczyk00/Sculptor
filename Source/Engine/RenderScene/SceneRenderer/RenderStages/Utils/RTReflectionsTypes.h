@@ -8,7 +8,7 @@ namespace spt::rsc
 
 struct RTReflectionsViewData
 {
-	rg::RGTextureViewHandle reflectionsTextureHalfRes;
+	rg::RGTextureViewHandle denoisedRefectionsTexture;
 	rg::RGTextureViewHandle reflectionsTexture;
 
 	rg::RGTextureViewHandle reflectionsInfluenceTexture;
@@ -17,6 +17,8 @@ struct RTReflectionsViewData
 	rg::RGTextureViewHandle spatialStdDevTexture;
 	
 	rg::RGTextureViewHandle geometryCoherenceTexture;
+
+	Bool halfResReflections = false;
 };
 
 } // spt::rsc

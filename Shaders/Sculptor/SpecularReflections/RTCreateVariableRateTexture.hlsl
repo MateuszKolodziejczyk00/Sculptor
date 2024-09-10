@@ -50,18 +50,18 @@ struct RTVariableRateCallback
 			float spatialStdDev = u_spatialStdDevTexture.Load(int3(processor.GetCoords(), 0)).x;
 			spatialStdDev = processor.QuadMax(spatialStdDev);
 
-			float stdDev = spatialStdDev;
+			float stdDev = spatialStdDev * rcpBrightness;
 			stdDev *= min(temporalStdDev, 2.f) * rtReflectionsInfluence;
 
-			if(stdDev >= 0.15f)
+			if(stdDev >= 0.25f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
 			}
-			else if (stdDev >= 0.1f)
+			else if (stdDev >= 0.14f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X);
 			}
-			else if (stdDev >= 0.07f)
+			else if (stdDev >= 0.08f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 			}
@@ -77,7 +77,7 @@ struct RTVariableRateCallback
 
 				const float stdDevThreshold = lerp(0.0001f, 0.01f, roughness);
 
-				if(geometryCoherence < 0.25f && stdDev >= stdDevThreshold)
+				if(geometryCoherence < 3.f && stdDev >= stdDevThreshold)
 				{
 					variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
 				}

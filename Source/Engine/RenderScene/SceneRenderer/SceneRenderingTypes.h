@@ -107,7 +107,6 @@ private:
 };
 
 
-
 // GBuffer layout:
 // 0 - 4 bytes [baseColor - 24bits] [metallic - 8bits]
 // 1 - 4 bytes [tangent frame - 32bits]
@@ -144,9 +143,19 @@ public:
 		return formats[static_cast<SizeType>(textureType)];
 	}
 
+	struct GBufferExternalTextures
+	{
+		lib::SharedPtr<rdr::TextureView>*& operator[](Texture textureType)
+		{
+			return textures[static_cast<SizeType>(textureType)];
+		}
+
+		lib::StaticArray<lib::SharedPtr<rdr::TextureView>*, texturesNum> textures = {};
+	};
+
 	GBuffer();
 
-	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
+	void Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution, const GBufferExternalTextures& externalTextures = GBufferExternalTextures());
 
 	rg::RGTextureViewHandle operator[](Texture textureType) const
 	{
@@ -166,7 +175,33 @@ public:
 
 private:
 
-	std::array<rg::RGTextureViewHandle, texturesNum> m_textures;
+	lib::StaticArray<rg::RGTextureViewHandle, texturesNum> m_textures;
+};
+
+
+class TextureWithHistory
+{
+public:
+
+	explicit TextureWithHistory(rdr::RendererResourceName name);
+
+	void SetDefinition(const rhi::TextureDefinition& definition);
+
+	void Reset();
+
+	void Update(math::Vector2u resolution);
+
+	const lib::SharedPtr<rdr::TextureView>& GetCurrent() const { return m_current; }
+	const lib::SharedPtr<rdr::TextureView>& GetHistory() const { return m_history; }
+	
+private:
+
+	rdr::RendererResourceName m_name;
+
+	rhi::TextureDefinition m_definition;
+
+	lib::SharedPtr<rdr::TextureView> m_current;
+	lib::SharedPtr<rdr::TextureView> m_history;
 };
 
 

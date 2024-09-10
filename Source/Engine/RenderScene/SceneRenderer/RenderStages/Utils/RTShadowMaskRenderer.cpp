@@ -252,6 +252,13 @@ void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
 	m_variableRateRenderer.Initialize(vrtSettings);
 }
 
+void RTShadowMaskRenderer::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+{
+	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+
+	resourcesUsageInfo.useLinearDepthHalfRes = true;
+}
+
 rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();

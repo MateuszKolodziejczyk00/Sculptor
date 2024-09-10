@@ -73,6 +73,8 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 {
 	SPT_PROFILER_FUNCTION();
 
+	if (m_isViewportFocused)
+	{
 	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
 	{
 		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX()));
@@ -109,6 +111,7 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 			m_renderView->Rotate(math::AngleAxisf(rotationDelta.x(), math::Vector3f::UnitZ()));
 			m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
 		}
+	}
 	}
 
 	if (sunMovement)
@@ -273,6 +276,11 @@ Real32 SandboxRenderer::GetCameraSpeed()
 void SandboxRenderer::SetMousePositionOnViewport(const math::Vector2i& mousePosition)
 {
 	m_mousePositionOnViewport = mousePosition;
+}
+
+void SandboxRenderer::SetViewportFocused(Bool isFocused)
+{
+	m_isViewportFocused = isFocused;
 }
 
 void SandboxRenderer::CreateRenderGraphCapture()

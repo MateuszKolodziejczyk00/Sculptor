@@ -72,6 +72,11 @@ RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(const lib::SharedPtr<
 	return textureHandle;
 }
 
+RGTextureViewHandle RenderGraphBuilder::TryAcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView)
+{
+	return textureView ? AcquireExternalTextureView(std::move(textureView)) : RGTextureViewHandle();
+}
+
 RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView)
 {
 	SPT_PROFILER_FUNCTION();

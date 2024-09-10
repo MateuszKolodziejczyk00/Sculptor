@@ -21,6 +21,8 @@ public:
 
 	void Initialize(RenderSceneEntity entity);
 
+	void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+
 	rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 private:

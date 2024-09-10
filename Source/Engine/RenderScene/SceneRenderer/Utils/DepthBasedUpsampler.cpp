@@ -15,6 +15,11 @@ namespace spt::rsc
 namespace upsampler
 {
 
+BEGIN_SHADER_STRUCT(DepthBasedUpsampleConstants)
+	SHADER_STRUCT_FIELD(Uint32, fireflyFilteringEnabled)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(DepthBasedUpsampleDS, rg::RGDescriptorSetState<DepthBasedUpsampleDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTextureHalfRes)
@@ -22,6 +27,7 @@ DS_BEGIN(DepthBasedUpsampleDS, rg::RGDescriptorSetState<DepthBasedUpsampleDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_outputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DepthBasedUpsampleConstants>),             u_constants)
 DS_END()
 
 
@@ -52,12 +58,16 @@ rg::RGTextureViewHandle DepthBasedUpsample(rg::RenderGraphBuilder& graphBuilder,
 
 	const rg::RGTextureViewHandle outputTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME(std::format("{} (Upsampled)", texture->GetName().ToString())), outputTextureDef);
 
+	DepthBasedUpsampleConstants constants;
+	constants.fireflyFilteringEnabled = params.fireflyFilteringEnabled ? 1u : 0u;
+
 	lib::MTHandle<DepthBasedUpsampleDS> descriptorSet = graphBuilder.CreateDescriptorSet<DepthBasedUpsampleDS>(RENDERER_RESOURCE_NAME("DepthBasedUpsampleDS"));
 	descriptorSet->u_depthTexture          = params.depth;
 	descriptorSet->u_depthTextureHalfRes   = params.depthHalfRes;
 	descriptorSet->u_normalsTextureHalfRes = params.normalsHalfRes;
 	descriptorSet->u_inputTexture          = texture;
 	descriptorSet->u_outputTexture         = outputTexture;
+	descriptorSet->u_constants             = constants;
 
 	static const rdr::PipelineStateID pipeline = CompileDepthBasedUpsamplePipeline();
 

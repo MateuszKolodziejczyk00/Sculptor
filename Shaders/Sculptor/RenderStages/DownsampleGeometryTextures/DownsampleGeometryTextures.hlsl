@@ -4,7 +4,7 @@
 [[descriptor_set(RenderViewDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
-#include "Utils/GBuffer.hlsli"
+#include "Utils/GBuffer/GBuffer.hlsli"
 #include "Shading/Shading.hlsli"
 #include "Utils/Packing.hlsli"
 
@@ -116,19 +116,24 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 
 		const float2 motion = u_motionTexture.Load(inputPixel);
 
-		const float roughness = u_roughnessTexture.Load(inputPixel);
+		u_depthTextureHalfRes[pixel]   = depth;
+		u_motionTextureHalfRes[pixel]  = motion;
+		u_normalsTextureHalfRes[pixel] = OctahedronEncodeNormal(normal);
 
-		const float4 baseColorMetalic = u_baseColorMetallicTexture.Load(inputPixel);
+		if(u_constants.downsampleSpecularColor)
+		{
+			const float4 baseColorMetalic = u_baseColorMetallicTexture.Load(inputPixel);
 
-		float3 diffuseColor = 0.f;
-		float3 specularColor = 0.f;
-		ComputeSurfaceColor(baseColorMetalic.rgb, baseColorMetalic.w, OUT diffuseColor, OUT specularColor);
+			float3 diffuseColor = 0.f;
+			float3 specularColor = 0.f;
+			ComputeSurfaceColor(baseColorMetalic.rgb, baseColorMetalic.w, OUT diffuseColor, OUT specularColor);
+			u_specularColorTextureHalfRes[pixel] = specularColor;
+		}
 
-		u_depthTextureHalfRes[pixel]         = depth;
-		u_linearDepthTextureHalfRes[pixel]   = ComputeLinearDepth(depth, u_sceneView);
-		u_motionTextureHalfRes[pixel]        = motion;
-		u_normalsTextureHalfRes[pixel]       = OctahedronEncodeNormal(normal);
-		u_roughnessTextureHalfRes[pixel]     = roughness;
-		u_specularColorTextureHalfRes[pixel] = specularColor;
+		if(u_constants.downsampleRoughness)
+		{
+			const float roughness = u_roughnessTexture.Load(inputPixel);
+			u_roughnessTextureHalfRes[pixel] = roughness;
+		}
 	}
 }

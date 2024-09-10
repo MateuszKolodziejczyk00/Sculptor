@@ -72,7 +72,8 @@ public:
 	Bool IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& texture) const;
 
 	RGTextureHandle AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture);
-
+	
+	RGTextureViewHandle TryAcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);
 	RGTextureViewHandle AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView);
 
 	RGTextureHandle CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);

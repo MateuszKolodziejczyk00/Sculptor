@@ -19,11 +19,15 @@ class DirectionalLightShadowMasksRenderStage : public RenderStage<DirectionalLig
 {
 protected:
 
-	using Super = RenderStage<DirectionalLightShadowMasksRenderStage, ERenderStage::DirectionalLightsShadowMasks>;
+	using Base = RenderStage<DirectionalLightShadowMasksRenderStage, ERenderStage::DirectionalLightsShadowMasks>;
 
 public:
 
 	DirectionalLightShadowMasksRenderStage();
+
+	// Begin RenderStageBase overrides
+	virtual void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
+	// End RenderStageBase overrides
 
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, RenderStageExecutionContext& stageContext);
 

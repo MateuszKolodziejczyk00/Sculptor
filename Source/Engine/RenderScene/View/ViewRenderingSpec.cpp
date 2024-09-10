@@ -68,6 +68,7 @@ void ViewRenderingSpec::Initialize(RenderView& renderView)
 	if (isShadingView)
 	{
 		m_viewRenderingData.Create<ShadingViewContext>();
+		m_viewRenderingData.Create<ShadingViewResourcesUsageInfo>();
 	}
 }
 

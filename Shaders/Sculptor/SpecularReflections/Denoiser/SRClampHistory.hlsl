@@ -67,6 +67,10 @@ void SRClampHistoryCS(CS_INPUT input)
 		const float kernel[3] = { 3.f / 8.f, 1.f / 4.f, 1.f / 16.f };
 
 		const float centerDepth = u_depthTexture.Load(uint3(pixel, 0));
+		if(centerDepth == 0.f)
+		{
+			return;
+		}
 
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 	

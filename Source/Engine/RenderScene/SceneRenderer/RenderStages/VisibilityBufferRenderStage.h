@@ -20,17 +20,17 @@ public:
 
 	VisibilityBufferRenderStage();
 
-	// Begin RenderStageBase interface
-	virtual void BeginFrame(const RenderScene& renderScene, const RenderView& renderView) override;
-	// End RenderStageBase interface
-
 	void OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
 private:
 
-	void PrepareDepthTextures(const RenderView& renderView);
+	void PrepareDepthTextures(const ViewRenderingSpec& viewSpec);
+
+	void CreateGBuffer(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec);
 
 	void ExecuteVisbilityBufferRendering(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
+
+	void RenderGBufferAdditionalTextures(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec);
 
 	lib::SharedPtr<rdr::TextureView> m_currentDepthTexture;
 	lib::SharedPtr<rdr::TextureView> m_currentHiZTexture;
@@ -41,6 +41,13 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_historyDepthHalfRes;
 	
 	lib::SharedPtr<rdr::TextureView> m_visibilityTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_externalRoughnessTexture;
+	lib::SharedPtr<rdr::TextureView> m_externalHistoryRoughnessTexture;
+
+	TextureWithHistory m_octahedronNormalsTexture;
+
+	TextureWithHistory m_specularColorTexture;
 
 	GeometryRenderer m_geometryVisRenderer;
 };

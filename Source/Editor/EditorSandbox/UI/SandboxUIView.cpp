@@ -60,6 +60,8 @@ void SandboxUIView::DrawUI()
 	const math::Vector2f imagePosition = ImGui::GetCurrentWindow()->DC.CursorPos;
 	const math::Vector2f offset = math::Vector2f(ImGui::GetMousePos()) - imagePosition;
 	m_renderer.SetMousePositionOnViewport((offset + math::Vector2f::Constant(0.5f)).cast<Int32>());
+
+	m_renderer.SetViewportFocused(ImGui::IsWindowFocused(ImGuiFocusedFlags_RootWindow));
 	
 	const math::Vector2f sceneContentSize = ui::UIUtils::GetWindowContentSize();
 

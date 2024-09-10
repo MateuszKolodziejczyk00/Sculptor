@@ -40,15 +40,6 @@ rhi::EFragmentFormat DepthPrepassRenderStage::GetDepthFormat()
 DepthPrepassRenderStage::DepthPrepassRenderStage()
 { }
 
-void DepthPrepassRenderStage::BeginFrame(const RenderScene& renderScene, const RenderView& renderView)
-{
-	SPT_PROFILER_FUNCTION();
-
-	Super::BeginFrame(renderScene, renderView);
-
-	PrepareDepthTextures(renderView);
-}
-
 void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
@@ -71,14 +62,14 @@ void DepthPrepassRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, con
 	}
 }
 
-void DepthPrepassRenderStage::PrepareDepthTextures(const RenderView& renderView)
+void DepthPrepassRenderStage::PrepareDepthTextures(const ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
 	std::swap(m_currentDepth, m_historyDepth);
 	std::swap(m_currentDepthHalfRes, m_historyDepthHalfRes);
 
-	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+	const math::Vector2u renderingRes = viewSpec.GetRenderingRes();
 
 	if (!m_currentDepth || m_currentDepth->GetTexture()->GetResolution2D() != renderingRes)
 	{
@@ -92,6 +83,8 @@ void DepthPrepassRenderStage::PrepareDepthTextures(const RenderView& renderView)
 void DepthPrepassRenderStage::ExecuteDepthPrepass(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext, rg::RGTextureViewHandle depthTarget, const DepthPrepassMetaData& metaData)
 {
 	SPT_PROFILER_FUNCTION();
+
+	PrepareDepthTextures(viewSpec);
 
 	const math::Vector2u resolution = depthTarget->GetResolution2D();
 

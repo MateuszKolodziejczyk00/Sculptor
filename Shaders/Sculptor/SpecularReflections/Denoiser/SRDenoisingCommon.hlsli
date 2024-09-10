@@ -6,7 +6,7 @@
 
 float ComputeSpecularNormalWeight(in float3 centerNormal, in float3 sampleNormal, in float roughness)
 {
-	const float power = 1.f + 63.f * (1.f - roughness);
+	const float power = 1.f + 64.f * (1.f - roughness);
 	return pow(saturate(dot(centerNormal, sampleNormal)), power);
 }
 
@@ -21,7 +21,7 @@ float ComputeNormalWeight(in float3 centerNormal, in float3 sampleNormal)
 float ComputeWorldLocationWeight(float3 centerWS, float3 normal, float3 sampleWS)
 {
 	const Plane centerPlane = Plane::Create(normal, centerWS);
-	return centerPlane.Distance(sampleWS) < 0.05f ? 1.f : 0.f;
+	return 1.f - smoothstep(0.01f, 0.06f, centerPlane.Distance(sampleWS));
 }
 
 float ComputeRoughnessFilterStrength(in float roughness, in float reprojectionConfidence, in float historyFramesNum)

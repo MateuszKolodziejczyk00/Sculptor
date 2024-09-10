@@ -16,7 +16,7 @@
 
 #include "Utils/Quaternion.hlsli"
 #include "Utils/Wave.hlsli"
-#include "Utils/GBuffer.hlsli"
+#include "Utils/GBuffer/GBuffer.hlsli"
 #include "GeometryRendering/GeometryCommon.hlsli"
 
 #define SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES 1

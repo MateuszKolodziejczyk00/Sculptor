@@ -15,6 +15,7 @@ namespace spt::rsc
 {
 
 class RenderScene;
+class ViewRenderingSpec;
 
 
 struct RenderTargetFormatsDef
@@ -33,8 +34,8 @@ public:
 	virtual void Initialize(RenderView& renderView) {}
 	virtual void Deinitialize(RenderView& renderView) {}
 
-	virtual void BeginFrame(const RenderScene& renderScene, const RenderView& renderView) {}
-	virtual void EndFrame(const RenderScene& renderScene, const RenderView& renderView)   {}
+	virtual void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec) {}
+	virtual void EndFrame(const RenderScene& renderScene, const RenderView& renderView)  {}
 };
 
 

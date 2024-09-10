@@ -40,6 +40,8 @@ RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold",
 
 RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
 RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);
+
+RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -507,6 +509,29 @@ SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
 	m_variableRateRenderer.Initialize(variableRateSettings);
 }
 
+void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+{
+	Base::BeginFrame(renderScene, viewSpec);
+
+	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+
+	m_renderHalfResReflections = renderer_params::halfResReflections;
+
+	if (m_renderHalfResReflections)
+	{
+		resourcesUsageInfo.useHalfResRoughnessWithHistory     = true;
+		resourcesUsageInfo.useHalfResSpecularColorWithHistory = true;
+		resourcesUsageInfo.useLinearDepthHalfRes              = true;
+	}
+	else
+	{
+		resourcesUsageInfo.useRoughnessHistory             = true;
+		resourcesUsageInfo.useSpecularColorWithHistory     = true;
+		resourcesUsageInfo.useOctahedronNormalsWithHistory = true;
+		resourcesUsageInfo.useLinearDepth                  = true;
+	}
+}
+
 void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
@@ -517,11 +542,16 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-		const math::Vector2u resolution = viewSpec.GetRenderingHalfRes();
+		const Bool isHalfRes = m_renderHalfResReflections;
 
-		m_variableRateRenderer.Reproject(graphBuilder, viewContext.motionHalfRes);
+		const math::Vector2u resolution = isHalfRes ? viewSpec.GetRenderingHalfRes() : viewSpec.GetRenderingRes();
 
-		const Bool hasValidHistory = viewContext.historyDepthHalfRes.IsValid() && viewContext.historyDepthHalfRes->GetResolution2D() == resolution;
+		const rg::RGTextureViewHandle motionTexture       = isHalfRes ? viewContext.motionHalfRes : viewContext.motion;
+		const rg::RGTextureViewHandle historyDepthTexture = isHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
+
+		m_variableRateRenderer.Reproject(graphBuilder, motionTexture);
+
+		const Bool hasValidHistory = historyDepthTexture.IsValid() && historyDepthTexture->GetResolution2D() == resolution;
 
 		vrt::TracesAllocationDefinition tracesAllocationDefinition;
 		tracesAllocationDefinition.debugName                        = RG_DEBUG_NAME("Specular Reflections");
@@ -534,17 +564,33 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 		SpecularReflectionsParams params;
-		params.resolution              = resolution;
-		params.normalsTexture          = viewContext.normalsHalfRes;
-		params.historyNormalsTexture   = viewContext.historyNormalsHalfRes;
-		params.roughnessTexture        = viewContext.roughnessHalfRes;
-		params.historyRoughnessTexture = viewContext.historyRoughnessHalfRes;
-		params.specularColorTexture    = viewContext.specularColorHalfRes;
-		params.depthTexture            = viewContext.depthHalfRes;
-		params.depthHistoryTexture     = viewContext.historyDepthHalfRes;
-		params.linearDepthTexture      = viewContext.linearDepthHalfRes;
-		params.motionTexture           = viewContext.motionHalfRes;
-		params.skyViewLUT              = viewContext.skyViewLUT;
+		params.resolution = resolution;
+		params.skyViewLUT = viewContext.skyViewLUT;
+
+		if (isHalfRes)
+		{
+			params.normalsTexture          = viewContext.normalsHalfRes;
+			params.historyNormalsTexture   = viewContext.historyNormalsHalfRes;
+			params.roughnessTexture        = viewContext.roughnessHalfRes;
+			params.historyRoughnessTexture = viewContext.historyRoughnessHalfRes;
+			params.specularColorTexture    = viewContext.specularColorHalfRes;
+			params.depthTexture            = viewContext.depthHalfRes;
+			params.depthHistoryTexture     = viewContext.historyDepthHalfRes;
+			params.linearDepthTexture      = viewContext.linearDepthHalfRes;
+			params.motionTexture           = viewContext.motionHalfRes;
+		}
+		else
+		{
+			params.normalsTexture          = viewContext.octahedronNormals;
+			params.historyNormalsTexture   = viewContext.historyOctahedronNormals;
+			params.roughnessTexture        = viewContext.gBuffer[GBuffer::Texture::Roughness];
+			params.historyRoughnessTexture = viewContext.historyRoughness;
+			params.specularColorTexture    = viewContext.specularColor;
+			params.depthTexture            = viewContext.depth;
+			params.depthHistoryTexture     = viewContext.historyDepth;
+			params.linearDepthTexture      = viewContext.linearDepth;
+			params.motionTexture           = viewContext.motion;
+		}
 
 		const math::Vector2u reservoirsResolution = sr_restir::ComputeReservoirsResolution(resolution);
 		const rg::RGBufferViewHandle reservoirsBuffer = sr_restir::CreateReservoirsBuffer(graphBuilder, reservoirsResolution);
@@ -562,16 +608,16 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		sr_restir::ResamplingParams resamplingParams(renderView, renderScene);
 		resamplingParams.initialReservoirBuffer         = reservoirsBuffer;
-		resamplingParams.depthTexture                   = viewContext.depthHalfRes;
-		resamplingParams.normalsTexture                 = viewContext.normalsHalfRes;
-		resamplingParams.roughnessTexture               = viewContext.roughnessHalfRes;
-		resamplingParams.specularColorTexture           = viewContext.specularColorHalfRes;
-		resamplingParams.historyDepthTexture            = viewContext.historyDepthHalfRes;
-		resamplingParams.historyNormalsTexture          = viewContext.historyNormalsHalfRes;
-		resamplingParams.historyRoughnessTexture        = viewContext.historyRoughnessHalfRes;
-		resamplingParams.historySpecularColorTexture    = viewContext.historySpecularColorHalfRes;
+		resamplingParams.depthTexture                   = params.depthTexture;
+		resamplingParams.normalsTexture                 = params.normalsTexture;
+		resamplingParams.roughnessTexture               = params.roughnessTexture;
+		resamplingParams.specularColorTexture           = params.specularColorTexture;
+		resamplingParams.historyDepthTexture            = params.depthHistoryTexture;
+		resamplingParams.historyNormalsTexture          = params.historyNormalsTexture;
+		resamplingParams.historyRoughnessTexture        = params.historyRoughnessTexture;
+		resamplingParams.historySpecularColorTexture    = isHalfRes ? viewContext.historySpecularColorHalfRes : viewContext.historySpecularColor;
 		resamplingParams.outLuminanceHitDistanceTexture = luminanceHitDistanceTexture;
-		resamplingParams.motionTexture                  = viewContext.motionHalfRes;
+		resamplingParams.motionTexture                  = params.motionTexture;
 		resamplingParams.tracesAllocation               = tracesAllocation;
 		resamplingParams.enableTemporalResampling       = hasValidHistory;
 		resamplingParams.enableTemporalResampling       = hasValidHistory && renderer_params::enableTemporalResampling;
@@ -594,23 +640,36 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		
 		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, luminanceHitDistanceTexture);
 
-		upsampler::DepthBasedUpsampleParams upsampleParams;
-		upsampleParams.debugName      = RG_DEBUG_NAME("Upsample Specular Reflections");
-		upsampleParams.depth          = viewContext.depth;
-		upsampleParams.depthHalfRes   = viewContext.depthHalfRes;
-		upsampleParams.normalsHalfRes = viewContext.normalsHalfRes;
-		upsampleParams.renderViewDS   = renderView.GetRenderViewDS();
-		const rg::RGTextureViewHandle specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedTexture, upsampleParams);
+		rg::RGTextureViewHandle specularReflectionsFullRes;
+
+		if (isHalfRes)
+		{
+			upsampler::DepthBasedUpsampleParams upsampleParams;
+			upsampleParams.debugName               = RG_DEBUG_NAME("Upsample Specular Reflections");
+			upsampleParams.depth                   = viewContext.depth;
+			upsampleParams.depthHalfRes            = viewContext.depthHalfRes;
+			upsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
+			upsampleParams.renderViewDS            = renderView.GetRenderViewDS();
+			upsampleParams.fireflyFilteringEnabled = true;
+			specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedTexture, upsampleParams);
+		}
+		else
+		{
+			specularReflectionsFullRes = denoiserResult.denoisedTexture;
+		}
+
+		SPT_CHECK(specularReflectionsFullRes.IsValid())
 
 		const rg::RGTextureViewHandle specularReflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
-		reflectionsViewData.reflectionsTextureHalfRes    = denoiserResult.denoisedTexture;
+		reflectionsViewData.denoisedRefectionsTexture    = denoiserResult.denoisedTexture;
 		reflectionsViewData.reflectionsTexture           = specularReflectionsFullRes;
 		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
 		reflectionsViewData.temporalMomentsTexture       = denoiserResult.temporalMomentsTexture;
 		reflectionsViewData.spatialStdDevTexture         = denoiserResult.spatialStdDevTexture;
 		reflectionsViewData.geometryCoherenceTexture     = denoiserResult.geometryCoherence;
+		reflectionsViewData.halfResReflections           = isHalfRes;
 
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
 
@@ -628,15 +687,17 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetData().Get<RTReflectionsViewData>();
 
+	const Bool isHalfRes = reflectionsViewData.halfResReflections;
+
 	const rdr::ShaderID vrtShader = vrt::CreateVariableRateTextureShader(m_variableRateRenderer.GetPermutationSettings());
 
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
 	vrtDS->u_influenceTexture          = reflectionsViewData.reflectionsInfluenceTexture;
-	vrtDS->u_roughnessTexture          = viewContext.roughnessHalfRes;
+	vrtDS->u_roughnessTexture          = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
 	vrtDS->u_temporalMomentsTexture    = reflectionsViewData.temporalMomentsTexture;
 	vrtDS->u_spatialStdDevTexture      = reflectionsViewData.spatialStdDevTexture;
 	vrtDS->u_geometryCoherenceTexture  = reflectionsViewData.geometryCoherenceTexture;
-	vrtDS->u_reflectionsTexture        = reflectionsViewData.reflectionsTextureHalfRes;
+	vrtDS->u_reflectionsTexture        = reflectionsViewData.denoisedRefectionsTexture;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 

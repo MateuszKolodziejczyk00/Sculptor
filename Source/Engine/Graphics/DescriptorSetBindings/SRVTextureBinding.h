@@ -28,7 +28,7 @@ public:
 		const Bool isBound = IsValid();
 		if constexpr (!isOptional)
 		{
-			SPT_CHECK(isBound);
+			SPT_CHECK_MSG(isBound, "Unbound binding \"{}\" in Descriptor set \"{}\"", GetName().GetData(), GetDescriptorSetName().GetData());
 		}
 
 		if (isBound)
@@ -47,7 +47,7 @@ public:
 		const Bool isBound = IsValid();
 		if constexpr (!isOptional)
 		{
-			SPT_CHECK(isBound);
+			SPT_CHECK_MSG(isBound, "Unbound binding \"{}\" in Descriptor set \"{}\"", GetName().GetData(), GetDescriptorSetName().GetData());
 		}
 
 		if (isBound)
