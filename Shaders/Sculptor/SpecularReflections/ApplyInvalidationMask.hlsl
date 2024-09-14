@@ -30,7 +30,6 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 
 	const uint bitIndex = EncodeMorton2(tileLocalCoords);
 
-	debug::WriteDebugPixel(coords, 0.f);
 	if((invalidationMask >> bitIndex) & 1u)
 	{
 		const uint reservoirIdx =  GetScreenReservoirIdx(coords.xy, u_resamplingConstants.reservoirsResolution);
@@ -39,7 +38,5 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 		packedProps = ModifyPackedReservoirM(packedProps, 0u);
 		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -3);
 		u_inOutReservoirsBuffer[reservoirIdx].MAndProps = packedProps;
-		debug::WriteDebugPixel(coords, 1.f);
 	}
 }
-[[meta(debug_features)]]
