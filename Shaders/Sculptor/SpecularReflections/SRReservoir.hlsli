@@ -176,6 +176,20 @@ SRReservoir UnpackReservoir(in SRPackedReservoir packedReservoir)
 }
 
 
+uint ModifyPackedReservoirM(in uint MAndProps, in uint newM)
+{
+	return (MAndProps & 0xFFFFFF00u) | (newM & 0xFFu);
+}
+
+
+uint ModifyPackedSpatialResamplingRangeID(in uint MAndProps, in int delta)
+{
+	const uint prevRangeID = MAndProps >> 24u;
+	const uint newRangeID = prevRangeID > delta ? min(prevRangeID + delta, 15u) : 0u;
+	return (MAndProps & 0x00FFFFFFu) | (newRangeID << 24u);
+}
+
+
 uint GetScreenReservoirIdx(in uint2 coords, in uint2 resolution)
 {
 	const uint2 tileSize = uint2(64u, 64u);

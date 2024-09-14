@@ -260,6 +260,19 @@ uint2 GetVariableBlockCoords(in Texture2D<uint> variableRateBlocksTexture, in ui
 }
 
 
+void GetVariableRateInfo(in RWTexture2D<uint> variableRateBlocksTexture, in uint2 pixel, out uint2 traceCoords, out uint variableRateMask)
+{
+	const uint vrBlockInfo = variableRateBlocksTexture[pixel];
+
+	uint2 localTraceOffset = 0;
+	UnpackVRBlockInfo(vrBlockInfo, OUT localTraceOffset, OUT variableRateMask);
+	const uint2 blockSize = GetVariableRateTileSize(variableRateMask);
+	const uint2 blockCoords = uint2(pixel.x & ~(blockSize.x - 1), pixel.y & ~(blockSize.y - 1));
+
+	traceCoords = blockCoords + localTraceOffset;
+}
+
+
 uint2 GetVariableTraceCoords(in uint vrBlockInfo, in uint2 pixel)
 {
 	uint2 localTraceOffset = 0;

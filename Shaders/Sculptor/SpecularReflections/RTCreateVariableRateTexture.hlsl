@@ -57,15 +57,15 @@ struct RTVariableRateCallback
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
 			}
-			else if (stdDev >= 0.14f)
+			else if (stdDev >= 0.18f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X);
 			}
-			else if (stdDev >= 0.08f)
+			else if (stdDev >= 0.1f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 			}
-			else if(stdDev >= 0.03f)
+			else if(stdDev >= 0.05f)
 			{
 				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}

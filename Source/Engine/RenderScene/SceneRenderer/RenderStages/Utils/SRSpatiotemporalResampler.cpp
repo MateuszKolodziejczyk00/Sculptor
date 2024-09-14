@@ -245,12 +245,47 @@ void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingPar
 namespace final_visibility
 {
 
+DS_BEGIN(ApplyInvalidationMaskDS, rg::RGDescriptorSetState<ApplyInvalidationMaskDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_inOutReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                  u_invalidationMask)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
+DS_END();
+
+
+static rdr::PipelineStateID CompileApplyInvalidationMaskPipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ApplyInvalidationMask.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ApplyInvalidationMaskCS"));
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Apply Invalidation Mask Pipeline"), shader);
+}
+
+
+void ApplyInvalidationMask(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState, rg::RGTextureViewHandle invalidationMask)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::MTHandle<ApplyInvalidationMaskDS> ds = graphBuilder.CreateDescriptorSet<ApplyInvalidationMaskDS>(RENDERER_RESOURCE_NAME("Apply Invalidation Mask DS"));
+	ds->u_inOutReservoirsBuffer = reservoirsState.ReadReservoirs();
+	ds->u_invalidationMask      = invalidationMask;
+	ds->u_resamplingConstants   = resamplingConstants;
+
+	static const rdr::PipelineStateID pipeline = CompileApplyInvalidationMaskPipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Invalidation Mask"),
+						  pipeline,
+						  math::Utils::DivideCeil(params.GetResolution(), math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(std::move(ds)));
+
+}
+
+
 DS_BEGIN(SRResamplingFinalVisibilityTestDS, rg::RGDescriptorSetState<SRResamplingFinalVisibilityTestDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                          u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),         u_inOutReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),           u_initialReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                           u_rwInvalidationMask)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),         u_resamplingConstants)
 DS_END();
 
@@ -269,11 +304,19 @@ static rdr::PipelineStateID CompileSRFinalVisibilityTestPipeline(const RayTracin
 	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("SR Final Visibility Test Pipeline"), rtShaders, pipelineDefinition);
 }
 
+
 static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = params.GetResolution();
+
+	// Invalidation mask uses R32_UINT format where each bit is reserved for a single pixel, so we need 1 invalidation pixels per 8x4 pixels
+	const math::Vector2u invalidationMaskResolution = math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u));
+	rg::RGTextureViewHandle invalidationMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Invalidation Mask"),
+																			  rg::TextureDef(invalidationMaskResolution, rhi::EFragmentFormat::R32_U_Int));
+
+	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Invalidation Mask"), invalidationMask, rhi::ClearColor(0u, 0u, 0u, 0u));
 
 	const RayTracingRenderSceneSubsystem& rayTracingSubsystem = params.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
@@ -283,6 +326,7 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 	ds->u_traceCommands           = params.tracesAllocation.rayTraceCommands;
 	ds->u_inOutReservoirsBuffer   = reservoirsState.ReadReservoirs();
 	ds->u_initialReservoirsBuffer = params.initialReservoirBuffer;
+	ds->u_rwInvalidationMask      = invalidationMask;
 	ds->u_resamplingConstants     = resamplingConstants;
 
 	lib::MTHandle<RTVisibilityDS> rtVisibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
@@ -303,6 +347,8 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 								   rg::BindDescriptorSets(std::move(ds),
 														  params.renderView.GetRenderViewDS(),
 														  std::move(rtVisibilityDS)));
+
+	ApplyInvalidationMask(graphBuilder, params, resamplingConstants, reservoirsState, invalidationMask);
 }
 
 } // final_visibility
