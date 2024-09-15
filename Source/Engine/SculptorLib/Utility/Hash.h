@@ -2,6 +2,7 @@
 
 #include "SculptorAliases.h"
 #include "Containers/StaticArray.h"
+#include "Containers/Span.h"
 
 #include <numeric>
 #include <functional>
@@ -98,5 +99,24 @@ constexpr void HashCombine(THash& seed, THash hash)
 	constexpr THash magicNumber = 0x9e3889b9;
 	seed ^= hash + magicNumber + (seed << 6) + (seed >> 2);
 }
+
+
+namespace FNV1a
+{
+
+constexpr SizeType Hash(Span<const char> data)
+{
+	SizeType hash = 14695981039346656037ULL;
+
+	for (const char byte : data)
+	{
+		hash ^= byte;
+		hash *= 1099511628211ULL;
+	}
+
+	return hash;
+};
+
+} // FNV1a
 
 } // spt::lib
