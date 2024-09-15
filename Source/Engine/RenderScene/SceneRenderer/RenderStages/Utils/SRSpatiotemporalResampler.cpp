@@ -78,6 +78,7 @@ BEGIN_SHADER_STRUCT(SRResamplingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, reservoirsResolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, pixelSize)
 	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
+	SHADER_STRUCT_FIELD(Real32,         resamplingRangeStep)
 END_SHADER_STRUCT();
 
 
@@ -85,11 +86,14 @@ static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& p
 {
 	const math::Vector2u resolution = params.GetResolution();
 
+	const Real32 resMinAxis = static_cast<Real32>(std::min(resolution.x(), resolution.y()));
+
 	SRResamplingConstants resamplingConstants;
 	resamplingConstants.resolution           = resolution;
 	resamplingConstants.reservoirsResolution = ComputeReservoirsResolution(resolution);
 	resamplingConstants.pixelSize            = resolution.cast<Real32>().cwiseInverse();
 	resamplingConstants.frameIdx             = params.renderView.GetRenderedFrameIdx();
+	resamplingConstants.resamplingRangeStep  = math::Utils::MapInputToOutputRange(resMinAxis, math::Vector2f(1080.f, 2000.f), math::Vector2f(1.8f, 6.f));
 
 	return resamplingConstants;
 }

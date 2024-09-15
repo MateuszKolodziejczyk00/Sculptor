@@ -26,6 +26,7 @@
 #include "SceneRenderer/RenderStages/Utils/VariableRateTexture.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
+#include "SceneRenderer/Debug/Stats/RTReflectionsStatsView.h"
 
 
 namespace spt::rsc
@@ -42,6 +43,7 @@ RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "
 RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
+RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -482,16 +484,62 @@ static rdr::ShaderID CreateVariableRateTextureShader(const VariableRatePermutati
 	return rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTCreateVariableRateTexture.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CreateVariableRateTextureCS"), compilationSettings);
 }
 
+
+BEGIN_SHADER_STRUCT(VariableRateRTConstants)
+	SHADER_STRUCT_FIELD(Uint32, forceFullRateTracing)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_influenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>), u_temporalMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_spatialStdDevTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),         u_geometryCoherenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>), u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_influenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_temporalMomentsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_spatialStdDevTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_geometryCoherenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
 DS_END();
 
 } // vrt
+
+#if SPT_ENABLE_SCENE_RENDERER_STATS
+namespace stats
+{
+
+void RecordStatsSample(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution, const vrt::TracesAllocation& firstPassTracesAllocation, const vrt::TracesAllocation& secondPassTracesAllocation)
+{
+	SPT_PROFILER_FUNCTION();
+
+	lib::SharedRef<rdr::Buffer> firstPassTracesNum = graphBuilder.DownloadBuffer(RG_DEBUG_NAME("Download First Pass Traces Num"), firstPassTracesAllocation.tracesNum, 0, 4u);
+	lib::SharedPtr<rdr::Buffer> secondPassTracesNum;
+
+	if (secondPassTracesAllocation.IsValid())
+	{
+		secondPassTracesNum = graphBuilder.DownloadBuffer(RG_DEBUG_NAME("Download Second Pass Traces Num"), secondPassTracesAllocation.tracesNum, 0, 4u);
+	}
+
+	js::Launch(SPT_GENERIC_JOB_NAME,
+			   [firstPassTracesNum, secondPassTracesNum, resolution]
+			   {
+				   const Uint32 firstPassTracesNumValue = firstPassTracesNum->Map<Uint32>()[0];
+
+				   const Uint32 secondPassTracesNumValue = secondPassTracesNum ? secondPassTracesNum->Map<Uint32>()[0] : 0u;
+
+				   RTReflectionsStatsView& statsView = SceneRendererStatsRegistry::GetInstance().GetStatsView<RTReflectionsStatsView>();
+				   
+				   RTReflectionsStatsView::FrameSample sample;
+				   sample.resolution        = resolution;
+				   sample.numRaysFirstPass  = firstPassTracesNumValue;
+				   sample.numRaysSecondPass = secondPassTracesNumValue;
+
+				   statsView.RecordFrameSample(std::move(sample));
+			   },
+			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
+}
+
+} // stats
+#endif // SPT_ENABLE_SCENE_RENDERER_STATS
 
 
 SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
@@ -674,6 +722,10 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
 
 		viewSpec.GetRenderStageEntries(ERenderStage::CompositeLighting).GetPostRenderStage().AddRawMember(this, &SpecularReflectionsRenderStage::RenderVariableRateTexture);
+
+#if SPT_ENABLE_SCENE_RENDERER_STATS
+		stats::RecordStatsSample(graphBuilder, resolution, tracesAllocation, additionalTracesAllocation);
+#endif // SPT_ENABLE_SCENE_RENDERER_STATS
 	}
 
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
@@ -691,13 +743,18 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 	const rdr::ShaderID vrtShader = vrt::CreateVariableRateTextureShader(m_variableRateRenderer.GetPermutationSettings());
 
+	vrt::VariableRateRTConstants shaderConstants;
+	shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
+
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
 	vrtDS->u_influenceTexture          = reflectionsViewData.reflectionsInfluenceTexture;
 	vrtDS->u_roughnessTexture          = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
 	vrtDS->u_temporalMomentsTexture    = reflectionsViewData.temporalMomentsTexture;
 	vrtDS->u_spatialStdDevTexture      = reflectionsViewData.spatialStdDevTexture;
 	vrtDS->u_geometryCoherenceTexture  = reflectionsViewData.geometryCoherenceTexture;
+	vrtDS->u_linearDepthTexture        = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
 	vrtDS->u_reflectionsTexture        = reflectionsViewData.denoisedRefectionsTexture;
+	vrtDS->u_rtConstants               = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 

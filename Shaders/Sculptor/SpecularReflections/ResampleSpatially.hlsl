@@ -27,7 +27,7 @@ struct CS_INPUT
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = lerp(1.f, 6.f, smoothstep(0.06f, 0.45f, roughness));
+	const float stepSize = lerp(1.f, u_resamplingConstants.resamplingRangeStep, smoothstep(0.06f, 0.45f, roughness));
 	return max(reservoir.spatialResamplingRangeID * stepSize + stepSize, 3.f);
 }
 

@@ -323,7 +323,7 @@ void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGB
 
 	SPT_CHECK(sourceBufferView != destBufferView);
 
-	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		const Uint64 copySourceOffset = sourceBufferView->GetOffset() + sourceOffset;
 		const Uint64 copyDestOffset   = destBufferView->GetOffset() + destOffset;

@@ -164,6 +164,13 @@ public:
 		return 1u + static_cast<Uint32>(std::log2(std::max(resolution.x(), resolution.y())));
 	}
 
+	template<std::floating_point TType>
+	static constexpr TType MapInputToOutputRange(TType input, math::Matrix<TType, 2, 1> inputRange, math::Matrix<TType, 2, 1> outputRange)
+	{
+		const TType clampedInput = std::clamp(input, inputRange(0), inputRange(1));
+		return outputRange(0) + (outputRange(1) - outputRange(0)) * (clampedInput - inputRange(0)) / (inputRange(1) - inputRange(0));
+	}
+
 	static math::Vector3u ComputeMipResolution(const math::Vector3u& resolution, Uint32 mipLevel)
 	{
 		math::Vector3u mipResolution{};

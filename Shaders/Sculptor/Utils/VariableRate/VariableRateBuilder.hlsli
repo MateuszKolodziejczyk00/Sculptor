@@ -122,6 +122,24 @@ struct VariableRateProcessor
 		return result;
 	}
 
+	template<typename T>
+	T DDX_QuadMax(in T value)
+	{
+		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		float ddx = WaveReadLaneAt(value, quadBaseThreadIdx + 1) - WaveReadLaneAt(value, quadBaseThreadIdx);
+		ddx = max(ddx, WaveReadLaneAt(value, quadBaseThreadIdx + 3) - WaveReadLaneAt(value, quadBaseThreadIdx + 2));
+		return ddx;
+	}
+
+	template<typename T>
+	T DDY_QuadMax(in T value)
+	{
+		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		float ddy = WaveReadLaneAt(value, quadBaseThreadIdx + 2) - WaveReadLaneAt(value, quadBaseThreadIdx);
+		ddy = max(ddy, WaveReadLaneAt(value, quadBaseThreadIdx + 3) - WaveReadLaneAt(value, quadBaseThreadIdx + 1));
+		return ddy;
+	}
+
 	uint ComputeEdgeBasedVariableRateMask(in float2 edgeFilter)
 	{
 		uint variableRate = SPT_VARIABLE_RATE_1X1;

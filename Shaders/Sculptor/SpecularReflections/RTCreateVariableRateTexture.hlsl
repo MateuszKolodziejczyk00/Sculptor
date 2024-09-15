@@ -17,13 +17,16 @@ struct RTVariableRateCallback
 {
 	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
 	{
+		if(u_rtConstants.forceFullRateTracing)
+		{
+			return SPT_VARIABLE_RATE_1X1;
+		}
+
 		float rtReflectionsInfluence = u_influenceTexture.Load(int3(processor.GetCoords(), 0)).x;
 		rtReflectionsInfluence = processor.QuadMax(rtReflectionsInfluence);
 
 		float roughness = u_roughnessTexture.Load(int3(processor.GetCoords(), 0)).x;
 		roughness = processor.QuadMin(roughness);
-
-		const float roughnessInfluence = lerp(1.f, 2.f, 1.f - roughness);
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
@@ -53,22 +56,29 @@ struct RTVariableRateCallback
 			float stdDev = spatialStdDev * rcpBrightness;
 			stdDev *= min(temporalStdDev, 2.f) * rtReflectionsInfluence;
 
+			const float linearDepth = u_linearDepthTexture.Load(int3(processor.GetCoords(), 0)).x;
+			const float depthDDX = processor.DDX_QuadMax(linearDepth);
+			const float depthDDY = processor.DDY_QuadMax(linearDepth);
+
+			uint minVariableRate = SPT_VARIABLE_RATE_4X4;
 			if(stdDev >= 0.25f)
 			{
-				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
+				minVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (stdDev >= 0.18f)
+			else if (stdDev >= 0.16f)
 			{
-				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X);
+				minVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (stdDev >= 0.1f)
+			else if (stdDev >= 0.08f)
 			{
-				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
+				minVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(stdDev >= 0.05f)
+			else if(stdDev >= 0.035f)
 			{
-				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
+				minVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}
+
+			variableRate = MinVariableRate(variableRate, minVariableRate);
 
 			if (variableRate != SPT_VARIABLE_RATE_1X1)
 			{
@@ -79,7 +89,7 @@ struct RTVariableRateCallback
 
 				if(geometryCoherence < 3.f && stdDev >= stdDevThreshold)
 				{
-					variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
+					variableRate = SPT_VARIABLE_RATE_1X1;
 				}
 			}
 		}

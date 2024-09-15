@@ -39,6 +39,12 @@ public:
 
 	Uint64 GetSize() const;
 
+	template<typename TType>
+	rhi::RHIMappedBuffer<TType> Map()
+	{
+		return rhi::RHIMappedBuffer<TType>(GetRHI());
+	}
+
 private:
 
 	lib::SharedPtr<GPUMemoryPool> m_owningMemoryPool;
