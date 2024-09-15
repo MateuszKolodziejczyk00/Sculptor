@@ -40,6 +40,7 @@ private:
 
 	lib::HashedString m_renderViewSettingsName;
 	lib::HashedString m_renderSceneSettingsName;
+	lib::HashedString m_sceneRendererStatsName;
 	lib::HashedString m_profilerPanelName;
 
 	lib::SharedPtr<rdr::TextureView> m_viewportTexture;

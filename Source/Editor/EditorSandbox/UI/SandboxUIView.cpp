@@ -8,6 +8,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "RenderView/RenderViewSettingsUIView.h"
 #include "RenderScene/RenderSceneSettingsUIView.h"
+#include "RenderScene/SceneRendererStatsUIView.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "Types/UIBackend.h"
 #include "Types/Texture.h"
@@ -28,8 +29,9 @@ SandboxUIView::SandboxUIView(const scui::ViewDefinition& definition)
 	, m_sceneViewName(CreateUniqueName("Scene"))
 	, m_sanboxUIViewName(CreateUniqueName("SandboxUI"))
 {
-	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"), m_renderer.GetRenderView()));
+	m_renderViewSettingsName = AddChild(lib::MakeShared<rsc::RenderViewSettingsUIView>(scui::ViewDefinition("Render View Settings"),    m_renderer.GetRenderView()));
 	m_renderSceneSettingsName = AddChild(lib::MakeShared<rsc::RenderSceneSettingsUIView>(scui::ViewDefinition("Render Scene Settings"), m_renderer.GetRenderScene()));
+	m_sceneRendererStatsName = AddChild(lib::MakeShared<rsc::SceneRendererStatsUIView>(scui::ViewDefinition("Scene Renderer Stats")));
 	m_profilerPanelName = AddChild(lib::MakeShared<prf::ProfilerUIView>(scui::ViewDefinition("ProfilerView")));
 }
 
@@ -44,9 +46,11 @@ void SandboxUIView::BuildDefaultLayout(ImGuiID dockspaceID)
 								  ui::DockWindow(m_sceneViewName),
 								  ui::Split(ui::ESplit::Vertical, 0.33f,
 											ui::DockWindow(m_sanboxUIViewName),
-											ui::Split(ui::ESplit::Vertical, 0.5f,
+											ui::Split(ui::ESplit::Vertical, 0.33f,
 													  ui::DockWindow(m_renderViewSettingsName),
-													  ui::DockWindow(m_renderSceneSettingsName))))));
+													  ui::Split(ui::ESplit::Vertical, 0.5f,
+																ui::DockWindow(m_renderSceneSettingsName),
+																ui::DockWindow(m_sceneRendererStatsName)))))));
 }
 
 void SandboxUIView::DrawUI()

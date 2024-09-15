@@ -10,6 +10,8 @@ function RenderScene:SetupConfiguration(configuration, platform)
     self:AddPrivateDependency("MeshOptimizer")
     
     self:AddPrivateDependency("JobSystem")
+
+	self:AddPublicDefine("SPT_ENABLE_SCENE_RENDERER_STATS=1")
 end
 
 RenderScene:SetupProject()
