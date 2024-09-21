@@ -48,7 +48,7 @@ workspace "Sculptor"
 		
 	filter {"configurations:Release"}
         symbols "Off"
-		optimize "On"
+		optimize "Full"
         
 		defines
 		{
