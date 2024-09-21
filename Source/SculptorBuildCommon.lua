@@ -207,6 +207,13 @@ function Project:BuildConfiguration(configuration, platform)
     projectToAdditionalCopyCommands[self.name][configuration] = {}
     projectToPrecompiledLibsPath[self.name][configuration] = {}
 
+
+    if configuration == EConfiguration.Debug then
+        editAndContinue "On"
+    else
+        editAndContinue "Off"
+    end
+
     -- setup function
     self:SetupConfiguration(configuration, platform)
 
