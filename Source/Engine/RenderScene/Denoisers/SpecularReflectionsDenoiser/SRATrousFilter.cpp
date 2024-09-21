@@ -17,6 +17,7 @@ BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
 	SHADER_STRUCT_FIELD(Int32,          samplesOffset)
+	SHADER_STRUCT_FIELD(Uint32,         enableDetailPreservation)
 END_SHADER_STRUCT();
 
 
@@ -50,9 +51,10 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	static const rdr::PipelineStateID pipeline = CreateSRATrousFilterPipeline();
 
 	SRATrousFilteringParams dispatchParams;
-	dispatchParams.samplesOffset = 1u << iterationIdx;
-	dispatchParams.resolution    = resolution;
-	dispatchParams.invResolution = resolution.cast<Real32>().cwiseInverse();
+	dispatchParams.samplesOffset            = 1u << iterationIdx;
+	dispatchParams.enableDetailPreservation = params.enableDetailPreservation;
+	dispatchParams.resolution               = resolution;
+	dispatchParams.invResolution            = resolution.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
 	ds->u_inputTexture                  = input;

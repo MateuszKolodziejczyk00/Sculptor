@@ -56,6 +56,8 @@ public:
 
 		rg::RGTextureViewHandle normalsTexture;
 		rg::RGTextureViewHandle historyNormalsTexture;
+
+		Bool detailPreservingSpatialFilter = false;
 	};
 
 	struct Result

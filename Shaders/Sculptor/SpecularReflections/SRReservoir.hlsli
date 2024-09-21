@@ -185,7 +185,7 @@ uint ModifyPackedReservoirM(in uint MAndProps, in uint newM)
 uint ModifyPackedSpatialResamplingRangeID(in uint MAndProps, in int delta)
 {
 	const uint prevRangeID = MAndProps >> 24u;
-	const uint newRangeID = prevRangeID > delta ? min(prevRangeID + delta, 15u) : 0u;
+	const uint newRangeID = prevRangeID > -delta ? min(prevRangeID + delta, 15u) : 0u;
 	return (MAndProps & 0x00FFFFFFu) | (newRangeID << 24u);
 }
 

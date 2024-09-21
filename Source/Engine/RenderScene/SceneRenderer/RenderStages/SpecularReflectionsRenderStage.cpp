@@ -44,6 +44,7 @@ RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iteratio
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
+RendererBoolParameter detailPreservingSpatialDenoising("Detail Preserving Spatial Denoising", { "Specular Reflections" }, false);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -461,14 +462,15 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	sr_denoiser::Denoiser::Params denoiserParams(renderView);
-	denoiserParams.currentDepthTexture       = params.depthTexture;
-	denoiserParams.historyDepthTexture       = params.depthHistoryTexture;
-	denoiserParams.linearDepthTexture        = params.linearDepthTexture;
-	denoiserParams.motionTexture             = params.motionTexture;
-	denoiserParams.normalsTexture            = params.normalsTexture;
-	denoiserParams.historyNormalsTexture     = params.historyNormalsTexture;
-	denoiserParams.roughnessTexture          = params.roughnessTexture;
-	denoiserParams.historyRoughnessTexture   = params.historyRoughnessTexture;
+	denoiserParams.currentDepthTexture           = params.depthTexture;
+	denoiserParams.historyDepthTexture           = params.depthHistoryTexture;
+	denoiserParams.linearDepthTexture            = params.linearDepthTexture;
+	denoiserParams.motionTexture                 = params.motionTexture;
+	denoiserParams.normalsTexture                = params.normalsTexture;
+	denoiserParams.historyNormalsTexture         = params.historyNormalsTexture;
+	denoiserParams.roughnessTexture              = params.roughnessTexture;
+	denoiserParams.historyRoughnessTexture       = params.historyRoughnessTexture;
+	denoiserParams.detailPreservingSpatialFilter = renderer_params::detailPreservingSpatialDenoising;
 	return denoiser.Denoise(graphBuilder, denoisedTexture, denoiserParams);
 }
 

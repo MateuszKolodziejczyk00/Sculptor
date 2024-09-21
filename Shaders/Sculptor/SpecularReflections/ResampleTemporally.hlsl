@@ -86,7 +86,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 16u;
+		const uint maxHistoryLength = 16u - min(historyReservoir.age * 3u, 14u);
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
@@ -150,18 +150,16 @@ struct SRTemporalResampler
 
 		m_validSamplesMask |= (1u << sampleIdx);
 
+		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
+
 		if(currentReservoir.Update(historyReservoir, rng.Next(), p_hatInOutputDomain))
 		{
 			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
 			m_selectedP_hat     = p_hat;
 			m_selectedSampleIdx = sampleIdx;
-
-			currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
-
-			return true;
 		}
 
-		return false;
+		return true;
 	}
 
 	SRReservoir FinishResampling(int2 pixel)
@@ -303,7 +301,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
-					const float2 sampleUV = reprojectedUV + mul(samplesRotation, g_historyOffsets[sampleIdx]) * u_resamplingConstants.pixelSize;
+					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;
 					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
 					
 					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
@@ -317,7 +315,8 @@ void ResampleTemporallyCS(CS_INPUT input)
 		SRReservoir newReservoir = resampler.FinishResampling(pixel);
 
 		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());
-		if((invalidReservoirs > 16u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !newReservoir.IsValid())
+		const bool isValidReservoir = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
+		if((invalidReservoirs > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
 		{
 			AppendAdditionalTraceCommand(pixel);
 		}

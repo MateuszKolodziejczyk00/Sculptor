@@ -226,7 +226,7 @@ void SceneView::CachePrevFrameRenderingData()
 {
 	m_prevFrameRenderingData = m_viewRenderingData;
 }
-#pragma optimize("", off)
+
 void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 {
 	const math::Vector2f prevJitter = m_prevFrameRenderingData.jitter;

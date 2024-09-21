@@ -39,7 +39,7 @@ struct RTVariableRateCallback
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 		}
 
-		if(variableRate != SPT_VARIABLE_RATE_1X1)
+		if(WaveActiveAnyTrue(variableRate != SPT_VARIABLE_RATE_1X1))
 		{
 			float brightness = Luminance(u_reflectionsTexture.Load(int3(processor.GetCoords(), 0)));
 			brightness = processor.QuadMax(brightness);
@@ -80,7 +80,7 @@ struct RTVariableRateCallback
 
 			variableRate = MinVariableRate(variableRate, minVariableRate);
 
-			if (variableRate != SPT_VARIABLE_RATE_1X1)
+			if (WaveActiveAnyTrue(variableRate != SPT_VARIABLE_RATE_1X1))
 			{
 				float geometryCoherence = u_geometryCoherenceTexture.Load(int3(processor.GetCoords(), 0));
 				geometryCoherence = processor.QuadMin(geometryCoherence);
@@ -97,6 +97,7 @@ struct RTVariableRateCallback
 		return variableRate;
 	}
 };
+
 
 [numthreads(GROUP_SIZE_X * GROUP_SIZE_Y, 1, 1)]
 void CreateVariableRateTextureCS(CS_INPUT input)

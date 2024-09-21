@@ -36,7 +36,7 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 
 		uint packedProps = u_inOutReservoirsBuffer[reservoirIdx].MAndProps;
 		packedProps = ModifyPackedReservoirM(packedProps, 0u);
-		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -3);
+		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -6);
 		u_inOutReservoirsBuffer[reservoirIdx].MAndProps = packedProps;
 	}
 }

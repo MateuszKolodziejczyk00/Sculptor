@@ -122,89 +122,86 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		selectedP_hat = p_hat;
 	}
 
-	RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
+	// Make sure that seed is same for whole warp, this will increase cache coherence
+	// Idea from: https://github.com/EmbarkStudios/kajiya/blob/main/assets/shaders/rtdgi/restir_spatial.hlsl
+	RngState rng = RngState::Create(uint2(pixel.x >> 3u, pixel.y >> 2u), u_resamplingConstants.frameIdx);
 
 	int selectedSampleIdx = -1;
 	int2 sampleCoords[SPATIAL_RESAMPLING_SAMPLES_NUM];
 	uint validSamplesMask = 0u;
 
+	float initialAngle = rng.Next() * 2 * PI;
+
 	for(uint sampleIdx = 0; sampleIdx < SPATIAL_RESAMPLING_SAMPLES_NUM; ++sampleIdx)
 	{
+		const float sampleAngle = initialAngle + sampleIdx * (2 * PI / SPATIAL_RESAMPLING_SAMPLES_NUM);
+
 		const float resamplingRange = ComputeResamplingRange(newReservoir, centerPixelSurface.roughness);
 
-		const float2 offset = -resamplingRange + 2 * resamplingRange * float2(rng.Next(), rng.Next());
+		const float cosAngle = cos(sampleAngle);
+		const float sinAngle = sin(sampleAngle);
 
-		int2 offsetInPixels = round(offset);
-		if(all(offsetInPixels <= 0))
+		const float distance = max(resamplingRange * sqrt(rng.Next()), 1.f);
+		const float2 offset = float2(cosAngle, sinAngle) * distance;
+
+		const int2 offsetInPixels = round(offset);
+
+		int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offsetInPixels);
+
+		samplePixel = clamp(samplePixel, int2(0, 0), int2(u_resamplingConstants.resolution - 1));
+
+		sampleCoords[sampleIdx] = samplePixel;
+
+		const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
+
+		if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
+			|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
 		{
-			if(abs(offsetInPixels.x) > abs(offsetInPixels.y))
-			{
-				offsetInPixels.x = SignNotZero(offset.x);
-			}
-			else
-			{
-				offsetInPixels.y = SignNotZero(offset.y);
-			}
+			newReservoir.OnSpatialResamplingFailed();
+			continue;
 		}
-		const int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offset);
 
-		sampleCoords[sampleIdx] = -1;
+		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
+		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
 
-		if(all(samplePixel >= 0) && all(samplePixel < u_resamplingConstants.resolution))
+		if(!newReservoir.CanCombine(reuseReservoir))
 		{
-			sampleCoords[sampleIdx] = samplePixel;
+			newReservoir.OnSpatialResamplingFailed();
+			continue;
+		}
 
-			const MinimalSurfaceInfo reuseSurface = GetMinimalSurfaceInfo(gBuffer, samplePixel, u_sceneView);
+		if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
+		{
+			newReservoir.OnSpatialResamplingFailed();
+			continue;
+		}
 
-			if(!SurfacesAllowResampling(centerPixelSurface, reuseSurface)
-				|| !MaterialsAllowResampling(centerPixelSurface, reuseSurface))
-			{
-				newReservoir.OnSpatialResamplingFailed();
-				continue;
-			}
+		const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
 
-			const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
-			SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+		if(jacobian < 0.f)
+		{
+			newReservoir.OnSpatialResamplingFailed();
+			continue;
+		}
 
-			if(!newReservoir.CanCombine(reuseReservoir))
-			{
-				newReservoir.OnSpatialResamplingFailed();
-				continue;
-			}
+		const float p_hat = EvaluateTargetFunction(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
+		const float p_hatInOutputDomain = p_hat * jacobian;
 
-			if(!IsReservoirValidForSurface(reuseReservoir, centerPixelSurface))
-			{
-				newReservoir.OnSpatialResamplingFailed();
-				continue;
-			}
+		if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
+		{
+			newReservoir.OnSpatialResamplingFailed();
+			continue;
+		}
 
-			const float jacobian = EvaluateJacobian(centerPixelSurface.location, reuseSurface.location, reuseReservoir);
+		newReservoir.OnSpatialResamplingSucceeded();
 
-			if(jacobian < 0.f)
-			{
-				newReservoir.OnSpatialResamplingFailed();
-				continue;
-			}
+		validSamplesMask |= 1u << sampleIdx;
 
-			const float p_hat = EvaluateTargetFunction(centerPixelSurface, reuseReservoir.hitLocation, reuseReservoir.luminance);
-			const float p_hatInOutputDomain = p_hat * jacobian;
-
-			if(isnan(p_hatInOutputDomain) || isinf(p_hatInOutputDomain) || IsNearlyZero(p_hatInOutputDomain))
-			{
-				newReservoir.OnSpatialResamplingFailed();
-				continue;
-			}
-
-			newReservoir.OnSpatialResamplingSucceeded();
-
-			validSamplesMask |= 1u << sampleIdx;
-
-			if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
-			{
-				selectedP_hat = p_hat;
-				newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
-				selectedSampleIdx = sampleIdx;
-			}
+		if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
+		{
+			selectedP_hat = p_hat;
+			newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
+			selectedSampleIdx = sampleIdx;
 		}
 	}
 

@@ -195,6 +195,7 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	aTrousParams.reprojectionConfidenceTexture = spatialParams.reprojectionConfidence;
 	aTrousParams.historyFramesNumTexture       = spatialParams.historySamplesNum;
 	aTrousParams.geometryCoherenceTexture      = spatialParams.geometryCoherence;
+	aTrousParams.enableDetailPreservation      = params.detailPreservingSpatialFilter;
 
 	Uint32 iterationIdx = 0u;
 

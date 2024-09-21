@@ -17,10 +17,17 @@ struct CS_INPUT
 
 float ComputeDetailPreservationStrength(in float historyLength, in float reprojectionConfidence)
 {
-	const float historyLengthFactor = saturate(historyLength / 10.f);
-	const float reprojectionConfidenceFactor = saturate((reprojectionConfidence - 0.8f) * 5.f);
+	if(u_params.enableDetailPreservation)
+	{
+		const float historyLengthFactor = saturate((historyLength - 14.f) / 8.f);
+		const float reprojectionConfidenceFactor = saturate((reprojectionConfidence - 0.9f) * 10.f);
 
-	return historyLengthFactor * reprojectionConfidenceFactor;
+		return historyLengthFactor * reprojectionConfidenceFactor;
+	}
+	else
+	{
+		return 0.f;
+	}
 }
 
 
@@ -70,7 +77,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		const float kernel[2] = { 3.f / 8.f, neighborWeight };
 
-		float weightSum = Pow2(kernel[0]);
+		float weightSum = kernel[0];
 
 		float3 luminanceSum = centerLuminanceHitDistance.rgb * weightSum;
 
