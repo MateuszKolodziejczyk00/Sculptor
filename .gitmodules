@@ -36,3 +36,6 @@
 [submodule "Source/ThirdParty/STB/STB"]
 	path = Source/ThirdParty/STB/STB
 	url = https://github.com/nothings/stb
+[submodule "Source/ThirdParty/GoogleTest/GoogleTest"]
+	path = Source/ThirdParty/GoogleTest/GoogleTest
+	url = https://github.com/google/googletest
