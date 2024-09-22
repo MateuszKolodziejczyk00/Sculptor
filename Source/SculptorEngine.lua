@@ -9,9 +9,11 @@ IncludeProject("SculptorLib")
 IncludeProject("Tokenizer")
 IncludeProject("Serialization")
 
-IncludeProject("JobSystem")
-
 IncludeProject("SculptorECS")
+
+SetProjectsSubgroupName("Core/JobSystem")
+IncludeProject("JobSystem")
+IncludeProject("JobSystemTests")
 
 SetProjectsSubgroupName("Engine")
 IncludeProject("EngineCore")
