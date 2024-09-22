@@ -17,6 +17,10 @@ IncludeProject("STB")
 
 IncludeProject("MeshOptimizer")
 
+SetProjectsSubgroupName("Tests")
+IncludeProject("GoogleTest")
+ResetProjectsSubgroupName()
+
 SetProjectsSubgroupName("ImGui")
 IncludeProject("ImGui")
 IncludeProjectFromDirectory("ImGui", "ImGuiGLFWBackend")
