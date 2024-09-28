@@ -200,3 +200,9 @@ float GaussianBlurWeight(int x, float sigma)
     const float sigmaSquared = Pow2(sigma);
     return exp(-0.5f * Pow2(x) / sigmaSquared) / (sqrt(2.f * PI * sigmaSquared));
 }
+
+
+bool HasAllBits(in uint value, in uint requiredBits)
+{
+	return (value & requiredBits) == requiredBits;
+}

@@ -17,66 +17,92 @@ void ReorderLocalIDForAllocating(inout uint2 localID)
 	localID = DecodeMorton2D(threadIdx);
 }
 
-/*
-	Format:
-		[x, y]
-		[z, w]
-	Where each component stores max variable rate in 2x2 block
-*/
-uint4 GetVariableRateIn4x4Block(in uint vrMask, out uint compactedMask4x4, out uint smallBlockIdx)
+
+struct CompactedMask4x4
 {
-	smallBlockIdx = WaveGetLaneIndex() / 4;
-	const uint blockOffset = smallBlockIdx * SPT_VARIABLE_RATE_BITS;
+	static CompactedMask4x4 Create(uint inMask)
+	{
+		CompactedMask4x4 instance;
+		instance.mask = inMask;
+		return instance;
+	}
+
+	uint operator[](in uint idx)
+	{
+		return (mask >> (SPT_VARIABLE_RATE_BITS * idx)) & SPT_VARIABLE_RATE_MASK;
+	}
+
+	// 4 morton ordered 2x2 tiles
+	uint mask;
+};
+
+
+CompactedMask4x4 GetVariableRateIn4x4Block(in uint vrMask, out uint tileIdxInQuad)
+{
+	tileIdxInQuad = WaveGetLaneIndex() / 4;
+	const uint blockOffset = tileIdxInQuad * SPT_VARIABLE_RATE_BITS;
 
 	const uint variableRateMaskShifted = vrMask << blockOffset;
 
-	compactedMask4x4 = WaveActiveBitOr(variableRateMaskShifted);
+	uint compactedMask = WaveActiveBitOr(variableRateMaskShifted);
 
-	if(smallBlockIdx >= 4)
+	if(tileIdxInQuad >= 4)
 	{
-		smallBlockIdx -= 4;
-		compactedMask4x4 = compactedMask4x4 >> 16;
+		// handle right 4x4 quad
+		tileIdxInQuad -= 4;
+		compactedMask = compactedMask >> (4 * SPT_VARIABLE_RATE_BITS);
 	}
 
-	compactedMask4x4 &= ((1 << (4 * SPT_VARIABLE_RATE_BITS)) - 1);
+	// mask right quad out for the left quad
+	compactedMask &= ((1u << (4 * SPT_VARIABLE_RATE_BITS)) - 1);
 
-	const uint4 vrMasks4x4 = uint4(
-		(compactedMask4x4 >> SPT_VARIABLE_RATE_BITS * 0) & SPT_VARIABLE_RATE_MASK,
-		(compactedMask4x4 >> SPT_VARIABLE_RATE_BITS * 1) & SPT_VARIABLE_RATE_MASK,
-		(compactedMask4x4 >> SPT_VARIABLE_RATE_BITS * 2) & SPT_VARIABLE_RATE_MASK,
-		(compactedMask4x4 >> SPT_VARIABLE_RATE_BITS * 3) & SPT_VARIABLE_RATE_MASK
-	);
-
-	return vrMasks4x4;
+	return CompactedMask4x4::Create(compactedMask);
 }
 
 
 uint ComputeVariableRateMask(in uint requestedVRMask)
 {
-	// Warning: this MUST be executed by all threads in the wave
-	uint compactedMask4x4 = 0;
-	uint smallBlockIdx = 0;
-	const uint4 vrMasks4x4 = GetVariableRateIn4x4Block(requestedVRMask, OUT compactedMask4x4, OUT smallBlockIdx);
+#if SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
+	if(requestedVRMask <= SPT_VARIABLE_RATE_2X2)
+#endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
+	{
+		return requestedVRMask;
+	}
+
+#if SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
+	uint tileIdxInQuad = 0;
+	const CompactedMask4x4 compactedMask4x4 = GetVariableRateIn4x4Block(requestedVRMask, OUT tileIdxInQuad);
 
 	uint finalMask = requestedVRMask;
-#if SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
 	if(requestedVRMask > SPT_VARIABLE_RATE_2X2)
 	{
-		// Check if neighboring blocks also want lower rate
-		const uint leftBlockIdx = (smallBlockIdx & ~1); // morton order
-		const uint horizontalMask = vrMasks4x4[leftBlockIdx] & vrMasks4x4[leftBlockIdx + 1];
-		const bool supports4X = (horizontalMask & SPT_VARIABLE_RATE_4X) > 0;
+		const uint rowIdx = tileIdxInQuad >> 1u;
+		const uint colIdx = tileIdxInQuad & 1u;
 
-		const uint upperBlockIdx = (smallBlockIdx & ~2); // morton order
-		const uint verticalMask = vrMasks4x4[upperBlockIdx] & vrMasks4x4[upperBlockIdx + 2];
-		const bool supports4Y = (verticalMask & SPT_VARIABLE_RATE_4Y) > 0;
+		// First row uses first 8 bits, second row uses next 8 bits
+		// First column uses bits 0-3 and 8-11, second column uses bits 4-7 and 12-15
+
+		// offset to get next pixel in column/row in 2x2 block
+		const uint bitsOffsetPerRow = SPT_VARIABLE_RATE_BITS * 2u;
+		const uint bitsOffsetPerCol = SPT_VARIABLE_RATE_BITS;
+
+		// offsets for current lane
+		const uint bitShiftForCurrentRow = rowIdx * bitsOffsetPerRow;
+		const uint bitShiftForCurrentCol = colIdx * bitsOffsetPerCol;
+
+		// masks for 1st column and 1st row (need to be shifted for current pixel if it's in different column/row)
+		const uint firstRow4XRequiredMask = SPT_VARIABLE_RATE_4X | (SPT_VARIABLE_RATE_4X << bitsOffsetPerCol);
+		const uint firstCol4YRequiredMask = SPT_VARIABLE_RATE_4Y | (SPT_VARIABLE_RATE_4Y << bitsOffsetPerRow);
+
+		const bool supports4X = HasAllBits(compactedMask4x4.mask, firstRow4XRequiredMask << bitShiftForCurrentRow);
+		const bool supports4Y = HasAllBits(compactedMask4x4.mask, firstCol4YRequiredMask << bitShiftForCurrentCol);
 
 		const uint all4x4 = SPT_VARIABLE_RATE_4X4 
 						  | (SPT_VARIABLE_RATE_4X4 << (SPT_VARIABLE_RATE_BITS))
 						  | (SPT_VARIABLE_RATE_4X4 << (SPT_VARIABLE_RATE_BITS * 2))
 						  | (SPT_VARIABLE_RATE_4X4 << (SPT_VARIABLE_RATE_BITS * 3));
 
-		const bool supports4X4 = (compactedMask4x4 == all4x4);
+		const bool supports4X4 = (compactedMask4x4.mask == all4x4);
 
 		finalMask = ClampTo2x2VariableRate(requestedVRMask);
 		if (requestedVRMask == SPT_VARIABLE_RATE_4X4 && supports4X4)
@@ -95,9 +121,7 @@ uint ComputeVariableRateMask(in uint requestedVRMask)
 			{
 				// 4X has higher priority than 4Y
 				// because of that, we need to check if 4X is supported and allow 4Y only if 4X is not supported for all rows
-				const uint upperRowMask = vrMasks4x4[0] & vrMasks4x4[1];
-				const uint lowerRowMask = vrMasks4x4[2] & vrMasks4x4[3];
-				const bool anyRowSupports4X = ((upperRowMask | lowerRowMask) & SPT_VARIABLE_RATE_4X) > 0;
+				const bool anyRowSupports4X = HasAllBits(compactedMask4x4.mask, firstRow4XRequiredMask) || HasAllBits(compactedMask4x4.mask, firstRow4XRequiredMask << bitsOffsetPerRow);
 
 				if(supports4Y && !anyRowSupports4X)
 				{
@@ -107,9 +131,9 @@ uint ComputeVariableRateMask(in uint requestedVRMask)
 			}
 		}
 	}
-#endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
 
 	return finalMask;
+#endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
 }
 
 
@@ -207,7 +231,7 @@ struct TracesAllocator
 			if(m_noise >= 0.f)
 			{
 				const uint tileArea = vrTileSize.x * vrTileSize.y;
-				const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 31)) * tileArea;
+				const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 63)) * tileArea;
 				localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
 			}
 
