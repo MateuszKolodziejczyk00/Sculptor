@@ -111,6 +111,13 @@ public:
 
 	template<typename TDSType>
 	lib::MTHandle<TDSType> CreateDescriptorSet(const rdr::RendererResourceName& name);
+
+	// Diagnostics ============================================
+
+#if RG_ENABLE_DIAGNOSTICS
+	void PushProfilerScope(lib::HashedString name);
+	void PopProfilerScope();
+#endif // RG_ENABLE_DIAGNOSTICS
 	
 	// Commands ===============================================
 
@@ -243,6 +250,10 @@ private:
 	js::Event m_onGraphExecutionFinished;
 
 	RenderGraphResourcesPool& m_resourcesPool;
+
+#if RG_ENABLE_DIAGNOSTICS
+	RGProfilerRecorder m_profilerRecorder;
+#endif // RG_ENABLE_DIAGNOSTICS
 
 	lib::SharedPtr<rdr::DescriptorSetStackAllocator> m_dsAllocator;
 

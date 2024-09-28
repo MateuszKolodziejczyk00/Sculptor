@@ -8,6 +8,7 @@
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "RenderGraphTypes.h"
 #include "Pipelines/PipelineState.h"
+#include "RGDiagnostics.h"
 
 
 namespace spt::rhi
@@ -62,6 +63,11 @@ public:
 	void                       SetDebugMetaData(RGNodeDebugMetaData metaData);
 	const RGNodeDebugMetaData& GetDebugMetaData() const;
 #endif // DEBUG_RENDER_GRAPH
+
+#if RG_ENABLE_DIAGNOSTICS
+	void SetDiagnosticsRecord(RGDiagnosticsRecord record);
+	const RGDiagnosticsRecord& GetDiagnosticsRecord() const;
+#endif // RG_ENABLE_DIAGNOSTICS
 
 	void AddTextureToAcquire(RGTextureHandle texture);
 	void AddTextureToRelease(RGTextureHandle texture);
@@ -171,6 +177,10 @@ private:
 #if DEBUG_RENDER_GRAPH
 	RGNodeDebugMetaData m_debugMetaData;
 #endif // DEBUG_RENDER_GRAPH
+
+#if RG_ENABLE_DIAGNOSTICS
+	RGDiagnosticsRecord m_diagnosticsRecord;
+#endif // RG_ENABLE_DIAGNOSTICS
 
 	Bool m_executed;
 };

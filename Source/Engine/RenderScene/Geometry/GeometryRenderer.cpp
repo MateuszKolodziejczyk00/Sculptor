@@ -361,6 +361,8 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Geometry Culling");
+
 	static_assert(passIdx == EGeometryVisPass::VisibleGeometryPass || passIdx == EGeometryVisPass::DisoccludedGeometryPass);
 
 	using CullSubmeshesDS = std::conditional_t<passIdx == EGeometryVisPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassDS, GeometryCullSubmeshes_DisoccludedGeometryPassDS>;
@@ -628,6 +630,8 @@ GeometryRenderer::GeometryRenderer()
 GeometryPassResult GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Visibliity Buffer");
 
 	SPT_CHECK(visPassParams.depth.IsValid());
 	SPT_CHECK(visPassParams.hiZ.IsValid());

@@ -380,6 +380,8 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Bloom");
+
 	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
 
@@ -561,6 +563,8 @@ void HDRResolveRenderStage::Deinitialize(RenderView& renderView)
 void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "HDR Resolve");
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 

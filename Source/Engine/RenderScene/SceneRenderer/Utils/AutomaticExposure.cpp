@@ -172,6 +172,8 @@ static bilateral_grid::BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuil
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Bilateral Grid");
+
 	bilateral_grid::builder::BilateralGridParams bilateralGridParams(viewSpec, inputs.linearColor);
 	bilateralGridParams.minLogLuminance   = inputs.minLogLuminance;
 	bilateralGridParams.logLuminanceRange = inputs.maxLogLuminance - inputs.minLogLuminance;
@@ -194,6 +196,8 @@ static bilateral_grid::BilateralGridInfo RenderBilateralGrid(rg::RenderGraphBuil
 Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const Inputs& inputs)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Auto Exposure");
 
 	const bilateral_grid::BilateralGridInfo bilateralGrid = bilateral_grid_internal::RenderBilateralGrid(graphBuilder, viewSpec, inputs);
 

@@ -263,6 +263,8 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Shadow Mask");
+
 	SPT_CHECK(m_lightEntity != nullRenderSceneEntity);
 
 	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();

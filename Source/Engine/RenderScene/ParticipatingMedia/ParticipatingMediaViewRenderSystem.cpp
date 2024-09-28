@@ -387,6 +387,8 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Participating Media");
+
 	const rsc::RenderView& renderView = viewSpec.GetRenderView();
 	const math::Vector2u renderingRes = renderView.GetRenderingRes();
 

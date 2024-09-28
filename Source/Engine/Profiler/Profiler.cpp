@@ -26,7 +26,7 @@ static std::ofstream	g_currentCaptureStream;
 namespace utils
 {
 
-#if ENABLE_PROFILER
+#if ENABLE_PROFILER && WITH_OPTICK
 
 static lib::String GetCaptureFilePathWithoutExtension()
 {
@@ -42,7 +42,7 @@ static lib::String GetCaptureFilePathWithoutExtension()
 	return engn::Paths::Combine(engn::Paths::GetTracesPath(), timeString);
 }
 
-#endif // ENABLE_PROFILER
+#endif // ENABLE_PROFILER && WITH_OPTICK
 
 } // utils
 
@@ -166,6 +166,21 @@ Bool Profiler::StartedCapture() const
 	return m_startedCapture;
 }
 
+ScopeMetrics Profiler::GetScopeMetrics(const lib::HashedString& scopeName) const
+{
+	const lib::LockGuard lockGuard(m_scopeMetricsLock);
+
+	const auto it = m_scopeMetrics.find(scopeName);
+	return it != m_scopeMetrics.cend() ? it->second : ScopeMetrics{};
+}
+
+void Profiler::ResetScopeMetrics()
+{
+	const lib::LockGuard lockGuard(m_scopeMetricsLock);
+
+	m_scopeMetrics.clear();
+}
+
 Real32 Profiler::GetFrameTime(SizeType idx) const
 {
 	SPT_CHECK(idx < GetCollectedFrameTimesNum());
@@ -197,6 +212,11 @@ void Profiler::FlushNewGPUFrameStatistics()
 	{
 		m_gpuFrameStatistics = std::move(*m_newFrameStatistics);
 		m_newFrameStatistics = std::nullopt;
+	}
+
+	{
+		const lib::LockGuard lockGuard(m_scopeMetricsLock);
+		FlushScopeMetrics(m_gpuFrameStatistics.frameStatistics);
 	}
 }
 
@@ -233,6 +253,19 @@ void Profiler::OnBeginNewFrame()
 	
 	m_recentFrameTimes[newFrameTimeIdx] = deltaTime;
 	m_recentFrameTimesSum += deltaTime;
+}
+
+void Profiler::FlushScopeMetrics(const rdr::GPUStatisticsScopeData& scope)
+{
+	ScopeMetrics& metrics = m_scopeMetrics[scope.name];
+
+	metrics.invocationsNum += 1u;
+	metrics.durationSum += scope.GetDuration();
+
+	for (const rdr::GPUStatisticsScopeData& childScope : scope.children)
+	{
+		FlushScopeMetrics(childScope);
+	}
 }
 
 } // spt::prf

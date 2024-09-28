@@ -103,6 +103,8 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Geometry Rendering");
+
 	const math::Vector2u resolution = viewSpec.GetRenderingRes();
 	
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();

@@ -58,6 +58,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "SceneRenderer");
+
 	scene.Update();
 	
 	const rg::BindDescriptorSetsScope rendererDSScope(graphBuilder, rg::BindDescriptorSets(scene.GetRenderSceneDS()));

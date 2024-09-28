@@ -30,6 +30,11 @@ void ProfilerUIView::DrawUI()
 
 	ImGui::Text("Profiler");
 
+	if(ImGui::Button("Reset Scope Metrics"))
+	{
+		Profiler::Get().ResetScopeMetrics();
+	}
+
 	ImGui::PlotLines("Frame Time",
 					 [](void* data, int idx)
 					 {
@@ -97,8 +102,10 @@ void ProfilerUIView::DrawGPUScopeStatistics(const GPUProfilerStatistics& profile
 	DrawGPUScopeStatistics(profilerStats.frameStatistics, profilerStats.GetGPUFrameDuration());
 }
 
-void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration)
+void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeData& scopeStats, rdr::GPUDurationMs frameDuration)
 {
+	ImGui::PushID(static_cast<int>(scopeStats.name.GetKey()));
+
 	const Real32 scopeIndentVal = 16.f;
 
 	const Real32 width = ImGui::GetColumnWidth();
@@ -107,7 +114,7 @@ void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult&
 	{
 		ImGui::Text(scopeStats.name.GetData());
 		ImGui::NextColumn();
-		ImGui::Text("%fms", scopeStats.durationInMs);
+		ImGui::Text("%fms", scopeStats.GetDurationInMs());
 		ImGui::NextColumn();
 
 		if (scopeStats.inputAsseblyVertices.has_value())
@@ -152,26 +159,44 @@ void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult&
 	}
 	ImGui::EndColumns();
 
-	const Real32 framePercent = frameDuration > 0.f ? scopeStats.durationInMs / frameDuration : 0.f;
-	ImGui::ProgressBar(framePercent);
+	const rdr::GPUDurationMs framePercent = frameDuration > 0.0 ? scopeStats.GetDurationInMs() / frameDuration : 0.0;
+	ImGui::ProgressBar(static_cast<Real32>(framePercent));
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
 		ImGui::Text(scopeStats.name.GetData());
-		ImGui::Text("%fms", scopeStats.durationInMs);
+		ImGui::Text("%fms", scopeStats.GetDurationInMs());
 		ImGui::EndTooltip();
 	}
 
 	{
-		ImGui::Indent(scopeIndentVal);
-		for (const rdr::GPUStatisticsScopeResult& scope : scopeStats.children)
+		if (ImGui::CollapsingHeader("Stats"))
 		{
-			DrawGPUScopeStatistics(scope, frameDuration);
+			const ScopeMetrics metrics = Profiler::Get().GetScopeMetrics(scopeStats.name);
+			ImGui::Text("Invocations Num: %d", metrics.invocationsNum);
+
+			const rdr::GPUDurationNs totalDurationNs   = metrics.durationSum;
+			const rdr::GPUDurationMs totalDurationMs   = totalDurationNs / 1000000.0;
+			const rdr::GPUDurationMs averageDurationMs = totalDurationMs / metrics.invocationsNum;
+
+			ImGui::Text("Total Time: %f ms",   totalDurationMs);
+			ImGui::Text("Average Time: %f ms", averageDurationMs);
 		}
-		ImGui::Unindent(scopeIndentVal);
+
+		if (!scopeStats.children.empty() && ImGui::CollapsingHeader("Children"))
+		{
+			ImGui::Indent(scopeIndentVal);
+			for (const rdr::GPUStatisticsScopeData& scope : scopeStats.children)
+			{
+				DrawGPUScopeStatistics(scope, frameDuration);
+			}
+			ImGui::Unindent(scopeIndentVal);
+		}
 	}
 
 	ImGui::Separator();
+
+	ImGui::PopID();
 }
 
 } // spt::prf

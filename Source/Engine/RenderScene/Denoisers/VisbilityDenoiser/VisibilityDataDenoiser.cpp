@@ -68,6 +68,8 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Visibility Denoiser");
+
 	const math::Vector2u resolution = denoisedTexture->GetResolution2D();
 
 	const rg::RGTextureViewHandle historyTexture               = graphBuilder.AcquireExternalTextureView(m_historyTexture);

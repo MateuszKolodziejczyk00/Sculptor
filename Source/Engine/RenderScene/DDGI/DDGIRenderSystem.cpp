@@ -360,6 +360,8 @@ void DDGIRenderSystem::RelitZone(rg::RenderGraphBuilder& graphBuilder, const Ren
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Relit Zone");
+
 	const DDGIVolumeRelitParameters relitParams(graphBuilder, CreateRelitParams(zone, ddgiSubsystem.GetConfig()), ddgiSubsystem, zone.GetVolume());
 
 	UpdateProbes(graphBuilder, renderScene, viewSpec, relitParams);
@@ -531,6 +533,8 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData) const
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "GI Update");
 
 	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 

@@ -70,6 +70,18 @@ const RGNodeDebugMetaData& RGNode::GetDebugMetaData() const
 	return m_debugMetaData;
 }
 
+#if RG_ENABLE_DIAGNOSTICS
+void RGNode::SetDiagnosticsRecord(RGDiagnosticsRecord record)
+{
+	m_diagnosticsRecord = std::move(record);
+}
+
+const RGDiagnosticsRecord& RGNode::GetDiagnosticsRecord() const
+{
+	return m_diagnosticsRecord;
+}
+#endif // RG_ENABLE_DIAGNOSTICS
+
 void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 {
 	SPT_PROFILER_FUNCTION();

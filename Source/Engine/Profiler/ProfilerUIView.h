@@ -2,11 +2,12 @@
 
 #include "ProfilerMacros.h"
 #include "UILayers/UIView.h"
+#include "GPUDiagnose/Profiler/GPUStatisticsTypes.h"
 
 
 namespace spt::rdr
 {
-struct GPUStatisticsScopeResult;
+struct GPUStatisticsScopeData;
 } // spt::rdr
 
 
@@ -38,7 +39,7 @@ private:
 	void DrawGPUProfilerUI();
 
 	void DrawGPUScopeStatistics(const GPUProfilerStatistics& profilerStats);
-	void DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeResult& scopeStats, Real32 frameDuration);
+	void DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeData& scopeStats, rdr::GPUDurationMs frameDuration);
 
 	lib::StaticArray<float, 64>	m_lastFrameTimes;
 	SizeType					m_oldestFrameTimeIdx;

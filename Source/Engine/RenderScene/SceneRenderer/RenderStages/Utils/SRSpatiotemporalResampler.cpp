@@ -459,6 +459,8 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RESTIR: Initial Resampling");
+
 	InitialResamplingResult result;
 
 	const math::Vector2u resolution = params.GetResolution();
@@ -493,6 +495,8 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RESTIR: Final Resampling");
 
 	const math::Vector2u resolution = params.GetResolution();
 

@@ -250,6 +250,18 @@ RenderGraphResourcesPool& RenderGraphBuilder::GetResourcesPool() const
 	return m_resourcesPool;
 }
 
+#if RG_ENABLE_DIAGNOSTICS
+void RenderGraphBuilder::PushProfilerScope(lib::HashedString name)
+{
+	m_profilerRecorder.BeginScope(name);
+}
+
+void RenderGraphBuilder::PopProfilerScope()
+{
+	m_profilerRecorder.PopScope();
+}
+#endif // RG_ENABLE_DIAGNOSTICS
+
 void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
 {
 	SPT_PROFILER_FUNCTION();
@@ -520,6 +532,10 @@ void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContai
 void RenderGraphBuilder::PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies)
 {
 	SPT_PROFILER_FUNCTION();
+
+#if RG_ENABLE_DIAGNOSTICS
+	node.SetDiagnosticsRecord(m_profilerRecorder.GetRecord());
+#endif // RG_ENABLE_DIAGNOSTICS
 
 	if (node.GetType() == ERenderGraphNodeType::RenderPass)
 	{
@@ -822,10 +838,23 @@ void RenderGraphBuilder::ExecuteGraph()
 																										renderContext,
 																										cmdBufferDef);
 
+#if RG_ENABLE_DIAGNOSTICS
+	RGDiagnosticsPlayback diagnosticsPlayback;
+#endif // RG_ENABLE_DIAGNOSTICS
+
 	for (const RGNodeHandle node : m_nodes)
 	{
+#if RG_ENABLE_DIAGNOSTICS
+		diagnosticsPlayback.Playback(*commandRecorder, m_statisticsCollector, node->GetDiagnosticsRecord());
+#endif // RG_ENABLE_DIAGNOSTICS
+
 		node->Execute(renderContext, *commandRecorder, graphExecutionContext);
 	}
+
+#if RG_ENABLE_DIAGNOSTICS
+	diagnosticsPlayback.PopRemainingScopes(*commandRecorder, m_statisticsCollector);
+#endif // RG_ENABLE_DIAGNOSTICS
+
 	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();
 
 	workload->BindEvent(m_onGraphExecutionFinished);

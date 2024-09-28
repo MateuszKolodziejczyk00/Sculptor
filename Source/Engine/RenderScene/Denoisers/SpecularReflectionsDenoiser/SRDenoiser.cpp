@@ -71,6 +71,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Denoiser");
+
 	const math::Vector2u resolution = denoisedTexture->GetResolution2D();
 
 	const rg::RGTextureViewHandle historyTexture                      = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyTexture));
@@ -184,6 +186,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Denoiser: Spatial Filters");
 
 	SRATrousFilterParams aTrousParams(params.renderView);
 	aTrousParams.name                          = m_debugName;

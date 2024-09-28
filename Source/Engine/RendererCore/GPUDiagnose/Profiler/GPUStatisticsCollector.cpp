@@ -75,13 +75,13 @@ void GPUStatisticsCollector::EndScope(CommandRecorder& recoder)
 	m_scopesInProgressStack.pop_back();
 }
 
-GPUStatisticsScopeResult GPUStatisticsCollector::CollectStatistics()
+GPUStatisticsScopeData GPUStatisticsCollector::CollectStatistics()
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(m_scopesInProgressStack.empty());
 
-	GPUStatisticsScopeResult result;
+	GPUStatisticsScopeData result;
 
 	StatisticsContext context;
 	context.timestamps			= m_timestampsQueryPool->GetRHI().GetResults(m_timestampsQueryPoolIndex);
@@ -98,13 +98,18 @@ GPUStatisticsScopeResult GPUStatisticsCollector::CollectStatistics()
 					   });
 
 		result.name = "GPU Frame";
-		
-		result.durationInMs = std::accumulate(std::cbegin(result.children), std::cend(result.children),
-											  0.f,
-											  [](Real32 currentTime, const GPUStatisticsScopeResult& scopeResult)
-											  {
-												  return currentTime + scopeResult.durationInMs;
-											  });
+
+		result.beginTimestamp = std::min_element(std::cbegin(result.children), std::cend(result.children),
+												 [](const GPUStatisticsScopeData& lhs, const GPUStatisticsScopeData& rhs)
+												 {
+													 return lhs.beginTimestamp < rhs.beginTimestamp;
+												 })->beginTimestamp;
+
+		result.endTimestamp = std::max_element(std::cbegin(result.children), std::cend(result.children),
+											   [](const GPUStatisticsScopeData& lhs, const GPUStatisticsScopeData& rhs)
+											   {
+												   return lhs.endTimestamp < rhs.endTimestamp;
+											   })->endTimestamp;
 	}
 
 	return result;

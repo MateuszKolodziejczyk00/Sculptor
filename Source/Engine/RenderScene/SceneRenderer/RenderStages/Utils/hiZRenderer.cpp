@@ -51,6 +51,8 @@ void CreateHierarchicalZ(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureView
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Hi-Z");
+
 	const math::Vector2u hiZRes = hiZ->GetResolution2D();
 	const Uint32 mipLevels      = hiZ->GetTextureDefinition().mipLevels;
 

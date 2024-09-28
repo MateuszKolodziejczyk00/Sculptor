@@ -3,6 +3,7 @@
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHIQueryTypes.h"
+#include "GPUStatisticsTypes.h"
 
 
 namespace spt::rdr
@@ -10,7 +11,6 @@ namespace spt::rdr
 
 class QueryPool;
 class CommandRecorder;
-
 
 enum class EQueryFlags
 {
@@ -25,15 +25,14 @@ enum class EQueryFlags
 
 struct StatisticsContext
 {
-	lib::DynamicArray<Uint64> timestamps;
-	lib::DynamicArray<Uint64> pipelineStatistics;
+	lib::DynamicArray<GPUTimestampNs> timestamps;
+	lib::DynamicArray<GPUTimestampNs> pipelineStatistics;
 };
 
 
-struct GPUStatisticsScopeResult
+struct GPUStatisticsScopeData
 {
-	GPUStatisticsScopeResult()
-		: durationInMs(0.0f)
+	GPUStatisticsScopeData()
 	{ }
 
 	Bool IsValid() const
@@ -41,8 +40,20 @@ struct GPUStatisticsScopeResult
 		return name.IsValid();
 	}
 
+	GPUDurationNs GetDuration() const
+	{
+		return endTimestamp - beginTimestamp;
+	}
+
+	GPUDurationMs GetDurationInMs() const
+	{
+		return GetDuration() / 1000000.0;
+	}
+
 	lib::HashedString name;
-	Real32 durationInMs;
+
+	GPUTimestampNs beginTimestamp = 0u;
+	GPUTimestampNs endTimestamp   = 0u;
 
 	std::optional<Uint32> inputAsseblyVertices;
 	std::optional<Uint32> inputAsseblyPrimitives;
@@ -51,7 +62,7 @@ struct GPUStatisticsScopeResult
 	std::optional<Uint32> fragmentShaderInvocations;
 	std::optional<Uint32> computeShaderInvocations;
 
-	lib::DynamicArray<GPUStatisticsScopeResult> children;
+	lib::DynamicArray<GPUStatisticsScopeData> children;
 };
 
 
@@ -63,9 +74,9 @@ struct GPUStatisticsScopeDefinition
 		, endTimestampIndex(idxNone<Uint32>)
 	{ }
 
-	GPUStatisticsScopeResult EmitScopeResult(const StatisticsContext& context) const
+	GPUStatisticsScopeData EmitScopeResult(const StatisticsContext& context) const
 	{
-		GPUStatisticsScopeResult result;
+		GPUStatisticsScopeData result;
 
 		FillScopeResultData(context, INOUT result);
 
@@ -98,14 +109,17 @@ struct GPUStatisticsScopeDefinition
 
 private:
 
-	void FillScopeResultData(const StatisticsContext& context, INOUT GPUStatisticsScopeResult& result) const
+	void FillScopeResultData(const StatisticsContext& context, INOUT GPUStatisticsScopeData& result) const
 	{
 		result.name = name;
 
-		const Uint64 beginTimestamp = context.timestamps[beginTimestampIndex];
-		const Uint64 endTimestamp = context.timestamps[endTimestampIndex];
+		const GPUTimestampNs beginTimestamp = context.timestamps[beginTimestampIndex];
+		const GPUTimestampNs endTimestamp   = context.timestamps[endTimestampIndex];
 
-		result.durationInMs = static_cast<Real32>(endTimestamp - beginTimestamp) / 1000000.0f;
+		SPT_CHECK(beginTimestamp <= endTimestamp);
+
+		result.beginTimestamp = beginTimestamp;
+		result.endTimestamp   = endTimestamp;
 
 		if (inputAsseblyVerticesIdx.has_value())
 		{
@@ -140,7 +154,7 @@ public:
 	void BeginScope(CommandRecorder& recoder, const lib::HashedString& scopeName, EQueryFlags queryFlags);
 	void EndScope(CommandRecorder& recoder);
 
-	GPUStatisticsScopeResult CollectStatistics();
+	GPUStatisticsScopeData CollectStatistics();
 
 private:
 

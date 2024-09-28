@@ -122,6 +122,8 @@ static rg::RGTextureViewHandle RenderAO(rg::RenderGraphBuilder& graphBuilder, co
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RTAO");
+
 	const RenderView& renderView = context.renderView;
 	const math::Vector2u aoRenderingResolution = context.depthTextureHalfRes->GetResolution2D();
 

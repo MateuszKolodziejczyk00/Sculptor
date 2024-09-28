@@ -24,14 +24,21 @@ struct GPUProfilerStatistics
 		return resolution != math::Vector2u::Zero() && frameStatistics.IsValid();
 	}
 
-	Real32 GetGPUFrameDuration() const
+	rdr::GPUDurationMs GetGPUFrameDuration() const
 	{
-		return frameStatistics.durationInMs;
+		return frameStatistics.GetDurationInMs();
 	}
 
 	math::Vector2u resolution = math::Vector2u::Zero();
 
-	rdr::GPUStatisticsScopeResult frameStatistics;
+	rdr::GPUStatisticsScopeData frameStatistics;
+};
+
+
+struct ScopeMetrics
+{
+	Uint64             invocationsNum = 0u;
+	rdr::GPUDurationNs durationSum    = 0u;
 };
 
 
@@ -49,6 +56,11 @@ public:
 	void StopAndSaveCapture();
 
 	Bool StartedCapture() const;
+
+	// Metrics ====================================================
+
+	ScopeMetrics GetScopeMetrics(const lib::HashedString& scopeName) const;
+	void ResetScopeMetrics();
 
 	// Frame Time =================================================
 
@@ -70,6 +82,8 @@ private:
 
 	void OnBeginNewFrame();
 
+	void FlushScopeMetrics(const rdr::GPUStatisticsScopeData& scope);
+
 	Bool m_startedCapture;
 
 	lib::StaticArray<Real32, 100> m_recentFrameTimes;
@@ -83,6 +97,10 @@ private:
 
 	std::optional<GPUProfilerStatistics> m_newFrameStatistics;
 	mutable lib::Lock                    m_newFrameStatisticsLock;
+
+
+	lib::HashMap<lib::HashedString, ScopeMetrics> m_scopeMetrics;
+	mutable lib::Lock                             m_scopeMetricsLock;
 };
 
 } // spt::prf

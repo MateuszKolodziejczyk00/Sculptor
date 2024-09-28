@@ -389,6 +389,8 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Rende
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Generate Reservoirs");
+
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	// Phase (1) Generate Ray Directions
@@ -588,6 +590,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
+		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Reflections");
+
 		const RenderView& renderView = viewSpec.GetRenderView();
 
 		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
