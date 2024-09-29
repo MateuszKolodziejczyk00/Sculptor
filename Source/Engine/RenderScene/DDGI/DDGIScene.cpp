@@ -114,8 +114,6 @@ void DDGIScene::Update(const SceneView& mainView)
 
 void DDGIScene::CollectZonesToRelit(DDGIZonesCollector& zonesCollector) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	for (DDGIVolume* volume : GetVolumes())
 	{
 		volume->CollectZonesToRelit(zonesCollector);

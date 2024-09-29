@@ -29,15 +29,11 @@ RHIRenderContext& RHIRenderContext::operator=(RHIRenderContext&& rhs) = default;
 
 void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_id = priv::GenerateID();
 }
 
 void RHIRenderContext::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_id = idxNone<rhi::ContextID>;
 
 	if (m_commandPoolsLibrary)
@@ -70,8 +66,6 @@ const lib::HashedString& RHIRenderContext::GetName() const
 
 VkCommandBuffer RHIRenderContext::AcquireCommandBuffer(const rhi::CommandBufferDefinition& cmdBufferDef)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (!m_commandPoolsLibrary)
 	{
 		m_commandPoolsLibrary = VulkanRHI::GetCommandPoolsManager().AcquireCommandPoolsLibrary();

@@ -20,8 +20,6 @@ PipelinePendingState::~PipelinePendingState() = default;
 
 void PipelinePendingState::BindGraphicsPipeline(const lib::SharedRef<GraphicsPipeline>& pipeline)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (m_boundGfxPipeline == pipeline.ToSharedPtr())
 	{
 		return;
@@ -47,8 +45,6 @@ const lib::SharedPtr<GraphicsPipeline>& PipelinePendingState::GetBoundGraphicsPi
 
 void PipelinePendingState::FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!m_boundGfxPipeline);
 
 	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
@@ -61,8 +57,6 @@ void PipelinePendingState::FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer
 
 void PipelinePendingState::BindComputePipeline(const lib::SharedRef<ComputePipeline>& pipeline)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (m_boundComputePipeline == pipeline.ToSharedPtr())
 	{
 		return;
@@ -88,8 +82,6 @@ const lib::SharedPtr<ComputePipeline>& PipelinePendingState::GetBoundComputePipe
 
 void PipelinePendingState::FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!m_boundComputePipeline);
 
 	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
@@ -102,8 +94,6 @@ void PipelinePendingState::FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer&
 
 void PipelinePendingState::BindRayTracingPipeline(const lib::SharedRef<RayTracingPipeline>& pipeline)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (m_boundRayTracingPipeline == pipeline.ToSharedPtr())
 	{
 		return;
@@ -129,8 +119,6 @@ const lib::SharedPtr<rdr::RayTracingPipeline>& PipelinePendingState::GetBoundRay
 
 void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!m_boundRayTracingPipeline);
 
 	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
@@ -143,8 +131,6 @@ void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuff
 
 void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_boundDescriptorSetStates.emplace_back(BoundDescriptorSetState{ state->GetTypeID(), state->Flush(), DynamicOffsetsArray(state->GetDynamicOffsets()) });
 
 	TryMarkAsDirty(state);
@@ -152,8 +138,6 @@ void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<Descriptor
 
 void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto foundDescriptor = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
 											  [statePtr = state](const BoundDescriptorSetState& boundState)
 											  {
@@ -168,8 +152,6 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<Descript
 
 void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state)
 {
-	SPT_PROFILER_FUNCTION();
-
 	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
 	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
 	TryMarkAsDirtyImpl(state, m_boundRayTracingPipeline, m_dirtyRayTracingDescriptorSets);
@@ -177,8 +159,6 @@ void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState
 
 void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (pipeline)
 	{
 		const Uint32 boundIdx = pipeline->GetMetaData().FindDescriptorSetOfType(state->GetTypeID());
@@ -211,8 +191,6 @@ void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::Share
 
 PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 
 	DSBindCommands descriptorSetsToBind;
@@ -248,8 +226,6 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 
 const PipelinePendingState::BoundDescriptorSetState* PipelinePendingState::GetBoundDescriptorSetState(DSStateTypeID dsTypeID) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto foundState = std::find_if(std::cbegin(m_boundDescriptorSetStates), std::cend(m_boundDescriptorSetStates),
 										 [dsTypeID](const BoundDescriptorSetState& state)
 										 {

@@ -84,8 +84,6 @@ const RGDiagnosticsRecord& RGNode::GetDiagnosticsRecord() const
 
 void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(texture.IsValid());
 	SPT_CHECK(!texture->GetAcquireNode().IsValid());
 
@@ -95,8 +93,6 @@ void RGNode::AddTextureToAcquire(RGTextureHandle texture)
 
 void RGNode::AddTextureToRelease(RGTextureHandle texture)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(texture.IsValid());
 	SPT_CHECK(!texture->GetReleaseNode().IsValid());
 
@@ -106,8 +102,6 @@ void RGNode::AddTextureToRelease(RGTextureHandle texture)
 
 void RGNode::AddTextureViewToAcquire(RGTextureViewHandle textureView)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(textureView.IsValid());
 	SPT_CHECK(!textureView->GetAcquireNode().IsValid());
 
@@ -117,8 +111,6 @@ void RGNode::AddTextureViewToAcquire(RGTextureViewHandle textureView)
 
 void RGNode::AddBufferToAcquire(RGBufferHandle buffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(!buffer->GetAcquireNode().IsValid());
 
@@ -128,8 +120,6 @@ void RGNode::AddBufferToAcquire(RGBufferHandle buffer)
 
 void RGNode::AddBufferToRelease(RGBufferHandle buffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(!buffer->GetReleaseNode().IsValid());
 
@@ -139,15 +129,11 @@ void RGNode::AddBufferToRelease(RGBufferHandle buffer)
 
 void RGNode::AddTextureTransition(RGTextureHandle texture, const rhi::TextureSubresourceRange& textureSubresourceRange, const rhi::BarrierTextureTransitionDefinition& transitionSource, const rhi::BarrierTextureTransitionDefinition& transitionTarget)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_preExecuteTextureTransitions.emplace_back(TextureTransitionDef(texture, textureSubresourceRange, &transitionSource, &transitionTarget));
 }
 
 void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage sourceStage, rhi::EAccessType sourceAccess, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(buffer->GetLastAccessNode() != this);
 
 	m_preExecuteBufferTransitions.emplace_back(BufferTransitionDef(buffer, offset, size, sourceStage, sourceAccess, destStage, destAccess));
@@ -155,8 +141,6 @@ void RGNode::AddBufferSynchronization(RGBufferHandle buffer, Uint64 offset, Uint
 
 void RGNode::TryAppendBufferSynchronizationDest(RGBufferHandle buffer, Uint64 offset, Uint64 size, rhi::EPipelineStage destStage, rhi::EAccessType destAccess)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto foundBufferTranstion = std::find_if(std::begin(m_preExecuteBufferTransitions), std::end(m_preExecuteBufferTransitions),
 												   [=](const BufferTransitionDef& bufferTransition)
 												   {
@@ -181,7 +165,6 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color(static_cast<Uint32>(GetName().Get().GetKey())));
 	SPT_GPU_STATISTICS_SCOPE_FLAGS(recorder, context.statisticsCollector, GetName().Get().GetData(), helpers::GetQueryFlags(GetType()));
 
@@ -206,8 +189,6 @@ void RGNode::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext, rd
 
 void RGNode::AcquireResources()
 {
-	SPT_PROFILER_FUNCTION();
-	
 	AcquireTextures();
 	AcquireTextureViews();
 	AcquireBuffers();
@@ -215,8 +196,6 @@ void RGNode::AcquireResources()
 
 void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 {
-	SPT_PROFILER_FUNCTION();
-
 	rhi::RHIDependency barrierDependency;
 
 	for (const TextureTransitionDef& textureTransition : m_preExecuteTextureTransitions)
@@ -240,23 +219,17 @@ void RGNode::PreExecuteBarrier(rdr::CommandRecorder& recorder)
 
 void RGNode::ReleaseResources()
 {
-	SPT_PROFILER_FUNCTION();
-
 	ReleaseTextures();
 	ReleaseBuffers();
 }
 
 void RGNode::BindDescriptorSetStates(rdr::CommandRecorder& recorder)
 {
-	SPT_PROFILER_FUNCTION();
-
 	recorder.BindDescriptorSetStates(m_dsStates);
 }
 
 void RGNode::UnbindDescriptorSetStates(rdr::CommandRecorder& recorder)
 {
-	SPT_PROFILER_FUNCTION();
-
 	recorder.UnbindDescriptorSetStates(m_dsStates);
 }
 
@@ -331,7 +304,6 @@ void RGSubpass::Execute(const lib::SharedRef<rdr::RenderContext>& renderContext,
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_GPU_PROFILER_EVENT(GetName().Get().GetData());
 	SPT_GPU_DEBUG_REGION(recorder, GetName().Get().GetData(), lib::Color::Blue);
 	SPT_GPU_STATISTICS_SCOPE(recorder, context.statisticsCollector, GetName().Get().GetData());
 

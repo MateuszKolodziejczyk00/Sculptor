@@ -35,8 +35,6 @@ public:
 	template<typename TType, typename... TArgs>
 	TType* AllocateUntracked(TArgs&&... args)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		constexpr SizeType size			= sizeof(TType);
 		constexpr SizeType alignment	= alignof(TType);
 

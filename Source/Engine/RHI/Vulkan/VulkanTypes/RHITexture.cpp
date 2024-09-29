@@ -334,8 +334,6 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
 
 void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!IsValid());
 
 	const math::Vector3u resolution = definition.resolution.AsVector();
@@ -371,8 +369,6 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 
 void RHITexture::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!IsValid());
 	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle), "Placed allocations must be released manually before releasing resource!");
 
@@ -522,8 +518,6 @@ void RHITexture::PostImageInitialized()
 
 void RHITexture::PreImageReleased()
 {
-	SPT_PROFILER_FUNCTION();
-
 	// In case of images not owned by rhi, it's user responsibility to unregister image
 	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
 	{
@@ -533,8 +527,6 @@ void RHITexture::PreImageReleased()
 
 Bool RHITexture::BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(!HasBoundMemory());
 
@@ -581,8 +573,6 @@ rhi::RHIResourceAllocationHandle RHITexture::ReleasePlacedAllocation()
 
 rhi::RHIResourceAllocationHandle RHITexture::DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	SPT_CHECK(!!placedAllocationDef.pool);
 	SPT_CHECK(placedAllocationDef.pool->IsValid());
 
@@ -609,8 +599,6 @@ rhi::RHIResourceAllocationHandle RHITexture::DoPlacedAllocation(const rhi::RHIPl
 
 rhi::RHIResourceAllocationHandle RHITexture::DoCommittedAllocation(const rhi::RHICommittedAllocationDefinition& committedAllocation)
 {
-	SPT_PROFILER_FUNCTION();
-
 	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	VmaAllocationCreateInfo allocationInfo{};
@@ -655,8 +643,6 @@ RHITextureView::RHITextureView()
 
 void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!IsValid());
 	SPT_CHECK(texture.IsValid());
 	SPT_CHECK_MSG(!lib::HasAnyFlag(viewDefinition.subresourceRange.aspect, rhi::ETextureAspect::Auto)
@@ -693,8 +679,6 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 
 void RHITextureView::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!m_viewHandle);
 
 	m_name.Reset(reinterpret_cast<Uint64>(m_viewHandle), VK_OBJECT_TYPE_IMAGE_VIEW);

@@ -198,8 +198,6 @@ const
 	
 	void BuildRGDependencies(class rg::RGDependenciesBuilder& builder) const
 	{
-		SPT_PROFILER_FUNCTION();
-
 		if constexpr (trackInRenderGraph)
 		{
 			constexpr rg::ERGTextureAccess accessType = GetRGTextureAccessType();

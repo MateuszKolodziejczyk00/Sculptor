@@ -33,8 +33,6 @@ VkImageLayout ImageSubresourcesLayoutsData::GetSubresourceLayout(Uint32 mipLevel
 
 VkImageLayout ImageSubresourcesLayoutsData::GetSubresourcesSharedLayout(const ImageSubresourceRange& range) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (AreAllSubresourcesInSameLayout())
 	{
 		return GetFullImageLayout();
@@ -92,8 +90,6 @@ void ImageSubresourcesLayoutsData::SetSubresourceLayout(Uint32 mipLevel, Uint32 
 
 void ImageSubresourcesLayoutsData::SetSubresourcesLayout(const ImageSubresourceRange& range, VkImageLayout layout)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK_MSG(HasWriteAccess(), "Attempt to change layout without write access!");
 
 	if (	range.baseMipLevel == 0 && range.baseArrayLayer == 0
@@ -188,8 +184,6 @@ Bool ImageSubresourcesLayoutsData::TransitionToFullImageLayoutIfPossible()
 
 Bool ImageSubresourcesLayoutsData::AreAllSubresourcesInSameLayoutImpl() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const VkImageLayout layout = m_subresourceLayouts[0];
 
 	for (SizeType idx = 1; idx < m_subresourceLayouts.size(); ++idx)
@@ -242,8 +236,6 @@ LayoutsManager::LayoutsManager()
 
 void LayoutsManager::RegisterImage(VkImage image, Uint32 mipsNum, Uint32 arrayLayersNum)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::WriteLockGuard imageLayoutsWriteLock(m_imageLayoutsLock);
 
 	m_imageLayouts.emplace(image, ImageLayoutData(mipsNum, arrayLayersNum));
@@ -251,8 +243,6 @@ void LayoutsManager::RegisterImage(VkImage image, Uint32 mipsNum, Uint32 arrayLa
 
 void LayoutsManager::UnregisterImage(VkImage image)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::WriteLockGuard imageLayoutsWriteLock(m_imageLayoutsLock);
 
 	m_imageLayouts.erase(image);
@@ -260,8 +250,6 @@ void LayoutsManager::UnregisterImage(VkImage image)
 
 VkImageLayout LayoutsManager::GetFullImageLayout(VkCommandBuffer cmdBuffer, VkImage image) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -280,8 +268,6 @@ VkImageLayout LayoutsManager::GetFullImageLayout(VkCommandBuffer cmdBuffer, VkIm
 
 VkImageLayout LayoutsManager::GetSubresourceLayout(VkCommandBuffer cmdBuffer, VkImage image, Uint32 mipLevel, Uint32 arrayLayer) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -300,8 +286,6 @@ VkImageLayout LayoutsManager::GetSubresourceLayout(VkCommandBuffer cmdBuffer, Vk
 
 VkImageLayout LayoutsManager::GetSubresourcesSharedLayout(VkCommandBuffer cmdBuffer, VkImage image, const ImageSubresourceRange& range) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const ImageSubresourcesLayoutsData* layoutData = GetImageLayoutDataIfAcquired(cmdBuffer, image);
 
 	VkImageLayout result = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -364,8 +348,6 @@ void LayoutsManager::ReleaseImageWriteAccess(VkCommandBuffer cmdBuffer, VkImage 
 
 void LayoutsManager::RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::WriteLockGuard cmdBuifferLayoutsManagersWriteGuard(m_cmdBuffersLayoutManagersLock);
 
 	m_cmdBuffersLayoutManagers.emplace(cmdBuffer, std::make_unique<CommandBufferLayoutsManager>());
@@ -373,8 +355,6 @@ void LayoutsManager::RegisterRecordingCommandBuffer(VkCommandBuffer cmdBuffer)
 
 void LayoutsManager::UnregisterRecordingCommnadBuffer(VkCommandBuffer cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	ReleaseCommandBufferResources(cmdBuffer);
 
 	const lib::WriteLockGuard cmdBuifferLayoutsManagersWriteGuard(m_cmdBuffersLayoutManagersLock);
@@ -405,8 +385,6 @@ const ImageSubresourcesLayoutsData* LayoutsManager::GetImageLayoutDataIfAcquired
 
 ImageSubresourcesLayoutsData* LayoutsManager::AcquireImage(CommandBufferLayoutsManager& cmdBufferLayoutsManager, VkImage image)
 {
-	SPT_PROFILER_FUNCTION();
-
 	ImageLayoutData imageLayoutData;
 
 	{
@@ -441,8 +419,6 @@ void LayoutsManager::ReleaseCommandBufferResources(VkCommandBuffer cmdBuffer)
 
 CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
 
 	const auto cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
@@ -454,8 +430,6 @@ CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(V
 
 const CommandBufferLayoutsManager& LayoutsManager::GetLayoutsManagerForCommandBuffer(VkCommandBuffer cmdBuffer) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::ReadLockGuard cmdBuifferLayoutsManagersReadGuard(m_cmdBuffersLayoutManagersLock);
 
 	const auto cmdBufferLayoutManager = m_cmdBuffersLayoutManagers.find(cmdBuffer);
@@ -472,8 +446,6 @@ void LayoutsManager::SetGlobalFullImageLayout(VkImage image, VkImageLayout layou
 
 VkImageLayout LayoutsManager::GetGlobalFullImageLayout(VkImage image) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::ReadLockGuard imageLayoutsReadLock(m_imageLayoutsLock);
 
 	const auto foundLayout = m_imageLayouts.find(image);

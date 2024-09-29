@@ -8,8 +8,6 @@ namespace spt::vulkan
 
 void DebugUtils::SetObjectName(VkDevice device, Uint64 object, VkObjectType objectType, const char* name)
 {
-	SPT_PROFILER_FUNCTION();
-
 	VkDebugUtilsObjectNameInfoEXT objectNameInfo{ VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
     objectNameInfo.objectType = objectType;
     objectNameInfo.objectHandle = object;

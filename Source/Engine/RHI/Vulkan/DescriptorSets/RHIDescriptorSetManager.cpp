@@ -13,8 +13,6 @@ RHIDescriptorSetManager& RHIDescriptorSetManager::GetInstance()
 
 void RHIDescriptorSetManager::InitializeRHI()
 {
-	SPT_PROFILER_FUNCTION();
-	
 	constexpr VkDescriptorPoolCreateFlags poolFlags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
 	                                                | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 
@@ -42,8 +40,6 @@ void RHIDescriptorSetManager::ReleaseRHI()
 
 RHIDescriptorSet RHIDescriptorSetManager::AllocateDescriptorSet(const RHIDescriptorSetLayout& layout)
 {
-	SPT_PROFILER_FUNCTION();
-
 	DescriptorPoolSetData& poolData = LockDescriptorPoolSet();
 
 	const RHIDescriptorSet createdDS = poolData.poolSet.AllocateDescriptorSet(layout.GetHandle());
@@ -55,8 +51,6 @@ RHIDescriptorSet RHIDescriptorSetManager::AllocateDescriptorSet(const RHIDescrip
 
 void RHIDescriptorSetManager::FreeDescriptorSet(const RHIDescriptorSet& set)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	DescriptorPoolSetData& poolSetData = m_poolSets[set.GetPoolSetIdx()];
 
 	const lib::LockGuard lockGuard(poolSetData.lock);
@@ -108,8 +102,6 @@ RHIDescriptorSetManager::RHIDescriptorSetManager() = default;
 
 RHIDescriptorSetManager::DescriptorPoolSetData& RHIDescriptorSetManager::LockDescriptorPoolSet()
 {
-	SPT_PROFILER_FUNCTION();
-
 	DescriptorPoolSetData* lockedPoolsSet = nullptr;
 
 	while (!lockedPoolsSet)

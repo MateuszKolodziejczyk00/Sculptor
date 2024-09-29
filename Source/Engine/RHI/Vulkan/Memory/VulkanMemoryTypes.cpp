@@ -189,8 +189,6 @@ Uint64 VulkanVirtualAllocator::GetSize() const
 
 rhi::RHIVirtualAllocation VulkanVirtualAllocator::Allocate(const rhi::VirtualAllocationDefinition& definition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(definition.size > 0u);
 
 	if (definition.size > GetSize())
@@ -222,8 +220,6 @@ rhi::RHIVirtualAllocation VulkanVirtualAllocator::Allocate(const rhi::VirtualAll
 
 void VulkanVirtualAllocator::Free(const rhi::RHIVirtualAllocation& allocation)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(allocation.IsValid());
 

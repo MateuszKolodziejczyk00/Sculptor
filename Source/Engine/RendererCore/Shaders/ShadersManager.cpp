@@ -91,8 +91,6 @@ void ShadersManager::ClearCachedShaders()
 
 ShaderID ShadersManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags /*= EShaderFlags::None*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, shaderStageDef, compilationSettings);
 
 	Bool foundShader = false;
@@ -153,8 +151,6 @@ void ShadersManager::HotReloadShaders()
 
 ShaderHashType ShadersManager::HashCompilationParams(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return lib::HashCombine(shaderStageDef, compilationSettings.Hash(), lib::GetHash(shaderRelativePath));
 }
 

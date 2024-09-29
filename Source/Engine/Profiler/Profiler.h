@@ -50,13 +50,6 @@ public:
 
 	void Initialize();
 
-	// Captures ===================================================
-
-	void StartCapture();
-	void StopAndSaveCapture();
-
-	Bool StartedCapture() const;
-
 	// Metrics ====================================================
 
 	ScopeMetrics GetScopeMetrics(const lib::HashedString& scopeName) const;

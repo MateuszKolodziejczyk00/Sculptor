@@ -186,7 +186,7 @@ private:
 	GPUStatisticsCollector* m_collector;
 };
 
-#if ENABLE_PROFILER
+#if SPT_ENABLE_PROFILER
 
 #define SPT_GPU_STATISTICS_SCOPE_NAME SPT_SCOPE_NAME(_gpu_statistics_scope_)
 
@@ -198,6 +198,6 @@ private:
 #define SPT_GPU_STATISTICS_SCOPE_FLAGS(recorderRef, collector, name, flags)
 #define SPT_GPU_STATISTICS_SCOPE(recorderRef, collector, name)
 
-#endif // ENABLE_PROFILER
+#endif // SPT_ENABLE_PROFILER
 
 } // spt::rdr

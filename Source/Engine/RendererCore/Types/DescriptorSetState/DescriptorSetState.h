@@ -498,8 +498,6 @@ constexpr auto GetShaderBindingsMetaData() -> lib::StaticArray<ShaderBindingMeta
 template<typename TBindingHandle>
 void InitializeBindings(TBindingHandle& bindingHandle, DescriptorSetState& owningState)
 {
-	SPT_PROFILER_FUNCTION();
-
 	ForEachBinding(bindingHandle,
 				   [&owningState, bindingIdx = 0u](auto& binding) mutable
 				   {

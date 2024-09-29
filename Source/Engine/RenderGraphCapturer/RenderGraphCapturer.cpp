@@ -43,8 +43,6 @@ RGCapturerDecorator::RGCapturerDecorator(const RGCaptureSourceInfo& captureSourc
 
 void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (m_isAddingCaptureCopyNode)
 	{
 		return;

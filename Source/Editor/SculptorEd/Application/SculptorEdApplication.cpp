@@ -1,4 +1,5 @@
 #include "SculptorEdApplication.h"
+#include "ProfilerCore.h"
 #include "Renderer.h"
 #include "ResourcesManager.h"
 #include "Types/Semaphore.h"
@@ -38,6 +39,8 @@ SculptorEdApplication::SculptorEdApplication()
 void SculptorEdApplication::OnInit(int argc, char** argv)
 {
 	Super::OnInit(argc, argv);
+
+	prf::ProfilerCore::GetInstance().Initialize();
 
 	engn::EngineInitializationParams engineInitializationParams;
 	engineInitializationParams.cmdLineArgsNum = argc;
@@ -154,6 +157,8 @@ void SculptorEdApplication::OnShutdown()
 	rdr::Renderer::Uninitialize();
 
 	js::JobSystem::Shutdown();
+
+	prf::ProfilerCore::GetInstance().Shutdown();
 
 	Super::OnShutdown();
 }
@@ -342,7 +347,6 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 			renderingDef.AddColorRenderTarget(renderTarget);
 
-			SPT_GPU_PROFILER_EVENT("UI");
 			SPT_GPU_DEBUG_REGION(*recorder, "UI", lib::Color::Green);
 
 			recorder->BeginRendering(renderingDef);

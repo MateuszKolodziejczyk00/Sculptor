@@ -8,7 +8,6 @@
 #include "Renderer.h"
 #include "CommandsRecorder/RenderingDefinition.h"
 #include "Types/Sampler.h"
-#include "GPUDiagnose/Profiler/GPUProfiler.h"
 #include "GPUDiagnose/Debug/GPUDebug.h"
 #include "JobSystem.h"
 #include "RenderGraphBuilder.h"
@@ -75,43 +74,43 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 
 	if (m_isViewportFocused)
 	{
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
-	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX()));
-	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
-	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX()));
-	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
-	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY()));
-	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
-	{
-		m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY()));
-	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
-	{
-		m_renderView->Move(deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
-	}
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
-	{
-		m_renderView->Move(deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
-	}
-
-	if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
-	{
-		const math::Vector2f mouseVel = inp::InputManager::Get().GetMouseMoveDelta().cast<Real32>();
-		if (mouseVel.squaredNorm() > math::Utils::Square(5.f) * deltaTime)
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
 		{
-			const Real32 rotationSpeed = 0.0045f;
-			const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
-
-			m_renderView->Rotate(math::AngleAxisf(rotationDelta.x(), math::Vector3f::UnitZ()));
-			m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX()));
 		}
-	}
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
+		{
+			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX()));
+		}
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
+		{
+			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY()));
+		}
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
+		{
+			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY()));
+		}
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
+		{
+			m_renderView->Move(deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
+		}
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
+		{
+			m_renderView->Move(deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
+		}
+
+		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
+		{
+			const math::Vector2f mouseVel = inp::InputManager::Get().GetMouseMoveDelta().cast<Real32>();
+			if (mouseVel.squaredNorm() > math::Utils::Square(5.f) * deltaTime)
+			{
+				const Real32 rotationSpeed = 0.0045f;
+				const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
+
+				m_renderView->Rotate(math::AngleAxisf(rotationDelta.x(), math::Vector3f::UnitZ()));
+				m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+			}
+		}
 	}
 
 	if (sunMovement)

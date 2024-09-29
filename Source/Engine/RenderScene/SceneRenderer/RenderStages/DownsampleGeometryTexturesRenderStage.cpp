@@ -145,8 +145,6 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 
 void DownsampleGeometryTexturesRenderStage::PrepareResources(const ViewRenderingSpec& viewSpec)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const math::Vector2u renderingHalfRes = viewSpec.GetRenderingHalfRes();
 
 	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();

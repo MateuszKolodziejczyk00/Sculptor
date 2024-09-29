@@ -30,8 +30,6 @@ void CascadedShadowMapsViewRenderSystem::CollectRenderViews(const RenderScene& r
 
 const lib::DynamicArray<ShadowMap>& CascadedShadowMapsViewRenderSystem::GetShadowCascadesViews(RenderSceneEntity directionalLightEntity) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto foundCascades = std::find_if(std::cbegin(m_dirLightShadowCascades), std::cend(m_dirLightShadowCascades),
 											[directionalLightEntity](const DirLightShadowCascades& cascades)
 											{

@@ -51,8 +51,6 @@ RHICommandBuffer::RHICommandBuffer()
 
 void RHICommandBuffer::InitializeRHI(RHIRenderContext& renderContext, const rhi::CommandBufferDefinition& bufferDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!IsValid());
 
 	m_cmdBufferHandle	= renderContext.AcquireCommandBuffer(bufferDefinition);
@@ -62,8 +60,6 @@ void RHICommandBuffer::InitializeRHI(RHIRenderContext& renderContext, const rhi:
 
 void RHICommandBuffer::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!IsValid());
 
 	m_name.Reset(reinterpret_cast<Uint64>(m_cmdBufferHandle), VK_OBJECT_TYPE_COMMAND_BUFFER);
@@ -82,8 +78,6 @@ rhi::EDeviceCommandQueueType RHICommandBuffer::GetQueueType() const
 
 void RHICommandBuffer::StartRecording(const rhi::CommandBufferUsageDefinition& usageDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	VkCommandBufferInheritanceInfo inheritanceInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO };
@@ -143,8 +137,6 @@ const lib::HashedString& RHICommandBuffer::GetName() const
 
 void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	
 	const auto CreateAttachmentInfo = [this](const rhi::RHIRenderTargetDefinition& renderTarget, Bool isColor)
@@ -240,8 +232,6 @@ void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingD
 
 void RHICommandBuffer::EndRendering()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	vkCmdEndRendering(m_cmdBufferHandle);
@@ -249,8 +239,6 @@ void RHICommandBuffer::EndRendering()
 
 void RHICommandBuffer::SetViewport(const math::AlignedBox2f& renderingViewport, Real32 minDepth, Real32 maxDepth)
 {
-	SPT_PROFILER_FUNCTION();
-
 	VkViewport viewport{};
 	viewport.x			= renderingViewport.min().x();
 	viewport.y			= renderingViewport.min().y();
@@ -264,8 +252,6 @@ void RHICommandBuffer::SetViewport(const math::AlignedBox2f& renderingViewport, 
 
 void RHICommandBuffer::SetScissor(const math::AlignedBox2u& renderingScissor)
 {
-	SPT_PROFILER_FUNCTION();
-
 	VkRect2D scissor{};
 	scissor.offset.x		= renderingScissor.min().x();
 	scissor.offset.y		= renderingScissor.min().y();
@@ -277,8 +263,6 @@ void RHICommandBuffer::SetScissor(const math::AlignedBox2u& renderingScissor)
 
 void RHICommandBuffer::DrawIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(drawsBuffer.IsValid());
 	SPT_CHECK(drawsOffset + drawsStride * maxDrawsCount <= drawsBuffer.GetSize());
@@ -290,8 +274,6 @@ void RHICommandBuffer::DrawIndirectCount(const RHIBuffer& drawsBuffer, Uint64 dr
 
 void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(drawsBuffer.IsValid());
 	SPT_CHECK(drawsOffset + drawsStride * drawsCount <= drawsBuffer.GetSize());
@@ -301,15 +283,11 @@ void RHICommandBuffer::DrawIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOf
 
 void RHICommandBuffer::DrawInstances(Uint32 verticesNum, Uint32 instancesNum, Uint32 firstVertex, Uint32 firstInstance)
 {
-	SPT_PROFILER_FUNCTION();
-
 	vkCmdDraw(m_cmdBufferHandle, verticesNum, instancesNum, firstVertex, firstInstance);
 }
 
 void RHICommandBuffer::DrawMeshTasks(const math::Vector3u& groupCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
 
@@ -318,8 +296,6 @@ void RHICommandBuffer::DrawMeshTasks(const math::Vector3u& groupCount)
 
 void RHICommandBuffer::DrawMeshTasksIndirect(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, Uint32 drawsCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(drawsBuffer.IsValid());
 	SPT_CHECK(drawsOffset + drawsStride * drawsCount <= drawsBuffer.GetSize());
@@ -329,8 +305,6 @@ void RHICommandBuffer::DrawMeshTasksIndirect(const RHIBuffer& drawsBuffer, Uint6
 
 void RHICommandBuffer::DrawMeshTasksIndirectCount(const RHIBuffer& drawsBuffer, Uint64 drawsOffset, Uint32 drawsStride, const RHIBuffer& countBuffer, Uint64 countOffset, Uint32 maxDrawsCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(drawsBuffer.IsValid());
 	SPT_CHECK(drawsOffset + drawsStride * maxDrawsCount <= drawsBuffer.GetSize());
@@ -362,8 +336,6 @@ void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, con
 
 void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(groupCount.x() > 0 && groupCount.y() > 0 && groupCount.z() > 0);
 
@@ -372,8 +344,6 @@ void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
 
 void RHICommandBuffer::DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(indirectArgsBuffer.IsValid());
 	SPT_CHECK(indirectArgsOffset + sizeof(Uint32) * 3 <= indirectArgsBuffer.GetSize());
@@ -409,8 +379,6 @@ void RHICommandBuffer::BindRayTracingDescriptorSet(const RHIPipeline& pipeline, 
 
 void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(traceCount.x() > 0 && traceCount.y() > 0 && traceCount.z() > 0);
 
@@ -426,8 +394,6 @@ void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::V
 
 void RHICommandBuffer::TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(indirectArgsBuffer.IsValid() && indirectArgsOffset + sizeof(math::Vector3u) < indirectArgsBuffer.GetSize())
 
@@ -445,8 +411,6 @@ void RHICommandBuffer::TraceRaysIndirect(const RHIShaderBindingTable& sbt, const
 
 void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLevel, Uint32 sourceArrayLayer, const RHITexture& dest, Uint32 destMipLevel, Uint32 destArrayLayer, rhi::ETextureAspect aspect, rhi::ESamplerFilterType filterMode)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(source.IsValid());
 	SPT_CHECK(dest.IsValid());
@@ -482,8 +446,6 @@ void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLev
 
 void RHICommandBuffer::ClearTexture(const RHITexture& texture, const rhi::ClearColor& clearColor, const rhi::TextureSubresourceRange& subresourceRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(texture.IsValid());
 	
@@ -502,8 +464,6 @@ void RHICommandBuffer::ClearTexture(const RHITexture& texture, const rhi::ClearC
 
 void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureCopyRange& sourceRange, const RHITexture& target, const rhi::TextureCopyRange& targetRange, const math::Vector3u& extent)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(source.IsValid());
 	SPT_CHECK(target.IsValid());
@@ -564,8 +524,6 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 
 void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOffset, const RHIBuffer& destBuffer, Uint64 destOffset, Uint64 size)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(sourceBuffer.IsValid());
 	SPT_CHECK(destBuffer.IsValid());
@@ -588,8 +546,6 @@ void RHICommandBuffer::CopyBuffer(const RHIBuffer& sourceBuffer, Uint64 sourceOf
 
 void RHICommandBuffer::FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64 range, Uint32 data)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(offset + range <= buffer.GetSize());
@@ -599,8 +555,6 @@ void RHICommandBuffer::FillBuffer(const RHIBuffer& buffer, Uint64 offset, Uint64
 
 void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset /*= math::Vector3u::Zero()*/, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(buffer.IsValid());
 	SPT_CHECK(texture.IsValid());
@@ -634,8 +588,6 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
 
 void RHICommandBuffer::ExecuteCommands(const RHICommandBuffer& secondaryCommandBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(secondaryCommandBuffer.IsValid());
 
@@ -646,8 +598,6 @@ void RHICommandBuffer::ExecuteCommands(const RHICommandBuffer& secondaryCommandB
 void RHICommandBuffer::BeginDebugRegion(const lib::HashedString& name, const lib::Color& color)
 {
 #if SPT_RHI_DEBUG
-
-	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
@@ -667,8 +617,6 @@ void RHICommandBuffer::EndDebugRegion()
 {
 #if SPT_RHI_DEBUG
 
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	vkCmdEndDebugUtilsLabelEXT(m_cmdBufferHandle);
@@ -679,8 +627,6 @@ void RHICommandBuffer::EndDebugRegion()
 #if SPT_ENABLE_GPU_CRASH_DUMPS
 void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	if (VulkanRHI::GetSettings().AreGPUCrashDumpsEnabled())
@@ -692,8 +638,6 @@ void RHICommandBuffer::SetDebugCheckpoint(const void* markerPtr)
 
 void RHICommandBuffer::ResetQueryPool(const RHIQueryPool& queryPool, Uint32 firstQueryIdx, Uint32 queryCount)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
 
@@ -702,8 +646,6 @@ void RHICommandBuffer::ResetQueryPool(const RHIQueryPool& queryPool, Uint32 firs
 
 void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 queryIdx, rhi::EPipelineStage stage)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
 
@@ -712,8 +654,6 @@ void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 quer
 
 void RHICommandBuffer::BeginQuery(const RHIQueryPool& queryPool, Uint32 queryIdx)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
 
@@ -722,8 +662,6 @@ void RHICommandBuffer::BeginQuery(const RHIQueryPool& queryPool, Uint32 queryIdx
 
 void RHICommandBuffer::EndQuery(const RHIQueryPool& queryPool, Uint32 queryIdx)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
 
@@ -737,8 +675,6 @@ VkCommandBuffer RHICommandBuffer::GetHandle() const
 
 void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(pipeline.IsValid());
 
@@ -747,8 +683,6 @@ void RHICommandBuffer::BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHI
 
 void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(ds.IsValid());
 	SPT_CHECK(pipeline.IsValid());
@@ -763,8 +697,6 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 
 void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(as.IsValid());
 	SPT_CHECK(scratchBuffer.IsValid());

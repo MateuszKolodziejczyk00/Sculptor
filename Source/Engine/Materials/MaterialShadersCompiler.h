@@ -116,8 +116,6 @@ public:
 	template<typename TMaterialShaders>
 	void CreateMaterialShaders(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT TMaterialShaders& shaders)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		CreateMaterialShadersImpl(techniqueName, materialParams, parameters, OUT shaders);
 	}
 

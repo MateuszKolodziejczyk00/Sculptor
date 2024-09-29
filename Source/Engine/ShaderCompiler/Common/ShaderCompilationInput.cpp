@@ -71,8 +71,6 @@ ShaderCompilationSettings::ShaderCompilationSettings()
 
 void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (macro.IsValid())
 	{
 		m_macros.push_back(macro.macro);
@@ -96,8 +94,6 @@ void ShaderCompilationSettings::DisableGeneratingDebugSource()
 
 SizeType ShaderCompilationSettings::Hash() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return lib::HashRange(std::cbegin(m_macros), std::cend(m_macros));
 }
 

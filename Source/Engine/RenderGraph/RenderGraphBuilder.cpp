@@ -50,8 +50,6 @@ Bool RenderGraphBuilder::IsTextureAcquired(const lib::SharedPtr<rdr::Texture>& t
 
 RGTextureHandle RenderGraphBuilder::AcquireExternalTexture(const lib::SharedPtr<rdr::Texture>& texture)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!texture);
 
 	RGTextureHandle& textureHandle = m_externalTextures[texture];
@@ -79,8 +77,6 @@ RGTextureViewHandle RenderGraphBuilder::TryAcquireExternalTextureView(lib::Share
 
 RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPtr<rdr::TextureView> textureView)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!textureView);
 
 	const lib::SharedRef<rdr::Texture>& texture = textureView->GetTexture();
@@ -99,8 +95,6 @@ RGTextureViewHandle RenderGraphBuilder::AcquireExternalTextureView(lib::SharedPt
 
 RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	RGResourceDef definition;
 	definition.name = name;
 	definition.flags = flags;
@@ -114,8 +108,6 @@ RGTextureHandle RenderGraphBuilder::CreateTexture(const RenderGraphDebugName& na
 
 RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, RGTextureHandle texture, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	RGResourceDef definition;
 	definition.name = name;
 	definition.flags = flags;
@@ -127,8 +119,6 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 
 RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo /*= std::nullopt*/, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const RGTextureHandle texture = CreateTexture(name, textureDefinition, allocationInfo, flags);
 
 	rhi::TextureViewDefinition viewDefintion;
@@ -139,8 +129,6 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 
 void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination)
 {
-	SPT_PROFILER_FUNCTION()
-
 	textureHandle->SetExtractionDestination(extractDestination);
 
 	m_extractedTextures.emplace_back(textureHandle);
@@ -148,8 +136,6 @@ void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::Shar
 
 void RenderGraphBuilder::ReleaseTextureWithTransition(RGTextureHandle textureHandle, const rhi::BarrierTextureTransitionDefinition& releaseTransitionTarget)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(textureHandle.IsValid());
 	SPT_CHECK(textureHandle->IsExternal() || textureHandle->IsExtracted());
 
@@ -158,8 +144,6 @@ void RenderGraphBuilder::ReleaseTextureWithTransition(RGTextureHandle textureHan
 
 RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rdr::Buffer>& buffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!buffer);
 
 	RGBufferHandle& bufferHandle = m_externalBuffers[buffer];
@@ -182,8 +166,6 @@ RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rd
 
 RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(const rdr::BufferView& bufferView)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView.GetBuffer();
 	SPT_CHECK(!!owningBuffer);
 
@@ -203,8 +185,6 @@ RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(const rdr::Buff
 
 RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	RGResourceDef resourceDefinition;
 	resourceDefinition.name = name;
 	resourceDefinition.flags = flags;
@@ -217,8 +197,6 @@ RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name
 
 RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, RGBufferHandle buffer, Uint64 offset, Uint64 size, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	RGResourceDef resourceDefinition;
 	resourceDefinition.name = name;
 	resourceDefinition.flags = flags;
@@ -228,8 +206,6 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 
 RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const RGBufferHandle buffer = CreateBuffer(name, bufferDefinition, allocationInfo, flags);
 
 	return CreateBufferView(name, buffer, 0, bufferDefinition.size, flags);
@@ -237,8 +213,6 @@ RGBufferViewHandle RenderGraphBuilder::CreateBufferView(const RenderGraphDebugNa
 
 void RenderGraphBuilder::ExtractBuffer(RGBufferHandle buffer, lib::SharedPtr<rdr::Buffer>& extractDestination)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	SPT_CHECK(buffer.IsValid());
 
 	buffer->SetExtractionDest(&extractDestination);
@@ -264,8 +238,6 @@ void RenderGraphBuilder::PopProfilerScope()
 
 void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(bufferView.IsValid());
 	SPT_CHECK(offset + range <= bufferView->GetSize());
 
@@ -315,8 +287,6 @@ void RenderGraphBuilder::FillFullBuffer(const RenderGraphDebugName& commandName,
 
 void RenderGraphBuilder::CopyFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, RGBufferViewHandle destBufferView)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(sourceBufferView.IsValid());
 	SPT_CHECK(destBufferView.IsValid());
 	SPT_CHECK(sourceBufferView->GetSize() == destBufferView->GetSize());
@@ -326,8 +296,6 @@ void RenderGraphBuilder::CopyFullBuffer(const RenderGraphDebugName& commandName,
 
 void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, Uint64 sourceOffset, RGBufferViewHandle destBufferView, Uint64 destOffset, Uint64 range)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(sourceBufferView.IsValid());
 	SPT_CHECK(sourceOffset + range <= sourceBufferView->GetSize());
 	SPT_CHECK(destBufferView.IsValid());
@@ -361,8 +329,6 @@ void RenderGraphBuilder::CopyBuffer(const RenderGraphDebugName& commandName, RGB
 
 lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range)
 {
-	SPT_PROFILER_FUNCTION();
-
 	rhi::BufferDefinition resultBufferDefinition;
 	resultBufferDefinition.size = range;
 	resultBufferDefinition.usage = rhi::EBufferUsage::TransferDst;
@@ -375,8 +341,6 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraph
 
 void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(sourceRGTextureView.IsValid());
 	SPT_CHECK(destRGTextureView.IsValid());
 	SPT_CHECK((copyExtent.array() > 0).all());
@@ -426,8 +390,6 @@ void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTex
 
 void RenderGraphBuilder::CopyFullTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGTextureViewHandle destRGTextureView)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(sourceRGTextureView.IsValid());
 	SPT_CHECK(destRGTextureView.IsValid());
 
@@ -438,8 +400,6 @@ void RenderGraphBuilder::CopyFullTexture(const RenderGraphDebugName& copyName, R
 
 void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(textureView.IsValid());
 
 	const auto executeLambda = [ = ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -468,15 +428,11 @@ void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGT
 
 void RenderGraphBuilder::BindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_boundDSStates.emplace_back(dsState);
 }
 
 void RenderGraphBuilder::UnbindDescriptorSetState(const lib::MTHandle<RGDescriptorSetStateBase>& dsState)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto foundDS = std::find(std::cbegin(m_boundDSStates), std::cend(m_boundDSStates), dsState);
 	if (foundDS != std::cend(m_boundDSStates))
 	{
@@ -498,8 +454,6 @@ void RenderGraphBuilder::Execute()
 
 void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::SharedPtr<rdr::Pipeline>& pipeline, lib::Span<lib::MTHandle<RGDescriptorSetStateBase> const> dsStatesRange, RGDependenciesBuilder& dependenciesBuilder)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
 
 	const auto processDSStatesRange = [&metaData, &node, &dependenciesBuilder](const auto& range)
@@ -520,8 +474,6 @@ void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::Sha
 
 void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	SPT_PROFILER_FUNCTION();
-
 	ResolveNodeDependecies(node, dependencies);
 
 	m_nodes.emplace_back(&node);
@@ -531,8 +483,6 @@ void RenderGraphBuilder::AddNodeInternal(RGNode& node, const RGDependeciesContai
 
 void RenderGraphBuilder::PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	SPT_PROFILER_FUNCTION();
-
 #if RG_ENABLE_DIAGNOSTICS
 	node.SetDiagnosticsRecord(m_profilerRecorder.GetRecord());
 #endif // RG_ENABLE_DIAGNOSTICS
@@ -556,8 +506,6 @@ void RenderGraphBuilder::ResolveNodeDependecies(RGNode& node, const RGDependecie
 
 void RenderGraphBuilder::ResolveNodeTextureAccesses(RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	SPT_PROFILER_FUNCTION();
-
 	for (const RGTextureAccessDef& textureAccessDef : dependencies.textureAccesses)
 	{
 		const RGTextureViewHandle accessedTextureView					= textureAccessDef.textureView;
@@ -624,8 +572,6 @@ void RenderGraphBuilder::AppendTextureTransitionToNode(RGNode& node, RGTextureHa
 
 void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDependeciesContainer& dependencies)
 {
-	SPT_PROFILER_FUNCTION();
-
 	for (const RGBufferAccessDef& bufferAccess : dependencies.bufferAccesses)
 	{
 		const RGBufferViewHandle accessedBufferView = bufferAccess.resource;
@@ -816,8 +762,6 @@ Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, rhi::EPi
 
 void RenderGraphBuilder::PostBuild()
 {
-	SPT_PROFILER_FUNCTION();
-
 	AddReleaseResourcesNode();
 
 	ResolveTextureProperties();
@@ -864,8 +808,6 @@ void RenderGraphBuilder::ExecuteGraph()
 
 void RenderGraphBuilder::AddReleaseResourcesNode()
 {
-	SPT_PROFILER_FUNCTION();
-
 	RGEmptyNode& barrierNode = AllocateNode<RGEmptyNode>(RG_DEBUG_NAME("ExtractionBarrierNode"), ERenderGraphNodeType::None);
 	AddNodeInternal(barrierNode, RGDependeciesContainer{});
 
@@ -903,8 +845,6 @@ void RenderGraphBuilder::ResolveResourceProperties()
 
 void RenderGraphBuilder::ResolveTextureProperties()
 {
-	SPT_PROFILER_FUNCTION();
-
 	for (RGTextureHandle texture : m_textures)
 	{
 		if (!texture->IsExternal() && !texture->IsExtracted())
@@ -959,8 +899,6 @@ void RenderGraphBuilder::ResolveBufferReleases()
 
 rdr::PipelineStateID RenderGraphBuilder::GetOrCreateComputePipelineStateID(rdr::ShaderID shader) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME(shader.GetName()), shader);
 }
 

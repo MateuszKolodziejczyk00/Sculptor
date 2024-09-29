@@ -36,7 +36,7 @@ StaticMeshForwardOpaqueRenderer::StaticMeshForwardOpaqueRenderer()
 
 Bool StaticMeshForwardOpaqueRenderer::BuildBatchesPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions)
 {
-	SPT_PROFILER_FUNCTION()
+	SPT_PROFILER_FUNCTION();
 
 	// We don't need array here right now, but it's made for future use, as we'll for sure want to have more than one batch
 	lib::DynamicArray<SMForwardOpaqueBatch> batches;

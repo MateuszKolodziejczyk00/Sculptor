@@ -98,8 +98,6 @@ rg::RGTextureViewHandle ComputeMoments(rg::RenderGraphBuilder& graphBuilder, con
 
 rg::RGTextureViewHandle ComputeMoments(rg::RenderGraphBuilder& graphBuilder, const VisibilityMomentsParameters& params)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const rg::RGTextureViewHandle compressedTexture = compression::CompressTexture(graphBuilder, params);
 
 	return computation::ComputeMoments(graphBuilder, params, compressedTexture);

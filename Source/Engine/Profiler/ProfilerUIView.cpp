@@ -54,25 +54,6 @@ void ProfilerUIView::DrawUI()
 
 	ImGui::Separator();
 
-	ImGui::Text("Captures");
-
-	if (prf::Profiler::Get().StartedCapture())
-	{
-		if (ImGui::Button("Stop Trace"))
-		{
-			prf::Profiler::Get().StopAndSaveCapture();
-		}
-	}
-	else
-	{
-		if (ImGui::Button("Start Trace"))
-		{
-			prf::Profiler::Get().StartCapture();
-		}
-	}
-
-	ImGui::Separator();
-
 	DrawGPUProfilerUI();
 
 	ImGui::End();

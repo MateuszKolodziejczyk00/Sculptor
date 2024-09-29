@@ -144,8 +144,6 @@ SizeType Scheduler::GetWorkerThreadsNum()
 
 void Scheduler::WakeWorker()
 {
-	SPT_PROFILER_FUNCTION();
-
 	lib::SharedPtr<platf::Event> sleepEndEvent = JobsQueueManagerTls::DequeueSleepEvents();
 
 	if (sleepEndEvent)

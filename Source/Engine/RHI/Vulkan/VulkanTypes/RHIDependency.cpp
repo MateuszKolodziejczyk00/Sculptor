@@ -242,8 +242,6 @@ Bool RHIDependency::IsEmpty() const
 
 SizeType RHIDependency::AddTextureDependency(const RHITexture& texture, const rhi::TextureSubresourceRange& subresourceRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const VkImageAspectFlags aspect = RHIToVulkan::GetAspectFlags(subresourceRange.aspect == rhi::ETextureAspect::Auto
 																  ? GetFullAspectForFormat(texture.GetDefinition().format)
 																  : subresourceRange.aspect);
@@ -299,8 +297,6 @@ void RHIDependency::SetLayoutTransition(SizeType textureBarrierIdx, const rhi::B
 
 SizeType RHIDependency::AddBufferDependency(const RHIBuffer& buffer, SizeType offset, SizeType size)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	VkBufferMemoryBarrier2& barrier = m_bufferBarriers.emplace_back(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
     barrier.srcStageMask		= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
     barrier.srcAccessMask		= 0;
@@ -339,8 +335,6 @@ void RHIDependency::SetBufferDependencyStages(SizeType bufferIdx, rhi::EPipeline
 
 void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
 
 	const VkDependencyInfo dependencyInfo = GetDependencyInfo();
@@ -351,8 +345,6 @@ void RHIDependency::ExecuteBarrier(const RHICommandBuffer& cmdBuffer)
 
 void RHIDependency::SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(event.IsValid());
 
 	PrepareLayoutTransitionsForCommandBuffer(cmdBuffer);
@@ -365,8 +357,6 @@ void RHIDependency::SetEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& 
 
 void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent& event)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(event.IsValid());
 
 	AcquireTexturesWriteAccess(cmdBuffer);
@@ -381,8 +371,6 @@ void RHIDependency::WaitEvent(const RHICommandBuffer& cmdBuffer, const RHIEvent&
 
 void RHIDependency::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 
 	for (VkImageMemoryBarrier2& textureBarrier : m_textureBarriers)
@@ -399,8 +387,6 @@ void RHIDependency::PrepareLayoutTransitionsForCommandBuffer(const RHICommandBuf
 
 void RHIDependency::WriteNewLayoutsToLayoutsManager(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 
 	for (VkImageMemoryBarrier2& textureBarrier : m_textureBarriers)
@@ -426,8 +412,6 @@ VkDependencyInfo RHIDependency::GetDependencyInfo() const
 
 void RHIDependency::ReleaseTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 
 	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)
@@ -440,8 +424,6 @@ void RHIDependency::ReleaseTexturesWriteAccess(const RHICommandBuffer& cmdBuffer
 
 void RHIDependency::AcquireTexturesWriteAccess(const RHICommandBuffer& cmdBuffer)
 {
-	SPT_PROFILER_FUNCTION();
-
 	LayoutsManager& layoutsManager = VulkanRHI::GetLayoutsManager();
 
 	for (SizeType idx = 0; idx < m_textureBarriers.size(); ++idx)

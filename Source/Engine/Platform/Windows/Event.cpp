@@ -37,22 +37,16 @@ Event::~Event()
 
 void Event::Trigger()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SetEvent(reinterpret_cast<HANDLE>(m_handle));
 }
 
 void Event::Reset()
 {
-	SPT_PROFILER_FUNCTION();
-
 	ResetEvent(reinterpret_cast<HANDLE>(m_handle));
 }
 
 Bool Event::IsTriggered() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return WaitForSingleObject(reinterpret_cast<HANDLE>(m_handle), 0) != WAIT_TIMEOUT;
 }
 

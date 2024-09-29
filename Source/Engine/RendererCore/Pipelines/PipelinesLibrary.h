@@ -115,8 +115,6 @@ private:
 template<typename TPipelineType>
 lib::SharedPtr<TPipelineType> PipelinesLibrary::GetPipelineImpl(PipelineStateID id, const PipelinesMap<TPipelineType>& cachedPipelines, const PipelinesMap<TPipelineType>& pipelinesPendingFlush, lib::Lock& lock) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(id.IsValid());
 
 	const auto foundCachedPipeline = cachedPipelines.find(id);

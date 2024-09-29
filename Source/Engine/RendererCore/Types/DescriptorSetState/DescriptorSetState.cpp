@@ -167,8 +167,6 @@ void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
 
 rhi::RHIDescriptorSet DescriptorSetState::AllocateDescriptorSet() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	rhi::RHIDescriptorSet descriptorSet;
 
 	if (m_stackAllocator)

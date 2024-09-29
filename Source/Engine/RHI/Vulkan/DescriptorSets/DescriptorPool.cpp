@@ -44,8 +44,6 @@ VkDescriptorPool DescriptorPool::GetHandle() const
 
 Bool DescriptorPool::AllocateDescriptorSets(const VkDescriptorSetLayout* layouts, Uint32 layoutsNum, lib::DynamicArray<VkDescriptorSet>& outDescriptorSets)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	const SizeType layoutsNumST = static_cast<SizeType>(layoutsNum);
@@ -66,15 +64,11 @@ Bool DescriptorPool::AllocateDescriptorSets(const VkDescriptorSetLayout* layouts
 
 void DescriptorPool::FreeDescriptorSets(const lib::DynamicArray<VkDescriptorSet>& descriptorSets)
 {
-	SPT_PROFILER_FUNCTION();
-
 	vkFreeDescriptorSets(VulkanRHI::GetDeviceHandle(), m_poolHandle, static_cast<Uint32>(descriptorSets.size()), descriptorSets.data());
 }
 
 VkDescriptorSet DescriptorPool::AllocateDescriptorSet(VkDescriptorSetLayout layout)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	VkDescriptorSetAllocateInfo allocateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
@@ -90,8 +84,6 @@ VkDescriptorSet DescriptorPool::AllocateDescriptorSet(VkDescriptorSetLayout layo
 
 void DescriptorPool::FreeDescriptorSet(VkDescriptorSet descriptorSet)
 {
-	SPT_PROFILER_FUNCTION();
-
 	vkFreeDescriptorSets(VulkanRHI::GetDeviceHandle(), m_poolHandle, 1, &descriptorSet);
 }
 

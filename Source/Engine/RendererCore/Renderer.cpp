@@ -65,8 +65,6 @@ void Renderer::PostCreatedWindow()
 {
 	CurrentFrameContext::Initialize(RendererSettings::Get().framesInFlight);
 
-	GPUProfiler::Initialize();
-
 	GetDeviceQueuesManager().Initialize();
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
@@ -139,8 +137,6 @@ DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
 void Renderer::PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
-
-	GPUProfiler::FlipFrame(window);
 	
 	window->PresentTexture(swapchainTexture, waitSemaphores);
 }

@@ -344,8 +344,6 @@ public:
 	template<typename TCallable>
 	void Init(TCallable&& callable, const JobDefinitionInternal& def)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		SetCallable(std::forward<TCallable>(callable));
 
 		InitInternal(def);
@@ -356,8 +354,6 @@ public:
 	template<typename TCallable, typename TPrerequisitesRange>
 	void Init(TCallable&& callable, TPrerequisitesRange&& prerequisites, const JobDefinitionInternal& def)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		SetCallable(std::forward<TCallable>(callable));
 
 		InitInternal(def);
@@ -580,8 +576,6 @@ private:
 	template<typename TPrerequisitesRange>
 	void AddPrerequisites(TPrerequisitesRange&& prerequisites)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		// we don't require any synchronization here - it's called only locally during job initialization
 		m_remainingPrerequisitesNum.fetch_add(static_cast<Int32>(prerequisites.size()));
 
@@ -873,7 +867,6 @@ public:
 
 		lib::MTHandle<JobInstance> job;
 		{
-			SPT_PROFILER_SCOPE("Allocate Job");
 			job = new JobInstance(name);
 
 			SPT_CHECK(job.IsValid());
@@ -889,7 +882,6 @@ public:
 
 		lib::MTHandle<JobInstance> job;
 		{
-			SPT_PROFILER_SCOPE("Allocate Job");
 			job = new JobInstance(name);
 
 			SPT_CHECK(job.IsValid());

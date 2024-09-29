@@ -216,8 +216,6 @@ void RHIDescriptorSetWriter::WriteAccelerationStructure(const RHIDescriptorSet& 
 
 void RHIDescriptorSetWriter::Reserve(SizeType writesNum)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_writes.reserve(writesNum);
 	m_buffers.reserve(writesNum);
 	m_images.reserve(writesNum);
@@ -225,8 +223,6 @@ void RHIDescriptorSetWriter::Reserve(SizeType writesNum)
 
 void RHIDescriptorSetWriter::Flush()
 {
-	SPT_PROFILER_FUNCTION();
-
 	ResolveReferences();
 	SubmitWrites();
 	Reset();
@@ -234,8 +230,6 @@ void RHIDescriptorSetWriter::Flush()
 
 void RHIDescriptorSetWriter::ResolveReferences()
 {
-	SPT_PROFILER_FUNCTION();
-	
 	for (VkWriteDescriptorSet& write : m_writes)
 	{
 		if (write.pBufferInfo)
@@ -263,8 +257,6 @@ void RHIDescriptorSetWriter::ResolveReferences()
 
 void RHIDescriptorSetWriter::SubmitWrites()
 {
-	SPT_PROFILER_FUNCTION();
-
 	vkUpdateDescriptorSets(VulkanRHI::GetDeviceHandle(), static_cast<Uint32>(m_writes.size()), m_writes.data(), 0, nullptr);
 }
 

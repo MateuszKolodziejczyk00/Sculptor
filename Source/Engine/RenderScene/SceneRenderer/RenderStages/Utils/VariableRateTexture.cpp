@@ -198,8 +198,6 @@ void VariableRateRenderer::Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTe
 
 Bool VariableRateRenderer::PrepareTextures(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture)
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_resolution = inputTexture->GetResolution2D();
 
 	const math::Vector2u variableRateTextureResolution = ComputeVariableRateTextureResolution(inputTexture->GetResolution2D());

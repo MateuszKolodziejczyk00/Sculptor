@@ -289,8 +289,6 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, const WorkloadResolution& groupCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto executeLambda = [computePipelineID, groupCount, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
@@ -320,8 +318,6 @@ void RenderGraphBuilder::Dispatch(const RenderGraphDebugName& dispatchName, rdr:
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchName, rdr::PipelineStateID computePipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
@@ -359,8 +355,6 @@ void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, 
 template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 void RenderGraphBuilder::RenderPass(const RenderGraphDebugName& renderPassName, const RGRenderPassDefinition& renderPassDef, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	RGNode& node = CreateRenderPassNodeInternal(renderPassName, renderPassDef, dsStatesRange, std::forward<TCallable>(callable));
 
 	RGDependeciesContainer dependencies;
@@ -383,8 +377,6 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 template<typename TDescriptorSetStatesRange, typename TPassParameters, typename TCallable>
 void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDescriptorSetStatesRange&& dsStatesRange, const TPassParameters& parameters, TCallable&& callable)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!!m_lastRenderPassNode);
 
 	using CallableType	= std::remove_cvref_t<TCallable>;
@@ -418,8 +410,6 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, const WorkloadResolution& traceCount, TDescriptorSetStatesRange&& dsStatesRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto executeLambda = [ rayTracingPipelineID, traceCount, dsStatesRange ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindRayTracingPipeline(rayTracingPipelineID);
@@ -443,8 +433,6 @@ void RenderGraphBuilder::TraceRays(const RenderGraphDebugName& traceName, rdr::P
 template<typename TDescriptorSetStatesRange>
 void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto executeLambda = [ rayTracingPipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindRayTracingPipeline(rayTracingPipelineID);
@@ -471,8 +459,6 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 template<typename TNodeType, typename... TArgs>
 TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const RGNodeID nodeID = m_nodes.size();
 	
 	TNodeType* allocatedNode = m_allocator.Allocate<TNodeType>(*this, name, nodeID, type, std::forward<TArgs>(args)...);

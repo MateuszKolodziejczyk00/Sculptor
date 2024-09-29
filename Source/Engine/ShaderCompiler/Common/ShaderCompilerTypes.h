@@ -25,8 +25,6 @@ public:
 
 	MacroDefinition(lib::HashedString name, lib::HashedString value)
 	{
-		SPT_PROFILER_FUNCTION();
-	
 		macro = lib::String(name.GetView()) + "=" + lib::String(value.GetView());
 	}
 

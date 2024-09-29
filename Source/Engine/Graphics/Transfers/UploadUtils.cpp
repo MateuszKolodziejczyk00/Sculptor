@@ -28,8 +28,6 @@ void FillBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffs
 
 void UploadDataToBuffer(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const rhi::RHIBuffer& rhiBuffer = destBuffer->GetRHI();
 	SPT_CHECK(bufferOffset + dataSize <= rhiBuffer.GetSize());
 

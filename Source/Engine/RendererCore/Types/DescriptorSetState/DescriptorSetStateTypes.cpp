@@ -23,8 +23,6 @@ DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet des
 
 void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const Uint64 range = buffer.GetSize();
 	SPT_CHECK(range > 0);
 
@@ -33,8 +31,6 @@ void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferVie
 
 void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer, const BufferView& countBuffer) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	const Uint64 range = buffer.GetSize();
 	SPT_CHECK(range > 0);
 
@@ -43,15 +39,11 @@ void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferVie
 
 void DescriptorSetUpdateContext::UpdateTexture(Uint32 bindingIdx, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex /*= 0*/) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_writer.WriteTexture(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx, arrayIndex), texture);
 }
 
 void DescriptorSetUpdateContext::UpdateAccelerationStructure(Uint32 bindingIdx, const lib::SharedRef<TopLevelAS>& tlas) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	m_writer.WriteAccelerationStructure(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx), tlas);
 }
 

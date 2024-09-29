@@ -52,8 +52,6 @@ BRDFIntegrationLUT& BRDFIntegrationLUT::Get()
 
 rg::RGTextureViewHandle BRDFIntegrationLUT::GetLUT(rg::RenderGraphBuilder& graphBuilder)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (!m_lut)
 	{
 		return CreateLUT(graphBuilder);

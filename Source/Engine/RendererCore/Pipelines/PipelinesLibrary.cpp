@@ -32,8 +32,6 @@ void PipelinesLibrary::Uninitialize()
 
 PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const PipelineStateID stateID = GetStateID(shaders, pipelineDef);
 
 	READ_LOCK_IF_WITH_HOT_RELOAD
@@ -79,8 +77,6 @@ PipelineStateID PipelinesLibrary::GetOrCreateGfxPipeline(const RendererResourceN
 
 PipelineStateID PipelinesLibrary::GetOrCreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(shader.IsValid());
 
 	const PipelineStateID stateID = GetStateID(shader);
@@ -108,8 +104,6 @@ PipelineStateID PipelinesLibrary::GetOrCreateComputePipeline(const RendererResou
 
 PipelineStateID PipelinesLibrary::GetOrCreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(shaders.rayGenShader.IsValid());
 
 	const PipelineStateID stateID = GetStateID(shaders, pipelineDef);
@@ -243,22 +237,16 @@ void PipelinesLibrary::InvalidatePipelinesUsingShader(ShaderID shader)
 
 PipelineStateID PipelinesLibrary::GetStateID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef), rhi::EPipelineType::Graphics);
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const ShaderID& shader) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return PipelineStateID(lib::GetHash(shader), rhi::EPipelineType::Compute);
 }
 
 PipelineStateID PipelinesLibrary::GetStateID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return PipelineStateID(lib::HashCombine(shaders.Hash(), pipelineDef), rhi::EPipelineType::RayTracing);
 }
 

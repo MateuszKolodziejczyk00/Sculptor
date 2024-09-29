@@ -86,8 +86,6 @@ public:
 	template<typename TCallable>
 	void ForEachSubresource(const rhi::TextureSubresourceRange& range, TCallable&& callable)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		const Uint32 layersNum = range.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? m_textureLayersNum : range.arrayLayersNum;
 		const Uint32 mipsNum = range.mipLevelsNum == rhi::constants::allRemainingMips ? m_textureMipsNum : range.mipLevelsNum;
 
@@ -106,8 +104,6 @@ public:
 	template<typename TCallable>
 	void ForEachSubresource(TCallable&& callable)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		for (Uint32 layerIdx = 0; layerIdx < m_textureLayersNum; ++layerIdx)
 		{
 			for (Uint32 mipIdx = 0; mipIdx < m_textureMipsNum; ++mipIdx)

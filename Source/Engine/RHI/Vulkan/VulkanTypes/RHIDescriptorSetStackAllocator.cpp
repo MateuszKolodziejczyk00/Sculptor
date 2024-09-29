@@ -37,8 +37,6 @@ Bool RHIDescriptorSetStackAllocator::IsValid() const
 
 RHIDescriptorSet RHIDescriptorSetStackAllocator::AllocateDescriptorSet(const RHIDescriptorSetLayout& layout)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	return m_poolSet->AllocateDescriptorSet(layout.GetHandle());

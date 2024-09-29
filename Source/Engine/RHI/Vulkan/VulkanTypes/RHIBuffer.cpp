@@ -126,8 +126,6 @@ RHIBuffer::RHIBuffer()
 
 void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK_MSG(definition.size > 0, "Buffer size must be greater than 0");
 
 	m_bufferSize = definition.size;
@@ -154,8 +152,6 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 
 void RHIBuffer::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 
 	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle), "Buffers cannot be externally allocated!");
@@ -225,8 +221,6 @@ Bool RHIBuffer::CanMapMemory() const
 
 Byte* RHIBuffer::MapPtr() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(HasBoundMemory());
 
 	if (m_mappingStrategy == EMappingStrategy::PersistentlyMapped)
@@ -248,8 +242,6 @@ Byte* RHIBuffer::MapPtr() const
 
 void RHIBuffer::Unmap() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(HasBoundMemory());
 
 	if (m_mappingStrategy == EMappingStrategy::MappedWhenNecessary)
@@ -260,8 +252,6 @@ void RHIBuffer::Unmap() const
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
 	addressInfo.buffer = m_bufferHandle;
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);
@@ -274,8 +264,6 @@ Bool RHIBuffer::AllowsSuballocations() const
 
 rhi::RHIVirtualAllocation RHIBuffer::CreateSuballocation(const rhi::VirtualAllocationDefinition& definition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(AllowsSuballocations());
 
 	return m_virtualAllocator.Allocate(definition);
@@ -283,8 +271,6 @@ rhi::RHIVirtualAllocation RHIBuffer::CreateSuballocation(const rhi::VirtualAlloc
 
 void RHIBuffer::DestroySuballocation(rhi::RHIVirtualAllocation suballocation)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(AllowsSuballocations());
 
 	m_virtualAllocator.Free(suballocation);
@@ -330,8 +316,6 @@ VkBuffer RHIBuffer::GetHandle() const
 
 Bool RHIBuffer::BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(IsValid());
 	SPT_CHECK(!HasBoundMemory());
 
@@ -380,8 +364,6 @@ rhi::RHIResourceAllocationHandle RHIBuffer::ReleasePlacedAllocation()
 
 rhi::RHIResourceAllocationHandle RHIBuffer::DoPlacedAllocation(const rhi::RHIPlacedAllocationDefinition& placedAllocationDef)
 {
-	SPT_PROFILER_FUNCTION();
-	
 	SPT_CHECK(!!placedAllocationDef.pool);
 	SPT_CHECK(placedAllocationDef.pool->IsValid());
 
@@ -408,8 +390,6 @@ rhi::RHIResourceAllocationHandle RHIBuffer::DoPlacedAllocation(const rhi::RHIPla
 
 rhi::RHIResourceAllocationHandle RHIBuffer::DoCommittedAllocation(const rhi::RHICommittedAllocationDefinition& committedAllocation)
 {
-	SPT_PROFILER_FUNCTION();
-
 	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	VmaAllocationCreateInfo allocationInfo{};

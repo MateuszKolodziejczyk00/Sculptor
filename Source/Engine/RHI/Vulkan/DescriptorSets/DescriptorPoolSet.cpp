@@ -31,8 +31,6 @@ void DescriptorPoolSet::ReleaseAllPools()
 
 RHIDescriptorSet DescriptorPoolSet::AllocateDescriptorSet(VkDescriptorSetLayout layout)
 {
-	SPT_PROFILER_FUNCTION();
-
 	// first try allocate from existing pools
 	for (SizeType idx = 0; idx < m_descriptorPools.size(); ++idx)
 	{

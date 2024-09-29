@@ -86,8 +86,6 @@ inline Bool ShaderMetaData::HasValidDescriptorSetAtIndex(SizeType setIdx) const
 
 inline Uint32 ShaderMetaData::FindDescriptorSetOfType(SizeType typeID) const
 {
-	SPT_PROFILER_FUNCTION();
-	
 	const auto foundDS = std::find(m_dsStateTypeIDs.cbegin(), m_dsStateTypeIDs.cend(), typeID);
 	return foundDS != m_dsStateTypeIDs.cend() ? static_cast<Uint32>(std::distance(m_dsStateTypeIDs.cbegin(), foundDS)) : idxNone<Uint32>;
 }

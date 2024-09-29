@@ -42,8 +42,6 @@ void RGRenderPassDefinition::SetStencilRenderTarget(const RGRenderTargetDef& def
 
 rdr::RenderingDefinition RGRenderPassDefinition::CreateRenderingDefinition() const
 {
-	SPT_PROFILER_FUNCTION();
-
 	rdr::RenderingDefinition renderingDefinition(m_renderAreaOffset, m_renderAreaExtent, m_renderingFlags);
 
 	std::for_each(std::cbegin(m_colorRenderTargetDefs), std::cend(m_colorRenderTargetDefs),
@@ -67,8 +65,6 @@ rdr::RenderingDefinition RGRenderPassDefinition::CreateRenderingDefinition() con
 
 void RGRenderPassDefinition::BuildDependencies(RGDependenciesBuilder& dependenciesBuilder) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	for (const RGRenderTargetDef& colorRenderTarget : m_colorRenderTargetDefs)
 	{
 		SPT_CHECK(colorRenderTarget.textureView.IsValid());

@@ -63,8 +63,6 @@ void IMaterialShadersCompiler::LoadTechniquesRegistry()
 
 void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techniqueName, const MaterialStaticParameters& materialParams, const MaterialShadersParameters& parameters, OUT MaterialRayTracingShaders& rayTracingShaders)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
 
 	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(techniqueConfig, materialParams, parameters);

@@ -30,8 +30,6 @@ void RenderGraphResourcesPool::Prepare()
 
 lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const RenderGraphDebugName& name, const rhi::TextureDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
-	SPT_PROFILER_FUNCTION();
-
 	MemoryPoolData& poolData = GetMemoryPoolData(allocationInfo);
 
 	rdr::AllocationDefinition allocationDefinition;
@@ -59,8 +57,6 @@ lib::SharedPtr<rdr::Texture> RenderGraphResourcesPool::AcquireTexture(const Rend
 
 void RenderGraphResourcesPool::ReleaseTexture(lib::SharedPtr<rdr::Texture> texture)
 {
-	SPT_PROFILER_FUNCTION();
-		
 	const rhi::RHIMemoryRequirements memoryRequirements = texture->GetRHI().GetMemoryRequirements();
 
 	MemoryPoolData& poolData = GetMemoryPoolData(texture->GetRHI().GetAllocationInfo());

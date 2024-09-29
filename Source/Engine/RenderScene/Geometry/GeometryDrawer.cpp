@@ -15,8 +15,6 @@ GeometryBatchesBuilder::GeometryBatchesBuilder(GeometryPassDataCollection& batch
 
 void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, const mat::MaterialProxyComponent& materialProxy)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(geometry.entityGPUIdx != idxNone<Uint32>);
 	SPT_CHECK(geometry.submeshGlobalIdx != idxNone<Uint32>);
 	SPT_CHECK(geometry.meshletsNum > 0u);
@@ -90,8 +88,6 @@ GeometryBatchPSOInfo GeometryBatchesBuilder::GetGeometryBatchPSOInfo(const mat::
 
 GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatchPSOInfo& psoInfo, const GeometryBatchBuildData& batchBuildData) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(!batchBuildData.batchElements.empty());
 
 	GeometryGPUBatchData gpuBatchData;

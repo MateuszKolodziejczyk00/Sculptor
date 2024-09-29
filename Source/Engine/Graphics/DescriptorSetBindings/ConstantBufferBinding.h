@@ -254,8 +254,6 @@ private:
 
 	void InitResources(rdr::DescriptorSetState& owningState)
 	{
-		SPT_PROFILER_FUNCTION();
-
 		m_name = RENDERER_RESOURCE_NAME(owningState.GetName().ToString() + '.' + GetName().ToString() + lib::String(".Buffer"));
 
 		if constexpr (hasVariableOffset)

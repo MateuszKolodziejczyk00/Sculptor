@@ -68,8 +68,6 @@ RGTextureSubresourceAccessState& RGTextureAccessState::GetForSubresource(Uint32 
 
 void RGTextureAccessState::SetSubresourcesAccess(const RGTextureSubresourceAccessState& access, const rhi::TextureSubresourceRange& range)
 {
-	SPT_PROFILER_FUNCTION();
-
 	if (RangeContainsFullResource(range))
 	{
 		MergeTo(access);

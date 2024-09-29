@@ -138,8 +138,6 @@ RHISemaphoresArray::RHISemaphoresArray()
 
 void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::EPipelineStage submitStage)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Binary);
 
 	AddSemaphoreInfo(semaphore.GetHandle(), 0, submitStage);
@@ -147,8 +145,6 @@ void RHISemaphoresArray::AddBinarySemaphore(const RHISemaphore& semaphore, rhi::
 
 void RHISemaphoresArray::AddTimelineSemaphore(const RHISemaphore& semaphore, Uint64 value, rhi::EPipelineStage submitStage)
 {
-	SPT_PROFILER_FUNCTION();
-
 	SPT_CHECK(semaphore.IsValid() && semaphore.GetType() == rhi::ESemaphoreType::Timeline);
 
 	AddSemaphoreInfo(semaphore.GetHandle(), value, submitStage);

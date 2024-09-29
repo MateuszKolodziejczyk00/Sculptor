@@ -214,8 +214,6 @@ DDGIZonesCollector::DDGIZonesCollector(SizeType zonesToRelitBudget)
 
 void DDGIZonesCollector::Collect(DDGIRelitZone& zone)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const auto priorityComparator = [](const DDGIRelitZone* lhs, const DDGIRelitZone* rhs)
 	{
 		const auto createZoneCompareData = [](const DDGIRelitZone* zone) { return std::make_tuple(zone->WantsForceRelitNextFrame(), zone->GetCurrentRelitPriority()); };

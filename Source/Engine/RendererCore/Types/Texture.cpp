@@ -10,8 +10,6 @@ namespace spt::rdr
 
 Texture::Texture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationDefinition)
 {
-	SPT_PROFILER_FUNCTION();
-
 	GetRHI().InitializeRHI(textureDefinition, allocationDefinition.GetRHIAllocationDef());
 	GetRHI().SetName(name.Get());
 
@@ -85,8 +83,6 @@ math::Vector2u Texture::GetResolution2D() const
 
 lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition /*= rhi::TextureViewDefinition()*/) const
 {
-	SPT_PROFILER_FUNCTION();
-
 	return lib::Ref(std::make_shared<TextureView>(name, lib::Ref(const_cast<Texture*>(this)->shared_from_this()), viewDefinition));
 }
 
@@ -96,8 +92,6 @@ lib::SharedRef<TextureView> Texture::CreateView(const RendererResourceName& name
 TextureView::TextureView(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition)
 	: m_texture(texture)
 {
-	SPT_PROFILER_FUNCTION();
-
 	const rhi::RHITexture& rhiTexture = texture->GetRHI();
 
 	GetRHI().InitializeRHI(rhiTexture, viewDefinition);
