@@ -123,15 +123,11 @@ lib::MTHandle<JobInstance> JobsQueueManagerTls::Steal(Int32 attempts)
 
 void JobsQueueManagerTls::EnqueueSleepEvents(lib::SharedPtr<platf::Event> sleepEvent)
 {
-	SPT_PROFILER_FUNCTION();
-
 	s_sleepEventsQueue.Enqueue(std::move(sleepEvent));
 }
 
 lib::SharedPtr<platf::Event> JobsQueueManagerTls::DequeueSleepEvents()
 {
-	SPT_PROFILER_FUNCTION();
-
 	std::optional<lib::SharedPtr<platf::Event>> sleepEvent = s_sleepEventsQueue.Dequeue();
 	return sleepEvent.value_or(lib::SharedPtr<platf::Event>{});
 }

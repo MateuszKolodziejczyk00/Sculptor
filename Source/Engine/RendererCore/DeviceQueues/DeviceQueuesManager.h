@@ -6,6 +6,8 @@
 #include "RendererUtils.h"
 #include "Containers/Queue.h"
 
+#include <semaphore>
+
 
 namespace spt::rdr
 {
@@ -77,16 +79,23 @@ public:
 
 	SubmittedWorkloadsQueue();
 
-	void Push(lib::SharedRef<GPUWorkload> workload);
-	void Flush();
+	void Initialize();
+	void Uninitialize();
 
-	Real32 GetTimeSinceLastFlush() const;
+	void Push(lib::SharedRef<GPUWorkload> workload);
+	void FullFlush();
 
 private:
+
+	void FlushThreadMain();
 
 	lib::Queue<lib::SharedRef<GPUWorkload>> m_submittedWorkloadsQueue;
 	Real32                                  m_submittedWorkloadsLastFlushTime;
 	lib::Lock                               m_submittedWorkloadsLock;
+
+	lib::Thread                               m_flushThread;
+	std::atomic<Bool>                         m_flushThreadRunning;
+	std::counting_semaphore<maxValue<IntPtr>> m_flushThreadWakeSemaphore;
 };
 
 

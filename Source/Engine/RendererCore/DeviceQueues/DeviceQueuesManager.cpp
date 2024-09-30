@@ -70,52 +70,81 @@ const rhi::RHICommandBuffer& DeviceQueue::GetCommandBuffer(const GPUWorkload& wo
 // SubmittedWorkloadsQueue =======================================================================
 
 SubmittedWorkloadsQueue::SubmittedWorkloadsQueue()
-	: m_submittedWorkloadsLastFlushTime(-999.f)
+	: m_flushThreadWakeSemaphore(0u)
 { }
+
+void SubmittedWorkloadsQueue::Initialize()
+{
+	m_flushThreadRunning.store(true);
+	m_flushThread = lib::Thread(&SubmittedWorkloadsQueue::FlushThreadMain, this);
+}
+
+void SubmittedWorkloadsQueue::Uninitialize()
+{
+	m_flushThreadRunning.store(false);
+	m_flushThread.Join();
+}
 
 void SubmittedWorkloadsQueue::Push(lib::SharedRef<GPUWorkload> workload)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::LockGuard lock(m_submittedWorkloadsLock);
-
-	m_submittedWorkloadsQueue.push(std::move(workload));
-}
-
-void SubmittedWorkloadsQueue::Flush()
-{
-	SPT_PROFILER_FUNCTION();
-
-	lib::DynamicArray<lib::SharedRef<GPUWorkload>> finishedWorkloads;
-
 	{
 		const lib::LockGuard lock(m_submittedWorkloadsLock);
-
-		while (!m_submittedWorkloadsQueue.empty())
-		{
-			if (m_submittedWorkloadsQueue.front()->IsFinished())
-			{
-				finishedWorkloads.emplace_back(std::move(m_submittedWorkloadsQueue.front()));
-				m_submittedWorkloadsQueue.pop();
-			}
-			else
-			{
-				break;
-			}
-		}
+		m_submittedWorkloadsQueue.push(std::move(workload));
 	}
 
-	m_submittedWorkloadsLastFlushTime = engn::Engine::Get().GetEngineTimer().GetCurrentTimeSeconds();
+	m_flushThreadWakeSemaphore.release();
+}
 
-	for (const lib::SharedRef<GPUWorkload>& workload : finishedWorkloads)
+void SubmittedWorkloadsQueue::FullFlush()
+{
+	const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+	while (!m_submittedWorkloadsQueue.empty())
 	{
-		workload->OnExecutionFinished();
+		lib::SharedRef<GPUWorkload> workload = std::move(m_submittedWorkloadsQueue.front());
+		m_submittedWorkloadsQueue.pop();
+
+		workload->Wait();
+
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [finishedWorkload = std::move(workload)]()
+				   {
+					   finishedWorkload->OnExecutionFinished();
+				   });
 	}
 }
 
-Real32 SubmittedWorkloadsQueue::GetTimeSinceLastFlush() const
+void SubmittedWorkloadsQueue::FlushThreadMain()
 {
-	return engn::Engine::Get().GetEngineTimer().GetCurrentTimeSeconds() - m_submittedWorkloadsLastFlushTime;
+	SPT_PROFILER_THREAD("GPU Workloads Tracker");
+
+	while (m_flushThreadRunning.load())
+	{
+		m_flushThreadWakeSemaphore.acquire();
+
+		lib::SharedPtr<GPUWorkload> workload;
+
+		{
+			const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+			workload = std::move(m_submittedWorkloadsQueue.front());
+			m_submittedWorkloadsQueue.pop();
+		}
+
+		SPT_CHECK(!!workload);
+
+		workload->Wait();
+
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [finishedWorkload = std::move(workload)]()
+				   {
+					   finishedWorkload->OnExecutionFinished();
+				   });
+	}
+
+	FullFlush();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,10 +166,14 @@ void DeviceQueuesManager::Initialize()
 
 	m_memoryTransfersSemaphore      = rdr::ResourcesManager::CreateRenderSemaphore(RENDERER_RESOURCE_NAME("Memory Transfers Semaphore"), rhi::SemaphoreDefinition(rhi::ESemaphoreType::Timeline));
 	m_memoryTransfersSemaphoreValue = 0u;
+
+	m_submittedWorkloadsQueue.Initialize();
 }
 
 void DeviceQueuesManager::Uninitialize()
 {
+	m_submittedWorkloadsQueue.Uninitialize();
+
 	m_graphicsQueue.Release();
 	m_computeQueue.Release();
 	m_transferQueue.Release();
@@ -160,9 +193,7 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 
 void DeviceQueuesManager::FlushSubmittedWorkloads()
 {
-	SPT_PROFILER_FUNCTION();
-
-	m_submittedWorkloadsQueue.Flush();
+	m_submittedWorkloadsQueue.FullFlush();
 }
 
 void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)
@@ -191,18 +222,6 @@ void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkloa
 	submissionQueue.SubmitGPUWorkload(std::move(definition));
 
 	m_submittedWorkloadsQueue.Push(workload);
-
-	constexpr Real32 flushSubmittedWorkloadsInterval = 0.002f;
-
-	if (lib::HasAnyFlag(flags, EGPUWorkloadSubmitFlags::CorePipeSignal)
-		|| m_submittedWorkloadsQueue.GetTimeSinceLastFlush() >= flushSubmittedWorkloadsInterval)
-	{
-		js::Launch(SPT_GENERIC_JOB_NAME,
-				   [workloadsQueue = &m_submittedWorkloadsQueue]()
-				   {
-					   workloadsQueue->Flush();
-				   });
-	}
 }
 
 void DeviceQueuesManager::CollectWaitSemaphores(const lib::SharedRef<GPUWorkload>& workload, const DeviceQueue& submissionQueue, EGPUWorkloadSubmitFlags flags, INOUT SemaphoresArray& waitSemaphores)

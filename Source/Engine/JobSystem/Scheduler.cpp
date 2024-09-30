@@ -25,7 +25,7 @@ public:
 private:
 
 	lib::DynamicArray<WorkerContext> m_workersContexts;
-	lib::DynamicArray<std::thread>   m_workers;
+	lib::DynamicArray<lib::Thread>   m_workers;
 };
 
 SchedulerImpl::~SchedulerImpl()
@@ -71,9 +71,9 @@ void SchedulerImpl::DestroyWorkers()
 				  });
 
 	std::for_each(std::begin(m_workers), std::end(m_workers),
-				  [](std::thread& worker)
+				  [](lib::Thread& worker)
 				  {
-					  worker.join();
+					  worker.Join();
 				  });
 
 	m_workersContexts.clear();

@@ -31,6 +31,7 @@
 #include "Utility/String/Literal.h"
 #include "Utility/Threading/Lock.h"
 #include "Utility/Threading/Spinlock.h"
+#include "Utility/Threading/Thread.h"
 #include "Utility/Templates/TypeTraits.h"
 #include "Utility/Algorithms/Algorithms.h"
 #include "Utility/RefCounted.h"
