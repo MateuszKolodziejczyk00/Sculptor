@@ -95,7 +95,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
 
 					const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
-					if(normalsSimilarity >= 0.996f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
+					if(normalsSimilarity >= 0.6f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
 					{
 						const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
 						const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);
@@ -143,10 +143,11 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			historySamplesNum = min(historySamplesNum, uint(maxAccumulatedFrames));
 			float currentFrameWeight = rcp(float(historySamplesNum + 1u));
-			currentFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - reprojectionConfidence);
 
 			const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
 			moments = lerp(historyMoments, moments, currentFrameWeight);
+
+			currentFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - reprojectionConfidence);
 			
 			float4 historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
 			historyValue.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(historyValue.rgb);
@@ -158,7 +159,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			// Fast history
 
 			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-			const float currentFrameWeightFast = max(0.22f, currentFrameWeight);
+			const float currentFrameWeightFast = max(0.2f, currentFrameWeight);
 			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
 
 			historySamplesNum = historySamplesNum + 1u;

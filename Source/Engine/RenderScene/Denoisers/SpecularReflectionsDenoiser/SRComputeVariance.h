@@ -20,9 +20,9 @@ class RenderView;
 namespace sr_denoiser
 {
 
-struct StdDevParams
+struct TemporalVarianceParams
 {
-	explicit StdDevParams(const RenderView& inRenderView)
+	explicit TemporalVarianceParams(const RenderView& inRenderView)
 		: renderView(inRenderView)
 	{ }
 
@@ -33,10 +33,15 @@ struct StdDevParams
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  depthTexture;
 	rg::RGTextureViewHandle  luminanceTexture;
+
+	rg::RGTextureViewHandle  outputVarianceTexture;
 };
 
 
-rg::RGTextureViewHandle ComputeStandardDeviation(rg::RenderGraphBuilder& graphBuilder, const StdDevParams& params);
+rg::RGTextureViewHandle CreateVarianceTexture(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
+
+
+void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const TemporalVarianceParams& params);
 
 } // sr_denoiser
 

@@ -97,8 +97,6 @@ void ResamplingFinalVisibilityTestRTG()
 
 			if(!payload.isVisible)
 			{
-				u_inOutReservoirsBuffer[reservoirIdx] = u_initialReservoirsBuffer[reservoirIdx];
-
 				const uint2 invalidationCoords = traceCommand.blockCoords / uint2(8u, 4u);
 				const uint2 invalidationTileOffset = traceCommand.blockCoords & uint2(7u, 3u);
 

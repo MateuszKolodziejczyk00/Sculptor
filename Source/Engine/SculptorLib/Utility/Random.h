@@ -39,6 +39,12 @@ inline TType Random(TType min, TType max)
     return distribution(GetGenerator());
 }
 
+template<typename TType>
+inline TType RandomFromTypeDomain()
+{
+	return Random<TType>(std::numeric_limits<TType>::min(), std::numeric_limits<TType>::max());
+}
+
 inline math::Matrix3f RandomRotationMatrix()
 {
     // Based on James Arvo's algorithm from Graphics Gems 3

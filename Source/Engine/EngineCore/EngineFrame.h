@@ -107,6 +107,8 @@ public:
 
 	EFrameState GetFrameState() const { return m_frameState; }
 
+	void SetMaxFPS(Real32 fps);
+
 	// Frame Stages ===================================================
 
 	const js::Event& GetStageBeginEvent(EFrameStage::Type stage);
@@ -131,6 +133,8 @@ private:
 	EFrameStage::Type m_currentStage;
 
 	lib::SharedPtr<FrameContext> m_prevFrame;
+
+	Real32 m_maxFPS;
 };
 
 

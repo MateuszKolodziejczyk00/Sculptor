@@ -48,4 +48,14 @@ Real32 Engine::GetTime() const
 	return m_timer.GetTime();
 }
 
+Engine& GetEngine()
+{
+	return Engine::Get();
+}
+
+const EngineTimer& GetEngineTimer()
+{
+	return Engine::Get().GetEngineTimer();
+}
+
 } // spt::engn

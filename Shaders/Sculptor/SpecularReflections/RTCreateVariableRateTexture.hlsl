@@ -13,6 +13,13 @@ struct CS_INPUT
 };
 
 
+
+float GetNoiseMulitplierForRoughness(float roughness)
+{
+	return lerp(0.3f, 1.f, smoothstep(0.3f, 0.6f, roughness));
+}
+
+
 struct RTVariableRateCallback
 {
 	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
@@ -45,52 +52,66 @@ struct RTVariableRateCallback
 			brightness = processor.QuadMax(brightness);
 			const float rcpBrightness = 1.f / brightness;
 
-			const float2 temporalMoments = u_temporalMomentsTexture.Load(int3(processor.GetCoords(), 0)).xy;
-			float temporalVariance = abs(temporalMoments.y - Pow2(temporalMoments.x));
-			temporalVariance = processor.QuadMax(temporalVariance);
-			const float temporalStdDev = sqrt(temporalVariance);
+			float spatioTemporalVariance = u_spatioTemporalVariance.Load(int3(processor.GetCoords(), 0)).x;
+			spatioTemporalVariance = processor.QuadMax(spatioTemporalVariance);
+			const float spatioTemporalStdDev = sqrt(spatioTemporalVariance);
 
-			float spatialStdDev = u_spatialStdDevTexture.Load(int3(processor.GetCoords(), 0)).x;
-			spatialStdDev = processor.QuadMax(spatialStdDev);
+			float noiseLevel = spatioTemporalStdDev * rcpBrightness * rtReflectionsInfluence;
 
-			float stdDev = spatialStdDev * rcpBrightness;
-			stdDev *= min(temporalStdDev, 2.f) * rtReflectionsInfluence;
+			noiseLevel *= GetNoiseMulitplierForRoughness(roughness);
 
 			const float linearDepth = u_linearDepthTexture.Load(int3(processor.GetCoords(), 0)).x;
 			const float depthDDX = processor.DDX_QuadMax(linearDepth);
 			const float depthDDY = processor.DDY_QuadMax(linearDepth);
 
 			uint minVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(stdDev >= 0.25f)
+			if(noiseLevel >= 0.6f)
 			{
 				minVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (stdDev >= 0.16f)
+			else if (noiseLevel >= 0.45f)
 			{
 				minVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (stdDev >= 0.08f)
+			else if (noiseLevel >= 0.15f)
 			{
 				minVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(stdDev >= 0.035f)
+			else if(noiseLevel >= 0.08f)
 			{
 				minVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}
 
 			variableRate = MinVariableRate(variableRate, minVariableRate);
+		}
 
-			if (WaveActiveAnyTrue(variableRate != SPT_VARIABLE_RATE_1X1))
+		if(WaveActiveAnyTrue(variableRate > SPT_VARIABLE_RATE_2X2))
+		{
+			const uint2 resamplingTileCoords        = processor.GetCoords() / uint2(8u, 4u);
+			const uint2 resamplingTileTextureCoords = resamplingTileCoords / uint2(8u, 4u);
+			const uint  resamplingTileBitOffset     = dot(resamplingTileCoords & uint2(7u, 3u), uint2(1u, 8u));
+			const uint tileReliabilityMask          = u_tileReliabilityMask.Load(int3(resamplingTileTextureCoords, 0)).x;
+			const bool isTileUnreliable             = (tileReliabilityMask & (1u << resamplingTileBitOffset)) == 0u;
+
+			if(isTileUnreliable)
 			{
-				float geometryCoherence = u_geometryCoherenceTexture.Load(int3(processor.GetCoords(), 0));
-				geometryCoherence = processor.QuadMin(geometryCoherence);
+				variableRate = (variableRate >> 2u);
+			}
+		}
 
-				const float stdDevThreshold = lerp(0.0001f, 0.01f, roughness);
+		const float volatileQuadMinRoughness = 0.5f;
+		if(WaveActiveAnyTrue(variableRate > SPT_VARIABLE_RATE_2X2) && roughness > volatileQuadMinRoughness)
+		{
+			const uint2 quadCoords = processor.GetCoords() / 2u;
+			const uint2 quadTextureCoords = quadCoords / uint2(8u, 4u);
+			const uint quadBitOffset = dot(quadCoords & uint2(7u, 3u), uint2(1u, 8u));
+			
+			const uint quadVolatilityMask = u_quadVolatilityMask.Load(int3(quadTextureCoords, 0)).x;
+			const bool isQuadVolatile = (quadVolatilityMask & (1u << quadBitOffset)) != 0u;
 
-				if(geometryCoherence < 3.f && stdDev >= stdDevThreshold)
-				{
-					variableRate = SPT_VARIABLE_RATE_1X1;
-				}
+			if(isQuadVolatile && roughness > volatileQuadMinRoughness)
+			{
+				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 			}
 		}
 

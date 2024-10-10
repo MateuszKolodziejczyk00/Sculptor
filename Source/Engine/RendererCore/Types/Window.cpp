@@ -30,6 +30,11 @@ Bool Window::ShouldClose() const
 	return m_platformWindow->ShouldClose();
 }
 
+Bool Window::IsFocused() const
+{
+	return m_platformWindow->IsFocused();
+}
+
 void Window::BeginFrame()
 {
 	SPT_PROFILER_FUNCTION();

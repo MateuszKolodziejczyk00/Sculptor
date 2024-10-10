@@ -64,6 +64,8 @@ public:
 
 	Bool						ShouldClose() const;
 
+	Bool						IsFocused() const;
+
 	void						BeginFrame();
 	void						Update();
 

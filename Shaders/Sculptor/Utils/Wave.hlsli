@@ -7,3 +7,17 @@ uint GetCompactedIndex(uint2 valueBallot, uint laneIdx)
     return countbits(valueBallot.x & compactMask.x)
          + countbits(valueBallot.y & compactMask.y);
 }
+
+
+uint2 ReorderWaveToQuads(in uint threadIdx)
+{
+	const uint offsetX = ((threadIdx & 0x4) >> 1u) + ((threadIdx & 0x10) >> 2u) + (threadIdx & 0x1);
+
+	uint offsetY = ((threadIdx & 0x8) >> 2u) + ((threadIdx & 0x2) >> 1u);
+	if(WaveGetLaneCount() == 64u)
+	{
+		offsetY += ((threadIdx & 0x20) >> 3u);
+	}
+
+	return uint2(offsetX, offsetY);
+}

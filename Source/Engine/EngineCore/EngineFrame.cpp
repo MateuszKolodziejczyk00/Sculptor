@@ -13,6 +13,7 @@ SPT_DEFINE_LOG_CATEGORY(EngineFrame, true);
 FrameContext::FrameContext()
 	: m_frameState(EFrameState::Updating)
 	, m_currentStage(EFrameStage::PreFrame)
+	, m_maxFPS(-1.f)
 { }
 
 FrameContext::~FrameContext()
@@ -90,6 +91,13 @@ void FrameContext::FlushPreviousFrames()
 	}
 }
 
+void FrameContext::SetMaxFPS(Real32 fps)
+{
+	SPT_CHECK(m_currentStage < EFrameStage::UpdatingEnd); // Allowed only in updating stage
+
+	m_maxFPS = fps;
+}
+
 const js::Event& FrameContext::GetStageBeginEvent(EFrameStage::Type stage)
 {
 	static js::Event invalid;
@@ -124,7 +132,7 @@ void FrameContext::DoStagesTransition(EFrameStage::Type prevStage, EFrameStage::
 
 	if (prevStage == EFrameStage::UpdatingEnd)
 	{
-		//
+		// no-op
 	}
 
 	if (nextStage == EFrameStage::RenderingBegin)
@@ -132,6 +140,19 @@ void FrameContext::DoStagesTransition(EFrameStage::Type prevStage, EFrameStage::
 		if (m_prevFrame)
 		{
 			m_prevFrame->WaitRenderingEnded();
+		}
+
+		if (m_maxFPS > 0.f)
+		{
+			const Real32 currentTime          = GetEngineTimer().GetCurrentTimeSeconds();
+			const Real32 currentFrameDuration = currentTime - m_frameDefinition.time;
+			const Real32 targetFrameDuration  = 1.f / m_maxFPS;
+
+			if (currentFrameDuration < targetFrameDuration)
+			{
+				const Real32 sleepTime = targetFrameDuration - currentFrameDuration;
+				lib::CurrentThread::SleepFor(static_cast<Uint64>(sleepTime * 1000));
+			}
 		}
 
 		m_frameState = EFrameState::Rendering;

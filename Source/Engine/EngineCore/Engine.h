@@ -52,4 +52,8 @@ private:
 	OnBeginFrameDelegate m_onBeginFrameDelegate;
 };
 
+
+ENGINE_CORE_API Engine&            GetEngine();
+ENGINE_CORE_API const EngineTimer& GetEngineTimer();
+
 } // spt::engn

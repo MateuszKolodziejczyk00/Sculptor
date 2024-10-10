@@ -36,15 +36,13 @@ REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRend
 
 namespace renderer_params
 {
-RendererFloatParameter specularTrace2x2Threshold("Specular Trace 2x2 Threshold", { "Specular Reflections" }, 0.09f, 0.f, 0.2f);
-RendererFloatParameter specularTrace4x4Threshold("Specular Trace 4x4 Threshold", { "Specular Reflections" }, 0.06f, 0.f, 0.2f);
-
 RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
 RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
 RendererBoolParameter detailPreservingSpatialDenoising("Detail Preserving Spatial Denoising", { "Specular Reflections" }, false);
+
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -71,10 +69,9 @@ namespace ray_directions
 {
 
 BEGIN_SHADER_STRUCT(GenerateRayDirectionsConstants)
-	SHADER_STRUCT_FIELD(math::Vector2f, random)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
+	SHADER_STRUCT_FIELD(Uint32,         seed)
 END_SHADER_STRUCT()
 
 
@@ -123,10 +120,9 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	const rg::RGBufferViewHandle rayPdfsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Ray PDFs Buffer"), rayPdfsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	GenerateRayDirectionsConstants shaderConstants;
-	shaderConstants.random        = math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
 	shaderConstants.resolution    = resolution;
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
-	shaderConstants.frameIdx      = renderView.GetRenderedFrameIdx();
+	shaderConstants.seed          = lib::rnd::RandomFromTypeDomain<Uint32>();
 
 	lib::MTHandle<GenerateRayDirectionsDS> generateRayDirectionsDS = graphBuilder.CreateDescriptorSet<GenerateRayDirectionsDS>(RENDERER_RESOURCE_NAME("GenerateRayDirectionsDS"));
 	generateRayDirectionsDS->u_tracesNum        = tracesAllocation.tracesNum;
@@ -497,11 +493,11 @@ END_SHADER_STRUCT();
 DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_influenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_temporalMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_spatialStdDevTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_geometryCoherenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_spatioTemporalVariance)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_tileReliabilityMask)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_quadVolatilityMask)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
 DS_END();
 
@@ -551,10 +547,6 @@ SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
 {
 	vrt::VariableRateSettings variableRateSettings;
 	variableRateSettings.debugName   = RG_DEBUG_NAME("RT Reflections");
-	variableRateSettings.xThreshold2 = renderer_params::specularTrace2x2Threshold;
-	variableRateSettings.yThreshold2 = renderer_params::specularTrace2x2Threshold;
-	variableRateSettings.xThreshold4 = renderer_params::specularTrace4x4Threshold;
-	variableRateSettings.yThreshold4 = renderer_params::specularTrace4x4Threshold;
 	variableRateSettings.logFramesNumPerSlot    = 0u;
 	variableRateSettings.reprojectionFailedMode = vrt::EReprojectionFailedMode::_1x2;
 	variableRateSettings.permutationSettings.maxVariableRate = vrt::EMaxVariableRate::_4x4;
@@ -673,9 +665,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.outLuminanceHitDistanceTexture = luminanceHitDistanceTexture;
 		resamplingParams.motionTexture                  = params.motionTexture;
 		resamplingParams.tracesAllocation               = tracesAllocation;
-		resamplingParams.enableTemporalResampling       = hasValidHistory;
 		resamplingParams.enableTemporalResampling       = hasValidHistory && renderer_params::enableTemporalResampling;
-		resamplingParams.spatialResamplingIterations    = static_cast<Uint32>(renderer_params::spatialResamplingIterationsNum);
+		resamplingParams.spatialResamplingIterationsNum = renderer_params::spatialResamplingIterationsNum;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 
@@ -690,7 +681,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			trace::GenerateReservoirs(graphBuilder, renderScene, viewSpec, params, additionalTracesParams);
 		}
 
-		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
+		const sr_restir::FinalResamplingResult finalResamplingResult = m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
 		
 		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, luminanceHitDistanceTexture);
 
@@ -705,11 +696,11 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			upsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
 			upsampleParams.renderViewDS            = renderView.GetRenderViewDS();
 			upsampleParams.fireflyFilteringEnabled = true;
-			specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedTexture, upsampleParams);
+			specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoiserOutput, upsampleParams);
 		}
 		else
 		{
-			specularReflectionsFullRes = denoiserResult.denoisedTexture;
+			specularReflectionsFullRes = denoiserResult.denoiserOutput;
 		}
 
 		SPT_CHECK(specularReflectionsFullRes.IsValid())
@@ -717,13 +708,13 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle specularReflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
-		reflectionsViewData.denoisedRefectionsTexture    = denoiserResult.denoisedTexture;
+		reflectionsViewData.denoisedRefectionsTexture    = denoiserResult.denoiserOutput;
 		reflectionsViewData.reflectionsTexture           = specularReflectionsFullRes;
 		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
-		reflectionsViewData.temporalMomentsTexture       = denoiserResult.temporalMomentsTexture;
-		reflectionsViewData.spatialStdDevTexture         = denoiserResult.spatialStdDevTexture;
-		reflectionsViewData.geometryCoherenceTexture     = denoiserResult.geometryCoherence;
+		reflectionsViewData.spatioTemporalVariance       = denoiserResult.spatioTemporalVariance;
 		reflectionsViewData.halfResReflections           = isHalfRes;
+		reflectionsViewData.tileReliabilityMask          = finalResamplingResult.tileReliabilityMask;
+		reflectionsViewData.quadVolatilityMask           = finalResamplingResult.quadVolatilityMask;
 
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
 
@@ -753,14 +744,14 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
 
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
-	vrtDS->u_influenceTexture          = reflectionsViewData.reflectionsInfluenceTexture;
-	vrtDS->u_roughnessTexture          = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
-	vrtDS->u_temporalMomentsTexture    = reflectionsViewData.temporalMomentsTexture;
-	vrtDS->u_spatialStdDevTexture      = reflectionsViewData.spatialStdDevTexture;
-	vrtDS->u_geometryCoherenceTexture  = reflectionsViewData.geometryCoherenceTexture;
-	vrtDS->u_linearDepthTexture        = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
-	vrtDS->u_reflectionsTexture        = reflectionsViewData.denoisedRefectionsTexture;
-	vrtDS->u_rtConstants               = shaderConstants;
+	vrtDS->u_influenceTexture       = reflectionsViewData.reflectionsInfluenceTexture;
+	vrtDS->u_roughnessTexture       = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
+	vrtDS->u_spatioTemporalVariance = reflectionsViewData.spatioTemporalVariance;
+	vrtDS->u_linearDepthTexture     = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
+	vrtDS->u_reflectionsTexture     = reflectionsViewData.denoisedRefectionsTexture;
+	vrtDS->u_tileReliabilityMask    = reflectionsViewData.tileReliabilityMask;
+	vrtDS->u_quadVolatilityMask     = reflectionsViewData.quadVolatilityMask;
+	vrtDS->u_rtConstants            = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 

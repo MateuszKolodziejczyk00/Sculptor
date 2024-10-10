@@ -62,6 +62,7 @@ CompactedMask4x4 GetVariableRateIn4x4Block(in uint vrMask, out uint tileIdxInQua
 
 uint ComputeVariableRateMask(in uint requestedVRMask)
 {
+	// Early our if current mask is lower than 2x2. In that case, this thread doesn't care about neighbors
 #if SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
 	if(requestedVRMask <= SPT_VARIABLE_RATE_2X2)
 #endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
@@ -105,32 +106,32 @@ uint ComputeVariableRateMask(in uint requestedVRMask)
 		const bool supports4X4 = (compactedMask4x4.mask == all4x4);
 
 		finalMask = ClampTo2x2VariableRate(requestedVRMask);
-		if (requestedVRMask == SPT_VARIABLE_RATE_4X4 && supports4X4)
+
+		// First, check 4x4
+		if (supports4X4)
 		{
 			finalMask |= SPT_VARIABLE_RATE_4X4;
 			finalMask &= ~SPT_VARIABLE_RATE_2X2;
 		}
-		else
+		else if(supports4X) // 4X has higher priority than 4Y
 		{
-			if((requestedVRMask & SPT_VARIABLE_RATE_4X && supports4X) > 0)
-			{
+			// 4X2Y
 				finalMask |= SPT_VARIABLE_RATE_4X;
 				finalMask &= ~SPT_VARIABLE_RATE_2X;
 			}
-			else if((requestedVRMask & SPT_VARIABLE_RATE_4Y) > 0)
+		else if(supports4Y)
 			{
 				// 4X has higher priority than 4Y
 				// because of that, we need to check if 4X is supported and allow 4Y only if 4X is not supported for all rows
 				const bool anyRowSupports4X = HasAllBits(compactedMask4x4.mask, firstRow4XRequiredMask) || HasAllBits(compactedMask4x4.mask, firstRow4XRequiredMask << bitsOffsetPerRow);
 
-				if(supports4Y && !anyRowSupports4X)
+			if(!anyRowSupports4X)
 				{
 					finalMask |= SPT_VARIABLE_RATE_4Y;
 					finalMask &= ~SPT_VARIABLE_RATE_2Y;
 				}
 			}
 		}
-	}
 
 	return finalMask;
 #endif // SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2

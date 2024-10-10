@@ -71,11 +71,9 @@ struct ResamplingParams
 
 	rg::RGTextureViewHandle preintegratedBRDFLUT;
 
-	Uint32 spatialResamplingIterations = 1u;
-	Bool   enableTemporalResampling    = true;
-	Bool   enableFinalVisibilityCheck  = true;
+	Uint32 spatialResamplingIterationsNum = 1u;
+	Bool enableTemporalResampling         = true;
 };
-
 
 
 struct InitialResamplingResult
@@ -86,6 +84,15 @@ struct InitialResamplingResult
 };
 
 
+struct FinalResamplingResult
+{
+	// 8x4 tile, 1 bit per tile, 8x4 tiles per texel
+	rg::RGTextureViewHandle tileReliabilityMask;
+	
+	rg::RGTextureViewHandle quadVolatilityMask;
+};
+
+
 class SpatiotemporalResampler
 {
 public:
@@ -93,8 +100,7 @@ public:
 	explicit SpatiotemporalResampler();
 
 	InitialResamplingResult ExecuteInitialResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params);
-	
-	void ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult);
+	FinalResamplingResult   ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult);
 
 private:
 

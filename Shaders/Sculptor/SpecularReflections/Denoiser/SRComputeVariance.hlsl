@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
 [[descriptor_set(RenderViewDS, 0)]]
-[[descriptor_set(SRComputeStdDevDS, 1)]]
+[[descriptor_set(SRComputeVarianceDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
@@ -52,12 +52,12 @@ float ComputeWeight(in SampleData center, in SampleData sample, int2 offset)
 
 
 [numthreads(8, 4, 1)]
-void SRComputeStdDevCS(CS_INPUT input)
+void SRComputeVarianceCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
-	
+
 	uint2 outputRes;
-	u_stdDevTexture.GetDimensions(outputRes.x, outputRes.y);
+	u_rwVarianceTexture.GetDimensions(outputRes.x, outputRes.y);
 
 	const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(uint3(pixel, 0u)).x;
 
@@ -88,14 +88,10 @@ void SRComputeStdDevCS(CS_INPUT input)
 
 	if(all(pixel < outputRes))
 	{
-		float standardDeviation = 0.f;
-		if (accumulatedSamplesNum >= temporalVarianceRequiredSamplesNum)
-		{
-			const float2 moments = u_momentsTexture.Load(uint3(pixel, 0u)).xy;
-			const float variance = abs(moments.y - moments.x * moments.x);
-			standardDeviation = sqrt(variance);
-		}
-		else
+		const float2 moments = u_momentsTexture.Load(uint3(pixel, 0u)).xy;
+		float variance = abs(moments.y - moments.x * moments.x);
+
+		if (accumulatedSamplesNum < temporalVarianceRequiredSamplesNum)
 		{
 			const uint2 center = (input.localID.xy + KERNEL_RADIUS);
 
@@ -123,13 +119,16 @@ void SRComputeStdDevCS(CS_INPUT input)
 			luminanceSum        /= weightSum;
 			luminanceSquaredSum /= weightSum;
 
-			const float variance = abs(luminanceSquaredSum - luminanceSum * luminanceSum);
-			standardDeviation = sqrt(variance);
-			
-			standardDeviation = max(luminanceSum * 0.6f, standardDeviation);
-			standardDeviation *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum);
+			float spatialVariance = abs(luminanceSquaredSum - luminanceSum * luminanceSum);
+
+			const float minSpatialVariance = (1.f - accumulatedSamplesNum / float(temporalVarianceRequiredSamplesNum)) * Pow2(luminanceSum);
+			spatialVariance = max(spatialVariance, minSpatialVariance);
+
+			spatialVariance *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u);
+
+			variance = max(variance, spatialVariance);
 		}
 
-		u_stdDevTexture[pixel] = standardDeviation;
+		u_rwVarianceTexture[pixel] = variance;
 	}
 }

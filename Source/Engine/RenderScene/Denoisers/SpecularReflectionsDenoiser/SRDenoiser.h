@@ -62,10 +62,8 @@ public:
 
 	struct Result
 	{
-		rg::RGTextureViewHandle denoisedTexture;
-		rg::RGTextureViewHandle temporalMomentsTexture;
-		rg::RGTextureViewHandle spatialStdDevTexture;
-		rg::RGTextureViewHandle geometryCoherence;
+		rg::RGTextureViewHandle denoiserOutput;
+		rg::RGTextureViewHandle spatioTemporalVariance;
 	};
 
 	explicit Denoiser(rg::RenderGraphDebugName debugName);
@@ -82,10 +80,11 @@ private:
 	{
 		rg::RGTextureViewHandle input;
 		rg::RGTextureViewHandle output;
-		rg::RGTextureViewHandle stdDev;
+		rg::RGTextureViewHandle inputVariance;
+		rg::RGTextureViewHandle outputVariance;
+		rg::RGTextureViewHandle tempVariance;
 		rg::RGTextureViewHandle historySamplesNum;
 		rg::RGTextureViewHandle reprojectionConfidence;
-		rg::RGTextureViewHandle geometryCoherence;
 	};
 
 	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params);

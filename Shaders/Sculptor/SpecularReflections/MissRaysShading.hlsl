@@ -52,12 +52,18 @@ void MissRaysShadingCS(CS_INPUT input)
 			const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, worldLocation);
 			const float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
 
-			const float rayPdf = u_rayPdfs[traceCommandIndex];
+			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 
 			const float3 reservoirHitLocation = worldLocation + rayDirection * 2000.f;
-			SRReservoir reservoir = SRReservoir::Create(reservoirHitLocation, 0.f, luminance, rayPdf);
+			SRReservoir reservoir = SRReservoir::Create(reservoirHitLocation, 0.f, luminance, rayPdf.pdf);
+
 			reservoir.AddFlag(SR_RESERVOIR_FLAGS_MISS);
 			reservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+
+			if(rayPdf.isSpecularTrace)
+			{
+				reservoir.AddFlag(SR_RESERVOIR_FLAGS_SPECULAR_TRACE);
+			}
 
 			reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 

@@ -7,12 +7,14 @@
 [[shader_struct(SRPackedReservoir)]]
 
 
-#define SR_RESERVOIR_FLAGS_NONE       0
-#define SR_RESERVOIR_FLAGS_MISS       (1 << 0)
-#define SR_RESERVOIR_FLAGS_RECENT     (1 << 1) // Reservoir was traced recently and we can skip visibility check
+#define SR_RESERVOIR_FLAGS_NONE           0
+#define SR_RESERVOIR_FLAGS_MISS           (1 << 0)
+#define SR_RESERVOIR_FLAGS_RECENT         (1 << 1) // Reservoir was traced recently and we can skip visibility check
+#define SR_RESERVOIR_FLAGS_SPECULAR_TRACE (1 << 2)
+#define SR_RESERVOIR_FLAGS_VOLATILE       (1 << 3)
 
 // Flags that are inherited during resampling
-#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT)
+#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT | SR_RESERVOIR_FLAGS_VOLATILE)
 
 #define SR_RESERVOIR_MAX_M   (255)
 #define SR_RESERVOIR_MAX_AGE (255)
@@ -54,7 +56,7 @@ class SRReservoir
 
 	bool IsValid()
 	{
-		return M > 0;
+		return weightSum > 0.f;
 	}
 
 	bool Update(in SRReservoir other, in float randomValue, in float p_hatInOutputDomain)
@@ -128,7 +130,7 @@ class SRReservoir
 
 	bool CanCombine(in SRReservoir other)
 	{
-		return true;
+		return !other.HasFlag(SR_RESERVOIR_FLAGS_SPECULAR_TRACE);
 	}
 
 	float3     hitLocation;
@@ -187,6 +189,18 @@ uint ModifyPackedSpatialResamplingRangeID(in uint MAndProps, in int delta)
 	const uint prevRangeID = MAndProps >> 24u;
 	const uint newRangeID = prevRangeID > -delta ? min(prevRangeID + delta, 15u) : 0u;
 	return (MAndProps & 0x00FFFFFFu) | (newRangeID << 24u);
+}
+
+
+uint AddPackedFlag(in uint MAndProps, in uint flag)
+{
+	return MAndProps | (flag << 8u);
+}
+
+
+bool HasPackedFlag(in SRPackedReservoir reservoir, in uint flag)
+{
+	return ((reservoir.MAndProps >> 8u) & flag) == flag;
 }
 
 

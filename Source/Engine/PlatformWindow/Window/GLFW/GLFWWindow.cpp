@@ -177,6 +177,11 @@ math::Vector2u GLFWWindow::GetFramebufferSize() const
 	return math::Vector2u(static_cast<Uint32>(width), static_cast<Uint32>(height));
 }
 
+Bool GLFWWindow::IsFocused() const
+{
+	return static_cast<Bool>(glfwGetWindowAttrib(m_windowData->windowHandle, GLFW_FOCUSED));
+}
+
 void GLFWWindow::UpdateRHISurface() const
 {
 	priv::InitializeRHISurface(m_windowData->windowHandle);

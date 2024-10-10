@@ -29,11 +29,11 @@ RayDirectionInfo GenerateReflectionRayDir(in float3 normal, in float roughness, 
 	if(roughness < SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
 		result.direction = reflect(-toView, normal);
-		result.pdf       = 1.f;
+		result.pdf       = -1.f; // -1 means specular trace
 	}
 	else
 	{
-		RngState rng = RngState::Create(pixel, u_constants.frameIdx * 3);
+		RngState rng = RngState::Create(pixel, u_constants.seed);
 
 		uint attempt = 0u;
 

@@ -107,6 +107,14 @@ TType Pow64(TType val)
 	return Pow8(p8);
 }
 
+template<typename TType>
+void Swap(inout TType a, inout TType b)
+{
+	TType temp = a;
+	a = b;
+	b = temp;
+}
+
 bool IsNearlyZero(in float value, in float epsilon = 0.000001f)
 {
 	return abs(value) < epsilon;

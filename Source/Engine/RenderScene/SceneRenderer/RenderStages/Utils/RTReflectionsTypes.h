@@ -10,13 +10,10 @@ struct RTReflectionsViewData
 {
 	rg::RGTextureViewHandle denoisedRefectionsTexture;
 	rg::RGTextureViewHandle reflectionsTexture;
-
 	rg::RGTextureViewHandle reflectionsInfluenceTexture;
-
-	rg::RGTextureViewHandle temporalMomentsTexture;
-	rg::RGTextureViewHandle spatialStdDevTexture;
-	
-	rg::RGTextureViewHandle geometryCoherenceTexture;
+	rg::RGTextureViewHandle spatioTemporalVariance;
+	rg::RGTextureViewHandle tileReliabilityMask;
+	rg::RGTextureViewHandle quadVolatilityMask;
 
 	Bool halfResReflections = false;
 };

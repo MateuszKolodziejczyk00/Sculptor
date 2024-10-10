@@ -107,7 +107,7 @@ void SRClampHistoryCS(CS_INPUT input)
 
 		const float3 fastHistoryStdDev = sqrt(fastHistoryVariance);
 
-		const float3 clampWindow = 2.2f * fastHistoryStdDev;
+		const float3 clampWindow = 2.f * fastHistoryStdDev;
 
 		const float4 luminanceAndHitDistance = u_luminanceAndHitDistanceTexture.Load(pixel);
 		const float3 accumulatedHistoryYCoCg = RGBToYCoCg(luminanceAndHitDistance.rgb);

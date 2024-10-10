@@ -29,6 +29,8 @@ public:
 
 	math::Vector2u						GetFramebufferSize() const;
 
+	Bool								IsFocused() const;
+
 	void								UpdateRHISurface() const;
 	IntPtr								GetRHISurfaceHandle() const;
 

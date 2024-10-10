@@ -17,6 +17,7 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
+#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -70,13 +71,18 @@ void HitRaysShadingRTG()
 
 		const float3 luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
 
-		const float rayPdf = u_rayPdfs[traceCommandIndex];
+		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 
-		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf);
+		SRReservoir reservoir = SRReservoir::Create(hitLocation, hitResult.normal, luminance, rayPdf.pdf);
 
 		reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 
 		reservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+
+		if(rayPdf.isSpecularTrace)
+		{
+			reservoir.AddFlag(SR_RESERVOIR_FLAGS_SPECULAR_TRACE);
+		}
 
 		WriteReservoirToScreenBuffer(u_reservoirsBuffer, u_constants.reservoirsResolution, reservoir, traceCommand);
 	}

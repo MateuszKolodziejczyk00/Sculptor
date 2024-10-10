@@ -268,7 +268,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 		SRTemporalResampler resampler;
 
 		{
-			const SRPackedReservoir packedReservoir = u_inReservoirsBuffer[reservoirIdx];
+			const SRPackedReservoir packedReservoir = u_inOutInitialResservoirsBuffer[reservoirIdx];
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
@@ -312,15 +312,24 @@ void ResampleTemporallyCS(CS_INPUT input)
 			}
 		}
 
-		SRReservoir newReservoir = resampler.FinishResampling(pixel);
+		const SRReservoir newReservoir = resampler.FinishResampling(pixel);
 
-		const uint invalidReservoirs = WaveActiveCountBits(!newReservoir.IsValid());
+		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
 		const bool isValidReservoir = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
-		if((invalidReservoirs > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
+		if((invalidReservoirsNum > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
 		{
 			AppendAdditionalTraceCommand(pixel);
 		}
 
-		u_outReservoirsBuffer[reservoirIdx] = PackReservoir(newReservoir);
+		newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VOLATILE);
+
+		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
+
+		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+
+		if(!wasSampleTraced)
+		{
+			u_inOutInitialResservoirsBuffer[reservoirIdx] = packedReservoir;
+		}
 	}
 }

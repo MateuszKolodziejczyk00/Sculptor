@@ -5,13 +5,15 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
+#include "Utils/Wave.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 
 struct CS_INPUT
 {
-	uint3 globalID : SV_DispatchThreadID;
+	uint3 groupID : SV_GroupID;
+	uint3 localID : SV_GroupThreadID;
 };
 
 
@@ -31,10 +33,71 @@ float ComputeDetailPreservationStrength(in float historyLength, in float reproje
 }
 
 
-[numthreads(8, 4, 1)]
+float LoadVariance(in int2 coords)
+{
+	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(u_params.resolution - 1));
+	return u_inputVarianceTexture.Load(uint3(clampedCoords, 0)).x;
+}
+
+
+float QuadSwizzle(in float value, in uint swizzleQuadBaseID, in uint quadLocalID, in uint4 swizzle)
+{
+	return WaveReadLaneAt(value, swizzleQuadBaseID + swizzle[quadLocalID]);
+}
+
+
+float LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
+{
+	const uint2 pixel = groupOffset + localID;
+
+	float upperLeft  = LoadVariance(pixel + int2(-1,  1));
+	float upperRight = LoadVariance(pixel + int2( 1,  1));
+	float lowerLeft  = LoadVariance(pixel + int2(-1, -1));
+	float lowerRight = LoadVariance(pixel + int2( 1, -1));
+
+	if(localID.x & 0x1)
+	{
+		Swap(lowerLeft, lowerRight);
+		Swap(upperLeft, upperRight);
+	}
+	if(localID.y & 0x1)
+	{
+		Swap(lowerLeft, upperLeft);
+		Swap(lowerRight, upperRight);
+	}
+
+	const uint4 horizontalSwizzle = uint4(1u, 0u, 3u, 2u);
+	const uint4 verticalSwizzle   = uint4(2u, 3u, 0u, 1u);
+	const uint4 diagonalSwizzle   = uint4(3u, 2u, 1u, 0u);
+
+	const uint swizzleQuadBase = threadIdx & ~0x3;
+	const uint quadLocalID     = threadIdx & 0x3;
+
+	const float up   = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, horizontalSwizzle);
+	const float down = QuadSwizzle(lowerRight, swizzleQuadBase, quadLocalID, horizontalSwizzle);
+
+	const float left  = QuadSwizzle(upperLeft, swizzleQuadBase, quadLocalID, verticalSwizzle);
+	const float right = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, verticalSwizzle);
+
+	const float center = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, diagonalSwizzle);
+
+	const float variance = center * 0.25f
+                         + (up + down + left + right) * 0.125f + 
+                         + (upperRight + upperLeft + lowerLeft + lowerRight) * 0.0675f;
+	
+	return variance;
+}
+
+
+[numthreads(32, 1, 1)]
 void SRATrousFilterCS(CS_INPUT input)
 {
-	const int2 pixel = input.globalID.xy;
+	const uint2 groupOffset = input.groupID.xy * uint2(8u, 4u);
+	const uint threadIdx = input.localID.x;
+
+	const uint2 localID = ReorderWaveToQuads(threadIdx);
+
+	const int2 pixel = groupOffset + localID;
 	
 	if(all(pixel < u_params.resolution))
 	{
@@ -57,7 +120,7 @@ void SRATrousFilterCS(CS_INPUT input)
 			return;
 		}
 		
-		const float lumStdDevMultiplier = 3.f;
+		const float lumStdDevMultiplier = 1.5f;
 		
 		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
 
@@ -79,17 +142,17 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		float weightSum = kernel[0];
 
-		float3 luminanceSum = centerLuminanceHitDistance.rgb * weightSum;
+		float3 luminanceSum = 0.f;
+		luminanceSum += (centerLuminanceHitDistance.rgb / (Luminance(centerLuminanceHitDistance.rgb) + 1.f)) * weightSum;
 
-		float lumSum = lumCenter * weightSum;
-		float lumSquaredSum = Pow2(lumCenter) * weightSum;
+		const float centerVariance = LoadVariance3x3(groupOffset, threadIdx, localID);
 
-		const float centerLuminanceStdDev = u_luminanceStdDevTexture[pixel];
+		const float centerLuminanceStdDev = centerVariance > 0.f ? sqrt(centerVariance) : 0.f;
 		const float rcpLuminanceStdDev = 1.f / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f);
 
-		const int radius = 1;
+		float varianceSum = centerVariance * Pow2(weightSum);
 
-		float geometrySpatialCoherence = 0;
+		const int radius = 1;
 
 		[unroll]
 		for (int y = -radius; y <= radius; ++y)
@@ -107,7 +170,7 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float sampleLinearDepth = u_linearDepthTexture.Load(uint3(samplePixel, 0));
 				const float sampleRoughness = u_roughnessTexture.Load(uint3(samplePixel, 0));
 				const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(samplePixel, 0)));
-				const float3 luminance = u_inputTexture.Load(uint3(samplePixel, 0)).rgb;
+				float3 luminance = u_inputTexture.Load(uint3(samplePixel, 0)).rgb;
 
 				if(isinf(sampleLinearDepth))
 				{
@@ -124,8 +187,6 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float wn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
 				weight *= wn;
 
-				geometrySpatialCoherence += weight;
-
 				weight *= kernel[max(abs(x), abs(y))];
 
 				const float lum = Luminance(luminance);
@@ -133,33 +194,24 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float lw = (abs(lumCenter - lum) * rcpLuminanceStdDev + 0.001f);
 				weight *= exp(-lw);
 
+				luminance /= (Luminance(luminance) + 1.f);
+
 				luminanceSum += luminance * weight;
 
-				const float lumW = lum * weight;
+				const float sampleVariance = u_inputVarianceTexture.Load(uint3(samplePixel, 0)).x;
 
-				lumSum += lumW;
-				lumSquaredSum += Pow2(lum) * weight;
+				varianceSum += sampleVariance * Pow2(weight);
 
 				weightSum += weight;
 			}
 		}
 
-		float prevCoherence = 0.f;
-		if(u_params.samplesOffset != 1)
-		{
-			prevCoherence = u_geometryCoherenceTexture[pixel].x;
-		}
-		u_geometryCoherenceTexture[pixel] = prevCoherence + geometrySpatialCoherence;
+		float3 outLuminance = luminanceSum / weightSum;
+		outLuminance /= (1.f - Luminance(outLuminance));
 
-		const float3 outLuminance = luminanceSum / weightSum;
 		u_outputTexture[pixel] = float4(outLuminance, centerLuminanceHitDistance.w);
 
-		lumSum /= weightSum;
-		lumSquaredSum /= weightSum;
-
-		const float variance = abs(lumSquaredSum - lumSum * lumSum);
-		const float stdDev = sqrt(variance);
-
-		u_luminanceStdDevTexture[pixel] = stdDev;
+		const float outputVariance = varianceSum / Pow2(weightSum);
+		u_outputVarianceTexture[pixel] = outputVariance;
 	}
 }
