@@ -42,6 +42,7 @@ RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iteratio
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
 RendererBoolParameter detailPreservingSpatialDenoising("Detail Preserving Spatial Denoising", { "Specular Reflections" }, false);
+RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, false);
 
 } // renderer_params
 
@@ -296,17 +297,17 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	rtShadingConstants.reservoirsResolution = shadingParams.reservoirsResolution;
 
 	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));
-	shadingDS->u_skyViewLUT                  = srParams.skyViewLUT;
-	shadingDS->u_transmittanceLUT            = atmosphereContext.transmittanceLUT;
-	shadingDS->u_atmosphereParams            = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-	shadingDS->u_hitMaterialInfos            = shadingParams.rtGBuffer.hitMaterialInfos;
-	shadingDS->u_rayDirections               = shadingParams.rtGBuffer.rayDirections;
-	shadingDS->u_rayPdfs                     = shadingParams.rtGBuffer.rayPdfs;
-	shadingDS->u_depthTexture                = srParams.depthTexture;
-	shadingDS->u_reservoirsBuffer            = shadingParams.reservoirsBuffer;
-	shadingDS->u_traceCommands               = shadingParams.tracesAllocation.rayTraceCommands;
-	shadingDS->u_tracesNum                   = shadingParams.tracesAllocation.tracesNum;
-	shadingDS->u_constants                   = rtShadingConstants;
+	shadingDS->u_skyViewLUT       = srParams.skyViewLUT;
+	shadingDS->u_transmittanceLUT = atmosphereContext.transmittanceLUT;
+	shadingDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	shadingDS->u_hitMaterialInfos = shadingParams.rtGBuffer.hitMaterialInfos;
+	shadingDS->u_rayDirections    = shadingParams.rtGBuffer.rayDirections;
+	shadingDS->u_rayPdfs          = shadingParams.rtGBuffer.rayPdfs;
+	shadingDS->u_depthTexture     = srParams.depthTexture;
+	shadingDS->u_reservoirsBuffer = shadingParams.reservoirsBuffer;
+	shadingDS->u_traceCommands    = shadingParams.tracesAllocation.rayTraceCommands;
+	shadingDS->u_tracesNum        = shadingParams.tracesAllocation.tracesNum;
+	shadingDS->u_constants        = rtShadingConstants;
 
 	miss_rays::ShadeMissRays(graphBuilder, renderScene, viewSpec, srParams, shadingParams, shadingDS);
 	hit_rays::ShadeHitRays(graphBuilder, renderScene, viewSpec, srParams, shadingParams, shadingDS);
@@ -496,8 +497,6 @@ DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTexture
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_spatioTemporalVariance)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_reflectionsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_tileReliabilityMask)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_quadVolatilityMask)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
 DS_END();
 
@@ -550,6 +549,7 @@ SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
 	variableRateSettings.logFramesNumPerSlot    = 0u;
 	variableRateSettings.reprojectionFailedMode = vrt::EReprojectionFailedMode::_1x2;
 	variableRateSettings.permutationSettings.maxVariableRate = vrt::EMaxVariableRate::_4x4;
+	variableRateSettings.variableRateBuilderUseSingleLanePerQuad = true;
 	m_variableRateRenderer.Initialize(variableRateSettings);
 }
 
@@ -667,6 +667,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.tracesAllocation               = tracesAllocation;
 		resamplingParams.enableTemporalResampling       = hasValidHistory && renderer_params::enableTemporalResampling;
 		resamplingParams.spatialResamplingIterationsNum = renderer_params::spatialResamplingIterationsNum;
+		resamplingParams.doFullFinalVisibilityCheck     = renderer_params::doFullFinalVisibilityCheck;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 
@@ -681,7 +682,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			trace::GenerateReservoirs(graphBuilder, renderScene, viewSpec, params, additionalTracesParams);
 		}
 
-		const sr_restir::FinalResamplingResult finalResamplingResult = m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
+		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
 		
 		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, luminanceHitDistanceTexture);
 
@@ -713,8 +714,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
 		reflectionsViewData.spatioTemporalVariance       = denoiserResult.spatioTemporalVariance;
 		reflectionsViewData.halfResReflections           = isHalfRes;
-		reflectionsViewData.tileReliabilityMask          = finalResamplingResult.tileReliabilityMask;
-		reflectionsViewData.quadVolatilityMask           = finalResamplingResult.quadVolatilityMask;
 
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
 
@@ -749,8 +748,6 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	vrtDS->u_spatioTemporalVariance = reflectionsViewData.spatioTemporalVariance;
 	vrtDS->u_linearDepthTexture     = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
 	vrtDS->u_reflectionsTexture     = reflectionsViewData.denoisedRefectionsTexture;
-	vrtDS->u_tileReliabilityMask    = reflectionsViewData.tileReliabilityMask;
-	vrtDS->u_quadVolatilityMask     = reflectionsViewData.quadVolatilityMask;
 	vrtDS->u_rtConstants            = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }

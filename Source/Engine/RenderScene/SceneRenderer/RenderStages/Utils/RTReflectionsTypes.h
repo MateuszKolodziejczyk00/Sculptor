@@ -12,8 +12,6 @@ struct RTReflectionsViewData
 	rg::RGTextureViewHandle reflectionsTexture;
 	rg::RGTextureViewHandle reflectionsInfluenceTexture;
 	rg::RGTextureViewHandle spatioTemporalVariance;
-	rg::RGTextureViewHandle tileReliabilityMask;
-	rg::RGTextureViewHandle quadVolatilityMask;
 
 	Bool halfResReflections = false;
 };

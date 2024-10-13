@@ -12,6 +12,12 @@
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
 
+#ifdef SPT_RT_GENERATION_SHADER
+#ifndef FORCE_FULL_RATE
+#error "FORCE_FULL_RATE must be defined"
+#endif // FORCE_FULL_RATE
+#endif // SPT_RT_GENERATION_SHADER
+
 
 uint CreateInvalidationMask(in uint variableRate)
 {
@@ -47,15 +53,25 @@ uint CreateInvalidationMask(in uint variableRate)
 }
 
 
+
 [shader("raygeneration")]
 void ResamplingFinalVisibilityTestRTG()
 {
+#if FORCE_FULL_RATE
+	const uint2 coords = DispatchRaysIndex().xy;
+
+	RayTraceCommand traceCommand;
+	traceCommand.blockCoords      = coords;
+	traceCommand.localOffset      = 0u;
+	traceCommand.variableRateMask = SPT_VARIABLE_RATE_1X1;
+#else
 	const uint traceCommandIndex = DispatchRaysIndex().x;
 
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
+#endif // FORCE_FULL_RATE
 
-	const uint3 pixel = uint3(traceCommand.blockCoords + traceCommand.localOffset, 0);
+	const uint3 pixel = uint3(min(traceCommand.blockCoords + traceCommand.localOffset, u_resamplingConstants.resolution - 1u), 0);
 
 	const float2 uv = (pixel.xy + 0.5f) * u_resamplingConstants.pixelSize;
 	const float depth = u_depthTexture.Load(pixel);

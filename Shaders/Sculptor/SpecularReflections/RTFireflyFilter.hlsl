@@ -92,10 +92,6 @@ void RTFireflyFilterCS(CS_INPUT input)
 
 				u_inOutReservoirsBuffer[reservoirIdx] = PackReservoir(reservoir);
 			}
-			else if(reservoirWeight > minVolatileWeight)
-			{
-				u_inOutReservoirsBuffer[reservoirIdx].MAndProps = AddPackedFlag(packedReservoir.MAndProps, SR_RESERVOIR_FLAGS_VOLATILE);
-			}
 		}
 	}
 }

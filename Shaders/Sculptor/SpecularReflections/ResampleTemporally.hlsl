@@ -66,6 +66,8 @@ struct SRTemporalResampler
 
 		const float p_hat = EvaluateTargetFunction(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
 
+		resampler.currentReservoir.flags = initialReservoir.flags;
+
 		if(resampler.currentReservoir.Update(initialReservoir, 0.f, p_hat))
 		{
 			resampler.m_selectedP_hat = p_hat;
@@ -86,7 +88,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 16u - min(historyReservoir.age * 3u, 14u);
+		const uint maxHistoryLength = 6u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
@@ -119,7 +121,7 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const uint maxAge = 30 * lerp(rng.Next(), 0.6f, 1.f);
+		const uint maxAge = 12 * lerp(rng.Next(), 0.5f, 1.f);
 
 		if(m_wasSampleTraced && historyReservoir.age > maxAge)
 		{
@@ -268,7 +270,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 		SRTemporalResampler resampler;
 
 		{
-			const SRPackedReservoir packedReservoir = u_inOutInitialResservoirsBuffer[reservoirIdx];
+			const SRPackedReservoir packedReservoir = u_initialResservoirsBuffer[reservoirIdx];
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
@@ -321,15 +323,8 @@ void ResampleTemporallyCS(CS_INPUT input)
 			AppendAdditionalTraceCommand(pixel);
 		}
 
-		newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VOLATILE);
-
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
 
 		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
-
-		if(!wasSampleTraced)
-		{
-			u_inOutInitialResservoirsBuffer[reservoirIdx] = packedReservoir;
-		}
 	}
 }

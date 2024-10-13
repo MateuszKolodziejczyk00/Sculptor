@@ -6,9 +6,9 @@
 #include "Utils/VariableRate/VariableRate.hlsli"
 #include "Utils/MortonCode.hlsli"
 
-
-#define VRT_SIGNAL_VISIBILITY 0
-#define VRT_SIGNAL_LIGHTING   1
+#ifndef VR_BUILDER_SINGLE_LANE_PER_QUAD
+#error "VR_BUILDER_SINGLE_LANE_PER_QUAD must be defined"
+#endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 
 #define GROUP_SIZE_X 8
 #define GROUP_SIZE_Y 4
@@ -16,7 +16,7 @@
 #define GS_SAMPLES_X (GROUP_SIZE_X + 2)
 #define GS_SAMPLES_Y (GROUP_SIZE_Y + 2)
 
-
+#if !VR_BUILDER_SINGLE_LANE_PER_QUAD
 groupshared float gs_inputSamples[GS_SAMPLES_X][GS_SAMPLES_Y];
 
 
@@ -61,7 +61,7 @@ float2 SobelFilter(in uint2 localID)
 
 	return float2(x, y);
 }
-
+#endif // !VR_BUILDER_SINGLE_LANE_PER_QUAD
 
 #define FAST_VARIABLE_RATE 1
 
@@ -91,13 +91,23 @@ struct VariableRateProcessor
 	static VariableRateProcessor Create(in uint2 groupID, in uint localThreadIdx)
 	{
 		VariableRateProcessor processor;
+#if VR_BUILDER_SINGLE_LANE_PER_QUAD
+		processor.m_globalCoords = (groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + uint2(localThreadIdx % GROUP_SIZE_X, localThreadIdx / GROUP_SIZE_X)) * 2u;
+#else
 		processor.m_groupID        = groupID;
 		processor.m_localID        = DecodeMorton2D(localThreadIdx);
-		processor.m_globalCoords   = min(groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + processor.m_localID, u_constants.inputResolution - 1);
 		processor.m_localThreadIdx = localThreadIdx;
+		processor.m_globalCoords   = min(groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y) + processor.m_localID, u_constants.inputResolution - 1);
+#endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 		return processor;
 	}
 
+	uint2 GetCoords()
+	{
+		return m_globalCoords;
+	}
+
+#if !VR_BUILDER_SINGLE_LANE_PER_QUAD
 	template<typename T>
 	T QuadMax(in T value)
 	{
@@ -171,11 +181,6 @@ struct VariableRateProcessor
 		return variableRate;
 	}
 
-	uint2 GetCoords()
-	{
-		return m_globalCoords;
-	}
-
 	float2 ComputeEdgeFilter(in Texture2D<float> texture)
 	{
 		const uint2 tileCoords = m_groupID * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
@@ -189,11 +194,14 @@ struct VariableRateProcessor
 
 		return edgeFilter;
 	}
+#endif // !VR_BUILDER_SINGLE_LANE_PER_QUAD
 
-	uint2 m_groupID;
 	uint2 m_globalCoords;
+#if !VR_BUILDER_SINGLE_LANE_PER_QUAD
+	uint2 m_groupID;
 	uint2 m_localID;
 	uint  m_localThreadIdx;
+#endif // !VR_BUILDER_SINGLE_LANE_PER_QUAD
 };
 
 
@@ -206,15 +214,20 @@ struct VariableRateBuilder
 
 		const uint variableRate = TCallback::ComputeVariableRateMask(processor);
 
+#if VR_BUILDER_SINGLE_LANE_PER_QUAD
+		WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, processor.GetCoords() / 2u, variableRate, u_constants.frameIdx);
+#else
 		const uint2 outputCoords = groupID.xy * uint2(4, 2) + processor.m_localID / 2;
 		if ((localThreadIdx & 3) == 0 && all(outputCoords < u_constants.outputResolution))
 		{
 			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, variableRate, u_constants.frameIdx);
 		}
+#endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 	}
 };
 
 
+#if !VR_BUILDER_SINGLE_LANE_PER_QUAD
 struct GenericVariableRateCallback
 {
 	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
@@ -223,6 +236,6 @@ struct GenericVariableRateCallback
 		return processor.ComputeEdgeBasedVariableRateMask(edgeFilter);
 	}
 };
-
+#endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 
 #endif // VARIABLE_RATE_BUILDER_HLSLI

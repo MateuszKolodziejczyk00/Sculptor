@@ -55,7 +55,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 		const float hitDistance = length(reservoir.hitLocation - sampleLocation);
 		const float3 lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
 
-		float3 luminance = reservoir.luminance * reservoir.weightSum;
+		const float3 luminance = reservoir.luminance * reservoir.weightSum;
 
 		const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
 		float3 Lo = specular * luminance * dot(sampleNormal, lightDir);

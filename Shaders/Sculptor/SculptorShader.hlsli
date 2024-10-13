@@ -150,6 +150,24 @@ float MaxComponent(in float3 value)
 }
 
 
+float MaxComponent(in float4 value)
+{
+    return max(value.x, max(value.y, max(value.z, value.w)));
+}
+
+
+float MinComponent(in float3 value)
+{
+	return min(value.x, min(value.y, value.z));
+}
+
+
+float MinComponent(in float4 value)
+{
+	return min(value.x, min(value.y, min(value.z, value.w)));
+}
+
+
 float S_Curve(float x, float steepness)
 {
     const float val = x * 2.f - 1.f;

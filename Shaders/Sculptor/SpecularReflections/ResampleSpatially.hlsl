@@ -87,6 +87,8 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 	SRReservoir newReservoir = SRReservoir::CreateEmpty();
 	{
+		newReservoir.flags = reservoir.flags;
+
 		const float p_hat = EvaluateTargetFunction(centerPixelSurface, reservoir.hitLocation, reservoir.luminance);
 
 		newReservoir.Update(reservoir, 0.f, p_hat);

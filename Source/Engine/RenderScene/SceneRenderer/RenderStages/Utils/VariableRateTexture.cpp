@@ -39,9 +39,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(CreateVariableRateTextureDS, rg::RGDescriptorSetState<CreateVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                       u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                u_rwVariableRateTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CreateVariableRateTextureConstants>), u_constants)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                            u_inputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                     u_rwVariableRateTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CreateVariableRateTextureConstants>),      u_constants)
 DS_END();
 
 
@@ -91,9 +92,11 @@ void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const Varia
 
 	const rg::BindDescriptorSetsScope additionalDescriptorSetsScope(graphBuilder, additionalDescriptorSets);
 
+	const math::Vector2u groupSize = vrSettings.variableRateBuilderUseSingleLanePerQuad ? math::Vector2u(16u, 8u) : math::Vector2u(8u, 4u);
+
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Create Variable Rate Texture", vrSettings.debugName.AsString()),
 						  shader,
-						  math::Utils::DivideCeil(shaderConstants.inputResolution, math::Vector2u(8u, 4u)),
+						  math::Utils::DivideCeil(shaderConstants.inputResolution, groupSize),
 						  rg::BindDescriptorSets(std::move(variableRateTextureDS)));
 }
 

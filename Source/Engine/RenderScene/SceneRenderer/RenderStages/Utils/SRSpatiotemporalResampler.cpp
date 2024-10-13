@@ -91,7 +91,7 @@ static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& p
 	resamplingConstants.reservoirsResolution                 = ComputeReservoirsResolution(resolution);
 	resamplingConstants.pixelSize                            = resolution.cast<Real32>().cwiseInverse();
 	resamplingConstants.frameIdx                             = params.renderView.GetRenderedFrameIdx();
-	resamplingConstants.resamplingRangeStep                  = 6.f;
+	resamplingConstants.resamplingRangeStep                  = 4.f;
 
 	return resamplingConstants;
 }
@@ -110,7 +110,7 @@ DS_BEGIN(SRTemporalResamplingDS, rg::RGDescriptorSetState<SRTemporalResamplingDS
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_historyNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_historySpecularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_inOutInitialResservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_initialResservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),             u_historyReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_outReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_rayTracesCommands)
@@ -160,24 +160,24 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 	const math::Vector2u resolution = params.GetResolution();
 
 	lib::MTHandle<SRTemporalResamplingDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalResamplingDS>(RENDERER_RESOURCE_NAME("Resample Temporally DS"));
-	ds->u_depthTexture                  = params.depthTexture;
-	ds->u_normalsTexture                = params.normalsTexture;
-	ds->u_roughnessTexture              = params.roughnessTexture;
-	ds->u_specularColorTexture          = params.specularColorTexture;
-	ds->u_motionTexture                 = params.motionTexture;
-	ds->u_historyDepthTexture           = params.historyDepthTexture;
-	ds->u_historyNormalsTexture         = params.historyNormalsTexture;
-	ds->u_historyRoughnessTexture       = params.historyRoughnessTexture;
-	ds->u_historySpecularColorTexture   = params.historySpecularColorTexture;
-	ds->u_inOutInitialResservoirsBuffer = params.initialReservoirBuffer;
-	ds->u_historyReservoirsBuffer       = reservoirsState.ReadReservoirs();
-	ds->u_outReservoirsBuffer           = reservoirsState.WriteReservoirs();
-	ds->u_rayTracesCommands             = additionalTracesAllocation.rayTraceCommands;
-	ds->u_commandsNum                   = additionalTracesAllocation.tracingIndirectArgs;
-	ds->u_rwVariableRateBlocksTexture   = additionalTracesAllocation.variableRateBlocksTexture;
-	ds->u_tracesDispatchGroupsNum       = additionalTracesAllocation.dispatchIndirectArgs;
-	ds->u_tracesNum                     = additionalTracesAllocation.tracesNum;
-	ds->u_resamplingConstants           = resamplingConstants;
+	ds->u_depthTexture                = params.depthTexture;
+	ds->u_normalsTexture              = params.normalsTexture;
+	ds->u_roughnessTexture            = params.roughnessTexture;
+	ds->u_specularColorTexture        = params.specularColorTexture;
+	ds->u_motionTexture               = params.motionTexture;
+	ds->u_historyDepthTexture         = params.historyDepthTexture;
+	ds->u_historyNormalsTexture       = params.historyNormalsTexture;
+	ds->u_historyRoughnessTexture     = params.historyRoughnessTexture;
+	ds->u_historySpecularColorTexture = params.historySpecularColorTexture;
+	ds->u_initialResservoirsBuffer    = params.initialReservoirBuffer;
+	ds->u_historyReservoirsBuffer     = reservoirsState.ReadReservoirs();
+	ds->u_outReservoirsBuffer         = reservoirsState.WriteReservoirs();
+	ds->u_rayTracesCommands           = additionalTracesAllocation.rayTraceCommands;
+	ds->u_commandsNum                 = additionalTracesAllocation.tracingIndirectArgs;
+	ds->u_rwVariableRateBlocksTexture = additionalTracesAllocation.variableRateBlocksTexture;
+	ds->u_tracesDispatchGroupsNum     = additionalTracesAllocation.dispatchIndirectArgs;
+	ds->u_tracesNum                   = additionalTracesAllocation.tracesNum;
+	ds->u_resamplingConstants         = resamplingConstants;
 
 	reservoirsState.RollBuffers();
 
@@ -299,8 +299,7 @@ DS_BEGIN(ApplyInvalidationMaskDS, rg::RGDescriptorSetState<ApplyInvalidationMask
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_inOutReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_initialReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                  u_invalidationMask)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                   u_rwTileReliabilityMask)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                   u_rwQuadVolatilityMask)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                  u_variableRateBlocksTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
 DS_END();
 
@@ -313,38 +312,18 @@ static rdr::PipelineStateID CompileApplyInvalidationMaskPipeline()
 }
 
 
-struct StabilityData
-{
-	rg::RGTextureViewHandle tileReliabilityMask;
-	rg::RGTextureViewHandle quadVolatilityMask;
-};
-
-
-static StabilityData ApplyInvalidationMask(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState, rg::RGTextureViewHandle invalidationMask)
+static void ApplyInvalidationMask(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState, rg::RGTextureViewHandle invalidationMask)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = params.GetResolution();
 
-	// Each pixels stores 8x4 tiles (bit per tile). Each tile is 8x4 pixels
-	const math::Vector2u reliabilityMaskResolution = math::Utils::DivideCeil(resolution, math::Vector2u(8u * 8u, 4u * 4u));
-	const rg::RGTextureViewHandle tileReliabilityMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Tile Reliability Mask"),
-																						   rg::TextureDef(reliabilityMaskResolution, rhi::EFragmentFormat::R32_U_Int));
-
-	const math::Vector2u quadVolatilityMaskResolution = math::Utils::DivideCeil(resolution, math::Vector2u(2u * 8u, 2u * 4u));
-	const rg::RGTextureViewHandle quadVolatilityMask = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Quad Volatility Mask"),
-																					  rg::TextureDef(quadVolatilityMaskResolution, rhi::EFragmentFormat::R32_U_Int));
-
-	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Tile Reliability Mask"), tileReliabilityMask, rhi::ClearColor(~0u, ~0u, ~0u, ~0u));
-	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Quad Volatility Mask"), quadVolatilityMask, rhi::ClearColor(0u, 0u, 0u, 0u));
-
 	lib::MTHandle<ApplyInvalidationMaskDS> ds = graphBuilder.CreateDescriptorSet<ApplyInvalidationMaskDS>(RENDERER_RESOURCE_NAME("Apply Invalidation Mask DS"));
-	ds->u_inOutReservoirsBuffer   = reservoirsState.ReadReservoirs();
-	ds->u_invalidationMask        = invalidationMask;
-	ds->u_rwTileReliabilityMask   = tileReliabilityMask;
-	ds->u_rwQuadVolatilityMask    = quadVolatilityMask;
-	ds->u_resamplingConstants     = resamplingConstants;
-	ds->u_initialReservoirsBuffer = params.initialReservoirBuffer;
+	ds->u_inOutReservoirsBuffer     = reservoirsState.ReadReservoirs();
+	ds->u_invalidationMask          = invalidationMask;
+	ds->u_variableRateBlocksTexture = params.tracesAllocation.variableRateBlocksTexture;
+	ds->u_resamplingConstants       = resamplingConstants;
+	ds->u_initialReservoirsBuffer   = params.initialReservoirBuffer;
 
 	static const rdr::PipelineStateID pipeline = CompileApplyInvalidationMaskPipeline();
 
@@ -352,12 +331,6 @@ static StabilityData ApplyInvalidationMask(rg::RenderGraphBuilder& graphBuilder,
 						  pipeline,
 						  math::Utils::DivideCeil(params.GetResolution(), math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds)));
-
-	StabilityData stabilityData;
-	stabilityData.tileReliabilityMask = tileReliabilityMask;
-	stabilityData.quadVolatilityMask    = quadVolatilityMask;
-
-	return stabilityData;
 }
 
 
@@ -366,16 +339,19 @@ DS_BEGIN(SRResamplingFinalVisibilityTestDS, rg::RGDescriptorSetState<SRResamplin
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),         u_inOutReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),           u_initialReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                           u_rwInvalidationMask)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),         u_resamplingConstants)
 DS_END();
 
 
-static rdr::PipelineStateID CompileSRFinalVisibilityTestPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+static rdr::PipelineStateID CompileSRFinalVisibilityTestPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem, Bool forceFullRate)
 {
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "ResamplingFinalVisibilityTestRTG"));
+
+	sc::ShaderCompilationSettings rayGenSettings;
+	rayGenSettings.AddMacroDefinition(sc::MacroDefinition("FORCE_FULL_RATE", forceFullRate ? "1" : "0"));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "ResamplingFinalVisibilityTestRTG"), rayGenSettings);
+
 	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVisibilityRTM")));
 
 	const lib::HashedString materialTechnique = "RTVisibility";
@@ -387,7 +363,7 @@ static rdr::PipelineStateID CompileSRFinalVisibilityTestPipeline(const RayTracin
 }
 
 
-static StabilityData ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
+static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -407,7 +383,6 @@ static StabilityData ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBui
 	ds->u_normalsTexture          = params.normalsTexture;
 	ds->u_traceCommands           = params.tracesAllocation.rayTraceCommands;
 	ds->u_inOutReservoirsBuffer   = reservoirsState.ReadReservoirs();
-	ds->u_initialReservoirsBuffer = params.initialReservoirBuffer;
 	ds->u_rwInvalidationMask      = invalidationMask;
 	ds->u_resamplingConstants     = resamplingConstants;
 
@@ -417,20 +392,39 @@ static StabilityData ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBui
 	rtVisibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
 	rtVisibilityDS->u_sceneRayTracingDS       = rayTracingSubsystem.GetSceneRayTracingDS();
 
-	static rdr::PipelineStateID visibilityTestPipeline;
-	if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
+	if (params.doFullFinalVisibilityCheck)
 	{
-		visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem);
+		static rdr::PipelineStateID visibilityTestPipeline;
+		if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
+		{
+			visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem, true);
+		}
+
+		graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
+							   visibilityTestPipeline,
+							   resolution,
+							   rg::BindDescriptorSets(std::move(ds),
+													  params.renderView.GetRenderViewDS(),
+													  std::move(rtVisibilityDS)));
+	}
+	else
+	{
+
+		static rdr::PipelineStateID visibilityTestPipeline;
+		if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
+		{
+			visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem, false);
+		}
+
+		graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("SR Final Visibility Test"),
+									   visibilityTestPipeline,
+									   params.tracesAllocation.tracingIndirectArgs, 0,
+									   rg::BindDescriptorSets(std::move(ds),
+															  params.renderView.GetRenderViewDS(),
+															  std::move(rtVisibilityDS)));
 	}
 
-	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("SR Final Visibility Test"),
-								   visibilityTestPipeline,
-								   params.tracesAllocation.tracingIndirectArgs, 0,
-								   rg::BindDescriptorSets(std::move(ds),
-														  params.renderView.GetRenderViewDS(),
-														  std::move(rtVisibilityDS)));
-
-	return ApplyInvalidationMask(graphBuilder, params, resamplingConstants, reservoirsState, invalidationMask);
+	ApplyInvalidationMask(graphBuilder, params, resamplingConstants, reservoirsState, invalidationMask);
 }
 
 } // final_visibility
@@ -570,13 +564,11 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 	return result;
 }
 
-FinalResamplingResult SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult)
+void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const InitialResamplingResult& initialResamplingResult)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RESTIR: Final Resampling");
-
-	FinalResamplingResult result;
 
 	const math::Vector2u resolution = params.GetResolution();
 
@@ -605,10 +597,7 @@ FinalResamplingResult SpatiotemporalResampler::ExecuteFinalResampling(rg::Render
 		spatial::ResampleSpatially(graphBuilder, params, resamplingConstants, reservoirsState);
 	}
 
-	const final_visibility::StabilityData stabilityData = final_visibility::ExecuteFinalVisibilityTest(graphBuilder, params, resamplingConstants, reservoirsState);
-
-	result.tileReliabilityMask = stabilityData.tileReliabilityMask;
-	result.quadVolatilityMask  = stabilityData.quadVolatilityMask;
+	final_visibility::ExecuteFinalVisibilityTest(graphBuilder, params, resamplingConstants, reservoirsState);
 
 	resolve::ResolveReservoirs(graphBuilder, params, resamplingConstants, reservoirsState);
 
@@ -624,8 +613,6 @@ FinalResamplingResult SpatiotemporalResampler::ExecuteFinalResampling(rg::Render
 	{
 		m_historyResolution = math::Vector2u(0u, 0u);
 	}
-
-	return result;
 }
 
 Bool SpatiotemporalResampler::HasValidTemporalData(const ResamplingParams& params) const

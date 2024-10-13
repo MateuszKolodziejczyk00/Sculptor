@@ -13,7 +13,7 @@ struct CS_INPUT
 };
 
 
-static const float depthDiffThreshold = 0.08f;
+static const float depthDiffThreshold = 0.05f;
 
 
 float ComputeSampleWeight(float sampleDepthDiff)

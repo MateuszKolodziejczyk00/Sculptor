@@ -73,6 +73,8 @@ struct VariableRateSettings
 	EReprojectionFailedMode reprojectionFailedMode = EReprojectionFailedMode::_2x2;
 
 	VariableRatePermutationSettings permutationSettings;
+
+	Bool variableRateBuilderUseSingleLanePerQuad = false;
 };
 
 void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSettings, const VariableRatePermutationSettings& permutationSettings);

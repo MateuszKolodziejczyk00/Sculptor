@@ -2,6 +2,8 @@
 
 [[descriptor_set(RTVariableRateTextureDS, 1)]]
 
+#define VR_BUILDER_SINGLE_LANE_PER_QUAD 1
+
 #include "Utils/VariableRate/VariableRateBuilder.hlsli"
 
 
@@ -11,7 +13,6 @@ struct CS_INPUT
 	uint3 groupID  : SV_GroupID;
 	uint3 localID  : SV_GroupThreadID;
 };
-
 
 
 float GetNoiseMulitplierForRoughness(float roughness)
@@ -29,11 +30,11 @@ struct RTVariableRateCallback
 			return SPT_VARIABLE_RATE_1X1;
 		}
 
-		float rtReflectionsInfluence = u_influenceTexture.Load(int3(processor.GetCoords(), 0)).x;
-		rtReflectionsInfluence = processor.QuadMax(rtReflectionsInfluence);
+		const float2 uv = (processor.GetCoords() + 1u) / float2(u_constants.inputResolution);
 
-		float roughness = u_roughnessTexture.Load(int3(processor.GetCoords(), 0)).x;
-		roughness = processor.QuadMin(roughness);
+		const float rtReflectionsInfluence = MaxComponent(u_influenceTexture.GatherRed(u_nearestSampler, uv));
+
+		float roughness = MinComponent(u_roughnessTexture.GatherRed(u_nearestSampler, uv));
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
@@ -46,23 +47,22 @@ struct RTVariableRateCallback
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
 		}
 
-		if(WaveActiveAnyTrue(variableRate != SPT_VARIABLE_RATE_1X1))
+		if(variableRate != SPT_VARIABLE_RATE_1X1)
 		{
-			float brightness = Luminance(u_reflectionsTexture.Load(int3(processor.GetCoords(), 0)));
-			brightness = processor.QuadMax(brightness);
+			const float brightness = MinComponent(u_reflectionsTexture.GatherRed(u_nearestSampler, uv));
+
 			const float rcpBrightness = 1.f / brightness;
 
-			float spatioTemporalVariance = u_spatioTemporalVariance.Load(int3(processor.GetCoords(), 0)).x;
-			spatioTemporalVariance = processor.QuadMax(spatioTemporalVariance);
+			const float spatioTemporalVariance = MaxComponent(u_spatioTemporalVariance.GatherRed(u_nearestSampler, uv));
 			const float spatioTemporalStdDev = sqrt(spatioTemporalVariance);
 
 			float noiseLevel = spatioTemporalStdDev * rcpBrightness * rtReflectionsInfluence;
 
 			noiseLevel *= GetNoiseMulitplierForRoughness(roughness);
 
-			const float linearDepth = u_linearDepthTexture.Load(int3(processor.GetCoords(), 0)).x;
-			const float depthDDX = processor.DDX_QuadMax(linearDepth);
-			const float depthDDY = processor.DDY_QuadMax(linearDepth);
+			const float4 linearDepth2x2 = u_linearDepthTexture.GatherRed(u_nearestSampler, uv);
+			const float depthDDX = max(linearDepth2x2.y - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
+			const float depthDDY = max(linearDepth2x2.w - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 
 			uint minVariableRate = SPT_VARIABLE_RATE_4X4;
 			if(noiseLevel >= 0.6f)
@@ -73,7 +73,7 @@ struct RTVariableRateCallback
 			{
 				minVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.15f)
+			else if (noiseLevel >= 0.2f)
 			{
 				minVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
@@ -83,36 +83,6 @@ struct RTVariableRateCallback
 			}
 
 			variableRate = MinVariableRate(variableRate, minVariableRate);
-		}
-
-		if(WaveActiveAnyTrue(variableRate > SPT_VARIABLE_RATE_2X2))
-		{
-			const uint2 resamplingTileCoords        = processor.GetCoords() / uint2(8u, 4u);
-			const uint2 resamplingTileTextureCoords = resamplingTileCoords / uint2(8u, 4u);
-			const uint  resamplingTileBitOffset     = dot(resamplingTileCoords & uint2(7u, 3u), uint2(1u, 8u));
-			const uint tileReliabilityMask          = u_tileReliabilityMask.Load(int3(resamplingTileTextureCoords, 0)).x;
-			const bool isTileUnreliable             = (tileReliabilityMask & (1u << resamplingTileBitOffset)) == 0u;
-
-			if(isTileUnreliable)
-			{
-				variableRate = (variableRate >> 2u);
-			}
-		}
-
-		const float volatileQuadMinRoughness = 0.5f;
-		if(WaveActiveAnyTrue(variableRate > SPT_VARIABLE_RATE_2X2) && roughness > volatileQuadMinRoughness)
-		{
-			const uint2 quadCoords = processor.GetCoords() / 2u;
-			const uint2 quadTextureCoords = quadCoords / uint2(8u, 4u);
-			const uint quadBitOffset = dot(quadCoords & uint2(7u, 3u), uint2(1u, 8u));
-			
-			const uint quadVolatilityMask = u_quadVolatilityMask.Load(int3(quadTextureCoords, 0)).x;
-			const bool isQuadVolatile = (quadVolatilityMask & (1u << quadBitOffset)) != 0u;
-
-			if(isQuadVolatile && roughness > volatileQuadMinRoughness)
-			{
-				variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
-			}
 		}
 
 		return variableRate;

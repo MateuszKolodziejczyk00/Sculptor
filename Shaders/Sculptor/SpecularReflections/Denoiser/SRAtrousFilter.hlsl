@@ -84,7 +84,7 @@ float LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
 	const float variance = center * 0.25f
                          + (up + down + left + right) * 0.125f + 
                          + (upperRight + upperLeft + lowerLeft + lowerRight) * 0.0675f;
-	
+
 	return variance;
 }
 

@@ -11,10 +11,9 @@
 #define SR_RESERVOIR_FLAGS_MISS           (1 << 0)
 #define SR_RESERVOIR_FLAGS_RECENT         (1 << 1) // Reservoir was traced recently and we can skip visibility check
 #define SR_RESERVOIR_FLAGS_SPECULAR_TRACE (1 << 2)
-#define SR_RESERVOIR_FLAGS_VOLATILE       (1 << 3)
 
 // Flags that are inherited during resampling
-#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT | SR_RESERVOIR_FLAGS_VOLATILE)
+#define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT)
 
 #define SR_RESERVOIR_MAX_M   (255)
 #define SR_RESERVOIR_MAX_AGE (255)
@@ -195,6 +194,12 @@ uint ModifyPackedSpatialResamplingRangeID(in uint MAndProps, in int delta)
 uint AddPackedFlag(in uint MAndProps, in uint flag)
 {
 	return MAndProps | (flag << 8u);
+}
+
+
+uint RemovePackedFlag(in uint MAndProps, in uint flag)
+{
+	return MAndProps & ~(flag << 8u);
 }
 
 

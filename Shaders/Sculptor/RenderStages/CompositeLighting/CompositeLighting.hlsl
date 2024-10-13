@@ -192,7 +192,6 @@ void CompositeLightingCS(CS_INPUT input)
 #endif // RT_REFLECTIONS_ENABLED
 
 	luminance = luminance * integratedFog.transmittance;
-	luminance = luminance;
 	luminance += ExposedLuminanceToLuminance(integratedFog.inScattering);
 
 #if RT_REFLECTIONS_ENABLED

@@ -5,6 +5,8 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/MortonCode.hlsli"
 
+#include "Utils/VariableRate/VariableRate.hlsli"
+
 
 struct CS_INPUT
 {
@@ -30,52 +32,22 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 	const uint bitIndex = EncodeMorton2(tileLocalCoords);
 	const bool isInvalidated = ((invalidationMask >> bitIndex) & 1u);
 
-	const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
-
-	const SRPackedReservoir packedReservoir = u_inOutReservoirsBuffer[reservoirIdx];
-
-	const bool reservoirIsVolatile = HasPackedFlag(packedReservoir, SR_RESERVOIR_FLAGS_VOLATILE);
-
-	if(reservoirIsVolatile)
-	{
-		const uint2 quadCoords = coords / 2u;
-		const uint2 quadTextureCoords = quadCoords / uint2(8u, 4u);
-		const uint quadBitOffset = dot(quadCoords & uint2(7u, 3u), uint2(1u, 8u));
-
-		InterlockedOr(u_rwQuadVolatilityMask[quadTextureCoords], 1u << quadBitOffset);
-	}
-
 	if (isInvalidated)
 	{
-		const float resampledReservoirWeight = Luminance(DecodeRGBFromLogLuv(u_inOutReservoirsBuffer[reservoirIdx].packedLuminance)) * u_inOutReservoirsBuffer[reservoirIdx].weight;
+		const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
-
 		uint packedProps = initialReservoir.MAndProps;
-		packedProps = ModifyPackedReservoirM(packedProps, 1u);
-		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -6);
-
+		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -6u);
 		initialReservoir.MAndProps = packedProps;
 
-		u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
-			
-		const float initialReservoirWeight = Luminance(DecodeRGBFromLogLuv(initialReservoir.packedLuminance)) * initialReservoir.weight;
-
-		const float weightRatio = resampledReservoirWeight / initialReservoirWeight;
-		const uint unreliablePixelsNum = WaveActiveCountBits(weightRatio > 3.f);
-
-		const uint invalidatedReservoirsNum = WaveActiveCountBits(isInvalidated);
-		const bool isTileUnreliable = invalidatedReservoirsNum >= 24u && unreliablePixelsNum > 7u;
-	
-		if (WaveIsFirstLane())
+		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, coords);
+		const bool wasTraced = all(coords == traceCoords);
+		if(!wasTraced)
 		{
-			const uint2 tileTextureCoords = maskTileCoords / uint2(8u, 4u);
-			const uint tileBitOffset      = dot(maskTileCoords, uint2(1u, 8u));
-	
-			if (isTileUnreliable)
-			{
-				InterlockedAnd(u_rwTileReliabilityMask[tileTextureCoords], ~(1u << tileBitOffset));
-			}
+			initialReservoir.weight = 0.f;
 		}
+
+		u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
 	}
 }

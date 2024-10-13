@@ -1,5 +1,7 @@
 #include "SculptorShader.hlsli"
 
+#define VR_BUILDER_SINGLE_LANE_PER_QUAD 0
+
 #include "Utils/VariableRate/VariableRateBuilder.hlsli"
 
 

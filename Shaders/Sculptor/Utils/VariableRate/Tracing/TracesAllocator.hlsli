@@ -192,7 +192,9 @@ struct TracesAllocator
 			// Allocate individual traces
 			const uint2 vrTileMask = vrTileSize - 1;
 
-			const bool wantsToAllocateTrace = all((localID & vrTileMask) == 0) && !maskOutOutput;
+			const uint2 allocatingLocalID = (localID & ~vrTileMask);
+			const uint allocatingLaneID = EncodeMorton2(allocatingLocalID) & (WaveGetLaneCount() - 1u);
+			const bool wantsToAllocateTrace = allocatingLaneID == WaveGetLaneIndex() && !maskOutOutput;
 
 			const uint2 wantsTraceBallot = WaveActiveBallot(wantsToAllocateTrace).xy;
 			const uint tracesToAllocate = countbits(wantsTraceBallot.x) + countbits(wantsTraceBallot.y);
@@ -228,11 +230,14 @@ struct TracesAllocator
 
 			traceOutputIdx = WaveReadLaneFirst(traceOutputIdx) + GetCompactedIndex(wantsTraceBallot, WaveGetLaneIndex());
 
+			float noise = m_noise;
+			noise = WaveReadLaneAt(noise, allocatingLaneID);
+
 			uint2 localOffset = 0u;
-			if(m_noise >= 0.f)
+			if(noise >= 0.f)
 			{
 				const uint tileArea = vrTileSize.x * vrTileSize.y;
-				const uint pixelIdx = frac(m_noise + SPT_GOLDEN_RATIO * (traceIdx & 63)) * tileArea;
+				const uint pixelIdx = frac(noise + SPT_GOLDEN_RATIO * (traceIdx & 63)) * tileArea;
 				localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
 			}
 
