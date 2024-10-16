@@ -46,7 +46,7 @@ float QuadSwizzle(in float value, in uint swizzleQuadBaseID, in uint quadLocalID
 }
 
 
-float LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
+float2 LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
 {
 	const uint2 pixel = groupOffset + localID;
 
@@ -81,11 +81,11 @@ float LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
 
 	const float center = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, diagonalSwizzle);
 
-	const float variance = center * 0.25f
-                         + (up + down + left + right) * 0.125f + 
-                         + (upperRight + upperLeft + lowerLeft + lowerRight) * 0.0675f;
+	const float variance3x3 = center * 0.25f
+                            + (up + down + left + right) * 0.125f + 
+                            + (upperRight + upperLeft + lowerLeft + lowerRight) * 0.0675f;
 
-	return variance;
+	return float2(center, variance3x3);
 }
 
 
@@ -145,12 +145,13 @@ void SRATrousFilterCS(CS_INPUT input)
 		float3 luminanceSum = 0.f;
 		luminanceSum += (centerLuminanceHitDistance.rgb / (Luminance(centerLuminanceHitDistance.rgb) + 1.f)) * weightSum;
 
-		const float centerVariance = LoadVariance3x3(groupOffset, threadIdx, localID);
+		const float2 variance = LoadVariance3x3(groupOffset, threadIdx, localID);
+		const float centerVariance = variance.y;
 
 		const float centerLuminanceStdDev = centerVariance > 0.f ? sqrt(centerVariance) : 0.f;
 		const float rcpLuminanceStdDev = 1.f / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f);
 
-		float varianceSum = centerVariance * Pow2(weightSum);
+		float varianceSum = variance.x * Pow2(weightSum);
 
 		const int radius = 1;
 
@@ -194,7 +195,7 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float lw = (abs(lumCenter - lum) * rcpLuminanceStdDev + 0.001f);
 				weight *= exp(-lw);
 
-				luminance /= (Luminance(luminance) + 1.f);
+				luminance /= (lum + 1.f);
 
 				luminanceSum += luminance * weight;
 

@@ -35,17 +35,15 @@ float ComputeWeight(in SampleData center, in SampleData sample, int2 offset)
 {
 	const float kernel[4] = { 0.5f, 0.35f, 0.2f, 0.1f };
 
-	const float phiNormal = 24.f;
-	const float phiDepth = 0.1f;
-	const float phiIllum = 0.1f;
-
-	const float offsetWeight = kernel[abs(offset.x)] * kernel[abs(offset.y)];
+	const float phiNormal = 12.f;
+	const float phiDepth = 0.15f;
 	
 	const float weightNormal = pow(saturate(dot(center.normal, sample.normal)), phiNormal);
-	const float weightZ = (phiDepth == 0) ? 0.0f : abs(center.linearDepth - sample.linearDepth) / (phiDepth * offsetWeight);
-	const float weightLuminance = abs(center.luminance - sample.luminance) / phiIllum;
 
-	const float finalWeight = exp(0.0 - max(weightLuminance, 0.0) - max(weightZ, 0.0)) * weightNormal;
+	const float depthDifference = abs(center.linearDepth - sample.linearDepth);
+	const float weightZ = depthDifference <= phiDepth ? 1.f : 0.f;
+
+	const float finalWeight = exp(-max(weightZ, 0.0)) * weightNormal;
 
 	return finalWeight;
 }
@@ -61,7 +59,7 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 	const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(uint3(pixel, 0u)).x;
 
-	const uint temporalVarianceRequiredSamplesNum = 6u;
+	const uint temporalVarianceRequiredSamplesNum = 4u;
 	const uint useSpatialVarianceBallot = WaveActiveBallot(accumulatedSamplesNum < temporalVarianceRequiredSamplesNum).x;
 
 	if(useSpatialVarianceBallot > 0)
@@ -121,10 +119,9 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 			float spatialVariance = abs(luminanceSquaredSum - luminanceSum * luminanceSum);
 
-			const float minSpatialVariance = (1.f - accumulatedSamplesNum / float(temporalVarianceRequiredSamplesNum)) * Pow2(luminanceSum);
-			spatialVariance = max(spatialVariance, minSpatialVariance);
+			const float spatialVarianceBoost = 7.f;
 
-			spatialVariance *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u);
+			spatialVariance *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u) * spatialVarianceBoost;
 
 			variance = max(variance, spatialVariance);
 		}

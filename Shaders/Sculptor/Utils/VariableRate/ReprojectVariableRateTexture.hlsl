@@ -69,7 +69,19 @@ void ReprojectVariableRateTextureCS(CS_INPUT input)
 
 	const float2 motion = SampleMotionTexture(pixel);
 
-	const uint variableRate = ReprojectVariableRate(u_inputTexture, uv, u_constants.resolution, motion, GetReprojectionFailedVariableRate());
+	const VariableRateReprojectionResult reprojectionResult = ReprojectVariableRate(u_inputTexture, uv, u_constants.resolution, motion);
+	const uint variableRate = reprojectionResult.isSuccessful ? reprojectionResult.variableRateMask : CreateCompressedVariableRateData(GetReprojectionFailedVariableRate());
 
 	u_rwOutputTexture[pixel] = variableRate;
+
+#if OUTPUT_REPROJECTION_SUCCESS_MASK
+
+	const uint2 maskCoords = pixel / uint2(8u, 4u);
+
+	uint successMask = reprojectionResult.isSuccessful ? 1u << WaveGetLaneIndex() : 0;
+	successMask = WaveActiveBitOr(successMask);
+
+	u_rwReprojectionSuccessMask[maskCoords] = successMask;
+
+#endif // OUTPUT_REPROJECTION_SUCCESS_MASK
 }

@@ -58,7 +58,8 @@ struct ResamplingParams
 	rg::RGTextureViewHandle roughnessTexture;
 	rg::RGTextureViewHandle specularColorTexture;
 
-	vrt::TracesAllocation tracesAllocation;
+	vrt::TracesAllocation   tracesAllocation;
+	rg::RGTextureViewHandle vrReprojectionSuccessMask;
 
 	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle historyNormalsTexture;
@@ -75,6 +76,8 @@ struct ResamplingParams
 	Bool enableTemporalResampling         = true;
 
 	Bool doFullFinalVisibilityCheck = true;
+
+	Bool enableSecondTracingPass = false;
 };
 
 

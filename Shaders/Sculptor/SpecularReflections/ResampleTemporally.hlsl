@@ -3,6 +3,11 @@
 [[descriptor_set(SRTemporalResamplingDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
 
+#if ENABLE_SECOND_TRACING_PASS
+[[descriptor_set(SRAdditionalPassesAllocatorDS, 2)]]
+#endif // ENABLE_SECOND_TRACING_PASS
+
+
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Shading/Shading.hlsli"
@@ -75,10 +80,10 @@ struct SRTemporalResampler
 
 		resampler.m_wasSampleTraced = wasSampleTraced;
 
-		resampler.m_validSamplesMask = 0u;
+		resampler.m_validSamplesMask  = 0u;
 		resampler.m_selectedSampleIdx = -1;
-		resampler.m_currentSampleIdx = 0;
-		resampler.m_initialM = initialReservoir.M;
+		resampler.m_currentSampleIdx  = 0;
+		resampler.m_initialM          = initialReservoir.M;
 
 		return resampler;
 	}
@@ -206,6 +211,7 @@ struct SRTemporalResampler
 	}
 };
 
+#if ENABLE_SECOND_TRACING_PASS
 void AppendAdditionalTraceCommand(in uint2 traceCoords)
 {
 	const uint commandsNum = WaveActiveCountBits(true);
@@ -233,6 +239,7 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 
 	u_rwVariableRateBlocksTexture[traceCoords] = PackVRBlockInfo(uint2(0, 0), SPT_VARIABLE_RATE_1X1);
 }
+#endif // ENABLE_SECOND_TRACING_PASS
 
 
 [numthreads(8, 8, 1)]
@@ -240,11 +247,13 @@ void ResampleTemporallyCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
 
+#if ENABLE_SECOND_TRACING_PASS
 	if(all(pixel == 0))
 	{
 		u_commandsNum[1] = 1;
 		u_commandsNum[2] = 1;
 	}
+#endif // ENABLE_SECOND_TRACING_PASS
 	
 	if(all(pixel < u_resamplingConstants.resolution))
 	{
@@ -314,14 +323,22 @@ void ResampleTemporallyCS(CS_INPUT input)
 			}
 		}
 
-		const SRReservoir newReservoir = resampler.FinishResampling(pixel);
+		SRReservoir newReservoir = resampler.FinishResampling(pixel);
+
+#if ENABLE_SECOND_TRACING_PASS
+		const uint2 reprojectionSuccessMaskCoords = pixel / (2u * uint2(8u, 4u));
+		const uint reprojectionSuccessMaskBit     = (pixel.y & 3u) * 8u + (pixel.x & 7u);
+
+		const uint reprojectionSuccessMask = u_vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
+		const bool reprojectionSuccess     = (reprojectionSuccessMask & (1u << reprojectionSuccessMaskBit)) != 0u;
 
 		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
-		const bool isValidReservoir = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
-		if((invalidReservoirsNum > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
+		const bool isValidReservoir     = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
+		if(reprojectionSuccess && (invalidReservoirsNum > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
 		{
 			AppendAdditionalTraceCommand(pixel);
 		}
+#endif // ENABLE_SECOND_TRACING_PASS
 
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
 

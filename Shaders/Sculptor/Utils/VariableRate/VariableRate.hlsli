@@ -150,14 +150,23 @@ uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 #endif // USE_CONSERVATIVE_REPROJECTION
 
 
-uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion, in uint reprojectionFailedRate)
+struct VariableRateReprojectionResult
+{
+	uint variableRateMask;
+	bool isSuccessful;
+};
+
+
+VariableRateReprojectionResult ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion)
 {
 	const float2 reprojectedUV = uv - motion;
 
-	uint variableRateMask = CreateCompressedVariableRateData(reprojectionFailedRate);
+	VariableRateReprojectionResult result = { SPT_VARIABLE_RATE_1X1, false };
 
 	if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
+		uint variableRateMask = 0;
+
 #if USE_CONSERVATIVE_REPROJECTION
 		if(IsNearlyZero(motion.x) && IsNearlyZero(motion.y))
 		{
@@ -192,9 +201,12 @@ uint ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 
 #else
 		variableRateMask = vrTexture.Load(uint3(reprojectedUV * variableRateRes, 0));
 #endif // USE_CONSERVATIVE_REPROJECTION
+
+		result.variableRateMask = variableRateMask;
+		result.isSuccessful     = true;
 	}
 
-	return variableRateMask;
+	return result;
 }
 
 float3 VariableRateMaskToDebugColor(in uint variableRateMask)

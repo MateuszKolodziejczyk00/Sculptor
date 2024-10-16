@@ -43,6 +43,7 @@ RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" },
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
 RendererBoolParameter detailPreservingSpatialDenoising("Detail Preserving Spatial Denoising", { "Specular Reflections" }, false);
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, false);
+RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 
 } // renderer_params
 
@@ -595,7 +596,9 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle motionTexture       = isHalfRes ? viewContext.motionHalfRes : viewContext.motion;
 		const rg::RGTextureViewHandle historyDepthTexture = isHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
 
-		m_variableRateRenderer.Reproject(graphBuilder, motionTexture);
+		const rg::RGTextureViewHandle vrReprojectionSuccessMask = vrt::CreateReprojectionSuccessMask(graphBuilder, resolution);
+
+		m_variableRateRenderer.Reproject(graphBuilder, motionTexture, vrReprojectionSuccessMask);
 
 		const Bool hasValidHistory = historyDepthTexture.IsValid() && historyDepthTexture->GetResolution2D() == resolution;
 
@@ -665,9 +668,11 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.outLuminanceHitDistanceTexture = luminanceHitDistanceTexture;
 		resamplingParams.motionTexture                  = params.motionTexture;
 		resamplingParams.tracesAllocation               = tracesAllocation;
+		resamplingParams.vrReprojectionSuccessMask      = vrReprojectionSuccessMask;
 		resamplingParams.enableTemporalResampling       = hasValidHistory && renderer_params::enableTemporalResampling;
 		resamplingParams.spatialResamplingIterationsNum = renderer_params::spatialResamplingIterationsNum;
 		resamplingParams.doFullFinalVisibilityCheck     = renderer_params::doFullFinalVisibilityCheck;
+		resamplingParams.enableSecondTracingPass        = renderer_params::enableSecondTracingPass;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 

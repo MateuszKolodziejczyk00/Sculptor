@@ -125,7 +125,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		rangeMul = WaveReadLaneFirst(rangeMul);
 #endif // WAVE_COHERENT_SPATIAL_RESAMPLING
 
-		const float distance = 3.f + resamplingRange * rangeMul;
+		const float distance = 1.5f + resamplingRange * rangeMul;
 		const float2 offset = float2(cosAngle, sinAngle) * distance;
 
 		const int2 offsetInPixels = round(offset);

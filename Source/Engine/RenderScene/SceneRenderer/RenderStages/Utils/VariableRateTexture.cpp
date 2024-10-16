@@ -25,6 +25,18 @@ math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputT
 	return math::Utils::DivideCeil(inputTextureResolution, math::Vector2u(2u, 2u));
 }
 
+math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution)
+{
+	return math::Utils::DivideCeil(ComputeVariableRateTextureResolution(inputTextureResolution), math::Vector2u(8u, 4u));
+}
+
+rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution)
+{
+	const math::Vector2u resolution = ComputeReprojectionSuccessMaskResolution(inputTextureResolution);
+	return graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reprojection Success Mask"), rg::TextureDef(resolution, rhi::EFragmentFormat::R32_U_Int));
+}
+
+
 BEGIN_SHADER_STRUCT(CreateVariableRateTextureConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, inputResolution)
 	SHADER_STRUCT_FIELD(math::Vector2u, outputResolution)
@@ -53,7 +65,7 @@ static rdr::ShaderID CreateGenericVariableRateTextureShader(const VariableRatePe
 	return rdr::ResourcesManager::CreateShader("Sculptor/Utils/VariableRate/CreateGenericVariableRateTexture.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CreateVariableRateTextureCS"), compilationSettings);
 }
 
-void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets)
+static void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -111,20 +123,22 @@ END_SHADER_STRUCT();
 DS_BEGIN(ReprojectVariableRateTextureDS, rg::RGDescriptorSetState<ReprojectVariableRateTextureDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                   u_inputTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                    u_rwOutputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Uint32>),                            u_rwReprojectionSuccessMask)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ReprojectVariableRateTextureConstants>),  u_constants)
 DS_END();
 
 
-static rdr::PipelineStateID CreateReprojectVariableRateTexturePipeline(const VariableRatePermutationSettings& permutationSettings)
+static rdr::PipelineStateID CreateReprojectVariableRateTexturePipeline(const VariableRatePermutationSettings& permutationSettings, Bool outputReprojectionSuccessMask)
 {
 	sc::ShaderCompilationSettings compilationSettings;
 	ApplyVariableRatePermutation(INOUT compilationSettings, permutationSettings);
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("OUTPUT_REPROJECTION_SUCCESS_MASK", outputReprojectionSuccessMask ? "1" : "0"));
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Utils/VariableRate/ReprojectVariableRateTexture.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ReprojectVariableRateTextureCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("ReprojectVariableRateTexturePipeline"), shader);
 }
 
-void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle sourceTexture, rg::RGTextureViewHandle targetTexture)
+static void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle sourceTexture, rg::RGTextureViewHandle targetTexture, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle reprojectionSuccessMask)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -139,13 +153,20 @@ void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const Va
 	shaderConstants.invResolution          = resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.reprojectionFailedMode = static_cast<Uint32>(vrSettings.reprojectionFailedMode);
 
-	lib::MTHandle<ReprojectVariableRateTextureDS> reprojectVariableRateTextureDS = graphBuilder.CreateDescriptorSet<ReprojectVariableRateTextureDS>(RENDERER_RESOURCE_NAME("ReprojectVariableRateTextureDS"));
-	reprojectVariableRateTextureDS->u_inputTexture    = sourceTexture;
-	reprojectVariableRateTextureDS->u_rwOutputTexture = targetTexture;
-	reprojectVariableRateTextureDS->u_motionTexture   = motionTexture;
-	reprojectVariableRateTextureDS->u_constants       = shaderConstants;
+	const Bool outputReprojectionSuccessMask = reprojectionSuccessMask.IsValid();
 
-	const rdr::PipelineStateID reprojectVariableRateTexturePipeline = CreateReprojectVariableRateTexturePipeline(vrSettings.permutationSettings);
+	lib::MTHandle<ReprojectVariableRateTextureDS> reprojectVariableRateTextureDS = graphBuilder.CreateDescriptorSet<ReprojectVariableRateTextureDS>(RENDERER_RESOURCE_NAME("ReprojectVariableRateTextureDS"));
+	reprojectVariableRateTextureDS->u_inputTexture              = sourceTexture;
+	reprojectVariableRateTextureDS->u_rwOutputTexture           = targetTexture;
+	reprojectVariableRateTextureDS->u_motionTexture             = motionTexture;
+	reprojectVariableRateTextureDS->u_constants                 = shaderConstants;
+
+	if (outputReprojectionSuccessMask)
+	{
+		reprojectVariableRateTextureDS->u_rwReprojectionSuccessMask = reprojectionSuccessMask;
+	}
+
+	const rdr::PipelineStateID reprojectVariableRateTexturePipeline = CreateReprojectVariableRateTexturePipeline(vrSettings.permutationSettings, outputReprojectionSuccessMask);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Reproject Variable Rate Texture", vrSettings.debugName.AsString()),
 						  reprojectVariableRateTexturePipeline,
@@ -165,7 +186,7 @@ void VariableRateRenderer::Initialize(const VariableRateSettings& vrSettings)
 	m_vrSettings = vrSettings;
 }
 
-void VariableRateRenderer::Reproject(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle motionTexture)
+void VariableRateRenderer::Reproject(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle reprojectionSuccessMask /*= {}*/)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -178,7 +199,7 @@ void VariableRateRenderer::Reproject(rg::RenderGraphBuilder& graphBuilder, rg::R
 	if (canPerformReprojection)
 	{
 		const rg::RGTextureViewHandle reprojectionSource = graphBuilder.AcquireExternalTextureView(m_reprojectionSourceVRTexture);
-		ReprojectVariableRateTexture(graphBuilder, m_vrSettings, motionTexture, reprojectionSource, reprojectionTarget);
+		ReprojectVariableRateTexture(graphBuilder, m_vrSettings, reprojectionSource, reprojectionTarget, motionTexture, reprojectionSuccessMask);
 	}
 	else
 	{

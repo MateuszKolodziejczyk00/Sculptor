@@ -81,9 +81,9 @@ void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSett
 
 math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution);
 
-void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle inputTexture, math::Vector2u inputResolution, rg::RGTextureViewHandle variableRateTexture, Uint32 frameIdx, std::optional<rdr::ShaderID> customShader, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets);
+math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution);
 
-void ReprojectVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const VariableRateSettings& vrSettings, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle sourceTexture, rg::RGTextureViewHandle targetTexture);
+rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution);
 
 
 class VariableRateRenderer
@@ -98,7 +98,7 @@ public:
 
 	const lib::SharedPtr<rdr::TextureView>& GetVariableRateTexture() const { return m_reprojectionTargetVRTexture; }
 
-	void Reproject(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle motionTexture);
+	void Reproject(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle reprojectionSuccessMask = {});
 
 	void Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, std::optional<rdr::ShaderID> customShader = {}, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets = {});
 

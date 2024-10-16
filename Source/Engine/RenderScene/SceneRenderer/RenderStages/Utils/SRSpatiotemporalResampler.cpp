@@ -97,34 +97,88 @@ static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& p
 }
 
 
+namespace copy
+{
+
+DS_BEGIN(RTCopyTracedReservoirsDS, rg::RGDescriptorSetState<RTCopyTracedReservoirsDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),         u_outReservoirs)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),           u_inReservoirs)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_traceCommands)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                      u_tracesNum)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),         u_resamplingConstants)
+DS_END();
+
+
+static rdr::PipelineStateID CompileCopyTracedReservoirsPipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTCopyTracedReservoirs.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RTCopyTracedReservoirsCS"));
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Copy Traced Reservoirs Pipeline"), shader);
+}
+
+
+static void CopyTracedReservoirs(rg::RenderGraphBuilder& graphBuilder, const SRResamplingConstants& resamplingConstants, const vrt::TracesAllocation& traces, rg::RGBufferViewHandle inputBuffer, rg::RGBufferViewHandle outputBuffer)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(inputBuffer.IsValid());
+	SPT_CHECK(outputBuffer.IsValid());
+	SPT_CHECK(inputBuffer != outputBuffer);
+
+	lib::MTHandle<RTCopyTracedReservoirsDS> ds = graphBuilder.CreateDescriptorSet<RTCopyTracedReservoirsDS>(RENDERER_RESOURCE_NAME("Copy Traced Reservoirs DS"));
+	ds->u_outReservoirs       = outputBuffer;
+	ds->u_inReservoirs        = inputBuffer;
+	ds->u_traceCommands       = traces.rayTraceCommands;
+	ds->u_tracesNum           = traces.tracesNum;
+	ds->u_resamplingConstants = resamplingConstants;
+
+	static const rdr::PipelineStateID pipeline = CompileCopyTracedReservoirsPipeline();
+
+	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Copy Traced Reservoirs"),
+								  pipeline,
+								  traces.dispatchIndirectArgs, 0u,
+								  rg::BindDescriptorSets(std::move(ds)));
+}
+
+} // copy
+
+
 namespace temporal
 {
 
 DS_BEGIN(SRTemporalResamplingDS, rg::RGDescriptorSetState<SRTemporalResamplingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_specularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_motionTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_historyDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_historyNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_historyRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_historySpecularColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_initialResservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),             u_historyReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),           u_outReservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_rayTracesCommands)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_commandsNum)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                             u_rwVariableRateBlocksTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesDispatchGroupsNum)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesNum)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),           u_resamplingConstants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_depthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_normalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_motionTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyDepthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_historyNormalsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyRoughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_historySpecularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_initialResservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_historyReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_outReservoirsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                   u_rwVariableRateBlocksTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>), u_resamplingConstants)
 DS_END();
 
 
-static rdr::PipelineStateID CompileResampleTemporallyPipeline()
+DS_BEGIN(SRAdditionalPassesAllocatorDS, rg::RGDescriptorSetState<SRAdditionalPassesAllocatorDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<vrt::EncodedRayTraceCommand>), u_rayTracesCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_commandsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesDispatchGroupsNum)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_tracesNum)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                            u_vrReprojectionSuccessMask)
+DS_END();
+
+
+static rdr::PipelineStateID CompileResampleTemporallyPipeline(Bool enableSecondTracingPass)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResampleTemporally.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResampleTemporallyCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_SECOND_TRACING_PASS", enableSecondTracingPass ? "1" : "0"));
+
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResampleTemporally.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResampleTemporallyCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Resample Temporally Pipeline"), shader);
 }
@@ -155,8 +209,6 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 {
 	SPT_PROFILER_FUNCTION();
 
-	const vrt::TracesAllocation additionalTracesAllocation = PrepareAdditionalTracesAllocationData(graphBuilder, params);
-
 	const math::Vector2u resolution = params.GetResolution();
 
 	lib::MTHandle<SRTemporalResamplingDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalResamplingDS>(RENDERER_RESOURCE_NAME("Resample Temporally DS"));
@@ -172,21 +224,33 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 	ds->u_initialResservoirsBuffer    = params.initialReservoirBuffer;
 	ds->u_historyReservoirsBuffer     = reservoirsState.ReadReservoirs();
 	ds->u_outReservoirsBuffer         = reservoirsState.WriteReservoirs();
-	ds->u_rayTracesCommands           = additionalTracesAllocation.rayTraceCommands;
-	ds->u_commandsNum                 = additionalTracesAllocation.tracingIndirectArgs;
-	ds->u_rwVariableRateBlocksTexture = additionalTracesAllocation.variableRateBlocksTexture;
-	ds->u_tracesDispatchGroupsNum     = additionalTracesAllocation.dispatchIndirectArgs;
-	ds->u_tracesNum                   = additionalTracesAllocation.tracesNum;
+	ds->u_rwVariableRateBlocksTexture = params.tracesAllocation.variableRateBlocksTexture;
 	ds->u_resamplingConstants         = resamplingConstants;
+
+	vrt::TracesAllocation additionalTracesAllocation;
+	lib::MTHandle<SRAdditionalPassesAllocatorDS> additionalPassesAllocatorDS;
+	if (params.enableSecondTracingPass)
+	{
+		additionalTracesAllocation = PrepareAdditionalTracesAllocationData(graphBuilder, params);
+
+		additionalPassesAllocatorDS = graphBuilder.CreateDescriptorSet<SRAdditionalPassesAllocatorDS>(RENDERER_RESOURCE_NAME("Additional Passes Allocator DS"));
+		additionalPassesAllocatorDS->u_rayTracesCommands         = additionalTracesAllocation.rayTraceCommands;
+		additionalPassesAllocatorDS->u_commandsNum               = additionalTracesAllocation.tracingIndirectArgs;
+		additionalPassesAllocatorDS->u_tracesDispatchGroupsNum   = additionalTracesAllocation.dispatchIndirectArgs;
+		additionalPassesAllocatorDS->u_tracesNum                 = additionalTracesAllocation.tracesNum;
+		additionalPassesAllocatorDS->u_vrReprojectionSuccessMask = params.vrReprojectionSuccessMask;
+	}
 
 	reservoirsState.RollBuffers();
 
-	static const rdr::PipelineStateID pipeline = CompileResampleTemporallyPipeline();
+	const rdr::PipelineStateID pipeline = CompileResampleTemporallyPipeline(params.enableSecondTracingPass);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Temporally"),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
-						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
+						  rg::BindDescriptorSets(std::move(ds),
+												 params.renderView.GetRenderViewDS(),
+												 std::move(additionalPassesAllocatorDS)));
 
 	return additionalTracesAllocation;
 }
@@ -588,6 +652,12 @@ void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& gra
 	{
 		// if initial phase was skipped, we need to read initial reservoirs
 		reservoirsState.ReadNextFromInitialReservoirs(params.initialReservoirBuffer);
+	}
+
+	// Copy additional traces to the "initial" buffer
+	if (initialResamplingResult.additionalTracesAllocation.IsValid())
+	{
+		copy::CopyTracedReservoirs(graphBuilder, resamplingConstants, initialResamplingResult.additionalTracesAllocation, reservoirsState.ReadReservoirs(), params.initialReservoirBuffer);
 	}
 
 	firefly_filter::FireflyFilter(graphBuilder, params, resamplingConstants, reservoirsState);

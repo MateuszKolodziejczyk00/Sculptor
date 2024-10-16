@@ -64,25 +64,25 @@ struct RTVariableRateCallback
 			const float depthDDX = max(linearDepth2x2.y - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 			const float depthDDY = max(linearDepth2x2.w - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 
-			uint minVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(noiseLevel >= 0.6f)
+			uint maxVariableRate = SPT_VARIABLE_RATE_4X4;
+			if(noiseLevel >= 0.8f)
 			{
-				minVariableRate = SPT_VARIABLE_RATE_1X1;
+				maxVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
 			else if (noiseLevel >= 0.45f)
 			{
-				minVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
+				maxVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.2f)
+			else if (noiseLevel >= 0.3f)
 			{
-				minVariableRate = SPT_VARIABLE_RATE_2X2;
+				maxVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(noiseLevel >= 0.08f)
+			else if(noiseLevel >= 0.1f)
 			{
-				minVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
+				maxVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}
 
-			variableRate = MinVariableRate(variableRate, minVariableRate);
+			variableRate = MinVariableRate(variableRate, maxVariableRate);
 		}
 
 		return variableRate;

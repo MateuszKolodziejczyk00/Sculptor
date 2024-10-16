@@ -38,7 +38,7 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
 		uint packedProps = initialReservoir.MAndProps;
-		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -6u);
+		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -4u);
 		initialReservoir.MAndProps = packedProps;
 
 		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, coords);
