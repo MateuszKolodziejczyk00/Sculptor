@@ -63,7 +63,7 @@ public:
 	struct Result
 	{
 		rg::RGTextureViewHandle denoiserOutput;
-		rg::RGTextureViewHandle spatioTemporalVariance;
+		rg::RGTextureViewHandle temporalVariance;
 	};
 
 	explicit Denoiser(rg::RenderGraphDebugName debugName);
@@ -81,8 +81,8 @@ private:
 		rg::RGTextureViewHandle input;
 		rg::RGTextureViewHandle output;
 		rg::RGTextureViewHandle inputVariance;
-		rg::RGTextureViewHandle outputVariance;
-		rg::RGTextureViewHandle tempVariance;
+		rg::RGTextureViewHandle tempVariance0;
+		rg::RGTextureViewHandle tempVariance1;
 		rg::RGTextureViewHandle historySamplesNum;
 		rg::RGTextureViewHandle reprojectionConfidence;
 	};

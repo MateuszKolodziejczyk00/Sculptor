@@ -1,6 +1,8 @@
 #ifndef SR_DENOISING_COMMON_HLSLI
 #define SR_DENOISING_COMMON_HLSLI
 
+#include "Utils/Shapes.hlsli"
+
 
 #define MAX_ACCUMULATED_FRAMES_NUM 45.f
 

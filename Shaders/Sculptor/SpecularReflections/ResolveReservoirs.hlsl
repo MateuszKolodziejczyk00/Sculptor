@@ -32,12 +32,16 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		const bool isTracingCoord = all(pixel == traceCoords);
 
-		if(!reservoir.IsValid() && !isTracingCoord)
+		const bool canUseReservoir = reservoir.IsValid() && reservoir.HasValidResult();
+
+		if(!canUseReservoir && !isTracingCoord)
 		{
 			reservoirCoords = traceCoords;
 			const uint tracingReservoirIdx = GetScreenReservoirIdx(traceCoords, u_resamplingConstants.reservoirsResolution);
 			reservoir = UnpackReservoir(u_reservoirsBuffer[tracingReservoirIdx]);
 		}
+
+		SPT_CHECK_MSG(!reservoir.IsValid() || reservoir.HasValidResult(), L"Valid reservoirs must have valid result at this point");
 
 		const float depth = u_depthTexture.Load(uint3(reservoirCoords, 0));
 		const float2 uv = (reservoirCoords + 0.5f) * u_resamplingConstants.pixelSize;

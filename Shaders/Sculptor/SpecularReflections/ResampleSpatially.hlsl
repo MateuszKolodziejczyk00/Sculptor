@@ -31,7 +31,7 @@ struct CS_INPUT
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = lerp(1.f, u_resamplingConstants.resamplingRangeStep, smoothstep(0.06f, 0.45f, roughness));
+	const float stepSize = (0.6f + 0.4f * smoothstep(0.05f, 0.45f, roughness)) * u_resamplingConstants.resamplingRangeStep;
 	return max(reservoir.spatialResamplingRangeID * stepSize + stepSize, 3.f);
 }
 
@@ -126,7 +126,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 #endif // WAVE_COHERENT_SPATIAL_RESAMPLING
 
 		const float distance = 1.5f + resamplingRange * rangeMul;
-		const float2 offset = float2(cosAngle, sinAngle) * distance;
+		float2 offset = float2(cosAngle, sinAngle) * distance;
 
 		const int2 offsetInPixels = round(offset);
 
@@ -147,6 +147,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
 		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+		//reuseReservoir.hitLocation = reuseReservoir.hitLocation + centerPixelSurface.location - reuseSurface.location;
 
 		if(!newReservoir.CanCombine(reuseReservoir))
 		{
@@ -210,6 +211,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
 		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
+	//	reuseReservoir.hitLocation = reuseReservoir.hitLocation + centerPixelSurface.location - reusedSurface.location;
 
 		// p_j in input domain Omega_j
 		const float p_j = EvaluateTargetFunction(reusedSurface, newReservoir.hitLocation, newReservoir.luminance);

@@ -93,7 +93,7 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 6u;
+		const uint maxHistoryLength = 5u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
@@ -126,9 +126,9 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const uint maxAge = 12 * lerp(rng.Next(), 0.5f, 1.f);
+		const uint maxAge = 12u * lerp(rng.Next(), 0.6f, 1.f);
 
-		if(m_wasSampleTraced && historyReservoir.age > maxAge)
+		if(historyReservoir.age > maxAge)
 		{
 			return false;
 		}
@@ -138,9 +138,16 @@ struct SRTemporalResampler
 			return false;
 		}
 
-		const float jacobian = EvaluateJacobian(centerPixelSurface.location, selectedHistorySurface.location, historyReservoir);
+		const float jacobian = EvaluateJacobian(centerPixelSurface.location, selectedHistorySurface.location + centerPixelSurface.location - selectedHistorySurface.location, historyReservoir);
 
 		if(jacobian <= 0.f)
+		{
+			return false;
+		}
+
+		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
+
+		if(!historyReservoir.HasValidResult())
 		{
 			return false;
 		}
@@ -294,17 +301,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
 
-			const float2 motion = u_motionTexture.Load(uint3(pixel, 0)).xy;
-			const float2 reprojectedSurfaceUV  = uv - motion;
-
 			const float3 virtualReflectedLocation = centerPixelSurface.location - centerPixelSurface.v * reflectedRayLength;
 			const float3 prevFrameNDCVirtual = WorldSpaceToNDC(virtualReflectedLocation, u_prevFrameSceneView);
 
-			const float2 reprojectedUVBasedOnVirtualPoint = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
-
-			const float surfaceReprojectionWeight = prevFrameNDCVirtual.z > 0.f ? saturate((centerPixelSurface.roughness - 0.1f) * 2.8f) : 1.f;
-
-			const float2 reprojectedUV = lerp(reprojectedUVBasedOnVirtualPoint, reprojectedSurfaceUV, surfaceReprojectionWeight);
+			const float2 reprojectedUV = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
 
 			if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 			{
@@ -334,7 +334,9 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
 		const bool isValidReservoir     = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
-		if(reprojectionSuccess && (invalidReservoirsNum > 8u || centerPixelSurface.roughness <= SPECULAR_TRACE_MAX_ROUGHNESS) && !isValidReservoir)
+
+		const bool allowsSecondPass = (invalidReservoirsNum > 8u || centerPixelSurface.roughness <= 0.15f);
+		if(reprojectionSuccess && allowsSecondPass && !isValidReservoir)
 		{
 			AppendAdditionalTraceCommand(pixel);
 		}

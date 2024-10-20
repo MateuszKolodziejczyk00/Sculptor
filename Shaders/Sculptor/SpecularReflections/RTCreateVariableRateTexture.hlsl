@@ -5,6 +5,7 @@
 #define VR_BUILDER_SINGLE_LANE_PER_QUAD 1
 
 #include "Utils/VariableRate/VariableRateBuilder.hlsli"
+#include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 
 struct CS_INPUT
@@ -13,12 +14,6 @@ struct CS_INPUT
 	uint3 groupID  : SV_GroupID;
 	uint3 localID  : SV_GroupThreadID;
 };
-
-
-float GetNoiseMulitplierForRoughness(float roughness)
-{
-	return lerp(0.3f, 1.f, smoothstep(0.3f, 0.6f, roughness));
-}
 
 
 struct RTVariableRateCallback
@@ -42,10 +37,6 @@ struct RTVariableRateCallback
 		{
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
 		}
-		else if (roughness <= 0.05f)
-		{
-			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_2X2);
-		}
 
 		if(variableRate != SPT_VARIABLE_RATE_1X1)
 		{
@@ -53,31 +44,31 @@ struct RTVariableRateCallback
 
 			const float rcpBrightness = 1.f / brightness;
 
-			const float spatioTemporalVariance = MaxComponent(u_spatioTemporalVariance.GatherRed(u_nearestSampler, uv));
-			const float spatioTemporalStdDev = sqrt(spatioTemporalVariance);
+			const float temporalVariance = MaxComponent(u_temporalVariance.GatherRed(u_nearestSampler, uv));
+			const float temporalStdDev = sqrt(temporalVariance);
 
-			float noiseLevel = spatioTemporalStdDev * rcpBrightness * rtReflectionsInfluence;
+			const float currentFrameWeight = rcp(float(MAX_ACCUMULATED_FRAMES_NUM));
 
-			noiseLevel *= GetNoiseMulitplierForRoughness(roughness);
+			const float noiseLevel = temporalStdDev * rcpBrightness * rtReflectionsInfluence * currentFrameWeight;
 
 			const float4 linearDepth2x2 = u_linearDepthTexture.GatherRed(u_nearestSampler, uv);
 			const float depthDDX = max(linearDepth2x2.y - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 			const float depthDDY = max(linearDepth2x2.w - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 
 			uint maxVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(noiseLevel >= 0.8f)
+			if(noiseLevel >= 0.085f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (noiseLevel >= 0.45f)
+			else if (noiseLevel >= 0.06f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.3f)
+			else if (noiseLevel >= 0.035f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(noiseLevel >= 0.1f)
+			else if(noiseLevel >= 0.02f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}

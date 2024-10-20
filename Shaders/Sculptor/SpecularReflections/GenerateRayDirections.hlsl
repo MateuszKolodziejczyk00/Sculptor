@@ -41,13 +41,15 @@ RayDirectionInfo GenerateReflectionRayDir(in float3 normal, in float roughness, 
 		{
 			const float2 noise = float2(rng.Next(), rng.Next());
 
-			const float3 h = SampleVNDFIsotropic(noise, toView, roughness, normal);
+			const float alpha = RoughnessToAlpha(roughness);
+
+			const float3 h = SampleVNDFIsotropic(noise, toView, alpha, normal);
 
 			const float3 reflectedRay = reflect(-toView, h);
 
 			if(dot(reflectedRay, normal) > 0.f)
 			{
-				result.pdf       = PDFVNDFIsotrpic(toView, reflectedRay, roughness, normal);
+				result.pdf       = PDFVNDFIsotrpic(toView, reflectedRay, alpha, normal);
 				result.direction = reflectedRay;
 
 				break;

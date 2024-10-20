@@ -90,13 +90,13 @@ float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, i
 	const float dotNV = saturate(dot(n, v));
 	const float dotVH = saturate(dot(v, h));
 
-	if(dotNL <= 0.0f || dotNV <= 0.0f)
+	if(dotNL <= 0.f || dotNV <= 0.f)
 	{
 		return 0.0f;
 	}
 
 	const float a  = RoughnessToAlpha(roughness);
-	const float a2 = Pow2(a);
+	const float a2 = max(Pow2(a), 1e-7f);
 
 	const float3 f   = F_Schlick(f0, dotVH);
 	const float  d   = D_GGX(a2, dotNH);

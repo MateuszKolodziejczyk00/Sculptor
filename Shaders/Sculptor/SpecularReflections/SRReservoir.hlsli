@@ -11,6 +11,8 @@
 #define SR_RESERVOIR_FLAGS_MISS           (1 << 0)
 #define SR_RESERVOIR_FLAGS_RECENT         (1 << 1) // Reservoir was traced recently and we can skip visibility check
 #define SR_RESERVOIR_FLAGS_SPECULAR_TRACE (1 << 2)
+// this flag indicates that reservoir is valid but we shouldn't use it's result. It's useful for reading other properties, for example spatial resampling range
+#define SR_RESERVOIR_FLAGS_INVALID_RESULT (1 << 3)
 
 // Flags that are inherited during resampling
 #define SR_RESERVOIR_FLAGS_TRANSIENT  (SR_RESERVOIR_FLAGS_MISS | SR_RESERVOIR_FLAGS_RECENT)
@@ -56,6 +58,11 @@ class SRReservoir
 	bool IsValid()
 	{
 		return weightSum > 0.f;
+	}
+
+	bool HasValidResult()
+	{
+		return !HasFlag(SR_RESERVOIR_FLAGS_INVALID_RESULT);
 	}
 
 	bool Update(in SRReservoir other, in float randomValue, in float p_hatInOutputDomain)

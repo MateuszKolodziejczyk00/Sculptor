@@ -272,7 +272,7 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 			
 			if (!payload.isShadowed)
 			{
-				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
+				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance * transmittance;
 			}
 		}
 	}

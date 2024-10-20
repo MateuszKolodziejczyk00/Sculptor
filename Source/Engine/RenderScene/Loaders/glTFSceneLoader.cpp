@@ -469,6 +469,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name          = materialSourceDef.name;
 		materialDefinition.materialType  = GetMaterialType(materialSourceDef);
+		materialDefinition.materialType = mat::EMaterialType::AlphaMasked;
 		materialDefinition.customOpacity = materialDefinition.materialType == mat::EMaterialType::AlphaMasked;
 		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
 

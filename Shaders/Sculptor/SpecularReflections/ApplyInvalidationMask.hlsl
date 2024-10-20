@@ -37,9 +37,13 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 		const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
+
 		uint packedProps = initialReservoir.MAndProps;
 		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -4u);
+		packedProps = AddPackedFlag(packedProps, SR_RESERVOIR_FLAGS_INVALID_RESULT);
+
 		initialReservoir.MAndProps = packedProps;
+
 
 		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, coords);
 		const bool wasTraced = all(coords == traceCoords);
