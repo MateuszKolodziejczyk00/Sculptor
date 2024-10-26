@@ -102,6 +102,8 @@ public:
 	
 	void	CopyBufferToTexture(const RHIBuffer& buffer, Uint64 bufferOffset, const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset = math::Vector3u::Zero(),  Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
 
+	void	CopyTextureToBuffer(const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, const RHIBuffer& buffer, Uint64 bufferOffset, Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
+
 	// Utils ============================================
 
 	void ExecuteCommands(const RHICommandBuffer& secondaryCommandBuffer);

@@ -39,6 +39,8 @@ public:
 
 	Uint64 GetSize() const;
 
+	lib::Span<Byte> GetSpan() const { return lib::Span<Byte>(GetPtr(), GetSize()); }
+
 private:
 
 	const RHIBuffer&	m_buffer;

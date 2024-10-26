@@ -83,7 +83,7 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 		{
 			rhi::BufferDefinition bufferDef;
 			bufferDef.size = sizeof(Uint32);
-			bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+			bufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
 			tracesAllocation.tracesNum = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Traces Num Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 
 			graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Traces Num"), tracesAllocation.tracesNum, 0u);

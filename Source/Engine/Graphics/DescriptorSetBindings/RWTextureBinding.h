@@ -42,7 +42,7 @@ public:
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		const Bool isValid = IsValid();
-		SPT_CHECK(isValid || isOptional);
+		SPT_CHECK_MSG(isValid || isOptional, "Invalid binding value: {}: {}", GetDescriptorSetName().GetData(), GetName().GetData());
 
 		if (isValid)
 		{

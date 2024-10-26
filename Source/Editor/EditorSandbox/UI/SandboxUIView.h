@@ -29,8 +29,6 @@ private:
 
 	void DrawRendererSettings();
 
-	void DrawJobSystemTestsUI();
-
 	ui::TextureID PrepareViewportTexture(math::Vector2u resolution);
 
 	SandboxRenderer m_renderer;

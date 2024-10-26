@@ -147,7 +147,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
 		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
-		//reuseReservoir.hitLocation = reuseReservoir.hitLocation + centerPixelSurface.location - reuseSurface.location;
 
 		if(!newReservoir.CanCombine(reuseReservoir))
 		{
@@ -211,7 +210,6 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const uint reuseReservoirIdx = GetScreenReservoirIdx(samplePixel, u_resamplingConstants.reservoirsResolution);
 		SRReservoir reuseReservoir = UnpackReservoir(u_inReservoirsBuffer[reuseReservoirIdx]);
-	//	reuseReservoir.hitLocation = reuseReservoir.hitLocation + centerPixelSurface.location - reusedSurface.location;
 
 		// p_j in input domain Omega_j
 		const float p_j = EvaluateTargetFunction(reusedSurface, newReservoir.hitLocation, newReservoir.luminance);

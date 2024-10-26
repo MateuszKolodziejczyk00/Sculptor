@@ -643,4 +643,16 @@ VkQueryPipelineStatisticFlags RHIToVulkan::GetPipelineStatistic(rhi::EQueryStati
 	return flags;
 }
 
+VkImageTiling RHIToVulkan::GetImageTiling(rhi::ETextureTiling tiling)
+{
+	switch (tiling)
+	{
+	case rhi::ETextureTiling::Optimal: return VK_IMAGE_TILING_OPTIMAL;
+	case rhi::ETextureTiling::Linear:  return VK_IMAGE_TILING_LINEAR;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return VK_IMAGE_TILING_OPTIMAL;
+}
+
 } // rhi::vulkan

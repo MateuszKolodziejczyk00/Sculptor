@@ -78,4 +78,26 @@ lib::String File::GetExtension(const lib::StringView& file)
 		: lib::String();
 }
 
+lib::String File::Utils::CreateFileNameFromTime(lib::StringView extension /*= {}*/)
+{
+	const auto now       = std::chrono::system_clock::now();
+	const auto nowTime   = std::chrono::system_clock::to_time_t(now);
+
+	struct tm buf;
+	localtime_s(&buf, &nowTime);
+
+	char buffer[256];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", &buf);
+
+	lib::String result = buffer;
+
+	if (!extension.empty())
+	{
+		result += '.';
+		result += extension;
+	}
+
+	return result;
+}
+
 } // spt::lib

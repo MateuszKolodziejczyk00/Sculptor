@@ -38,6 +38,11 @@ struct RHIAllocationInfo
 		, allocationFlags(inAllocationFlags)
 	{ }
 
+	Bool CanAccessOnCPU() const
+	{
+		return memoryUsage == EMemoryUsage::CPUOnly || memoryUsage == EMemoryUsage::CPUToGPU || memoryUsage == EMemoryUsage::CPUCopy;
+	}
+
 	EMemoryUsage     memoryUsage;
 	EAllocationFlags allocationFlags;
 };

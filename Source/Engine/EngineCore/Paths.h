@@ -22,6 +22,8 @@ public:
 
 	static const lib::String&		GetConfigsPath();
 
+	static const lib::String&		GetSavedPath();
+
 	static const lib::String&		GetTracesPath();
 
 	static const lib::String&		GetGPUCrashDumpsPath();

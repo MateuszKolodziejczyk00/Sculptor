@@ -21,7 +21,7 @@ void GBuffer::Create(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolu
 		lib::SharedPtr<rdr::TextureView>* externalTexture = externalTextures.textures[textureIdx];
 		if (externalTexture)
 		{
-			const rhi::ETextureUsage requiredUsageFlags = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+			const rhi::ETextureUsage requiredUsageFlags = lib::Flags(rhi::ETextureUsage::ColorRT, rhi::ETextureUsage::SampledTexture);
 
 			if (!(*externalTexture) || (*externalTexture)->GetResolution2D() != resolution)
 			{

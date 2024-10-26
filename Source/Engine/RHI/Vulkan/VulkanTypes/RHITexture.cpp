@@ -353,7 +353,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	imageInfo.mipLevels         = definition.mipLevels;
 	imageInfo.arrayLayers       = definition.arrayLayers;
 	imageInfo.samples           = priv::GetVulkanSampleCountFlag(definition.samples);
-	imageInfo.tiling            = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.tiling            = RHIToVulkan::GetImageTiling(definition.tiling);
 	imageInfo.usage             = priv::GetVulkanTextureUsageFlags(definition.usage);
 	imageInfo.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;

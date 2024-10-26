@@ -339,6 +339,20 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraph
 	return result;
 }
 
+lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadTexture(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView)
+{
+	const Uint64 mipSize = textureView->GetMipSize();
+
+	rhi::BufferDefinition resultBufferDefinition;
+	resultBufferDefinition.size  = mipSize;
+	resultBufferDefinition.usage = rhi::EBufferUsage::TransferDst;
+	const lib::SharedRef<rdr::Buffer> result = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Buffer", commandName.AsString()), resultBufferDefinition, rhi::EMemoryUsage::GPUToCpu);
+
+	CopyTextureToBuffer(commandName, textureView, AcquireExternalBufferView(result->CreateFullView()), 0u);
+
+	return result;
+}
+
 void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent)
 {
 	SPT_CHECK(sourceRGTextureView.IsValid());
@@ -396,6 +410,65 @@ void RenderGraphBuilder::CopyFullTexture(const RenderGraphDebugName& copyName, R
 	SPT_CHECK(sourceRGTextureView->GetResolution() == destRGTextureView->GetResolution());
 
 	CopyTexture(copyName, sourceRGTextureView, math::Vector3i::Zero(), destRGTextureView, math::Vector3i::Zero(), sourceRGTextureView->GetResolution());
+}
+
+void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGBufferViewHandle destBufferView, Uint64 bufferOffset)
+{
+	SPT_CHECK(sourceRGTextureView.IsValid());
+	SPT_CHECK(destBufferView.IsValid());
+
+	SPT_CHECK(lib::HasAllFlags(destBufferView->GetUsageFlags(), rhi::EBufferUsage::TransferDst));
+
+	SPT_MAYBE_UNUSED
+	const rhi::TextureSubresourceRange& subresourceRange = sourceRGTextureView->GetSubresourceRange();
+
+	//SPT_CHECK(subresourceRange.arrayLayersNum == 1u);
+	//SPT_CHECK(subresourceRange.mipLevelsNum == 1u);
+
+	const math::Vector3u resolution = sourceRGTextureView->GetResolution();
+
+	SPT_CHECK(resolution.z() == 1u);
+	SPT_CHECK(sourceRGTextureView->GetMipSize() + bufferOffset <= destBufferView->GetSize());
+
+	sourceRGTextureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::TransferSource);
+
+	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::TextureView> textureViewInstance = sourceRGTextureView->GetResource();
+		SPT_CHECK(!!textureViewInstance);
+
+		const lib::SharedRef<rdr::Texture>& textureInstance = textureViewInstance->GetTexture();
+
+		const rhi::TextureSubresourceRange& textureSubresource = sourceRGTextureView->GetSubresourceRange();
+
+		const math::Vector3u copyExtent = sourceRGTextureView->GetResolution();
+		const math::Vector3u copyOffset = math::Vector3u::Zero();
+
+		const rg::RGBufferHandle destBuffer = destBufferView->GetBuffer();
+		const lib::SharedPtr<rdr::Buffer>& bufferInstance = destBuffer->GetResource();
+		SPT_CHECK(!!bufferInstance);
+
+		recorder.CopyTextureToBuffer(textureInstance,
+									 rhi::GetFullAspectForFormat(sourceRGTextureView->GetFormat()),
+									 copyExtent,
+									 copyOffset,
+									 lib::Ref(bufferInstance),
+									 bufferOffset,
+									 textureSubresource.baseMipLevel,
+									 textureSubresource.baseArrayLayer);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::TransferSource);
+	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
+
+	AddNodeInternal(node, dependencies);
 }
 
 void RenderGraphBuilder::ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor)

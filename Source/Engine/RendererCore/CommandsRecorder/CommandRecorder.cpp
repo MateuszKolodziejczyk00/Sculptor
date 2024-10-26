@@ -282,6 +282,11 @@ void CommandRecorder::CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, 
 	GetCommandBufferRHI().CopyBufferToTexture(buffer->GetRHI(), bufferOffset, texture->GetRHI(), aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
 }
 
+void CommandRecorder::CopyTextureToBuffer(const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+{
+	GetCommandBufferRHI().CopyTextureToBuffer(texture->GetRHI(), aspect, copyExtent, copyOffset, buffer->GetRHI(), bufferOffset, mipLevel, arrayLayer);
+}
+
 void CommandRecorder::InitializeUIFonts()
 {
 	UIBackend::GetRHI().InitializeFonts(GetCommandBufferRHI());

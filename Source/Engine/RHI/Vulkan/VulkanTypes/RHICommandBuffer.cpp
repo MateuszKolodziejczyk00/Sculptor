@@ -586,6 +586,49 @@ void RHICommandBuffer::CopyBufferToTexture(const RHIBuffer& buffer, Uint64 buffe
 	vkCmdCopyBufferToImage2(m_cmdBufferHandle, &copyInfo);
 }
 
+void RHICommandBuffer::CopyTextureToBuffer(const RHITexture& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, const RHIBuffer& buffer, Uint64 bufferOffset, Uint32 mipLevel /*= 0*/, Uint32 arrayLayer /*= 0*/)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(texture.IsValid());
+	SPT_CHECK(buffer.IsValid());
+
+	SPT_MAYBE_UNUSED
+	const math::Vector3u mipResolution = texture.GetMipResolution(mipLevel);
+
+	SPT_CHECK(copyOffset.x() + copyExtent.x() <= mipResolution.x());
+	SPT_CHECK(copyOffset.y() + copyExtent.y() <= mipResolution.y());
+	SPT_CHECK(copyOffset.z() + copyExtent.z() <= mipResolution.z());
+
+	SPT_CHECK(bufferOffset + buffer.GetSize() >= copyExtent.x() * copyExtent.y() * copyExtent.z() * rhi::GetFragmentSize(texture.GetFormat()));
+
+	const VkImageLayout layout = VulkanRHI::GetLayoutsManager().GetSubresourceLayout(m_cmdBufferHandle, texture.GetHandle(), mipLevel, arrayLayer);
+
+	VkImageSubresourceLayers imageSubresource;
+	imageSubresource.aspectMask     = RHIToVulkan::GetAspectFlags(aspect);
+	imageSubresource.mipLevel       = mipLevel;
+	imageSubresource.baseArrayLayer = arrayLayer;
+	imageSubresource.layerCount     = 1u;
+
+	const math::Vector3i offset = copyOffset.cast<Int32>();
+
+	VkBufferImageCopy2 copyRegion{ VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+	copyRegion.bufferOffset      = bufferOffset;
+	copyRegion.bufferRowLength   = 0u;
+	copyRegion.bufferImageHeight = 0u;
+	copyRegion.imageSubresource  = imageSubresource;
+	copyRegion.imageOffset       = { offset.x(), offset.y(), offset.z() };
+	copyRegion.imageExtent       = { copyExtent.x(), copyExtent.y(), copyExtent.z() };
+
+	VkCopyImageToBufferInfo2 copyInfo{ VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2 };
+	copyInfo.srcImage       = texture.GetHandle();
+	copyInfo.srcImageLayout = layout;
+	copyInfo.dstBuffer      = buffer.GetHandle();
+	copyInfo.regionCount    = 1u;
+	copyInfo.pRegions       = &copyRegion;
+
+	vkCmdCopyImageToBuffer2(m_cmdBufferHandle, &copyInfo);
+}
+
 void RHICommandBuffer::ExecuteCommands(const RHICommandBuffer& secondaryCommandBuffer)
 {
 	SPT_CHECK(IsValid());

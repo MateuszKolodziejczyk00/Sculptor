@@ -17,6 +17,7 @@ namespace priv
 
 static lib::String	g_enginePath;
 static lib::String	g_configsPath;
+static lib::String	g_savedPath;
 static lib::String	g_tracesPath;
 static lib::String	g_gpuCrashDumpsPath;
 static lib::String	g_contentPath;
@@ -28,11 +29,12 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 {
 	priv::g_enginePath = cmdLineArgs.GetValue(params::enginePath).ToString();
 
-	priv::g_configsPath = Combine(priv::g_enginePath, "Config");
-	priv::g_tracesPath = Combine(priv::g_enginePath, "Saved/Traces");
+	priv::g_configsPath       = Combine(priv::g_enginePath, "Config");
+	priv::g_tracesPath        = Combine(priv::g_enginePath, "Saved/Traces");
+	priv::g_savedPath         = Combine(priv::g_enginePath, "Saved");
 	priv::g_gpuCrashDumpsPath = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
-	priv::g_contentPath = Combine(priv::g_enginePath, "Content");
-	priv::g_imGuiConfigPath = Combine(priv::g_configsPath, "ImGuiConfig.ini");
+	priv::g_contentPath       = Combine(priv::g_enginePath, "Content");
+	priv::g_imGuiConfigPath   = Combine(priv::g_configsPath, "ImGuiConfig.ini");
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -43,6 +45,11 @@ const lib::String& Paths::GetEnginePath()
 const lib::String& Paths::GetConfigsPath()
 {
 	return priv::g_configsPath;
+}
+
+const lib::String& Paths::GetSavedPath()
+{
+	return priv::g_savedPath;
 }
 
 const lib::String& Paths::GetTracesPath()

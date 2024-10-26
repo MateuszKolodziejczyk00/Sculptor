@@ -106,8 +106,6 @@ void SandboxUIView::DrawUI()
 	ImGui::Separator();
 	DrawRendererSettings();
 	ImGui::Separator();
-	DrawJobSystemTestsUI();
-	ImGui::Separator();
 	
 	ImGui::Text("Shaders");
 #if WITH_SHADERS_HOT_RELOAD
@@ -147,9 +145,13 @@ void SandboxUIView::DrawRendererSettings()
 		m_renderer.SetFarPlane(farPlane);
 	}
 
-	const ImGuiID id = ImGui::GetID("Capture Render Graph");
 	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
-	ui::UIUtils::SetShortcut(uiContext, id, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::C));
+
+	const ImGuiID captureID = ImGui::GetID("Capture Render Graph");
+	ui::UIUtils::SetShortcut(uiContext, captureID, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::C));
+
+	const ImGuiID screenshotID = ImGui::GetID("Create Screenshot");
+	ui::UIUtils::SetShortcut(uiContext, screenshotID, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::V));
 
 	ImGui::Checkbox("Auto Sun Movement", &m_renderer.sunMovement);
 
@@ -168,65 +170,10 @@ void SandboxUIView::DrawRendererSettings()
 	{
 		m_renderer.CreateRenderGraphCapture();
 	}
-}
 
-void SandboxUIView::DrawJobSystemTestsUI()
-{
-	ImGui::Text("Job System");;
-		
-	if (ImGui::Button("Test (Multiple small jobs)"))
+	if (ImGui::Button("Create Screenshot"))
 	{
-		lib::DynamicArray<js::Job> jobs;
-
-		for (SizeType i = 0; i < 50; ++i)
-		{
-			jobs.emplace_back(js::Launch(SPT_GENERIC_JOB_NAME, []
-										 {
-											 SPT_PROFILER_SCOPE("Job 1");
-											 for (Int64 x = 0; x < 4000; ++x)
-											 {
-												 SPT_MAYBE_UNUSED
-												 float s = std::sin(std::cos(std::sin(std::cos(static_cast<float>(x)))));
-												 if (x % 50 == 0)
-												 {
-													 js::Launch(SPT_GENERIC_JOB_NAME, []
-																{
-																	SPT_PROFILER_SCOPE("Job 2");
-																	for (Int64 x = 0; x < 100; ++x)
-																	{
-																		SPT_MAYBE_UNUSED
-																		float s = std::sin(std::cos(std::sin(std::cos(static_cast<float>(x)))));
-																	}
-																});
-												 }
-											 }
-										 }, js::JobDef().SetPriority(js::EJobPriority::High)));
-
-			js::Launch(SPT_GENERIC_JOB_NAME, [i]
-					   {
-						   SPT_LOG_TRACE(SandboxUI, "Finished {0}", i);
-					   }, js::Prerequisites(jobs.back()));
-		}
-	}
-
-	if (ImGui::Button("Test (Then)"))
-	{
-		js::Launch(SPT_GENERIC_JOB_NAME, []
-				   {
-					   SPT_LOG_TRACE(SandboxUI, "1");
-				   }).Then(SPT_GENERIC_JOB_NAME, []
-				   {
-					   SPT_LOG_TRACE(SandboxUI, "2");
-				   }).Then(SPT_GENERIC_JOB_NAME, []
-				   {
-					   SPT_LOG_TRACE(SandboxUI, "3");
-				   }).Then(SPT_GENERIC_JOB_NAME, []
-				   {
-					   SPT_LOG_TRACE(SandboxUI, "4");
-				   }).Then(SPT_GENERIC_JOB_NAME, []
-				   {
-					   SPT_LOG_TRACE(SandboxUI, "5");
-				   });
+		m_renderer.CreateScreenshot();
 	}
 }
 
@@ -236,7 +183,7 @@ ui::TextureID SandboxUIView::PrepareViewportTexture(math::Vector2u resolution)
 	{
 		rhi::TextureDefinition textureDef;
 		textureDef.resolution = resolution;
-		textureDef.format     = scui::ApplicationUI::GetCurrentContext().GetBackBufferFormat();
+		textureDef.format     = rhi::EFragmentFormat::RGBA8_UN_Float;
 		textureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest);
 		m_viewportTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Viewport Texture"), textureDef, rhi::EMemoryUsage::GPUOnly);
 	}

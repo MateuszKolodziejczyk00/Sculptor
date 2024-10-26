@@ -105,6 +105,8 @@ public:
 	 
 	void									CopyBufferToTexture(const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset = math::Vector3u::Zero(),  Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
 
+	void									CopyTextureToBuffer(const lib::SharedRef<Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, const lib::SharedRef<Buffer>& buffer, Uint64 bufferOffset, Uint32 mipLevel = 0, Uint32 arrayLayer = 0);
+
 	void									InitializeUIFonts();
 
 	void									RenderUI();

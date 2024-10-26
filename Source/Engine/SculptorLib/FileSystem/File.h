@@ -28,6 +28,11 @@ public:
 
 	static lib::String		DiscardExtension(const lib::String& file);
 	static lib::String		GetExtension(const lib::StringView& file);
+
+	struct SCULPTOR_LIB_API Utils
+	{
+		static lib::String CreateFileNameFromTime(lib::StringView extension = {});
+	};
 };
 
 } // spt::lib

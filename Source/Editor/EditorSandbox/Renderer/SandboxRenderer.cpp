@@ -40,6 +40,7 @@
 #include "UIElements/ApplicationUI.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
+#include "FileSystem/File.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -57,6 +58,7 @@ SandboxRenderer::SandboxRenderer()
 	, m_cameraSpeed(5.f)
 	, m_renderScene(lib::MakeShared<rsc::RenderScene>())
 	, m_wantsCaptureNextFrame(false)
+	, m_wantsToCreateScreenshot(false)
 	, m_captureSourceContext(lib::MakeShared<rg::capture::RGCaptureSourceContext>())
 {
 	InitializeRenderScene();
@@ -172,7 +174,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 			   js::Prerequisites(graphBuilder.GetGPUFinishedEvent()));
 
 	rsc::SceneRendererSettings rendererSettings;
-	rendererSettings.outputFormat = output->GetTexture()->GetRHI().GetFormat();
+	rendererSettings.outputFormat = rhi::EFragmentFormat::RGBA8_UN_Float;
 
 	rg::RGTextureViewHandle sceneRenderingResultTextureView;
 
@@ -190,6 +192,33 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(output);
+
+
+	if (m_wantsToCreateScreenshot)
+	{
+		const lib::String screenshotFileName = lib::File::Utils::CreateFileNameFromTime("png");
+		const lib::String screenshotFilePath = engn::Paths::Combine(engn::Paths::GetSavedPath(), engn::Paths::Combine("Screenshots", screenshotFileName));
+		SPT_LOG_INFO(Sandbox, "Writing screenshot to {}", screenshotFilePath);
+		js::JobWithResult<Bool> saveJob = gfx::TextureWriter::SaveTexture(graphBuilder, sceneRenderingResultTextureView, screenshotFilePath);
+
+		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [saveJob, screenshotFilePath]
+				   {
+					   const Bool saveResult = saveJob.GetResult();
+					   if (saveResult)
+					   {
+						   SPT_LOG_INFO(Sandbox, "Screenshot saved to {}", screenshotFilePath);
+					   }
+					   else
+					   {
+						   SPT_LOG_ERROR(Sandbox, "Failed to save screenshot to {}", screenshotFilePath);
+					   }
+
+				   },
+				   js::Prerequisites(saveJob));
+
+		m_wantsToCreateScreenshot = false;
+	}
 
 	graphBuilder.CopyTexture(RG_DEBUG_NAME("Copy Scene Result Texture"),
 							 sceneRenderingResultTextureView, math::Vector3i::Zero(),
@@ -287,6 +316,11 @@ void SandboxRenderer::CreateRenderGraphCapture()
 	m_wantsCaptureNextFrame = true;
 }
 
+void SandboxRenderer::CreateScreenshot()
+{
+	m_wantsToCreateScreenshot = true;
+}
+
 void SandboxRenderer::InitializeRenderScene()
 {
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
@@ -303,7 +337,6 @@ void SandboxRenderer::InitializeRenderScene()
 	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::DPCF;
 	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
-
 
 	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
 	

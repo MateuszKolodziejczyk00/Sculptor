@@ -100,6 +100,58 @@ enum class EFragmentFormat : Uint32
 };
 
 
+inline Uint64 GetFragmentSize(EFragmentFormat format)
+{
+	switch (format)
+	{
+	case EFragmentFormat::R8_UN_Float:
+	case EFragmentFormat::R8_U_Int:
+		return 1u;
+
+	case EFragmentFormat::R16_U_Int:
+	case EFragmentFormat::R16_UN_Float:
+	case EFragmentFormat::R16_S_Float:
+	case EFragmentFormat::D16_UN_Float:
+	case EFragmentFormat::RG8_UN_Float:
+		return 2u;
+
+	case EFragmentFormat::RGB8_UN_Float:
+	case EFragmentFormat::BGR8_UN_Float:
+		return 3u;
+
+	case EFragmentFormat::R32_S_Float:
+	case EFragmentFormat::R32_U_Int:
+	case EFragmentFormat::RG16_U_Int:
+	case EFragmentFormat::RG16_UN_Float:
+	case EFragmentFormat::RG16_SN_Float:
+	case EFragmentFormat::RG16_S_Float:
+	case EFragmentFormat::RGBA8_UN_Float:
+	case EFragmentFormat::BGRA8_UN_Float:
+	case EFragmentFormat::RGB10A2_UN_Float:
+	case EFragmentFormat::B10G11R11_U_Float:
+	case EFragmentFormat::A2B10G10R10_UN_Float:
+	case EFragmentFormat::D32_S_Float:
+		return 4u;
+
+	case EFragmentFormat::RG32_S_Float:
+	case EFragmentFormat::RGB16_UN_Float:
+	case EFragmentFormat::RGBA16_UN_Float:
+	case EFragmentFormat::RGBA16_S_Float:
+		return 8u;
+
+	case EFragmentFormat::RGB32_S_Float:
+		return 12u;
+
+
+	case EFragmentFormat::RGBA32_S_Float:
+		return 16u;
+	}
+
+	SPT_CHECK_NO_ENTRY();
+	return 0u;
+}
+
+
 enum class ETextureFlags : Flags8
 {
 	None = 0,
@@ -166,12 +218,20 @@ enum class ETextureType : Uint8
 };
 
 
+enum class ETextureTiling : Uint8
+{
+	Optimal,
+	Linear
+};
+
+
 struct TextureDefinition
 {
 	TextureDefinition()
 		: usage(ETextureUsage::None)
 		, format(EFragmentFormat::RGBA8_UN_Float)
 		, samples(1)
+		, tiling(ETextureTiling::Optimal)
 		, mipLevels(1)
 		, arrayLayers(1)
 		, flags(ETextureFlags::Default)
@@ -183,6 +243,7 @@ struct TextureDefinition
 		, usage(inUsage)
 		, format(inFormat)
 		, samples(1)
+		, tiling(ETextureTiling::Optimal)
 		, mipLevels(1)
 		, arrayLayers(1)
 		, flags(ETextureFlags::Default)
@@ -193,6 +254,7 @@ struct TextureDefinition
 	ETextureUsage		usage;
 	EFragmentFormat		format;
 	Uint8				samples;
+	ETextureTiling		tiling;
 	Uint32				mipLevels;
 	Uint32				arrayLayers;
 	ETextureFlags		flags;

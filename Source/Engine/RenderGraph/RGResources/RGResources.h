@@ -200,6 +200,12 @@ public:
 		return math::Utils::ComputeMipResolution(GetResolution(), mipLevel);
 	}
 
+	Uint64 GetMipSize(Uint32 mipLevel) const
+	{
+		const math::Vector3u mipResolution = GetMipResolution(mipLevel);
+		return mipResolution.x() * mipResolution.y() * mipResolution.z() * rhi::GetFragmentSize(GetFormat());
+	}
+
 	math::Vector2u GetResolution2D() const
 	{
 		return GetResolution().head<2>();
@@ -396,6 +402,11 @@ public:
 	math::Vector2u GetResolution2D() const
 	{
 		return GetResolution().head<2>();
+	}
+
+	Uint64 GetMipSize() const
+	{
+		return m_texture->GetMipSize(GetSubresourceRange().baseMipLevel);
 	}
 
 	rhi::EFragmentFormat GetFormat() const

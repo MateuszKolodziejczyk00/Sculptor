@@ -71,6 +71,7 @@ public:
 	void SetViewportFocused(Bool isFocused);
 
 	void CreateRenderGraphCapture();
+	void CreateScreenshot();
 
 	Bool sunMovement = false;
 	Real32 sunMovementSpeed = 0.08f;
@@ -104,6 +105,7 @@ private:
 	rsc::RenderSceneEntityHandle m_directionalLightEntity;
 
 	Bool m_wantsCaptureNextFrame;
+	Bool m_wantsToCreateScreenshot;
 
 	Bool m_isViewportFocused;
 

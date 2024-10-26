@@ -17,6 +17,8 @@ RGRenderTargetDef& RGRenderPassDefinition::AddColorRenderTarget()
 
 void RGRenderPassDefinition::AddColorRenderTarget(const RGRenderTargetDef& definition)
 {
+	SPT_CHECK(!!definition.textureView);
+	definition.textureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::ColorRenderTarget);
 	m_colorRenderTargetDefs.emplace_back(definition);
 }
 
@@ -27,6 +29,8 @@ RGRenderTargetDef& RGRenderPassDefinition::GetDepthRenderTargetRef()
 
 void RGRenderPassDefinition::SetDepthRenderTarget(const RGRenderTargetDef& definition)
 {
+	SPT_CHECK(!!definition.textureView);
+	definition.textureView->GetTexture()->AddUsageForAccess(ERGTextureAccess::DepthRenderTarget);
 	m_depthRenderTargetDef = definition;
 }
 

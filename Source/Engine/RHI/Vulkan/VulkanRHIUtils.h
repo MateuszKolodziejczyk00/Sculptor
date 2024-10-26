@@ -77,6 +77,8 @@ public:
 	static VkQueryType						GetQueryType(rhi::EQueryType queryType);
 
 	static VkQueryPipelineStatisticFlags	GetPipelineStatistic(rhi::EQueryStatisticsType statisticsType);
+
+	static VkImageTiling					GetImageTiling(rhi::ETextureTiling tiling);
 };
 
 } // rhi::vulkan
