@@ -56,6 +56,8 @@ struct SRTemporalResampler
 
 	bool m_wasSampleTraced;
 
+	bool m_foundValidHistorySurface;
+
 	static SRTemporalResampler Create(in MinimalSurfaceInfo inSurface, in SRReservoir initialReservoir, bool wasSampleTraced)
 	{
 		SRTemporalResampler resampler;
@@ -79,6 +81,7 @@ struct SRTemporalResampler
 		}
 
 		resampler.m_wasSampleTraced = wasSampleTraced;
+		resampler.m_foundValidHistorySurface = false;
 
 		resampler.m_validSamplesMask  = 0u;
 		resampler.m_selectedSampleIdx = -1;
@@ -119,12 +122,16 @@ struct SRTemporalResampler
 			return false;
 		}
 
+		m_foundValidHistorySurface = true;
+
 		SRReservoir historyReservoir = LoadHistoryReservoir(historySamplePixel);
 
 		if(!historyReservoir.IsValid() || !currentReservoir.CanCombine(historyReservoir))
 		{
 			return false;
 		}
+
+		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
 
 		const uint maxAge = 12u * lerp(rng.Next(), 0.6f, 1.f);
 
@@ -163,8 +170,6 @@ struct SRTemporalResampler
 		}
 
 		m_validSamplesMask |= (1u << sampleIdx);
-
-		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
 
 		if(currentReservoir.Update(historyReservoir, rng.Next(), p_hatInOutputDomain))
 		{
@@ -216,6 +221,11 @@ struct SRTemporalResampler
 
 		return currentReservoir;
 	}
+
+	bool HasFoundValidHistorySurface()
+	{
+		return m_foundValidHistorySurface;
+	}
 };
 
 #if ENABLE_SECOND_TRACING_PASS
@@ -245,6 +255,18 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 	u_rayTracesCommands[appendOffset] = encodedTraceCommand;
 
 	u_rwVariableRateBlocksTexture[traceCoords] = PackVRBlockInfo(uint2(0, 0), SPT_VARIABLE_RATE_1X1);
+}
+
+
+bool WasVariableRateReprojectionSuccessful(in uint2 coords)
+{
+	const uint2 reprojectionSuccessMaskCoords = coords / (2u * uint2(8u, 4u));
+	const uint reprojectionSuccessMaskBit     = (coords.y & 3u) * 8u + (coords.x & 7u);
+
+	const uint reprojectionSuccessMask = u_vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
+	const bool reprojectionSuccess     = (reprojectionSuccessMask & (1u << reprojectionSuccessMaskBit)) != 0u;
+
+	return reprojectionSuccess;
 }
 #endif // ENABLE_SECOND_TRACING_PASS
 
@@ -326,19 +348,29 @@ void ResampleTemporallyCS(CS_INPUT input)
 		SRReservoir newReservoir = resampler.FinishResampling(pixel);
 
 #if ENABLE_SECOND_TRACING_PASS
-		const uint2 reprojectionSuccessMaskCoords = pixel / (2u * uint2(8u, 4u));
-		const uint reprojectionSuccessMaskBit     = (pixel.y & 3u) * 8u + (pixel.x & 7u);
-
-		const uint reprojectionSuccessMask = u_vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
-		const bool reprojectionSuccess     = (reprojectionSuccessMask & (1u << reprojectionSuccessMaskBit)) != 0u;
+		const bool reprojectionSuccess = WasVariableRateReprojectionSuccessful(pixel);
 
 		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
 		const bool isValidReservoir     = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
 
-		const bool allowsSecondPass = (invalidReservoirsNum > 8u || centerPixelSurface.roughness <= 0.15f);
+		const bool allowsSecondPass = (invalidReservoirsNum >= 16u || centerPixelSurface.roughness <= 0.15f);
+
 		if(reprojectionSuccess && allowsSecondPass && !isValidReservoir)
 		{
-			AppendAdditionalTraceCommand(pixel);
+			const bool  foundValidHistorySurface      = resampler.HasFoundValidHistorySurface();
+			const uint2 validReprojectioBallot        = WaveActiveBallot(foundValidHistorySurface).xy;
+			const uint  validReprojectionCompactedIdx = GetCompactedIndex(validReprojectioBallot, WaveGetLaneIndex());
+
+			/*
+			We allocate secondary trace in following cases:
+			- surface reprojection failed
+			- roughness is very low
+			- every 4th invalid reservoir for samples with invalid reservoirs that succeeded surface reprojection
+			*/
+			if(!foundValidHistorySurface || centerPixelSurface.roughness <= 0.15f || ((validReprojectionCompactedIdx + u_resamplingConstants.frameIdx) & 3u) == 0u)
+			{
+				AppendAdditionalTraceCommand(pixel);
+			}
 		}
 #endif // ENABLE_SECOND_TRACING_PASS
 

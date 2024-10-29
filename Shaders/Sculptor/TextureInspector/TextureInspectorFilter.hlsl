@@ -2,11 +2,17 @@
 
 [[descriptor_set(TextureInspectorFilterDS, 0)]]
 
+#include "Utils/ColorSpaces.hlsli"
+
 
 #define VISUALIZATION_MODE_COLOR 0
 #define VISUALIZATION_MODE_ALPHA 1
 #define VISUALIZATION_MODE_NANS  2
 #define VISUALIZATION_MODE_HASH  3
+
+
+#define COLOR_SPACE_LINEAR_RGB 0
+#define COLOR_SPACE_SRGB       1
 
 
 struct CS_INPUT
@@ -48,11 +54,11 @@ void TextureInspectorFilterCS(CS_INPUT input)
 		{
 			if(u_params.depthSlice3D != IDX_NONE_32)
 			{
-				textureValue = u_intTexture.Load(pixel);
+				textureValue = u_intTexture3D.Load(int4(pixel.xy, u_params.depthSlice3D, 0));
 			}
 			else
 			{
-				textureValue = u_intTexture3D.Load(int4(pixel.xy, u_params.depthSlice3D, 0));
+				textureValue = u_intTexture.Load(pixel);
 			}
 
 			if (u_params.visualizationMode == VISUALIZATION_MODE_HASH)
@@ -126,7 +132,14 @@ void TextureInspectorFilterCS(CS_INPUT input)
 			OutputHistogram(textureValue, u_params.minValue, u_params.maxValue);
 		}
 
-		color.rgb = pow(color.rgb, 0.4545f);
+		if(u_params.colorSpace == COLOR_SPACE_LINEAR_RGB)
+		{
+			color.rgb = LinearTosRGB(color.rgb);
+		}
+		else if(u_params.colorSpace == COLOR_SPACE_SRGB)
+		{
+			// Do nothing
+		}
 
 		color.a = 1.f;
 

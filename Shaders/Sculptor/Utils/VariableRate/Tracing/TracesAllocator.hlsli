@@ -7,8 +7,8 @@
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 
 
-#define TRACES_ALLOCATOR_GROUP_X 16
-#define TRACES_ALLOCATOR_GROUP_Y 16
+#define TRACES_ALLOCATOR_GROUP_X 32
+#define TRACES_ALLOCATOR_GROUP_Y 32
 
 
 void ReorderLocalIDForAllocating(inout uint2 localID)

@@ -75,6 +75,8 @@ private:
 
 	TextureInspectorFilterParams m_viewParameters;
 
+	std::optional<SaveTextureParams> m_saveParams;
+
 	lib::SharedPtr<TextureHistogram> m_histogram;
 	Int32 m_histogramVisualizationChannel;
 

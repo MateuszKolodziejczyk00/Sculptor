@@ -17,6 +17,8 @@ public:
 
 	void SetParameters(const TextureInspectorFilterParams& parameters);
 
+	void SaveTexture(SaveTextureParams param);
+
 	void Render(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<rdr::TextureView>& outputTexture, const lib::SharedRef<TextureInspectorReadback>& readback);
 
 private:
@@ -24,6 +26,8 @@ private:
 	TextureInspectorFilterParams m_parameters;
 
 	rg::RenderGraphResourcesPool m_resourcesPool;
+
+	std::optional<SaveTextureParams> m_saveTextureParams;
 };
 
 } // spt::rg::capture

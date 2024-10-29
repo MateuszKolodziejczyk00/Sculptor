@@ -6,6 +6,7 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphDebugDecorator.h"
 #include "Types/Pipeline/Pipeline.h"
+#include "FileSystem/File.h"
 
 
 namespace spt::rg::capture
@@ -39,6 +40,7 @@ RGCapturerDecorator::RGCapturerDecorator(const RGCaptureSourceInfo& captureSourc
 	, m_capture(lib::MakeShared<RGCapture>())
 {
 	m_capture->captureSource = captureSource;
+	m_capture->name = lib::File::Utils::CreateFileNameFromTime();
 }
 
 void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)

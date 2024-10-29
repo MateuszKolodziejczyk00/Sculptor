@@ -14,6 +14,8 @@
 #include "TextureInspector/TextureLiveCapturer.h"
 #include "RenderGraphCaptureSourceContext.h"
 #include "RenderGraphBuilder.h"
+#include "Paths.h"
+#include "FileSystem/File.h"
 
 
 namespace spt::rg::capture
@@ -258,6 +260,10 @@ void TextureInspector::DrawTextureViewSettingPanel()
 		ImGui::EndColumns();
 	}
 
+	const char* colorSpaces[] = { "Linear RGB", "sRGB "};
+
+	ImGui::Combo("Color space", reinterpret_cast<int*>(&m_viewParameters.colorSpace), colorSpaces, SPT_ARRAY_SIZE(colorSpaces));
+
 	const char* visualizationModes[] = { "Color", "Alpha", "NaNs", "Hash" };
 
 	const int visualizationModesCount = m_viewParameters.isIntTexture
@@ -291,6 +297,15 @@ void TextureInspector::DrawTextureViewSettingPanel()
 		ImGui::DragFloat("Max Value", &m_viewParameters.maxValue, 0.01f);
 
 		ImGui::EndColumns();
+	}
+
+	if (ImGui::Button("Save Texture"))
+	{
+		m_saveParams = SaveTextureParams{ engn::Paths::GetSavedPath() + "/Captures/" + m_capture->name + "/" + lib::File::Utils::CreateFileNameFromTime("png") };
+	}
+	else
+	{
+		m_saveParams.reset();
 	}
 
 	if (ImGui::Button("Show Histogram"))
@@ -355,9 +370,15 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 	engn::FrameContext& currentFrame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
-			   [renderParams = m_viewParameters, renderer = m_renderer, readback = m_readback, inputTexture, outputTexture = lib::Ref(m_displayTexture)]
+			   [renderParams = m_viewParameters, saveParams = std::move(m_saveParams), renderer = m_renderer, readback = m_readback, inputTexture, outputTexture = lib::Ref(m_displayTexture)]() mutable
 			   {
 					renderer->SetParameters(renderParams);
+
+					if (saveParams)
+					{
+						renderer->SaveTexture(std::move(*saveParams));
+					}
+
 					renderer->Render(inputTexture, outputTexture, readback);
 			   },
 			   js::Prerequisites(currentFrame.GetStageBeginEvent(engn::EFrameStage::ProcessViewsRendering)),
@@ -374,7 +395,7 @@ void TextureInspector::CreateDisplayedTexture(const math::Vector2u& resolution)
 
 	rhi::TextureDefinition textureDefinition;
 	textureDefinition.resolution = resolution;
-	textureDefinition.usage      = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture);
+	textureDefinition.usage      = lib::Flags(rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource);
 	textureDefinition.format     = rhi::EFragmentFormat::RGBA8_UN_Float;
 
 	m_displayTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Texture Inspector Output"), textureDefinition, rhi::EMemoryUsage::GPUOnly);

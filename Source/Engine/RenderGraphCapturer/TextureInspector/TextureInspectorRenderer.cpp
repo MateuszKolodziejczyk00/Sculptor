@@ -7,6 +7,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
+#include "Loaders/TextureLoader.h"
 
 
 namespace spt::rg::capture
@@ -42,6 +43,12 @@ TextureInspectorRenderer::TextureInspectorRenderer()
 void TextureInspectorRenderer::SetParameters(const TextureInspectorFilterParams& parameters)
 {
 	m_parameters = parameters;
+}
+
+void TextureInspectorRenderer::SaveTexture(SaveTextureParams param)
+{
+	SPT_CHECK(!m_saveTextureParams);
+	m_saveTextureParams = param;
 }
 
 void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& inputTexture, const lib::SharedRef<rdr::TextureView>& outputTexture, const lib::SharedRef<TextureInspectorReadback>& readback)
@@ -119,6 +126,12 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 		const rg::RGBufferViewHandle rgReadbackBuffer = graphBuilder.AcquireExternalBufferView(histogramReadbackBuffer->CreateFullView());
 
 		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Copy Histogram Readback"), rgHistogram, 0u, rgReadbackBuffer, 0u, rgReadbackBuffer->GetSize());
+	}
+
+	if (m_saveTextureParams)
+	{
+		gfx::TextureWriter::SaveTexture(graphBuilder, outputTextureView, std::move(m_saveTextureParams->path));
+		m_saveTextureParams.reset();
 	}
 
 	graphBuilder.ReleaseTextureWithTransition(outputTextureView->GetTexture(), rhi::TextureTransition::FragmentReadOnly);

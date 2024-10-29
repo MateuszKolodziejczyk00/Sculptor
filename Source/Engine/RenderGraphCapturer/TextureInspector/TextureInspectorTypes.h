@@ -21,6 +21,13 @@ enum class ETextureInspectorVisualizationMode
 };
 
 
+enum class EInspectedTextureColorSpace
+{
+	LinearRGB,
+	sRGB,
+};
+
+
 BEGIN_SHADER_STRUCT(TextureInspectorFilterParams)
 	SHADER_STRUCT_FIELD(math::Vector2i, hoveredPixel)
 	SHADER_STRUCT_FIELD(Real32, minValue)
@@ -32,6 +39,7 @@ BEGIN_SHADER_STRUCT(TextureInspectorFilterParams)
 	SHADER_STRUCT_FIELD(Uint32, visualizationMode)
 	SHADER_STRUCT_FIELD(Bool,   shouldOutputHistogram)
 	SHADER_STRUCT_FIELD(Uint32, depthSlice3D)
+	SHADER_STRUCT_FIELD(Uint32, colorSpace)
 END_SHADER_STRUCT();
 
 
@@ -104,6 +112,12 @@ private:
 	std::optional<TextureHistogram> m_histogram;
 
 	mutable lib::Lock m_readbackDataLock;
+};
+
+
+struct SaveTextureParams
+{
+	lib::String path;
 };
 
 

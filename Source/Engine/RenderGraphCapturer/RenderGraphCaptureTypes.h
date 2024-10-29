@@ -70,6 +70,8 @@ struct RGCapture
 	lib::DynamicArray<RGNodeCapture> nodes;
 
 	RGCaptureSourceInfo captureSource;
+
+	lib::String name;
 };
 
 } // spt::rg::capture

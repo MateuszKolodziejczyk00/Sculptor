@@ -19,15 +19,21 @@ struct CS_INPUT
 };
 
 
-[numthreads(32, 1, 1)]
+[numthreads(64, 1, 1)]
 void MissRaysShadingCS(CS_INPUT input)
 {
-	const uint traceCommandIndex = input.globalID.x;
+	const uint missIdx = input.globalID.x;
 
-	if(traceCommandIndex >= u_tracesNum[0])
+	const uint missRaysNum = u_tracesNum[0].missRaysNum;
+
+	if(missIdx >= missRaysNum)
 	{
 		return;
 	}
+
+	const uint missRaysOffset = u_constants.rayCommandsBufferSize - missRaysNum;
+
+	const uint traceCommandIndex = u_sortedTraces[missRaysOffset + missIdx];
 
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);

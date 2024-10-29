@@ -166,6 +166,10 @@ struct RTShadingParams
 
 	vrt::TracesAllocation tracesAllocation;
 
+	rg::RGBufferViewHandle sortedTraces;
+	rg::RGBufferViewHandle shadingIndirectArgs;
+	rg::RGBufferViewHandle raysShadingCounts;
+
 	math::Vector2u         reservoirsResolution;
 	rg::RGBufferViewHandle reservoirsBuffer;
 };
@@ -175,6 +179,7 @@ BEGIN_SHADER_STRUCT(RTShadingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
 	SHADER_STRUCT_FIELD(math::Vector2u, reservoirsResolution)
+	SHADER_STRUCT_FIELD(Uint32,         rayCommandsBufferSize)
 END_SHADER_STRUCT();
 
 
@@ -184,6 +189,32 @@ BEGIN_SHADER_STRUCT(RTHitMaterialInfo)
 	SHADER_STRUCT_FIELD(Uint16, roughness)
 	SHADER_STRUCT_FIELD(Real32, hitDistance)
 END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(RaysShadingIndirectArgs)
+	SHADER_STRUCT_FIELD(math::Vector3u, hitDispatchSize)
+	SHADER_STRUCT_FIELD(Uint32, padding0)
+	SHADER_STRUCT_FIELD(math::Vector3u, missDispatchGroups)
+	SHADER_STRUCT_FIELD(Uint32, padding1)
+END_SHADER_STRUCT();
+
+
+BEGIN_SHADER_STRUCT(RaysShadingCounts)
+	SHADER_STRUCT_FIELD(Uint32, hitRaysNum)
+	SHADER_STRUCT_FIELD(Uint32, missRaysNum)
+END_SHADER_STRUCT();
+
+
+static constexpr Uint64 ComputeHitShadingIndirectArgsOffset()
+{
+	return offsetof(RaysShadingIndirectArgs, hitDispatchSize);
+}
+
+
+static constexpr Uint64 ComputeMissShadingIndirectArgsOffset()
+{
+	return offsetof(RaysShadingIndirectArgs, missDispatchGroups);
+}
 
 
 DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
@@ -196,8 +227,9 @@ DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTHitMaterialInfo>),                    u_hitMaterialInfos)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<sr_restir::SRPackedReservoir>),       u_reservoirsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_tracesNum)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RaysShadingCounts>),                    u_tracesNum)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),          u_traceCommands)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_sortedTraces)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTShadingConstants>),                     u_constants)
 DS_END();
 
@@ -221,7 +253,7 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Miss Rays Shading"),
 								  missRaysShadingPipeline,
-								  shadingParams.tracesAllocation.dispatchIndirectArgs, 0,
+								  shadingParams.shadingIndirectArgs, ComputeMissShadingIndirectArgsOffset(),
 								  rg::BindDescriptorSets(std::move(shadingDS), renderView.GetRenderViewDS()));
 }
 
@@ -274,7 +306,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
 								   hitRaysShadingPipeline,
-								   shadingParams.tracesAllocation.tracingIndirectArgs, 0,
+								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::BindDescriptorSets(std::move(shadingDS),
 														  renderView.GetRenderViewDS(),
 														  std::move(ddgiDS),
@@ -293,9 +325,10 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	const AtmosphereContext& atmosphereContext          = atmosphereSubsystem.GetAtmosphereContext();
 
 	RTShadingConstants rtShadingConstants;
-	rtShadingConstants.resolution           = srParams.resolution;
-	rtShadingConstants.invResolution        = srParams.resolution.cast<Real32>().cwiseInverse();
-	rtShadingConstants.reservoirsResolution = shadingParams.reservoirsResolution;
+	rtShadingConstants.resolution            = srParams.resolution;
+	rtShadingConstants.invResolution         = srParams.resolution.cast<Real32>().cwiseInverse();
+	rtShadingConstants.reservoirsResolution  = shadingParams.reservoirsResolution;
+	rtShadingConstants.rayCommandsBufferSize = static_cast<Uint32>(shadingParams.sortedTraces->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 
 	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));
 	shadingDS->u_skyViewLUT       = srParams.skyViewLUT;
@@ -307,7 +340,8 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	shadingDS->u_depthTexture     = srParams.depthTexture;
 	shadingDS->u_reservoirsBuffer = shadingParams.reservoirsBuffer;
 	shadingDS->u_traceCommands    = shadingParams.tracesAllocation.rayTraceCommands;
-	shadingDS->u_tracesNum        = shadingParams.tracesAllocation.tracesNum;
+	shadingDS->u_sortedTraces     = shadingParams.sortedTraces;
+	shadingDS->u_tracesNum        = shadingParams.raysShadingCounts;
 	shadingDS->u_constants        = rtShadingConstants;
 
 	miss_rays::ShadeMissRays(graphBuilder, renderScene, viewSpec, srParams, shadingParams, shadingDS);
@@ -345,6 +379,7 @@ DS_END();
 BEGIN_SHADER_STRUCT(SpecularReflectionsTraceConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
+	SHADER_STRUCT_FIELD(Uint32,         rayCommandsBufferSize)
 END_SHADER_STRUCT();
 
 
@@ -353,8 +388,11 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_rayDirections)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RTHitMaterialInfo>),         u_hitMaterialInfos)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<vrt::EncodedRayTraceCommand>),          u_traceCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RTHitMaterialInfo>),         u_hitMaterialInfos)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                             u_sortedRays) // hits first
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RaysShadingIndirectArgs>),   u_shadingIndirectArgs)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<shading::RaysShadingCounts>),         u_raysShadingCounts)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpecularReflectionsTraceConstants>),      u_constants)
 DS_END();
 
@@ -413,17 +451,39 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Rende
 	hitMaterialInfosBufferDef.usage = rhi::EBufferUsage::Storage;
 	const rg::RGBufferViewHandle hitMaterialInfos = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Hit Material Infos Buffer"), hitMaterialInfosBufferDef, rhi::EMemoryUsage::GPUOnly);
 
+	rhi::BufferDefinition sortedRaysBufferDef;
+	sortedRaysBufferDef.size  = traceParams.tracesAllocation.rayTraceCommands->GetSize();
+	sortedRaysBufferDef.usage = rhi::EBufferUsage::Storage;
+	const rg::RGBufferViewHandle sortedRaysBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Sorted Rays Buffer"), sortedRaysBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition shadingIndirectArgsBufferDef;
+	shadingIndirectArgsBufferDef.size  = sizeof(shading::RaysShadingIndirectArgs);
+	shadingIndirectArgsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle shadingIndirectArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Shading Indirect Args Buffer"), shadingIndirectArgsBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition raysShadingCountsBufferDef;
+	raysShadingCountsBufferDef.size  = sizeof(shading::RaysShadingCounts);
+	raysShadingCountsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle raysShadingCountsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Rays Shading Counts Buffer"), raysShadingCountsBufferDef, rhi::EMemoryUsage::GPUOnly);
+
 	SpecularReflectionsTraceConstants shaderConstants;
 	shaderConstants.resolution    = params.resolution;
 	shaderConstants.invResolution = params.resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.rayCommandsBufferSize = static_cast<Uint32>(sortedRaysBuffer->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
+
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Shading Indirect Args"), shadingIndirectArgsBuffer, 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->rayTracingDS       = rayTracingSubsystem.GetSceneRayTracingDS();
-	traceRaysDS->u_depthTexture     = params.depthTexture;
-	traceRaysDS->u_rayDirections    = rayDirections;
-	traceRaysDS->u_hitMaterialInfos = hitMaterialInfos;
-	traceRaysDS->u_traceCommands    = traceParams.tracesAllocation.rayTraceCommands;
-	traceRaysDS->u_constants        = shaderConstants;
+	traceRaysDS->rayTracingDS          = rayTracingSubsystem.GetSceneRayTracingDS();
+	traceRaysDS->u_depthTexture        = params.depthTexture;
+	traceRaysDS->u_rayDirections       = rayDirections;
+	traceRaysDS->u_traceCommands       = traceParams.tracesAllocation.rayTraceCommands;
+	traceRaysDS->u_hitMaterialInfos    = hitMaterialInfos;
+	traceRaysDS->u_sortedRays          = sortedRaysBuffer;
+	traceRaysDS->u_shadingIndirectArgs = shadingIndirectArgsBuffer;
+	traceRaysDS->u_raysShadingCounts   = raysShadingCountsBuffer;
+	traceRaysDS->u_constants           = shaderConstants;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Specular Reflections Trace Rays"),
 								   traceRaysPipeline,
@@ -444,6 +504,9 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const Rende
 	shading::RTShadingParams shadingParams;
 	shadingParams.rtGBuffer            = rtGBuffer;
 	shadingParams.tracesAllocation     = traceParams.tracesAllocation;
+	shadingParams.sortedTraces         = sortedRaysBuffer;
+	shadingParams.shadingIndirectArgs  = shadingIndirectArgsBuffer;
+	shadingParams.raysShadingCounts    = raysShadingCountsBuffer;
 	shadingParams.reservoirsResolution = traceParams.reservoirsResolution;
 	shadingParams.reservoirsBuffer     = traceParams.reservoirsBuffer;
 

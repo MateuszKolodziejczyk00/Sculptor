@@ -120,7 +120,7 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Allocate Traces: {}", definition.debugName.AsString().data()),
 						  allocateTracesPipeline,
-						  math::Utils::DivideCeil(definition.resolution, math::Vector2u(16u, 16u)),
+						  math::Utils::DivideCeil(definition.resolution, math::Vector2u(32u, 32u)),
 						  rg::BindDescriptorSets(allocateTracesDS));
 
 	return tracesAllocation;

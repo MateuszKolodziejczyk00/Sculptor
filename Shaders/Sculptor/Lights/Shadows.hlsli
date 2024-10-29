@@ -406,8 +406,6 @@ float EvaluatePointLightShadowsAtLocation(in float3 worldLocation, in float3 poi
 
 	const float shadowMapDepth = u_shadowMaps[shadowMapIdx].SampleLevel(u_shadowMapSampler, shadowMapUV, 0).x;
 	return step(shadowMapDepth, sampleShadowNDC.z);
-
-	return 1.f;
 }
 
 #ifdef DS_ViewShadingInputDS

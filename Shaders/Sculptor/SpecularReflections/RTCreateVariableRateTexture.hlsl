@@ -16,6 +16,12 @@ struct CS_INPUT
 };
 
 
+float ComputeRoughnessNoiseLevelMultiplier(in float roughness)
+{
+	return lerp(1.f, 0.5f, smoothstep(0.2f, 0.4f, roughness));
+}
+
+
 struct RTVariableRateCallback
 {
 	static uint ComputeVariableRateMask(in VariableRateProcessor processor)
@@ -35,13 +41,14 @@ struct RTVariableRateCallback
 
 		if(!anyDepthValid)
 		{
-			return SPT_VARIABLE_RATE_1X1;
+			return SPT_VARIABLE_RATE_4X4;
 		}
 
 		const float rtReflectionsInfluence = MaxComponent(u_influenceTexture.GatherRed(u_nearestSampler, uv) * validDepthMask);
  
-		// Roughness is in [0, 1] range. After adding (1 - validDepthMask) we get values above 1 for invalid pixels.
-		const float roughness = -MinComponent(u_roughnessTexture.GatherRed(u_nearestSampler, uv) + -validDepthMask);
+		// Select min component but consider only valid pixels
+		// Roughness is in [0, 1] range. After subtracting validDepthMask we get negative value for valid pixels. 1. - this value gives original roughness
+		const float roughness = 1.f + MinComponent(u_roughnessTexture.GatherRed(u_nearestSampler, uv) - validDepthMask);
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
@@ -61,7 +68,9 @@ struct RTVariableRateCallback
 
 			const float currentFrameWeight = rcp(float(MAX_ACCUMULATED_FRAMES_NUM));
 
-			const float noiseLevel = temporalStdDev * rcpBrightness * rtReflectionsInfluence * currentFrameWeight;
+			const float roughnessNoiseLevelMultiplier = ComputeRoughnessNoiseLevelMultiplier(roughness);
+
+			const float noiseLevel = temporalStdDev * rcpBrightness * rtReflectionsInfluence * currentFrameWeight * roughnessNoiseLevelMultiplier;
 
 			const float depthDDX = max(linearDepth2x2.y - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 			const float depthDDY = max(linearDepth2x2.w - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);

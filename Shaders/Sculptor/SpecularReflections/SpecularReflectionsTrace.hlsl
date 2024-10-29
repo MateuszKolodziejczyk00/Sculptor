@@ -5,6 +5,7 @@
 #include "SpecularReflections/RTGBuffer.hlsli"
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Wave.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -69,6 +70,12 @@ void GenerateSpecularReflectionsRaysRTG()
 {
 	const uint traceCommandIndex = DispatchRaysIndex().x;
 
+	if(traceCommandIndex == 0u)
+	{
+		u_shadingIndirectArgs[0].hitDispatchSize.yz    = 1u;
+		u_shadingIndirectArgs[0].missDispatchGroups.yz = 1u;
+	}
+
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
@@ -87,9 +94,50 @@ void GenerateSpecularReflectionsRaysRTG()
 
 		const RayHitResult hitResult = TraceReflectionRay(worldLocation, rayDirection);
 
-		u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
+		uint hitResultIdx = IDX_NONE_32;
+
+		const bool isValidHit = hitResult.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT;
+		const uint validHitMask = WaveActiveBallot(isValidHit).x;
+		if(validHitMask > 0)
+		{
+			const uint validHitCount = countbits(validHitMask);
+			uint validHitsOffset = 0;
+			if(WaveIsFirstLane())
+			{
+				InterlockedAdd(u_raysShadingCounts[0].hitRaysNum, validHitCount, OUT validHitsOffset);
+
+				InterlockedMax(u_shadingIndirectArgs[0].hitDispatchSize.x, validHitsOffset + validHitCount);
+			}
+			const uint validHitIndex = WaveReadLaneFirst(validHitsOffset) + GetCompactedIndex(validHitMask, WaveGetLaneIndex());
+			hitResultIdx = validHitIndex;
+		}
+
+		const bool isMiss = hitResult.hitType == RTGBUFFER_HIT_TYPE_NO_HIT;
+		const uint missMask = WaveActiveBallot(isMiss).x;
+		if (missMask > 0)
+		{
+			const uint missCount = countbits(missMask);
+			uint missOffset = 0;
+			if (WaveIsFirstLane())
+			{
+				InterlockedAdd(u_raysShadingCounts[0].missRaysNum, missCount, OUT missOffset);
+
+				InterlockedMax(u_shadingIndirectArgs[0].missDispatchGroups.x, (missOffset + missCount + 63) / 64);
+			}
+			const uint compactedIdx = GetCompactedIndex(missMask, WaveGetLaneIndex());
+			const uint missIndex = u_constants.rayCommandsBufferSize - WaveReadLaneFirst(missOffset) - missCount + compactedIdx;
+			hitResultIdx = missIndex;
+		}
+
+		u_sortedRays[hitResultIdx] = traceCommandIndex;
+
+		if(hitResultIdx != IDX_NONE_32)
+		{
+			u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
+		}
 	}
 }
+
 
 [shader("miss")]
 void SpecularReflectionsRTM(inout SpecularReflectionsRayPayload payload)

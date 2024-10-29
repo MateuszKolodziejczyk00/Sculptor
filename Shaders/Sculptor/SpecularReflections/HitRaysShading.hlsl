@@ -26,12 +26,14 @@
 [shader("raygeneration")]
 void HitRaysShadingRTG()
 {
-	const uint traceCommandIndex = DispatchRaysIndex().x;
+	const uint hitIdx = DispatchRaysIndex().x;
 
-	if(traceCommandIndex >= u_tracesNum[0])
+	if(hitIdx >= u_tracesNum[0].hitRaysNum)
 	{
 		return;
 	}
+
+	const uint traceCommandIndex = u_sortedTraces[hitIdx];
 
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
