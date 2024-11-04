@@ -11,9 +11,7 @@ void WriteReservoirToScreenBuffer(in RWStructuredBuffer<SRPackedReservoir> reser
 {
 	const SRPackedReservoir packedReservoir = PackReservoir(reservoir);
 
-	const uint2 blockCoords = traceCommand.blockCoords;
-	const uint2 blockSize = GetVariableRateTileSize(traceCommand.variableRateMask);
-	const uint2 traceCoords = blockCoords + traceCommand.localOffset;
+	const uint2 traceCoords = traceCommand.blockCoords + traceCommand.localOffset;
 
 	const uint reservoirIdx = GetScreenReservoirIdx(traceCoords, reservoirsRes);
 	reservoirsBuffer[reservoirIdx] = packedReservoir;

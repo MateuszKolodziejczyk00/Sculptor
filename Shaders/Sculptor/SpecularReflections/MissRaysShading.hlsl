@@ -32,8 +32,9 @@ void MissRaysShadingCS(CS_INPUT input)
 	}
 
 	const uint missRaysOffset = u_constants.rayCommandsBufferSize - missRaysNum;
+	const uint rayIdx = missRaysOffset + missIdx;
 
-	const uint traceCommandIndex = u_sortedTraces[missRaysOffset + missIdx];
+	const uint traceCommandIndex = u_sortedTraces[rayIdx];
 
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[traceCommandIndex];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);

@@ -443,7 +443,7 @@ float EvaluateCascadedShadowsAtLine(in float3 beginWorldLocation, in float3 endW
 		break;
 	}
 	
-	float visibility = 0.f;
+	float visibility = 1.f;
 	
 	if(selectedCascadeIdx != IDX_NONE_32)
 	{
@@ -468,7 +468,7 @@ float EvaluateCascadedShadowsAtLocation(in float3 worldLocation, in uint firstCa
 		return EvaluateShadowsVSM(u_shadowMapCascades[cascadeIdx], u_linearShadowMapSampler, cascadeShadowUV, cascadeShadowNDC.z);
 	}
 
-	return 0.f;
+	return 1.f;
 }
 
 #endif // RENDER_VIEW_LIGHTING

@@ -263,10 +263,10 @@ void SceneView::UpdateCullingData()
 {
 	const math::Matrix4f& viewProjection = m_viewRenderingData.viewProjectionMatrix;
 
-	m_viewCullingData.cullingPlanes[0] = viewProjection.row(3) + viewProjection.row(0);	// right plane:		 x < w  ---> w + x > 0
-	m_viewCullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		-x < w  ---> w - x > 0
-	m_viewCullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		 y < w  ---> w + y > 0
-	m_viewCullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	-y < w  ---> w - y > 0
+	m_viewCullingData.cullingPlanes[0] = viewProjection.row(3) + viewProjection.row(0);	// right plane:		-x < w  ---> w + x > 0
+	m_viewCullingData.cullingPlanes[1] = viewProjection.row(3) - viewProjection.row(0);	// left plane:		 x < w  ---> w - x > 0
+	m_viewCullingData.cullingPlanes[2] = viewProjection.row(3) + viewProjection.row(1);	// top plane:		-y < w  ---> w + y > 0
+	m_viewCullingData.cullingPlanes[3] = viewProjection.row(3) - viewProjection.row(1);	// bottom plane:	 y < w  ---> w - y > 0
 	
 	if (IsPerspectiveMatrix())
 	{
@@ -275,7 +275,7 @@ void SceneView::UpdateCullingData()
 	}
 	else
 	{
-		m_viewCullingData.cullingPlanes[4] = viewProjection.row(3) + viewProjection.row(2);	// far plane:	z < w  ---> w + z > 0
+		m_viewCullingData.cullingPlanes[4] = viewProjection.row(3) - viewProjection.row(2);	// far plane:	z < w  ---> w - z > 0
 	}
 
 	// normalize planes (we need normals to compare with bounding spheres radius)

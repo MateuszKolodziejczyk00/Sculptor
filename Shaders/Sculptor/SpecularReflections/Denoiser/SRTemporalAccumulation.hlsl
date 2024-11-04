@@ -95,7 +95,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 					const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
 
 					const float normalsSimilarity = dot(historyNormals, currentSampleNormal);
-					if(normalsSimilarity >= 0.8f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
+					if(normalsSimilarity >= 0.9f && abs(roughness - historyRoughness) < maxRoguhnessDiff)
 					{
 						const float3 historyViewDir = normalize(u_prevFrameSceneView.viewLocation - historySampleWS);
 						const float3 currentViewDir = normalize(u_sceneView.viewLocation - currentSampleWS);

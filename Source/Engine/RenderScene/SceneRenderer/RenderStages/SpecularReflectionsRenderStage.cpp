@@ -421,11 +421,11 @@ struct TraceParams
 };
 
 
-static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& params, const TraceParams& traceParams)
+static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderGraphDebugName debugName, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& params, const TraceParams& traceParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Generate Reservoirs");
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, lib::String("Generate Reservoirs ") + debugName.AsString());
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
@@ -714,7 +714,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		traceParams.reservoirsResolution = reservoirsResolution;
 		traceParams.reservoirsBuffer     = reservoirsBuffer;
 
-		trace::GenerateReservoirs(graphBuilder, renderScene, viewSpec, params, traceParams);
+		trace::GenerateReservoirs(graphBuilder, RG_DEBUG_NAME("1st Pass"), renderScene, viewSpec, params, traceParams);
 
 		const rg::RGTextureViewHandle luminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
@@ -747,7 +747,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			additionalTracesParams.reservoirsResolution = reservoirsResolution;
 			additionalTracesParams.reservoirsBuffer     = initialResamplingResult.resampledReservoirsBuffer;
 
-			trace::GenerateReservoirs(graphBuilder, renderScene, viewSpec, params, additionalTracesParams);
+			trace::GenerateReservoirs(graphBuilder, RG_DEBUG_NAME("2nd Pass"), renderScene, viewSpec, params, additionalTracesParams);
 		}
 
 		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);

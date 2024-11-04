@@ -353,7 +353,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
 		const bool isValidReservoir     = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
 
-		const bool allowsSecondPass = (invalidReservoirsNum >= 16u || centerPixelSurface.roughness <= 0.15f);
+		const bool allowsSecondPass = (invalidReservoirsNum >= 16u || centerPixelSurface.roughness <= 0.15f) && centerPixelSurface.roughness > SPECULAR_TRACE_MAX_ROUGHNESS;
 
 		if(reprojectionSuccess && allowsSecondPass && !isValidReservoir)
 		{

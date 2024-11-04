@@ -97,9 +97,9 @@ void GenerateSpecularReflectionsRaysRTG()
 		uint hitResultIdx = IDX_NONE_32;
 
 		const bool isValidHit = hitResult.hitType == RTGBUFFER_HIT_TYPE_VALID_HIT;
-		const uint validHitMask = WaveActiveBallot(isValidHit).x;
-		if(validHitMask > 0)
+		if(isValidHit)
 		{
+			const uint validHitMask = WaveActiveBallot(isValidHit).x;
 			const uint validHitCount = countbits(validHitMask);
 			uint validHitsOffset = 0;
 			if(WaveIsFirstLane())
@@ -113,9 +113,9 @@ void GenerateSpecularReflectionsRaysRTG()
 		}
 
 		const bool isMiss = hitResult.hitType == RTGBUFFER_HIT_TYPE_NO_HIT;
-		const uint missMask = WaveActiveBallot(isMiss).x;
-		if (missMask > 0)
+		if (isMiss)
 		{
+			const uint missMask = WaveActiveBallot(isMiss).x;
 			const uint missCount = countbits(missMask);
 			uint missOffset = 0;
 			if (WaveIsFirstLane())
@@ -129,10 +129,9 @@ void GenerateSpecularReflectionsRaysRTG()
 			hitResultIdx = missIndex;
 		}
 
-		u_sortedRays[hitResultIdx] = traceCommandIndex;
-
 		if(hitResultIdx != IDX_NONE_32)
 		{
+			u_sortedRays[hitResultIdx] = traceCommandIndex;
 			u_hitMaterialInfos[traceCommandIndex] = PackRTGBuffer(hitResult);
 		}
 	}

@@ -32,8 +32,10 @@ private:
 
 	constexpr static SizeType samplesNum = 100u;
 
-	lib::StaticArray<Real32, samplesNum> m_firstPassRaysNum;
-	lib::StaticArray<Real32, samplesNum> m_secondPassRaysNum;
+	using SamplesArray = lib::StaticArray<Real32, samplesNum>;
+
+	SamplesArray m_firstPassRaysNum;
+	SamplesArray m_secondPassRaysNum;
 
 	Uint32 m_lastFirstPassRaysNum        = 0u;
 	Real32 m_lastFirstPassRaysPercentage = 0.f;

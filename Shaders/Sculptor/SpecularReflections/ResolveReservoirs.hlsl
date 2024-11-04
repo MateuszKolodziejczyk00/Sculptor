@@ -41,40 +41,45 @@ void ResolveReservoirsCS(CS_INPUT input)
 			reservoir = UnpackReservoir(u_reservoirsBuffer[tracingReservoirIdx]);
 		}
 
-		SPT_CHECK_MSG(!reservoir.IsValid() || reservoir.HasValidResult(), L"Valid reservoirs must have valid result at this point");
+		float4 luminanceAndHitDistance = 0.f;
 
-		const float depth = u_depthTexture.Load(uint3(reservoirCoords, 0));
-		const float2 uv = (reservoirCoords + 0.5f) * u_resamplingConstants.pixelSize;
-		const float3 ndc = float3(uv * 2.f - 1.f, depth);
-
-		const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
-
-		const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(reservoirCoords, 0)));
-
-		const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
-
-		const float roughness = u_roughnessTexture.Load(uint3(reservoirCoords, 0));
-		const float3 f0 = u_specularColorTexture.Load(uint3(reservoirCoords, 0)).rgb;
-
-		const float hitDistance = length(reservoir.hitLocation - sampleLocation);
-		const float3 lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
-
-		const float3 luminance = reservoir.luminance * reservoir.weightSum;
-
-		const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
-		float3 Lo = specular * luminance * dot(sampleNormal, lightDir);
-
-		const float NdotV = saturate(dot(sampleNormal, toView));
-		const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
-
-		if(any(isnan(Lo)) || any(isinf(Lo)))
+		if(reservoir.IsValid() && reservoir.HasValidResult())
 		{
-			Lo = 0.f;
+			const float depth = u_depthTexture.Load(uint3(reservoirCoords, 0));
+			const float2 uv = (reservoirCoords + 0.5f) * u_resamplingConstants.pixelSize;
+			const float3 ndc = float3(uv * 2.f - 1.f, depth);
+	
+			const float3 sampleLocation = NDCToWorldSpace(ndc, u_sceneView);
+	
+			const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(reservoirCoords, 0)));
+	
+			const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
+	
+			const float roughness = u_roughnessTexture.Load(uint3(reservoirCoords, 0));
+			const float3 f0 = u_specularColorTexture.Load(uint3(reservoirCoords, 0)).rgb;
+	
+			const float hitDistance = length(reservoir.hitLocation - sampleLocation);
+			const float3 lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
+	
+			const float3 luminance = reservoir.luminance * reservoir.weightSum;
+	
+			const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
+			float3 Lo = specular * luminance * dot(sampleNormal, lightDir);
+	
+			const float NdotV = saturate(dot(sampleNormal, toView));
+			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
+	
+			if(any(isnan(Lo)) || any(isinf(Lo)))
+			{
+				Lo = 0.f;
+			}
+	
+			// demodulate specular
+			Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
+
+			luminanceAndHitDistance = float4(Lo, hitDistance);
 		}
 
-		// demodulate specular
-		Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
-
-		u_luminanceHitDistanceTexture[pixel] = float4(Lo, hitDistance);
+		u_luminanceHitDistanceTexture[pixel] = luminanceAndHitDistance;
 	}
 }
