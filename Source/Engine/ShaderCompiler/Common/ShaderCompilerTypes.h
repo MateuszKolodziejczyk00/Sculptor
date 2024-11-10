@@ -28,6 +28,16 @@ public:
 		macro = lib::String(name.GetView()) + "=" + lib::String(value.GetView());
 	}
 
+	MacroDefinition(lib::HashedString name, const char* value)
+		: MacroDefinition(name, lib::HashedString(value))
+	{
+	}
+
+	MacroDefinition(lib::HashedString name, Bool value)
+	{
+		macro = lib::String(name.GetView()) + "=" + lib::String(value ? "1" : "0");
+	}
+
 	Bool IsValid() const
 	{
 		return macro.IsValid();

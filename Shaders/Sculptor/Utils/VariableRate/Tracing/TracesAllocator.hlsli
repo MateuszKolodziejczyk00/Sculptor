@@ -150,13 +150,7 @@ struct TracesAllocator
 		allocator.m_tracesCommands            = tracesCommands;
 		allocator.m_tracesCommandsNum         = inTracesCommandsNum;
 		allocator.m_variableRateBlocksTexture = inVariableRateBlocksTexture;
-		allocator.m_noise                     = -1.f;
 		return allocator;
-	}
-
-	void SetNoiseValue(in float inValue)
-	{
-		m_noise = inValue;
 	}
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
@@ -230,15 +224,27 @@ struct TracesAllocator
 
 			traceOutputIdx = WaveReadLaneFirst(traceOutputIdx) + GetCompactedIndex(wantsTraceBallot, WaveGetLaneIndex());
 
-			float noise = m_noise;
-			noise = WaveReadLaneAt(noise, allocatingLaneID);
-
-			uint2 localOffset = 0u;
-			if(noise >= 0.f)
+			const uint tileArea = vrTileSize.x * vrTileSize.y;
+			uint2 localOffset;
+			if(tileArea > 4u)
 			{
-				const uint tileArea = vrTileSize.x * vrTileSize.y;
-				const uint pixelIdx = frac(noise + SPT_GOLDEN_RATIO * (traceIdx & 63)) * tileArea;
-				localOffset = uint2(pixelIdx % vrTileSize.x, pixelIdx / vrTileSize.x);
+				const uint2 tiles2x2      = vrTileSize >> 1u;
+				const uint tiles2x2Num    = tiles2x2.x * tiles2x2.y;
+				const uint logTiles2x2Num = firstbitlow(tiles2x2Num);
+				const uint tiles2x2Mask   = tiles2x2Num - 1u;
+
+				const uint idx2x2 = traceIdx & tiles2x2Mask;
+				const uint idxIn2x2 = (traceIdx >> logTiles2x2Num) & 3u;
+
+				const uint logTiles2x2X = firstbitlow(tiles2x2.x);
+				localOffset = uint2(idx2x2 & (tiles2x2.x - 1u), (idx2x2 >> logTiles2x2X)) * 2u // 2x2 tile offset
+                            + uint2(idxIn2x2 & 1u, (idxIn2x2 >> 1u) & 1u); // pixel offset in 2x2 tile
+			}
+			else
+			{
+				const uint pixelIdx = traceIdx & (tileArea - 1u);
+				const uint logTileSizeX = firstbitlow(vrTileSize.x);
+				localOffset = uint2(pixelIdx & (vrTileSize.x - 1u), (pixelIdx >> logTileSizeX));
 			}
 
 			if(wantsToAllocateTrace)
@@ -262,8 +268,6 @@ struct TracesAllocator
 	RWStructuredBuffer<EncodedRayTraceCommand> m_tracesCommands;
 	RWStructuredBuffer<uint>                   m_tracesCommandsNum;
 	RWTexture2D<uint>                          m_variableRateBlocksTexture;
-
-	float m_noise;
 
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 	RWStructuredBuffer<uint>                   m_tracesNum;

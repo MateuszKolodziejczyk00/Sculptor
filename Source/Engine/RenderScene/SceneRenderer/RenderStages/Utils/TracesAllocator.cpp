@@ -24,7 +24,6 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(AllocateTracesDS, rg::RGDescriptorSetState<AllocateTracesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_variableRateTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_blueNoise256Texture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<AllocateTracesConstants>),    u_constants)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<EncodedRayTraceCommand>), u_rayTracesCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                 u_commandsNum)
@@ -100,12 +99,10 @@ TracesAllocation AllocateTraces(rg::RenderGraphBuilder& graphBuilder, const Trac
 	shaderConstants.vrtResolution              = vrtResolution;
 	shaderConstants.vrtInvResolution           = vrtResolution.cast<Real32>().cwiseInverse();
 	shaderConstants.traceIdx                   = definition.traceIdx;
-	shaderConstants.enableBlueNoiseLocalOffset = definition.enableBlueNoiseLocalOffset;
 
 	lib::MTHandle<AllocateTracesDS> allocateTracesDS = graphBuilder.CreateDescriptorSet<AllocateTracesDS>(RENDERER_RESOURCE_NAME("AllocateTracesDS"));
 	allocateTracesDS->u_constants                   = shaderConstants;
 	allocateTracesDS->u_variableRateTexture         = definition.variableRateTexture;
-	allocateTracesDS->u_blueNoise256Texture         = gfx::global::Resources::Get().blueNoise256.GetView();
 	allocateTracesDS->u_rayTracesCommands           = tracesAllocation.rayTraceCommands;
 	allocateTracesDS->u_commandsNum                 = tracesAllocation.tracingIndirectArgs;
 	allocateTracesDS->u_rwVariableRateBlocksTexture = tracesAllocation.variableRateBlocksTexture;

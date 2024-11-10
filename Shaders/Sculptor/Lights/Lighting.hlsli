@@ -318,7 +318,6 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	const float specularWeight = Luminance(surface.specularColor) / Luminance(surface.specularColor + surface.diffuseColor);
 	const float3 sampleDirection = normalize(lerp(surface.shadingNormal, specularDominantDirection, specularWeight));
 
-
 	DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
 	diffuseSampleParams.sampleDirection = surface.shadingNormal;
 	diffuseSampleParams.minVisibility   = 0.75f;
@@ -328,9 +327,10 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	const float3 indirectIlluminance = indirectLuminance * 2.f * PI;
 	luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor * indirectMultiplier;
 
+	const float NdotL = dot(surface.shadingNormal, specularDominantDirection);
 	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
 	const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
-	luminance += indirectLuminance * (surface.specularColor * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier;
+	luminance += indirectLuminance * (surface.specularColor * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
 #endif // DS_DDGISceneDS
 
     return luminance;

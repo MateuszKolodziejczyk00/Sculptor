@@ -458,7 +458,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 
 	rhi::BufferDefinition shadingIndirectArgsBufferDef;
 	shadingIndirectArgsBufferDef.size  = sizeof(shading::RaysShadingIndirectArgs);
-	shadingIndirectArgsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
+	shadingIndirectArgsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::DeviceAddress);
 	const rg::RGBufferViewHandle shadingIndirectArgsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Shading Indirect Args Buffer"), shadingIndirectArgsBufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	rhi::BufferDefinition raysShadingCountsBufferDef;
@@ -558,7 +558,7 @@ END_SHADER_STRUCT();
 DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_influenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_temporalVariance)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_varianceEstimation)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_reflectionsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
@@ -672,7 +672,6 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		tracesAllocationDefinition.vrtPermutationSettings           = m_variableRateRenderer.GetPermutationSettings();
 		tracesAllocationDefinition.outputTracesAndDispatchGroupsNum = true;
 		tracesAllocationDefinition.traceIdx                         = renderView.GetRenderedFrameIdx();
-		tracesAllocationDefinition.enableBlueNoiseLocalOffset       = true;
 		const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 		SpecularReflectionsParams params;
@@ -780,7 +779,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		reflectionsViewData.denoisedRefectionsTexture    = denoiserResult.denoiserOutput;
 		reflectionsViewData.reflectionsTexture           = specularReflectionsFullRes;
 		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
-		reflectionsViewData.temporalVariance             = denoiserResult.temporalVariance;
+		reflectionsViewData.varianceEstimation           = denoiserResult.varianceEstimation;
 		reflectionsViewData.halfResReflections           = isHalfRes;
 
 		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
@@ -813,7 +812,7 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
 	vrtDS->u_influenceTexture       = reflectionsViewData.reflectionsInfluenceTexture;
 	vrtDS->u_roughnessTexture       = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
-	vrtDS->u_temporalVariance       = reflectionsViewData.temporalVariance;
+	vrtDS->u_varianceEstimation       = reflectionsViewData.varianceEstimation;
 	vrtDS->u_linearDepthTexture     = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
 	vrtDS->u_reflectionsTexture     = reflectionsViewData.denoisedRefectionsTexture;
 	vrtDS->u_rtConstants            = shaderConstants;

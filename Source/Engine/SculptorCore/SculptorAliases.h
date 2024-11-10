@@ -46,4 +46,7 @@ static constexpr TType minValue = std::numeric_limits<TType>::min();
 template<typename TType>
 static constexpr TType maxValue = std::numeric_limits<TType>::max();
 
+template<typename TType>
+static constexpr TType pi = static_cast<TType>(3.14159265358979323846);
+
 } // spt

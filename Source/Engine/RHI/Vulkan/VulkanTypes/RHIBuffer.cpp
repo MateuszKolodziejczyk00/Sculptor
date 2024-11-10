@@ -252,6 +252,9 @@ void RHIBuffer::Unmap() const
 
 DeviceAddress RHIBuffer::GetDeviceAddress() const
 {
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
+
 	VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
 	addressInfo.buffer = m_bufferHandle;
 	return vkGetBufferDeviceAddress(VulkanRHI::GetDeviceHandle(), &addressInfo);

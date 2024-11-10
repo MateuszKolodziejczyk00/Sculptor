@@ -46,8 +46,6 @@ struct TracesAllocationDefinition
 
 	Uint32 traceIdx = 0u;
 
-	Bool enableBlueNoiseLocalOffset = false;
-
 	Bool outputTracesAndDispatchGroupsNum = false;
 };
 

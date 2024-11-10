@@ -33,8 +33,6 @@ groupshared SampleData sharedSampleData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
 
 float ComputeWeight(in SampleData center, in SampleData sample, int2 offset)
 {
-	const float kernel[4] = { 0.5f, 0.35f, 0.2f, 0.1f };
-
 	const float phiNormal = 12.f;
 	const float phiDepth = 0.15f;
 	

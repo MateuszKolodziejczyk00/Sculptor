@@ -103,7 +103,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 						const bool isCenterSample = sampleIdx == 0;
 
-						const float sampleReprojectionConfidence = saturate(1.f - 0.2f * saturate(1.f - parallaxAngle) + (isCenterSample ? 0.04f : 0.f));
+						const float sampleReprojectionConfidence = saturate(1.f - 0.3f * saturate(1.f - parallaxAngle) + (isCenterSample ? 0.04f : 0.f));
 
 						if(sampleReprojectionConfidence > reprojectionConfidence)
 						{
@@ -159,7 +159,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			// Fast history
 
 			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
-			const float currentFrameWeightFast = max(0.15f, currentFrameWeight);
+			const float currentFrameWeightFast = max(0.3f, currentFrameWeight);
 			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
 
 			historySamplesNum = historySamplesNum + 1u;

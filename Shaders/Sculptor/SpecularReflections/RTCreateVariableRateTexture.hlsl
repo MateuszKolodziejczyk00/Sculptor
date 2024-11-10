@@ -63,14 +63,14 @@ struct RTVariableRateCallback
 
 			const float rcpBrightness = 1.f / brightness;
 
-			const float temporalVariance = MaxComponent(u_temporalVariance.GatherRed(u_nearestSampler, uv) * validDepthMask);
-			const float temporalStdDev = sqrt(temporalVariance);
+			const float varianceEstimation = MaxComponent(u_varianceEstimation.GatherRed(u_nearestSampler, uv) * validDepthMask);
+			const float stdDevEstimation   = sqrt(varianceEstimation);
 
 			const float currentFrameWeight = rcp(float(MAX_ACCUMULATED_FRAMES_NUM));
 
 			const float roughnessNoiseLevelMultiplier = ComputeRoughnessNoiseLevelMultiplier(roughness);
 
-			const float noiseLevel = temporalStdDev * rcpBrightness * rtReflectionsInfluence * currentFrameWeight * roughnessNoiseLevelMultiplier;
+			const float noiseLevel = stdDevEstimation * rcpBrightness * rtReflectionsInfluence * currentFrameWeight * roughnessNoiseLevelMultiplier;
 
 			const float depthDDX = max(linearDepth2x2.y - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);
 			const float depthDDY = max(linearDepth2x2.w - linearDepth2x2.x, linearDepth2x2.z - linearDepth2x2.x);

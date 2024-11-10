@@ -200,6 +200,22 @@ public:
 	{
 		return EulerToRotationMatrixRadians(DegreesToRadians(roll), DegreesToRadians(pitch), DegreesToRadians(yaw));
 	}
+
+	template<std::floating_point TType>
+	static void ComputeGaussianBlurWeights(lib::Span<TType> OUT weights, TType sigma)
+	{
+		const TType sigmaSquared = Square(sigma);
+		const TType denominator  = static_cast<TType>(std::sqrt(2.0 * pi<TType> * sigmaSquared));
+
+		const TType rcpSigmaSquared = static_cast<TType>(1.0 / sigmaSquared);
+		const TType rcpDenominator  = static_cast<TType>(1.0 / denominator);
+
+		for (SizeType i = 0; i < weights.size(); ++i)
+		{
+			const TType sampleIdx = static_cast<TType>(i);
+			weights[i] = static_cast<TType>(std::exp(-0.5 * Square(sampleIdx) * rcpSigmaSquared) * rcpDenominator);
+		}
+	}
 };
 
 } // spt::math

@@ -4,7 +4,7 @@
 #include "ResourcesManager.h"
 #include "SRTemporalAccumulation.h"
 #include "SRATrousFilter.h"
-#include "SRComputeVariance.h"
+#include "SRVariance.h"
 #include "SRDisocclussionFix.h"
 #include "SRClampHistory.h"
 #include "SRFireflySuppression.h"
@@ -149,8 +149,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
 	rg::RGTextureViewHandle temporalVariance = CreateVarianceTexture(graphBuilder, resolution);
-	rg::RGTextureViewHandle tempVariance0    = CreateVarianceTexture(graphBuilder, resolution);
-	rg::RGTextureViewHandle tempVariance1    = CreateVarianceTexture(graphBuilder, resolution);
+	rg::RGTextureViewHandle tempVariance     = CreateVarianceTexture(graphBuilder, resolution);
 
 	TemporalVarianceParams temporalVarianceParams(params.renderView);
 	temporalVarianceParams.debugName                    = m_debugName;
@@ -162,20 +161,32 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg:
 	temporalVarianceParams.outputVarianceTexture        = temporalVariance;
 	ComputeTemporalVariance(graphBuilder, temporalVarianceParams);
 
+	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceTexture(graphBuilder, resolution);
+
+	VarianceEstimationParams varianceEstimationParams(params.renderView);
+	varianceEstimationParams.debugName = m_debugName;
+	varianceEstimationParams.varianceTexture = temporalVariance;
+	varianceEstimationParams.accumulatedSamplesNumTexture = accumulatedSamplesNumTexture;
+	varianceEstimationParams.normalsTexture = params.normalsTexture;
+	varianceEstimationParams.depthTexture = params.currentDepthTexture;
+	varianceEstimationParams.roughnessTexture = params.roughnessTexture;
+	varianceEstimationParams.tempVarianceTexture = tempVariance;
+	varianceEstimationParams.outputEstimatedVarianceTexture = varianceEstimation;
+	EstimateVariance(graphBuilder, varianceEstimationParams);
+
 	SpatialFilterParams spatialParams;
 	spatialParams.input                  = denoisedTexture;
 	spatialParams.output                 = outputTexture;
 	spatialParams.inputVariance          = temporalVariance;
-	spatialParams.tempVariance0          = tempVariance0;
-	spatialParams.tempVariance1          = tempVariance1;
+	spatialParams.tempVariance           = tempVariance;
 	spatialParams.historySamplesNum      = historyAccumulatedSamplesNumTexture;
 	spatialParams.reprojectionConfidence = reprojectionConfidence;
 
 	ApplySpatialFilter(graphBuilder, spatialParams, params);
 
 	Result result;
-	result.denoiserOutput   = outputTexture;
-	result.temporalVariance = temporalVariance;
+	result.denoiserOutput     = outputTexture;
+	result.varianceEstimation = varianceEstimation;
 
 	std::swap(m_accumulatedSamplesNumTexture, m_historyAccumulatedSamplesNumTexture);
 	std::swap(m_temporalVarianceTexture, m_historyTemporalVarianceTexture);
@@ -205,11 +216,11 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	pass.inputLuminance  = spatialParams.input;
 	pass.outputLuminance = spatialParams.output;
 
-	ApplyATrousFilter(graphBuilder, aTrousParams,   pass, spatialParams.inputVariance, spatialParams.tempVariance0);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance0, spatialParams.tempVariance1);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance1, spatialParams.tempVariance0);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance0, spatialParams.tempVariance1);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance1, spatialParams.tempVariance0);
+	ApplyATrousFilter(graphBuilder, aTrousParams,   pass, spatialParams.inputVariance, spatialParams.tempVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance, spatialParams.inputVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.inputVariance, spatialParams.tempVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.tempVariance, spatialParams.inputVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass, spatialParams.inputVariance, spatialParams.tempVariance);
 }
 
 } // spt::rsc::sr_denoiser
