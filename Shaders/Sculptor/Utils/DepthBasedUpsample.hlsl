@@ -42,6 +42,18 @@ void DepthBasedUpsampleCS(CS_INPUT input)
 		const int2 inputPixel = pixel / 2 + (pixel & 1) - 1;
 		const float2 inputUV = float2(inputPixel + 0.5f) * inputPixelSize;
 
+		float4 bilinearWeights = { 0.1875f, 0.0625f, 0.1875f, 0.5625f };
+		if((pixel.x & 1) == 0)
+		{
+			Swap(bilinearWeights.x, bilinearWeights.y);
+			Swap(bilinearWeights.z, bilinearWeights.w);
+		}
+		if ((pixel.y & 1) == 0)
+		{
+			Swap(bilinearWeights.x, bilinearWeights.w);
+			Swap(bilinearWeights.y, bilinearWeights.z);
+		}
+
 		const float4 inputDepths = u_depthTextureHalfRes.Gather(u_nearestSampler, inputUV, 0);
 
 		const int2 offsets[4] = { int2(0, 1), int2(1, 1), int2(1, 0), int2(0, 0) };
@@ -70,6 +82,8 @@ void DepthBasedUpsampleCS(CS_INPUT input)
 		{
 			float weight = ComputeSampleWeight(sampleDistances[sampleIdx] - minDistance);
 			const float4 sample = u_inputTexture.Load(int3(inputPixel + offsets[sampleIdx], 0));
+
+			weight *= bilinearWeights[sampleIdx];
 
 			if(u_constants.fireflyFilteringEnabled)
 			{
