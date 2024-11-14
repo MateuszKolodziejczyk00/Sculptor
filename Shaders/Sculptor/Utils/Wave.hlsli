@@ -21,3 +21,9 @@ uint2 ReorderWaveToQuads(in uint threadIdx)
 
 	return uint2(offsetX, offsetY);
 }
+
+
+float QuadSwizzle(in float value, in uint swizzleQuadBaseID, in uint quadLocalID, in uint4 swizzle)
+{
+	return WaveReadLaneAt(value, swizzleQuadBaseID + swizzle[quadLocalID]);
+}

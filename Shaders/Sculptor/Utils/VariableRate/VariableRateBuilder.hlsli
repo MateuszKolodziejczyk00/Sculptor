@@ -11,7 +11,7 @@
 #endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 
 #define GROUP_SIZE_X 8
-#define GROUP_SIZE_Y 4
+#define GROUP_SIZE_Y 8
 
 #define GS_SAMPLES_X (GROUP_SIZE_X + 2)
 #define GS_SAMPLES_Y (GROUP_SIZE_Y + 2)
@@ -112,7 +112,7 @@ struct VariableRateProcessor
 	T QuadMax(in T value)
 	{
 		T result = value;
-		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
 		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
 		result = max(result, WaveReadLaneAt(value, quadBaseThreadIdx + 2));
@@ -124,7 +124,7 @@ struct VariableRateProcessor
 	T QuadMin(in T value)
 	{
 		T result = value;
-		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 0));
 		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 1));
 		result = min(result, WaveReadLaneAt(value, quadBaseThreadIdx + 2));
@@ -135,7 +135,7 @@ struct VariableRateProcessor
 	template<typename T>
 	T DDX_QuadMax(in T value)
 	{
-		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		float ddx = WaveReadLaneAt(value, quadBaseThreadIdx + 1) - WaveReadLaneAt(value, quadBaseThreadIdx);
 		ddx = max(ddx, WaveReadLaneAt(value, quadBaseThreadIdx + 3) - WaveReadLaneAt(value, quadBaseThreadIdx + 2));
 		return ddx;
@@ -144,7 +144,7 @@ struct VariableRateProcessor
 	template<typename T>
 	T DDY_QuadMax(in T value)
 	{
-		const uint quadBaseThreadIdx = m_localThreadIdx & ~3;
+		const uint quadBaseThreadIdx = WaveGetLaneIndex() & ~3;
 		float ddy = WaveReadLaneAt(value, quadBaseThreadIdx + 2) - WaveReadLaneAt(value, quadBaseThreadIdx);
 		ddy = max(ddy, WaveReadLaneAt(value, quadBaseThreadIdx + 3) - WaveReadLaneAt(value, quadBaseThreadIdx + 1));
 		return ddy;
@@ -217,7 +217,7 @@ struct VariableRateBuilder
 #if VR_BUILDER_SINGLE_LANE_PER_QUAD
 		WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, processor.GetCoords() / 2u, variableRate, u_constants.frameIdx);
 #else
-		const uint2 outputCoords = groupID.xy * uint2(4, 2) + processor.m_localID / 2;
+		const uint2 outputCoords = groupID.xy * uint2(4, 4) + processor.m_localID / 2;
 		if ((localThreadIdx & 3) == 0 && all(outputCoords < u_constants.outputResolution))
 		{
 			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, variableRate, u_constants.frameIdx);

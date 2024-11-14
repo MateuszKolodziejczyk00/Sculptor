@@ -104,7 +104,7 @@ static void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, cons
 
 	const rg::BindDescriptorSetsScope additionalDescriptorSetsScope(graphBuilder, additionalDescriptorSets);
 
-	const math::Vector2u groupSize = vrSettings.variableRateBuilderUseSingleLanePerQuad ? math::Vector2u(16u, 8u) : math::Vector2u(8u, 4u);
+	const math::Vector2u groupSize = vrSettings.variableRateBuilderUseSingleLanePerQuad ? math::Vector2u(16u, 16u) : math::Vector2u(8u, 8u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} - Create Variable Rate Texture", vrSettings.debugName.AsString()),
 						  shader,

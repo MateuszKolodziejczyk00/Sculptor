@@ -133,7 +133,7 @@ struct SRTemporalResampler
 
 		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
 
-		const uint maxAge = 12u * lerp(rng.Next(), 0.6f, 1.f);
+		const float maxAge = Remap(centerPixelSurface.roughness, 0.15f, 0.4f, 8.f, 12.f) * lerp(rng.Next(), 0.6f, 1.f);
 
 		if(historyReservoir.age > maxAge)
 		{

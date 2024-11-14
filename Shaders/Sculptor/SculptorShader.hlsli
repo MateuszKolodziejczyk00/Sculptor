@@ -4,12 +4,13 @@
 
 #define IDX_NONE_32 0xffffffff
 
+#define FLOAT_MAX 3.402823466e+38
+
 #define PI 3.14159265359
 #define INV_PI 0.31830988618
 
 #define TWO_PI 6.28318530718
 #define INV_TWO_PI 0.15915494309
-
 
 #define SPT_GOLDEN_RATIO 1.61803398875
 
@@ -167,6 +168,14 @@ float MinComponent(in float4 value)
 	return min(value.x, min(value.y, min(value.z, value.w)));
 }
 
+
+template<typename TType>
+float Remap(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
+{
+	value = clamp(value, inputMin, inputMax);
+	const float t = (value - inputMin) / (inputMax - inputMin);
+	return lerp(outputMin, outputMax, t);
+}
 
 float S_Curve(float x, float steepness)
 {

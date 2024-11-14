@@ -40,12 +40,6 @@ float LoadVariance(in int2 coords)
 }
 
 
-float QuadSwizzle(in float value, in uint swizzleQuadBaseID, in uint quadLocalID, in uint4 swizzle)
-{
-	return WaveReadLaneAt(value, swizzleQuadBaseID + swizzle[quadLocalID]);
-}
-
-
 float2 LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
 {
 	const uint2 pixel = groupOffset + localID;
