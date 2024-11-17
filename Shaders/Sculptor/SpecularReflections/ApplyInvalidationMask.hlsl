@@ -34,23 +34,24 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 
 	if (isInvalidated)
 	{
+		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, coords);
+		const bool wasTraced = all(coords == traceCoords);
+
 		const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
 
 		uint packedProps = initialReservoir.MAndProps;
-		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -4u);
-		packedProps = AddPackedFlag(packedProps, SR_RESERVOIR_FLAGS_INVALID_RESULT);
+		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7u);
 
-		initialReservoir.MAndProps = packedProps;
-
-
-		const uint2 traceCoords = GetVariableTraceCoords(u_variableRateBlocksTexture, coords);
-		const bool wasTraced = all(coords == traceCoords);
 		if(!wasTraced)
 		{
+			packedProps = AddPackedFlag(packedProps, SR_RESERVOIR_FLAGS_INVALID_RESULT);
+
 			initialReservoir.weight = 0.f;
 		}
+
+		initialReservoir.MAndProps = packedProps;
 
 		u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
 	}

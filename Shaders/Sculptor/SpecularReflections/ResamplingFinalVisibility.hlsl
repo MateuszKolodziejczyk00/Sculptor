@@ -83,7 +83,7 @@ void ResamplingFinalVisibilityTestRTG()
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float bias = 0.07f;
+		const float bias = 0.04f;
 
 		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);

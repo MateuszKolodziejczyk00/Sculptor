@@ -172,7 +172,7 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 		}
 	}
 
-SPT_CHECK_MSG(shaderIt != std::cend(m_cachedShaders), "Failed to compile shader! {0}", shaderRelativePath.data());
+	SPT_CHECK_MSG(shaderIt != std::cend(m_cachedShaders), "Failed to compile shader! {0}", shaderRelativePath.data());
 }
 
 lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags)
