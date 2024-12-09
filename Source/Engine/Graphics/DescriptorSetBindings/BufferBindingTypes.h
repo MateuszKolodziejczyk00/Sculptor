@@ -115,6 +115,22 @@ public:
 						  m_buffer);
 	}
 
+	rdr::BufferView GetBoundBuffer() const
+	{
+		SPT_CHECK(IsValid());
+		SPT_CHECK(std::holds_alternative<rdr::BufferView>(m_buffer));
+
+		return std::get<rdr::BufferView>(m_buffer);
+	}
+
+	rg::RGBufferViewHandle GetBoundRGBuffer() const
+	{
+		SPT_CHECK(IsValid());
+		SPT_CHECK(std::holds_alternative<rg::RGBufferViewHandle>(m_buffer));
+
+		return std::get<rg::RGBufferViewHandle>(m_buffer);
+	}
+
 private:
 
 	using VariantType = std::variant<rg::RGBufferViewHandle,

@@ -21,6 +21,10 @@ IncludeProject("Optick")
 IncludeProject("PerformanceAPI")
 ResetProjectsSubgroupName()
 
+SetProjectsSubgroupName("Grapgics")
+IncludeProject("DLSS")
+ResetProjectsSubgroupName()
+
 SetProjectsSubgroupName("Tests")
 IncludeProject("GoogleTest")
 ResetProjectsSubgroupName()

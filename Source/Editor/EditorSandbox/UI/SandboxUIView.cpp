@@ -74,15 +74,6 @@ void SandboxUIView::DrawUI()
 		const ui::TextureID texture = PrepareViewportTexture(sceneContentSize.cast<Uint32>());
 
 		engn::FrameContext& frame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
-		
-		js::Launch(SPT_GENERIC_JOB_NAME,
-				   [this, &frame, texture = m_viewportTexture]
-				   {
-					   m_renderer.Tick(frame.GetDeltaTime());
-				   },
-				   js::JobDef()
-					   .SetPriority(js::EJobPriority::High)
-					   .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::ProcessViewsUpdate)));
 
 		js::Launch(SPT_GENERIC_JOB_NAME,
 				   [this, &frame, texture = m_viewportTexture]

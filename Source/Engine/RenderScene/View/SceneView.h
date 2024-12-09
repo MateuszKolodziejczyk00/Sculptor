@@ -55,8 +55,10 @@ public:
 
 	Real32					GetNearPlane() const;
 	std::optional<Real32>	GetFarPlane() const;
-	
-	Bool IsJittering() const;
+
+	void           SetJitter(math::Vector2f jitter);
+	void           ResetJitter();
+	math::Vector2f GetJitter() const;
 
 	const SceneViewData&		GetViewRenderingData() const;
 	const SceneViewCullingData&	GetCullingData() const;
@@ -74,9 +76,6 @@ public:
 
 protected:
 
-	void           SetJittering(Bool enableJittering);
-	math::Vector2f GetCurrentJitter(math::Vector2u resolution) const;
-
 	Bool IsPerspectiveMatrix() const;
 
 	void CachePrevFrameRenderingData();
@@ -87,20 +86,17 @@ protected:
 
 private:
 
-	math::Matrix4f		m_projectionMatrix;
-	math::Vector3f		m_viewLocation;
-	math::Quaternionf	m_rotation;
+	math::Matrix4f		m_projectionMatrix = {};
+	math::Vector3f		m_viewLocation     = math::Vector3f::Zero();
+	math::Quaternionf	m_rotation         = math::Quaternionf::Identity();
 
-	Real32					m_nearPlane;
-	Real32					m_farPlane;
+	Real32					m_nearPlane = 0.f;
+	Real32					m_farPlane  = 0.f;
 
-	SceneViewData			m_viewRenderingData;
-	SceneViewCullingData	m_viewCullingData;
+	SceneViewData			m_viewRenderingData = {};
+	SceneViewCullingData	m_viewCullingData   = {};
 
-	SceneViewData			m_prevFrameRenderingData;
-
-	Bool m_wantsJitter;
-	Uint32 m_jitterIndex;
+	SceneViewData			m_prevFrameRenderingData = {};
 };
 
 } // spt::rsc

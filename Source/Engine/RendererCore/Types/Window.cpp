@@ -13,10 +13,7 @@ Window::Window(lib::StringView name, const rhi::RHIWindowInitializationInfo& win
 {
 	const IntPtr surfaceHandle = m_platformWindow->GetRHISurfaceHandle();
 
-	rhi::RHI::InitializeGPUForWindow(surfaceHandle);
-
 	const Uint32 framesInFlight = RendererSettings::Get().framesInFlight;
-
 	GetRHI().InitializeRHI(windowInfo, framesInFlight, surfaceHandle);
 
 	m_platformWindow->GetOnResizedCallback().AddRawMember(this, &Window::OnWindowResized);

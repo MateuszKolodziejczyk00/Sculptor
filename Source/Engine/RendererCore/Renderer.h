@@ -48,7 +48,6 @@ class RENDERER_CORE_API Renderer
 public:
 
 	static void									Initialize();
-	static void									PostCreatedWindow();
 
 	static void									Uninitialize();
 

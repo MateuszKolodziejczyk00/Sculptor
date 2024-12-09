@@ -4,6 +4,12 @@
 #include "SculptorCoreTypes.h"
 
 
+namespace spt::rhi
+{
+struct Extension;
+} // spt::rhi
+
+
 namespace spt::vulkan
 {
 
@@ -23,7 +29,7 @@ private:
 
 	static Bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-	static Bool IsDeviceSupportingExtensions(VkPhysicalDevice device, const lib::DynamicArray<const char*> extensions);
+	static Bool IsDeviceSupportingExtensions(VkPhysicalDevice device, lib::Span<const rhi::Extension> extensions);
 
 	static Bool IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFlags requiredQueues, VkSurfaceKHR surface);
 };

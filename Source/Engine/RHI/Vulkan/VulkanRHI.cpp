@@ -15,6 +15,7 @@
 
 #include "RHICore/RHIInitialization.h"
 #include "RHICore/RHISubmitTypes.h"
+#include "RHICore/RHIPlugin.h"
 
 #include "Vulkan/Debug/GPUCrashTracker.h"
 
@@ -95,31 +96,40 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 	instanceInfo.pApplicationInfo = &applicationInfo;
 
 	// Extensions
-	const auto getExtensionNamePtr = [](std::string_view extensionName)
-	{
-		return extensionName.data();
-	};
+	rhi::RHIPluginsManager::Get().CollectExtensions();
+	const lib::Span<const rhi::Extension> rhiExtensions = rhi::RHIPluginsManager::Get().GetRHIExtensions();
 
-	lib::DynamicArray<const char*> extensionNames;
-	extensionNames.reserve(initInfo.extensionsNum);
+	std::unordered_set<lib::StringView> uniqueExtensions;
+	std::transform(rhiExtensions.begin(), rhiExtensions.end(),
+				   std::inserter(uniqueExtensions, uniqueExtensions.end()),
+				   [](const rhi::Extension& extension) -> const char*
+				   {
+					   return extension.GetCStr();
+				   });
 
-	for (Uint32 i = 0; i < initInfo.extensionsNum; ++i)
-	{
-		extensionNames.emplace_back(initInfo.extensions[i]);
-	}
+	std::copy(initInfo.extensions.cbegin(), initInfo.extensions.cend(), std::inserter(uniqueExtensions, uniqueExtensions.end()));
 
-	extensionNames.emplace_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
-	extensionNames.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+	uniqueExtensions.emplace(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+	uniqueExtensions.emplace(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
 #if SPT_RHI_DEBUG
 
-	extensionNames.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-	extensionNames.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	uniqueExtensions.emplace(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	uniqueExtensions.emplace(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #endif // SPT_RHI_DEBUG
 
-	instanceInfo.enabledExtensionCount   = static_cast<Uint32>(extensionNames.size());
-	instanceInfo.ppEnabledExtensionNames = !extensionNames.empty() ? extensionNames.data() : VK_NULL_HANDLE;
+	lib::DynamicArray<const char*> enabledExtensions;
+	enabledExtensions.reserve(uniqueExtensions.size());
+	std::transform(uniqueExtensions.begin(), uniqueExtensions.end(),
+				   std::inserter(enabledExtensions, enabledExtensions.end()),
+				   [](const std::string_view extension) -> const char*
+				   {
+					   return extension.data();
+				   });
+
+	instanceInfo.enabledExtensionCount   = static_cast<Uint32>(enabledExtensions.size());
+	instanceInfo.ppEnabledExtensionNames = !enabledExtensions.empty() ? enabledExtensions.data() : VK_NULL_HANDLE;
 
 	lib::DynamicArray<const char*> enabledLayers;
 
@@ -203,14 +213,10 @@ void VulkanRHI::Initialize(const rhi::RHIInitializationInfo& initInfo)
 		GPUCrashTracker::EnableGPUCrashDumps();
 	}
 #endif // SPT_ENABLE_GPU_CRASH_DUMPS
-}
 
-void VulkanRHI::InitializeGPUForWindow(IntPtr windowSurfaceHandle)
-{
 	SPT_CHECK(!!priv::g_data.instance);
 
-	const VkSurfaceKHR surface = reinterpret_cast<VkSurfaceKHR>(windowSurfaceHandle);
-	SPT_CHECK(!!surface);
+	const VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 	priv::g_data.physicalDevice = PhysicalDevice::SelectPhysicalDevice(priv::g_data.instance, surface);
 

@@ -420,10 +420,13 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 	SPT_CHECK(lib::HasAllFlags(destBufferView->GetUsageFlags(), rhi::EBufferUsage::TransferDst));
 
 	SPT_MAYBE_UNUSED
-	const rhi::TextureSubresourceRange& subresourceRange = sourceRGTextureView->GetSubresourceRange();
+	const Uint32 mipLevelsNum = sourceRGTextureView->GetMipLevelsNum();
 
-	//SPT_CHECK(subresourceRange.arrayLayersNum == 1u);
-	//SPT_CHECK(subresourceRange.mipLevelsNum == 1u);
+	SPT_MAYBE_UNUSED
+	const Uint32 arrayLayersNum = sourceRGTextureView->GetArrayLevelsNum();
+
+	SPT_CHECK(mipLevelsNum == 1u);
+	SPT_CHECK(arrayLayersNum == 1u);
 
 	const math::Vector3u resolution = sourceRGTextureView->GetResolution();
 
@@ -467,6 +470,63 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
 	dependenciesBuilder.AddTextureAccess(sourceRGTextureView, ERGTextureAccess::TransferSource);
 	dependenciesBuilder.AddBufferAccess(destBufferView, ERGBufferAccess::Write, rhi::EPipelineStage::Transfer);
+
+	AddNodeInternal(node, dependencies);
+}
+
+void RenderGraphBuilder::CopyBufferToFullTexture(const RenderGraphDebugName& copyName, RGBufferViewHandle sourceBufferView, Uint64 bufferOffset, RGTextureViewHandle destRGTextureView)
+{
+	SPT_CHECK(sourceBufferView.IsValid());
+	SPT_CHECK(destRGTextureView.IsValid());
+
+	SPT_CHECK(lib::HasAllFlags(sourceBufferView->GetUsageFlags(), rhi::EBufferUsage::TransferSrc));
+
+	SPT_MAYBE_UNUSED
+	const Uint32 mipLevelsNum = destRGTextureView->GetMipLevelsNum();
+
+	SPT_MAYBE_UNUSED
+	const Uint32 arrayLayersNum = destRGTextureView->GetArrayLevelsNum();
+
+	SPT_CHECK(mipLevelsNum == 1u);
+	SPT_CHECK(arrayLayersNum == 1u);
+
+	const math::Vector3u resolution = destRGTextureView->GetResolution();
+
+	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::TextureView> textureViewInstance = destRGTextureView->GetResource();
+		SPT_CHECK(!!textureViewInstance);
+
+		const lib::SharedRef<rdr::Texture>& textureInstance = textureViewInstance->GetTexture();
+
+		const rhi::TextureSubresourceRange& textureSubresource = destRGTextureView->GetSubresourceRange();
+
+		const math::Vector3u copyExtent = destRGTextureView->GetResolution();
+		const math::Vector3u copyOffset = math::Vector3u::Zero();
+
+		const rg::RGBufferHandle destBuffer = sourceBufferView->GetBuffer();
+		const lib::SharedPtr<rdr::Buffer>& bufferInstance = destBuffer->GetResource();
+		SPT_CHECK(!!bufferInstance);
+
+		recorder.CopyBufferToTexture(lib::Ref(bufferInstance), 
+									 bufferOffset,
+									 textureInstance,
+									 rhi::GetFullAspectForFormat(destRGTextureView->GetFormat()),
+									 copyExtent,
+									 copyOffset,
+									 textureSubresource.baseMipLevel,
+									 textureSubresource.baseArrayLayer);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(copyName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddBufferAccess(sourceBufferView, ERGBufferAccess::Read, rhi::EPipelineStage::Transfer);
+	dependenciesBuilder.AddTextureAccess(destRGTextureView, ERGTextureAccess::TransferDest);
 
 	AddNodeInternal(node, dependencies);
 }
@@ -727,6 +787,10 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		{
 			return rhi::TextureTransition::RayTracingGeneral;
 		}
+		else if (nodeType == ERenderGraphNodeType::Generic)
+		{
+			return rhi::TextureTransition::ComputeGeneral;
+		}
 		else
 		{
 			SPT_CHECK_NO_ENTRY();
@@ -745,6 +809,10 @@ const rhi::BarrierTextureTransitionDefinition& RenderGraphBuilder::GetTransition
 		else if (nodeType == ERenderGraphNodeType::TraceRays)
 		{
 			return rhi::TextureTransition::RayTracingReadOnly;
+		}
+		else if (nodeType == ERenderGraphNodeType::Generic)
+		{
+			return rhi::TextureTransition::ReadOnly;
 		}
 		else
 		{

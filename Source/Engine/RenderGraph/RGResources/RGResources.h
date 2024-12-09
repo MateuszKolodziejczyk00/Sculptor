@@ -244,6 +244,12 @@ public:
 		return m_texture;
 	}
 
+	const rhi::RHITexture& GetRHI() const
+	{
+		SPT_CHECK(IsAcquired());
+		return m_texture->GetRHI();
+	}
+
 	void AcquireResource(lib::SharedPtr<rdr::Texture> texture)
 	{
 		SPT_CHECK(!IsAcquired());
@@ -409,6 +415,23 @@ public:
 		return m_texture->GetMipSize(GetSubresourceRange().baseMipLevel);
 	}
 
+
+	Uint32 GetMipLevelsNum() const
+	{
+		const rhi::TextureSubresourceRange& range = GetSubresourceRange();
+		return range.mipLevelsNum == rhi::constants::allRemainingMips
+			? m_texture->GetMipLevelsNum() - range.baseMipLevel
+			: range.mipLevelsNum;
+	}
+
+	Uint32 GetArrayLevelsNum() const
+	{
+		const rhi::TextureSubresourceRange& range = GetSubresourceRange();
+		return range.arrayLayersNum == rhi::constants::allRemainingArrayLayers
+			? m_texture->GetTextureDefinition().arrayLayers - range.baseArrayLayer
+			: range.arrayLayersNum;
+	}
+
 	rhi::EFragmentFormat GetFormat() const
 	{
 		return GetTexture()->GetFormat();
@@ -448,6 +471,12 @@ public:
 		// texture views are not reused so they don't need to be released after acquire
 		SPT_CHECK(!IsAcquired());
 		m_textureView = CreateView();
+	}
+
+	const rhi::RHITextureView& GetRHI() const
+	{
+		SPT_CHECK(IsAcquired());
+		return m_textureView->GetRHI();
 	}
 
 private:

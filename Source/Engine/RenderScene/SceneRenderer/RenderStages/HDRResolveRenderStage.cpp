@@ -542,7 +542,7 @@ void HDRResolveRenderStage::Initialize(RenderView& renderView)
 
 	rhi::BufferDefinition bufferDef;
 	bufferDef.size  = sizeof(ViewExposureData);
-	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Uniform, rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
+	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Uniform, rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
 	m_viewExposureBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Exposure Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 
 	const Real32 defaultExposure = 1.f;

@@ -1,9 +1,7 @@
 #include "SculptorShader.hlsli"
 
 [[descriptor_set(TemporalAADS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
 
-#include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 
@@ -198,7 +196,7 @@ void TemporalAACS(CS_INPUT input)
 			}
 
 			float3 historySample = SampleCatmullRom(u_historyColor, u_linearSampler, reporojectedUV, float2(outputRes));
-			historySample = ExposedHistoryLuminanceToCurrentExposedLuminance(historySample);
+			historySample *= (u_exposure[u_params.exposureOffset] / u_exposure[u_params.historyExposureOffset]);
 			historySample /= (Luminance(historySample) + 1.f);
 
 			if(u_params.useYCoCg)

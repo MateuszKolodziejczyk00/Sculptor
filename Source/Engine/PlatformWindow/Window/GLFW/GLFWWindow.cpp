@@ -5,6 +5,7 @@
 #include "Logging/Log.h"
 #include "RHIBridge/RHIImpl.h"
 #include "RHICore/RHIInitialization.h"
+#include "RHICore/RHIPlugin.h"
 #include "GLFWInputAdapter.h"
 
 #include <GLFW/glfw3.h>
@@ -43,11 +44,12 @@ namespace priv
 
 #if SPT_VULKAN_RHI
 
-static RequiredExtensionsInfo GetRequiredExtensions()
+static lib::Span<const char*> GetRequiredExtensions()
 {
-	RequiredExtensionsInfo extensionsInfo;
-	extensionsInfo.extensions = glfwGetRequiredInstanceExtensions(&extensionsInfo.extensionsNum);
-	return extensionsInfo;
+	Uint32 extensionsNum = 0u;
+	const char** extensionsPtr = glfwGetRequiredInstanceExtensions(&extensionsNum);
+	lib::Span<const char*> extensions(extensionsPtr, static_cast<SizeType>(extensionsNum));
+	return extensions;
 }
 
 static void InitializeRHIWindow(GLFWwindow* windowHandle)
@@ -138,6 +140,35 @@ static void OnMouseScroll(GLFWwindow* window, double xOffset, double yOffset)
 } // priv
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIPlugin =====================================================================================
+
+class GLFWRHIPlugin : public rhi::RHIPlugin
+{
+protected:
+
+	using Super = rhi::RHIPlugin;
+
+public:
+
+	virtual void CollectExtensions(rhi::ExtensionsCollector& collector) const override;
+};
+
+
+void GLFWRHIPlugin::CollectExtensions(rhi::ExtensionsCollector& collector) const
+{
+	Super::CollectExtensions(collector);
+
+	const lib::Span<const char*> extensions = priv::GetRequiredExtensions();
+	
+	for (const char* extension : extensions)
+	{
+		collector.AddRHIExtension(lib::StringView(extension));
+	}
+}
+
+GLFWRHIPlugin g_glfwRHIPlugin;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // GLFWWindow ====================================================================================
 
 void GLFWWindow::Initialize()
@@ -150,11 +181,6 @@ void GLFWWindow::Initialize()
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-}
-
-RequiredExtensionsInfo GLFWWindow::GetRequiredRHIExtensionNames()
-{
-	return priv::GetRequiredExtensions();
 }
 
 GLFWWindow::GLFWWindow(lib::StringView name, math::Vector2u resolution)

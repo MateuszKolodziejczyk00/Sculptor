@@ -3,7 +3,6 @@
 #include "PlatformWindowMacros.h"
 #include "SculptorCoreTypes.h"
 #include "Delegates/MulticastDelegate.h"
-#include "Window/PlatformWindowCommon.h"
 #include "UIContext.h"
 
 
@@ -21,8 +20,6 @@ class PLATFORM_WINDOW_API GLFWWindow
 public:
 
 	static void							Initialize();
-
-	static RequiredExtensionsInfo		GetRequiredRHIExtensionNames();
 
 	GLFWWindow(lib::StringView name, math::Vector2u resolution);
 	~GLFWWindow();

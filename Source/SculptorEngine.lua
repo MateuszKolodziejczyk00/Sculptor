@@ -36,6 +36,12 @@ IncludeProject("ShaderCompiler")
 SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("RendererCore")
 IncludeProject("RenderGraph")
+
+SetProjectsSubgroupName("Graphics/Rendering/DLSS")
+IncludeProjectFromDirectory("DLSS/SculptorDLSSVulkan", "SculptorDLSSVulkan")
+IncludeProjectFromDirectory("DLSS/SculptorDLSS", "SculptorDLSS")
+
+SetProjectsSubgroupName("Graphics/Rendering")
 IncludeProject("Graphics")
 IncludeProject("Materials")
 

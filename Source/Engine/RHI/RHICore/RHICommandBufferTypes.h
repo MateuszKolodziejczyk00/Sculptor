@@ -40,11 +40,7 @@ enum Type : Uint32
 
 struct CommandBufferDefinition
 {
-	CommandBufferDefinition()
-		: queueType(EDeviceCommandQueueType::Graphics)
-		, cmdBufferType(ECommandBufferType::Primary)
-		, complexityClass(ECommandBufferComplexityClass::Default)
-	{ }
+	CommandBufferDefinition() = default;
 
 	CommandBufferDefinition(EDeviceCommandQueueType inQueueType, ECommandBufferType inCmdBufferType, ECommandBufferComplexityClass::Type inComplexityClass = ECommandBufferComplexityClass::Default)
 		: queueType(inQueueType)
@@ -52,9 +48,9 @@ struct CommandBufferDefinition
 		, complexityClass(inComplexityClass)
 	{ }
 
-	EDeviceCommandQueueType					queueType;
-	ECommandBufferType						cmdBufferType;
-	ECommandBufferComplexityClass::Type		complexityClass;
+	EDeviceCommandQueueType					queueType       = EDeviceCommandQueueType::Graphics;
+	ECommandBufferType						cmdBufferType   = ECommandBufferType::Primary;
+	ECommandBufferComplexityClass::Type		complexityClass = ECommandBufferComplexityClass::Default;
 };
 
 

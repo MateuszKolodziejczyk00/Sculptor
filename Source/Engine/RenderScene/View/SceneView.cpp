@@ -1,34 +1,14 @@
 #include "SceneView.h"
 #include "MathUtils.h"
-#include "Sequences.h"
 #include "EngineFrame.h"
 
 namespace spt::rsc
 {
 
-namespace jitter
-{
-
-static math::Vector2f GetJitter(Uint64 frameIdx, math::Vector2u resolution)
-{
-	SPT_CHECK(resolution.x() != 0 && resolution.y() != 0);
-
-	const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx & 7);
-	const math::Vector2f sequenceVal = math::Vector2f(math::Sequences::Halton<Real32>(sequenceIdx, 2), math::Sequences::Halton<Real32>(sequenceIdx, 3));
-	return (sequenceVal * 2.f - math::Vector2f::Constant(1.f)).cwiseProduct(resolution.cast<Real32>().cwiseInverse());
-}
-
-} // jitter
-
 SceneView::SceneView()
-	: m_projectionMatrix{}
-	, m_viewLocation(math::Vector3f::Zero())
-	, m_rotation(math::Quaternionf::Identity())
-	, m_nearPlane(0.f)
-	, m_farPlane(0.f)
-	, m_wantsJitter(false)
-	, m_jitterIndex(0)
-{ }
+{
+	SetJitter(math::Vector2f::Zero());
+}
 
 void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
 {
@@ -139,9 +119,19 @@ std::optional<Real32> SceneView::GetFarPlane() const
 	return m_farPlane;
 }
 
-Bool SceneView::IsJittering() const
+void SceneView::SetJitter(math::Vector2f jitter)
 {
-	return m_wantsJitter;
+	m_viewRenderingData.jitter = jitter;
+}
+
+void SceneView::ResetJitter()
+{
+	m_viewRenderingData.jitter = math::Vector2f::Zero();
+}
+
+math::Vector2f SceneView::GetJitter() const
+{
+	return m_viewRenderingData.jitter;
 }
 
 const SceneViewData& SceneView::GetViewRenderingData() const
@@ -207,16 +197,6 @@ Real32 SceneView::ComputeProjectedDepth(Real32 linearDepth) const
 	return projected.z() / projected.w();
 }
 
-void SceneView::SetJittering(Bool enableJittering)
-{
-	m_wantsJitter = enableJittering;
-}
-
-math::Vector2f SceneView::GetCurrentJitter(math::Vector2u resolution) const
-{
-	return IsJittering() ? jitter::GetJitter(m_jitterIndex, resolution) : math::Vector2f::Zero();
-}
-
 Bool SceneView::IsPerspectiveMatrix() const
 {
 	return math::Utils::IsNearlyZero(m_projectionMatrix.coeff(3, 3));
@@ -231,8 +211,7 @@ void SceneView::UpdateViewRenderingData(math::Vector2u resolution)
 {
 	const math::Vector2f prevJitter = m_prevFrameRenderingData.jitter;
 
-	++m_jitterIndex;
-	const math::Vector2f jitter = GetCurrentJitter(resolution);
+	const math::Vector2f jitter = GetJitter();
 
 	math::Matrix4f projectionMatrixWithJitter = m_projectionMatrix;
 	projectionMatrixWithJitter(0, 0) += jitter.x();

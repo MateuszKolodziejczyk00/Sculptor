@@ -155,6 +155,9 @@ public:
 	template<typename TDescriptorSetStatesRange>
 	void TraceRaysIndirect(const RenderGraphDebugName& traceName, rdr::PipelineStateID rayTracingPipelineID, RGBufferViewHandle indirectArgsBuffer, Uint64 indirectArgsOffset, TDescriptorSetStatesRange&& dsStatesRange);
 
+	template<typename TPassParameters, typename TCallable>
+	void AddLambdaPass(const RenderGraphDebugName& passName, const TPassParameters& parameters, TCallable&& callable);
+
 	void FillBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range, Uint32 data);
 
 	void FillFullBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint32 data);
@@ -171,6 +174,7 @@ public:
 	void CopyFullTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGTextureViewHandle destRGTextureView);
 
 	void CopyTextureToBuffer(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGBufferViewHandle destBufferView, Uint64 bufferOffset);
+	void CopyBufferToFullTexture(const RenderGraphDebugName& copyName, RGBufferViewHandle sourceBufferView, Uint64 bufferOffset, RGTextureViewHandle destRGTextureView);
 
 	void ClearTexture(const RenderGraphDebugName& clearName, RGTextureViewHandle textureView, const rhi::ClearColor& clearColor);
 
@@ -458,6 +462,21 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 	AddNodeInternal(node, dependencies);
 }
 
+template<typename TPassParameters, typename TCallable>
+void RenderGraphBuilder::AddLambdaPass(const RenderGraphDebugName& passName, const TPassParameters& parameters, TCallable&& callable)
+{
+	using LambdaType = std::remove_cvref_t<decltype(callable) > ;
+	using NodeType = RGLambdaNode<LambdaType>;
+
+	NodeType& node = AllocateNode<NodeType>(passName, ERenderGraphNodeType::Generic, std::move(callable));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies, rhi::EPipelineStage::None);
+
+	BuildParametersDependencies(parameters, dependenciesBuilder);
+
+	AddNodeInternal(node, dependencies);
+}
 
 template<typename TNodeType, typename... TArgs>
 TNodeType& RenderGraphBuilder::AllocateNode(const RenderGraphDebugName& name, ERenderGraphNodeType type, TArgs&&... args)

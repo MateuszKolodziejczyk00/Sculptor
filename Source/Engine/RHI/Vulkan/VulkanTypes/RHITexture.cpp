@@ -726,6 +726,22 @@ const rhi::TextureSubresourceRange& RHITextureView::GetSubresourceRange() const
 	return m_subresourceRange;
 }
 
+Uint32 RHITextureView::GetMipLevelsNum() const
+{
+	SPT_CHECK(m_texture);
+	return m_subresourceRange.mipLevelsNum == rhi::constants::allRemainingMips
+		? m_texture->GetDefinition().mipLevels - m_subresourceRange.baseMipLevel
+		: m_subresourceRange.mipLevelsNum;
+}
+
+Uint32 RHITextureView::GetArrayLevelsNum() const
+{
+	SPT_CHECK(m_texture);
+	return m_subresourceRange.arrayLayersNum == rhi::constants::allRemainingArrayLayers
+		? m_texture->GetDefinition().arrayLayers - m_subresourceRange.baseArrayLayer
+		: m_subresourceRange.arrayLayersNum;
+}
+
 rhi::ETextureType RHITextureView::GetTextureType() const
 {
 	SPT_CHECK(m_texture);

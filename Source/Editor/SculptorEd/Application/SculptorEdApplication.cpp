@@ -62,8 +62,6 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	windowInitInfo.enableVSync     = false;
 	m_window = rdr::ResourcesManager::CreateWindow("SculptorEd", windowInitInfo);
 
-	rdr::Renderer::PostCreatedWindow();
-
 	gfx::global::GlobalResourcesRegistry::Get().InitializeAll();
 }
 

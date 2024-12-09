@@ -39,3 +39,6 @@
 [submodule "Source/ThirdParty/GoogleTest/GoogleTest"]
 	path = Source/ThirdParty/GoogleTest/GoogleTest
 	url = https://github.com/google/googletest
+[submodule "Source/ThirdParty/DLSS/DLSS"]
+	path = Source/ThirdParty/DLSS/DLSS
+	url = https://github.com/NVIDIA/DLSS

@@ -34,6 +34,8 @@ public:
 
 	static const lib::StringView	GetExtension(lib::StringView path);
 
+	static const lib::String&		GetExecutablePath();
+
 	// Utils =============================================
 
 	static void AppendPath(lib::String& path, lib::StringView pathToAppend);

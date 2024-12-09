@@ -1,5 +1,8 @@
 #pragma once
 
+#include <variant>
+
+
 namespace spt::lib
 {
 
@@ -12,8 +15,16 @@ struct Overload : TTypes...
 	using TTypes::operator()...;
 };
 
+
 // template deduction rule
 template<typename... TTypes>
 Overload(TTypes...)->Overload<TTypes...>;
+
+
+template<typename TVariant, typename... TCallables>
+auto CallOverload(TVariant&& variant, TCallables&&... callables)
+{
+	return std::visit(Overload{ std::forward<TCallables>(callables)... }, std::forward<TVariant>(variant));
+}
 
 } // spt::lib

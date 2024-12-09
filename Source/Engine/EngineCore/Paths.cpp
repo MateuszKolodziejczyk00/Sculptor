@@ -22,6 +22,7 @@ static lib::String	g_tracesPath;
 static lib::String	g_gpuCrashDumpsPath;
 static lib::String	g_contentPath;
 static lib::String	g_imGuiConfigPath;
+static lib::String	g_executablePath;
 
 } // priv
 
@@ -35,6 +36,7 @@ void Paths::Initialize(const CommandLineArguments& cmdLineArgs)
 	priv::g_gpuCrashDumpsPath = Combine(priv::g_enginePath, "Saved/GPUCrashDumps");
 	priv::g_contentPath       = Combine(priv::g_enginePath, "Content");
 	priv::g_imGuiConfigPath   = Combine(priv::g_configsPath, "ImGuiConfig.ini");
+	priv::g_executablePath    = platf::Platform::GetExecutablePath();
 }
 
 const lib::String& Paths::GetEnginePath()
@@ -76,6 +78,11 @@ const lib::StringView Paths::GetExtension(lib::StringView path)
 {
 	const SizeType dotPosition = path.rfind('.');
 	return dotPosition != lib::StringView::npos ? lib::StringView(std::begin(path) + dotPosition + 1, std::end(path)) : lib::StringView();
+}
+
+const spt::lib::String& Paths::GetExecutablePath()
+{
+	return priv::g_executablePath;
 }
 
 void Paths::AppendPath(lib::String& path, lib::StringView pathToAppend)

@@ -25,7 +25,7 @@
 namespace spt::rdr
 {
 
-lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef)
+lib::SharedRef<RenderContext> ResourcesManager::CreateContext(const RendererResourceName& name, const rhi::ContextDefinition& contextDef /*= rhi::ContextDefinition(*/)
 {
 	return lib::MakeShared<RenderContext>(name, contextDef);
 }

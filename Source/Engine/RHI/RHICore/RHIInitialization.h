@@ -8,12 +8,9 @@ namespace spt::rhi
 struct RHIInitializationInfo
 {
 	RHIInitializationInfo()
-		: extensions(nullptr)
-		, extensionsNum(0)
 	{ }
 
-	const char* const*		extensions;
-	Uint32					extensionsNum;
+	lib::DynamicArray<lib::StringView> extensions;
 };
 
 struct RHIWindowInitializationInfo

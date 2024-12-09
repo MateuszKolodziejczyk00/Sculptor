@@ -48,21 +48,12 @@ void Renderer::Initialize()
 {
 	platf::PlatformWindow::Initialize();
 
-	const platf::RequiredExtensionsInfo requiredExtensions = platf::PlatformWindow::GetRequiredRHIExtensionNames();
-
-	rhi::RHIInitializationInfo initializationInfo;
-	initializationInfo.extensions		= requiredExtensions.extensions;
-	initializationInfo.extensionsNum	= requiredExtensions.extensionsNum;
-
-	rhi::RHI::Initialize(initializationInfo);
+	rhi::RHI::Initialize(rhi::RHIInitializationInfo{});
 
 	GetShadersManager().Initialize();
 
 	GetSamplersCache().Initialize();
-}
 
-void Renderer::PostCreatedWindow()
-{
 	CurrentFrameContext::Initialize(RendererSettings::Get().framesInFlight);
 
 	GetDeviceQueuesManager().Initialize();

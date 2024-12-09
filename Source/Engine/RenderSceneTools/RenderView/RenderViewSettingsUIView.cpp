@@ -3,6 +3,9 @@
 #include "ImGui/SculptorImGui.h"
 #include "Camera/CameraSettings.h"
 #include "ImGui/DockBuilder.h"
+#include "View/Systems/TemporalAAViewRenderSystem.h"
+#include "Techniques/TemporalAA//StandardTAARenderer.h"
+#include "Techniques/TemporalAA//DLSSRenderer.h"
 
 namespace spt::rsc
 {
@@ -47,13 +50,6 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		view.SetLocation(location);
 	}
 	
-	const char* aaModes[rsc::EAntiAliasingMode::NUM] = { "None", "TAA" };
-	int aaMode = view.GetAntiAliasingMode();
-	if (ImGui::Combo("Anti Aliasing Mode", &aaMode, aaModes, SPT_ARRAY_SIZE(aaModes)))
-	{
-		view.SetAntiAliasingMode(static_cast<rsc::EAntiAliasingMode::Type>(aaMode));
-	}
-	
 	const RenderSceneEntityHandle viewEntity = view.GetViewEntity();
 	if (CameraLensSettingsComponent* lensSettings = viewEntity.try_get<CameraLensSettingsComponent>())
 	{
@@ -61,6 +57,36 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		{
 			ImGui::ColorEdit3("Lens Dirt Intensity", lensSettings->lensDirtIntensity.data());
 			ImGui::ColorEdit3("Lens Dirt Threshold", lensSettings->lensDirtThreshold.data());
+		}
+	}
+
+	if (lib::SharedPtr<rsc::TemporalAAViewRenderSystem> taaSystem = view.FindRenderSystem<rsc::TemporalAAViewRenderSystem>())
+	{
+		const char* modes[] = { "None", "DLSS", "Standard TAA" };
+		const lib::StringView currentMode = taaSystem->GetRendererName();
+		const auto foundMode = std::find(std::begin(modes), std::end(modes), currentMode);
+		SPT_CHECK(foundMode != std::end(modes));
+		int currentModeIdx = static_cast<int>(std::distance(std::begin(modes), foundMode));
+
+		if (ImGui::Combo("Anti Aliasing Mode", &currentModeIdx, modes, SPT_ARRAY_SIZE(modes)))
+		{
+			lib::UniquePtr<gfx::TemporalAARenderer> newRenderer;
+
+			if (currentModeIdx == 1)
+			{
+				newRenderer = std::make_unique<gfx::DLSSRenderer>();
+			}
+			else if (currentModeIdx == 2)
+			{
+				newRenderer = std::make_unique<gfx::StandardTAARenderer>();
+			}
+
+			if (newRenderer && !newRenderer->Initialize(gfx::TemporalAAInitSettings{}))
+			{
+				newRenderer.reset();
+			}
+
+			taaSystem->SetTemporalAARenderer(std::move(newRenderer));
 		}
 	}
 }

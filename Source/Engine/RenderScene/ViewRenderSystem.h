@@ -31,6 +31,8 @@ public:
 
 	virtual void CollectRenderViews(const RenderScene& renderScene, const RenderView& owningView, INOUT RenderViewsCollector& viewsCollector) {};
 
+	virtual void PrepareRenderView(RenderView& renderView) {};
+
 	virtual void PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) {};
 
 	RenderView& GetOwningView() const;

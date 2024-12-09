@@ -31,6 +31,16 @@ function ArrayAdd(array, element)
     array[GetTableLength(array) + 1] = element
 end
 
+function invert_path(relative_path)
+    local inverted = {}
+
+    for _ in relative_path:gmatch("[^/]+") do
+        table.insert(inverted, "..") -- Add one `..` for each directory level
+    end
+
+    return table.concat(inverted, "/") .. "/"
+end
+
 -- Project Generation =====================================================================================
 
 EConfiguration =
@@ -73,6 +83,8 @@ Project =
 OutputDirectory = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 
 projectToPublicIncludePaths = {}
+projectToPublicRelativeIncludePaths = {} -- always relative to Source folder
+projectToPublicAbsoluteIncludePaths = {}
 
 projectToPublicDependencies = {}
 
@@ -82,7 +94,8 @@ projectToLinkLibNames = {}
 
 projectToPrecompiledLibsPath = {}
 
-projectToAdditionalCopyCommands = {}
+projectToAdditionalAbsoluteCopyCommands = {}
+projectToAdditionalRelativeCopyCommands = {}
 
 currentProjectsType = nil
 
@@ -100,6 +113,8 @@ function Project:CreateProjectImpl(directory, name, targetType, language)
     local projectType = currentProjectsType
     local inProjectLocation = projectType .. "/" .. directory
 
+    local inEngineSourceRelativePath = invert_path(inProjectLocation) -- hack: before final location beacause we need location from script, not from project
+
     if projectType == EProjectType.ThirdParty then
         inProjectLocation = inProjectLocation .. "/" .. directory
     end
@@ -111,29 +126,32 @@ function Project:CreateProjectImpl(directory, name, targetType, language)
         ["targetType"] = targetType,
         ["projectType"] = projectType,
         ["language"] = language or ELanguage.CPP,
-        -- reference path from other projects to this project
-        referenceProjectLocation = "../../" .. inProjectLocation,
+        engineSourceRelativePath = inEngineSourceRelativePath,
+        projectLocation = inProjectLocation,
         configurations =
         {
             [EConfiguration.Debug] = {
                 publicDependencies = {},
                 privateDependencies = {},
                 publicDefines = {},
-                publicIncludePaths = {}
+                publicRelativeIncludePaths = {},
+                publicAbsoluteIncludePaths = {}
             },
             [EConfiguration.Development] = 
             {
                 publicDependencies = {},
                 privateDependencies = {},
                 publicDefines = {},
-                publicIncludePaths = {}
+                publicRelativeIncludePaths = {},
+                publicAbsoluteIncludePaths = {}
             },
             [EConfiguration.Release] = 
             {
                 publicDependencies = {},
                 privateDependencies = {},
                 publicDefines = {},
-                publicIncludePaths = {}
+                publicRelativeIncludePaths = {},
+                publicAbsoluteIncludePaths = {}
             }
         }
     }
@@ -155,19 +173,21 @@ function Project:SetupProject()
         location (self.directory)
     end
 
-	targetdir ("../../../Binaries/" .. OutputDirectory)
-	objdir ("../../../Intermediate/" .. OutputDirectory)
+	targetdir (self:GetEngineSourceRelativePath() .. "../Binaries/" .. OutputDirectory)
+	objdir (self:GetEngineSourceRelativePath() .. "../Intermediate/" .. OutputDirectory)
 
-	libdirs ("../../../Binaries/" .. OutputDirectory)
+	libdirs (self:GetEngineSourceRelativePath() .. "../Binaries/" .. OutputDirectory)
 
     libdirs (self:GetAdditionalLibPaths())
 
     projectToPublicDependencies[self.name] = {}
     projectToPublicDefines[self.name] = {}
-    projectToPublicIncludePaths[self.name] = {}
+    projectToPublicRelativeIncludePaths[self.name] = {}
+    projectToPublicAbsoluteIncludePaths[self.name] = {}
     projectToLinkLibNames[self.name] = {}
     projectToPrecompiledLibsPath[self.name] = {}
-    projectToAdditionalCopyCommands[self.name] = {}
+    projectToAdditionalAbsoluteCopyCommands[self.name] = {}
+    projectToAdditionalRelativeCopyCommands[self.name] = {}
 
     filter "configurations:Debug"
     self:BuildConfiguration(EConfiguration.Debug, EPlatform.Windows)
@@ -204,7 +224,8 @@ function Project:BuildConfiguration(configuration, platform)
     self.currentConfiguration = configuration
     
     projectToLinkLibNames[self.name][configuration] = {}
-    projectToAdditionalCopyCommands[self.name][configuration] = {}
+    projectToAdditionalAbsoluteCopyCommands[self.name][configuration] = {}
+    projectToAdditionalRelativeCopyCommands[self.name][configuration] = {}
     projectToPrecompiledLibsPath[self.name][configuration] = {}
 
     if configuration == EConfiguration.Debug then
@@ -255,30 +276,42 @@ function Project:BuildConfiguration(configuration, platform)
     end
 
     -- include paths
-    self:AddPublicReferenceIncludePath(self.referenceProjectLocation)
-    self:AddPrivateRelativeIncludePath("")
+    self:AddPublicRelativeIncludePath("")
 
-    local publicDependenciesPublicIncludePaths = self:GetPublicInlcudePathsOfPublicDependencies(configuration)
-    for includePath, _ in pairs(publicDependenciesPublicIncludePaths)
+    local publicDependenciesPublicAbsoluteIncludePaths = self:GetPublicAbsoluteInlcudePathsOfPublicDependencies(configuration)
+    for includePath, _ in pairs(publicDependenciesPublicAbsoluteIncludePaths)
     do
         self:AddIncludePathInternal(includePath)
     end
 
-    projectToPublicIncludePaths[self.name][configuration] = self:GetThisProjectPublicIncludePaths(configuration)
+    local publicDependenciesPublicRelativeIncludePaths = self:GetPublicRelativeInlcudePathsOfPublicDependencies(configuration)
+    for includePath, _ in pairs(publicDependenciesPublicRelativeIncludePaths)
+    do
+        self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. includePath)
+    end
 
-    local privateDependenciesPublicIncludePath = self:GetPublicIncludePathsOfPrivateDependencies(configuration)
-    for includePath, _ in pairs(privateDependenciesPublicIncludePath)
+    projectToPublicRelativeIncludePaths[self.name][configuration] = self:GetThisProjectPublicRelativeIncludePaths(configuration)
+    projectToPublicAbsoluteIncludePaths[self.name][configuration] = self:GetThisProjectPublicAbsoluteIncludePaths(configuration)
+
+    local privateDependenciesPublicAbsoluteIncludePath = self:GetPublicAbsoluteIncludePathsOfPrivateDependencies(configuration)
+    for includePath, _ in pairs(privateDependenciesPublicAbsoluteIncludePath)
     do
         self:AddIncludePathInternal(includePath)
+    end
+
+    local privateDependenciesPublicRelativeIncludePath = self:GetPublicRelativeIncludePathsOfPrivateDependencies(configuration)
+    for includePath, _ in pairs(privateDependenciesPublicRelativeIncludePath)
+    do
+        self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. includePath)
     end
 
     -- add additional includes in case if for example we want to include only headers from some project, without linking it's dll
     if self.projectType == EProjectType.Editor or self.projectType == EProjectType.Engine then
-        self:AddIncludePathInternal("../../Engine")
+        self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. "Engine")
     end
 
     if self.projectType == EProjectType.Editor then
-        self:AddIncludePathInternal("../../Editor")
+        self:AddIncludePathInternal(self:GetEngineSourceRelativePath() .. "Editor")
     end
 
     -- files
@@ -295,14 +328,22 @@ function Project:BuildConfiguration(configuration, platform)
     end
 
     if self.targetType ~= ETargetType.None then
-        for copyCommand, _ in pairs(projectToAdditionalCopyCommands[self.name][configuration])
+        for copyCommand, _ in pairs(projectToAdditionalRelativeCopyCommands[self.name][configuration])
+        do
+            prelinkcommands
+            {
+                "{COPY} " .. self:GetEngineSourceRelativePath() .. copyCommand
+            }
+        end
+        projectToAdditionalRelativeCopyCommands[self.name][self.currentConfiguration] = {}
+        for copyCommand, _ in pairs(projectToAdditionalAbsoluteCopyCommands[self.name][configuration])
         do
             prelinkcommands
             {
                 copyCommand
             }
         end
-        projectToAdditionalCopyCommands[self.name][self.currentConfiguration] = {}
+        projectToAdditionalAbsoluteCopyCommands[self.name][self.currentConfiguration] = {}
     end
 end
 
@@ -325,23 +366,18 @@ function Project:AddPrivateDependency(dependency)
 end
 
 function Project:AddPublicRelativeIncludePath(path)
-    self.configurations[self.currentConfiguration].publicIncludePaths[self.referenceProjectLocation .. path] = true
+    self.configurations[self.currentConfiguration].publicRelativeIncludePaths[self:GetProjectLocation() .. "/" .. path] = true
     self:AddPrivateRelativeIncludePath(path)
 end
 
 function Project:AddPublicAbsoluteIncludePath(path)
-    self.configurations[self.currentConfiguration].publicIncludePaths[path] = true
+    self.configurations[self.currentConfiguration].publicAbsoluteIncludePaths[path] = true
     self:AddPrivateAbsoluteIncludePath(path)
-end
-
--- adds this path only to referencing projects
-function Project:AddPublicReferenceIncludePath(path)
-    self.configurations[self.currentConfiguration].publicIncludePaths[path] = true
 end
 
 function Project:AddPrivateRelativeIncludePath(path)
     if self.projectType == EProjectType.ThirdParty then
-        self:AddIncludePathInternal(self.name .. "/" .. path)
+        self:AddIncludePathInternal(self.directory .. "/" .. path)
     else
         self:AddIncludePathInternal(path)
     end
@@ -351,8 +387,12 @@ function Project:AddPrivateAbsoluteIncludePath(path)
     self:AddIncludePathInternal(path)
 end
 
-function Project:GetProjectReferencePath()
-    return self.referenceProjectLocation
+function Project:GetProjectLocation()
+    return self.projectLocation
+end
+
+function Project:GetEngineSourceRelativePath()
+    return self.engineSourceRelativePath
 end
 
 function Project:DisableWarnings()
@@ -382,8 +422,13 @@ end
 
 function Project:CopyProjectLibToOutputDir(libPath)
     if self.targetType == ETargetType.None then
-        localCommand = "{COPY} ".. "%{prj.location}/".. self:GetProjectReferencePath() .. libPath .. " " .. "%{cfg.buildtarget.directory}"
-        projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
+        local localCommand = ""
+        if projectType == EProjectType.ThirdParty then
+            localCommand = self:GetProjectLocation() .. self.directoy .. "/" .. libPath .. " " .. "%{cfg.buildtarget.directory}"
+        else
+            localCommand = self:GetProjectLocation() .. libPath .. " " .. "%{cfg.buildtarget.directory}"
+        end
+        projectToAdditionalRelativeCopyCommands[self.name][self.currentConfiguration][localCommand] = true
     else
         prelinkcommands
         {
@@ -395,7 +440,7 @@ end
 function Project:CopyLibToOutputDir(libPath)
     if self.targetType == ETargetType.None then
         localCommand = "{COPY} " .. libPath .. " " .. "%{cfg.buildtarget.directory}"
-        projectToAdditionalCopyCommands[self.name][self.currentConfiguration][localCommand] = true
+        projectToAdditionalAbsoluteCopyCommands[self.name][self.currentConfiguration][localCommand] = true
     else
         prelinkcommands
         {
@@ -405,17 +450,21 @@ function Project:CopyLibToOutputDir(libPath)
 end
 
 function Project:AddDependencyInternal(dependency)
-    if projectToPrecompiledLibsPath[dependencies] ~= nil then
-        local precompiledLibsPath = projectToPrecompiledLibsPath[dependencies][self.currentConfiguration]
+    if projectToPrecompiledLibsPath[dependency] ~= nil then
+        local precompiledLibsPath = projectToPrecompiledLibsPath[dependency][self.currentConfiguration]
         if precompiledLibsPath ~= nil then
-            libdirs { precompiledLibsPath }
+            for libPath, _ in pairs(precompiledLibsPath)
+            do
+                libdirs { self:GetEngineSourceRelativePath() .. libPath }
+            end
         end
     end
     
     -- If dependency is a project, add it link lib names
     if projectToLinkLibNames[dependency] ~= nil then
         links { projectToLinkLibNames[dependency][self.currentConfiguration] }
-        AppendTable(projectToAdditionalCopyCommands[self.name][self.currentConfiguration], projectToAdditionalCopyCommands[dependency][self.currentConfiguration])
+        AppendTable(projectToAdditionalAbsoluteCopyCommands[self.name][self.currentConfiguration], projectToAdditionalAbsoluteCopyCommands[dependency][self.currentConfiguration])
+        AppendTable(projectToAdditionalRelativeCopyCommands[self.name][self.currentConfiguration], projectToAdditionalRelativeCopyCommands[dependency][self.currentConfiguration])
     else
         links { dependency }
     end
@@ -429,7 +478,9 @@ function Project:GetPublicDependencies(configuration)
     local allPublicDependencies = Copy(self.configurations[configuration].publicDependencies)
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
-        AppendTable(allPublicDependencies, projectToPublicDependencies[dependency][configuration])
+        if projectToPublicDependencies[dependency] ~= nil then
+            AppendTable(allPublicDependencies, projectToPublicDependencies[dependency][configuration])
+        end
     end
 
     return allPublicDependencies
@@ -455,7 +506,9 @@ function Project:GetThisProjectPublicDefines(configuration)
     local allPublicDefines = Copy(self.configurations[configuration].publicDefines)
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
-        AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
+        if projectToPublicDependencies[dependency] ~= nil then
+            AppendTable(allPublicDefines, projectToPublicDefines[dependency][configuration])
+        end
     end
 
     return allPublicDefines
@@ -478,7 +531,7 @@ function Project:GetPrivateDependenciesPublicDefines(configuration)
 end
 
 function Project:SetPrecompiledLibsPath(path)
-    projectToPrecompiledLibsPath[self.name][self.currentConfiguration] = self:GetProjectReferencePath() .. path
+    projectToPrecompiledLibsPath[self.name][self.currentConfiguration][self:GetProjectLocation() .. path] = true
 end
 
 function Project:AddCommonDefines(configuration, platform)
@@ -515,18 +568,24 @@ function Project:AddReleaseDefines()
     self:AddDefineInternal("SPT_RELEASE")
 end
 
-function Project:GetThisProjectPublicIncludePaths(configuration)
-    local allPublicIncludePaths = Copy(self.configurations[configuration].publicIncludePaths)
-    AppendTable(allPublicIncludePaths, self:GetPublicInlcudePathsOfPublicDependencies(configuration))
-    return allPublicIncludePaths
+function Project:GetThisProjectPublicAbsoluteIncludePaths(configuration)
+    local allPublicAbsoluteIncludePaths = Copy(self.configurations[configuration].publicAbsoluteIncludePaths)
+    AppendTable(allPublicAbsoluteIncludePaths, self:GetPublicAbsoluteInlcudePathsOfPublicDependencies(configuration))
+    return allPublicAbsoluteIncludePaths
 end
 
-function Project:GetPublicInlcudePathsOfPublicDependencies(configuration)
+function Project:GetThisProjectPublicRelativeIncludePaths(configuration)
+    local allPublicRelativeIncludePaths = Copy(self.configurations[configuration].publicRelativeIncludePaths)
+    AppendTable(allPublicRelativeIncludePaths, self:GetPublicRelativeInlcudePathsOfPublicDependencies(configuration))
+    return allPublicRelativeIncludePaths
+end
+
+function Project:GetPublicAbsoluteInlcudePathsOfPublicDependencies(configuration)
     local allPublicIncludePaths = {}
 
     for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
     do
-        dependencyIncludePaths = projectToPublicIncludePaths[dependency]
+        dependencyIncludePaths = projectToPublicAbsoluteIncludePaths[dependency]
         if dependencyIncludePaths ~= nil then
             includePathsForConfiguration = dependencyIncludePaths[configuration]
             if includePathsForConfiguration ~= nil then
@@ -538,12 +597,46 @@ function Project:GetPublicInlcudePathsOfPublicDependencies(configuration)
     return allPublicIncludePaths
 end
 
-function Project:GetPublicIncludePathsOfPrivateDependencies(configuration)
+function Project:GetPublicRelativeInlcudePathsOfPublicDependencies(configuration)
+    local allPublicIncludePaths = {}
+
+    for dependency, _ in pairs(self.configurations[configuration].publicDependencies)
+    do
+        dependencyIncludePaths = projectToPublicRelativeIncludePaths[dependency]
+        if dependencyIncludePaths ~= nil then
+            includePathsForConfiguration = dependencyIncludePaths[configuration]
+            if includePathsForConfiguration ~= nil then
+                AppendTable(allPublicIncludePaths, includePathsForConfiguration)
+            end
+        end
+    end
+
+    return allPublicIncludePaths
+end
+
+function Project:GetPublicAbsoluteIncludePathsOfPrivateDependencies(configuration)
     local allIncludePaths = {}
 
     for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
     do
-        dependencyIncludePaths = projectToPublicIncludePaths[dependency]
+        dependencyIncludePaths = projectToPublicAbsoluteIncludePaths[dependency]
+        if dependencyIncludePaths ~= nil then
+            includePathsForConfiguration = dependencyIncludePaths[configuration]
+            if includePathsForConfiguration ~= nil then
+                AppendTable(allIncludePaths, includePathsForConfiguration)
+            end
+        end
+    end
+
+    return allIncludePaths
+end
+
+function Project:GetPublicRelativeIncludePathsOfPrivateDependencies(configuration)
+    local allIncludePaths = {}
+
+    for dependency, _ in pairs(self.configurations[configuration].privateDependencies)
+    do
+        dependencyIncludePaths = projectToPublicRelativeIncludePaths[dependency]
         if dependencyIncludePaths ~= nil then
             includePathsForConfiguration = dependencyIncludePaths[configuration]
             if includePathsForConfiguration ~= nil then

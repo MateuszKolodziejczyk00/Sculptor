@@ -1,9 +1,8 @@
 GoogleTest = Project:CreateProject("GoogleTest", ETargetType.StaticLibrary)
 
 function GoogleTest:SetupConfiguration(configuration, platform)
-    self:AddPublicRelativeIncludePath("/googletest/include")
-
-    self:AddPrivateRelativeIncludePath("/googletest")
+    self:AddPublicRelativeIncludePath("googletest/include")
+    self:AddPrivateRelativeIncludePath("googletest")
 end
 
 function GoogleTest:GetProjectFiles(configuration, platform)

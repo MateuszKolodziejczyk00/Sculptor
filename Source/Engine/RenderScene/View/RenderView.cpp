@@ -2,6 +2,7 @@
 #include "RenderScene.h"
 #include "ResourcesManager.h"
 #include "SceneRenderer/RenderStages/RenderStage.h"
+#include "Techniques/TemporalAA/TemporalAATypes.h"
 
 namespace spt::rsc
 {
@@ -56,7 +57,6 @@ RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
 	, m_renderingResolution(0, 0)
 	, m_renderScene(renderScene)
-	, m_aaMode(EAntiAliasingMode::None)
 	, m_renderedFrameIdx(0u)
 {
 	m_viewEntity = renderScene.CreateEntity();
@@ -148,17 +148,6 @@ const lib::MTHandle<RenderViewDS>& RenderView::GetRenderViewDS() const
 	return m_renderViewDS;
 }
 
-void RenderView::SetAntiAliasingMode(EAntiAliasingMode::Type mode)
-{
-	m_aaMode = mode;
-	SetJittering(m_aaMode == EAntiAliasingMode::TemporalAA);
-}
-
-EAntiAliasingMode::Type RenderView::GetAntiAliasingMode() const
-{
-	return m_aaMode;
-}
-
 void RenderView::SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer)
 {
 	SPT_CHECK(m_renderViewDS.IsValid() && !m_renderViewDS->u_viewExposure.IsValid());
@@ -171,14 +160,18 @@ void RenderView::ResetExposureDataBuffer()
 	m_renderViewDS->u_viewExposure.Reset();
 }
 
-math::Vector2f RenderView::GetCurrentJitter() const
+rdr::BufferView RenderView::GetExposureDataBuffer() const
 {
-	return SceneView::GetCurrentJitter(m_renderingResolution);
+	return m_renderViewDS->u_viewExposure.GetBoundBuffer();
 }
 
 void RenderView::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
+
+	++m_renderedFrameIdx;
+
+	m_renderSystems.ForEachSystem([this](ViewRenderSystem& renderSystem) { renderSystem.PrepareRenderView(*this); });
 
 	OnBeginRendering();
 
@@ -228,8 +221,6 @@ void RenderView::OnBeginRendering()
 	UpdateCullingData();
 
 	UpdateRenderViewDS();
-
-	++m_renderedFrameIdx;
 }
 
 void RenderView::InitializeRenderSystem(ViewRenderSystem& renderSystem)

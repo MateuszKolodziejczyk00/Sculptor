@@ -9,6 +9,36 @@ namespace spt::lib
 using TypeID = Uint64;
 
 
+struct RuntimeTypeInfo
+{
+	RuntimeTypeInfo() = default;
+
+	RuntimeTypeInfo(lib::StringView name, TypeID id)
+		: name(name)
+		, id(id)
+	{
+	}
+
+	Bool IsValid() const
+	{
+		return id != 0u;
+	}
+
+	Bool operator==(const RuntimeTypeInfo& other) const
+	{
+		return id == other.id;
+	}
+
+	Bool operator!=(const RuntimeTypeInfo& other) const
+	{
+		return !(*this == other);
+	}
+
+	lib::StringView name;
+	TypeID          id   = 0u;
+};
+
+
 template<typename TType>
 class TypeInfo
 {
@@ -52,6 +82,11 @@ private:
 	{
 		const lib::StringView typeName = GetTypeName();
 		return FNV1a::Hash({ typeName.data(), typeName.size() });
+	}
+
+	constexpr operator RuntimeTypeInfo() const
+	{
+		return RuntimeTypeInfo{ name, id };
 	}
 
 public:

@@ -1,12 +1,22 @@
 #include "LogicalDevice.h"
-#include "VulkanDeviceCommon.h"
 #include "PhysicalDevice.h"
 #include "Vulkan/VulkanUtils.h"
 #include "Vulkan/VulkanRHI.h"
+#include "RHICore/RHIPlugin.h"
 
 
 namespace spt::vulkan
 {
+
+namespace priv
+{
+
+Bool IsExtensionAllowed(const rhi::Extension& extension)
+{
+	return extension.GetStringView() != VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME;
+}
+
+} // priv
 
 LogicalDevice::LogicalDevice()
 	: m_deviceHandle(VK_NULL_HANDLE)
@@ -19,15 +29,29 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::DynamicArray<const char*> deviceExtensions = VulkanDeviceCommon::GetRequiredDeviceExtensions();
+	const lib::Span<const rhi::Extension> deviceExtensions = rhi::RHIPluginsManager::Get().GetDeviceExtensions();
+
+	lib::DynamicArray<const char*> extensionPtrs;
+	extensionPtrs.reserve(deviceExtensions.size());
+	for (const rhi::Extension& extension : deviceExtensions)
+	{
+		if (priv::IsExtensionAllowed(extension))
+		{
+			extensionPtrs.emplace_back(extension.GetCStr());
+		}
+	}
 
 	const lib::DynamicArray<VkDeviceQueueCreateInfo> queueInfos = CreateQueueInfos(physicalDevice);
 
 	VkDeviceCreateInfo deviceInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     deviceInfo.queueCreateInfoCount = static_cast<Uint32>(queueInfos.size());
     deviceInfo.pQueueCreateInfos = queueInfos.data();
-    deviceInfo.enabledExtensionCount = static_cast<Uint32>(deviceExtensions.size());
-	deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+	if (!extensionPtrs.empty())
+	{
+		deviceInfo.enabledExtensionCount = static_cast<Uint32>(extensionPtrs.size());
+		deviceInfo.ppEnabledExtensionNames = extensionPtrs.data();
+	}
 
 	VulkanStructsLinkedList deviceInfoLinkedData(deviceInfo);
 
@@ -39,6 +63,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	features.features.fillModeNonSolid			= VK_TRUE;
 	features.features.shaderInt16				= VK_TRUE;
 	features.features.pipelineStatisticsQuery	= VK_TRUE;
+	features.features.fragmentStoresAndAtomics	= VK_TRUE;
 	features.features.shaderStorageImageReadWithoutFormat	= VK_TRUE;
 	features.features.shaderStorageImageWriteWithoutFormat	= VK_TRUE;
 

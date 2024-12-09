@@ -35,6 +35,7 @@ SPT_DEFINE_LOG_CATEGORY(LogGLTFLoader, true);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GLTFPrimitiveBuilder ==========================================================================
+int test = 0;
 
 class GLTFMeshBuilder : public MeshBuilder
 {
@@ -231,9 +232,14 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	}
 
 	math::Affine3f transform = math::Affine3f::Identity();
-	//transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
-	//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
+	transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
+
+	//if (test < 2)
+	//{
+		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
+	//}
 	
+#if 0
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);
@@ -247,6 +253,7 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
 		transform = remappedScale * transform;
 	}
+#endif
 	
 	if (!node.rotation.empty())
 	{
@@ -262,6 +269,13 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
 		const math::Translation3f remappedTranslation(nodeTranslation.z(), nodeTranslation.x(), nodeTranslation.y());
 		transform = remappedTranslation * transform;
+	}
+
+	if (test == 2)
+	{
+		const math::Translation3f translation(0.f, 0.f, 1.4f);
+		transform = translation * transform;
+
 	}
 
 	return transform;
@@ -469,7 +483,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name          = materialSourceDef.name;
 		materialDefinition.materialType  = GetMaterialType(materialSourceDef);
-		materialDefinition.materialType = mat::EMaterialType::AlphaMasked;
+		//materialDefinition.materialType = mat::EMaterialType::AlphaMasked;
 		materialDefinition.customOpacity = materialDefinition.materialType == mat::EMaterialType::AlphaMasked;
 		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
 
@@ -505,6 +519,8 @@ void BuildAccelerationStructures(const rdr::BLASBuilder& builder)
 void LoadScene(RenderScene& scene, lib::StringView path)
 {
 	SPT_PROFILER_FUNCTION();
+
+	test++;
 
 	const lib::StringView fileExtension = engn::Paths::GetExtension(path);
 	SPT_CHECK(fileExtension == "gltf" || fileExtension == "glb");

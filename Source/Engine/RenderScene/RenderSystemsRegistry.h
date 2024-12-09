@@ -83,6 +83,17 @@ public:
 		return foundSystem != std::cend(m_idToRenderSystem) ? std::static_pointer_cast<TSystemType>(foundSystem->second) : nullptr;
 	}
 
+	template<typename TCallable>
+	void ForEachSystem(TCallable&& callable)
+	{
+		const lib::LockGuard lockGuard(m_lock);
+
+		for (const lib::SharedRef<TSystemBaseType>& system : m_renderSystems)
+		{
+			callable(*system);
+		}
+	}
+
 private:
 
 	using RenderSystemTypeID = ecs::type_info;

@@ -2,8 +2,41 @@
 #include "Vulkan/VulkanCore.h"
 #include "Vulkan/VulkanRHI.h"
 
+#include "RHI/RHICore/RHIPlugin.h"
+
 namespace spt::vulkan
 {
+
+namespace priv
+{
+
+class VulkanDefaultRHIPlugin : public rhi::RHIPlugin
+{
+protected:
+
+	using Super = rhi::RHIPlugin;
+
+public:
+
+	// Begin rhi::RHIExtensionsProvider overrides
+	virtual void CollectExtensions(rhi::ExtensionsCollector& collector) const override;
+	// End rhi::RHIExtensionsProvider overrides
+};
+
+void VulkanDefaultRHIPlugin::CollectExtensions(rhi::ExtensionsCollector& collector) const
+{
+	Super::CollectExtensions(collector);
+
+	const lib::DynamicArray<const char*> requiredDeviceExtensions = VulkanDeviceCommon::GetRequiredDeviceExtensions();
+	for (const char* extension : requiredDeviceExtensions)
+	{
+		collector.AddDeviceExtension(lib::StringView(extension));
+	}
+}
+
+VulkanDefaultRHIPlugin g_vulkanDefaultRHIPlugin;
+
+} // priv
 
 lib::DynamicArray<const char*> VulkanDeviceCommon::GetRequiredDeviceExtensions()
 {

@@ -107,6 +107,16 @@ public:
 		return m_boundBuffer.IsValid();
 	}
 
+	rdr::BufferView GetBoundBuffer() const
+	{
+		return m_boundBuffer.GetBoundBuffer();
+	}
+
+	rg::RGBufferViewHandle GetBoundRGBuffer() const
+	{
+		return m_boundBuffer.GetBoundRGBuffer();
+	}
+
 private:
 
 	priv::BoundBufferVariant m_boundBuffer;

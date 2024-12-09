@@ -63,18 +63,6 @@ enum Type
 } // EDebugFeature
 
 
-namespace EAntiAliasingMode
-{
-enum Type
-{
-	None = 0,
-	TemporalAA,
-
-	NUM
-};
-} // EAntiAliasingMode
-
-
 BEGIN_SHADER_STRUCT(ViewExposureData)
 	SHADER_STRUCT_FIELD(Real32, exposureLastFrame)
 	SHADER_STRUCT_FIELD(Real32, rcpExposureLastFrame)
@@ -143,13 +131,9 @@ public:
 
 	const lib::MTHandle<RenderViewDS>& GetRenderViewDS() const;
 
-	void SetAntiAliasingMode(EAntiAliasingMode::Type mode);
-	EAntiAliasingMode::Type GetAntiAliasingMode() const;
-
-	void SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer);
-	void ResetExposureDataBuffer();
-
-	math::Vector2f GetCurrentJitter() const;
+	void            SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer);
+	void            ResetExposureDataBuffer();
+	rdr::BufferView GetExposureDataBuffer() const;
 
 	void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void EndFrame(const RenderScene& renderScene);
@@ -173,13 +157,15 @@ public:
 	}
 
 	template<typename TSystemType, typename... TArgs>
-	void AddRenderSystem(TArgs&&... args)
+	TSystemType* AddRenderSystem(TArgs&&... args)
 	{
 		ViewRenderSystem* addedSystem = m_renderSystems.AddRenderSystem<TSystemType>(std::forward<TArgs>(args)...);
 		if (addedSystem)
 		{
 			InitializeRenderSystem(*addedSystem);
 		}
+
+		return static_cast<TSystemType*>(addedSystem);
 	}
 
 	template<typename TSystemType>
@@ -216,10 +202,6 @@ private:
 	RenderSystemsRegistry<ViewRenderSystem> m_renderSystems;
 
 	RenderStagesRegistry m_renderStages;
-
-	// Rendering settings
-
-	EAntiAliasingMode::Type m_aaMode;
 
 	Uint32 m_renderedFrameIdx;
 };

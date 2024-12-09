@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
 #include "RHICore/RHISemaphoreTypes.h"
 #include "RHICore/RHITextureTypes.h"
@@ -16,7 +17,7 @@
 namespace spt::vulkan
 {
 
-class RHIToVulkan
+class RHI_API RHIToVulkan
 {
 public:
 

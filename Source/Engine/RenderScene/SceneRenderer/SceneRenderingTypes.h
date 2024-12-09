@@ -39,7 +39,7 @@ enum class ERenderStage : Flags32
 
 	VisibilityBufferStages			= VisibilityBuffer | MotionAndDepth,
 	DeferredLightingStages			= GlobalIllumination | DownsampleGeometryTextures | AmbientOcclusion | DeferredShading | SpecularReflections | CompositeLighting,
-	PostProcessStages				= PostProcessPreAA | AntiAliasing | HDRResolve,
+	PostProcessStages				= PostProcessPreAA | HDRResolve,
 
 	// Presets
 	DeferredRendererStages			= VisibilityBufferStages | DeferredLightingStages | PostProcessStages,

@@ -37,8 +37,6 @@ public:
 
 	static void				Initialize(const rhi::RHIInitializationInfo& initInfo);
 
-	static void				InitializeGPUForWindow(IntPtr windowSurfaceHandle);
-
 	static void				Uninitialize();
 
 	static void				BeginFrame();

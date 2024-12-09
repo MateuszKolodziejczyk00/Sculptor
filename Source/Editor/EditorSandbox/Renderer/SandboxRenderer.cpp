@@ -41,6 +41,8 @@
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 #include "FileSystem/File.h"
+#include "View/Systems/TemporalAAViewRenderSystem.h"
+#include "Techniques/TemporalAA/DLSSRenderer.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -140,6 +142,8 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output)
 {
 	SPT_PROFILER_FUNCTION();
+
+	Tick(frame.GetDeltaTime());
 
 	m_renderScene->BeginFrame(frame);
 
@@ -331,12 +335,17 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 	m_renderView->SetRenderingRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
-	m_renderView->SetAntiAliasingMode(rsc::EAntiAliasingMode::TemporalAA);
 
 	rsc::ShadowCascadesParams cascadesParams;
 	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::DPCF;
 	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
+
+	auto dlssRenderer = std::make_unique<gfx::DLSSRenderer>();
+	dlssRenderer->Initialize(gfx::TemporalAAInitSettings{});
+	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
+	SPT_CHECK(!!temporalAAViewSystem);
+	temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
 
 	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
 	

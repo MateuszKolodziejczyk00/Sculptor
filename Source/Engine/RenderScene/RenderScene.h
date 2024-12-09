@@ -211,13 +211,15 @@ public:
 	}
 
 	template<typename TSystemType, typename... TArgs>
-	void AddRenderSystem(TArgs&&... args)
+	TSystemType* AddRenderSystem(TArgs&&... args)
 	{
 		SceneRenderSystem* addedSystem = m_renderSystems.AddRenderSystem<TSystemType>(std::forward<TArgs>(args)...);
 		if (addedSystem)
 		{
 			InitializeRenderSystem(*addedSystem);
 		}
+
+		return static_cast<TSystemType*>(addedSystem);
 	}
 
 	template<typename TSystemType>

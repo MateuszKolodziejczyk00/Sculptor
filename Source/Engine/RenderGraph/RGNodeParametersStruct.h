@@ -131,7 +131,7 @@ public: \
 };
 
 #define RG_BUFFER_VIEW(name, access, pipelineStages) PARAMETER(spt::rg::RGBufferViewHandle, name, access, pipelineStages)
-#define RG_TEXTURE_VIEW(name, access, shaderStages) PARAMETER(spt::rg::RGTextureViewHandle, name, access, shaderStages)
+#define RG_TEXTURE_VIEW(name, access, pipelineStages) PARAMETER(spt::rg::RGTextureViewHandle, name, access, pipelineStages)
 
 
 namespace priv
