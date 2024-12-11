@@ -129,6 +129,11 @@ void SubmittedWorkloadsQueue::FlushThreadMain()
 		{
 			const lib::LockGuard lock(m_submittedWorkloadsLock);
 
+			if (m_submittedWorkloadsQueue.empty())
+			{
+				continue;
+			}
+
 			workload = std::move(m_submittedWorkloadsQueue.front());
 			m_submittedWorkloadsQueue.pop();
 		}

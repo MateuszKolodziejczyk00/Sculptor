@@ -258,7 +258,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 {
 	SPT_PROFILER_FUNCTION();
 	
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
+	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
 
@@ -268,8 +268,8 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 
 	for (Int32 passIdx = 0; passIdx < bloomPassesNum; ++passIdx)
 	{
-		const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> passIdx, renderingRes.y() >> passIdx);
-		const math::Vector2u outputRes = math::Vector2u(renderingRes.x() >> (passIdx + 1), renderingRes.y() >> (passIdx + 1));
+		const math::Vector2u inputRes  = math::Vector2u(resolution.x() >> passIdx, resolution.y() >> passIdx);
+		const math::Vector2u outputRes = math::Vector2u(resolution.x() >> (passIdx + 1), resolution.y() >> (passIdx + 1));
 
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
 
@@ -298,7 +298,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
+	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
 
@@ -309,8 +309,8 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 	// Upsample passes
 	for (Int32 passIdx = static_cast<Int32>(bloomPassesNum) - 2; passIdx >= 0; --passIdx)
 	{
-		const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> (passIdx + 2), renderingRes.y() >> (passIdx + 2));
-		const math::Vector2u outputRes = math::Vector2u(renderingRes.x() >> (passIdx + 1), renderingRes.y() >> (passIdx + 1));
+		const math::Vector2u inputRes = math::Vector2u(resolution.x() >> (passIdx + 2), resolution.y() >> (passIdx + 2));
+		const math::Vector2u outputRes = math::Vector2u(resolution.x() >> (passIdx + 1), resolution.y() >> (passIdx + 1));
 
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
 
@@ -335,12 +335,12 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
+	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
 	static const rdr::PipelineStateID combinePipeline = CompileBloomCompositePipeline();
 
-	const math::Vector2u inputRes = math::Vector2u(renderingRes.x() >> 1, renderingRes.y() >> 1);
-	const math::Vector2u outputRes = math::Vector2u(renderingRes.x(), renderingRes.y());
+	const math::Vector2u inputRes = math::Vector2u(resolution.x() >> 1, resolution.y() >> 1);
+	const math::Vector2u outputRes = math::Vector2u(resolution.x(), resolution.y());
 
 	const BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
@@ -369,7 +369,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 
 	bloomCompositePassDS->u_bloomCompositeInfo = compositePassInfo;
 
-	const math::Vector3u groupCount(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
+	const math::Vector3u groupCount(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
 						  combinePipeline, 
 						  groupCount,
@@ -382,11 +382,12 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Bloom");
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
-	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(renderingRes), 6u) - 5u;
+	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
+
+	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(resolution), 6u) - 5u;
 
 	rg::TextureDef bloomTextureDef;
-	bloomTextureDef.resolution	= math::Vector3u(renderingRes.x() / 2, renderingRes.y() / 2, 1);
+	bloomTextureDef.resolution	= math::Vector3u(resolution.x() / 2, resolution.y() / 2, 1);
 	bloomTextureDef.format		= SceneRendererStatics::hdrFormat;
 	bloomTextureDef.samples		= 1;
 	bloomTextureDef.mipLevels	= bloomPassesNum;
@@ -481,9 +482,9 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
 
-	const math::Vector2u renderingRes = renderView.GetRenderingRes();
+	const math::Vector2u resolution = renderView.GetOutputRes();
 
-	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(renderingRes.x(), 8u), math::Utils::DivideCeil(renderingRes.y(), 8u), 1u);
+	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"),
 						  pipelineState,
@@ -568,9 +569,9 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
-	const math::Vector3u textureRes(renderingRes.x(), renderingRes.y(), 1);
-	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(renderingRes.x()), 1.f / static_cast<Real32>(renderingRes.y()));
+	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
+	const math::Vector3u textureRes(resolution.x(), resolution.y(), 1);
+	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(resolution.x()), 1.f / static_cast<Real32>(resolution.y()));
 
 	const rg::RGTextureViewHandle tonemappedTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("TonemappedTexture"), rg::TextureDef(textureRes, stageContext.rendererSettings.outputFormat));
 

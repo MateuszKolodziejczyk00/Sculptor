@@ -55,7 +55,8 @@ RenderStageBase* RenderStagesRegistry::GetRenderStage(ERenderStage stage) const
 
 RenderView::RenderView(RenderScene& renderScene)
 	: m_supportedStages(ERenderStage::None)
-	, m_renderingResolution(0, 0)
+	, m_renderingResolution(0u, 0u)
+	, m_outputResolution(0u, 0u)
 	, m_renderScene(renderScene)
 	, m_renderedFrameIdx(0u)
 {
@@ -121,6 +122,22 @@ const math::Vector2u& RenderView::GetRenderingRes() const
 math::Vector3u RenderView::GetRenderingRes3D() const
 {
 	return math::Vector3u(m_renderingResolution.x(), m_renderingResolution.y(), 1u);
+}
+
+void RenderView::SetOutputRes(const math::Vector2u& resolution)
+{
+	m_outputResolution = resolution;
+	SetRenderingRes(m_outputResolution);
+}
+
+const math::Vector2u& RenderView::GetOutputRes() const
+{
+	return m_outputResolution;
+}
+
+math::Vector3u RenderView::GetOutputRes3D() const
+{
+	return math::Vector3u(m_outputResolution.x(), m_outputResolution.y(), 1u);
 }
 
 Uint32 RenderView::GetRenderedFrameIdx() const

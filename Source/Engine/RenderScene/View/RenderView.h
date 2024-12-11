@@ -118,9 +118,13 @@ public:
 		return *renderStage;
 	}
 
-	void SetRenderingRes(const math::Vector2u& resolution);
+	void                  SetRenderingRes(const math::Vector2u& resolution);
 	const math::Vector2u& GetRenderingRes() const;
-	math::Vector3u GetRenderingRes3D() const;
+	math::Vector3u        GetRenderingRes3D() const;
+
+	void                  SetOutputRes(const math::Vector2u& resolution);
+	const math::Vector2u& GetOutputRes() const;
+	math::Vector3u        GetOutputRes3D() const;
 
 	Uint32 GetRenderedFrameIdx() const;
 
@@ -192,6 +196,7 @@ private:
 	ERenderStage m_supportedStages;
 
 	math::Vector2u m_renderingResolution;
+	math::Vector2u m_outputResolution;
 
 	RenderSceneEntityHandle m_viewEntity;
 

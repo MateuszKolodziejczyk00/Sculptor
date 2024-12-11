@@ -102,6 +102,12 @@ math::Vector2u ViewRenderingSpec::GetRenderingHalfRes() const
 	return m_renderView->GetRenderingHalfRes();
 }
 
+math::Vector2u ViewRenderingSpec::GetOutputRes() const
+{
+	SPT_CHECK(!!m_renderView);
+	return m_renderView->GetOutputRes();
+}
+
 ShadingViewContext& ViewRenderingSpec::GetShadingViewContext()
 {
 	return m_viewRenderingData.Get<ShadingViewContext>();

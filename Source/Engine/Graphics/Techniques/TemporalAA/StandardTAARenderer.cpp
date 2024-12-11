@@ -54,9 +54,10 @@ Bool StandardTAARenderer::Initialize(const TemporalAAInitSettings& initSettings)
 	return true;
 }
 
-math::Vector2f StandardTAARenderer::ComputeJitter(Uint64 frameIdx, math::Vector2u resolution) const
+math::Vector2f StandardTAARenderer::ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const
 {
-	return TemporalAAJitterSequence::Halton(frameIdx, resolution);
+	const Uint32 sequenceLength = 8u;
+	return TemporalAAJitterSequence::Halton(frameIdx, renderingResolution, sequenceLength);
 }
 
 Bool StandardTAARenderer::PrepareForRendering(const TemporalAAParams& params)

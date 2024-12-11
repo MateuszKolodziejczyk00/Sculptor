@@ -175,9 +175,9 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 
 	const js::Event uiFinishedEvent = js::CreateEvent("UI FinishedEvent", frame.GetStageFinishedEvent(engn::EFrameStage::UI));
 
-	const Bool isFocused = m_window->IsFocused();
-	const Real32 targetFPS = isFocused ? -1.f : 5.f;
-	frame.SetMaxFPS(targetFPS);
+	//const Bool isFocused = m_window->IsFocused();
+	//const Real32 targetFPS = isFocused ? -1.f : 5.f;
+	//frame.SetMaxFPS(targetFPS);
 
 	frame.BeginAdvancingStages();
 

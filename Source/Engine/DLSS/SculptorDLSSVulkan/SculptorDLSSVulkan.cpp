@@ -362,8 +362,8 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 		dlssParams.Feature.InHeight           = params.inputResolution.y();
 		dlssParams.Feature.InTargetWidth      = params.outputResolution.x();
 		dlssParams.Feature.InTargetHeight     = params.outputResolution.y();
-		dlssParams.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_Balanced;
-		dlssParams.InFeatureCreateFlags       = 0;
+		dlssParams.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_MaxQuality;
+		dlssParams.InFeatureCreateFlags       = NVSDK_NGX_DLSS_Feature_Flags_MVLowRes | NVSDK_NGX_DLSS_Feature_Flags_IsHDR | NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
 		dlssParams.InEnableOutputSubrects     = false;
 
 		const lib::SharedPtr<rdr::CommandBuffer>& cmdBuffer = cmdRecorder.GetCommandBuffer();

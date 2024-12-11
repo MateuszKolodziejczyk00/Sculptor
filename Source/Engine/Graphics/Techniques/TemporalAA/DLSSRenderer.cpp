@@ -31,7 +31,8 @@ rg::RGTextureViewHandle PrepareExposureTexture(rg::RenderGraphBuilder& graphBuil
 
 DLSSRenderer::DLSSRenderer()
 {
-	m_name = "DLSS";
+	m_name              = "DLSS";
+	m_supportsUpscaling = true;
 }
 
 Bool DLSSRenderer::Initialize(const TemporalAAInitSettings& initSettings)
@@ -39,9 +40,18 @@ Bool DLSSRenderer::Initialize(const TemporalAAInitSettings& initSettings)
 	return m_dlssBackend.Initialize();
 }
 
-math::Vector2f DLSSRenderer::ComputeJitter(Uint64 frameIdx, math::Vector2u resolution) const
+math::Vector2f DLSSRenderer::ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const
 {
-	return TemporalAAJitterSequence::Halton(frameIdx, resolution);
+	// See DLSS Programing Guide, section 3.7.1.1
+	const Uint32 renderingArea       = renderingResolution.x() * renderingResolution.y();
+	const Uint32 outputArea          = outputResolution.x() * outputResolution.y();
+	const Real32 renderingPixelScale = outputArea / static_cast<Real32>(renderingArea);
+
+	const Uint32 standardSequenceLength = 8u;
+
+	const Uint32 sequenceLength = math::Utils::RoundUpToPowerOf2(static_cast<Uint32>(standardSequenceLength * renderingPixelScale));
+
+	return 0.5f * TemporalAAJitterSequence::Halton(frameIdx, renderingResolution, sequenceLength);
 }
 
 Bool DLSSRenderer::PrepareForRendering(const TemporalAAParams& params)

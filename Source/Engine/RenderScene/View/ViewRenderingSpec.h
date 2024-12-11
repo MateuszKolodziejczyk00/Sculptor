@@ -438,6 +438,8 @@ public:
 	math::Vector2u GetRenderingRes() const;
 	math::Vector2u GetRenderingHalfRes() const;
 
+	math::Vector2u GetOutputRes() const;
+
 	ShadingViewContext&       GetShadingViewContext();
 	const ShadingViewContext& GetShadingViewContext() const;
 

@@ -42,6 +42,8 @@ private:
 
 	void OnRenderAntiAliasingStage(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context, RenderStageContextMetaDataHandle metaData);
 
+	math::Vector2u SelectDesiredRenderingResolution(math::Vector2u outputResolution) const;
+
 	std::optional<lib::UniquePtr<gfx::TemporalAARenderer>> m_requestedTemporalAARenderer;
 	mutable lib::Lock m_temporalAARendererLock;
 

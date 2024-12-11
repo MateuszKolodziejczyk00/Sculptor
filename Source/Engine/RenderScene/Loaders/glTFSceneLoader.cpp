@@ -232,14 +232,14 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	}
 
 	math::Affine3f transform = math::Affine3f::Identity();
-	transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
+	//transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
 
 	//if (test < 2)
 	//{
 		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
 	//}
 	
-#if 0
+#if 1
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);

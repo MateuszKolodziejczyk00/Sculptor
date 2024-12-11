@@ -43,6 +43,7 @@
 #include "FileSystem/File.h"
 #include "View/Systems/TemporalAAViewRenderSystem.h"
 #include "Techniques/TemporalAA/DLSSRenderer.h"
+#include "Techniques/TemporalAA/StandardTAARenderer.h"
 
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
@@ -333,7 +334,7 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		m_renderView->AddRenderStages(rsc::ERenderStage::RayTracingRenderStages);
 	}
-	m_renderView->SetRenderingRes(math::Vector2u(1920, 1080));
+	m_renderView->SetOutputRes(math::Vector2u(1920, 1080));
 	m_renderView->SetPerspectiveProjection(math::Utils::DegreesToRadians(m_fovDegrees), 1920.f / 1080.f, m_nearPlane, m_farPlane);
 
 	rsc::ShadowCascadesParams cascadesParams;
@@ -345,7 +346,16 @@ void SandboxRenderer::InitializeRenderScene()
 	dlssRenderer->Initialize(gfx::TemporalAAInitSettings{});
 	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
 	SPT_CHECK(!!temporalAAViewSystem);
+	const gfx::TemporalAAInitSettings aaInitSettings{};
+	if (dlssRenderer->Initialize(aaInitSettings))
+	{
 	temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
+	}
+	else
+	{
+		auto standardTAArenderer = std::make_unique<gfx::StandardTAARenderer>();
+		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
+	}
 
 	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
 	
@@ -438,15 +448,15 @@ void SandboxRenderer::InitializeRenderScene()
 
 void SandboxRenderer::PrepareRenderView(math::Vector2u renderingResolution)
 {
-	m_renderView->SetRenderingRes(renderingResolution);
+	m_renderView->SetOutputRes(outputResolution);
 
 	const Real32 defaultAspectRatio = 16.f / 9.f;
 
-	const Real32 imageAspectRatio = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
+	const Real32 imageAspectRatio = static_cast<Real32>(outputResolution.x()) / static_cast<Real32>(outputResolution.y());
 
 	const Real32 renderingFov = m_fovDegrees * std::min<Real32>((imageAspectRatio / defaultAspectRatio), 1.f);
 	const Real32 renderingFovRadians = math::Utils::DegreesToRadians(renderingFov);
-	const Real32 reneringAspect = static_cast<Real32>(renderingResolution.x()) / static_cast<Real32>(renderingResolution.y());
+	const Real32 reneringAspect = static_cast<Real32>(outputResolution.x()) / static_cast<Real32>(outputResolution.y());
 
 	m_renderView->SetPerspectiveProjection(renderingFovRadians, reneringAspect, m_nearPlane, m_farPlane);
 }

@@ -4,6 +4,7 @@
 #include "GraphicsMacros.h"
 #include "RGResources/RGResourceHandles.h"
 #include "Math/Sequences.h"
+#include "Math/MathUtils.h"
 
 
 namespace spt::rg
@@ -56,11 +57,13 @@ struct TemporalAARenderingParams
 
 struct TemporalAAJitterSequence
 {
-	static math::Vector2f Halton(Uint64 frameIdx, math::Vector2u resolution) 
+	static math::Vector2f Halton(Uint64 frameIdx, math::Vector2u resolution, Uint32 sequenceLength) 
 	{
 		SPT_CHECK(resolution.x() != 0 && resolution.y() != 0);
+		SPT_CHECK(sequenceLength > 1u);
+		SPT_CHECK(math::Utils::IsPowerOf2(sequenceLength));
 
-		const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx & 7);
+		const Uint32 sequenceIdx = static_cast<Uint32>(frameIdx & (sequenceLength - 1u));
 		const math::Vector2f sequenceVal = math::Vector2f(math::Sequences::Halton<Real32>(sequenceIdx, 2), math::Sequences::Halton<Real32>(sequenceIdx, 3));
 		return (sequenceVal * 2.f - math::Vector2f::Constant(1.f)).cwiseProduct(resolution.cast<Real32>().cwiseInverse());
 	}
@@ -74,7 +77,7 @@ public:
 	TemporalAARenderer() = default;
 	virtual ~TemporalAARenderer() = default;
 
-	virtual math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u resolution) const = 0;
+	virtual math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const = 0;
 
 	virtual Bool Initialize(const TemporalAAInitSettings& initSettings) = 0 { return true; };
 
@@ -84,9 +87,13 @@ public:
 
 	lib::StringView GetName() const { return m_name; }
 
+	Bool SupportsUpscaling() const { return m_supportsUpscaling; }
+
 protected:
 
 	lib::StringView m_name;
+
+	Bool m_supportsUpscaling = false;
 };
 
 } // spt::gfx

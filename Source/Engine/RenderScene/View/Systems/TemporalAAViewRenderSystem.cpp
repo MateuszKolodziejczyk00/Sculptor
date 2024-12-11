@@ -2,10 +2,14 @@
 #include "View/ViewRenderingSpec.h"
 #include "Techniques/TemporalAA/TemporalAATypes.h"
 #include "RenderGraphBuilder.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 
 namespace spt::rsc
 {
+
+RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.6f, 0.1f, 1.f);
+
 
 TemporalAAViewRenderSystem::TemporalAAViewRenderSystem()
 {
@@ -45,24 +49,30 @@ void TemporalAAViewRenderSystem::PrepareRenderView(RenderView& renderView)
 
 	Bool preparedAA = false;
 
+	const math::Vector2u outputResolution           = renderView.GetOutputRes();
+	const math::Vector2u desiredRenderingResolution = SelectDesiredRenderingResolution(outputResolution);
+
 	if (m_temporalAARenderer)
 	{
 		gfx::TemporalAAParams aaParams;
-		aaParams.inputResolution  = renderView.GetRenderingRes();
-		aaParams.outputResolution = renderView.GetRenderingRes();
+		aaParams.inputResolution  = desiredRenderingResolution;
+		aaParams.outputResolution = renderView.GetOutputRes();
 
 		preparedAA = m_temporalAARenderer->PrepareForRendering(aaParams);
 	}
 
 	if (preparedAA)
 	{
-		const math::Vector2f jitter = m_temporalAARenderer->ComputeJitter(renderView.GetRenderedFrameIdx(), renderView.GetRenderingRes());
+		const math::Vector2f jitter = m_temporalAARenderer->ComputeJitter(renderView.GetRenderedFrameIdx(), desiredRenderingResolution, outputResolution);
 		renderView.SetJitter(jitter);
+		renderView.SetRenderingRes(desiredRenderingResolution);
 	}
 	else
 	{
 		renderView.ResetJitter();
+		renderView.SetRenderingRes(renderView.GetOutputRes()); // fallback to output resolution
 	}
+
 
 	m_canRenderAA = preparedAA;
 }
@@ -95,7 +105,8 @@ void TemporalAAViewRenderSystem::OnRenderAntiAliasingStage(rg::RenderGraphBuilde
 	SPT_CHECK(!!m_temporalAARenderer);
 	SPT_CHECK(m_canRenderAA);
 
-	const math::Vector2u outputRes = viewSpec.GetRenderView().GetRenderingRes();
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
+	const math::Vector2u outputRes    = viewSpec.GetRenderView().GetOutputRes();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
@@ -124,6 +135,12 @@ void TemporalAAViewRenderSystem::OnRenderAntiAliasingStage(rg::RenderGraphBuilde
 	m_temporalAARenderer->Render(graphBuilder, renderingParams);
 
 	viewContext.luminance = outputColor;
+}
+
+math::Vector2u TemporalAAViewRenderSystem::SelectDesiredRenderingResolution(math::Vector2u outputResolution) const
+{
+	const Bool supportsUpscaling = m_temporalAARenderer && m_temporalAARenderer->SupportsUpscaling();
+	return supportsUpscaling ? (outputResolution.cast<Real32>() * renderingResolutionScale).cast<Uint32>() : outputResolution;
 }
 
 } // spt::rsc

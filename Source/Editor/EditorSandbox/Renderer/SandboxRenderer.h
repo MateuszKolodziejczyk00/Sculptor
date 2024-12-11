@@ -84,7 +84,7 @@ private:
 
 	void InitializeRenderScene();
 
-	void PrepareRenderView(math::Vector2u renderingResolution);
+	void PrepareRenderView(math::Vector2u outputResolution);
 
 	lib::SharedPtr<rsc::RenderScene>	m_renderScene;
 	lib::SharedPtr<rsc::RenderView>		m_renderView;
