@@ -35,6 +35,46 @@ constexpr Uint64 dlssApplicationID = 231313132u;
 namespace priv
 {
 
+
+NVSDK_NGX_PerfQuality_Value ToNGXQuality(EDLSSQuality quality)
+{
+	switch (quality)
+	{
+	case EDLSSQuality::Low:    return NVSDK_NGX_PerfQuality_Value_MaxPerf;
+	case EDLSSQuality::Medium: return NVSDK_NGX_PerfQuality_Value_Balanced;
+	case EDLSSQuality::Ultra:  return NVSDK_NGX_PerfQuality_Value_MaxQuality;
+	case EDLSSQuality::DLAA:   return NVSDK_NGX_PerfQuality_Value_DLAA;
+	default:
+		SPT_CHECK_NO_ENTRY();
+	}
+
+	return NVSDK_NGX_PerfQuality_Value_MaxQuality;
+}
+
+
+NVSDK_NGX_DLSS_Feature_Flags ToNGXFlags(EDLSSFlags flags)
+{
+	NVSDK_NGX_DLSS_Feature_Flags ngxFlags = NVSDK_NGX_DLSS_Feature_Flags_None;
+
+	if (lib::HasAnyFlag(flags, EDLSSFlags::HDR))
+	{
+		lib::AddFlags(ngxFlags, NVSDK_NGX_DLSS_Feature_Flags_IsHDR);
+	}
+
+	if (lib::HasAnyFlag(flags, EDLSSFlags::ReversedDepth))
+	{
+		lib::AddFlags(ngxFlags, NVSDK_NGX_DLSS_Feature_Flags_DepthInverted);
+	}
+
+	if (lib::HasAnyFlag(flags, EDLSSFlags::MotionLowRes))
+	{
+		lib::AddFlags(ngxFlags, NVSDK_NGX_DLSS_Feature_Flags_MVLowRes);
+	}
+
+	return ngxFlags;
+}
+
+
 class DLSSRHIPlugin : public rhi::RHIPlugin
 {
 protected:
@@ -362,8 +402,8 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 		dlssParams.Feature.InHeight           = params.inputResolution.y();
 		dlssParams.Feature.InTargetWidth      = params.outputResolution.x();
 		dlssParams.Feature.InTargetHeight     = params.outputResolution.y();
-		dlssParams.Feature.InPerfQualityValue = NVSDK_NGX_PerfQuality_Value_MaxQuality;
-		dlssParams.InFeatureCreateFlags       = NVSDK_NGX_DLSS_Feature_Flags_MVLowRes | NVSDK_NGX_DLSS_Feature_Flags_IsHDR | NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
+		dlssParams.Feature.InPerfQualityValue = priv::ToNGXQuality(params.quality);
+		dlssParams.InFeatureCreateFlags       = priv::ToNGXFlags(params.flags);
 		dlssParams.InEnableOutputSubrects     = false;
 
 		const lib::SharedPtr<rdr::CommandBuffer>& cmdBuffer = cmdRecorder.GetCommandBuffer();
@@ -420,11 +460,11 @@ void SculptorDLSSVulkan::Render(rg::RenderGraphBuilder& graphBuilder, const DLSS
 							   });
 }
 
-Bool SculptorDLSSVulkan::RequiresFeatureRecreation(const DLSSParams& olddParams, const DLSSParams& newParams) const
+Bool SculptorDLSSVulkan::RequiresFeatureRecreation(const DLSSParams& oldParams, const DLSSParams& newParams) const
 {
 	SPT_CHECK(IsInitialized());
 
-	return olddParams.inputResolution != newParams.inputResolution || olddParams.outputResolution != newParams.outputResolution;
+	return oldParams != newParams;
 }
 
 void SculptorDLSSVulkan::ReleaseDLSSFeature()

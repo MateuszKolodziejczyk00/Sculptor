@@ -20,11 +20,52 @@ rg::RGTextureViewHandle PrepareExposureTexture(rg::RenderGraphBuilder& graphBuil
 
 	const rg::RGTextureViewHandle exposureTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Exposure Texture"), rg::TextureDef(math::Vector2u(1u, 1u), rhi::EFragmentFormat::R32_S_Float));
 
-
 	graphBuilder.CopyBufferToFullTexture(RG_DEBUG_NAME("Copy Exposure To Texture"),
 										 renderingParams.exposure.exposureBuffer, renderingParams.exposure.exposureOffset,
 										 exposureTexture);
 	return exposureTexture;
+}
+
+dlss::EDLSSQuality ComputeDLSSQuality(const TemporalAAParams& params)
+{
+	if (params.inputResolution == params.outputResolution)
+	{
+		return dlss::EDLSSQuality::DLAA;
+	}
+	else
+	{
+		switch (params.quality)
+		{
+		case ETemporalAAQuality::Low:    return dlss::EDLSSQuality::Low;
+		case ETemporalAAQuality::Medium: return dlss::EDLSSQuality::Medium;
+		case ETemporalAAQuality::Ultra:  return dlss::EDLSSQuality::Ultra;
+		default:
+			SPT_CHECK_NO_ENTRY_MSG("Invalid temporal AA quality");
+			return dlss::EDLSSQuality::Ultra;
+		}
+	}
+}
+
+dlss::EDLSSFlags ComputeDLSSFlags(const TemporalAAParams& params)
+{
+	dlss::EDLSSFlags flags = dlss::EDLSSFlags::None;
+
+	if (lib::HasAnyFlag(params.flags, ETemporalAAFlags::HDR))
+	{
+		lib::AddFlag(flags, dlss::EDLSSFlags::HDR);
+	}
+
+	if (lib::HasAnyFlag(params.flags, ETemporalAAFlags::DepthInverted))
+	{
+		lib::AddFlag(flags, dlss::EDLSSFlags::ReversedDepth);
+	}
+
+	if (lib::HasAnyFlag(params.flags, ETemporalAAFlags::MotionLowRes))
+	{
+		lib::AddFlag(flags, dlss::EDLSSFlags::MotionLowRes);
+	}
+
+	return flags;
 }
 
 } // priv
@@ -64,6 +105,8 @@ Bool DLSSRenderer::PrepareForRendering(const TemporalAAParams& params)
 	dlss::DLSSParams dlssParams;
 	dlssParams.inputResolution  = params.inputResolution;
 	dlssParams.outputResolution = params.outputResolution;
+	dlssParams.quality          = priv::ComputeDLSSQuality(params);
+	dlssParams.flags            = priv::ComputeDLSSFlags(params);
 
 	return m_dlssBackend.PrepareForRendering(dlssParams);
 }

@@ -57,6 +57,8 @@ void TemporalAAViewRenderSystem::PrepareRenderView(RenderView& renderView)
 		gfx::TemporalAAParams aaParams;
 		aaParams.inputResolution  = desiredRenderingResolution;
 		aaParams.outputResolution = renderView.GetOutputRes();
+		aaParams.quality          = gfx::ETemporalAAQuality::Ultra;
+		aaParams.flags            = lib::Flags(gfx::ETemporalAAFlags::HDR, gfx::ETemporalAAFlags::DepthInverted, gfx::ETemporalAAFlags::MotionLowRes);
 
 		preparedAA = m_temporalAARenderer->PrepareForRendering(aaParams);
 	}

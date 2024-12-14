@@ -343,7 +343,6 @@ void SandboxRenderer::InitializeRenderScene()
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
 
 	auto dlssRenderer = std::make_unique<gfx::DLSSRenderer>();
-	dlssRenderer->Initialize(gfx::TemporalAAInitSettings{});
 	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
 	SPT_CHECK(!!temporalAAViewSystem);
 	const gfx::TemporalAAInitSettings aaInitSettings{};
@@ -446,7 +445,7 @@ void SandboxRenderer::InitializeRenderScene()
 	}
 }
 
-void SandboxRenderer::PrepareRenderView(math::Vector2u renderingResolution)
+void SandboxRenderer::PrepareRenderView(math::Vector2u outputResolution)
 {
 	m_renderView->SetOutputRes(outputResolution);
 

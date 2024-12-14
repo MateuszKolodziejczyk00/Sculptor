@@ -24,10 +24,48 @@ class RenderGraphBuilder;
 namespace spt::dlss
 {
 
+enum class EDLSSQuality : Uint8
+{
+	Low,
+	Medium,
+	Ultra,
+	DLAA,
+
+	Default = Ultra,
+};
+
+
+enum class EDLSSFlags : Uint8
+{
+	None          = 0u,
+	HDR           = BIT(0),
+	ReversedDepth = BIT(1),
+	MotionLowRes  = BIT(2),
+
+	Default = None,
+};
+
+
 struct DLSSParams
 {
 	math::Vector2u inputResolution  = {};
 	math::Vector2u outputResolution = {};
+
+	EDLSSQuality quality = EDLSSQuality::Default;
+	EDLSSFlags   flags   = EDLSSFlags::Default;
+
+	Bool operator==(const DLSSParams& other) const
+	{
+		return inputResolution == other.inputResolution
+			&& outputResolution == other.outputResolution
+			&& quality == other.quality
+			&& flags == other.flags;
+	}
+
+	Bool operator!=(const DLSSParams& other) const
+	{
+		return !(*this == other);
+	}
 };
 
 
@@ -70,7 +108,7 @@ public:
 
 private:
 
-	Bool RequiresFeatureRecreation(const DLSSParams& olddParams, const DLSSParams& newParams) const;
+	Bool RequiresFeatureRecreation(const DLSSParams& oldParams, const DLSSParams& newParams) const;
 
 	void ReleaseDLSSFeature();
 	void ReleaseNGXResources();

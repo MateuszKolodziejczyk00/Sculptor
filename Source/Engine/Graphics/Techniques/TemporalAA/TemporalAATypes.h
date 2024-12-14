@@ -22,10 +22,33 @@ struct TemporalAAInitSettings
 };
 
 
+enum class ETemporalAAQuality : Uint8
+{
+	Low,
+	Medium,
+	Ultra,
+
+	Default = Ultra
+};
+
+enum class ETemporalAAFlags : Uint8
+{
+	None = 0u,
+	HDR           = BIT(0),
+	DepthInverted = BIT(1),
+	MotionLowRes  = BIT(2),
+
+	Default = None
+};
+
+
 struct TemporalAAParams
 {
 	math::Vector2u inputResolution  = {};
 	math::Vector2u outputResolution = {};
+
+	ETemporalAAQuality quality = ETemporalAAQuality::Default;
+	ETemporalAAFlags flags     = ETemporalAAFlags::Default;
 };
 
 
