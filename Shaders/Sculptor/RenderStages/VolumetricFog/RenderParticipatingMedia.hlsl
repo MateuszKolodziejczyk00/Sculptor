@@ -24,17 +24,7 @@ float ComputeDensityNoise(in float3 location)
 
 float EvaluateDensityAtLocation(in RenderParticipatingMediaParams params, in float3 location)
 {
-	const float noiseThreshold = params.densityNoiseThreshold + exp(params.densityNoiseZSigma / location.z) * (1.f - params.densityNoiseThreshold);
-
-	const float3 noiseLocation = location + params.densityNoiseSpeed * u_gpuSceneFrameConstants.time;
-
-	const float lowFrequencyOctave = ComputeDensityNoise(noiseLocation * 0.7f) * 0.9f;
-	const float highFrequencyOctave = ComputeDensityNoise(noiseLocation * 3.f) * 0.1f;
-
-	float noise = lowFrequencyOctave + highFrequencyOctave;
-	noise = saturate(noise - noiseThreshold) / max(1.f - noiseThreshold, 0.001f);
-
-	return saturate(lerp(params.minDensity, params.maxDensity, noise));
+	return params.constantDensity;
 }
 
 
