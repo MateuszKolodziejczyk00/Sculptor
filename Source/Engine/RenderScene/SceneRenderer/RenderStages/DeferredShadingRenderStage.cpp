@@ -4,7 +4,6 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
-#include "DDGI/DDGISceneSubsystem.h"
 #include "RenderScene.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/ViewShadingInput.h"
@@ -72,9 +71,6 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 	const GBuffer& gBuffer = viewContext.gBuffer;
 
-	const lib::SharedPtr<ddgi::DDGISceneSubsystem> ddgiSubsystem = shadingParams.renderScene.GetSceneSubsystem<ddgi::DDGISceneSubsystem>();
-	const Bool isDDGIEnabled = ddgiSubsystem && ddgiSubsystem->IsDDGIEnabled();
-
 	viewContext.luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
 
 	DeferredShadingContstants shaderConstants;
@@ -93,8 +89,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	deferredShadingDS->u_luminanceTexture         = viewContext.luminance;
 	deferredShadingDS->u_deferredShadingConstants = shaderConstants;
 
-	lib::MTHandle<ddgi::DDGISceneDS> ddgiSceneDS = isDDGIEnabled ? ddgiSubsystem->GetDDGISceneDS() : nullptr;
-
+	const Bool isDDGIEnabled = false;
 	const rdr::PipelineStateID pipeline = CompileDeferredShadingPipeline(isDDGIEnabled);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Deferred Shading"),
@@ -103,8 +98,7 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 						  rg::BindDescriptorSets(std::move(deferredShadingDS),
 												 viewSpec.GetRenderView().GetRenderViewDS(),
 												 viewContext.shadowMapsDS,
-												 viewContext.shadingInputDS,
-												 ddgiSceneDS));
+												 viewContext.shadingInputDS));
 }
 
 } // deferred_shading

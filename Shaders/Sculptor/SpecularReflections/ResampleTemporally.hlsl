@@ -66,10 +66,10 @@ struct SRTemporalResampler
 		resampler.currentReservoir = SRReservoir::CreateEmpty();
 		resampler.currentReservoir.spatialResamplingRangeID = SR_RESERVOIR_DEFAULT_SPATIAL_RANGE_ID;
 
-		resampler.historyGBuffer.depthTexture         = u_historyDepthTexture;
-		resampler.historyGBuffer.normalsTexture       = u_historyNormalsTexture;
-		resampler.historyGBuffer.specularColorTexture = u_historySpecularColorTexture;
-		resampler.historyGBuffer.roughnessTexture     = u_historyRoughnessTexture;
+		resampler.historyGBuffer.depthTexture             = u_historyDepthTexture;
+		resampler.historyGBuffer.normalsTexture           = u_historyNormalsTexture;
+		resampler.historyGBuffer.baseColorMetallicTexture = u_historyBaseColorTexture;
+		resampler.historyGBuffer.roughnessTexture         = u_historyRoughnessTexture;
 
 		const float p_hat = EvaluateTargetFunction(resampler.centerPixelSurface, initialReservoir.hitLocation, initialReservoir.luminance);
 
@@ -293,10 +293,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 
 		MinimalGBuffer currentGBuffer;
-		currentGBuffer.depthTexture         = u_depthTexture;
-		currentGBuffer.normalsTexture       = u_normalsTexture;
-		currentGBuffer.specularColorTexture = u_specularColorTexture;
-		currentGBuffer.roughnessTexture     = u_roughnessTexture;
+		currentGBuffer.depthTexture             = u_depthTexture;
+		currentGBuffer.normalsTexture           = u_normalsTexture;
+		currentGBuffer.baseColorMetallicTexture = u_baseColorTexture;
+		currentGBuffer.roughnessTexture         = u_roughnessTexture;
 
 		const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(currentGBuffer, pixel, u_sceneView);
 

@@ -8,8 +8,12 @@ namespace spt::rsc
 
 struct RTReflectionsViewData
 {
-	rg::RGTextureViewHandle denoisedRefectionsTexture;
-	rg::RGTextureViewHandle reflectionsTexture;
+	rg::RGTextureViewHandle denoiserDiffuseOutput;
+	rg::RGTextureViewHandle denoiserSpecularOutput;
+
+	rg::RGTextureViewHandle finalDiffuseGI;
+	rg::RGTextureViewHandle finalSpecularGI;
+
 	rg::RGTextureViewHandle reflectionsInfluenceTexture;
 	rg::RGTextureViewHandle varianceEstimation;
 

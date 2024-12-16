@@ -150,12 +150,12 @@ DS_BEGIN(SRTemporalResamplingDS, rg::RGDescriptorSetState<SRTemporalResamplingDS
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),          u_baseColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),          u_historyNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                  u_historyRoughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),          u_historySpecularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),          u_historyBaseColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_initialResservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),   u_historyReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>), u_outReservoirsBuffer)
@@ -215,12 +215,12 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 	ds->u_depthTexture                = params.depthTexture;
 	ds->u_normalsTexture              = params.normalsTexture;
 	ds->u_roughnessTexture            = params.roughnessTexture;
-	ds->u_specularColorTexture        = params.specularColorTexture;
+	ds->u_baseColorTexture            = params.baseColorTexture;
 	ds->u_motionTexture               = params.motionTexture;
 	ds->u_historyDepthTexture         = params.historyDepthTexture;
 	ds->u_historyNormalsTexture       = params.historyNormalsTexture;
 	ds->u_historyRoughnessTexture     = params.historyRoughnessTexture;
-	ds->u_historySpecularColorTexture = params.historySpecularColorTexture;
+	ds->u_historyBaseColorTexture     = params.historyBaseColorTexture;
 	ds->u_initialResservoirsBuffer    = params.initialReservoirBuffer;
 	ds->u_historyReservoirsBuffer     = reservoirsState.ReadReservoirs();
 	ds->u_outReservoirsBuffer         = reservoirsState.WriteReservoirs();
@@ -307,7 +307,7 @@ DS_BEGIN(SRSpatialResamplingDS, rg::RGDescriptorSetState<SRSpatialResamplingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                   u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                           u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                           u_variableRateBlocksTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                   u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                   u_baseColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),            u_inReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),          u_outReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),          u_resamplingConstants)
@@ -336,7 +336,7 @@ static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	ds->u_depthTexture              = params.depthTexture;
 	ds->u_normalsTexture            = params.normalsTexture;
 	ds->u_roughnessTexture          = params.roughnessTexture;
-	ds->u_specularColorTexture      = params.specularColorTexture;
+	ds->u_baseColorTexture          = params.baseColorTexture;
 	ds->u_variableRateBlocksTexture = params.tracesAllocation.variableRateBlocksTexture;
 	ds->u_inReservoirsBuffer        = reservoirsState.ReadReservoirs();
 	ds->u_outReservoirsBuffer       = reservoirsState.WriteReservoirs();
@@ -500,11 +500,12 @@ DS_BEGIN(ResolveReservoirsDS, rg::RGDescriptorSetState<ResolveReservoirsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_specularColorTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_baseColorTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                   u_variableRateBlocksTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_luminanceHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_specularLumHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_diffuseLumHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),                    u_reservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),                  u_resamplingConstants)
 DS_END();
@@ -524,15 +525,16 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	const math::Vector2u resolution = params.GetResolution();
 
 	lib::MTHandle<ResolveReservoirsDS> ds = graphBuilder.CreateDescriptorSet<ResolveReservoirsDS>(RENDERER_RESOURCE_NAME("Resolve Reservoirs DS"));
-	ds->u_depthTexture                = params.depthTexture;
-	ds->u_normalsTexture              = params.normalsTexture;
-	ds->u_roughnessTexture            = params.roughnessTexture;
-	ds->u_specularColorTexture        = params.specularColorTexture;
-	ds->u_variableRateBlocksTexture   = params.tracesAllocation.variableRateBlocksTexture;
-	ds->u_brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
-	ds->u_luminanceHitDistanceTexture = params.outLuminanceHitDistanceTexture;
-	ds->u_reservoirsBuffer            = reservoirsState.ReadReservoirs();
-	ds->u_resamplingConstants         = resamplingConstants;
+	ds->u_depthTexture                  = params.depthTexture;
+	ds->u_normalsTexture                = params.normalsTexture;
+	ds->u_roughnessTexture              = params.roughnessTexture;
+	ds->u_baseColorTexture              = params.baseColorTexture;
+	ds->u_variableRateBlocksTexture     = params.tracesAllocation.variableRateBlocksTexture;
+	ds->u_brdfIntegrationLUT            = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
+	ds->u_specularLumHitDistanceTexture = params.outSpecularLuminanceDistTexture;
+	ds->u_diffuseLumHitDistanceTexture  = params.outDiffuseLuminanceDistTexture;
+	ds->u_reservoirsBuffer              = reservoirsState.ReadReservoirs();
+	ds->u_resamplingConstants           = resamplingConstants;
 
 	static const rdr::PipelineStateID pipeline = CompileResolveReservoirsPipeline();
 
@@ -581,7 +583,7 @@ ResamplingParams::ResamplingParams(const RenderView& inRenderView, const RenderS
 
 math::Vector2u ResamplingParams::GetResolution() const
 {
-	return outLuminanceHitDistanceTexture->GetResolution2D();
+	return outSpecularLuminanceDistTexture->GetResolution2D();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -613,7 +615,7 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 	{
 		SPT_CHECK(params.historyDepthTexture.IsValid());
 		SPT_CHECK(params.historyRoughnessTexture.IsValid());
-		SPT_CHECK(params.historySpecularColorTexture.IsValid());
+		SPT_CHECK(params.historyBaseColorTexture.IsValid());
 		SPT_CHECK(params.historyNormalsTexture.IsValid());
 
 		result.additionalTracesAllocation = temporal::ResampleTemporally(graphBuilder, params, resamplingConstants, reservoirsState);

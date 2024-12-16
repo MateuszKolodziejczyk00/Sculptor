@@ -63,10 +63,10 @@ void ResampleSpatiallyCS(CS_INPUT input)
 	float selectedP_hat = 0.f;
 
 	MinimalGBuffer gBuffer;
-	gBuffer.depthTexture         = u_depthTexture;
-	gBuffer.normalsTexture       = u_normalsTexture;
-	gBuffer.specularColorTexture = u_specularColorTexture;
-	gBuffer.roughnessTexture     = u_roughnessTexture;
+	gBuffer.depthTexture             = u_depthTexture;
+	gBuffer.normalsTexture           = u_normalsTexture;
+	gBuffer.baseColorMetallicTexture = u_baseColorTexture;
+	gBuffer.roughnessTexture         = u_roughnessTexture;
 
 	const MinimalSurfaceInfo centerPixelSurface = GetMinimalSurfaceInfo(gBuffer, pixel, u_sceneView);
 

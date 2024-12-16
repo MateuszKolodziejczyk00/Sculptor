@@ -42,12 +42,13 @@ private:
 	
 	lib::SharedPtr<rdr::TextureView> m_visibilityTexture;
 
+	lib::SharedPtr<rdr::TextureView> m_externalBaseColorTexture;
+	lib::SharedPtr<rdr::TextureView> m_externalHistoryBaseColorTexture;
+
 	lib::SharedPtr<rdr::TextureView> m_externalRoughnessTexture;
 	lib::SharedPtr<rdr::TextureView> m_externalHistoryRoughnessTexture;
 
 	TextureWithHistory m_octahedronNormalsTexture;
-
-	TextureWithHistory m_specularColorTexture;
 
 	GeometryRenderer m_geometryVisRenderer;
 };

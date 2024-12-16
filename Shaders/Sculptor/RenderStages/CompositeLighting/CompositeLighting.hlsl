@@ -104,11 +104,17 @@ float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 		return 0.f;
 	}
 
-	float3 specularReflections = u_reflectionsTexture.Load(uint3(pixel, 0)).rgb;
+	float3 specularLo = u_specularGI.Load(uint3(pixel, 0)).rgb;
+	float3 diffuseLo  = u_diffuseGI.Load(uint3(pixel, 0)).rgb;
 
-	if(any(isnan(specularReflections)))
+	if(any(isnan(specularLo)))
 	{
-		specularReflections = 0.f;
+		specularLo = 0.f;
+	}
+
+	if(any(isnan(diffuseLo)))
+	{
+		diffuseLo = 0.f;
 	}
 
 	const float4 baseColorMetallic = u_baseColorMetallicTexture.Load(uint3(pixel, 0));
@@ -129,9 +135,13 @@ float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 	const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_linearSampler, float2(NdotV, roughness), 0);
 
 	// reverse demodulate specular
-	specularReflections *= max((specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);
+	specularLo *= max((specularColor * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-	return ExposedLuminanceToLuminance(specularReflections);
+	const float ambientOcclusion = u_ambientOcclusion.Load(uint3(pixel, 0u));
+
+	diffuseLo *= Diffuse_Lambert(diffuseColor) * ambientOcclusion;
+
+	return ExposedLuminanceToLuminance(specularLo + diffuseLo);
 }
 
 

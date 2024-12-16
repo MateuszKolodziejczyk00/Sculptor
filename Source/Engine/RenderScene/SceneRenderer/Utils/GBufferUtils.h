@@ -23,13 +23,6 @@ void GenerateOctahedronNormals(rg::RenderGraphBuilder& graphBuilder, const GBuff
 
 } // oct_normals
 
-namespace spec_color
-{
-
-void GenerateSpecularColor(rg::RenderGraphBuilder& graphBuilder, const GBuffer& gBuffer, rg::RGTextureViewHandle outputTexture);
-
-} // spec_color
-
 } // gbuffer_utils
 
 } // spt::rsc

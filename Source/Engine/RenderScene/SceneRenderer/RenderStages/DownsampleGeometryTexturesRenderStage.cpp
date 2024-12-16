@@ -21,7 +21,7 @@ BEGIN_SHADER_STRUCT(DownsampleGeometryTexturesConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, outputRes)
 	SHADER_STRUCT_FIELD(math::Vector2f, outputPixelSize)
 	SHADER_STRUCT_FIELD(Bool,           downsampleRoughness)
-	SHADER_STRUCT_FIELD(Bool,           downsampleSpecularColor)
+	SHADER_STRUCT_FIELD(Bool,           downsampleBaseColor)
 END_SHADER_STRUCT();
 
 
@@ -34,7 +34,7 @@ DS_BEGIN(DownsampleGeometryTexturesDS, rg::RGDescriptorSetState<DownsampleGeomet
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_depthTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_motionTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_normalsTextureHalfRes)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector3f>),                     u_specularColorTextureHalfRes)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                     u_baseColorTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<Real32>),                             u_roughnessTextureHalfRes)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DownsampleGeometryTexturesConstants>),     u_constants)
@@ -90,22 +90,22 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 		}
 	}
 
-	if (resourcesUsageInfo.useHalfResSpecularColorWithHistory)
+	if (resourcesUsageInfo.useHalfResBaseColorWithHistory)
 	{
-		viewContext.specularColorHalfRes = graphBuilder.AcquireExternalTextureView(m_specularColorTextureHalfRes);
-		if (m_historySpecularColorTextureHalfRes)
+		viewContext.baseColorHalfRes = graphBuilder.AcquireExternalTextureView(m_baseColorTextureHalfRes);
+		if (m_historyBaseColorTextureHalfRes)
 		{
-			viewContext.historySpecularColorHalfRes = graphBuilder.AcquireExternalTextureView(m_historySpecularColorTextureHalfRes);
+			viewContext.historyBaseColorHalfRes = graphBuilder.AcquireExternalTextureView(m_historyBaseColorTextureHalfRes);
 		}
 	}
 
 	DownsampleGeometryTexturesConstants shaderConstants;
-	shaderConstants.inputRes                = renderingResolution;
-	shaderConstants.inputPixelSize          = renderingResolution.cast<Real32>().cwiseInverse();
-	shaderConstants.outputRes               = halfRes;
-	shaderConstants.outputPixelSize         = halfRes.cast<Real32>().cwiseInverse();
-	shaderConstants.downsampleRoughness     = resourcesUsageInfo.useHalfResRoughnessWithHistory;
-	shaderConstants.downsampleSpecularColor = resourcesUsageInfo.useHalfResSpecularColorWithHistory;
+	shaderConstants.inputRes            = renderingResolution;
+	shaderConstants.inputPixelSize      = renderingResolution.cast<Real32>().cwiseInverse();
+	shaderConstants.outputRes           = halfRes;
+	shaderConstants.outputPixelSize     = halfRes.cast<Real32>().cwiseInverse();
+	shaderConstants.downsampleRoughness = resourcesUsageInfo.useHalfResRoughnessWithHistory;
+	shaderConstants.downsampleBaseColor = resourcesUsageInfo.useHalfResBaseColorWithHistory;
 
 	lib::MTHandle<DownsampleGeometryTexturesDS> ds = graphBuilder.CreateDescriptorSet<DownsampleGeometryTexturesDS>(RENDERER_RESOURCE_NAME("Downsample Geometry Textures DS"));
 	ds->u_depthTexture                = viewContext.depth;
@@ -123,9 +123,9 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 		ds->u_roughnessTextureHalfRes = viewContext.roughnessHalfRes;
 	}
 
-	if (resourcesUsageInfo.useHalfResSpecularColorWithHistory)
+	if (resourcesUsageInfo.useHalfResBaseColorWithHistory)
 	{
-		ds->u_specularColorTextureHalfRes = viewContext.specularColorHalfRes;
+		ds->u_baseColorTextureHalfRes = viewContext.baseColorHalfRes;
 	}
 
 	static const rdr::PipelineStateID pipeline = CompileDownsampleGeometryTexturesPipeline();
@@ -179,23 +179,23 @@ void DownsampleGeometryTexturesRenderStage::PrepareResources(const ViewRendering
 		m_historyRoughnessTextureHalfRes.reset();
 	}
 
-	if (resourcesUsageInfo.useHalfResSpecularColorWithHistory)
+	if (resourcesUsageInfo.useHalfResBaseColorWithHistory)
 	{
-		std::swap(m_specularColorTextureHalfRes, m_historySpecularColorTextureHalfRes);
+		std::swap(m_baseColorTextureHalfRes, m_historyBaseColorTextureHalfRes);
 
-		if (!m_specularColorTextureHalfRes || m_specularColorTextureHalfRes->GetResolution2D() != renderingHalfRes)
+		if (!m_baseColorTextureHalfRes || m_baseColorTextureHalfRes->GetResolution2D() != renderingHalfRes)
 		{
-			rhi::TextureDefinition specularColorDef;
-			specularColorDef.resolution = renderingHalfRes;
-			specularColorDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
-			specularColorDef.format     = rhi::EFragmentFormat::B10G11R11_U_Float;
-			m_specularColorTextureHalfRes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Specular Color Texture Half Res"), specularColorDef, rhi::EMemoryUsage::GPUOnly);
+			rhi::TextureDefinition baseColorDef;
+			baseColorDef.resolution = renderingHalfRes;
+			baseColorDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferSource);
+			baseColorDef.format     = rhi::EFragmentFormat::RGBA8_UN_Float;
+			m_baseColorTextureHalfRes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Base Color Texture Half Res"), baseColorDef, rhi::EMemoryUsage::GPUOnly);
 		}
 	}
 	else
 	{
-		m_specularColorTextureHalfRes.reset();
-		m_historySpecularColorTextureHalfRes.reset();
+		m_baseColorTextureHalfRes.reset();
+		m_historyBaseColorTextureHalfRes.reset();
 	}
 }
 

@@ -361,14 +361,14 @@ inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
 
 struct ShadingViewResourcesUsageInfo
 {
-	Bool useHalfResRoughnessWithHistory     = false;
-	Bool useHalfResSpecularColorWithHistory = false;
+	Bool useHalfResRoughnessWithHistory = false;
+	Bool useHalfResBaseColorWithHistory = false;
 
 	Bool useLinearDepthHalfRes = false;
 	Bool useLinearDepth        = false;
 
 	Bool useRoughnessHistory             = false;
-	Bool useSpecularColorWithHistory     = false;
+	Bool useBaseColorHistory             = false;
 	Bool useOctahedronNormalsWithHistory = false;
 };
 
@@ -391,14 +391,13 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle motion;
 	rg::RGTextureViewHandle motionHalfRes;
 	
-	rg::RGTextureViewHandle specularColorHalfRes;
-	rg::RGTextureViewHandle historySpecularColorHalfRes;
-	
+	rg::RGTextureViewHandle historyBaseColor;
+
 	rg::RGTextureViewHandle octahedronNormals;
 	rg::RGTextureViewHandle historyOctahedronNormals;
 	
-	rg::RGTextureViewHandle specularColor;
-	rg::RGTextureViewHandle historySpecularColor;
+	rg::RGTextureViewHandle baseColorHalfRes;
+	rg::RGTextureViewHandle historyBaseColorHalfRes;
 
 	rg::RGTextureViewHandle normalsHalfRes;
 	rg::RGTextureViewHandle historyNormalsHalfRes;

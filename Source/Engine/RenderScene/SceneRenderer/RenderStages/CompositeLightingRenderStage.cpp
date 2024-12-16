@@ -66,7 +66,9 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectionsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_specularGI)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                    u_diffuseGI)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                            u_ambientOcclusion)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                             u_reflectionsInfluenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                    u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_baseColorMetallicTexture)
@@ -156,7 +158,9 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		rtReflectionsConstants.halfResInfluence = rtReflectionsData->halfResReflections;
 
 		compositeRTReflectionsDS = graphBuilder.CreateDescriptorSet<CompositeRTReflectionsDS>(RENDERER_RESOURCE_NAME("CompositeRTReflectionsDS"));
-		compositeRTReflectionsDS->u_reflectionsTexture          = rtReflectionsData->reflectionsTexture;
+		compositeRTReflectionsDS->u_specularGI                  = rtReflectionsData->finalSpecularGI;
+		compositeRTReflectionsDS->u_diffuseGI                   = rtReflectionsData->finalDiffuseGI;
+		compositeRTReflectionsDS->u_ambientOcclusion            = viewContext.ambientOcclusion;
 		compositeRTReflectionsDS->u_reflectionsInfluenceTexture = rtReflectionsData->reflectionsInfluenceTexture;
 		compositeRTReflectionsDS->u_brdfIntegrationLUT          = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 		compositeRTReflectionsDS->u_baseColorMetallicTexture    = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];

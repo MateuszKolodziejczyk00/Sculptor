@@ -65,7 +65,8 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		const float2 motion = u_motionTexture.Load(uint3(pixel, 0));
 		const float2 surfaceHistoryUV = uv - motion;
 
-		const float surfaceReprojectionWeight = prevFrameNDC.z > 0.f ? saturate((roughness - 0.3f) * 2.8f) : 1.f;
+		//const float surfaceReprojectionWeight = prevFrameNDC.z > 0.f ? saturate((roughness - 0.3f) * 2.8f) : 1.f;
+		const float surfaceReprojectionWeight = 1.f;
 
 		float2 historyUV = lerp(virtualPointHistoryUV, surfaceHistoryUV, surfaceReprojectionWeight);
 

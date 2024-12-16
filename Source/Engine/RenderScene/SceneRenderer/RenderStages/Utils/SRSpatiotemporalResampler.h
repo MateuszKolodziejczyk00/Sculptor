@@ -56,7 +56,7 @@ struct ResamplingParams
 	rg::RGTextureViewHandle depthTexture;
 	rg::RGTextureViewHandle normalsTexture;
 	rg::RGTextureViewHandle roughnessTexture;
-	rg::RGTextureViewHandle specularColorTexture;
+	rg::RGTextureViewHandle baseColorTexture;
 
 	vrt::TracesAllocation   tracesAllocation;
 	rg::RGTextureViewHandle vrReprojectionSuccessMask;
@@ -64,9 +64,10 @@ struct ResamplingParams
 	rg::RGTextureViewHandle historyDepthTexture;
 	rg::RGTextureViewHandle historyNormalsTexture;
 	rg::RGTextureViewHandle historyRoughnessTexture;
-	rg::RGTextureViewHandle historySpecularColorTexture;
+	rg::RGTextureViewHandle historyBaseColorTexture;
 
-	rg::RGTextureViewHandle outLuminanceHitDistanceTexture;
+	rg::RGTextureViewHandle outSpecularLuminanceDistTexture;
+	rg::RGTextureViewHandle outDiffuseLuminanceDistTexture;
 	
 	rg::RGTextureViewHandle motionTexture;
 

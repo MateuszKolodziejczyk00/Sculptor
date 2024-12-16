@@ -11,9 +11,10 @@ struct MinimalSurfaceInfo
 {
 	float3 location;
 	float3 n;
-	float3 v;
-	float3 f0;
 	float  roughness;
+	float3 v;
+	half3  f0;
+	half3  diffuseColor;
 };
 
 
@@ -21,7 +22,7 @@ struct MinimalGBuffer
 {
 	Texture2D<float>  depthTexture;
 	Texture2D<float2> normalsTexture;
-	Texture2D<float3> specularColorTexture;
+	Texture2D<float4> baseColorMetallicTexture;
 	Texture2D<float>  roughnessTexture;
 };
 
@@ -37,14 +38,18 @@ MinimalSurfaceInfo GetMinimalSurfaceInfo(in MinimalGBuffer minimalGBuffer, in ui
 	const float3 toView = normalize(sceneView.viewLocation - sampleLocation);
 
 	const float roughness = minimalGBuffer.roughnessTexture.Load(uint3(pixel, 0));
-	const float3 f0 = minimalGBuffer.specularColorTexture.Load(uint3(pixel, 0)).rgb;
+	const float4 baseColorMetallic = minimalGBuffer.baseColorMetallicTexture.Load(uint3(pixel, 0));
+	float3 f0;
+	float3 diffuseColor;
+	ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
 
 	MinimalSurfaceInfo pixelSurface;
-	pixelSurface.location  = sampleLocation;
-	pixelSurface.n         = sampleNormal;
-	pixelSurface.v         = toView;
-	pixelSurface.f0        = f0;
-	pixelSurface.roughness = roughness;
+	pixelSurface.location     = sampleLocation;
+	pixelSurface.n            = sampleNormal;
+	pixelSurface.v            = toView;
+	pixelSurface.f0           = half3(f0);
+	pixelSurface.diffuseColor = half3(diffuseColor);
+	pixelSurface.roughness    = roughness;
 
 	return pixelSurface;
 }
@@ -54,15 +59,15 @@ float EvaluateTargetFunction(in MinimalSurfaceInfo surface, in float3 sampleLoca
 {
 	const float3 l = normalize(sampleLocation - surface.location);
 
-	float3 specular = SR_GGX_Specular(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0);
+	const float dotNL = saturate(dot(surface.n, l));
+
+	const float3 specular = SR_GGX_Specular(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0);
 	if(any(isnan(specular)))
 	{
 		return 0.f;
 	}
 
-	const float dotNL = saturate(dot(surface.n, l));
-
-	const float3 Lo = dotNL * specular * sampleLuminance;
+	const float3 Lo = dotNL * sampleLuminance * (specular + Diffuse_Lambert(surface.diffuseColor));
 
 	return Luminance(Lo);
 }
@@ -124,7 +129,12 @@ bool MaterialsAllowResampling(in MinimalSurfaceInfo surfaceA, in MinimalSurfaceI
 
 	const float f0A = Luminance(surfaceA.f0);
 	const float f0B = Luminance(surfaceB.f0);
+
+	const float diffuseA = Luminance(surfaceA.diffuseColor);
+	const float diffuseB = Luminance(surfaceB.diffuseColor);
+
 	return AreNearlyEqual(f0A, f0B, f0Threshold)
+		&& AreNearlyEqual(diffuseA, diffuseB, f0Threshold)
 		&& AreNearlyEqual(surfaceA.roughness, surfaceB.roughness, roughnessThreshold);
 }
 

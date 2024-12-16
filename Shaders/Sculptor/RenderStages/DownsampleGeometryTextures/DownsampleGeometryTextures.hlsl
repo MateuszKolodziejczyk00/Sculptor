@@ -120,14 +120,10 @@ void DownsampleGeometryTexturesCS(CS_INPUT input)
 		u_motionTextureHalfRes[pixel]  = motion;
 		u_normalsTextureHalfRes[pixel] = OctahedronEncodeNormal(normal);
 
-		if(u_constants.downsampleSpecularColor)
+		if(u_constants.downsampleBaseColor)
 		{
 			const float4 baseColorMetalic = u_baseColorMetallicTexture.Load(inputPixel);
-
-			float3 diffuseColor = 0.f;
-			float3 specularColor = 0.f;
-			ComputeSurfaceColor(baseColorMetalic.rgb, baseColorMetalic.w, OUT diffuseColor, OUT specularColor);
-			u_specularColorTextureHalfRes[pixel] = specularColor;
+			u_baseColorTextureHalfRes[pixel] = baseColorMetalic;
 		}
 
 		if(u_constants.downsampleRoughness)

@@ -61,6 +61,13 @@ float3 RandomVectorInCosineWeightedHemisphere(in float3 direction, in float2 ran
 	return float3(x, y, z);
 }
 
+
+float PDFHemisphereCosineWeighted(in float3 normal, in float3 direction)
+{
+	return saturate(dot(normal, direction)) / PI;
+}
+
+
 // Source: "NEXT GENERATION POST PROCESSING IN CALL OF DUTY: ADVANCED WARFARE"
 float InterleavedGradientNoise(float2 uv)
 {

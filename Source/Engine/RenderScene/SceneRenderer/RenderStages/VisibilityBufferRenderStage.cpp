@@ -41,17 +41,11 @@ rhi::EFragmentFormat VisibilityBufferRenderStage::GetDepthFormat()
 
 VisibilityBufferRenderStage::VisibilityBufferRenderStage()
 	: m_octahedronNormalsTexture(RENDERER_RESOURCE_NAME("Octahedron Normals Texture"))
-	, m_specularColorTexture(RENDERER_RESOURCE_NAME("Specular Color Texture"))
 {
 	rhi::TextureDefinition octahedronNormalsDef;
 	octahedronNormalsDef.format = rhi::EFragmentFormat::RG16_UN_Float;
 	octahedronNormalsDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
 	m_octahedronNormalsTexture.SetDefinition(octahedronNormalsDef);
-
-	rhi::TextureDefinition specularColorDef;
-	specularColorDef.format = rhi::EFragmentFormat::B10G11R11_U_Float;
-	specularColorDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
-	m_specularColorTexture.SetDefinition(specularColorDef);
 }
 
 void VisibilityBufferRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
@@ -180,6 +174,24 @@ void VisibilityBufferRenderStage::CreateGBuffer(rg::RenderGraphBuilder& graphBui
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 
 	GBuffer::GBufferExternalTextures externalTextures;
+	if (resourcesUsageInfo.useBaseColorHistory)
+	{
+		std::swap(m_externalBaseColorTexture, m_externalHistoryBaseColorTexture);
+
+		externalTextures[GBuffer::Texture::BaseColorMetallic] = &m_externalBaseColorTexture;
+
+		if (m_externalHistoryBaseColorTexture)
+		{
+			if (m_externalHistoryBaseColorTexture->GetResolution2D() != resolution)
+			{
+				m_externalHistoryBaseColorTexture.reset();
+			}
+			else
+			{
+				shadingContext.historyBaseColor = graphBuilder.AcquireExternalTextureView(m_externalHistoryBaseColorTexture);
+			}
+		}
+	}
 	if (resourcesUsageInfo.useRoughnessHistory)
 	{
 		std::swap(m_externalRoughnessTexture, m_externalHistoryRoughnessTexture);
@@ -220,16 +232,6 @@ void VisibilityBufferRenderStage::RenderGBufferAdditionalTextures(rg::RenderGrap
 		shadingContext.historyOctahedronNormals = graphBuilder.TryAcquireExternalTextureView(m_octahedronNormalsTexture.GetHistory());
 
 		gbuffer_utils::oct_normals::GenerateOctahedronNormals(graphBuilder, shadingContext.gBuffer, shadingContext.octahedronNormals);
-	}
-
-	if (resourcesUsageInfo.useSpecularColorWithHistory)
-	{
-		m_specularColorTexture.Update(resolution);
-
-		shadingContext.specularColor        = graphBuilder.AcquireExternalTextureView(m_specularColorTexture.GetCurrent());
-		shadingContext.historySpecularColor = graphBuilder.TryAcquireExternalTextureView(m_specularColorTexture.GetHistory());
-
-		gbuffer_utils::spec_color::GenerateSpecularColor(graphBuilder, shadingContext.gBuffer, shadingContext.specularColor);
 	}
 
 	if (resourcesUsageInfo.useLinearDepth)

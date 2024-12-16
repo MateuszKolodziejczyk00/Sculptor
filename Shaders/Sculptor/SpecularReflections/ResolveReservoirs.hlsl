@@ -41,7 +41,9 @@ void ResolveReservoirsCS(CS_INPUT input)
 			reservoir = UnpackReservoir(u_reservoirsBuffer[tracingReservoirIdx]);
 		}
 
-		float4 luminanceAndHitDistance = 0.f;
+		float3 specularLo = 0.f;
+		float3 diffuseLo  = 0.f;
+		float hitDistance = 0.f;
 
 		if(reservoir.IsValid() && reservoir.HasValidResult())
 		{
@@ -56,30 +58,37 @@ void ResolveReservoirsCS(CS_INPUT input)
 			const float3 toView = normalize(u_sceneView.viewLocation - sampleLocation);
 	
 			const float roughness = u_roughnessTexture.Load(uint3(reservoirCoords, 0));
-			const float3 f0 = u_specularColorTexture.Load(uint3(reservoirCoords, 0)).rgb;
+
+			const float4 baseColorMetallic = u_baseColorTexture.Load(uint3(reservoirCoords, 0));
+
+			float f0;
+			float3 diffuseColor;
+			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
 	
-			const float hitDistance = length(reservoir.hitLocation - sampleLocation);
+			hitDistance = length(reservoir.hitLocation - sampleLocation);
 			const float3 lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
 	
 			const float3 luminance = reservoir.luminance * reservoir.weightSum;
 	
 			const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
-			float3 Lo = specular * luminance * dot(sampleNormal, lightDir);
+			specularLo = specular * luminance * dot(sampleNormal, lightDir);
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
 			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
 	
-			if(any(isnan(Lo)) || any(isinf(Lo)))
+			if(any(isnan(specularLo)) || any(isinf(specularLo)))
 			{
-				Lo = 0.f;
+				specularLo = 0.f;
 			}
 	
 			// demodulate specular
-			Lo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
+			specularLo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-			luminanceAndHitDistance = float4(Lo, hitDistance);
+			const float NdotL = saturate(dot(sampleNormal, lightDir));
+			diffuseLo = luminance * NdotL; // demodulated without lambertian term for denoise
 		}
 
-		u_luminanceHitDistanceTexture[pixel] = luminanceAndHitDistance;
+		u_specularLumHitDistanceTexture[pixel] = float4(specularLo, hitDistance);
+		u_diffuseLumHitDistanceTexture[pixel]  = float4(diffuseLo, hitDistance);
 	}
 }
