@@ -27,10 +27,10 @@ void UploadsManager::EnqueueUpload(const lib::SharedRef<rdr::Buffer>& destBuffer
 	if (dataSize > stagingBufferSize)
 	{
 		Uint64 currentOffset = 0;
-		while (currentOffset <= dataSize)
+
+		while (currentOffset < dataSize)
 		{
-			const Uint64 stagingBufferRemainingSize = m_currentStagingBufferOffset != idxNone<Uint64> ? stagingBufferSize - m_currentStagingBufferOffset : stagingBufferSize;
-			const Uint64 copySize = std::max(dataSize - currentOffset, stagingBufferRemainingSize);
+			const Uint64 copySize = std::min(stagingBufferSize, dataSize - currentOffset);
 			EnqueueUploadImpl(destBuffer, bufferOffset + currentOffset, sourceData + currentOffset, copySize);
 			currentOffset += copySize;
 		}
@@ -63,32 +63,36 @@ void UploadsManager::EnqueUploadToTexture(const Byte* data, Uint64 dataSize, con
 {
 	SPT_PROFILER_FUNCTION();
 
-	// If data is too large for single data buffer, divide it into smaller chunks
-	if (dataSize > stagingBufferSize)
+	const Uint64 fragmentSize = texture->GetRHI().GetFragmentSize();
+	const Uint64 rowDataSize  = copyExtent.x() * fragmentSize;
+	SPT_CHECK(rowDataSize <= stagingBufferSize);
+
+	const Uint32 rowsNum = copyExtent.y();
+
+	SPT_CHECK(rowDataSize * rowsNum == dataSize);
+
+	const Uint32 maxRowsInBatch = static_cast<Uint32>(stagingBufferSize / rowDataSize);
+	SPT_CHECK(maxRowsInBatch > 0u);
+
+	Uint64 srcDataOffset = 0u;
+	Uint32 currentRow    = 0u;
+	while (currentRow < rowsNum)
 	{
-		// For now only handle textures 2D
-		SPT_CHECK(copyExtent.z() == 1 && copyExtent.y() > 1);
+		const Uint32 rowsInCurrentBatch = std::min(maxRowsInBatch, rowsNum - currentRow);
 
-		const Uint32 halfHeight = copyExtent.y() / 2;
+		const math::Vector3u currentBatchExtent = math::Vector3u(copyExtent.x(), rowsInCurrentBatch, copyExtent.z());
+		const math::Vector3u currentBatchOffset = math::Vector3u(copyOffset.x(), copyOffset.y() + currentRow, copyOffset.z());
 
-		const Byte* data1 = data;
-		const Uint64 size1 = dataSize / copyExtent.y() * halfHeight;
-		const math::Vector3u offset1 = copyOffset;
-		const math::Vector3u extent1 = math::Vector3u(copyExtent.x(), halfHeight, copyExtent.z());
+		const Uint64 dataSizeForCurrentBatch = rowsInCurrentBatch * rowDataSize;
+		SPT_CHECK(srcDataOffset + dataSizeForCurrentBatch <= dataSize);
 
-		EnqueueUploadToTextureImpl(data1, size1, texture, aspect, extent1, offset1, mipLevel, arrayLayer);
-
-		const Byte* data2 = data + size1;
-		const Uint64 size2 = dataSize - size1;
-		const math::Vector3u offset2 = copyOffset + math::Vector3u::UnitY() * halfHeight;
-		const math::Vector3u extent2 = math::Vector3u(copyExtent.x(), copyExtent.y() - halfHeight, copyExtent.z());
-
-		EnqueueUploadToTextureImpl(data2, size2, texture, aspect, extent2, offset2, mipLevel, arrayLayer);
+		EnqueueUploadToTextureImpl(data + srcDataOffset, dataSizeForCurrentBatch, texture, aspect, currentBatchExtent, currentBatchOffset, mipLevel, arrayLayer);
+		currentRow    += rowsInCurrentBatch;
+		srcDataOffset += dataSizeForCurrentBatch;
 	}
-	else
-	{
-		EnqueueUploadToTextureImpl(data, dataSize, texture, aspect, copyExtent, copyOffset, mipLevel, arrayLayer);
-	}
+
+	SPT_CHECK(currentRow    == rowsNum);
+	SPT_CHECK(srcDataOffset == dataSize);
 }
 
 Bool UploadsManager::HasPendingUploads() const
@@ -135,10 +139,12 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(dataSize <= stagingBufferSize);
+	SPT_CHECK(dataSize > 0u);
 
 	lib::SharedPtr<rdr::Buffer> stagingBufferInstance;
 	SizeType stagingBufferIdx = idxNone<SizeType>;
 	Uint64 stagingBufferOffset = 0;
+
 
 	{
 		const lib::LockGuard lockGuard(m_lock);
@@ -148,12 +154,13 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 			AcquireAvailableStagingBuffer_AssumesLocked();
 		}
 
-		SPT_CHECK(m_currentStagingBufferOffset != idxNone<Uint64>);
-		SPT_CHECK(!m_stagingBuffers.empty());
+		SPT_CHECK(m_lastUsedStagingBufferIdx < m_stagingBuffers.size());
+
+		const StagingBufferInfo& bufferInfo = m_stagingBuffers[m_lastUsedStagingBufferIdx];;
 
 		stagingBufferIdx		= m_lastUsedStagingBufferIdx;
 		stagingBufferOffset		= m_currentStagingBufferOffset;
-		stagingBufferInstance	= m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+		stagingBufferInstance	= bufferInfo.buffer;
 		
 		SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
 		SPT_CHECK(!!stagingBufferInstance);
@@ -169,10 +176,14 @@ void UploadsManager::EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBu
 	
 		m_currentStagingBufferOffset += dataSize;
 		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
+
+		++m_copiesInProgressNum;
 	}
 
 	// upload data to staging buffer
 	UploadDataToBufferOnCPU(lib::Ref(stagingBufferInstance), stagingBufferOffset, sourceData, dataSize);
+
+	--m_copiesInProgressNum;
 }
 
 void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, Uint32 mipLevel, Uint32 arrayLayer)
@@ -193,12 +204,13 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 			AcquireAvailableStagingBuffer_AssumesLocked();
 		}
 
-		SPT_CHECK(m_currentStagingBufferOffset != idxNone<Uint64>);
-		SPT_CHECK(!m_stagingBuffers.empty());
+		SPT_CHECK(m_lastUsedStagingBufferIdx < m_stagingBuffers.size());
+
+		const StagingBufferInfo& bufferInfo = m_stagingBuffers[m_lastUsedStagingBufferIdx];
 
 		stagingBufferIdx		= m_lastUsedStagingBufferIdx;
 		stagingBufferOffset		= m_currentStagingBufferOffset;
-		stagingBufferInstance	= m_stagingBuffers[m_lastUsedStagingBufferIdx].buffer;
+		stagingBufferInstance	= bufferInfo.buffer;
 		
 		SPT_CHECK(stagingBufferIdx != idxNone<SizeType>);
 		SPT_CHECK(!!stagingBufferInstance);
@@ -217,10 +229,14 @@ void UploadsManager::EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSiz
 	
 		m_currentStagingBufferOffset += dataSize;
 		math::Utils::RoundUp(m_currentStagingBufferOffset, rhi::RHILimits::GetOptimalBufferCopyOffsetAlignment());
+
+		++m_copiesInProgressNum;
 	}
 
 	// upload data to staging buffer
 	UploadDataToBufferOnCPU(lib::Ref(stagingBufferInstance), stagingBufferOffset, data, dataSize);
+
+	--m_copiesInProgressNum;
 }
 
 void UploadsManager::FlushPendingUploads_AssumesLocked()
@@ -257,6 +273,8 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 		recorder->CopyBufferToTexture(stagingBuffer, command.stagingBufferOffset, lib::Ref(command.destTexture), command.aspect, command.copyExtent, command.copyOffset, command.mipLevel, command.arrayLayer);
 	}
 
+	FlushAsyncCopiesToStagingBuffer();
+
 	const Uint64 transferFinishedSingalValue = TransfersManager::SubmitTransfers(context, std::move(recorder));
 
 	for (SizeType stagingBufferIdx : m_stagingBuffersPendingFlush)
@@ -292,6 +310,16 @@ void UploadsManager::AcquireAvailableStagingBuffer_AssumesLocked()
 	m_currentStagingBufferOffset = 0;
 
 	m_stagingBuffersPendingFlush.emplace_back(m_lastUsedStagingBufferIdx);
+}
+
+void UploadsManager::FlushAsyncCopiesToStagingBuffer()
+{
+	SPT_PROFILER_FUNCTION();
+
+	while (m_copiesInProgressNum > 0u)
+	{
+		platf::Platform::SwitchToThread();
+	}
 }
 
 } // spt::gfx

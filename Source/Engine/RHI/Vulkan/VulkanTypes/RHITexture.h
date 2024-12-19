@@ -41,6 +41,8 @@ public:
 	
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
+	Uint64							GetFragmentSize() const;
+
 	VkImage							GetHandle() const;
 
 	void							SetName(const lib::HashedString& name);

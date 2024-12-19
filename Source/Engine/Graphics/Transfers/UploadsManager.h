@@ -33,12 +33,14 @@ private:
 	UploadsManager();
 
 	void EnqueueUploadImpl(const lib::SharedRef<rdr::Buffer>& destBuffer, Uint64 bufferOffset, const Byte* sourceData, Uint64 dataSize);
-	void EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset,  Uint32 mipLevel, Uint32 arrayLayer);
+	void EnqueueUploadToTextureImpl(const Byte* data, Uint64 dataSize, const lib::SharedRef<rdr::Texture>& texture, rhi::ETextureAspect aspect, math::Vector3u copyExtent, math::Vector3u copyOffset, Uint32 mipLevel, Uint32 arrayLayer);
 
 	void FlushPendingUploads_AssumesLocked();
 	void AcquireAvailableStagingBuffer_AssumesLocked();
 
-	static constexpr SizeType stagingBufferSize = 32 * 1024 * 1024;
+	void FlushAsyncCopiesToStagingBuffer();
+
+	static constexpr SizeType stagingBufferSize = 32u * 1024u * 1024u;
 
 	// Number of buffers that are preserved for future frames
 	// Actual number of preserved buffers will be FramesInFlight * preservedStagingBuffersNum as we need to keep buffers that may be in use on gpu read-only
@@ -96,6 +98,8 @@ private:
 	lib::DynamicArray<SizeType> m_stagingBuffersPendingFlush;
 
 	SizeType m_lastUsedStagingBufferIdx;
+
+	std::atomic<Uint32> m_copiesInProgressNum = 0u;
 };
 
 } // spt::gfx

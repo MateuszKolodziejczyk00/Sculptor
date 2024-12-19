@@ -468,6 +468,12 @@ const rhi::RHIAllocationInfo& RHITexture::GetAllocationInfo() const
 	return m_allocationInfo;
 }
 
+Uint64 RHITexture::GetFragmentSize() const
+{
+	SPT_CHECK(IsValid());
+	return rhi::GetFragmentSize(GetFormat());
+}
+
 VkImage RHITexture::GetHandle() const
 {
 	return m_imageHandle;
