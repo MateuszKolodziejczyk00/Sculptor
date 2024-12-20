@@ -45,6 +45,11 @@ float3 EnvBRDFApprox(in float3 specularColor, in float alpha, in float NdotV)
 // Based on GPU Zen 3, Chapter 7.9.6. "Evolution of Real-Time Lighting Pipeline in Cyberpunk 2077"
 float EstimateDiffuseProbability(in float3 specularColor, in float3 diffuseColor, in float roughness, in float NdotV)
 {
+	if (roughness < SPECULAR_TRACE_MAX_ROUGHNESS)
+	{
+		return 0.f;
+	}
+
 	const float3 envBRDF = EnvBRDFApprox(specularColor, RoughnessToAlpha(roughness), NdotV);
 
 	const float specLum = Luminance(envBRDF);
@@ -105,7 +110,7 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 		{
 			direction = reflect(-toView, normal);
 			specularPdf = -1.f; // -1 means specular trace
-			diffusePdf = -1.f; // TODO: Implement proper specular pdf
+			diffusePdf = 0.f;
 		}
 		else
 		{

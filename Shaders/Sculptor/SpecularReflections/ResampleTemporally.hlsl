@@ -319,7 +319,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
-		if (centerPixelSurface.roughness > SPECULAR_TRACE_MAX_ROUGHNESS)
+		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
 
