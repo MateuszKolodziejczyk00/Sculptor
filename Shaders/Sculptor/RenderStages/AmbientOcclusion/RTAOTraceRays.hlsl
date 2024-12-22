@@ -27,7 +27,7 @@ void GenerateAmbientOcclusionRaysRTG()
         const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
         const float3 normal = OctahedronDecodeNormal(u_normalsTexture.SampleLevel(u_nearestSampler, uv, 0));
-        const float3 tangent = dot(normal, UP_VECTOR) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);
+        const float3 tangent = abs(dot(normal, UP_VECTOR)) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);
         const float3 bitangent = cross(normal, tangent);
 
         const float2 random = float2(Random(float2(pixel) + u_rtaoParams.randomSeed.xy), Random(float2(pixel.yx) + u_rtaoParams.randomSeed.yx));

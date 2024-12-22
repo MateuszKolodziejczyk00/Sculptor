@@ -134,7 +134,6 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float diffuseLumCenter = Luminance(centerDiffuse.rgb);
 
 		const float kernel[2] = { 3.f / 8.f, neighborWeight };
-		//const float kernel[3] = { 3.f / 8.f, 2.f / 8.f, 1.f / 8.f };
 
 		float specularWeightSum = kernel[0];
 		float diffuseWeightSum = kernel[0];

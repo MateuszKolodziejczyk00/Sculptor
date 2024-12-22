@@ -97,11 +97,11 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 	{
 		const float2 noise = float2(rng.Next(), rng.Next());
 
-		const float3 tangent   = dot(normal, UP_VECTOR) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);
+		const float3 tangent   = abs(dot(normal, UP_VECTOR)) > 0.9f ? cross(normal, RIGHT_VECTOR) : cross(normal, UP_VECTOR);
 		const float3 bitangent = cross(normal, tangent);
 		const float3x3 tangentSpace = transpose(float3x3(tangent, bitangent, normal));
 
-		direction   = RandomVectorInCosineWeightedHemisphere(tangentSpace, noise, OUT diffusePdf);
+		direction   = RandomVectorInUniformHemisphere(tangentSpace, noise, OUT diffusePdf);
 		specularPdf = PDFVNDFIsotrpic(toView, direction, alpha, normal);
 	}
 	else
@@ -143,7 +143,7 @@ RayDirectionInfo GenerateReflectionRayDir(in float4 baseColorMetallic, in float3
 				++attempt;
 			}
 
-			diffusePdf = PDFHemisphereCosineWeighted(normal, direction);
+			diffusePdf = PDFHemisphereUniform(normal, direction);
 		}
 	}
 
