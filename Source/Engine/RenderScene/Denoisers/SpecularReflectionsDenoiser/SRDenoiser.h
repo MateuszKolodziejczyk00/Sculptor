@@ -57,31 +57,42 @@ public:
 		rg::RGTextureViewHandle normalsTexture;
 		rg::RGTextureViewHandle historyNormalsTexture;
 
+		rg::RGTextureViewHandle specularTexture;
+		rg::RGTextureViewHandle diffuseTexture;
+
 		Bool detailPreservingSpatialFilter = false;
 	};
 
 	struct Result
 	{
-		rg::RGTextureViewHandle denoiserOutput;
+		rg::RGTextureViewHandle denoisedSpecular;
+		rg::RGTextureViewHandle denoisedDiffuse;
 		rg::RGTextureViewHandle varianceEstimation;
 	};
 
 	explicit Denoiser(rg::RenderGraphDebugName debugName);
 
-	Result Denoise(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	Result Denoise(rg::RenderGraphBuilder& graphBuilder, const Params& params);
 
 private:
 
-	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params);
 
-	Result DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle denoisedTexture, const Params& params);
+	Result DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, const Params& params);
 
 	struct SpatialFilterParams
 	{
-		rg::RGTextureViewHandle input;
-		rg::RGTextureViewHandle output;
-		rg::RGTextureViewHandle inputVariance;
-		rg::RGTextureViewHandle tempVariance;
+		rg::RGTextureViewHandle inSpecular;
+		rg::RGTextureViewHandle outSpecular;
+		rg::RGTextureViewHandle inSpecularVariance;
+
+		rg::RGTextureViewHandle inDiffuse;
+		rg::RGTextureViewHandle outDiffuse;
+		rg::RGTextureViewHandle inDiffuseVariance;
+
+		rg::RGTextureViewHandle intermediateSpecularVariance;
+		rg::RGTextureViewHandle intermediateDiffuseVariance;
+
 		rg::RGTextureViewHandle historySamplesNum;
 		rg::RGTextureViewHandle reprojectionConfidence;
 	};
@@ -89,17 +100,24 @@ private:
 	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params);
 
 	rg::RenderGraphDebugName m_debugName;
+	
+	lib::SharedPtr<rdr::TextureView> m_historySpecularTexture;
+	lib::SharedPtr<rdr::TextureView> m_historyDiffuseTexture;
 
-	lib::SharedPtr<rdr::TextureView> m_historyTexture;
-	
-	lib::SharedPtr<rdr::TextureView> m_fastHistoryTexture;
-	lib::SharedPtr<rdr::TextureView> m_fastHistoryOutputTexture;
-	
 	lib::SharedPtr<rdr::TextureView> m_accumulatedSamplesNumTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyAccumulatedSamplesNumTexture;
-	
-	lib::SharedPtr<rdr::TextureView> m_temporalVarianceTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyTemporalVarianceTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_fastHistorySpecularTexture;
+	lib::SharedPtr<rdr::TextureView> m_fastHistorySpecularOutputTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_fastHistoryDiffuseTexture;
+	lib::SharedPtr<rdr::TextureView> m_fastHistoryDiffuseOutputTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_temporalVarianceSpecularTexture;
+	lib::SharedPtr<rdr::TextureView> m_historyTemporalVarianceSpecularTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_temporalVarianceDiffuseTexture;
+	lib::SharedPtr<rdr::TextureView> m_historyTemporalVarianceDiffuseTexture;
 
 	Bool m_hasValidHistory;
 };

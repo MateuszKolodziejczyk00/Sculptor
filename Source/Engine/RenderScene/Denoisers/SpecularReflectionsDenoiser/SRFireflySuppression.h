@@ -25,8 +25,12 @@ struct FireflySuppressionParams
 	FireflySuppressionParams() = default;
 
 	rg::RenderGraphDebugName debugName;
-	rg::RGTextureViewHandle  inputLuminanceHitDisTexture;
-	rg::RGTextureViewHandle  outputLuminanceHitDisTexture;
+
+	rg::RGTextureViewHandle  inSpecularHitDistTexture;
+	rg::RGTextureViewHandle  outSpecularHitDistTexture;
+
+	rg::RGTextureViewHandle  inDiffuseHitDistTexture;
+	rg::RGTextureViewHandle  outDiffuseHitDistTexture;
 };
 
 

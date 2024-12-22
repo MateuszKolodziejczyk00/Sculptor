@@ -17,8 +17,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRFireflySuppressionDS, rg::RGDescriptorSetState<SRFireflySuppressionDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outputLuminanceHitDisTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inputLuminanceHitDisTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outSpecularHitDistTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inSpecularHitDistTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffuseHitDistTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffuseHitDistTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRFireflySuppressionConstants>), u_constants)
 DS_END();
 
@@ -34,15 +36,22 @@ void SuppressFireflies(rg::RenderGraphBuilder& graphBuilder, const FireflySuppre
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = params.inputLuminanceHitDisTexture->GetResolution2D();
+	SPT_CHECK(params.inSpecularHitDistTexture.IsValid());
+	SPT_CHECK(params.outSpecularHitDistTexture.IsValid());
+	SPT_CHECK(params.inDiffuseHitDistTexture.IsValid());
+	SPT_CHECK(params.outDiffuseHitDistTexture.IsValid());
+
+	const math::Vector2u resolution = params.inSpecularHitDistTexture->GetResolution2D();
 
 	SRFireflySuppressionConstants shaderConstants;
 	shaderConstants.resolution = resolution;
 
 	lib::MTHandle<SRFireflySuppressionDS> ds = graphBuilder.CreateDescriptorSet<SRFireflySuppressionDS>(RENDERER_RESOURCE_NAME("SR Firefly Suppression DS"));
-	ds->u_inputLuminanceHitDisTexture  = params.inputLuminanceHitDisTexture;
-	ds->u_outputLuminanceHitDisTexture = params.outputLuminanceHitDisTexture;
-	ds->u_constants                    = shaderConstants;
+	ds->u_outSpecularHitDistTexture = params.outSpecularHitDistTexture;
+	ds->u_inSpecularHitDistTexture  = params.inSpecularHitDistTexture;
+	ds->u_outDiffuseHitDistTexture  = params.outDiffuseHitDistTexture;
+	ds->u_inDiffuseHitDistTexture   = params.inDiffuseHitDistTexture;
+	ds->u_constants                 = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateFireflySuppressionPipeline();
 

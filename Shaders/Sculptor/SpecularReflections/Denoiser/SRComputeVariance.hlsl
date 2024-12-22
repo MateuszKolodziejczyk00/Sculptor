@@ -17,9 +17,10 @@ struct CS_INPUT
 
 struct SampleData
 {
-	half3 normal;
+	half3  normal;
 	float linearDepth;
-	float luminance;
+	half  specularLum;
+	half  diffuseLum;
 };
 
 
@@ -52,9 +53,6 @@ void SRComputeVarianceCS(CS_INPUT input)
 {
 	const uint2 pixel = input.globalID.xy;
 
-	uint2 outputRes;
-	u_rwVarianceTexture.GetDimensions(outputRes.x, outputRes.y);
-
 	const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(uint3(pixel, 0u)).x;
 
 	const uint temporalVarianceRequiredSamplesNum = 4u;
@@ -76,16 +74,20 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 			sharedSampleData[x][y].normal      = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
 			sharedSampleData[x][y].linearDepth = ComputeLinearDepth(u_depthTexture.Load(samplePixel).x, u_sceneView);
-			sharedSampleData[x][y].luminance   = Luminance(u_luminanceTexture.Load(samplePixel).xyz);
+			sharedSampleData[x][y].specularLum = half(Luminance(u_specularTexture.Load(samplePixel).xyz));
+			sharedSampleData[x][y].diffuseLum  = half(Luminance(u_diffuseTexture.Load(samplePixel).xyz));
 		}
 
 		GroupMemoryBarrierWithGroupSync();
 	}
 
-	if(all(pixel < outputRes))
+	if(all(pixel < u_constants.resolution))
 	{
-		const float2 moments = u_momentsTexture.Load(uint3(pixel, 0u)).xy;
-		float variance = abs(moments.y - moments.x * moments.x);
+		const float2 specularMoments = u_specularMomentsTexture.Load(uint3(pixel, 0u)).xy;
+		float specularVariance = abs(specularMoments.y - specularMoments.x * specularMoments.x);
+
+		const float2 diffuseMoments = u_diffuseMomentsTexture.Load(uint3(pixel, 0u)).xy;
+		float diffuseVariance = abs(diffuseMoments.y - diffuseMoments.x * diffuseMoments.x);
 
 		if (accumulatedSamplesNum < temporalVarianceRequiredSamplesNum)
 		{
@@ -93,8 +95,11 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 			const SampleData centerSample = sharedSampleData[center.x][center.y];
 
-			float luminanceSum = 0.f;
-			float luminanceSquaredSum = 0.f;
+			float specularLumSum   = 0.f;
+			float specularLumSqSum = 0.f;
+			float diffuseLumSum    = 0.f;
+			float diffuseLumSqSum  = 0.f;
+
 			float weightSum = 0.000001f;
 
 			for (int y = -KERNEL_RADIUS; y <= KERNEL_RADIUS; ++y)
@@ -105,25 +110,35 @@ void SRComputeVarianceCS(CS_INPUT input)
 					const SampleData sample = sharedSampleData[sampleID.x][sampleID.y];
 
 					const float weight = ComputeWeight(centerSample, sample, int2(x, y));
-					
-					luminanceSum += sample.luminance * weight;
-					luminanceSquaredSum += sample.luminance * sample.luminance * weight;
+
 					weightSum += weight;
+
+					specularLumSum   += sample.specularLum * weight;
+					specularLumSqSum += Pow2(sample.specularLum) * weight;
+
+					diffuseLumSum   += sample.diffuseLum * weight;
+					diffuseLumSqSum += Pow2(sample.diffuseLum) * weight;
 				}
 			}
 
-			luminanceSum        /= weightSum;
-			luminanceSquaredSum /= weightSum;
+			const float rcpWeightSum = weightSum > 0.f ? rcp(weightSum) :0.f;
 
-			float spatialVariance = abs(luminanceSquaredSum - luminanceSum * luminanceSum);
+			const float2 specularMoments = float2(specularLumSum, specularLumSqSum) * rcpWeightSum;
+			const float2 diffuseMoments  = float2(diffuseLumSum, diffuseLumSqSum) * rcpWeightSum;
+
+			float specularSpatialVariance = abs(specularMoments.y - Pow2(specularMoments.x));
+			float diffuseSpatialVariance  = abs(diffuseMoments.y - Pow2(diffuseMoments.x));
 
 			const float spatialVarianceBoost = 7.f;
 
-			spatialVariance *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u) * spatialVarianceBoost;
+			specularSpatialVariance *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u) * spatialVarianceBoost;
+			diffuseSpatialVariance  *= (temporalVarianceRequiredSamplesNum - accumulatedSamplesNum + 1u) * spatialVarianceBoost;
 
-			variance = max(variance, spatialVariance);
+			specularVariance = max(specularVariance, specularSpatialVariance);
+			diffuseVariance  = max(diffuseVariance, diffuseSpatialVariance);
 		}
 
-		u_rwVarianceTexture[pixel] = variance;
+		u_rwSpecularVarianceTexture[pixel] = specularVariance;
+		u_rwDiffuseVarianceTexture[pixel]  = diffuseVariance;
 	}
 }

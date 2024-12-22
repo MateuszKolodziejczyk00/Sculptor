@@ -273,9 +273,12 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 
 	if (test == 2)
 	{
-		const math::Translation3f translation(0.f, 0.f, 1.4f);
-		transform = translation * transform;
-
+		//const math::Translation3f translation(0.f, 0.f, 1.4f);
+		//transform = translation * transform;
+		//const math::AlignedScaling3f scale(1.f, 1.f, 5.f);
+		//transform = scale * transform;
+		//const math::Translation3f translation(-1.4f, 0.f, 0.f);
+		//transform = translation * transform;
 	}
 
 	return transform;

@@ -28,13 +28,17 @@ struct ClampHistoryParams
 
 	const RenderView&        renderView;
 	rg::RenderGraphDebugName debugName;
-	rg::RGTextureViewHandle  luminanceAndHitDistanceTexture;
 	rg::RGTextureViewHandle  accumulatedSamplesNumTexture;
-	rg::RGTextureViewHandle  fastHistoryLuminanceTexture;
 	rg::RGTextureViewHandle  depthTexture;
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  roughnessTexture;
 	rg::RGTextureViewHandle  reprojectionConfidenceTexture;
+
+	rg::RGTextureViewHandle  specularTexture;
+	rg::RGTextureViewHandle  fastHistorySpecularTexture;
+
+	rg::RGTextureViewHandle  diffuseTexture;
+	rg::RGTextureViewHandle  fastHistoryDiffuseTexture;
 };
 
 

@@ -33,21 +33,21 @@ float ComputeDetailPreservationStrength(in float historyLength, in float reproje
 }
 
 
-float LoadVariance(in int2 coords)
+float LoadVariance(in Texture2D<float> varianceTexture, in int2 coords)
 {
 	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(u_params.resolution - 1));
-	return u_inputVarianceTexture.Load(uint3(clampedCoords, 0)).x;
+	return varianceTexture.Load(uint3(clampedCoords, 0)).x;
 }
 
 
-float2 LoadVariance3x3(in uint2 groupOffset, in uint threadIdx, in uint2 localID)
+float2 LoadVariance3x3(in Texture2D<float> varianceTexture, in uint2 groupOffset, in uint threadIdx, in uint2 localID)
 {
 	const uint2 pixel = groupOffset + localID;
 
-	float upperLeft  = LoadVariance(pixel + int2(-1,  1));
-	float upperRight = LoadVariance(pixel + int2( 1,  1));
-	float lowerLeft  = LoadVariance(pixel + int2(-1, -1));
-	float lowerRight = LoadVariance(pixel + int2( 1, -1));
+	float upperLeft  = LoadVariance(varianceTexture, pixel + int2(-1,  1));
+	float upperRight = LoadVariance(varianceTexture, pixel + int2( 1,  1));
+	float lowerLeft  = LoadVariance(varianceTexture, pixel + int2(-1, -1));
+	float lowerRight = LoadVariance(varianceTexture, pixel + int2( 1, -1));
 
 	if(localID.x & 0x1)
 	{
@@ -110,7 +110,8 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
-			u_outputTexture[pixel] = u_inputTexture.Load(uint3(pixel, 0));
+			u_outDiffuseLuminance[pixel] = u_inDiffuseLuminance.Load(uint3(pixel, 0));
+			u_outSpecularLuminance[pixel] = u_inSpecularLuminance.Load(uint3(pixel, 0));
 			return;
 		}
 		
@@ -118,34 +119,44 @@ void SRATrousFilterCS(CS_INPUT input)
 		
 		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
 
-		const float4 centerLuminanceHitDistance = u_inputTexture.Load(uint3(pixel, 0));
-		const float lumCenter = Luminance(centerLuminanceHitDistance.rgb);
-
 		const float accumulatedFrames = u_historyFramesNumTexture.Load(uint3(pixel, 0));
 		const float specularReprojectionConfidence = u_reprojectionConfidenceTexture.Load(uint3(pixel, 0));
 
-		float roughnessFilterStrength = 0.f;
-		{
-			roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularReprojectionConfidence, accumulatedFrames);
-		}
+		const float roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularReprojectionConfidence, accumulatedFrames);
 
 		const float detailPreservationStrength = ComputeDetailPreservationStrength(accumulatedFrames, specularReprojectionConfidence);
 		const float neighborWeight = lerp(1.f / 8.f, 1 / 32.f, detailPreservationStrength);
 
+		const float4 centerSpecular = u_inSpecularLuminance.Load(uint3(pixel, 0));
+		const float specularLumCenter = Luminance(centerSpecular.rgb);
+
+		const float4 centerDiffuse = u_inDiffuseLuminance.Load(uint3(pixel, 0));
+		const float diffuseLumCenter = Luminance(centerDiffuse.rgb);
+
 		const float kernel[2] = { 3.f / 8.f, neighborWeight };
+		//const float kernel[3] = { 3.f / 8.f, 2.f / 8.f, 1.f / 8.f };
 
-		float weightSum = kernel[0];
+		float specularWeightSum = kernel[0];
+		float diffuseWeightSum = kernel[0];
 
-		float3 luminanceSum = 0.f;
-		luminanceSum += (centerLuminanceHitDistance.rgb / (Luminance(centerLuminanceHitDistance.rgb) + 1.f)) * weightSum;
+		float3 specularSum = 0.f;
+		specularSum += (centerSpecular.rgb / (Luminance(centerSpecular.rgb) + 1.f)) * specularWeightSum;
 
-		const float2 variance = LoadVariance3x3(groupOffset, threadIdx, localID);
-		const float centerVariance = variance.y;
+		float3 diffuseSum = 0.f;
+		diffuseSum += (centerDiffuse.rgb / (Luminance(centerDiffuse.rgb) + 1.f)) * diffuseWeightSum;
 
-		const float centerLuminanceStdDev = centerVariance > 0.f ? sqrt(centerVariance) : 0.f;
-		const float rcpLuminanceStdDev = 1.f / (centerLuminanceStdDev * lumStdDevMultiplier + 0.001f);
+		const float2 specularVariance = LoadVariance3x3(u_inSpecularVariance, groupOffset, threadIdx, localID);
+		const float2 diffuseVariance  = LoadVariance3x3(u_inDiffuseVariance, groupOffset, threadIdx, localID);
+		const float centerSpecularVariance = specularVariance.y;
+		const float centerDiffuseVariance  = diffuseVariance.y;
 
-		float varianceSum = variance.x * Pow2(weightSum);
+		const float centerSpecularLumStdDev = centerSpecularVariance > 0.f ? sqrt(centerSpecularVariance) : 0.f;
+		const float rcpSpecularLumStdDev = 1.f / (centerSpecularLumStdDev * lumStdDevMultiplier + 0.001f);
+		float specularVarianceSum = specularVariance.x * Pow2(specularWeightSum);
+
+		const float centerDiffuseLumStdDev = centerDiffuseVariance > 0.f ? sqrt(centerDiffuseVariance) : 0.f;
+		const float rcpDiffuseLumStdDev = 1.f / (centerDiffuseLumStdDev * lumStdDevMultiplier + 0.001f);
+		float diffuseVarianceSum = diffuseVariance.x * Pow2(diffuseWeightSum);
 
 		const int radius = 1;
 
@@ -165,7 +176,9 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float sampleLinearDepth = u_linearDepthTexture.Load(uint3(samplePixel, 0));
 				const float sampleRoughness = u_roughnessTexture.Load(uint3(samplePixel, 0));
 				const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(samplePixel, 0)));
-				float3 luminance = u_inputTexture.Load(uint3(samplePixel, 0)).rgb;
+
+				float3 specular = u_inSpecularLuminance.Load(uint3(samplePixel, 0)).rgb;
+				float3 diffuse  = u_inDiffuseLuminance.Load(uint3(samplePixel, 0)).rgb;
 
 				if(isinf(sampleLinearDepth))
 				{
@@ -176,37 +189,65 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float dw = ComputeWorldLocationWeight(centerWS, normal, sampleWS);
 				weight *= dw;
 
-				const float rw = ComputeRoughnessWeight(roughness, sampleRoughness, roughnessFilterStrength);
-				weight *= rw;
-
-				const float wn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
-				weight *= wn;
-
 				weight *= kernel[max(abs(x), abs(y))];
 
-				const float lum = Luminance(luminance);
+				const float specularLum = Luminance(specular);
 
-				const float lw = (abs(lumCenter - lum) * rcpLuminanceStdDev + 0.001f);
-				weight *= exp(-lw);
+				float specularWeight = weight;
 
-				luminance /= (lum + 1.f);
+				const float rw = ComputeRoughnessWeight(roughness, sampleRoughness, roughnessFilterStrength);
+				specularWeight *= rw;
 
-				luminanceSum += luminance * weight;
+				const float slw = (abs(specularLumCenter - specularLum) * rcpSpecularLumStdDev + 0.001f);
+				specularWeight *= exp(-slw);
 
-				const float sampleVariance = u_inputVarianceTexture.Load(uint3(samplePixel, 0)).x;
+				const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
+				specularWeight *= swn;
 
-				varianceSum += sampleVariance * Pow2(weight);
+				specular /= (specularLum + 1.f);
 
-				weightSum += weight;
+				specularSum += specular * specularWeight;
+
+				const float sampleSpecularVariance = u_inSpecularVariance.Load(uint3(samplePixel, 0)).x;
+
+				specularVarianceSum += sampleSpecularVariance * Pow2(specularWeight);
+
+				specularWeightSum += specularWeight;
+
+				float diffuseWeight = weight;
+
+				const float diffuseLum = Luminance(diffuse);
+
+				const float dlw = (abs(diffuseLumCenter - diffuseLum) * rcpDiffuseLumStdDev + 0.001f);
+				diffuseWeight *= exp(-dlw);
+
+				const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
+				diffuseWeight *= dwn;
+
+				diffuse /= (diffuseLum + 1.f);
+
+				diffuseSum += diffuse * diffuseWeight;
+
+				const float sampleDiffuseVariance = u_inDiffuseVariance.Load(uint3(samplePixel, 0u)).x;
+
+				diffuseVarianceSum += sampleDiffuseVariance * Pow2(diffuseWeight);
+
+				diffuseWeightSum += diffuseWeight;
 			}
 		}
 
-		float3 outLuminance = luminanceSum / weightSum;
-		outLuminance /= (1.f - Luminance(outLuminance));
+		float3 outSpecular = specularSum / specularWeightSum;
+		outSpecular /= (1.f - Luminance(outSpecular ));
+		u_outSpecularLuminance[pixel] = float4(outSpecular, centerSpecular.w);
 
-		u_outputTexture[pixel] = float4(outLuminance, centerLuminanceHitDistance.w);
+		float3 outDiffuse = diffuseSum / diffuseWeightSum;
+		outDiffuse /= (1.f - Luminance(outDiffuse));
+		u_outDiffuseLuminance[pixel] = float4(outDiffuse, centerDiffuse.w);
 
-		const float outputVariance = varianceSum / Pow2(weightSum);
-		u_outputVarianceTexture[pixel] = outputVariance;
+		const float outSpecularVariance = specularVarianceSum / Pow2(specularWeightSum);
+		u_outSpecularVariance[pixel] = outSpecularVariance;
+
+		const float outDiffuseVariance = diffuseVarianceSum / Pow2(diffuseWeightSum);
+		u_outDiffuseVariance[pixel] = outDiffuseVariance;
 	}
 }

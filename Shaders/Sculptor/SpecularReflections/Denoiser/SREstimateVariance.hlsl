@@ -69,7 +69,12 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 		sample.depth     = u_depthTexture.Load(sampleCoords).x;
 		sample.normal    = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
 
-		const float variance   = u_varianceTexture.Load(sampleCoords).x;
+#if MERGE_DIFFUSE_AND_SPECULAR
+		const float variance = u_specularVarianceTexture.Load(sampleCoords).x + u_diffuseVvarianceTexture.Load(sampleCoords).x;
+#else
+		const float variance = u_varianceTexture.Load(sampleCoords).x;
+#endif // MERGE_DIFFUSE_AND_SPECULAR
+
 		const float samplesNum = u_accumulatedSamplesNumTexture.Load(sampleCoords).x;
 
 		sample.variance = ApplyBesselsCorrection(variance, samplesNum);

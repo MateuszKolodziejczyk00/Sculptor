@@ -22,10 +22,14 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_inputVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_outputVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inSpecularLuminance)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inDiffuseLuminance)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_inSpecularVariance)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_inDiffuseVariance)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outSpecularLuminance)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outDiffuseLuminance)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_outSpecularVariance)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_outDiffuseVariance)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
@@ -42,11 +46,20 @@ static rdr::PipelineStateID CreateSRATrousFilterPipeline()
 }
 
 
-void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilterParams& filterParams, const SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
+void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilterParams& filterParams, const SRATrousPass& passParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = passParams.outputLuminance->GetResolution2D();
+	SPT_CHECK(passParams.inSpecularLuminance.IsValid());
+	SPT_CHECK(passParams.inDiffuseLuminance.IsValid());
+	SPT_CHECK(passParams.inSpecularVariance.IsValid());
+	SPT_CHECK(passParams.inDiffuseVariance.IsValid());
+	SPT_CHECK(passParams.outSpecularLuminance.IsValid());
+	SPT_CHECK(passParams.outDiffuseLuminance.IsValid());
+	SPT_CHECK(passParams.outSpecularVariance.IsValid())
+	SPT_CHECK(passParams.outDiffuseVariance.IsValid());
+
+	const math::Vector2u resolution = passParams.inSpecularLuminance->GetResolution2D();
 
 	static const rdr::PipelineStateID pipeline = CreateSRATrousFilterPipeline();
 
@@ -57,10 +70,14 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	dispatchParams.invResolution            = resolution.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
-	ds->u_inputTexture                  = passParams.inputLuminance;
-	ds->u_outputTexture                 = passParams.outputLuminance;
-	ds->u_inputVarianceTexture          = inputVariance;
-	ds->u_outputVarianceTexture         = outputVariance;
+	ds->u_inSpecularLuminance           = passParams.inSpecularLuminance;
+	ds->u_inDiffuseLuminance            = passParams.inDiffuseLuminance;
+	ds->u_inSpecularVariance            = passParams.inSpecularVariance;
+	ds->u_inDiffuseVariance             = passParams.inDiffuseVariance;
+	ds->u_outSpecularLuminance          = passParams.outSpecularLuminance;
+	ds->u_outDiffuseLuminance           = passParams.outDiffuseLuminance;
+	ds->u_outSpecularVariance           = passParams.outSpecularVariance;
+	ds->u_outDiffuseVariance            = passParams.outDiffuseVariance;
 	ds->u_linearDepthTexture            = filterParams.linearDepthTexture;
 	ds->u_normalsTexture                = filterParams.normalsTexture;
 	ds->u_roughnessTexture              = filterParams.roughnessTexture;

@@ -29,11 +29,17 @@ struct DisocclusionFixParams
 	const RenderView&        renderView;
 	rg::RenderGraphDebugName debugName;
 	rg::RGTextureViewHandle  accumulatedSamplesNumTexture;
+
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  depthTexture;
-	rg::RGTextureViewHandle  luminanceTexture;
-	rg::RGTextureViewHandle  outputLuminanceTexture;
+
 	rg::RGTextureViewHandle  roughnessTexture;
+
+	rg::RGTextureViewHandle  diffuseTexture;
+	rg::RGTextureViewHandle  outputDiffuseTexture;
+
+	rg::RGTextureViewHandle  specularTexture;
+	rg::RGTextureViewHandle  outputSpecularTexture;
 };
 
 

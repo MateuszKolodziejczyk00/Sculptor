@@ -25,6 +25,9 @@ struct TemporalFilterParams : public denoising::DenoiserBaseParams
 
 	Real32 accumulatedFramesMaxCount = 12.f;
 
+	rg::RGTextureViewHandle currentTexture;
+	rg::RGTextureViewHandle historyTexture;
+
 	rg::RGTextureViewHandle spatialMomentsTexture;
 
 	rg::RGTextureViewHandle accumulatedSamplesNumTexture;

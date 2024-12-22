@@ -18,9 +18,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRClampHistoryDS, rg::RGDescriptorSetState<SRClampHistoryDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_luminanceAndHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_specularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistorySpecularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffuseTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistoryDiffuseTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_accumulatedSamplesNumTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistoryLuminanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
@@ -40,15 +42,22 @@ void ClampHistory(rg::RenderGraphBuilder& graphBuilder, const ClampHistoryParams
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = params.luminanceAndHitDistanceTexture->GetResolution2D();
+	SPT_CHECK(params.specularTexture.IsValid());
+	SPT_CHECK(params.fastHistorySpecularTexture.IsValid());
+	SPT_CHECK(params.diffuseTexture.IsValid());
+	SPT_CHECK(params.fastHistoryDiffuseTexture.IsValid());
+
+	const math::Vector2u resolution = params.specularTexture->GetResolution2D();
 
 	SRClampHistoryConstants shaderConstants;
-	shaderConstants.resolution   = resolution;
-	shaderConstants.pixelSize    = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.resolution = resolution;
+	shaderConstants.pixelSize  = resolution.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<SRClampHistoryDS> ds = graphBuilder.CreateDescriptorSet<SRClampHistoryDS>(RENDERER_RESOURCE_NAME("SR Clamp History DS"));
-	ds->u_luminanceAndHitDistanceTexture = params.luminanceAndHitDistanceTexture;
-	ds->u_fastHistoryLuminanceTexture    = params.fastHistoryLuminanceTexture;
+	ds->u_specularTexture                = params.specularTexture;
+	ds->u_fastHistorySpecularTexture     = params.fastHistorySpecularTexture;
+	ds->u_diffuseTexture                 = params.diffuseTexture;
+	ds->u_fastHistoryDiffuseTexture      = params.fastHistoryDiffuseTexture;
 	ds->u_accumulatedSamplesNumTexture   = params.accumulatedSamplesNumTexture;
 	ds->u_depthTexture                   = params.depthTexture;
 	ds->u_normalsTexture                 = params.normalsTexture;

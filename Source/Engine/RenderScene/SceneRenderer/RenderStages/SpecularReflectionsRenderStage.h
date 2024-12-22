@@ -31,8 +31,7 @@ private:
 	void RenderVariableRateTexture(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext);
 
 	sr_restir::SpatiotemporalResampler m_resampler;
-	sr_denoiser::Denoiser              m_specularDenoiser;
-	sr_denoiser::Denoiser              m_diffuseDenoiser;
+	sr_denoiser::Denoiser m_denoiser;
 
 	vrt::VariableRateRenderer m_variableRateRenderer;
 

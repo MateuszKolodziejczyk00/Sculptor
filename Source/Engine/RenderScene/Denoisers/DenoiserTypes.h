@@ -22,7 +22,7 @@ struct DenoiserBaseParams
 
 	Bool HasValidHistory() const
 	{
-		return historyDepthTexture.IsValid() && historyTexture.IsValid();
+		return historyDepthTexture.IsValid();
 	}
 
 	const RenderView& renderView;
@@ -35,9 +35,6 @@ struct DenoiserBaseParams
 	rg::RGTextureViewHandle motionTexture;
 
 	rg::RGTextureViewHandle normalsTexture;
-
-	rg::RGTextureViewHandle currentTexture;
-	rg::RGTextureViewHandle historyTexture;
 };
 
 

@@ -33,7 +33,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 	const uint2 pixel = input.globalID.xy;
 	
 	uint2 outputRes;
-	u_currentTexture.GetDimensions(outputRes.x, outputRes.y);
+	u_rwSpecularTexture.GetDimensions(outputRes.x, outputRes.y);
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
@@ -42,7 +42,8 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		const float2 pixelSize = rcp(float2(outputRes));
 		const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
-		const float4 luminanceAndHitDist = u_currentTexture[pixel];
+		const float4 specular = u_rwSpecularTexture[pixel];
+		const float4 diffuse  = u_rwDiffuseTexture[pixel];
 
 		const float currentDepth = u_depthTexture.Load(uint3(pixel, 0));
 		if(currentDepth == 0.f)
@@ -52,7 +53,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
 		const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, u_sceneView);
-		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * luminanceAndHitDist.w;
+		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * specular.w;
 		const float3 prevFrameNDC = WorldSpaceToNDCNoJitter(projectedReflectionWS, u_prevFrameSceneView);
 
 		const float currentLinearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
@@ -124,8 +125,12 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		}
 
 		uint historySamplesNum = 0u;
-		const float lum = Luminance(luminanceAndHitDist.rgb);
-		float2 moments = float2(lum, lum * lum);
+
+		const float specularLum = Luminance(specular.rgb);
+		float2 specularMoments = float2(specularLum, Pow2(specularLum));
+
+		const float diffuseLum = Luminance(diffuse.rgb);
+		float2 diffuseMoments = float2(diffuseLum, Pow2(diffuseLum));
 
 		if (reprojectionConfidence > 0.05f)
 		{
@@ -140,38 +145,50 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float3 toViewDir = (u_sceneView.viewLocation - currentSampleWS) / distToSample;
 			const float dotNV = saturate(dot(currentSampleNormal, toViewDir));
 
-			const float maxAccumulatedFrames = MAX_ACCUMULATED_FRAMES_NUM;
-
-			historySamplesNum = min(historySamplesNum, uint(maxAccumulatedFrames));
+			historySamplesNum = min(historySamplesNum, uint(MAX_ACCUMULATED_FRAMES_NUM));
 			float currentFrameWeight = rcp(float(historySamplesNum + 1u));
 
-			const float2 historyMoments = u_historyTemporalVarianceTexture.Load(historyPixel);
-			moments = lerp(historyMoments, moments, currentFrameWeight);
+			const float2 specularHistoryMoments = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
+			specularMoments = lerp(specularHistoryMoments, specularMoments, currentFrameWeight);
+
+			const float2 diffuseHistoryMoments = u_diffuseHistoryTemporalVarianceTexture.Load(historyPixel);
+			diffuseMoments = lerp(diffuseHistoryMoments, diffuseMoments, currentFrameWeight);
 
 			currentFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - reprojectionConfidence);
 			
-			float4 historyValue = u_historyTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
-			historyValue.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(historyValue.rgb);
+			float4 specularHistory = u_specularHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.0f);
+			specularHistory.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(specularHistory.rgb);
 
-			const float4 newValue = lerp(historyValue, luminanceAndHitDist, currentFrameWeight);
+			float4 diffuseHistory = u_diffuseHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+			diffuseHistory.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(diffuseHistory.rgb);
 
-			u_currentTexture[pixel] = newValue;
+			const float4 accumulatedSpecular = lerp(specularHistory, specular, currentFrameWeight);
+			const float4 accumulatedDiffuse  = lerp(diffuseHistory, diffuse, currentFrameWeight);
+
+			u_rwSpecularTexture[pixel] = accumulatedSpecular;
+			u_rwDiffuseTexture[pixel]  = accumulatedDiffuse;
 
 			// Fast history
 
-			const float3 fastHistory = u_fastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
 			const float currentFrameWeightFast = max(0.3f, currentFrameWeight);
-			u_fastHistoryOutputTexture[pixel] = lerp(fastHistory, luminanceAndHitDist.rgb, currentFrameWeightFast);
+
+			const float3 specularFastHistory = u_specularFastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+			u_rwSpecularFastHistoryTexture[pixel] = lerp(specularFastHistory, specular.rgb, currentFrameWeightFast);
+
+			const float3 diffuseFastHistory = u_diffuseFastHistoryTexture.SampleLevel(u_linearSampler, historyUV, 0.f);
+			u_rwDiffuseFastHistoryTexture[pixel] = lerp(diffuseFastHistory, diffuse.rgb, currentFrameWeight);
 
 			historySamplesNum = historySamplesNum + 1u;
 		}
 		else
 		{
-			u_fastHistoryOutputTexture[pixel] = luminanceAndHitDist.rgb;
+			u_rwSpecularFastHistoryTexture[pixel] = specular.rgb;
+			u_rwDiffuseFastHistoryTexture[pixel]  = diffuse.rgb;
 		}
 
-		u_accumulatedSamplesNumTexture[pixel]  = historySamplesNum;
-		u_temporalVarianceTexture[pixel]       = moments;
-		u_reprojectionConfidenceTexture[pixel] = reprojectionConfidence;
+		u_accumulatedSamplesNumTexture[pixel]      = historySamplesNum;
+		u_rwSpecularTemporalVarianceTexture[pixel] = specularMoments;
+		u_rwDiffuseTemporalVarianceTexture[pixel]  = diffuseMoments;
+		u_reprojectionConfidenceTexture[pixel]     = reprojectionConfidence;
 	}
 }

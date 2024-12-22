@@ -22,22 +22,28 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulationDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_currentTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                                     u_accumulatedSamplesNumTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_temporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_reprojectionConfidenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_motionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyNormalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_fastHistoryOutputTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_fastHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                                    u_historyAccumulatedSamplesNumTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyTemporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwSpecularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwSpecularTemporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_specularHistoryTemporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwSpecularFastHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_specularFastHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffuseTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_diffuseHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwDiffuseTemporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_diffuseHistoryTemporalVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwDiffuseFastHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_diffuseFastHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRTemporalAccumulationConstants>),         u_constants)
@@ -61,7 +67,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = params.currentTexture->GetResolution2D();
+	const math::Vector2u resolution = params.currentSpecularTexture->GetResolution2D();
 
 	const RenderScene& renderScene = params.renderView.GetRenderScene();
 	const engn::FrameContext& currentFrame = renderScene.GetCurrentFrameRef();
@@ -70,23 +76,29 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	shaderConstants.deltaTime = currentFrame.GetDeltaTime();
 
 	lib::MTHandle<SRTemporalAccumulationDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalAccumulationDS>(RENDERER_RESOURCE_NAME("SRTemporalAccumulationDS"));
-	ds->u_currentTexture                       = params.currentTexture;
-	ds->u_historyTexture                       = params.historyTexture;
-	ds->u_historyDepthTexture                  = params.historyDepthTexture;
-	ds->u_depthTexture                         = params.currentDepthTexture;
-	ds->u_motionTexture	                       = params.motionTexture;
-	ds->u_normalsTexture                       = params.normalsTexture;
-	ds->u_historyNormalsTexture                = params.historyNormalsTexture;
-	ds->u_fastHistoryOutputTexture             = params.fastHistoryOutputTexture;
-	ds->u_fastHistoryTexture                   = params.fastHistoryTexture;
-	ds->u_historyRoughnessTexture              = params.historyRoughnessTexture;
-	ds->u_roughnessTexture                     = params.currentRoughnessTexture;
-	ds->u_accumulatedSamplesNumTexture         = params.accumulatedSamplesNumTexture;
-	ds->u_historyAccumulatedSamplesNumTexture  = params.historyAccumulatedSamplesNumTexture;
-	ds->u_temporalVarianceTexture              = params.temporalVarianceTexture;
-	ds->u_reprojectionConfidenceTexture        = params.reprojectionConfidenceTexture;
-	ds->u_historyTemporalVarianceTexture       = params.historyTemporalVarianceTexture;
-	ds->u_constants                            = shaderConstants;
+	ds->u_historyDepthTexture                    = params.historyDepthTexture;
+	ds->u_depthTexture                           = params.currentDepthTexture;
+	ds->u_motionTexture	                         = params.motionTexture;
+	ds->u_normalsTexture                         = params.normalsTexture;
+	ds->u_historyNormalsTexture                  = params.historyNormalsTexture;
+	ds->u_historyRoughnessTexture                = params.historyRoughnessTexture;
+	ds->u_roughnessTexture                       = params.currentRoughnessTexture;
+	ds->u_accumulatedSamplesNumTexture           = params.accumulatedSamplesNumTexture;
+	ds->u_historyAccumulatedSamplesNumTexture    = params.historyAccumulatedSamplesNumTexture;
+	ds->u_reprojectionConfidenceTexture          = params.reprojectionConfidenceTexture;
+	ds->u_rwSpecularTexture                      = params.currentSpecularTexture;
+	ds->u_specularHistoryTexture                 = params.historySpecularTexture;
+	ds->u_rwSpecularTemporalVarianceTexture      = params.temporalVarianceSpecularTexture;
+	ds->u_specularHistoryTemporalVarianceTexture = params.historyTemporalVarianceSpecularTexture;
+	ds->u_rwSpecularFastHistoryTexture           = params.fastHistorySpecularTexture;
+	ds->u_specularFastHistoryTexture             = params.fastHistorySpecularOutputTexture;
+	ds->u_rwDiffuseTexture                       = params.currentDiffuseTexture;
+	ds->u_diffuseHistoryTexture                  = params.historyDiffuseTexture;
+	ds->u_rwDiffuseTemporalVarianceTexture       = params.temporalVarianceDiffuseTexture;
+	ds->u_diffuseHistoryTemporalVarianceTexture  = params.historyTemporalVarianceDiffuseTexture;
+	ds->u_rwDiffuseFastHistoryTexture            = params.fastHistoryDiffuseTexture;
+	ds->u_diffuseFastHistoryTexture              = params.fastHistoryDiffuseOutputTexture;
+	ds->u_constants                              = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
 

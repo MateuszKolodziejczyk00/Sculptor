@@ -13,6 +13,12 @@ float ComputeSpecularNormalWeight(in float3 centerNormal, in float3 sampleNormal
 }
 
 
+float ComputeDiffuseNormalWeight(in float3 centerNormal, in float3 sampleNormal)
+{
+	return Pow5(saturate(dot(centerNormal, sampleNormal)));
+}
+
+
 float ComputeNormalWeight(in float3 centerNormal, in float3 sampleNormal)
 {
 	const float dotProduct = dot(centerNormal, sampleNormal);

@@ -28,19 +28,30 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	{  }
 
 	rg::RGTextureViewHandle currentRoughnessTexture;
-	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
-	rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture;
-	rg::RGTextureViewHandle temporalVarianceTexture;
-	rg::RGTextureViewHandle historyTemporalVarianceTexture;
+	rg::RGTextureViewHandle historyRoughnessTexture;
 
 	rg::RGTextureViewHandle historyNormalsTexture;
 
-	rg::RGTextureViewHandle historyRoughnessTexture;
-
-	rg::RGTextureViewHandle fastHistoryTexture;
-	rg::RGTextureViewHandle fastHistoryOutputTexture;
+	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
+	rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture;
 
 	rg::RGTextureViewHandle reprojectionConfidenceTexture;
+
+	rg::RGTextureViewHandle currentSpecularTexture;
+	rg::RGTextureViewHandle currentDiffuseTexture;
+
+	rg::RGTextureViewHandle historySpecularTexture;
+	rg::RGTextureViewHandle historyDiffuseTexture;
+
+	rg::RGTextureViewHandle temporalVarianceSpecularTexture;
+	rg::RGTextureViewHandle historyTemporalVarianceSpecularTexture;
+	rg::RGTextureViewHandle temporalVarianceDiffuseTexture;
+	rg::RGTextureViewHandle historyTemporalVarianceDiffuseTexture;
+
+	rg::RGTextureViewHandle fastHistorySpecularTexture;
+	rg::RGTextureViewHandle fastHistorySpecularOutputTexture;
+	rg::RGTextureViewHandle fastHistoryDiffuseTexture;
+	rg::RGTextureViewHandle fastHistoryDiffuseOutputTexture;
 };
 
 rg::RGTextureViewHandle CreateReprojectionConfidenceTexture(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);

@@ -84,8 +84,6 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	denoiserParams.currentDepthTexture = params.currentDepthTexture;
 	denoiserParams.motionTexture       = params.motionTexture;
 	denoiserParams.normalsTexture      = params.normalsTexture;
-	denoiserParams.currentTexture      = denoisedTexture;
-	denoiserParams.historyTexture      = historyTexture;
 
 	moments::VisibilityMomentsParameters visibilityMomentsParams;
 	visibilityMomentsParams.debugName   = m_debugName;
@@ -98,6 +96,8 @@ void Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureVi
 	if (m_hasValidHistory && params.useTemporalFilter)
 	{
 		temporal_accumulation::TemporalFilterParams temporalParams(denoiserParams);
+		temporalParams.currentTexture                      = denoisedTexture;
+		temporalParams.historyTexture                      = historyTexture;
 		temporalParams.currentFrameDefaultWeight           = params.currentFrameDefaultWeight;
 		temporalParams.accumulatedFramesMaxCount           = params.accumulatedFramesMaxCount;
 		temporalParams.spatialMomentsTexture               = spatialMomentsTexture;
@@ -126,7 +126,7 @@ void Denoiser::ApplySpatialFilters(rg::RenderGraphBuilder& graphBuilder, const d
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::TextureDef& textureDef = params.currentTexture->GetTextureDefinition();
+	const rg::TextureDef& textureDef = denoisedTexture->GetTextureDefinition();
 	const rg::RGTextureViewHandle tempTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Denoise Temp Texture", m_debugName.AsString()), textureDef);
 
 	spatial::SpatialATrousFilterParams spatialParams = params;
