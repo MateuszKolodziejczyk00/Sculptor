@@ -35,6 +35,8 @@ RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Dist
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 70.f, 0.f, 200.f);
 RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 0.1f);
 
+RendererBoolParameter halfResShadows("Half Res", { "Lighting", "Shadows", "Directional" }, false);
+
 } // params
 
 
@@ -267,6 +269,8 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	SPT_CHECK(m_lightEntity != nullRenderSceneEntity);
 
+	const Bool isHalfRes = params::halfResShadows;
+
 	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();
 	const DirectionalLightData& directionalLight = sceneRegistry.get<DirectionalLightData>(m_lightEntity);
 
@@ -274,19 +278,25 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const math::Vector2u shadowMasksRenderingRes = viewContext.depthHalfRes->GetResolution2D();
+	const rg::RGTextureViewHandle depthTexture        = isHalfRes ? viewContext.depthHalfRes : viewContext.depth;
+	const rg::RGTextureViewHandle motionTexture       = isHalfRes ? viewContext.motionHalfRes : viewContext.motion;
+	const rg::RGTextureViewHandle linearDepthTexture  = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
+	const rg::RGTextureViewHandle normalsTexture      = isHalfRes ? viewContext.normalsHalfRes : viewContext.octahedronNormals;
+	const rg::RGTextureViewHandle historyDepthTexture = isHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
 
-	m_variableRateRenderer.Reproject(graphBuilder, viewContext.motionHalfRes);
-	
+	const math::Vector2u shadowMasksRenderingRes = depthTexture->GetResolution2D();
+
+	m_variableRateRenderer.Reproject(graphBuilder, motionTexture);
+
 	const rg::RGTextureViewHandle variableRateTexture = graphBuilder.AcquireExternalTextureView(m_variableRateRenderer.GetVariableRateTexture());
 
 	ShadowTracingContext tracingContext;
 	tracingContext.resolution             = shadowMasksRenderingRes;
 	tracingContext.lightDirection         = directionalLight.direction;
 	tracingContext.shadowRayConeAngle     = directionalLight.lightConeAngle;
-	tracingContext.depthTexture           = viewContext.depthHalfRes;
-	tracingContext.linearDepthTexture     = viewContext.linearDepthHalfRes;
-	tracingContext.normalsTexture         = viewContext.normalsHalfRes;
+	tracingContext.depthTexture           = depthTexture;
+	tracingContext.linearDepthTexture     = linearDepthTexture;
+	tracingContext.normalsTexture         = normalsTexture;
 	tracingContext.variableRateTexture    = variableRateTexture;
 	tracingContext.vrtPermutationSettings = m_variableRateRenderer.GetPermutationSettings();
 
@@ -295,10 +305,10 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 	// Denoise shadow masks
 	{
 		visibility_denoiser::Denoiser::Params denoiserParams(renderView);
-		denoiserParams.historyDepthTexture    = viewContext.historyDepthHalfRes;
-		denoiserParams.currentDepthTexture    = viewContext.depthHalfRes;
-		denoiserParams.motionTexture          = viewContext.motionHalfRes;
-		denoiserParams.normalsTexture         = viewContext.normalsHalfRes;
+		denoiserParams.historyDepthTexture = historyDepthTexture;
+		denoiserParams.currentDepthTexture = depthTexture;
+		denoiserParams.motionTexture       = motionTexture;
+		denoiserParams.normalsTexture      = normalsTexture;
 		m_denoiser.Denoise(graphBuilder, shadowMaskTexture, denoiserParams);
 	}
 
@@ -310,19 +320,24 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	// Upsample shadow masks
 
-	rg::RGTextureViewHandle upsampledShadowMask;
+	rg::RGTextureViewHandle shadowMaskFullRes;
 
+	if (isHalfRes)
 	{
 		upsampler::DepthBasedUpsampleParams upsampleParams;
-		upsampleParams.debugName = RG_DEBUG_NAME("Directional Shadows Upsample");
-		upsampleParams.depth = viewContext.depth;
-		upsampleParams.depthHalfRes = viewContext.depthHalfRes;
+		upsampleParams.debugName      = RG_DEBUG_NAME("Directional Shadows Upsample");
+		upsampleParams.depth          = viewContext.depth;
+		upsampleParams.depthHalfRes   = viewContext.depthHalfRes;
 		upsampleParams.normalsHalfRes = viewContext.normalsHalfRes;
-		upsampleParams.renderViewDS = renderView.GetRenderViewDS();
-		upsampledShadowMask = upsampler::DepthBasedUpsample(graphBuilder, shadowMaskTexture, upsampleParams);
+		upsampleParams.renderViewDS   = renderView.GetRenderViewDS();
+		shadowMaskFullRes = upsampler::DepthBasedUpsample(graphBuilder, shadowMaskTexture, upsampleParams);
+	}
+	else
+	{
+		shadowMaskFullRes = shadowMaskTexture;
 	}
 
-	return upsampledShadowMask;
+	return shadowMaskFullRes;
 }
 
 } // spt::rsc
