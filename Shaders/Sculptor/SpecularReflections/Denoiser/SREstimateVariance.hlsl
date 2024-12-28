@@ -17,10 +17,10 @@ struct CS_INPUT
 
 struct SampleData
 {
-	float depth;
-	float variance;
+	float2 variance;
 	half3 normal;
 	half  roughness;
+	float depth;
 };
 
 
@@ -42,7 +42,7 @@ struct SampleData
 groupshared SampleData sharedSampleData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
 
 
-float ApplyBesselsCorrection(in float variance, in float samplesNum)
+float2 ApplyBesselsCorrection(in float2 variance, in float samplesNum)
 {
 	const float correction = samplesNum / max(samplesNum - 1.f, 0.4f);
 	return variance * correction;
@@ -70,14 +70,14 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 		sample.normal    = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
 
 #if MERGE_DIFFUSE_AND_SPECULAR
-		const float variance = u_specularVarianceTexture.Load(sampleCoords).x + u_diffuseVvarianceTexture.Load(sampleCoords).x;
+		const float samplesNum = u_accumulatedSamplesNumTexture.Load(sampleCoords).x;
+		float2 variance = float2(u_specularVarianceTexture.Load(sampleCoords).x, u_diffuseVarianceTexture.Load(sampleCoords).x);
+		variance = ApplyBesselsCorrection(variance, samplesNum);
 #else
-		const float variance = u_varianceTexture.Load(sampleCoords).x;
+		float2 variance = u_varianceTexture.Load(sampleCoords).x;
 #endif // MERGE_DIFFUSE_AND_SPECULAR
 
-		const float samplesNum = u_accumulatedSamplesNumTexture.Load(sampleCoords).x;
-
-		sample.variance = ApplyBesselsCorrection(variance, samplesNum);
+		sample.variance = variance;
 		
 		sharedSampleData[localOffset.x][localOffset.y] = sample;
 	}
@@ -126,7 +126,7 @@ void SREstimateVarianceCS(CS_INPUT input)
 
 		const float centerWeight = u_constants.weights[0u];
 
-		float varianceEstimationSum = centerSample.variance * centerWeight;
+		float2 varianceEstimationSum = centerSample.variance * centerWeight;
 		float weightSum = centerWeight;
 
 		[unroll]
@@ -148,7 +148,7 @@ void SREstimateVarianceCS(CS_INPUT input)
 			weightSum += weight1;
 		}
 
-		const float varianceEstimation = varianceEstimationSum / weightSum;
+		const float2 varianceEstimation = varianceEstimationSum / weightSum;
 
 		u_rwVarianceEstimationTexture[coords] = varianceEstimation;
 	}

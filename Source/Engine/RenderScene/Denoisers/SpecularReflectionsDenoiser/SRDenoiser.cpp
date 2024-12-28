@@ -199,7 +199,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	temporalVarianceParams.outDiffuseVarianceTexture    = temporalDiffuseVariance;
 	ComputeTemporalVariance(graphBuilder, temporalVarianceParams);
 
-	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
+	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceEstimationTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
 
 	VarianceEstimationParams varianceEstimationParams(params.renderView);
 	varianceEstimationParams.debugName                    = m_debugName;
@@ -209,7 +209,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	varianceEstimationParams.roughnessTexture             = params.roughnessTexture;
 	varianceEstimationParams.specularVarianceTexture      = temporalVarianceSpecularTexture;
 	varianceEstimationParams.diffuseVarianceTexture       = temporalVarianceDiffuseTexture;
-	varianceEstimationParams.intermediateVarianceTexture  = intermediateSpecularVariance;
 	varianceEstimationParams.outEstimatedVarianceTexture  = varianceEstimation;
 
 	EstimateVariance(graphBuilder, varianceEstimationParams);

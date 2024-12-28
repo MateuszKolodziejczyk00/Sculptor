@@ -30,10 +30,12 @@ float2 EdgeFilter(in VariableRateProcessor processor, in float brightness)
 
 	const uint3 coords = uint3(processor.GetCoords(), 0u);
 
-	float upperLeft  = Luminance(u_reflectionsTexture.Load(coords, int2(-1,  1)));
-	float upperRight = Luminance(u_reflectionsTexture.Load(coords, int2( 1,  1)));
-	float lowerLeft  = Luminance(u_reflectionsTexture.Load(coords, int2(-1, -1)));
-	float lowerRight = Luminance(u_reflectionsTexture.Load(coords, int2( 1, -1)));
+	// In theory this can be problematic as we ignore diffuse here but 
+	// both diffuse and specular use same ray in case of mirrors so computing edge from one of them should be representative
+	float upperLeft  = Luminance(u_specularReflectionsTexture.Load(coords, int2(-1,  1)));
+	float upperRight = Luminance(u_specularReflectionsTexture.Load(coords, int2( 1,  1)));
+	float lowerLeft  = Luminance(u_specularReflectionsTexture.Load(coords, int2(-1, -1)));
+	float lowerRight = Luminance(u_specularReflectionsTexture.Load(coords, int2( 1, -1)));
 
 	if(laneIdx & 0x1)
 	{
@@ -92,21 +94,23 @@ struct RTVariableRateCallback
 			return SPT_VARIABLE_RATE_4X4;
 		}
 
-		const float rtReflectionsInfluence = u_influenceTexture.Load(coords);
+		const float2 rtReflectionsInfluence = u_influenceTexture.Load(coords);
  
 		const float roughness = u_roughnessTexture.Load(coords);
 
-		const float brightness = Luminance(u_reflectionsTexture.Load(coords));
+		const float specularBrightness = Luminance(u_specularReflectionsTexture.Load(coords));
+		const float minSpecularBrightness = processor.QuadMin(isDepthValid ? specularBrightness : FLOAT_MAX);
 
-		const float minBrightness = processor.QuadMin(isDepthValid ? brightness : FLOAT_MAX);
+		const float diffuseBrightness = Luminance(u_diffuseReflectionsTexture.Load(coords));
+		const float minDiffuseBrightness = processor.QuadMin(isDepthValid ? diffuseBrightness : FLOAT_MAX);
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
 		if(roughness < 0.015f)
 		{
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
-			const float threshold = minBrightness * 0.04f;
-			const float2 edgeFilter = EdgeFilter(processor, brightness) * rtReflectionsInfluence;
+			const float threshold = minSpecularBrightness * 0.08f;
+			const float2 edgeFilter = EdgeFilter(processor, specularBrightness) * (rtReflectionsInfluence.x + rtReflectionsInfluence.y);
 			if(edgeFilter.x < threshold)
 			{
 				variableRate |= SPT_VARIABLE_RATE_2X;
@@ -118,16 +122,24 @@ struct RTVariableRateCallback
 		}
 		else if(variableRate != SPT_VARIABLE_RATE_1X1)
 		{
-			const float rcpBrightness = 1.f / minBrightness;
+			const float rcpSpecularBrightness = 1.f / minSpecularBrightness;
+			const float rcpDiffuseBrightness  = 1.f / minDiffuseBrightness;
 
-			const float varianceEstimation = u_varianceEstimation.Load(coords);
-			const float stdDevEstimation   = sqrt(varianceEstimation);
+			const float2 varianceEstimation = u_varianceEstimation.Load(coords);
+			const float specularStdDevEstimation = sqrt(varianceEstimation.x);
+			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
 			const float currentFrameWeight = rcp(float(MAX_ACCUMULATED_FRAMES_NUM));
 
 			const float roughnessNoiseLevelMultiplier = ComputeRoughnessNoiseLevelMultiplier(roughness);
 
-			const float noiseLevel = stdDevEstimation * rcpBrightness * rtReflectionsInfluence * currentFrameWeight * roughnessNoiseLevelMultiplier;
+			const float commonNoiseLevelMultiplier = currentFrameWeight * roughnessNoiseLevelMultiplier;
+
+			const float specularNoiseLevel = specularStdDevEstimation * rcpSpecularBrightness * rtReflectionsInfluence.x * commonNoiseLevelMultiplier;
+			const float diffuseNoiseLevel  = diffuseStdDevEstimation * rcpDiffuseBrightness * rtReflectionsInfluence.y * commonNoiseLevelMultiplier;
+
+			const float noiseLevel = diffuseNoiseLevel + specularNoiseLevel;
+
 			const float quadNoiseLevel = processor.QuadMax(isDepthValid ? noiseLevel : FLOAT_MAX);
 
 			const float depthDDX = processor.DDX_QuadMax(linearDepth);

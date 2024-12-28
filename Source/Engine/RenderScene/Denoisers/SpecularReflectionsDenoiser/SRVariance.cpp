@@ -42,6 +42,11 @@ rg::RGTextureViewHandle CreateVarianceTexture(rg::RenderGraphBuilder& graphBuild
 	return graphBuilder.CreateTextureView(name, rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
 }
 
+rg::RGTextureViewHandle CreateVarianceEstimationTexture(rg::RenderGraphBuilder& graphBuilder, const rg::RenderGraphDebugName& name, math::Vector2u resolution)
+{
+	return graphBuilder.CreateTextureView(name, rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
+}
+
 void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const TemporalVarianceParams& params)
 {
 	SPT_PROFILER_FUNCTION();
@@ -88,10 +93,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SREstimateVarianceDS, rg::RGDescriptorSetState<SREstimateVarianceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                         u_rwVarianceEstimationTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                u_varianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                 u_rwVarianceEstimationTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector2f>),        u_varianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                u_specularVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                u_diffuseVvarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                u_diffuseVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                        u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                        u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                u_normalsTexture)
@@ -126,14 +131,16 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.weights       = weights;
 
+	const rg::RGTextureViewHandle intermediateVarianceEstimation = CreateVarianceEstimationTexture(graphBuilder, RG_DEBUG_NAME("RT Intermediate Variance Estimation"), resolution);
+
 	{
 		static const rdr::PipelineStateID horizontalPipeline = CreateEstimateVariancePipeline(true, true);
 
 		const lib::MTHandle<SREstimateVarianceDS> ds = graphBuilder.CreateDescriptorSet<SREstimateVarianceDS>(RENDERER_RESOURCE_NAME("SR Estimate Variance DS"));
-		ds->u_rwVarianceEstimationTexture  = params.intermediateVarianceTexture;
+		ds->u_rwVarianceEstimationTexture  = intermediateVarianceEstimation;
 		ds->u_accumulatedSamplesNumTexture = params.accumulatedSamplesNumTexture;
 		ds->u_specularVarianceTexture      = params.specularVarianceTexture;
-		ds->u_diffuseVvarianceTexture      = params.diffuseVarianceTexture;
+		ds->u_diffuseVarianceTexture       = params.diffuseVarianceTexture;
 		ds->u_depthTexture                 = params.depthTexture;
 		ds->u_normalsTexture               = params.normalsTexture;
 		ds->u_roughnessTexture             = params.roughnessTexture;
@@ -151,7 +158,7 @@ void EstimateVariance(rg::RenderGraphBuilder& graphBuilder, const VarianceEstima
 		const lib::MTHandle<SREstimateVarianceDS> ds = graphBuilder.CreateDescriptorSet<SREstimateVarianceDS>(RENDERER_RESOURCE_NAME("SR Estimate Variance DS"));
 		ds->u_rwVarianceEstimationTexture  = params.outEstimatedVarianceTexture;
 		ds->u_accumulatedSamplesNumTexture = params.accumulatedSamplesNumTexture;
-		ds->u_varianceTexture              = params.intermediateVarianceTexture;
+		ds->u_varianceTexture              = intermediateVarianceEstimation;
 		ds->u_depthTexture                 = params.depthTexture;
 		ds->u_normalsTexture               = params.normalsTexture;
 		ds->u_roughnessTexture             = params.roughnessTexture;

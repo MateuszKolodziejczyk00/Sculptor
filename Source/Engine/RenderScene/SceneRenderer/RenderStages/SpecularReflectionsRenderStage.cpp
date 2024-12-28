@@ -560,11 +560,12 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RTVariableRateTextureDS, rg::RGDescriptorSetState<RTVariableRateTextureDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_influenceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_influenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_varianceEstimation)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_varianceEstimation)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_reflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_specularReflectionsTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_diffuseReflectionsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VariableRateRTConstants>), u_rtConstants)
 DS_END();
 
@@ -794,7 +795,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		SPT_CHECK(specularReflectionsFullRes.IsValid())
 		SPT_CHECK(diffuseReflectionsFullRes.IsValid())
 
-		const rg::RGTextureViewHandle specularReflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
+		const rg::RGTextureViewHandle reflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
 		reflectionsViewData.denoiserDiffuseOutput  = denoiserResult.denoisedDiffuse;
@@ -803,7 +804,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		reflectionsViewData.finalDiffuseGI  = diffuseReflectionsFullRes;
 		reflectionsViewData.finalSpecularGI = specularReflectionsFullRes;
 
-		reflectionsViewData.reflectionsInfluenceTexture  = specularReflectionsInfluenceTexture;
+		reflectionsViewData.reflectionsInfluenceTexture  = reflectionsInfluenceTexture;
 		reflectionsViewData.varianceEstimation           = denoiserResult.varianceEstimation;
 		reflectionsViewData.halfResReflections           = isHalfRes;
 
@@ -835,12 +836,13 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	shaderConstants.forceFullRateTracing = renderer_params::forceFullRateTracingReflections;
 
 	lib::MTHandle<vrt::RTVariableRateTextureDS> vrtDS = graphBuilder.CreateDescriptorSet<vrt::RTVariableRateTextureDS>(RENDERER_RESOURCE_NAME("RTVariableRateTextureDS"));
-	vrtDS->u_influenceTexture   = reflectionsViewData.reflectionsInfluenceTexture;
-	vrtDS->u_roughnessTexture   = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
-	vrtDS->u_varianceEstimation = reflectionsViewData.varianceEstimation;
-	vrtDS->u_linearDepthTexture = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
-	vrtDS->u_reflectionsTexture = reflectionsViewData.denoiserSpecularOutput;
-	vrtDS->u_rtConstants        = shaderConstants;
+	vrtDS->u_influenceTexture           = reflectionsViewData.reflectionsInfluenceTexture;
+	vrtDS->u_roughnessTexture           = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
+	vrtDS->u_varianceEstimation         = reflectionsViewData.varianceEstimation;
+	vrtDS->u_linearDepthTexture         = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
+	vrtDS->u_specularReflectionsTexture = reflectionsViewData.denoiserSpecularOutput;
+	vrtDS->u_diffuseReflectionsTexture  = reflectionsViewData.denoiserDiffuseOutput;
+	vrtDS->u_rtConstants                = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }
 

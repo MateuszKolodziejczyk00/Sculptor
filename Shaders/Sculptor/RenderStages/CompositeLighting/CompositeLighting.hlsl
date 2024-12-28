@@ -96,12 +96,21 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float dept
 
 
 #if RT_REFLECTIONS_ENABLED
-float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
+struct RTReflections
+{
+	float3 specular;
+	float3 diffuse;
+};
+
+RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 {
 	const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;
 	if(depth == 0.f)
 	{
-		return 0.f;
+		RTReflections result;
+		result.specular = 0.f;
+		result.diffuse  = 0.f;
+		return result;
 	}
 
 	float3 specularLo = u_specularGI.Load(uint3(pixel, 0)).rgb;
@@ -141,7 +150,11 @@ float3 ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 
 	diffuseLo *= Diffuse_Lambert(diffuseColor) * ambientOcclusion;
 
-	return ExposedLuminanceToLuminance(specularLo + diffuseLo);
+	RTReflections result;
+	result.specular = ExposedLuminanceToLuminance(specularLo);
+	result.diffuse  = ExposedLuminanceToLuminance(diffuseLo);
+
+	return result;
 }
 
 
@@ -195,31 +208,38 @@ void CompositeLightingCS(CS_INPUT input)
 	integratedFog.transmittance = 1.f;
 #endif // VOLUMETRIC_FOG_ENABLED
 
-	float3 rtReflectionsLuminance = 0.f;
+	RTReflections reflections;
 #if RT_REFLECTIONS_ENABLED
-	rtReflectionsLuminance = ComputeRTReflectionsLuminance(pixel, uv);
-	luminance += rtReflectionsLuminance;
+	reflections = ComputeRTReflectionsLuminance(pixel, uv);
+	luminance += reflections.diffuse;
+	luminance += reflections.specular;
 #endif // RT_REFLECTIONS_ENABLED
 
 	luminance = luminance * integratedFog.transmittance;
 	luminance += ExposedLuminanceToLuminance(integratedFog.inScattering);
 
 #if RT_REFLECTIONS_ENABLED
-	const float rtReflectionsInfluence = AverageComponent((rtReflectionsLuminance * integratedFog.transmittance) / luminance);
+	const float specularReflectionsInfluence = AverageComponent((reflections.specular * integratedFog.transmittance) / luminance);
+	const float diffuseReflectionsInfluence  = AverageComponent((reflections.diffuse * integratedFog.transmittance) / luminance);
+
+	float2 reflectionsInfluence = 0.f;
 
 	if(u_rtReflectionsConstants.halfResInfluence)
 	{
-		const float downsampledRTReflectionsInfluence = ComputeDownsampledRTReflectionsInfluence(rtReflectionsInfluence, threadIdx);
+		reflectionsInfluence.x = ComputeDownsampledRTReflectionsInfluence(specularReflectionsInfluence, threadIdx);
+		reflectionsInfluence.y = ComputeDownsampledRTReflectionsInfluence(diffuseReflectionsInfluence, threadIdx);
 
 		if(!isHelperLane && (threadIdx & 0x3) == 0)
 		{
 			const uint2 outputPixel = pixel / 2;
-			u_reflectionsInfluenceTexture[outputPixel] = downsampledRTReflectionsInfluence;
+			u_reflectionsInfluenceTexture[outputPixel] = reflectionsInfluence;
 		}
 	}
 	else
 	{
-		u_reflectionsInfluenceTexture[pixel] = rtReflectionsInfluence;
+		reflectionsInfluence.x = specularReflectionsInfluence;
+		reflectionsInfluence.y = diffuseReflectionsInfluence;
+		u_reflectionsInfluenceTexture[pixel] = reflectionsInfluence;
 	}
 #endif // RT_REFLECTIONS_ENABLED
 
