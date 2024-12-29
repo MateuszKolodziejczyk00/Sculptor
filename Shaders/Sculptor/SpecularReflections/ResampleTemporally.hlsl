@@ -135,7 +135,7 @@ struct SRTemporalResampler
 
 		const float maxAge = Remap(centerPixelSurface.roughness, 0.15f, 0.4f, 8.f, 12.f) * lerp(rng.Next(), 0.6f, 1.f);
 
-		if(historyReservoir.age > maxAge)
+		if(m_wasSampleTraced && historyReservoir.age > maxAge)
 		{
 			return false;
 		}
@@ -307,14 +307,14 @@ void ResampleTemporallyCS(CS_INPUT input)
 		float reflectedRayLength = -1.f;
 		SRTemporalResampler resampler;
 
+		const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
+		const bool wasSampleTraced = all(traceCoords == pixel);
+
 		{
 			const SRPackedReservoir packedReservoir = u_initialResservoirsBuffer[reservoirIdx];
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
 			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
-
-			const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
-			const bool wasSampleTraced = all(traceCoords == pixel);
 
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
@@ -353,29 +353,19 @@ void ResampleTemporallyCS(CS_INPUT input)
 		const uint invalidReservoirsNum = WaveActiveCountBits(!newReservoir.IsValid());
 		const bool isValidReservoir     = newReservoir.IsValid() && any(newReservoir.weightSum * newReservoir.luminance) > 0.001f;
 
-		const bool allowsSecondPass = (invalidReservoirsNum >= 16u || centerPixelSurface.roughness <= 0.15f) && centerPixelSurface.roughness > SPECULAR_TRACE_MAX_ROUGHNESS;
-
-		if(reprojectionSuccess && allowsSecondPass && !isValidReservoir)
+		if(reprojectionSuccess && !isValidReservoir)
 		{
-			const bool  foundValidHistorySurface      = resampler.HasFoundValidHistorySurface();
-			const uint2 validReprojectioBallot        = WaveActiveBallot(foundValidHistorySurface).xy;
-			const uint  validReprojectionCompactedIdx = GetCompactedIndex(validReprojectioBallot, WaveGetLaneIndex());
-
-			/*
-			We allocate secondary trace in following cases:
-			- surface reprojection failed
-			- roughness is very low
-			- every 4th invalid reservoir for samples with invalid reservoirs that succeeded surface reprojection
-			*/
-			if(!foundValidHistorySurface || centerPixelSurface.roughness <= 0.15f || ((validReprojectionCompactedIdx + u_resamplingConstants.frameIdx) & 3u) == 0u)
-			{
-				AppendAdditionalTraceCommand(pixel);
-			}
+			AppendAdditionalTraceCommand(pixel);
 		}
 #endif // ENABLE_SECOND_TRACING_PASS
 
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
 
 		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
+
+		if(!wasSampleTraced)
+		{
+			u_initialResservoirsBuffer[reservoirIdx] = packedReservoir;
+		}
 	}
 }

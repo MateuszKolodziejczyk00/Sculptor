@@ -6,7 +6,6 @@
 
 #include "Utils/VariableRate/VariableRateBuilder.hlsli"
 #include "Utils/Wave.hlsli"
-#include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 
 struct CS_INPUT
@@ -15,12 +14,6 @@ struct CS_INPUT
 	uint3 groupID  : SV_GroupID;
 	uint3 localID  : SV_GroupThreadID;
 };
-
-
-float ComputeRoughnessNoiseLevelMultiplier(in float roughness)
-{
-	return lerp(1.f, 0.5f, smoothstep(0.2f, 0.4f, roughness));
-}
 
 
 // Based on slide 36 from "Software Based Variable Rate Shading in Call of Duty: Modern Warfare" by Michal Drobot
@@ -99,17 +92,14 @@ struct RTVariableRateCallback
 		const float roughness = u_roughnessTexture.Load(coords);
 
 		const float specularBrightness = Luminance(u_specularReflectionsTexture.Load(coords));
-		const float minSpecularBrightness = processor.QuadMin(isDepthValid ? specularBrightness : FLOAT_MAX);
-
-		const float diffuseBrightness = Luminance(u_diffuseReflectionsTexture.Load(coords));
-		const float minDiffuseBrightness = processor.QuadMin(isDepthValid ? diffuseBrightness : FLOAT_MAX);
+		const float diffuseBrightness  = Luminance(u_diffuseReflectionsTexture.Load(coords));
 
 		uint variableRate = SPT_VARIABLE_RATE_4X4;
 
 		if(roughness < 0.015f)
 		{
 			variableRate = MinVariableRate(variableRate, SPT_VARIABLE_RATE_1X1);
-			const float threshold = minSpecularBrightness * 0.08f;
+			const float threshold = 0.08f;
 			const float2 edgeFilter = EdgeFilter(processor, specularBrightness) * (rtReflectionsInfluence.x + rtReflectionsInfluence.y);
 			if(edgeFilter.x < threshold)
 			{
@@ -122,21 +112,12 @@ struct RTVariableRateCallback
 		}
 		else if(variableRate != SPT_VARIABLE_RATE_1X1)
 		{
-			const float rcpSpecularBrightness = 1.f / minSpecularBrightness;
-			const float rcpDiffuseBrightness  = 1.f / minDiffuseBrightness;
-
 			const float2 varianceEstimation = u_varianceEstimation.Load(coords);
 			const float specularStdDevEstimation = sqrt(varianceEstimation.x);
 			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
-			const float currentFrameWeight = rcp(float(MAX_ACCUMULATED_FRAMES_NUM));
-
-			const float roughnessNoiseLevelMultiplier = ComputeRoughnessNoiseLevelMultiplier(roughness);
-
-			const float commonNoiseLevelMultiplier = currentFrameWeight * roughnessNoiseLevelMultiplier;
-
-			const float specularNoiseLevel = specularStdDevEstimation * rcpSpecularBrightness * rtReflectionsInfluence.x * commonNoiseLevelMultiplier;
-			const float diffuseNoiseLevel  = diffuseStdDevEstimation * rcpDiffuseBrightness * rtReflectionsInfluence.y * commonNoiseLevelMultiplier;
+			const float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x;
+			const float diffuseNoiseLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
 
 			const float noiseLevel = diffuseNoiseLevel + specularNoiseLevel;
 
@@ -146,19 +127,19 @@ struct RTVariableRateCallback
 			const float depthDDY = processor.DDY_QuadMax(linearDepth);
 
 			uint maxVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(noiseLevel >= 0.07f)
+			if(noiseLevel >= 0.7f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (noiseLevel >= 0.035f)
+			else if (noiseLevel >= 0.35f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.018f)
+			else if (noiseLevel >= 0.18f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(noiseLevel >= 0.009f)
+			else if(noiseLevel >= 0.09f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}
