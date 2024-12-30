@@ -84,14 +84,13 @@ private:
 	{
 		rg::RGTextureViewHandle inSpecular;
 		rg::RGTextureViewHandle outSpecular;
-		rg::RGTextureViewHandle inSpecularVariance;
 
 		rg::RGTextureViewHandle inDiffuse;
 		rg::RGTextureViewHandle outDiffuse;
-		rg::RGTextureViewHandle inDiffuseVariance;
 
-		rg::RGTextureViewHandle intermediateSpecularVariance;
-		rg::RGTextureViewHandle intermediateDiffuseVariance;
+		rg::RGTextureViewHandle inVariance;
+		rg::RGTextureViewHandle intermediateVariance;
+		rg::RGTextureViewHandle outVarianceEstimation;
 
 		rg::RGTextureViewHandle historySamplesNum;
 		rg::RGTextureViewHandle reprojectionConfidence;

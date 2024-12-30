@@ -143,7 +143,7 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output)
 {
 	SPT_PROFILER_FUNCTION();
-
+	
 	Tick(frame.GetDeltaTime());
 
 	m_renderScene->BeginFrame(frame);
@@ -348,7 +348,7 @@ void SandboxRenderer::InitializeRenderScene()
 	const gfx::TemporalAAInitSettings aaInitSettings{};
 	if (dlssRenderer->Initialize(aaInitSettings))
 	{
-	temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
+		temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
 	}
 	else
 	{
@@ -387,13 +387,20 @@ void SandboxRenderer::InitializeRenderScene()
 	{
 		const lib::String finalPath = engn::Paths::Combine(engn::Paths::GetContentPath(), scenePath.ToString());
 		rsc::glTFLoader::LoadScene(*m_renderScene, finalPath);
+		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/IceCliff/vd5leh0ga_tier_2.gltf"));
+		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/PKG_B_Ivy/NewSponza_IvyGrowth_glTF.gltf"));
+		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/Sponza_Curtains/NewSponza_Curtains.gltf"));
+		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/Bistro/BistroInterior.gltf"));
+		//rsc::glTFLoader::LoadScene(*m_renderScene, engn::Paths::Combine(engn::Paths::GetContentPath(), "Private/CyborgWeapon/scene.gltf"));
+
 
 		{
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(2.6f, 8.30f, 1.55f);
+			//pointLightData.location = math::Vector3f(2.6f, 8.30f, 1.55f);
+			pointLightData.location = math::Vector3f(-0.7f, -27.7f, 3.f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -436,13 +443,15 @@ void SandboxRenderer::InitializeRenderScene()
 			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.2f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
 			directionalLightData.sunDiskAngleMultiplier = 2.3f;
-			directionalLightData.sunDiskEC              = 8.f;
+			directionalLightData.sunDiskEC              = 12.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 
 			sunAngleYaw = std::atan2(directionalLightData.direction.y(), directionalLightData.direction.x());
 			sunAnglePitch = std::asin(directionalLightData.direction.z());
 		}
 	}
+
+	SPT_LOG_INFO(Sandbox, "Render Scene Initialization Finished");
 }
 
 void SandboxRenderer::PrepareRenderView(math::Vector2u outputResolution)

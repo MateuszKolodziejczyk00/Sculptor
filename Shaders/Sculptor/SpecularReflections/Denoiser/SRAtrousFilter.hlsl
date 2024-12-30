@@ -33,63 +33,85 @@ float ComputeDetailPreservationStrength(in float historyLength, in float reproje
 }
 
 
-float LoadVariance(in Texture2D<float> varianceTexture, in int2 coords)
+float2 LoadVariance(in Texture2D<float2> varianceTexture, in int2 coords)
 {
 	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(u_params.resolution - 1));
-	return varianceTexture.Load(uint3(clampedCoords, 0)).x;
+	return varianceTexture.Load(uint3(clampedCoords, 0));
+}
+
+#define GROUP_SIZE_X 8
+#define GROUP_SIZE_Y 8
+
+#define GROUP_CACHE_SIZE_X (GROUP_SIZE_X + 2)
+#define GROUP_CACHE_SIZE_Y (GROUP_SIZE_Y + 2)
+
+
+groupshared half2 gs_cachedVardiance[GROUP_CACHE_SIZE_Y][GROUP_CACHE_SIZE_X];
+
+
+void CacheGroupVariance(in Texture2D<float2> varianceTexture, in uint2 groupOffset, in uint2 localID)
+{
+	int2 varianceLoadOffset = int2(groupOffset) - 1;
+
+	const uint threadIdx = localID.y * GROUP_SIZE_X + localID.x;
+
+	const uint samplesNum = (GROUP_CACHE_SIZE_X * GROUP_CACHE_SIZE_Y);
+	const uint groupSize = (GROUP_SIZE_X * GROUP_SIZE_Y);
+
+	for (uint sampleIdx = threadIdx; sampleIdx < samplesNum; sampleIdx += groupSize)
+	{
+		const int localY = sampleIdx / GROUP_CACHE_SIZE_Y;
+		const int localX = sampleIdx - (localY * GROUP_CACHE_SIZE_Y);
+		const int2 sampleCoords = varianceLoadOffset + int2(localX, localY);
+
+		gs_cachedVardiance[localY][localX] = half2(LoadVariance(varianceTexture, sampleCoords));
+	}
 }
 
 
-float2 LoadVariance3x3(in Texture2D<float> varianceTexture, in uint2 groupOffset, in uint threadIdx, in uint2 localID)
+struct ATrousVarianceData
 {
-	const uint2 pixel = groupOffset + localID;
+	float2 center;
+	float2 neighboorhood;
+};
 
-	float upperLeft  = LoadVariance(varianceTexture, pixel + int2(-1,  1));
-	float upperRight = LoadVariance(varianceTexture, pixel + int2( 1,  1));
-	float lowerLeft  = LoadVariance(varianceTexture, pixel + int2(-1, -1));
-	float lowerRight = LoadVariance(varianceTexture, pixel + int2( 1, -1));
 
-	if(localID.x & 0x1)
-	{
-		Swap(lowerLeft, lowerRight);
-		Swap(upperLeft, upperRight);
-	}
-	if(localID.y & 0x1)
-	{
-		Swap(lowerLeft, upperLeft);
-		Swap(lowerRight, upperRight);
-	}
+ATrousVarianceData LoadVariance3x3(in Texture2D<float2> varianceTexture, in uint2 groupOffset, in uint2 localID)
+{
+	CacheGroupVariance(varianceTexture, groupOffset, localID);
 
-	const uint4 horizontalSwizzle = uint4(1u, 0u, 3u, 2u);
-	const uint4 verticalSwizzle   = uint4(2u, 3u, 0u, 1u);
-	const uint4 diagonalSwizzle   = uint4(3u, 2u, 1u, 0u);
+	GroupMemoryBarrierWithGroupSync();
 
-	const uint swizzleQuadBase = threadIdx & ~0x3;
-	const uint quadLocalID     = threadIdx & 0x3;
+	const half2 center = gs_cachedVardiance[localID.y + 1][localID.x + 1];
 
-	const float up   = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, horizontalSwizzle);
-	const float down = QuadSwizzle(lowerRight, swizzleQuadBase, quadLocalID, horizontalSwizzle);
+	const half2 up    = gs_cachedVardiance[localID.y][localID.x + 1];
+	const half2 down  = gs_cachedVardiance[localID.y + 2][localID.x + 1];
+	const half2 left  = gs_cachedVardiance[localID.y + 1][localID.x];
+	const half2 right = gs_cachedVardiance[localID.y + 1][localID.x + 2];
+	
+	const half2 upperLeft  = gs_cachedVardiance[localID.y][localID.x];
+	const half2 upperRight = gs_cachedVardiance[localID.y][localID.x + 2];
+	const half2 lowerLeft  = gs_cachedVardiance[localID.y + 2][localID.x];
+	const half2 lowerRight = gs_cachedVardiance[localID.y + 2][localID.x + 2];
 
-	const float left  = QuadSwizzle(upperLeft, swizzleQuadBase, quadLocalID, verticalSwizzle);
-	const float right = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, verticalSwizzle);
-
-	const float center = QuadSwizzle(upperRight, swizzleQuadBase, quadLocalID, diagonalSwizzle);
-
-	const float variance3x3 = center * 0.25f
+	const float2 variance3x3 = center * 0.25f
                             + (up + down + left + right) * 0.125f + 
                             + (upperRight + upperLeft + lowerLeft + lowerRight) * 0.0675f;
 
-	return float2(center, variance3x3);
+	ATrousVarianceData varianceData;
+	varianceData.center        = center;
+	varianceData.neighboorhood = variance3x3;
+
+	return varianceData;
 }
 
 
-[numthreads(32, 1, 1)]
+[numthreads(8, 8, 1)]
 void SRATrousFilterCS(CS_INPUT input)
 {
-	const uint2 groupOffset = input.groupID.xy * uint2(8u, 4u);
-	const uint threadIdx = input.localID.x;
+	const uint2 groupOffset = input.groupID.xy * uint2(GROUP_SIZE_X, GROUP_SIZE_Y);
 
-	const uint2 localID = ReorderWaveToQuads(threadIdx);
+	const uint2 localID = input.localID.xy;
 
 	const int2 pixel = groupOffset + localID;
 	
@@ -144,18 +166,18 @@ void SRATrousFilterCS(CS_INPUT input)
 		float3 diffuseSum = 0.f;
 		diffuseSum += (centerDiffuse.rgb / (Luminance(centerDiffuse.rgb) + 1.f)) * diffuseWeightSum;
 
-		const float2 specularVariance = LoadVariance3x3(u_inSpecularVariance, groupOffset, threadIdx, localID);
-		const float2 diffuseVariance  = LoadVariance3x3(u_inDiffuseVariance, groupOffset, threadIdx, localID);
-		const float centerSpecularVariance = specularVariance.y;
-		const float centerDiffuseVariance  = diffuseVariance.y;
+		const ATrousVarianceData varianceData = LoadVariance3x3(u_inVariance, groupOffset, localID);
+
+		const float centerSpecularVariance = varianceData.center.x;
+		const float centerDiffuseVariance  = varianceData.center.y;
 
 		const float centerSpecularLumStdDev = centerSpecularVariance > 0.f ? sqrt(centerSpecularVariance) : 0.f;
 		const float rcpSpecularLumStdDev = 1.f / (centerSpecularLumStdDev * lumStdDevMultiplier + 0.001f);
-		float specularVarianceSum = specularVariance.x * Pow2(specularWeightSum);
+		float specularVarianceSum = varianceData.neighboorhood.x * Pow2(specularWeightSum);
 
 		const float centerDiffuseLumStdDev = centerDiffuseVariance > 0.f ? sqrt(centerDiffuseVariance) : 0.f;
 		const float rcpDiffuseLumStdDev = 1.f / (centerDiffuseLumStdDev * lumStdDevMultiplier + 0.001f);
-		float diffuseVarianceSum = diffuseVariance.x * Pow2(diffuseWeightSum);
+		float diffuseVarianceSum = varianceData.neighboorhood.y * Pow2(diffuseWeightSum);
 
 		const int radius = 1;
 
@@ -207,7 +229,9 @@ void SRATrousFilterCS(CS_INPUT input)
 
 				specularSum += specular * specularWeight;
 
-				const float sampleSpecularVariance = u_inSpecularVariance.Load(uint3(samplePixel, 0)).x;
+				const float2 variance = u_inVariance.Load(uint3(samplePixel, 0));
+
+				const float sampleSpecularVariance = variance.x;
 
 				specularVarianceSum += sampleSpecularVariance * Pow2(specularWeight);
 
@@ -227,7 +251,7 @@ void SRATrousFilterCS(CS_INPUT input)
 
 				diffuseSum += diffuse * diffuseWeight;
 
-				const float sampleDiffuseVariance = u_inDiffuseVariance.Load(uint3(samplePixel, 0u)).x;
+				const float sampleDiffuseVariance = variance.y;
 
 				diffuseVarianceSum += sampleDiffuseVariance * Pow2(diffuseWeight);
 
@@ -244,9 +268,8 @@ void SRATrousFilterCS(CS_INPUT input)
 		u_outDiffuseLuminance[pixel] = float4(outDiffuse, centerDiffuse.w);
 
 		const float outSpecularVariance = specularVarianceSum / Pow2(specularWeightSum);
-		u_outSpecularVariance[pixel] = outSpecularVariance;
-
 		const float outDiffuseVariance = diffuseVarianceSum / Pow2(diffuseWeightSum);
-		u_outDiffuseVariance[pixel] = outDiffuseVariance;
+
+		u_outVariance[pixel] = float2(outSpecularVariance, outDiffuseVariance);
 	}
 }

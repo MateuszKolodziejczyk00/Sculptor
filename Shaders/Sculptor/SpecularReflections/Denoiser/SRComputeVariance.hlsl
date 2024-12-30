@@ -138,7 +138,6 @@ void SRComputeVarianceCS(CS_INPUT input)
 			diffuseVariance  = max(diffuseVariance, diffuseSpatialVariance);
 		}
 
-		u_rwSpecularVarianceTexture[pixel] = specularVariance;
-		u_rwDiffuseVarianceTexture[pixel]  = diffuseVariance;
+		u_rwVarianceTexture[pixel] = float2(specularVariance, diffuseVariance);
 	}
 }

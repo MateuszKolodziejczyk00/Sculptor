@@ -20,10 +20,9 @@ END_SHADER_STRUCT();
 DS_BEGIN(SRComputeVarianceDS, rg::RGDescriptorSetState<SRComputeVarianceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_specularMomentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),               u_specularTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                        u_rwSpecularVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_diffuseMomentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),               u_diffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                        u_rwDiffuseVarianceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_rwVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_accumulatedSamplesNumTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_normalsTexture)
@@ -39,7 +38,7 @@ static rdr::PipelineStateID CreateComputeVariancePipeline()
 
 rg::RGTextureViewHandle CreateVarianceTexture(rg::RenderGraphBuilder& graphBuilder, const rg::RenderGraphDebugName& name, math::Vector2u resolution)
 {
-	return graphBuilder.CreateTextureView(name, rg::TextureDef(resolution, rhi::EFragmentFormat::R16_S_Float));
+	return graphBuilder.CreateTextureView(name, rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
 }
 
 rg::RGTextureViewHandle CreateVarianceEstimationTexture(rg::RenderGraphBuilder& graphBuilder, const rg::RenderGraphDebugName& name, math::Vector2u resolution)
@@ -53,13 +52,13 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 
 	SPT_CHECK(params.specularMomentsTexture.IsValid());
 	SPT_CHECK(params.specularTexture.IsValid());
-	SPT_CHECK(params.outSpecularVarianceTexture.IsValid());
 	
 	SPT_CHECK(params.diffuseMomentsTexture.IsValid());
 	SPT_CHECK(params.diffuseTexture.IsValid());
-	SPT_CHECK(params.outDiffuseVarianceTexture.IsValid());
 
-	const math::Vector2u resolution = params.outSpecularVarianceTexture->GetResolution2D();
+	SPT_CHECK(params.outVarianceTexture.IsValid());
+
+	const math::Vector2u resolution = params.outVarianceTexture->GetResolution2D();
 
 	SRComputeVarianceConstants shaderConstants;
 	shaderConstants.resolution = resolution;
@@ -67,10 +66,9 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 	lib::MTHandle<SRComputeVarianceDS> ds = graphBuilder.CreateDescriptorSet<SRComputeVarianceDS>(RENDERER_RESOURCE_NAME("SR Compute Std Dev DS"));
 	ds->u_specularMomentsTexture       = params.specularMomentsTexture;
 	ds->u_specularTexture              = params.specularTexture;
-	ds->u_rwSpecularVarianceTexture    = params.outSpecularVarianceTexture;
 	ds->u_diffuseMomentsTexture        = params.diffuseMomentsTexture;
 	ds->u_diffuseTexture               = params.diffuseTexture;
-	ds->u_rwDiffuseVarianceTexture     = params.outDiffuseVarianceTexture;
+	ds->u_rwVarianceTexture            = params.outVarianceTexture;
 	ds->u_accumulatedSamplesNumTexture = params.accumulatedSamplesNumTexture;
 	ds->u_depthTexture                 = params.depthTexture;
 	ds->u_normalsTexture               = params.normalsTexture;

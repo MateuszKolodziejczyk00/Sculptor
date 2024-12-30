@@ -121,8 +121,6 @@ struct RTVariableRateCallback
 
 			const float noiseLevel = diffuseNoiseLevel + specularNoiseLevel;
 
-			const float quadNoiseLevel = processor.QuadMax(isDepthValid ? noiseLevel : FLOAT_MAX);
-
 			const float depthDDX = processor.DDX_QuadMax(linearDepth);
 			const float depthDDY = processor.DDY_QuadMax(linearDepth);
 

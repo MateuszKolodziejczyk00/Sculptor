@@ -24,12 +24,10 @@ END_SHADER_STRUCT();
 DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inSpecularLuminance)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),            u_inDiffuseLuminance)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_inSpecularVariance)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_inDiffuseVariance)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outSpecularLuminance)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_outDiffuseLuminance)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_outSpecularVariance)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                     u_outDiffuseVariance)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_inVariance)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),             u_outVariance)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
@@ -52,12 +50,10 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 
 	SPT_CHECK(passParams.inSpecularLuminance.IsValid());
 	SPT_CHECK(passParams.inDiffuseLuminance.IsValid());
-	SPT_CHECK(passParams.inSpecularVariance.IsValid());
-	SPT_CHECK(passParams.inDiffuseVariance.IsValid());
+	SPT_CHECK(passParams.inVariance.IsValid());
 	SPT_CHECK(passParams.outSpecularLuminance.IsValid());
 	SPT_CHECK(passParams.outDiffuseLuminance.IsValid());
-	SPT_CHECK(passParams.outSpecularVariance.IsValid())
-	SPT_CHECK(passParams.outDiffuseVariance.IsValid());
+	SPT_CHECK(passParams.outVariance.IsValid());
 
 	const math::Vector2u resolution = passParams.inSpecularLuminance->GetResolution2D();
 
@@ -72,12 +68,10 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	lib::MTHandle<SRATrousFilterDS> ds = graphBuilder.CreateDescriptorSet<SRATrousFilterDS>(RENDERER_RESOURCE_NAME("SR A-Trous Filter DS"));
 	ds->u_inSpecularLuminance           = passParams.inSpecularLuminance;
 	ds->u_inDiffuseLuminance            = passParams.inDiffuseLuminance;
-	ds->u_inSpecularVariance            = passParams.inSpecularVariance;
-	ds->u_inDiffuseVariance             = passParams.inDiffuseVariance;
 	ds->u_outSpecularLuminance          = passParams.outSpecularLuminance;
 	ds->u_outDiffuseLuminance           = passParams.outDiffuseLuminance;
-	ds->u_outSpecularVariance           = passParams.outSpecularVariance;
-	ds->u_outDiffuseVariance            = passParams.outDiffuseVariance;
+	ds->u_inVariance                    = passParams.inVariance;
+	ds->u_outVariance                   = passParams.outVariance;
 	ds->u_linearDepthTexture            = filterParams.linearDepthTexture;
 	ds->u_normalsTexture                = filterParams.normalsTexture;
 	ds->u_roughnessTexture              = filterParams.roughnessTexture;
@@ -87,7 +81,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", filterParams.name.Get().ToString(), passParams.iterationIdx)),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds), filterParams.renderView.GetRenderViewDS()));
 }
 

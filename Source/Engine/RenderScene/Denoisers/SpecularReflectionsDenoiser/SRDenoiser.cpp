@@ -180,11 +180,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	fireflySuppressionParams.outDiffuseHitDistTexture =	diffuseTexture;
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
-	const rg::RGTextureViewHandle temporalSpecularVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Specular Variance"), resolution);
-	const rg::RGTextureViewHandle intermediateSpecularVariance = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Intermediate Specular Variance"), resolution);
-
-	const rg::RGTextureViewHandle temporalDiffuseVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Diffuse Variance"), resolution);
-	const rg::RGTextureViewHandle intermediateDiffuseVariance = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Intermediate Diffuse Variance"), resolution);
+	const rg::RGTextureViewHandle temporalVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Variance"), resolution);
+	const rg::RGTextureViewHandle intermediateVariance = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Intermediate Diffuse Variance"), resolution);
 
 	TemporalVarianceParams temporalVarianceParams(params.renderView);
 	temporalVarianceParams.debugName                    = m_debugName;
@@ -193,37 +190,23 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	temporalVarianceParams.depthTexture                 = params.currentDepthTexture;
 	temporalVarianceParams.specularMomentsTexture       = temporalVarianceSpecularTexture;
 	temporalVarianceParams.specularTexture              = specularTexture;
-	temporalVarianceParams.outSpecularVarianceTexture   = temporalSpecularVariance;
 	temporalVarianceParams.diffuseMomentsTexture        = temporalVarianceDiffuseTexture;
 	temporalVarianceParams.diffuseTexture               = diffuseTexture;
-	temporalVarianceParams.outDiffuseVarianceTexture    = temporalDiffuseVariance;
+	temporalVarianceParams.outVarianceTexture           = temporalVariance;
 	ComputeTemporalVariance(graphBuilder, temporalVarianceParams);
 
 	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceEstimationTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
 
-	VarianceEstimationParams varianceEstimationParams(params.renderView);
-	varianceEstimationParams.debugName                    = m_debugName;
-	varianceEstimationParams.accumulatedSamplesNumTexture = accumulatedSamplesNumTexture;
-	varianceEstimationParams.normalsTexture               = params.normalsTexture;
-	varianceEstimationParams.depthTexture                 = params.currentDepthTexture;
-	varianceEstimationParams.roughnessTexture             = params.roughnessTexture;
-	varianceEstimationParams.specularVarianceTexture      = temporalVarianceSpecularTexture;
-	varianceEstimationParams.diffuseVarianceTexture       = temporalVarianceDiffuseTexture;
-	varianceEstimationParams.outEstimatedVarianceTexture  = varianceEstimation;
-
-	EstimateVariance(graphBuilder, varianceEstimationParams);
-
 	SpatialFilterParams spatialParams;
-	spatialParams.inSpecular                   = specularTexture;
-	spatialParams.outSpecular                  = outSpecularTexture;
-	spatialParams.inSpecularVariance           = temporalSpecularVariance;
-	spatialParams.inDiffuse                    = diffuseTexture;
-	spatialParams.outDiffuse                   = outDiffuseTexture;
-	spatialParams.inDiffuseVariance            = temporalDiffuseVariance;
-	spatialParams.intermediateSpecularVariance = intermediateSpecularVariance;
-	spatialParams.intermediateDiffuseVariance  = intermediateDiffuseVariance;
-	spatialParams.historySamplesNum            = historyAccumulatedSamplesNumTexture;
-	spatialParams.reprojectionConfidence       = reprojectionConfidence;
+	spatialParams.inSpecular             = specularTexture;
+	spatialParams.outSpecular            = outSpecularTexture;
+	spatialParams.inDiffuse              = diffuseTexture;
+	spatialParams.outDiffuse             = outDiffuseTexture;
+	spatialParams.inVariance             = temporalVariance;
+	spatialParams.intermediateVariance   = intermediateVariance;
+	spatialParams.outVarianceEstimation  = varianceEstimation;
+	spatialParams.historySamplesNum      = historyAccumulatedSamplesNumTexture;
+	spatialParams.reprojectionConfidence = reprojectionConfidence;
 
 	ApplySpatialFilter(graphBuilder, spatialParams, params);
 
@@ -261,21 +244,38 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	aTrousParams.historyFramesNumTexture       = spatialParams.historySamplesNum;
 	aTrousParams.enableDetailPreservation      = params.detailPreservingSpatialFilter;
 
+	const auto advanceIteration = [](SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
+	{
+		std::swap(passParams.inSpecularLuminance, passParams.outSpecularLuminance);
+		std::swap(passParams.inDiffuseLuminance, passParams.outDiffuseLuminance);
+
+		passParams.inVariance  = inputVariance;
+		passParams.outVariance = outputVariance;
+
+		++passParams.iterationIdx;
+	};
+
 	SRATrousPass pass;
 	pass.inSpecularLuminance  = spatialParams.inSpecular;
 	pass.inDiffuseLuminance   = spatialParams.inDiffuse;
-	pass.inSpecularVariance   = spatialParams.inSpecularVariance;
-	pass.inDiffuseVariance    = spatialParams.inDiffuseVariance;
 	pass.outSpecularLuminance = spatialParams.outSpecular;
 	pass.outDiffuseLuminance  = spatialParams.outDiffuse;
-	pass.outSpecularVariance  = spatialParams.intermediateSpecularVariance;
-	pass.outDiffuseVariance   = spatialParams.intermediateDiffuseVariance;
+	pass.inVariance           = spatialParams.inVariance;
+	pass.outVariance          = spatialParams.outVarianceEstimation;
 
-	ApplyATrousFilter(graphBuilder, aTrousParams,   pass);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass);
-	ApplyATrousFilter(graphBuilder, aTrousParams, ++pass);
+	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
+
+	advanceIteration(pass, spatialParams.outVarianceEstimation, spatialParams.intermediateVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
+
+	advanceIteration(pass, spatialParams.intermediateVariance, spatialParams.inVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
+
+	advanceIteration(pass, spatialParams.inVariance, spatialParams.intermediateVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
+
+	advanceIteration(pass, spatialParams.intermediateVariance, spatialParams.inVariance);
+	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 }
 
 } // spt::rsc::sr_denoiser

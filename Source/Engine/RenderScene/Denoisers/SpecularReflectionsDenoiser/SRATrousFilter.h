@@ -36,25 +36,14 @@ struct SRATrousPass
 {
 	rg::RGTextureViewHandle inSpecularLuminance;
 	rg::RGTextureViewHandle inDiffuseLuminance;
-	rg::RGTextureViewHandle inSpecularVariance;
-	rg::RGTextureViewHandle inDiffuseVariance;
 
 	rg::RGTextureViewHandle outSpecularLuminance;
 	rg::RGTextureViewHandle outDiffuseLuminance;
-	rg::RGTextureViewHandle outSpecularVariance;
-	rg::RGTextureViewHandle outDiffuseVariance;
+
+	rg::RGTextureViewHandle inVariance;
+	rg::RGTextureViewHandle outVariance;
 
 	Uint32 iterationIdx = 0u;
-
-	SRATrousPass& operator++()
-	{
-		std::swap(inSpecularLuminance, outSpecularLuminance);
-		std::swap(inDiffuseLuminance, outDiffuseLuminance);
-		std::swap(inSpecularVariance, outSpecularVariance);
-		std::swap(inDiffuseVariance, outDiffuseVariance);
-		++iterationIdx;
-		return *this;
-	}
 };
 
 

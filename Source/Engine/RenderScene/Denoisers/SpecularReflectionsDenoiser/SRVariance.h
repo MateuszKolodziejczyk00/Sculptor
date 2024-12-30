@@ -35,11 +35,11 @@ struct TemporalVarianceParams
 
 	rg::RGTextureViewHandle  specularMomentsTexture;
 	rg::RGTextureViewHandle  specularTexture;
-	rg::RGTextureViewHandle  outSpecularVarianceTexture;
 
 	rg::RGTextureViewHandle  diffuseMomentsTexture;
 	rg::RGTextureViewHandle  diffuseTexture;
-	rg::RGTextureViewHandle  outDiffuseVarianceTexture;
+
+	rg::RGTextureViewHandle  outVarianceTexture;
 };
 
 
