@@ -17,22 +17,6 @@ struct CS_INPUT
 };
 
 
-float ComputeDetailPreservationStrength(in float historyLength, in float reprojectionConfidence)
-{
-	if(u_params.enableDetailPreservation)
-	{
-		const float historyLengthFactor = saturate((historyLength - 14.f) / 8.f);
-		const float reprojectionConfidenceFactor = saturate((reprojectionConfidence - 0.9f) * 10.f);
-
-		return historyLengthFactor * reprojectionConfidenceFactor;
-	}
-	else
-	{
-		return 0.f;
-	}
-}
-
-
 float2 LoadVariance(in Texture2D<float2> varianceTexture, in int2 coords)
 {
 	const uint2 clampedCoords = clamp(coords, int2(0, 0), int2(u_params.resolution - 1));
@@ -141,13 +125,8 @@ void SRATrousFilterCS(CS_INPUT input)
 		
 		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
 
-		const float accumulatedFrames = u_historyFramesNumTexture.Load(uint3(pixel, 0));
-		const float specularReprojectionConfidence = u_reprojectionConfidenceTexture.Load(uint3(pixel, 0));
-
-		const float roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularReprojectionConfidence, accumulatedFrames);
-
-		const float detailPreservationStrength = ComputeDetailPreservationStrength(accumulatedFrames, specularReprojectionConfidence);
-		const float neighborWeight = lerp(1.f / 8.f, 1 / 32.f, detailPreservationStrength);
+		const float specularHistoryLength = u_specularHistoryLengthTexture.Load(uint3(pixel, 0));
+		const float roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularHistoryLength);
 
 		const float4 centerSpecular = u_inSpecularLuminance.Load(uint3(pixel, 0));
 		const float specularLumCenter = Luminance(centerSpecular.rgb);
@@ -155,7 +134,7 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float4 centerDiffuse = u_inDiffuseLuminance.Load(uint3(pixel, 0));
 		const float diffuseLumCenter = Luminance(centerDiffuse.rgb);
 
-		const float kernel[2] = { 3.f / 8.f, neighborWeight };
+		const float kernel[2] = { 3.f / 8.f, 1.f / 8.f };
 
 		float specularWeightSum = kernel[0];
 		float diffuseWeightSum = kernel[0];

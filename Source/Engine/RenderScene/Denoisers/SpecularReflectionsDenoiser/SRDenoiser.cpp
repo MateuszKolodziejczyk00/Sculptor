@@ -56,8 +56,10 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Param
 		accumulatedSamplesNumTextureDef.resolution = resolution;
 		accumulatedSamplesNumTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
 		accumulatedSamplesNumTextureDef.format     = rhi::EFragmentFormat::R8_U_Int;
-		m_accumulatedSamplesNumTexture        = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Accumulated Samples Num"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
-		m_historyAccumulatedSamplesNumTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Accumulated Samples Num"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
+		m_specularHistoryLengthTexture        = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Specular Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
+		m_historySpecularHistoryLengthTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Specular Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
+		m_diffuseHistoryLengthTexture         = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Diffuse Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
+		m_historyDiffuseHistoryLengthTexture  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Diffuse Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 		rhi::TextureDefinition temporalVarianceTextureDef;
 		temporalVarianceTextureDef.resolution = resolution;
@@ -89,8 +91,10 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 
 	const rg::RGTextureViewHandle historySpecularTexture                 = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularTexture));
 	const rg::RGTextureViewHandle historyDiffuseTexture                  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffuseTexture));
-	const rg::RGTextureViewHandle accumulatedSamplesNumTexture           = graphBuilder.AcquireExternalTextureView(lib::Ref(m_accumulatedSamplesNumTexture));
-	const rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture    = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyAccumulatedSamplesNumTexture));
+	const rg::RGTextureViewHandle specularHistoryLengthTexture           = graphBuilder.AcquireExternalTextureView(lib::Ref(m_specularHistoryLengthTexture));
+	const rg::RGTextureViewHandle historySpecularHistoryLengthTexture    = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularHistoryLengthTexture));
+	const rg::RGTextureViewHandle diffuseHistoryLengthTexture            = graphBuilder.AcquireExternalTextureView(lib::Ref(m_diffuseHistoryLengthTexture));
+	const rg::RGTextureViewHandle historyDiffuseHistoryLengthTexture     = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffuseHistoryLengthTexture));
 	const rg::RGTextureViewHandle fastHistorySpecularTexture             = graphBuilder.AcquireExternalTextureView(lib::Ref(m_fastHistorySpecularTexture));
 	const rg::RGTextureViewHandle fastHistorySpecularOutputTexture       = graphBuilder.AcquireExternalTextureView(lib::Ref(m_fastHistorySpecularOutputTexture));
 	const rg::RGTextureViewHandle fastHistoryDiffuseTexture              = graphBuilder.AcquireExternalTextureView(lib::Ref(m_fastHistoryDiffuseTexture));
@@ -99,8 +103,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGTextureViewHandle historyTemporalVarianceSpecularTexture = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyTemporalVarianceSpecularTexture));
 	const rg::RGTextureViewHandle temporalVarianceDiffuseTexture         = graphBuilder.AcquireExternalTextureView(lib::Ref(m_temporalVarianceDiffuseTexture));
 	const rg::RGTextureViewHandle historyTemporalVarianceDiffuseTexture  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyTemporalVarianceDiffuseTexture));
-
-	rg::RGTextureViewHandle reprojectionConfidence = CreateReprojectionConfidenceTexture(graphBuilder, resolution);
 
 	if (m_hasValidHistory)
 	{
@@ -120,14 +122,15 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.currentDiffuseTexture                  = diffuseTexture;
 		temporalAccumulationParameters.historySpecularTexture                 = historySpecularTexture;
 		temporalAccumulationParameters.historyDiffuseTexture                  = historyDiffuseTexture;
-		temporalAccumulationParameters.accumulatedSamplesNumTexture           = accumulatedSamplesNumTexture;
-		temporalAccumulationParameters.historyAccumulatedSamplesNumTexture    = historyAccumulatedSamplesNumTexture;
+		temporalAccumulationParameters.specularHistoryLengthTexture           = specularHistoryLengthTexture;
+		temporalAccumulationParameters.historySpecularHistoryLengthTexture    = historySpecularHistoryLengthTexture;
+		temporalAccumulationParameters.diffuseHistoryLengthTexture            = diffuseHistoryLengthTexture;
+		temporalAccumulationParameters.historyDiffuseHistoryLengthTexture     = historyDiffuseHistoryLengthTexture;
 		temporalAccumulationParameters.temporalVarianceSpecularTexture        = temporalVarianceSpecularTexture;
 		temporalAccumulationParameters.historyTemporalVarianceSpecularTexture = historyTemporalVarianceSpecularTexture;
 		temporalAccumulationParameters.temporalVarianceDiffuseTexture         = temporalVarianceDiffuseTexture;
 		temporalAccumulationParameters.historyTemporalVarianceDiffuseTexture  = historyTemporalVarianceDiffuseTexture;
 		temporalAccumulationParameters.historyRoughnessTexture                = params.historyRoughnessTexture;
-		temporalAccumulationParameters.reprojectionConfidenceTexture          = reprojectionConfidence;
 		temporalAccumulationParameters.fastHistorySpecularTexture             = fastHistorySpecularTexture;
 		temporalAccumulationParameters.fastHistorySpecularOutputTexture       = fastHistorySpecularOutputTexture;
 		temporalAccumulationParameters.fastHistoryDiffuseTexture              = fastHistoryDiffuseTexture;
@@ -139,7 +142,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	{
 		graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy Specular Fast History", m_debugName.AsString()), specularTexture, fastHistorySpecularOutputTexture);
 		graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy Diffuse Fast History", m_debugName.AsString()), diffuseTexture, fastHistoryDiffuseOutputTexture);
-		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear reprojection confidence", m_debugName.AsString()), reprojectionConfidence, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Specular Moments", m_debugName.AsString()), temporalVarianceSpecularTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Diffuse Moments", m_debugName.AsString()), temporalVarianceDiffuseTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 	}
@@ -149,7 +151,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 
 	DisocclusionFixParams disocclusionFixParams(params.renderView);
 	disocclusionFixParams.debugName                    = m_debugName;
-	disocclusionFixParams.accumulatedSamplesNumTexture = accumulatedSamplesNumTexture;
+	disocclusionFixParams.specularHistoryLengthTexture = specularHistoryLengthTexture;
+	disocclusionFixParams.diffuseHistoryLengthTexture  = diffuseHistoryLengthTexture;
 	disocclusionFixParams.normalsTexture               = params.normalsTexture;
 	disocclusionFixParams.depthTexture                 = params.currentDepthTexture;
 	disocclusionFixParams.roughnessTexture             = params.roughnessTexture;
@@ -161,11 +164,11 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 
 	ClampHistoryParams clampHistoryParams(params.renderView);
 	clampHistoryParams.debugName                      = m_debugName;
-	clampHistoryParams.accumulatedSamplesNumTexture   = accumulatedSamplesNumTexture;
+	clampHistoryParams.specularHistoryLengthTexture   = specularHistoryLengthTexture;
+	clampHistoryParams.diffuseHistoryLengthTexture    = diffuseHistoryLengthTexture;
 	clampHistoryParams.depthTexture                   = params.currentDepthTexture;
 	clampHistoryParams.normalsTexture                 = params.normalsTexture;
 	clampHistoryParams.roughnessTexture               = params.roughnessTexture;
-	clampHistoryParams.reprojectionConfidenceTexture  = reprojectionConfidence;
 	clampHistoryParams.specularTexture                = specularTexture;
 	clampHistoryParams.fastHistorySpecularTexture     = fastHistorySpecularTexture;
 	clampHistoryParams.diffuseTexture                 = diffuseTexture;
@@ -173,11 +176,11 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	ClampHistory(graphBuilder, clampHistoryParams);
 
 	FireflySuppressionParams fireflySuppressionParams;
-	fireflySuppressionParams.debugName                = m_debugName;
-	fireflySuppressionParams.inSpecularHitDistTexture = historySpecularTexture;
-	fireflySuppressionParams.outSpecularHitDistTexture= specularTexture;
-	fireflySuppressionParams.inDiffuseHitDistTexture  = historyDiffuseTexture;
-	fireflySuppressionParams.outDiffuseHitDistTexture =	diffuseTexture;
+	fireflySuppressionParams.debugName                 = m_debugName;
+	fireflySuppressionParams.inSpecularHitDistTexture  = historySpecularTexture;
+	fireflySuppressionParams.outSpecularHitDistTexture = specularTexture;
+	fireflySuppressionParams.inDiffuseHitDistTexture   = historyDiffuseTexture;
+	fireflySuppressionParams.outDiffuseHitDistTexture  =diffuseTexture;
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
 	const rg::RGTextureViewHandle temporalVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Variance"), resolution);
@@ -185,7 +188,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 
 	TemporalVarianceParams temporalVarianceParams(params.renderView);
 	temporalVarianceParams.debugName                    = m_debugName;
-	temporalVarianceParams.accumulatedSamplesNumTexture = accumulatedSamplesNumTexture;
+	temporalVarianceParams.specularHistoryLengthTexture = specularHistoryLengthTexture;
+	temporalVarianceParams.diffuseHistoryLengthTexture  = diffuseHistoryLengthTexture;
 	temporalVarianceParams.normalsTexture               = params.normalsTexture;
 	temporalVarianceParams.depthTexture                 = params.currentDepthTexture;
 	temporalVarianceParams.specularMomentsTexture       = temporalVarianceSpecularTexture;
@@ -198,15 +202,14 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceEstimationTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
 
 	SpatialFilterParams spatialParams;
-	spatialParams.inSpecular             = specularTexture;
-	spatialParams.outSpecular            = outSpecularTexture;
-	spatialParams.inDiffuse              = diffuseTexture;
-	spatialParams.outDiffuse             = outDiffuseTexture;
-	spatialParams.inVariance             = temporalVariance;
-	spatialParams.intermediateVariance   = intermediateVariance;
-	spatialParams.outVarianceEstimation  = varianceEstimation;
-	spatialParams.historySamplesNum      = historyAccumulatedSamplesNumTexture;
-	spatialParams.reprojectionConfidence = reprojectionConfidence;
+	spatialParams.inSpecular                   = specularTexture;
+	spatialParams.outSpecular                  = outSpecularTexture;
+	spatialParams.inDiffuse                    = diffuseTexture;
+	spatialParams.outDiffuse                   = outDiffuseTexture;
+	spatialParams.inVariance                   = temporalVariance;
+	spatialParams.intermediateVariance         = intermediateVariance;
+	spatialParams.outVarianceEstimation        = varianceEstimation;
+	spatialParams.specularHistoryLengthTexture = specularHistoryLengthTexture;
 
 	ApplySpatialFilter(graphBuilder, spatialParams, params);
 
@@ -215,7 +218,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	result.denoisedDiffuse    = outDiffuseTexture;
 	result.varianceEstimation = varianceEstimation;
 
-	std::swap(m_accumulatedSamplesNumTexture, m_historyAccumulatedSamplesNumTexture);
+	std::swap(m_specularHistoryLengthTexture, m_historySpecularHistoryLengthTexture);
+	std::swap(m_diffuseHistoryLengthTexture, m_historyDiffuseHistoryLengthTexture);
 
 	std::swap(m_fastHistorySpecularTexture, m_fastHistorySpecularOutputTexture);
 	std::swap(m_fastHistoryDiffuseTexture, m_fastHistoryDiffuseOutputTexture);
@@ -235,14 +239,12 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Denoiser: Spatial Filters");
 
 	SRATrousFilterParams aTrousParams(params.renderView);
-	aTrousParams.name                          = m_debugName;
-	aTrousParams.linearDepthTexture            = params.linearDepthTexture;
-	aTrousParams.depthTexture                  = params.currentDepthTexture;
-	aTrousParams.normalsTexture                = params.normalsTexture;
-	aTrousParams.roughnessTexture              = params.roughnessTexture;
-	aTrousParams.reprojectionConfidenceTexture = spatialParams.reprojectionConfidence;
-	aTrousParams.historyFramesNumTexture       = spatialParams.historySamplesNum;
-	aTrousParams.enableDetailPreservation      = params.detailPreservingSpatialFilter;
+	aTrousParams.name                         = m_debugName;
+	aTrousParams.linearDepthTexture           = params.linearDepthTexture;
+	aTrousParams.depthTexture                 = params.currentDepthTexture;
+	aTrousParams.normalsTexture               = params.normalsTexture;
+	aTrousParams.roughnessTexture             = params.roughnessTexture;
+	aTrousParams.specularHistoryLengthTexture = spatialParams.specularHistoryLengthTexture;
 
 	const auto advanceIteration = [](SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
 	{

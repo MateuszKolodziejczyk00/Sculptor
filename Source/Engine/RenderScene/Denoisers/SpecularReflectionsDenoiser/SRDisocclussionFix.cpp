@@ -19,7 +19,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRDisocclusionFixDS, rg::RGDescriptorSetState<SRDisocclusionFixDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_accumulatedSamplesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_specularHistoryLengthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_diffuseHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_normalsTexture)
@@ -55,7 +56,8 @@ void DisocclusionFix(rg::RenderGraphBuilder& graphBuilder, const DisocclusionFix
 	shaderConstants.filterStride = 4u;
 
 	lib::MTHandle<SRDisocclusionFixDS> ds = graphBuilder.CreateDescriptorSet<SRDisocclusionFixDS>(RENDERER_RESOURCE_NAME("SR Disocclusion Fix DS"));
-	ds->u_accumulatedSamplesNumTexture = params.accumulatedSamplesNumTexture;
+	ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+	ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
 	ds->u_depthTexture                 = params.depthTexture;
 	ds->u_roughnessTexture             = params.roughnessTexture;
 	ds->u_normalsTexture               = params.normalsTexture;

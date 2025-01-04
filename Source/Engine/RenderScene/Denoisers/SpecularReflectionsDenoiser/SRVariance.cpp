@@ -23,7 +23,8 @@ DS_BEGIN(SRComputeVarianceDS, rg::RGDescriptorSetState<SRComputeVarianceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_diffuseMomentsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),               u_diffuseTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_rwVarianceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_accumulatedSamplesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_specularHistoryLengthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_diffuseHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRComputeVarianceConstants>), u_constants)
@@ -69,7 +70,8 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 	ds->u_diffuseMomentsTexture        = params.diffuseMomentsTexture;
 	ds->u_diffuseTexture               = params.diffuseTexture;
 	ds->u_rwVarianceTexture            = params.outVarianceTexture;
-	ds->u_accumulatedSamplesNumTexture = params.accumulatedSamplesNumTexture;
+	ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+	ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
 	ds->u_depthTexture                 = params.depthTexture;
 	ds->u_normalsTexture               = params.normalsTexture;
 	ds->u_constants                    = shaderConstants;

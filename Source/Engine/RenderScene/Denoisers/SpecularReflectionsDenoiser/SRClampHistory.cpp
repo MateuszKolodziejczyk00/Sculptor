@@ -22,11 +22,11 @@ DS_BEGIN(SRClampHistoryDS, rg::RGDescriptorSetState<SRClampHistoryDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistorySpecularTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffuseTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistoryDiffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_accumulatedSamplesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_specularHistoryLengthTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_diffuseHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRClampHistoryConstants>), u_constants)
 DS_END();
 
@@ -58,11 +58,11 @@ void ClampHistory(rg::RenderGraphBuilder& graphBuilder, const ClampHistoryParams
 	ds->u_fastHistorySpecularTexture     = params.fastHistorySpecularTexture;
 	ds->u_diffuseTexture                 = params.diffuseTexture;
 	ds->u_fastHistoryDiffuseTexture      = params.fastHistoryDiffuseTexture;
-	ds->u_accumulatedSamplesNumTexture   = params.accumulatedSamplesNumTexture;
+	ds->u_specularHistoryLengthTexture   = params.specularHistoryLengthTexture;
+	ds->u_diffuseHistoryLengthTexture    = params.diffuseHistoryLengthTexture;
 	ds->u_depthTexture                   = params.depthTexture;
 	ds->u_normalsTexture                 = params.normalsTexture;
 	ds->u_roughnessTexture               = params.roughnessTexture;
-	ds->u_reprojectionConfidenceTexture  = params.reprojectionConfidenceTexture;
 	ds->u_constants                      = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateClampHistoryPipeline();

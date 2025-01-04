@@ -25,10 +25,8 @@ struct SRATrousFilterParams : public denoising::DenoiserGeometryParams
 
 	rg::RGTextureViewHandle linearDepthTexture;
 	rg::RGTextureViewHandle roughnessTexture;
-	rg::RGTextureViewHandle reprojectionConfidenceTexture;
-	rg::RGTextureViewHandle historyFramesNumTexture;
 
-	Bool enableDetailPreservation = false;
+	rg::RGTextureViewHandle specularHistoryLengthTexture;
 };
 
 

@@ -29,7 +29,10 @@ struct TemporalVarianceParams
 	const RenderView&        renderView;
 
 	rg::RenderGraphDebugName debugName;
-	rg::RGTextureViewHandle  accumulatedSamplesNumTexture;
+
+	rg::RGTextureViewHandle  specularHistoryLengthTexture;
+	rg::RGTextureViewHandle  diffuseHistoryLengthTexture;
+
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  depthTexture;
 

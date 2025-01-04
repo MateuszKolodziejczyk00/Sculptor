@@ -17,7 +17,6 @@ BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
 	SHADER_STRUCT_FIELD(Int32,          samplesOffset)
-	SHADER_STRUCT_FIELD(Uint32,         enableDetailPreservation)
 END_SHADER_STRUCT();
 
 
@@ -31,8 +30,7 @@ DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_linearDepthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_reprojectionConfidenceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_historyFramesNumTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_specularHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRATrousFilteringParams>), u_params)
 DS_END();
 
@@ -61,7 +59,6 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 
 	SRATrousFilteringParams dispatchParams;
 	dispatchParams.samplesOffset            = 1u << passParams.iterationIdx;
-	dispatchParams.enableDetailPreservation = filterParams.enableDetailPreservation;
 	dispatchParams.resolution               = resolution;
 	dispatchParams.invResolution            = resolution.cast<Real32>().cwiseInverse();
 
@@ -75,8 +72,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 	ds->u_linearDepthTexture            = filterParams.linearDepthTexture;
 	ds->u_normalsTexture                = filterParams.normalsTexture;
 	ds->u_roughnessTexture              = filterParams.roughnessTexture;
-	ds->u_reprojectionConfidenceTexture = filterParams.reprojectionConfidenceTexture;
-	ds->u_historyFramesNumTexture       = filterParams.historyFramesNumTexture;
+	ds->u_specularHistoryLengthTexture  = filterParams.specularHistoryLengthTexture;
 	ds->u_params                        = dispatchParams;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("{}: Denoise Spatial A-Trous Filter (Iteration {})", filterParams.name.Get().ToString(), passParams.iterationIdx)),

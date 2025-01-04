@@ -32,10 +32,10 @@ float ComputeWorldLocationWeight(float3 centerWS, float3 normal, float3 sampleWS
 	return 1.f - smoothstep(0.01f, 0.06f, centerPlane.Distance(sampleWS));
 }
 
-float ComputeRoughnessFilterStrength(in float roughness, in float reprojectionConfidence, in float historyFramesNum)
+float ComputeRoughnessFilterStrength(in float roughness, in float historyFramesNum)
 {
 	const float maxStrength = lerp(8.f, 18.f, saturate(1.f - roughness));
-	return clamp(1.f, maxStrength, 25.f * reprojectionConfidence * saturate(historyFramesNum / 8.f));
+	return clamp(1.f, maxStrength, 15.f * saturate(historyFramesNum / 8.f));
 }
 
 float ComputeRoughnessWeight(in float centerRoughness, in float sampleRoughness, in float roughnessFilterStrength)

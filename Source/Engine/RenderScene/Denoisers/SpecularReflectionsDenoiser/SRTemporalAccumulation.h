@@ -32,10 +32,10 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 
 	rg::RGTextureViewHandle historyNormalsTexture;
 
-	rg::RGTextureViewHandle accumulatedSamplesNumTexture;
-	rg::RGTextureViewHandle historyAccumulatedSamplesNumTexture;
-
-	rg::RGTextureViewHandle reprojectionConfidenceTexture;
+	rg::RGTextureViewHandle specularHistoryLengthTexture;
+	rg::RGTextureViewHandle historySpecularHistoryLengthTexture;
+	rg::RGTextureViewHandle diffuseHistoryLengthTexture;
+	rg::RGTextureViewHandle historyDiffuseHistoryLengthTexture;
 
 	rg::RGTextureViewHandle currentSpecularTexture;
 	rg::RGTextureViewHandle currentDiffuseTexture;
@@ -53,8 +53,6 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle fastHistoryDiffuseTexture;
 	rg::RGTextureViewHandle fastHistoryDiffuseOutputTexture;
 };
-
-rg::RGTextureViewHandle CreateReprojectionConfidenceTexture(rg::RenderGraphBuilder& graphBuilder, math::Vector2u resolution);
 
 void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const TemporalAccumulationParameters& params);
 

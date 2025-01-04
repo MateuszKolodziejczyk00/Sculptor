@@ -59,8 +59,6 @@ public:
 
 		rg::RGTextureViewHandle specularTexture;
 		rg::RGTextureViewHandle diffuseTexture;
-
-		Bool detailPreservingSpatialFilter = false;
 	};
 
 	struct Result
@@ -88,12 +86,11 @@ private:
 		rg::RGTextureViewHandle inDiffuse;
 		rg::RGTextureViewHandle outDiffuse;
 
+		rg::RGTextureViewHandle specularHistoryLengthTexture;
+
 		rg::RGTextureViewHandle inVariance;
 		rg::RGTextureViewHandle intermediateVariance;
 		rg::RGTextureViewHandle outVarianceEstimation;
-
-		rg::RGTextureViewHandle historySamplesNum;
-		rg::RGTextureViewHandle reprojectionConfidence;
 	};
 
 	void ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const SpatialFilterParams& spatialParams, const Params& params);
@@ -103,8 +100,11 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_historySpecularTexture;
 	lib::SharedPtr<rdr::TextureView> m_historyDiffuseTexture;
 
-	lib::SharedPtr<rdr::TextureView> m_accumulatedSamplesNumTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyAccumulatedSamplesNumTexture;
+	lib::SharedPtr<rdr::TextureView> m_specularHistoryLengthTexture;
+	lib::SharedPtr<rdr::TextureView> m_historySpecularHistoryLengthTexture;
+
+	lib::SharedPtr<rdr::TextureView> m_diffuseHistoryLengthTexture;
+	lib::SharedPtr<rdr::TextureView> m_historyDiffuseHistoryLengthTexture;
 
 	lib::SharedPtr<rdr::TextureView> m_fastHistorySpecularTexture;
 	lib::SharedPtr<rdr::TextureView> m_fastHistorySpecularOutputTexture;

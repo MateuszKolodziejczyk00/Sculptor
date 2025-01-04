@@ -41,7 +41,6 @@ RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iteratio
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
-RendererBoolParameter detailPreservingSpatialDenoising("Detail Preserving Spatial Denoising", { "Specular Reflections" }, false);
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 
@@ -537,7 +536,6 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.historyRoughnessTexture       = params.historyRoughnessTexture;
 	denoiserParams.specularTexture               = specularReflections;
 	denoiserParams.diffuseTexture                = diffuseReflections;
-	denoiserParams.detailPreservingSpatialFilter = renderer_params::detailPreservingSpatialDenoising;
 	return denoiser.Denoise(graphBuilder, denoiserParams);
 }
 

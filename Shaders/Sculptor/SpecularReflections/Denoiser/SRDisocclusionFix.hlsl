@@ -30,10 +30,15 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 		const float centerDepth = u_depthTexture.Load(uint3(pixel, 0));
 
-		const uint accumulatedSamplesNum = u_accumulatedSamplesNumTexture.Load(int3(pixel, 0));
 		const float roughness = u_roughnessTexture.Load(uint3(pixel, 0));
 
-		if(accumulatedSamplesNum > 3 || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
+		const uint specularHistoryLength =	u_specularHistoryLengthTexture.Load(int3(pixel, 0));
+		const uint diffuseHistoryLength  = u_diffuseHistoryLengthTexture  .Load(int3(pixel, 0));
+
+		const bool fixSpecular = specularHistoryLength < 3;
+		const bool fixDiffuse  = diffuseHistoryLength < 3;
+
+		if((!fixSpecular && !fixDiffuse) || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			u_rwDiffuseTexture[pixel]  = u_diffuseTexture.Load(uint3(pixel, 0));
 			u_rwSpecularTexture[pixel] = u_specularTexture.Load(uint3(pixel, 0));
@@ -83,30 +88,53 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 				const float weight = dw * w;
 
-				const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
-				const float specularWeight = weight * swn;
+				if(fixSpecular)
+				{
+					const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
+					const float specularWeight = weight * swn;
 
-				float3 specular = u_specularTexture.Load(uint3(samplePixel, 0)).rgb;
-				specular /= (Luminance(specular) + 1.f);
+					float3 specular = u_specularTexture.Load(uint3(samplePixel, 0)).rgb;
+					specular /= (Luminance(specular) + 1.f);
 
-				specularSum       += specular * specularWeight;
-				specularWeightSum += specularWeight;
+					specularSum       += specular * specularWeight;
+					specularWeightSum += specularWeight;
+				}
 
-				const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
-				const float diffuseWeight = weight * dwn;
+				if(fixDiffuse)
+				{
+					const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
+					const float diffuseWeight = weight * dwn;
 
-				float3 diffuse = u_diffuseTexture.Load(uint3(samplePixel, 0)).rgb;
-				diffuse /= (Luminance(diffuse) + 1.f);
+					float3 diffuse = u_diffuseTexture.Load(uint3(samplePixel, 0)).rgb;
+					diffuse /= (Luminance(diffuse) + 1.f);
 
-				diffuseSum       += diffuse *  diffuseWeight;
-				diffuseWeightSum += diffuseWeight;
+					diffuseSum       += diffuse *  diffuseWeight;
+					diffuseWeightSum += diffuseWeight;
+				}
 			}
 		}
 
-		float3 outSpecular = specularSum / specularWeightSum;
-		outSpecular /= (1.f - Luminance(outSpecular));
-		float3 outDiffuse  = diffuseSum / diffuseWeightSum;
-		outDiffuse /= (1.f - Luminance(outDiffuse));
+		float3 outSpecular = 0.f;
+		if(fixSpecular)
+		{
+			outSpecular = specularSum / specularWeightSum;
+			outSpecular /= (1.f - Luminance(outSpecular));
+		}
+		else
+		{
+			outSpecular = centerSpecular.rgb;
+		}
+
+		float3 outDiffuse = 0.f;
+		if(fixDiffuse)
+		{
+			outDiffuse  = diffuseSum / diffuseWeightSum;
+			outDiffuse /= (1.f - Luminance(outDiffuse));
+		}
+		else
+		{
+			outDiffuse = centerDiffuse.rgb;
+		}
 
 		u_rwSpecularTexture[pixel] = float4(outSpecular, centerSpecular.w);
 		u_rwDiffuseTexture[pixel]  = float4(outDiffuse, centerDiffuse.w);
