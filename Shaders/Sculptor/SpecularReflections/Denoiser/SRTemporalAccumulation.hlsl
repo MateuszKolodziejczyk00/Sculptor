@@ -171,8 +171,8 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float currentFrameWeightFast = max(0.3f, diffuseFrameWeight);
 
-			const float3 specularFastHistory = u_specularFastHistoryTexture.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f);
-			u_rwSpecularFastHistoryTexture[pixel] = lerp(specularFastHistory, specular.rgb, currentFrameWeightFast);
+			const float3 diffuseFastHistory = u_diffuseFastHistoryTexture.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f);
+			u_rwDiffuseFastHistoryTexture[pixel] = lerp(diffuseFastHistory, diffuse.rgb, currentFrameWeightFast);
 		}
 		else
 		{
@@ -191,7 +191,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		                         roughness,
 		                         OUT specularReprojectedUV,
 		                         OUT specularReprojectionConfidence);
-
 
 		const float specularLum = Luminance(specular.rgb);
 		float2 specularMoments = float2(specularLum, Pow2(specularLum));

@@ -72,7 +72,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 
 	lib::MTHandle<SRTemporalAccumulationDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalAccumulationDS>(RENDERER_RESOURCE_NAME("SRTemporalAccumulationDS"));
 	ds->u_specularHistoryLengthTexture           = params.specularHistoryLengthTexture;
-	ds->u_historySpecularHistoryLengthTexture    = params.diffuseHistoryLengthTexture;
+	ds->u_historySpecularHistoryLengthTexture    = params.historySpecularHistoryLengthTexture;
 	ds->u_diffuseHistoryLengthTexture            = params.diffuseHistoryLengthTexture;
 	ds->u_historyDiffuseHistoryLengthTexture     = params.historyDiffuseHistoryLengthTexture;
 	ds->u_historyDepthTexture                    = params.historyDepthTexture;

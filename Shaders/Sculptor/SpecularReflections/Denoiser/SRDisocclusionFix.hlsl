@@ -114,27 +114,11 @@ void SRDisocclusionFixCS(CS_INPUT input)
 			}
 		}
 
-		float3 outSpecular = 0.f;
-		if(fixSpecular)
-		{
-			outSpecular = specularSum / specularWeightSum;
-			outSpecular /= (1.f - Luminance(outSpecular));
-		}
-		else
-		{
-			outSpecular = centerSpecular.rgb;
-		}
+		float3 outSpecular = specularSum / specularWeightSum;
+		outSpecular /= (1.f - Luminance(outSpecular));
 
-		float3 outDiffuse = 0.f;
-		if(fixDiffuse)
-		{
-			outDiffuse  = diffuseSum / diffuseWeightSum;
-			outDiffuse /= (1.f - Luminance(outDiffuse));
-		}
-		else
-		{
-			outDiffuse = centerDiffuse.rgb;
-		}
+		float3 outDiffuse = diffuseSum / diffuseWeightSum;
+		outDiffuse /= (1.f - Luminance(outDiffuse));
 
 		u_rwSpecularTexture[pixel] = float4(outSpecular, centerSpecular.w);
 		u_rwDiffuseTexture[pixel]  = float4(outDiffuse, centerDiffuse.w);

@@ -169,9 +169,9 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	clampHistoryParams.depthTexture                   = params.currentDepthTexture;
 	clampHistoryParams.normalsTexture                 = params.normalsTexture;
 	clampHistoryParams.roughnessTexture               = params.roughnessTexture;
-	clampHistoryParams.specularTexture                = specularTexture;
+	clampHistoryParams.specularTexture                = historySpecularTexture;
 	clampHistoryParams.fastHistorySpecularTexture     = fastHistorySpecularTexture;
-	clampHistoryParams.diffuseTexture                 = diffuseTexture;
+	clampHistoryParams.diffuseTexture                 = historyDiffuseTexture;
 	clampHistoryParams.fastHistoryDiffuseTexture      =	fastHistoryDiffuseTexture;
 	ClampHistory(graphBuilder, clampHistoryParams);
 
@@ -180,7 +180,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	fireflySuppressionParams.inSpecularHitDistTexture  = historySpecularTexture;
 	fireflySuppressionParams.outSpecularHitDistTexture = specularTexture;
 	fireflySuppressionParams.inDiffuseHitDistTexture   = historyDiffuseTexture;
-	fireflySuppressionParams.outDiffuseHitDistTexture  =diffuseTexture;
+	fireflySuppressionParams.outDiffuseHitDistTexture  = diffuseTexture;
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
 	const rg::RGTextureViewHandle temporalVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Variance"), resolution);
