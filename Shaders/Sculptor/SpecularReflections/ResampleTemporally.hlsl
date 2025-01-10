@@ -304,7 +304,6 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 
-		float reflectedRayLength = -1.f;
 		SRTemporalResampler resampler;
 
 		const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
@@ -314,19 +313,16 @@ void ResampleTemporallyCS(CS_INPUT input)
 			const SRPackedReservoir packedReservoir = u_initialResservoirsBuffer[reservoirIdx];
 			const SRReservoir reservoir = UnpackReservoir(packedReservoir);
 
-			reflectedRayLength = distance(centerPixelSurface.location, reservoir.hitLocation);
-
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
 
 		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
 			const float2 uv = (float2(pixel) + 0.5f) * u_resamplingConstants.pixelSize;
+			
+			const float2 motion = u_motionTexture.Load(uint3(pixel, 0u));
 
-			const float3 virtualReflectedLocation = centerPixelSurface.location - centerPixelSurface.v * reflectedRayLength;
-			const float3 prevFrameNDCVirtual = WorldSpaceToNDC(virtualReflectedLocation, u_prevFrameSceneView);
-
-			const float2 reprojectedUV = prevFrameNDCVirtual.xy * 0.5f + 0.5f;
+			const float2 reprojectedUV = uv - motion;
 
 			if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 			{
