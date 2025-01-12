@@ -42,9 +42,9 @@ struct SampleData
 groupshared SampleData sharedSampleData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
 
 
-float2 ApplyBesselsCorrection(in float2 variance, in float samplesNum)
+float2 ApplyBesselsCorrection(in float2 variance, in float2	 samplesNum)
 {
-	const float correction = samplesNum / max(samplesNum - 1.f, 0.4f);
+	const float2 correction = samplesNum / max(samplesNum - 1.f, 0.4f);
 	return variance * correction;
 }
 
@@ -69,13 +69,13 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 		sample.depth     = u_depthTexture.Load(sampleCoords).x;
 		sample.normal    = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
 
-#if MERGE_DIFFUSE_AND_SPECULAR
-		const float samplesNum = u_accumulatedSamplesNumTexture.Load(sampleCoords).x;
-		float2 variance = float2(u_specularVarianceTexture.Load(sampleCoords).x, u_diffuseVarianceTexture.Load(sampleCoords).x);
-		variance = ApplyBesselsCorrection(variance, samplesNum);
-#else
-		float2 variance = u_varianceTexture.Load(sampleCoords).x;
-#endif // MERGE_DIFFUSE_AND_SPECULAR
+		float2 variance = u_inVarianceTexture.Load(sampleCoords);
+
+#if HORIZONTAL_PAS
+		const float specularSamplesNum = u_specularHistoryLengthTexture.Load(sampleCoords).x;
+		const float diffuseSamplesNum  = u_diffuseHistoryLengthTexture  .Load(sampleCoords).x;
+		variance = ApplyBesselsCorrection(variance, float2(specularSamplesNum, diffuseSamplesNum));
+#endif // HORIZONTAL_PASS
 
 		sample.variance = variance;
 		

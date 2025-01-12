@@ -19,8 +19,6 @@ struct SampleDataGeometryData
 {
 	half3  normal;
 	float linearDepth;
-	half  specularLum;
-	half  diffuseLum;
 };
 
 
@@ -44,7 +42,9 @@ float ComputeWeight(in SampleDataGeometryData center, in SampleDataGeometryData 
 	const float depthDifference = abs(center.linearDepth - sample.linearDepth);
 	const float weightZ = depthDifference <= phiDepth ? 1.f : 0.f;
 
-	const float finalWeight = exp(-max(weightZ, 0.0)) * weightNormal;
+	const float finalWeight = exp(-max(weightZ, 0.f)) * weightNormal;
+
+	SPT_CHECK_MSG(!isinf(finalWeight) && !isnan(finalWeight), L"Invalid weight");
 
 	return finalWeight;
 }
@@ -119,7 +119,7 @@ void SRComputeVarianceCS(CS_INPUT input)
 			{
 				for (int x = -KERNEL_RADIUS; x <= KERNEL_RADIUS; ++x)
 				{
-					const uint2 sampleID = center + uint2(x, y);
+					const uint2 sampleID = center + int2(x, y);
 					const SampleDataGeometryData sample = gs_samplesGeoData[sampleID.x][sampleID.y];
 
 					const float weight = ComputeWeight(centerSample, sample, int2(x, y));
@@ -128,18 +128,20 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 					if(specularHistoryLength < temporalVarianceRequiredHistoryLength)
 					{
-						specularLumSum   += sample.specularLum * weight;
-						specularLumSqSum += Pow2(sample.specularLum) * weight;
+						const float specularLum = gs_specularLum[sampleID.x][sampleID.y];
+						specularLumSum   += specularLum * weight;
+						specularLumSqSum += Pow2(specularLum) * weight;
 					}
 
 					if(diffuseHistoryLength < temporalVarianceRequiredHistoryLength)
 					{
-						diffuseLumSum   += sample.diffuseLum * weight;
-						diffuseLumSqSum += Pow2(sample.diffuseLum) * weight;
+						const float diffuseLum = gs_diffuseLum[sampleID.x][sampleID.y];
+						diffuseLumSum   += diffuseLum * weight;
+						diffuseLumSqSum += Pow2(diffuseLum) * weight;
 					}
 				}
 			}
-			const float rcpWeightSum = weightSum > 0.f ? rcp(weightSum) :0.f;
+			const float rcpWeightSum = weightSum > 0.f ? rcp(weightSum) : 0.f;
 
 			const float2 specularMoments = float2(specularLumSum, specularLumSqSum) * rcpWeightSum;
 			const float2 diffuseMoments  = float2(diffuseLumSum, diffuseLumSqSum) * rcpWeightSum;
@@ -147,7 +149,7 @@ void SRComputeVarianceCS(CS_INPUT input)
 			float specularSpatialVariance = abs(specularMoments.y - Pow2(specularMoments.x));
 			float diffuseSpatialVariance  = abs(diffuseMoments.y - Pow2(diffuseMoments.x));
 
-			const float spatialVarianceBoost = 7.f;
+			const float spatialVarianceBoost = 3.f;
 
 			specularSpatialVariance *= (temporalVarianceRequiredHistoryLength - specularHistoryLength + 1u) * spatialVarianceBoost;
 			diffuseSpatialVariance  *= (temporalVarianceRequiredHistoryLength - diffuseHistoryLength + 1u) * spatialVarianceBoost;

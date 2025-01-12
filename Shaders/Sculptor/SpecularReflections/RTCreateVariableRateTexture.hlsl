@@ -116,8 +116,14 @@ struct RTVariableRateCallback
 			const float specularStdDevEstimation = sqrt(varianceEstimation.x);
 			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
-			const float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x;
-			const float diffuseNoiseLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
+			float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x;
+			float diffuseNoiseLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
+
+			const float absoluteNoiseWeight = 0.5f;
+			const float relativeNoiseWeight = 1.f - absoluteNoiseWeight;
+
+			specularNoiseLevel = specularNoiseLevel * absoluteNoiseWeight + (specularNoiseLevel / specularBrightness) * relativeNoiseWeight;
+			diffuseNoiseLevel  = diffuseNoiseLevel * absoluteNoiseWeight + (diffuseNoiseLevel / diffuseBrightness) * relativeNoiseWeight;
 
 			const float noiseLevel = diffuseNoiseLevel + specularNoiseLevel;
 
@@ -125,15 +131,15 @@ struct RTVariableRateCallback
 			const float depthDDY = processor.DDY_QuadMax(linearDepth);
 
 			uint maxVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(noiseLevel >= 0.7f)
+			if(noiseLevel >= 1.3f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (noiseLevel >= 0.35f)
+			else if (noiseLevel >= 0.5f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.18f)
+			else if (noiseLevel >= 0.25f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_2X2;
 			}

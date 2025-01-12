@@ -24,7 +24,7 @@ namespace automatic_exposure
 namespace params
 {
 
-RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 0.8f, 0.f, 8.f);
+RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 6.0f, 0.f, 20.f);
 RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
 RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
 RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -0.48f, -10.f, 10.f);

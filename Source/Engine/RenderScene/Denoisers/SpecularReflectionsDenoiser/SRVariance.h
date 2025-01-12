@@ -47,7 +47,6 @@ struct TemporalVarianceParams
 
 
 rg::RGTextureViewHandle CreateVarianceTexture(rg::RenderGraphBuilder& graphBuilder, const rg::RenderGraphDebugName& name, math::Vector2u resolution);
-rg::RGTextureViewHandle CreateVarianceEstimationTexture(rg::RenderGraphBuilder& graphBuilder, const rg::RenderGraphDebugName& name, math::Vector2u resolution);
 
 
 void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const TemporalVarianceParams& params);
@@ -62,15 +61,15 @@ struct VarianceEstimationParams
 	const RenderView&        renderView;
 	rg::RenderGraphDebugName debugName;
 
-	rg::RGTextureViewHandle  accumulatedSamplesNumTexture;
+	rg::RGTextureViewHandle  specularHistoryLengthTexture;
+	rg::RGTextureViewHandle  diffuseHistoryLengthTexture;
+
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  depthTexture;
 	rg::RGTextureViewHandle  roughnessTexture;
 
-	rg::RGTextureViewHandle  specularVarianceTexture;
-	rg::RGTextureViewHandle  diffuseVarianceTexture;
-
-	rg::RGTextureViewHandle  outEstimatedVarianceTexture;
+	rg::RGTextureViewHandle  inOutVarianceTexture;
+	rg::RGTextureViewHandle  intermediateVarianceTexture;
 
 	Real32 gaussianBlurSigma = 3.0f;
 };

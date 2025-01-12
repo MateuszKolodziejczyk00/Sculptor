@@ -184,7 +184,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
 	const rg::RGTextureViewHandle temporalVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Variance"), resolution);
-	const rg::RGTextureViewHandle intermediateVariance = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Intermediate Diffuse Variance"), resolution);
+	const rg::RGTextureViewHandle intermediateVariance = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Intermediate Variance"), resolution);
 
 	TemporalVarianceParams temporalVarianceParams(params.renderView);
 	temporalVarianceParams.debugName                    = m_debugName;
@@ -199,7 +199,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	temporalVarianceParams.outVarianceTexture           = temporalVariance;
 	ComputeTemporalVariance(graphBuilder, temporalVarianceParams);
 
-	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceEstimationTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
+	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
 
 	SpatialFilterParams spatialParams;
 	spatialParams.inSpecular                   = specularTexture;
@@ -212,6 +212,20 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	spatialParams.specularHistoryLengthTexture = specularHistoryLengthTexture;
 
 	ApplySpatialFilter(graphBuilder, spatialParams, params);
+
+	if (params.blurVarianceEstimate)
+	{
+		VarianceEstimationParams varianceEstimationParams(params.renderView);
+		varianceEstimationParams.debugName                    = m_debugName;
+		varianceEstimationParams.specularHistoryLengthTexture = specularHistoryLengthTexture;
+		varianceEstimationParams.diffuseHistoryLengthTexture  = diffuseHistoryLengthTexture;
+		varianceEstimationParams.normalsTexture               = params.normalsTexture;
+		varianceEstimationParams.depthTexture                 = params.currentDepthTexture;
+		varianceEstimationParams.roughnessTexture             = params.currentDepthTexture;
+		varianceEstimationParams.inOutVarianceTexture         = varianceEstimation;
+		varianceEstimationParams.intermediateVarianceTexture  = intermediateVariance;
+		EstimateVariance(graphBuilder, varianceEstimationParams);
+	}
 
 	Result result;
 	result.denoisedSpecular   = outSpecularTexture;

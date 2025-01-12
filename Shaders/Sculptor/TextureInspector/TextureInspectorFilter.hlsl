@@ -117,7 +117,7 @@ void TextureInspectorFilterCS(CS_INPUT input)
 
 		if (u_params.visualizationMode == VISUALIZATION_MODE_NANS)
 		{
-			if(any(isnan(textureValue)))
+			if(any(isnan(textureValue)) || any(isinf(textureValue)))
 			{
 				color.rgb = float3(1.f, 0.f, 0.f);
 			}

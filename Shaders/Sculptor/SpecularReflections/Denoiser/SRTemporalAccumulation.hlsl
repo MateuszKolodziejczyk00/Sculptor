@@ -39,6 +39,7 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
                               in float2 pixelSize,
                               in float maxPlaneDistance,
                               in float roughness,
+                              out float3 reprojectedWS,
                               out float2 reprojectedUV,
                               out float reprojectionConfidence)
 {
@@ -53,8 +54,6 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 	if (all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 	{
 		const float historySampleDepth = u_historyDepthTexture.SampleLevel(u_nearestSampler, reprojectedUV, 0.f);
-
-		float2 bestHistoryUV = reprojectedUV;
 
 		for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 		{
@@ -81,7 +80,8 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 					if(sampleReprojectionConfidence > reprojectionConfidence)
 					{
 						reprojectionConfidence = sampleReprojectionConfidence;
-						bestHistoryUV = sampleUV;
+						reprojectedUV  = sampleUV;
+						reprojectedWS = historySampleWS;
 
 						if(reprojectionConfidence > 0.99f)
 						{
@@ -91,8 +91,6 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 				}
 			}
 		}
-
-		reprojectedUV = bestHistoryUV;
 	}
 }
 
@@ -175,6 +173,16 @@ NeighbourhoodInfo LoadNeighbourhoodInfo(in int2 localID, in int2 resolution)
 	return result;
 }
 
+
+float ComputeHitDistance(in NeighbourhoodInfo info)
+{
+	const float hitDistVariance = abs(Pow2(info.specularM1.w) - info.specularM2.w);
+	const float hitDistStdDev = sqrt(hitDistVariance);
+	const float hitDistClampWindow = hitDistStdDev * 3.f;
+	return clamp(info.minHitDist, info.specularM1.w - hitDistClampWindow, info.specularM1.w + hitDistClampWindow);
+}
+
+
 // Algorithm based on RELAX temporal accumulation: https://github.com/NVIDIAGameWorks/RayTracingDenoiser/blob/master/Shaders/Include/RELAX_TemporalAccumulation.hlsli
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
 void SRTemporalAccumulationCS(CS_INPUT input)
@@ -204,9 +212,11 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		const NeighbourhoodInfo neighbourhoodInfo = LoadNeighbourhoodInfo(int2(input.localID.xy), int2(outputRes));
 
+		const float hitDistance = ComputeHitDistance(neighbourhoodInfo);
+
 		const float3 currentNDC = float3(uv * 2.f - 1.f, currentDepth);
 		const float3 currentSampleWS = NDCToWorldSpaceNoJitter(currentNDC, u_sceneView);
-		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * specular.w;
+		const float3 projectedReflectionWS = currentSampleWS + normalize(currentSampleWS - u_sceneView.viewLocation) * neighbourhoodInfo.specularM1.w;
 		const float3 prevFrameNDC = WorldSpaceToNDCNoJitter(projectedReflectionWS, u_prevFrameSceneView);
 
 		const float currentLinearDepth = ComputeLinearDepth(currentDepth, u_sceneView);
@@ -221,12 +231,14 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		float2 diffuseReprojectedUV;
 		float motionBasedReprojectionConfidence;
+		float3 motionReprojectedWS;
 		FindTemporalReprojection(surfaceHistoryUV,
 		                         currentSampleNormal,
 		                         currentSampleWS,
 		                         pixelSize,
 		                         maxPlaneDistance,
 		                         roughness,
+		                         motionReprojectedWS,
 		                         OUT diffuseReprojectedUV,
 		                         OUT motionBasedReprojectionConfidence);
 
@@ -281,12 +293,14 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 		float2 specularReprojectedUV;
 		float specularReprojectionConfidence;
+		float3 specularReprojectedWS;
 		FindTemporalReprojection(virtualPointHistoryUV,
 		                         currentSampleNormal,
 		                         currentSampleWS,
 		                         pixelSize,
 		                         maxPlaneDistance,
 		                         roughness,
+		                         specularReprojectedWS,
 		                         OUT specularReprojectedUV,
 		                         OUT specularReprojectionConfidence);
 
@@ -299,7 +313,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		float3 virtualPointFastSpecular = 0.f;
 		float2 virtualPointSpecularMoments = 0.f;
 
-		if (specularReprojectionConfidence > 0.5f)
+		if (specularReprojectionConfidence > 0.2f)
 		{
 			const uint3 historyPixel = uint3(specularReprojectedUV * outputRes.xy, 0u);
 
@@ -318,16 +332,17 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float mbWeightNorm = mbWeight * rcpSumWeight;
 			const float vpWeightNorm = vpWeight * rcpSumWeight;
 
-			const float hitDist = neighbourhoodInfo.minHitDist;
-
 			const float3 specularVariance = abs(Pow2(neighbourhoodInfo.specularM1.rgb) - neighbourhoodInfo.specularM2.rgb);
 			const float3 specularStdDev = sqrt(specularVariance);
 
-			const float3 clampWindow = specularStdDev * 4.f;
+			const float3 clampWindow = specularStdDev * 6.f;
 
 			const float3 specularHistoryClamped = clamp(virtualPointSpecular.rgb, neighbourhoodInfo.specularM1.rgb - clampWindow, neighbourhoodInfo.specularM1.rgb + clampWindow);
 
-			const float unclampedWeight = 0.6f * specularReprojectionConfidence + 0.4f * roughness;
+			const float parallaxCos = dot(normalize(u_sceneView.viewLocation - specularReprojectedWS), normalize(u_sceneView.viewLocation - currentSampleWS));
+			const float parallaxConfidence = Pow3(saturate((parallaxCos - 0.7f) / 0.3f));
+
+			const float unclampedWeight = parallaxConfidence * (0.6f * specularReprojectionConfidence + 0.4f * roughness);
 
 			const float3 vpFinalSpecularHistory = lerp(specularHistoryClamped, virtualPointSpecular.rgb, unclampedWeight);
 			
@@ -341,7 +356,9 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float3 fastHistory = virtualPointFastSpecular * vpWeightNorm + motionBasedFastSpecular * mbWeightNorm;
 
-			specularHistoryLength = min(historyLength + 1u, uint((mbWeight + vpWeight) * MAX_ACCUMULATED_FRAMES_NUM));
+			const float roughnessMaxHistoryMultiplier = 1.f - 0.4f * (max(0.4f - roughness, 0.f) / 0.4f);
+
+			specularHistoryLength = min(historyLength + 1u, uint(roughnessMaxHistoryMultiplier * parallaxConfidence * (mbWeight + vpWeight) * MAX_ACCUMULATED_FRAMES_NUM));
 			float currentFrameWeight = rcp(float(specularHistoryLength + 1u));
 
 			const float specularFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - (vpWeight + mbWeight));
@@ -349,7 +366,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			specularMoments = lerp(specularHistoryMoments, specularMoments, specularFrameWeight);
 
 			const float3 accumulatedSpecular = lerp(specularHistory, specular.rgb, specularFrameWeight);
-			const float accumulatedHitDist   = lerp(historyHitDist, hitDist, max(specularFrameWeight, 0.15f));
+			const float accumulatedHitDist   = lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.15f));
 
 			u_rwSpecularTexture[pixel] = float4(accumulatedSpecular, accumulatedHitDist);
 

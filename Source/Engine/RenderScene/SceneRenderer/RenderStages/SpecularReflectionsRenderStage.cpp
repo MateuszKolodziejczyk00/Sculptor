@@ -43,6 +43,7 @@ RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" },
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
+RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
 
 } // renderer_params
 
@@ -526,16 +527,17 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	sr_denoiser::Denoiser::Params denoiserParams(renderView);
-	denoiserParams.currentDepthTexture           = params.depthTexture;
-	denoiserParams.historyDepthTexture           = params.depthHistoryTexture;
-	denoiserParams.linearDepthTexture            = params.linearDepthTexture;
-	denoiserParams.motionTexture                 = params.motionTexture;
-	denoiserParams.normalsTexture                = params.normalsTexture;
-	denoiserParams.historyNormalsTexture         = params.historyNormalsTexture;
-	denoiserParams.roughnessTexture              = params.roughnessTexture;
-	denoiserParams.historyRoughnessTexture       = params.historyRoughnessTexture;
-	denoiserParams.specularTexture               = specularReflections;
-	denoiserParams.diffuseTexture                = diffuseReflections;
+	denoiserParams.currentDepthTexture     = params.depthTexture;
+	denoiserParams.historyDepthTexture     = params.depthHistoryTexture;
+	denoiserParams.linearDepthTexture      = params.linearDepthTexture;
+	denoiserParams.motionTexture           = params.motionTexture;
+	denoiserParams.normalsTexture          = params.normalsTexture;
+	denoiserParams.historyNormalsTexture   = params.historyNormalsTexture;
+	denoiserParams.roughnessTexture        = params.roughnessTexture;
+	denoiserParams.historyRoughnessTexture = params.historyRoughnessTexture;
+	denoiserParams.specularTexture         = specularReflections;
+	denoiserParams.diffuseTexture          = diffuseReflections;
+	denoiserParams.blurVarianceEstimate    = renderer_params::blurVarianceEstimate;
 	return denoiser.Denoise(graphBuilder, denoiserParams);
 }
 

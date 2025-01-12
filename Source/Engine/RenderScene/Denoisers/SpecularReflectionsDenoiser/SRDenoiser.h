@@ -59,6 +59,8 @@ public:
 
 		rg::RGTextureViewHandle specularTexture;
 		rg::RGTextureViewHandle diffuseTexture;
+
+		Bool blurVarianceEstimate = true;
 	};
 
 	struct Result
