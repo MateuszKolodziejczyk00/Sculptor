@@ -28,8 +28,8 @@ struct SampleDataGeometryData
 #define SHARED_MEMORY_Y (4 + 2 * KERNEL_RADIUS)
 
 groupshared SampleDataGeometryData gs_samplesGeoData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
-groupshared half gs_specularLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
-groupshared half gs_diffuseLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
+groupshared float gs_specularLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
+groupshared float gs_diffuseLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
 
 
 float ComputeWeight(in SampleDataGeometryData center, in SampleDataGeometryData sample, int2 offset)
@@ -60,10 +60,13 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 	const uint temporalVarianceRequiredHistoryLength = 4u;
 
-	const bool useSpatialVariance = specularHistoryLength < temporalVarianceRequiredHistoryLength || diffuseHistoryLength < temporalVarianceRequiredHistoryLength;
-	const uint useSpatialVarianceBallot = WaveActiveBallot(useSpatialVariance).x;
+	const bool useSpecularSpatialVariance = specularHistoryLength < temporalVarianceRequiredHistoryLength;
+	const uint useSpecularSpatialVarianceBallot = WaveActiveBallot(useSpecularSpatialVariance).x;
+	const bool useDiffuseSpatialVariance = diffuseHistoryLength < temporalVarianceRequiredHistoryLength;
+	const uint useDiffuseSpatialVarianceBallot = WaveActiveBallot(useDiffuseSpatialVariance).x;
+	const uint useSpatialVarianceBallot = useSpecularSpatialVarianceBallot | useDiffuseSpatialVarianceBallot;
 
-	if(useSpatialVarianceBallot > 0)
+	if (useSpatialVarianceBallot > 0u)
 	{
 		const int2 tileSize = int2(8, 4);
 		const int2 groupPixelOffset = int2(input.groupID.xy) * tileSize;
@@ -75,19 +78,19 @@ void SRComputeVarianceCS(CS_INPUT input)
 			const int x = i % SHARED_MEMORY_X;
 			const int y = i / SHARED_MEMORY_X;
 
-			const uint3 samplePixel = uint3(max(groupPixelOffset + int2(x, y) - KERNEL_RADIUS, int2(0, 0)), 0);
+			const uint3 samplePixel = uint3(max(groupPixelOffset + int2(x, y) - KERNEL_RADIUS, int2(0, 0)), 0u);
 
 			gs_samplesGeoData[x][y].normal      = half3(OctahedronDecodeNormal(u_normalsTexture.Load(samplePixel)));
 			gs_samplesGeoData[x][y].linearDepth = ComputeLinearDepth(u_depthTexture.Load(samplePixel).x, u_sceneView);
 
-			if(specularHistoryLength < temporalVarianceRequiredHistoryLength)
+			if(useSpecularSpatialVarianceBallot > 0u)
 			{
-				gs_specularLum[x][y] = half(Luminance(u_specularTexture.Load(samplePixel).xyz));;
+				gs_specularLum[x][y] = Luminance(u_specularTexture.Load(samplePixel).xyz);
 			}
 
-			if(diffuseHistoryLength < temporalVarianceRequiredHistoryLength)
+			if(useDiffuseSpatialVarianceBallot > 0u)
 			{
-				gs_diffuseLum[x][y] = half(Luminance(u_diffuseTexture.Load(samplePixel).xyz));;
+				gs_diffuseLum[x][y] = Luminance(u_diffuseTexture.Load(samplePixel).xyz);
 			}
 		}
 
@@ -102,7 +105,7 @@ void SRComputeVarianceCS(CS_INPUT input)
 		const float2 diffuseMoments = u_diffuseMomentsTexture.Load(uint3(pixel, 0u)).xy;
 		float diffuseVariance = abs(diffuseMoments.y - diffuseMoments.x * diffuseMoments.x);
 
-		if (useSpatialVariance)
+		if (useSpecularSpatialVariance || useDiffuseSpatialVariance)
 		{
 			const uint2 center = (input.localID.xy + KERNEL_RADIUS);
 
@@ -126,14 +129,14 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 					weightSum += weight;
 
-					if(specularHistoryLength < temporalVarianceRequiredHistoryLength)
+					if(useSpecularSpatialVariance)
 					{
 						const float specularLum = gs_specularLum[sampleID.x][sampleID.y];
 						specularLumSum   += specularLum * weight;
 						specularLumSqSum += Pow2(specularLum) * weight;
 					}
 
-					if(diffuseHistoryLength < temporalVarianceRequiredHistoryLength)
+					if(useDiffuseSpatialVariance)
 					{
 						const float diffuseLum = gs_diffuseLum[sampleID.x][sampleID.y];
 						diffuseLumSum   += diffuseLum * weight;
@@ -149,11 +152,10 @@ void SRComputeVarianceCS(CS_INPUT input)
 			float specularSpatialVariance = abs(specularMoments.y - Pow2(specularMoments.x));
 			float diffuseSpatialVariance  = abs(diffuseMoments.y - Pow2(diffuseMoments.x));
 
-			const float spatialVarianceBoost = 3.f;
+			const float spatialVarianceBoost = 4.f;
 
 			specularSpatialVariance *= (temporalVarianceRequiredHistoryLength - specularHistoryLength + 1u) * spatialVarianceBoost;
 			diffuseSpatialVariance  *= (temporalVarianceRequiredHistoryLength - diffuseHistoryLength + 1u) * spatialVarianceBoost;
-
 
 			if(specularHistoryLength < temporalVarianceRequiredHistoryLength)
 			{
