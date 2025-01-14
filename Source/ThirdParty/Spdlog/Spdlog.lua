@@ -7,6 +7,8 @@ function Spdlog:SetupConfiguration(configuration, platform)
     self:AddPublicRelativeIncludePath("/include")
 
 	self:AddPublicDefine("_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING=1")
+
+	self:AddPublicDefine("FMT_UNICODE=0")
 end
 
 function Spdlog:GetProjectFiles()
