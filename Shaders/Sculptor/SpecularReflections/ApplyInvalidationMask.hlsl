@@ -39,7 +39,7 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
 
 		uint packedProps = initialReservoir.MAndProps;
-		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7u);
+		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7);
 		initialReservoir.MAndProps = packedProps;
 
 		u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;

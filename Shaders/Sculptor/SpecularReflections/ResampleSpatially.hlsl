@@ -31,7 +31,7 @@ struct CS_INPUT
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = (0.4f + 0.6f * smoothstep(0.15f, 0.45f, roughness)) * u_resamplingConstants.resamplingRangeStep;
+	const float stepSize = Remap(roughness, 0.1f, 0.4f, 0.3f, 1.f) * u_resamplingConstants.resamplingRangeStep;
 	return max(reservoir.spatialResamplingRangeID * stepSize + stepSize, 3.f);
 }
 

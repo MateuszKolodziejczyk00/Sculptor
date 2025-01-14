@@ -29,13 +29,6 @@ struct CS_INPUT
 #define HISTORY_SAMPLE_COUNT 2
 
 
-static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
-{
-	int2(0, 0),
-	int2(1, 0),
-};
-
-
 struct SRTemporalResampler
 {
 	MinimalSurfaceInfo centerPixelSurface;
@@ -135,9 +128,16 @@ struct SRTemporalResampler
 
 		const float maxAge = Remap(centerPixelSurface.roughness, 0.15f, 0.4f, 8.f, 12.f) * lerp(rng.Next(), 0.6f, 1.f);
 
-		if(m_wasSampleTraced && historyReservoir.age > maxAge)
+		if (historyReservoir.age > maxAge)
 		{
-			return false;
+			if(m_wasSampleTraced)
+			{
+				return false;
+			}
+			else
+			{
+				historyReservoir.M = 1u;
+			}
 		}
 
 		if(!IsReservoirValidForSurface(historyReservoir, centerPixelSurface))
@@ -315,6 +315,7 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
+	debug::WriteDebugPixel(pixel, 0.f);
 
 		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
@@ -326,12 +327,10 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 			if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
 			{
-				const float2x2 samplesRotation = NoiseRotation(rng.Next());
-
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
 					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;
-					const int2 samplePixel = round(sampleUV * u_resamplingConstants.resolution);
+					const int2 samplePixel = floor(sampleUV * u_resamplingConstants.resolution);
 					
 					if(resampler.TrySelectHistorySample(samplePixel, INOUT rng))
 					{
@@ -365,3 +364,4 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 	}
 }
+[[meta(debug_features)]]

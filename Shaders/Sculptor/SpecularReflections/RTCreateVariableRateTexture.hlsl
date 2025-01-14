@@ -116,10 +116,16 @@ struct RTVariableRateCallback
 			const float specularStdDevEstimation = sqrt(varianceEstimation.x);
 			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
-			float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x;
+			const bool enableSpecularBoost = true;
+			const float roughnessBoostThreshold = 0.3f;
+			const float boostStrength = 4.f;
+			const float boostAmount = (max(0.f, roughnessBoostThreshold - roughness) / roughnessBoostThreshold) * boostStrength;
+			const float specularNoiseBoost = enableSpecularBoost ? boostAmount + 1.f : 1.f;
+
+			float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x * specularNoiseBoost;
 			float diffuseNoiseLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
 
-			const float absoluteNoiseWeight = 0.5f;
+			const float absoluteNoiseWeight = 0.4f;
 			const float relativeNoiseWeight = 1.f - absoluteNoiseWeight;
 
 			specularNoiseLevel = specularNoiseLevel * absoluteNoiseWeight + (specularNoiseLevel / specularBrightness) * relativeNoiseWeight;
