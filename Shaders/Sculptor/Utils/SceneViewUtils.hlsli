@@ -19,6 +19,13 @@ TDepthType ComputeLinearDepth(TDepthType depth, in SceneViewData sceneView)
 
 
 template<typename TDepthType>
+TDepthType ComputeLinearDepthDiff(TDepthType invDepth0, TDepthType invDepth1, in SceneViewData sceneView)
+{
+	return GetNearPlane(sceneView) * abs(invDepth0 - invDepth1);
+}
+
+
+template<typename TDepthType>
 TDepthType ComputeProjectionDepth(TDepthType linearDepth, in SceneViewData sceneView)
 {
 	return GetNearPlane(sceneView) / linearDepth;

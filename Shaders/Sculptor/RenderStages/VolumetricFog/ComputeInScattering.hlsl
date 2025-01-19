@@ -45,7 +45,7 @@ void ComputeInScatteringCS(CS_INPUT input)
 		params.linearDepth              = fogFroxelLinearDepth;
 		params.worldLocation            = fogFroxelWorldLocation;
 		params.toViewNormal             = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
-		params.phaseFunctionAnisotrophy = u_inScatteringParams.localLightsPhaseFunctionAnisotrophy;
+		params.phaseFunctionAnisotrophy = u_inScatteringParams.paseFunctionAnisotrophy;
 		params.inScatteringColor        = scatteringExtinction.rgb;
 		params.froxelDepthRange         = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
 		

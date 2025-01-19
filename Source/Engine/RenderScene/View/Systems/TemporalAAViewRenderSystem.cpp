@@ -8,7 +8,7 @@
 namespace spt::rsc
 {
 
-RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.6f, 0.1f, 1.f);
+RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.5f, 0.1f, 1.f);
 
 
 TemporalAAViewRenderSystem::TemporalAAViewRenderSystem()

@@ -145,6 +145,12 @@ float AverageComponent(in float3 value)
 }
 
 
+float MaxComponent(in float2 value)
+{
+    return max(value.x, value.y);
+}
+
+
 float MaxComponent(in float3 value)
 {
     return max(value.x, max(value.y, value.z));

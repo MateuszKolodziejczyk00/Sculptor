@@ -24,10 +24,9 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter constantDensity("Fog Density", { "Volumetric Fog" }, 0.05f, 0.f, 1.f);
+RendererFloatParameter constantDensity("Fog Density", { "Volumetric Fog" }, 0.035f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
-RendererFloatParameter localLightsPhaseFunctionAnisotrophy("Local Lights Phase Function Aniso", { "Volumetric Fog" }, 0.6f, 0.f, 1.f);
-RendererFloatParameter dirLightsPhaseFunctionAnisotrophy("Directional Lights Phase Function Aniso", { "Volumetric Fog" }, 0.2f, 0.f, 1.f);
+RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 
 RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 35.f, 1.f, 50.f);
 
@@ -240,8 +239,7 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 } // indirect
 
 BEGIN_SHADER_STRUCT(VolumetricFogInScatteringParams)
-	SHADER_STRUCT_FIELD(Real32,         localLightsPhaseFunctionAnisotrophy)
-	SHADER_STRUCT_FIELD(Real32,         dirLightsPhaseFunctionAnisotrophy)
+	SHADER_STRUCT_FIELD(Real32,         paseFunctionAnisotrophy)
 	SHADER_STRUCT_FIELD(Bool,           hasValidHistory)
 	SHADER_STRUCT_FIELD(Real32,         accumulationCurrentFrameWeight)
 	SHADER_STRUCT_FIELD(Real32,         enableDirectionalLightsInScattering)
@@ -277,8 +275,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const rg::RGTextureViewHandle indirectInScattering = indirect::Render(graphBuilder, renderScene, viewSpec, fogParams, fogRenderingParams);
 
 	VolumetricFogInScatteringParams inScatteringParams;
-	inScatteringParams.localLightsPhaseFunctionAnisotrophy = parameters::localLightsPhaseFunctionAnisotrophy;
-	inScatteringParams.dirLightsPhaseFunctionAnisotrophy   = parameters::dirLightsPhaseFunctionAnisotrophy;
+	inScatteringParams.paseFunctionAnisotrophy             = parameters::phaseFunctionAnisotrophy;
 	inScatteringParams.hasValidHistory                     = fogParams.inScatteringHistoryTextureView.IsValid();
 	inScatteringParams.accumulationCurrentFrameWeight      = 0.05f;
 	inScatteringParams.enableDirectionalLightsInScattering = parameters::enableDirectionalLightsInScattering;

@@ -37,7 +37,6 @@ void ApplyInvalidationMaskCS(CS_INPUT input)
 		const uint reservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 
 		SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
-
 		uint packedProps = initialReservoir.MAndProps;
 		packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7);
 		initialReservoir.MAndProps = packedProps;

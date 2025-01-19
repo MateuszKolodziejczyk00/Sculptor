@@ -42,6 +42,14 @@ math::Vector2u         ComputeReservoirsResolution(math::Vector2u resolution);
 rg::RGBufferViewHandle CreateReservoirsBuffer(rg::RenderGraphBuilder& graphBuilder, math::Vector2u rservoirsResolution);
 
 
+struct SpatialResamplingPassParams
+{
+	Real32 resamplingRangeMultiplier        = 1.f; // (0.f, inf)
+	Uint32 samplesNum                       = 3u;
+	Bool   enableScreenSpaceVisibilityTrace = true;
+};
+
+
 struct ResamplingParams
 {
 	explicit ResamplingParams(const RenderView& inRenderView, const RenderScene& inRenderScene);
@@ -73,8 +81,9 @@ struct ResamplingParams
 
 	rg::RGTextureViewHandle preintegratedBRDFLUT;
 
-	Uint32 spatialResamplingIterationsNum = 1u;
-	Bool enableTemporalResampling         = true;
+	lib::Span<const SpatialResamplingPassParams> spatialResamplingPasses;
+
+	Bool enableTemporalResampling = true;
 
 	Bool doFullFinalVisibilityCheck = true;
 

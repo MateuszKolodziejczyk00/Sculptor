@@ -299,6 +299,7 @@ namespace spatial
 
 BEGIN_SHADER_STRUCT(SpatialResamplingPassConstants)
 	SHADER_STRUCT_FIELD(Uint32, seed)
+	SHADER_STRUCT_FIELD(Real32, resamplingRangeMultiplier)
 END_SHADER_STRUCT();
 
 
@@ -312,25 +313,31 @@ DS_BEGIN(SRSpatialResamplingDS, rg::RGDescriptorSetState<SRSpatialResamplingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),          u_outReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),          u_resamplingConstants)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SpatialResamplingPassConstants>), u_passConstants)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 DS_END();
 
 
-static rdr::PipelineStateID CompileResampleSpatiallyPipeline()
+static rdr::PipelineStateID CompileResampleSpatiallyPipeline(Uint32 samplesNum, Bool enableScreenSpaceVisibilityTrace)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResampleSpatially.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResampleSpatiallyCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPATIAL_RESAMPLING_SAMPLES_NUM", std::to_string(samplesNum).c_str()));
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPATIAL_RESAMPLING_ENABLE_SS_VISIBILITY", enableScreenSpaceVisibilityTrace ? "1" : "0"));
+
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResampleSpatially.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResampleSpatiallyCS"), compilationSettings);
 
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Resample Spatially Pipeline"), shader);
 }
 
 
-static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
+static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, const SpatialResamplingPassParams& passParams, utils::ReservoirsState& reservoirsState)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const math::Vector2u resolution = params.GetResolution();
 
 	SpatialResamplingPassConstants passConstants;
-	passConstants.seed = lib::rnd::RandomFromTypeDomain<Uint32>();
+	passConstants.seed                      = lib::rnd::RandomFromTypeDomain<Uint32>();
+	passConstants.resamplingRangeMultiplier = passParams.resamplingRangeMultiplier;
 	
 	lib::MTHandle<SRSpatialResamplingDS> ds = graphBuilder.CreateDescriptorSet<SRSpatialResamplingDS>(RENDERER_RESOURCE_NAME("Resample Spatially DS"));
 	ds->u_depthTexture              = params.depthTexture;
@@ -345,7 +352,7 @@ static void ResampleSpatially(rg::RenderGraphBuilder& graphBuilder, const Resamp
 
 	reservoirsState.RollBuffers();
 
-	static const rdr::PipelineStateID pipeline = CompileResampleSpatiallyPipeline();
+	const rdr::PipelineStateID pipeline = CompileResampleSpatiallyPipeline(passParams.samplesNum, passParams.enableScreenSpaceVisibilityTrace);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Spatially"),
 						  pipeline,
@@ -465,11 +472,11 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 		}
 
 		graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
-							   visibilityTestPipeline,
-							   resolution,
-							   rg::BindDescriptorSets(std::move(ds),
-													  params.renderView.GetRenderViewDS(),
-													  std::move(rtVisibilityDS)));
+									   visibilityTestPipeline,
+									   resolution,
+									   rg::BindDescriptorSets(std::move(ds),
+															  params.renderView.GetRenderViewDS(),
+															  std::move(rtVisibilityDS)));
 	}
 	else
 	{
@@ -664,9 +671,9 @@ void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& gra
 
 	firefly_filter::FireflyFilter(graphBuilder, params, resamplingConstants, reservoirsState);
 
-	for (Uint32 spatialResamplingIteration = 0u; spatialResamplingIteration < params.spatialResamplingIterationsNum; ++spatialResamplingIteration)
+	for (const SpatialResamplingPassParams& spatialPassParams : params.spatialResamplingPasses)
 	{
-		spatial::ResampleSpatially(graphBuilder, params, resamplingConstants, reservoirsState);
+		spatial::ResampleSpatially(graphBuilder, params, resamplingConstants, spatialPassParams, reservoirsState);
 	}
 
 	final_visibility::ExecuteFinalVisibilityTest(graphBuilder, params, resamplingConstants, reservoirsState);

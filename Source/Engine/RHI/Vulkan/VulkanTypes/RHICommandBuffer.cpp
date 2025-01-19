@@ -395,7 +395,8 @@ void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::V
 void RHICommandBuffer::TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset)
 {
 	SPT_CHECK(IsValid());
-	SPT_CHECK(indirectArgsBuffer.IsValid() && indirectArgsOffset + sizeof(math::Vector3u) < indirectArgsBuffer.GetSize())
+	SPT_CHECK(indirectArgsBuffer.IsValid())
+	SPT_CHECK(indirectArgsOffset + sizeof(math::Vector3u) <= indirectArgsBuffer.GetSize())
 
 	const VkStridedDeviceAddressRegionKHR callableRegion = {};
 

@@ -128,16 +128,9 @@ struct SRTemporalResampler
 
 		const float maxAge = Remap(centerPixelSurface.roughness, 0.15f, 0.4f, 8.f, 12.f) * lerp(rng.Next(), 0.6f, 1.f);
 
-		if (historyReservoir.age > maxAge)
+		if (m_wasSampleTraced &&historyReservoir.age > maxAge)
 		{
-			if(m_wasSampleTraced)
-			{
-				return false;
-			}
-			else
-			{
-				historyReservoir.M = 1u;
-			}
+			return false;
 		}
 
 		if(!IsReservoirValidForSurface(historyReservoir, centerPixelSurface))
@@ -306,7 +299,11 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 		SRTemporalResampler resampler;
 
-		const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
+		//const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
+
+		uint2 traceCoords;
+		uint variableRateMask;
+		GetVariableRateInfo(u_rwVariableRateBlocksTexture, pixel, OUT traceCoords, OUT variableRateMask);
 		const bool wasSampleTraced = all(traceCoords == pixel);
 
 		{
@@ -315,7 +312,6 @@ void ResampleTemporallyCS(CS_INPUT input)
 
 			resampler = SRTemporalResampler::Create(centerPixelSurface, reservoir, wasSampleTraced);
 		}
-	debug::WriteDebugPixel(pixel, 0.f);
 
 		if (centerPixelSurface.roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
@@ -354,6 +350,12 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 #endif // ENABLE_SECOND_TRACING_PASS
 
+
+		if(variableRateMask <= SPT_VARIABLE_RATE_2X2 || (u_resamplingConstants.frameIdx & 3u) != ((pixel.x & 1u) + ((pixel.y & 1u) << 1u)))
+		{
+			newReservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+		}
+
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);
 
 		u_outReservoirsBuffer[reservoirIdx] = packedReservoir;
@@ -364,4 +366,3 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 	}
 }
-[[meta(debug_features)]]

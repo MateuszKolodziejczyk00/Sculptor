@@ -37,7 +37,7 @@ REGISTER_RENDER_STAGE(ERenderStage::SpecularReflections, SpecularReflectionsRend
 namespace renderer_params
 {
 RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "Specular Reflections" }, true);
-RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 10);
+RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 2);
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
@@ -722,6 +722,23 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle specularLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 		const rg::RGTextureViewHandle diffuseLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
+		constexpr lib::StaticArray<sr_restir::SpatialResamplingPassParams, 2u> spatialResamplingPasses =
+		{
+			sr_restir::SpatialResamplingPassParams{
+				.resamplingRangeMultiplier        = 1.f,
+				.samplesNum                       = 3u,
+				.enableScreenSpaceVisibilityTrace = true
+			},
+			sr_restir::SpatialResamplingPassParams{
+				.resamplingRangeMultiplier        = 0.2f,
+				.samplesNum                       = 2u,
+				.enableScreenSpaceVisibilityTrace = true
+			}
+		};
+
+		const SizeType activeResamplingPassesNum = std::min(spatialResamplingPasses.size(), static_cast<SizeType>(renderer_params::spatialResamplingIterationsNum));
+		const lib::Span<const sr_restir::SpatialResamplingPassParams> activeResamplingPasses = { spatialResamplingPasses.data(), activeResamplingPassesNum };
+
 		sr_restir::ResamplingParams resamplingParams(renderView, renderScene);
 		resamplingParams.initialReservoirBuffer          = reservoirsBuffer;
 		resamplingParams.depthTexture                    = params.depthTexture;
@@ -738,7 +755,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.tracesAllocation                = tracesAllocation;
 		resamplingParams.vrReprojectionSuccessMask       = vrReprojectionSuccessMask;
 		resamplingParams.enableTemporalResampling        = hasValidHistory && renderer_params::enableTemporalResampling;
-		resamplingParams.spatialResamplingIterationsNum  = renderer_params::spatialResamplingIterationsNum;
+		resamplingParams.spatialResamplingPasses         = activeResamplingPasses;
 		resamplingParams.doFullFinalVisibilityCheck      = renderer_params::doFullFinalVisibilityCheck;
 		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
 
