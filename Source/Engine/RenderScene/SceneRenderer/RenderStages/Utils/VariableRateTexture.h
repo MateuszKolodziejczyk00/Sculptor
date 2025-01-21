@@ -28,6 +28,9 @@ class RGDescriptorSetStateBase;
 namespace spt::rsc
 {
 
+class RenderView;
+
+
 namespace vrt
 {
 
@@ -77,6 +80,28 @@ struct VariableRateSettings
 	Bool variableRateBuilderUseSingleLanePerQuad = false;
 };
 
+
+struct VariableRateReprojectionParams
+{
+	struct Geometry
+	{
+		rg::RGTextureViewHandle currentDepth;
+		rg::RGTextureViewHandle currentNormals;
+		rg::RGTextureViewHandle historyDepth;
+
+		const RenderView* renderView = nullptr;
+
+		Real32 reprojectionMaxPlaneDistance = 0.2f;
+	};
+
+	rg::RGTextureViewHandle motionTexture;
+
+	rg::RGTextureViewHandle reprojectionSuccessMask; // optional
+
+	std::optional<Geometry> geometryData;
+};
+
+
 void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSettings, const VariableRatePermutationSettings& permutationSettings);
 
 math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution);
@@ -98,7 +123,7 @@ public:
 
 	const lib::SharedPtr<rdr::TextureView>& GetVariableRateTexture() const { return m_reprojectionTargetVRTexture; }
 
-	void Reproject(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle motionTexture, rg::RGTextureViewHandle reprojectionSuccessMask = {});
+	void Reproject(rg::RenderGraphBuilder& graphBuilder, const VariableRateReprojectionParams& reprojectionParams);
 
 	void Render(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle inputTexture, std::optional<rdr::ShaderID> customShader = {}, lib::Span<const lib::MTHandle<rg::RGDescriptorSetStateBase>> additionalDescriptorSets = {});
 

@@ -286,7 +286,11 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	const math::Vector2u shadowMasksRenderingRes = depthTexture->GetResolution2D();
 
-	m_variableRateRenderer.Reproject(graphBuilder, motionTexture);
+	const vrt::VariableRateReprojectionParams reprojectionParams
+	{
+		.motionTexture = motionTexture,
+	};
+	m_variableRateRenderer.Reproject(graphBuilder, reprojectionParams);
 
 	const rg::RGTextureViewHandle variableRateTexture = graphBuilder.AcquireExternalTextureView(m_variableRateRenderer.GetVariableRateTexture());
 

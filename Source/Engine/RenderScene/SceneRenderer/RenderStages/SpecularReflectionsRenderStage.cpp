@@ -44,6 +44,8 @@ RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing",
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
+RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
+RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, true);
 
 } // renderer_params
 
@@ -665,7 +667,24 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const rg::RGTextureViewHandle vrReprojectionSuccessMask = vrt::CreateReprojectionSuccessMask(graphBuilder, resolution);
 
-		m_variableRateRenderer.Reproject(graphBuilder, motionTexture, vrReprojectionSuccessMask);
+		vrt::VariableRateReprojectionParams reprojectionParams
+		{
+			.motionTexture           = motionTexture,
+			.reprojectionSuccessMask = vrReprojectionSuccessMask,
+		};
+
+		if (renderer_params::useDepthTestForVRTReprojection)
+		{
+			reprojectionParams.geometryData = vrt::VariableRateReprojectionParams::Geometry
+			{
+				.currentDepth   = isHalfRes ? viewContext.depthHalfRes : viewContext.depth,
+				.currentNormals = isHalfRes ? viewContext.octahedronNormals : viewContext.normalsHalfRes,
+				.historyDepth   = historyDepthTexture,
+				.renderView     = &renderView
+			};
+		}
+
+		m_variableRateRenderer.Reproject(graphBuilder, reprojectionParams);
 
 		const Bool hasValidHistory = historyDepthTexture.IsValid() && historyDepthTexture->GetResolution2D() == resolution;
 
@@ -722,17 +741,17 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle specularLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 		const rg::RGTextureViewHandle diffuseLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
-		constexpr lib::StaticArray<sr_restir::SpatialResamplingPassParams, 2u> spatialResamplingPasses =
+		const lib::StaticArray<sr_restir::SpatialResamplingPassParams, 2u> spatialResamplingPasses =
 		{
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 1.f,
 				.samplesNum                       = 3u,
-				.enableScreenSpaceVisibilityTrace = true
+				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest
 			},
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 0.2f,
 				.samplesNum                       = 2u,
-				.enableScreenSpaceVisibilityTrace = true
+				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest
 			}
 		};
 

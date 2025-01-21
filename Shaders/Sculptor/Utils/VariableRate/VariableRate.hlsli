@@ -150,64 +150,42 @@ uint LoadVariableRate(in Texture2D<uint> vrTexture, in uint2 pixel)
 #endif // USE_CONSERVATIVE_REPROJECTION
 
 
-struct VariableRateReprojectionResult
+uint LoadHistoryVariableRate(in Texture2D<uint> vrTexture, in uint2 coords)
 {
-	uint variableRateMask;
-	bool isSuccessful;
-};
+	return vrTexture.Load(uint3(coords, 0));
+}
 
-
-VariableRateReprojectionResult ReprojectVariableRate(in Texture2D<uint> vrTexture, in float2 uv, in uint2 variableRateRes, in float2 motion)
+uint LoadHistoryVariableRateSubsampled(in Texture2D<uint> vrTexture, in uint2 coords)
 {
-	const float2 reprojectedUV = uv - motion;
-
-	VariableRateReprojectionResult result = { SPT_VARIABLE_RATE_1X1, false };
-
-	if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
-	{
-		uint variableRateMask = 0;
-
 #if USE_CONSERVATIVE_REPROJECTION
-		if(IsNearlyZero(motion.x) && IsNearlyZero(motion.y))
-		{
-			variableRateMask = vrTexture.Load(uint3(uv * variableRateRes, 0));
-		}
-		else
-		{
-			const uint2 reprojectedCoords = reprojectedUV * variableRateRes;
 
-			uint4 samples = 0.f;
-			samples.x = vrTexture.Load(uint3(reprojectedCoords + uint2(0, 0), 0));
-			samples.y = vrTexture.Load(uint3(reprojectedCoords + uint2(0, 1), 0));
-			samples.z = vrTexture.Load(uint3(reprojectedCoords + uint2(1, 0), 0));
-			samples.w = vrTexture.Load(uint3(reprojectedCoords + uint2(1, 1), 0));
+	const uint4 samples = vrTexture.GatherRed(uint3(coords, 0));
 
-			variableRateMask = 0;
-			
-			[unroll]
-			for(uint i = 0; i < 4; ++i)
-			{
-				const uint offset = i * SPT_VARIABLE_RATE_BITS;
+	uint variableRateMask = 0;
+	
+	[unroll]
+	for(uint i = 0; i < 4; ++i)
+	{
+		const uint offset = i * SPT_VARIABLE_RATE_BITS;
 
-				uint vrSample = SPT_MAX_VARIABLE_RATE;
-				vrSample = MinVariableRate(vrSample, (samples.x >> offset) & SPT_VARIABLE_RATE_MASK);
-				vrSample = MinVariableRate(vrSample, (samples.y >> offset) & SPT_VARIABLE_RATE_MASK);
-				vrSample = MinVariableRate(vrSample, (samples.z >> offset) & SPT_VARIABLE_RATE_MASK);
-				vrSample = MinVariableRate(vrSample, (samples.w >> offset) & SPT_VARIABLE_RATE_MASK);
+		uint vrSample = SPT_MAX_VARIABLE_RATE;
+		vrSample = MinVariableRate(vrSample, (samples.x >> offset) & SPT_VARIABLE_RATE_MASK);
+		vrSample = MinVariableRate(vrSample, (samples.y >> offset) & SPT_VARIABLE_RATE_MASK);
+		vrSample = MinVariableRate(vrSample, (samples.z >> offset) & SPT_VARIABLE_RATE_MASK);
+		vrSample = MinVariableRate(vrSample, (samples.w >> offset) & SPT_VARIABLE_RATE_MASK);
 
-				variableRateMask |= vrSample << offset;
-			}
-		}
-#else
-		variableRateMask = vrTexture.Load(uint3(reprojectedUV * variableRateRes, 0));
-#endif // USE_CONSERVATIVE_REPROJECTION
-
-		result.variableRateMask = variableRateMask;
-		result.isSuccessful     = true;
+		variableRateMask |= vrSample << offset;
 	}
 
-	return result;
+	return variableRateMask;
+
+#else
+
+	return LoadHistoryVariableRate(vrTexture, coords);
+
+#endif // USE_CONSERVATIVE_REPROJECTION
 }
+
 
 float3 VariableRateMaskToDebugColor(in uint variableRateMask)
 {
