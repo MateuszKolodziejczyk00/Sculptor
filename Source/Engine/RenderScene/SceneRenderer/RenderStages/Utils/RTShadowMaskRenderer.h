@@ -31,6 +31,8 @@ private:
 
 	vrt::VariableRateRenderer m_variableRateRenderer;
 	visibility_denoiser::Denoiser m_denoiser;
+
+	Bool m_renderHalfRes = false;
 };
 
 } // spt::rsc

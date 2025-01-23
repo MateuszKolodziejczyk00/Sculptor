@@ -258,7 +258,17 @@ void RTShadowMaskRenderer::BeginFrame(const RenderScene& renderScene, ViewRender
 {
 	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
 
-	resourcesUsageInfo.useLinearDepthHalfRes = true;
+	m_renderHalfRes = params::halfResShadows;
+
+	if (m_renderHalfRes)
+	{
+		resourcesUsageInfo.useLinearDepthHalfRes = true;
+	}
+	else
+	{
+		resourcesUsageInfo.useOctahedronNormalsWithHistory = true;
+		resourcesUsageInfo.useLinearDepth                  = true;
+	}
 }
 
 rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
@@ -269,8 +279,6 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	SPT_CHECK(m_lightEntity != nullRenderSceneEntity);
 
-	const Bool isHalfRes = params::halfResShadows;
-
 	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();
 	const DirectionalLightData& directionalLight = sceneRegistry.get<DirectionalLightData>(m_lightEntity);
 
@@ -278,11 +286,11 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const rg::RGTextureViewHandle depthTexture        = isHalfRes ? viewContext.depthHalfRes : viewContext.depth;
-	const rg::RGTextureViewHandle motionTexture       = isHalfRes ? viewContext.motionHalfRes : viewContext.motion;
-	const rg::RGTextureViewHandle linearDepthTexture  = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
-	const rg::RGTextureViewHandle normalsTexture      = isHalfRes ? viewContext.normalsHalfRes : viewContext.octahedronNormals;
-	const rg::RGTextureViewHandle historyDepthTexture = isHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
+	const rg::RGTextureViewHandle depthTexture        = m_renderHalfRes ? viewContext.depthHalfRes : viewContext.depth;
+	const rg::RGTextureViewHandle motionTexture       = m_renderHalfRes ? viewContext.motionHalfRes : viewContext.motion;
+	const rg::RGTextureViewHandle linearDepthTexture  = m_renderHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
+	const rg::RGTextureViewHandle normalsTexture      = m_renderHalfRes ? viewContext.normalsHalfRes : viewContext.octahedronNormals;
+	const rg::RGTextureViewHandle historyDepthTexture = m_renderHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
 
 	const math::Vector2u shadowMasksRenderingRes = depthTexture->GetResolution2D();
 
@@ -326,7 +334,7 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	rg::RGTextureViewHandle shadowMaskFullRes;
 
-	if (isHalfRes)
+	if (m_renderHalfRes)
 	{
 		upsampler::DepthBasedUpsampleParams upsampleParams;
 		upsampleParams.debugName      = RG_DEBUG_NAME("Directional Shadows Upsample");
