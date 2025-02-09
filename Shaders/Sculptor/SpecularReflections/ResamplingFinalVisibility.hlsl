@@ -19,41 +19,6 @@
 #endif // SPT_RT_GENERATION_SHADER
 
 
-uint CreateInvalidationMask(in uint variableRate)
-{
-	uint invalidationMask = 1u;
-	if(variableRate & (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4X))
-	{
-		invalidationMask |= 2u;
-	}
-	if(variableRate & (SPT_VARIABLE_RATE_2Y | SPT_VARIABLE_RATE_4Y))
-	{
-		invalidationMask |= 4u;
-	}
-	if(variableRate >= SPT_VARIABLE_RATE_2X2)
-	{
-		invalidationMask |= 8u;
-	}
-
-	if(variableRate & SPT_VARIABLE_RATE_4X)
-	{
-		invalidationMask |= (0xF << 4);
-	}
-	if(variableRate & SPT_VARIABLE_RATE_4Y)
-	{
-		invalidationMask |= (0xF << 8);
-	}
-
-	if(variableRate >= SPT_VARIABLE_RATE_4X4)
-	{
-		invalidationMask |= (0xF << 12);
-	}
-
-	return invalidationMask;
-}
-
-
-
 [shader("raygeneration")]
 void ResamplingFinalVisibilityTestRTG()
 {
@@ -83,11 +48,11 @@ void ResamplingFinalVisibilityTestRTG()
 		const float3 ndc = float3(uv * 2.f - 1.f, depth);
 		const float3 worldLocation = NDCToWorldSpace(ndc, u_sceneView);
 
-		const float bias = 0.02f;
+		const float bias = 0.005f;
 
 		const uint reservoirIdx =  GetScreenReservoirIdx(pixel.xy, u_resamplingConstants.reservoirsResolution);
 		const SRReservoir reservoir = UnpackReservoir(u_inOutReservoirsBuffer[reservoirIdx]);
-		if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_RECENT))
+		if (!reservoir.HasFlag(SR_RESERVOIR_FLAGS_VALIDATED))
 		{
 			const float distance = length(reservoir.hitLocation - worldLocation);
 
@@ -113,14 +78,12 @@ void ResamplingFinalVisibilityTestRTG()
 
 			if(!payload.isVisible)
 			{
-				const uint2 invalidationCoords = traceCommand.blockCoords / uint2(8u, 4u);
-				const uint2 invalidationTileOffset = traceCommand.blockCoords & uint2(7u, 3u);
+				SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
+				uint packedProps = initialReservoir.MAndProps;
+				packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7);
+				initialReservoir.MAndProps = packedProps;
 
-				const uint invalidationMask = CreateInvalidationMask(traceCommand.variableRateMask);
-
-				const uint invalidationMaskOffset = EncodeMorton2(invalidationTileOffset);
-
-				InterlockedOr(u_rwInvalidationMask[invalidationCoords], (invalidationMask << invalidationMaskOffset));
+				u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;
 			}
 		}
 	}

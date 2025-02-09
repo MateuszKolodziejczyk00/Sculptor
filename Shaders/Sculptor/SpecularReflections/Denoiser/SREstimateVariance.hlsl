@@ -34,12 +34,12 @@ struct SampleData
 #if HORIZONTAL_PASS
 #define SHARED_MEMORY_X (GROUP_SIZE_X + 2 * KERNEL_RADIUS)
 #define SHARED_MEMORY_Y (GROUP_SIZE_Y)
+groupshared SampleData sharedSampleData[SHARED_MEMORY_Y][SHARED_MEMORY_X];
 #else
 #define SHARED_MEMORY_X (GROUP_SIZE_X)
 #define SHARED_MEMORY_Y (GROUP_SIZE_Y + 2 * KERNEL_RADIUS)
-#endif // HORIZONTAL_PASS
-
 groupshared SampleData sharedSampleData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
+#endif // HORIZONTAL_PASS
 
 
 float2 ApplyBesselsCorrection(in float2 variance, in float2	 samplesNum)
@@ -73,13 +73,17 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 
 #if HORIZONTAL_PAS
 		const float specularSamplesNum = u_specularHistoryLengthTexture.Load(sampleCoords).x;
-		const float diffuseSamplesNum  = u_diffuseHistoryLengthTexture  .Load(sampleCoords).x;
+		const float diffuseSamplesNum  = u_diffuseHistoryLengthTexture.Load(sampleCoords).x;
 		variance = ApplyBesselsCorrection(variance, float2(specularSamplesNum, diffuseSamplesNum));
 #endif // HORIZONTAL_PASS
 
 		sample.variance = variance;
 		
+#if HORIZONTAL_PASS
+		sharedSampleData[localOffset.y][localOffset.x] = sample;
+#else
 		sharedSampleData[localOffset.x][localOffset.y] = sample;
+#endif // HORIZONTAL_PASS
 	}
 }
 
@@ -122,7 +126,11 @@ void SREstimateVarianceCS(CS_INPUT input)
 		const int2 filterDir = int2(0, 1);
 #endif // HORIZONTAL_PASS
 
+#if HORIZONTAL_PASS
+		const SampleData centerSample = sharedSampleData[centerLDSCoords.y][centerLDSCoords.x];
+#else
 		const SampleData centerSample = sharedSampleData[centerLDSCoords.x][centerLDSCoords.y];
+#endif // HORIZONTAL_PASS
 
 		const float centerWeight = u_constants.weights[0u];
 
@@ -133,10 +141,15 @@ void SREstimateVarianceCS(CS_INPUT input)
 		for (int offset = 1; offset <= KERNEL_RADIUS; ++offset)
 		{
 			const int2 ldsCoords0 = centerLDSCoords + offset * filterDir;
-			const SampleData sample0 = sharedSampleData[ldsCoords0.x][ldsCoords0.y];
-
 			const int2 ldsCoords1 = centerLDSCoords - offset * filterDir;
+
+#if HORIZONTAL_PASS
+			const SampleData sample0 = sharedSampleData[ldsCoords0.y][ldsCoords0.x];
+			const SampleData sample1 = sharedSampleData[ldsCoords1.y][ldsCoords1.x];
+#else
+			const SampleData sample0 = sharedSampleData[ldsCoords0.x][ldsCoords0.y];
 			const SampleData sample1 = sharedSampleData[ldsCoords1.x][ldsCoords1.y];
+#endif // HORIZONTAL_PASS
 
 			const float weight0 = ComputeWeight(centerSample, sample0, offset);
 			const float weight1 = ComputeWeight(centerSample, sample1, -offset);

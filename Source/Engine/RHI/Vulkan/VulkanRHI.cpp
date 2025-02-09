@@ -266,7 +266,7 @@ void VulkanRHI::Uninitialize()
 	}
 }
 
-void VulkanRHI::BeginFrame()
+void VulkanRHI::FlushCaches()
 {
 	priv::g_data.pipelineLayoutsManager.FlushPendingPipelineLayouts();
 }

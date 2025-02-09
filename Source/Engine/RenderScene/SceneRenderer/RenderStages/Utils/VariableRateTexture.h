@@ -4,6 +4,7 @@
 #include "RGResources/RGResourceHandles.h"
 #include "Shaders/ShaderTypes.h"
 #include "RenderGraphTypes.h"
+#include "MathUtils.h"
 
 
 namespace spt::sc
@@ -53,6 +54,8 @@ enum class EMaxVariableRate
 struct VariableRatePermutationSettings
 {
 	EMaxVariableRate maxVariableRate = EMaxVariableRate::_2x2;
+
+	Bool useLargeTile = false;
 };
 
 
@@ -81,6 +84,18 @@ struct VariableRateSettings
 };
 
 
+inline Uint32 GetTileSize(const VariableRateSettings& settings)
+{
+	return settings.permutationSettings.useLargeTile ? 8u : 2u;
+}
+
+
+inline Uint32 GetTileSizeBitOffset(const VariableRateSettings& settings)
+{
+	return math::Utils::LowestSetBitIdx(GetTileSize(settings));
+}
+
+
 struct VariableRateReprojectionParams
 {
 	struct Geometry
@@ -104,11 +119,11 @@ struct VariableRateReprojectionParams
 
 void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSettings, const VariableRatePermutationSettings& permutationSettings);
 
-math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution);
+math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings);
 
-math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution);
+math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings);
 
-rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution);
+rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings);
 
 
 class VariableRateRenderer
@@ -118,6 +133,10 @@ public:
 	VariableRateRenderer();
 
 	void Initialize(const VariableRateSettings& vrSettings);
+
+	void Reinitialize(const VariableRateSettings& vrSettings);
+
+	const VariableRateSettings& GetVariableRateSettings() const { return m_vrSettings; }
 
 	const VariableRatePermutationSettings& GetPermutationSettings() const { return m_vrSettings.permutationSettings; }
 

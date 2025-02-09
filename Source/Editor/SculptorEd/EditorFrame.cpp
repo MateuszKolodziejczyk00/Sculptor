@@ -16,6 +16,8 @@ void EditorFrameContext::DoStagesTransition(engn::EFrameStage::Type prevStage, e
 	if (nextStage == engn::EFrameStage::RenderingBegin)
 	{
 		rdr::Renderer::BeginFrame(GetFrameIdx());
+
+		rdr::Renderer::FlushCaches();
 	}
 
 	if (prevStage == engn::EFrameStage::UpdatingEnd)

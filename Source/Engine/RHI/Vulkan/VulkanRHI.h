@@ -39,7 +39,7 @@ public:
 
 	static void				Uninitialize();
 
-	static void				BeginFrame();
+	static void				FlushCaches();
 
 	static rhi::ERHIType	GetRHIType();
 

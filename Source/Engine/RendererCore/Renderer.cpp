@@ -97,8 +97,13 @@ void Renderer::BeginFrame(Uint64 frameIdx)
 	}
 
 	priv::g_data.currentFrameIdx = frameIdx;
+}
+
+void Renderer::FlushCaches()
+{
+	SPT_PROFILER_FUNCTION();
 	
-	rhi::RHI::BeginFrame();
+	rhi::RHI::FlushCaches();
 
 	GetSamplersCache().FlushPendingSamplers();
 	
@@ -173,6 +178,7 @@ void Renderer::HotReloadShaders()
 
 	GetShadersManager().HotReloadShaders();
 }
+
 #endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

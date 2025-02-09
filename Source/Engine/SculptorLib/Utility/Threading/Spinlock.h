@@ -30,19 +30,11 @@ public:
 
 	void Lock()
 	{
-		SPT_PROFILER_FUNCTION();
-
-		while (true)
+		bool wasLocked = false;
+		while (m_locked.load() || !m_locked.compare_exchange_weak(INOUT wasLocked, true))
 		{
-			if (TryLock())
-			{
-				break;
-			}
-
-			while (m_locked.load(std::memory_order_acquire) == true)
-			{
-				platf::Platform::SwitchToThread();
-			}
+			_mm_pause();
+			wasLocked = false;
 		}
 	}
 

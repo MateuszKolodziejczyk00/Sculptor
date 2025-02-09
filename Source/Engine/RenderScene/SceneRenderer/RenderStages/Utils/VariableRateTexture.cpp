@@ -19,21 +19,23 @@ void ApplyVariableRatePermutation(sc::ShaderCompilationSettings& compilationSett
 {
 	const char* variableRateValue = permutationSettings.maxVariableRate == EMaxVariableRate::_2x2 ? "0" : "1";
 	compilationSettings.AddMacroDefinition(sc::MacroDefinition("SPT_VARIABLE_RATE_MODE", variableRateValue));
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("VR_USE_LARGE_TILE", permutationSettings.useLargeTile ? "1" : "0"));
 }
 
-math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution)
+math::Vector2u ComputeVariableRateTextureResolution(const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings)
 {
-	return math::Utils::DivideCeil(inputTextureResolution, math::Vector2u(2u, 2u));
+	const math::Vector2u tileSize = math::Vector2u::Constant(GetTileSize(vrSettings));
+	return math::Utils::DivideCeil(inputTextureResolution, tileSize);
 }
 
-math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution)
+math::Vector2u ComputeReprojectionSuccessMaskResolution(const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings)
 {
-	return math::Utils::DivideCeil(ComputeVariableRateTextureResolution(inputTextureResolution), math::Vector2u(8u, 4u));
+	return math::Utils::DivideCeil(ComputeVariableRateTextureResolution(inputTextureResolution, vrSettings), math::Vector2u(8u, 4u));
 }
 
-rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution)
+rg::RGTextureViewHandle CreateReprojectionSuccessMask(rg::RenderGraphBuilder& graphBuilder, const math::Vector2u& inputTextureResolution, const VariableRateSettings& vrSettings)
 {
-	const math::Vector2u resolution = ComputeReprojectionSuccessMaskResolution(inputTextureResolution);
+	const math::Vector2u resolution = ComputeReprojectionSuccessMaskResolution(inputTextureResolution, vrSettings);
 	return graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reprojection Success Mask"), rg::TextureDef(resolution, rhi::EFragmentFormat::R32_U_Int));
 }
 
@@ -215,6 +217,13 @@ void VariableRateRenderer::Initialize(const VariableRateSettings& vrSettings)
 	m_vrSettings = vrSettings;
 }
 
+void VariableRateRenderer::Reinitialize(const VariableRateSettings& vrSettings)
+{
+	SPT_PROFILER_FUNCTION();
+
+	Initialize(vrSettings);
+}
+
 void VariableRateRenderer::Reproject(rg::RenderGraphBuilder& graphBuilder, const VariableRateReprojectionParams& reprojectionParams)
 {
 	SPT_PROFILER_FUNCTION();
@@ -253,7 +262,7 @@ Bool VariableRateRenderer::PrepareTextures(rg::RenderGraphBuilder& graphBuilder,
 {
 	m_resolution = inputTexture->GetResolution2D();
 
-	const math::Vector2u variableRateTextureResolution = ComputeVariableRateTextureResolution(inputTexture->GetResolution2D());
+	const math::Vector2u variableRateTextureResolution = ComputeVariableRateTextureResolution(inputTexture->GetResolution2D(), GetVariableRateSettings());
 
 	const EMaxVariableRate maxVariableRate = m_vrSettings.permutationSettings.maxVariableRate;
 

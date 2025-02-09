@@ -47,6 +47,7 @@ struct SpatialResamplingPassParams
 	Real32 resamplingRangeMultiplier        = 1.f; // (0.f, inf)
 	Uint32 samplesNum                       = 3u;
 	Bool   enableScreenSpaceVisibilityTrace = true;
+	Bool   resampleOnlyFromTracedPixels     = true;
 };
 
 
@@ -79,6 +80,8 @@ struct ResamplingParams
 	
 	rg::RGTextureViewHandle motionTexture;
 
+	rg::RGTextureViewHandle historySpecularHitDist;
+
 	rg::RGTextureViewHandle preintegratedBRDFLUT;
 
 	lib::Span<const SpatialResamplingPassParams> spatialResamplingPasses;
@@ -88,6 +91,10 @@ struct ResamplingParams
 	Bool doFullFinalVisibilityCheck = true;
 
 	Bool enableSecondTracingPass = false;
+
+	Bool enableHitDistanceBasedMaxAge = true;
+
+	Uint32 variableRateTileSizeBitOffset = 1u;
 };
 
 

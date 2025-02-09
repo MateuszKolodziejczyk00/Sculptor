@@ -37,19 +37,19 @@ struct CompactedMask4x4
 };
 
 
-CompactedMask4x4 GetVariableRateIn4x4Block(in uint vrMask, out uint tileIdxInQuad)
+CompactedMask4x4 GetVariableRateIn4x4Block(in uint vrMask, out uint outTileIdxIn4x4Quad)
 {
-	tileIdxInQuad = WaveGetLaneIndex() / 4;
-	const uint blockOffset = tileIdxInQuad * SPT_VARIABLE_RATE_BITS;
+	outTileIdxIn4x4Quad = WaveGetLaneIndex() / 4;
+	const uint blockOffset = outTileIdxIn4x4Quad * SPT_VARIABLE_RATE_BITS;
 
 	const uint variableRateMaskShifted = vrMask << blockOffset;
 
 	uint compactedMask = WaveActiveBitOr(variableRateMaskShifted);
 
-	if(tileIdxInQuad >= 4)
+	if(outTileIdxIn4x4Quad >= 4)
 	{
 		// handle right 4x4 quad
-		tileIdxInQuad -= 4;
+		outTileIdxIn4x4Quad -= 4;
 		compactedMask = compactedMask >> (4 * SPT_VARIABLE_RATE_BITS);
 	}
 
@@ -71,14 +71,14 @@ uint ComputeVariableRateMask(in uint requestedVRMask)
 	}
 
 #if SPT_VARIABLE_RATE_MODE > SPT_VARIABLE_RATE_MODE_2X2
-	uint tileIdxInQuad = 0;
-	const CompactedMask4x4 compactedMask4x4 = GetVariableRateIn4x4Block(requestedVRMask, OUT tileIdxInQuad);
+	uint outTileIdxIn4x4Quad = 0;
+	const CompactedMask4x4 compactedMask4x4 = GetVariableRateIn4x4Block(requestedVRMask, OUT outTileIdxIn4x4Quad);
 
 	uint finalMask = requestedVRMask;
 	if(requestedVRMask > SPT_VARIABLE_RATE_2X2)
 	{
-		const uint rowIdx = tileIdxInQuad >> 1u;
-		const uint colIdx = tileIdxInQuad & 1u;
+		const uint rowIdx = outTileIdxIn4x4Quad >> 1u;
+		const uint colIdx = outTileIdxIn4x4Quad & 1u;
 
 		// First row uses first 8 bits, second row uses next 8 bits
 		// First column uses bits 0-3 and 8-11, second column uses bits 4-7 and 12-15

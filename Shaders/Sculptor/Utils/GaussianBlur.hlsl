@@ -40,8 +40,8 @@ void GaussianBlurCS(CS_INPUT input)
 
 	const int3 maxPixel = u_constants.resolution - 1;
 
-	const uint samplesNum = GROUP_SIZE + 2 * BLUR_MAX_KERNEL;
-	for (int i = input.localID.x; i < SHARED_DATA_SIZE; i += samplesNum)
+	const uint samplesNum = GROUP_SIZE + 2 * kernelSize;
+	for (int i = input.localID.x; i < samplesNum; i += GROUP_SIZE)
 	{
 		const int3 samplePixel = clamp(groupBeginPixel + (i - kernelSize) * offset, 0, maxPixel);
 

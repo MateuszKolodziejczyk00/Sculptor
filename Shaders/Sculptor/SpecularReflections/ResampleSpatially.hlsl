@@ -124,7 +124,7 @@ bool CoarseTestVisibility(in uint2 pixel, in float3 sourceWS, in float3 sourceND
 
 float ComputeResamplingRange(in const SRReservoir reservoir, in float roughness)
 {
-	const float stepSize = Remap(roughness, 0.1f, 0.4f, 0.3f, 1.f) * u_resamplingConstants.resamplingRangeStep;
+	const float stepSize = Remap(roughness, 0.1f, 0.4f, 0.4f, 1.f) * u_resamplingConstants.resamplingRangeStep;
 	return max(reservoir.spatialResamplingRangeID * stepSize + stepSize, 3.f);
 }
 
@@ -224,9 +224,13 @@ void ResampleSpatiallyCS(CS_INPUT input)
 
 		const int2 offsetInPixels = round(offset);
 
-		int2 samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, pixel + offsetInPixels);
-
+		int2 samplePixel = pixel + offsetInPixels;
 		samplePixel = clamp(samplePixel, int2(0, 0), int2(u_resamplingConstants.resolution - 1));
+
+		if (u_passConstants.resampleOnlyFromTracedPixels)
+		{
+			samplePixel = GetVariableTraceCoords(u_variableRateBlocksTexture, samplePixel);
+		}
 
 		sampleCoords[sampleIdx] = samplePixel;
 
@@ -286,7 +290,7 @@ void ResampleSpatiallyCS(CS_INPUT input)
 		if(newReservoir.Update(reuseReservoir, rng.Next(), p_hatInOutputDomain))
 		{
 			selectedP_hat = p_hat;
-			newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
+			newReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 			selectedSampleIdx = sampleIdx;
 		}
 	}

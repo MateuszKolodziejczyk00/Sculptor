@@ -117,19 +117,22 @@ struct RTVariableRateCallback
 			const float diffuseStdDevEstimation  = sqrt(varianceEstimation.y);
 
 			const bool enableSpecularBoost = true;
-			const float roughnessBoostThreshold = 0.3f;
-			const float boostStrength = 4.f;
+			const float roughnessBoostThreshold = 0.35f;
+			const float boostStrength = 2.f;
 			const float boostAmount = (max(0.f, roughnessBoostThreshold - roughness) / roughnessBoostThreshold) * boostStrength;
 			const float specularNoiseBoost = enableSpecularBoost ? boostAmount + 1.f : 1.f;
 
-			float specularNoiseLevel = specularStdDevEstimation * rtReflectionsInfluence.x * specularNoiseBoost;
-			float diffuseNoiseLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
+			const float specularNoiseAbsoluteLevel = specularStdDevEstimation * rtReflectionsInfluence.x * specularNoiseBoost;
+			const float diffuseNoiseAbsoluteLevel  = diffuseStdDevEstimation * rtReflectionsInfluence.y;
+
+			const float specularNoiseRelativeLevel = specularNoiseAbsoluteLevel / specularBrightness;
+			const float diffuseNoiseRelativeLevel  = diffuseNoiseAbsoluteLevel / diffuseBrightness;
 
 			const float absoluteNoiseWeight = 0.4f;
 			const float relativeNoiseWeight = 1.f - absoluteNoiseWeight;
 
-			specularNoiseLevel = specularNoiseLevel * absoluteNoiseWeight + (specularNoiseLevel / specularBrightness) * relativeNoiseWeight;
-			diffuseNoiseLevel  = diffuseNoiseLevel * absoluteNoiseWeight + (diffuseNoiseLevel / diffuseBrightness) * relativeNoiseWeight;
+			const float specularNoiseLevel = specularNoiseAbsoluteLevel * absoluteNoiseWeight + specularNoiseRelativeLevel * relativeNoiseWeight;
+			const float diffuseNoiseLevel  = diffuseNoiseAbsoluteLevel * absoluteNoiseWeight + diffuseNoiseRelativeLevel * relativeNoiseWeight;
 
 			const float noiseLevel = diffuseNoiseLevel + specularNoiseLevel;
 
@@ -137,19 +140,19 @@ struct RTVariableRateCallback
 			const float depthDDY = processor.DDY_QuadMax(linearDepth);
 
 			uint maxVariableRate = SPT_VARIABLE_RATE_4X4;
-			if(noiseLevel >= 1.3f)
+			if(noiseLevel >= 1.5f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_1X1;
 			}
-			else if (noiseLevel >= 0.5f)
+			else if (noiseLevel >= 0.8f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? SPT_VARIABLE_RATE_2Y : SPT_VARIABLE_RATE_2X;
 			}
-			else if (noiseLevel >= 0.25f)
+			else if (noiseLevel >= 0.35f)
 			{
 				maxVariableRate = SPT_VARIABLE_RATE_2X2;
 			}
-			else if(noiseLevel >= 0.09f)
+			else if(noiseLevel >= 0.15f)
 			{
 				maxVariableRate = depthDDX > depthDDY ? (SPT_VARIABLE_RATE_2X | SPT_VARIABLE_RATE_4Y) : (SPT_VARIABLE_RATE_4X | SPT_VARIABLE_RATE_2Y);
 			}

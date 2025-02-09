@@ -65,7 +65,7 @@ void MissRaysShadingCS(CS_INPUT input)
 			SRReservoir reservoir = SRReservoir::Create(reservoirHitLocation, 0.f, luminance, rayPdf.pdf);
 
 			reservoir.AddFlag(SR_RESERVOIR_FLAGS_MISS);
-			reservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+			reservoir.AddFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 
 			if(rayPdf.isSpecularTrace)
 			{

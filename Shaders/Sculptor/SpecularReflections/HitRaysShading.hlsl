@@ -79,7 +79,7 @@ void HitRaysShadingRTG()
 
 		reservoir.luminance = LuminanceToExposedLuminance(reservoir.luminance);
 
-		reservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+		reservoir.AddFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 
 		if(rayPdf.isSpecularTrace)
 		{

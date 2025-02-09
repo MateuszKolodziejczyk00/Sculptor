@@ -114,4 +114,27 @@ struct ParameterPackSize
 	static constexpr SizeType Count = sizeof...(Ts);
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ParameterPackAt ===============================================================================
+
+template<SizeType idx, typename... Ts>
+struct ParameterPackAt
+{
+	using Type = std::tuple_element_t<idx, std::tuple<Ts...>>;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// ParameterPackTypeIdx ==========================================================================
+
+template<typename T, typename... Ts>
+struct ParameterPackTypeIdx
+{
+	static constexpr  SizeType value = []() constexpr
+	{
+		SizeType idx = 0u;
+		((std::is_same_v<T, Ts> ? idx : ++idx), ...);
+		return idx;
+	}();
+};
+
 } // spt::lib

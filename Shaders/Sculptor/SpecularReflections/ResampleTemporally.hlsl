@@ -89,10 +89,29 @@ struct SRTemporalResampler
 		const uint historyReservoirIdx = GetScreenReservoirIdx(coords, u_resamplingConstants.reservoirsResolution);
 		SRReservoir historyReservoir = UnpackReservoir(u_historyReservoirsBuffer[historyReservoirIdx]);
 
-		const uint maxHistoryLength = 5u;
+		const uint maxHistoryLength = 30u;
 		historyReservoir.M = uint16_t(min(historyReservoir.M, maxHistoryLength));
 
 		return historyReservoir;
+	}
+
+	uint ComputeReservoirMaxAge(in int2 historySamplePixel)
+	{
+		float maxAge;
+
+		if(u_passConstants.enableHitDistanceBasedMaxAge)
+		{
+			const float hitDist = u_historySpecularHitDist.Load(uint3(historySamplePixel, 0u)).w;
+			maxAge = Remap(hitDist, 0.8f, 4.0f, 2.f, float(u_passConstants.reservoirMaxAge));
+		}
+		else
+		{
+			maxAge = u_passConstants.reservoirMaxAge;
+		}
+
+		maxAge = Remap(centerPixelSurface.roughness, 0.1f, 0.4f, 0.5f, 1.f) * maxAge;
+
+		return maxAge;
 	}
 
 	bool TrySelectHistorySample(in int2 historySamplePixel, inout RngState rng)
@@ -126,9 +145,9 @@ struct SRTemporalResampler
 
 		currentReservoir.spatialResamplingRangeID = historyReservoir.spatialResamplingRangeID;
 
-		const float maxAge = Remap(centerPixelSurface.roughness, 0.15f, 0.4f, 8.f, 12.f) * lerp(rng.Next(), 0.6f, 1.f);
+		const uint maxAge = ComputeReservoirMaxAge(historySamplePixel);
 
-		if (m_wasSampleTraced &&historyReservoir.age > maxAge)
+		if (m_wasSampleTraced && historyReservoir.age > maxAge)
 		{
 			return false;
 		}
@@ -166,7 +185,7 @@ struct SRTemporalResampler
 
 		if(currentReservoir.Update(historyReservoir, rng.Next(), p_hatInOutputDomain))
 		{
-			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_RECENT);
+			currentReservoir.RemoveFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 			m_selectedP_hat     = p_hat;
 			m_selectedSampleIdx = sampleIdx;
 		}
@@ -253,7 +272,7 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 
 bool WasVariableRateReprojectionSuccessful(in uint2 coords)
 {
-	const uint2 reprojectionSuccessMaskCoords = coords / (2u * uint2(8u, 4u));
+	const uint2 reprojectionSuccessMaskCoords = coords << (u_passConstants.variableRateTileSizeBitOffset + uint2(3u, 2u));
 	const uint reprojectionSuccessMaskBit     = (coords.y & 3u) * 8u + (coords.x & 7u);
 
 	const uint reprojectionSuccessMask = u_vrReprojectionSuccessMask.Load(uint3(reprojectionSuccessMaskCoords, 0u)).x;
@@ -298,8 +317,6 @@ void ResampleTemporallyCS(CS_INPUT input)
 		RngState rng = RngState::Create(pixel, u_resamplingConstants.frameIdx);
 
 		SRTemporalResampler resampler;
-
-		//const uint2 traceCoords = GetVariableTraceCoords(u_rwVariableRateBlocksTexture, pixel);
 
 		uint2 traceCoords;
 		uint variableRateMask;
@@ -350,10 +367,9 @@ void ResampleTemporallyCS(CS_INPUT input)
 		}
 #endif // ENABLE_SECOND_TRACING_PASS
 
-
 		if(variableRateMask <= SPT_VARIABLE_RATE_2X2 || (u_resamplingConstants.frameIdx & 3u) != ((pixel.x & 1u) + ((pixel.y & 1u) << 1u)))
 		{
-			newReservoir.AddFlag(SR_RESERVOIR_FLAGS_RECENT);
+			newReservoir.AddFlag(SR_RESERVOIR_FLAGS_VALIDATED);
 		}
 
 		const SRPackedReservoir packedReservoir = PackReservoir(newReservoir);

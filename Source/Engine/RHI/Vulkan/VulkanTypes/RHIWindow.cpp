@@ -221,12 +221,12 @@ Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& wai
 	VkResult result = VK_SUCCESS;
 
 	VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-    presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphoreHandles.size());
-    presentInfo.pWaitSemaphores = waitSemaphoreHandles.data();
-    presentInfo.swapchainCount = 1;
+	presentInfo.waitSemaphoreCount = static_cast<Uint32>(waitSemaphoreHandles.size());
+	presentInfo.pWaitSemaphores = waitSemaphoreHandles.data();
+	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_swapchain;
-    presentInfo.pImageIndices = &imageIdx;
-    presentInfo.pResults = &result;
+	presentInfo.pImageIndices = &imageIdx;
+	presentInfo.pResults = &result;
 
 	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueue().GetHandleChecked(), &presentInfo);
 	

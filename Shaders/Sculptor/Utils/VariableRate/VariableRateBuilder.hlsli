@@ -16,6 +16,7 @@
 #define GS_SAMPLES_X (GROUP_SIZE_X + 2)
 #define GS_SAMPLES_Y (GROUP_SIZE_Y + 2)
 
+
 #if !VR_BUILDER_SINGLE_LANE_PER_QUAD
 groupshared float gs_inputSamples[GS_SAMPLES_X][GS_SAMPLES_Y];
 
@@ -215,13 +216,28 @@ struct VariableRateBuilder
 		const uint variableRate = TCallback::ComputeVariableRateMask(processor);
 
 #if VR_BUILDER_SINGLE_LANE_PER_QUAD
+#if VR_USE_LARGE_TILE
+#error // not implemented
+#else
 		WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, processor.GetCoords() / 2u, variableRate, u_constants.frameIdx);
+#endif // VR_USE_LARGE_TILE
+#else
+#if VR_USE_LARGE_TILE
+		// not exactly current, for example if half of the lanes have 2x1 and half have 1x2. Ideally it should be reduced to 1x1
+		// but in practice using any of these is ok as they are based on same noise thresholds
+		const uint largeTileVariableRate = WaveActiveMin(variableRate);
+		const uint2 outputCoords = groupID.xy;
+		if (localThreadIdx == 0u && all(outputCoords < u_constants.outputResolution))
+		{
+			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, largeTileVariableRate, u_constants.frameIdx);
+		}
 #else
 		const uint2 outputCoords = groupID.xy * uint2(4, 4) + processor.m_localID / 2;
 		if ((localThreadIdx & 3) == 0 && all(outputCoords < u_constants.outputResolution))
 		{
 			WriteCurrentFrameVariableRateData(u_rwVariableRateTexture, outputCoords, variableRate, u_constants.frameIdx);
 		}
+#endif
 #endif // VR_BUILDER_SINGLE_LANE_PER_QUAD
 	}
 };

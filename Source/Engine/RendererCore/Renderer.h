@@ -53,6 +53,8 @@ public:
 
 	static void									BeginFrame(Uint64 frameIdx);
 
+	static void									FlushCaches();
+
 	static ShadersManager&						GetShadersManager();
 
 	static PipelinesLibrary&					GetPipelinesLibrary();

@@ -74,6 +74,8 @@ public:
 
 	Result Denoise(rg::RenderGraphBuilder& graphBuilder, const Params& params);
 
+	rg::RGTextureViewHandle GetHistorySpecular(rg::RenderGraphBuilder& graphBuilder) const;
+
 private:
 
 	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params);

@@ -27,7 +27,13 @@ void AllocateTracesCS(CS_INPUT input)
 		globalID = min(globalID, u_constants.resolution - 1);
 	}
 
-	const uint variableRate = LoadVariableRate(u_variableRateTexture, globalID / 2);
+#if VR_USE_LARGE_TILE
+	const uint2 variableRateCoords = globalID / 8;
+#else
+	const uint2 variableRateCoords = globalID / 2;
+#endif // VR_USE_LARGE_TILE
+
+	const uint variableRate = LoadVariableRate(u_variableRateTexture, variableRateCoords);
 
 	TracesAllocator tracesAllocator = TracesAllocator::Create(u_rayTracesCommands, u_commandsNum, u_rwVariableRateBlocksTexture);
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM

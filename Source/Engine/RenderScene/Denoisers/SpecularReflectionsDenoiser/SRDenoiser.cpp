@@ -26,6 +26,11 @@ Denoiser::Result Denoiser::Denoise(rg::RenderGraphBuilder& graphBuilder, const P
 	return DenoiseImpl(graphBuilder, params);
 }
 
+rg::RGTextureViewHandle Denoiser::GetHistorySpecular(rg::RenderGraphBuilder& graphBuilder) const
+{
+	return m_historySpecularTexture ? graphBuilder.AcquireExternalTextureView(m_historySpecularTexture) : rg::RGTextureViewHandle{};
+}
+
 void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();

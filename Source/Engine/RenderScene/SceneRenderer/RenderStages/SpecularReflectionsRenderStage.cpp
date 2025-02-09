@@ -46,7 +46,9 @@ RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Sp
 RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
 RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
 RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, true);
-
+RendererBoolParameter useLargeTileSize("Use Large Tile Size", { "Specular Reflections" }, false);
+RendererBoolParameter resampleOnlyFromTracedPixels("Resample Only From Traced Pixels", { "Specular Reflections" }, true);
+RendererBoolParameter enableHitDistanceBasedMaxAge("Enable Hit Distance Based Max Age", { "Specular Reflections" }, true);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -620,6 +622,7 @@ SpecularReflectionsRenderStage::SpecularReflectionsRenderStage()
 	variableRateSettings.logFramesNumPerSlot    = 0u;
 	variableRateSettings.reprojectionFailedMode = vrt::EReprojectionFailedMode::_1x2;
 	variableRateSettings.permutationSettings.maxVariableRate = vrt::EMaxVariableRate::_4x4;
+	variableRateSettings.permutationSettings.useLargeTile    = true;
 	m_variableRateRenderer.Initialize(variableRateSettings);
 }
 
@@ -644,6 +647,14 @@ void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, 
 		resourcesUsageInfo.useOctahedronNormalsWithHistory = true;
 		resourcesUsageInfo.useLinearDepth                  = true;
 	}
+
+	if (m_variableRateRenderer.GetVariableRateSettings().permutationSettings.useLargeTile != renderer_params::useLargeTileSize)
+	{
+		vrt::VariableRateSettings newVariableRateSettings = m_variableRateRenderer.GetVariableRateSettings();
+		newVariableRateSettings.permutationSettings.useLargeTile = renderer_params::useLargeTileSize;
+
+		m_variableRateRenderer.Reinitialize(newVariableRateSettings);
+	}
 }
 
 void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
@@ -665,7 +676,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle motionTexture       = isHalfRes ? viewContext.motionHalfRes : viewContext.motion;
 		const rg::RGTextureViewHandle historyDepthTexture = isHalfRes ? viewContext.historyDepthHalfRes : viewContext.historyDepth;
 
-		const rg::RGTextureViewHandle vrReprojectionSuccessMask = vrt::CreateReprojectionSuccessMask(graphBuilder, resolution);
+		const rg::RGTextureViewHandle vrReprojectionSuccessMask = vrt::CreateReprojectionSuccessMask(graphBuilder, resolution, m_variableRateRenderer.GetVariableRateSettings());
 
 		vrt::VariableRateReprojectionParams reprojectionParams
 		{
@@ -746,12 +757,14 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 1.f,
 				.samplesNum                       = 3u,
-				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest
+				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest,
+				.resampleOnlyFromTracedPixels     = renderer_params::resampleOnlyFromTracedPixels
 			},
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 0.2f,
 				.samplesNum                       = 2u,
-				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest
+				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest,
+				.resampleOnlyFromTracedPixels     = renderer_params::resampleOnlyFromTracedPixels
 			}
 		};
 
@@ -771,12 +784,15 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.outSpecularLuminanceDistTexture = specularLuminanceHitDistanceTexture;
 		resamplingParams.outDiffuseLuminanceDistTexture  = diffuseLuminanceHitDistanceTexture;
 		resamplingParams.motionTexture                   = params.motionTexture;
+		resamplingParams.historySpecularHitDist          = m_denoiser.GetHistorySpecular(graphBuilder);
 		resamplingParams.tracesAllocation                = tracesAllocation;
 		resamplingParams.vrReprojectionSuccessMask       = vrReprojectionSuccessMask;
 		resamplingParams.enableTemporalResampling        = hasValidHistory && renderer_params::enableTemporalResampling;
 		resamplingParams.spatialResamplingPasses         = activeResamplingPasses;
 		resamplingParams.doFullFinalVisibilityCheck      = renderer_params::doFullFinalVisibilityCheck;
 		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
+		resamplingParams.variableRateTileSizeBitOffset   = vrt::GetTileSizeBitOffset(m_variableRateRenderer.GetVariableRateSettings());
+		resamplingParams.enableHitDistanceBasedMaxAge    = renderer_params::enableHitDistanceBasedMaxAge;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 

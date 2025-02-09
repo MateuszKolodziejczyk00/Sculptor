@@ -32,7 +32,6 @@ static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 	int2(0, -1)
 };
 
-
 void FindTemporalReprojection(in float2 surfaceHistoryUV, 
                               in float3 currentSampleNormal,
                               in float3 currentSampleWS,
@@ -65,8 +64,8 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 			const float historySampleDistToCurrentSamplePlane = currentSamplePlane.Distance(historySampleWS);
 			if (abs(historySampleDistToCurrentSamplePlane) < maxPlaneDistance)
 			{
-				const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_linearSampler, sampleUV, 0.f));
-				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_linearSampler, sampleUV, 0.f);
+				const float3 historyNormals  = OctahedronDecodeNormal(u_historyNormalsTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f));
+				const float historyRoughness = u_historyRoughnessTexture.SampleLevel(u_nearestSampler, sampleUV, 0.f);
 
 				const float normalsSimilarity   = dot(historyNormals, currentSampleNormal);
 				const float roughnessDifference = abs(roughness - historyRoughness);
@@ -80,7 +79,7 @@ void FindTemporalReprojection(in float2 surfaceHistoryUV,
 					if(sampleReprojectionConfidence > reprojectionConfidence)
 					{
 						reprojectionConfidence = sampleReprojectionConfidence;
-						reprojectedUV  = sampleUV;
+						reprojectedUV = sampleUV;
 						reprojectedWS = historySampleWS;
 
 						if(reprojectionConfidence > 0.99f)
@@ -146,7 +145,7 @@ NeighbourhoodInfo LoadNeighbourhoodInfo(in int2 localID, in int2 resolution)
 	{
 		for(int x = -2; x <= 2; ++x)
 		{
-			const float4 sample = gs_specular[localID.y + y][localID.x + x];
+			const float4 sample = gs_specular[localID.y + 2 + y][localID.x + 2 + x];
 
 			if(!isnan(sample.w))
 			{
@@ -372,7 +371,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			// Fast history
 
-			const float currentFrameWeightFast = max(0.3f, specularFrameWeight);
+			const float currentFrameWeightFast = max(0.2f, specularFrameWeight);
 
 			u_rwSpecularFastHistoryTexture[pixel] = lerp(fastHistory, specular.rgb, currentFrameWeightFast);
 		}
