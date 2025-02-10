@@ -5,7 +5,7 @@ function DLSS:SetupConfiguration(configuration, platform)
 	self:AddPublicRelativeIncludePath("/include")
 	self:CopyProjectLibToOutputDir("/lib/Windows_x86_64/dev/nvngx_dlss.dll")
 
-    self:SetPrecompiledLibsPath("/lib/Windows_x86_64/x86_64")
+    self:SetPrecompiledLibsPath("/lib/Windows_x86_64/x64")
     if configuration == EConfiguration.Debug then
         self:AddPublicDependency("nvsdk_ngx_d_dbg")
     else
