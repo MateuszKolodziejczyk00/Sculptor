@@ -128,7 +128,7 @@ struct RTVariableRateCallback
 			const float specularNoiseRelativeLevel = specularNoiseAbsoluteLevel / specularBrightness;
 			const float diffuseNoiseRelativeLevel  = diffuseNoiseAbsoluteLevel / diffuseBrightness;
 
-			const float absoluteNoiseWeight = 0.4f;
+			const float absoluteNoiseWeight = 0.3f;
 			const float relativeNoiseWeight = 1.f - absoluteNoiseWeight;
 
 			const float specularNoiseLevel = specularNoiseAbsoluteLevel * absoluteNoiseWeight + specularNoiseRelativeLevel * relativeNoiseWeight;

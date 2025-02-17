@@ -91,7 +91,7 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 {
 	RenderSceneRegistry& registry = GetOwningScene().GetRegistry();
 
-	const auto directionalLightsView = registry.view<DirectionalLightData>();
+	const auto directionalLightsView = registry.view<const DirectionalLightData>();
 	const SizeType directionalLightsNum = directionalLightsView.size();
 
 	const Uint64 requiredBufferSize = std::max<SizeType>(directionalLightsNum, 1) * sizeof(DirectionalLightGPUData);

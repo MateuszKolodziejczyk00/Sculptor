@@ -80,7 +80,7 @@ void ResamplingFinalVisibilityTestRTG()
 			{
 				SRPackedReservoir initialReservoir = u_initialReservoirsBuffer[reservoirIdx];
 				uint packedProps = initialReservoir.MAndProps;
-				packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -7);
+				packedProps = ModifyPackedSpatialResamplingRangeID(packedProps, -3);
 				initialReservoir.MAndProps = packedProps;
 
 				u_inOutReservoirsBuffer[reservoirIdx] = initialReservoir;

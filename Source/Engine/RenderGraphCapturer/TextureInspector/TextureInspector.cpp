@@ -386,7 +386,8 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 				   .SetPriority(js::EJobPriority::High)
 				   .ExecuteBefore(currentFrame.GetStageFinishedEvent(engn::EFrameStage::ProcessViewsRendering)));
 
-	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), rhi::ESamplerFilterType::Nearest, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
+	const rhi::ESamplerFilterType samplerFilter = m_zoom >= 1.f ? rhi::ESamplerFilterType::Nearest : rhi::ESamplerFilterType::Linear;
+	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), samplerFilter, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
 }
 
 void TextureInspector::CreateDisplayedTexture(const math::Vector2u& resolution)

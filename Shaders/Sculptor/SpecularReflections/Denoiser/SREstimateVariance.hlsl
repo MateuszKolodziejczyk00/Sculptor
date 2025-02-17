@@ -19,8 +19,6 @@ struct SampleData
 {
 	float2 variance;
 	half3 normal;
-	half  roughness;
-	float depth;
 };
 
 
@@ -65,9 +63,7 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 		const uint3 sampleCoords = uint3(clamp(int2(groupOffset + localOffset), 0, int2(u_constants.resolution - 1)), 0);
 
 		SampleData sample;
-		sample.roughness = half(u_roughnessTexture.Load(sampleCoords).x);
-		sample.depth     = u_depthTexture.Load(sampleCoords).x;
-		sample.normal    = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
+		sample.normal = half3(OctahedronDecodeNormal(u_normalsTexture.Load(sampleCoords).xy));
 
 		float2 variance = u_inVarianceTexture.Load(sampleCoords);
 
@@ -91,16 +87,7 @@ void CacheSamplesToLDS(in uint2 groupID, in uint2 threadID)
 float ComputeWeight(in SampleData center, in SampleData sample, int offset)
 {
 	const float phiNormal = 12.f;
-	const float phiDepth = 0.15f;
-	
-	const float weightNormal = pow(saturate(dot(center.normal, sample.normal)), phiNormal);
-
-	const float depthDifference = abs(center.depth - sample.depth);
-	const float weightZ = depthDifference <= phiDepth ? 1.f : 0.f;
-
-	const float finalWeight = exp(-max(weightZ, 0.0)) * weightNormal * u_constants.weights[abs(offset)];
-
-	return finalWeight;
+	return pow(saturate(dot(center.normal, sample.normal)), phiNormal);
 }
 
 
@@ -132,10 +119,7 @@ void SREstimateVarianceCS(CS_INPUT input)
 		const SampleData centerSample = sharedSampleData[centerLDSCoords.x][centerLDSCoords.y];
 #endif // HORIZONTAL_PASS
 
-		const float centerWeight = u_constants.weights[0u];
-
-		float2 varianceEstimationSum = centerSample.variance * centerWeight;
-		float weightSum = centerWeight;
+		float2 maxVariance = centerSample.variance;
 
 		[unroll]
 		for (int offset = 1; offset <= KERNEL_RADIUS; ++offset)
@@ -154,15 +138,18 @@ void SREstimateVarianceCS(CS_INPUT input)
 			const float weight0 = ComputeWeight(centerSample, sample0, offset);
 			const float weight1 = ComputeWeight(centerSample, sample1, -offset);
 
-			varianceEstimationSum += sample0.variance * weight0;
-			weightSum += weight0;
+			const float weightThreshold = 0.8f;
 
-			varianceEstimationSum += sample1.variance * weight1;
-			weightSum += weight1;
+			if(weight0 >= weightThreshold)
+			{
+				maxVariance = max(maxVariance, sample0.variance);
+			}
+			if(weight1 >= weightThreshold)
+			{
+				maxVariance = max(maxVariance, sample1.variance);
+			}
 		}
 
-		const float2 varianceEstimation = varianceEstimationSum / weightSum;
-
-		u_rwVarianceEstimationTexture[coords] = varianceEstimation;
+		u_rwVarianceEstimationTexture[coords] = maxVariance;
 	}
 }

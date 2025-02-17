@@ -111,6 +111,8 @@ void SculptorEdApplication::OnRun()
 
 	lib::SharedPtr<EditorFrameContext> currentFrame;
 
+	js::Event readyForPresentEvent;
+
 	while (true)
 	{
 		SPT_PROFILER_FRAME("EditorFrame");
@@ -126,7 +128,18 @@ void SculptorEdApplication::OnRun()
 
 		m_window->BeginFrame();
 
-		ExecuteFrame(*currentFrame);
+		if (readyForPresentEvent.IsValid())
+		{
+			// At this point, window is updated, so we can safely present previous frame
+			readyForPresentEvent.Signal();
+		}
+
+		readyForPresentEvent = ExecuteFrame(*currentFrame);
+	}
+
+	if (readyForPresentEvent.IsValid())
+	{
+		readyForPresentEvent.Signal();
 	}
 
 	if (currentFrame)
@@ -161,7 +174,7 @@ void SculptorEdApplication::OnShutdown()
 	Super::OnShutdown();
 }
 
-void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
+js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -170,7 +183,7 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 	{
 		// skip frame
 		frame.BeginAdvancingStages();
-		return;
+		return js::Event();
 	}
 
 	const js::Event uiFinishedEvent = js::CreateEvent("UI FinishedEvent", frame.GetStageFinishedEvent(engn::EFrameStage::UI));
@@ -192,18 +205,6 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 													   },
 													   js::JobDef().ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
 
-	js::Job renderWindowJob = js::Launch(SPT_GENERIC_JOB_NAME,
-										 [this, &frame, swapchainTexture, recordUICommandsJob]
-										 {
-											 const auto [uiRenderContext, uiCommandsWorkload] = recordUICommandsJob.GetResult();
-											 RenderFrame(frame, swapchainTexture, uiCommandsWorkload);
-										 },
-										 js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::RenderWindow),
-														   recordUICommandsJob),
-										 js::JobDef()
-											 .SetPriority(js::EJobPriority::High)
-											 .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow)));
-
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
@@ -218,6 +219,7 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 			if (window && (!window->Active || window->Hidden))
 			{
 				frame.FlushPreviousFrames();
+				rdr::Renderer::WaitIdle(true);
 				break;
 			}
 		}
@@ -226,9 +228,26 @@ void SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 		ImGui::UpdatePlatformWindows();
 	}
 
+	js::Event readyForPresentEvent = js::CreateEvent("ReadyForPresentEvent", frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow));
+
+	js::Job renderWindowJob = js::Launch(SPT_GENERIC_JOB_NAME,
+										 [this, &frame, swapchainTexture, recordUICommandsJob]
+										 {
+											 const auto [uiRenderContext, uiCommandsWorkload] = recordUICommandsJob.GetResult();
+											 RenderFrame(frame, swapchainTexture, uiCommandsWorkload);
+										 },
+										 js::Prerequisites(frame.GetStageBeginEvent(engn::EFrameStage::RenderWindow),
+														   recordUICommandsJob,
+														   readyForPresentEvent),
+										 js::JobDef()
+											 .SetPriority(js::EJobPriority::High)
+											 .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow)));
+
 	uiFinishedEvent.Signal();
 
 	frame.WaitUpdateEnded();
+
+	return readyForPresentEvent;
 }
 
 void SculptorEdApplication::UpdateUI(EditorFrameContext& frame)

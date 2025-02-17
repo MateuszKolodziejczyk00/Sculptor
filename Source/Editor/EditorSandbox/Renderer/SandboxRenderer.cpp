@@ -440,7 +440,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color                  = math::Vector3f(1.f, 1.f, 1.f);
 			directionalLightData.illuminance            = 95000.f;
-			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.2f).normalized();
+			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
 			directionalLightData.sunDiskAngleMultiplier = 2.3f;
 			directionalLightData.sunDiskEC              = 12.f;

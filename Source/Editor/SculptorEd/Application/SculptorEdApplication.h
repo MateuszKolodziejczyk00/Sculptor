@@ -42,7 +42,7 @@ protected:
 
 private:
 
-	void ExecuteFrame(EditorFrameContext& frame);
+	js::Event ExecuteFrame(EditorFrameContext& frame);
 
 	void UpdateUI(EditorFrameContext& frame);
 

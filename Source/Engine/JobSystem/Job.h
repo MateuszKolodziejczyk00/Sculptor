@@ -939,6 +939,11 @@ public:
 		return m_instance;
 	}
 
+	Bool IsValid() const
+	{
+		return m_instance.IsValid();
+	}
+
 	template<typename TCallable>
 	Job Then(const char* name, TCallable&& callable)
 	{

@@ -99,14 +99,20 @@ struct SRTemporalResampler
 	{
 		float maxAge;
 
-		if(u_passConstants.enableHitDistanceBasedMaxAge)
+		// Reduce max age for close hits to maintain close indirect shadows (needed only for higher roughness)
+		if(u_passConstants.enableHitDistanceBasedMaxAge && centerPixelSurface.roughness >= 0.15f)
 		{
 			const float hitDist = u_historySpecularHitDist.Load(uint3(historySamplePixel, 0u)).w;
-			maxAge = Remap(hitDist, 0.8f, 4.0f, 2.f, float(u_passConstants.reservoirMaxAge));
+			maxAge = Remap(hitDist, 0.8f, 4.0f, 4.f, float(u_passConstants.reservoirMaxAge));
 		}
 		else
 		{
 			maxAge = u_passConstants.reservoirMaxAge;
+		}
+
+		if(!m_wasSampleTraced)
+		{
+			maxAge *= 2.f;
 		}
 
 		maxAge = Remap(centerPixelSurface.roughness, 0.1f, 0.4f, 0.5f, 1.f) * maxAge;
@@ -147,7 +153,7 @@ struct SRTemporalResampler
 
 		const uint maxAge = ComputeReservoirMaxAge(historySamplePixel);
 
-		if (m_wasSampleTraced && historyReservoir.age > maxAge)
+		if (historyReservoir.age > maxAge)
 		{
 			return false;
 		}

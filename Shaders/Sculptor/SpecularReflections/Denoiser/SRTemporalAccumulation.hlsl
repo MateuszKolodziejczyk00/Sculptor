@@ -102,9 +102,10 @@ struct NeighbourhoodInfo
 	float minHitDist;
 };
 
+#define GS_RADIUS 3
 
-#define GS_DATA_SIZE_Y (GROUP_SIZE_Y + 4)
-#define GS_DATA_SIZE_X (GROUP_SIZE_X + 4)
+#define GS_DATA_SIZE_Y (GROUP_SIZE_Y + 2 * GS_RADIUS)
+#define GS_DATA_SIZE_X (GROUP_SIZE_X + 2 * GS_RADIUS)
 
 
 groupshared float4 gs_specular[GS_DATA_SIZE_Y][GS_DATA_SIZE_X];
@@ -124,7 +125,7 @@ void PrecacheLocalSpecularValues(in int2 groupID, in int2 localID, in int2 resol
 	{
 		const int sampleY = sampleIdx / GS_DATA_SIZE_X;
 		const int sampleX = sampleIdx - sampleY * GS_DATA_SIZE_X;
-		const int2 sampleCoords = clamp(groupOffset + int2(sampleX, sampleY) - 2, 0, maxCoords);
+		const int2 sampleCoords = clamp(groupOffset + int2(sampleX, sampleY) - GS_RADIUS, 0, maxCoords);
 
 		gs_specular[sampleY][sampleX] = u_rwSpecularTexture[sampleCoords];
 	}
@@ -141,11 +142,11 @@ NeighbourhoodInfo LoadNeighbourhoodInfo(in int2 localID, in int2 resolution)
 
     GroupMemoryBarrierWithGroupSync();
 
-	for(int y = -2; y <= 2; ++y)
+	for(int y = -GS_RADIUS; y <= GS_RADIUS; ++y)
 	{
-		for(int x = -2; x <= 2; ++x)
+		for(int x = -GS_RADIUS; x <= GS_RADIUS; ++x)
 		{
-			const float4 sample = gs_specular[localID.y + 2 + y][localID.x + 2 + x];
+			const float4 sample = gs_specular[localID.y + GS_RADIUS + y][localID.x + GS_RADIUS + x];
 
 			if(!isnan(sample.w))
 			{
@@ -172,15 +173,20 @@ NeighbourhoodInfo LoadNeighbourhoodInfo(in int2 localID, in int2 resolution)
 	return result;
 }
 
-
+#define USE_MIN_HIT_DIST 1
 float ComputeHitDistance(in NeighbourhoodInfo info)
 {
+#if USE_MIN_HIT_DIST
+	return info.minHitDist;
+#else
 	const float hitDistVariance = abs(Pow2(info.specularM1.w) - info.specularM2.w);
 	const float hitDistStdDev = sqrt(hitDistVariance);
 	const float hitDistClampWindow = hitDistStdDev * 3.f;
 	return clamp(info.minHitDist, info.specularM1.w - hitDistClampWindow, info.specularM1.w + hitDistClampWindow);
+#endif // USE_MIN_HIT_DIST
 }
 
+#define TEST 1
 
 // Algorithm based on RELAX temporal accumulation: https://github.com/NVIDIAGameWorks/RayTracingDenoiser/blob/master/Shaders/Include/RELAX_TemporalAccumulation.hlsli
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
@@ -260,7 +266,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			float currentFrameWeight = rcp(float(diffuseHistoryLength + 1u));
 
 			const float2 diffuseHistoryMoments = u_diffuseHistoryTemporalVarianceTexture.Load(historyPixel);
-			diffuseMoments = lerp(diffuseHistoryMoments, diffuseMoments, currentFrameWeight);
+			diffuseMoments = lerp(diffuseHistoryMoments, diffuseMoments, max(currentFrameWeight, 0.02f));
 
 			const float diffuseFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - motionBasedReprojectionConfidence);
 
@@ -365,7 +371,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			specularMoments = lerp(specularHistoryMoments, specularMoments, specularFrameWeight);
 
 			const float3 accumulatedSpecular = lerp(specularHistory, specular.rgb, specularFrameWeight);
-			const float accumulatedHitDist   = lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.15f));
+			const float accumulatedHitDist   = isnan(historyHitDist) ? hitDistance : lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.05f));
 
 			u_rwSpecularTexture[pixel] = float4(accumulatedSpecular, accumulatedHitDist);
 
@@ -377,6 +383,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		}
 		else
 		{
+			u_rwSpecularTexture[pixel] = float4(specular.rgb, hitDistance);
 			u_rwSpecularFastHistoryTexture[pixel]  = specular.rgb;
 		}
 

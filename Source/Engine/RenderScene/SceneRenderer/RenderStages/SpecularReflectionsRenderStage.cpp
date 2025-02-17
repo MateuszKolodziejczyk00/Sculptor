@@ -45,10 +45,12 @@ RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", 
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
 RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
-RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, true);
+RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, false);
 RendererBoolParameter useLargeTileSize("Use Large Tile Size", { "Specular Reflections" }, false);
 RendererBoolParameter resampleOnlyFromTracedPixels("Resample Only From Traced Pixels", { "Specular Reflections" }, true);
 RendererBoolParameter enableHitDistanceBasedMaxAge("Enable Hit Distance Based Max Age", { "Specular Reflections" }, true);
+RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflections" }, 10, 0, 30);
+RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -793,6 +795,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
 		resamplingParams.variableRateTileSizeBitOffset   = vrt::GetTileSizeBitOffset(m_variableRateRenderer.GetVariableRateSettings());
 		resamplingParams.enableHitDistanceBasedMaxAge    = renderer_params::enableHitDistanceBasedMaxAge;
+		resamplingParams.reservoirMaxAge                 = renderer_params::reservoirMaxAge;
+		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
 
 		const sr_restir::InitialResamplingResult initialResamplingResult = m_resampler.ExecuteInitialResampling(graphBuilder, resamplingParams);
 
@@ -809,7 +813,14 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
 		
-		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder, renderScene, viewSpec, m_denoiser, params, specularLuminanceHitDistanceTexture, diffuseLuminanceHitDistanceTexture);
+		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder,
+																			  renderScene,
+																			  viewSpec,
+																			  m_denoiser,
+																			  params,
+																			  specularLuminanceHitDistanceTexture,
+																			  diffuseLuminanceHitDistanceTexture);
+		
 
 		rg::RGTextureViewHandle specularReflectionsFullRes;
 		rg::RGTextureViewHandle diffuseReflectionsFullRes;

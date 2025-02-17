@@ -87,11 +87,11 @@ static SRResamplingConstants CreateResamplingConstants(const ResamplingParams& p
 	const math::Vector2u resolution = params.GetResolution();
 
 	SRResamplingConstants resamplingConstants;
-	resamplingConstants.resolution                           = resolution;
-	resamplingConstants.reservoirsResolution                 = ComputeReservoirsResolution(resolution);
-	resamplingConstants.pixelSize                            = resolution.cast<Real32>().cwiseInverse();
-	resamplingConstants.frameIdx                             = params.renderView.GetRenderedFrameIdx();
-	resamplingConstants.resamplingRangeStep                  = 4.f;
+	resamplingConstants.resolution           = resolution;
+	resamplingConstants.reservoirsResolution = ComputeReservoirsResolution(resolution);
+	resamplingConstants.pixelSize            = resolution.cast<Real32>().cwiseInverse();
+	resamplingConstants.frameIdx             = params.renderView.GetRenderedFrameIdx();
+	resamplingConstants.resamplingRangeStep  = params.resamplingRangeStep;
 
 	return resamplingConstants;
 }
@@ -225,7 +225,7 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 	TemporalResamplingConstants passConstants;
 	passConstants.variableRateTileSizeBitOffset = params.variableRateTileSizeBitOffset;
 	passConstants.enableHitDistanceBasedMaxAge  = params.enableHitDistanceBasedMaxAge;
-	passConstants.reservoirMaxAge               = 10u;
+	passConstants.reservoirMaxAge               = params.reservoirMaxAge;
 
 	lib::MTHandle<SRTemporalResamplingDS> ds = graphBuilder.CreateDescriptorSet<SRTemporalResamplingDS>(RENDERER_RESOURCE_NAME("Resample Temporally DS"));
 	ds->u_depthTexture                = params.depthTexture;

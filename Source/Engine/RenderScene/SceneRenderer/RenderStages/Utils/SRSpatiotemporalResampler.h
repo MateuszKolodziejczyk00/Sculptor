@@ -95,6 +95,10 @@ struct ResamplingParams
 	Bool enableHitDistanceBasedMaxAge = true;
 
 	Uint32 variableRateTileSizeBitOffset = 1u;
+
+	Uint32 reservoirMaxAge = 10u;
+
+	Real32 resamplingRangeStep = 4.f;
 };
 
 

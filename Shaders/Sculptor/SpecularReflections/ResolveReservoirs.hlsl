@@ -43,7 +43,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		float3 specularLo = 0.f;
 		float3 diffuseLo  = 0.f;
-		float hitDistance = 0.f;
+		float hitDistance = SPT_NAN;
 
 		if(reservoir.IsValid() && reservoir.HasValidResult())
 		{

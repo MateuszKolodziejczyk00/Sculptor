@@ -99,12 +99,12 @@ float EvaluateJacobian(in float3 destinationSampleLocation, in float3 reuseSampl
 		jacobian = -1.f;	
 	}
 
-	if(jacobian > 7.f || jacobian < 0.28f)
+	if(jacobian > 10.f || jacobian < 0.1f)
 	{
 		jacobian = -1.f;
 	}
 
-	jacobian = clamp(jacobian, 0.3333f, 3.f);
+	jacobian = clamp(jacobian, 0.2f, 3.f);
 
 	return jacobian;
 }
