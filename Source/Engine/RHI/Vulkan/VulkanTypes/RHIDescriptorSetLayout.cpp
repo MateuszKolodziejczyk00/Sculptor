@@ -6,6 +6,21 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIDescriptorSetLayoutReleaseTicket ===========================================================
+
+void RHIDescriptorSetLayoutReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIDescriptorSetLayout ========================================================================
+
 RHIDescriptorSetLayout::RHIDescriptorSetLayout()
 	: m_handle(VK_NULL_HANDLE)
 {
@@ -85,14 +100,28 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 
 void RHIDescriptorSetLayout::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIDescriptorSetLayoutReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
+RHIDescriptorSetLayoutReleaseTicket RHIDescriptorSetLayout::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
+
+	RHIDescriptorSetLayoutReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif SPT_RHI_DEBUG
 
 	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
 
-	vkDestroyDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
 	m_handle = VK_NULL_HANDLE;
+	
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIDescriptorSetLayout::IsValid() const

@@ -6,6 +6,21 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIQueryPoolReleaseTicket =====================================================================
+
+void RHIQueryPoolReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyQueryPool(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIQueryPool ===================================================================================
+
 RHIQueryPool::RHIQueryPool()
 	: m_handle(VK_NULL_HANDLE)
 { }
@@ -24,16 +39,28 @@ void RHIQueryPool::InitializeRHI(const rhi::QueryPoolDefinition& definition)
 	SPT_VK_CHECK(vkCreateQueryPool(VulkanRHI::GetDeviceHandle(), &queryPoolInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 
 	m_definition = definition;
+
+	SPT_CHECK(IsValid());
 }
 
 void RHIQueryPool::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIQueryPoolReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
+RHIQueryPoolReleaseTicket RHIQueryPool::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
 
-	vkDestroyQueryPool(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
+	RHIQueryPoolReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
+
 	m_handle = VK_NULL_HANDLE;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIQueryPool::IsValid() const

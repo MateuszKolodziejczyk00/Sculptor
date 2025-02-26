@@ -12,6 +12,18 @@ namespace spt::vulkan
 class DescriptorPoolSet;
 
 
+struct RHI_API RHIDescriptorSetStackAllocatorReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<DescriptorPoolSet*> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIDescriptorSetStackAllocator
 {
 public:
@@ -20,6 +32,8 @@ public:
 
 	void InitializeRHI();
 	void ReleaseRHI();
+
+	RHIDescriptorSetStackAllocatorReleaseTicket DeferredReleaseRHI();
 
 	Bool IsValid() const;
 

@@ -5,6 +5,7 @@
 #include "RHIBridge/RHIDeviceQueueImpl.h"
 #include "RendererUtils.h"
 #include "Containers/Queue.h"
+#include "Job.h"
 
 #include <semaphore>
 
@@ -85,11 +86,13 @@ public:
 	void Push(lib::SharedRef<GPUWorkload> workload);
 	void FullFlush();
 
+	void SignalAfterFlushedPendingWork(const js::Event& event);
+
 private:
 
 	void FlushThreadMain();
 
-	lib::Queue<lib::SharedRef<GPUWorkload>> m_submittedWorkloadsQueue;
+	std::deque<lib::SharedRef<GPUWorkload>> m_submittedWorkloadsQueue;
 	Real32                                  m_submittedWorkloadsLastFlushTime;
 	lib::Lock                               m_submittedWorkloadsLock;
 
@@ -111,6 +114,8 @@ public:
 	void Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
 
 	void FlushSubmittedWorkloads();
+
+	void SignalAfterFlushingPendingWork(const js::Event& event);
 
 private:
 

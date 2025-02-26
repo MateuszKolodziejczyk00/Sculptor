@@ -114,6 +114,24 @@ Uint64 RHIMappedByteBuffer::GetSize() const
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIBufferReleaseTicket ========================================================================
+
+void RHIBufferReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyBuffer(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+
+	if (allocation.IsValid())
+	{
+		vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocation.GetValue());
+		allocation.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIBuffer =====================================================================================
 
 RHIBuffer::RHIBuffer()
@@ -152,6 +170,14 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 
 void RHIBuffer::ReleaseRHI()
 {
+	RHIBufferReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+
+	SPT_CHECK(!IsValid());
+}
+
+RHIBufferReleaseTicket RHIBuffer::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
 
 	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle), "Buffers cannot be externally allocated!");
@@ -176,15 +202,16 @@ void RHIBuffer::ReleaseRHI()
 	{
 		m_virtualAllocator.ReleaseRHI();
 	}
+
+	RHIBufferReleaseTicket ticket;
+	ticket.handle     = m_bufferHandle;
+	ticket.allocation = allocationToRelease;
+
+#if SPT_RHI_DEBUG
+	ticket.name = GetName();
+#endif // SPT_RHI_DEBUG
 	
 	m_name.Reset(reinterpret_cast<Uint64>(m_bufferHandle), VK_OBJECT_TYPE_BUFFER);
-
-	vkDestroyBuffer(VulkanRHI::GetDeviceHandle(), m_bufferHandle, VulkanRHI::GetAllocationCallbacks());
-
-	if (allocationToRelease != VK_NULL_HANDLE)
-	{
-		vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocationToRelease);
-	}
 
 	m_bufferHandle     = VK_NULL_HANDLE;
 	m_allocationHandle = rhi::RHINullAllocation{};
@@ -192,6 +219,10 @@ void RHIBuffer::ReleaseRHI()
 	m_usageFlags       = rhi::EBufferUsage::None;
 	m_mappingStrategy  = EMappingStrategy::CannotBeMapped;
 	m_mappedPointer    = nullptr;
+
+	SPT_CHECK(!IsValid());
+
+	return ticket;
 }
 
 Bool RHIBuffer::IsValid() const

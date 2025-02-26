@@ -29,6 +29,10 @@ void GPUWorkload::Reset()
 
 	m_prerequisites.clear();
 	m_subsequents.clear();
+
+	m_eventsOnFinished.clear();
+
+	m_isFinalized = false;
 }
 
 void GPUWorkload::Wait()
@@ -83,10 +87,14 @@ void GPUWorkload::OnExecutionFinished()
 {
 	SPT_PROFILER_FUNCTION();
 
+	SPT_CHECK(!m_isFinalized);
+
 	for (js::Event& event : m_eventsOnFinished)
 	{
 		event.Signal();
 	}
+
+	m_isFinalized = true;
 }
 
 const lib::SharedPtr<CommandBuffer>& GPUWorkload::GetRecordedBuffer() const
@@ -167,7 +175,7 @@ const lib::DynamicArray<lib::SharedPtr<GPUWorkload>>& GPUWorkload::GetPrerequisi
 
 void GPUWorkload::BindEvent(js::Event event)
 {
-	SPT_CHECK(!IsSubmitted());
+	SPT_CHECK(!m_isFinalized);
 
 	m_eventsOnFinished.emplace_back(std::move(event));
 }

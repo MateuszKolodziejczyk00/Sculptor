@@ -17,7 +17,6 @@ IncludeProject("STB")
 IncludeProject("MeshOptimizer")
 
 SetProjectsSubgroupName("Profiling")
-IncludeProject("Optick")
 IncludeProject("PerformanceAPI")
 ResetProjectsSubgroupName()
 

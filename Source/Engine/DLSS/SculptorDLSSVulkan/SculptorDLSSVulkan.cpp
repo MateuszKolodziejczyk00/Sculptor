@@ -224,6 +224,7 @@ private:
 	NGXInstance() = default;
 
 	Bool Initialize();
+	void Uninitialize();
 
 	Bool m_isInitialized = false;
 };
@@ -259,8 +260,21 @@ Bool NGXInstance::Initialize()
 
 	m_isInitialized = true;
 
+	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda(
+		[this]()
+		{
+			Uninitialize();
+		});
+
 	SPT_CHECK(IsInitialized());
 	return true;
+}
+
+void NGXInstance::Uninitialize()
+{
+	SPT_PROFILER_FUNCTION();
+
+	NVSDK_NGX_VULKAN_Shutdown();
 }
 
 } // ngx

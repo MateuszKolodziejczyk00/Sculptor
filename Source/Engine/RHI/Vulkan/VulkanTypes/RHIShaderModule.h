@@ -10,6 +10,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIShaderModuleReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkShaderModule> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIShaderModule
 {
 public:
@@ -17,29 +29,31 @@ public:
 
 	RHIShaderModule();
 
-	void						InitializeRHI(const rhi::ShaderModuleDefinition& definition);
-	void						ReleaseRHI();
+	void							InitializeRHI(const rhi::ShaderModuleDefinition& definition);
+	void							ReleaseRHI();
 
-	Bool						IsValid() const;
+	RHIShaderModuleReleaseTicket	DeferredReleaseRHI();
 
-	rhi::EShaderStage			GetStage() const;
-	const lib::HashedString&	GetEntryPoint() const;
+	Bool							IsValid() const;
 
-	void						SetName(const lib::HashedString& name);
-	const lib::HashedString&	GetName() const;
+	rhi::EShaderStage				GetStage() const;
+	const lib::HashedString&		GetEntryPoint() const;
+
+	void							SetName(const lib::HashedString& name);
+	const lib::HashedString&		GetName() const;
 
 	// Vulkan ================================================
 
-	VkShaderModule				GetHandle() const;
+	VkShaderModule					GetHandle() const;
 
 private:
 
-	VkShaderModule				m_handle;
+	VkShaderModule					m_handle;
 
-	rhi::EShaderStage			m_stage;
-	lib::HashedString			m_entryPoint;
+	rhi::EShaderStage				m_stage;
+	lib::HashedString				m_entryPoint;
 
-	DebugName					m_name;
+	DebugName						m_name;
 };
 
 }

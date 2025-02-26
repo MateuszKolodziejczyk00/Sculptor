@@ -8,6 +8,7 @@
 #include "Delegates/MulticastDelegate.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "Types/Window.h"
+#include "GPUReleaseQueue.h"
 
 
 namespace spt::rdr
@@ -23,24 +24,16 @@ class Window;
 class RenderContext;
 
 
-struct CommandsSubmitBatch
-{
-public:
-
-	CommandsSubmitBatch() = default;
-
-	Bool IsValid() const
-	{
-		return !recordedCommands.empty();
-	}
-
-	lib::DynamicArray<lib::UniquePtr<CommandRecorder>>		recordedCommands;
-	SemaphoresArray											waitSemaphores;
-	SemaphoresArray											signalSemaphores;
-};
-
-
 using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
+
+
+enum class EDeferredReleasesFlushFlags : Flags32
+{
+	None      = 0u,
+	Immediate = BIT(1u),
+
+	Default = None
+};
 
 
 class RENDERER_CORE_API Renderer
@@ -62,6 +55,9 @@ public:
 	static SamplersCache&						GetSamplersCache();
 	
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
+
+	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
+	static void									FlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);
 
 	static void									PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 

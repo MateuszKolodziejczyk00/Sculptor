@@ -15,6 +15,7 @@
 #include "RHIBridge/RHISemaphoreImpl.h"
 #include "RHIBridge/RHICommandBufferImpl.h"
 #include "EngineFrame.h"
+#include "JobSystem.h"
 
 
 namespace spt::rdr
@@ -35,6 +36,8 @@ SamplersCache samplersCache;
 OnRendererCleanupDelegate cleanupDelegate;
 
 DeviceQueuesManager deviceQueuesManager;
+
+GPUReleaseQueue releasesQueue;
 
 Uint64 currentFrameIdx = 0;
 
@@ -68,6 +71,7 @@ void Renderer::Uninitialize()
 	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
 
 	CurrentFrameContext::ReleaseAllResources();
+	FlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	GetOnRendererCleanupDelegate().Broadcast();
 
@@ -80,6 +84,7 @@ void Renderer::Uninitialize()
 	GetShadersManager().Uninitialize();
 
 	CurrentFrameContext::Shutdown();
+	FlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	rhi::RHI::Uninitialize();
 }
@@ -95,6 +100,8 @@ void Renderer::BeginFrame(Uint64 frameIdx)
 	{
 		CurrentFrameContext::FlushFrameReleases(frameIdx - renderedFramesInFlight);
 	}
+
+	FlushDeferredReleases();
 
 	priv::g_data.currentFrameIdx = frameIdx;
 }
@@ -128,6 +135,34 @@ SamplersCache& Renderer::GetSamplersCache()
 DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
 {
 	return priv::g_data.deviceQueuesManager;
+}
+
+void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)
+{
+	priv::g_data.releasesQueue.Enqueue(std::move(entry));
+}
+
+void Renderer::FlushDeferredReleases(EDeferredReleasesFlushFlags flags /*= EDeferredReleasesFlushFlags::Default*/)
+{
+	auto flushLambda = [queue = std::move(priv::g_data.releasesQueue.Flush())]() mutable
+	{
+		queue.Broadcast();
+	};
+
+	if (lib::HasAnyFlag(flags, EDeferredReleasesFlushFlags::Immediate))
+	{
+		GetDeviceQueuesManager().FlushSubmittedWorkloads();
+
+		flushLambda();
+	}
+	else
+	{
+		const js::Event gpuFlushedEvent = js::CreateEvent("On GPU Finished");
+
+		GetDeviceQueuesManager().SignalAfterFlushingPendingWork(gpuFlushedEvent);
+
+		js::Launch("Flush Deferred Releases", std::move(flushLambda), js::Prerequisites(gpuFlushedEvent));
+	}
 }
 
 void Renderer::PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)

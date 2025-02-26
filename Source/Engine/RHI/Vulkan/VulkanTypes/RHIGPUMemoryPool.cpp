@@ -5,12 +5,30 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIGPUMemoryPoolReleaseTicket =================================================================
+
+void RHIGPUMemoryPoolReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), handle.GetValue());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIGPUMemoryPool ==============================================================================
+
 RHIGPUMemoryPool::RHIGPUMemoryPool()
+	: m_allocation(VK_NULL_HANDLE)
 { }
 
 void RHIGPUMemoryPool::InitializeRHI(const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo)
 {
 	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(!IsValid());
 
 	// We don't need to set memory type mask - Vma will take care of it
 	VkMemoryRequirements memoryRequirements{};
@@ -25,16 +43,32 @@ void RHIGPUMemoryPool::InitializeRHI(const rhi::RHIMemoryPoolDefinition& definit
 	m_virtualAllocator.InitializeRHI(definition.size, definition.allocatorFlags);
 
 	m_allocationInfo = allocationInfo;
+
+	SPT_CHECK(IsValid());
 }
 
 void RHIGPUMemoryPool::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIGPUMemoryPoolReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
-	vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), m_allocation);
+RHIGPUMemoryPoolReleaseTicket RHIGPUMemoryPool::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
+
+	RHIGPUMemoryPoolReleaseTicket releaseTicket;
+	releaseTicket.handle = m_allocation;
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif SPT_RHI_DEBUG
+
 	m_allocation = VK_NULL_HANDLE;
 
-	m_virtualAllocator.ReleaseRHI();
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIGPUMemoryPool::IsValid() const

@@ -308,6 +308,24 @@ static VkImageAspectFlags GetVulkanAspect(rhi::ETextureAspect aspect)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHITextureReleaseTicket =======================================================================
+
+void RHITextureReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyImage(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+
+	if (allocation.IsValid())
+	{
+		vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocation.GetValue());
+		allocation.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHITexture ====================================================================================
 
 RHITexture::RHITexture()
@@ -369,35 +387,50 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 
 void RHITexture::ReleaseRHI()
 {
-	SPT_CHECK(!!IsValid());
+	RHITextureReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
+
+RHITextureReleaseTicket RHITexture::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
 	SPT_CHECK_MSG(!std::holds_alternative<rhi::RHIPlacedAllocation>(m_allocationHandle), "Placed allocations must be released manually before releasing resource!");
 
 	PreImageReleased();
 
+	VmaAllocation allocationToRelease = VK_NULL_HANDLE;
+	VkImage imageToRelease            = VK_NULL_HANDLE;
+
 	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
 	{
-		{
-			SPT_PROFILER_SCOPE("Vulkan Release Image");
+		imageToRelease = m_imageHandle;
 
-			m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
-			vkDestroyImage(VulkanRHI::GetDeviceHandle(), m_imageHandle, VulkanRHI::GetAllocationCallbacks());
-		}
+		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
 
 		if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 		{
-			SPT_PROFILER_SCOPE("Release committed allocation");
-
-			const VmaAllocation allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
-			SPT_CHECK(!!allocation);
-			vmaFreeMemory(VulkanRHI::GetAllocatorHandle(), allocation);
+			allocationToRelease = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
+			SPT_CHECK(!!allocationToRelease);
 		}
 	}
+
+	RHITextureReleaseTicket releaseTicket;
+	releaseTicket.handle     = imageToRelease;
+	releaseTicket.allocation = allocationToRelease;
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif SPT_RHI_DEBUG
 
 	m_imageHandle = VK_NULL_HANDLE;
 
 	m_definition       = rhi::TextureDefinition();
 	m_allocationInfo   = rhi::RHIAllocationInfo();
-	m_allocationHandle = rhi::RHIExternalAllocation();
+	m_allocationHandle = rhi::RHINullAllocation();
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHITexture::IsValid() const
@@ -640,6 +673,18 @@ rhi::RHIResourceAllocationHandle RHITextureMemoryOwner::ReleasePlacedAllocation(
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHITextureViewReleaseTicket ===================================================================
+
+void RHITextureViewReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyImageView(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHITextureView ================================================================================
 
 RHITextureView::RHITextureView()
@@ -681,18 +726,35 @@ void RHITextureView::InitializeRHI(const RHITexture& texture, const rhi::Texture
 	viewInfo.subresourceRange.layerCount        = m_subresourceRange.arrayLayersNum;
 
 	SPT_VK_CHECK(vkCreateImageView(VulkanRHI::GetDeviceHandle(), &viewInfo, VulkanRHI::GetAllocationCallbacks(), &m_viewHandle));
+
+	SPT_CHECK(IsValid());
 }
 
 void RHITextureView::ReleaseRHI()
 {
-	SPT_CHECK(!!m_viewHandle);
+	RHITextureViewReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
+
+RHITextureViewReleaseTicket RHITextureView::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
+
+	RHITextureViewReleaseTicket releaseTicket;
+	releaseTicket.handle = m_viewHandle;
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif // SPT_RHI_DEBUG
 
 	m_name.Reset(reinterpret_cast<Uint64>(m_viewHandle), VK_OBJECT_TYPE_IMAGE_VIEW);
 
-	vkDestroyImageView(VulkanRHI::GetDeviceHandle(), m_viewHandle, VulkanRHI::GetAllocationCallbacks());
-
 	m_viewHandle = VK_NULL_HANDLE;
 	m_texture = nullptr;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHITextureView::IsValid() const

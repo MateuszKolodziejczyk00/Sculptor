@@ -17,6 +17,18 @@ struct RHIAllocationInfo;
 namespace spt::vulkan
 {
 
+struct RHI_API RHIGPUMemoryPoolReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VmaAllocation> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIGPUMemoryPool
 {
 public:
@@ -25,6 +37,8 @@ public:
 
 	void InitializeRHI(const rhi::RHIMemoryPoolDefinition& definition, const rhi::RHIAllocationInfo& allocationInfo);
 	void ReleaseRHI();
+
+	RHIGPUMemoryPoolReleaseTicket DeferredReleaseRHI();
 
 	Bool IsValid() const;
 

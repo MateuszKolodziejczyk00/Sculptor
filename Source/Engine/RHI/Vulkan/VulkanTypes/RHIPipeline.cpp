@@ -529,6 +529,18 @@ void LogPipelineStatistics(const RHIPipeline& pipeline)
 } // helpers
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIPipelineReleaseTicket ======================================================================
+
+void RHIPipelineReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		helpers::ReleasePipelineResource(handle.GetValue());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIPipeline ===================================================================================
 
 RHIPipeline::RHIPipeline()
@@ -577,16 +589,30 @@ void RHIPipeline::InitializeRHI(const rhi::RayTracingShadersDefinition& shadersD
 
 void RHIPipeline::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIPipelineReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
+RHIPipelineReleaseTicket RHIPipeline::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
 
+	RHIPipelineReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif // SPT_RHI_DEBUG
+
 	m_debugName.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_PIPELINE);
-	helpers::ReleasePipelineResource(m_handle);
 	m_handle = VK_NULL_HANDLE;
 	m_pipelineType = rhi::EPipelineType::None;
 
 	m_layout.reset();
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIPipeline::IsValid() const

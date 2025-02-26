@@ -9,22 +9,32 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIQueryPoolReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkQueryPool> handle;
+};
+
+
 class RHI_API RHIQueryPool
 {
 public:
 
 	RHIQueryPool();
 
-	void			InitializeRHI(const rhi::QueryPoolDefinition& definition);
-	void			ReleaseRHI();
+	void InitializeRHI(const rhi::QueryPoolDefinition& definition);
+	void ReleaseRHI();
 
-	Bool			IsValid() const;
+	RHIQueryPoolReleaseTicket DeferredReleaseRHI();
 
-	VkQueryPool		GetHandle() const;
+	Bool IsValid() const;
 
-	Uint32			GetQueryCount() const;
+	VkQueryPool GetHandle() const;
 
-	void			Reset(Uint32 firstQuery, Uint32 queryCount);
+	Uint32 GetQueryCount() const;
+
+	void Reset(Uint32 firstQuery, Uint32 queryCount);
 
 	lib::DynamicArray<Uint64> GetResults(Uint32 queryCount) const;
 

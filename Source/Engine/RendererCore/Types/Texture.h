@@ -20,7 +20,7 @@ class TextureView;
 class GPUMemoryPool;
 
 
-class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>, public rhi::RHITextureMemoryOwner
+class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>, private rhi::RHITextureMemoryOwner
 {
 protected:
 
@@ -58,6 +58,7 @@ protected:
 public:
 
 	TextureView(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
+	~TextureView();
 
 	const lib::SharedRef<Texture>& GetTexture() const;
 

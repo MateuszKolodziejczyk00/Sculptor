@@ -9,18 +9,28 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHISamplerReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkSampler> handle;
+};
+
+
 class RHI_API RHISampler
 {
 public:
 
 	RHISampler();
 
-	void			InitializeRHI(const rhi::SamplerDefinition& def);
-	void			ReleaseRHI();
+	void InitializeRHI(const rhi::SamplerDefinition& def);
+	void ReleaseRHI();
 
-	Bool			IsValid() const;
+	RHISamplerReleaseTicket DeferredReleaseRHI();
 
-	VkSampler		GetHandle() const;
+	Bool IsValid() const;
+
+	VkSampler GetHandle() const;
 
 private:
 

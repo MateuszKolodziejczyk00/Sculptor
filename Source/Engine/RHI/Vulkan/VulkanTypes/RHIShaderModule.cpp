@@ -4,6 +4,21 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIShaderModuleReleaseTicket ==================================================================
+
+void RHIShaderModuleReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyShaderModule(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIShaderModule ===============================================================================
+
 RHIShaderModule::RHIShaderModule()
 	: m_handle(VK_NULL_HANDLE)
 	, m_stage(rhi::EShaderStage::Vertex)
@@ -24,18 +39,33 @@ void RHIShaderModule::InitializeRHI(const rhi::ShaderModuleDefinition& definitio
 
 void RHIShaderModule::ReleaseRHI()
 {
+	RHIShaderModuleReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
+
+RHIShaderModuleReleaseTicket RHIShaderModule::DeferredReleaseRHI()
+{
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(IsValid());
 
-	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_SHADER_MODULE);
+	RHIShaderModuleReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
 
-	vkDestroyShaderModule(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif SPT_RHI_DEBUG
+
+	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_SHADER_MODULE);
 	
 	m_stage = rhi::EShaderStage::None;
 	m_entryPoint.Reset();
 
 	m_handle = VK_NULL_HANDLE;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIShaderModule::IsValid() const
@@ -68,4 +98,4 @@ VkShaderModule RHIShaderModule::GetHandle() const
 	return m_handle;
 }
 
-}
+} // spt::vulkan

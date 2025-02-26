@@ -11,6 +11,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIAccelerationStructureReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkAccelerationStructureKHR> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIAccelerationStructure
 {
 public:
@@ -30,7 +42,7 @@ public:
 
 protected:
 
-	void OnReleaseRHI();
+	RHIAccelerationStructureReleaseTicket DeferredReleaseInternal();
 
 	VkAccelerationStructureKHR m_handle;
 
@@ -49,6 +61,8 @@ public:
 
 	void InitializeRHI(const rhi::BLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset);
 	void ReleaseRHI();
+
+	RHIAccelerationStructureReleaseTicket DeferredReleaseRHI();
 
 	Uint64 GetDeviceAddress() const;
 
@@ -73,6 +87,8 @@ public:
 
 	void InitializeRHI(const rhi::TLASDefinition& definition, INOUT RHIBuffer& accelerationStructureBuffer, INOUT Uint64& accelerationStructureBufferOffset, OUT RHIBuffer& instancesBuildBuffer);
 	void ReleaseRHI();
+
+	RHIAccelerationStructureReleaseTicket DeferredReleaseRHI();
 
 	VkAccelerationStructureBuildGeometryInfoKHR CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const;
 

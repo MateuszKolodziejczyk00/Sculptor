@@ -11,6 +11,19 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHITextureReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkImage> handle;
+	RHIResourceReleaseTicket<VmaAllocation> allocation;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHITexture
 {
 public:
@@ -20,6 +33,8 @@ public:
 	void							InitializeRHI(const rhi::TextureDefinition& definition, VkImage imageHandle, rhi::EMemoryUsage memoryUsage);
 	void							InitializeRHI(const rhi::TextureDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef);
 	void							ReleaseRHI();
+
+	RHITextureReleaseTicket			DeferredReleaseRHI();
 
 	Bool							IsValid() const;
 
@@ -90,6 +105,18 @@ protected:
 };
 
 
+struct RHI_API RHITextureViewReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkImageView> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHITextureView
 {
 public:
@@ -98,6 +125,8 @@ public:
 
 	void								InitializeRHI(const RHITexture& texture, const rhi::TextureViewDefinition& viewDefinition);
 	void								ReleaseRHI();
+
+	RHITextureViewReleaseTicket			DeferredReleaseRHI();
 
 	Bool								IsValid() const;
 	

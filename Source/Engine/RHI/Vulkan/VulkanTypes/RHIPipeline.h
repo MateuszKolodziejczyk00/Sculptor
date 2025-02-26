@@ -11,6 +11,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIPipelineReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkPipeline> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIPipeline
 {
 public:
@@ -27,6 +39,8 @@ public:
 	void InitializeRHI(const rhi::RayTracingShadersDefinition& shadersDef, const rhi::RayTracingPipelineDefinition& pipelineDef, const rhi::PipelineLayoutDefinition& layoutDefinition);
 
 	void ReleaseRHI();
+
+	RHIPipelineReleaseTicket DeferredReleaseRHI();
 
 	SPT_NODISCARD Bool IsValid() const;
 

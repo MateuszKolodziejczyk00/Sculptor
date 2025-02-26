@@ -38,6 +38,24 @@ PFN_vkVoidFunction LoadVulkanFunction(const char* functionName, void* userData)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIWindowReleaseTicket ========================================================================
+
+void RHIWindowReleaseTicket::ExecuteReleaseRHI()
+{
+	if (swapchain.IsValid())
+	{
+		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), swapchain.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		swapchain.Reset();
+	}
+
+	if (surface.IsValid())
+	{
+		vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), surface.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		surface.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIWindow =====================================================================================
 
 RHIWindow::RHIWindow()
@@ -131,17 +149,30 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 void RHIWindow::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIWindowReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
-	SPT_CHECK(!!IsValid());
+RHIWindowReleaseTicket RHIWindow::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
 
-	ReleaseSwapchain();
+	RHIWindowReleaseTicket releaseTicket;
+	releaseTicket.surface   = m_surface;
+	releaseTicket.swapchain = m_swapchain;
 
-	if (m_surface != VK_NULL_HANDLE)
 	{
-		vkDestroySurfaceKHR(VulkanRHI::GetInstanceHandle(), m_surface, VulkanRHI::GetAllocationCallbacks());
-		m_surface = VK_NULL_HANDLE;
+		const lib::LockGuard lock(m_swapchainLock);
+
+		ReleaseSwapchainImages_Locked();
 	}
+
+	m_surface   = VK_NULL_HANDLE;
+	m_swapchain = VK_NULL_HANDLE;
+	
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIWindow::IsValid() const
@@ -153,7 +184,6 @@ Bool RHIWindow::IsSwapchainValid() const
 {
 	return m_swapchain != VK_NULL_HANDLE;
 }
-
 
 Uint32 RHIWindow::AcquireSwapchainImage(const RHISemaphore& acquireSemaphore, Uint64 timeout /*= idxNone<Uint64>*/)
 {
@@ -275,21 +305,6 @@ void RHIWindow::RebuildSwapchain(math::Vector2u framebufferSize, IntPtr surfaceH
 	m_swapchainOutOfDate = false;
 }
 
-void RHIWindow::ReleaseSwapchain()
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::LockGuard lock(m_swapchainLock);
-
-	ReleaseSwapchainImages_Locked();
-
-	if (m_swapchain != VK_NULL_HANDLE)
-	{
-		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
-		m_swapchain = VK_NULL_HANDLE;
-	}
-}
-
 math::Vector2u RHIWindow::GetSwapchainSize() const
 {
 	return m_swapchainSize;
@@ -322,6 +337,21 @@ VkFormat RHIWindow::GetSurfaceFormat() const
 VkSwapchainKHR RHIWindow::GetSwapchainHandle() const
 {
 	return m_swapchain;
+}
+
+void RHIWindow::ReleaseSwapchain()
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_swapchainLock);
+
+	ReleaseSwapchainImages_Locked();
+
+	if (m_swapchain != VK_NULL_HANDLE)
+	{
+		vkDestroySwapchainKHR(VulkanRHI::GetDeviceHandle(), m_swapchain, VulkanRHI::GetAllocationCallbacks());
+		m_swapchain = VK_NULL_HANDLE;
+	}
 }
 
 VkSwapchainKHR RHIWindow::CreateSwapchain_Locked(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain)

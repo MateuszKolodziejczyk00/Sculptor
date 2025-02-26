@@ -11,6 +11,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHISemaphoreReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkSemaphore> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHISemaphore
 {
 public:
@@ -19,6 +31,8 @@ public:
 
 	void						InitializeRHI(const rhi::SemaphoreDefinition& definition);
 	void						ReleaseRHI();
+
+	RHISemaphoreReleaseTicket	DeferredReleaseRHI();
 
 	Bool						IsValid() const;
 

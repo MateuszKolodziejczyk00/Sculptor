@@ -78,6 +78,19 @@ public:
 };
 
 
+struct RHI_API RHIBufferReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkBuffer> handle;
+	RHIResourceReleaseTicket<VmaAllocation> allocation;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIBuffer
 {
 public:
@@ -86,6 +99,8 @@ public:
 
 	void						InitializeRHI(const rhi::BufferDefinition& definition, const rhi::RHIResourceAllocationDefinition& allocationDef);
 	void						ReleaseRHI();
+
+	RHIBufferReleaseTicket		DeferredReleaseRHI();
 
 	Bool						IsValid() const;
 

@@ -7,7 +7,6 @@
 #include "Engine.h"
 #include "JobSystem.h"
 
-
 namespace spt::rdr
 {
 
@@ -82,6 +81,9 @@ void SubmittedWorkloadsQueue::Initialize()
 void SubmittedWorkloadsQueue::Uninitialize()
 {
 	m_flushThreadRunning.store(false);
+
+	m_flushThreadWakeSemaphore.release();
+
 	m_flushThread.Join();
 }
 
@@ -91,7 +93,7 @@ void SubmittedWorkloadsQueue::Push(lib::SharedRef<GPUWorkload> workload)
 
 	{
 		const lib::LockGuard lock(m_submittedWorkloadsLock);
-		m_submittedWorkloadsQueue.push(std::move(workload));
+		m_submittedWorkloadsQueue.emplace_back(std::move(workload));
 	}
 
 	m_flushThreadWakeSemaphore.release();
@@ -104,7 +106,7 @@ void SubmittedWorkloadsQueue::FullFlush()
 	while (!m_submittedWorkloadsQueue.empty())
 	{
 		lib::SharedRef<GPUWorkload> workload = std::move(m_submittedWorkloadsQueue.front());
-		m_submittedWorkloadsQueue.pop();
+		m_submittedWorkloadsQueue.pop_front();
 
 		workload->Wait();
 
@@ -113,6 +115,20 @@ void SubmittedWorkloadsQueue::FullFlush()
 				   {
 					   finishedWorkload->OnExecutionFinished();
 				   });
+	}
+}
+
+void SubmittedWorkloadsQueue::SignalAfterFlushedPendingWork(const js::Event& event)
+{
+	const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+	if (m_submittedWorkloadsQueue.empty())
+	{
+		event.Signal();
+	}
+	else
+	{
+		m_submittedWorkloadsQueue[m_submittedWorkloadsQueue.size() - 1u]->BindEvent(std::move(event));
 	}
 }
 
@@ -134,13 +150,18 @@ void SubmittedWorkloadsQueue::FlushThreadMain()
 				continue;
 			}
 
-			workload = std::move(m_submittedWorkloadsQueue.front());
-			m_submittedWorkloadsQueue.pop();
+			workload = *m_submittedWorkloadsQueue.begin();
 		}
 
 		SPT_CHECK(!!workload);
 
 		workload->Wait();
+
+		{
+			const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+			m_submittedWorkloadsQueue.pop_front();
+		}
 
 		js::Launch(SPT_GENERIC_JOB_NAME,
 				   [finishedWorkload = std::move(workload)]()
@@ -199,6 +220,11 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 void DeviceQueuesManager::FlushSubmittedWorkloads()
 {
 	m_submittedWorkloadsQueue.FullFlush();
+}
+
+void DeviceQueuesManager::SignalAfterFlushingPendingWork(const js::Event& event)
+{
+	m_submittedWorkloadsQueue.SignalAfterFlushedPendingWork(event);
 }
 
 void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)

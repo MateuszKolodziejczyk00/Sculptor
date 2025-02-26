@@ -4,6 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "CurrentFrameContext.h"
 #include "RHICore/RHIAllocationTypes.h"
+#include "GPUReleaseQueue.h"
 
 
 namespace spt::rdr
@@ -12,58 +13,93 @@ namespace spt::rdr
 class GPUMemoryPool;
 
 
+namespace RHITraits
+{
+
+template<typename TType>
+constexpr bool ShouldUseDeferredRelease()
+{
+	return requires(const TType& res)
+	{
+		{ res.DeferredReleaseRHI() };
+	};
+}
+
+} // RHITraits
+
+
+class RendererResourceBase
+{
+protected:
+
+	static void DeferRelease(GPUReleaseQueue::ReleaseEntry entry);
+};
+
+
 template<typename TRHIType, Bool deferredReleaseRHI = true>
-class RendererResource
+class RendererResource : public RendererResourceBase
 {
 public:
 
-	using RHIType	= TRHIType;
-	using ThisType	= RendererResource<RHIType, deferredReleaseRHI>;
+	using RHIType  = TRHIType;
+	using ThisType = RendererResource<RHIType, deferredReleaseRHI>;
 
-	RendererResource()							= default;
-	RendererResource(const ThisType& rhs)		= delete;
-	RendererResource(ThisType&& rhs)			= delete;
+	RendererResource()                    = default;
+	RendererResource(const ThisType& rhs) = delete;
+	RendererResource(ThisType&& rhs)      = delete;
 
-	ThisType& operator=(const ThisType& rhs)	= delete;
-	ThisType& operator=(ThisType&& rhs)			= delete;
+	ThisType& operator=(const ThisType& rhs) = delete;
+	ThisType& operator=(ThisType&& rhs)      = delete;
 	
 	~RendererResource();
 
-	inline RHIType&			GetRHI()
+	inline RHIType& GetRHI()
 	{
 		return m_rhiResource;
 	}
 
-	inline const RHIType&	GetRHI() const
+	inline const RHIType& GetRHI() const
 	{
 		return m_rhiResource;
 	}
+
+protected:
+
+	void ReleaseRHI();
 
 private:
 
-	RHIType		m_rhiResource;
+	RHIType m_rhiResource;
 };
 
 
 template<typename TRHIType, Bool deferredReleaseRHI /*= true*/>
-RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
+inline RendererResource<TRHIType, deferredReleaseRHI>::~RendererResource()
 {
-	SPT_CHECK(m_rhiResource.IsValid());
-
-	if constexpr (deferredReleaseRHI)
+	if (m_rhiResource.IsValid())
 	{
-		CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
-		[resource = std::move(m_rhiResource)]() mutable
-		{
-			resource.ReleaseRHI();
-		});
+		ReleaseRHI();
+	}
+
+	SPT_CHECK(!m_rhiResource.IsValid());
+}
+
+template<typename TRHIType, Bool deferredReleaseRHI /*= true*/>
+inline void RendererResource<TRHIType, deferredReleaseRHI>::ReleaseRHI()
+{
+	if constexpr (RHITraits::ShouldUseDeferredRelease<TRHIType>())
+	{
+		DeferRelease(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+			[releaseTicket = std::move(m_rhiResource.DeferredReleaseRHI())]() mutable
+			{
+				releaseTicket.ExecuteReleaseRHI();
+			}));
 	}
 	else
 	{
 		m_rhiResource.ReleaseRHI();
 	}
 }
-
 
 struct NullAllocationDef { };
 

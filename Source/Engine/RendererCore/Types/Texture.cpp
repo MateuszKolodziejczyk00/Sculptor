@@ -98,6 +98,12 @@ TextureView::TextureView(const RendererResourceName& name, const lib::SharedRef<
 	GetRHI().SetName(name.Get());
 }
 
+TextureView::~TextureView()
+{
+	// Make sure that view will be destroyed before the texture if this view holds last ref
+	ReleaseRHI();
+}
+
 const lib::SharedRef<Texture>& TextureView::GetTexture() const
 {
 	return m_texture;

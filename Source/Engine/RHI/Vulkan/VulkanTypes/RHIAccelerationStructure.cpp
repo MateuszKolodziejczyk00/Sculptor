@@ -7,6 +7,18 @@ namespace spt::vulkan
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIAccelerationStructureReleaseTicket =========================================================
+
+void RHIAccelerationStructureReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), handle.GetValue(), nullptr);
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIAccelerationStructure ======================================================================
 
 RHIAccelerationStructure::RHIAccelerationStructure()
@@ -51,20 +63,29 @@ VkAccelerationStructureBuildRangeInfoKHR RHIAccelerationStructure::CreateBuildRa
 	return buildRangeInfo;
 }
 
-void RHIAccelerationStructure::OnReleaseRHI()
+RHIAccelerationStructureReleaseTicket RHIAccelerationStructure::DeferredReleaseInternal()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (IsValid())
-	{
-		m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR);
+	SPT_CHECK(IsValid());
 
-		vkDestroyAccelerationStructureKHR(VulkanRHI::GetDeviceHandle(), m_handle, nullptr);
-		m_handle = VK_NULL_HANDLE;
+	RHIAccelerationStructureReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
 
-		m_buildScratchSize	= 0;
-		m_primitivesCount	= 0;
-	}
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif // SPT_RHI_DEBUG
+
+	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+	m_handle = VK_NULL_HANDLE;
+
+	m_buildScratchSize	= 0;
+	m_primitivesCount	= 0;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,14 +146,20 @@ void RHIBottomLevelAS::InitializeRHI(const rhi::BLASDefinition& definition, INOU
 
 void RHIBottomLevelAS::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIAccelerationStructureReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
-	OnReleaseRHI();
+RHIAccelerationStructureReleaseTicket RHIBottomLevelAS::DeferredReleaseRHI()
+{
+	RHIAccelerationStructureReleaseTicket releaseTicket = DeferredReleaseInternal();
 
 	m_locationsDeviceAddress	= 0;
 	m_maxVerticesNum			= 0;
 	m_indicesDeviceAddress		= 0;
 	m_geometryFlags				= 0;
+
+	return releaseTicket;
 }
 
 Uint64 RHIBottomLevelAS::GetDeviceAddress() const
@@ -245,9 +272,13 @@ void RHITopLevelAS::InitializeRHI(const rhi::TLASDefinition& definition, INOUT R
 
 void RHITopLevelAS::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHIAccelerationStructureReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
-	OnReleaseRHI();
+RHIAccelerationStructureReleaseTicket RHITopLevelAS::DeferredReleaseRHI()
+{
+	return DeferredReleaseInternal();
 }
 
 VkAccelerationStructureBuildGeometryInfoKHR RHITopLevelAS::CreateBuildGeometryInfo(const RHIBuffer& instancesBuildBuffer, OUT VkAccelerationStructureGeometryKHR& geometry) const

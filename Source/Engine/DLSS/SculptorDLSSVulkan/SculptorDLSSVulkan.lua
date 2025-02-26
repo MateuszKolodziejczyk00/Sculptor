@@ -5,6 +5,8 @@ function SculptorDLSSVulkan:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RenderGraph")
 
     self:AddPublicDefine("SPT_DLSS_VULKAN_BACKEND=1")
+
+    self:AddPublicDefine("NGX_ENABLE_DEPRECATED_SHUTDOWN=1")
 end
 
 SculptorDLSSVulkan:SetupProject()

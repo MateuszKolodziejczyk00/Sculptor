@@ -14,6 +14,16 @@ class RHISemaphore;
 class RHISemaphoresArray;
 
 
+struct RHI_API RHIWindowReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkSwapchainKHR> swapchain;
+
+	RHIResourceReleaseTicket<VkSurfaceKHR> surface;
+};
+
+
 class RHI_API RHIWindow
 {
 public:
@@ -21,13 +31,15 @@ public:
 	RHIWindow();
 
 	RHIWindow(RHIWindow&& rhs);
-	RHIWindow&					operator=(RHIWindow&& rhs);
+	RHIWindow& operator=(RHIWindow&& rhs);
 
 	RHIWindow(const RHIWindow& rhs) = delete;
 	RHIWindow&					operator=(const RHIWindow& rhs) = delete;
 
 	void						InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo, Uint32 minImagesCount, IntPtr surfaceHandle);
 	void						ReleaseRHI();
+
+	RHIWindowReleaseTicket		DeferredReleaseRHI();
 
 	Bool						IsValid() const;
 	Bool						IsSwapchainValid() const;
@@ -44,8 +56,6 @@ public:
 	Bool						IsSwapchainOutOfDate() const;
 	void						RebuildSwapchain(math::Vector2u framebufferSize, IntPtr surfaceHandle);
 
-	void						ReleaseSwapchain();
-
 	math::Vector2u				GetSwapchainSize() const;
 
 	Bool						IsVSyncEnabled() const;
@@ -60,6 +70,8 @@ public:
 	VkSwapchainKHR				GetSwapchainHandle() const;
 
 private:
+
+	void						ReleaseSwapchain();
 
 	VkSwapchainKHR				CreateSwapchain_Locked(math::Vector2u framebufferSize, VkSwapchainKHR oldSwapchain);
 

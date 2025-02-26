@@ -40,6 +40,7 @@ VkCommandBufferUsageFlags GetVulkanCommandBufferUsageFlags(rhi::ECommandBufferBe
 
 } // priv
 
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHICommandBuffer ==============================================================================
 

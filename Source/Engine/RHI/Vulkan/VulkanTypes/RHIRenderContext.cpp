@@ -18,6 +18,21 @@ static rhi::ContextID GenerateID()
 
 } // priv
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIRenderContextReleaseTicket =================================================================
+
+void RHIRenderContextReleaseTicket::ExecuteReleaseRHI()
+{
+	if (commandPoolsLibrary.IsValid())
+	{
+		VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::unique_ptr<CommandPoolsLibrary>(commandPoolsLibrary.GetValue()));
+		commandPoolsLibrary.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIRenderContext ==============================================================================
+
 RHIRenderContext::RHIRenderContext()
 	: m_id(idxNone<rhi::ContextID>)
 { }
@@ -29,19 +44,36 @@ RHIRenderContext& RHIRenderContext::operator=(RHIRenderContext&& rhs) = default;
 
 void RHIRenderContext::InitializeRHI(const rhi::ContextDefinition& definition)
 {
+	SPT_CHECK(!IsValid());
+
 	m_id = priv::GenerateID();
+
+	SPT_CHECK(IsValid());
 }
 
 void RHIRenderContext::ReleaseRHI()
 {
+	RHIRenderContextReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
+
+RHIRenderContextReleaseTicket RHIRenderContext::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
+
+	RHIRenderContextReleaseTicket releaseTicket;
+	releaseTicket.commandPoolsLibrary = m_commandPoolsLibrary.release();
+
+#if SPT_RHI_DEBUG
+	releaseTicket.name = GetName();
+#endif // SPT_RHI_DEBUG
+
 	m_id = idxNone<rhi::ContextID>;
-
-	if (m_commandPoolsLibrary)
-	{
-		VulkanRHI::GetCommandPoolsManager().ReleaseCommandPoolsLibrary(std::move(m_commandPoolsLibrary));
-	}
-
 	m_name.Reset(0, VK_OBJECT_TYPE_UNKNOWN);
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIRenderContext::IsValid() const

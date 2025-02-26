@@ -10,6 +10,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIDescriptorSetLayoutReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkDescriptorSetLayout> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIDescriptorSetLayout
 {
 public:
@@ -18,6 +30,8 @@ public:
 
 	void InitializeRHI(const rhi::DescriptorSetDefinition& def);
 	void ReleaseRHI();
+
+	RHIDescriptorSetLayoutReleaseTicket DeferredReleaseRHI();
 
 	Bool IsValid() const;
 

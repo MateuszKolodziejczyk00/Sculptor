@@ -9,6 +9,18 @@
 namespace spt::vulkan
 {
 
+struct RHI_API RHIEventReleaseTicket
+{
+	void ExecuteReleaseRHI();
+
+	RHIResourceReleaseTicket<VkEvent> handle;
+
+#if SPT_RHI_DEBUG
+	lib::HashedString name;
+#endif // SPT_RHI_DEBUG
+};
+
+
 class RHI_API RHIEvent
 {
 public:
@@ -17,6 +29,8 @@ public:
 
 	void						InitializeRHI(const rhi::EventDefinition& definition);
 	void						ReleaseRHI();
+
+	RHIEventReleaseTicket		DeferredReleaseRHI();
 
 	Bool						IsValid() const;
 

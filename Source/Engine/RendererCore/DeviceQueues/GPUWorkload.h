@@ -79,6 +79,8 @@ private:
 
 	std::atomic<Uint32> m_remainingPrerequisitesNum;
 
+	Bool m_isFinalized = false;
+
 	lib::DynamicArray<GPUWorkload*> m_subsequents;
 
 	SemaphoresArray m_waitSemaphores;

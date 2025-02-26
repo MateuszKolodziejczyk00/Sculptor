@@ -5,6 +5,21 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIDescriptorSetStackAllocatorReleaseTicket ===================================================
+
+void RHIDescriptorSetStackAllocatorReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(lib::UniquePtr<DescriptorPoolSet>(handle.GetValue()));
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIDescriptorSetStackAllocator ================================================================
+
 RHIDescriptorSetStackAllocator::RHIDescriptorSetStackAllocator()
 	: m_poolSet(nullptr)
 {
@@ -18,16 +33,28 @@ void RHIDescriptorSetStackAllocator::InitializeRHI()
 
 	lib::UniquePtr<DescriptorPoolSet> poolSet = RHIDescriptorSetManager::GetInstance().AcquireDescriptorPoolSet();
 	m_poolSet = poolSet.release();
+	
+	SPT_CHECK(IsValid());
 }
 
 void RHIDescriptorSetStackAllocator::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
-	
+	RHIDescriptorSetStackAllocatorReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
+
+RHIDescriptorSetStackAllocatorReleaseTicket RHIDescriptorSetStackAllocator::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
 
-	RHIDescriptorSetManager::GetInstance().ReleaseDescriptorPoolSet(lib::UniquePtr<DescriptorPoolSet>(m_poolSet));
+	RHIDescriptorSetStackAllocatorReleaseTicket releaseTicket;
+	releaseTicket.handle = m_poolSet;
+
 	m_poolSet = nullptr;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHIDescriptorSetStackAllocator::IsValid() const

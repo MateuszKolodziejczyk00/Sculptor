@@ -5,6 +5,21 @@
 namespace spt::vulkan
 {
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHISamplerReleaseTicket =======================================================================
+
+void RHISamplerReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroySampler(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHISampler ====================================================================================
+
 RHISampler::RHISampler()
 	: m_handle(VK_NULL_HANDLE)
 { }
@@ -47,12 +62,22 @@ void RHISampler::InitializeRHI(const rhi::SamplerDefinition& def)
 
 void RHISampler::ReleaseRHI()
 {
-	SPT_PROFILER_FUNCTION();
+	RHISamplerReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
+}
 
+RHISamplerReleaseTicket RHISampler::DeferredReleaseRHI()
+{
 	SPT_CHECK(IsValid());
 
-	vkDestroySampler(VulkanRHI::GetDeviceHandle(), m_handle, VulkanRHI::GetAllocationCallbacks());
+	RHISamplerReleaseTicket releaseTicket;
+	releaseTicket.handle = m_handle;
+
 	m_handle = VK_NULL_HANDLE;
+
+	SPT_CHECK(!IsValid());
+
+	return releaseTicket;
 }
 
 Bool RHISampler::IsValid() const

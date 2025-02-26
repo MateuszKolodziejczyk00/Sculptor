@@ -26,6 +26,18 @@ VkSemaphoreType GetVulkanSemaphoreType(rhi::ESemaphoreType type)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// RHISemaphoreReleaseTicket =====================================================================
+
+void RHISemaphoreReleaseTicket::ExecuteReleaseRHI()
+{
+	if (handle.IsValid())
+	{
+		vkDestroySemaphore(VulkanRHI::GetDeviceHandle(), handle.GetValue(), VulkanRHI::GetAllocationCallbacks());
+		handle.Reset();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // RHISemaphore ==================================================================================
 
 RHISemaphore::RHISemaphore()
@@ -53,13 +65,29 @@ void RHISemaphore::ReleaseRHI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (m_semaphore)
-	{
-		m_name.Reset(reinterpret_cast<Uint64>(m_semaphore), VK_OBJECT_TYPE_SEMAPHORE);
+	RHISemaphoreReleaseTicket releaseTicket = DeferredReleaseRHI();
+	releaseTicket.ExecuteReleaseRHI();
 
-		vkDestroySemaphore(VulkanRHI::GetDeviceHandle(), m_semaphore, VulkanRHI::GetAllocationCallbacks());
-		m_semaphore = VK_NULL_HANDLE;
-	}
+	SPT_CHECK(!IsValid());
+}
+
+RHISemaphoreReleaseTicket RHISemaphore::DeferredReleaseRHI()
+{
+	SPT_CHECK(IsValid());
+
+	RHISemaphoreReleaseTicket ticket;
+	ticket.handle = m_semaphore;
+
+#if SPT_RHI_DEBUG
+	ticket.name = GetName();
+#endif // SPT_RHI_DEBUG
+
+	m_name.Reset(reinterpret_cast<Uint64>(m_semaphore), VK_OBJECT_TYPE_SEMAPHORE);
+	m_semaphore = VK_NULL_HANDLE;
+
+	SPT_CHECK(!IsValid());
+
+	return ticket;
 }
 
 Bool RHISemaphore::IsValid() const
@@ -129,6 +157,7 @@ VkSemaphore RHISemaphore::GetHandle() const
 {
 	return m_semaphore;
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHISemaphore ==================================================================================
