@@ -192,11 +192,11 @@ void DescriptorSetState::SwapDescriptorSet(rhi::RHIDescriptorSet newDescriptorSe
 		// We need to free descriptor set if it was allocated from global pool
 		if (!m_stackAllocator)
 		{
-			CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda(
+			Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 				[ds = m_descriptorSet]
 				{
 					rhi::RHI::FreeDescriptorSet(ds);
-				});
+				}));
 		}
 	}
 

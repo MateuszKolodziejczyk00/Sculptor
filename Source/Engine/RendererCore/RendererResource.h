@@ -2,7 +2,6 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "CurrentFrameContext.h"
 #include "RHICore/RHIAllocationTypes.h"
 #include "GPUReleaseQueue.h"
 

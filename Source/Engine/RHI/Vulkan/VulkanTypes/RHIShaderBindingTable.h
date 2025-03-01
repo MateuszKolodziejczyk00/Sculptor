@@ -11,6 +11,11 @@ namespace spt::vulkan
 class RHIPipeline;
 
 
+struct RHI_API RHIShaderBindingTableReleaseTicket : public RHIBufferReleaseTicket
+{
+};
+
+
 class RHI_API RHIShaderBindingTable
 {
 public:
@@ -19,6 +24,8 @@ public:
 
 	void InitializeRHI(const RHIPipeline& pipeline, const rhi::RayTracingShadersDefinition& shadersDef);
 	void ReleaseRHI();
+
+	RHIShaderBindingTableReleaseTicket DeferredReleaseRHI();
 
 	const VkStridedDeviceAddressRegionKHR& GetRayGenRegion() const;
 	const VkStridedDeviceAddressRegionKHR& GetClosestHitRegion() const;

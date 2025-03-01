@@ -17,6 +17,54 @@ class Semaphore;
 class GPUWorkload;
 
 
+struct GPUTimelineSection
+{
+	GPUTimelineSection() = default;
+
+	explicit GPUTimelineSection(Uint64 value)
+		: value(value)
+	{
+	}
+
+	Bool operator==(const GPUTimelineSection& other) const
+	{
+		return value == other.value;
+	}
+
+	Bool operator!=(const GPUTimelineSection& other) const
+	{
+		return value != other.value;
+	}
+
+	Bool operator<(const GPUTimelineSection& other) const
+	{
+		return value < other.value;
+	}
+
+	Bool operator<=(const GPUTimelineSection& other) const
+	{
+		return value <= other.value;
+	}
+
+	Bool operator>(const GPUTimelineSection& other) const
+	{
+		return value > other.value;
+	}
+
+	Bool operator>=(const GPUTimelineSection& other) const
+	{
+		return value >= other.value;
+	}
+
+	Bool IsValid() const
+	{
+		return value != 0u;
+	}
+
+	Uint64 value = 0u;
+};
+
+
 enum class EGPUWorkloadSubmitFlags
 {
 	None                     = 0,
@@ -88,7 +136,15 @@ public:
 
 	void SignalAfterFlushedPendingWork(const js::Event& event);
 
+	GPUTimelineSection GetSubmittedSection() const;
+	GPUTimelineSection GetExecutedSection() const;
+	GPUTimelineSection GetRecordedSection() const;
+
+	void AdvanceGPUTimelineSection();
+
 private:
+
+	void SignalAfterFlushedPendingWork_Locked(const js::Event& event);
 
 	void FlushThreadMain();
 
@@ -99,6 +155,9 @@ private:
 	lib::Thread                               m_flushThread;
 	std::atomic<Bool>                         m_flushThreadRunning;
 	std::counting_semaphore<maxValue<IntPtr>> m_flushThreadWakeSemaphore;
+
+	GPUTimelineSection m_submissionSection;
+	GPUTimelineSection m_executionSection;
 };
 
 
@@ -116,6 +175,16 @@ public:
 	void FlushSubmittedWorkloads();
 
 	void SignalAfterFlushingPendingWork(const js::Event& event);
+
+	GPUTimelineSection GetLastSubmittedSection() const;
+	GPUTimelineSection GetLastExecutedSection() const;
+
+	GPUTimelineSection GetRecordedSection() const;
+
+	Bool IsSubmitted(GPUTimelineSection section) const;
+	Bool IsExecuted(GPUTimelineSection section) const;
+
+	void AdvanceGPUTimelineSection();
 
 private:
 

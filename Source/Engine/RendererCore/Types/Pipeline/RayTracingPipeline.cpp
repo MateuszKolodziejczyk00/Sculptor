@@ -1,6 +1,6 @@
 #include "RayTracingPipeline.h"
+#include "Renderer.h"
 #include "Types/Shader.h"
-#include "CurrentFrameContext.h"
 
 namespace spt::rdr
 {
@@ -55,10 +55,10 @@ RayTracingPipeline::~RayTracingPipeline()
 {
 	SPT_PROFILER_FUNCTION();
 
-	CurrentFrameContext::GetCurrentFrameCleanupDelegate().AddLambda([ resource = m_shaderBindingTable ]() mutable
-																	{
-																		resource.ReleaseRHI();
-																	});
+	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda([resource = std::move(m_shaderBindingTable.DeferredReleaseRHI())]() mutable
+																		  {
+																			  resource.ExecuteReleaseRHI();
+																		  }));
 }
 
 const spt::rhi::RHIShaderBindingTable& RayTracingPipeline::GetShaderBindingTable() const

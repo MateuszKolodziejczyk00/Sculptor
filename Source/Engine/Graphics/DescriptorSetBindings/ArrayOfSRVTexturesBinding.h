@@ -25,7 +25,7 @@ public:
 	explicit ArrayOfSRVTexturesBinding(const lib::HashedString& name)
 		: Super(name)
 	{
-		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [ i = static_cast<Uint32>(arraySize) ]() mutable { return AvailableIndex{ --i, idxNone<Uint32> }; });
+		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [ i = static_cast<Uint32>(arraySize) ]() mutable { return AvailableIndex{ --i, rdr::GPUTimelineSection() }; });
 	}
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
@@ -92,7 +92,7 @@ public:
 		SPT_CHECK(textureArrayIdx != idxNone<Uint32>);
 		SPT_CHECK(std::find_if(std::cbegin(m_availableArrayIndices), std::cend(m_availableArrayIndices), [textureArrayIdx](const AvailableIndex& idx) { return idx.arrayIndex == textureArrayIdx; }) == std::cend(m_availableArrayIndices));
 		
-		m_availableArrayIndices.emplace_back(AvailableIndex{ textureArrayIdx, rdr::Renderer::GetCurrentFrameIdx() });
+		m_availableArrayIndices.emplace_back(AvailableIndex{ textureArrayIdx, rdr::Renderer::GetDeviceQueuesManager().GetRecordedSection() });
 
 		const auto boundTextureIt = std::find_if(std::cbegin(m_boundTextures), std::cend(m_boundTextures),
 												 [textureArrayIdx](const BoundTexture& boundTexture)
@@ -152,7 +152,7 @@ private:
 	struct AvailableIndex
 	{
 		Uint32 arrayIndex;
-		Uint64 lastUseFrameIdx;
+		rdr::GPUTimelineSection lastUseGPUSection;
 	};
 
 	Uint32 BindTextureImpl(BoundTexture textureToBind)
@@ -160,13 +160,10 @@ private:
 		SPT_CHECK(!m_availableArrayIndices.empty());
 		SPT_CHECK(textureToBind.rgTexture.IsValid() || !!textureToBind.textureInstance);
 
-		const Uint64 currentFrameIdx	= rdr::Renderer::GetCurrentFrameIdx();
-		const Uint64 framesInFlight		= rdr::RendererSettings::Get().framesInFlight;
-
 		const auto foundAvailableIdxIt = std::find_if(std::crbegin(m_availableArrayIndices), std::crend(m_availableArrayIndices),
 													  [ = ](const AvailableIndex& availableIdx)
 													  {
-														  return availableIdx.lastUseFrameIdx == idxNone<Uint32> || currentFrameIdx >= availableIdx.lastUseFrameIdx + framesInFlight;
+														  return rdr::Renderer::GetDeviceQueuesManager().IsExecuted(availableIdx.lastUseGPUSection);
 													  });
 
 		SPT_CHECK(foundAvailableIdxIt != std::crend(m_availableArrayIndices));

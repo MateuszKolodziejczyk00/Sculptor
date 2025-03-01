@@ -18,6 +18,7 @@ IncludeProject("MeshOptimizer")
 
 SetProjectsSubgroupName("Profiling")
 IncludeProject("PerformanceAPI")
+IncludeProject("PIX")
 ResetProjectsSubgroupName()
 
 SetProjectsSubgroupName("Grapgics")

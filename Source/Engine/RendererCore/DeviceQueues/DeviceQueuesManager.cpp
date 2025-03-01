@@ -85,6 +85,9 @@ void SubmittedWorkloadsQueue::Uninitialize()
 	m_flushThreadWakeSemaphore.release();
 
 	m_flushThread.Join();
+
+	SPT_CHECK(m_submittedWorkloadsQueue.empty());
+	SPT_CHECK(GetSubmittedSection() == GetExecutedSection());
 }
 
 void SubmittedWorkloadsQueue::Push(lib::SharedRef<GPUWorkload> workload)
@@ -93,6 +96,7 @@ void SubmittedWorkloadsQueue::Push(lib::SharedRef<GPUWorkload> workload)
 
 	{
 		const lib::LockGuard lock(m_submittedWorkloadsLock);
+
 		m_submittedWorkloadsQueue.emplace_back(std::move(workload));
 	}
 
@@ -122,6 +126,52 @@ void SubmittedWorkloadsQueue::SignalAfterFlushedPendingWork(const js::Event& eve
 {
 	const lib::LockGuard lock(m_submittedWorkloadsLock);
 
+	SignalAfterFlushedPendingWork_Locked(event);
+}
+
+GPUTimelineSection SubmittedWorkloadsQueue::GetSubmittedSection() const
+{
+	return m_submissionSection;
+}
+
+GPUTimelineSection SubmittedWorkloadsQueue::GetExecutedSection() const
+{
+	return m_executionSection;
+}
+
+GPUTimelineSection SubmittedWorkloadsQueue::GetRecordedSection() const
+{
+	return GPUTimelineSection{ m_submissionSection.value + 1u };
+}
+
+void SubmittedWorkloadsQueue::AdvanceGPUTimelineSection()
+{
+	++m_submissionSection.value;
+
+	const lib::LockGuard lock(m_submittedWorkloadsLock);
+
+	if (m_submittedWorkloadsQueue.empty())
+	{
+		++m_executionSection.value;
+
+		SPT_CHECK(m_executionSection <= m_submissionSection);
+	}
+	else
+	{
+		js::Event advanceExecutedSectionEvent = js::CreateEvent("AdvanceExecutedSectionEvent",
+																[this]
+																{
+																	++m_executionSection.value;
+
+																	SPT_CHECK(m_executionSection <= m_submissionSection);
+																});
+
+		SignalAfterFlushedPendingWork_Locked(advanceExecutedSectionEvent);
+	}
+}
+
+void SubmittedWorkloadsQueue::SignalAfterFlushedPendingWork_Locked(const js::Event& event)
+{
 	if (m_submittedWorkloadsQueue.empty())
 	{
 		event.Signal();
@@ -225,6 +275,36 @@ void DeviceQueuesManager::FlushSubmittedWorkloads()
 void DeviceQueuesManager::SignalAfterFlushingPendingWork(const js::Event& event)
 {
 	m_submittedWorkloadsQueue.SignalAfterFlushedPendingWork(event);
+}
+
+GPUTimelineSection DeviceQueuesManager::GetLastSubmittedSection() const
+{
+	return m_submittedWorkloadsQueue.GetSubmittedSection();
+}
+
+GPUTimelineSection DeviceQueuesManager::GetLastExecutedSection() const
+{
+	return m_submittedWorkloadsQueue.GetExecutedSection();
+}
+
+GPUTimelineSection DeviceQueuesManager::GetRecordedSection() const
+{
+	return m_submittedWorkloadsQueue.GetRecordedSection();
+}
+
+Bool DeviceQueuesManager::IsSubmitted(GPUTimelineSection section) const
+{
+	return !section.IsValid() || m_submittedWorkloadsQueue.GetSubmittedSection() >= section;
+}
+
+Bool DeviceQueuesManager::IsExecuted(GPUTimelineSection section) const
+{
+	return !section.IsValid() || m_submittedWorkloadsQueue.GetExecutedSection() >= section;
+}
+
+void DeviceQueuesManager::AdvanceGPUTimelineSection()
+{
+	m_submittedWorkloadsQueue.AdvanceGPUTimelineSection();
 }
 
 void DeviceQueuesManager::SubmitWorkloadInternal(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags /*= EGPUWorkloadSubmitFlags::Default*/)

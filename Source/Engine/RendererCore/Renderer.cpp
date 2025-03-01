@@ -4,7 +4,6 @@
 #include "Types/Semaphore.h"
 #include "Types/CommandBuffer.h"
 #include "Types/Window.h"
-#include "CurrentFrameContext.h"
 #include "Shaders/ShadersManager.h"
 #include "Pipelines/PipelinesLibrary.h"
 #include "Samplers/SamplersCache.h"
@@ -39,8 +38,6 @@ DeviceQueuesManager deviceQueuesManager;
 
 GPUReleaseQueue releasesQueue;
 
-Uint64 currentFrameIdx = 0;
-
 };
 
 static RendererData g_data;
@@ -57,8 +54,6 @@ void Renderer::Initialize()
 
 	GetSamplersCache().Initialize();
 
-	CurrentFrameContext::Initialize(RendererSettings::Get().framesInFlight);
-
 	GetDeviceQueuesManager().Initialize();
 
 	DescriptorSetStateLayoutsRegistry::Get().CreateRegisteredLayouts();
@@ -70,8 +65,7 @@ void Renderer::Uninitialize()
 
 	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
 
-	CurrentFrameContext::ReleaseAllResources();
-	FlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
+	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	GetOnRendererCleanupDelegate().Broadcast();
 
@@ -83,27 +77,9 @@ void Renderer::Uninitialize()
 
 	GetShadersManager().Uninitialize();
 
-	CurrentFrameContext::Shutdown();
-	FlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
+	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
 	rhi::RHI::Uninitialize();
-}
-
-void Renderer::BeginFrame(Uint64 frameIdx)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const Uint64 framesInFlight         = RendererSettings::Get().framesInFlight;
-	const Uint64 renderedFramesInFlight = framesInFlight - 1;
-
-	if (frameIdx >= renderedFramesInFlight)
-	{
-		CurrentFrameContext::FlushFrameReleases(frameIdx - renderedFramesInFlight);
-	}
-
-	FlushDeferredReleases();
-
-	priv::g_data.currentFrameIdx = frameIdx;
 }
 
 void Renderer::FlushCaches()
@@ -142,7 +118,7 @@ void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)
 	priv::g_data.releasesQueue.Enqueue(std::move(entry));
 }
 
-void Renderer::FlushDeferredReleases(EDeferredReleasesFlushFlags flags /*= EDeferredReleasesFlushFlags::Default*/)
+void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /*= EDeferredReleasesFlushFlags::Default*/)
 {
 	auto flushLambda = [queue = std::move(priv::g_data.releasesQueue.Flush())]() mutable
 	{
@@ -187,13 +163,8 @@ void Renderer::WaitIdle(Bool releaseRuntimeResources /*= true*/)
 
 	if (releaseRuntimeResources)
 	{
-		CurrentFrameContext::ReleaseAllResources();
+		ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 	}
-}
-
-Uint64 Renderer::GetCurrentFrameIdx()
-{
-	return priv::g_data.currentFrameIdx;
 }
 
 OnRendererCleanupDelegate& Renderer::GetOnRendererCleanupDelegate()
@@ -213,7 +184,6 @@ void Renderer::HotReloadShaders()
 
 	GetShadersManager().HotReloadShaders();
 }
-
 #endif // WITH_SHADERS_HOT_RELOAD
 
 } // spt::rdr

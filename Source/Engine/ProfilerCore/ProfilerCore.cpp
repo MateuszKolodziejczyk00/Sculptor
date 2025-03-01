@@ -1,5 +1,6 @@
 #include "ProfilerCore.h"
 #include "Backends/PerformanceAPIBackend.h"
+#include "Backends/PIXBackend.h"
 
 
 namespace spt::prf
@@ -13,7 +14,11 @@ ProfilerCore& ProfilerCore::GetInstance()
 
 void ProfilerCore::Initialize()
 {
+#if 1
+	m_impl = CreatePIXBackend();
+#else
 	m_impl = CreatePerformanceAPIBackend();
+#endif
 }
 
 void ProfilerCore::Shutdown()

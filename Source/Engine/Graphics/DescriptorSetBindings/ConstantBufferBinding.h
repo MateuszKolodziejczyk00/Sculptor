@@ -38,8 +38,7 @@ public:
 	explicit ConstantBufferBinding(const lib::HashedString& name)
 		: Super(name)
 		, m_bufferMappedPtr(nullptr)
-		, m_structsStride(0)
-		, m_lastDynamicOffsetChangeFrameIdx(idxNone<Uint64>)
+		, m_structsStride(0u)
 		, m_offset(nullptr)
 	{ }
 
@@ -151,7 +150,7 @@ private:
 
 	Bool ShouldSwitchBufferOffsetOnChange() const
 	{
-		return rdr::Renderer::GetCurrentFrameIdx() != m_lastDynamicOffsetChangeFrameIdx;
+		return rdr::Renderer::GetDeviceQueuesManager().GetRecordedSection() != m_lastDynamicOffsetChangeGPUSection;
 	}
 
 	void SwitchBufferMemoryIfNecessary()
@@ -167,7 +166,7 @@ private:
 				{
 					offset = 0;
 				}
-				m_lastDynamicOffsetChangeFrameIdx = rdr::Renderer::GetCurrentFrameIdx();
+				m_lastDynamicOffsetChangeGPUSection = rdr::Renderer::GetDeviceQueuesManager().GetRecordedSection();
 
 				// If we don't use dynamic offset, we need to mark descriptor as dirty
 				if constexpr (type == EConstantBufferBindingType::StaticOffset)
@@ -293,9 +292,9 @@ private:
 
 	Uint32 m_structsStride;
 
-	// Store frame idx snapshotted when changing value
-	// It's used to not changing offset multiple times during one frame as this could override data used on GPU
-	Uint64 m_lastDynamicOffsetChangeFrameIdx;
+	// Store section snapshotted when changing value
+	// It's used to not changing offset multiple times during one state as this could override data used on GPU
+	rdr::GPUTimelineSection m_lastDynamicOffsetChangeGPUSection;
 
 	std::variant<DynamicOffset, StaticOffset> m_offset;
 };

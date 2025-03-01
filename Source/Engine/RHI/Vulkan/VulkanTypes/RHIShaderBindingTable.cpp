@@ -76,6 +76,11 @@ void RHIShaderBindingTable::ReleaseRHI()
 	m_sbtBuffer.ReleaseRHI();
 }
 
+RHIShaderBindingTableReleaseTicket RHIShaderBindingTable::DeferredReleaseRHI()
+{
+	return RHIShaderBindingTableReleaseTicket{ m_sbtBuffer.DeferredReleaseRHI() };
+}
+
 const VkStridedDeviceAddressRegionKHR& RHIShaderBindingTable::GetRayGenRegion() const
 {
 	return m_rayGenRegion;

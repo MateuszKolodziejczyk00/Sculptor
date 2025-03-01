@@ -44,8 +44,6 @@ public:
 
 	static void									Uninitialize();
 
-	static void									BeginFrame(Uint64 frameIdx);
-
 	static void									FlushCaches();
 
 	static ShadersManager&						GetShadersManager();
@@ -57,15 +55,13 @@ public:
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
 
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
-	static void									FlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);
+	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);
 
 	static void									PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	static void									FlushPendingEvents();
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);
-	
-	static Uint64								GetCurrentFrameIdx();
 
 	static OnRendererCleanupDelegate&			GetOnRendererCleanupDelegate();
 

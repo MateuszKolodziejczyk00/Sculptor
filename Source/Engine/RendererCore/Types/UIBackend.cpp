@@ -1,6 +1,5 @@
 #include "UIBackend.h"
 #include "Window.h"
-#include "CurrentFrameContext.h"
 #include "Texture.h"
 #include "Sampler.h"
 #include "ResourcesManager.h"
