@@ -37,10 +37,20 @@ public:
 
 
 template<typename TType>
+struct Hasher : public std::hash<TType>
+{
+	SizeType operator()(const TType& value) const
+	{
+		return std::hash<TType>::operator()(value);
+	}
+};
+
+
+template<typename TType>
 static constexpr Bool isHashable = priv::IsHashableHelper<TType>::value;
 
 
-template<typename TIterator, typename THasher = std::hash<TIterator::value_type>>
+template<typename TIterator, typename THasher = Hasher<TIterator::value_type>>
 constexpr SizeType HashRange(const TIterator begin, const TIterator end, THasher hasher = THasher{})
 {
 	using ElementType = TIterator::value_type;
@@ -65,7 +75,7 @@ constexpr SizeType HashRange(const TIterator begin, const TIterator end, THasher
 template<typename TType>
 constexpr SizeType GetHash(const TType& value)
 {
-	std::hash<TType> hasher;
+	Hasher<TType> hasher;
 	return hasher(value);
 }
 

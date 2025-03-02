@@ -84,17 +84,17 @@ using RGBufferViewHandle = RGResourceHandle<RGBufferView>;
 } // spt::rg
 
 
-namespace std
+namespace spt::lib
 {
 
 template<typename TType>
-struct hash<spt::rg::RGResourceHandle<TType>>
+struct Hasher<rg::RGResourceHandle<TType>>
 {
-	size_t operator()(spt::rg::RGResourceHandle<TType> resource) const
+	size_t operator()(rg::RGResourceHandle<TType> resource) const
 	{
 		SPT_STATIC_CHECK(sizeof(resource.Get()) == sizeof(size_t));
 		return reinterpret_cast<size_t>(resource.Get());
 	}
 };
 
-} // std
+} // spt::lib

@@ -59,18 +59,14 @@ private:
 	FunctionType* m_callable = nullptr;
 };
 
-} // spt::lib
 
-
-namespace std
-{
 template<typename TFunc>
-struct hash<spt::lib::RawCallable<TFunc>>
+struct Hasher<RawCallable<TFunc>>
 {
-    size_t operator()(const spt::lib::RawCallable<TFunc>& callable) const
+    size_t operator()(const RawCallable<TFunc>& callable) const
     {
-		return spt::lib::GetHash(callable.Get());
+		return GetHash(callable.Get());
     }
 };
 
-} // std
+} // spt::lib

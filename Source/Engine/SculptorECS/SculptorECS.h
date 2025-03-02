@@ -1,6 +1,7 @@
 #pragma once
 
-#include "entt/entt.hpp"
+#include "entt/entity/registry.hpp"
+#include "entt/entity/handle.hpp"
 
 
 namespace spt::ecs

@@ -16,23 +16,23 @@ struct PipelineLayoutDefinition
 
 } // spt::rhi
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rhi::PipelineLayoutDefinition>
+struct Hasher<rhi::PipelineLayoutDefinition>
 {
-    size_t operator()(const spt::rhi::PipelineLayoutDefinition& pipelineLayoutDefinition) const
+    size_t operator()(const rhi::PipelineLayoutDefinition& pipelineLayoutDefinition) const
     {
-		const auto dsLayoutHasher = [](const spt::rhi::RHIDescriptorSetLayout& layout)
+		const auto dsLayoutHasher = [](const rhi::RHIDescriptorSetLayout& layout)
 		{
 			return layout.GetHash();
 		};
 
 		size_t seed = 0;
-		seed = spt::lib::HashRange(std::cbegin(pipelineLayoutDefinition.descriptorSetLayouts), std::cend(pipelineLayoutDefinition.descriptorSetLayouts), dsLayoutHasher);
+		seed = HashRange(std::cbegin(pipelineLayoutDefinition.descriptorSetLayouts), std::cend(pipelineLayoutDefinition.descriptorSetLayouts), dsLayoutHasher);
 		return seed;
     }
 };
 
-} // std
+} // spt::lib

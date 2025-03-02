@@ -161,16 +161,16 @@ END_SHADER_STRUCT();
 } // spt::mat
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::mat::MaterialShadersHash>
+struct Hasher<mat::MaterialShadersHash>
 {
-	size_t operator()(const spt::mat::MaterialShadersHash& hash) const
+	size_t operator()(const mat::MaterialShadersHash& hash) const
 	{
 		return hash.GetHash();
 	}
 };
 
-} // std
+} // spt::lib

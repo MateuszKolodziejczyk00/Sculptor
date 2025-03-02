@@ -40,34 +40,34 @@ struct DescriptorSetDefinition
 } // spt::rhi
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rhi::DescriptorSetBindingDefinition>
+struct Hasher<rhi::DescriptorSetBindingDefinition>
 {
-	size_t operator()(const spt::rhi::DescriptorSetBindingDefinition& binidngDef) const
+	size_t operator()(const rhi::DescriptorSetBindingDefinition& binidngDef) const
 	{
-		return spt::lib::HashCombine(binidngDef.bindingIdx,
-									 binidngDef.descriptorType,
-									 binidngDef.descriptorCount,
-									 binidngDef.shaderStages,
-									 binidngDef.flags,
-									 binidngDef.immutableSampler.GetHandle());
+		return lib::HashCombine(binidngDef.bindingIdx,
+								binidngDef.descriptorType,
+								binidngDef.descriptorCount,
+								binidngDef.shaderStages,
+								binidngDef.flags,
+								binidngDef.immutableSampler.GetHandle());
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::DescriptorSetDefinition>
+struct Hasher<rhi::DescriptorSetDefinition>
 {
     size_t operator()(const spt::rhi::DescriptorSetDefinition& dsDef) const
     {
 		size_t seed = 0;
-		seed = spt::lib::HashRange(std::cbegin(dsDef.bindings), std::cend(dsDef.bindings));
-		spt::lib::HashCombine(seed, static_cast<size_t>(dsDef.flags));
+		seed = HashRange(std::cbegin(dsDef.bindings), std::cend(dsDef.bindings));
+		HashCombine(seed, static_cast<size_t>(dsDef.flags));
 		return seed;
     }
 };
 
-} // std
+} // spt::lib

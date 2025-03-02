@@ -213,98 +213,98 @@ struct RayTracingPipelineDefinition
 } //spt::rhi
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rhi::PipelineRasterizationDefinition>
+struct Hasher<rhi::PipelineRasterizationDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::PipelineRasterizationDefinition& rasterizationDef) const
+	constexpr size_t operator()(const rhi::PipelineRasterizationDefinition& rasterizationDef) const
 	{
-		return spt::lib::HashCombine(rasterizationDef.cullMode,
+		return HashCombine(rasterizationDef.cullMode,
 									 rasterizationDef.polygonMode);;
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::MultisamplingDefinition>
+struct Hasher<rhi::MultisamplingDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::MultisamplingDefinition& multisamplingDef) const
+	constexpr size_t operator()(const rhi::MultisamplingDefinition& multisamplingDef) const
 	{
-		return spt::lib::GetHash(multisamplingDef.samplesNum);
+		return GetHash(multisamplingDef.samplesNum);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::ColorRenderTargetDefinition>
+struct Hasher<rhi::ColorRenderTargetDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::ColorRenderTargetDefinition& colorRTDef) const
+	constexpr size_t operator()(const rhi::ColorRenderTargetDefinition& colorRTDef) const
 	{
-		return spt::lib::HashCombine(colorRTDef.format,
-									 colorRTDef.colorWriteMask,
-									 colorRTDef.alphaBlendType,
-									 colorRTDef.colorBlendType);
+		return HashCombine(colorRTDef.format,
+						   colorRTDef.colorWriteMask,
+						   colorRTDef.alphaBlendType,
+						   colorRTDef.colorBlendType);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::DepthRenderTargetDefinition>
+struct Hasher<rhi::DepthRenderTargetDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::DepthRenderTargetDefinition& depthRTDef) const
+	constexpr size_t operator()(const rhi::DepthRenderTargetDefinition& depthRTDef) const
 	{
-		return spt::lib::HashCombine(depthRTDef.format,
-									 depthRTDef.depthCompareOp,
-									 depthRTDef.enableDepthWrite);
+		return HashCombine(depthRTDef.format,
+						   depthRTDef.depthCompareOp,
+						   depthRTDef.enableDepthWrite);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::StencilRenderTargetDefinition>
+struct Hasher<rhi::StencilRenderTargetDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::StencilRenderTargetDefinition& stencilRTDef) const
+	constexpr size_t operator()(const rhi::StencilRenderTargetDefinition& stencilRTDef) const
 	{
-		return spt::lib::GetHash(stencilRTDef.format);
+		return GetHash(stencilRTDef.format);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::PipelineRenderTargetsDefinition>
+struct Hasher<rhi::PipelineRenderTargetsDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::PipelineRenderTargetsDefinition& renderTargetsDef) const
+	constexpr size_t operator()(const rhi::PipelineRenderTargetsDefinition& renderTargetsDef) const
 	{
-		return spt::lib::HashCombine(spt::lib::HashRange(std::cbegin(renderTargetsDef.colorRTsDefinition),
-														 std::cend(renderTargetsDef.colorRTsDefinition)),
-									 renderTargetsDef.depthRTDefinition,
-									 renderTargetsDef.stencilRTDefinition);
+		return HashCombine(HashRange(std::cbegin(renderTargetsDef.colorRTsDefinition),
+									 std::cend(renderTargetsDef.colorRTsDefinition)),
+						   renderTargetsDef.depthRTDefinition,
+						   renderTargetsDef.stencilRTDefinition);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::GraphicsPipelineDefinition>
+struct Hasher<rhi::GraphicsPipelineDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::GraphicsPipelineDefinition& pipelineDef) const
+	constexpr size_t operator()(const rhi::GraphicsPipelineDefinition& pipelineDef) const
 	{
-		return spt::lib::HashCombine(pipelineDef.primitiveTopology,
-									 pipelineDef.rasterizationDefinition,
-									 pipelineDef.multisamplingDefinition,
-									 pipelineDef.renderTargetsDefinition);
+		return HashCombine(pipelineDef.primitiveTopology,
+						   pipelineDef.rasterizationDefinition,
+						   pipelineDef.multisamplingDefinition,
+						   pipelineDef.renderTargetsDefinition);
 	}
 };
 
 
 template<>
-struct hash<spt::rhi::RayTracingPipelineDefinition>
+struct Hasher<rhi::RayTracingPipelineDefinition>
 {
-	constexpr size_t operator()(const spt::rhi::RayTracingPipelineDefinition& pipelineDef) const
+	constexpr size_t operator()(const rhi::RayTracingPipelineDefinition& pipelineDef) const
 	{
-		return spt::lib::GetHash(pipelineDef.maxRayRecursionDepth);
+		return GetHash(pipelineDef.maxRayRecursionDepth);
 	}
 };
 
-} // std
+} // spt::lib

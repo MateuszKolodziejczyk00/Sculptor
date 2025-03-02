@@ -760,16 +760,16 @@ private:
 } // spt::rg
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rg::RGTextureAccessState>
+struct Hasher<rg::RGTextureAccessState>
 {
-	size_t operator()(const spt::rg::RGTextureSubresourceAccessState& accessState) const
+	size_t operator()(const rg::RGTextureSubresourceAccessState& accessState) const
 	{
-		return spt::lib::HashCombine(accessState.lastAccessType, accessState.lastAccessNode);
+		return HashCombine(accessState.lastAccessType, accessState.lastAccessNode);
 	}
 };
 
-} // std
+} // spt::lib

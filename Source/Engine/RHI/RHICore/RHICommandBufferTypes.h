@@ -81,19 +81,19 @@ struct CommandBufferUsageDefinition
 } // spt::rhi
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rhi::CommandBufferDefinition>
+struct Hasher<rhi::CommandBufferDefinition>
 {
-    size_t operator()(const spt::rhi::CommandBufferDefinition& cmdBufferDef) const
+    size_t operator()(const rhi::CommandBufferDefinition& cmdBufferDef) const
     {
-		return spt::lib::HashCombine(cmdBufferDef.queueType,
-									 cmdBufferDef.cmdBufferType,
-									 cmdBufferDef.complexityClass);
+		return HashCombine(cmdBufferDef.queueType,
+						   cmdBufferDef.cmdBufferType,
+						   cmdBufferDef.complexityClass);
     }
 };
 
 
-} // std
+} // spt::lib

@@ -67,18 +67,14 @@ private:
 	TType value;
 };
 
-} // spt::lib
 
-
-namespace std
-{
 template<typename TType, typename TParameterType>
-struct hash<spt::lib::NamedType<TType, TParameterType>>
+struct Hasher<NamedType<TType, TParameterType>>
 {
-    size_t operator()(const spt::lib::NamedType<TType, TParameterType>& value) const
+    size_t operator()(const NamedType<TType, TParameterType>& value) const
     {
-		return spt::lib::GetHash(value.Get());
+		return GetHash(value.Get());
     }
 };
 
-} // std
+} // spt::lib

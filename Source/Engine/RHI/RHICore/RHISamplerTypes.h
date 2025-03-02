@@ -146,31 +146,31 @@ struct SamplerState
 } // spt::rhi
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rhi::SamplerDefinition>
+struct Hasher<rhi::SamplerDefinition>
 {
-    size_t operator()(const spt::rhi::SamplerDefinition& samplerDef) const
+    size_t operator()(const rhi::SamplerDefinition& samplerDef) const
     {
-		return spt::lib::HashCombine(samplerDef.flags,
-									 samplerDef.minificationFilter,
-									 samplerDef.magnificationFilter,
-									 samplerDef.mipMapAdressingMode,
-									 samplerDef.addressingModeU,
-									 samplerDef.addressingModeV,
-									 samplerDef.addressingModeW,
-									 samplerDef.reductionMode,
-									 samplerDef.mipLodBias,
-									 samplerDef.enableAnisotropy,
-									 samplerDef.maxAnisotropy,
-									 samplerDef.compareOp,
-									 samplerDef.minLod,
-									 samplerDef.maxLod,
-									 samplerDef.borderColor,
-									 samplerDef.unnormalizedCoords);
+		return HashCombine(samplerDef.flags,
+						   samplerDef.minificationFilter,
+						   samplerDef.magnificationFilter,
+						   samplerDef.mipMapAdressingMode,
+						   samplerDef.addressingModeU,
+						   samplerDef.addressingModeV,
+						   samplerDef.addressingModeW,
+						   samplerDef.reductionMode,
+						   samplerDef.mipLodBias,
+						   samplerDef.enableAnisotropy,
+						   samplerDef.maxAnisotropy,
+						   samplerDef.compareOp,
+						   samplerDef.minLod,
+						   samplerDef.maxLod,
+						   samplerDef.borderColor,
+						   samplerDef.unnormalizedCoords);
     }
 };
 
-} // std
+} // spt::lib

@@ -199,34 +199,25 @@ private:
 using StringHash	= impl::StringHash<HashedStringDB>;
 using HashedString	= impl::HashedString<HashedStringDB>;
 
+
+template<>
+struct Hasher<StringHash>
+{
+	size_t operator()(HashedString string) const
+	{
+		static_assert(std::is_convertible_v<HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
+		return static_cast<size_t>(string.GetKey());
+	}
+};
+
+template<>
+struct Hasher<HashedString>
+{
+	size_t operator()(HashedString string) const
+	{
+		static_assert(std::is_convertible_v<HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
+		return static_cast<size_t>(string.GetKey());
+	}
+};
+
 } // spt::lib
-
-
-namespace std
-{
-
-template<>
-struct hash<spt::lib::StringHash>
-{
-
-	size_t operator()(spt::lib::HashedString string) const
-	{
-		static_assert(std::is_convertible_v<spt::lib::HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
-		return static_cast<size_t>(string.GetKey());
-	}
-
-};
-
-template<>
-struct hash<spt::lib::HashedString>
-{
-
-	size_t operator()(spt::lib::HashedString string) const
-	{
-		static_assert(std::is_convertible_v<spt::lib::HashedString::KeyType, size_t>, "Type of key must be convertible to size_t");
-		return static_cast<size_t>(string.GetKey());
-	}
-
-};
-
-} // std

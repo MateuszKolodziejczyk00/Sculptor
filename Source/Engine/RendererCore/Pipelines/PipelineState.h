@@ -110,16 +110,16 @@ private:
 } // spt::rdr
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rdr::PipelineStateID>
+struct Hasher<rdr::PipelineStateID>
 {
-	constexpr size_t operator()(const spt::rdr::PipelineStateID& state) const
+	constexpr size_t operator()(const rdr::PipelineStateID& state) const
 	{
-		return spt::lib::GetHash(state.GetID());
+		return GetHash(state.GetID());
 	}
 };
 
-} // std
+} // spt::lib

@@ -63,16 +63,16 @@ private:
 } // spt::rdr
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::rdr::ShaderID>
+struct Hasher<rdr::ShaderID>
 {
-	constexpr size_t operator()(const spt::rdr::ShaderID& state) const
+	constexpr size_t operator()(const rdr::ShaderID& state) const
 	{
-		return spt::lib::GetHash(state.GetID());
+		return GetHash(state.GetID());
 	}
 };
 
-} // std
+} // spt::lib

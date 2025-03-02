@@ -1,13 +1,14 @@
 Entt = Project:CreateProject("Entt", ETargetType.None)
 
 function Entt:SetupConfiguration(configuration, platform)
-    self:AddPublicRelativeIncludePath("/single_include")
+    self:AddPublicRelativeIncludePath("/src")
 end
 
 function Entt:GetProjectFiles(configuration, platform)
     return
     {
-        "Entt/single_include/**.h"
+        "Entt/src/**.h",
+        "Entt/natvis/**.natvis"
     }
 end
 

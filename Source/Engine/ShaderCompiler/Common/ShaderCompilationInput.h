@@ -92,16 +92,16 @@ enum class EShaderCompilationFlags
 } // spt::sc
 
 
-namespace std
+namespace spt::lib
 {
 
 template<>
-struct hash<spt::sc::ShaderStageCompilationDef>
+struct Hasher<sc::ShaderStageCompilationDef>
 {
-    size_t operator()(const spt::sc::ShaderStageCompilationDef& stageCompilation) const
+    size_t operator()(const sc::ShaderStageCompilationDef& stageCompilation) const
     {
 		return stageCompilation.Hash();
     }
 };
 
-} // std
+} // spt::lib
