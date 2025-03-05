@@ -18,7 +18,7 @@ struct RayTracingGeometryProviderComponent
 	// Entity that contains RayTracingGeometryComponent
 	ecs::EntityHandle entity;
 };
-SPT_REGISTER_COMPONENT_TYPE(RenderSceneRegistry, RenderSceneRegistry)
+SPT_REGISTER_COMPONENT_TYPE(RayTracingGeometryProviderComponent, RenderSceneRegistry)
 
 
 struct RayTracingGeometryDefinition
