@@ -1,7 +1,7 @@
 SculptorECS = Project:CreateProject("SculptorECS", ETargetType.SharedLibrary)
 
 function SculptorECS:SetupConfiguration(configuration, platform)
-    self:AddPublicDependency("SculptorCore")
+    self:AddPublicDependency("SculptorLib")
     self:AddPublicDependency("Math")
     self:AddPublicDependency("Entt")
 

@@ -62,8 +62,7 @@ void StaticMeshShadowMapRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBu
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
 		RenderView& renderView = viewSpec->GetRenderView();
-		const RenderSceneEntityHandle viewEntity = renderView.GetViewEntity();
-		const ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
+		const ShadowMapViewComponent& viewShadowMapData = renderView.GetBlackboard().Get<ShadowMapViewComponent>();
 
 		if (viewShadowMapData.shadowMapType == EShadowMapType::DirectionalLightCascade)
 		{
@@ -87,10 +86,9 @@ void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& grap
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
+	RenderView& renderView = viewSpec.GetRenderView();
 
-	const RenderSceneEntityHandle viewEntity = viewSpec.GetRenderView().GetViewEntity();
-	ShadowMapViewComponent& viewShadowMapData = viewEntity.get<ShadowMapViewComponent>();
+	ShadowMapViewComponent& viewShadowMapData = renderView.GetBlackboard().Get<ShadowMapViewComponent>();
 
 	lib::DynamicArray<SMShadowMapBatch>* batches = nullptr;
 	if (viewShadowMapData.shadowMapType == EShadowMapType::DirectionalLightCascade)

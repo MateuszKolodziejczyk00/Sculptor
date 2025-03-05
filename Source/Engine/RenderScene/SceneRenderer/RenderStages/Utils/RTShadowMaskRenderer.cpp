@@ -256,7 +256,7 @@ void RTShadowMaskRenderer::Initialize(RenderSceneEntity entity)
 
 void RTShadowMaskRenderer::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
-	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	m_renderHalfRes = params::halfResShadows;
 

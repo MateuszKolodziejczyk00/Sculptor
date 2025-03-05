@@ -270,7 +270,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const ViewSpecShadingParameters& shadingParams = viewSpec.GetData().Get<ViewSpecShadingParameters>();
+	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
 	const rg::RGTextureViewHandle indirectInScattering = indirect::Render(graphBuilder, renderScene, viewSpec, fogParams, fogRenderingParams);
 

@@ -73,7 +73,7 @@ void DownsampleGeometryTexturesRenderStage::OnRender(rg::RenderGraphBuilder& gra
 	const rhi::EFragmentFormat motionFormat = viewContext.motion->GetFormat();
 	viewContext.motionHalfRes = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Motion Texture Half Res"), rg::TextureDef(halfRes, motionFormat));
 
-	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().GetOrCreate<ShadingViewResourcesUsageInfo>();
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().GetOrCreate<ShadingViewResourcesUsageInfo>();
 
 	viewContext.normalsHalfRes = graphBuilder.AcquireExternalTextureView(m_normalsTextureHalfRes);
 	if (m_historyNormalsTextureHalfRes)
@@ -147,7 +147,7 @@ void DownsampleGeometryTexturesRenderStage::PrepareResources(const ViewRendering
 {
 	const math::Vector2u renderingHalfRes = viewSpec.GetRenderingHalfRes();
 
-	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	std::swap(m_normalsTextureHalfRes, m_historyNormalsTextureHalfRes);
 

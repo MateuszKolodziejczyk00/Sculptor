@@ -136,8 +136,9 @@ static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& gr
 
 	SPT_CHECK(luminanceHistogram.IsValid());
 
-	const RenderSceneEntityHandle& viewEntity = viewSpec.GetRenderView().GetViewEntity();
-	ViewLuminanceData& viewLuminanceData = viewEntity.get_or_emplace<ViewLuminanceData>();
+	RenderView& renderView = viewSpec.GetRenderView();
+
+	ViewLuminanceData& viewLuminanceData = renderView.GetBlackboard().GetOrCreate<ViewLuminanceData>();
 	
 	if (!viewLuminanceData.adaptedLuminance)
 	{

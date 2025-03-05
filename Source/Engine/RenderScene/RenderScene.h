@@ -26,19 +26,47 @@ class RenderScene;
 
 struct TransformComponent
 {
-	TransformComponent();
-	TransformComponent(const math::Affine3f& transform);
+	TransformComponent()
+		: m_transform(math::Affine3f::Identity())
+		, m_uniformScale(1.f)
+	{
+	}
 
-	void SetTransform(const math::Affine3f& newTransform);
-	const math::Affine3f& GetTransform() const;
+	TransformComponent(const math::Affine3f& transform)
+	{
+		SetTransform(transform);
+	}
 
-	Real32 GetUniformScale() const;
+	void SetTransform(const math::Affine3f& newTransform)
+	{
+		m_transform = newTransform;
+
+		const math::Matrix4f& transformMatrix = m_transform.matrix();
+
+		const Real32 scaleX2 = transformMatrix.row(0).head<3>().squaredNorm();
+		const Real32 scaleY2 = transformMatrix.row(1).head<3>().squaredNorm();
+		const Real32 scaleZ2 = transformMatrix.row(2).head<3>().squaredNorm();
+
+		const Real32 maxScale = std::max(std::max(scaleX2, scaleY2), scaleZ2);
+		m_uniformScale = std::sqrt(maxScale);
+	}
+
+	const math::Affine3f& GetTransform() const
+	{
+		return m_transform;
+	}
+
+	Real32 GetUniformScale() const
+	{
+		return m_uniformScale;
+	}
 
 private:
 
 	math::Affine3f m_transform;
 	Real32 m_uniformScale;
 };
+SPT_REGISTER_COMPONENT_TYPE(TransformComponent, RenderSceneRegistry);
 
 
 struct RenderInstanceData
@@ -86,6 +114,7 @@ struct EntityGPUDataHandle
 
 	rhi::RHIVirtualAllocation transformSuballocation;
 };
+SPT_REGISTER_COMPONENT_TYPE(EntityGPUDataHandle, RenderSceneRegistry);
 
 
 class RenderSceneSubsystemsRegistry

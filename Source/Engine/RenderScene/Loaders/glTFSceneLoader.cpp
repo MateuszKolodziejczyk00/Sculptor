@@ -12,10 +12,11 @@
 #include "Transfers/UploadUtils.h"
 #include "Transfers/TransfersManager.h"
 #include "Utils/TextureUtils.h"
-#include "Materials/MaterialsUnifiedData.h"
 #include "Types/AccelerationStructure.h"
 #include "RayTracing/RayTracingSceneTypes.h"
+#include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
+#include "MaterialsUnifiedData.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "DeviceQueues/GPUWorkload.h"
 
@@ -473,7 +474,7 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 			emissiveStrength = static_cast<Real32>(emissiveStrengthIter->second.Get("emissiveStrength").GetNumberAsDouble());
 		}
 
-		mat::MaterialPBRData pbrData;
+		rsc::MaterialPBRData pbrData;
 		pbrData.baseColorFactor             = math::Map<const math::Vector3d>(pbrDef.baseColorFactor.data()).cast<Real32>();
 		pbrData.metallicFactor              = static_cast<Real32>(pbrDef.metallicFactor);
 		pbrData.roughnessFactor             = static_cast<Real32>(pbrDef.roughnessFactor);

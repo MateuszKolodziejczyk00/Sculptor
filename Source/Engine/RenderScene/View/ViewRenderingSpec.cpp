@@ -67,8 +67,8 @@ void ViewRenderingSpec::Initialize(RenderView& renderView)
 	const Bool isShadingView = lib::HasAnyFlag(renderView.GetSupportedStages(), ERenderStage::DeferredLightingStages);
 	if (isShadingView)
 	{
-		m_viewRenderingData.Create<ShadingViewContext>();
-		m_viewRenderingData.Create<ShadingViewResourcesUsageInfo>();
+		m_blackboard.Create<ShadingViewContext>();
+		m_blackboard.Create<ShadingViewResourcesUsageInfo>();
 	}
 }
 
@@ -110,22 +110,22 @@ math::Vector2u ViewRenderingSpec::GetOutputRes() const
 
 ShadingViewContext& ViewRenderingSpec::GetShadingViewContext()
 {
-	return m_viewRenderingData.Get<ShadingViewContext>();
+	return m_blackboard.Get<ShadingViewContext>();
 }
 
 const ShadingViewContext& ViewRenderingSpec::GetShadingViewContext() const
 {
-	return m_viewRenderingData.Get<ShadingViewContext>();
+	return m_blackboard.Get<ShadingViewContext>();
 }
 
-const ViewRenderingDataContainer& ViewRenderingSpec::GetData() const
+const lib::Blackboard& ViewRenderingSpec::GetBlackboard() const
 {
-	return m_viewRenderingData;
+	return m_blackboard;
 }
 
-ViewRenderingDataContainer& ViewRenderingSpec::GetData()
+lib::Blackboard& ViewRenderingSpec::GetBlackboard()
 {
-	return m_viewRenderingData;
+	return m_blackboard;
 }
 
 const RenderStageEntries& ViewRenderingSpec::GetRenderStageEntries(ERenderStage stage) const

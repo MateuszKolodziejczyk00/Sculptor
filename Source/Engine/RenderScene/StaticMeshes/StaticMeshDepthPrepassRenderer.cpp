@@ -36,7 +36,7 @@ Bool StaticMeshDepthPrepassRenderer::BuildBatchesPerView(rg::RenderGraphBuilder&
 
 	if (!batches.empty())
 	{
-		SMDepthPrepassBatches& viewBatches = viewSpec.GetData().Create<SMDepthPrepassBatches>();
+		SMDepthPrepassBatches& viewBatches = viewSpec.GetBlackboard().Create<SMDepthPrepassBatches>();
 		viewBatches.batches = std::move(batches);
 
 		return true;
@@ -51,7 +51,7 @@ void StaticMeshDepthPrepassRenderer::CullPerView(rg::RenderGraphBuilder& graphBu
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetBlackboard().Get<SMDepthPrepassBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
@@ -76,7 +76,7 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetData().Get<SMDepthPrepassBatches>();
+	const SMDepthPrepassBatches& depthPrepassBatches = viewSpec.GetBlackboard().Get<SMDepthPrepassBatches>();
 
 	const DepthPrepassMetaData& prepassMetaData = metaData.Get<DepthPrepassMetaData>();
 

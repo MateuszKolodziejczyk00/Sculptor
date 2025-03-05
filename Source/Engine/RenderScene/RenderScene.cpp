@@ -8,49 +8,14 @@ namespace spt::rsc
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// TransformComponent ============================================================================
-
-TransformComponent::TransformComponent()
-	: m_transform(math::Affine3f::Identity())
-	, m_uniformScale(1.f)
-{ }
-
-TransformComponent::TransformComponent(const math::Affine3f& transform)
-{
-	SetTransform(transform);
-}
-
-void TransformComponent::SetTransform(const math::Affine3f& newTransform)
-{
-	m_transform = newTransform;
-
-	const math::Matrix4f& transformMatrix = m_transform.matrix();
-
-	const Real32 scaleX2 = transformMatrix.row(0).head<3>().squaredNorm();
-	const Real32 scaleY2 = transformMatrix.row(1).head<3>().squaredNorm();
-	const Real32 scaleZ2 = transformMatrix.row(2).head<3>().squaredNorm();
-
-	const Real32 maxScale = std::max(std::max(scaleX2, scaleY2), scaleZ2);
-	m_uniformScale = std::sqrt(maxScale);
-}
-
-const math::Affine3f& TransformComponent::GetTransform() const
-{
-	return m_transform;
-}
-
-Real32 TransformComponent::GetUniformScale() const
-{
-	return m_uniformScale;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
 // RenderScene ===================================================================================
 
 RenderScene::RenderScene()
 	: m_renderEntitiesBuffer(CreateInstancesBuffer())
 	, m_renderSceneDS(CreateRenderSceneDS())
-{ }
+{
+	ecs::InitializeRegistry(m_registry);
+}
 
 RenderSceneRegistry& RenderScene::GetRegistry()
 {
@@ -167,7 +132,7 @@ lib::SharedRef<rdr::Buffer> RenderScene::CreateInstancesBuffer() const
 	rhi::RHIAllocationInfo renderEntitiesAllocationInfo;
 	renderEntitiesAllocationInfo.memoryUsage = rhi::EMemoryUsage::GPUOnly;
 
-	const Uint64 maxInstancesNum = 4096;
+	const Uint64 maxInstancesNum = 4096u << 10u;
 
 	rhi::BufferDefinition renderEntitiesBufferDef;
 	renderEntitiesBufferDef.size = maxInstancesNum * sizeof(RenderEntityGPUData);

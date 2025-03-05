@@ -4,11 +4,11 @@
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RenderSceneRegistry.h"
 #include "ECSRegistry.h"
-#include "Material.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "Geometry/GeometryTypes.h"
+#include "Materials/MaterialsRenderingCommon.h"
 
 
 namespace spt::rsc
@@ -25,6 +25,7 @@ struct StaticMeshInstanceRenderData
 {
 	ecs::EntityHandle staticMesh;
 };
+SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
 
 
 BEGIN_SHADER_STRUCT(StaticMeshBatchElement)
@@ -70,7 +71,7 @@ public:
 
 	SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches);
 
-	void AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots);
+	void AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots);
 
 	void FinalizeBatches();
 

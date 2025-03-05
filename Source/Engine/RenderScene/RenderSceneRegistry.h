@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SculptorECS.h"
+#include "ComponentsRegistry.h"
 
 
 namespace spt::rsc

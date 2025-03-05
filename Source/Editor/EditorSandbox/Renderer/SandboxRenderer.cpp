@@ -365,7 +365,7 @@ void SandboxRenderer::InitializeRenderScene()
 
 		rsc::CameraLensSettingsComponent cameraLensSettingsComponent;
 		cameraLensSettingsComponent.lensDirtTexture = lensDirtTexture->CreateView(RENDERER_RESOURCE_NAME("Lens Dirt View"), viewDef);
-		viewEntity.emplace<rsc::CameraLensSettingsComponent>(cameraLensSettingsComponent);
+		m_renderView->GetBlackboard().Create<rsc::CameraLensSettingsComponent>(cameraLensSettingsComponent);
 	}
 
 	m_renderScene->AddSceneSubsystem<rsc::StaticMeshRenderSceneSubsystem>();

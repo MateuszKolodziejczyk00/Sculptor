@@ -203,7 +203,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const ViewDirectionalShadowMasksData* viewShadowMasks = viewSpec.GetData().Find<ViewDirectionalShadowMasksData>();
+	const ViewDirectionalShadowMasksData* viewShadowMasks = viewSpec.GetBlackboard().Find<ViewDirectionalShadowMasksData>();
 
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
 
@@ -545,7 +545,7 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	ViewSpecShadingParameters shadingParams;
 	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;
 	shadingParams.shadowMapsDS		= m_shadowMapsDS;
-	viewSpec.GetData().Create<ViewSpecShadingParameters>(shadingParams);
+	viewSpec.GetBlackboard().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
 void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)

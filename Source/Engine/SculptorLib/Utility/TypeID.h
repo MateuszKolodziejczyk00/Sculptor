@@ -84,15 +84,27 @@ private:
 		return FNV1a::Hash({ typeName.data(), typeName.size() });
 	}
 
+public:
+
+	TypeInfo() = default;
+
+	static constexpr lib::StringView name = GetTypeName();
+	static constexpr TypeID          id   = GetID();
+
 	constexpr operator RuntimeTypeInfo() const
 	{
 		return RuntimeTypeInfo{ name, id };
 	}
+};
 
-public:
 
-	static constexpr lib::StringView name = GetTypeName();
-	static constexpr TypeID          id   = GetID();
+template<>
+struct Hasher<RuntimeTypeInfo>
+{
+	SizeType operator()(const RuntimeTypeInfo& typeInfo) const
+	{
+		return typeInfo.id;
+	}
 };
 
 } // spt::lib

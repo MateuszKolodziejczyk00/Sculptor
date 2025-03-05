@@ -539,7 +539,6 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 		const SizeType renderViewIdx = static_cast<SizeType>(shadowMapBeginIdx) + faceIdx;
 
 		const lib::UniquePtr<RenderView>& renderView = m_shadowMapsRenderViews[renderViewIdx];
-		const RenderSceneEntityHandle renderViewEntity = renderView->GetViewEntity();
 
 		const lib::SharedRef<rdr::Texture>& shadowMapTexture = m_shadowMaps[renderViewIdx];
 		const math::Vector2u shadowMapResolution = shadowMapTexture->GetResolution2D();
@@ -549,7 +548,7 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapRenderViews(RenderSceneEntity ow
 		shadowMapViewComp.owningLight   = owningLight;
 		shadowMapViewComp.shadowMapType = EShadowMapType::PointLightFace;
 		shadowMapViewComp.faceIdx       = static_cast<Uint32>(faceIdx);
-		renderViewEntity.emplace_or_replace<ShadowMapViewComponent>(shadowMapViewComp);
+		renderView->GetBlackboard().Set<ShadowMapViewComponent>(std::move(shadowMapViewComp));
 
 		renderView->SetShadowPerspectiveProjection(math::Utils::DegreesToRadians(90.f), 1.f, constants::projectionNearPlane, pointLight.radius);
 		renderView->SetLocation(pointLight.location);

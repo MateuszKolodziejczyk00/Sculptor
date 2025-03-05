@@ -51,7 +51,7 @@ Bool StaticMeshForwardOpaqueRenderer::BuildBatchesPerView(rg::RenderGraphBuilder
 
 	if (!batches.empty())
 	{
-		SMOpaqueForwardBatches& viewBatches = viewSpec.GetData().Create<SMOpaqueForwardBatches>();
+		SMOpaqueForwardBatches& viewBatches = viewSpec.GetBlackboard().Create<SMOpaqueForwardBatches>();
 		viewBatches.batches = std::move(batches);
 
 		return true;
@@ -68,7 +68,7 @@ void StaticMeshForwardOpaqueRenderer::CullPerView(rg::RenderGraphBuilder& graphB
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
+	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetBlackboard().Get<SMOpaqueForwardBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshCullingDSScope(graphBuilder,
 															   rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
@@ -117,7 +117,7 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
-	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetData().Get<SMOpaqueForwardBatches>();
+	const SMOpaqueForwardBatches& forwardOpaqueBatches = viewSpec.GetBlackboard().Get<SMOpaqueForwardBatches>();
 
 	const rg::BindDescriptorSetsScope staticMeshRenderingDSScope(graphBuilder,
 																 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),

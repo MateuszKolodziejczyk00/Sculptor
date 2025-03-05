@@ -68,7 +68,7 @@ void ForwardOpaqueRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, co
 	
 	const math::Vector2u renderingArea = viewSpec.GetRenderView().GetRenderingRes();
 
-	const ViewSpecShadingParameters& shadingParams = viewSpec.GetData().Get<ViewSpecShadingParameters>();
+	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("Forward Opaque Render Pass"),
 							renderPassDef,

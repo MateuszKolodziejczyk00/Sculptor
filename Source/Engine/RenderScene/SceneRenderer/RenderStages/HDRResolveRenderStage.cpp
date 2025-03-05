@@ -335,7 +335,9 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 {
 	SPT_PROFILER_FUNCTION();
 
-	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
+	const RenderView& renderView = viewSpec.GetRenderView();
+
+	const math::Vector2u resolution = renderView.GetOutputRes();
 
 	static const rdr::PipelineStateID combinePipeline = CompileBloomCompositePipeline();
 
@@ -355,8 +357,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 
 	const lib::MTHandle<BloomCompositePassDS> bloomCompositePassDS = graphBuilder.CreateDescriptorSet<BloomCompositePassDS>(RENDERER_RESOURCE_NAME("BloomCombinePassDS"));
 
-	const RenderSceneEntityHandle renderViewEntity = viewSpec.GetRenderView().GetViewEntity();
-	if (const CameraLensSettingsComponent* lensSettings = renderViewEntity.try_get<CameraLensSettingsComponent>())
+	if (const CameraLensSettingsComponent* lensSettings = renderView.GetBlackboard().Find<CameraLensSettingsComponent>())
 	{
 		bloomCompositePassDS->u_lensDirtTexture = lensSettings->lensDirtTexture;
 		compositePassInfo.hasLensDirtTexture	= true;

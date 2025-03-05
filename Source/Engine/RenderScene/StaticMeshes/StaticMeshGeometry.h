@@ -5,6 +5,8 @@
 #include "RGDescriptorSetState.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
+#include "ECSRegistry.h"
+#include "ComponentsRegistry.h"
 
 
 namespace spt::rsc
@@ -16,6 +18,7 @@ struct StaticMeshGeometryData
 	rhi::RHIVirtualAllocation meshletsSuballocation;
 	rhi::RHIVirtualAllocation geometrySuballocation;
 };
+SPT_REGISTER_COMPONENT_TYPE(StaticMeshGeometryData, ecs::Registry);
 
 
 struct SubmeshRenderingDefinition
@@ -42,6 +45,7 @@ struct StaticMeshRenderingDefinition
 
 	lib::DynamicArray<SubmeshRenderingDefinition> submeshesDefs;
 };
+SPT_REGISTER_COMPONENT_TYPE(StaticMeshRenderingDefinition, ecs::Registry);
 
 BEGIN_SHADER_STRUCT(SubmeshGPUData)
 	SHADER_STRUCT_FIELD(Uint32, indicesOffset)

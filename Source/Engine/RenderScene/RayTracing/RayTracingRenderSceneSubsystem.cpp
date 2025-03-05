@@ -6,8 +6,8 @@
 #include "Renderer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
-#include "Material.h"
 #include "MaterialShadersCompiler.h"
+#include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
 
 namespace spt::rsc
@@ -94,7 +94,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 	rhi::TLASDefinition tlasDefinition;
 
-	const auto rayTracedObjectsEntities = sceneRegistry.view<const EntityGPUDataHandle, const TransformComponent, const mat::MaterialSlotsComponent, const RayTracingGeometryProviderComponent>();
+	const auto rayTracedObjectsEntities = sceneRegistry.view<const EntityGPUDataHandle, const TransformComponent, const rsc::MaterialSlotsComponent, const RayTracingGeometryProviderComponent>();
 	const SizeType rayTracedEntitiesNum = static_cast<SizeType>(rayTracedObjectsEntities.size_hint() * 2.2f);
 	tlasDefinition.instances.reserve(rayTracedEntitiesNum);
 

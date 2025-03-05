@@ -9,6 +9,7 @@
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "ViewRenderSystem.h"
 #include "RenderSystemsRegistry.h"
+#include "Utility/Blackboard.h"
 
 
 namespace spt::rsc
@@ -130,8 +131,10 @@ public:
 
 	const math::Vector2u GetRenderingHalfRes() const;
 
-	RenderScene&                   GetRenderScene() const;
-	const RenderSceneEntityHandle& GetViewEntity() const;
+	RenderScene& GetRenderScene() const;
+
+	lib::Blackboard&       GetBlackboard();
+	const lib::Blackboard& GetBlackboard() const;
 
 	const lib::MTHandle<RenderViewDS>& GetRenderViewDS() const;
 
@@ -198,7 +201,7 @@ private:
 	math::Vector2u m_renderingResolution;
 	math::Vector2u m_outputResolution;
 
-	RenderSceneEntityHandle m_viewEntity;
+	lib::Blackboard m_blackboard;
 
 	RenderScene& m_renderScene;
 

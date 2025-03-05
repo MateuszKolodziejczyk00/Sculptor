@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ECSRegistry.h"
+#include "RenderSceneRegistry.h"
 
 namespace spt::rdr
 {
@@ -17,6 +18,7 @@ struct RayTracingGeometryProviderComponent
 	// Entity that contains RayTracingGeometryComponent
 	ecs::EntityHandle entity;
 };
+SPT_REGISTER_COMPONENT_TYPE(RenderSceneRegistry, RenderSceneRegistry)
 
 
 struct RayTracingGeometryDefinition
@@ -35,5 +37,6 @@ struct RayTracingGeometryComponent
 {
 	lib::DynamicArray<RayTracingGeometryDefinition> geometries;
 };
+SPT_REGISTER_COMPONENT_TYPE(RayTracingGeometryComponent, ecs::Registry);
 
 } // spt::rsc

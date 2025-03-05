@@ -42,6 +42,7 @@ struct PointLightShadowMapComponent
 	// Shadow maps for different sides of point lights must be continuous
 	Uint32 shadowMapFirstFaceIdx;
 };
+SPT_REGISTER_COMPONENT_TYPE(PointLightShadowMapComponent, RenderSceneRegistry);
 
 
 struct VisibleLightEntityInfo

@@ -50,8 +50,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 		view.SetLocation(location);
 	}
 	
-	const RenderSceneEntityHandle viewEntity = view.GetViewEntity();
-	if (CameraLensSettingsComponent* lensSettings = viewEntity.try_get<CameraLensSettingsComponent>())
+	if (CameraLensSettingsComponent* lensSettings = view.GetBlackboard().Find<CameraLensSettingsComponent>())
 	{
 		if (ImGui::CollapsingHeader("Lens Settings"))
 		{

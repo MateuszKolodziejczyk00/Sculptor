@@ -1,4 +1,5 @@
 #include "ECSRegistry.h"
+#include "ComponentsRegistry.h"
 
 namespace spt::ecs
 {
@@ -6,6 +7,14 @@ namespace spt::ecs
 SCULPTOR_ECS_API Registry& GetRegistry()
 {
 	static Registry registry;
+	static bool initialized = false;
+
+	if (!initialized)
+	{
+		InitializeRegistry(registry);
+		initialized = true;
+	}
+
 	return registry;
 }
 

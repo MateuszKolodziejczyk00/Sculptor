@@ -60,14 +60,11 @@ RenderView::RenderView(RenderScene& renderScene)
 	, m_renderScene(renderScene)
 	, m_renderedFrameIdx(0u)
 {
-	m_viewEntity = renderScene.CreateEntity();
-
 	m_renderViewDS = rdr::ResourcesManager::CreateDescriptorSetState<RenderViewDS>(RENDERER_RESOURCE_NAME("RenderViewDS"));
 }
 
 RenderView::~RenderView()
 {
-	m_viewEntity.destroy();
 }
 
 void RenderView::SetRenderStages(ERenderStage stages)
@@ -155,9 +152,14 @@ RenderScene& RenderView::GetRenderScene() const
 	return m_renderScene;
 }
 
-const RenderSceneEntityHandle& RenderView::GetViewEntity() const
+lib::Blackboard& RenderView::GetBlackboard()
 {
-	return m_viewEntity;
+	return m_blackboard;
+}
+
+const lib::Blackboard& RenderView::GetBlackboard() const
+{
+	return m_blackboard;
 }
 
 const lib::MTHandle<RenderViewDS>& RenderView::GetRenderViewDS() const

@@ -169,7 +169,7 @@ void VisibilityBufferRenderStage::CreateGBuffer(rg::RenderGraphBuilder& graphBui
 
 	const math::Vector2u resolution = viewSpec.GetRenderingRes();
 
-	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 
@@ -221,7 +221,7 @@ void VisibilityBufferRenderStage::RenderGBufferAdditionalTextures(rg::RenderGrap
 
 	const math::Vector2u resolution = viewSpec.GetRenderingRes();
 
-	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+	const ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 

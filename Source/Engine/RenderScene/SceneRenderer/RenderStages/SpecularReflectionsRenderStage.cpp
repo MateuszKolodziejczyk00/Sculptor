@@ -632,7 +632,7 @@ void SpecularReflectionsRenderStage::BeginFrame(const RenderScene& renderScene, 
 {
 	Base::BeginFrame(renderScene, viewSpec);
 
-	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetData().Get<ShadingViewResourcesUsageInfo>();
+	ShadingViewResourcesUsageInfo& resourcesUsageInfo = viewSpec.GetBlackboard().Get<ShadingViewResourcesUsageInfo>();
 
 	m_renderHalfResReflections = renderer_params::halfResReflections;
 
@@ -871,7 +871,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		reflectionsViewData.varianceEstimation           = denoiserResult.varianceEstimation;
 		reflectionsViewData.halfResReflections           = isHalfRes;
 
-		viewSpec.GetData().Create<RTReflectionsViewData>(reflectionsViewData);
+		viewSpec.GetBlackboard().Create<RTReflectionsViewData>(reflectionsViewData);
 
 		viewSpec.GetRenderStageEntries(ERenderStage::CompositeLighting).GetPostRenderStage().AddRawMember(this, &SpecularReflectionsRenderStage::RenderVariableRateTexture);
 
@@ -889,7 +889,7 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetData().Get<RTReflectionsViewData>();
+	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetBlackboard().Get<RTReflectionsViewData>();
 
 	const Bool isHalfRes = reflectionsViewData.halfResReflections;
 

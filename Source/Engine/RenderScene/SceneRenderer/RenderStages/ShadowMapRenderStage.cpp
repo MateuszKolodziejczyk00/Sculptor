@@ -93,11 +93,12 @@ void ShadowMapRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const 
 {
 	SPT_PROFILER_FUNCTION();
 
+	const RenderView& renderView = viewSpec.GetRenderView();
+
 	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
 	const EShadowMappingTechnique defaultTechnique = shadowMapsManager.GetShadowMappingTechnique();
 
-	const RenderSceneEntityHandle& viewEntity = viewSpec.GetRenderView().GetViewEntity();
-	const ShadowMapViewComponent& shadowMapViewData = viewEntity.get<ShadowMapViewComponent>();
+	const ShadowMapViewComponent& shadowMapViewData = renderView.GetBlackboard().Get<ShadowMapViewComponent>();
 	
 	const EShadowMappingTechnique technique = shadowMapViewData.techniqueOverride.value_or(defaultTechnique);
 

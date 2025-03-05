@@ -17,7 +17,7 @@ SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>&
 	: m_batches(inBatches)
 { }
 
-void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const mat::MaterialSlotsComponent& materialsSlots)
+void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots)
 {
 	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
 	{
@@ -132,7 +132,7 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 
 	SMBatchesBuilder batchesBuilder(batches);
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, mat::MaterialSlotsComponent>();
+	const auto meshesView = GetOwningScene().GetRegistry().view<TransformComponent, StaticMeshInstanceRenderData, EntityGPUDataHandle, rsc::MaterialSlotsComponent>();
 	for (const auto& [entity, transformComp, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
 		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
@@ -169,7 +169,7 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 
 	GeometryDrawer geometryDrawer(OUT cachedBatches.geometryPassData);
 
-	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const mat::MaterialSlotsComponent>();
+	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const rsc::MaterialSlotsComponent>();
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
 		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;

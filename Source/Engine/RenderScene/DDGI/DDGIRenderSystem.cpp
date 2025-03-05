@@ -586,7 +586,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 
 	if (ddgiSubsystem.GetDebugMode() == EDDGIDebugMode::DebugRays)
 	{
-		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetData().Get<DDGIDebugRaysViewData>();
+		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetBlackboard().Get<DDGIDebugRaysViewData>();
 
 		for (const DDGIDebugRaysViewData::DebugRaysBuffer& debugRaysInfo : debugRaysViewData.debugRaysBuffers)
 		{

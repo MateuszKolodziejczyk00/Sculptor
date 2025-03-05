@@ -150,7 +150,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	}
 
 	lib::MTHandle<CompositeRTReflectionsDS> compositeRTReflectionsDS;
-	if (const RTReflectionsViewData* rtReflectionsData = viewSpec.GetData().Find<RTReflectionsViewData>())
+	if (const RTReflectionsViewData* rtReflectionsData = viewSpec.GetBlackboard().Find<RTReflectionsViewData>())
 	{
 		permutation.rtReflectionsEnabled = true;
 

@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "RenderSceneRegistry.h"
 
 
 namespace spt::rsc
@@ -64,6 +65,7 @@ struct DirectionalLightData
 	
 	Real32			sunDiskEC;
 };
+SPT_REGISTER_COMPONENT_TYPE(DirectionalLightData, RenderSceneRegistry);
 
 
 struct PointLightData
@@ -94,5 +96,6 @@ struct PointLightData
 	math::Vector3f	location;
 	Real32			radius;
 };
+SPT_REGISTER_COMPONENT_TYPE(PointLightData, RenderSceneRegistry);
 
 } // spt::rsc

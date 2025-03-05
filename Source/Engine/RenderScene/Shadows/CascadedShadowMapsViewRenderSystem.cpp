@@ -121,8 +121,7 @@ std::pair<lib::SharedRef<RenderView>, lib::SharedRef<rdr::Texture>> CascadedShad
 	shadowMapViewComponent.faceIdx           = 0u;
 	shadowMapViewComponent.techniqueOverride = m_params.shadowsTechnique;
 
-	RenderSceneEntityHandle viewEntity = renderView->GetViewEntity();
-	viewEntity.emplace<ShadowMapViewComponent>(shadowMapViewComponent);
+	renderView->GetBlackboard().Create<ShadowMapViewComponent>(shadowMapViewComponent);
 
 	return std::make_pair(renderView, shadowMap);
 }
