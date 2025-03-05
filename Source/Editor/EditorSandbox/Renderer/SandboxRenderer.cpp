@@ -356,8 +356,6 @@ void SandboxRenderer::InitializeRenderScene()
 		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
 	}
 
-	rsc::RenderSceneEntityHandle viewEntity = m_renderView->GetViewEntity();
-	
 	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))
 	{
 		rhi::TextureViewDefinition viewDef;

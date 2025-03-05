@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "ECSRegistry.h"
 #include "RenderSceneRegistry.h"
 
 namespace spt::rdr

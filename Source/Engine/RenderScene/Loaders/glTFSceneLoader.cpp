@@ -592,7 +592,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				StaticMeshInstanceRenderData entityStaticMeshData;
 				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
 
-				mat::MaterialSlotsComponent materialSlots;
+				rsc::MaterialSlotsComponent materialSlots;
 
 				materialSlots.slots.reserve(mesh.primitives.size());
 				for (const tinygltf::Primitive& prim : mesh.primitives)
@@ -601,7 +601,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				}
 
 				meshSceneEntity.emplace<StaticMeshInstanceRenderData>(entityStaticMeshData);
-				meshSceneEntity.emplace<mat::MaterialSlotsComponent>(std::move(materialSlots));
+				meshSceneEntity.emplace<rsc::MaterialSlotsComponent>(std::move(materialSlots));
 
 				if (withRayTracing)
 				{
