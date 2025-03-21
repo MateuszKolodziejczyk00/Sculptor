@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorAliases.h"
-#include "TypeID.h"
+#include "Utility/TypeID.h"
 #include "Containers/HashMap.h"
 #include "Assertions/Assertions.h"
 
@@ -217,6 +217,15 @@ public:
 	{
 		const auto foundData = m_data.find(TypeInfo<TDataType>());
 		return foundData != std::cend(m_data) ? &foundData->second.Get<TDataType>() : nullptr;
+	}
+
+	template<typename TCallable>
+	void ForEachType(TCallable&& callable) const
+	{
+		for (const auto& [type, data] : m_data)
+		{
+			callable(type);
+		}
 	}
 
 private:

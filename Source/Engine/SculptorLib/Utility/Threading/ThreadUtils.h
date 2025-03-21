@@ -18,4 +18,4 @@ struct InterferenceProps
 } // spt::lib
 
 
-#define ALIGNAS_CACHE_LINE alignas(spt::lib::InterferenceProps::destructiveInterferenceSize)
+#define SPT_ALIGNAS_CACHE_LINE alignas(spt::lib::InterferenceProps::destructiveInterferenceSize)

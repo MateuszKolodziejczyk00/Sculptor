@@ -11,6 +11,8 @@ function RenderScene:SetupConfiguration(configuration, platform)
     
     self:AddPrivateDependency("JobSystem")
 
+    self:AddPublicDependency("Blackboard")
+
 	self:AddPublicDefine("SPT_ENABLE_SCENE_RENDERER_STATS=1")
 end
 

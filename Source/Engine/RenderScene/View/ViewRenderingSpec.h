@@ -6,7 +6,7 @@
 #include "RGResources/RGTrackedObject.h"
 #include "RenderView.h"
 #include "RGResources/RGResourceHandles.h"
-#include "Utility/Blackboard.h"
+#include "Blackboard.h"
 
 namespace spt::rg
 {
@@ -23,7 +23,6 @@ class ViewRenderingSpec;
 class DepthCullingDS;
 class ViewShadingInputDS;
 class ShadowMapsDS;
-
 
 
 #define SPT_RENDER_STAGE_META_DATA_DEBUG (defined(SPT_DEBUG) || defined(SPT_DEVELOPMENT))

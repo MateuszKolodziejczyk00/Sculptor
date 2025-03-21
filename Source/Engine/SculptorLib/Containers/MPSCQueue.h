@@ -84,7 +84,7 @@ private:
     
     // Consumer only data ======== 
 
-    ALIGNAS_CACHE_LINE Node* m_tail;
+    SPT_ALIGNAS_CACHE_LINE Node* m_tail;
 };
 
 } // spt::lib

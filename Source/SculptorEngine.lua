@@ -9,7 +9,16 @@ IncludeProject("SculptorLib")
 IncludeProject("Tokenizer")
 IncludeProject("Serialization")
 
+SetProjectsSubgroupName("Core/Utils/Blackboard")
+IncludeProject("Blackboard")
+IncludeProject("BlackboardTests")
+
+SetProjectsSubgroupName("Core/ECS")
 IncludeProject("SculptorECS")
+
+SetProjectsSubgroupName("Core/AssetSystem")
+IncludeProject("AssetsSystem")
+IncludeProject("AssetsSystemTests")
 
 SetProjectsSubgroupName("Core/JobSystem")
 IncludeProject("JobSystem")

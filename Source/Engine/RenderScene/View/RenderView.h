@@ -9,7 +9,7 @@
 #include "DescriptorSetBindings/ConstantBufferRefBinding.h"
 #include "ViewRenderSystem.h"
 #include "RenderSystemsRegistry.h"
-#include "Utility/Blackboard.h"
+#include "Blackboard.h"
 
 
 namespace spt::rsc

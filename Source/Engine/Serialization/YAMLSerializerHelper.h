@@ -73,6 +73,11 @@ public:
 		return !IsSaving();
 	}
 
+	Bool DoesKeyExist(lib::StringView key) const
+	{
+		return m_node[key.data()].IsDefined();
+	}
+
 	template<typename TDataType>
 	Bool Serialize(TDataType& data, ESerializationFlags flags = ESerializationFlags::None)
 	{
@@ -97,6 +102,11 @@ public:
 		}
 
 		return false;
+	}
+
+	const YAML::Node& GetNode() const
+	{
+		return m_node;
 	}
 
 private:
@@ -162,6 +172,16 @@ public:
 		}
 	}
 
+	void BeginMap()
+	{
+		m_emitter << YAML::BeginMap;
+	}
+
+	void EndMap()
+	{
+		m_emitter << YAML::EndMap;
+	}
+
 private:
 
 	YAML::Emitter&	m_emitter;
@@ -178,6 +198,11 @@ public:
 	SerializerWrapper(TArgs&&... arguments)
 		: m_serializer(std::forward<TArgs>(arguments)...)
 	{ }
+
+	Bool DoesKeyExist(lib::StringView key) const
+	{
+		return m_serializer.DoesKeyExist(key);
+	}
 
 	template<typename TDataType>
 	std::enable_if_t<!lib::isPair<TDataType>, void> Serialize(const TDataType& data)

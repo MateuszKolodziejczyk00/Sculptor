@@ -1,11 +1,15 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
+#include <filesystem>
 
 #include <fstream>
 
 namespace spt::lib
 {
+
+using Path = std::filesystem::path;
+
 
 enum class EFileOpenFlags
 {
