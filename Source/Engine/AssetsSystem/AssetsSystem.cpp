@@ -61,10 +61,7 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 		return LoadResult(ELoadError::DoesNotExist);
 	}
 
-	const lib::String data = ReadAssetData(fullPath);
-
-	AssetInstanceData assetData;
-	srl::SerializationHelper::DeserializeStruct(assetData, data);
+	AssetInstanceData assetData = std::move(ReadAssetData(fullPath));
 
 	const AssetHandle assetInstance = CreateAssetInstance(AssetInitializer
 													{
@@ -155,7 +152,33 @@ void AssetsSystem::SaveAssetImpl(AssetHandle asset)
 
 	SPT_CHECK(asset.IsValid());
 
+	AssetBlackboard& assetRuntimeData = asset->GetBlackboard();
+
+	// Reload unloaded types for serialization
+	if (!assetRuntimeData.GetUnloadedTypes().empty())
+	{
+		const lib::Path fullPath = m_contentPath / asset->GetPath();
+		AssetInstanceData assetSavedData = ReadAssetData(fullPath);
+
+		for (lib::RuntimeTypeInfo unloadedDataType : assetRuntimeData.GetUnloadedTypes())
+		{
+			SPT_MAYBE_UNUSED
+			const Bool success = assetRuntimeData.MoveType(assetSavedData.blackboard, unloadedDataType);
+
+			SPT_CHECK(success);
+		}
+	}
+
 	const lib::String data = srl::SerializationHelper::SerializeStruct(asset->GetInstanceData());
+
+	// unload data that was unloaded again
+	if (!assetRuntimeData.GetUnloadedTypes().empty())
+	{
+		for (lib::RuntimeTypeInfo unloadedDataType : assetRuntimeData.GetUnloadedTypes())
+		{
+			assetRuntimeData.Unload(unloadedDataType);
+		}
+	}
 
 	const lib::Path fullPath = m_contentPath / asset->GetPath();
 	std::ofstream stream = lib::File::OpenOutputStream(fullPath.string(), lib::EFileOpenFlags::ForceCreate);
@@ -166,7 +189,7 @@ void AssetsSystem::SaveAssetImpl(AssetHandle asset)
 	stream.close();
 }
 
-lib::String AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
+AssetInstanceData AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 {
 	std::ifstream stream = lib::File::OpenInputStream(fullPath.string());
 
@@ -178,7 +201,10 @@ lib::String AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 	std::stringstream stringStream;
 	stringStream << stream.rdbuf();
 
-	return stringStream.str();
+	AssetInstanceData assetData;
+	srl::SerializationHelper::DeserializeStruct(assetData, stringStream.str());
+
+	return assetData;
 }
 
 AssetHandle AssetsSystem::CreateAssetInstance(const AssetInitializer& initializer)

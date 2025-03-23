@@ -71,7 +71,7 @@ private:
 
 	void SaveAssetImpl(AssetHandle asset);
 
-	lib::String ReadAssetData(const lib::Path& fullPath) const;
+	AssetInstanceData ReadAssetData(const lib::Path& fullPath) const;
 
 	AssetHandle CreateAssetInstance(const AssetInitializer& initializer);
 

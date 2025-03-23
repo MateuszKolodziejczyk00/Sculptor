@@ -133,6 +133,25 @@ TEST_F(AssetsSystemTests, LoadAsset)
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 1u);
 }
 
+TEST_F(AssetsSystemTests, AssetDataUnload)
+{
+	const ResourcePath assetPath = "AssetDataUnload/Asset.sptasset";
+
+	AssetHandle asset = m_assetsSystem.LoadAssetChecked(assetPath);
+
+	asset->GetBlackboard().Unload(lib::TypeInfo<AssetData1>());
+
+	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData1>() == false);
+	EXPECT_TRUE(asset->GetBlackboard().GetUnloadedTypes().size() == 1u);
+
+	asset->SaveAsset();
+	asset.Reset();
+
+	asset = m_assetsSystem.LoadAssetChecked(assetPath);
+
+	EXPECT_TRUE(asset->GetBlackboard().Contains<AssetData1>() == true);
+}
+
 TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 {
 	const ResourcePath asset1Path = "AssetsLoadingAndUnloading/Asset1.sptasset";

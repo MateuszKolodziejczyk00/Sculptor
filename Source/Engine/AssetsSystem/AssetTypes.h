@@ -20,9 +20,35 @@ struct AssetInitializer
 };
 
 
+class AssetBlackboard : public lib::Blackboard
+{
+public:
+
+	using Super = lib::Blackboard;
+
+	void Unload(lib::RuntimeTypeInfo type)
+	{
+		m_unloadedTypes.emplace(type);
+		Super::Remove(type);
+	}
+
+	void Remove(lib::RuntimeTypeInfo type)
+	{
+		m_unloadedTypes.erase(type);
+		Super::Remove(type);
+	}
+
+	const lib::HashSet<lib::RuntimeTypeInfo>& GetUnloadedTypes() const { return m_unloadedTypes; }
+
+private:
+
+	lib::HashSet<lib::RuntimeTypeInfo> m_unloadedTypes;
+};
+
+
 struct AssetInstanceData
 {
-	lib::Blackboard blackboard;
+	AssetBlackboard blackboard;
 };
 
 
@@ -47,8 +73,8 @@ public:
 	const lib::HashedString& GetName() const { return m_name; }
 	const lib::Path&         GetPath() const { return m_path.GetPath(); }
 
-	const lib::Blackboard& GetBlackboard() const { return m_data.blackboard; }
-	lib::Blackboard&       GetBlackboard() { return m_data.blackboard; }
+	const AssetBlackboard& GetBlackboard() const { return m_data.blackboard; }
+	AssetBlackboard&       GetBlackboard() { return m_data.blackboard; }
 
 private:
 
@@ -76,7 +102,14 @@ struct TypeSerializer<as::AssetInstanceData>
 	template<typename Serializer, typename Param>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
-		serializer.Serialize("Blackboard", data.blackboard);
+		if constexpr (Serializer::IsLoading())
+		{
+			serializer.Serialize("Blackboard", static_cast<lib::Blackboard&>(data.blackboard));
+		}
+		else
+		{
+			serializer.Serialize("Blackboard", static_cast<const lib::Blackboard&>(data.blackboard));
+		}
 	}
 };
 

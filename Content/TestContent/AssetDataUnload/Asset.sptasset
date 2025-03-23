@@ -1,0 +1,6 @@
+Blackboard:
+  spt::as::tests::AssetData2:
+    Value1: 0
+    Value2: 42
+  spt::as::tests::AssetData1:
+    Value: 42

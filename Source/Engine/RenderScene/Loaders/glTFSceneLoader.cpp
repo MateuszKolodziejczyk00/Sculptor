@@ -28,6 +28,8 @@
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
 #pragma warning(pop)
+#pragma optimize("", off)
+#define USE_REMAPPINGS 1
 
 namespace spt::rsc
 {
@@ -74,6 +76,11 @@ void GLTFMeshBuilder::BuildMesh(const tinygltf::Mesh& mesh, const tinygltf::Mode
 
 	for (const tinygltf::Primitive& prim : mesh.primitives)
 	{
+		if (prim.material == -1)
+		{
+			continue;
+		}
+
 		BeginNewSubmesh();
 
 		SetIndices(model.accessors[prim.indices], model);
@@ -127,7 +134,11 @@ void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tin
 	SPT_CHECK(submeshBD.submesh.locationsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
+#if USE_REMAPPINGS
 	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
+#else
+	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model);
+#endif
 }
 
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -136,7 +147,11 @@ void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinyg
 	SPT_CHECK(submeshBD.submesh.normalsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
+#if USE_REMAPPINGS
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
+#else
+	AppendAccessorData<Real32>(accessor, model);
+#endif
 }
 
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -145,7 +160,11 @@ void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tiny
 	SPT_CHECK(submeshBD.submesh.tangentsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
+#if USE_REMAPPINGS
 	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1, 3 });
+#else
+	AppendAccessorData<Real32>(accessor, model);
+#endif
 }
 
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -233,54 +252,79 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 	}
 
 	math::Affine3f transform = math::Affine3f::Identity();
-	//transform *= math::AlignedScaling3f(0.01f, 0.01f, 0.01f);
 
-	//if (test < 2)
-	//{
+	if (test < 2)
+	{
 		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
-	//}
-	
+		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, -90.f, 0.f);
+	}
+	else
+	{
+		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
+	}
+
 #if 1
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);
 
 		// Ensure uniform scale
-		SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[1]));
-		SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[2]));
+		//SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[1]));
+		//SPT_CHECK(math::Utils::AreNearlyEqual(node.scale[0], node.scale[2]));
 
 		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
 		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
+
+#if USE_REMAPPINGS
 		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
 		transform = remappedScale * transform;
+#else
+		const math::AlignedScaling3f scale(nodeScale.x(), nodeScale.y(), nodeScale.z());
+		transform = scale * transform;
+#endif
 	}
 #endif
-	
+
 	if (!node.rotation.empty())
 	{
 		SPT_CHECK(node.rotation.size() == 4);
 		const math::Vector4f nodeQuaternion = math::Map<const math::Vector4d>(node.rotation.data()).cast<float>();
+#if USE_REMAPPINGS
 		const math::Quaternionf remappedQuaternion(math::Vector4f(nodeQuaternion.z(), nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.w()));
 		transform = remappedQuaternion.matrix() * transform;
+#else
+		const math::Quaternionf quaternion(nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.z(), nodeQuaternion.w());
+		transform = quaternion.matrix() * transform;
+#endif
 	}
-	
+
 	if (!node.translation.empty())
 	{
 		SPT_CHECK(node.translation.size() == 3);
 		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
+#if USE_REMAPPINGS
 		const math::Translation3f remappedTranslation(nodeTranslation.z(), nodeTranslation.x(), nodeTranslation.y());
 		transform = remappedTranslation * transform;
+#else
+		const math::Translation3f translation(nodeTranslation.x(), nodeTranslation.y(), nodeTranslation.z());
+		transform = translation * transform;
+#endif
 	}
 
-	if (test == 2)
-	{
-		//const math::Translation3f translation(0.f, 0.f, 1.4f);
-		//transform = translation * transform;
-		//const math::AlignedScaling3f scale(1.f, 1.f, 5.f);
-		//transform = scale * transform;
-		//const math::Translation3f translation(-1.4f, 0.f, 0.f);
-		//transform = translation * transform;
-	}
+	//if (test == 2)
+	//{
+	//	const math::AlignedScaling3f scale(0.01f, 0.01f, 0.01f);
+	//	transform = scale * transform;
+	//	//const math::Translation3f translation(-1.3f, -8.f, 0.f);
+	//	const math::Translation3f translation(0.0f, 0.f, 0.f);
+	//	transform = translation * transform;
+	//}
+	//if (test == 1)
+	//{
+		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
+		//transform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * transform;
+	//}
+	//transform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * transform;
 
 	return transform;
 }
@@ -443,6 +487,10 @@ static mat::EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
 	{
 		materialType = mat::EMaterialType::AlphaMasked;
 	}
+	else if (materialDef.alphaMode == "BLEND")
+	{
+		materialType = mat::EMaterialType::AlphaMasked;
+	}
 
 	return materialType;
 }
@@ -561,7 +609,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 		const lib::DynamicArray<Uint32> textureIndicesInMaterialDS = LoadImages(model);
 		const lib::DynamicArray<ecs::EntityHandle> materials = CreateMaterials(model, textureIndicesInMaterialDS);
 
-		lib::DynamicArray<ecs::EntityHandle> loadedMeshes;
+		lib::HashMap<int, ecs::EntityHandle> loadedMeshes;
 		loadedMeshes.reserve(model.meshes.size());
 
 		rdr::BLASBuilder blasBuilder;
@@ -572,22 +620,28 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 			meshBuildParams.blasBuilder = &blasBuilder;
 		}
 
-		for (const tinygltf::Mesh& mesh : model.meshes)
+		for(size_t meshIdx = 0u; meshIdx < model.meshes.size(); ++meshIdx)
 		{
-			loadedMeshes.emplace_back(LoadMesh(mesh, model, meshBuildParams));
+			const tinygltf::Mesh& mesh = model.meshes[meshIdx];
+			if (std::any_of(mesh.primitives.cbegin(), mesh.primitives.cend(), [](const tinygltf::Primitive& prim) { return prim.material != -1; }))
+			{
+				loadedMeshes.emplace(static_cast<int>(meshIdx), LoadMesh(mesh, model, meshBuildParams));
+			}
 		}
+
+		Uint32 createdEntitiesNum = 0;
 
 		for (const tinygltf::Node& node : model.nodes)
 		{
-			if (node.mesh != -1)
+			if (node.mesh != -1 && loadedMeshes.contains(node.mesh))
 			{
-				SPT_CHECK(static_cast<SizeType>(node.mesh) < loadedMeshes.size());
-
 				const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
 				RenderInstanceData instanceData;
 				instanceData.transformComp.SetTransform(GetNodeTransform(node));
 				const RenderSceneEntityHandle meshSceneEntity = scene.CreateEntity(instanceData);
+
+				++createdEntitiesNum;
 
 				StaticMeshInstanceRenderData entityStaticMeshData;
 				entityStaticMeshData.staticMesh = loadedMeshes[node.mesh];
@@ -597,6 +651,10 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				materialSlots.slots.reserve(mesh.primitives.size());
 				for (const tinygltf::Primitive& prim : mesh.primitives)
 				{
+					if (prim.material == -1)
+					{
+						continue;
+					}
 					materialSlots.slots.emplace_back(materials.at(prim.material));
 				}
 
@@ -618,6 +676,8 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 			BuildAccelerationStructures(blasBuilder);
 		}
+
+		SPT_LOG_TRACE(LogGLTFLoader, "Finished loading {} entities", createdEntitiesNum);
 	}
 }
 
