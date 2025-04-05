@@ -17,8 +17,8 @@ SetProjectsSubgroupName("Core/ECS")
 IncludeProject("SculptorECS")
 
 SetProjectsSubgroupName("Core/AssetSystem")
-IncludeProject("AssetsSystem")
-IncludeProject("AssetsSystemTests")
+IncludeProjectFromDirectory("Assets/AssetsSystem", "AssetsSystem")
+IncludeProjectFromDirectory("Assets/AssetsSystemTests", "AssetsSystemTests")
 
 SetProjectsSubgroupName("Core/JobSystem")
 IncludeProject("JobSystem")

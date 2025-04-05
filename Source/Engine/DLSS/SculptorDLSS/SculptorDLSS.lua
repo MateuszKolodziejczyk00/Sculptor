@@ -1,4 +1,4 @@
-SculptorDLSS = Project:CreateProjectInDirectory("DLSS/SculptorDLSS", "SculptorDLSS", ETargetType.None)
+SculptorDLSS = Project:CreateProject("SculptorDLSS", ETargetType.None)
 
 function SculptorDLSS:SetupConfiguration(configuration, platform)
     self:AddPublicDefine("ENABLE_DLSS=1")

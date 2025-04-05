@@ -1,4 +1,4 @@
-ImGuiVulkanBackend = Project:CreateProjectInDirectory("ImGui", "ImGuiVulkanBackend", ETargetType.SharedLibrary)
+ImGuiVulkanBackend = Project:CreateProject("ImGuiVulkanBackend", ETargetType.SharedLibrary)
 
 function ImGuiVulkanBackend:SetupConfiguration(configuration, platform)
     self:AddPublicRelativeIncludePath("backends")    

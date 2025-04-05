@@ -21,7 +21,7 @@ IncludeProject("PerformanceAPI")
 IncludeProject("PIX")
 ResetProjectsSubgroupName()
 
-SetProjectsSubgroupName("Grapgics")
+SetProjectsSubgroupName("Graphics")
 IncludeProject("DLSS")
 ResetProjectsSubgroupName()
 

@@ -101,12 +101,14 @@ currentProjectsType = nil
 
 currentProjectsSubgroup = ""
 
-function Project:CreateProject(name, targetType, language)
-    return Project:CreateProjectImpl(name, name, targetType, language)
-end
+internal_current_dir = nil
 
-function Project:CreateProjectInDirectory(directory, projectName, targetType, language)
-    return Project:CreateProjectImpl(directory, projectName, targetType, language)
+function Project:CreateProject(name, targetType, language)
+    local dir = name
+    if internal_current_dir ~= nil then
+        dir = internal_current_dir
+    end
+    return Project:CreateProjectImpl(dir, name, targetType, language)
 end
 
 function Project:CreateProjectImpl(directory, name, targetType, language)
@@ -655,7 +657,9 @@ function IncludeProject(name)
 end
 
 function IncludeProjectFromDirectory(directory, projectName)
+    internal_current_dir = directory
     include (currentProjectsType .. "/" .. directory .. "/" .. projectName)
+    internal_current_dir = nil
 end
 
 function SetProjectsSubgroupName(name)

@@ -1,4 +1,4 @@
-SculptorDLSSVulkan = Project:CreateProjectInDirectory("DLSS/SculptorDLSSVulkan", "SculptorDLSSVulkan", ETargetType.SharedLibrary)
+SculptorDLSSVulkan = Project:CreateProject("SculptorDLSSVulkan", ETargetType.SharedLibrary)
 
 function SculptorDLSSVulkan:SetupConfiguration(configuration, platform)
     self:AddPrivateDependency("DLSS")

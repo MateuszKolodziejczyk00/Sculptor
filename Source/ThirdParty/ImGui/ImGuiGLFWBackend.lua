@@ -1,4 +1,4 @@
-ImGuiGLFWBackend = Project:CreateProjectInDirectory("ImGui", "ImGuiGLFWBackend", ETargetType.StaticLibrary)
+ImGuiGLFWBackend = Project:CreateProject("ImGuiGLFWBackend", ETargetType.StaticLibrary)
 
 function ImGuiGLFWBackend:SetupConfiguration(configuration, platform)
     self:AddPublicRelativeIncludePath("backends")    
