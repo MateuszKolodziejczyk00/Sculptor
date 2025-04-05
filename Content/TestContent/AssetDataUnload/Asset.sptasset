@@ -4,3 +4,4 @@ Blackboard:
     Value2: 42
   spt::as::tests::AssetData1:
     Value: 42
+Type: pt::as::tests::TestAssetType

@@ -65,8 +65,14 @@ LoadResult AssetsSystem::LoadAsset(const ResourcePath& path)
 
 	const AssetHandle assetInstance = CreateAssetInstance(AssetInitializer
 													{
+														.type = assetData.type,
 														.path = path,
 													});
+
+	if (!assetInstance.IsValid())
+	{
+		return ELoadError::FailedToCreateInstance;
+	}
 
 	assetInstance->AssignData(std::move(assetData));
 
@@ -209,7 +215,9 @@ AssetInstanceData AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 
 AssetHandle AssetsSystem::CreateAssetInstance(const AssetInitializer& initializer)
 {
-	return AssetHandle(new AssetInstance(*this, std::move(initializer)));
+	AssetFactory& factory = AssetFactory::GetInstance();
+
+	return factory.CreateAsset(*this, initializer);
 }
 
 } // spt::as

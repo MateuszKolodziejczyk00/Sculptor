@@ -16,6 +16,15 @@ struct AssetData2
 	Uint32 value2 = 0u;
 };
 
+
+class TestAssetType : public AssetInstance
+{
+public:
+
+	using AssetInstance::AssetInstance;
+};
+SPT_REGISTER_ASSET_TYPE(TestAssetType);
+
 } // spt::as::tests
 
 SPT_REGISTER_ASSET_DATA_TYPE(spt::as::tests::AssetData1);
@@ -102,6 +111,7 @@ TEST_F(AssetsSystemTests, CreateAndDeleteAsset)
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer
 													 {
+														 .type = CreateAssetType<TestAssetType>(),
 														 .path = assetPath,
 													 });
 
@@ -175,6 +185,7 @@ TEST_F(AssetsSystemTests, AssetsLoadingAndUnloading)
 	// Create already loaded asset
 	CreateResult createRes1 = m_assetsSystem.CreateAsset(AssetInitializer
 														 {
+															 .type = CreateAssetType<TestAssetType>(),
 															 .path = asset1Path,
 														 });
 
@@ -208,6 +219,7 @@ TEST_F(AssetsSystemTests, CreateAndLoadAssetWithData)
 
 	CreateResult createResult = m_assetsSystem.CreateAsset(AssetInitializer
 														   {
+															   .type = CreateAssetType<TestAssetType>(),
 															   .path = assetPath,
 														   });
 

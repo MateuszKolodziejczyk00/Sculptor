@@ -32,7 +32,8 @@ enum class EDeleteResult
 
 enum class ELoadError
 {
-	DoesNotExist
+	DoesNotExist,
+	FailedToCreateInstance
 };
 
 
