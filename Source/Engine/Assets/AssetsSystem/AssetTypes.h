@@ -12,6 +12,7 @@ namespace spt::as
 {
 
 class AssetsSystem;
+class AssetInstance;
 
 
 using AssetType = lib::HashedString;
@@ -24,10 +25,19 @@ static AssetType CreateAssetType()
 }
 
 
+class ASSETS_SYSTEM_API AssetDataInitializer
+{
+public:
+
+	virtual void InitializeNewAsset(AssetInstance& asset) = 0;
+};
+
+
 struct AssetInitializer
 {
-	AssetType    type;
-	ResourcePath path;
+	AssetType             type;
+	ResourcePath          path;
+	AssetDataInitializer* dataInitializer = nullptr;
 };
 
 
@@ -65,7 +75,7 @@ struct AssetInstanceData
 
 
 
-struct ASSETS_SYSTEM_API AssetInstance : public lib::MTRefCounted
+class ASSETS_SYSTEM_API AssetInstance : public lib::MTRefCounted
 {
 public:
 
@@ -81,6 +91,23 @@ public:
 
 	virtual ~AssetInstance();
 
+	// Called after the asset is created and its data is initialized by intializer
+	virtual void PostCreate() {}
+
+	// Called after asset's data is loaded
+	virtual void PostLoad()   {}
+
+	// Called after asset is ready to be used (regardless of whether it was loaded or created)
+	virtual void PostInitialize() {}
+
+	virtual void PreSave() {}
+	virtual void PostSave() {}
+
+	virtual void PreUnload() {}
+
+	// This can be overridden by child class. In order to do that, create the same static function with the same signature
+	static void OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data) {}
+
 	void                     AssignData(AssetInstanceData data) { m_data = std::move(data); }
 	const AssetInstanceData& GetInstanceData() const            { return m_data; }
 
@@ -91,6 +118,8 @@ public:
 
 	const AssetBlackboard& GetBlackboard() const { return m_data.blackboard; }
 	AssetBlackboard&       GetBlackboard() { return m_data.blackboard; }
+
+	AssetsSystem& GetOwningSystem() const { return m_owningSystem; }
 
 private:
 
@@ -122,10 +151,17 @@ public:
 			return new TAssetType(owningSystem, std::move(initializer));
 		};
 
-		m_assetTypes[CreateAssetType<TAssetType>()] = AssetTypeMetaData{ .factory = factory };
+		const auto deleter = [](AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data) -> void
+		{
+			TAssetType::OnAssetDeleted(assetSystem, path, data);
+		};
+
+		m_assetTypes[CreateAssetType<TAssetType>()] = AssetTypeMetaData{ .factory = factory, .deleter = deleter };
 	}
 
 	AssetHandle CreateAsset(AssetsSystem& owningSystem, const AssetInitializer& initializer);
+
+	void DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
 
 private:
 
@@ -133,7 +169,8 @@ private:
 
 	struct AssetTypeMetaData
 	{
-		lib::RawCallable<AssetHandle(AssetsSystem& owningSystem, AssetInitializer initializer)> factory;
+		lib::RawCallable<AssetHandle(AssetsSystem& owningSystem, AssetInitializer initializer)>                    factory;
+		lib::RawCallable<void(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)> deleter;
 	};
 
 	lib::HashMap<AssetType, AssetTypeMetaData> m_assetTypes;
@@ -186,5 +223,5 @@ SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::AssetInstanceData);
 	SPT_REGISTER_TYPE_FOR_BLACKBOARD_SERIALIZATION(DataType)
 
 #define SPT_REGISTER_ASSET_TYPE(AssetType) \
-	spt::as::AssetTypeRegistration<AssetType> g_assetTypeRegistration_##AssetType;
-
+	inline spt::as::AssetTypeRegistration<AssetType> g_assetTypeRegistration_##AssetType; \
+	using AssetType##Handle = lib::MTHandle<AssetType>;

@@ -33,7 +33,7 @@ public:
 
 	virtual void PrepareRenderView(RenderView& renderView) {};
 
-	virtual void PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) {};
+	virtual void BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) {};
 
 	RenderView& GetOwningView() const;
 

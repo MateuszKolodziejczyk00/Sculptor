@@ -162,7 +162,7 @@ DS_BEGIN(SRTemporalResamplingDS, rg::RGDescriptorSetState<SRTemporalResamplingDS
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                u_historyNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                        u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                u_historyBaseColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                u_historySpecularHitDist)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),        u_historySpecularHitDist)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),       u_initialResservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),         u_historyReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<SRPackedReservoir>),       u_outReservoirsBuffer)
@@ -219,8 +219,8 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 
 	const math::Vector2u resolution = params.GetResolution();
 
-	SPT_CHECK(params.historySpecularHitDist.IsValid());
-	SPT_CHECK(params.historySpecularHitDist->GetResolution2D() == resolution);
+	SPT_CHECK(!params.enableHitDistanceBasedMaxAge || params.historySpecularHitDist.IsValid());
+	SPT_CHECK(!params.enableHitDistanceBasedMaxAge || params.historySpecularHitDist->GetResolution2D() == resolution);
 
 	TemporalResamplingConstants passConstants;
 	passConstants.variableRateTileSizeBitOffset = params.variableRateTileSizeBitOffset;

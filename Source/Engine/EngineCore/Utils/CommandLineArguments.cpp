@@ -5,18 +5,13 @@
 namespace spt::engn
 {
 
-CommandLineArguments::CommandLineArguments(Uint32 argsNum, char** arguments)
-{
-	Parse(argsNum, arguments);
-}
-
-void CommandLineArguments::Parse(Uint32 argsNum, char** arguments)
+void CommandLineArguments::Parse(lib::Span<const lib::StringView> args)
 {
 	const std::regex equalsRegex("=");
 
-	for (Uint32 i = 0; i < argsNum; ++i)
+	for (SizeType i = 0; i < args.size(); ++i)
 	{
-		const lib::String argument = arguments[i];
+		const lib::String argument(args[i]);
 
 		auto argumentRegexIt = std::sregex_token_iterator(std::cbegin(argument), std::cend(argument), equalsRegex, -1);
 

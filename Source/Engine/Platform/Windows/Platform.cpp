@@ -31,5 +31,30 @@ std::string Platform::GetExecutablePath()
 	return path;
 }
 
+CmdLineArgs Platform::GetCommandLineArguments()
+{
+	const char* cmdLine = ::GetCommandLineA();
+	const char* current = cmdLine;
+	CmdLineArgs args;
+	while (*current != '\0')
+	{
+		while (*current == ' ')
+		{
+			current++;
+		}
+		if (*current == '\0')
+		{
+			break;
+		}
+		const char* start = current;
+		while (*current != ' ' && *current != '\0')
+		{
+			current++;
+		}
+		args.emplace_back(start, static_cast<SizeType>(current - start));
+	}
+	return args;
+}
+
 } // spt::plat
 

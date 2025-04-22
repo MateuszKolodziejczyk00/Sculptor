@@ -12,9 +12,8 @@ class ENGINE_CORE_API CommandLineArguments
 public:
 
 	CommandLineArguments() = default;
-	CommandLineArguments(Uint32 argsNum, char** arguments);
 
-	void				Parse(Uint32 argsNum, char** arguments);
+	void				Parse(lib::Span<const lib::StringView> args);
 
 	Bool				Contains(lib::HashedString arg) const;
 	lib::HashedString	GetValue(lib::HashedString arg) const;

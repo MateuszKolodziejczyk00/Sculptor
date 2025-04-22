@@ -106,6 +106,12 @@ struct TextureDef
 		, format(inFormat)
 	{ }
 
+	TextureDef& SetMipLevelsNum(Uint32 inMipLevels)
+	{
+		mipLevels = inMipLevels;
+		return *this;
+	}
+
 	rhi::TextureDefinition ToRHI() const
 	{
 		rhi::TextureDefinition rhiDefinition;
@@ -424,7 +430,7 @@ public:
 			: range.mipLevelsNum;
 	}
 
-	Uint32 GetArrayLevelsNum() const
+	Uint32 GetArrayLayersNum() const
 	{
 		const rhi::TextureSubresourceRange& range = GetSubresourceRange();
 		return range.arrayLayersNum == rhi::constants::allRemainingArrayLayers

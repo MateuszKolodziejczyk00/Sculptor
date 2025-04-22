@@ -52,6 +52,15 @@ struct ShaderStageCompilationDef
 									 entryPoint);
 	}
 
+	Bool IsRayTracing() const
+	{
+		return stage == rhi::EShaderStage::RTAnyHit
+			|| stage == rhi::EShaderStage::RTClosestHit
+			|| stage == rhi::EShaderStage::RTGeneration
+			|| stage == rhi::EShaderStage::RTIntersection
+			|| stage == rhi::EShaderStage::RTMiss;
+	}
+
 	rhi::EShaderStage stage;
 	lib::HashedString entryPoint;
 };

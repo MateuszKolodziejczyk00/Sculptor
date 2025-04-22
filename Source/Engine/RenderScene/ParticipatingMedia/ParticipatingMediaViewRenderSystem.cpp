@@ -24,7 +24,7 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter constantDensity("Fog Density", { "Volumetric Fog" }, 0.035f, 0.f, 1.f);
+RendererFloatParameter constantDensity("Fog Density", { "Volumetric Fog" }, 0.025f, 0.f, 1.f);
 RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
 
@@ -350,11 +350,11 @@ ParticipatingMediaViewRenderSystem::ParticipatingMediaViewRenderSystem()
 {
 }
 
-void ParticipatingMediaViewRenderSystem::PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void ParticipatingMediaViewRenderSystem::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::PreRenderFrame(graphBuilder, renderScene, viewSpec);
+	Super::BeginFrame(graphBuilder, renderScene, viewSpec);
 
 	if(viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
 	{

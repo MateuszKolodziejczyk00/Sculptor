@@ -38,18 +38,19 @@ RendererFloatParameter bloomIntensity("Bloom Intensity", { "Bloom" }, 1.0f, 0.f,
 RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f, 0.f, 1.f);
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
 
-RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, false);
-RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.006f, 0.f, 1.f);
-RendererFloat3Parameter lensFlaresLinearColorThreshold("Lens Flares Threshold", { "Lens Flares" }, math::Vector3f(360.f, 360.f, 220.f), 0.f, 1000.f);
+RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
+RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.0012f, 0.f, 1.f);
+
+RendererFloat3Parameter lensFlaresColor("Lens Flares Color", { "Lens Flares" }, math::Vector3f(1.f, 1.f, 1.f), 0.f, 1.f);
 
 RendererIntParameter lensFlaresGhostsNum("Lens Flares GhostsNum", { "Lens Flares", "Ghosts" }, 6, 0, 10);
 RendererFloatParameter lensFlaresGhostsDispersal("Lens Flares Ghosts Dispersal", { "Lens Flares", "Ghosts" }, 0.3f, 0.f, 1.f);
-RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 1.0f, 0.f, 10.f);
-RendererFloat3Parameter lensFlaresGhostsDistortion("Lens Flares Ghosts Distortion", { "Lens Flares", "Ghosts" }, math::Vector3f(0.f, 0.03f, 0.076f), 0.f, 1.f);
+RendererFloatParameter lensFlaresGhostsIntensity("Lens Flares Ghosts Intensity", { "Lens Flares", "Ghosts" }, 1.f, 0.f, 1.f);
+RendererFloatParameter lensFlaresGhostsDistortion("Lens Flares Ghosts Distortion", { "Lens Flares", "Ghosts" }, 0.01f, 0.f, 1.f);
 
-RendererFloatParameter lensFlaresHaloIntensity("Lens Flares Halo Intensity", { "Lens Flares", "Halo" }, 1.0f, 0.f, 3.f);
-RendererFloat3Parameter lensFlaresHaloDistortion("Lens Flares Halo Distortion", { "Lens Flares", "Halo" }, math::Vector3f(0.f, 0.03f, 0.076f), 0.f, 1.f);
-RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Flares", "Halo" }, 0.42f, 0.f, 1.f);
+RendererFloatParameter lensFlaresHaloIntensity("Lens Flares Halo Intensity", { "Lens Flares", "Halo" }, 1.f, 0.f, 1.f);
+RendererFloatParameter lensFlaresHaloDistortion("Lens Flares Halo Distortion", { "Lens Flares", "Halo" }, 0.01f, 0.f, 1.f);
+RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Flares", "Halo" }, 0.55f, 0.f, 1.f);
 
 RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
 
@@ -71,7 +72,7 @@ BEGIN_SHADER_STRUCT(LensFlaresParams)
 	SHADER_STRUCT_FIELD(Uint32,			ghostsNum)
 	SHADER_STRUCT_FIELD(math::Vector3f,	haloDistortion)
 	SHADER_STRUCT_FIELD(Real32,			ghostsInensity)
-	SHADER_STRUCT_FIELD(math::Vector3f,	linearColorThreshold)
+	SHADER_STRUCT_FIELD(math::Vector3f,	lensFlaresColor)
 	SHADER_STRUCT_FIELD(Real32,			ghostsDispersal)
 	SHADER_STRUCT_FIELD(Real32,			ghostsIntensity)
 	SHADER_STRUCT_FIELD(Real32,			haloIntensity)
@@ -129,15 +130,15 @@ static rg::RGTextureViewHandle ComputeLensFlares(rg::RenderGraphBuilder& graphBu
 	static const rdr::PipelineStateID computeLensFlaresPipeline = CompileComputeLensFlaresPipeline();
 
 	LensFlaresParams lensFlaresParams;
-	lensFlaresParams.ghostsDistortion		= params::lensFlaresGhostsDistortion;
+	lensFlaresParams.ghostsDistortion		= math::Vector3f(-params::lensFlaresGhostsDistortion, 0.f, params::lensFlaresGhostsDistortion);
 	lensFlaresParams.ghostsNum				= params::lensFlaresGhostsNum;
-	lensFlaresParams.haloDistortion			= params::lensFlaresHaloDistortion;
+	lensFlaresParams.haloDistortion			= math::Vector3f(-params::lensFlaresHaloDistortion, 0.f, params::lensFlaresHaloDistortion);
 	lensFlaresParams.ghostsInensity			= params::lensFlaresGhostsIntensity;
+	lensFlaresParams.lensFlaresColor		= params::lensFlaresColor;
 	lensFlaresParams.ghostsDispersal		= params::lensFlaresGhostsDispersal;
 	lensFlaresParams.ghostsIntensity		= params::lensFlaresGhostsIntensity;
 	lensFlaresParams.haloIntensity			= params::lensFlaresHaloIntensity;
 	lensFlaresParams.haloWidth				= params::lensFlaresHaloWidth;
-	lensFlaresParams.linearColorThreshold	= params::lensFlaresLinearColorThreshold;
 
 	const lib::MTHandle<LensFlaresPassDS> lensFlaresPassDS = graphBuilder.CreateDescriptorSet<LensFlaresPassDS>(RENDERER_RESOURCE_NAME("LensFlaresPassDS"));
 	lensFlaresPassDS->u_inputTexture     = bloomTexture;

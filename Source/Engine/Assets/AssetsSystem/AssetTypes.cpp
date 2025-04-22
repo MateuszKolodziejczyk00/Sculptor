@@ -26,6 +26,18 @@ AssetHandle AssetFactory::CreateAsset(AssetsSystem& owningSystem, const AssetIni
 	return factory(owningSystem, initializer);
 }
 
+void AssetFactory::DeleteAsset(AssetType assetType, AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
+{
+	const auto it = m_assetTypes.find(assetType);
+	if (it == m_assetTypes.end())
+	{
+		return;
+	}
+
+	const auto& deleter = it->second.deleter;
+	deleter(assetSystem, path, data);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // AssetInstance =================================================================================
 

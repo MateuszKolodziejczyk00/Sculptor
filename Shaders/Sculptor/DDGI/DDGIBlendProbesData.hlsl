@@ -74,8 +74,9 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 
     for (uint rayIdx = flatThreadLocalID; rayIdx < RAYS_NUM_PER_PROBE; rayIdx += (GROUP_SIZE_X * GROUP_SIZE_Y))
     {
-        const float2 resultUV = (float2(updatedProbeIdx, rayIdx) + 0.5f) * rcpTraceResultTextureRes;
-        const float4 rayResult = u_traceRaysResultTexture.SampleLevel(u_traceRaysResultSampler, resultUV, 0);
+        const float4 rayResult = u_traceRaysResultTexture.Load(uint3(updatedProbeIdx, rayIdx, 0u));
+
+        rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE
 
@@ -85,9 +86,9 @@ void CacheRaysResults(in uint updatedProbeIdx, in uint2 threadLocalID)
 
         rayHitDistances[rayIdx] = rayResult.w;
 
-#endif // DDGI_BLEND_TYPE
+        rayHitDistances[rayIdx] = min(rayResult.w, u_volumeParams.probesSpacing.x * 1.5f);
 
-        rayDirections[rayIdx] = GetProbeRayDirection(rayIdx, RAYS_NUM_PER_PROBE);
+#endif // DDGI_BLEND_TYPE
     }
 }
 
@@ -187,7 +188,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
 
 #elif DDGI_BLEND_TYPE == DDGI_BLEND_DISTANCES
 
-            weight = pow(weight, 128);
+            weight = pow(weight, 50.f);
 
             if(weight > WEIGHT_EPSILON)
             {
@@ -268,6 +269,7 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
             hysteresis = 0.f;
         }
 
+
         result = lerp(result, prevHitDistance, hysteresis);
         
         probeHitDistanceTexture[dataCoords] = float4(result, 0.f, 0.f);
@@ -305,29 +307,13 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
     }
     else if(isRow)
     {
-        sourcePixelCoord.x = GROUP_SIZE_X - 2 - localID.x;
-        
-         if(localID.y != 0)
-        {
-            sourcePixelCoord.y = GROUP_SIZE_Y - 2;
-        }
-        else
-        {
-            sourcePixelCoord.y = 1;
-        }
+        sourcePixelCoord.x = GROUP_SIZE_X - 1 - localID.x;
+        sourcePixelCoord.y = localID.y + ((localID.y > 0) ? -1 : 1);
     }
     else
     {
-        if(localID.x != 0)
-        {
-            sourcePixelCoord.x = GROUP_SIZE_X - 2;
-        }
-        else
-        {
-            sourcePixelCoord.x = 1;
-        }
-
-        sourcePixelCoord.y = GROUP_SIZE_Y - 2 - localID.y;
+        sourcePixelCoord.x = localID.x + ((localID.x > 0) ? -1 : 1);
+        sourcePixelCoord.y = GROUP_SIZE_Y - 1 - localID.y;
     }
 
 #if DDGI_BLEND_TYPE == DDGI_BLEND_ILLUMINANCE

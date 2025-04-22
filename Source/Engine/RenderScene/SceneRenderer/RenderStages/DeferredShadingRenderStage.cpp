@@ -8,6 +8,7 @@
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "Lights/ViewShadingInput.h"
 #include "GlobalResources/GlobalResources.h"
+#include "DDGI/DDGISceneSubsystem.h"
 
 
 namespace spt::rsc
@@ -92,13 +93,21 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	const Bool isDDGIEnabled = false;
 	const rdr::PipelineStateID pipeline = CompileDeferredShadingPipeline(isDDGIEnabled);
 
+	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS;
+	if (isDDGIEnabled)
+	{
+		const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = shadingParams.renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+		ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
+	}
+
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Deferred Shading"),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u{ 8u, 8u }),
 						  rg::BindDescriptorSets(std::move(deferredShadingDS),
 												 viewSpec.GetRenderView().GetRenderViewDS(),
 												 viewContext.shadowMapsDS,
-												 viewContext.shadingInputDS));
+												 viewContext.shadingInputDS,
+												 ddgiDS));
 }
 
 } // deferred_shading

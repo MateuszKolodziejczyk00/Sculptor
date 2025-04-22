@@ -69,16 +69,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
 	{
-		viewSpec->GetRenderView().BeginFrame(scene, *viewSpec);
-	}
-	
-	for (ViewRenderingSpec* viewSpec : renderViewsSpecs)
-	{
-		const lib::DynamicArray<lib::SharedRef<ViewRenderSystem>>& viewSystems = viewSpec->GetRenderView().GetRenderSystems();
-		for (const lib::SharedRef<ViewRenderSystem>& viewSystem : viewSystems)
-		{
-			viewSystem->PreRenderFrame(graphBuilder, scene, *viewSpec);
-		}
+		viewSpec->GetRenderView().BeginFrame(graphBuilder, scene, *viewSpec);
 	}
 
 	const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& renderSystems = scene.GetRenderSystems();

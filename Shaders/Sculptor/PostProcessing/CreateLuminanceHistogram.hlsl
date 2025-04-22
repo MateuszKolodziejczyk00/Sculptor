@@ -44,18 +44,32 @@ void LuminanceHistogramCS(CS_INPUT input)
 
     GroupMemoryBarrierWithGroupSync();
     
-    const uint2 pixel = input.globalID.xy;
+    const uint2 pixel = input.globalID.xy * 2u;
 
     if(pixel.x < u_exposureSettings.textureSize.x && pixel.y < u_exposureSettings.textureSize.y)
     {
-        const float2 uv = pixel * u_exposureSettings.inputPixelSize + u_exposureSettings.inputPixelSize * 0.5f;
-        const float3 linearColor = u_linearColorTexture.SampleLevel(u_sampler, uv, 0).xyz;
+        const float2 uv = pixel * u_exposureSettings.inputPixelSize + u_exposureSettings.inputPixelSize;
+        const float4 rChannel4 = u_linearColorTexture.GatherRed(u_sampler, uv, 0);
+        const float4 gChannel4 = u_linearColorTexture.GatherGreen(u_sampler, uv, 0);
+        const float4 bChannel4 = u_linearColorTexture.GatherBlue(u_sampler, uv, 0);
 
-        const float luminance = Luminance(linearColor) * rcp(GetViewExposure());
+        const float rcpExposure = rcp(GetViewExposure());
 
-        const uint binIdx = LuminanceToBinIdx(luminance, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+        const float lum0 = Luminance(float3(rChannel4.x, gChannel4.x, bChannel4.x)) * rcpExposure;
+        const float lum1 = Luminance(float3(rChannel4.y, gChannel4.y, bChannel4.y)) * rcpExposure;
+        const float lum2 = Luminance(float3(rChannel4.z, gChannel4.z, bChannel4.z)) * rcpExposure;
+        const float lum3 = Luminance(float3(rChannel4.w, gChannel4.w, bChannel4.w)) * rcpExposure;
 
-        InterlockedAdd(groupHistogramBins[binIdx], 1);
+        const uint binIdx0 = LuminanceToBinIdx(lum0, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+        const uint binIdx1 = LuminanceToBinIdx(lum1, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+        const uint binIdx2 = LuminanceToBinIdx(lum2, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+        const uint binIdx3 = LuminanceToBinIdx(lum3, u_exposureSettings.minLogLuminance, u_exposureSettings.inverseLogLuminanceRange);
+
+        InterlockedAdd(groupHistogramBins[binIdx0], 1);
+        InterlockedAdd(groupHistogramBins[binIdx1], 1);
+        InterlockedAdd(groupHistogramBins[binIdx2], 1);
+        InterlockedAdd(groupHistogramBins[binIdx3], 1);
+
     }
 
     GroupMemoryBarrierWithGroupSync();

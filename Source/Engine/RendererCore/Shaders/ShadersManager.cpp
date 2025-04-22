@@ -164,12 +164,20 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 	auto shaderIt = m_cachedShaders.find(shaderHash);
 	if (shaderIt == std::cend(m_cachedShaders))
 	{
-		const lib::SharedPtr<Shader> shader = CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, sc::EShaderCompilationFlags::Default, flags);
-		if (shader)
+		lib::SharedPtr<Shader> shader;
+		while (!shader)
 		{
-			shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
-			OnShaderCompiled(shaderRelativePath, shaderStageDef, compilationSettings, flags, shaderHash);
+			shader = CompileShader(shaderRelativePath, shaderStageDef, compilationSettings, sc::EShaderCompilationFlags::Default, flags);
+			if (!shader)
+			{
+				SPT_LOG_ERROR(ShadersManager, "Failed to compile shader: {} ({}). Attempting again in 2 seconds...", shaderRelativePath.data(), shaderStageDef.entryPoint.GetData());
+
+				std::this_thread::sleep_for(std::chrono::seconds(2));
+			}
 		}
+
+		shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
+		OnShaderCompiled(shaderRelativePath, shaderStageDef, compilationSettings, flags, shaderHash);
 	}
 
 	SPT_CHECK_MSG(shaderIt != std::cend(m_cachedShaders), "Failed to compile shader! {0}", shaderRelativePath.data());

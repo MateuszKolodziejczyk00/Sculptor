@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_set>
+#include "Utility/Hash.h"
 
 
 namespace spt::lib

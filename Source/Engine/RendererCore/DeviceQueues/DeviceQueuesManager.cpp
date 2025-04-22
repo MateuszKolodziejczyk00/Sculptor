@@ -210,6 +210,12 @@ void SubmittedWorkloadsQueue::FlushThreadMain()
 		{
 			const lib::LockGuard lock(m_submittedWorkloadsLock);
 
+			if (m_submittedWorkloadsQueue.empty() || m_submittedWorkloadsQueue.front().Get() != workload.get())
+			{
+				// FullFlush on another thread already handled this workload
+				continue;
+			}
+
 			m_submittedWorkloadsQueue.pop_front();
 		}
 

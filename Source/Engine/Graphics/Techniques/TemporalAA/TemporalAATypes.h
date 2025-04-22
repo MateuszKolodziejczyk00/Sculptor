@@ -49,6 +49,10 @@ struct TemporalAAParams
 
 	ETemporalAAQuality quality = ETemporalAAQuality::Default;
 	ETemporalAAFlags flags     = ETemporalAAFlags::Default;
+
+	Bool enableUnifiedDenoising = false;
+
+	Bool enableTransformerModel = false;
 };
 
 
@@ -57,6 +61,16 @@ struct TemporalAAExposureParams
 	rg::RGBufferViewHandle exposureBuffer;
 	Uint32 exposureOffset        = 0u;
 	Uint32 historyExposureOffset = 0u;
+};
+
+
+struct UnifiedDenoisingParams
+{
+	rg::RGTextureViewHandle diffuseAlbedo;
+	rg::RGTextureViewHandle specularAlbedo;
+	rg::RGTextureViewHandle normals;
+	rg::RGTextureViewHandle roughness;
+	rg::RGTextureViewHandle specularHitDistance;
 };
 
 
@@ -75,6 +89,8 @@ struct TemporalAARenderingParams
 	Bool resetAccumulation = false;
 
 	TemporalAAExposureParams exposure;
+
+	std::optional<UnifiedDenoisingParams> unifiedDenoisingParams = std::nullopt;
 };
 
 
@@ -112,11 +128,14 @@ public:
 
 	Bool SupportsUpscaling() const { return m_supportsUpscaling; }
 
+	Bool ExecutesUnifiedDenoising() const { return m_executesUnifiedDenoising; }
+
 protected:
 
 	lib::StringView m_name;
 
-	Bool m_supportsUpscaling = false;
+	Bool m_supportsUpscaling        = false;
+	Bool m_executesUnifiedDenoising = false;
 };
 
 } // spt::gfx

@@ -152,6 +152,164 @@ inline Uint64 GetFragmentSize(EFragmentFormat format)
 }
 
 
+inline lib::String GetFormatName(rhi::EFragmentFormat format)
+{
+	switch (format)
+	{
+	case rhi::EFragmentFormat::None:                 return "None";
+	case rhi::EFragmentFormat::R8_UN_Float:          return "R8_UN_Float";
+	case rhi::EFragmentFormat::R8_U_Int:             return "R8_U_Int";
+	case rhi::EFragmentFormat::R16_U_Int:            return "R16_U_Int";
+	case rhi::EFragmentFormat::R16_UN_Float:         return "R16_UN_Float";
+	case rhi::EFragmentFormat::R16_S_Float:          return "R16_S_Float";
+	case rhi::EFragmentFormat::R32_S_Float:          return "R32_S_Float";
+	case rhi::EFragmentFormat::R32_U_Int:            return "R32_U_Int";
+	case rhi::EFragmentFormat::RG8_UN_Float:         return "RG8_UN_Float";
+	case rhi::EFragmentFormat::RG16_U_Int:           return "RG16_U_Int";
+	case rhi::EFragmentFormat::RG16_UN_Float:        return "RG16_UN_Float";
+	case rhi::EFragmentFormat::RG16_SN_Float:        return "RG16_SN_Float";
+	case rhi::EFragmentFormat::RG16_S_Float:         return "RG16_S_Float";
+	case rhi::EFragmentFormat::RG32_S_Float:         return "RG32_S_Float";
+	case rhi::EFragmentFormat::RGB8_UN_Float:        return "RGB8_UN_Float";
+	case rhi::EFragmentFormat::BGR8_UN_Float:        return "BGR8_UN_Float";
+	case rhi::EFragmentFormat::RGB16_UN_Float:       return "RGB16_UN_Float";
+	case rhi::EFragmentFormat::RGB32_S_Float:        return "RGB32_S_Float";
+	case rhi::EFragmentFormat::RGB10A2_UN_Float:     return "RGB10A2_UN_Float";
+	case rhi::EFragmentFormat::B10G11R11_U_Float:    return "B10G11R11_U_Float";
+	case rhi::EFragmentFormat::A2B10G10R10_UN_Float: return "A2B10G10R10_UN_Float";
+	case rhi::EFragmentFormat::RGBA8_UN_Float:       return "RGBA8_UN_Float";
+	case rhi::EFragmentFormat::BGRA8_UN_Float:       return "BGRA8_UN_Float";
+	case rhi::EFragmentFormat::RGBA16_UN_Float:      return "RGBA16_UN_Float";
+	case rhi::EFragmentFormat::RGBA16_S_Float:       return "RGBA16_S_Float";
+	case rhi::EFragmentFormat::RGBA32_S_Float:       return "RGBA32_S_Float";
+	case rhi::EFragmentFormat::D16_UN_Float:         return "D16_UN_Float";
+	case rhi::EFragmentFormat::D32_S_Float:          return "D32_S_Float";
+	default:
+		return "Unknown";
+	}
+}
+
+inline rhi::EFragmentFormat GetFormatByName(lib::StringView name)
+{
+	if (name == "None")
+	{
+		return rhi::EFragmentFormat::None;
+	}
+	else if (name == "R8_UN_Float")
+	{
+		return rhi::EFragmentFormat::R8_UN_Float;
+	}
+	else if (name == "R8_U_Int")
+	{
+		return rhi::EFragmentFormat::R8_U_Int;
+	}
+	else if (name == "R16_U_Int")
+	{
+		return rhi::EFragmentFormat::R16_U_Int;
+	}
+	else if (name == "R16_UN_Float")
+	{
+		return rhi::EFragmentFormat::R16_UN_Float;
+	}
+	else if (name == "R16_S_Float")
+	{
+		return rhi::EFragmentFormat::R16_S_Float;
+	}
+	else if (name == "R32_S_Float")
+	{
+		return rhi::EFragmentFormat::R32_S_Float;
+	}
+	else if (name == "R32_U_Int")
+	{
+		return rhi::EFragmentFormat::R32_U_Int;
+	}
+	else if (name == "RG8_UN_Float")
+	{
+		return rhi::EFragmentFormat::RG8_UN_Float;
+	}
+	else if (name == "RG16_U_Int")
+	{
+		return rhi::EFragmentFormat::RG16_U_Int;
+	}
+	else if (name == "RG16_UN_Float")
+	{
+		return rhi::EFragmentFormat::RG16_UN_Float;
+	}
+	else if (name == "RG16_SN_Float")
+	{
+		return rhi::EFragmentFormat::RG16_SN_Float;
+	}
+	else if (name == "RG16_S_Float")
+	{
+		return rhi::EFragmentFormat::RG16_S_Float;
+	}
+	else if (name == "RG32_S_Float")
+	{
+		return rhi::EFragmentFormat::RG32_S_Float;
+	}
+	else if (name == "RGB8_UN_Float")
+	{
+		return rhi::EFragmentFormat::RGB8_UN_Float;
+	}
+	else if (name == "BGR8_UN_Float")
+	{
+		return rhi::EFragmentFormat::BGR8_UN_Float;
+	}
+	else if (name == "RGB16_UN_Float")
+	{
+		return rhi::EFragmentFormat::RGB16_UN_Float;
+	}
+	else if (name == "RGB32_S_Float")
+	{
+		return rhi::EFragmentFormat::RGB32_S_Float;
+	}
+	else if (name == "RGB10A2_UN_Float")
+	{
+		return rhi::EFragmentFormat::RGB10A2_UN_Float;
+	}
+	else if (name == "B10G11R11_U_Float")
+	{
+		return rhi::EFragmentFormat::B10G11R11_U_Float;
+	}
+	else if (name == "A2B10G10R10_UN_Float")
+	{
+		return rhi::EFragmentFormat::A2B10G10R10_UN_Float;
+	}
+	else if (name == "RGBA8_UN_Float")
+	{
+		return rhi::EFragmentFormat::RGBA8_UN_Float;
+	}
+	else if (name == "BGRA8_UN_Float")
+	{
+		return rhi::EFragmentFormat::BGRA8_UN_Float;
+	}
+	else if (name == "RGBA16_UN_Float")
+	{
+		return rhi::EFragmentFormat::RGBA16_UN_Float;
+	}
+	else if (name == "RGBA16_S_Float")
+	{
+		return rhi::EFragmentFormat::RGBA16_S_Float;
+	}
+	else if (name == "RGBA32_S_Float")
+	{
+		return rhi::EFragmentFormat::RGBA32_S_Float;
+	}
+	else if (name == "D16_UN_Float")
+	{
+		return rhi::EFragmentFormat::D16_UN_Float;
+	}
+	else if (name == "D32_S_Float")
+	{
+		return rhi::EFragmentFormat::D32_S_Float;
+	}
+	else
+	{
+		return rhi::EFragmentFormat::None;
+	}
+}
+
+
 enum class ETextureFlags : Flags8
 {
 	None = 0,

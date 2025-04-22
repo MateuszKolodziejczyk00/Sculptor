@@ -27,7 +27,7 @@ namespace params
 RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 6.0f, 0.f, 20.f);
 RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
 RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
-RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -0.48f, -10.f, 10.f);
+RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -0.7f, -10.f, 10.f);
 
 RendererIntParameter bilateralGridBlurXKernel("Blur X Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
 RendererIntParameter bilateralGridBlurYKernel("Blur Y Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
@@ -97,7 +97,7 @@ static rg::RGBufferViewHandle CreateLuminanceHistogram(rg::RenderGraphBuilder& g
 	static const rdr::PipelineStateID pipelineState = CompileLuminanceHistogramPipeline();
 
 	const math::Vector2u textureRes = exposureSettings.textureSize;
-	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 16u), math::Utils::DivideCeil(textureRes.y(), 16u), 1);
+	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(textureRes.x(), 32u), math::Utils::DivideCeil(textureRes.y(), 32u), 1);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Luminance Histogram"),
 						  pipelineState,
 						  dispatchGroupsNum,

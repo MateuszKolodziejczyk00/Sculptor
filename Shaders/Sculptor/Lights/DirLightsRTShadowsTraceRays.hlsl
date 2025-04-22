@@ -39,7 +39,7 @@ float TraceShadowRay(in uint2 pixel)
 			const float3 shadowRayDirection = VectorInCone(-u_params.lightDirection, maxConeAngle, noise);
 
 			RayDesc rayDesc;
-			rayDesc.TMin        = u_params.minTraceDistance;
+			rayDesc.TMin        = 0.f;
 			rayDesc.TMax        = u_params.maxTraceDistance;
 			rayDesc.Origin      = worldLocation;
 			rayDesc.Direction   = shadowRayDirection;

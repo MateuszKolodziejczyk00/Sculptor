@@ -38,8 +38,14 @@ VkImageLayout ImageSubresourcesLayoutsData::GetSubresourcesSharedLayout(const Im
 		return GetFullImageLayout();
 	}
 
-	const Uint32 endMipLevel = range.baseMipLevel + range.mipLevelsNum;
-	const Uint32 endArrayLayer = range.baseArrayLayer + range.arrayLayersNum;
+	SPT_CHECK(range.baseMipLevel < m_mipsNum);
+	SPT_CHECK(range.baseArrayLayer < m_arrayLayersNum);
+
+	const Uint32 mipLevelsNum = range.mipLevelsNum == rhi::constants::allRemainingMips ? m_mipsNum - range.baseMipLevel : range.mipLevelsNum;
+	const Uint32 arrayLayersNum = range.arrayLayersNum == rhi::constants::allRemainingArrayLayers ? m_arrayLayersNum - range.baseArrayLayer : range.arrayLayersNum;
+
+	const Uint32 endMipLevel = range.baseMipLevel + mipLevelsNum;
+	const Uint32 endArrayLayer = range.baseArrayLayer + arrayLayersNum;
 
 	const VkImageLayout layout = m_subresourceLayouts[GetSubresourceIdx(range.baseMipLevel, range.baseArrayLayer)];
 

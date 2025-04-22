@@ -110,6 +110,13 @@ void Scheduler::ScheduleJob(lib::MTHandle<JobInstance> job)
 	SPT_CHECK(job.IsValid());
 	SPT_CHECK(!job->IsInline());
 
+	if (impl::GetInstance().GetWorkerThreadsNum() == 0u)
+	{
+		// No worker threads available, execute job inline
+		Worker::TryExecuteJob(job);
+		return;
+	}
+
 	if (JobsQueueManagerTls::IsWorkerThread() && !job->IsForcedToGlobalQueue())
 	{
 		JobsQueueManagerTls::EnqueueLocal(std::move(job));

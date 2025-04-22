@@ -72,8 +72,9 @@ dlss::EDLSSFlags ComputeDLSSFlags(const TemporalAAParams& params)
 
 DLSSRenderer::DLSSRenderer()
 {
-	m_name              = "DLSS";
-	m_supportsUpscaling = true;
+	m_name				       = "DLSS";
+	m_supportsUpscaling	       = true;
+	m_executesUnifiedDenoising = false;
 }
 
 Bool DLSSRenderer::Initialize(const TemporalAAInitSettings& initSettings)
@@ -90,7 +91,12 @@ math::Vector2f DLSSRenderer::ComputeJitter(Uint64 frameIdx, math::Vector2u rende
 
 	const Uint32 standardSequenceLength = 8u;
 
-	const Uint32 sequenceLength = math::Utils::RoundUpToPowerOf2(static_cast<Uint32>(standardSequenceLength * renderingPixelScale));
+	Uint32 sequenceLength = math::Utils::RoundUpToPowerOf2(static_cast<Uint32>(standardSequenceLength * renderingPixelScale));
+
+	if (m_executesUnifiedDenoising)
+	{
+		sequenceLength = std::max(sequenceLength, 64u);
+	}
 
 	return 0.5f * TemporalAAJitterSequence::Halton(frameIdx, renderingResolution, sequenceLength);
 }
@@ -103,12 +109,18 @@ Bool DLSSRenderer::PrepareForRendering(const TemporalAAParams& params)
 	}
 
 	dlss::DLSSParams dlssParams;
-	dlssParams.inputResolution  = params.inputResolution;
-	dlssParams.outputResolution = params.outputResolution;
-	dlssParams.quality          = priv::ComputeDLSSQuality(params);
-	dlssParams.flags            = priv::ComputeDLSSFlags(params);
+	dlssParams.inputResolution         = params.inputResolution;
+	dlssParams.outputResolution        = params.outputResolution;
+	dlssParams.quality                 = priv::ComputeDLSSQuality(params);
+	dlssParams.flags                   = priv::ComputeDLSSFlags(params);
+	dlssParams.enableRayReconstruction = params.enableUnifiedDenoising;
+	dlssParams.enableTransformerModel  = params.enableTransformerModel;
 
-	return m_dlssBackend.PrepareForRendering(dlssParams);
+	const Bool success = m_dlssBackend.PrepareForRendering(dlssParams);
+
+	m_executesUnifiedDenoising = success && params.enableUnifiedDenoising;
+
+	return success;
 }
 
 void DLSSRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAARenderingParams& renderingParams)
@@ -128,6 +140,20 @@ void DLSSRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAA
 	dlssRenderingParams.jitter            = renderingParams.jitter;
 	dlssRenderingParams.sharpness         = renderingParams.sharpness;
 	dlssRenderingParams.resetAccumulation = renderingParams.resetAccumulation;
+
+	if (renderingParams.unifiedDenoisingParams)
+	{
+		const UnifiedDenoisingParams& unifiedDenoisingParams = *renderingParams.unifiedDenoisingParams;
+
+		dlss::DLSSRayReconstructionRenderingParams rayReconstructionParams;
+		rayReconstructionParams.diffuseAlbedo       = unifiedDenoisingParams.diffuseAlbedo;
+		rayReconstructionParams.specularAlbedo      = unifiedDenoisingParams.specularAlbedo;
+		rayReconstructionParams.normals             = unifiedDenoisingParams.normals;
+		rayReconstructionParams.roughness           = unifiedDenoisingParams.roughness;
+		rayReconstructionParams.specularHitDistance = unifiedDenoisingParams.specularHitDistance;
+
+		dlssRenderingParams.rayReconstructionParams = rayReconstructionParams;
+	}
 
 	m_dlssBackend.Render(graphBuilder, dlssRenderingParams);
 }

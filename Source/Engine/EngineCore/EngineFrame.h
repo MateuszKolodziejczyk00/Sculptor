@@ -40,6 +40,8 @@ enum Type : Int32
 	
 	ProcessViewsUpdate,
 
+	TransferDataForRendering,
+
 	ProcessViewsRendering,
 
 	// Render UI
@@ -159,6 +161,8 @@ public:
 
 private:
 
+	void BeginFrame(lib::SharedPtr<FrameContext> context);
+
 	static constexpr Uint32 tickableFramesNum = (Uint32)EFrameState::NUM_TICKABLE_FRAMES;
 
 	EngineFramesManager();
@@ -177,21 +181,9 @@ static lib::SharedPtr<TFrameContextType> EngineFramesManager::CreateFrame()
 
 	EngineFramesManager& manager = GetInstance();
 
-	const Uint64 frameIdx = manager.m_frameCounter++;
-
 	lib::SharedPtr<TFrameContextType> frame = lib::MakeShared<TFrameContextType>();
 
-	const Real32 deltaTime = Engine::Get().BeginFrame();
-	const Real32 time      = Engine::Get().GetTime();
-
-	FrameDefinition def;
-	def.frameIdx  = frameIdx;
-	def.deltaTime = deltaTime;
-	def.time      = time;
-
-	frame->BeginFrame(def, std::move(manager.m_lastFrame));
-
-	manager.m_lastFrame = frame;
+	manager.BeginFrame(frame);
 
 	return frame;
 }

@@ -142,7 +142,7 @@ public:
 	void            ResetExposureDataBuffer();
 	rdr::BufferView GetExposureDataBuffer() const;
 
-	void BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+	void BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void EndFrame(const RenderScene& renderScene);
 
 	// Render systems

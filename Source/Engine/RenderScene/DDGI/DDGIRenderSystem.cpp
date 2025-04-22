@@ -303,14 +303,11 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 	}
 
 #if DDGI_DEBUGGING
-	if (viewSpec.SupportsStage(ERenderStage::ForwardOpaque))
+	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
+	const EDDGIDebugMode::Type probesDebug = ddgiSubsystem.GetDebugMode();
+	if (probesDebug != EDDGIDebugMode::None)
 	{
-		const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-		const EDDGIDebugMode::Type probesDebug = ddgiSubsystem.GetDebugMode();
-		if (probesDebug != EDDGIDebugMode::None)
-		{
-			viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebug);
-		}
+		viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebug);
 	}
 #endif // DDGI_DEBUGGING
 }
@@ -552,7 +549,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 
 	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 	
-	const math::Vector2u renderingArea = renderView.GetRenderingRes();
+	const math::Vector2u renderingArea = renderView.GetOutputRes();
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
@@ -624,7 +621,7 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 			debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
 
 			const Uint32 probesNum = volume->GetProbesNum();
-			const Uint32 probeVerticesNum = 144u;
+			const Uint32 probeVerticesNum = 3168u;
 
 			graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Probes Subpass"),
 									rg::BindDescriptorSets(std::move(debugDrawProbesDS)),
@@ -635,6 +632,8 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 
 										recorder.DrawInstances(probeVerticesNum, probesNum);
 									});
+
+			break;
 		}
 	}
 }

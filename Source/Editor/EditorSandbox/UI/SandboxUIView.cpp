@@ -131,7 +131,7 @@ void SandboxUIView::DrawRendererSettings()
 	}
 
 	Real32 farPlane = m_renderer.GetFarPlane();
-	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 100.f))
+	if (ImGui::SliderFloat("Far Plane", &farPlane, 5.f, 10000.f))
 	{
 		m_renderer.SetFarPlane(farPlane);
 	}

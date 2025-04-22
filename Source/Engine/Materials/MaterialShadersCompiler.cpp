@@ -92,12 +92,14 @@ void IMaterialShadersCompiler::CreateMaterialShadersImpl(lib::HashedString techn
 
 	const MaterialTechniqueConfig& techniqueConfig = GetMaterialTechniqueConfig(techniqueName);
 
-	const sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(techniqueConfig, materialParams, parameters);
+	sc::ShaderCompilationSettings compilationSettings = CreateCompilationSettings(techniqueConfig, materialParams, parameters);
 	
 	const lib::String shadersPath = techniqueConfig.shadersPath.ToString();
 
 	if (techniqueConfig.useMeshShadersPipeline)
 	{
+		compilationSettings.DisableGeneratingDebugSource(); // DXC keeps generating invalid spir-v without that :(
+
 		if (techniqueConfig.useTaskShader)
 		{
 			graphicsShaders.taskShader = rdr::ResourcesManager::CreateShader(shadersPath,

@@ -3,12 +3,84 @@
 #include "Techniques/TemporalAA/TemporalAATypes.h"
 #include "RenderGraphBuilder.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
+#include "DescriptorSetBindings/RWTextureBinding.h"
+#include "DescriptorSetBindings/SRVTextureBinding.h"
+#include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 
 
 namespace spt::rsc
 {
 
-RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.5f, 0.1f, 1.f);
+RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.7f, 0.1f, 1.f);
+RendererBoolParameter  enableUnifiedDenoising("Enable Unified Denoising", { "Temporal AA" }, false);
+RendererBoolParameter  enableTransformerModel("Enable Transformer Model", { "Temporal AA" }, false);
+
+namespace priv
+{
+
+DS_BEGIN(PrepareUnifiedDenoisingGuidingTexturesDS, rg::RGDescriptorSetState<PrepareUnifiedDenoisingGuidingTexturesDS>)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_baseColorMetallic)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_tangentFrame)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwDiffuseAlbedo)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwSpecularAlbedo)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwNormals)
+DS_END();
+
+
+static rdr::PipelineStateID CompilePrepareUnifiedDenoisingGuidingTexturesPipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Denoisers/UnifiedDenoising/PrepareUnifiedDenoisingGuidingTextures.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "PrepareUnifiedDenoisingGuidingTexturesCS"));
+
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("PrepareUnifiedDenoisingGuidingTexturesPipeline"), shader);
+}
+
+
+gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = viewSpec.GetRenderingRes();
+
+	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
+
+	rg::RGTextureViewHandle diffuseAlbedo  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Diffuse Albedo"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA8_UN_Float));
+	rg::RGTextureViewHandle specularAlbedo = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Specular Albedo"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA8_UN_Float));
+	rg::RGTextureViewHandle normals        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Normals"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+
+	const lib::MTHandle<PrepareUnifiedDenoisingGuidingTexturesDS> prepareGuidingTexturesDS = graphBuilder.CreateDescriptorSet<PrepareUnifiedDenoisingGuidingTexturesDS>(RENDERER_RESOURCE_NAME("PrepareUnifiedDenoisingGuidingTexturesDS"));
+	prepareGuidingTexturesDS->u_baseColorMetallic = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
+	prepareGuidingTexturesDS->u_tangentFrame      = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
+	prepareGuidingTexturesDS->u_rwDiffuseAlbedo   = diffuseAlbedo;
+	prepareGuidingTexturesDS->u_rwSpecularAlbedo  = specularAlbedo;
+	prepareGuidingTexturesDS->u_rwNormals         = normals;
+
+	static const rdr::PipelineStateID pipeline = CompilePrepareUnifiedDenoisingGuidingTexturesPipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Prepare Unified Denoising Guiding Textures"),
+						  pipeline,
+						  math::Vector2u(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u)),
+						  rg::BindDescriptorSets(prepareGuidingTexturesDS));
+
+	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetBlackboard().Get<RTReflectionsViewData>();
+
+	rhi::TextureViewDefinition specularHitDistViewDef;
+	specularHitDistViewDef.componentMappings.r = rhi::ETextureComponentMapping::A;
+
+	const rg::RGTextureViewHandle specularHitDistanceView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Hit Distance"),
+																							reflectionsViewData.finalSpecularGI->GetTexture(),
+																							specularHitDistViewDef);
+
+	return gfx::UnifiedDenoisingParams
+	{
+		diffuseAlbedo,
+		specularAlbedo,
+		normals,
+		viewContext.gBuffer[GBuffer::Texture::Roughness],
+		specularHitDistanceView
+	};
+}
+
+} // priv
 
 
 TemporalAAViewRenderSystem::TemporalAAViewRenderSystem()
@@ -55,10 +127,12 @@ void TemporalAAViewRenderSystem::PrepareRenderView(RenderView& renderView)
 	if (m_temporalAARenderer)
 	{
 		gfx::TemporalAAParams aaParams;
-		aaParams.inputResolution  = desiredRenderingResolution;
-		aaParams.outputResolution = renderView.GetOutputRes();
-		aaParams.quality          = gfx::ETemporalAAQuality::Ultra;
-		aaParams.flags            = lib::Flags(gfx::ETemporalAAFlags::HDR, gfx::ETemporalAAFlags::DepthInverted, gfx::ETemporalAAFlags::MotionLowRes);
+		aaParams.inputResolution        = desiredRenderingResolution;
+		aaParams.outputResolution       = renderView.GetOutputRes();
+		aaParams.quality                = gfx::ETemporalAAQuality::Ultra;
+		aaParams.flags                  = lib::Flags(gfx::ETemporalAAFlags::HDR, gfx::ETemporalAAFlags::DepthInverted, gfx::ETemporalAAFlags::MotionLowRes);
+		aaParams.enableUnifiedDenoising = enableUnifiedDenoising;
+		aaParams.enableTransformerModel = enableTransformerModel;
 
 		preparedAA = m_temporalAARenderer->PrepareForRendering(aaParams);
 	}
@@ -79,9 +153,9 @@ void TemporalAAViewRenderSystem::PrepareRenderView(RenderView& renderView)
 	m_canRenderAA = preparedAA;
 }
 
-void TemporalAAViewRenderSystem::PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void TemporalAAViewRenderSystem::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
-	Super::PreRenderFrame(graphBuilder, renderScene, viewSpec);
+	Super::BeginFrame(graphBuilder, renderScene, viewSpec);
 
 	if (m_canRenderAA)
 	{
@@ -90,6 +164,12 @@ void TemporalAAViewRenderSystem::PreRenderFrame(rg::RenderGraphBuilder& graphBui
 
 		RenderStageEntries& stageEntries = viewSpec.GetRenderStageEntries(ERenderStage::AntiAliasing);
 		stageEntries.GetOnRenderStage().AddRawMember(this, &TemporalAAViewRenderSystem::OnRenderAntiAliasingStage);
+
+		if (m_temporalAARenderer->ExecutesUnifiedDenoising())
+		{
+			ShadingViewRenderingSystemsInfo& systemsInfo = viewSpec.GetBlackboard().Get<ShadingViewRenderingSystemsInfo>();
+			systemsInfo.useUnifiedDenoising = true;
+		}
 	}
 }
 
@@ -133,6 +213,11 @@ void TemporalAAViewRenderSystem::OnRenderAntiAliasingStage(rg::RenderGraphBuilde
 	renderingParams.exposure.exposureBuffer        = exposureBuffer;
 	renderingParams.exposure.exposureOffset        = exposureOffset;
 	renderingParams.exposure.historyExposureOffset = historyExposureOffset;
+
+	if (m_temporalAARenderer->ExecutesUnifiedDenoising())
+	{
+		renderingParams.unifiedDenoisingParams = priv::PrepareGuidingTextures(graphBuilder, viewSpec);
+	}
 
 	m_temporalAARenderer->Render(graphBuilder, renderingParams);
 

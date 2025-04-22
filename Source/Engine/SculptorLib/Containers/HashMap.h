@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include "Utility/Hash.h"
 
 
 namespace spt::lib

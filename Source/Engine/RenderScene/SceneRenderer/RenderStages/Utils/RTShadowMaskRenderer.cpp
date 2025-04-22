@@ -31,9 +31,8 @@ namespace params
 {
 
 RendererBoolParameter directionalLightEnableShadows("Enable Directional Shadows", { "Lighting", "Shadows", "Directional"}, true);
-RendererFloatParameter directionalLightMinShadowTraceDist("Min Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 1.f);
 RendererFloatParameter directionalLightMaxShadowTraceDist("Max Shadow Trace Distance", { "Lighting", "Shadows", "Directional"}, 70.f, 0.f, 200.f);
-RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.03f, 0.f, 0.1f);
+RendererFloatParameter directionalLightShadowRayBias("Shadow Ray Bias", { "Lighting", "Shadows", "Directional"}, 0.01f, 0.f, 0.1f);
 
 RendererBoolParameter halfResShadows("Half Res", { "Lighting", "Shadows", "Directional" }, false);
 
@@ -120,12 +119,11 @@ void ResolveVRTVisibility(rg::RenderGraphBuilder& graphBuilder, const VRTVisibil
 
 BEGIN_SHADER_STRUCT(DirectionalLightShadowUpdateParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, lightDirection)
-	SHADER_STRUCT_FIELD(Real32,			minTraceDistance)
 	SHADER_STRUCT_FIELD(Real32,			maxTraceDistance)
+	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(Real32,			shadowRayBias)
 	SHADER_STRUCT_FIELD(Real32,			time)
 	SHADER_STRUCT_FIELD(Real32,			shadowRayConeAngle)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(Bool,			enableShadows)
 END_SHADER_STRUCT();
 
@@ -187,7 +185,6 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 
 	DirectionalLightShadowUpdateParams updateParams;
 	updateParams.lightDirection     = tracingContext.lightDirection;
-	updateParams.minTraceDistance   = params::directionalLightMinShadowTraceDist;
 	updateParams.maxTraceDistance   = params::directionalLightMaxShadowTraceDist;
 	updateParams.time               = renderScene.GetCurrentFrameRef().GetTime();
 	updateParams.shadowRayConeAngle = tracingContext.shadowRayConeAngle;

@@ -75,10 +75,12 @@ protected:
 void AssetsSystemTests::SetUp()
 {
 	const lib::Path executablePath = platf::Platform::GetExecutablePath();
-	const lib::Path contentPath = executablePath.parent_path() / "../../Content/TestContent";
+	const lib::Path contentPath = executablePath.parent_path() / "../../Tests/Content";
+	const lib::Path ddcPath     = executablePath.parent_path() / "../../Tests/DDC";
 
 	AssetsSystemInitializer initializer;
 	initializer.contentPath = contentPath;
+	initializer.ddcPath     = ddcPath;
 	const Bool initialized = m_assetsSystem.Initialize(initializer);
 
 	EXPECT_TRUE(initialized);
@@ -94,10 +96,12 @@ TEST(AssetsSystemInitializationTests, Initialization)
 	AssetsSystem assetsSystem;
 
 	const lib::Path executablePath = platf::Platform::GetExecutablePath();
-	const lib::Path contentPath = executablePath.parent_path() / "../../Content/TestContent";
+	const lib::Path contentPath = executablePath.parent_path() / "../../Tests/Content";
+	const lib::Path ddcPath     = executablePath.parent_path() / "../../Tests/DDC";
 
 	AssetsSystemInitializer initializer;
 	initializer.contentPath = contentPath;
+	initializer.ddcPath     = ddcPath;
 	const Bool initialized = assetsSystem.Initialize(initializer);
 
 	EXPECT_TRUE(initialized);
@@ -250,8 +254,9 @@ TEST_F(AssetsSystemTests, CreateAndLoadAssetWithData)
 	EXPECT_TRUE(asset->GetBlackboard().Get<AssetData2>().value2 == val);
 	EXPECT_TRUE(asset->GetBlackboard().Get<AssetData2>().value1 == 0u);
 
-	m_assetsSystem.DeleteAsset(asset->GetPath());
 	asset.Reset();
+
+	m_assetsSystem.DeleteAsset(assetPath);
 
 	EXPECT_TRUE(m_assetsSystem.GetLoadedAssetsList().size() == 0u);
 	EXPECT_TRUE(!m_assetsSystem.DoesAssetExist(assetPath));

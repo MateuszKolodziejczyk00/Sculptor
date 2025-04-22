@@ -3,6 +3,7 @@
 #include "SculptorLibMacros.h"
 #include "SculptorAliases.h"
 #include "String.h"
+#include "Containers/Span.h"
 
 
 namespace spt::lib
@@ -29,7 +30,11 @@ class SCULPTOR_LIB_API StringUtils
 {
 public:
 
+	static SizeType		ComputeHexSize(SizeType bytesNum);
+	static void		    ToHexString(const Byte* data, SizeType size, lib::Span<char> outString);
 	static String		ToHexString(const Byte* data, SizeType size);
+
+    static void         FromHexString(lib::Span<const char> string, lib::Span<Byte> outBytes);
 
 	static WString		ToWideString(lib::StringView view);
 	static String		ToMultibyteString(lib::WStringView view);

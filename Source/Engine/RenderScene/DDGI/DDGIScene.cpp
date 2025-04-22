@@ -107,8 +107,6 @@ void DDGIScene::Update(const SceneView& mainView)
 
 	UpdateLODs(mainView);
 
-	FlushDataChanges();
-
 	UpdatePriorities(mainView);
 }
 
@@ -285,7 +283,7 @@ DDGIVolumeGPUDefinition DDGIScene::CreateGPUDefinition(const DDGIVolumeParams& p
 
 	for (Uint32 textureIdx = 0u; textureIdx < probeDataTexturesNum; ++textureIdx)
 	{
-		const lib::SharedRef<rdr::TextureView> hitDistanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME_FORMATTED("DDGI Volume Probes Visibility {}", textureIdx), gpuParams.probeHitDistanceDataWithBorderRes, rhi::EFragmentFormat::RG16_S_Float);;
+		const lib::SharedRef<rdr::TextureView> hitDistanceTexture = createDDGITextureView(RENDERER_RESOURCE_NAME_FORMATTED("DDGI Volume Probes Visibility {}", textureIdx), gpuParams.probeHitDistanceDataWithBorderRes, rhi::EFragmentFormat::RG16_S_Float);
 		m_ddgiSceneDS->u_probesTextures2D.BindTexture(hitDistanceTexture, hitDistanceTexturesBlockHandle, textureIdx);
 	}
 
@@ -347,13 +345,6 @@ void DDGIScene::UpdateLODs(const SceneView& mainView)
 	{
 		lod.Update(*this, mainView);
 	}
-}
-
-void DDGIScene::FlushDataChanges()
-{
-	SPT_PROFILER_FUNCTION();
-
-	m_ddgiSceneDS->u_ddgiVolumes.Flush();
 }
 
 void DDGIScene::UpdatePriorities(const SceneView& mainView)

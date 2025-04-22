@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Paths.h"
+#include "Plugins/PluginsManager.h"
 
 namespace spt::engn
 {
@@ -14,9 +15,14 @@ void Engine::Initialize(const EngineInitializationParams& initializationParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	m_cmdLineArgs.Parse(initializationParams.cmdLineArgsNum, initializationParams.cmdLineArgs);
+	platf::CmdLineArgs cmdLineArgs = platf::Platform::GetCommandLineArguments();
+	cmdLineArgs.insert(cmdLineArgs.end(), initializationParams.additionalArgs.cbegin(), initializationParams.additionalArgs.cend());
+
+	m_cmdLineArgs.Parse(cmdLineArgs);
 
 	Paths::Initialize(m_cmdLineArgs);
+
+	PluginsManager::GetInstance().PostEngineInit();
 }
 
 Real32 Engine::BeginFrame()
@@ -25,6 +31,7 @@ Real32 Engine::BeginFrame()
 
 	const float deltaTime = m_timer.Tick();
 	m_onBeginFrameDelegate.Broadcast();
+
 	return deltaTime;
 }
 

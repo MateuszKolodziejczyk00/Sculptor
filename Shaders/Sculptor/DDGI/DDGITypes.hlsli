@@ -110,8 +110,6 @@ struct DDGISampleParams
 	float3 surfaceNormal;
 	float3 viewNormal;
 
-	float  minVisibility;
-
 	float3 sampleDirection;
 	float  sampleLocationBiasMultiplier;
 };
@@ -125,14 +123,14 @@ DDGISampleParams CreateDDGISampleParams(in float3 worldLocation, in float3 surfa
 	params.viewNormal                   = viewNormal;
 	params.sampleDirection              = surfaceNormal;
 	params.sampleLocationBiasMultiplier = 1.0f;
-	params.minVisibility                = 0.0f;
 	return params;
 }
 
 
 float3 ComputeDDGIBiasedSampleLocation(in const DDGIVolumeGPUParams volumeParams, in DDGISampleParams sampleParams)
 {
-	const float3 biasVector = normalize(sampleParams.surfaceNormal + sampleParams.viewNormal * 0.5f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
+	const float3 biasVector = normalize(sampleParams.surfaceNormal + sampleParams.viewNormal * 4.0f) * volumeParams.probesSpacing * sampleParams.sampleLocationBiasMultiplier;
+
 	const float3 minWorldLocation = volumeParams.probesOriginWorldLocation + volumeParams.probesSpacing * 0.02f;
 	const float3 maxWorldLocation = volumeParams.probesEndWorldLocation - volumeParams.probesSpacing * 0.02f;
 	return clamp(sampleParams.worldLocation + biasVector, minWorldLocation, maxWorldLocation);
@@ -307,8 +305,6 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 	TSampledDataType sampledDataSum = 0.f;
 	float weightSum = 0.f;
 
-	const float rcpMaxVisibility = rcp(1.f - sampleParams.minVisibility);
-
 	const float2 luminanceOctCoords = GetProbeOctCoords(sampleParams.sampleDirection);
 
 	bool hasValidSamples = true;
@@ -346,6 +342,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 		{
 			// probe is inside geometry
 			weight = 0.0001f;
+			continue;
 		}
 		else if (distToBiasedPoint > hitDistances.x)
 		{
@@ -356,9 +353,7 @@ TSampledDataType DDGISampleProbes(in const DDGIVolumeGPUParams volumeParams, in 
 
 			chebyshevWeight = max(Pow3(chebyshevWeight), 0.00f);
 
-			chebyshevWeight = saturate(chebyshevWeight - sampleParams.minVisibility) * rcpMaxVisibility;
-
-			weight *= chebyshevWeight;
+			weight *= max(chebyshevWeight, 0.05f);
 		}
 
 		weight = max(weight, 0.00001f);

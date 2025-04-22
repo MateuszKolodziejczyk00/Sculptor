@@ -398,29 +398,24 @@ RHITextureReleaseTicket RHITexture::DeferredReleaseRHI()
 
 	PreImageReleased();
 
-	VmaAllocation allocationToRelease = VK_NULL_HANDLE;
-	VkImage imageToRelease            = VK_NULL_HANDLE;
+	RHITextureReleaseTicket releaseTicket;
 
 	if (!std::holds_alternative<rhi::RHIExternalAllocation>(m_allocationHandle))
 	{
-		imageToRelease = m_imageHandle;
+		releaseTicket.handle = m_imageHandle;
+
+#if SPT_RHI_DEBUG
+		releaseTicket.name = GetName();
+#endif SPT_RHI_DEBUG
 
 		m_name.Reset(reinterpret_cast<Uint64>(m_imageHandle), VK_OBJECT_TYPE_IMAGE);
 
 		if (std::holds_alternative<rhi::RHICommittedAllocation>(m_allocationHandle))
 		{
-			allocationToRelease = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
-			SPT_CHECK(!!allocationToRelease);
+			releaseTicket.allocation = memory_utils::GetVMAAllocation(std::get<rhi::RHICommittedAllocation>(m_allocationHandle));
+			SPT_CHECK(!!releaseTicket.allocation.IsValid());
 		}
 	}
-
-	RHITextureReleaseTicket releaseTicket;
-	releaseTicket.handle     = imageToRelease;
-	releaseTicket.allocation = allocationToRelease;
-
-#if SPT_RHI_DEBUG
-	releaseTicket.name = GetName();
-#endif SPT_RHI_DEBUG
 
 	m_imageHandle = VK_NULL_HANDLE;
 
@@ -787,6 +782,12 @@ rhi::EFragmentFormat RHITextureView::GetFormat() const
 {
 	SPT_CHECK(m_texture);
 	return m_texture->GetFormat();
+}
+
+rhi::ETextureAspect RHITextureView::GetAspect() const
+{
+	SPT_CHECK(m_texture);
+	return m_subresourceRange.aspect;
 }
 
 const rhi::TextureSubresourceRange& RHITextureView::GetSubresourceRange() const

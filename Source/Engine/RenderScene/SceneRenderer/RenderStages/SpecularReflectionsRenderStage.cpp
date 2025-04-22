@@ -671,6 +671,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
+		const ShadingViewRenderingSystemsInfo& viewSystemsInfo = viewSpec.GetBlackboard().Get<ShadingViewRenderingSystemsInfo>();
+
 		const Bool isHalfRes = m_renderHalfResReflections;
 
 		const math::Vector2u resolution = isHalfRes ? viewSpec.GetRenderingHalfRes() : viewSpec.GetRenderingRes();
@@ -812,47 +814,67 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		}
 
 		m_resampler.ExecuteFinalResampling(graphBuilder, resamplingParams, initialResamplingResult);
-		
-		const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder,
-																			  renderScene,
-																			  viewSpec,
-																			  m_denoiser,
-																			  params,
-																			  specularLuminanceHitDistanceTexture,
-																			  diffuseLuminanceHitDistanceTexture);
-		
 
 		rg::RGTextureViewHandle specularReflectionsFullRes;
 		rg::RGTextureViewHandle diffuseReflectionsFullRes;
+		rg::RGTextureViewHandle varianceEstimation;
 
-		if (isHalfRes)
+		if (viewSystemsInfo.useUnifiedDenoising)
 		{
+			if (isHalfRes)
 			{
-				upsampler::DepthBasedUpsampleParams specularUpsampleParams;
-				specularUpsampleParams.debugName               = RG_DEBUG_NAME("Upsample Specular Reflections");
-				specularUpsampleParams.depth                   = viewContext.depth;
-				specularUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
-				specularUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
-				specularUpsampleParams.renderViewDS            = renderView.GetRenderViewDS();
-				specularUpsampleParams.fireflyFilteringEnabled = true;
-				specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedSpecular, specularUpsampleParams);
+				SPT_CHECK_NO_ENTRY();
+			}
+			else
+			{
+				specularReflectionsFullRes = specularLuminanceHitDistanceTexture;
+				diffuseReflectionsFullRes  = diffuseLuminanceHitDistanceTexture;
 			}
 
-			{
-				upsampler::DepthBasedUpsampleParams diffuseUpsampleParams;
-				diffuseUpsampleParams.debugName               = RG_DEBUG_NAME("Upsample Diffuse Reflections");
-				diffuseUpsampleParams.depth                   = viewContext.depth;
-				diffuseUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
-				diffuseUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
-				diffuseUpsampleParams.renderViewDS            = renderView.GetRenderViewDS();
-				diffuseUpsampleParams.fireflyFilteringEnabled = true;
-				diffuseReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedDiffuse, diffuseUpsampleParams);
-			}
+			//TODO: Temporary, doesn't matter in practice
+			varianceEstimation = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Variance Estimation"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
 		}
 		else
 		{
-			specularReflectionsFullRes = denoiserResult.denoisedSpecular;
-			diffuseReflectionsFullRes  = denoiserResult.denoisedDiffuse;
+			const sr_denoiser::Denoiser::Result denoiserResult = denoise::Denoise(graphBuilder,
+																				  renderScene,
+																				  viewSpec,
+																				  m_denoiser,
+																				  params,
+																				  specularLuminanceHitDistanceTexture,
+																				  diffuseLuminanceHitDistanceTexture);
+
+			if (isHalfRes)
+			{
+				{
+					upsampler::DepthBasedUpsampleParams specularUpsampleParams;
+					specularUpsampleParams.debugName               = RG_DEBUG_NAME("Upsample Specular Reflections");
+					specularUpsampleParams.depth                   = viewContext.depth;
+					specularUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
+					specularUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
+					specularUpsampleParams.renderViewDS            = renderView.GetRenderViewDS();
+					specularUpsampleParams.fireflyFilteringEnabled = true;
+					specularReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedSpecular, specularUpsampleParams);
+				}
+
+				{
+					upsampler::DepthBasedUpsampleParams diffuseUpsampleParams;
+					diffuseUpsampleParams.debugName               = RG_DEBUG_NAME("Upsample Diffuse Reflections");
+					diffuseUpsampleParams.depth                   = viewContext.depth;
+					diffuseUpsampleParams.depthHalfRes            = viewContext.depthHalfRes;
+					diffuseUpsampleParams.normalsHalfRes          = viewContext.normalsHalfRes;
+					diffuseUpsampleParams.renderViewDS            = renderView.GetRenderViewDS();
+					diffuseUpsampleParams.fireflyFilteringEnabled = true;
+					diffuseReflectionsFullRes = upsampler::DepthBasedUpsample(graphBuilder, denoiserResult.denoisedDiffuse, diffuseUpsampleParams);
+				}
+			}
+			else
+			{
+				specularReflectionsFullRes = denoiserResult.denoisedSpecular;
+				diffuseReflectionsFullRes  = denoiserResult.denoisedDiffuse;
+			}
+
+			varianceEstimation = denoiserResult.varianceEstimation;
 		}
 
 		SPT_CHECK(specularReflectionsFullRes.IsValid())
@@ -861,14 +883,11 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle reflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
-		reflectionsViewData.denoiserDiffuseOutput  = denoiserResult.denoisedDiffuse;
-		reflectionsViewData.denoiserSpecularOutput = denoiserResult.denoisedSpecular;
-
 		reflectionsViewData.finalDiffuseGI  = diffuseReflectionsFullRes;
 		reflectionsViewData.finalSpecularGI = specularReflectionsFullRes;
 
 		reflectionsViewData.reflectionsInfluenceTexture  = reflectionsInfluenceTexture;
-		reflectionsViewData.varianceEstimation           = denoiserResult.varianceEstimation;
+		reflectionsViewData.varianceEstimation           = varianceEstimation;
 		reflectionsViewData.halfResReflections           = isHalfRes;
 
 		viewSpec.GetBlackboard().Create<RTReflectionsViewData>(reflectionsViewData);
@@ -903,8 +922,8 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	vrtDS->u_roughnessTexture           = isHalfRes ? viewContext.roughnessHalfRes : viewContext.gBuffer[GBuffer::Texture::Roughness];
 	vrtDS->u_varianceEstimation         = reflectionsViewData.varianceEstimation;
 	vrtDS->u_linearDepthTexture         = isHalfRes ? viewContext.linearDepthHalfRes : viewContext.linearDepth;
-	vrtDS->u_specularReflectionsTexture = reflectionsViewData.denoiserSpecularOutput;
-	vrtDS->u_diffuseReflectionsTexture  = reflectionsViewData.denoiserDiffuseOutput;
+	vrtDS->u_specularReflectionsTexture = reflectionsViewData.finalSpecularGI;
+	vrtDS->u_diffuseReflectionsTexture  = reflectionsViewData.finalDiffuseGI;
 	vrtDS->u_rtConstants                = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
 }

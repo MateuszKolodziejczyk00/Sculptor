@@ -139,6 +139,8 @@ public:
 
 	rhi::EFragmentFormat				GetFormat() const;
 
+	rhi::ETextureAspect					GetAspect() const;
+
 	const rhi::TextureSubresourceRange&	GetSubresourceRange() const;
 
 	Uint32								GetMipLevelsNum() const;

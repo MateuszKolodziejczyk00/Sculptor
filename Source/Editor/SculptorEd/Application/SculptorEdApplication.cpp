@@ -43,8 +43,6 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 	prf::ProfilerCore::GetInstance().Initialize();
 
 	engn::EngineInitializationParams engineInitializationParams;
-	engineInitializationParams.cmdLineArgsNum = argc;
-	engineInitializationParams.cmdLineArgs    = argv;
 	engn::Engine::Get().Initialize(engineInitializationParams);
 
 	const SizeType threadsNum = static_cast<SizeType>(std::thread::hardware_concurrency());

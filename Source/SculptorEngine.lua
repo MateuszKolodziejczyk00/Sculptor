@@ -16,10 +16,6 @@ IncludeProject("BlackboardTests")
 SetProjectsSubgroupName("Core/ECS")
 IncludeProject("SculptorECS")
 
-SetProjectsSubgroupName("Core/AssetSystem")
-IncludeProjectFromDirectory("Assets/AssetsSystem", "AssetsSystem")
-IncludeProjectFromDirectory("Assets/AssetsSystemTests", "AssetsSystemTests")
-
 SetProjectsSubgroupName("Core/JobSystem")
 IncludeProject("JobSystem")
 IncludeProject("JobSystemTests")
@@ -56,6 +52,13 @@ IncludeProject("Materials")
 
 SetProjectsSubgroupName("Scene")
 IncludeProject("RenderScene")
+
+SetProjectsSubgroupName("Core/AssetSystem")
+IncludeProjectFromDirectory("Assets/DDC", "DDC")
+IncludeProjectFromDirectory("Assets/AssetsSystem", "AssetsSystem")
+IncludeProjectFromDirectory("Assets/AssetsSystemTests", "AssetsSystemTests")
+IncludeProjectFromDirectory("Assets/TextureAsset", "TextureAsset")
+IncludeProjectFromDirectory("Assets/TextureAssetTests", "TextureAssetTests")
 
 SetProjectsSubgroupName("Tools")
 IncludeProject("Profiler")

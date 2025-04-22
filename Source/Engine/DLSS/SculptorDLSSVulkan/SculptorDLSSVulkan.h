@@ -54,18 +54,34 @@ struct DLSSParams
 	EDLSSQuality quality = EDLSSQuality::Default;
 	EDLSSFlags   flags   = EDLSSFlags::Default;
 
+	Bool enableRayReconstruction = false;
+
+	Bool enableTransformerModel = false;
+
 	Bool operator==(const DLSSParams& other) const
 	{
 		return inputResolution == other.inputResolution
 			&& outputResolution == other.outputResolution
 			&& quality == other.quality
-			&& flags == other.flags;
+			&& flags == other.flags
+			&& enableRayReconstruction == other.enableRayReconstruction
+			&& enableTransformerModel == other.enableTransformerModel;
 	}
 
 	Bool operator!=(const DLSSParams& other) const
 	{
 		return !(*this == other);
 	}
+};
+
+
+struct DLSSRayReconstructionRenderingParams
+{
+	rg::RGTextureViewHandle diffuseAlbedo;
+	rg::RGTextureViewHandle specularAlbedo;
+	rg::RGTextureViewHandle normals;
+	rg::RGTextureViewHandle roughness;
+	rg::RGTextureViewHandle specularHitDistance;
 };
 
 
@@ -84,6 +100,8 @@ struct DLSSRenderingParams
 	Real32 sharpness = 0.0f;
 
 	Bool resetAccumulation = false;
+
+	std::optional<DLSSRayReconstructionRenderingParams> rayReconstructionParams;
 };
 
 
@@ -109,6 +127,9 @@ public:
 private:
 
 	Bool RequiresFeatureRecreation(const DLSSParams& oldParams, const DLSSParams& newParams) const;
+
+	Bool CreateDLLSFeature(const rdr::CommandRecorder& cmdRecorder, const DLSSParams& params);
+	Bool CreateDLLSRRFeature(const rdr::CommandRecorder& cmdRecorder, const DLSSParams& params);
 
 	void ReleaseDLSSFeature();
 	void ReleaseNGXResources();

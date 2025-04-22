@@ -436,7 +436,12 @@ struct PrimitiveOutput
 	uint materialDataID : MATERIAL_DATA_ID;
 #endif // MATERIAL_CAN_DISCARD
 
+	// Fix for MeshShadingEXT capability not added to fragment shader
+#if SPT_MESH_SHADER
 	bool culled               : SV_CullPrimitive;
+#else
+	bool culled               : CULL_PRIMITIVE;
+#endif // SPT_MESH_SHADER
 };
 
 

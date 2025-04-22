@@ -101,7 +101,6 @@ private:
 	// Update
 
 	void UpdateLODs(const SceneView& mainView);
-	void FlushDataChanges();
 
 	void UpdatePriorities(const SceneView& mainView);
 

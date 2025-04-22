@@ -29,7 +29,7 @@ public:
 
 	// Begin ViewRenderSystem interface
 	virtual void PrepareRenderView(RenderView& renderView) override;
-	virtual void PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
+	virtual void BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
 	// End ViewRenderSystem interface
 
 protected:

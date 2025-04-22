@@ -140,7 +140,6 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(DDGISceneDS, rg::RGDescriptorSetState<DDGISceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredCPUToGPUBufferBinding<DDGIVolumeGPUParams, constants::maxVolumesCount, rhi::EMemoryUsage::GPUOnly>),             u_ddgiVolumes)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTexture2DBlocksBinding<math::Vector4f, constants::maxVolumesCount * constants::maxTexturesPerVolume * 2, true>), u_probesTextures2D)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfSRVTextures3DBinding<constants::maxVolumesCount, true>),                                                            u_probesTextures3D)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),                                                            u_probesDataSampler)

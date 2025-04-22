@@ -1,7 +1,7 @@
 RelitRaysPerProbe: 400
-DefaultRelitHysteresis: 0.800000489
-MinHysteresis: 0.300000012
-MaxHysteresis: 0.800000489
+DefaultRelitHysteresis: 0.8000005
+MinHysteresis: 0.3
+MaxHysteresis: 0.8000005
 RelitVolumesBudget: 2
 ProbeIlluminanceDataRes:
   - 6
@@ -19,12 +19,12 @@ LodsConfigs:
       - 12
       - 12
     ProbesSpacing:
-      - 1.10000002
-      - 1.10000002
-      - 1.10000002
+      - 1.5
+      - 1.5
+      - 1.5
     RelitPriority: 2.5
     ForwardAlignment: 0.5
-    HeightAlignment: 0.200000003
+    HeightAlignment: 0.2
   - VolumeResolution:
       - 36
       - 36
@@ -34,12 +34,12 @@ LodsConfigs:
       - 12
       - 12
     ProbesSpacing:
-      - 2.4000001
-      - 2.4000001
-      - 2.4000001
+      - 4
+      - 4
+      - 4
     RelitPriority: 1
     ForwardAlignment: 0.5
-    HeightAlignment: 0.100000001
+    HeightAlignment: 0.1
   - VolumeResolution:
       - 36
       - 36
@@ -49,9 +49,9 @@ LodsConfigs:
       - 12
       - 12
     ProbesSpacing:
-      - 3.700001
-      - 3.700001
-      - 3.700001
+      - 8.000001
+      - 8.000001
+      - 8.000001
     RelitPriority: 0.5
     ForwardAlignment: 0
-    HeightAlignment: 0.100000001
+    HeightAlignment: 0.1

@@ -127,6 +127,26 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 	return CreateTextureView(name, texture, viewDefintion, flags);
 }
 
+RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel)
+{
+	SPT_CHECK(texture.IsValid());
+	SPT_CHECK(mipLevel < texture->GetMipLevelsNum());
+	SPT_CHECK(texture->GetTextureDefinition().arrayLayers == 1u);
+
+	const RenderGraphDebugName name = RG_DEBUG_NAME(texture->GetName().ToString() + "_Mip" + std::to_string(mipLevel));
+	rhi::TextureViewDefinition viewDefintion;
+	viewDefintion.subresourceRange.mipLevelsNum   = 1u;
+	viewDefintion.subresourceRange.baseMipLevel   = mipLevel;
+	return CreateTextureView(name, texture, viewDefintion);
+}
+
+RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel)
+{
+	SPT_CHECK(texture.IsValid());
+
+	return CreateTextureMipView(texture->GetTexture(), texture->GetSubresourceRange().baseMipLevel + mipLevel);
+}
+
 void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination)
 {
 	textureHandle->SetExtractionDestination(extractDestination);
@@ -412,6 +432,50 @@ void RenderGraphBuilder::CopyFullTexture(const RenderGraphDebugName& copyName, R
 	CopyTexture(copyName, sourceRGTextureView, math::Vector3i::Zero(), destRGTextureView, math::Vector3i::Zero(), sourceRGTextureView->GetResolution());
 }
 
+void RenderGraphBuilder::BlitTexture(const RenderGraphDebugName& blitName, rg::RGTextureViewHandle source, rg::RGTextureViewHandle dest, rhi::ESamplerFilterType filterMode)
+{
+	SPT_CHECK(source.IsValid());
+	SPT_CHECK(dest.IsValid());
+
+	const auto executeLambda = [=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+	{
+		const lib::SharedPtr<rdr::TextureView> sourceView = source->GetResource();
+		const lib::SharedPtr<rdr::TextureView> destView = dest->GetResource();
+
+		SPT_CHECK(!!sourceView);
+		SPT_CHECK(!!destView);
+
+		const lib::SharedRef<rdr::Texture>& sourceTextureInstance = sourceView->GetTexture();
+		const lib::SharedRef<rdr::Texture>& destTextureInstance = destView->GetTexture();
+
+		const rhi::TextureSubresourceRange& sourceSubresource = source->GetSubresourceRange();
+		const rhi::TextureSubresourceRange& destSubresource = dest->GetSubresourceRange();
+
+		SPT_CHECK(sourceSubresource.mipLevelsNum == 1u);
+		SPT_CHECK(destSubresource.mipLevelsNum == 1u);
+
+		SPT_CHECK(sourceSubresource.arrayLayersNum == 1u || (sourceSubresource.arrayLayersNum == rhi::constants::allRemainingArrayLayers && source->GetArrayLayersNum() == 1u));
+		SPT_CHECK(destSubresource.arrayLayersNum == 1u || (destSubresource.arrayLayersNum == rhi::constants::allRemainingArrayLayers && dest->GetArrayLayersNum() == 1u));
+
+		SPT_CHECK(sourceSubresource.aspect == destSubresource.aspect);
+
+		recorder.BlitTexture(sourceTextureInstance, sourceSubresource.baseMipLevel, sourceSubresource.baseArrayLayer,
+							 destTextureInstance, destSubresource.baseMipLevel, destSubresource.baseArrayLayer,
+							 sourceSubresource.aspect,
+							 filterMode);
+	};
+
+	using LambdaType = std::remove_cvref_t<decltype(executeLambda)>;
+	using NodeType = RGLambdaNode<LambdaType>;
+	NodeType& node = AllocateNode<NodeType>(blitName, ERenderGraphNodeType::Transfer, std::move(executeLambda));
+
+	RGDependeciesContainer dependencies;
+	RGDependenciesBuilder dependenciesBuilder(*this, dependencies);
+	dependenciesBuilder.AddTextureAccess(source, ERGTextureAccess::TransferSource);
+	dependenciesBuilder.AddTextureAccess(dest, ERGTextureAccess::TransferDest);
+	AddNodeInternal(node, dependencies);
+}
+
 void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGBufferViewHandle destBufferView, Uint64 bufferOffset)
 {
 	SPT_CHECK(sourceRGTextureView.IsValid());
@@ -423,7 +487,7 @@ void RenderGraphBuilder::CopyTextureToBuffer(const RenderGraphDebugName& copyNam
 	const Uint32 mipLevelsNum = sourceRGTextureView->GetMipLevelsNum();
 
 	SPT_MAYBE_UNUSED
-	const Uint32 arrayLayersNum = sourceRGTextureView->GetArrayLevelsNum();
+	const Uint32 arrayLayersNum = sourceRGTextureView->GetArrayLayersNum();
 
 	SPT_CHECK(mipLevelsNum == 1u);
 	SPT_CHECK(arrayLayersNum == 1u);
@@ -485,7 +549,7 @@ void RenderGraphBuilder::CopyBufferToFullTexture(const RenderGraphDebugName& cop
 	const Uint32 mipLevelsNum = destRGTextureView->GetMipLevelsNum();
 
 	SPT_MAYBE_UNUSED
-	const Uint32 arrayLayersNum = destRGTextureView->GetArrayLevelsNum();
+	const Uint32 arrayLayersNum = destRGTextureView->GetArrayLayersNum();
 
 	SPT_CHECK(mipLevelsNum == 1u);
 	SPT_CHECK(arrayLayersNum == 1u);

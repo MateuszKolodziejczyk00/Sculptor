@@ -1,6 +1,7 @@
 #include "EngineFrame.h"
 #include "Engine.h"
 #include "JobSystem.h"
+#include "Plugins/PluginsManager.h"
 
 namespace spt::engn
 {
@@ -213,5 +214,24 @@ void EngineFramesManager::RemoveOnFrameTick(EFrameState frameState, lib::Delegat
 EngineFramesManager::EngineFramesManager()
 	: m_frameCounter(1)
 { }
+
+void EngineFramesManager::BeginFrame(lib::SharedPtr<FrameContext> context)
+{
+	const Uint64 frameIdx = m_frameCounter++;
+
+	const Real32 deltaTime = Engine::Get().BeginFrame();
+	const Real32 time      = Engine::Get().GetTime();
+
+	FrameDefinition def;
+	def.frameIdx  = frameIdx;
+	def.deltaTime = deltaTime;
+	def.time      = time;
+
+	context->BeginFrame(def, std::move(m_lastFrame));
+
+	m_lastFrame = std::move(context);
+
+	PluginsManager::GetInstance().BeginFrame(*context);
+}
 
 } // spt::engn

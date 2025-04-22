@@ -1,0 +1,220 @@
+#pragma once
+
+#include "TextureAssetMacros.h"
+#include "SculptorCoreTypes.h"
+#include "AssetTypes.h"
+#include "TextureAssetTypes.h"
+#include "StreamableTextureInterface.h"
+#include "DDC.h"
+
+
+namespace spt::rdr
+{
+class Texture;
+} // spt::rdr
+
+
+namespace spt::as
+{
+
+
+class TEXTURE_ASSET_API TextureSetAsset : public AssetInstance
+{
+protected:
+
+	using Super = AssetInstance;
+
+public:
+
+	using AssetInstance::AssetInstance;
+
+	virtual void CompileTextureSet() { SPT_CHECK_NO_ENTRY() };
+};
+SPT_REGISTER_ASSET_TYPE(TextureSetAsset);
+
+
+struct TextureSourceDefinition
+{
+	lib::Path path;
+};
+
+
+struct PBRTextureSetSource
+{
+	TextureSourceDefinition baseColor;
+	TextureSourceDefinition metallicRoughness;
+	TextureSourceDefinition normals;
+};
+SPT_REGISTER_ASSET_DATA_TYPE(PBRTextureSetSource);
+
+
+struct CompiledMip
+{
+	Uint32 offset = 0u;
+	Uint32 size   = 0u;
+};
+
+
+struct CompiledTexture
+{
+	TextureDefinition definition;
+	lib::DynamicArray<CompiledMip> mips;
+};
+
+
+struct PBRCompiledTextureSetData
+{
+	CompiledTexture baseColor;
+	CompiledTexture metallicRoughness;
+	CompiledTexture normals;
+
+	DerivedDataKey derivedDataKey;
+};
+SPT_REGISTER_ASSET_DATA_TYPE(PBRCompiledTextureSetData);
+
+
+struct RuntimePBRTextureSetData
+{
+	lib::SharedPtr<rdr::TextureView> baseColor;
+	lib::SharedPtr<rdr::TextureView> metallicRoughness;
+	lib::SharedPtr<rdr::TextureView> normals;
+};
+
+
+class TEXTURE_ASSET_API PBRTextureSetInitializer : public AssetDataInitializer
+{
+public:
+
+	explicit PBRTextureSetInitializer(PBRTextureSetSource source)
+		: m_source(std::move(source))
+	{
+	}
+
+	virtual void InitializeNewAsset(AssetInstance& asset) override;
+
+private:
+
+	PBRTextureSetSource m_source;
+};
+
+
+class TEXTURE_ASSET_API PBRTextureSetAsset : public TextureSetAsset, public StreamableTextureInterface
+{
+protected:
+
+	using Super = TextureSetAsset;
+
+public:
+
+	using TextureSetAsset::TextureSetAsset;
+
+	// Begin AssetInstance overrides
+	virtual void PostCreate() override;
+	virtual void PostInitialize() override;
+
+	static void  OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
+	// End AssetInstance overrides
+
+	// Begin TextureSetAsset overrides
+	virtual void CompileTextureSet() override;
+	// End TextureSetAsset overrides
+
+	// Begin StreamableTextureInterface overrides
+	virtual void PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency) override;
+	virtual void ScheduleUploads() override;
+	virtual void FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency) override;
+	// End StreamableTextureInterface overrides
+
+	const lib::SharedPtr<rdr::TextureView>& GetBaseColorTextureView()         const { return m_cachedRuntimeTexture->baseColor; }
+	const lib::SharedPtr<rdr::TextureView>& GetMetallicRoughnessTextureView() const { return m_cachedRuntimeTexture->metallicRoughness; }
+	const lib::SharedPtr<rdr::TextureView>& GetNormalsTextureView()           const { return m_cachedRuntimeTexture->normals; }
+
+private:
+
+	void CreateTextureInstances();
+
+	RuntimePBRTextureSetData* m_cachedRuntimeTexture = nullptr;
+};
+SPT_REGISTER_ASSET_TYPE(PBRTextureSetAsset);
+
+} // spt::as
+
+
+namespace spt::srl
+{
+
+template<>
+struct TypeSerializer<as::TextureSourceDefinition>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		if constexpr (Serializer::IsLoading())
+		{
+			lib::String path;
+			serializer.Serialize("Path", path);
+			data.path = lib::Path(path);
+		}
+		else
+		{
+			const lib::String path = data.path.generic_string();
+			serializer.Serialize("Path", path);
+		}
+	}
+};
+
+template<>
+struct TypeSerializer<as::PBRTextureSetSource>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("BaseColor", data.baseColor);
+		serializer.Serialize("MetallicRoughness", data.metallicRoughness);
+		serializer.Serialize("Normals", data.normals);
+	}
+};
+
+template<>
+struct TypeSerializer<as::CompiledMip>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("Offset", data.offset);
+		serializer.Serialize("Size", data.size);
+	}
+};
+
+template<>
+struct TypeSerializer<as::CompiledTexture>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("Definition", data.definition);
+		serializer.Serialize("Mips", data.mips);
+	}
+};
+
+template<>
+struct TypeSerializer<as::PBRCompiledTextureSetData>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("BaseColor",         data.baseColor);
+		serializer.Serialize("MetallicRoughness", data.metallicRoughness);
+		serializer.Serialize("Normals",           data.normals);
+
+		serializer.Serialize("DerivedDataKey",    data.derivedDataKey);
+	}
+};
+
+} // spt::srl
+
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureSourceDefinition);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRTextureSetSource);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledMip);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledTexture);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRCompiledTextureSetData);

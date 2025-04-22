@@ -82,6 +82,9 @@ public:
 	
 	/** Creates texture from given definition and returns full view of this texture */
 	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);
+
+	RGTextureViewHandle CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel);
+	RGTextureViewHandle CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel);
 	
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
@@ -172,6 +175,8 @@ public:
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
 	
 	void CopyFullTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGTextureViewHandle destRGTextureView);
+
+	void BlitTexture(const RenderGraphDebugName& blitName, rg::RGTextureViewHandle source, rg::RGTextureViewHandle dest, rhi::ESamplerFilterType filterMode);
 
 	void CopyTextureToBuffer(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, RGBufferViewHandle destBufferView, Uint64 bufferOffset);
 	void CopyBufferToFullTexture(const RenderGraphDebugName& copyName, RGBufferViewHandle sourceBufferView, Uint64 bufferOffset, RGTextureViewHandle destRGTextureView);

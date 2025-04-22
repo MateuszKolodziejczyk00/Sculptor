@@ -54,7 +54,7 @@ public:
 	ParticipatingMediaViewRenderSystem();
 
 	// Begin ViewRenderSystem interface
-	virtual void PreRenderFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
+	virtual void BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec) override;
 	// End ViewRenderSystem interface
 
 	const VolumetricFogParams& GetVolumetricFogParams() const;

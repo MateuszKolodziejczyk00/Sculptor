@@ -320,7 +320,6 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 
 	DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(surface.location, surface.geometryNormal, viewDir);
 	diffuseSampleParams.sampleDirection = surface.shadingNormal;
-	diffuseSampleParams.minVisibility   = 0.75f;
 	diffuseSampleParams.sampleLocationBiasMultiplier = 1.0f;
 
 	const float3 indirectLuminance = DDGISampleLuminance(diffuseSampleParams, ddgiSampleContext);

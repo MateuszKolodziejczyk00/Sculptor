@@ -69,6 +69,7 @@ void ViewRenderingSpec::Initialize(RenderView& renderView)
 	{
 		m_blackboard.Create<ShadingViewContext>();
 		m_blackboard.Create<ShadingViewResourcesUsageInfo>();
+		m_blackboard.Create<ShadingViewRenderingSystemsInfo>();
 	}
 }
 

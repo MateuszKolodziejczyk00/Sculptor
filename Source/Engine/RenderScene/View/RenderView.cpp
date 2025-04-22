@@ -184,7 +184,7 @@ rdr::BufferView RenderView::GetExposureDataBuffer() const
 	return m_renderViewDS->u_viewExposure.GetBoundBuffer();
 }
 
-void RenderView::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+void RenderView::BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -193,6 +193,8 @@ void RenderView::BeginFrame(const RenderScene& renderScene, ViewRenderingSpec& v
 	m_renderSystems.ForEachSystem([this](ViewRenderSystem& renderSystem) { renderSystem.PrepareRenderView(*this); });
 
 	OnBeginRendering();
+
+	m_renderSystems.ForEachSystem([&graphBuilder, &renderScene, &viewSpec](ViewRenderSystem& renderSystem) { renderSystem.BeginFrame(graphBuilder, renderScene, viewSpec); });
 
 	m_renderStages.ForEachRenderStage([&renderScene, &viewSpec](RenderStageBase& stage) { stage.BeginFrame(renderScene, viewSpec); });
 }

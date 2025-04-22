@@ -13,12 +13,9 @@ namespace spt::engn
 struct EngineInitializationParams
 {
 	EngineInitializationParams()
-		: cmdLineArgsNum(0)
-		, cmdLineArgs(nullptr)
 	{ }
 
-	Uint32		cmdLineArgsNum;
-	char**		cmdLineArgs;
+	platf::CmdLineArgs additionalArgs;
 };
 
 

@@ -424,7 +424,9 @@ void RHICommandBuffer::BlitTexture(const RHITexture& source, Uint32 sourceMipLev
 	const VkImageLayout sourceLayout	= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, source.GetHandle(), sourceMipLevel, sourceArrayLayer);
 	const VkImageLayout destLayout		= layoutsManager.GetSubresourceLayout(m_cmdBufferHandle, dest.GetHandle(), destMipLevel, destArrayLayer);
 
-	const VkImageAspectFlags vulkanAspect = RHIToVulkan::GetAspectFlags(aspect);
+	const VkImageAspectFlags vulkanAspect = RHIToVulkan::GetAspectFlags(aspect == rhi::ETextureAspect::Auto ? rhi::GetFullAspectForFormat(source.GetFormat()) : aspect);
+
+	SPT_CHECK(vulkanAspect != 0);
 
 	VkImageBlit2 blitRegion{ VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
 	blitRegion.srcSubresource = VkImageSubresourceLayers{ vulkanAspect, sourceMipLevel, sourceArrayLayer, 1 };
@@ -495,12 +497,12 @@ void RHICommandBuffer::CopyTexture(const RHITexture& source, const rhi::TextureC
 	};
 
 	VkImageCopy2 copyRegion{ VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
-    copyRegion.srcSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(sourceRange.aspect);
+    copyRegion.srcSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(sourceRange.aspect == rhi::ETextureAspect::Auto ? rhi::GetFullAspectForFormat(source.GetFormat()) : sourceRange.aspect);
     copyRegion.srcSubresource.mipLevel			= sourceRange.mipLevel;
     copyRegion.srcSubresource.baseArrayLayer	= sourceRange.baseArrayLayer;
     copyRegion.srcSubresource.layerCount		= getArrayLayersNum(sourceRange, source);
 	copyRegion.srcOffset						= VkOffset3D{ .x = sourceRange.offset.x(), .y = sourceRange.offset.y(), .z = sourceRange.offset.z() };
-    copyRegion.dstSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(targetRange.aspect);
+    copyRegion.dstSubresource.aspectMask		= RHIToVulkan::GetAspectFlags(targetRange.aspect == rhi::ETextureAspect::Auto ? rhi::GetFullAspectForFormat(target.GetFormat()) : targetRange.aspect);
     copyRegion.dstSubresource.mipLevel			= targetRange.mipLevel;
     copyRegion.dstSubresource.baseArrayLayer	= targetRange.baseArrayLayer;
     copyRegion.dstSubresource.layerCount		= getArrayLayersNum(targetRange, target);

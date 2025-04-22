@@ -6,6 +6,7 @@
 #include "Utility/ValueOrError.h"
 #include "FileSystem/File.h"
 #include "ResourcePath.h"
+#include "DDC.h"
 
 
 namespace spt::as
@@ -14,19 +15,22 @@ namespace spt::as
 struct AssetsSystemInitializer
 {
 	lib::Path contentPath;
+	lib::Path ddcPath;
 };
 
 
 enum class ECreateError
 {
-	AlreadyExists
+	AlreadyExists,
+	FailedToCreateInstance
 };
 
 
 enum class EDeleteResult
 {
 	Success,
-	DoesNotExist
+	DoesNotExist,
+	StillReferenced,
 };
 
 
@@ -55,7 +59,6 @@ public:
 	LoadResult   LoadAsset(const ResourcePath& path);
 	AssetHandle  LoadAssetChecked(const ResourcePath& path);
 
-	// Current assumption is that it's ok to delete loaded assets - in this case, asset will not be unloaded and it will be possible to save it again
 	EDeleteResult DeleteAsset(const ResourcePath& path);
 
 	void SaveAsset(const AssetHandle& asset);
@@ -68,6 +71,10 @@ public:
 
 	lib::DynamicArray<AssetHandle> GetLoadedAssetsList() const;
 
+	lib::Path GetContentPath() const { return m_contentPath; }
+
+	const DDC& GetDDC() { return m_ddc; }
+
 private:
 
 	void SaveAssetImpl(AssetHandle asset);
@@ -76,9 +83,15 @@ private:
 
 	AssetHandle CreateAssetInstance(const AssetInitializer& initializer);
 
+	lib::DynamicArray<AssetHandle> GetLoadedAssetsList_Locked() const;
+
+	Bool IsLoaded_Locked(const ResourcePath& path) const;
+
 	lib::Path m_contentPath;
 
 	lib::HashMap<ResourcePath, AssetInstance*> m_loadedAssets;
+
+	DDC m_ddc;
 
 	mutable lib::ReadWriteLock m_assetsSystemLock;
 };

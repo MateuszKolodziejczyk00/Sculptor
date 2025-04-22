@@ -112,6 +112,11 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(pipelineExecutablePropertiesFeatures);
 
+	VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR relaxedExtendedInstructionFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR };
+	relaxedExtendedInstructionFeatures.shaderRelaxedExtendedInstruction = VK_TRUE;
+
+	deviceInfoLinkedData.Append(relaxedExtendedInstructionFeatures);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 
@@ -180,6 +185,18 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)
 {
 	SPT_CHECK(IsValid());
+
+	m_gfxQueue.ReleaseRHI();
+
+	if (m_asyncComputeQueue.IsValid())
+	{
+		m_asyncComputeQueue.ReleaseRHI();
+	}
+
+	if (m_transferQueue.IsValid())
+	{
+		m_transferQueue.ReleaseRHI();
+	}
 
 	vkDestroyDevice(m_deviceHandle, allocator);
 	

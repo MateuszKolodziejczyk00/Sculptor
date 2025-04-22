@@ -142,6 +142,13 @@ inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
 } // RenderViewEntryDelegates
 
 
+struct ShadingViewRenderingSystemsInfo
+{
+	// If true, all per-feature denoisers should be disabled and lighting should be composited with noisy signal that will be denoised later in the unified pass
+	Bool useUnifiedDenoising = false;
+};
+
+
 struct ShadingViewResourcesUsageInfo
 {
 	Bool useHalfResRoughnessWithHistory = false;

@@ -18,6 +18,7 @@
 
 #include "nvsdk_ngx_vk.h"
 #include "nvsdk_ngx_helpers_vk.h"
+#include "nvsdk_ngx_helpers_dlssd_vk.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(DLSS, true);
@@ -124,6 +125,15 @@ BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRenderNodeParams)
 END_RG_NODE_PARAMETERS_STRUCT();
 
 
+BEGIN_RG_NODE_PARAMETERS_STRUCT(DLSSRayReconstructionParams)
+	RG_TEXTURE_VIEW(diffuseAlbedo,       rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularAlbedo,      rg::ERGTextureAccess::StorageWriteTexture, rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(normals,             rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(roughness,           rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+	RG_TEXTURE_VIEW(specularHitDistance, rg::ERGTextureAccess::SampledTexture,      rhi::EPipelineStage::ComputeShader)
+END_RG_NODE_PARAMETERS_STRUCT()
+
+
 NVSDK_NGX_Resource_VK CreateNGXTexture(const rhi::RHITextureView& rhiView)
 {
 	SPT_CHECK(rhiView.IsValid());
@@ -163,14 +173,14 @@ void EvaluateDLSS(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPara
 	const Real32 resolutionY = static_cast<Real32>(dlssParams.inputResolution.y());
 
 	NVSDK_NGX_VK_DLSS_Eval_Params dlssEvalParams{};
-	dlssEvalParams.pInDepth           = &depthResource;
-	dlssEvalParams.pInMotionVectors   = &motionResource;
-	dlssEvalParams.InJitterOffsetX    = renderingParams.jitter.x() * resolutionX;
-	dlssEvalParams.InJitterOffsetY    = renderingParams.jitter.y() * resolutionY;
-	dlssEvalParams.InReset            = renderingParams.resetAccumulation ? 1 : 0;
-	dlssEvalParams.InMVScaleX         = -resolutionX;
-	dlssEvalParams.InMVScaleY         = -resolutionY;
-	dlssEvalParams.pInExposureTexture = &exposureResource;
+	dlssEvalParams.pInDepth                         = &depthResource;
+	dlssEvalParams.pInMotionVectors                 = &motionResource;
+	dlssEvalParams.InJitterOffsetX                  = renderingParams.jitter.x() * resolutionX;
+	dlssEvalParams.InJitterOffsetY                  = renderingParams.jitter.y() * resolutionY;
+	dlssEvalParams.InReset                          = renderingParams.resetAccumulation ? 1 : 0;
+	dlssEvalParams.InMVScaleX                       = -resolutionX;
+	dlssEvalParams.InMVScaleY                       = -resolutionY;
+	dlssEvalParams.pInExposureTexture               = &exposureResource;
 	dlssEvalParams.InRenderSubrectDimensions.Width  = dlssParams.inputResolution.x();
 	dlssEvalParams.InRenderSubrectDimensions.Height = dlssParams.inputResolution.y();
 
@@ -181,6 +191,55 @@ void EvaluateDLSS(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPara
 	const rhi::RHICommandBuffer& rhiCmdBuffer = commandRecorder.GetCommandBuffer()->GetRHI();
 
 	const NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSS_EXT(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
+
+	if (result != NVSDK_NGX_Result_Success)
+	{
+		SPT_LOG_ERROR(DLSS, "Failed to evaluate DLSS. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString(result)));
+	}
+}
+
+
+void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingParams& renderingParams, const DLSSRayReconstructionParams& rayReconstructionParams, const DLSSParams& dlssParams, NVSDK_NGX_Handle& dlssHandle, NVSDK_NGX_Parameter& ngxParams)
+{
+	NVSDK_NGX_Resource_VK depthResource    = CreateNGXTexture(renderingParams.depth->GetRHI());
+	NVSDK_NGX_Resource_VK motionResource   = CreateNGXTexture(renderingParams.motion->GetRHI());
+	NVSDK_NGX_Resource_VK exposureResource = CreateNGXTexture(renderingParams.exposure->GetRHI());
+	NVSDK_NGX_Resource_VK inputResouce     = CreateNGXTexture(renderingParams.inputColor->GetRHI());
+	NVSDK_NGX_Resource_VK outputResouce    = CreateNGXTexture(renderingParams.outputColor->GetRHI());
+
+	NVSDK_NGX_Resource_VK diffuseAlbedoResource       = CreateNGXTexture(rayReconstructionParams.diffuseAlbedo->GetRHI());
+	NVSDK_NGX_Resource_VK specularAlbedoResource      = CreateNGXTexture(rayReconstructionParams.specularAlbedo->GetRHI());
+	NVSDK_NGX_Resource_VK normalsResource             = CreateNGXTexture(rayReconstructionParams.normals->GetRHI());
+	NVSDK_NGX_Resource_VK roughnessResource           = CreateNGXTexture(rayReconstructionParams.roughness->GetRHI());
+	NVSDK_NGX_Resource_VK specularHitDistanceResource = CreateNGXTexture(rayReconstructionParams.specularHitDistance->GetRHI());
+
+	const Real32 resolutionX = static_cast<Real32>(dlssParams.inputResolution.x());
+	const Real32 resolutionY = static_cast<Real32>(dlssParams.inputResolution.y());
+
+	NVSDK_NGX_VK_DLSSD_Eval_Params dlssEvalParams{};
+	dlssEvalParams.pInDepth                         = &depthResource;
+	dlssEvalParams.pInMotionVectors                 = &motionResource;
+	dlssEvalParams.InJitterOffsetX                  = renderingParams.jitter.x() * resolutionX;
+	dlssEvalParams.InJitterOffsetY                  = renderingParams.jitter.y() * resolutionY;
+	dlssEvalParams.InReset                          = renderingParams.resetAccumulation ? 1 : 0;
+	dlssEvalParams.InMVScaleX                       = -resolutionX;
+	dlssEvalParams.InMVScaleY                       = -resolutionY;
+	dlssEvalParams.pInExposureTexture               = &exposureResource;
+	dlssEvalParams.InRenderSubrectDimensions.Width  = dlssParams.inputResolution.x();
+	dlssEvalParams.InRenderSubrectDimensions.Height = dlssParams.inputResolution.y();
+
+    dlssEvalParams.pInDiffuseAlbedo       = &diffuseAlbedoResource;
+    dlssEvalParams.pInSpecularAlbedo      = &specularAlbedoResource;
+    dlssEvalParams.pInNormals             = &normalsResource;
+    dlssEvalParams.pInRoughness           = &roughnessResource;
+	dlssEvalParams.pInSpecularHitDistance = &specularHitDistanceResource;
+
+	dlssEvalParams.pInColor    = &inputResouce;
+	dlssEvalParams.pInOutput   = &outputResouce;
+
+	const rhi::RHICommandBuffer& rhiCmdBuffer = commandRecorder.GetCommandBuffer()->GetRHI();
+
+	const NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSSD_EXT(rhiCmdBuffer.GetHandle(), &dlssHandle, &ngxParams, &dlssEvalParams);
 
 	if (result != NVSDK_NGX_Result_Success)
 	{
@@ -329,6 +388,20 @@ Bool SculptorDLSSVulkan::Initialize()
 		return false;
 	}
 
+	int isSuperSamplingDenoisingAvailable = 0;
+	const NVSDK_NGX_Result superResolutionDenoisingAvailableResult = m_ngxParams->Get(NVSDK_NGX_Parameter_SuperSamplingDenoising_Available, &isSuperSamplingDenoisingAvailable);
+	if (superResolutionDenoisingAvailableResult != NVSDK_NGX_Result_Success)
+	{
+		SPT_LOG_ERROR(DLSS, "Failed to check if Super Resolution Denoising is available. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString(superResolutionDenoisingAvailableResult)));
+		return false;
+	}
+
+	if (isSuperSamplingDenoisingAvailable == 0)
+	{
+		SPT_LOG_ERROR(DLSS, "Super Resolution Denoising is not available.");
+		return false;
+	}
+
 	m_isInitialized = true;
 
 	SPT_CHECK(IsInitialized());
@@ -411,31 +484,26 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 			ReleaseDLSSFeature();
 		}
 
-		NVSDK_NGX_DLSS_Create_Params dlssParams;
-		dlssParams.Feature.InWidth            = params.inputResolution.x();
-		dlssParams.Feature.InHeight           = params.inputResolution.y();
-		dlssParams.Feature.InTargetWidth      = params.outputResolution.x();
-		dlssParams.Feature.InTargetHeight     = params.outputResolution.y();
-		dlssParams.Feature.InPerfQualityValue = priv::ToNGXQuality(params.quality);
-		dlssParams.InFeatureCreateFlags       = priv::ToNGXFlags(params.flags);
-		dlssParams.InEnableOutputSubrects     = false;
 
-		const lib::SharedPtr<rdr::CommandBuffer>& cmdBuffer = cmdRecorder.GetCommandBuffer();
-		const rhi::RHICommandBuffer& rhiCmdBuffer = cmdBuffer->GetRHI();
+		const NVSDK_NGX_DLSS_Hint_Render_Preset newPreset = params.enableTransformerModel 
+			                                              ? NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_J
+			                                              : NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_Default;
+		//NVSDK_NGX_Parameter_SetUI(m_ngxParams, priv::ToDLSSPerformancePresetName(params.quality), newPreset);
 
-		// Only for multi-GPU configurations
-		const Uint32 creationNodeMask   = 1u;
-		const Uint32 visibilityNodeMask = 1u;
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, newPreset);
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, newPreset);
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, newPreset);
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, newPreset);
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, newPreset);
+		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, newPreset);
 
-		const NVSDK_NGX_Result createDLSSResult = NGX_VULKAN_CREATE_DLSS_EXT(rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
-
-		if (createDLSSResult != NVSDK_NGX_Result_Success)
+		if (params.enableRayReconstruction)
 		{
-			SPT_LOG_ERROR(DLSS, "Failed to create DLSS feature. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString((createDLSSResult))));
+			featureCreated = CreateDLLSRRFeature(cmdRecorder, params);
 		}
 		else
 		{
-			featureCreated = true;
+			featureCreated = CreateDLLSFeature(cmdRecorder, params);
 		}
 	}
 
@@ -456,6 +524,8 @@ void SculptorDLSSVulkan::Render(rg::RenderGraphBuilder& graphBuilder, const DLSS
 	SPT_CHECK(!!m_dlssHandle);
 	SPT_CHECK(!!m_ngxParams);
 
+	SPT_CHECK(!m_dlssParams.enableRayReconstruction || !!renderingParams.rayReconstructionParams)
+
 	priv::DLSSRenderNodeParams dlssNodeParams;
 	dlssNodeParams.input    = renderingParams.inputColor;
 	dlssNodeParams.output   = renderingParams.outputColor;
@@ -463,15 +533,40 @@ void SculptorDLSSVulkan::Render(rg::RenderGraphBuilder& graphBuilder, const DLSS
 	dlssNodeParams.motion   = renderingParams.motion;
 	dlssNodeParams.exposure = renderingParams.exposure;
 
+	priv::DLSSRayReconstructionParams rayReconstructionParams;
+	if (m_dlssParams.enableRayReconstruction)
+	{
+		const DLSSRayReconstructionRenderingParams& rayReconstructionParamsData = *renderingParams.rayReconstructionParams;
+
+		rayReconstructionParams.diffuseAlbedo       = rayReconstructionParamsData.diffuseAlbedo;
+		rayReconstructionParams.specularAlbedo      = rayReconstructionParamsData.specularAlbedo;
+		rayReconstructionParams.normals             = rayReconstructionParamsData.normals;
+		rayReconstructionParams.roughness           = rayReconstructionParamsData.roughness;
+		rayReconstructionParams.specularHitDistance = rayReconstructionParamsData.specularHitDistance;
+	}
+
 	renderingParams.outputColor->GetTexture()->TryAppendUsage(rhi::ETextureUsage::TransferDest);
 
-	graphBuilder.AddLambdaPass(RG_DEBUG_NAME("DLSS: Evaluate"),
-							   std::tie(dlssNodeParams),
-							   [renderingParams, dlssParams = m_dlssParams, dlssHandle = m_dlssHandle, ngxParams = m_ngxParams]
-							   (const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							   {
-								   priv::EvaluateDLSS(recorder, renderingParams, dlssParams, *dlssHandle, *ngxParams);
-							   });
+	if (m_dlssParams.enableRayReconstruction)
+	{
+		graphBuilder.AddLambdaPass(RG_DEBUG_NAME("DLSS RR: Evaluate"),
+								   std::tie(dlssNodeParams, rayReconstructionParams),
+								   [renderingParams, rayReconstructionParams, dlssParams = m_dlssParams, dlssHandle = m_dlssHandle, ngxParams = m_ngxParams]
+								   (const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								   {
+									   priv::EvaluateDLSSRR(recorder, renderingParams, rayReconstructionParams, dlssParams, *dlssHandle, *ngxParams);
+								   });
+	}
+	else
+	{
+		graphBuilder.AddLambdaPass(RG_DEBUG_NAME("DLSS: Evaluate"),
+								   std::tie(dlssNodeParams),
+								   [renderingParams, dlssParams = m_dlssParams, dlssHandle = m_dlssHandle, ngxParams = m_ngxParams]
+								   (const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+								   {
+									   priv::EvaluateDLSS(recorder, renderingParams, dlssParams, *dlssHandle, *ngxParams);
+								   });
+	}
 }
 
 Bool SculptorDLSSVulkan::RequiresFeatureRecreation(const DLSSParams& oldParams, const DLSSParams& newParams) const
@@ -479,6 +574,76 @@ Bool SculptorDLSSVulkan::RequiresFeatureRecreation(const DLSSParams& oldParams, 
 	SPT_CHECK(IsInitialized());
 
 	return oldParams != newParams;
+}
+
+Bool SculptorDLSSVulkan::CreateDLLSFeature(const rdr::CommandRecorder& cmdRecorder, const DLSSParams& params)
+{
+	SPT_CHECK(!m_dlssHandle);
+
+	NVSDK_NGX_DLSS_Create_Params dlssParams;
+	dlssParams.Feature.InWidth            = params.inputResolution.x();
+	dlssParams.Feature.InHeight           = params.inputResolution.y();
+	dlssParams.Feature.InTargetWidth      = params.outputResolution.x();
+	dlssParams.Feature.InTargetHeight     = params.outputResolution.y();
+	dlssParams.Feature.InPerfQualityValue = priv::ToNGXQuality(params.quality);
+	dlssParams.InFeatureCreateFlags       = priv::ToNGXFlags(params.flags);
+	dlssParams.InEnableOutputSubrects     = false;
+
+	const lib::SharedPtr<rdr::CommandBuffer>& cmdBuffer = cmdRecorder.GetCommandBuffer();
+	const rhi::RHICommandBuffer& rhiCmdBuffer = cmdBuffer->GetRHI();
+
+	// Only for multi-GPU configurations
+	const Uint32 creationNodeMask   = 1u;
+	const Uint32 visibilityNodeMask = 1u;
+
+	const NVSDK_NGX_Result createDLSSResult = NGX_VULKAN_CREATE_DLSS_EXT(rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
+
+	if (createDLSSResult != NVSDK_NGX_Result_Success)
+	{
+		SPT_LOG_ERROR(DLSS, "Failed to create DLSS feature. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString((createDLSSResult))));
+	}
+	else
+	{
+		SPT_CHECK(m_dlssHandle != nullptr);
+	}
+
+	return m_dlssHandle != nullptr;
+}
+
+Bool SculptorDLSSVulkan::CreateDLLSRRFeature(const rdr::CommandRecorder& cmdRecorder, const DLSSParams& params)
+{
+	SPT_CHECK(!m_dlssHandle);
+
+	NVSDK_NGX_DLSSD_Create_Params dlssParams{};
+    dlssParams.InDenoiseMode        = NVSDK_NGX_DLSS_Denoise_Mode_DLUnified;
+    dlssParams.InRoughnessMode      = NVSDK_NGX_DLSS_Roughness_Mode_Unpacked;
+    dlssParams.InUseHWDepth         = NVSDK_NGX_DLSS_Depth_Type_HW;
+    dlssParams.InWidth              = params.inputResolution.x();
+    dlssParams.InHeight             = params.inputResolution.y();
+    dlssParams.InTargetWidth        = params.outputResolution.x();
+    dlssParams.InTargetHeight       = params.outputResolution.y();
+	dlssParams.InPerfQualityValue   = priv::ToNGXQuality(params.quality);
+	dlssParams.InFeatureCreateFlags = priv::ToNGXFlags(params.flags);
+
+	const lib::SharedPtr<rdr::CommandBuffer>& cmdBuffer = cmdRecorder.GetCommandBuffer();
+	const rhi::RHICommandBuffer& rhiCmdBuffer = cmdBuffer->GetRHI();
+
+	// Only for multi-GPU configurations
+	const uint32_t creationNodeMask   = 1u;
+	const uint32_t visibilityNodeMask = 1u;
+
+	const NVSDK_NGX_Result createDLSSResult = NGX_VULKAN_CREATE_DLSSD_EXT1(VK_NULL_HANDLE, rhiCmdBuffer.GetHandle(), creationNodeMask, visibilityNodeMask, OUT &m_dlssHandle, m_ngxParams, &dlssParams);
+
+	if (createDLSSResult != NVSDK_NGX_Result_Success)
+	{
+		SPT_LOG_ERROR(DLSS, "Failed to create DLSS RR feature. Reason: {}", lib::StringUtils::ToMultibyteString(GetNGXResultAsString((createDLSSResult))));
+	}
+	else
+	{
+		SPT_CHECK(m_dlssHandle != nullptr);
+	}
+
+	return m_dlssHandle != nullptr;
 }
 
 void SculptorDLSSVulkan::ReleaseDLSSFeature()
