@@ -2,6 +2,7 @@
 
 #include "ViewRenderSystem.h"
 #include "RGResources/RGResourceHandles.h"
+#include "SceneRenderer/SceneRenderingTypes.h"
 
 
 namespace spt::rdr
@@ -34,7 +35,8 @@ struct VolumetricFogParams
 	rg::RGTextureViewHandle inScatteringTextureView;
 	rg::RGTextureViewHandle integratedInScatteringTextureView;
 
-	rg::RGTextureViewHandle inScatteringHistoryTextureView;
+	rg::RGTextureViewHandle directionalLightShadowTerm;
+	rg::RGTextureViewHandle historyDirectionalLightShadowTerm;
 
 	math::Vector3u volumetricFogResolution;
 
@@ -63,10 +65,7 @@ private:
 
 	void RenderParticipatingMedia(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
-	void PrepareViewTextures(const math::Vector3u& volumetricFogResolution);
-
-	lib::SharedPtr<rdr::TextureView> m_currentInScatteringTexture;
-	lib::SharedPtr<rdr::TextureView> m_prevFrameInScatteringTexture;
+	TextureWithHistory m_directionalLightShadowTerm;
 
 	VolumetricFogParams m_volumetricFogParams;
 };

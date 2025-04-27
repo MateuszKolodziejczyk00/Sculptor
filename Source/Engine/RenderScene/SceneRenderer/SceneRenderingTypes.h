@@ -189,7 +189,7 @@ public:
 
 	void Reset();
 
-	void Update(math::Vector2u resolution);
+	void Update(rhi::RHIResolution resolution);
 
 	const lib::SharedPtr<rdr::TextureView>& GetCurrent() const { return m_current; }
 	const lib::SharedPtr<rdr::TextureView>& GetHistory() const { return m_history; }

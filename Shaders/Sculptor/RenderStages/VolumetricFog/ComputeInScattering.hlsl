@@ -48,6 +48,7 @@ void ComputeInScatteringCS(CS_INPUT input)
 		params.phaseFunctionAnisotrophy = u_inScatteringParams.paseFunctionAnisotrophy;
 		params.inScatteringColor        = scatteringExtinction.rgb;
 		params.froxelDepthRange         = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
+		params.directionalLightShadowTerm = u_directionalLightShadowTerm.Load(uint4(input.globalID, 0u)).r;
 		
 		float3 inScattering = ComputeLocalLightsInScattering(params);
 
@@ -59,33 +60,6 @@ void ComputeInScatteringCS(CS_INPUT input)
 		}
 
 		float4 inScatteringExtinction = float4(inScattering, scatteringExtinction.w);
-
-		if (u_inScatteringParams.hasValidHistory)
-		{
-			const float fogFroxelDepthNoJitter = fogFroxelUVW.z;
-			const float fogFroxelLinearDepthNoJitter = ComputeFogFroxelLinearDepth(fogFroxelDepthNoJitter, fogNearPlane, fogFarPlane);
-
-			const float3 fogFroxelNDCNoJitter = FogFroxelToNDC(fogFroxelUVW.xy, fogFroxelLinearDepthNoJitter, projectionNearPlane);
-			const float3 fogFroxelWorldLocationNoJitter = NDCToWorldSpaceNoJitter(fogFroxelNDCNoJitter, u_sceneView);
-
-			float4 prevFrameClipSpace = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(fogFroxelWorldLocationNoJitter, 1.0f));
-			
-			if (all(prevFrameClipSpace.xy >= -prevFrameClipSpace.w) && all(prevFrameClipSpace.xyz <= prevFrameClipSpace.w) && prevFrameClipSpace.z >= 0.f)
-			{
-				prevFrameClipSpace.xyz /= prevFrameClipSpace.w;
-				const float prevFrameLinearDepth = ComputeLinearDepth(prevFrameClipSpace.z, u_prevFrameSceneView);
-
-				const float3 prevFrameFogFroxelUVW = ComputeFogFroxelUVW(prevFrameClipSpace.xy * 0.5f + 0.5f, prevFrameLinearDepth, fogNearPlane, fogFarPlane);
-
-				float4 inScatteringExtinctionHistory = u_inScatteringHistoryTexture.SampleLevel(u_linearSampler, prevFrameFogFroxelUVW, 0);
-				inScatteringExtinctionHistory.rgb = HistoryExposedLuminanceToLuminance(inScatteringExtinctionHistory.rgb);
-
-				if (inScatteringExtinctionHistory.w > 0.f)
-				{
-					inScatteringExtinction = lerp(inScatteringExtinctionHistory, inScatteringExtinction, u_inScatteringParams.accumulationCurrentFrameWeight);
-				}
-			}
-		}
 
 		inScatteringExtinction.rgb = LuminanceToExposedLuminance(inScatteringExtinction.rgb);
 

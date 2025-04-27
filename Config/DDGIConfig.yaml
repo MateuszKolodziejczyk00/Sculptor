@@ -56,9 +56,9 @@ LodsConfigs:
     ForwardAlignment: 0
     HeightAlignment: 0.1
   - VolumeResolution:
-      - 12
-      - 12
-      - 12
+      - 24
+      - 24
+      - 24
     RelitZoneResolution:
       - 12
       - 12

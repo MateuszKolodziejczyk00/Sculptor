@@ -113,7 +113,8 @@ DirectionalLightIlluminance ComputeDirectionalLightIlluminanceInAtmosphere(const
 
 	const math::Vector3f transmittance = ComputeTransmittance(atmosphere, groundLocation, -lightDirection, 100.f);
 
-	return {
+	return
+	{
 		outerSpaceIlluminance,
 		outerSpaceIlluminance.cwiseProduct(transmittance)
 	};

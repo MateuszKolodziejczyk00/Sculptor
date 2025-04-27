@@ -3,6 +3,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Random.hlsli"
+#include "Shading/Shading.hlsli"
 
 #define PCSS_SHADOW_SAMPLES_NUM 24
 
@@ -465,7 +466,8 @@ float EvaluateCascadedShadowsAtLocation(in float3 worldLocation, in uint firstCa
 		const float3 cascadeShadowNDC = cascadeShadowCS.xyz / cascadeShadowCS.w;
 		const float2 cascadeShadowUV = cascadeShadowNDC.xy * 0.5f + 0.5f;
 
-		return EvaluateShadowsVSM(u_shadowMapCascades[cascadeIdx], u_linearShadowMapSampler, cascadeShadowUV, cascadeShadowNDC.z);
+		const float shadowMapDepth = u_shadowMapCascades[cascadeIdx].SampleLevel(u_shadowMapSampler, cascadeShadowUV, 0.f).x;
+		return step(shadowMapDepth, cascadeShadowNDC.z);
 	}
 
 	return 1.f;

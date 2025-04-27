@@ -23,8 +23,6 @@ uint ClusterMaskRange(uint mask, uint2 range, uint startIdx)
 template<typename TLightingAccumulator>
 void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout TLightingAccumulator accumulator)
 {
-	const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, surface.location);
-
 	// Directional Lights
 
 	for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
@@ -116,6 +114,8 @@ struct InScatteringParams
 	float3 inScatteringColor;
 
 	float froxelDepthRange;
+
+	float directionalLightShadowTerm;
 };
 
 
@@ -125,26 +125,15 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 
 	// Directional Lights
 
-	const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, params.worldLocation);
-
 	for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
 		const float3 illuminance = directionalLight.illuminance;
 
-		float visibility = 1.f;
-		if(directionalLight.shadowCascadesNum != 0)
+		if(params.directionalLightShadowTerm > 0.f)
 		{
-			const float3 beginSampleLocation = params.worldLocation + params.toViewNormal * (params.froxelDepthRange * 0.5f);
-			const float3 endSampleLocation   = params.worldLocation - params.toViewNormal * (params.froxelDepthRange * 0.5f);
-			const uint samplesNum = 8u;
-			visibility = EvaluateCascadedShadowsAtLine(beginSampleLocation, endSampleLocation, samplesNum, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
-		}
-
-		if(visibility > 0.f)
-		{
-			inScattering += illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+			inScattering += params.directionalLightShadowTerm * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
 		}
 	}
 	
@@ -225,8 +214,6 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 )
 {
 	float3 luminance = 0.f;
-
-	const float3 locationInAtmosphere = GetLocationInAtmosphere(u_atmosphereParams, surface.location);
 
 	// Directional Lights
 

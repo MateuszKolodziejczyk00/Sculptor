@@ -69,18 +69,18 @@ void TextureWithHistory::Reset()
 	m_history.reset();
 }
 
-void TextureWithHistory::Update(math::Vector2u resolution)
+void TextureWithHistory::Update(rhi::RHIResolution resolution)
 {
 	m_definition.resolution = resolution;
 
 	std::swap(m_current, m_history);
 
-	if (!m_current || m_current->GetResolution2D() != resolution)
+	if (!m_current || m_current->GetResolution() != resolution.AsVector())
 	{
 		m_current = rdr::ResourcesManager::CreateTextureView(m_name, m_definition, rhi::EMemoryUsage::GPUOnly);
 	}
 
-	if (m_history && m_history->GetResolution2D() != resolution)
+	if (m_history && m_history->GetResolution() != resolution.AsVector())
 	{
 		m_history.reset();
 	}
