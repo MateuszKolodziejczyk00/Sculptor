@@ -10,12 +10,13 @@ namespace spt::rsc
 
 BEGIN_ALIGNED_SHADER_STRUCT(16, DirectionalLightGPUData)
 	SHADER_STRUCT_FIELD(math::Vector3f, illuminance) // Lux
-	SHADER_STRUCT_FIELD(Real32, sunDiskEC)
+	SHADER_STRUCT_FIELD(Real32,         sunDiskEC)
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
-	SHADER_STRUCT_FIELD(Uint32, shadowMaskIdx)
-	SHADER_STRUCT_FIELD(Uint32, firstShadowCascadeIdx)
-	SHADER_STRUCT_FIELD(Uint32, shadowCascadesNum)
-	SHADER_STRUCT_FIELD(Real32, sunDiskMinCosAngle)
+	SHADER_STRUCT_FIELD(Real32,         sunDiskMinCosAngle)
+	SHADER_STRUCT_FIELD(math::Vector3f, outerSpaceIlluminance) // Lux
+	SHADER_STRUCT_FIELD(Uint32,         shadowMaskIdx)
+	SHADER_STRUCT_FIELD(Uint32,         firstShadowCascadeIdx)
+	SHADER_STRUCT_FIELD(Uint32,         shadowCascadesNum)
 END_SHADER_STRUCT();
 
 
@@ -92,10 +93,11 @@ public:
 	static DirectionalLightGPUData CreateDirectionalLightGPUData(const DirectionalLightData& lightData, const DirectionalLightIlluminance& illuminance)
 	{
 		DirectionalLightGPUData gpuData;
-		gpuData.illuminance        = illuminance.illuminance;
-		gpuData.direction          = lightData.direction;
-		gpuData.sunDiskEC          = lightData.sunDiskEC;
-		gpuData.sunDiskMinCosAngle = lightData.lightConeAngle * lightData.sunDiskAngleMultiplier;
+		gpuData.illuminance           = illuminance.illuminance;
+		gpuData.outerSpaceIlluminance = illuminance.outerSpaceIlluminance;
+		gpuData.direction             = lightData.direction;
+		gpuData.sunDiskEC             = lightData.sunDiskEC;
+		gpuData.sunDiskMinCosAngle    = lightData.lightConeAngle * lightData.sunDiskAngleMultiplier;
 		return gpuData;
 	}
 

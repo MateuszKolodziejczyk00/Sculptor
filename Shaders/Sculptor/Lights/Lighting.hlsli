@@ -35,13 +35,6 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 
 		if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{
-			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
-
-			if (all(transmittance) == 0.f)
-			{
-				continue;
-			}
-
 			float visibility = 1.f;
 			if(directionalLight.shadowMaskIdx != IDX_NONE_32)
 			{
@@ -50,7 +43,7 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 
 			if(visibility > 0.f)
 			{
-				const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility * transmittance;
+				const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility;
 				accumulator.Accumulate(shadingRes);
 			}
 		}
@@ -151,8 +144,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 
 		if(visibility > 0.f)
 		{
-			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
-			inScattering += transmittance * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
+			inScattering += illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
 		}
 	}
 	
@@ -242,13 +234,6 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-		const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, locationInAtmosphere, -directionalLight.direction);
-
-		if (all(transmittance) == 0.f)
-		{
-			continue;
-		}
-
 		const float3 lightIlluminance = directionalLight.illuminance;
 
 		if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
@@ -272,7 +257,7 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 			
 			if (!payload.isShadowed)
 			{
-				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance * transmittance;
+				luminance += CalcLighting(surface, -directionalLight.direction, viewDir, lightIlluminance).sceneLuminance;
 			}
 		}
 	}
