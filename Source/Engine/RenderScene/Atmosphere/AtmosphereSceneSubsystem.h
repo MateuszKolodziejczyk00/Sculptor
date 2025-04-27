@@ -33,13 +33,19 @@ public:
 
 	Bool IsAtmosphereTextureDirty() const;
 
+	Bool ShouldUpdateTransmittanceLUT() const;
+	void PostUpdateTransmittanceLUT();
+
 private:
 
 	void InitializeResources();
 
 	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
+	void OnDirectionalLightRemoved(RenderSceneRegistry& registry, RenderSceneEntity entity);
 
 	void UpdateAtmosphereContext();
+
+	void UpdateDirectionalLightIlluminance(RenderSceneEntity entity);
 
 	AtmosphereContext m_atmosphereContext;
 
@@ -47,6 +53,10 @@ private:
 
 	Bool m_isAtmosphereContextDirty;
 	Bool m_isAtmosphereTextureDirty;
+
+	Bool m_shouldUpdateTransmittanceLUT;;
+
+	math::Vector3f m_transmittanceAtZenith;
 };
 
 } // spt::rsc

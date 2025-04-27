@@ -155,7 +155,7 @@ static Uint32 CreatePointLightsData(rg::RenderGraphBuilder& graphBuilder, const 
 
 	for (const auto& [entity, pointLight] : pointLightsView.each())
 	{
-		PointLightGPUData gpuLightData = pointLight.GenerateGPUData();
+		PointLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
 		gpuLightData.entityID = static_cast<Uint32>(entity);
 		gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 		if (const PointLightShadowMapComponent* shadowMapComp = sceneRegistry.try_get<const PointLightShadowMapComponent>(entity))
@@ -207,8 +207,8 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 
 	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry(); 
 
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
-	const SizeType directionalLightsNum = directionalLightsView.size();
+	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
+	const SizeType directionalLightsNum = sceneRegistry.view<const DirectionalLightData>().size();
 
 	if (directionalLightsNum > 0)
 	{
@@ -219,9 +219,9 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 
 		lib::DynamicArray<ShadowMapViewData> cascadeViewsData;
 
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
 		{
-			DirectionalLightGPUData lightGPUData = directionalLight.GenerateGPUData();
+			DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
 			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
 			
 			if (viewShadowMasks)
@@ -568,7 +568,7 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		for (const auto& [entity, pointLight] : pointLightsView.each())
 		{
 			PointLightGPUData& gpuLightData = pointLightsData[pointLightIdx++];
-			gpuLightData = pointLight.GenerateGPUData();
+			gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
 			gpuLightData.entityID = static_cast<Uint32>(entity);
 			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 
@@ -580,8 +580,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		}
 	}
 
-	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData>();
-	const SizeType directionalLightsNum = directionalLightsView.size();
+	const auto directionalLightsView = sceneRegistry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
+	const SizeType directionalLightsNum = sceneRegistry.view<const DirectionalLightData>().size();
 
 	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
 	if (directionalLightsNum > 0)
@@ -593,10 +593,12 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 
 		SizeType directionalLightIdx = 0;
 
-		for (const auto& [entity, directionalLight] : directionalLightsView.each())
+		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
 		{
+			SPT_CHECK(directionalLightIdx < directionalLightsData.GetElementsNum());
+
 			DirectionalLightGPUData& lightGPUData = directionalLightsData[directionalLightIdx++];
-			lightGPUData = directionalLight.GenerateGPUData();
+			lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
 			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
 		}
 	}

@@ -22,9 +22,11 @@ float ComputeDensityNoise(in float3 location)
 	return perlin_noise::Evaluate(location) * 0.5f + 0.5f;
 }
 
+
 float EvaluateDensityAtLocation(in RenderParticipatingMediaParams params, in float3 location)
 {
-	return params.constantDensity;
+	const float globalDensity = params.constantFogDensity;
+	return EvaluateHeightBasedDensityAtLocation(globalDensity, location, params.fogHeightFalloff);
 }
 
 
@@ -33,8 +35,6 @@ void ParticipatingMediaCS(CS_INPUT input)
 {
 	if (all(input.globalID < u_fogConstants.fogGridRes))
 	{
-		const float scatteringFactor = u_participatingMediaParams.scatteringFactor;
-		
 		float4 scatteringExtinction = 0.f;
 
 		const float3 fogFroxelUVW = ComputeFogGridSampleUVW(u_fogConstants, u_sceneView, input.globalID.xyz, u_fogConstants.fogGridRes, u_depthTexture, u_depthSampler);
@@ -51,7 +51,7 @@ void ParticipatingMediaCS(CS_INPUT input)
 		const float density = EvaluateDensityAtLocation(u_participatingMediaParams, fogFroxelWorldLocation);
 
 		// Apply constant fog term
-		scatteringExtinction += ComputeScatteringAndExtinction(u_participatingMediaParams.constantFogColor, density, scatteringFactor);
+		scatteringExtinction += ComputeScatteringAndExtinction(u_participatingMediaParams.constantFogAlbedo, u_participatingMediaParams.constantFogExtinction, density);
 
 		u_participatingMediaTexture[input.globalID] = scatteringExtinction;
 	}

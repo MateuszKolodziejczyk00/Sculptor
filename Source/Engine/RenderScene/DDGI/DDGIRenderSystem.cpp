@@ -632,8 +632,6 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 
 										recorder.DrawInstances(probeVerticesNum, probesNum);
 									});
-
-			break;
 		}
 	}
 }

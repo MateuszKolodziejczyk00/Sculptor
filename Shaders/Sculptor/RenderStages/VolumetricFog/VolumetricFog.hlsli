@@ -4,10 +4,16 @@
 #include "Utils/SceneViewUtils.hlsli"
 
 
-float4 ComputeScatteringAndExtinction(in float3 fogColor, in float fogDensity, in float scatteringFactor)
+float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinction, in float fogDensity)
 {
-    const float extinction = scatteringFactor * fogDensity;
-    return float4(fogColor * extinction, extinction);
+    return float4(fogAlbedo * fogExtinction, fogExtinction) * fogDensity.xxxx;
+}
+
+
+// based on https://advances.realtimerendering.com/s2006/Chapter6-Real-time%20Atmospheric%20Effects%20in%20Games.pdf
+float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location, float heightFalloff)
+{
+	return globalDensity * exp(-heightFalloff * max(location.z, 0.f));
 }
 
 

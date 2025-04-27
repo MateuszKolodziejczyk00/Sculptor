@@ -24,11 +24,15 @@ namespace spt::rsc
 namespace parameters
 {
 
-RendererFloatParameter constantDensity("Fog Density", { "Volumetric Fog" }, 0.025f, 0.f, 1.f);
-RendererFloatParameter scatteringFactor("Scattering Factor", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
-RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.1f, 0.f, 1.f);
+RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.72f, 0.f, 1.f);
+RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.004f, 0.f, 1.f);
+RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(0.92f), 0.f, 1.f);
 
-RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 35.f, 1.f, 50.f);
+RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.06f, 0.f, 10.f);
+
+RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.3f, 0.f, 1.f);
+
+RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 160.f, 1.f, 10000.f);
 
 RendererBoolParameter enableDirectionalLightsInScattering("Enable Directional Lights Scattering", { "Volumetric Fog" }, true);
 RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directional Lights Volumetric RT Shadows", { "Volumetric Fog" }, true);
@@ -122,15 +126,16 @@ namespace participating_media
 {
 
 BEGIN_SHADER_STRUCT(RenderParticipatingMediaParams)
-	SHADER_STRUCT_FIELD(math::Vector3f, constantFogColor)
-	SHADER_STRUCT_FIELD(Real32, scatteringFactor)
-	SHADER_STRUCT_FIELD(Real32, constantDensity)
-	END_SHADER_STRUCT();
+	SHADER_STRUCT_FIELD(math::Vector3f, constantFogAlbedo)
+	SHADER_STRUCT_FIELD(Real32, constantFogDensity)
+	SHADER_STRUCT_FIELD(Real32, constantFogExtinction)
+	SHADER_STRUCT_FIELD(Real32, fogHeightFalloff)
+END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderParticipatingMediaDS, rg::RGDescriptorSetState<RenderParticipatingMediaDS>)
-DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>), u_participatingMediaTexture)
-DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderParticipatingMediaParams>), u_participatingMediaParams)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>), u_participatingMediaTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderParticipatingMediaParams>), u_participatingMediaParams)
 DS_END();
 
 
@@ -148,9 +153,10 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	RenderParticipatingMediaParams pariticipatingMediaParams;
-	pariticipatingMediaParams.constantFogColor = math::Vector3f::Constant(1.0f);
-	pariticipatingMediaParams.scatteringFactor = parameters::scatteringFactor;
-	pariticipatingMediaParams.constantDensity  = parameters::constantDensity;
+	pariticipatingMediaParams.constantFogAlbedo     = parameters::consantFogAlbedo;
+	pariticipatingMediaParams.constantFogDensity    = parameters::constantFogDensity;
+	pariticipatingMediaParams.constantFogExtinction = parameters::constantFogExtinction;
+	pariticipatingMediaParams.fogHeightFalloff      = parameters::fogHeightFalloff;
 
 	const lib::MTHandle<RenderParticipatingMediaDS> participatingMediaDS = graphBuilder.CreateDescriptorSet<RenderParticipatingMediaDS>(RENDERER_RESOURCE_NAME("RenderParticipatingMediaDS"));
 	participatingMediaDS->u_participatingMediaTexture = fogParams.participatingMediaTextureView;

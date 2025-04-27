@@ -8,15 +8,14 @@
 namespace spt::rsc
 {
 
-BEGIN_SHADER_STRUCT(DirectionalLightGPUData)
-	SHADER_STRUCT_FIELD(math::Vector3f, color)
-	SHADER_STRUCT_FIELD(Real32, illuminance) // Lux
+BEGIN_ALIGNED_SHADER_STRUCT(16, DirectionalLightGPUData)
+	SHADER_STRUCT_FIELD(math::Vector3f, illuminance) // Lux
+	SHADER_STRUCT_FIELD(Real32, sunDiskEC)
 	SHADER_STRUCT_FIELD(math::Vector3f, direction)
 	SHADER_STRUCT_FIELD(Uint32, shadowMaskIdx)
 	SHADER_STRUCT_FIELD(Uint32, firstShadowCascadeIdx)
 	SHADER_STRUCT_FIELD(Uint32, shadowCascadesNum)
 	SHADER_STRUCT_FIELD(Real32, sunDiskMinCosAngle)
-	SHADER_STRUCT_FIELD(Real32, sunDiskEC)
 END_SHADER_STRUCT();
 
 
@@ -30,33 +29,31 @@ BEGIN_ALIGNED_SHADER_STRUCT(16, PointLightGPUData)
 END_SHADER_STRUCT();
 
 
+// Illuminance in the atmosphere
+struct DirectionalLightIlluminance
+{
+	// Both values in lux
+	math::Vector3f outerSpaceIlluminance;
+	math::Vector3f illuminance; // based on atmosphere transmittance in the direction of the light
+};
+SPT_REGISTER_COMPONENT_TYPE(DirectionalLightIlluminance, RenderSceneRegistry);
+
+
 struct DirectionalLightData
 {
 	DirectionalLightData()
 		: color(math::Vector3f::Ones())
-		, illuminance(1.f)
+		, zenithIlluminance(1.f)
 		, direction(-math::Vector3f::UnitZ())
 		, lightConeAngle(0.f)
 		, sunDiskAngleMultiplier(1.f)
 		, sunDiskEC(0.f)
 	{ }
 
-	DirectionalLightGPUData GenerateGPUData() const
-	{
-		DirectionalLightGPUData gpuData;
-		gpuData.color              = color;
-		gpuData.illuminance        = illuminance;
-		gpuData.direction          = direction;
-		gpuData.sunDiskEC          = sunDiskEC;
-		gpuData.sunDiskMinCosAngle = lightConeAngle * sunDiskAngleMultiplier;
-
-		return gpuData;
-	}
-
 	math::Vector3f	color;
 
 	// Illuminance in lux
-	Real32			illuminance;
+	Real32			zenithIlluminance;
 
 	math::Vector3f	direction;
 	Real32			lightConeAngle;
@@ -77,17 +74,6 @@ struct PointLightData
 		, radius(1.f)
 	{ }
 
-	PointLightGPUData GenerateGPUData() const
-	{
-		PointLightGPUData gpuData;
-		gpuData.color			= color;
-		gpuData.luminousPower	= luminousPower;
-		gpuData.location		= location;
-		gpuData.radius			= radius;
-
-		return gpuData;
-	}
-
 	math::Vector3f	color;
 
 	// Luminous power in lumens
@@ -97,5 +83,31 @@ struct PointLightData
 	Real32			radius;
 };
 SPT_REGISTER_COMPONENT_TYPE(PointLightData, RenderSceneRegistry);
+
+
+struct GPUDataBuilder
+{
+public:
+
+	static DirectionalLightGPUData CreateDirectionalLightGPUData(const DirectionalLightData& lightData, const DirectionalLightIlluminance& illuminance)
+	{
+		DirectionalLightGPUData gpuData;
+		gpuData.illuminance        = illuminance.illuminance;
+		gpuData.direction          = lightData.direction;
+		gpuData.sunDiskEC          = lightData.sunDiskEC;
+		gpuData.sunDiskMinCosAngle = lightData.lightConeAngle * lightData.sunDiskAngleMultiplier;
+		return gpuData;
+	}
+
+	static PointLightGPUData CreatePointLightGPUData(const PointLightData& lightData)
+	{
+		PointLightGPUData gpuData;
+		gpuData.color         = lightData.color;
+		gpuData.luminousPower = lightData.luminousPower;
+		gpuData.location      = lightData.location;
+		gpuData.radius        = lightData.radius;
+		return gpuData;
+	}
+};
 
 } // spt::rsc

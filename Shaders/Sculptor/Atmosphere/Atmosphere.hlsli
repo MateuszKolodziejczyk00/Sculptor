@@ -8,6 +8,8 @@
 // Based on https://www.shadertoy.com/view/slSXRW
 
 
+// Note: Scattering evaluation should match the one in the C++
+
 float GetMiePhase(float cosTheta)
 {
     const float g = 0.8f;

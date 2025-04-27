@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
 #include "RGResources/RGResourceHandles.h"
+#include "Lights/LightTypes.h"
 
 
 namespace spt::rdr
@@ -30,6 +31,8 @@ BEGIN_SHADER_STRUCT(AtmosphereParams)
 	SHADER_STRUCT_FIELD(Real32, mieAbsorption)
 
 	SHADER_STRUCT_FIELD(math::Vector3f, ozoneAbsorption)
+
+	SHADER_STRUCT_FIELD(math::Vector3f, transmittanceAtZenith)
 END_SHADER_STRUCT();
 
 
@@ -43,5 +46,15 @@ struct AtmosphereContext
 
 	lib::SharedPtr<rdr::TextureView>	multiScatteringLUT;
 };
+
+
+namespace atmosphere_utils
+{
+
+math::Vector3f ComputeTransmittanceAtZenith(const AtmosphereParams& atmosphere);
+
+DirectionalLightIlluminance ComputeDirectionalLightIlluminanceInAtmosphere(const AtmosphereParams& atmosphere, math::Vector3f lightDirection, math::Vector3f illuminanceGroundAtZenith, Real32 lightConeAngleRadians);
+
+} // atmosphere_utils
 
 } // spt::rsc

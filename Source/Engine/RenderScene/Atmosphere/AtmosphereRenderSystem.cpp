@@ -154,17 +154,24 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 
 	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 
-	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+	AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 
-	if (atmosphereSubsystem.IsAtmosphereTextureDirty())
+	const Bool shouldUpdateTransmittanceLUT = atmosphereSubsystem.ShouldUpdateTransmittanceLUT();
+	const Bool shouldUpdateMultiScatteringLUT = atmosphereSubsystem.ShouldUpdateTransmittanceLUT() || atmosphereSubsystem.IsAtmosphereTextureDirty();
+
+	const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
+
+	const rg::RGTextureViewHandle transmittanceLUT		= graphBuilder.AcquireExternalTextureView(context.transmittanceLUT);
+	const rg::RGTextureViewHandle multiScatteringLUT	= graphBuilder.AcquireExternalTextureView(context.multiScatteringLUT);
+
+	if (shouldUpdateTransmittanceLUT)
 	{
-		const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
-
-		const rg::RGTextureViewHandle transmittanceLUT		= graphBuilder.AcquireExternalTextureView(context.transmittanceLUT);
-		const rg::RGTextureViewHandle multiScatteringLUT	= graphBuilder.AcquireExternalTextureView(context.multiScatteringLUT);
-
 		transmittance_lut::RenderTransmittanceLUT(graphBuilder, renderScene, context, transmittanceLUT);
+		atmosphereSubsystem.PostUpdateTransmittanceLUT();
+	}
 
+	if (shouldUpdateMultiScatteringLUT)
+	{
 		multi_scattering_lut::RenderMultiScatteringLUT(graphBuilder, renderScene, context, transmittanceLUT, multiScatteringLUT);
 	}
 

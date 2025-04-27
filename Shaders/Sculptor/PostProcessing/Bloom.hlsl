@@ -62,11 +62,12 @@ float3 DownsampleFilter(Texture2D inputTexture, SamplerState inputSampler, float
 	// 1 C 6
 	// 0 3 5
 
-	float3 result = ComputeKarisAverage(Inner0, Inner1, Inner2, Inner3) * 0.5f;
-	result += ComputeKarisAverage(Outer0, Outer3, Outer1, Center) * 0.125f;
-	result += ComputeKarisAverage(Outer1, Outer2, Outer4, Center) * 0.125f;
-	result += ComputeKarisAverage(Outer4, Outer6, Outer7, Center) * 0.125f;
-	result += ComputeKarisAverage(Outer3, Outer5, Outer6, Center) * 0.125f;
+	float3 result = 0.f;
+	result = ComputeAverage(Inner0, Inner1, Inner2, Inner3) * 0.5f;
+	result += ComputeAverage(Outer0, Outer3, Outer1, Center) * 0.125f;
+	result += ComputeAverage(Outer1, Outer2, Outer4, Center) * 0.125f;
+	result += ComputeAverage(Outer4, Outer6, Outer7, Center) * 0.125f;
+	result += ComputeAverage(Outer3, Outer5, Outer6, Center) * 0.125f;
 
 	return result;
 }
@@ -103,7 +104,7 @@ void BloomDownsampleCS(CS_INPUT input)
 		const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
 		const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
 
-		const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
+		const float2 uv = (pixel + 0.5f) * outputPixelSize;
 		
 		const float3 input = DownsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
 
@@ -125,7 +126,7 @@ void BloomUpsampleCS(CS_INPUT input)
 		const float2 inputPixelSize = u_bloomInfo.inputPixelSize;
 		const float2 outputPixelSize = u_bloomInfo.outputPixelSize;
 
-		const float2 uv = pixel * outputPixelSize + outputPixelSize * 0.5f;
+		const float2 uv = (pixel + 0.5f) * outputPixelSize;
 		
 		const float3 bloom = UpsampleFilter(u_inputTexture, u_linearSampler, uv, inputPixelSize);
 

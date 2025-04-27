@@ -87,8 +87,6 @@ void RenderSkyViewLUTCS(CS_INPUT input)
         const float3 viewLocation = GetLocationInAtmosphere(u_atmosphereParams, u_sceneView.viewLocation);
         const float viewHeight = length(viewLocation);
 
-        const float3 upVector = viewLocation / viewHeight;
-
         const float distToHorizon = sqrt(Pow2(viewHeight) - Pow2(u_atmosphereParams.groundRadiusMM));
         const float horizonAngle = acos(distToHorizon / viewHeight) - 0.5f * PI;
 

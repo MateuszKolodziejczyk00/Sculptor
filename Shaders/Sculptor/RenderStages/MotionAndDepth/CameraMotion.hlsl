@@ -24,7 +24,8 @@ void CameraMotionCS(CS_INPUT input)
     {
         const float2 uv = (float2(pixel) + 0.5f) / float2(outputRes);
         
-        const float depth = u_depth.SampleLevel(u_depthSampler, uv, 0);
+        const float maxDepth = 3000.f;
+        const float depth = max(u_depth.SampleLevel(u_depthSampler, uv, 0), ComputeHWDepth(maxDepth, u_sceneView));
         const float3 worldLocation = NDCToWorldSpaceNoJitter(float3(uv * 2.f - 1.f, depth), u_sceneView);
         
         const float4 prevFrameClip = mul(u_prevFrameSceneView.viewProjectionMatrixNoJitter, float4(worldLocation, 1.f));

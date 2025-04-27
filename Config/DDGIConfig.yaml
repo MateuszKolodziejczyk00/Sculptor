@@ -55,3 +55,18 @@ LodsConfigs:
     RelitPriority: 0.5
     ForwardAlignment: 0
     HeightAlignment: 0.1
+  - VolumeResolution:
+      - 12
+      - 12
+      - 12
+    RelitZoneResolution:
+      - 12
+      - 12
+      - 12
+    ProbesSpacing:
+      - 1024
+      - 1024
+      - 1024
+    RelitPriority: 0.5
+    ForwardAlignment: 0
+    HeightAlignment: 0

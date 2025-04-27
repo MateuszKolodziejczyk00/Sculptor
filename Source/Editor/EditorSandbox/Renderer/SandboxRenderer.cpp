@@ -436,12 +436,12 @@ void SandboxRenderer::InitializeRenderScene()
 		{
 			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
-			directionalLightData.color                  = math::Vector3f(1.f, 1.f, 1.f);
-			directionalLightData.illuminance            = 95000.f;
+			directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
+			directionalLightData.zenithIlluminance      = 120000.f;
 			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
-			directionalLightData.sunDiskAngleMultiplier = 2.3f;
-			directionalLightData.sunDiskEC              = 12.f;
+			directionalLightData.sunDiskAngleMultiplier = 3.5f;
+			directionalLightData.sunDiskEC              = 9.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 
 			sunAngleYaw = std::atan2(directionalLightData.direction.y(), directionalLightData.direction.x());

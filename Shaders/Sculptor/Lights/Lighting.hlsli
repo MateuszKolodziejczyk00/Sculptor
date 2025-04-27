@@ -31,7 +31,7 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-		const float3 illuminance = directionalLight.color * directionalLight.illuminance;
+		const float3 illuminance = directionalLight.illuminance;
 
 		if (any(illuminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{
@@ -138,7 +138,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-		const float3 illuminance = directionalLight.color * directionalLight.illuminance;
+		const float3 illuminance = directionalLight.illuminance;
 
 		float visibility = 1.f;
 		if(directionalLight.shadowCascadesNum != 0)
@@ -249,7 +249,7 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 			continue;
 		}
 
-		const float3 lightIlluminance = directionalLight.color * directionalLight.illuminance;
+		const float3 lightIlluminance = directionalLight.illuminance;
 
 		if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{

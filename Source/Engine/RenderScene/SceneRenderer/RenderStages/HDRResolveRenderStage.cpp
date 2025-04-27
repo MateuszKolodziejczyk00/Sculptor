@@ -269,10 +269,10 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 
 	for (Int32 passIdx = 0; passIdx < bloomPassesNum; ++passIdx)
 	{
-		const math::Vector2u inputRes  = math::Vector2u(resolution.x() >> passIdx, resolution.y() >> passIdx);
-		const math::Vector2u outputRes = math::Vector2u(resolution.x() >> (passIdx + 1), resolution.y() >> (passIdx + 1));
-
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
+
+		const math::Vector2u inputRes  = inputTextureView->GetResolution2D();
+		const math::Vector2u outputRes = outputTextureView->GetResolution2D();
 
 		BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 		if (passIdx == 0)
@@ -310,10 +310,10 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 	// Upsample passes
 	for (Int32 passIdx = static_cast<Int32>(bloomPassesNum) - 2; passIdx >= 0; --passIdx)
 	{
-		const math::Vector2u inputRes = math::Vector2u(resolution.x() >> (passIdx + 2), resolution.y() >> (passIdx + 2));
-		const math::Vector2u outputRes = math::Vector2u(resolution.x() >> (passIdx + 1), resolution.y() >> (passIdx + 1));
-
 		rg::RGTextureViewHandle outputTextureView = bloomTextureMips[passIdx];
+
+		const math::Vector2u inputRes  = inputTextureView->GetResolution2D();
+		const math::Vector2u outputRes = outputTextureView->GetResolution2D();
 
 		BloomPassInfo passInfo = CreateBloomPassInfo(inputRes, outputRes);
 
@@ -386,7 +386,7 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 
 	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
-	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(resolution), 6u) - 5u;
+	const Uint32 bloomPassesNum = std::max(math::Utils::ComputeMipLevelsNumForResolution(resolution), 6u) - 4u;
 
 	rg::TextureDef bloomTextureDef;
 	bloomTextureDef.resolution	= math::Vector3u(resolution.x() / 2, resolution.y() / 2, 1);

@@ -75,6 +75,6 @@ public:
 
 
 #define SPT_REGISTER_COMPONENT_TYPE(TComponent, ...) \
-	inline spt::ecs::ComponentAutoRegistrator<TComponent, __VA_ARGS__> SPT_SCOPE_NAME_EVAL(autoRegistrator, __LINE__);
+	inline spt::ecs::ComponentAutoRegistrator<TComponent, __VA_ARGS__> SPT_SCOPE_NAME_EVAL(autoRegistrator ## TComponent, __LINE__);
 
 } // spt::ecs

@@ -32,7 +32,23 @@ struct CS_INPUT
 
 
 #if ATMOSPHERE_ENABLED
-float3 ComputeAtmosphereLuminance(in float2 uv)
+// Appendix B from "Physically Based Sky, Atmosphere and Cloud Rendering in Frostbite" course notes
+float3 ComputeSunDiskColorFactor(float centerToEdge)
+{
+	// Model from http://www.physics.hmc.edu/faculty/esin/a101/limbdarkening.pdf
+	float3 u = float3(1.0, 1.0, 1.0); // some models have u!=1
+	float3 a = float3(0.397, 0.503, 0.652); // coefficient for RGB wavelength (680, 550, 440)
+	
+	//centerToEdge = 1.0 - centerToEdge;
+	float mu = sqrt(1.0 - centerToEdge * centerToEdge);
+	
+	float3 factor = 1.0 - u * (1.0 - pow(mu, a));
+
+	return factor;
+}
+
+
+float3 ComputeAtmosphereLuminance(in float2 uv, in float2 pixelSize)
 {
 	const float3 rayDirection = ComputeViewRayDirectionWS(u_sceneView, uv);
 
@@ -53,10 +69,12 @@ float3 ComputeAtmosphereLuminance(in float2 uv)
 		if (rayLightDot > minRayLightDot)
 		{
 			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, rayDirection);
-			const float cosHalfApex = 0.01f;
-			const float softEdge = saturate(2.0f * (rayLightDot - cosHalfApex) / (1.0f - cosHalfApex));
 
-			sunLuminance += directionalLight.color * softEdge * transmittance * ComputeLuminanceFromEC(directionalLight.sunDiskEC);
+			const float rayLightSin = sqrt(1.f - Pow2(rayLightDot));
+			const float edgeSin     = sqrt(1.f - Pow2(minRayLightDot));
+			const float centerToEdge = rayLightSin / edgeSin;
+
+			sunLuminance += ComputeSunDiskColorFactor(centerToEdge) * transmittance * ComputeLuminanceFromEC(directionalLight.sunDiskEC);
 		}
 	}
 
@@ -196,7 +214,7 @@ void CompositeLightingCS(CS_INPUT input)
 #if ATMOSPHERE_ENABLED
 	if (depth == 0.f)
 	{
-		luminance = ComputeAtmosphereLuminance(uv);
+		luminance = ComputeAtmosphereLuminance(uv, pixelSize);
 	}
 #endif // ATMOSPHERE_ENABLED
 
