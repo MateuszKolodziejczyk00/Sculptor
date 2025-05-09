@@ -31,7 +31,7 @@ public:
 	static Bool				Exists(const lib::StringView& path);
 
 	static lib::String		DiscardExtension(const lib::String& file);
-	static lib::String		GetExtension(const lib::StringView& file);
+	static lib::StringView	GetExtension(const lib::StringView& file);
 
 	struct SCULPTOR_LIB_API Utils
 	{

@@ -42,3 +42,6 @@
 [submodule "Source/ThirdParty/DLSS/DLSS"]
 	path = Source/ThirdParty/DLSS/DLSS
 	url = https://github.com/NVIDIA/DLSS
+[submodule "Source/ThirdParty/DDS/DDS"]
+	path = Source/ThirdParty/DDS/DDS
+	url = https://github.com/turanszkij/dds

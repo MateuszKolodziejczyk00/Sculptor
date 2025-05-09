@@ -26,6 +26,8 @@ public:
 private:
 
 	lib::SharedPtr<rdr::Buffer> m_viewExposureBuffer;
+
+	lib::SharedPtr<rdr::TextureView> m_tonemappingLUT;
 };
 
 } // spt::rsc

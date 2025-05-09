@@ -5,7 +5,6 @@
 #include "Vulkan/Device/LogicalDevice.h"
 #include "RHICore/RHIInitialization.h"
 #include "Logging/Log.h"
-
 #include "imgui_impl_vulkan.h"
 
 
@@ -134,7 +133,7 @@ void RHIWindow::InitializeRHI(const rhi::RHIWindowInitializationInfo& windowInfo
 
 	const VkFormat requestSurfaceImageFormats[] =
 	{
-		//VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+		VK_FORMAT_A2B10G10R10_UNORM_PACK32,
 		VK_FORMAT_B8G8R8A8_UNORM,
 		VK_FORMAT_R8G8B8A8_UNORM,
 		VK_FORMAT_B8G8R8_UNORM,

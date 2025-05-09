@@ -67,31 +67,41 @@ void UploadsManager::EnqueUploadToTexture(const Byte* data, Uint64 dataSize, con
 	const Uint64 rowDataSize  = copyExtent.x() * fragmentSize;
 	SPT_CHECK(rowDataSize <= stagingBufferSize);
 
-	const Uint32 rowsNum = copyExtent.y();
+	const Uint32 rowsNum   = copyExtent.y();
+	const Uint32 slicesNum = copyExtent.z();
 
-	SPT_CHECK(rowDataSize * rowsNum == dataSize);
+	SPT_CHECK(rowDataSize * rowsNum * slicesNum == dataSize);
 
-	const Uint32 maxRowsInBatch = static_cast<Uint32>(stagingBufferSize / rowDataSize);
+	const Uint32 maxRowsInBatch   = static_cast<Uint32>(stagingBufferSize / rowDataSize);
 	SPT_CHECK(maxRowsInBatch > 0u);
 
 	Uint64 srcDataOffset = 0u;
 	Uint32 currentRow    = 0u;
-	while (currentRow < rowsNum)
+	Uint32 currentSlice  = 0u;
+
+	while (currentSlice < slicesNum)
 	{
-		const Uint32 rowsInCurrentBatch = std::min(maxRowsInBatch, rowsNum - currentRow);
+		currentRow = 0u;
+		while (currentRow < rowsNum)
+		{
+			const Uint32 rowsInCurrentBatch = std::min(maxRowsInBatch, rowsNum - currentRow);
 
-		const math::Vector3u currentBatchExtent = math::Vector3u(copyExtent.x(), rowsInCurrentBatch, copyExtent.z());
-		const math::Vector3u currentBatchOffset = math::Vector3u(copyOffset.x(), copyOffset.y() + currentRow, copyOffset.z());
+			const math::Vector3u currentBatchExtent = math::Vector3u(copyExtent.x(), rowsInCurrentBatch, 1u);
+			const math::Vector3u currentBatchOffset = math::Vector3u(copyOffset.x(), copyOffset.y() + currentRow, copyOffset.z() + currentSlice);
 
-		const Uint64 dataSizeForCurrentBatch = rowsInCurrentBatch * rowDataSize;
-		SPT_CHECK(srcDataOffset + dataSizeForCurrentBatch <= dataSize);
+			const Uint64 dataSizeForCurrentBatch = rowsInCurrentBatch * rowDataSize;
+			SPT_CHECK(srcDataOffset + dataSizeForCurrentBatch <= dataSize);
 
-		EnqueueUploadToTextureImpl(data + srcDataOffset, dataSizeForCurrentBatch, texture, aspect, currentBatchExtent, currentBatchOffset, mipLevel, arrayLayer);
-		currentRow    += rowsInCurrentBatch;
-		srcDataOffset += dataSizeForCurrentBatch;
+			EnqueueUploadToTextureImpl(data + srcDataOffset, dataSizeForCurrentBatch, texture, aspect, currentBatchExtent, currentBatchOffset, mipLevel, arrayLayer);
+			currentRow += rowsInCurrentBatch;
+			srcDataOffset += dataSizeForCurrentBatch;
+		}
+
+		++currentSlice;
 	}
 
 	SPT_CHECK(currentRow    == rowsNum);
+	SPT_CHECK(currentSlice  == slicesNum);
 	SPT_CHECK(srcDataOffset == dataSize);
 }
 

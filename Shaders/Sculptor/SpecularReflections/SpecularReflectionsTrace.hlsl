@@ -51,6 +51,7 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 		hitResult.metallic    = baseColorMetallic.w;
 		hitResult.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
 		hitResult.hitDistance = payload.distance;
+		hitResult.emissive    = payload.emissive;
 	}
 	else if (!isBackface)
 	{

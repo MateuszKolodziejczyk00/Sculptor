@@ -12,6 +12,7 @@ IncludeProject("NsightAftermath")
 
 IncludeProject("TinyGLTF")
 
+IncludeProject("DDS")
 IncludeProject("STB")
 
 IncludeProject("MeshOptimizer")

@@ -127,24 +127,27 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureView(const RenderGraphDebug
 	return CreateTextureView(name, texture, viewDefintion, flags);
 }
 
-RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel)
+RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel, Uint32 arrayLayer /*= 0u*/)
 {
 	SPT_CHECK(texture.IsValid());
 	SPT_CHECK(mipLevel < texture->GetMipLevelsNum());
 	SPT_CHECK(texture->GetTextureDefinition().arrayLayers == 1u);
+	SPT_CHECK(arrayLayer < texture->GetTextureDefinition().arrayLayers);
 
 	const RenderGraphDebugName name = RG_DEBUG_NAME(texture->GetName().ToString() + "_Mip" + std::to_string(mipLevel));
 	rhi::TextureViewDefinition viewDefintion;
-	viewDefintion.subresourceRange.mipLevelsNum   = 1u;
 	viewDefintion.subresourceRange.baseMipLevel   = mipLevel;
+	viewDefintion.subresourceRange.mipLevelsNum   = 1u;
+	viewDefintion.subresourceRange.baseArrayLayer = arrayLayer;
+	viewDefintion.subresourceRange.arrayLayersNum = 1u;
 	return CreateTextureView(name, texture, viewDefintion);
 }
 
-RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel)
+RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel, Uint32 arrayLayer /*= 0u*/)
 {
 	SPT_CHECK(texture.IsValid());
 
-	return CreateTextureMipView(texture->GetTexture(), texture->GetSubresourceRange().baseMipLevel + mipLevel);
+	return CreateTextureMipView(texture->GetTexture(), texture->GetSubresourceRange().baseMipLevel + mipLevel, arrayLayer);
 }
 
 void RenderGraphBuilder::ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination)
@@ -359,7 +362,7 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraph
 	return result;
 }
 
-lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadTexture(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView)
+lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadTextureToBuffer(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView)
 {
 	const Uint64 mipSize = textureView->GetMipSize();
 
@@ -371,6 +374,43 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadTexture(const RenderGrap
 	CopyTextureToBuffer(commandName, textureView, AcquireExternalBufferView(result->CreateFullView()), 0u);
 
 	return result;
+}
+
+lib::SharedRef<rdr::Texture> RenderGraphBuilder::DownloadTexture(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView)
+{
+	const math::Vector3u textureResolution = textureView->GetResolution();
+	const Uint32 mipLevelsNum              = textureView->GetMipLevelsNum();
+	const Uint32 arrayLayersNum            = textureView->GetArrayLayersNum();
+
+	rhi::TextureDefinition textureDef;
+	textureDef.resolution  = textureResolution;
+	textureDef.mipLevels   = mipLevelsNum;
+	textureDef.arrayLayers = arrayLayersNum;
+	textureDef.usage       = lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture);
+	textureDef.format      = textureView->GetFormat();
+	textureDef.tiling      = rhi::ETextureTiling::Linear;
+	const lib::SharedRef<rdr::TextureView> texture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Texture", commandName.AsString()), textureDef, rhi::EMemoryUsage::GPUToCpu);
+
+	const rg::RGTextureViewHandle cpuTextureView = AcquireExternalTextureView(texture);
+
+	const rhi::TextureSubresourceRange& sourceSubresourceRange = textureView->GetSubresourceRange();
+
+	for (Uint32 mipIdx = 0u; mipIdx < mipLevelsNum; ++mipIdx)
+	{
+		for (Uint32 layerIdx = 0u; layerIdx < arrayLayersNum; ++layerIdx)
+		{
+			const rg::RGTextureViewHandle sourceView = CreateTextureMipView(textureView, sourceSubresourceRange.baseMipLevel + mipIdx, sourceSubresourceRange.baseArrayLayer + layerIdx);
+			const rg::RGTextureViewHandle destView   = CreateTextureMipView(cpuTextureView, mipIdx, layerIdx);
+
+			const math::Vector3u mipResolution = destView->GetTexture()->GetMipResolution(mipIdx);
+
+			const math::Vector3i sourceOffset = math::Vector3i::Zero();
+			const math::Vector3i destOffset   = math::Vector3i::Zero();
+			CopyTexture(commandName, sourceView, sourceOffset, destView, destOffset, mipResolution);
+		}
+	}
+
+	return texture->GetTexture();
 }
 
 void RenderGraphBuilder::CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent)

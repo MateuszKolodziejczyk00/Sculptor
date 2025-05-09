@@ -131,7 +131,7 @@ void SRATrousFilterCS(CS_INPUT input)
 			return;
 		}
 		
-		const float lumStdDevMultiplier = 1.5f;
+		const float lumStdDevMultiplier = 1.2f;
 		
 		const float3 centerWS = LinearDepthToWS(u_sceneView, uv * 2.f - 1.f, centerLinearDepth);
 

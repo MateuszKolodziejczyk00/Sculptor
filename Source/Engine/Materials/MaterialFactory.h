@@ -21,6 +21,7 @@ struct MaterialDefinition
 
 	Uint8 customOpacity : 1;
 	Uint8 doubleSided   : 1;
+	Uint8 emissive      : 1;
 };
 
 

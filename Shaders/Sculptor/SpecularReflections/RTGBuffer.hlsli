@@ -26,6 +26,8 @@ struct RayHitResult
 	float roughness;
 	float3 baseColor;
 	float metallic;
+
+	float3 emissive;
 	
 	uint hitType;
 
@@ -47,6 +49,18 @@ float3 UnpackHitNormal(in uint packedNormal)
 }
 
 
+uint PackEmissive(in float3 emissive)
+{
+	return EncodeRGBToLogLuv(emissive);
+}
+
+
+float3 UnpackEmissive(in uint packedEmissive)
+{
+	return DecodeRGBFromLogLuv(packedEmissive);
+}
+
+
 RTHitMaterialInfo PackRTGBuffer(in RayHitResult hitResult)
 {
 	RTHitMaterialInfo data;
@@ -57,6 +71,7 @@ RTHitMaterialInfo PackRTGBuffer(in RayHitResult hitResult)
 		data.normal            = PackHitNormal(hitResult.normal);
 		data.baseColorMetallic = PackFloat4x8(float4(hitResult.baseColor, hitResult.metallic));
 		data.roughness         = PackFloatNorm(hitResult.roughness);
+		data.emissive          = PackEmissive(hitResult.emissive);
 	}
 	else if (hitResult.hitType == RTGBUFFER_HIT_TYPE_BACKFACE)
 	{
@@ -88,6 +103,7 @@ RayHitResult UnpackRTGBuffer(in RTHitMaterialInfo data)
 		hitResult.metallic  = baseColorMetallic.w;
 		hitResult.roughness = UnpackFloatNorm(data.roughness);
 		hitResult.hitType   = RTGBUFFER_HIT_TYPE_VALID_HIT;
+		hitResult.emissive  = UnpackEmissive(data.emissive);
 	}
 	else
 	{

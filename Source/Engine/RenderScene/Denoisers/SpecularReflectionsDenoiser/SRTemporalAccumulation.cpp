@@ -11,6 +11,7 @@
 #include "DDGI/DDGITypes.h"
 #include "RenderScene.h"
 #include "EngineFrame.h"
+#include "DDGI/DDGISceneSubsystem.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -51,9 +52,12 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 DS_END();
 
 
-static rdr::PipelineStateID CreateTemporalAccumulationPipeline()
+static rdr::PipelineStateID CreateTemporalAccumulationPipeline(const TemporalAccumulationParameters& params)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/SRTemporalAccumulation.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SRTemporalAccumulationCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("USE_STABLE_BLENDS", params.enableStableHistoryBlend ? "1" : "0"));
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DISOCCLUSION_FIX_FROM_LIGHT_CACHE", params.enableDisocclusionFixFromLightCache ? "1" : "0"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/SRTemporalAccumulation.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SRTemporalAccumulationCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Specular Reflections Temporal Accumulation Pipeline"), shader);
 }
 
@@ -96,13 +100,16 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_diffuseFastHistoryTexture              = params.fastHistoryDiffuseOutputTexture;
 	ds->u_constants                              = shaderConstants;
 
-	static const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline();
+	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
+
+	const rdr::PipelineStateID pipeline = CreateTemporalAccumulationPipeline(params);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{}: SR Temporal Accumulation", params.name.AsString()),
 						  pipeline,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
-												 params.renderView.GetRenderViewDS()));
+												 params.renderView.GetRenderViewDS(),
+												 ddgiSubsystem.GetDDGISceneDS()));
 }
 
 } // spt::rsc::sr_denoiser

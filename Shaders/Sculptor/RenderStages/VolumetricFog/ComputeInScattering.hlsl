@@ -41,13 +41,13 @@ void ComputeInScatteringCS(CS_INPUT input)
 		const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(max(fogFroxelUVW.z - froxelWDelta, 0.f), fogNearPlane, fogFarPlane);
 
 		InScatteringParams params;
-		params.uv                       = fogFroxelUVW.xy;
-		params.linearDepth              = fogFroxelLinearDepth;
-		params.worldLocation            = fogFroxelWorldLocation;
-		params.toViewNormal             = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
-		params.phaseFunctionAnisotrophy = u_inScatteringParams.paseFunctionAnisotrophy;
-		params.inScatteringColor        = scatteringExtinction.rgb;
-		params.froxelDepthRange         = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
+		params.uv                         = fogFroxelUVW.xy;
+		params.linearDepth                = fogFroxelLinearDepth;
+		params.worldLocation              = fogFroxelWorldLocation;
+		params.toViewNormal               = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
+		params.phaseFunctionAnisotrophy   = u_inScatteringParams.paseFunctionAnisotrophy;
+		params.inScatteringColor          = scatteringExtinction.rgb;
+		params.froxelDepthRange           = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
 		params.directionalLightShadowTerm = u_directionalLightShadowTerm.Load(uint4(input.globalID, 0u)).r;
 		
 		float3 inScattering = ComputeLocalLightsInScattering(params);

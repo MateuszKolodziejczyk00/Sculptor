@@ -70,12 +70,12 @@ lib::String File::DiscardExtension(const lib::String& file)
 		: file;
 }
 
-lib::String File::GetExtension(const lib::StringView& file)
+lib::StringView File::GetExtension(const lib::StringView& file)
 {
 	const SizeType extensionBeginPosition = file.find_last_of('.');
 	return extensionBeginPosition != lib::String::npos
-		? lib::String(std::cbegin(file) + extensionBeginPosition + 1, std::cend(file))
-		: lib::String();
+		? lib::StringView(std::cbegin(file) + extensionBeginPosition + 1, std::cend(file))
+		: lib::StringView();
 }
 
 lib::String File::Utils::CreateFileNameFromTime(lib::StringView extension /*= {}*/)

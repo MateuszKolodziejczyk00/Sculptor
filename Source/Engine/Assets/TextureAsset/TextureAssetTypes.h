@@ -21,7 +21,6 @@ struct TextureDefinition
 	rhi::EFragmentFormat format;
 	Uint32               mipLevelsNum;
 };
-SPT_REGISTER_ASSET_DATA_TYPE(TextureDefinition);
 
 
 struct TextureMipData
@@ -35,6 +34,26 @@ struct TextureData
 	lib::DynamicArray<TextureMipData> mips;
 };
 SPT_REGISTER_ASSET_DATA_TYPE(TextureData);
+
+
+struct TextureSourceDefinition
+{
+	lib::Path path;
+};
+
+
+struct CompiledMip
+{
+	Uint32 offset = 0u;
+	Uint32 size   = 0u;
+};
+
+
+struct CompiledTexture
+{
+	TextureDefinition definition;
+	lib::DynamicArray<CompiledMip> mips;
+};
 
 } // spt::as
 
@@ -95,8 +114,53 @@ struct TypeSerializer<as::TextureData>
 	}
 };
 
+template<>
+struct TypeSerializer<as::TextureSourceDefinition>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		if constexpr (Serializer::IsLoading())
+		{
+			lib::String path;
+			serializer.Serialize("Path", path);
+			data.path = lib::Path(path);
+		}
+		else
+		{
+			const lib::String path = data.path.generic_string();
+			serializer.Serialize("Path", path);
+		}
+	}
+};
+
+template<>
+struct TypeSerializer<as::CompiledMip>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("Offset", data.offset);
+		serializer.Serialize("Size", data.size);
+	}
+};
+
+template<>
+struct TypeSerializer<as::CompiledTexture>
+{
+	template<typename Serializer, typename Param>
+	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
+	{
+		serializer.Serialize("Definition", data.definition);
+		serializer.Serialize("Mips", data.mips);
+	}
+};
+
 } // spt::srl
 
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureDefinition);
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureMipData);
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureData);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureSourceDefinition);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledMip);
+SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledTexture);

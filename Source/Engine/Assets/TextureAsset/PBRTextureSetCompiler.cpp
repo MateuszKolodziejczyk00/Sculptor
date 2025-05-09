@@ -131,9 +131,9 @@ PBRCompiledTextureSetData PBRTextureSetCompiler::CompileTextureSet(const PBRText
 
 	for (Uint32 mipIdx = 0u; mipIdx < mipLevelsNum; ++mipIdx)
 	{
-		baseColorMipsData.emplace_back(graphBuilder.DownloadTexture(RG_DEBUG_NAME("Download Base Color Mip Data"), graphBuilder.CreateTextureMipView(baseColor, mipIdx)));
-		metallicRoughnessMipsData.emplace_back(graphBuilder.DownloadTexture(RG_DEBUG_NAME("Download Metallic Roughness Mip Data"), graphBuilder.CreateTextureMipView(metallicRoughness, mipIdx)));
-		normalsMipsData.emplace_back(graphBuilder.DownloadTexture(RG_DEBUG_NAME("Download Normals Mip Data"), graphBuilder.CreateTextureMipView(normals, mipIdx)));
+		baseColorMipsData.emplace_back(graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Base Color Mip Data"), graphBuilder.CreateTextureMipView(baseColor, mipIdx)));
+		metallicRoughnessMipsData.emplace_back(graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Metallic Roughness Mip Data"), graphBuilder.CreateTextureMipView(metallicRoughness, mipIdx)));
+		normalsMipsData.emplace_back(graphBuilder.DownloadTextureToBuffer(RG_DEBUG_NAME("Download Normals Mip Data"), graphBuilder.CreateTextureMipView(normals, mipIdx)));
 	}
 
 	const auto cacheTextureDefinition = [](const rg::RGTextureViewHandle& textureView)

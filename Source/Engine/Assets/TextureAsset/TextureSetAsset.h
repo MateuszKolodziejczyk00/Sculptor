@@ -33,12 +33,6 @@ public:
 SPT_REGISTER_ASSET_TYPE(TextureSetAsset);
 
 
-struct TextureSourceDefinition
-{
-	lib::Path path;
-};
-
-
 struct PBRTextureSetSource
 {
 	TextureSourceDefinition baseColor;
@@ -46,20 +40,6 @@ struct PBRTextureSetSource
 	TextureSourceDefinition normals;
 };
 SPT_REGISTER_ASSET_DATA_TYPE(PBRTextureSetSource);
-
-
-struct CompiledMip
-{
-	Uint32 offset = 0u;
-	Uint32 size   = 0u;
-};
-
-
-struct CompiledTexture
-{
-	TextureDefinition definition;
-	lib::DynamicArray<CompiledMip> mips;
-};
 
 
 struct PBRCompiledTextureSetData
@@ -144,26 +124,6 @@ namespace spt::srl
 {
 
 template<>
-struct TypeSerializer<as::TextureSourceDefinition>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		if constexpr (Serializer::IsLoading())
-		{
-			lib::String path;
-			serializer.Serialize("Path", path);
-			data.path = lib::Path(path);
-		}
-		else
-		{
-			const lib::String path = data.path.generic_string();
-			serializer.Serialize("Path", path);
-		}
-	}
-};
-
-template<>
 struct TypeSerializer<as::PBRTextureSetSource>
 {
 	template<typename Serializer, typename Param>
@@ -172,28 +132,6 @@ struct TypeSerializer<as::PBRTextureSetSource>
 		serializer.Serialize("BaseColor", data.baseColor);
 		serializer.Serialize("MetallicRoughness", data.metallicRoughness);
 		serializer.Serialize("Normals", data.normals);
-	}
-};
-
-template<>
-struct TypeSerializer<as::CompiledMip>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Offset", data.offset);
-		serializer.Serialize("Size", data.size);
-	}
-};
-
-template<>
-struct TypeSerializer<as::CompiledTexture>
-{
-	template<typename Serializer, typename Param>
-	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
-	{
-		serializer.Serialize("Definition", data.definition);
-		serializer.Serialize("Mips", data.mips);
 	}
 };
 
@@ -213,8 +151,5 @@ struct TypeSerializer<as::PBRCompiledTextureSetData>
 
 } // spt::srl
 
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::TextureSourceDefinition);
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRTextureSetSource);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledMip);
-SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::CompiledTexture);
 SPT_YAML_SERIALIZATION_TEMPLATES(spt::as::PBRCompiledTextureSetData);

@@ -57,8 +57,14 @@ public:
 	const rhi::RHIAllocationInfo&	GetAllocationInfo() const;
 
 	Uint64							GetFragmentSize() const;
+	Uint64							GetMipSize(Uint32 mipIdx) const;
+
 
 	VkImage							GetHandle() const;
+
+	// Currently not threadsafe
+	Byte*                           MapPtr() const;
+	void							Unmap() const;
 
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
@@ -160,6 +166,81 @@ private:
 	const RHITexture*					m_texture;
 
 	DebugName							m_name;
+};
+
+
+class RHI_API RHIMappedSurface
+{
+public:
+
+	RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, const VkSubresourceLayout& layout);
+
+	template<typename TDataType>
+	TDataType& At(const math::Vector3u& corrds) const
+	{
+		SPT_CHECK_MSG(sizeof(TDataType) == m_bytesPerFragment, "Invalid type size for texture {}: {} != {}", m_texture.GetName(), sizeof(TDataType), m_bytesPerFragment);
+
+		SPT_CHECK_MSG(corrds.x() < m_texture.GetResolution().x() && corrds.y() < m_texture.GetResolution().y() && corrds.z() < m_texture.GetResolution().z(),
+					  "Invalid coordinates for texture {}: ({}, {}, {})", m_texture.GetName(), corrds.x(), corrds.y(), corrds.z());
+
+		return *reinterpret_cast<TDataType*>(m_data + corrds.x() * m_bytesPerFragment + corrds.y() * m_layout.rowPitch + corrds.z() * m_layout.depthPitch);
+	}
+
+	template<typename TDataType>
+	TDataType& At(const math::Vector2u& coords) const
+	{
+		return At<TDataType>(math::Vector3u(coords.x(), coords.y(), 0u));
+	}
+
+	template<typename TDataType>
+	TDataType& At(Uint32 coordsX) const
+	{
+		return At<TDataType>(math::Vector3u(coordsX, 0u, 0u));
+	}
+
+	lib::Span<Byte> GetMipData() const
+	{
+		return lib::Span<Byte>(m_data, m_layout.size);
+	}
+
+	lib::Span<Byte> GetRowData(Uint32 row, Uint32 depth) const
+	{
+		const Uint32 size   = m_texture.GetResolution().x() * m_bytesPerFragment;
+		const Uint32 offset = static_cast<Uint32>(depth * m_layout.depthPitch + row * m_layout.rowPitch);
+
+		return lib::Span<Byte>(m_data + offset, size);
+	}
+
+	Uint32 GetRowStride() const { return static_cast<Uint32>(m_layout.rowPitch); }
+
+private:
+
+	const RHITexture&   m_texture;
+	Byte*               m_data = nullptr; // data after applying offset from layout
+	Uint32              m_bytesPerFragment = 0u;
+
+	VkSubresourceLayout m_layout;
+};
+
+
+class RHI_API RHIMappedTexture
+{
+public:
+
+	explicit RHIMappedTexture(const RHITexture& texture);
+	~RHIMappedTexture();
+
+	RHIMappedSurface GetSurface(Uint32 mipLevel, Uint32 arrayLayer) const;
+
+private:
+
+	const RHITexture&   m_texture;
+
+	Byte*               m_mappedPointer = nullptr;
+
+	Uint32              m_bytesPerFragment = 0u;
+
+	VkImageAspectFlags  m_aspect = 0u;
 };
 
 } // spt::vulkan

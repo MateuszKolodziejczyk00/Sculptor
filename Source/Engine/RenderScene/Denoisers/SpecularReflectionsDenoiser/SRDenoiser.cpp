@@ -140,6 +140,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.fastHistorySpecularOutputTexture       = fastHistorySpecularOutputTexture;
 		temporalAccumulationParameters.fastHistoryDiffuseTexture              = fastHistoryDiffuseTexture;
 		temporalAccumulationParameters.fastHistoryDiffuseOutputTexture        = fastHistoryDiffuseOutputTexture;
+		temporalAccumulationParameters.enableStableHistoryBlend               = params.enableStableHistoryBlend;
+		temporalAccumulationParameters.enableDisocclusionFixFromLightCache    = params.enableDisocclusionFixFromLightCache;
 
 		ApplyTemporalAccumulation(graphBuilder, temporalAccumulationParameters);
 	}

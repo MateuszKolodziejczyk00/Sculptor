@@ -120,7 +120,7 @@ void RenderSkyViewLUTCS(CS_INPUT input)
 
             const float3 lightDirection = -directionalLight.direction;
 
-            skyLuminance += RaymarchScattering(ray, lightDirection, raymarchingStepsNum, rayDistance) * directionalLight.illuminance;
+            skyLuminance += RaymarchScattering(ray, lightDirection, raymarchingStepsNum, rayDistance) * directionalLight.outerSpaceIlluminance;
         }
 
         u_skyViewLUT[pixel] = skyLuminance;

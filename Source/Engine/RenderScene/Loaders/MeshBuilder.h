@@ -57,7 +57,7 @@ protected:
 	Uint64 GetCurrentDataSize() const;
 
 	template<typename TDestType, typename TSourceType>
-	SizeType AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping = lib::DynamicArray<SizeType>{});
+	SizeType AppendData(const unsigned char* data, SizeType componentsNum, SizeType stride, SizeType count);
 
 private:
 	
@@ -101,30 +101,20 @@ private:
 
 
 template<typename TDestType, typename TSourceType>
-SizeType MeshBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count, const lib::DynamicArray<SizeType>& componentsRemapping /*= lib::DynamicArray<SizeType>{}*/)
+SizeType MeshBuilder::AppendData(const unsigned char* sourceData, SizeType componentsNum, SizeType stride, SizeType count)
 {
 	const SizeType destDataSize = count * componentsNum * sizeof(TDestType);
 	Byte* destPtr = AppendData(destDataSize);
 
 	const SizeType offset = destPtr - m_geometryData.data();
 
-	if (componentsRemapping.empty())
+	if constexpr (std::is_same_v<TDestType, TSourceType>)
 	{
-		if constexpr (std::is_same_v<TDestType, TSourceType>)
+		if (stride == sizeof(TDestType) * componentsNum)
 		{
-			if (stride == sizeof(TDestType) * componentsNum)
-			{
-				memcpy(destPtr, sourceData, count * componentsNum * sizeof(TDestType));
-				return offset;
-			}
+			memcpy(destPtr, sourceData, count * componentsNum * sizeof(TDestType));
+			return offset;
 		}
-	}
-
-	SPT_CHECK(componentsRemapping.size() == componentsNum || componentsRemapping.empty());
-	lib::DynamicArray<SizeType> remapping(componentsNum);
-	for (SizeType idx = 0; idx < componentsNum; ++idx)
-	{
-		remapping[idx] = componentsRemapping.empty() ? idx : componentsRemapping[idx];
 	}
 
 	const SizeType destStride = sizeof(TDestType) * componentsNum;
@@ -134,7 +124,7 @@ SizeType MeshBuilder::AppendData(const unsigned char* sourceData, SizeType compo
 		const TSourceType* source = reinterpret_cast<const TSourceType*>(&sourceData[sourceOffset]);
 		for (SizeType componentIdx = 0; componentIdx < componentsNum; ++componentIdx)
 		{
-			dest[componentIdx] = static_cast<TDestType>(source[remapping[componentIdx]]);
+			dest[componentIdx] = static_cast<TDestType>(source[componentIdx]);
 		}
 	}
 

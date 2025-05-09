@@ -5,6 +5,8 @@
 #include "Types/Texture.h"
 #include "RHIBridge/RHIDependencyImpl.h"
 #include "Transfers/UploadUtils.h"
+#include "TextureCompiler.h"
+#include "AssetsSystem.h"
 
 namespace spt::as
 {
@@ -14,12 +16,18 @@ namespace spt::as
 
 void TextureDataInitializer::InitializeNewAsset(AssetInstance& asset)
 {
-	asset.GetBlackboard().Create<TextureDefinition>(m_definition);
-	asset.GetBlackboard().Create<TextureData>(m_data);
+	asset.GetBlackboard().Create<TextureSourceDefinition>(std::move(m_source));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureAsset ==================================================================================
+
+void TextureAsset::PostCreate()
+{
+	Super::PostCreate();
+
+	CompileTexture();
+}
 
 void TextureAsset::PostInitialize()
 {
@@ -34,6 +42,16 @@ void TextureAsset::PostInitialize()
 													 });
 }
 
+void TextureAsset::OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data)
+{
+	Super::OnAssetDeleted(assetSystem, path, data);
+
+	if (const CompiledTextureData* compiledData = data.blackboard.Find<CompiledTextureData>())
+	{
+		assetSystem.GetDDC().DeleteDerivedData(compiledData->derivedDataKey);
+	}
+}
+
 void TextureAsset::PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency)
 {
 	const lib::SharedPtr<rdr::TextureView>& textureView = GetTextureView();
@@ -46,20 +64,25 @@ void TextureAsset::ScheduleUploads()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const TextureData& textureData = GetBlackboard().Get<TextureData>();
+	const CompiledTextureData& compiledTexture = GetBlackboard().Get<CompiledTextureData>();
 
 	const lib::SharedPtr<rdr::TextureView>& textureView = GetTextureView();
 	const lib::SharedRef<rdr::Texture>& texture         = textureView->GetTexture();
 
 	const Uint32 mipLevelsNum = texture->GetRHI().GetDefinition().mipLevels;
-	SPT_CHECK_MSG(mipLevelsNum == textureData.mips.size(), "Mismatch between texture definition and data");
+	SPT_CHECK_MSG(mipLevelsNum == compiledTexture.texture.mips.size(), "Mismatch between texture definition and data");
+
+	const DDCResourceHandle derivedDataHandle = GetOwningSystem().GetDDC().GetResourceHandle(compiledTexture.derivedDataKey);
+	const lib::Span<const Byte> derivedData = derivedDataHandle.GetImmutableSpan();
 
 	const rhi::ETextureAspect textureAspect = textureView->GetRHI().GetAspect();
 
 	for (Uint32 mipLevelIdx = 0u; mipLevelIdx < mipLevelsNum; ++mipLevelIdx)
 	{
-		const TextureMipData& mip = textureData.mips[mipLevelIdx];
-		gfx::UploadDataToTexture(mip.data.data(), mip.data.size(), texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
+		const CompiledMip& mip = compiledTexture.texture.mips[mipLevelIdx];
+
+		SPT_CHECK(mip.offset + mip.size <= derivedData.size());
+		gfx::UploadDataToTexture(derivedData.data() + mip.offset, mip.size, texture, textureAspect, texture->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
 	}
 }
 
@@ -70,14 +93,30 @@ void TextureAsset::FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDe
 	const SizeType dependencyIdx = postUploadDependency.AddTextureDependency(textureView->GetTexture()->GetRHI(), textureView->GetRHI().GetSubresourceRange());
 	postUploadDependency.SetLayoutTransition(dependencyIdx, rhi::TextureTransition::ReadOnly);
 
-	GetBlackboard().Unload(lib::TypeInfo<TextureData>());
+	GetBlackboard().Unload(lib::TypeInfo<CompiledTextureData>());
+}
+
+void TextureAsset::CompileTexture()
+{
+	const TextureSourceDefinition& source = GetBlackboard().Get<TextureSourceDefinition>();
+
+	const DDC& ddc = GetOwningSystem().GetDDC();
+
+	TextureCompiler compiler;
+	CompiledTextureData compiledTexture = compiler.CompileTexture(source, *this, ddc);
+
+	SPT_CHECK_MSG(compiledTexture.texture.mips.size() > 0u, "Failed to compile texture");
+
+	GetBlackboard().Create<CompiledTextureData>(std::move(compiledTexture));
 }
 
 void TextureAsset::CreateTextureInstance()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const TextureDefinition& definition = GetBlackboard().Get<TextureDefinition>();
+	const CompiledTextureData& compiledTexture = GetBlackboard().Get<CompiledTextureData>();
+
+	const TextureDefinition& definition = compiledTexture.texture.definition;
 
 	const rhi::ETextureUsage usageFlags = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
 

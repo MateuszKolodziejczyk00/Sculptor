@@ -15,6 +15,19 @@ struct CS_INPUT
 };
 
 
+float3 TonyMCMapface(float3 stimulus)
+{
+    // Apply a non-linear transform that the LUT is encoded with.
+    const float3 encoded = stimulus / (stimulus + 1.0);
+
+    // Align the encoded range to texel centers.
+    const float LUT_DIMS = 48.0;
+    const float3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
+
+    return u_tonemappingLUT.SampleLevel(u_linearSampler, uv, 0);
+}
+
+
 // Based on: https://advances.realtimerendering.com/s2021/jpatry_advances2021/index.html#/136/0/5
 // Real-Time Samurai Cinema by J. Patry
 float3 ApplyLocalExposure(in float3 linearColor, in int2 pixel)
@@ -62,7 +75,7 @@ void TonemappingCS(CS_INPUT input)
 		float3 color = u_linearColorTexture.Load(int3(pixel, 0)).rgb;
 		color = ApplyLocalExposure(color, pixel);
 
-		color = float3(GTTonemapper(color.r), GTTonemapper(color.g), GTTonemapper(color.b));
+		color = TonyMCMapface(color);
 
 		color = LinearTosRGB(color);
 

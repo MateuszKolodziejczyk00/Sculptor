@@ -229,18 +229,10 @@ void DDGIBlendProbesDataCS(CS_INPUT input)
         float3 delta = result - prevIlluminance;
 
         const float maxIlluminanceDiff = abs(MaxComponent(result - prevIlluminance));
-        const float histeresisDelta = maxIlluminanceDiff > u_relitParams.illuminanceDiffThreshold ? 0.5f : 0.f;
+        const float histeresisDelta = maxIlluminanceDiff > MaxComponent(prevIlluminance) * 0.2f ? 1.f : 0.f;
         hysteresis = max(hysteresis - histeresisDelta, 0.f);
 
         const float3 probeLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
-		if (hysteresis > 0.0001f)
-        {
-            const float deltaLuminance = Luminance(abs(delta));
-            if(deltaLuminance > u_relitParams.luminanceDiffThreshold)
-            {
-                delta *= 0.2f;
-            }
-        }
 
         float3 deltaThisFrame = delta * (1.f - hysteresis);
         result = prevIlluminance + deltaThisFrame;

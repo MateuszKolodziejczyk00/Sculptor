@@ -23,11 +23,23 @@ class RenderGraphBuilder;
 namespace spt::gfx
 {
 
+struct TextureLoadParams
+{
+	static constexpr rhi::ETextureUsage defaultUsage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferSource, rhi::ETextureUsage::TransferDest);
+
+	rhi::ETextureUsage                  usage       = defaultUsage;
+	rhi::EMemoryUsage                   memoryUsage = rhi::EMemoryUsage::GPUOnly;
+	std::optional<rhi::ETextureTiling>  forceTiling = std::nullopt;
+};
+
+
 class GRAPHICS_API TextureLoader
 {
 public:
 
-	static lib::SharedPtr<rdr::Texture> LoadTexture(lib::StringView path, rhi::ETextureUsage usage, rhi::EMemoryUsage memoryUsage = rhi::EMemoryUsage::GPUOnly, std::optional<rhi::EFragmentFormat> forceFormat = std::nullopt);
+	static lib::SharedPtr<rdr::Texture> LoadTexture(lib::StringView path, rhi::ETextureUsage usage = TextureLoadParams::defaultUsage, rhi::EMemoryUsage memoryUsage = rhi::EMemoryUsage::GPUOnly);
+
+	static lib::SharedPtr<rdr::Texture> LoadTexture(lib::StringView path, const TextureLoadParams& params);
 
 private:
 
@@ -46,8 +58,7 @@ public:
 		rhi::EFragmentFormat format     = rhi::EFragmentFormat::None;
 	};
 
-
-	static Bool SaveTexture(const Texture2DData& textureData, const lib::String& path);
+	static Bool SaveTexture(lib::SharedRef<rdr::Texture> texture, const lib::String& path);
 
 	static js::JobWithResult<Bool> SaveTexture(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle textureView, lib::String path);
 

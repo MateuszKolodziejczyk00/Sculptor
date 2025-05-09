@@ -109,7 +109,7 @@ lib::String CompilationErrorsLogger::GetShaderLogsPath(const lib::String& shader
 
 lib::String CompilationErrorsLogger::GetShaderPreprocessedCodeLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)
 {
-	return GetShaderLogsPath(shaderPath, sourceCode, stageCompilationDef) + "/Preprocessed." + lib::File::GetExtension(shaderPath);
+	return GetShaderLogsPath(shaderPath, sourceCode, stageCompilationDef) + "/Preprocessed." + lib::String(lib::File::GetExtension(shaderPath));
 }
 
 lib::String CompilationErrorsLogger::GetShaderPreprocesingErrorsLogsPath(const lib::String& shaderPath, const lib::String& sourceCode, const ShaderStageCompilationDef& stageCompilationDef)

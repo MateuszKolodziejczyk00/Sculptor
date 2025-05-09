@@ -39,7 +39,7 @@ void DDGIInvalidateProbesCS(CS_INPUT input)
 
 		const RWTexture2D<float4> hitDistanceTexture = u_volumeHitDistanceTextures[probeHitDistanceDataCoords.textureIdx];
 		const RWTexture2D<float4> illuminanceTexture = u_volumeIlluminanceTextures[probeIlluminanceDataCoords.textureIdx];
-		const RWTexture3D<float3> averageLuminanceTexture = u_volumeProbesAverageLuminanceTexture;
+		const RWTexture3D<float4> averageLuminanceTexture = u_volumeProbesAverageLuminanceTexture;
 
 		if(all(input.localID.xy < u_volumeParams.probeHitDistanceDataWithBorderRes))
 		{

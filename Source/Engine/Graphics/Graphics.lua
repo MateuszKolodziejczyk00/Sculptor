@@ -7,6 +7,7 @@ function Graphics:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorDLSS")
 	
     self:AddPrivateDependency("STB")
+    self:AddPrivateDependency("DDS")
 end
 
 Graphics:SetupProject()

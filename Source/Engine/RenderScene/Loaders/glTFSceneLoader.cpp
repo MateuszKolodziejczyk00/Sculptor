@@ -28,8 +28,7 @@
 #pragma warning(disable: 4996)
 #include "tiny_gltf.h"
 #pragma warning(pop)
-#pragma optimize("", off)
-#define USE_REMAPPINGS 1
+
 
 namespace spt::rsc
 {
@@ -63,7 +62,7 @@ private:
 	void SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 
 	template<typename TDestType>
-	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model, const lib::DynamicArray<SizeType>& remapping = lib::DynamicArray<SizeType>{});
+	Uint32 AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model);
 };
 
 GLTFMeshBuilder::GLTFMeshBuilder(const MeshBuildParameters& parameters)
@@ -134,11 +133,7 @@ void GLTFMeshBuilder::SetLocations(const tinygltf::Accessor& accessor, const tin
 	SPT_CHECK(submeshBD.submesh.locationsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.locationsOffset = static_cast<Uint32>(GetCurrentDataSize());
-#if USE_REMAPPINGS
-	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
-#else
 	submeshBD.vertexCount = AppendAccessorData<Real32>(accessor, model);
-#endif
 }
 
 void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -147,11 +142,7 @@ void GLTFMeshBuilder::SetNormals(const tinygltf::Accessor& accessor, const tinyg
 	SPT_CHECK(submeshBD.submesh.normalsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.normalsOffset = static_cast<Uint32>(GetCurrentDataSize());
-#if USE_REMAPPINGS
-	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1 });
-#else
 	AppendAccessorData<Real32>(accessor, model);
-#endif
 }
 
 void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -160,11 +151,7 @@ void GLTFMeshBuilder::SetTangents(const tinygltf::Accessor& accessor, const tiny
 	SPT_CHECK(submeshBD.submesh.tangentsOffset == idxNone<Uint32>);
 	
 	submeshBD.submesh.tangentsOffset = static_cast<Uint32>(GetCurrentDataSize());
-#if USE_REMAPPINGS
-	AppendAccessorData<Real32>(accessor, model, { 2, 0, 1, 3 });
-#else
 	AppendAccessorData<Real32>(accessor, model);
-#endif
 }
 
 void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
@@ -177,7 +164,7 @@ void GLTFMeshBuilder::SetUVs(const tinygltf::Accessor& accessor, const tinygltf:
 }
 
 template<typename TDestType>
-Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model, const lib::DynamicArray<SizeType>& remapping /*= lib::DynamicArray<SizeType>{}*/)
+Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, const tinygltf::Model& model)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -204,34 +191,34 @@ Uint32 GLTFMeshBuilder::AppendAccessorData(const tinygltf::Accessor& accessor, c
 	switch (componentType)
 	{
 	case TINYGLTF_COMPONENT_TYPE_BYTE:
-		AppendData<TDestType, char>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, char>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-		AppendData<TDestType, unsigned char>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, unsigned char>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_SHORT:
-		AppendData<TDestType, short>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, short>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-		AppendData<TDestType, unsigned short>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, unsigned short>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_INT:
-		AppendData<TDestType, Int32>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, Int32>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-		AppendData<TDestType, Uint32>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, Uint32>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_FLOAT:
-		AppendData<TDestType, Real32>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, Real32>(data, componentsNum, stride, elementsNum);
 		break;
 	case TINYGLTF_COMPONENT_TYPE_DOUBLE:
-		AppendData<TDestType, Real64>(data, componentsNum, stride, elementsNum, remapping);
+		AppendData<TDestType, Real64>(data, componentsNum, stride, elementsNum);
 		break;
 	default:
 		SPT_CHECK_NO_ENTRY();
 	}
 
-	// value must be lower beceuase maxValue is reserved for "invalid"
+	// value must be lower because maxValue is reserved for "invalid"
 	SPT_CHECK(elementsNum < maxValue<Uint32>);
 	return static_cast<Uint32>(elementsNum);
 }
@@ -253,17 +240,6 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 
 	math::Affine3f transform = math::Affine3f::Identity();
 
-	if (test < 2)
-	{
-		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
-		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, -90.f, 0.f);
-	}
-	else
-	{
-		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
-	}
-
-#if 1
 	if (!node.scale.empty())
 	{
 		SPT_CHECK(node.scale.size() == 3);
@@ -275,56 +251,27 @@ static math::Affine3f GetNodeTransform(const tinygltf::Node& node)
 		const math::Map<const math::Vector3d> nodeScaleDouble(node.scale.data());
 		const math::Vector3f nodeScale = nodeScaleDouble.cast<float>();
 
-#if USE_REMAPPINGS
-		const math::AlignedScaling3f remappedScale(nodeScale.z(), nodeScale.x(), nodeScale.y());
-		transform = remappedScale * transform;
-#else
 		const math::AlignedScaling3f scale(nodeScale.x(), nodeScale.y(), nodeScale.z());
 		transform = scale * transform;
-#endif
 	}
-#endif
 
 	if (!node.rotation.empty())
 	{
 		SPT_CHECK(node.rotation.size() == 4);
 		const math::Vector4f nodeQuaternion = math::Map<const math::Vector4d>(node.rotation.data()).cast<float>();
-#if USE_REMAPPINGS
-		const math::Quaternionf remappedQuaternion(math::Vector4f(nodeQuaternion.z(), nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.w()));
-		transform = remappedQuaternion.matrix() * transform;
-#else
+
 		const math::Quaternionf quaternion(nodeQuaternion.x(), nodeQuaternion.y(), nodeQuaternion.z(), nodeQuaternion.w());
 		transform = quaternion.matrix() * transform;
-#endif
 	}
 
 	if (!node.translation.empty())
 	{
 		SPT_CHECK(node.translation.size() == 3);
 		const math::Vector3f nodeTranslation = math::Map<const math::Vector3d>(node.translation.data()).cast<float>();
-#if USE_REMAPPINGS
-		const math::Translation3f remappedTranslation(nodeTranslation.z(), nodeTranslation.x(), nodeTranslation.y());
-		transform = remappedTranslation * transform;
-#else
+
 		const math::Translation3f translation(nodeTranslation.x(), nodeTranslation.y(), nodeTranslation.z());
 		transform = translation * transform;
-#endif
 	}
-
-	//if (test == 2)
-	//{
-	//	const math::AlignedScaling3f scale(0.01f, 0.01f, 0.01f);
-	//	transform = scale * transform;
-	//	//const math::Translation3f translation(-1.3f, -8.f, 0.f);
-	//	const math::Translation3f translation(0.0f, 0.f, 0.f);
-	//	transform = translation * transform;
-	//}
-	//if (test == 1)
-	//{
-		//transform *= math::Utils::EulerToQuaternionDegrees(0.f, 90.f, 0.f);
-		//transform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * transform;
-	//}
-	//transform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * transform;
 
 	return transform;
 }
@@ -535,9 +482,9 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name          = materialSourceDef.name;
 		materialDefinition.materialType  = GetMaterialType(materialSourceDef);
-		//materialDefinition.materialType = mat::EMaterialType::AlphaMasked;
 		materialDefinition.customOpacity = materialDefinition.materialType == mat::EMaterialType::AlphaMasked;
 		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
+		materialDefinition.emissive      = materialSourceDef.emissiveFactor[0] > 0.f || materialSourceDef.emissiveFactor[1] > 0.f || materialSourceDef.emissiveFactor[2] > 0.f;
 
 		const ecs::EntityHandle material = mat::MaterialsSubsystem::Get().CreateMaterial(materialDefinition, pbrData);
 
@@ -631,14 +578,49 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 		Uint32 createdEntitiesNum = 0;
 
-		for (const tinygltf::Node& node : model.nodes)
+		struct NodeSpawnData
 		{
+			math::Affine3f parentTransform;
+			int nodeIdx = -1;
+		};
+
+		lib::DynamicArray<NodeSpawnData> nodesToSpawn;
+
+		math::Affine3f sceneTransform = math::Affine3f::Identity();
+
+		//sceneTransform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * sceneTransform;
+		sceneTransform = math::Utils::EulerToQuaternionDegrees(90.f, 0.f, 0.f) * sceneTransform;
+		//sceneTransform = math::Utils::EulerToQuaternionDegrees(180.f, 0.f, 0.f) * sceneTransform;
+
+		for (const tinygltf::Scene& gltfScene : model.scenes)
+		{
+			for (const int nodeIdx : gltfScene.nodes)
+			{
+				nodesToSpawn.emplace_back(NodeSpawnData{ sceneTransform, nodeIdx });
+			}
+		}
+
+		for (SizeType spawnIdx = 0u; spawnIdx < nodesToSpawn.size(); ++spawnIdx)
+		{
+			const NodeSpawnData& spawnData = nodesToSpawn[spawnIdx];
+
+			const tinygltf::Node& node = model.nodes[spawnData.nodeIdx];
+
+			const math::Affine3f localTransform = GetNodeTransform(node);
+
+			const math::Affine3f nodeTransform = spawnData.parentTransform * localTransform;
+
+			for (const int childNodeIdx : node.children)
+			{
+				nodesToSpawn.emplace_back(NodeSpawnData{ nodeTransform, childNodeIdx });
+			}
+
 			if (node.mesh != -1 && loadedMeshes.contains(node.mesh))
 			{
 				const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
 				RenderInstanceData instanceData;
-				instanceData.transformComp.SetTransform(GetNodeTransform(node));
+				instanceData.transformComp.SetTransform(nodeTransform);
 				const RenderSceneEntityHandle meshSceneEntity = scene.CreateEntity(instanceData);
 
 				++createdEntitiesNum;
@@ -669,6 +651,7 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 				}
 			}
 		}
+
 
 		if (withRayTracing)
 		{

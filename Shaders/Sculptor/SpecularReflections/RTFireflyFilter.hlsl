@@ -83,7 +83,7 @@ void RTFireflyFilterCS(CS_INPUT input)
 		if(gs_validReservoirsNum > requiredValidReservoirsNum)
 		{
 			const float avgWeight         = gs_reservoirsAverageWeight;
-			const float maxWeight         = avgWeight * 60.f;
+			const float maxWeight         = avgWeight * 20.f;
 
 			if(reservoirWeight > maxWeight)
 			{

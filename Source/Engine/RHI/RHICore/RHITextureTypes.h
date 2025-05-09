@@ -88,6 +88,8 @@ enum class EFragmentFormat : Uint32
 	B10G11R11_U_Float,
 	A2B10G10R10_UN_Float,
 
+	RGB9E5_Float,
+
 	RGBA8_UN_Float,
 	BGRA8_UN_Float,
 	RGBA16_UN_Float,
@@ -130,6 +132,7 @@ inline Uint64 GetFragmentSize(EFragmentFormat format)
 	case EFragmentFormat::RGB10A2_UN_Float:
 	case EFragmentFormat::B10G11R11_U_Float:
 	case EFragmentFormat::A2B10G10R10_UN_Float:
+	case EFragmentFormat::RGB9E5_Float:
 	case EFragmentFormat::D32_S_Float:
 		return 4u;
 
@@ -177,6 +180,7 @@ inline lib::String GetFormatName(rhi::EFragmentFormat format)
 	case rhi::EFragmentFormat::RGB10A2_UN_Float:     return "RGB10A2_UN_Float";
 	case rhi::EFragmentFormat::B10G11R11_U_Float:    return "B10G11R11_U_Float";
 	case rhi::EFragmentFormat::A2B10G10R10_UN_Float: return "A2B10G10R10_UN_Float";
+	case rhi::EFragmentFormat::RGB9E5_Float:         return "RGB9E5_Float";
 	case rhi::EFragmentFormat::RGBA8_UN_Float:       return "RGBA8_UN_Float";
 	case rhi::EFragmentFormat::BGRA8_UN_Float:       return "BGRA8_UN_Float";
 	case rhi::EFragmentFormat::RGBA16_UN_Float:      return "RGBA16_UN_Float";
@@ -274,6 +278,10 @@ inline rhi::EFragmentFormat GetFormatByName(lib::StringView name)
 	else if (name == "A2B10G10R10_UN_Float")
 	{
 		return rhi::EFragmentFormat::A2B10G10R10_UN_Float;
+	}
+	else if (name == "RGB9E5_Float")
+	{
+		return rhi::EFragmentFormat::RGB9E5_Float;
 	}
 	else if (name == "RGBA8_UN_Float")
 	{
@@ -538,6 +546,7 @@ inline ETextureAspect GetFullAspectForFormat(EFragmentFormat format)
 	case EFragmentFormat::B10G11R11_U_Float:
 	case EFragmentFormat::RGB10A2_UN_Float:
 	case EFragmentFormat::A2B10G10R10_UN_Float:
+	case EFragmentFormat::RGB9E5_Float:
 	case EFragmentFormat::RGB32_S_Float:
 	case EFragmentFormat::RGBA16_UN_Float:
 	case EFragmentFormat::RGBA16_S_Float:

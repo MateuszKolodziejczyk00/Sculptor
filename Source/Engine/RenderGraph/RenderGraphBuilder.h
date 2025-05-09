@@ -83,8 +83,8 @@ public:
 	/** Creates texture from given definition and returns full view of this texture */
 	RGTextureViewHandle CreateTextureView(const RenderGraphDebugName& name, const TextureDef& textureDefinition, const std::optional<rhi::RHIAllocationInfo>& allocationInfo = std::nullopt, ERGResourceFlags flags = ERGResourceFlags::Default);
 
-	RGTextureViewHandle CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel);
-	RGTextureViewHandle CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel);
+	RGTextureViewHandle CreateTextureMipView(RGTextureHandle texture, Uint32 mipLevel, Uint32 arrayLayer = 0u);
+	RGTextureViewHandle CreateTextureMipView(RGTextureViewHandle texture, Uint32 mipLevel, Uint32 arrayLayer = 0u);
 	
 	void ExtractTexture(RGTextureHandle textureHandle, lib::SharedPtr<rdr::Texture>& extractDestination);
 
@@ -169,8 +169,9 @@ public:
 
 	void CopyBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle sourceBufferView, Uint64 sourceOffset, RGBufferViewHandle destBufferView, Uint64 destOffset, Uint64 range);
 
-	lib::SharedRef<rdr::Buffer> DownloadBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range);
-	lib::SharedRef<rdr::Buffer> DownloadTexture(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView);
+	lib::SharedRef<rdr::Buffer>  DownloadBuffer(const RenderGraphDebugName& commandName, RGBufferViewHandle bufferView, Uint64 offset, Uint64 range);
+	lib::SharedRef<rdr::Buffer>  DownloadTextureToBuffer(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView);
+	lib::SharedRef<rdr::Texture> DownloadTexture(const RenderGraphDebugName& commandName, RGTextureViewHandle textureView);
 
 	void CopyTexture(const RenderGraphDebugName& copyName, RGTextureViewHandle sourceRGTextureView, const math::Vector3i& sourceOffset, RGTextureViewHandle destRGTextureView, const math::Vector3i& destOffset, const math::Vector3u& copyExtent);
 	

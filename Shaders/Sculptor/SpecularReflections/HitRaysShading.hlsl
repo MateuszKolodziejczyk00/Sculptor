@@ -71,7 +71,9 @@ void HitRaysShadingRTG()
 
 		const float3 primaryHitToView = normalize(u_sceneView.viewLocation - worldLocation);
 
-		const float3 luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
+		float3 luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
+
+		luminance += hitResult.emissive;
 
 		const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 

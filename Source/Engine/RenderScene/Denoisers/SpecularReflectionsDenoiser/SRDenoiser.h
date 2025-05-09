@@ -61,6 +61,9 @@ public:
 		rg::RGTextureViewHandle diffuseTexture;
 
 		Bool blurVarianceEstimate = true;
+
+		Bool enableStableHistoryBlend            = true;
+		Bool enableDisocclusionFixFromLightCache = true;
 	};
 
 	struct Result

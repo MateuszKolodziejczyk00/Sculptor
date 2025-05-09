@@ -3,7 +3,7 @@
 #include "ShaderMetaDataBuilderTypes.h"
 #include "ShaderMetaData.h"
 
-#pragma optimize("", off)
+
 namespace spt::sc
 {
 

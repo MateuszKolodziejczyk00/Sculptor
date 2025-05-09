@@ -52,6 +52,9 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle fastHistorySpecularOutputTexture;
 	rg::RGTextureViewHandle fastHistoryDiffuseTexture;
 	rg::RGTextureViewHandle fastHistoryDiffuseOutputTexture;
+
+	Bool enableStableHistoryBlend            = true;
+	Bool enableDisocclusionFixFromLightCache = true;
 };
 
 void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const TemporalAccumulationParameters& params);

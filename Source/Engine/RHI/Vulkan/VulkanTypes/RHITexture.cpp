@@ -96,6 +96,7 @@ static rhi::EFragmentFormat GetRHIFormat(VkFormat format)
 	case VK_FORMAT_A2R10G10B10_UNORM_PACK32:        return rhi::EFragmentFormat::RGB10A2_UN_Float;
 	case VK_FORMAT_B10G11R11_UFLOAT_PACK32:         return rhi::EFragmentFormat::B10G11R11_U_Float;
 	case VK_FORMAT_A2B10G10R10_UNORM_PACK32:        return rhi::EFragmentFormat::A2B10G10R10_UN_Float;
+	case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:          return rhi::EFragmentFormat::RGB9E5_Float;
 
 	case VK_FORMAT_R8G8B8A8_UNORM:                  return rhi::EFragmentFormat::RGBA8_UN_Float;
 	case VK_FORMAT_B8G8R8A8_UNORM:                  return rhi::EFragmentFormat::BGRA8_UN_Float;
@@ -502,9 +503,43 @@ Uint64 RHITexture::GetFragmentSize() const
 	return rhi::GetFragmentSize(GetFormat());
 }
 
+Uint64 RHITexture::GetMipSize(Uint32 mipIdx) const
+{
+	SPT_CHECK(IsValid());
+
+	const math::Vector3u mipResolution = GetMipResolution(mipIdx);
+
+	return GetFragmentSize() * mipResolution.x() * mipResolution.y() * mipResolution.z();
+}
+
 VkImage RHITexture::GetHandle() const
 {
 	return m_imageHandle;
+}
+
+Byte* RHITexture::MapPtr() const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(HasBoundMemory());
+
+	const rhi::RHIAllocationInfo allocationInfo = GetAllocationInfo();
+
+	const VmaAllocation allocation = memory_utils::GetVMAAllocation(m_allocationHandle);
+
+	void* mappedPtr = nullptr;
+	const VkResult result = vmaMapMemory(VulkanRHI::GetAllocatorHandle(), allocation, OUT &mappedPtr);
+
+	return result == VK_SUCCESS ? reinterpret_cast<Byte*>(mappedPtr) : nullptr;
+}
+
+void RHITexture::Unmap() const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(HasBoundMemory());
+
+	const VmaAllocation allocation = memory_utils::GetVMAAllocation(m_allocationHandle);
+
+	vmaUnmapMemory(VulkanRHI::GetAllocatorHandle(), allocation);
 }
 
 void RHITexture::SetName(const lib::HashedString& name)
@@ -825,6 +860,60 @@ void RHITextureView::SetName(const lib::HashedString& name)
 const lib::HashedString& RHITextureView::GetName() const
 {
 	return m_name.Get();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIMappedTexture =======================================================================
+
+RHIMappedSurface::RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, const VkSubresourceLayout& layout)
+	: m_texture(texture)
+	, m_data(data)
+	, m_bytesPerFragment(bytesPerFragment)
+	, m_layout(layout)
+{
+	SPT_CHECK(data != nullptr);
+	SPT_CHECK(bytesPerFragment > 0);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// RHIMappedTexture =======================================================================
+
+RHIMappedTexture::RHIMappedTexture(const RHITexture& texture)
+	: m_texture(texture)
+{
+	SPT_CHECK(texture.GetDefinition().tiling == rhi::ETextureTiling::Linear);
+
+	m_mappedPointer = m_texture.MapPtr();
+
+	m_bytesPerFragment = static_cast<Uint32>(m_texture.GetFragmentSize());
+	m_aspect           = RHIToVulkan::GetAspectFlags(rhi::GetFullAspectForFormat(texture.GetFormat()));
+}
+
+RHIMappedTexture::~RHIMappedTexture()
+{
+	if (m_mappedPointer)
+	{
+		m_texture.Unmap();
+		m_mappedPointer = nullptr;
+	}
+}
+
+RHIMappedSurface RHIMappedTexture::GetSurface(Uint32 mipLevel, Uint32 arrayLayer) const
+{
+	SPT_CHECK(mipLevel < m_texture.GetDefinition().mipLevels);
+	SPT_CHECK(arrayLayer < m_texture.GetDefinition().arrayLayers);
+
+	VkSubresourceLayout layout;
+
+	VkImageSubresource subresource{};
+	subresource.aspectMask = m_aspect;
+    subresource.mipLevel   = mipLevel;
+    subresource.arrayLayer = arrayLayer;
+
+	vkGetImageSubresourceLayout(VulkanRHI::GetDeviceHandle(), m_texture.GetHandle(), OUT &subresource, OUT &layout);
+
+	return RHIMappedSurface(m_texture, m_mappedPointer + layout.offset, m_bytesPerFragment, layout);
 }
 
 } // spt::vulkan

@@ -1,12 +1,32 @@
 #include "SculptorShader.hlsli"
 
+#ifndef USE_STABLE_BLENDS
+#error "USE_STABLE_BLENDS must be defined"
+#endif // USE_STABLE_BLENDS
+
+#ifndef DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+#error "DISOCCLUSION_FIX_FROM_LIGHT_CACHE must be defined"
+#endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+
+
+#define DIFFUSE_USE_STABLE_BLEND USE_STABLE_BLENDS
+#define SPECULAR_USE_STABLE_BLEND USE_STABLE_BLENDS
+
+
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(SRTemporalAccumulationDS, 1)]]
+
+#if DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+[[descriptor_set(DDGISceneDS, 2)]]
+#endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
+
+#include "DDGI/DDGITypes.hlsli"
 
 
 struct CS_INPUT
@@ -31,6 +51,7 @@ static const int2 g_historyOffsets[HISTORY_SAMPLE_COUNT] =
 	int2(0, 1),
 	int2(0, -1)
 };
+
 
 void FindTemporalReprojection(in float2 surfaceHistoryUV, 
                               in float3 currentSampleNormal,
@@ -186,7 +207,46 @@ float ComputeHitDistance(in NeighbourhoodInfo info)
 #endif // USE_MIN_HIT_DIST
 }
 
-#define TEST 1
+
+float3 LuminanceStableBlend(float3 a, float3 b, float alpha, float sigma)
+{
+	a /= sigma;
+	b /= sigma;
+
+	a /= (Luminance(a) + 1.f);
+	b /= (Luminance(b) + 1.f);
+
+	float3 result = lerp(a, b, alpha);
+
+	result /= (1.f - Luminance(result.rgb));
+
+	result *= sigma;
+
+	return result;
+}
+
+
+float4 AccumulateDiffuse(float4 a, float4 b, float alpha)
+{
+#if DIFFUSE_USE_STABLE_BLEND
+	const float3 lum    = LuminanceStableBlend(a.rgb, b.rgb, alpha, 5.f);
+	const float hitDist = lerp(a.w, b.w, alpha);
+	return float4(lum, hitDist);
+#else
+	return lerp(a, b, alpha);
+#endif // DIFFUSE_USE_STABLE_BLEND
+}
+
+
+float3 AccumulateSpecular(float3 a, float3 b, float alpha)
+{
+#if SPECULAR_USE_STABLE_BLEND
+	return LuminanceStableBlend(a.rgb, b.rgb, alpha, 5.f);
+#else
+	return lerp(a, b, alpha);
+#endif // SPECULAR_USE_STABLE_BLEND
+}
+
 
 // Algorithm based on RELAX temporal accumulation: https://github.com/NVIDIAGameWorks/RayTracingDenoiser/blob/master/Shaders/Include/RELAX_TemporalAccumulation.hlsli
 [numthreads(GROUP_SIZE_X, GROUP_SIZE_Y, 1)]
@@ -273,7 +333,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			float4 diffuseHistory = u_diffuseHistoryTexture.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f);
 			diffuseHistory.rgb = ExposedHistoryLuminanceToCurrentExposedLuminance(diffuseHistory.rgb);
 
-			const float4 accumulatedDiffuse  = lerp(diffuseHistory, diffuse, diffuseFrameWeight);
+			const float4 accumulatedDiffuse = AccumulateDiffuse(diffuseHistory, diffuse, diffuseFrameWeight);
 
 			u_rwDiffuseTexture[pixel]  = accumulatedDiffuse;
 
@@ -291,7 +351,22 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		}
 		else
 		{
-			u_rwDiffuseFastHistoryTexture[pixel]  = diffuse.rgb;
+#if DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+			DDGISampleParams diffuseSampleParams = CreateDDGISampleParams(currentSampleWS, currentSampleNormal, u_sceneView.viewLocation);
+
+			float3 diffuseWorldCache = DDGISampleLuminance(diffuseSampleParams, DDGISampleContext::Create());
+			diffuseWorldCache = LuminanceToExposedLuminance(diffuseWorldCache);
+
+			float3 initialDiffuse = diffuse.rgb;
+
+			initialDiffuse = LuminanceStableBlend(diffuseWorldCache, diffuse.rgb, 0.8f, 5.f);
+
+			u_rwDiffuseFastHistoryTexture[pixel] = initialDiffuse;
+			u_rwDiffuseTexture[pixel]  = float4(initialDiffuse, diffuse.w);
+#else
+			u_rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
+			u_rwDiffuseTexture[pixel]            = diffuse;
+#endif
 		}
 
 		u_diffuseHistoryLengthTexture[pixel] = diffuseHistoryLength;
@@ -327,7 +402,6 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			virtualPointFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_linearSampler, diffuseReprojectedUV, 0.f);
 			virtualPointSpecularMoments       = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
 		}
-
 		if(motionBasedReprojectionConfidence > 0.2f || specularReprojectionConfidence > 0.2f)
 		{
 			const float mbWeight = (1.f - specularReprojectionConfidence) * motionBasedReprojectionConfidence;
@@ -368,16 +442,17 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float specularFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - (vpWeight + mbWeight));
 
-			specularMoments = lerp(specularHistoryMoments, specularMoments, specularFrameWeight);
+			specularMoments = lerp(specularHistoryMoments, specularMoments, max(specularFrameWeight, 0.02f));
 
-			const float3 accumulatedSpecular = lerp(specularHistory, specular.rgb, specularFrameWeight);
+			const float3 accumulatedSpecular = AccumulateSpecular(specularHistory, specular.rgb, specularFrameWeight);
+
 			const float accumulatedHitDist   = isnan(historyHitDist) ? hitDistance : lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.05f));
 
 			u_rwSpecularTexture[pixel] = float4(accumulatedSpecular, accumulatedHitDist);
 
 			// Fast history
 
-			const float currentFrameWeightFast = max(0.2f, specularFrameWeight);
+			const float currentFrameWeightFast = max(0.25f, specularFrameWeight);
 
 			u_rwSpecularFastHistoryTexture[pixel] = lerp(fastHistory, specular.rgb, currentFrameWeightFast);
 		}

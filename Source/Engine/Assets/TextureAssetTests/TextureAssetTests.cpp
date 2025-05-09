@@ -42,12 +42,11 @@ void TextureAssetsSystemTests::TearDown()
 
 TEST_F(TextureAssetsSystemTests, CreateTexture)
 {
-	const lib::Path assetPath = "CreateTexture/Texture.sptasset";
+	const lib::Path assetPath = "CreateTextureDDS/Texture.sptasset";
 
 	TextureDataInitializer textureInitializer
 	{
-		TextureDefinition{.resolution = math::Vector3u{ 1u, 1u, 1u }, .format = rhi::EFragmentFormat::RGBA8_UN_Float, .mipLevelsNum = 1u },
-		TextureData{.mips = { TextureMipData{.data = lib::DynamicArray<Byte>{ Byte(0xFF), Byte(0xFF), Byte(0xFF), Byte(0xFF) } } } }
+		TextureSourceDefinition{ .path = "CreateTextureDDS/Source/test.png" }
 	};
 
 	CreateResult result = m_assetsSystem.CreateAsset(AssetInitializer

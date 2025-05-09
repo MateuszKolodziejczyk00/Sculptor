@@ -323,8 +323,8 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 
 	rhi::GraphicsPipelineDefinition pipelineDef;
 	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float, rhi::ECompareOp::Greater);
-	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::R32_U_Int, rhi::ERenderTargetBlendType::Disabled));
+	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(visPassParams.depth->GetFormat(), rhi::ECompareOp::Greater);
+	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(visPassParams.visibilityTexture->GetFormat(), rhi::ERenderTargetBlendType::Disabled));
 
 	if (psoInfo.isDoubleSided)
 	{

@@ -82,7 +82,7 @@ DS_BEGIN(DDGIInvalidateProbesDS, rg::RGDescriptorSetState<DDGIInvalidateProbesDS
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<DDGIVolumeGPUParams>),                                       u_volumeParams)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeHitDistanceTextures)
 	DS_BINDING(BINDING_TYPE(gfx::ArrayOfRWTexture2DBlocksBinding<math::Vector4f, constants::maxTexturesPerVolume>), u_volumeIlluminanceTextures)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector3f>),                                               u_volumeProbesAverageLuminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                                               u_volumeProbesAverageLuminanceTexture)
 DS_END();
 
 
@@ -658,7 +658,6 @@ DDGIRelitGPUParams DDGIRenderSystem::CreateRelitParams(const DDGIRelitZone& zone
 	params.rcpRaysNumPerProbe       = 1.f / static_cast<Real32>(params.raysNumPerProbe);
 	params.rcpProbesNumToUpdate     = 1.f / static_cast<Real32>(params.probesNumToUpdate);
 	params.blendHysteresis          = hysteresis;
-	params.illuminanceDiffThreshold = 3400.f;
 	params.luminanceDiffThreshold   = 500.f;
 	params.prevAABBMin              = previousAABB.min();
 	params.prevAABBMax              = previousAABB.max();

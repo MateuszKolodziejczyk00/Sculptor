@@ -18,6 +18,8 @@
 #include "Camera/CameraSettings.h"
 #include "RenderScene.h"
 #include "SceneRenderer/Utils/AutomaticExposure.h"
+#include "Loaders/TextureLoader.h"
+#include "Paths.h"
 
 namespace spt::rsc
 {
@@ -443,6 +445,7 @@ DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector2f>),								u_luminanceBilateralGridTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_logLuminanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector3f>),								u_tonemappingLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingConstants)
 DS_END();
 
@@ -460,11 +463,12 @@ struct TonemappingParameters
 	rg::RGTextureViewHandle ldrTexture;
 	rg::RGTextureViewHandle luminanceBilateralGridTexture;
 	rg::RGTextureViewHandle logLuminanceTexture;
+	rg::RGTextureViewHandle tonemappingLUT;
 	TonemappingPassConstants tonemappingConstants;
 };
 
 
-static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, TonemappingParameters tonemappingParameters)
+static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingParameters& tonemappingParameters)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -472,6 +476,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	SPT_CHECK(tonemappingParameters.ldrTexture.IsValid());
 	SPT_CHECK(tonemappingParameters.luminanceBilateralGridTexture.IsValid());
 	SPT_CHECK(tonemappingParameters.logLuminanceTexture.IsValid());
+	SPT_CHECK(tonemappingParameters.tonemappingLUT.IsValid());
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	
@@ -480,6 +485,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	tonemappingDS->u_LDRTexture                    = tonemappingParameters.ldrTexture;
 	tonemappingDS->u_luminanceBilateralGridTexture = tonemappingParameters.luminanceBilateralGridTexture;
 	tonemappingDS->u_logLuminanceTexture           = tonemappingParameters.logLuminanceTexture;
+	tonemappingDS->u_tonemappingLUT                = tonemappingParameters.tonemappingLUT;
 	tonemappingDS->u_tonemappingConstants          = tonemappingParameters.tonemappingConstants;
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
@@ -552,6 +558,11 @@ void HDRResolveRenderStage::Initialize(RenderView& renderView)
 	gfx::FillBuffer(lib::Ref(m_viewExposureBuffer), 0u, bufferDef.size, *reinterpret_cast<const Uint32*>(&defaultExposure));
 
 	renderView.SetExposureDataBuffer(m_viewExposureBuffer);
+
+	lib::SharedPtr<rdr::Texture> lut = gfx::TextureLoader::LoadTexture(engn::Paths::GetContentPath() + "/RenderingPipeline/Textures/tony_mc_mapface.dds");
+	SPT_CHECK(!!lut);
+
+	m_tonemappingLUT = lut->CreateView(RENDERER_RESOURCE_NAME("TonyMcMapface LUT View"));
 }
 
 void HDRResolveRenderStage::Deinitialize(RenderView& renderView)
@@ -617,6 +628,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingParameters.ldrTexture                    = tonemappedTexture;
 	tonemappingParameters.luminanceBilateralGridTexture = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
 	tonemappingParameters.logLuminanceTexture           = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
+	tonemappingParameters.tonemappingLUT                = graphBuilder.AcquireExternalTextureView(m_tonemappingLUT);
 	tonemappingParameters.tonemappingConstants          = tonemappingSettings;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingParameters);

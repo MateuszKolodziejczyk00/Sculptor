@@ -50,8 +50,10 @@ void ParticipatingMediaCS(CS_INPUT input)
 
 		const float density = EvaluateDensityAtLocation(u_participatingMediaParams, fogFroxelWorldLocation);
 
+		const float3 fogAlbedo = u_participatingMediaParams.constantFogAlbedo;
+
 		// Apply constant fog term
-		scatteringExtinction += ComputeScatteringAndExtinction(u_participatingMediaParams.constantFogAlbedo, u_participatingMediaParams.constantFogExtinction, density);
+		scatteringExtinction += ComputeScatteringAndExtinction(fogAlbedo, u_participatingMediaParams.constantFogExtinction, density);
 
 		u_participatingMediaTexture[input.globalID] = scatteringExtinction;
 	}
