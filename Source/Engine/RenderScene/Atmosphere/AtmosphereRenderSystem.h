@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SceneRenderSystem.h"
+#include "Clouds/VolumetricCloudsRenderer.h"
 
 
 namespace spt::rsc
@@ -20,9 +21,15 @@ public:
 	virtual void RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs) override;
 	// End SceneRenderSystem overrides
 
+	const clouds::CloudsTransmittanceMap& GetCloudsTransmittanceMap() const { return m_volumetricCloudsRenderer.GetCloudsTransmittanceMap(); }
+
+	Bool AreVolumetricCloudsEnabled() const { return m_volumetricCloudsRenderer.AreVolumetricCloudsEnabled(); }
+
 private:
 
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
+
+	clouds::VolumetricCloudsRenderer m_volumetricCloudsRenderer;
 };
 
 } // spt::rsc

@@ -180,6 +180,8 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 		SPT_CHECK(!!viewSpec);
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
+
+	m_volumetricCloudsRenderer.RenderPerFrame(graphBuilder, renderScene, viewSpecs);
 }
 
 void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)

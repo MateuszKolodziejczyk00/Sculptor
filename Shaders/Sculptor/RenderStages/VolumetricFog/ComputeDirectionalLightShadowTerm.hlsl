@@ -70,6 +70,17 @@ void ComputeDirectionalLightShadowTermCS(CS_INPUT input)
 
 		float shadowTerm = ComputeShadowTerm(fogFroxelWorldLocation, toViewNormal, froxelDepthRange);
 
+		if(u_constants.hasCloudsTransmittanceMap)
+		{
+			const float4 ctmCS = mul(u_constants.cloudsTransmittanceMapViewProj, float4(fogFroxelWorldLocation, 1.f));
+			if(all(ctmCS.xy <= ctmCS.w) && all(ctmCS.xy >= -ctmCS.w))
+			{
+				const float2 ctmUV = (ctmCS.xy / ctmCS.w) *	0.5f + 0.5f;
+
+				shadowTerm *= u_cloudsTransmittanceMap.SampleLevel(u_linearSampler, ctmUV, 0.f);
+			}
+		}
+
 		if (u_constants.hasValidHistory)
 		{
 			const float fogFroxelDepthNoJitter = fogFroxelUVW.z;

@@ -11,6 +11,12 @@ struct Sphere
 		return s;
 	}
 
+	bool IsInside(in float3 location)
+	{
+		const float3 d = location - center;
+		return dot(d, d) < Pow2(radius);
+	}
+
 	float3 center;
 	float radius;
 };

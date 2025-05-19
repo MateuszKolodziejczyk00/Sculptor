@@ -32,6 +32,8 @@ void DirectionalLightShadowMasksRenderStage::OnRender(rg::RenderGraphBuilder& gr
 
 	SPT_CHECK(rdr::Renderer::IsRayTracingEnabled());
 
+	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::CloudsTransmittanceMap).Broadcast(graphBuilder, renderScene, viewSpec, RenderViewEntryContext{});
+
 	ViewDirectionalShadowMasksData& frameShadowMasks = viewSpec.GetBlackboard().Create<ViewDirectionalShadowMasksData>();
 	for (auto& [entity, renderer] : m_shadowMaskRenderers)
 	{

@@ -31,6 +31,15 @@ BEGIN_SHADER_STRUCT(SceneViewCullingData)
 END_SHADER_STRUCT();
 
 
+namespace projection
+{
+
+math::Matrix4f CreatePerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far);
+math::Matrix4f CreateOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right);
+
+} // projection
+
+
 class RENDER_SCENE_API SceneView
 {
 public:

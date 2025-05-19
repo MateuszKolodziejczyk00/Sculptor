@@ -20,6 +20,7 @@
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 
 namespace spt::rsc
 {
@@ -439,10 +440,13 @@ void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, co
 	// Cache shadow maps for each views for this frame
 	CacheShadowMapsDS(graphBuilder, renderScene);
 
-	CacheGlobalLightsDS(graphBuilder, renderScene);
-
 	for (ViewRenderingSpec* viewSpec : viewSpecs)
 	{
+		if (viewSpec->SupportsStage(ERenderStage::GlobalIllumination))
+		{
+			viewSpec->GetRenderStageEntries(ERenderStage::GlobalIllumination).GetPreRenderStage().AddRawMember(this, &LightsRenderSystem::CacheGlobalLightsDS);
+		}
+
 		SPT_CHECK(!!viewSpec);
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
@@ -542,15 +546,21 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 	viewContext.shadingInputDS = lightsRenderingData.shadingInputDS;
 	viewContext.shadowMapsDS   = m_shadowMapsDS;
 
+	RenderViewEntryDelegates::FillShadingDSData delegateParams;
+	delegateParams.ds = viewContext.shadingInputDS;
+	RenderViewEntryContext entryContext;
+	entryContext.Bind<RenderViewEntryDelegates::FillShadingDSData>(std::move(delegateParams));
+	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::FillShadingDS).Broadcast(graphBuilder, renderScene, viewSpec, entryContext);
+
 	ViewSpecShadingParameters shadingParams;
-	shadingParams.shadingInputDS	= lightsRenderingData.shadingInputDS;
-	shadingParams.shadowMapsDS		= m_shadowMapsDS;
+	shadingParams.shadingInputDS = lightsRenderingData.shadingInputDS;
+	shadingParams.shadowMapsDS   = m_shadowMapsDS;
 	viewSpec.GetBlackboard().Create<ViewSpecShadingParameters>(shadingParams);
 }
 
-void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene)
+void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)
 {
-	const RenderSceneRegistry& sceneRegistry = renderScene.GetRegistry();
+	const RenderSceneRegistry& sceneRegistry = scene.GetRegistry();
 
 	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
 	const SizeType pointLightsNum = pointLightsView.size();
@@ -606,6 +616,24 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	GlobalLightsParams lightsParams;
 	lightsParams.pointLightsNum       = static_cast<Uint32>(pointLightsNum);
 	lightsParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+
+	lib::SharedPtr<AtmosphereRenderSystem> atmosphere = scene.FindRenderSystem<AtmosphereRenderSystem>();
+	if (atmosphere && atmosphere->AreVolumetricCloudsEnabled())
+	{
+		const clouds::CloudsTransmittanceMap& cloudsTransmittanceMap = atmosphere->GetCloudsTransmittanceMap();
+
+		lightsParams.hasValidCloudsTransmittanceMap = true;
+		lightsParams.cloudsTransmittanceViewProj    = cloudsTransmittanceMap.viewProjectionMatrix;
+
+		SPT_CHECK(!!cloudsTransmittanceMap.cloudsTransmittanceTexture);
+
+		m_globalLightsDS->u_cloudsTransmittanceMap = cloudsTransmittanceMap.cloudsTransmittanceTexture;
+	}
+	else
+	{
+		lightsParams.hasValidCloudsTransmittanceMap = false;
+		m_globalLightsDS->u_cloudsTransmittanceMap.Reset();
+	}
 
 	m_globalLightsDS->u_lightsParams       = lightsParams;
 	m_globalLightsDS->u_pointLights        = pointLightsBuffer->CreateFullView();

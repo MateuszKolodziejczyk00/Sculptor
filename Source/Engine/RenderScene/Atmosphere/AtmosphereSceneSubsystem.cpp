@@ -77,7 +77,6 @@ void AtmosphereSceneSubsystem::PostUpdateTransmittanceLUT()
 	m_shouldUpdateTransmittanceLUT = false;
 }
 
-
 void AtmosphereSceneSubsystem::InitializeResources()
 {
 	m_atmosphereContext.atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(sizeof(AtmosphereParams), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
@@ -116,6 +115,15 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 							   {
 								   lightsGPUData[lightIndex++] = GPUDataBuilder::CreateDirectionalLightGPUData(lightData, illuminance);
 							   });
+
+	if (lightIndex > 0u)
+	{
+		m_atmosphereContext.mainDirectionalLight = directionalLightsView.get<DirectionalLightData>(directionalLightsView.front());
+	}
+	else
+	{
+		m_atmosphereContext.mainDirectionalLight.reset();
+	}
 
 	m_atmosphereParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
 

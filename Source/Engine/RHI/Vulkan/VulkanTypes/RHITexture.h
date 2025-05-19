@@ -173,15 +173,19 @@ class RHI_API RHIMappedSurface
 {
 public:
 
-	RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, const VkSubresourceLayout& layout);
+	RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, Uint32 mipIdx, const VkSubresourceLayout& layout);
+
+	const RHITexture& GetTexture() const    { return m_texture; }
+	Uint32            GetMipIdx()  const    { return m_mipIdx; }
+	math::Vector3u    GetResolution() const { return GetTexture().GetMipResolution(GetMipIdx()); }
 
 	template<typename TDataType>
 	TDataType& At(const math::Vector3u& corrds) const
 	{
-		SPT_CHECK_MSG(sizeof(TDataType) == m_bytesPerFragment, "Invalid type size for texture {}: {} != {}", m_texture.GetName(), sizeof(TDataType), m_bytesPerFragment);
+		SPT_CHECK_MSG(sizeof(TDataType) == m_bytesPerFragment, "Invalid type size for texture {}: {} != {}", m_texture.GetName().ToString(), sizeof(TDataType), m_bytesPerFragment);
 
 		SPT_CHECK_MSG(corrds.x() < m_texture.GetResolution().x() && corrds.y() < m_texture.GetResolution().y() && corrds.z() < m_texture.GetResolution().z(),
-					  "Invalid coordinates for texture {}: ({}, {}, {})", m_texture.GetName(), corrds.x(), corrds.y(), corrds.z());
+					  "Invalid coordinates for texture {}: ({}, {}, {})", m_texture.GetName().ToString(), corrds.x(), corrds.y(), corrds.z());
 
 		return *reinterpret_cast<TDataType*>(m_data + corrds.x() * m_bytesPerFragment + corrds.y() * m_layout.rowPitch + corrds.z() * m_layout.depthPitch);
 	}
@@ -218,6 +222,8 @@ private:
 	const RHITexture&   m_texture;
 	Byte*               m_data = nullptr; // data after applying offset from layout
 	Uint32              m_bytesPerFragment = 0u;
+
+	Uint32              m_mipIdx = 0u;
 
 	VkSubresourceLayout m_layout;
 };

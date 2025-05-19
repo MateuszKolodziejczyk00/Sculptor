@@ -44,6 +44,8 @@ DS_BEGIN(CompositeAtmosphereDS, rg::RGDescriptorSetState<CompositeAtmosphereDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>), u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_transmittanceLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),              u_skyViewLUT)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<math::Vector4f>),      u_volumetricClouds)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),              u_volumetricCloudsDepth)
 DS_END();
 
 
@@ -80,9 +82,10 @@ DS_END();
 
 struct CompositeLightingPermutation
 {
-	Bool volumetricFogEnabled = false;
-	Bool atmosphereEnabled    = false;
-	Bool rtReflectionsEnabled = false;
+	Bool volumetricFogEnabled    = false;
+	Bool atmosphereEnabled       = false;
+	Bool volumetricCloudsEnabled = false;
+	Bool rtReflectionsEnabled    = false;
 };
 
 
@@ -91,6 +94,7 @@ static rdr::ShaderID CompileCompositeLightingShader(const CompositeLightingPermu
 	sc::ShaderCompilationSettings shaderCompilationSettings;
 	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("VOLUMETRIC_FOG_ENABLED", permutation.volumetricFogEnabled ? "1" : "0"));
 	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("ATMOSPHERE_ENABLED", permutation.atmosphereEnabled ? "1" : "0"));
+	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("VOLUMETRIC_CLOUDS_ENABLED", permutation.volumetricCloudsEnabled ? "1" : "0"));
 	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("RT_REFLECTIONS_ENABLED", permutation.rtReflectionsEnabled ? "1" : "0"));
 
 	return rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/CompositeLighting/CompositeLighting.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CompositeLightingCS"), shaderCompilationSettings);
@@ -138,15 +142,23 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	lib::MTHandle<CompositeAtmosphereDS> compositeAtmosphereDS;
 	if (lib::SharedPtr<AtmosphereSceneSubsystem> atmosphereSubsystem = renderScene.GetSceneSubsystem<AtmosphereSceneSubsystem>())
 	{
-		permutation.atmosphereEnabled = true;
+		permutation.atmosphereEnabled       = true;
 
 		const AtmosphereContext& atmosphereContext = atmosphereSubsystem->GetAtmosphereContext();
 
 		compositeAtmosphereDS = graphBuilder.CreateDescriptorSet<CompositeAtmosphereDS>(RENDERER_RESOURCE_NAME("CompositeAtmosphereDS"));
-		compositeAtmosphereDS->u_atmosphereParams  = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-		compositeAtmosphereDS->u_directionalLights = atmosphereContext.directionalLightsBuffer->CreateFullView();
-		compositeAtmosphereDS->u_transmittanceLUT  = atmosphereContext.transmittanceLUT;
-		compositeAtmosphereDS->u_skyViewLUT        = viewContext.skyViewLUT;
+		compositeAtmosphereDS->u_atmosphereParams      = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+		compositeAtmosphereDS->u_directionalLights     = atmosphereContext.directionalLightsBuffer->CreateFullView();
+		compositeAtmosphereDS->u_transmittanceLUT      = atmosphereContext.transmittanceLUT;
+		compositeAtmosphereDS->u_skyViewLUT            = viewContext.skyViewLUT;
+
+		if (viewContext.volumetricClouds.IsValid())
+		{
+			permutation.volumetricCloudsEnabled = true;
+
+			compositeAtmosphereDS->u_volumetricClouds      = viewContext.volumetricClouds;
+			compositeAtmosphereDS->u_volumetricCloudsDepth = viewContext.volumetricCloudsDepth;
+		}
 	}
 
 	lib::MTHandle<CompositeRTReflectionsDS> compositeRTReflectionsDS;
@@ -192,6 +204,8 @@ CompositeLightingRenderStage::CompositeLightingRenderStage()
 void CompositeLightingRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& stageContext)
 {
 	SPT_PROFILER_FUNCTION();
+
+	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::VolumetricClouds).Broadcast(graphBuilder, renderScene, viewSpec, RenderViewEntryContext{});
 
 	composite_pass_impl::Render(graphBuilder, renderScene, viewSpec);
 

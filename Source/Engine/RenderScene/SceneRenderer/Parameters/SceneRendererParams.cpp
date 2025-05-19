@@ -136,7 +136,7 @@ RendererFloatParameter::RendererFloatParameter(const lib::HashedString& name, co
 
 void RendererFloatParameter::DrawUI(const lib::HashedString& name, Real32& value)
 {
-	ImGui::SliderFloat(name.GetData(), &value, min, max);
+	ImGui::SliderFloat(name.GetData(), &value, min, max, "%.5f");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

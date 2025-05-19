@@ -545,6 +545,8 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 {
 	SPT_PROFILER_FUNCTION();
 
+	const RenderViewEntryDelegates::RenderSceneDebugLayerData& debugData = context.Get<RenderViewEntryDelegates::RenderSceneDebugLayerData>();
+
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
@@ -562,13 +564,13 @@ void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const R
 	renderPassDef.SetDepthRenderTarget(depthRTDef);
 
 	rg::RGRenderTargetDef luminanceRTDef;
-	luminanceRTDef.textureView		= context.texture;
+	luminanceRTDef.textureView		= debugData.texture;
 	luminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
 	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
 	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
 	renderPassDef.AddColorRenderTarget(luminanceRTDef);
 
-	const rhi::EFragmentFormat colorFormat = context.texture->GetFormat();
+	const rhi::EFragmentFormat colorFormat = debugData.texture->GetFormat();
 	const rhi::EFragmentFormat depthFormat = viewContext.depth->GetFormat();
 
 	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Pass"),

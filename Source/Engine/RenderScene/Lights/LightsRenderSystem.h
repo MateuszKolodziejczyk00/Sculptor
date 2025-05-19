@@ -22,8 +22,10 @@ class ShadowMapsDS;
 
 
 BEGIN_SHADER_STRUCT(GlobalLightsParams)
-	SHADER_STRUCT_FIELD(Uint32, pointLightsNum)
-	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
+	SHADER_STRUCT_FIELD(Uint32,         pointLightsNum)
+	SHADER_STRUCT_FIELD(Uint32,         directionalLightsNum)
+	SHADER_STRUCT_FIELD(Bool,           hasValidCloudsTransmittanceMap)
+	SHADER_STRUCT_FIELD(math::Matrix4f, cloudsTransmittanceViewProj)
 END_SHADER_STRUCT();
 
 
@@ -33,6 +35,8 @@ DS_BEGIN(GlobalLightsDS, rg::RGDescriptorSetState<GlobalLightsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),              u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                           u_cloudsTransmittanceMap) // only for dir light 0
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_cloudsTransmittanceMapSampler)
 DS_END();
 
 
@@ -59,7 +63,7 @@ private:
 
 	void BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 
-	void CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
+	void CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 
 	rdr::PipelineStateID m_buildLightsZClustersPipeline;

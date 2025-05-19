@@ -51,12 +51,7 @@ class GRAPHICS_API TextureWriter
 {
 public:
 
-	struct Texture2DData
-	{
-		lib::Span<Byte>      data;
-		math::Vector2u       resolution = math::Vector3u::Constant(0u);
-		rhi::EFragmentFormat format     = rhi::EFragmentFormat::None;
-	};
+	static Bool SaveTexture(math::Vector3u resolution, rhi::EFragmentFormat format, lib::Span<const Byte> dataLinear, const lib::String& path);
 
 	static Bool SaveTexture(lib::SharedRef<rdr::Texture> texture, const lib::String& path);
 

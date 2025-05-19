@@ -45,3 +45,6 @@
 [submodule "Source/ThirdParty/DDS/DDS"]
 	path = Source/ThirdParty/DDS/DDS
 	url = https://github.com/turanszkij/dds
+[submodule "Source/ThirdParty/TileableVolumeNoise/TileableVolumeNoise"]
+	path = Source/ThirdParty/TileableVolumeNoise/TileableVolumeNoise
+	url = https://github.com/MateuszKolodziejczyk00/TileableVolumeNoiseLib

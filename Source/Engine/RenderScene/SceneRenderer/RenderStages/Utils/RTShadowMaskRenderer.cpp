@@ -22,6 +22,8 @@
 #include "View/ViewRenderingSpec.h"
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
+#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 
 
 namespace spt::rsc
@@ -158,6 +160,7 @@ static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRend
 	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Directional Lights Shadows Ray Tracing Pipeline"), rtShaders, pipelineDefinition);
 }
 
+
 static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const ShadowTracingContext& tracingContext)
 {
 	SPT_PROFILER_FUNCTION();
@@ -229,6 +232,70 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 
 } // trace_rays
 
+namespace apply_clouds_shadows
+{
+
+BEGIN_SHADER_STRUCT(ApplyCloudsShadowsConstants)
+	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
+	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(ApplyCloudsShadowsDS, rg::RGDescriptorSetState<ApplyCloudsShadowsDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                    u_shadowMask)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_cloudsTransmittanceMap)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depth)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ApplyCloudsShadowsConstants>),            u_constants)
+DS_END();
+
+
+static rdr::PipelineStateID CreateApplyCloudsShadowsPipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/ApplyCloudsShadows.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ApplyCloudsShadowsCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Apply Clouds Shadows Pipeline"), shader);
+}
+
+
+struct ApplyCloudsShadowsParams
+{
+	rg::RGTextureViewHandle shadowMask;
+	rg::RGTextureViewHandle depth;
+
+	clouds::CloudsTransmittanceMap transmittanceMap;
+
+	lib::MTHandle<RenderViewDS> renderViewDS;
+};
+
+
+void ApplyCloudsShadows(rg::RenderGraphBuilder& graphBuilder, const ApplyCloudsShadowsParams& params)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = params.shadowMask->GetResolution2D();
+
+	ApplyCloudsShadowsConstants shaderConstants;
+	shaderConstants.viewProjectionMatrix = params.transmittanceMap.viewProjectionMatrix;
+	shaderConstants.resolution           = resolution;
+	shaderConstants.rcpResolution        = resolution.cast<Real32>().cwiseInverse();
+
+	const lib::MTHandle<ApplyCloudsShadowsDS> ds = graphBuilder.CreateDescriptorSet<ApplyCloudsShadowsDS>(RENDERER_RESOURCE_NAME("ApplyCloudsShadowsDS"));
+	ds->u_shadowMask             = params.shadowMask;
+	ds->u_cloudsTransmittanceMap = params.transmittanceMap.cloudsTransmittanceTexture;
+	ds->u_depth                  = params.depth;
+	ds->u_constants              = shaderConstants;
+
+	static const rdr::PipelineStateID pipeline = CreateApplyCloudsShadowsPipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Apply Clouds Shadows"),
+						  pipeline,
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(ds, params.renderViewDS));
+}
+
+} // apply_clouds_shadows
+
 RTShadowMaskRenderer::RTShadowMaskRenderer()
 	: m_lightEntity(nullRenderSceneEntity)
 	, m_denoiser(RG_DEBUG_NAME("Directional Light Denoiser"))
@@ -279,6 +346,8 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 	const RenderSceneRegistry& sceneRegistry     = renderScene.GetRegistry();
 	const DirectionalLightData& directionalLight = sceneRegistry.get<DirectionalLightData>(m_lightEntity);
 
+	const lib::SharedPtr<AtmosphereRenderSystem> atmosphereSystem = renderScene.FindRenderSystem<AtmosphereRenderSystem>();
+
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
@@ -325,6 +394,18 @@ rg::RGTextureViewHandle RTShadowMaskRenderer::Render(rg::RenderGraphBuilder& gra
 
 	{
 		m_variableRateRenderer.Render(graphBuilder, shadowMaskTexture);
+	}
+
+	if (atmosphereSystem && atmosphereSystem->AreVolumetricCloudsEnabled())
+	{
+		const clouds::CloudsTransmittanceMap& cloudsTransmittanceMap = atmosphereSystem->GetCloudsTransmittanceMap();
+
+		apply_clouds_shadows::ApplyCloudsShadowsParams applyCloudsShadowsParams;
+		applyCloudsShadowsParams.shadowMask       = shadowMaskTexture;
+		applyCloudsShadowsParams.depth            = viewContext.depth;
+		applyCloudsShadowsParams.transmittanceMap = cloudsTransmittanceMap;
+		applyCloudsShadowsParams.renderViewDS     = renderView.GetRenderViewDS();
+		apply_clouds_shadows::ApplyCloudsShadows(graphBuilder, applyCloudsShadowsParams);
 	}
 
 	// Upsample shadow masks

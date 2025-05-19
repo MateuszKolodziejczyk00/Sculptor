@@ -118,12 +118,12 @@ void SRClampHistoryCS(CS_INPUT input)
 		const float3 specularFastHistoryMean     = specularM1;
 		const float3 specularFastHistoryVariance = abs(specularM2 - Pow2(specularM1));
 		const float3 specularFastHistoryStdDev   = sqrt(specularFastHistoryVariance);
-		const float3 specularClampWindow         = 2.8f * specularFastHistoryStdDev;
+		const float3 specularClampWindow         = 1.5f * specularFastHistoryStdDev;
 
 		const float3 diffuseFastHistoryMean     = diffuseM1;
 		const float3 diffuseFastHistoryVariance = abs(diffuseM2 - Pow2(diffuseM1));
 		const float3 diffuseFastHistoryStdDev   = sqrt(diffuseFastHistoryVariance);
-		const float3 diffuseClampWindow         = 1.8f * diffuseFastHistoryStdDev;
+		const float3 diffuseClampWindow         = 1.5f * diffuseFastHistoryStdDev;
 
 		const float4 specular                 = u_specularTexture.Load(pixel);
 		const float3 accumulatedSpecularYCoCg = RGBToYCoCg(specular.rgb);

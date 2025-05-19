@@ -638,7 +638,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
 	
 	RenderViewEntryContext context;
-	context.texture = tonemappedTexture;
+	context.Bind<RenderViewEntryDelegates::RenderSceneDebugLayerData>(RenderViewEntryDelegates::RenderSceneDebugLayerData{ tonemappedTexture });
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).Broadcast(graphBuilder, renderScene, viewSpec, context);
 }
 

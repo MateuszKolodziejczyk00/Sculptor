@@ -7,6 +7,8 @@ function SculptorLib:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("ProfilerCore")
     self:AddPublicDependency("Platform")
 
+    self:AddPrivateDependency("TileableVolumeNoise")
+
     self:AddPublicDefine("WITH_LOGGER=1")
 
     self:AddPublicDefine("DO_CHECKS=1")

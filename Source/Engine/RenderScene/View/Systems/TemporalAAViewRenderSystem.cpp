@@ -227,7 +227,19 @@ void TemporalAAViewRenderSystem::OnRenderAntiAliasingStage(rg::RenderGraphBuilde
 math::Vector2u TemporalAAViewRenderSystem::SelectDesiredRenderingResolution(math::Vector2u outputResolution) const
 {
 	const Bool supportsUpscaling = m_temporalAARenderer && m_temporalAARenderer->SupportsUpscaling();
-	return supportsUpscaling ? (outputResolution.cast<Real32>() * renderingResolutionScale).cast<Uint32>() : outputResolution;
+
+	if (supportsUpscaling)
+	{
+		math::Vector2u resolution = (outputResolution.cast<Real32>() * renderingResolutionScale).cast<Uint32>();
+		resolution.x() = std::min(math::Utils::DivideCeil(resolution.x(), 16u) * 16u, outputResolution.x());
+		resolution.y() = std::min(math::Utils::DivideCeil(resolution.y(), 16u) * 16u, outputResolution.y());
+
+		return resolution;
+	}
+	else
+	{
+		return outputResolution;
+	}
 }
 
 } // spt::rsc

@@ -39,13 +39,15 @@ END_SHADER_STRUCT();
 
 struct AtmosphereContext
 {
-	lib::SharedPtr<rdr::Buffer>			atmosphereParamsBuffer;
+	lib::SharedPtr<rdr::Buffer> atmosphereParamsBuffer;
 
-	lib::SharedPtr<rdr::Buffer>			directionalLightsBuffer;
+	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
 
-	lib::SharedPtr<rdr::TextureView>	transmittanceLUT;
+	lib::SharedPtr<rdr::TextureView> transmittanceLUT;
 
-	lib::SharedPtr<rdr::TextureView>	multiScatteringLUT;
+	lib::SharedPtr<rdr::TextureView> multiScatteringLUT;
+
+	std::optional<DirectionalLightData> mainDirectionalLight;
 };
 
 

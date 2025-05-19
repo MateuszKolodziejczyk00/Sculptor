@@ -216,6 +216,12 @@ public:
 			weights[i] = static_cast<TType>(std::exp(-0.5 * Square(sampleIdx) * rcpSigmaSquared) * rcpDenominator);
 		}
 	}
+
+	template<std::floating_point TType>
+	static TType Remap(TType originalValue, TType originalMin, TType originalMax, TType newMin, TType newMax)
+	{
+		return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
+	}
 };
 
 } // spt::math

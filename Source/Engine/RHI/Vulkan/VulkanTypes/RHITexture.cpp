@@ -865,10 +865,11 @@ const lib::HashedString& RHITextureView::GetName() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // RHIMappedTexture =======================================================================
 
-RHIMappedSurface::RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, const VkSubresourceLayout& layout)
+RHIMappedSurface::RHIMappedSurface(const RHITexture& texture, Byte* data, Uint32 bytesPerFragment, Uint32 mipIdx, const VkSubresourceLayout& layout)
 	: m_texture(texture)
 	, m_data(data)
 	, m_bytesPerFragment(bytesPerFragment)
+	, m_mipIdx(mipIdx)
 	, m_layout(layout)
 {
 	SPT_CHECK(data != nullptr);
@@ -913,7 +914,7 @@ RHIMappedSurface RHIMappedTexture::GetSurface(Uint32 mipLevel, Uint32 arrayLayer
 
 	vkGetImageSubresourceLayout(VulkanRHI::GetDeviceHandle(), m_texture.GetHandle(), OUT &subresource, OUT &layout);
 
-	return RHIMappedSurface(m_texture, m_mappedPointer + layout.offset, m_bytesPerFragment, layout);
+	return RHIMappedSurface(m_texture, m_mappedPointer + layout.offset, m_bytesPerFragment, mipLevel, layout);
 }
 
 } // spt::vulkan

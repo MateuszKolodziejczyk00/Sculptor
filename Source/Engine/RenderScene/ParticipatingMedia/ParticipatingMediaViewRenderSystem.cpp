@@ -18,6 +18,8 @@
 #include "Sequences.h"
 #include "Shadows/ShadowMapsManagerSubsystem.h"
 #include "SceneRenderer/Utils/GaussianBlurRenderer.h"
+#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
+#include "Atmosphere/AtmosphereRenderSystem.h"
 
 namespace spt::rsc
 {
@@ -26,10 +28,10 @@ namespace parameters
 {
 
 RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.72f, 0.f, 1.f);
-RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.004f, 0.f, 1.f);
-RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(0.92f), 0.f, 1.f);
+RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.002f, 0.f, 1.f);
+RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 
-RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.1f, 0.f, 10.f);
+RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.11f, 0.f, 10.f);
 
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.3f, 0.f, 1.f);
 
@@ -45,13 +47,13 @@ RendererIntParameter volumetricFogBlurKernelSize("Volumetric Fog Blur Kernel Siz
 } // parameters
 
 BEGIN_SHADER_STRUCT(VolumetricFogConstants)
-    SHADER_STRUCT_FIELD(math::Vector2f, jitter2D)
-    SHADER_STRUCT_FIELD(math::Vector2u, blueNoiseResMask)
-    SHADER_STRUCT_FIELD(math::Vector3u, fogGridRes)
+	SHADER_STRUCT_FIELD(math::Vector2f, jitter2D)
+	SHADER_STRUCT_FIELD(math::Vector2u, blueNoiseResMask)
+	SHADER_STRUCT_FIELD(math::Vector3u, fogGridRes)
 	SHADER_STRUCT_FIELD(Real32,	        fogNearPlane)
-    SHADER_STRUCT_FIELD(math::Vector3f, fogGridInvRes)
+	SHADER_STRUCT_FIELD(math::Vector3f, fogGridInvRes)
 	SHADER_STRUCT_FIELD(Real32,         fogFarPlane)
-    SHADER_STRUCT_FIELD(Uint32,         frameIdx)
+	SHADER_STRUCT_FIELD(Uint32,         frameIdx)
 END_SHADER_STRUCT();
 
 
@@ -183,14 +185,17 @@ namespace shadow_term
 {
 
 BEGIN_SHADER_STRUCT(VolumetricFogShadowTermConstants)
-	SHADER_STRUCT_FIELD(Bool,   hasValidHistory)
-	SHADER_STRUCT_FIELD(Real32, accumulationCurrentFrameWeight)
+	SHADER_STRUCT_FIELD(math::Matrix4f, cloudsTransmittanceMapViewProj)
+	SHADER_STRUCT_FIELD(Bool,           hasCloudsTransmittanceMap)
+	SHADER_STRUCT_FIELD(Bool,           hasValidHistory)
+	SHADER_STRUCT_FIELD(Real32,         accumulationCurrentFrameWeight)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(ComputeDirectionalLightShadowTermDS, rg::RGDescriptorSetState<ComputeDirectionalLightShadowTermDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<Real32>),                              u_rwDirLightShadowTerm)
 	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<Real32>),                     u_historyDirLightShadowTerm)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                     u_cloudsTransmittanceMap)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VolumetricFogShadowTermConstants>), u_constants)
 DS_END();
 
@@ -206,18 +211,33 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 {
 	SPT_PROFILER_FUNCTION();
 
+	const AtmosphereRenderSystem& atmosphereRenderSystem = renderScene.GetRenderSystemChecked<AtmosphereRenderSystem>();
+
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
+	const clouds::CloudsTransmittanceMap* transmittanceMap = atmosphereRenderSystem.AreVolumetricCloudsEnabled() ? &atmosphereRenderSystem.GetCloudsTransmittanceMap() : nullptr;
+
 	VolumetricFogShadowTermConstants shadowTermConstants;
-	shadowTermConstants.hasValidHistory                     = fogParams.historyDirectionalLightShadowTerm.IsValid();
-	shadowTermConstants.accumulationCurrentFrameWeight      = 0.2f;
+	shadowTermConstants.hasValidHistory                = fogParams.historyDirectionalLightShadowTerm.IsValid();
+	shadowTermConstants.accumulationCurrentFrameWeight = 0.2f;
+
+	if (transmittanceMap)
+	{
+		shadowTermConstants.cloudsTransmittanceMapViewProj = transmittanceMap->viewProjectionMatrix;
+		shadowTermConstants.hasCloudsTransmittanceMap      = true;
+	}
 
 	lib::MTHandle<ComputeDirectionalLightShadowTermDS> ds = graphBuilder.CreateDescriptorSet<ComputeDirectionalLightShadowTermDS>(RENDERER_RESOURCE_NAME("ComputeDirectionalLightShadowTermDS"));
 	ds->u_rwDirLightShadowTerm      = fogParams.directionalLightShadowTerm;
 	ds->u_historyDirLightShadowTerm = fogParams.historyDirectionalLightShadowTerm;
 	ds->u_constants                 = shadowTermConstants;
+
+	if (transmittanceMap)
+	{
+		ds->u_cloudsTransmittanceMap = transmittanceMap->cloudsTransmittanceTexture;
+	}
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 

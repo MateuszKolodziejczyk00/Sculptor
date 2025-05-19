@@ -5,6 +5,40 @@
 namespace spt::rsc
 {
 
+namespace projection
+{
+
+math::Matrix4f CreatePerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
+{
+	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
+
+	const Real32 a = h;
+	const Real32 b = -h * aspect;
+
+	return math::Matrix4f{{0.f,	a,		0.f,	0.f},
+						  {0.f,	0.f,	b,		0.f},
+						  {0.f,	0.f,	0.f,    near},
+						  {1.f,	0.f,	0.f,	0.f} };
+}
+
+math::Matrix4f CreateOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)
+{
+	const Real32 a = 2.f / (right - left);
+	const Real32 b = -2.f / (top - bottom);
+	const Real32 c = -1.f / (far - near);
+
+	const Real32 x = -(right + left) / (right - left);
+	const Real32 y = -(top + bottom) / (top - bottom);
+	const Real32 z = 1.f + near / (far - near);
+
+	return math::Matrix4f{{0.f,	a,		0.f,	x	},
+						  {0.f,	0.f,	b,		y	},
+						  {c,		0.f,	0.f,	z	},
+						  {0.f,	0.f,	0.f,	1.f } };
+}
+
+} // projection
+
 SceneView::SceneView()
 {
 	SetJitter(math::Vector2f::Zero());
@@ -12,15 +46,7 @@ SceneView::SceneView()
 
 void SceneView::SetPerspectiveProjection(Real32 fovRadians, Real32 aspect, Real32 near, Real32 far)
 {
-	const Real32 h = 1.f / std::tan(fovRadians * 0.5f);
-
-	const Real32 a = h;
-	const Real32 b = -h * aspect;
-
-	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	0.f},
-										{0.f,	0.f,	b,		0.f},
-										{0.f,	0.f,	0.f,    near},
-										{1.f,	0.f,	0.f,	0.f} };
+	m_projectionMatrix = projection::CreatePerspectiveProjection(fovRadians, aspect, near, far);
 
 	m_nearPlane	= near;
 	m_farPlane	= far;
@@ -47,18 +73,7 @@ void SceneView::SetShadowPerspectiveProjection(Real32 fovRadians, Real32 aspect,
 
 void SceneView::SetOrthographicsProjection(Real32 near, Real32 far, Real32 bottom, Real32 top, Real32 left, Real32 right)
 {
-	const Real32 a = 2.f / (right - left);
-	const Real32 b = -2.f / (top - bottom);
-	const Real32 c = -1.f / (far - near);
-
-	const Real32 x = -(right + left) / (right - left);
-	const Real32 y = -(top + bottom) / (top - bottom);
-	const Real32 z = 1.f + near / (far - near);
-
-	m_projectionMatrix = math::Matrix4f{{0.f,	a,		0.f,	x	},
-										{0.f,	0.f,	b,		y	},
-										{c,		0.f,	0.f,	z	},
-										{0.f,	0.f,	0.f,	1.f } };
+	m_projectionMatrix = projection::CreateOrthographicsProjection(near, far, bottom, top, left, right);
 
 	m_nearPlane	= near;
 	m_farPlane	= far;
@@ -167,9 +182,6 @@ Bool SceneView::IsSphereOverlappingFrustum(const math::Vector3f& center, Real32 
 
 math::Matrix4f SceneView::GenerateViewMatrix() const
 {
-	const math::Vector3f forward = m_rotation * math::Vector3f::UnitX();
-	const math::Vector3f up = m_rotation * math::Vector3f::UnitZ();
-
 	const math::Matrix3f inverseRotation = m_rotation.toRotationMatrix().transpose();
 	const math::Vector3f m_invLocation = inverseRotation * -m_viewLocation;
 

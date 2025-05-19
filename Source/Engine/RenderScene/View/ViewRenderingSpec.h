@@ -118,16 +118,7 @@ private:
 	PostRenderStageDelegate	m_postRenderStage;
 };
 
-struct RenderViewEntryContext
-{
-	RenderViewEntryContext()
-		: texture(nullptr)
-		, buffer(nullptr)
-	{ }
-
-	rg::RGTextureViewHandle texture;
-	rg::RGBufferViewHandle buffer;
-};
+using RenderViewEntryContext = RenderStageContextMetaDataHandle;
 
 
 using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuilder& /*graphBuilder*/, const RenderScene& /*scene*/, ViewRenderingSpec& /*viewSpec*/, const RenderViewEntryContext& /*context*/)>;
@@ -136,8 +127,23 @@ using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuild
 namespace RenderViewEntryDelegates
 {
 
+inline static const lib::HashedString CloudsTransmittanceMap = "CloudsTransmittanceMap";
+
+inline static const lib::HashedString FillShadingDS          = "FillShadingDS";
+struct FillShadingDSData
+{
+	lib::MTHandle<ViewShadingInputDS> ds;
+};
+
+inline static const lib::HashedString VolumetricClouds       = "VolumetricClouds";
+
 /** Delegate for rendering objects onto view final texture after applying all post processes */
-inline static const lib::HashedString RenderSceneDebugLayer = "SceneDebugLayer";
+inline static const lib::HashedString RenderSceneDebugLayer  = "SceneDebugLayer";
+
+struct RenderSceneDebugLayerData
+{
+	rg::RGTextureViewHandle texture;
+};
 
 } // RenderViewEntryDelegates
 
@@ -200,6 +206,9 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle ambientOcclusion;
 	
 	rg::RGTextureViewHandle skyViewLUT;
+
+	rg::RGTextureViewHandle volumetricClouds;
+	rg::RGTextureViewHandle volumetricCloudsDepth;
 
 	GBuffer gBuffer;
 

@@ -48,7 +48,7 @@ float3 ComputeSunDiskColorFactor(float centerToEdge)
 }
 
 
-float3 ComputeAtmosphereLuminance(in float2 uv, in float2 pixelSize)
+float3 ComputeAtmosphereLuminance(in uint2 coords, in float2 uv, in float2 pixelSize)
 {
 	const float3 rayDirection = ComputeViewRayDirectionWS(u_sceneView, uv);
 
@@ -68,7 +68,7 @@ float3 ComputeAtmosphereLuminance(in float2 uv, in float2 pixelSize)
 
 		if (rayLightDot > minRayLightDot)
 		{
-			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, rayDirection);
+			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, lightDirection);
 
 			const float rayLightSin = sqrt(1.f - Pow2(rayLightDot));
 			const float edgeSin     = sqrt(1.f - Pow2(minRayLightDot));
@@ -78,7 +78,7 @@ float3 ComputeAtmosphereLuminance(in float2 uv, in float2 pixelSize)
 		}
 	}
 
-	return skyLuminance + sunLuminance;
+	return (skyLuminance + sunLuminance);
 }
 #endif // ATMOSPHERE_ENABLED
 
@@ -111,6 +111,24 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float dept
 	return result;
 }
 #endif // VOLUMETRIC_FOG_ENABLED
+
+
+#if VOLUMETRIC_CLOUDS_ENABLED
+float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelSize, in float3 background, in float3 backgroundInScattering)
+{
+	float4 volumetricClouds = u_volumetricClouds.Load(uint3(coords, 0u));
+	volumetricClouds.rgb = ExposedLuminanceToLuminance(volumetricClouds.rgb);
+
+	const float cloudsDepth = u_volumetricCloudsDepth.Load(uint3(coords, 0u));
+
+	const IntegratedVolumetricFog integratedFog = SampleInegratedVolumetricFog(uv, cloudsDepth);
+	const float3 inScattering = ExposedLuminanceToLuminance(integratedFog.inScattering);
+	const float transmittance = integratedFog.transmittance;
+	volumetricClouds.rgb = inScattering + volumetricClouds.rgb * transmittance;
+
+	return volumetricClouds.rgb + ((background + backgroundInScattering - inScattering) * volumetricClouds.a);
+}
+#endif // VOLUMETRIC_CLOUDS_ENABLED
 
 
 #if RT_REFLECTIONS_ENABLED
@@ -214,7 +232,7 @@ void CompositeLightingCS(CS_INPUT input)
 #if ATMOSPHERE_ENABLED
 	if (depth == 0.f)
 	{
-		luminance = ComputeAtmosphereLuminance(uv, pixelSize);
+		luminance = ComputeAtmosphereLuminance(pixel, uv, pixelSize);
 	}
 #endif // ATMOSPHERE_ENABLED
 
@@ -234,7 +252,12 @@ void CompositeLightingCS(CS_INPUT input)
 #endif // RT_REFLECTIONS_ENABLED
 
 	luminance = luminance * integratedFog.transmittance;
+
+#if VOLUMETRIC_CLOUDS_ENABLED
+	luminance = CompositeVolumetricClouds(pixel, uv, pixelSize, luminance, ExposedLuminanceToLuminance(integratedFog.inScattering));
+#else
 	luminance += ExposedLuminanceToLuminance(integratedFog.inScattering);
+#endif // VOLUMETRIC_CLOUDS_ENABLED
 
 #if RT_REFLECTIONS_ENABLED
 	const float specularReflectionsInfluence = AverageComponent((reflections.specular * integratedFog.transmittance) / luminance);

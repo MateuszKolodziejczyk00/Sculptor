@@ -13,7 +13,12 @@ float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinctio
 // based on https://advances.realtimerendering.com/s2006/Chapter6-Real-time%20Atmospheric%20Effects%20in%20Games.pdf
 float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location, float heightFalloff)
 {
-	return globalDensity * exp(-heightFalloff * max(location.z, 0.f));
+	if(location.z < 1500.f)
+	{
+		return max(globalDensity * exp(-heightFalloff * location.z), 0.082f * pow(1.1f, -0.0165f * location.z));
+	}
+
+	return 0.f;
 }
 
 

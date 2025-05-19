@@ -176,6 +176,14 @@ float MinComponent(in float4 value)
 
 
 template<typename TType>
+float RemapNoClamp(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
+{
+	const float t = (value - inputMin) / (inputMax - inputMin);
+	return lerp(outputMin, outputMax, t);
+}
+
+
+template<typename TType>
 float Remap(TType value, TType inputMin, TType inputMax, TType outputMin, TType outputMax)
 {
 	value = clamp(value, inputMin, inputMax);

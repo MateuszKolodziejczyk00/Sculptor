@@ -227,6 +227,64 @@ Bool LoadTextureImpl(TCallback&& callback, lib::StringView path)
 	return true;
 }
 
+Bool SaveTextureImpl(math::Vector3u resolution, rhi::EFragmentFormat format, lib::Span<const Byte> dataLinear, const lib::String& path)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Bool isCubemap = false;
+
+	const Uint32 mipLevelsNum   = 1u;
+	const Uint32 arrayLayersNum = 1u;
+
+	dds::DDSHeader header;
+	::dds::write_header(&header, static_cast<::dds::DXGI_FORMAT>(rhi::RHI2DXGIFormat(format)),
+						resolution.x(),
+						resolution.y(),
+						mipLevelsNum,
+						arrayLayersNum,
+						isCubemap,
+						resolution.z() > 1u ? resolution.z() : 0u);
+
+	lib::DynamicArray<Byte> outData(sizeof(dds::DDSHeader) + header.data_size());
+	std::memcpy(outData.data(), &header, sizeof(header));
+
+	const Uint64 pixelSize = rhi::GetFragmentSize(format);
+
+	const Uint64 srcRowSize   = resolution.x() * pixelSize;
+	const Uint64 srcSliceSize = srcRowSize * resolution.y();
+
+	const Uint64 dstDataOffset = header.mip_offset(0u, 0u);
+
+	const Uint64 dstSlicePitch = header.slice_pitch(0u);
+	const Uint64 dstRowPitch   = header.row_pitch(0u);
+
+	SPT_CHECK(srcRowSize == dstRowPitch);
+
+	for (Uint32 z = 0u; z < resolution.z(); ++z)
+	{
+		const Uint64 dstSliceOffset = dstDataOffset + dstSlicePitch * z;
+		const Uint64 srcSliceOffset = srcSliceSize * z;
+		for (Uint32 y = 0u; y < resolution.y(); ++y)
+		{
+			const Uint64 dstRowOffset = dstSliceOffset + dstRowPitch * y;
+			const Uint64 srcRowOffset = srcSliceOffset + srcRowSize * y;
+
+			std::memcpy(&outData[dstRowOffset], dataLinear.data() + srcRowOffset, srcRowSize);
+		}
+	}
+	
+	std::ofstream stream = lib::File::OpenOutputStream(path, lib::Flags(lib::EFileOpenFlags::ForceCreate, lib::EFileOpenFlags::DiscardContent, lib::EFileOpenFlags::Binary));
+
+	if (stream.is_open())
+	{
+		stream.write(reinterpret_cast<const char*>(outData.data()), outData.size());
+		stream.close();
+		return true;
+	}
+
+	return false;
+}
+
 Bool SaveTextureImpl(const lib::SharedRef<rdr::Texture>& texture, const lib::String& path)
 {
 	SPT_PROFILER_FUNCTION();
@@ -332,7 +390,6 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 
 				const lib::Span<const Byte> data = dataView.GetSurfaceData(mipLevelIdx, arrayLayerIdx);
 
-
 				UploadsManager::Get().EnqueUploadToTexture(data.data(), data.size(), lib::Ref(loadedTexture), aspect, mipResolution,  math::Vector3u::Zero(), mipLevelIdx, arrayLayerIdx);
 			}
 		}
@@ -358,6 +415,30 @@ lib::SharedPtr<rdr::Texture> TextureLoader::LoadTexture(lib::StringView path, co
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // TextureWriter =================================================================================
+
+Bool TextureWriter::SaveTexture(math::Vector3u resolution, rhi::EFragmentFormat format, lib::Span<const Byte> dataLinear, const lib::String& path)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const lib::StringView extension = lib::File::GetExtension(path);
+
+	if (extension == "png")
+	{
+		SPT_CHECK_NO_ENTRY_MSG("Not implemented yet");
+
+		return false;
+	}
+	else if (extension == "dds")
+	{
+		return dds::SaveTextureImpl(resolution, format, dataLinear, path);
+	}
+	else
+	{
+		SPT_LOG_ERROR(ImageLoader, "Unsupported texture format: {} (path: {})", extension, path);
+
+		return false;
+	}
+}
 
 Bool TextureWriter::SaveTexture(lib::SharedRef<rdr::Texture> texture, const lib::String& path)
 {

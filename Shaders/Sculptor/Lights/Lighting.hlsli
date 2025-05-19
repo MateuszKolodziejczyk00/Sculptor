@@ -221,7 +221,20 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 	{
 		const DirectionalLightGPUData directionalLight = u_directionalLights[i];
 
-		const float3 lightIlluminance = directionalLight.illuminance;
+		float3 lightIlluminance = directionalLight.illuminance;
+
+		float cloudsTransmittance = 1.f;
+		if(i == 0u && u_lightsParams.hasValidCloudsTransmittanceMap)
+		{
+			const float4 ctmCS = mul(u_lightsParams.cloudsTransmittanceViewProj, float4(surface.location, 1.f));
+			if(all(ctmCS.xy <= ctmCS.w) && all(ctmCS.xy >= -ctmCS.w))
+			{
+				const float2 ctmUV = (ctmCS.xy / ctmCS.w) *	0.5f + 0.5f;
+				cloudsTransmittance = u_cloudsTransmittanceMap.SampleLevel(u_cloudsTransmittanceMapSampler, ctmUV, 0.f);
+			}
+		}
+
+		lightIlluminance *= cloudsTransmittance;
 
 		if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{
