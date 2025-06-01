@@ -24,6 +24,7 @@
 #include "Lights/LightsRenderSystem.h"
 #include "DescriptorSetBindings/ChildDSBinding.h"
 #include "DDGIVolume.h"
+#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 
 
 #ifdef SPT_RELEASE
@@ -522,6 +523,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 												  StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
 												  GeometryManager::Get().GetGeometryDSState(),
 												  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
+												  viewContext.cloudscapeProbesDS,
 												  shadowMapsDS));
 
 	return probesTraceResultTexture;

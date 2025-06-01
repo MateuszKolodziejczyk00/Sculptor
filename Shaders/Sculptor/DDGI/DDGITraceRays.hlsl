@@ -5,6 +5,7 @@
 #include "DDGI/DDGITraceRaysCommon.hlsli"
 
 #include "Atmosphere/Atmosphere.hlsli"
+#include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
 #include "DDGI/DDGITypes.hlsli"
 #include "Lights/Lighting.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
@@ -71,6 +72,9 @@ void DDGIProbeRaysRTG()
     {
         const float3 probeAtmosphereLocation = GetLocationInAtmosphere(u_atmosphereParams, probeWorldLocation);
         luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, probeAtmosphereLocation, rayDirection);
+
+        const CloudscapeSample cloudscapeSample = SampleCloudscape(probeWorldLocation, rayDirection);
+        luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
     }
 
     u_traceRaysResultTexture[dispatchIdx] = float4(luminance, payload.hitDistance);

@@ -143,6 +143,51 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 } // sky_view
 
 
+namespace render_sky_probe
+{
+
+DS_BEGIN(RenderSkyProbeDS, rg::RGDescriptorSetState<RenderSkyProbeDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwProbe)
+DS_END();
+
+
+static rdr::PipelineStateID CompileRenderSkyProbePipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/RenderSkyProbe.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RenderSkyProbeCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("RenderSkyProbePipeline"), shader);
+}
+
+
+static rg::RGTextureViewHandle RenderSkyProbe(rg::RenderGraphBuilder& graphBuilder, const AtmosphereContext& atmosphere, rg::RGTextureViewHandle skyViewLUT)
+{
+	SPT_PROFILER_FUNCTION();
+
+	rg::TextureDef skyViewProbeDef(math::Vector2u(1u, 1u), rhi::EFragmentFormat::RGBA16_S_Float);
+	skyViewProbeDef.type = rhi::ETextureType::Texture2D;
+	const rg::RGTextureViewHandle skyProbe = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Sky Probe"), skyViewProbeDef);
+
+	static const rdr::PipelineStateID pipeline = CompileRenderSkyProbePipeline();
+
+	lib::MTHandle<RenderSkyProbeDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyProbeDS>(RENDERER_RESOURCE_NAME("RenderSkyProbeDS"));
+	ds->u_atmosphereParams = atmosphere.atmosphereParamsBuffer->CreateFullView();
+	ds->u_skyViewLUT       = skyViewLUT;
+	ds->u_rwProbe          = skyProbe;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Sky Probe"),
+						  pipeline,
+						  math::Vector2u(1u, 1u),
+						  rg::BindDescriptorSets(std::move(ds)));
+												
+
+	return skyProbe;
+}
+
+} // render_sky_probe
+
+
 AtmosphereRenderSystem::AtmosphereRenderSystem()
 {
 	m_supportedStages = rsc::ERenderStage::DeferredShading;
@@ -186,6 +231,8 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 
 void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
 {
+	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& context = atmosphereSubsystem.GetAtmosphereContext();
 
@@ -198,8 +245,11 @@ void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder,
 	skyViewParams.skyViewLUTResolution	= math::Vector2u(200u, 200u);
 
 	const rg::RGTextureViewHandle skyViewLUT = sky_view::RenderSkyViewLUT(graphBuilder, viewSpec, context, skyViewParams);
+
+	const rg::RGTextureViewHandle skyProbe = render_sky_probe::RenderSkyProbe(graphBuilder, context, skyViewLUT);
 	
-	viewSpec.GetShadingViewContext().skyViewLUT = skyViewLUT;
+	shadingViewContext.skyViewLUT = skyViewLUT;
+	shadingViewContext.skyProbe   = skyProbe;
 }
 
 } // spt::rsc

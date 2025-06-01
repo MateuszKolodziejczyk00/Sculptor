@@ -89,7 +89,6 @@ DSStateTypeID DescriptorSetState::GetTypeID() const
 Bool DescriptorSetState::IsDirty() const
 {
 	return m_dirty;
-;
 }
 
 void DescriptorSetState::SetDirty()

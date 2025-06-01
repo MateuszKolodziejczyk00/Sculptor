@@ -118,7 +118,10 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 
 	if (lightIndex > 0u)
 	{
-		m_atmosphereContext.mainDirectionalLight = directionalLightsView.get<DirectionalLightData>(directionalLightsView.front());
+		const DirectionalLightData& light              = directionalLightsView.get<DirectionalLightData>(directionalLightsView.front());
+		const DirectionalLightIlluminance& illuminance = directionalLightsView.get<DirectionalLightIlluminance>(directionalLightsView.front());
+
+		m_atmosphereContext.mainDirectionalLight = GPUDataBuilder::CreateDirectionalLightGPUData(light, illuminance);
 	}
 	else
 	{

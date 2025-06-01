@@ -33,12 +33,15 @@ private:
 
 	CloudscapeContext CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs);
 
+	void UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+
 	void InitTextures();
 
 	void LoadOrCreateBaseShapeNoiseTexture();
 	void LoadOrCreateDetailShapeNoiseTexture();
 	void LoadWeatherMapTexture();
 	void LoadCurlNoiseTexture();
+	void LoadDensityLUTTexture();
 
 	Bool m_volumetricCloudsEnabled = false;
 
@@ -47,7 +50,11 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_weatherMap;
 
+	lib::SharedPtr<rdr::TextureView> m_densityLUT;
+
 	lib::SharedPtr<rdr::TextureView> m_curlNoise;
+
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeProbes;
 
 	CloudscapeConstants m_cloudscapeConstants;
 

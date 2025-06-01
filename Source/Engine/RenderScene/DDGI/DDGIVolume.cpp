@@ -102,16 +102,6 @@ Real32 DDGIRelitZone::ComputeRelitPriorityFactor(const SceneView& sceneView, Rea
 	const math::AlignedBox3f zoneAABB = GetBoundingBox();
 
 	Real32 priorityFactor = 1.f;
-	if (zoneAABB.contains(sceneView.GetLocation()))
-	{
-		priorityFactor += 1.f;
-	}
-	else
-	{
-		const math::Vector3f cameraToVolume = (zoneAABB.center() - sceneView.GetLocation()).normalized();
-
-		priorityFactor += cameraToVolume.dot(sceneView.GetForwardVector());
-	}
 
 	const Real32 secondsSinceRelit = currentTime - m_lastRelitTime;
 	priorityFactor += secondsSinceRelit * priority_statics::priorityPerTickMultiplierAfterEverySecondSinceRelit;

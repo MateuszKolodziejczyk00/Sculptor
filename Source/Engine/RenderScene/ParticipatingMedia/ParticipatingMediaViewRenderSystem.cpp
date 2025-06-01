@@ -28,14 +28,14 @@ namespace parameters
 {
 
 RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.72f, 0.f, 1.f);
-RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.002f, 0.f, 1.f);
+RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.001f, 0.f, 1.f);
 RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 
-RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.11f, 0.f, 10.f);
+RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.007f, 0.f, 10.f);
 
 RendererFloatParameter phaseFunctionAnisotrophy("Phase Function Aniso", { "Volumetric Fog" }, 0.3f, 0.f, 1.f);
 
-RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 8000.f, 1.f, 15000.f);
+RendererFloatParameter fogFarPlane("Fog Far Plane", { "Volumetric Fog" }, 8000.f, 1.f, 40000.f);
 
 RendererBoolParameter enableDirectionalLightsInScattering("Enable Directional Lights Scattering", { "Volumetric Fog" }, true);
 RendererBoolParameter enableDirectionalLightsVolumetricRTShadows("Enable Directional Lights Volumetric RT Shadows", { "Volumetric Fog" }, true);

@@ -27,6 +27,7 @@
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Debug/Stats/RTReflectionsStatsView.h"
+#include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 
 
 namespace spt::rsc
@@ -260,12 +261,16 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
+	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
 	static const rdr::PipelineStateID missRaysShadingPipeline = CreateMissRaysShadingPipeline();
 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Miss Rays Shading"),
 								  missRaysShadingPipeline,
 								  shadingParams.shadingIndirectArgs, ComputeMissShadingIndirectArgsOffset(),
-								  rg::BindDescriptorSets(std::move(shadingDS), renderView.GetRenderViewDS()));
+								  rg::BindDescriptorSets(std::move(shadingDS),
+														 shadingViewContext.cloudscapeProbesDS,
+														 renderView.GetRenderViewDS()));
 }
 
 } // miss_rays

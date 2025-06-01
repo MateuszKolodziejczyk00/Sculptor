@@ -68,7 +68,13 @@ float3 ComputeAtmosphereLuminance(in uint2 coords, in float2 uv, in float2 pixel
 
 		if (rayLightDot > minRayLightDot)
 		{
-			const float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, lightDirection);
+			float3 transmittance = GetTransmittanceFromLUT(u_atmosphereParams, u_transmittanceLUT, u_linearSampler, viewLocation, lightDirection);
+
+			const Sphere groundSphere = Sphere::Create(ZERO_VECTOR, u_atmosphereParams.groundRadiusMM);
+			if(Ray::Create(viewLocation, rayDirection).IntersectSphere(groundSphere).IsValid())
+			{
+				transmittance = 0.f;
+			}
 
 			const float rayLightSin = sqrt(1.f - Pow2(rayLightDot));
 			const float edgeSin     = sqrt(1.f - Pow2(minRayLightDot));

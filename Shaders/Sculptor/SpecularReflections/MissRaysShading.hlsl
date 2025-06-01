@@ -2,9 +2,11 @@
 
 [[descriptor_set(RTShadingDS, 0)]]
 [[descriptor_set(RenderViewDS, 1)]]
+[[descriptor_set(CloudscapeProbesDS, 2)]]
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
+#include "Atmosphere/VolumetricClouds/Cloudscape.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
@@ -57,7 +59,10 @@ void MissRaysShadingCS(CS_INPUT input)
 			const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
 			const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, worldLocation);
-			const float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
+			float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
+
+			const CloudscapeSample cloudscapeSample = SampleCloudscape(worldLocation, rayDirection);
+			luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
 			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 

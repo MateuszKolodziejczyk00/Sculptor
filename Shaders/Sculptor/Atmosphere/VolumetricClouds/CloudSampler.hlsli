@@ -3,8 +3,8 @@
 
 struct CloudsSamplerParams
 {
-    Texture3D<float> baseShapeNoise;
-    SamplerState     baseShapeSampler;
+    Texture3D<float4> baseShapeNoise;
+    SamplerState      baseShapeSampler;
 
     Texture3D<float4> detailShapeNoise;
     SamplerState      detailShapeSampler;
@@ -15,15 +15,27 @@ struct CloudsSamplerParams
     Texture2D<float3> curlNoise;
     SamplerState      curlNoiseSampler;
 
+    Texture2D<float> densityLUT;
+    SamplerState     densityLUTSampler;
+
     float baseShapeScale;
-    float detailShapeScale;
     float weatherScale;
+    float cirrusMapScale;
+
+    float detailShapeNoiseStrength0;
+    float detailShapeNoiseScale0;
+    float detailShapeNoiseStrength1;
+    float detailShapeNoiseScale1;
+
+    float curlNoiseScale;
+    float curlMaxOffset;
 
     float cloudsMinHeight;
     float cloudsMaxHeight;
 
     float globalDensity;
-    float globalCoverage;
+    float globalCoverageOffset;
+    float globalCloudsHeightOffset;
 
     float3 atmosphereCenter;
 
@@ -47,23 +59,30 @@ struct CloudsSampler
 
     float ComputeHeightAlphaAtLocation(in float3 location)
     {
-        #if 0
+    #if 0
         const float h = location.z;
-        #else
+    #else
         const float h = distance(params.atmosphereCenter, location) + params.atmosphereCenter.z;
-        #endif
+    #endif
         return saturate((h - params.cloudsMinHeight) / (params.cloudsMaxHeight - params.cloudsMinHeight));
     }
 
     float SampleBaseShapeNoise(in float3 location)
     {
-        const float3 uvw = location * params.baseShapeScale;
-        return params.baseShapeNoise.Sample(params.baseShapeSampler, uvw).x;
+        const float3 uvw = location * params.baseShapeScale * float3(1.f, 1.f, 1.f);
+
+        float4 noise =  params.baseShapeNoise.Sample(params.baseShapeSampler, uvw);
+
+        const float lowFrequencyFBM = noise.g * 0.625f + noise.z * 0.25f + noise.w * 0.125f;
+
+        const float baseCloud = RemapNoClamp<float>(noise.r, -(1.f - lowFrequencyFBM), 1.f, 0.f, 1.f);
+
+        return baseCloud;
     }
      
-    float4 SampleDetailShapeNoise(in float3 location)
+    float4 SampleDetailShapeNoise(in float3 location, in float scale)
     {
-        return params.detailShapeNoise.Sample(params.detailShapeSampler, location * params.detailShapeScale);
+        return params.detailShapeNoise.Sample(params.detailShapeSampler, location * scale);
     }
      
     float3 SampleWeather(in float3 location)
@@ -73,39 +92,23 @@ struct CloudsSampler
 
     float3 SampleCurlNoise(in float3 location)
     {
-        return params.curlNoise.SampleLevel(params.curlNoiseSampler, location.xy * 0.00006f, 0.f);
+        return params.curlNoise.SampleLevel(params.curlNoiseSampler, location.xy * params.curlNoiseScale, 0.f);
     }
 
-    float3 ComputeDetailLocation(in float3 location)
+    float3 ComputeDetailLocation(in float3 location, float h)
     {
-        const float h = ComputeHeightAlphaAtLocation(location);
-
-        const float3 offset = float3((SampleCurlNoise(location) * 2.f - 1.f) * (25.f + (1.f - h) * 25.f));
+        const float3 offset = float3((SampleCurlNoise(location) * 2.f - 1.f) * params.curlMaxOffset);
 
         return location + offset;
     }
 
-    float ComputeDetailNoise(in float3 location, in float h,  in float densityAltitude)
+    float ComputeDetailNoise(in float3 location, in float scale, in float h,  in float densityAltitude)
     {
-        const float4 noise = SampleDetailShapeNoise(location);
+        float4 noise = SampleDetailShapeNoise(location, scale);
 
-        const float wispyNoise = lerp(noise.r, noise.g, saturate(densityAltitude));
+        const float highFrequencyFBM = noise.r * 0.625f + noise.g * 0.25f + noise.z * 0.125f;
 
-        const float billowyTypeGradient = pow(densityAltitude, 0.25f);
-        const float billowyNoise = lerp(noise.b * 0.3f, noise.a * 0.3f, billowyTypeGradient); // 0.3f is default
-
-        const float noiseType = saturate((h - 0.2f) * 1.8f);
-        float noiseComposite = saturate(lerp(wispyNoise, billowyNoise, noiseType)) * 0.999f;
-
-        //if(detailed)
-        //{
-        //    float hhfNoise = saturate(lerp(1.f - pow(abs(abs(noise.g * 2.f - 1.f) * 2.f - 1.f), 4.f), pow(abs(abs(noise.a * 2.f - 1.f)* 2.f - 1.f), 2.f), noiseType));
-
-        //    const float hhfNoiseDistanceRangeBlender = RemapClouds(h, 0.f, 0.1f, 0.9f, 1.f);
-        //    noiseComposite = lerp(hhfNoise, noiseComposite, hhfNoiseDistanceRangeBlender);
-        //}
-
-        return noiseComposite;
+        return lerp(highFrequencyFBM, 1.f - highFrequencyFBM, saturate(h * 10.f));
     }
 
     float2 SampleDensity(in float3 location, in int detailLevel)
@@ -117,77 +120,59 @@ struct CloudsSampler
 
         const float3 weatherMap = SampleWeather(location);
 
-        float cloudsCoverage = 0.f;
-        float cloudsHeight = 0.f;
-        cloudsCoverage = max(cloudsCoverage, 1.f - length(location.xy) < 7000.f ? 0.9f : 0.f);
-        cloudsHeight   = max(cloudsHeight, 1.f - pow(saturate(1.f - length(location.xy) / 7000.f), 0.3f));
+        float cloudsCoverage = weatherMap.b;
+        float cloudsHeight = weatherMap.g + params.globalCloudsHeightOffset;
 
-        cloudsCoverage = max(weatherMap.r, cloudsCoverage);
-        cloudsHeight = max(weatherMap.b, cloudsHeight);
+        const float anvil = weatherMap.b;
 
-        cloudsCoverage = max(weatherMap.r, 1.f);
-        cloudsHeight = max(weatherMap.b, 1.f);
-
-        if(cloudsCoverage < 0.001f)
+        if(cloudsCoverage < 0.001f && anvil < 0.001f)
         {
             return 0.f;
         }
 
         const float h = totalH / max(cloudsHeight, 0.0001f);
 
-        const float shapeBottom = Remap<float>(h, 0.f, 0.07f, 0.f, 1.f);
-        const float shapeTop    = cloudsHeight > 0.f ? Remap<float>(h, cloudsHeight * 0.2f, cloudsHeight, 1.f, 0.f) : 0.f;
-        
-        const float shapeAltitude = shapeBottom * shapeTop;
+        float densityAltitude =  params.densityLUT.SampleLevel(params.densityLUTSampler, float2(cloudsHeight, 1.f - totalH), 0.f);
 
-        const float densityBottom = Remap<float>(h, 0.f, 0.15f, 0.f, 1.f);
-        const float densityTop = Remap<float>(h, 0.9f, 1.f, 1.f, 0.f);
-
-        const float globalDensity = 1.f;
-        const float weatherDensity = 1.f;
-
-        const float densityAltitude = globalDensity * densityBottom * densityTop * weatherDensity * 2.f;
+        float coverage = saturate(params.globalCoverageOffset + cloudsCoverage);
 
         const float baseCloudNoise = SampleBaseShapeNoise(location);
 
-        float baseCloud = Remap<float>(params.globalCoverage * cloudsCoverage, min(baseCloudNoise, 0.9999f), 1.f, 0.f, 1.f) * shapeAltitude;
+        float baseCloud = saturate(baseCloudNoise - (1.f - densityAltitude * coverage));
+        baseCloud *= max(coverage, 0.f);
 
         if(baseCloud <= 0.001f)
         {
             return 0.f;
         }
-
-        //const float anvilBias = 0.3f;
-        //baseCloud = pow(baseCloud , Remap<float>(h, 0.7, 0.8, 1.f, lerp(1.f, 0.5, anvilBias)));
-
-        float3 detailLocation = ComputeDetailLocation(location);
         
 #if 0
-        detailLocation += frac(params.time * windDir * 100.f * params.detailShapeScale) / params.detailShapeScale;
+        location += frac(params.time * windDir * 100.f * params.detailShapeScale) / params.detailShapeScale;
 #endif
-
 
         float cloudDensity = baseCloud;
 
-        if(detailLevel >= 1)
+        location = ComputeDetailLocation(location, h);
+
+        const float edgeDetail = 1.f;
+
         {
-            const float edgeDetail = Remap<float>(h, 0.3f, 0.6f, 1.2f, 0.7f);
-            const float noiseComposite = ComputeDetailNoise(detailLocation, h, densityAltitude);
-            cloudDensity = Remap<float>(baseCloud, min(edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
+            const float noiseComposite = ComputeDetailNoise(location, params.detailShapeNoiseScale0, h, densityAltitude);
+            cloudDensity = Remap<float>(cloudDensity, min(params.detailShapeNoiseStrength0 * edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
         }
 
-        if(detailLevel >= 2)
         {
-            const float edgeDetail = Remap<float>(h, 0.3f, 0.6f, 0.4f, 0.15f);
-            const float noiseComposite = ComputeDetailNoise(detailLocation * 3.f, h, densityAltitude);
-            cloudDensity = Remap<float>(cloudDensity, edgeDetail * noiseComposite, 1.f, 0.f, 1.f);
+            const float noiseComposite = ComputeDetailNoise(location, params.detailShapeNoiseScale1, h, densityAltitude);
+            cloudDensity = Remap<float>(cloudDensity, min(params.detailShapeNoiseStrength1 * edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
         }
 
-        cloudDensity *= densityAltitude;
+        cloudDensity = pow(saturate(cloudDensity), Remap<float>(h, 0.4f, 0.7f, 1.0f, 0.8f));
 
-        cloudDensity = pow(cloudDensity, lerp(1.5f, 0.6f, saturate(h * 3.f)));
+        const float finalDensity = cloudDensity * params.globalDensity;
 
-        return float2(cloudDensity * params.globalDensity, h);
+        float ambient = 1.f - 0.4f * saturate(finalDensity) * max(1.f - h, 0.f);
+        
+        return float2(finalDensity, ambient);
     }
 };
 
@@ -196,24 +181,32 @@ struct CloudsSampler
 CloudsSampler CreateCloudscapeSampler()
 {
     CloudsSamplerParams csParams;
-    csParams.baseShapeNoise     = u_baseShapeNoise;
-    csParams.baseShapeSampler   = u_linearRepeatSampler;
-    csParams.detailShapeNoise   = u_detailShapeNoise;
-    csParams.detailShapeSampler = u_linearRepeatSampler;
-    csParams.weather            = u_weatherMap;
-    csParams.weatherSampler     = u_linearRepeatSampler;
-    csParams.curlNoise          = u_curlNoise;
-    csParams.curlNoiseSampler   = u_linearRepeatSampler;
-    csParams.baseShapeScale     = u_cloudscapeConstants.baseShapeNoiseScale;
-    csParams.detailShapeScale   = u_cloudscapeConstants.detailShapeNoiseScale;
-    csParams.weatherScale       = u_cloudscapeConstants.weatherMapScale;
-    csParams.cloudsMinHeight    = u_cloudscapeConstants.cloudscapeInnerHeight;
-    csParams.cloudsMaxHeight    = u_cloudscapeConstants.cloudscapeOuterHeight;
-    csParams.globalDensity      = u_cloudscapeConstants.globalDensity;
-    csParams.globalCoverage     = u_cloudscapeConstants.globalCoverage;
-    csParams.atmosphereCenter   = u_cloudscapeConstants.cloudsAtmosphereCenter;
-    csParams.time               = u_cloudscapeConstants.time;
-    CloudsSampler cs = CloudsSampler::Create(csParams);
+    csParams.baseShapeNoise            = u_baseShapeNoise;
+    csParams.baseShapeSampler          = u_linearRepeatSampler;
+    csParams.detailShapeNoise          = u_detailShapeNoise;
+    csParams.detailShapeSampler        = u_linearRepeatSampler;
+    csParams.weather                   = u_weatherMap;
+    csParams.weatherSampler            = u_linearRepeatSampler;
+    csParams.curlNoise                 = u_curlNoise;
+    csParams.curlNoiseSampler          = u_linearRepeatSampler;
+    csParams.densityLUT                = u_densityLUT;
+    csParams.densityLUTSampler         = u_linearClampSampler;
+    csParams.baseShapeScale            = u_cloudscapeConstants.baseShapeNoiseScale;
+    csParams.detailShapeNoiseStrength0 = u_cloudscapeConstants.detailShapeNoiseStrength0;
+    csParams.detailShapeNoiseScale0    = u_cloudscapeConstants.detailShapeNoiseScale0;
+    csParams.detailShapeNoiseStrength1 = u_cloudscapeConstants.detailShapeNoiseStrength1;
+    csParams.detailShapeNoiseScale1    = u_cloudscapeConstants.detailShapeNoiseScale1;
+    csParams.curlNoiseScale            = u_cloudscapeConstants.curlNoiseScale;
+	csParams.curlMaxOffset             = u_cloudscapeConstants.curlMaxoffset;
+    csParams.weatherScale              = u_cloudscapeConstants.weatherMapScale;
+    csParams.cloudsMinHeight           = u_cloudscapeConstants.cloudscapeInnerHeight;
+    csParams.cloudsMaxHeight           = u_cloudscapeConstants.cloudscapeOuterHeight;
+    csParams.globalDensity             = u_cloudscapeConstants.globalDensity;
+    csParams.globalCoverageOffset      = u_cloudscapeConstants.globalCoverageOffset;
+    csParams.globalCloudsHeightOffset  = u_cloudscapeConstants.globalCloudsHeightOffset;
+    csParams.atmosphereCenter          = u_cloudscapeConstants.cloudsAtmosphereCenter;
+    csParams.time                      = u_cloudscapeConstants.time;
+    CloudsSampler cs                   = CloudsSampler::Create(csParams);
 
     return cs;
 }

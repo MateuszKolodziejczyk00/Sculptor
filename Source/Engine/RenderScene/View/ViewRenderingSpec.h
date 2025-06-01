@@ -25,6 +25,12 @@ class ViewShadingInputDS;
 class ShadowMapsDS;
 
 
+namespace clouds
+{
+class CloudscapeProbesDS;
+} // clouds
+
+
 #define SPT_RENDER_STAGE_META_DATA_DEBUG (defined(SPT_DEBUG) || defined(SPT_DEVELOPMENT))
 
 
@@ -206,9 +212,12 @@ struct ShadingViewContext
 	rg::RGTextureViewHandle ambientOcclusion;
 	
 	rg::RGTextureViewHandle skyViewLUT;
+	rg::RGTextureViewHandle skyProbe;
 
 	rg::RGTextureViewHandle volumetricClouds;
 	rg::RGTextureViewHandle volumetricCloudsDepth;
+
+	lib::MTHandle<clouds::CloudscapeProbesDS> cloudscapeProbesDS;
 
 	GBuffer gBuffer;
 

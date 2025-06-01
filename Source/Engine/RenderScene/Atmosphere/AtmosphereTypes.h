@@ -47,7 +47,7 @@ struct AtmosphereContext
 
 	lib::SharedPtr<rdr::TextureView> multiScatteringLUT;
 
-	std::optional<DirectionalLightData> mainDirectionalLight;
+	std::optional<DirectionalLightGPUData> mainDirectionalLight;
 };
 
 

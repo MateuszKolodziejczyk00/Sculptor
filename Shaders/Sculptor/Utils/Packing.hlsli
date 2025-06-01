@@ -104,6 +104,38 @@ float3 OctahedronDecodeNormal(in float2 coords)
 	return normalize(direction);
 }
 
+float3 OctahedronDecodeHemisphereNormal(in float2 coords)
+{
+	coords = coords * 2.f - 1.f;
+
+    const float2x2 coordsTransform = float2x2(
+        0.5f, -0.5f,
+        0.5f, 0.5f
+    );
+
+    coords = mul(coordsTransform, coords);
+
+	float3 direction = float3(coords.x, coords.y, 1.f - abs(coords.x) - abs(coords.y));
+
+	return normalize(direction);
+}
+
+
+float2 OctahedronEncodeHemisphereNormal(in float3 direction)
+{
+    const float l1norm = dot(abs(direction), 1.f);
+	float2 coords = direction.xy * (1.f / l1norm);
+
+    const float2x2 coordsTransform = float2x2(
+        0.5f, 0.5f,
+        -0.5f, 0.5f
+    );
+
+    coords = mul(coordsTransform, coords);
+
+    return coords * 0.5f + 0.5f;
+}
+
 // rgba8 packing
 
 uint PackFloat4x8(float4 value)

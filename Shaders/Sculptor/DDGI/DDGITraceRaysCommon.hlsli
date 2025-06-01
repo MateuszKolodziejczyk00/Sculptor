@@ -14,6 +14,8 @@
 
 [[descriptor_set(DDGISceneDS, 7)]]
 
+[[descriptor_set(CloudscapeProbesDS, 8)]]
+
 
 struct DDGIRayPayload
 {

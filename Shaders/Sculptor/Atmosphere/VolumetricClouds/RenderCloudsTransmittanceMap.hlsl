@@ -3,16 +3,12 @@
 [[descriptor_set(RenderCloudsTransmittanceMapDS, 0)]]
 [[descriptor_set(CloudscapeDS, 1)]]
 
-#include "Utils/Shapes.hlsli"
-#include "Atmosphere/VolumetricClouds/CloudSampler.hlsli"
+#include "Atmosphere/VolumetricClouds/CloudscapeRaymarcher.hlsli"
 
 struct CS_INPUT
 {
     uint3 globalID : SV_DispatchThreadID;
 };
-
-
-static float globalCloudsExtinction = 0.006f;
 
 
 [numthreads(8, 8, 1)]
@@ -27,45 +23,26 @@ void RenderCloudsTransmittanceMapCS(CS_INPUT input)
     const CloudscapeConstants cloudscape = u_cloudscapeConstants;
 
     const Sphere cloudsAtmosphereInnerSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereInnerRadius);
-    const Sphere cloudsAtmosphereOuterSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereOuterRadius + 3000.f);
+    const Sphere cloudsAtmosphereOuterSphere = Sphere::Create(cloudscape.cloudsAtmosphereCenter, cloudscape.cloudsAtmosphereOuterRadius);
 
     float transmittance = 1.f;
 
-    if(cloudsAtmosphereInnerSphere.IsInside(worldLocation))
+    const float3 rayDir = u_constants.direction;
+    float3 rayOrigin = worldLocation;
+    
+    if(!IsNearlyZero(rayDir.z))
     {
-        const Ray ray = Ray::Create(worldLocation, u_constants.direction);
-
-        const IntersectionResult innerIntersection = ray.IntersectSphere(cloudsAtmosphereInnerSphere);
-        const IntersectionResult outerIntersection = ray.IntersectSphere(cloudsAtmosphereOuterSphere);
-
-        const float3 innerAtmosphereLocation = ray.GetIntersectionLocation(innerIntersection);
-        const float3 outerAtmosphereLocation = ray.GetIntersectionLocation(outerIntersection);
-
-        CloudsSampler cs = CreateCloudscapeSampler();
-
-        const float samplesNum = 128.f;
-
-        const float dt = distance(innerAtmosphereLocation, outerAtmosphereLocation) / samplesNum;
-
-        for (float sampleIdx = 1.f; sampleIdx <= samplesNum; sampleIdx += 1.f)
-        {
-            const float3 sampleLocation = innerAtmosphereLocation + sampleIdx * ray.direction * dt;
-
-            const float2 sampledCloud = cs.SampleDensity(sampleLocation, CLOUDS_HIGHEST_DETAIL_LEVEL);
-            const float cloudDensity = sampledCloud.x;
-            const float h = sampledCloud.y;
-
-            if(cloudDensity == 0.f)
-            {
-                continue;
-            }
-
-            const float  cloudExtinction   = cloudDensity * globalCloudsExtinction;
-            const float sampleTransmittance = max(0.000001f, exp(-dt * cloudExtinction));
-
-           transmittance *= sampleTransmittance;
-        }
+        const float2 dxy = rayDir.xy / rayDir.z;
+        rayOrigin.xy -= dxy * rayOrigin.z;
+        rayOrigin.z = 0.f;
     }
+
+    const Ray ray = Ray::Create(rayOrigin, rayDir);
+
+    CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
+    raymarchParams.ray                     = ray;
+    raymarchParams.samplesNum              = 80.f;
+    transmittance = RaymarchCloudscapeTransmittance(raymarchParams);
     
     u_rwTransmittanceMap[input.globalID.xy] = transmittance;
 }
