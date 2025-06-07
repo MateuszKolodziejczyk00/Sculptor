@@ -262,6 +262,7 @@ struct ProbesUpdateParams
 	rg::RGTextureViewHandle skyProbe;
 
 	rg::RGTextureViewHandle cloduscapeProbesTexture;
+	rg::RGTextureViewHandle cloduscapeSimpleProbesTexture;
 
 	Uint32 tracesPerProbe = 1024u;
 
@@ -292,6 +293,7 @@ static rdr::PipelineStateID CompileTraceCloudscapeProbesPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TraceCloudscapeProbesPipeline"), shader);
 }
 
+
 rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const ProbesUpdateParams& params)
 {
 	SPT_PROFILER_FUNCTION();
@@ -307,7 +309,7 @@ rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuild
 	shaderConstants.compressedProbeDataRes = params.cloudscape->cloudscapeConstants.pixelsPerProbe;
 	shaderConstants.probesToUpdate         = params.probeCoords;
 
-	lib::MTHandle<TraceCloudscapeProbesDS> ds = graphBuilder.CreateDescriptorSet<TraceCloudscapeProbesDS>(RENDERER_RESOURCE_NAME("TraceCloudscapeProbesConstantsDS"));
+	lib::MTHandle<TraceCloudscapeProbesDS> ds = graphBuilder.CreateDescriptorSet<TraceCloudscapeProbesDS>(RENDERER_RESOURCE_NAME("TraceCloudscapeProbesDS"));
 	ds->u_rwTraceResult = traceResult;
 	ds->u_skyViewProbe  = params.skyProbe;
 	ds->u_constants     = shaderConstants;
@@ -330,6 +332,7 @@ DS_BEGIN(CompressCloudscapeProbesDS, rg::RGDescriptorSetState<CompressCloudscape
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<UpdateCloudscapeProbesConstants>), u_constants)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                    u_traceResult)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                     u_rwCompressedProbes)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                     u_rwCompressedSimpleProbes)
 DS_END();
 
 
@@ -352,9 +355,10 @@ void CompressCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const Probes
 	shaderConstants.probesToUpdate         = params.probeCoords;
 
 	lib::MTHandle<CompressCloudscapeProbesDS> ds = graphBuilder.CreateDescriptorSet<CompressCloudscapeProbesDS>(RENDERER_RESOURCE_NAME("CompressCloudscapeProbesDS"));
-	ds->u_rwCompressedProbes = params.cloduscapeProbesTexture;
-	ds->u_traceResult        = traceResult;
-	ds->u_constants          = shaderConstants;
+	ds->u_rwCompressedProbes       = params.cloduscapeProbesTexture;
+	ds->u_rwCompressedSimpleProbes = params.cloduscapeSimpleProbesTexture;
+	ds->u_traceResult              = traceResult;
+	ds->u_constants                = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compress Cloudscape Probes"),
 						  pipeline,
@@ -378,12 +382,70 @@ void UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const ProbesUp
 	compress::CompressCloudscapeProbes(graphBuilder, params, traceResult);
 }
 
+namespace high_res
+{
+
+BEGIN_SHADER_STRUCT(UpdateCloudscapeHighResProbeConstants)
+	SHADER_STRUCT_FIELD(Uint32, frameIdx)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(UpdateCloudscapeHighResProbeDS, rg::RGDescriptorSetState<UpdateCloudscapeHighResProbeDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<UpdateCloudscapeHighResProbeConstants>), u_constants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                          u_skyViewProbe)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                  u_blueNoise256)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                           u_rwProbe)
+DS_END();
+
+
+static rdr::PipelineStateID CompileUpdateCloudscapeHighResProbePipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/VolumetricClouds/UpdateCloudscapeHighResProbe.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "UpdateCloudscapeHighResProbeCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("UpdateCloudscapeHighResProbePipeline"), shader);
+}
+
+
+struct UpdateCloudscapeHighResProbeParams
+{
+	const CloudscapeContext* cloudscape = nullptr;
+	rg::RGTextureViewHandle skyProbe;
+	rg::RGTextureViewHandle cloudscapeProbe;
+};
+
+
+void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const UpdateCloudscapeHighResProbeParams& params)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = params.cloudscapeProbe->GetResolution2D();
+
+	static const rdr::PipelineStateID pipeline = CompileUpdateCloudscapeHighResProbePipeline();
+
+	const Uint32 frameIdx = viewSpec.GetRenderView().GetRenderedFrameIdx();
+
+	UpdateCloudscapeHighResProbeConstants shaderConstants;
+	shaderConstants.frameIdx = frameIdx;
+
+	lib::MTHandle<UpdateCloudscapeHighResProbeDS> ds = graphBuilder.CreateDescriptorSet<UpdateCloudscapeHighResProbeDS>(RENDERER_RESOURCE_NAME("UpdateCloudscapeHighResProbeDS"));
+	ds->u_constants    = shaderConstants;
+	ds->u_skyViewProbe = params.skyProbe;
+	ds->u_blueNoise256 = gfx::global::Resources::Get().blueNoise256.GetView();
+	ds->u_rwProbe      = params.cloudscapeProbe;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Update High Res Probe"),
+						  pipeline,
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(std::move(ds),
+												 viewSpec.GetRenderView().GetRenderViewDS(),
+												 params.cloudscape->cloudscapeDS));
+}
+
+} // high_res
+
 } // cloudscape_probe
 
 VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 {
-	InitTextures();
-
 	const Real32 volumetricCloudsMinHeight = 256.f;
 	const Real32 volumetricCloudsMaxHeight = 2048.f;
 	const Real32 volumetricCloudsRange     = 8000.f;
@@ -409,8 +471,10 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 	m_cloudscapeConstants.uvPerProbe           = m_cloudscapeConstants.probesNum.cast<Real32>().cwiseInverse();
 	m_cloudscapeConstants.uvPerProbeNoBorders  = (m_cloudscapeConstants.pixelsPerProbe - math::Vector2u::Constant(1u)).cast<Real32>().cwiseQuotient(probesTextureRes.cast<Real32>());
 	m_cloudscapeConstants.uvBorder             = probesTextureRes.cast<Real32>().cwiseInverse();
+	m_cloudscapeConstants.highResProbeRes      = math::Vector2u(512u, 512u);
+	m_cloudscapeConstants.highResProbeRcpRes   = m_cloudscapeConstants.highResProbeRes.cast<Real32>().cwiseInverse();
 
-	SPT_LOG_INFO(VolumetricCloudsRenderer, "Computed clouds atmosphere radius: {}", radius);
+	InitTextures();
 }
 
 void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
@@ -441,7 +505,36 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::VolumetricClouds).AddRawMember(this, &VolumetricCloudsRenderer::RenderVolumetricClouds, cloudscapeContext);
 
-	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext);
+	if (m_enqueuedCloudscapeProbesGlobalUpdate)
+	{
+		UpdateAllCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext);
+		m_enqueuedCloudscapeProbesGlobalUpdate = false;
+	}
+	else
+	{
+		UpdateCloudscapeProbesPerFrame(graphBuilder, renderScene, viewSpec, cloudscapeContext);
+	}
+
+	const rg::RGTextureViewHandle cloudscapeProbes       = graphBuilder.TryAcquireExternalTextureView(m_cloudscapeProbes);
+	const rg::RGTextureViewHandle cloudscapeSimpleProbes = graphBuilder.TryAcquireExternalTextureView(m_cloudscapeSimpleProbes);
+	const rg::RGTextureViewHandle cloudscapeHighResProbe = graphBuilder.TryAcquireExternalTextureView(m_cloudscapeHighResProbe);
+
+	cloudscape_probe::high_res::UpdateCloudscapeHighResProbeParams highResProbeParams;
+	highResProbeParams.cloudscape      = &cloudscapeContext;
+	highResProbeParams.skyProbe        = viewSpec.GetShadingViewContext().skyProbe;
+	highResProbeParams.cloudscapeProbe = cloudscapeHighResProbe;
+
+	cloudscape_probe::high_res::UpdateCloudscapeHighResProbe(graphBuilder, viewSpec, highResProbeParams);
+
+	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
+	lib::MTHandle<CloudscapeProbesDS> cloudscapeFullDS = graphBuilder.CreateDescriptorSet<CloudscapeProbesDS>(RENDERER_RESOURCE_NAME("CloudscapeProbesDS"));
+	cloudscapeFullDS->u_cloudscapeConstants    = cloudscapeContext.cloudscapeConstants;
+	cloudscapeFullDS->u_cloudscapeProbes       = cloudscapeProbes;
+	cloudscapeFullDS->u_cloudscapeSimpleProbes = cloudscapeSimpleProbes;
+	cloudscapeFullDS->u_cloudscapeHighResProbe = cloudscapeHighResProbe;
+
+	shadingViewContext.cloudscapeProbesDS = std::move(cloudscapeFullDS);
 }
 
 void VolumetricCloudsRenderer::RenderVolumetricClouds(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context, const CloudscapeContext cloudscapeContext)
@@ -496,19 +589,29 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	return CloudscapeContext{ atmosphere, m_cloudscapeConstants, ds };
 }
 
-void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)
+void VolumetricCloudsRenderer::UpdateAllCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGTextureViewHandle cloudscapeProbes = graphBuilder.AcquireExternalTextureView(m_cloudscapeProbes);
+	const Uint32 probesNum = cloudscapeContext.cloudscapeConstants.probesNum.x() * cloudscapeContext.cloudscapeConstants.probesNum.y();
+	const Uint32 batchesNum = math::Utils::DivideCeil(probesNum, cloudscape_probe::maxProbesToUpdate);
 
-	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+	for (Uint32 batchIdx = 0u; batchIdx < batchesNum; ++batchIdx)
+	{
+		lib::StaticArray<math::Vector2u, cloudscape_probe::maxProbesToUpdate> probeCoords;
+		for (Uint32 i = 0u; i < cloudscape_probe::maxProbesToUpdate; ++i)
+		{
+			const Uint32 probeIdx = batchIdx * cloudscape_probe::maxProbesToUpdate + i;
+			probeCoords[i] = math::Vector2u(probeIdx % cloudscapeContext.cloudscapeConstants.probesNum.x(), probeIdx / cloudscapeContext.cloudscapeConstants.probesNum.x());
+		}
 
-	cloudscape_probe::ProbesUpdateParams updateParams;
-	updateParams.cloudscape              = &cloudscapeContext;
-	updateParams.cloduscapeProbesTexture = cloudscapeProbes;
-	updateParams.tracesPerProbe          = 1024u;
-	updateParams.skyProbe                = shadingViewContext.skyProbe;
+		UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, probeCoords);
+	}
+}
+
+void VolumetricCloudsRenderer::UpdateCloudscapeProbesPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)
+{
+	lib::StaticArray<math::Vector2u, cloudscape_probe::maxProbesToUpdate> probeCoords;
 
 	const Uint32 frameIdx = viewSpec.GetRenderView().GetRenderedFrameIdx();
 	const Uint32 xOffset = (frameIdx & 15u) * cloudscape_probe::maxProbesToUpdate;
@@ -516,16 +619,37 @@ void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& gr
 
 	for (Uint32 i = 0u; i < cloudscape_probe::maxProbesToUpdate; ++i)
 	{
-		updateParams.probeCoords[i] = math::Vector4u(xOffset + i, yOffset, 0u, 0u);
+		probeCoords[i] = math::Vector2u(xOffset + i, yOffset);
+	}
+
+	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, probeCoords);
+}
+
+void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, lib::Span<const math::Vector2u> probeCoords)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_CHECK(probeCoords.size() <= cloudscape_probe::maxProbesToUpdate);
+
+	const rg::RGTextureViewHandle cloudscapeProbes       = graphBuilder.AcquireExternalTextureView(m_cloudscapeProbes);
+	const rg::RGTextureViewHandle cloudscapeSimpleProbes = graphBuilder.AcquireExternalTextureView(m_cloudscapeSimpleProbes);
+
+	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
+	cloudscape_probe::ProbesUpdateParams updateParams;
+	updateParams.cloudscape                    = &cloudscapeContext;
+	updateParams.cloduscapeProbesTexture       = cloudscapeProbes;
+	updateParams.cloduscapeSimpleProbesTexture = cloudscapeSimpleProbes;
+	updateParams.tracesPerProbe                = 1024u;
+	updateParams.skyProbe                      = shadingViewContext.skyProbe;
+
+	for (Uint32 i = 0u; i < probeCoords.size(); ++i)
+	{
+		updateParams.probeCoords[i] = math::Vector4u(probeCoords[i].x(), probeCoords[i].y(), 0u, 0u);
 	}
 
 	cloudscape_probe::UpdateCloudscapeProbes(graphBuilder, updateParams);
 
-	lib::MTHandle<CloudscapeProbesDS> cloudscapeFullDS = graphBuilder.CreateDescriptorSet<CloudscapeProbesDS>(RENDERER_RESOURCE_NAME("CloudscapeProbesDS"));
-	cloudscapeFullDS->u_cloudscapeConstants = cloudscapeContext.cloudscapeConstants;
-	cloudscapeFullDS->u_cloudscapeProbes    = cloudscapeProbes;
-
-	shadingViewContext.cloudscapeProbesDS = std::move(cloudscapeFullDS);
 }
 
 void VolumetricCloudsRenderer::InitTextures()
@@ -543,8 +667,19 @@ void VolumetricCloudsRenderer::InitTextures()
 	cloudscapeProbesDef.resolution = math::Vector2u(probesRes.cwiseProduct(probeRes));
 	cloudscapeProbesDef.format     = rhi::EFragmentFormat::RGBA16_S_Float;
 	cloudscapeProbesDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
-
 	m_cloudscapeProbes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Cloudscape Probes"), cloudscapeProbesDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureDefinition cloudscapeSimpleProbesDef;
+	cloudscapeSimpleProbesDef.resolution = probesRes;
+	cloudscapeSimpleProbesDef.format     = rhi::EFragmentFormat::RGBA16_S_Float;
+	cloudscapeSimpleProbesDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+	m_cloudscapeSimpleProbes = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Cloudscape Simple Probes"), cloudscapeSimpleProbesDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureDefinition cloudscapeHighResProbeDef;
+	cloudscapeHighResProbeDef.resolution = m_cloudscapeConstants.highResProbeRes;
+	cloudscapeHighResProbeDef.format     = rhi::EFragmentFormat::RGBA16_S_Float;
+	cloudscapeHighResProbeDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+	m_cloudscapeHighResProbe = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Cloudscape High Res Probe"), cloudscapeHighResProbeDef, rhi::EMemoryUsage::GPUOnly);
 }
 
 void VolumetricCloudsRenderer::LoadOrCreateBaseShapeNoiseTexture()

@@ -19,12 +19,6 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
 
     const float depth = u_depth.Load(coords);
 
-    if(depth > 0.f)
-    {
-        u_rwClouds[coords.xy] = float4(0.f, 0.f, 0.f, 1.f);
-        return;
-    }
-    
     const float2 uv = (coords.xy + 0.5f) * u_passConstants.rcpResolution;
 
     const Ray viewRay = CreateViewRayWS(u_sceneView, uv);
@@ -38,6 +32,7 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
     raymarchParams.samplesNum = 128.f;
     raymarchParams.noise = blueNoise;
     raymarchParams.ambient = skyAvgLuminance;
+    raymarchParams.maxVisibleDepth = depth > 0.f ? ComputeLinearDepth(depth, u_sceneView) : -1.f;
     const CloudscapeRaymarchResult raymarchRes = RaymarchCloudscape(raymarchParams);
 
     u_rwCloudsDepth[coords.xy] = raymarchRes.cloudDepth > 0.f ? ComputeProjectionDepth(raymarchRes.cloudDepth, u_sceneView) : 0.f;

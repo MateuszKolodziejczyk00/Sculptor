@@ -36,6 +36,8 @@ struct ScatteringValues
     float3 rayleighScattering;
     float mieScattering;
     float3 extinction;
+
+    float3 rayleighExtinction;
 };
 
 
@@ -57,6 +59,8 @@ ScatteringValues ComputeScatteringValues(in AtmosphereParams atmosphere, float3 
     const float3 ozoneAbsorption = atmosphere.ozoneAbsorption * ozoneDensity;
 
     result.extinction = rayleighAbsorption + mieAbsorption + ozoneAbsorption + result.rayleighScattering + result.mieScattering;
+
+    result.rayleighExtinction = rayleighAbsorption + result.rayleighScattering;
 
     return result;
 }

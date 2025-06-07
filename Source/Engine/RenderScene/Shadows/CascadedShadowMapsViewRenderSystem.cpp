@@ -189,9 +189,9 @@ void CascadedShadowMapsViewRenderSystem::UpdateCascadeViewsMatrices(const Render
 
 	const math::Vector3f lightDirection = cascades.dirLightEntity.get<DirectionalLightData>().direction;
 
-	const Real32 cascadeRenderDistance = 70.f;
+	const Real32 cascadeRenderDistance = 1000.f;
 	const Real32 cascadeNear = 0.03f;
-	const Real32 cascadeFar = cascadeRenderDistance + 50.f;
+	const Real32 cascadeFar = cascadeRenderDistance + 100.f;
 
 	for (SizeType cascadeIdx = 0u; cascadeIdx < cascadesNum; ++cascadeIdx)
 	{

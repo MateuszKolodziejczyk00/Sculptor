@@ -16,6 +16,14 @@ class TextureView;
 namespace spt::rsc
 {
 
+BEGIN_SHADER_STRUCT(AerialPerspectiveParams)
+	SHADER_STRUCT_FIELD(math::Vector3u, resolution)
+	SHADER_STRUCT_FIELD(Real32,         nearPlane)
+	SHADER_STRUCT_FIELD(math::Vector3f, rcpResolution)
+	SHADER_STRUCT_FIELD(Real32,         farPlane)
+END_SHADER_STRUCT();
+
+
 BEGIN_SHADER_STRUCT(AtmosphereParams)
 	SHADER_STRUCT_FIELD(Uint32, directionalLightsNum)
 	
@@ -34,6 +42,8 @@ BEGIN_SHADER_STRUCT(AtmosphereParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, ozoneAbsorption)
 
 	SHADER_STRUCT_FIELD(math::Vector3f, transmittanceAtZenith)
+
+	SHADER_STRUCT_FIELD(AerialPerspectiveParams, aerialPerspectiveParams)
 END_SHADER_STRUCT();
 
 

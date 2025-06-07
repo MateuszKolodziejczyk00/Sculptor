@@ -3,9 +3,10 @@
 #include "SceneRenderSystem.h"
 #include "View/RenderView.h"
 #include "Transfers/UploadUtils.h"
+#include "RenderStages/PreRenderingRenderStage.h"
 #include "RenderStages/GlobalIlluminationRenderStage.h"
 #include "RenderStages/ForwardOpaqueRenderStage.h"
-#include "SceneRenderer/RenderStages/DeferredShadingRenderStage.h"
+#include "RenderStages/DeferredShadingRenderStage.h"
 #include "RenderStages/VisibilityBufferRenderStage.h"
 #include "RenderStages/SpecularReflectionsRenderStage.h"
 #include "RenderStages/DepthPrepassRenderStage.h"
@@ -16,7 +17,7 @@
 #include "RenderStages/DirectionalLightShadowMasksRenderStage.h"
 #include "RenderStages/MotionAndDepthRenderStage.h"
 #include "RenderStages/AntiAliasingRenderStage.h"
-#include "SceneRenderer/RenderStages/CompositeLightingRenderStage.h"
+#include "RenderStages/CompositeLightingRenderStage.h"
 #include "RenderStages/PostProcessPreAARenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "Parameters/SceneRendererParams.h"
@@ -90,6 +91,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 
 	// Flush all writes that happened during prepare phrase
 	gfx::FlushPendingUploads();
+
+	renderer_utils::ProcessRenderStage<PreRenderingRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
 	renderer_utils::ProcessRenderStage<GlobalIlluminationRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 

@@ -29,6 +29,8 @@ private:
 
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
+	void RenderAerialPerspective(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const;
+
 	clouds::VolumetricCloudsRenderer m_volumetricCloudsRenderer;
 };
 

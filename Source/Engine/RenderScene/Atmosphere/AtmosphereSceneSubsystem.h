@@ -29,7 +29,9 @@ public:
 	virtual void Update() override;
 	// End RenderSceneSubsystem overrides
 
-	const AtmosphereContext& GetAtmosphereContext() const;
+	const AtmosphereContext& GetAtmosphereContext() const { return m_atmosphereContext; }
+
+	const AtmosphereParams& GetAtmosphereParams() const { return m_atmosphereParams; }
 
 	Bool IsAtmosphereTextureDirty() const;
 

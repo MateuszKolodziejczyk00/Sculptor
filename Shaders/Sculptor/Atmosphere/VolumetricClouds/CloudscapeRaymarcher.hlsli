@@ -38,13 +38,16 @@ struct CloudscapeRaymarchParams
 
     float3 ambient;
 
+    float maxVisibleDepth;
+
     static CloudscapeRaymarchParams Create()
     {
         CloudscapeRaymarchParams params;
 
-        params.samplesNum        = 128.f;
-        params.noise             = 1.f;
-        params.ambient           = 0.f;
+        params.samplesNum      = 128.f;
+        params.noise           = 1.f;
+        params.ambient         = 0.f;
+        params.maxVisibleDepth = -1.f;
 
         return params;
     }
@@ -69,7 +72,7 @@ float CloudPhaseFunction(in float cosTheta, in float phaseMultiplier)
 float3 SampleSunTransmittanceAtLocation(in float3 location, in float3 lightDirection)
 {
     const float3 bias = float3(0.f, 0.f, 200.f);
-    const float3 sampleLocationInAtmosphere = GetLocationInAtmosphere(u_atmosphereConstants, location + bias);
+    const float3 sampleLocationInAtmosphere = GetLocationInAtmosphere(u_atmosphereConstants, location * float3(10.f, 10.f, 1.f) + bias);
 
     const float3 sunTransmittance = GetTransmittanceFromLUT(u_atmosphereConstants, u_transmittanceLUT, u_linearClampSampler, sampleLocationInAtmosphere, -lightDirection);
 
@@ -144,7 +147,7 @@ float3 ComputeGroundLuminance()
 }
 
 
-bool ComputeRaymarchSegment(in Ray viewRay, out float2 segment)
+bool ComputeRaymarchSegment(in Ray viewRay, in float maxVisibibleDepth, out float2 segment)
 {
     const CloudscapeConstants cloudscape = u_cloudscapeConstants;
 
@@ -186,6 +189,11 @@ bool ComputeRaymarchSegment(in Ray viewRay, out float2 segment)
         }
     }
 
+    if(maxVisibibleDepth > 0.f)
+    {
+        segment = min(segment, maxVisibibleDepth);
+    }
+
     return !AreNearlyEqual(segment.x, segment.y);
 }
 
@@ -197,7 +205,7 @@ float RaymarchCloudscapeTransmittance(in CloudscapeRaymarchParams params)
     const Ray ray = params.ray;
 
     float2 raymarchSegment;
-    const bool shouldTrace = ComputeRaymarchSegment(ray, OUT raymarchSegment);
+    const bool shouldTrace = ComputeRaymarchSegment(ray, params.maxVisibleDepth, OUT raymarchSegment);
 
     if(!shouldTrace)
     {
@@ -252,7 +260,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     const Ray ray = params.ray;
 
     float2 raymarchSegment;
-    const bool shouldTrace = ComputeRaymarchSegment(ray, OUT raymarchSegment);
+    const bool shouldTrace = ComputeRaymarchSegment(ray, params.maxVisibleDepth, OUT raymarchSegment);
 
     if(!shouldTrace)
     {

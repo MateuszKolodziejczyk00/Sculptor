@@ -17,6 +17,7 @@
 
 
 #include "Atmosphere/Atmosphere.hlsli"
+#include "Atmosphere/AerialPerspective.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Sampling.hlsli"
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
@@ -86,6 +87,26 @@ float3 ComputeAtmosphereLuminance(in uint2 coords, in float2 uv, in float2 pixel
 
 	return (skyLuminance + sunLuminance);
 }
+
+
+struct IntegratedAerialPerspective
+{
+	float3 inScattering;
+	float transmittance;
+};
+
+
+IntegratedAerialPerspective SampleAerialPerspective(in float2 uv, in float linearDepth)
+{
+	const float apDepth = ComputeAPDepth(u_atmosphereParams.aerialPerspectiveParams, linearDepth);
+	const float4 apData = u_aerialPerspective.SampleLevel(u_linearSampler, float3(uv, apDepth), 0.f);
+
+	IntegratedAerialPerspective ap;
+	ap.inScattering = apData.xyz;
+	ap.transmittance = apData.w;
+
+	return ap;
+}
 #endif // ATMOSPHERE_ENABLED
 
 
@@ -97,10 +118,9 @@ struct IntegratedVolumetricFog
 
 
 #if VOLUMETRIC_FOG_ENABLED
-IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float depth)
+IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float linearDepth)
 {
 	float3 fogFroxelUVW = 0.f;
-	const float linearDepth = depth > 0.f ? ComputeLinearDepth(depth, u_sceneView) : 100000.f;
 	fogFroxelUVW = ComputeFogFroxelUVW(uv, linearDepth, u_fogParams.fogNearPlane, u_fogParams.fogFarPlane);
 
 	// We use froxel that is closer to avoid light leaking
@@ -118,21 +138,31 @@ IntegratedVolumetricFog SampleInegratedVolumetricFog(in float2 uv, in float dept
 }
 #endif // VOLUMETRIC_FOG_ENABLED
 
-
 #if VOLUMETRIC_CLOUDS_ENABLED
 float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelSize, in float3 background, in float3 backgroundInScattering)
 {
 	float4 volumetricClouds = u_volumetricClouds.Load(uint3(coords, 0u));
+
+	if(volumetricClouds.a == 1.f)
+	{
+		return background + backgroundInScattering;
+	}
+
 	volumetricClouds.rgb = ExposedLuminanceToLuminance(volumetricClouds.rgb);
 
 	const float cloudsDepth = u_volumetricCloudsDepth.Load(uint3(coords, 0u));
+	const float cloudsLinearDepth = ComputeLinearDepth(cloudsDepth, u_sceneView);
 
-	const IntegratedVolumetricFog integratedFog = SampleInegratedVolumetricFog(uv, cloudsDepth);
-	const float3 inScattering = ExposedLuminanceToLuminance(integratedFog.inScattering);
-	const float transmittance = integratedFog.transmittance;
-	volumetricClouds.rgb = inScattering + volumetricClouds.rgb * transmittance;
+	const IntegratedVolumetricFog integratedFog = SampleInegratedVolumetricFog(uv, cloudsLinearDepth);
+	const float3 fogInScattering = ExposedLuminanceToLuminance(integratedFog.inScattering);
+	const float fogTransmittance = integratedFog.transmittance;
+	volumetricClouds.rgb = fogInScattering + volumetricClouds.rgb * fogTransmittance;
 
-	return volumetricClouds.rgb + ((background + backgroundInScattering - inScattering) * volumetricClouds.a);
+	IntegratedAerialPerspective ap = SampleAerialPerspective(uv, cloudsLinearDepth);
+	const float3 apInScattering = ExposedLuminanceToLuminance(ap.inScattering) * (1.f - volumetricClouds.a) * fogTransmittance; // multiply by coverage because we assume that sky is behind. Sky already has this inside itself
+	const float apTransmittance = ap.transmittance;
+
+	return volumetricClouds.rgb + ((background + backgroundInScattering - fogInScattering - apInScattering) * volumetricClouds.a);
 }
 #endif // VOLUMETRIC_CLOUDS_ENABLED
 
@@ -232,6 +262,7 @@ void CompositeLightingCS(CS_INPUT input)
 	const float2 uv = (float2(pixel) + 0.5f) * pixelSize;
 
 	const float depth = u_depthTexture.Load(int3(pixel, 0)).x;
+	const float linearDepth = depth > 0.f ? ComputeLinearDepth(depth, u_sceneView) : 100000.f;
 
 	float3 luminance = ExposedLuminanceToLuminance(u_luminanceTexture[pixel]);
 
@@ -243,7 +274,7 @@ void CompositeLightingCS(CS_INPUT input)
 #endif // ATMOSPHERE_ENABLED
 
 #if VOLUMETRIC_FOG_ENABLED
-	const IntegratedVolumetricFog integratedFog = SampleInegratedVolumetricFog(uv, depth);
+	const IntegratedVolumetricFog integratedFog = SampleInegratedVolumetricFog(uv, linearDepth);
 #else
 	IntegratedVolumetricFog integratedFog;
 	integratedFog.inScattering  = float3(0.f, 0.f, 0.f);
@@ -257,10 +288,19 @@ void CompositeLightingCS(CS_INPUT input)
 	luminance += reflections.specular;
 #endif // RT_REFLECTIONS_ENABLED
 
-	luminance = luminance * integratedFog.transmittance;
+#if ATMOSPHERE_ENABLED
+	IntegratedAerialPerspective ap = SampleAerialPerspective(uv, linearDepth);
+	ap.inScattering = ap.inScattering * integratedFog.transmittance;
+#else
+	IntegratedAerialPerspective integratedFog;
+	integratedFog.inScattering  = float3(0.f, 0.f, 0.f);
+	integratedFog.transmittance = 1.f;
+#endif
+
+	luminance = luminance * integratedFog.transmittance * ap.transmittance;
 
 #if VOLUMETRIC_CLOUDS_ENABLED
-	luminance = CompositeVolumetricClouds(pixel, uv, pixelSize, luminance, ExposedLuminanceToLuminance(integratedFog.inScattering));
+	luminance = CompositeVolumetricClouds(pixel, uv, pixelSize, luminance, ExposedLuminanceToLuminance(integratedFog.inScattering + ap.inScattering));
 #else
 	luminance += ExposedLuminanceToLuminance(integratedFog.inScattering);
 #endif // VOLUMETRIC_CLOUDS_ENABLED

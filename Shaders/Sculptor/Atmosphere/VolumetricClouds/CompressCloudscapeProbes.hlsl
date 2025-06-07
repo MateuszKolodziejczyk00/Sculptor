@@ -12,6 +12,9 @@ struct CS_INPUT
 };
 
 
+#define RAYS_NUM 1024u
+
+
 [numthreads(1024, 1, 1)]
 void CompressCloudscapeProbesCS(CS_INPUT input)
 {
@@ -24,9 +27,10 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     const uint updatedProbeIdx = input.globalID.y;
 
     float4 traceResSum = 0.f;
+    float4 traceResSumNoWeight = 0.f;
     float4 weightSum = 0.f;
 
-    for(uint rayIdx = 0u; rayIdx < 1024u; ++rayIdx)
+    for(uint rayIdx = 0u; rayIdx < RAYS_NUM; ++rayIdx)
     {
         const float4 traceResult = u_traceResult.Load(uint3(rayIdx, updatedProbeIdx, 0u));
 	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(rayIdx, u_constants.raysPerProbe);
@@ -35,6 +39,8 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
 
         traceResSum += traceResult * weight;
         weightSum += weight;
+
+        traceResSumNoWeight += traceResult;
     }
 
     const float4 traceRes = traceResSum / weightSum;
@@ -44,4 +50,9 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     const uint2 probeDataCoords = probeCoords * u_constants.compressedProbeDataRes;
 
     u_rwCompressedProbes[probeDataCoords + coords] = traceRes;
+
+    if(input.globalID.x == 0u)
+    {
+        u_rwCompressedSimpleProbes[probeCoords] = (traceResSumNoWeight / RAYS_NUM);
+    }
 }

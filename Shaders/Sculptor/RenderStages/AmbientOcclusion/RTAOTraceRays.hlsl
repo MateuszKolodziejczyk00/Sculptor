@@ -16,10 +16,13 @@ void GenerateAmbientOcclusionRaysRTG()
 
     const float2 uv = (pixel + 0.5f) / float2(DispatchRaysDimensions().xy);
     const float depth = u_depthTexture.SampleLevel(u_nearestSampler, uv, 0);
+	const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
 
     float ao = 1.f;
 
-    if(depth > 0.f)
+    const float aoRange = 100.f;
+    
+    if(depth > 0.f && linearDepth < aoRange)
     {
         RTVisibilityPayload payload = { false };
 
@@ -37,8 +40,7 @@ void GenerateAmbientOcclusionRaysRTG()
         float pdf = 0.f;
         const float3 rayDirection = RandomVectorInCosineWeightedHemisphere(tangentSpace, random, OUT pdf);
 
-		const float linearDepth = ComputeLinearDepth(depth, u_sceneView);
-		const float bias = 0.0001f + linearDepth * 0.0002f;
+		const float bias = 0.0001f + linearDepth * 0.002f;
 
         RayDesc rayDesc;
         rayDesc.TMin        = u_rtaoParams.raysMinHitDistance;

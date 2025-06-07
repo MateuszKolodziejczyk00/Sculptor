@@ -37,6 +37,19 @@ CloudscapeSample SampleCloudscapeProbe(uint2 probeCoords, in float2 octUV)
     return res;
 }
 
+CloudscapeSample SampleCloudscapeIsotropic(in float3 location)
+{
+    const float2 uv = (location.xy - u_cloudscapeConstants.probesOrigin) * u_cloudscapeConstants.rcpProbesSpacing * u_cloudscapeConstants.uvPerProbe;
+
+    const float4 probesData = u_cloudscapeSimpleProbes.SampleLevel(u_cloudscapeProbesSampler, uv, 0.f);
+
+    CloudscapeSample result;
+    result.inScattering  = probesData.xyz;
+    result.transmittance = probesData.w;
+
+    return result;
+}
+
 CloudscapeSample SampleCloudscape(in float3 location, in float3 direction)
 {
     CloudscapeSample result;
@@ -71,6 +84,28 @@ CloudscapeSample SampleCloudscape(in float3 location, in float3 direction)
         result.inScattering  += currentSample.inScattering * weight;
         result.transmittance += currentSample.transmittance * weight;
     }
+
+    return result;
+}
+
+
+CloudscapeSample SampleHighResCloudscape(in float3 direction)
+{
+    CloudscapeSample result;
+
+    if(direction.z <= 0.f)
+    {
+        result.inScattering = 0.f;
+        result.transmittance = 1.f;
+        return result;
+    }
+
+    const float2 octUV = OctahedronEncodeHemisphereNormal(direction);
+
+    const float4 probesData = u_cloudscapeHighResProbe.SampleLevel(u_cloudscapeProbesSampler, octUV, 0.f);
+
+    result.inScattering  = probesData.xyz;
+    result.transmittance = probesData.w;
 
     return result;
 }

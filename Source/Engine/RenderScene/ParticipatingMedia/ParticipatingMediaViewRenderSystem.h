@@ -32,6 +32,7 @@ struct VolumetricFogParams
 	{ }
 
 	rg::RGTextureViewHandle participatingMediaTextureView;
+	rg::RGTextureViewHandle indirectInScatteringTextureView;
 	rg::RGTextureViewHandle inScatteringTextureView;
 	rg::RGTextureViewHandle integratedInScatteringTextureView;
 

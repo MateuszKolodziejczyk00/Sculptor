@@ -19,21 +19,22 @@ class RenderView;
 enum class ERenderStage : Flags32
 {
 	None							= 0,
-	GlobalIllumination				= BIT(0),
-	ShadowMap						= BIT(1),
-	DepthPrepass					= BIT(2),
-	VisibilityBuffer				= BIT(3),
-	MotionAndDepth					= BIT(4),
-	DownsampleGeometryTextures		= BIT(5),
-	AmbientOcclusion				= BIT(6),
-	DirectionalLightsShadowMasks	= BIT(7),
-	ForwardOpaque					= BIT(8),
-	DeferredShading					= BIT(9),
-	SpecularReflections				= BIT(10),
-	CompositeLighting				= BIT(11),
-	PostProcessPreAA				= BIT(12),
-	AntiAliasing					= BIT(13),
-	HDRResolve						= BIT(14),
+	PreRendering					= BIT(0),
+	GlobalIllumination				= BIT(1),
+	ShadowMap						= BIT(2),
+	DepthPrepass					= BIT(3),
+	VisibilityBuffer				= BIT(4),
+	MotionAndDepth					= BIT(5),
+	DownsampleGeometryTextures		= BIT(6),
+	AmbientOcclusion				= BIT(7),
+	DirectionalLightsShadowMasks	= BIT(8),
+	ForwardOpaque					= BIT(9),
+	DeferredShading					= BIT(10),
+	SpecularReflections				= BIT(11),
+	CompositeLighting				= BIT(12),
+	PostProcessPreAA				= BIT(13),
+	AntiAliasing					= BIT(14),
+	HDRResolve						= BIT(15),
 
 	RayTracingRenderStages			= DirectionalLightsShadowMasks,
 
@@ -42,7 +43,7 @@ enum class ERenderStage : Flags32
 	PostProcessStages				= PostProcessPreAA | HDRResolve,
 
 	// Presets
-	DeferredRendererStages			= VisibilityBufferStages | DeferredLightingStages | PostProcessStages,
+	DeferredRendererStages			= PreRendering | VisibilityBufferStages | DeferredLightingStages | PostProcessStages,
 	ShadowMapRendererStages			= ShadowMap,
 };
 

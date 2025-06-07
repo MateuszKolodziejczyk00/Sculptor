@@ -23,6 +23,7 @@ class ViewRenderingSpec;
 class DepthCullingDS;
 class ViewShadingInputDS;
 class ShadowMapsDS;
+struct VolumetricFogParams;
 
 
 namespace clouds
@@ -133,19 +134,24 @@ using RenderViewEntryDelegate = lib::MulticastDelegate<void(rg::RenderGraphBuild
 namespace RenderViewEntryDelegates
 {
 
-inline static const lib::HashedString CloudsTransmittanceMap = "CloudsTransmittanceMap";
+inline static const lib::HashedString RenderAerialPerspective = "RenderAerialPerspective";
+struct RenderAerialPerspectiveData
+{
+	const VolumetricFogParams* fogParams = nullptr;
+};
 
-inline static const lib::HashedString FillShadingDS          = "FillShadingDS";
+inline static const lib::HashedString CloudsTransmittanceMap  = "CloudsTransmittanceMap";
+
+inline static const lib::HashedString FillShadingDS           = "FillShadingDS";
 struct FillShadingDSData
 {
 	lib::MTHandle<ViewShadingInputDS> ds;
 };
 
-inline static const lib::HashedString VolumetricClouds       = "VolumetricClouds";
+inline static const lib::HashedString VolumetricClouds        = "VolumetricClouds";
 
 /** Delegate for rendering objects onto view final texture after applying all post processes */
-inline static const lib::HashedString RenderSceneDebugLayer  = "SceneDebugLayer";
-
+inline static const lib::HashedString RenderSceneDebugLayer   = "SceneDebugLayer";
 struct RenderSceneDebugLayerData
 {
 	rg::RGTextureViewHandle texture;
@@ -213,6 +219,8 @@ struct ShadingViewContext
 	
 	rg::RGTextureViewHandle skyViewLUT;
 	rg::RGTextureViewHandle skyProbe;
+
+	rg::RGTextureViewHandle aerialPerspective;
 
 	rg::RGTextureViewHandle volumetricClouds;
 	rg::RGTextureViewHandle volumetricCloudsDepth;

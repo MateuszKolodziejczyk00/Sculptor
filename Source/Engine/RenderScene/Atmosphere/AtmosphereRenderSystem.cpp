@@ -10,6 +10,7 @@
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Lights/LightTypes.h"
+#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 
 namespace spt::rsc
@@ -188,6 +189,73 @@ static rg::RGTextureViewHandle RenderSkyProbe(rg::RenderGraphBuilder& graphBuild
 } // render_sky_probe
 
 
+namespace aerial_perspective
+{
+
+BEGIN_SHADER_STRUCT(RenderAerialPerspectiveConstants)
+	SHADER_STRUCT_FIELD(Real32, participatingMediaNear)
+	SHADER_STRUCT_FIELD(Real32, participatingMediaFar)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(RenderAerialPerspectiveDS, rg::RGDescriptorSetState<RenderAerialPerspectiveDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferRefBinding<AtmosphereParams>),                    u_atmosphereParams)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RenderAerialPerspectiveConstants>),       u_renderAPConstants)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),              u_directionalLights)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<Real32>),                           u_dirLightShadowTerm)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture3DBinding<math::Vector3f>),                   u_indirectInScatteringTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture3DBinding<math::Vector4f>),                            u_rwAerialPerspective)
+DS_END();
+
+
+static rdr::PipelineStateID CompileRenderAerialPerspectivePipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/RenderAerialPerspective.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RenderAerialPerspectiveCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("RenderAerialPerspectivePipeline"), shader);
+}
+
+
+static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const AtmosphereSceneSubsystem& atmosphereSubsystem, const RenderViewEntryDelegates::RenderAerialPerspectiveData& apData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RenderView& renderView = viewSpec.GetRenderView();
+
+	const AtmosphereContext& atmosphere = atmosphereSubsystem.GetAtmosphereContext();
+	const AtmosphereParams& atmosphereParams = atmosphereSubsystem.GetAtmosphereParams();
+
+	const math::Vector3u apRes = atmosphereParams.aerialPerspectiveParams.resolution;
+
+	const rg::RGTextureViewHandle aerialPerspective = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Aerial Perspective"), rg::TextureDef(apRes, rhi::EFragmentFormat::RGBA16_S_Float));
+
+	static const rdr::PipelineStateID pipeline = CompileRenderAerialPerspectivePipeline();
+
+	RenderAerialPerspectiveConstants shaderConstants;
+	shaderConstants.participatingMediaNear = apData.fogParams->nearPlane;
+	shaderConstants.participatingMediaFar  = apData.fogParams->farPlane;
+
+	lib::MTHandle<RenderAerialPerspectiveDS> ds = graphBuilder.CreateDescriptorSet<RenderAerialPerspectiveDS>(RENDERER_RESOURCE_NAME("RenderAerialPerspectiveDS"));
+	ds->u_atmosphereParams            = atmosphere.atmosphereParamsBuffer->CreateFullView();
+	ds->u_renderAPConstants           = shaderConstants;
+	ds->u_directionalLights           = atmosphere.directionalLightsBuffer->CreateFullView();
+	ds->u_transmittanceLUT            = atmosphere.transmittanceLUT;
+	ds->u_dirLightShadowTerm          = apData.fogParams->directionalLightShadowTerm;
+	ds->u_indirectInScatteringTexture = apData.fogParams->indirectInScatteringTextureView;
+	ds->u_rwAerialPerspective         = aerialPerspective;
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Aerial Perspective"),
+						  pipeline,
+						  math::Vector2u(apRes.x(), apRes.y()),
+						  rg::BindDescriptorSets(std::move(ds), renderView.GetRenderViewDS()));
+
+	return aerialPerspective;
+}
+
+} // aerial_perspective
+
+
 AtmosphereRenderSystem::AtmosphereRenderSystem()
 {
 	m_supportedStages = rsc::ERenderStage::DeferredShading;
@@ -250,6 +318,23 @@ void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder,
 	
 	shadingViewContext.skyViewLUT = skyViewLUT;
 	shadingViewContext.skyProbe   = skyProbe;
+
+	SPT_CHECK(viewSpec.SupportsStage(ERenderStage::PreRendering));
+
+	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderAerialPerspective).AddRawMember(this, &AtmosphereRenderSystem::RenderAerialPerspective);
+}
+
+void AtmosphereRenderSystem::RenderAerialPerspective(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const
+{
+	SPT_PROFILER_FUNCTION();
+
+	const RenderViewEntryDelegates::RenderAerialPerspectiveData& apData = context.Get<RenderViewEntryDelegates::RenderAerialPerspectiveData>();
+
+	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
+	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
+
+	shadingViewContext.aerialPerspective = aerial_perspective::RenderAerialPerspective(graphBuilder, viewSpec, atmosphereSubsystem, apData);
 }
 
 } // spt::rsc

@@ -29,6 +29,13 @@ AtmosphereSceneSubsystem::AtmosphereSceneSubsystem(RenderScene& owningScene)
 	m_atmosphereParams.ozoneAbsorption       = math::Vector3f(0.650f, 1.881f, 0.085f);
 	m_atmosphereParams.transmittanceAtZenith = atmosphere_utils::ComputeTransmittanceAtZenith(m_atmosphereParams);
 
+	const math::Vector3u apResolution(32u, 32u, 64u);
+
+	m_atmosphereParams.aerialPerspectiveParams.resolution    = apResolution;
+	m_atmosphereParams.aerialPerspectiveParams.rcpResolution = apResolution.cast<Real32>().cwiseInverse();
+	m_atmosphereParams.aerialPerspectiveParams.nearPlane     = 1.f;
+	m_atmosphereParams.aerialPerspectiveParams.farPlane      = 8000.f;
+
 	InitializeResources();
 }
 
@@ -55,11 +62,6 @@ void AtmosphereSceneSubsystem::Update()
 		m_isAtmosphereContextDirty = false;
 		m_isAtmosphereTextureDirty = true;
 	}
-}
-
-const AtmosphereContext& AtmosphereSceneSubsystem::GetAtmosphereContext() const
-{
-	return m_atmosphereContext;
 }
 
 Bool AtmosphereSceneSubsystem::IsAtmosphereTextureDirty() const

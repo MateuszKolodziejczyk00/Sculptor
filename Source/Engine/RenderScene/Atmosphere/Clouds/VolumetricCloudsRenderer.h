@@ -33,7 +33,9 @@ private:
 
 	CloudscapeContext CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs);
 
-	void UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+	void UpdateAllCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+	void UpdateCloudscapeProbesPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext);
+	void UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, lib::Span<const math::Vector2u> probeCoords);
 
 	void InitTextures();
 
@@ -45,6 +47,8 @@ private:
 
 	Bool m_volumetricCloudsEnabled = false;
 
+	Bool m_enqueuedCloudscapeProbesGlobalUpdate = true;
+
 	lib::SharedPtr<rdr::TextureView> m_baseShapeNoiseTexture;
 	lib::SharedPtr<rdr::TextureView> m_detailShapeNoiseTexture;
 
@@ -55,6 +59,8 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_curlNoise;
 
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeProbes;
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeSimpleProbes;
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeHighResProbe;
 
 	CloudscapeConstants m_cloudscapeConstants;
 

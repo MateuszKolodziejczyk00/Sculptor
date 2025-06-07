@@ -53,6 +53,9 @@ BEGIN_SHADER_STRUCT(CloudscapeConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f, uvBorder)
 	SHADER_STRUCT_FIELD(Real32,         probesHeight)
 
+	SHADER_STRUCT_FIELD(math::Vector2u, highResProbeRes)
+	SHADER_STRUCT_FIELD(math::Vector2f, highResProbeRcpRes)
+
 	SHADER_STRUCT_FIELD(DirectionalLightGPUData, mainDirectionalLight)
 
 	SHADER_STRUCT_FIELD(Real32, time)
@@ -75,6 +78,8 @@ DS_END();
 
 DS_BEGIN(CloudscapeProbesDS, rg::RGDescriptorSetState<CloudscapeProbesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeProbes)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeSimpleProbes)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeHighResProbe)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_cloudscapeProbesSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CloudscapeConstants>),                    u_cloudscapeConstants)
 DS_END();

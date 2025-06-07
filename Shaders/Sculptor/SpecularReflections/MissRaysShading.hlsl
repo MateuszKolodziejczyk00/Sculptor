@@ -61,7 +61,7 @@ void MissRaysShadingCS(CS_INPUT input)
 			const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, worldLocation);
 			float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
 
-			const CloudscapeSample cloudscapeSample = SampleCloudscape(worldLocation, rayDirection);
+			const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
 			luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
 			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);

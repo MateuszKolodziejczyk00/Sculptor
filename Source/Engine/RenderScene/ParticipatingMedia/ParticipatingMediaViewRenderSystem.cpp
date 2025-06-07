@@ -282,7 +282,7 @@ static rdr::PipelineStateID CompileComputeIndirectInScatteringPipeline()
 }
 
 
-static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const ViewRenderingSpec& viewSpec, const VolumetricFogParams& fogParams, const VolumetricFogRenderingParams& fogRenderingParams)
+static Bool Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const ViewRenderingSpec& viewSpec, const VolumetricFogParams& fogParams, const VolumetricFogRenderingParams& fogRenderingParams)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -291,21 +291,19 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 
 	if (!ddgiDS.IsValid())
 	{
-		return rg::RGTextureViewHandle();
+		graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Indirect In-Scattering Texture"), fogParams.indirectInScatteringTextureView, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
+		return false;
 	}
 
+	const math::Vector3u indirectInScatteringRes = fogParams.indirectInScatteringTextureView->GetResolution();
+
 	const RenderView& renderView = viewSpec.GetRenderView();
-
-	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(2u, 2u, 1u));
-
-	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
-																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
 
 	IndirectInScatteringConstants indirectInScatteringConstants;
 	indirectInScatteringConstants.indirectGridRes = indirectInScatteringRes.cast<Real32>();
 
 	const lib::MTHandle<IndirectInScatteringDS> indirectInScatteringDS = graphBuilder.CreateDescriptorSet<IndirectInScatteringDS>(RENDERER_RESOURCE_NAME("IndirectInScatteringDS"));
-	indirectInScatteringDS->u_inScatteringTexture           = indirectInScatteringTexture;
+	indirectInScatteringDS->u_inScatteringTexture           = fogParams.indirectInScatteringTextureView;
 	indirectInScatteringDS->u_indirectInScatteringConstants = indirectInScatteringConstants;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(indirectInScatteringRes, math::Vector3u(4u, 4u, 2u));
@@ -320,7 +318,7 @@ static rg::RGTextureViewHandle Render(rg::RenderGraphBuilder& graphBuilder, cons
 												 renderView.GetRenderViewDS(),
 												 std::move(ddgiDS)));
 
-	return indirectInScatteringTexture;
+	return true;
 }
 
 } // indirect
@@ -357,19 +355,19 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 	const ViewSpecShadingParameters& shadingParams = viewSpec.GetBlackboard().Get<ViewSpecShadingParameters>();
 
-	const rg::RGTextureViewHandle indirectInScattering = indirect::Render(graphBuilder, renderScene, viewSpec, fogParams, fogRenderingParams);
+	const Bool hasValidIndirectInScattering = indirect::Render(graphBuilder, renderScene, viewSpec, fogParams, fogRenderingParams);
 
 	VolumetricFogInScatteringParams inScatteringParams;
 	inScatteringParams.paseFunctionAnisotrophy             = parameters::phaseFunctionAnisotrophy;
 	inScatteringParams.enableDirectionalLightsInScattering = parameters::enableDirectionalLightsInScattering;
-	inScatteringParams.enableIndirectInScattering          = indirectInScattering.IsValid();
+	inScatteringParams.enableIndirectInScattering          = hasValidIndirectInScattering;
 
 	const lib::MTHandle<ComputeInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<ComputeInScatteringDS>(RENDERER_RESOURCE_NAME("ComputeInScatteringDS"));
 	computeInScatteringDS->u_participatingMediaTexture   = fogParams.participatingMediaTextureView;
 	computeInScatteringDS->u_directionalLightShadowTerm  = fogParams.directionalLightShadowTerm;
 	computeInScatteringDS->u_inScatteringTexture         = fogParams.inScatteringTextureView;
 	computeInScatteringDS->u_inScatteringParams          = inScatteringParams;
-	computeInScatteringDS->u_indirectInScatteringTexture = indirectInScattering;
+	computeInScatteringDS->u_indirectInScatteringTexture = fogParams.indirectInScatteringTextureView;
 
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(fogParams.volumetricFogResolution, math::Vector3u(4u, 4u, 4u));
 
@@ -411,8 +409,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const lib::MTHandle<IntegrateInScatteringDS> computeInScatteringDS = graphBuilder.CreateDescriptorSet<IntegrateInScatteringDS>(RENDERER_RESOURCE_NAME("IntegrateInScatteringDS"));
-	computeInScatteringDS->u_inScatteringTexture			= fogParams.inScatteringTextureView;
-	computeInScatteringDS->u_integratedInScatteringTexture	= fogParams.integratedInScatteringTextureView;
+	computeInScatteringDS->u_inScatteringTexture           = fogParams.inScatteringTextureView;
+	computeInScatteringDS->u_integratedInScatteringTexture = fogParams.integratedInScatteringTextureView;
 
 	const math::Vector3u dispatchElements = math::Vector3u(fogParams.volumetricFogResolution.x(), fogParams.volumetricFogResolution.y(), 1u);
 	const math::Vector3u dispatchSize = math::Utils::DivideCeil(dispatchElements, math::Vector3u(8u, 8u, 1u));
@@ -490,6 +488,12 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	const rg::RGTextureViewHandle inScatteringTextureView = graphBuilder.CreateTextureView(RG_DEBUG_NAME("In-Scattering Texture"), rg::TextureDef(volumetricFogRes, rhi::EFragmentFormat::RGBA16_S_Float));
 
+
+	const math::Vector3u indirectInScatteringRes = math::Utils::DivideCeil(volumetricFogRes, math::Vector3u(2u, 2u, 1u));
+
+	rg::RGTextureViewHandle indirectInScatteringTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Indirect In Scattering Texture"),
+																						 rg::TextureDef(indirectInScatteringRes, rhi::EFragmentFormat::B10G11R11_U_Float));
+
 	const Uint64 frameIdx = renderScene.GetCurrentFrameRef().GetFrameIdx();
 	const Uint32 jitterSequenceIdx = static_cast<Uint32>(frameIdx) & 7u;
 
@@ -519,6 +523,8 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 
 	const rg::RGTextureViewHandle tileMinDepth = tile_min_depth::RenderTileMinDepth(graphBuilder, shadingViewContext.depth, math::Vector2u(volumetricTileSize, volumetricTileSize));
 
+	const rg::RGTextureViewHandle dirLightShadowTerm = graphBuilder.AcquireExternalTextureView(m_directionalLightShadowTerm.GetCurrent());
+
 	VolumetricFogRenderingParams fogRenderingParams;
 	fogRenderingParams.volumetricFogDS = graphBuilder.CreateDescriptorSet<RenderVolumetricFogDS>(RENDERER_RESOURCE_NAME("VolumetricFogDS"));
 	fogRenderingParams.volumetricFogDS->u_fogConstants     = fogConstants;
@@ -528,9 +534,10 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	m_volumetricFogParams = VolumetricFogParams{};
 	m_volumetricFogParams.participatingMediaTextureView     = participatingMediaTextureView;
 	m_volumetricFogParams.inScatteringTextureView           = inScatteringTextureView;
+	m_volumetricFogParams.indirectInScatteringTextureView   = indirectInScatteringTexture;
 	m_volumetricFogParams.integratedInScatteringTextureView = integratedInScatteringTextureView;
 	m_volumetricFogParams.volumetricFogResolution           = volumetricFogRes;
-	m_volumetricFogParams.directionalLightShadowTerm        = graphBuilder.AcquireExternalTextureView(m_directionalLightShadowTerm.GetCurrent());
+	m_volumetricFogParams.directionalLightShadowTerm        = dirLightShadowTerm;
 	m_volumetricFogParams.historyDirectionalLightShadowTerm = graphBuilder.TryAcquireExternalTextureView(m_directionalLightShadowTerm.GetHistory());
 	m_volumetricFogParams.nearPlane                         = renderView.GetNearPlane();
 	m_volumetricFogParams.farPlane                          = parameters::fogFarPlane;
@@ -542,6 +549,16 @@ void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGrap
 	in_scattering::Render(graphBuilder, renderScene, viewSpec, m_volumetricFogParams, fogRenderingParams);
 
 	integrate_in_scattering::Render(graphBuilder, renderScene, viewSpec, m_volumetricFogParams, fogRenderingParams);
+
+
+	{
+		RenderViewEntryDelegates::RenderAerialPerspectiveData apData;
+		apData.fogParams = &m_volumetricFogParams;
+
+		RenderViewEntryContext apContext;
+		apContext.Bind(apData);
+		viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderAerialPerspective).Broadcast(graphBuilder, renderScene, viewSpec, apContext);
+	}
 
 	if (parameters::enableVolumetricFogBlur)
 	{

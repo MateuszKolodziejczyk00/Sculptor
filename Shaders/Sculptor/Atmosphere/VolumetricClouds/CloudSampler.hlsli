@@ -120,12 +120,10 @@ struct CloudsSampler
 
         const float3 weatherMap = SampleWeather(location);
 
-        float cloudsCoverage = weatherMap.b;
-        float cloudsHeight = weatherMap.g + params.globalCloudsHeightOffset;
+        float cloudsCoverage = saturate(weatherMap.b + params.globalCoverageOffset);
+        float cloudsHeight = saturate(weatherMap.g + params.globalCloudsHeightOffset);
 
-        const float anvil = weatherMap.b;
-
-        if(cloudsCoverage < 0.001f && anvil < 0.001f)
+        if(cloudsCoverage < 0.001f)
         {
             return 0.f;
         }
@@ -134,12 +132,10 @@ struct CloudsSampler
 
         float densityAltitude =  params.densityLUT.SampleLevel(params.densityLUTSampler, float2(cloudsHeight, 1.f - totalH), 0.f);
 
-        float coverage = saturate(params.globalCoverageOffset + cloudsCoverage);
-
         const float baseCloudNoise = SampleBaseShapeNoise(location);
 
-        float baseCloud = saturate(baseCloudNoise - (1.f - densityAltitude * coverage));
-        baseCloud *= max(coverage, 0.f);
+        float baseCloud = saturate(baseCloudNoise - (1.f - densityAltitude * cloudsCoverage));
+        baseCloud *= max(cloudsCoverage, 0.f);
 
         if(baseCloud <= 0.001f)
         {
@@ -166,11 +162,11 @@ struct CloudsSampler
             cloudDensity = Remap<float>(cloudDensity, min(params.detailShapeNoiseStrength1 * edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
         }
 
-        cloudDensity = pow(saturate(cloudDensity), Remap<float>(h, 0.4f, 0.7f, 1.0f, 0.8f));
+        cloudDensity = pow(saturate(cloudDensity), Remap<float>(h, 0.4f, 0.7f, 1.2f, 0.6f));
+
+        float ambient = 1.f - 0.6f * max(1.f - h, 0.f);
 
         const float finalDensity = cloudDensity * params.globalDensity;
-
-        float ambient = 1.f - 0.4f * saturate(finalDensity) * max(1.f - h, 0.f);
         
         return float2(finalDensity, ambient);
     }

@@ -127,8 +127,8 @@ float2 OctahedronEncodeHemisphereNormal(in float3 direction)
 	float2 coords = direction.xy * (1.f / l1norm);
 
     const float2x2 coordsTransform = float2x2(
-        0.5f, 0.5f,
-        -0.5f, 0.5f
+        1.f,  1.f,
+        -1.f, 1.f
     );
 
     coords = mul(coordsTransform, coords);
