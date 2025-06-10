@@ -27,7 +27,9 @@ namespace params
 RendererFloatParameter adaptationSpeed("Adaptation Speed", { "Exposure" }, 6.0f, 0.f, 20.f);
 RendererFloatParameter rejectedDarkPixelsPercentage("Rejected Dark Pixels Percentage", { "Exposure" }, 0.6f, 0.f, 0.8f);
 RendererFloatParameter rejectedBrightPixelsPercentage("Rejected Bright Pixels Percentage", { "Exposure" }, 0.05f, 0.f, 0.1f);
-RendererFloatParameter evCompensation("EV Compensation", { "Exposure" }, -0.7f, -10.f, 10.f);
+
+RendererFloatParameter ec0("EV Compensation 0", { "Exposure" }, 2.5f, -10.f, 10.f);
+RendererFloatParameter ec1("EV Compensation 1", { "Exposure" }, -2.f, -10.f, 10.f);
 
 RendererIntParameter bilateralGridBlurXKernel("Blur X Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
 RendererIntParameter bilateralGridBlurYKernel("Blur Y Kernel", { "LocalTonemap", "BilateralGrid" }, 12, 0, 32);
@@ -55,7 +57,8 @@ BEGIN_SHADER_STRUCT(ExposureSettings)
 	SHADER_STRUCT_FIELD(Real32, adaptationSpeed)
 	SHADER_STRUCT_FIELD(Real32, rejectedDarkPixelsPercentage)
 	SHADER_STRUCT_FIELD(Real32, rejectedBrightPixelsPercentage)
-	SHADER_STRUCT_FIELD(Real32, evCompensation)
+	SHADER_STRUCT_FIELD(Real32, ec0)
+	SHADER_STRUCT_FIELD(Real32, ec1)
 END_SHADER_STRUCT();
 
 
@@ -215,7 +218,8 @@ Outputs RenderAutoExposure(rg::RenderGraphBuilder& graphBuilder, const RenderSce
 	exposureSettings.adaptationSpeed                = params::adaptationSpeed;
 	exposureSettings.rejectedDarkPixelsPercentage   = params::rejectedDarkPixelsPercentage;
 	exposureSettings.rejectedBrightPixelsPercentage = params::rejectedBrightPixelsPercentage;
-	exposureSettings.evCompensation                 = params::evCompensation;
+	exposureSettings.ec0                            = params::ec0;
+	exposureSettings.ec1                            = params::ec1;
 
 	const rg::RGBufferViewHandle luminanceHistogram = luminance_histogram_internal::CreateLuminanceHistogram(graphBuilder, viewSpec, exposureSettings, inputs.linearColor);
 	luminance_histogram_internal::ComputeAdaptedLuminance(graphBuilder, viewSpec, exposureSettings, luminanceHistogram, inputs.viewExposureData);

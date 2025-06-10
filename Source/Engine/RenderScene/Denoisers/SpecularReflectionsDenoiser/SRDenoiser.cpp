@@ -109,7 +109,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGTextureViewHandle temporalVarianceDiffuseTexture         = graphBuilder.AcquireExternalTextureView(lib::Ref(m_temporalVarianceDiffuseTexture));
 	const rg::RGTextureViewHandle historyTemporalVarianceDiffuseTexture  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyTemporalVarianceDiffuseTexture));
 
-	if (m_hasValidHistory)
+	if (m_hasValidHistory && !params.resetAccumulation)
 	{
 		SPT_CHECK(params.historyNormalsTexture.IsValid());
 		SPT_CHECK(params.historyDepthTexture.IsValid());

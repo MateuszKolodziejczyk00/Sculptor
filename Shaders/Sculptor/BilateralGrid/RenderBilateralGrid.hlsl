@@ -75,8 +75,8 @@ BinWeights ComputeBinWeights(in float binIdx)
 
 	BinWeights result;
 	result.binIdx = uint(binIdx);
-	result.binWeight = decimalPart * 0.01f;
-	result.nextBinWeight = 100 - result.binWeight;
+	result.binWeight = decimalPart * 10000;
+	result.nextBinWeight = 10000 - result.binWeight;
 
 	return result;
 }
@@ -105,7 +105,7 @@ void WriteGridCell(in uint3 cellCoords)
 {
 	if(cellCoords.z < GRID_DEPTH)
 	{
-		const float cellWeight = localGridCellWeights[cellCoords.z] * 0.01f / GROUP_SIZE;
+		const float cellWeight = localGridCellWeights[cellCoords.z] * 0.0001f / GROUP_SIZE;
 		const float cellLogLuminance = ComputeGridDepthLogLuminance(cellCoords.z, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange);
 		const float2 cellValue = float2(cellLogLuminance * cellWeight, cellWeight);
 		u_bilateralGridTexture[cellCoords] = cellValue;
@@ -116,7 +116,7 @@ void WriteGridCell(in uint3 cellCoords)
 void OutputAverageLogLuminance(in uint2 outputPixel, in uint pixelsNum)
 {
 	const uint waveIdx = WaveGetLaneIndex();
-	const float2 cellWeights = float2(localGridCellWeights[2 * waveIdx], localGridCellWeights[2 * waveIdx + 1]) * 0.01f / pixelsNum;
+	const float2 cellWeights = float2(localGridCellWeights[2 * waveIdx], localGridCellWeights[2 * waveIdx + 1]) * 0.0001f / pixelsNum;
 	const float2 cellLogLuminance = float2(
 		ComputeGridDepthLogLuminance(2 * waveIdx, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange),
 		ComputeGridDepthLogLuminance(2 * waveIdx + 1, u_bilateralGridConstants.minLogLuminance, u_bilateralGridConstants.logLuminanceRange));

@@ -77,8 +77,19 @@ public:
 	Real32 sunMovementSpeed = 0.08f;
 
 	Real32 sunAngleYaw = 0.0f;
-	Real32 sunAnglePitch = 0.0f;
+	Real32 sunAnglePitch = 0.7f;
 	Bool sunAngleDirty = false;
+
+	enum class EDirLightType
+	{
+		Sun,
+		Moon
+	};
+
+	EDirLightType dirLightType = EDirLightType::Sun;
+	Bool dirLightTypeDirty = false;
+
+	Bool resetAccumulation = false;
 
 private:
 
@@ -110,6 +121,8 @@ private:
 	Bool m_isViewportFocused;
 
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
+
+	Bool resetAccumulationRenderFrame = false;
 };
 
 } // spt::ed

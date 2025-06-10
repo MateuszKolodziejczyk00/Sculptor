@@ -157,7 +157,7 @@ void BloomCompositeCS(CS_INPUT input)
 
 		const float3 imageColor = u_outputTexture[pixel].rgb;
 
-		bloom = lerp(bloom, imageColor, 0.955f);
+		bloom = lerp(bloom, imageColor, 0.99f);
 
 		float3 lensDirt = 0.f;
 		if (u_bloomCompositeInfo.hasLensDirtTexture)

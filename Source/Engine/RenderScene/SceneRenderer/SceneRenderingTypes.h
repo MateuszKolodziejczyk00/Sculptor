@@ -58,11 +58,8 @@ inline Uint32 RenderStageToIndex(ERenderStage stage)
 
 struct SceneRendererSettings
 {
-	SceneRendererSettings()
-		: outputFormat(rhi::EFragmentFormat::None)
-	{ }
-
-	rhi::EFragmentFormat outputFormat;
+	rhi::EFragmentFormat outputFormat = rhi::EFragmentFormat::None;
+	Bool resetAccumulation            = false;
 };
 
 

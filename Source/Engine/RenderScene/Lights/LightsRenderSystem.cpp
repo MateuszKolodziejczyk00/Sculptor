@@ -433,9 +433,9 @@ void LightsRenderSystem::CollectRenderViews(const RenderScene& renderScene, cons
 	}
 }
 
-void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+void LightsRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
-	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
 	// Cache shadow maps for each views for this frame
 	CacheShadowMapsDS(graphBuilder, renderScene);

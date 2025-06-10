@@ -26,20 +26,20 @@ namespace spt::rsc::clouds
 namespace params
 {
 
-RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 1800.f, 0.f, 60000.f);
+RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 800.f, 0.f, 60000.f);
 RendererFloatParameter cirrusCloudsMeters("Cirrus Clouds Meters", { "Clouds" }, 40000.f, 0.f, 60000.f);
 
-RendererFloatParameter detailShapeNoiseStrength0("Detail Shape Noise Strength (Octave 0)", { "Clouds" }, 0.4f, 0.f, 2.f);
-RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octave 0)", { "Clouds" }, 800.f, 0.f, 20000.f);
-RendererFloatParameter detailShapeNoiseStrength1("Detail Shape Noise Strength (Octave 1)", { "Clouds" }, 0.4f, 0.f, 2.f);
+RendererFloatParameter detailShapeNoiseStrength0("Detail Shape Noise Strength (Octave 0)", { "Clouds" }, 0.45f, 0.f, 2.f);
+RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octave 0)", { "Clouds" }, 255.f, 0.f, 20000.f);
+RendererFloatParameter detailShapeNoiseStrength1("Detail Shape Noise Strength (Octave 1)", { "Clouds" }, 0.0f, 0.f, 2.f);
 RendererFloatParameter detailShapeNoiseMeters1("Detail Shape Noise Meters (Octave 1)", { "Clouds" }, 255.f, 0.f, 20000.f);
 
-RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 34.f, 0.f, 500.f);
-RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 12000.f, 0.f, 40000.f);
+RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 5.f, 0.f, 500.f);
+RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 2222.f, 0.f, 40000.f);
 
 RendererFloatParameter globalDensity("Global Density", { "Clouds" }, 1.f, 0.f, 5.f);
-RendererFloatParameter globalCoverageOffset("Global Coverage Offset", { "Clouds" }, 0.33f, -1.f, 1.f);
-RendererFloatParameter cloudsHeightOffset("Clouds Height Offset", { "Clouds" }, 0.3f, -1.f, 1.f);
+RendererFloatParameter globalCoverageOffset("Global Coverage Offset", { "Clouds" }, 0.4f, -1.f, 1.f);
+RendererFloatParameter cloudsHeightOffset("Clouds Height Offset", { "Clouds" }, 0.0f, -1.f, 1.f);
 
 RendererBoolParameter enableVolumetricClouds("Enable Volumetric Clouds", { "Clouds" }, true);
 
@@ -477,13 +477,13 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 	InitTextures();
 }
 
-void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	m_volumetricCloudsEnabled = params::enableVolumetricClouds;
 
 	if (m_volumetricCloudsEnabled)
 	{
-		const CloudscapeContext cloudscapeContext = CreateFrameCloudscapeContext(graphBuilder, renderScene, viewSpecs);
+		const CloudscapeContext cloudscapeContext = CreateFrameCloudscapeContext(graphBuilder, renderScene, viewSpecs, settings);
 
 		sun_clouds_transmittance::CloudsTransmittanceMapParams cloudsTransmittanceParams;
 		cloudsTransmittanceParams.cloudscape = &cloudscapeContext;
@@ -505,7 +505,7 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::VolumetricClouds).AddRawMember(this, &VolumetricCloudsRenderer::RenderVolumetricClouds, cloudscapeContext);
 
-	if (m_enqueuedCloudscapeProbesGlobalUpdate)
+	if (m_enqueuedCloudscapeProbesGlobalUpdate || cloudscapeContext.resetAccumulation)
 	{
 		UpdateAllCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext);
 		m_enqueuedCloudscapeProbesGlobalUpdate = false;
@@ -546,7 +546,7 @@ void VolumetricCloudsRenderer::RenderVolumetricClouds(rg::RenderGraphBuilder& gr
 	render_main_view::RenderVolumetricCloudsMainView(graphBuilder, scene, viewSpec, clodusMainViewParams);
 }
 
-CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	SPT_CHECK(!viewSpecs.empty());
 
@@ -586,7 +586,9 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 	ds->u_weatherMap          = graphBuilder.AcquireExternalTextureView(m_weatherMap);
 	ds->u_densityLUT          = graphBuilder.AcquireExternalTextureView(m_densityLUT);
 
-	return CloudscapeContext{ atmosphere, m_cloudscapeConstants, ds };
+	const Bool resetAccumulation = settings.resetAccumulation;
+
+	return CloudscapeContext{ atmosphere, m_cloudscapeConstants, ds, resetAccumulation };
 }
 
 void VolumetricCloudsRenderer::UpdateAllCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)

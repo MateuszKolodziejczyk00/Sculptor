@@ -30,7 +30,7 @@ void DDGIInvalidateProbesCS(CS_INPUT input)
 	
 	const float3 probeWorldLocation = GetProbeWorldLocation(u_volumeParams, updatedProbeCoords);
 
-	if (any(probeWorldLocation < u_invalidateParams.prevAABBMin - 0.01f) || any(probeWorldLocation > u_invalidateParams.prevAABBMax + 0.01f))
+	if (u_invalidateParams.forceInvalidateAll || any(probeWorldLocation < u_invalidateParams.prevAABBMin - 0.01f) || any(probeWorldLocation > u_invalidateParams.prevAABBMax + 0.01f))
 	{
 		const uint3 probeWrappedCoords = ComputeProbeWrappedCoords(u_volumeParams, updatedProbeCoords);
 

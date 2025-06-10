@@ -154,7 +154,17 @@ void SandboxUIView::DrawRendererSettings()
 	{
 		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Pitch", &m_renderer.sunAnglePitch, -180.f, 180.f);
 		m_renderer.sunAngleDirty |= ImGui::SliderAngle("Sun Angle Yaw", &m_renderer.sunAngleYaw, 0.f, 360.f);
+	}
 
+	const char* dirLightTypeNames[] = { "Sun", "Moon" };
+	if (ImGui::Combo("Dir Light Type", reinterpret_cast<int*>(&m_renderer.dirLightType), dirLightTypeNames, SPT_ARRAY_SIZE(dirLightTypeNames)))
+	{
+		m_renderer.dirLightTypeDirty = true;
+	}
+
+	if (ImGui::Button("Reset Accumulation"))
+	{
+		m_renderer.resetAccumulation = true;
 	}
 
 	if (ImGui::Button("Capture Render Graph"))

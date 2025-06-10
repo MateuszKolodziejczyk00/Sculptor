@@ -220,7 +220,18 @@ RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 
 	const float ambientOcclusion = u_ambientOcclusion.Load(uint3(pixel, 0u));
 
-	diffuseLo *= Diffuse_Lambert(diffuseColor) * ambientOcclusion;
+	float3 aoMultiplier;
+
+	if(u_constants.enableColoredAO)
+	{
+		aoMultiplier = lerp(diffuseColor, 1.f, ambientOcclusion);
+	}
+	else
+	{
+		aoMultiplier = ambientOcclusion;
+	}
+
+	diffuseLo *= Diffuse_Lambert(diffuseColor) * aoMultiplier;
 
 	RTReflections result;
 	result.specular = ExposedLuminanceToLuminance(specularLo);

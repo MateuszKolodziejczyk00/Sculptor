@@ -8,7 +8,7 @@
 #include "Atmosphere/VolumetricClouds/CloudSampler.hlsli"
 
 
-static float globalCloudsExtinction = 0.07f;
+static float globalCloudsExtinction = 0.045f;
 
 struct CloudscapeRaymarchResult
 {
@@ -300,8 +300,6 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     float cloudDepth = 0.f;
     float cloudDepthWeightSum = 0.f;
 
-    const float3 groundAmbient = ComputeGroundLuminance();
-
     for (float sampleIdx = rayStart; sampleIdx <= params.samplesNum; sampleIdx += 1.f)
     {
         const float rayT = raymarchSegment.x + sampleIdx * dt;
@@ -326,7 +324,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
         const float3 cloudAlbedo = 0.98f;
         const float3 cloudInScattering = cloudAlbedo * cloudExtinction;
 
-        const float3 ambient = (skyVisibility * params.ambient + (1.f - skyVisibility) * groundAmbient) / MS_OCTAVES_NUM;
+        const float3 ambient = (skyVisibility * params.ambient) / MS_OCTAVES_NUM;
 
         float currentOctaveMultiplier = 1.f;
         for(uint octaveIdx = 0u; octaveIdx < MS_OCTAVES_NUM; ++octaveIdx)

@@ -70,6 +70,8 @@ struct SpecularReflectionsParams
 	rg::RGTextureViewHandle historyRoughnessTexture;
 	rg::RGTextureViewHandle baseColorTexture;
 	rg::RGTextureViewHandle skyViewLUT;
+
+	Bool resetAccumulation = false;
 };
 
 
@@ -554,6 +556,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.blurVarianceEstimate                = renderer_params::blurVarianceEstimate;
 	denoiserParams.enableStableHistoryBlend            = renderer_params::enableStableHistoryBlend;
 	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
+	denoiserParams.resetAccumulation                   = params.resetAccumulation;
 
 	return denoiser.Denoise(graphBuilder, denoiserParams);
 }
@@ -724,8 +727,9 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const vrt::TracesAllocation tracesAllocation = AllocateTraces(graphBuilder, tracesAllocationDefinition);
 
 		SpecularReflectionsParams params;
-		params.resolution = resolution;
-		params.skyViewLUT = viewContext.skyViewLUT;
+		params.resolution        = resolution;
+		params.skyViewLUT        = viewContext.skyViewLUT;
+		params.resetAccumulation = stageContext.rendererSettings.resetAccumulation;
 
 		if (isHalfRes)
 		{

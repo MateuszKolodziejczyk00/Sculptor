@@ -75,6 +75,7 @@ DS_END();
 BEGIN_SHADER_STRUCT(DDGIVolumeInvalidateParams)
 	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMin)
 	SHADER_STRUCT_FIELD(math::Vector3f, prevAABBMax)
+	SHADER_STRUCT_FIELD(Bool,           forceInvalidateAll)
 END_SHADER_STRUCT();
 
 
@@ -278,11 +279,11 @@ DDGIRenderSystem::DDGIRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::GlobalIllumination, ERenderStage::DeferredShading);
 }
 
-void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+void DDGIRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
 	DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
 	ddgiSubsystem.UpdateDDGIScene(viewSpecs[0]->GetRenderView());
@@ -313,13 +314,13 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 #endif // DDGI_DEBUGGING
 }
 
-void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const
+void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene, const RelitSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	InvalidateVolumes(graphBuilder, renderScene, viewSpec, ddgiSubsystem, scene);
+	InvalidateVolumes(graphBuilder, renderScene, viewSpec, ddgiSubsystem, scene, settings);
 
-	const SizeType relitBudget = ddgiSubsystem.GetConfig().relitVolumesBudget;
+	const SizeType relitBudget = settings.reset ? maxValue<SizeType> : ddgiSubsystem.GetConfig().relitVolumesBudget;
 
 	DDGIZonesCollector zonesCollector(relitBudget);
 
@@ -337,7 +338,7 @@ void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const Re
 	scene.PostRelit();
 }
 
-void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene) const
+void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene, const RelitSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -347,9 +348,9 @@ void DDGIRenderSystem::InvalidateVolumes(rg::RenderGraphBuilder& graphBuilder, c
 	{
 		SPT_CHECK(!!volume);
 
-		if (volume->RequiresInvalidation())
+		if (volume->RequiresInvalidation() || settings.reset)
 		{
-			InvalidateOutOfBoundsProbes(graphBuilder, renderScene, viewSpec, *volume);
+			InvalidateOutOfBoundsProbes(graphBuilder, renderScene, viewSpec, *volume, settings);
 		}
 	}
 }
@@ -424,7 +425,7 @@ void DDGIRenderSystem::UpdateProbes(rg::RenderGraphBuilder& graphBuilder, const 
 						  rg::BindDescriptorSets(std::move(updateProbesAverageLuminanceDS)));
 }
 
-void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume) const
+void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, DDGIVolume& volume, const RelitSettings& settings) const
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -435,8 +436,9 @@ void DDGIRenderSystem::InvalidateOutOfBoundsProbes(rg::RenderGraphBuilder& graph
 	const math::AlignedBox3f prevAABB = volume.GetPrevAABB();
 
 	DDGIVolumeInvalidateParams invalidateParams;
-	invalidateParams.prevAABBMin = prevAABB.min();
-	invalidateParams.prevAABBMax = prevAABB.max();
+	invalidateParams.prevAABBMin        = prevAABB.min();
+	invalidateParams.prevAABBMax        = prevAABB.max();
+	invalidateParams.forceInvalidateAll = settings.reset;
 
 	const lib::MTHandle<DDGIInvalidateProbesDS> invalidateProbesDS = graphBuilder.CreateDescriptorSet<DDGIInvalidateProbesDS>(RENDERER_RESOURCE_NAME("DDGIInvalidateProbesDS"));
 	invalidateProbesDS->u_invalidateParams                    = invalidateParams;
@@ -539,7 +541,12 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 
 	if (ddgiSubsystem.IsDDGIEnabled())
 	{
-		RelitScene(graphBuilder, renderScene, viewSpec, ddgiSubsystem, ddgiSubsystem.GetDDGIScene());
+		const RelitSettings relitSettings
+		{
+			.reset = context.rendererSettings.resetAccumulation
+		};
+
+		RelitScene(graphBuilder, renderScene, viewSpec, ddgiSubsystem, ddgiSubsystem.GetDDGIScene(), relitSettings);
 	}
 }
 

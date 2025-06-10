@@ -91,7 +91,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	RTAOTraceRaysParams params;
 	params.randomSeed			= math::Vector2f(lib::rnd::Random<Real32>(), lib::rnd::Random<Real32>());
 	params.raysNumber			= 1u;
-	params.raysLength			= 0.5f;
+	params.raysLength			= 1.f;
 	params.raysMinHitDistance	= 0.02f;
 
 	lib::MTHandle<RTAOTraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<RTAOTraceRaysDS>(RENDERER_RESOURCE_NAME("RTAOTraceRaysDS"));

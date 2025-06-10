@@ -41,7 +41,7 @@ RendererFloatParameter bloomBlendFactor("Bloom Blend Factor", { "Bloom" }, 0.35f
 RendererFloatParameter bloomUpsampleBlendFactor("Bloom Upsample Blend Factor", { "Bloom" }, 0.45f, 0.f, 1.f);
 
 RendererBoolParameter enableLensFlares("Enable Lens Flares", { "Lens Flares" }, true);
-RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.0012f, 0.f, 1.f);
+RendererFloatParameter lensFlaresIntensity("Lens Flares Intensity", { "Lens Flares" }, 0.0006f, 0.f, 1.f);
 
 RendererFloat3Parameter lensFlaresColor("Lens Flares Color", { "Lens Flares" }, math::Vector3f(1.f, 1.f, 1.f), 0.f, 1.f);
 
@@ -56,8 +56,8 @@ RendererFloatParameter lensFlaresHaloWidth("Lens Flares Halo Width", { "Lens Fla
 
 RendererBoolParameter enableColorDithering("Enable Color Dithering", { "Post Process" }, true);
 
-RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 0.95f, 0.f, 2.f);
-RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.75f, 0.f, 2.f);
+RendererFloatParameter detailStrength("Detail Strength", { "LocalTonemap" }, 1.f, 0.f, 2.f);
+RendererFloatParameter contrastStrength("Contrast Strength", { "LocalTonemap" }, 0.8f, 0.f, 2.f);
 
 RendererFloatParameter bilateralGridStrength("Bilateral Grid Strength", { "LocalTonemap" }, 0.5f, 0.f, 1.f);
 

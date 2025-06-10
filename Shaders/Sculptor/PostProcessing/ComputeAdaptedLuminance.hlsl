@@ -123,7 +123,9 @@ void AdaptedLuminanceCS(CS_INPUT input)
 
 		u_adaptedLuminance[0] = adaptedLuminance;
 
-		const float EV100 = ComputeEV100FromAvgLuminance(adaptedLuminance + 0.001f) + u_exposureSettings.evCompensation;
+		float EV100 = ComputeEV100FromAvgLuminance(adaptedLuminance + 0.001f);
+		EV100 = EV100 + Remap(EV100, -2.f, 14.f, u_exposureSettings.ec0, u_exposureSettings.ec1);
+
 		const float exposure = ConvertEV100ToExposure(EV100);
 
 		ViewExposureData viewExposureData = u_viewExposureData[0];

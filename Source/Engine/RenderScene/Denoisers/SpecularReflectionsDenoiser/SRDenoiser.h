@@ -64,6 +64,8 @@ public:
 
 		Bool enableStableHistoryBlend            = true;
 		Bool enableDisocclusionFixFromLightCache = true;
+
+		Bool resetAccumulation;
 	};
 
 	struct Result

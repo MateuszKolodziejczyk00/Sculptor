@@ -86,7 +86,7 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 			}
 		}
 		
-		renderSystem->RenderPerFrame(graphBuilder, scene, viewSpecs);
+		renderSystem->RenderPerFrame(graphBuilder, scene, viewSpecs, settings);
 	}
 
 	// Flush all writes that happened during prepare phrase

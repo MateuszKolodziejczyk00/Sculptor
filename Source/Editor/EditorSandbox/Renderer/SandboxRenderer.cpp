@@ -134,9 +134,32 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 
 		m_directionalLightEntity.patch<rsc::DirectionalLightData>([this](rsc::DirectionalLightData& data)
 																  {
-																	  const math::Quaternionf newDirection = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, sunAngleYaw);
-																	  data.direction = newDirection * math::Vector3f::UnitX();
+																	  const math::Quaternionf pitchQuat = math::Utils::EulerToQuaternionRadians(0.f, sunAnglePitch, 0.f);
+																	  const math::Quaternionf yawQuat = math::Utils::EulerToQuaternionRadians(0.f, 0.f, sunAngleYaw);
+																	  data.direction = yawQuat * pitchQuat * math::Vector3f::UnitX();
 																  });
+	}
+
+	if (dirLightTypeDirty)
+	{
+		dirLightTypeDirty = false;
+
+		m_directionalLightEntity.patch<rsc::DirectionalLightData>([this](rsc::DirectionalLightData& data)
+																  {
+																	  if (dirLightType == EDirLightType::Sun)
+																	  {
+																			data.color             = math::Vector3f(1.f, 0.956f, 0.839f);
+																			data.sunDiskEC         = 10.f;
+																			data.zenithIlluminance = 120000.f;
+																	  }
+																	  else
+																	  {
+																			data.color             = math::Vector3f(0.3f, 0.3f, 0.35f);
+																			data.sunDiskEC         = 0.4f;
+																			data.zenithIlluminance = 0.1f;
+																	  }
+																  });
+
 	}
 }
 
@@ -180,6 +203,9 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	rsc::SceneRendererSettings rendererSettings;
 	rendererSettings.outputFormat = rhi::EFragmentFormat::RGBA8_UN_Float;
+	rendererSettings.resetAccumulation = resetAccumulation;
+
+	resetAccumulation = false;
 
 	rg::RGTextureViewHandle sceneRenderingResultTextureView;
 
@@ -397,8 +423,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			//pointLightData.location = math::Vector3f(2.6f, 8.30f, 1.55f);
-			pointLightData.location = math::Vector3f(-0.7f, -27.7f, 3.f);
+			pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -408,7 +433,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(3.9f, -8.30f, 4.45f);
+			pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -418,7 +443,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(-3.8f, 8.30f, 1.55f);
+			pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -428,7 +453,7 @@ void SandboxRenderer::InitializeRenderScene()
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
 			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(2.6f, -9.30f, 1.55f);
+			pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
@@ -448,6 +473,9 @@ void SandboxRenderer::InitializeRenderScene()
 			sunAnglePitch = std::asin(directionalLightData.direction.z());
 		}
 	}
+
+	dirLightTypeDirty = true;
+	sunAngleDirty = true;
 
 	SPT_LOG_INFO(Sandbox, "Render Scene Initialization Finished");
 }

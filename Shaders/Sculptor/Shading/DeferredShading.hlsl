@@ -77,6 +77,7 @@ void DeferredShadingCS(CS_INPUT input)
 
 			float3 indirectIlluminance = 0.f;
 
+#ifdef ENABLE_DDGI
 			float ambientOcclusion = 1.f;
 
 			if (u_deferredShadingConstants.isAmbientOcclusionEnabled)
@@ -84,7 +85,6 @@ void DeferredShadingCS(CS_INPUT input)
 				ambientOcclusion = u_ambientOcclusionTexture.Load(pixel);
 			}
 
-#ifdef ENABLE_DDGI
 			DDGISampleParams ddgiSampleParams = CreateDDGISampleParams(worldLocation, surface.geometryNormal, toView);
 			ddgiSampleParams.sampleDirection = surface.shadingNormal;
 

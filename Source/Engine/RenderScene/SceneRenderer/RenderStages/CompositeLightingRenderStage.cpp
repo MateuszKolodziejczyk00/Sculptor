@@ -17,10 +17,18 @@
 #include "RenderScene.h"
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 
 namespace spt::rsc
 {
+
+namespace renderer_params
+{
+
+RendererBoolParameter enableColoredAO("Enable Colored AO", { "Lighting" }, true);
+
+} // renderer_params
 
 namespace composite_pass_impl
 {
@@ -28,6 +36,7 @@ namespace composite_pass_impl
 BEGIN_SHADER_STRUCT(CompositeLightingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
 	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
+	SHADER_STRUCT_FIELD(Bool,           enableColoredAO)
 END_SHADER_STRUCT();
 
 
@@ -115,6 +124,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	CompositeLightingConstants shaderConstants;
 	shaderConstants.resolution    = resolution;
 	shaderConstants.invResolution = resolution.cast<Real32>().cwiseInverse();
+	shaderConstants.enableColoredAO = renderer_params::enableColoredAO;
 
 	const lib::MTHandle<CompositeLightingDS> compositeLightingDS = graphBuilder.CreateDescriptorSet<CompositeLightingDS>(RENDERER_RESOURCE_NAME("CompositeLightingDS"));
 	compositeLightingDS->u_luminanceTexture = viewContext.luminance;

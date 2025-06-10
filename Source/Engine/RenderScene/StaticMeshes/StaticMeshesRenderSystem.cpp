@@ -11,9 +11,9 @@ StaticMeshesRenderSystem::StaticMeshesRenderSystem()
 	m_supportedStages = lib::Flags(ERenderStage::ForwardOpaque, ERenderStage::DepthPrepass, ERenderStage::ShadowMap);
 }
 
-void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+void StaticMeshesRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
-	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
 	{
 		lib::DynamicArray<ViewRenderingSpec*> shadowMapViewSpecs;

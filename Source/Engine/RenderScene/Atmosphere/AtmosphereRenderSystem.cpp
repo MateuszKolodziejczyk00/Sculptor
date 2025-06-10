@@ -261,11 +261,11 @@ AtmosphereRenderSystem::AtmosphereRenderSystem()
 	m_supportedStages = rsc::ERenderStage::DeferredShading;
 }
 
-void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs)
+void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs);
+	Super::RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 
 	AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 
@@ -294,7 +294,7 @@ void AtmosphereRenderSystem::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder
 		RenderPerView(graphBuilder, renderScene, *viewSpec);
 	}
 
-	m_volumetricCloudsRenderer.RenderPerFrame(graphBuilder, renderScene, viewSpecs);
+	m_volumetricCloudsRenderer.RenderPerFrame(graphBuilder, renderScene, viewSpecs, settings);
 }
 
 void AtmosphereRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
