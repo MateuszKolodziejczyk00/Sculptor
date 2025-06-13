@@ -23,7 +23,7 @@ SPT_DEFINE_LOG_CATEGORY(VolumetricCloudsRenderer, true);
 namespace spt::rsc::clouds
 {
 
-namespace params
+namespace renderer_params
 {
 
 RendererFloatParameter baseShapeNoiseMeters("Base Shape Noise Meters", { "Clouds" }, 800.f, 0.f, 60000.f);
@@ -43,7 +43,10 @@ RendererFloatParameter cloudsHeightOffset("Clouds Height Offset", { "Clouds" }, 
 
 RendererBoolParameter enableVolumetricClouds("Enable Volumetric Clouds", { "Clouds" }, true);
 
-} // params
+RendererBoolParameter forceTransmittanceMapFullUpdates("Force Transmittance Map Full Updates", { "Clouds" }, false);
+RendererBoolParameter forceHRCloudsProbeFullUpdates("Force High Res Clouds Probe Full Updates", { "Clouds" }, false);
+
+} // renderer_params
 
 
 static void BuildCloudsTransmittanceMapMatrices(const math::Vector3f& center, const math::Vector3f& lightDirection, Real32 cloudscapeRange, Real32 cloudscapeMaxHeight, math::Matrix4f& outViewProj)
@@ -180,11 +183,17 @@ namespace sun_clouds_transmittance
 struct CloudsTransmittanceMapParams
 {
 	const CloudscapeContext* cloudscape = nullptr;
+
+	rg::RGTextureViewHandle cloudsTransmittanceTexture;
+
+	math::Vector2u updateOffset = {};
+	math::Vector2u updateSize   = {};
 };
 
 
 BEGIN_SHADER_STRUCT(RenderCloudsTransmittanceMapConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2u, updateOffset)
 	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
 	SHADER_STRUCT_FIELD(math::Matrix4f, viewProjectionMatrix)
 	SHADER_STRUCT_FIELD(math::Matrix4f, invViewProjectionMatrix)
@@ -207,9 +216,7 @@ static rdr::PipelineStateID CompileRenderCloudsTransmittanceMapPipeline()
 
 static CloudsTransmittanceMap RenderCloudsTransmittanceMap(rg::RenderGraphBuilder& graphBuilder, const CloudsTransmittanceMapParams& params)
 {
-	const math::Vector2u resolution = math::Vector2u(2048u, 2048u);
-
-	rg::RGTextureViewHandle cloudsTransmittanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Clouds Transmittance"), rg::TextureDef(resolution, rhi::EFragmentFormat::R16_UN_Float));
+	const math::Vector2u resolution = params.cloudsTransmittanceTexture->GetResolution2D();
 
 	static const rdr::PipelineStateID pipeline = CompileRenderCloudsTransmittanceMapPipeline();
 
@@ -220,6 +227,7 @@ static CloudsTransmittanceMap RenderCloudsTransmittanceMap(rg::RenderGraphBuilde
 
 	RenderCloudsTransmittanceMapConstants shaderConstants;
 	shaderConstants.resolution    = resolution;
+	shaderConstants.updateOffset  = params.updateOffset;
 	shaderConstants.rcpResolution = resolution.cast<Real32>().cwiseInverse();
 	shaderConstants.direction     = -mainDirLight.direction;
 
@@ -230,18 +238,18 @@ static CloudsTransmittanceMap RenderCloudsTransmittanceMap(rg::RenderGraphBuilde
 	shaderConstants.invViewProjectionMatrix = shaderConstants.viewProjectionMatrix.inverse();
 
 	lib::MTHandle<RenderCloudsTransmittanceMapDS> ds = graphBuilder.CreateDescriptorSet<RenderCloudsTransmittanceMapDS>(RENDERER_RESOURCE_NAME("RenderCloudsTransmittanceMapDS"));
-	ds->u_rwTransmittanceMap = cloudsTransmittanceTexture;
+	ds->u_rwTransmittanceMap = params.cloudsTransmittanceTexture;
 	ds->u_constants          = shaderConstants;
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Clouds Sun Transmittance Map"),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  math::Utils::DivideCeil(params.updateSize, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(ds, params.cloudscape->cloudscapeDS));
 
 	CloudsTransmittanceMap cloudsTransmittanceMap
 	{
-		.cloudsTransmittanceTexture = cloudsTransmittanceTexture,
-		.viewProjectionMatrix = shaderConstants.viewProjectionMatrix
+		.cloudsTransmittanceTexture = params.cloudsTransmittanceTexture,
+		.viewProjectionMatrix       = shaderConstants.viewProjectionMatrix
 	};
 
 	return cloudsTransmittanceMap;
@@ -316,7 +324,7 @@ rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuild
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Trace Cloudscape Probes"),
 						  pipeline,
-						  math::Utils::DivideCeil(traceResultRes, math::Vector2u(64u, 1u)),
+						  traceResultRes,
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.cloudscape->cloudscapeDS));
 
@@ -386,7 +394,8 @@ namespace high_res
 {
 
 BEGIN_SHADER_STRUCT(UpdateCloudscapeHighResProbeConstants)
-	SHADER_STRUCT_FIELD(Uint32, frameIdx)
+	SHADER_STRUCT_FIELD(math::Vector2u, updateOffset)
+	SHADER_STRUCT_FIELD(Uint32,         updateLoopIdx)
 END_SHADER_STRUCT();
 
 
@@ -410,6 +419,11 @@ struct UpdateCloudscapeHighResProbeParams
 	const CloudscapeContext* cloudscape = nullptr;
 	rg::RGTextureViewHandle skyProbe;
 	rg::RGTextureViewHandle cloudscapeProbe;
+
+	math::Vector2u updateOffset = {};
+	math::Vector2u updateSize   = {};
+
+	Uint32 updateLoopIdx = 0u;
 };
 
 
@@ -421,10 +435,9 @@ void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRend
 
 	static const rdr::PipelineStateID pipeline = CompileUpdateCloudscapeHighResProbePipeline();
 
-	const Uint32 frameIdx = viewSpec.GetRenderView().GetRenderedFrameIdx();
-
 	UpdateCloudscapeHighResProbeConstants shaderConstants;
-	shaderConstants.frameIdx = frameIdx;
+	shaderConstants.updateOffset  = params.updateOffset;
+	shaderConstants.updateLoopIdx = params.updateLoopIdx;
 
 	lib::MTHandle<UpdateCloudscapeHighResProbeDS> ds = graphBuilder.CreateDescriptorSet<UpdateCloudscapeHighResProbeDS>(RENDERER_RESOURCE_NAME("UpdateCloudscapeHighResProbeDS"));
 	ds->u_constants    = shaderConstants;
@@ -434,7 +447,7 @@ void UpdateCloudscapeHighResProbe(rg::RenderGraphBuilder& graphBuilder, ViewRend
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Update High Res Probe"),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
+						  params.updateSize,
 						  rg::BindDescriptorSets(std::move(ds),
 												 viewSpec.GetRenderView().GetRenderViewDS(),
 												 params.cloudscape->cloudscapeDS));
@@ -479,14 +492,35 @@ VolumetricCloudsRenderer::VolumetricCloudsRenderer()
 
 void VolumetricCloudsRenderer::RenderPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<ViewRenderingSpec*>& viewSpecs, const SceneRendererSettings& settings)
 {
-	m_volumetricCloudsEnabled = params::enableVolumetricClouds;
+	m_volumetricCloudsEnabled = renderer_params::enableVolumetricClouds;
 
 	if (m_volumetricCloudsEnabled)
 	{
 		const CloudscapeContext cloudscapeContext = CreateFrameCloudscapeContext(graphBuilder, renderScene, viewSpecs, settings);
 
+		const math::Vector2u updateTileSize = math::Vector2u(256u, 256u);
+
 		sun_clouds_transmittance::CloudsTransmittanceMapParams cloudsTransmittanceParams;
-		cloudsTransmittanceParams.cloudscape = &cloudscapeContext;
+		cloudsTransmittanceParams.cloudscape                 = &cloudscapeContext;
+		cloudsTransmittanceParams.cloudsTransmittanceTexture = graphBuilder.AcquireExternalTextureView(m_cloudscapeTransmittance);
+
+		if (cloudscapeContext.resetAccumulation || renderer_params::forceTransmittanceMapFullUpdates)
+		{
+			cloudsTransmittanceParams.updateOffset = math::Vector2u::Zero();
+			cloudsTransmittanceParams.updateSize   = cloudsTransmittanceParams.cloudsTransmittanceTexture->GetResolution2D();
+		}
+		else
+		{
+			const math::Vector2u tilesNum = math::Utils::DivideCeil(cloudsTransmittanceParams.cloudsTransmittanceTexture->GetResolution2D(), updateTileSize);
+
+			const Uint32 tileIdx = cloudscapeContext.frameIdx % (tilesNum.x() * tilesNum.y());
+
+			const math::Vector2u tileCoords = math::Vector2u(tileIdx % tilesNum.x(), tileIdx / tilesNum.x());
+
+			cloudsTransmittanceParams.updateOffset = tileCoords.cwiseProduct(updateTileSize);
+			cloudsTransmittanceParams.updateSize   = updateTileSize;
+		}
+
 		m_cloudsTransmittanceMap = sun_clouds_transmittance::RenderCloudsTransmittanceMap(graphBuilder, cloudsTransmittanceParams);
 
 		for (ViewRenderingSpec* viewSpec : viewSpecs)
@@ -523,6 +557,25 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 	highResProbeParams.cloudscape      = &cloudscapeContext;
 	highResProbeParams.skyProbe        = viewSpec.GetShadingViewContext().skyProbe;
 	highResProbeParams.cloudscapeProbe = cloudscapeHighResProbe;
+
+	if (cloudscapeContext.resetAccumulation || renderer_params::forceHRCloudsProbeFullUpdates)
+	{
+		highResProbeParams.updateOffset  = math::Vector2u::Zero();
+		highResProbeParams.updateSize    = cloudscapeHighResProbe->GetResolution2D();
+		highResProbeParams.updateLoopIdx = cloudscapeContext.frameIdx;
+	}
+	else
+	{
+		const math::Vector2u highResProbeTileSize = math::Vector2u::Constant(128u);
+
+		const math::Vector2u tilesNum = math::Utils::DivideCeil(cloudscapeHighResProbe->GetResolution2D(), highResProbeTileSize);
+		const Uint32 tileIdx = cloudscapeContext.frameIdx % (tilesNum.x() * tilesNum.y());
+		const math::Vector2u tileCoords = math::Vector2u(tileIdx % tilesNum.x(), tileIdx / tilesNum.x());
+
+		highResProbeParams.updateLoopIdx   = cloudscapeContext.frameIdx / (tilesNum.x() * tilesNum.y());
+		highResProbeParams.updateOffset    = tileCoords.cwiseProduct(highResProbeTileSize);
+		highResProbeParams.updateSize      = highResProbeTileSize;
+	}
 
 	cloudscape_probe::high_res::UpdateCloudscapeHighResProbe(graphBuilder, viewSpec, highResProbeParams);
 
@@ -561,18 +614,18 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	const math::Vector3f cloudsAtmosphereCenter = math::Vector3f(viewLocation.x(), viewLocation.y(), m_cloudscapeConstants.cloudsAtmosphereCenterZ);
 
-	m_cloudscapeConstants.baseShapeNoiseScale       = 1.f / params::baseShapeNoiseMeters;
-	m_cloudscapeConstants.detailShapeNoiseStrength0 = params::detailShapeNoiseStrength0;
-	m_cloudscapeConstants.detailShapeNoiseScale0    = 1.f / params::detailShapeNoiseMeters0;
-	m_cloudscapeConstants.detailShapeNoiseStrength1 = params::detailShapeNoiseStrength1;
-	m_cloudscapeConstants.detailShapeNoiseScale1    = 1.f / params::detailShapeNoiseMeters1;
-	m_cloudscapeConstants.curlNoiseScale            = 1.f / params::curlNoiseMeters;
-	m_cloudscapeConstants.curlMaxoffset             = params::curlNoiseOffset;
+	m_cloudscapeConstants.baseShapeNoiseScale       = 1.f / renderer_params::baseShapeNoiseMeters;
+	m_cloudscapeConstants.detailShapeNoiseStrength0 = renderer_params::detailShapeNoiseStrength0;
+	m_cloudscapeConstants.detailShapeNoiseScale0    = 1.f / renderer_params::detailShapeNoiseMeters0;
+	m_cloudscapeConstants.detailShapeNoiseStrength1 = renderer_params::detailShapeNoiseStrength1;
+	m_cloudscapeConstants.detailShapeNoiseScale1    = 1.f / renderer_params::detailShapeNoiseMeters1;
+	m_cloudscapeConstants.curlNoiseScale            = 1.f / renderer_params::curlNoiseMeters;
+	m_cloudscapeConstants.curlMaxoffset             = renderer_params::curlNoiseOffset;
 	m_cloudscapeConstants.weatherMapScale           = 1.f / 16000.f;
 	m_cloudscapeConstants.cloudsAtmosphereCenter    = cloudsAtmosphereCenter;
-	m_cloudscapeConstants.globalDensity             = params::globalDensity;
-	m_cloudscapeConstants.globalCoverageOffset      = params::globalCoverageOffset;
-	m_cloudscapeConstants.globalCloudsHeightOffset = params::cloudsHeightOffset;
+	m_cloudscapeConstants.globalDensity             = renderer_params::globalDensity;
+	m_cloudscapeConstants.globalCoverageOffset      = renderer_params::globalCoverageOffset;
+	m_cloudscapeConstants.globalCloudsHeightOffset = renderer_params::cloudsHeightOffset;
 	m_cloudscapeConstants.time                      = renderScene.GetCurrentFrameRef().GetTime();
 	m_cloudscapeConstants.mainDirectionalLight      = *atmosphere.mainDirectionalLight;
 
@@ -588,7 +641,11 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	const Bool resetAccumulation = settings.resetAccumulation;
 
-	return CloudscapeContext{ atmosphere, m_cloudscapeConstants, ds, resetAccumulation };
+	CloudscapeContext context{ atmosphere, m_cloudscapeConstants, ds };
+	context.resetAccumulation = resetAccumulation;
+	context.frameIdx          = renderView.GetRenderedFrameIdx();
+
+	return context;
 }
 
 void VolumetricCloudsRenderer::UpdateAllCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)
@@ -682,6 +739,12 @@ void VolumetricCloudsRenderer::InitTextures()
 	cloudscapeHighResProbeDef.format     = rhi::EFragmentFormat::RGBA16_S_Float;
 	cloudscapeHighResProbeDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 	m_cloudscapeHighResProbe = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Cloudscape High Res Probe"), cloudscapeHighResProbeDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::TextureDefinition cloudscapeTransmittanceDef;
+	cloudscapeTransmittanceDef.resolution = math::Vector2u(2048u, 2048u);
+	cloudscapeTransmittanceDef.format = rhi::EFragmentFormat::R16_UN_Float;
+	cloudscapeTransmittanceDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+	m_cloudscapeTransmittance = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("Cloudscape Transmittance Texture"), cloudscapeTransmittanceDef, rhi::EMemoryUsage::GPUOnly);
 }
 
 void VolumetricCloudsRenderer::LoadOrCreateBaseShapeNoiseTexture()

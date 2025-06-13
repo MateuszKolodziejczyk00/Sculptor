@@ -53,7 +53,7 @@ RendererBoolParameter enableHitDistanceBasedMaxAge("Enable Hit Distance Based Ma
 RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflections" }, 10, 0, 30);
 RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
 RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, true);
-RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, true);
+RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, false);
 } // renderer_params
 
 struct SpecularReflectionsParams

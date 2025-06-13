@@ -15,7 +15,7 @@ struct CS_INPUT
 };
 
 
-[numthreads(8, 4, 1)]
+[numthreads(8, 8, 1)]
 void SRDisocclusionFixCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
@@ -36,7 +36,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 		const uint diffuseHistoryLength  = u_diffuseHistoryLengthTexture  .Load(int3(pixel, 0));
 
 		const bool fixSpecular = specularHistoryLength < 3;
-		const bool fixDiffuse  = diffuseHistoryLength < 3;
+		const bool fixDiffuse  = diffuseHistoryLength < 5;
 
 		if((!fixSpecular && !fixDiffuse) || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{

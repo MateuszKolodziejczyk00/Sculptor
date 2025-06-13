@@ -71,7 +71,7 @@ void DisocclusionFix(rg::RenderGraphBuilder& graphBuilder, const DisocclusionFix
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("{} SR Disocclusion Fix", params.debugName.AsString()),
 						  pipeline,
-						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 4u)),
+						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.renderView.GetRenderViewDS()));
 }

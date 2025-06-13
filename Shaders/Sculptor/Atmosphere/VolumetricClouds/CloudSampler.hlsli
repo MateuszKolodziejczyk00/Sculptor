@@ -42,9 +42,14 @@ struct CloudsSamplerParams
     float time;
 };
 
+#define CLOUDS_DETAIL_EROSION 1
+#define CLOUDS_DETAIL_CURL    2
 
 #define CLOUDS_HIGHEST_DETAIL_LEVEL 2
 
+#define CLOUDS_DETAIL_PRESET_PROBE         1
+#define CLOUDS_DETAIL_PRESET_TRANSMITTANCE 1
+#define CLOUDS_DETAIL_PRESET_MAIN_VIEW     CLOUDS_HIGHEST_DETAIL_LEVEL
 
 struct CloudsSampler
 {
@@ -119,7 +124,10 @@ struct CloudsSampler
         float3 windDir = float3(1.f, 1.f, 0.f);
         location += totalH * windDir * 500.f;
 
-        location = ComputeAdjustedLocation(location);
+        if(detailLevel >= CLOUDS_DETAIL_CURL)
+        {
+            location = ComputeAdjustedLocation(location);
+        }
 
         const float3 weatherMap = SampleWeather(location);
 
@@ -153,14 +161,10 @@ struct CloudsSampler
 
         const float edgeDetail = 1.f;
 
+        if(detailLevel >= CLOUDS_DETAIL_EROSION)
         {
             const float noiseComposite = ComputeDetailNoise(location, params.detailShapeNoiseScale0, h, densityAltitude);
             cloudDensity = Remap<float>(cloudDensity, min(params.detailShapeNoiseStrength0 * edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
-        }
-
-        {
-            const float noiseComposite = ComputeDetailNoise(location, params.detailShapeNoiseScale1, h, densityAltitude);
-            cloudDensity = Remap<float>(cloudDensity, min(params.detailShapeNoiseStrength1 * edgeDetail * noiseComposite, 0.999f), 1.f, 0.f, 1.f);
         }
 
         cloudDensity = pow(saturate(cloudDensity), Remap<float>(totalH, 0.05f, 0.4f, 1.f, 0.45f));

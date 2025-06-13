@@ -14,7 +14,9 @@ struct CS_INPUT
 [numthreads(8, 8, 1)]
 void RenderCloudsTransmittanceMapCS(CS_INPUT input)
 {
-    const float2 uv = (input.globalID.xy + 0.5f) / 2048.f;
+    const uint2 coords = u_constants.updateOffset + input.globalID.xy;
+
+    const float2 uv = (coords + 0.5f) / 2048.f;
 
     const float4 ws = mul(u_constants.invViewProjectionMatrix, float4(2.f * uv - 1.f, 0.5f, 1.f));
 
@@ -41,8 +43,9 @@ void RenderCloudsTransmittanceMapCS(CS_INPUT input)
 
     CloudscapeRaymarchParams raymarchParams = CloudscapeRaymarchParams::Create();
     raymarchParams.ray                     = ray;
-    raymarchParams.samplesNum              = 80.f;
+    raymarchParams.samplesNum              = 64.f;
+    raymarchParams.detailLevel             = CLOUDS_DETAIL_PRESET_TRANSMITTANCE;
     transmittance = RaymarchCloudscapeTransmittance(raymarchParams);
     
-    u_rwTransmittanceMap[input.globalID.xy] = transmittance;
+    u_rwTransmittanceMap[coords] = transmittance;
 }

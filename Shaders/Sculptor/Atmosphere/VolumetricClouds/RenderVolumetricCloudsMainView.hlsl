@@ -15,7 +15,8 @@ struct CS_INPUT
 
 [numthreads(8, 8, 1)]
 void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
-{    const uint3 coords = uint3(input.globalID.xy, 0u);
+{
+    const uint3 coords = uint3(input.globalID.xy, 0u);
 
     const float depth = u_depth.Load(coords);
 
@@ -33,7 +34,8 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
     raymarchParams.noise = blueNoise;
     raymarchParams.ambient = skyAvgLuminance;
     raymarchParams.maxVisibleDepth = depth > 0.f ? ComputeLinearDepth(depth, u_sceneView) : -1.f;
-    const CloudscapeRaymarchResult raymarchRes = RaymarchCloudscape(raymarchParams);
+    raymarchParams.detailLevel = CLOUDS_DETAIL_PRESET_MAIN_VIEW;
+    const CloudscapeRaymarchResult raymarchRes = RaymarchCloudscape<MAIN_VIEW_CLODUD_SCATTERING_OCTAVES_NUM>(raymarchParams);
 
     u_rwCloudsDepth[coords.xy] = raymarchRes.cloudDepth > 0.f ? ComputeProjectionDepth(raymarchRes.cloudDepth, u_sceneView) : 0.f;
 

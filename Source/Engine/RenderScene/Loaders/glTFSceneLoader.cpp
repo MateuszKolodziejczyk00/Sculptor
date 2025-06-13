@@ -588,9 +588,10 @@ void LoadScene(RenderScene& scene, lib::StringView path)
 
 		math::Affine3f sceneTransform = math::Affine3f::Identity();
 
+		//sceneTransform = math::AlignedScaling3f(50.f, 50.f, 50.f) * sceneTransform;
 		//sceneTransform = math::AlignedScaling3f(0.01f, 0.01f, 0.01f) * sceneTransform;
-		sceneTransform = math::Utils::EulerToQuaternionDegrees(90.f, 0.f, 0.f) * sceneTransform;
-		//sceneTransform = math::Utils::EulerToQuaternionDegrees(180.f, 0.f, 0.f) * sceneTransform;
+		//sceneTransform = math::Utils::EulerToQuaternionDegrees(90.f, 0.f, 0.f) * sceneTransform;
+		sceneTransform = math::Utils::EulerToQuaternionDegrees(180.f, 0.f, 0.f) * sceneTransform;
 		//sceneTransform = math::Utils::EulerToQuaternionDegrees(-90.f, 0.f, 0.f) * sceneTransform;
 
 		for (const tinygltf::Scene& gltfScene : model.scenes)

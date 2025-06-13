@@ -359,7 +359,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			float3 initialDiffuse = diffuse.rgb;
 
-			initialDiffuse = LuminanceStableBlend(diffuseWorldCache, diffuse.rgb, 0.8f, 5.f);
+			initialDiffuse = LuminanceStableBlend(diffuseWorldCache, diffuse.rgb, 0.5f, 3.f);
 
 			u_rwDiffuseFastHistoryTexture[pixel] = initialDiffuse;
 			u_rwDiffuseTexture[pixel]  = float4(initialDiffuse, diffuse.w);

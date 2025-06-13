@@ -8,15 +8,15 @@
 
 struct CS_INPUT
 {
-    uint3 globalID : SV_DispatchThreadID;
+    uint3 groupID : SV_GroupID;
 };
 
 
-[numthreads(64, 1, 1)]
+[numthreads(32, 1, 1)]
 void TraceCloudscapeProbesCS(CS_INPUT input)
 {
-    const uint probeIdx = input.globalID.y;
-    const uint rayIdx   = input.globalID.x;
+    const uint probeIdx = input.groupID.y;
+    const uint rayIdx   = input.groupID.x;
 
 	const float3 direction = ComputeCloudscapeProbeRayDirection(rayIdx, u_constants.raysPerProbe);
 
@@ -33,7 +33,11 @@ void TraceCloudscapeProbesCS(CS_INPUT input)
     raymarchParams.samplesNum = 64.f;
     raymarchParams.noise = 1.f;
     raymarchParams.ambient = skyAvgLuminance;
-    const CloudscapeRaymarchResult raymarchRes = RaymarchCloudscape(raymarchParams);
+    raymarchParams.detailLevel = CLOUDS_DETAIL_PRESET_PROBE;
+    const CloudscapeRaymarchResult raymarchRes = WaveRaymarchCloudscape<PROBE_CLODUD_SCATTERING_OCTAVES_NUM>(raymarchParams);
 
-    u_rwTraceResult[uint2(rayIdx, probeIdx)] = float4(raymarchRes.inScattering, raymarchRes.transmittance);
+    if(WaveIsFirstLane())
+    {
+        u_rwTraceResult[uint2(rayIdx, probeIdx)] = float4(raymarchRes.inScattering, raymarchRes.transmittance);
+    }
 }

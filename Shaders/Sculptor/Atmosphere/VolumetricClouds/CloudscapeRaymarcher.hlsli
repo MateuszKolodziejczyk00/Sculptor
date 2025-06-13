@@ -2,13 +2,22 @@
 #define CLOUDSCAPE_RAYMARCHER_HLSLI
 
 #include "Utils/Shapes.hlsli"
+#include "Utils/Wave.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Lights/LightingUtils.hlsli"
 #include "Atmosphere/VolumetricClouds/CloudSampler.hlsli"
 
 
-static float globalCloudsExtinction = 0.045f;
+#define PROBE_CLODUD_SCATTERING_OCTAVES_NUM 3
+#define MAIN_VIEW_CLODUD_SCATTERING_OCTAVES_NUM 7
+
+#define CLOUD_OCTAVE_MUL 0.8f
+
+
+static const float globalCloudsExtinction = 0.045f;
+static const float3 cloudAlbedo = 0.98f;
+    
 
 struct CloudscapeRaymarchResult
 {
@@ -40,6 +49,8 @@ struct CloudscapeRaymarchParams
 
     float maxVisibleDepth;
 
+    uint detailLevel;
+
     static CloudscapeRaymarchParams Create()
     {
         CloudscapeRaymarchParams params;
@@ -48,6 +59,7 @@ struct CloudscapeRaymarchParams
         params.noise           = 1.f;
         params.ambient         = 0.f;
         params.maxVisibleDepth = -1.f;
+        params.detailLevel     = CLOUDS_HIGHEST_DETAIL_LEVEL;
 
         return params;
     }
@@ -80,17 +92,19 @@ float3 SampleSunTransmittanceAtLocation(in float3 location, in float3 lightDirec
 }
 
 
-float ComputeLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in float3 direction, in float LdotN, in float sequence)
+float ComputeLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in float3 direction, in float LdotN, in float sequence, in uint detailLevel)
 {
-    const uint samplesNum = 12u;
+    const uint samplesNum = detailLevel == CLOUDS_HIGHEST_DETAIL_LEVEL ? 12u : 8u;
 
     float transmittance = 1.f;
     float powder = 1.f;
 
-    const float stepFactor = 1.8f;
+    const float stepFactor = detailLevel == CLOUDS_HIGHEST_DETAIL_LEVEL ? 1.8f : 2.f;
     float currentStep = 4.f + sequence * 4.f;
 
     float currT = 0.f;
+
+#define USE_POWDER 0
     
     for(uint sampleIdx = 0.0; sampleIdx < samplesNum; ++sampleIdx)
     {
@@ -100,18 +114,21 @@ float ComputeLocalVisibilityTerm(in CloudsSampler cs, in float3 origin, in float
 
         const float3 sampleLocation = origin + direction * newT;
 
-        int detailLevel = 2;
-
         const float cloudDensity = cs.SampleDensity(sampleLocation, detailLevel).x;
 
         const float cloudExtinction = cloudDensity * globalCloudsExtinction;
         transmittance *= max(0.000001f, exp(-dt * cloudExtinction));
+#if USE_POWDER
         powder        *= max(0.000001f, exp(-2.f * dt * cloudExtinction));
+#endif
+
+        if(transmittance < 0.001f)
+        {
+            return 0.f;
+        }
 
         currentStep *= stepFactor;
     }
-
-#define USE_POWDER 0
 
 #if USE_POWDER
     return Remap(LdotN, -1.f, 1.f, 2.f * (1.f - powder), 1.f) * transmittance;
@@ -225,7 +242,7 @@ float RaymarchCloudscapeTransmittance(in CloudscapeRaymarchParams params)
         const float rayT = raymarchSegment.x + sampleIdx * dt;
         const float3 sampleLocation = ray.origin + ray.direction * rayT;
 
-        float2 sampledCloud = cs.SampleDensity(sampleLocation, CLOUDS_HIGHEST_DETAIL_LEVEL);
+        float2 sampledCloud = cs.SampleDensity(sampleLocation, params.detailLevel);
 
         const float cloudDensity = sampledCloud.x;
 
@@ -251,6 +268,7 @@ float RaymarchCloudscapeTransmittance(in CloudscapeRaymarchParams params)
 }
 
 
+template<uint octavesNum>
 CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
 {
     CloudscapeRaymarchResult result = CloudscapeRaymarchResult::Create();
@@ -276,21 +294,19 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     const DirectionalLightGPUData directionalLight = cloudscape.mainDirectionalLight;
     const float cosTheta = dot(-ray.direction, directionalLight.direction);
 
-    const float octaveMul = 0.8f;
-
-    #define MS_OCTAVES_NUM 7
-    float phaseFunctions[MS_OCTAVES_NUM];
+    float phaseFunctions[octavesNum];
     float currentPhaseMultiplier = 1.f;
-    for(uint octaveIdx = 0u; octaveIdx < MS_OCTAVES_NUM; ++octaveIdx)
+    
+    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
     {
         phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
-        currentPhaseMultiplier *= octaveMul;
+        currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
     }
 
-    float transmittance[MS_OCTAVES_NUM];
+    float transmittance[octavesNum];
     float3 inScattering = 0.f;
 
-    for(uint octaveIdx = 0u; octaveIdx < MS_OCTAVES_NUM; ++octaveIdx)
+    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
     {
         transmittance[octaveIdx] = 1.f;
     }
@@ -305,7 +321,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
         const float rayT = raymarchSegment.x + sampleIdx * dt;
         const float3 sampleLocation = ray.origin + ray.direction * rayT;
 
-        float2 sampledCloud = cs.SampleDensity(sampleLocation, CLOUDS_HIGHEST_DETAIL_LEVEL);
+        float2 sampledCloud = cs.SampleDensity(sampleLocation, params.detailLevel);
 
         const float cloudDensity = sampledCloud.x;
         const float skyVisibility = sampledCloud.y;
@@ -318,16 +334,15 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
         float3 sampleInScattering = 0.f;
         const float3 sunTransmittance = SampleSunTransmittanceAtLocation(sampleLocation, directionalLight.direction);
 
-        const float localVisibility = ComputeLocalVisibilityTerm(cs, sampleLocation, -directionalLight.direction, cosTheta, frac(params.noise + sampleIdx * SPT_GOLDEN_RATIO));
+        const float localVisibility = ComputeLocalVisibilityTerm(cs, sampleLocation, -directionalLight.direction, cosTheta, frac(params.noise + sampleIdx * SPT_GOLDEN_RATIO), params.detailLevel);
 
         const float  cloudExtinction   = cloudDensity * globalCloudsExtinction;
-        const float3 cloudAlbedo = 0.98f;
         const float3 cloudInScattering = cloudAlbedo * cloudExtinction;
 
-        const float3 ambient = (skyVisibility * params.ambient) / MS_OCTAVES_NUM;
+        const float3 ambient = (skyVisibility * params.ambient) / octavesNum;
 
         float currentOctaveMultiplier = 1.f;
-        for(uint octaveIdx = 0u; octaveIdx < MS_OCTAVES_NUM; ++octaveIdx)
+        for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
         {
             const float octaveExtinction = currentOctaveMultiplier;
             const float3 octaveScattering = cloudInScattering * currentOctaveMultiplier;
@@ -356,7 +371,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
                 cloudDepthWeightSum += weight;
             }
 
-            currentOctaveMultiplier *= octaveMul;
+            currentOctaveMultiplier *= CLOUD_OCTAVE_MUL;
         }
 
         if(transmittance[0] < 0.001f)
@@ -378,6 +393,152 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     result.inScattering  = inScattering;
     result.transmittance = transmittance[0];
     result.cloudDepth    = cloudDepth;
+
+    return result;
+}
+
+
+#define MAX_CLOUDSCAPE_SAMPLES 64
+groupshared float gs_cachedSamplesT[MAX_CLOUDSCAPE_SAMPLES];
+groupshared half2 gs_cachedSamplesCloud[MAX_CLOUDSCAPE_SAMPLES];
+
+
+template<uint octavesNum>
+CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams params)
+{
+    CloudscapeRaymarchResult result = CloudscapeRaymarchResult::Create();
+
+    const CloudscapeConstants cloudscape = u_cloudscapeConstants;
+
+    const Ray ray = params.ray;
+
+    float2 raymarchSegment;
+    const bool shouldTrace = ComputeRaymarchSegment(ray, params.maxVisibleDepth, OUT raymarchSegment);
+
+    if(!shouldTrace)
+    {
+        return result;
+    }
+
+    CloudsSampler cs = CreateCloudscapeSampler();
+
+    float dt = (raymarchSegment.y - raymarchSegment.x) / params.samplesNum;
+
+    uint validSamplesNum = 0u;
+    for (uint sampleIdx = WaveGetLaneIndex(); sampleIdx < params.samplesNum; sampleIdx += WaveGetLaneCount())
+    {
+        const float sampleT = float(sampleIdx) + params.noise;
+
+        const float rayT = raymarchSegment.x + sampleT * dt;
+        const float3 sampleLocation = ray.origin + ray.direction * rayT;
+
+        const float2 sampledCloud = cs.SampleDensity(sampleLocation, params.detailLevel);
+        const float cloudDensity = sampledCloud.x;
+
+        const bool isSampleValid = cloudDensity > 0.f;
+
+        const uint2 meshletsVisibleBallot = WaveActiveBallot(isSampleValid).xy;
+
+        if(isSampleValid)
+        {
+            const uint sampleIdx = validSamplesNum + GetCompactedIndex(meshletsVisibleBallot, WaveGetLaneIndex());
+
+            gs_cachedSamplesT[sampleIdx] = rayT;
+            gs_cachedSamplesCloud[sampleIdx] = half2(sampledCloud);
+        }
+
+        validSamplesNum += countbits(meshletsVisibleBallot.x) + countbits(meshletsVisibleBallot.y);
+    }
+
+    if(validSamplesNum == 0u)
+    {
+        return result;
+    }
+
+    const DirectionalLightGPUData directionalLight = cloudscape.mainDirectionalLight;
+    const float cosTheta = dot(-ray.direction, directionalLight.direction);
+
+    float phaseFunctions[octavesNum];
+    float currentPhaseMultiplier = 1.f;
+    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    {
+        phaseFunctions[octaveIdx] = CloudPhaseFunction(cosTheta, currentPhaseMultiplier);
+        currentPhaseMultiplier *= CLOUD_OCTAVE_MUL;
+    }
+
+    float transmittance[octavesNum];
+    float3 inScattering = 0.f;
+
+    for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+    {
+        transmittance[octaveIdx] = 1.f;
+    }
+
+    const float3 ambient = params.ambient / octavesNum;
+
+    AllMemoryBarrierWithGroupSync();
+
+    [unroll(2)]
+    for (uint sampleIdx = WaveGetLaneIndex(); sampleIdx < validSamplesNum; sampleIdx += WaveGetLaneCount())
+    {
+        const float sampleT = float(sampleIdx) + params.noise;
+
+        const float rayT = gs_cachedSamplesT[sampleIdx];
+        const float3 sampleLocation = ray.origin + ray.direction * rayT;
+
+        const float2 sampledCloud = gs_cachedSamplesCloud[sampleIdx];
+
+        const float cloudDensity = sampledCloud.x;
+        const float skyVisibility = sampledCloud.y;
+
+        float3 sampleInScattering = 0.f;
+        const float3 sunTransmittance = SampleSunTransmittanceAtLocation(sampleLocation, directionalLight.direction);
+
+        const float localVisibility = ComputeLocalVisibilityTerm(cs, sampleLocation, -directionalLight.direction, cosTheta, frac(params.noise + sampleT * SPT_GOLDEN_RATIO), params.detailLevel);
+
+        const float  cloudExtinction   = cloudDensity * globalCloudsExtinction;
+        const float3 cloudInScattering = cloudAlbedo * cloudExtinction;
+
+        const float3 ambientWithVisiblity = skyVisibility * ambient;
+
+        float currentOctaveMultiplier = 1.f;
+
+        [unroll]
+        for(uint octaveIdx = 0u; octaveIdx < octavesNum; ++octaveIdx)
+        {
+            const float octaveExtinction = currentOctaveMultiplier;
+            const float3 octaveScattering = cloudInScattering * currentOctaveMultiplier;
+
+            const float msExtinction = cloudExtinction * octaveExtinction;
+
+            float3 octaveInScattering = localVisibility * phaseFunctions[octaveIdx] * sunTransmittance * directionalLight.outerSpaceIlluminance + ambientWithVisiblity;
+            octaveInScattering *= octaveScattering;
+
+            float msTransmittance = max(0.000001f, exp(-dt * msExtinction));
+
+            const float accumulatedTransmittancePrefix = transmittance[octaveIdx] * WavePrefixProduct(msTransmittance);
+
+            const float3 inScatteringIntegral = (octaveInScattering - octaveInScattering * msTransmittance) / max(msExtinction, 0.000001f);
+
+            const float3 deltaScattering = accumulatedTransmittancePrefix * inScatteringIntegral;
+
+            inScattering += deltaScattering;
+            transmittance[octaveIdx] = WaveReadLaneAt(accumulatedTransmittancePrefix * msTransmittance, WaveActiveMax(WaveGetLaneIndex()));
+
+            currentOctaveMultiplier *= CLOUD_OCTAVE_MUL;
+
+            transmittance[octaveIdx] = accumulatedTransmittancePrefix * msTransmittance;
+        }
+
+        if(transmittance[0] < 0.001f)
+        {
+           transmittance[0] = 0.0f;
+           break;
+        }
+    }
+
+    result.inScattering  = WaveActiveSum(inScattering);
+    result.transmittance = WaveActiveMin(transmittance[0]);
 
     return result;
 }

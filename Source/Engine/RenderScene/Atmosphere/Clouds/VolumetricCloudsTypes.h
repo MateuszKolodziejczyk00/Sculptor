@@ -90,7 +90,10 @@ struct CloudscapeContext
 	const AtmosphereContext&        atmosphere;
 	const CloudscapeConstants&      cloudscapeConstants;
 	lib::MTHandle<CloudscapeDS>     cloudscapeDS;
+
 	Bool resetAccumulation = false;
+
+	Uint32 frameIdx = 0u;
 };
 
 

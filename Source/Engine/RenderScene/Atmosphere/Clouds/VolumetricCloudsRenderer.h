@@ -62,6 +62,8 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeSimpleProbes;
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeHighResProbe;
 
+	lib::SharedPtr<rdr::TextureView> m_cloudscapeTransmittance;
+
 	CloudscapeConstants m_cloudscapeConstants;
 
 	CloudsTransmittanceMap m_cloudsTransmittanceMap;
