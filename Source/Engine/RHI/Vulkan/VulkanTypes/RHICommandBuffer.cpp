@@ -695,6 +695,7 @@ void RHICommandBuffer::WriteTimestamp(const RHIQueryPool& queryPool, Uint32 quer
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
+	SPT_CHECK(queryIdx < queryPool.GetQueryCount());
 
 	vkCmdWriteTimestamp2(m_cmdBufferHandle, RHIToVulkan::GetStageFlags(stage), queryPool.GetHandle(), queryIdx);
 }
@@ -703,6 +704,7 @@ void RHICommandBuffer::BeginQuery(const RHIQueryPool& queryPool, Uint32 queryIdx
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
+	SPT_CHECK(queryIdx < queryPool.GetQueryCount());
 
 	vkCmdBeginQuery(m_cmdBufferHandle, queryPool.GetHandle(), queryIdx, 0);
 }
@@ -711,6 +713,7 @@ void RHICommandBuffer::EndQuery(const RHIQueryPool& queryPool, Uint32 queryIdx)
 {
 	SPT_CHECK(IsValid());
 	SPT_CHECK(queryPool.IsValid());
+	SPT_CHECK(queryIdx < queryPool.GetQueryCount());
 
 	vkCmdEndQuery(m_cmdBufferHandle, queryPool.GetHandle(), queryIdx);
 }

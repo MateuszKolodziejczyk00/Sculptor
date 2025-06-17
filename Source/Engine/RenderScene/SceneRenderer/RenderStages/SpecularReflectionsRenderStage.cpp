@@ -790,6 +790,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const SizeType activeResamplingPassesNum = std::min(spatialResamplingPasses.size(), static_cast<SizeType>(renderer_params::spatialResamplingIterationsNum));
 		const lib::Span<const sr_restir::SpatialResamplingPassParams> activeResamplingPasses = { spatialResamplingPasses.data(), activeResamplingPassesNum };
 
+		const Bool enableDistanceBasedMaxAge = renderer_params::enableHitDistanceBasedMaxAge && !viewSystemsInfo.useUnifiedDenoising;
+
 		sr_restir::ResamplingParams resamplingParams(renderView, renderScene);
 		resamplingParams.initialReservoirBuffer          = reservoirsBuffer;
 		resamplingParams.depthTexture                    = params.depthTexture;
@@ -803,7 +805,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.outSpecularLuminanceDistTexture = specularLuminanceHitDistanceTexture;
 		resamplingParams.outDiffuseLuminanceDistTexture  = diffuseLuminanceHitDistanceTexture;
 		resamplingParams.motionTexture                   = params.motionTexture;
-		resamplingParams.historySpecularHitDist          = m_denoiser.GetHistorySpecular(graphBuilder);
+		resamplingParams.historySpecularHitDist          = !viewSystemsInfo.useUnifiedDenoising ? m_denoiser.GetHistorySpecular(graphBuilder) : nullptr;
 		resamplingParams.tracesAllocation                = tracesAllocation;
 		resamplingParams.vrReprojectionSuccessMask       = vrReprojectionSuccessMask;
 		resamplingParams.enableTemporalResampling        = hasValidHistory && renderer_params::enableTemporalResampling;
@@ -811,7 +813,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.doFullFinalVisibilityCheck      = renderer_params::doFullFinalVisibilityCheck;
 		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
 		resamplingParams.variableRateTileSizeBitOffset   = vrt::GetTileSizeBitOffset(m_variableRateRenderer.GetVariableRateSettings());
-		resamplingParams.enableHitDistanceBasedMaxAge    = renderer_params::enableHitDistanceBasedMaxAge;
+		resamplingParams.enableHitDistanceBasedMaxAge    = enableDistanceBasedMaxAge;
 		resamplingParams.reservoirMaxAge                 = renderer_params::reservoirMaxAge;
 		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
 

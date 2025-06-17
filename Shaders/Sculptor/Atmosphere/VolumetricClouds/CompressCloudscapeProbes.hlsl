@@ -18,7 +18,7 @@ struct CS_INPUT
 [numthreads(1024, 1, 1)]
 void CompressCloudscapeProbesCS(CS_INPUT input)
 {
-    const uint2 coords = uint2(input.globalID.x / 32u, input.globalID.x & 31u);
+    const uint2 coords = uint2(input.globalID.x & 31u, input.globalID.x >> 5u);
 
     const float2 probeUV = (coords + 0.5f) / 32.f;
 
@@ -30,17 +30,23 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     float4 traceResSumNoWeight = 0.f;
     float4 weightSum = 0.f;
 
-    for(uint rayIdx = 0u; rayIdx < RAYS_NUM; ++rayIdx)
+    for(uint rayIdxOffset = 0u; rayIdxOffset < RAYS_NUM; rayIdxOffset += WaveGetLaneCount())
     {
-        const float4 traceResult = u_traceResult.Load(uint3(rayIdx, updatedProbeIdx, 0u));
-	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(rayIdx, u_constants.raysPerProbe);
+        const uint localRayIdx = rayIdxOffset + WaveGetLaneIndex();
+	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(localRayIdx, u_constants.raysPerProbe);
+        const float4 traceResult = u_traceResult.Load(uint3(localRayIdx, updatedProbeIdx, 0u));
 
-        const float weight = pow(max(dot(direction, rayDir), 0.0f), 64.f);
+        [unroll]
+        for(uint localIdx = 0u; localIdx < WaveGetLaneCount(); ++localIdx)
+        {
+            const float4 currTraceResult = WaveReadLaneAt(traceResult, localIdx);
+	        const float3 currRayDir      = WaveReadLaneAt(rayDir, localIdx);
 
-        traceResSum += traceResult * weight;
-        weightSum += weight;
+            const float weight = pow(max(dot(direction, currRayDir), 0.0f), 64.f);
 
-        traceResSumNoWeight += traceResult;
+            traceResSum += currTraceResult * weight;
+            weightSum += weight;
+        }
     }
 
     const float4 traceRes = traceResSum / weightSum;
@@ -50,9 +56,4 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     const uint2 probeDataCoords = probeCoords * u_constants.compressedProbeDataRes;
 
     u_rwCompressedProbes[probeDataCoords + coords] = traceRes;
-
-    if(input.globalID.x == 0u)
-    {
-        u_rwCompressedSimpleProbes[probeCoords] = (traceResSumNoWeight / RAYS_NUM);
-    }
 }

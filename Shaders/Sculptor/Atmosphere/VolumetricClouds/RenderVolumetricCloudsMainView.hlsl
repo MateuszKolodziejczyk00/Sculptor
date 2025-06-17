@@ -18,13 +18,23 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
 {
     const uint3 coords = uint3(input.globalID.xy, 0u);
 
-    const float depth = u_depth.Load(coords);
+    float2 uv;
+    float  blueNoise;
 
-    const float2 uv = (coords.xy + 0.5f) * u_passConstants.rcpResolution;
+    if(u_passConstants.fullResTrace)
+    {
+        uv = (coords.xy + 0.5f) * u_passConstants.rcpResolution;
+        blueNoise = frac(u_blueNoise256.Load(coords & 255u) + ((u_passConstants.frameIdx) & 31u) * SPT_GOLDEN_RATIO);
+    }
+    else
+    {
+        uv = (coords.xy + 0.25f + 0.5f * u_passConstants.tracedPixel2x2) * u_passConstants.rcpResolution;
+        blueNoise = frac(u_blueNoise256.Load((coords * 2u + uint3(u_passConstants.tracedPixel2x2, 0u)) & 255u) + ((u_passConstants.frameIdx >> 2u) & 31u) * SPT_GOLDEN_RATIO);
+    }
 
-    const Ray viewRay = CreateViewRayWS(u_sceneView, uv);
+    const float depth = u_furthestDepth.SampleLevel(u_depthSampler, uv, 0.f);
 
-    const float blueNoise = frac(u_blueNoise256.Load(coords & 255u) + (u_passConstants.frameIdx & 31u) * SPT_GOLDEN_RATIO);
+    const Ray viewRay = CreateViewRayWSNoJitter(u_sceneView, uv);
 
     const float3 skyAvgLuminance = u_skyProbe.Load(uint3(0u, 0u, 0u));
 
@@ -37,7 +47,7 @@ void RenderVolumetricCloudsMainViewCS(CS_INPUT input)
     raymarchParams.detailLevel = CLOUDS_DETAIL_PRESET_MAIN_VIEW;
     const CloudscapeRaymarchResult raymarchRes = RaymarchCloudscape<MAIN_VIEW_CLODUD_SCATTERING_OCTAVES_NUM>(raymarchParams);
 
-    u_rwCloudsDepth[coords.xy] = raymarchRes.cloudDepth > 0.f ? ComputeProjectionDepth(raymarchRes.cloudDepth, u_sceneView) : 0.f;
+    u_rwCloudsDepth[coords.xy] = raymarchRes.wasTraced ? raymarchRes.cloudDepth : SPT_NAN;
 
     const float3 exposedInScattering = LuminanceToExposedLuminance(raymarchRes.inScattering);
 

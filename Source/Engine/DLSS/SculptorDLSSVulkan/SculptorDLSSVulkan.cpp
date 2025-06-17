@@ -156,6 +156,7 @@ NVSDK_NGX_Resource_VK CreateNGXTexture(const rhi::RHITextureView& rhiView)
 	resource.Resource.ImageViewInfo.Format                          = rhi::RHITexture::GetVulkanFormat(rhiTexture->GetFormat());
 	resource.Resource.ImageViewInfo.Width                           = rhiTexture->GetResolution().x();
 	resource.Resource.ImageViewInfo.Height                          = rhiTexture->GetResolution().y();
+	resource.ReadWrite                                              = lib::HasAnyFlag(rhiTexture->GetDefinition().usage, rhi::ETextureUsage::StorageTexture);
 
 	return resource;
 }

@@ -10,9 +10,9 @@ namespace spt::rdr
 // GPUStatisticsCollector ========================================================================
 
 GPUStatisticsCollector::GPUStatisticsCollector()
-	: m_timestampsQueryPool(CreateQueryPool(rhi::EQueryType::Timestamp, 1024))
+	: m_timestampsQueryPool(CreateQueryPool(rhi::EQueryType::Timestamp, 16384u))
 	, m_timestampsQueryPoolIndex(0)
-	, m_pipelineStatsQueryPool(CreateQueryPool(rhi::EQueryType::Statistics, 1024, rhi::EQueryStatisticsType::All))
+	, m_pipelineStatsQueryPool(CreateQueryPool(rhi::EQueryType::Statistics, 16384u, rhi::EQueryStatisticsType::All))
 	, m_pipelineStatsQueryPoolIndex(0)
 
 {

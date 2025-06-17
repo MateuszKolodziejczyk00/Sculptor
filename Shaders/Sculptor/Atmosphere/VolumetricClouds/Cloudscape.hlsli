@@ -37,19 +37,6 @@ CloudscapeSample SampleCloudscapeProbe(uint2 probeCoords, in float2 octUV)
     return res;
 }
 
-CloudscapeSample SampleCloudscapeIsotropic(in float3 location)
-{
-    const float2 uv = (location.xy - u_cloudscapeConstants.probesOrigin) * u_cloudscapeConstants.rcpProbesSpacing * u_cloudscapeConstants.uvPerProbe;
-
-    const float4 probesData = u_cloudscapeSimpleProbes.SampleLevel(u_cloudscapeProbesSampler, uv, 0.f);
-
-    CloudscapeSample result;
-    result.inScattering  = probesData.xyz;
-    result.transmittance = probesData.w;
-
-    return result;
-}
-
 CloudscapeSample SampleCloudscape(in float3 location, in float3 direction)
 {
     CloudscapeSample result;

@@ -78,7 +78,6 @@ DS_END();
 
 DS_BEGIN(CloudscapeProbesDS, rg::RGDescriptorSetState<CloudscapeProbesDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeProbes)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeSimpleProbes)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_cloudscapeHighResProbe)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_cloudscapeProbesSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<CloudscapeConstants>),                    u_cloudscapeConstants)

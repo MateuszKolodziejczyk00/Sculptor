@@ -491,8 +491,8 @@ void RenderGraphBuilder::BlitTexture(const RenderGraphDebugName& blitName, rg::R
 		const rhi::TextureSubresourceRange& sourceSubresource = source->GetSubresourceRange();
 		const rhi::TextureSubresourceRange& destSubresource = dest->GetSubresourceRange();
 
-		SPT_CHECK(sourceSubresource.mipLevelsNum == 1u);
-		SPT_CHECK(destSubresource.mipLevelsNum == 1u);
+		SPT_CHECK(sourceSubresource.mipLevelsNum == 1u || (sourceSubresource.mipLevelsNum == rhi::constants::allRemainingMips && source->GetMipLevelsNum() == 1u));
+		SPT_CHECK(destSubresource.mipLevelsNum == 1u || (destSubresource.mipLevelsNum == rhi::constants::allRemainingMips && dest->GetMipLevelsNum() == 1u));
 
 		SPT_CHECK(sourceSubresource.arrayLayersNum == 1u || (sourceSubresource.arrayLayersNum == rhi::constants::allRemainingArrayLayers && source->GetArrayLayersNum() == 1u));
 		SPT_CHECK(destSubresource.arrayLayersNum == 1u || (destSubresource.arrayLayersNum == rhi::constants::allRemainingArrayLayers && dest->GetArrayLayersNum() == 1u));

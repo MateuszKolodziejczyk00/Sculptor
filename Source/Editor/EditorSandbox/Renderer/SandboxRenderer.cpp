@@ -73,35 +73,43 @@ SandboxRenderer::~SandboxRenderer()
 	m_renderView.reset();
 }
 
-void SandboxRenderer::Tick(Real32 deltaTime)
+void SandboxRenderer::Update(engn::FrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
 
+	math::Vector3f& cameraDeltaLocation = m_cameraDeltaLocation[frame.GetFrameIdx() & 1u];
+	math::Vector2f& cameraDeltaRotation = m_cameraDeltaRotation[frame.GetFrameIdx() & 1u];
+
+	cameraDeltaLocation = math::Vector3f::Zero();
+	cameraDeltaRotation = math::Vector2f::Zero();
+
 	if (m_isViewportFocused)
 	{
+		const Real32 deltaTime = frame.GetDeltaTime();
+
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::W))
 		{
-			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX()));
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitX());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::S))
 		{
-			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX()));
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitX());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::D))
 		{
-			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY()));
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitY());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::A))
 		{
-			m_renderView->Move(m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY()));
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitY());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::E))
 		{
-			m_renderView->Move(deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * math::Vector3f::UnitZ());
 		}
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::Q))
 		{
-			m_renderView->Move(deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
+			cameraDeltaLocation += m_renderView->GetRotation() * (deltaTime * m_cameraSpeed * -math::Vector3f::UnitZ());
 		}
 
 		if (inp::InputManager::Get().IsKeyPressed(inp::EKey::RightMouseButton))
@@ -112,11 +120,26 @@ void SandboxRenderer::Tick(Real32 deltaTime)
 				const Real32 rotationSpeed = 0.0045f;
 				const math::Vector2f rotationDelta = rotationSpeed * mouseVel;
 
-				m_renderView->Rotate(math::AngleAxisf(rotationDelta.x(), math::Vector3f::UnitZ()));
-				m_renderView->Rotate(math::AngleAxisf(rotationDelta.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+				cameraDeltaRotation += rotationDelta;
 			}
 		}
 	}
+}
+
+void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const Uint64 frameIdx = frame.GetFrameIdx();
+
+	const math::Vector3f& cameraDeltaLocation = m_cameraDeltaLocation[frameIdx & 1u];
+	const math::Vector2f& cameraDeltaRotation = m_cameraDeltaRotation[frameIdx & 1u];
+
+	m_renderView->Move(cameraDeltaLocation);
+
+	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.x(), math::Vector3f::UnitZ()));
+	m_renderView->Rotate(math::AngleAxisf(cameraDeltaRotation.y(), m_renderView->GetRotation() * math::Vector3f::UnitY()));
+
 
 	if (sunMovement)
 	{
@@ -167,7 +190,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 {
 	SPT_PROFILER_FUNCTION();
 	
-	Tick(frame.GetDeltaTime());
+	UpdatePreRender(frame);
 
 	m_renderScene->BeginFrame(frame);
 
@@ -468,9 +491,6 @@ void SandboxRenderer::InitializeRenderScene()
 			directionalLightData.sunDiskAngleMultiplier = 3.8f;
 			directionalLightData.sunDiskEC              = 10.f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
-
-			sunAngleYaw = std::atan2(directionalLightData.direction.y(), directionalLightData.direction.x());
-			sunAnglePitch = std::asin(directionalLightData.direction.z());
 		}
 	}
 

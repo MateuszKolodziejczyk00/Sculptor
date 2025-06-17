@@ -44,7 +44,8 @@ public:
 	explicit SandboxRenderer();
 	~SandboxRenderer();
 
-	void Tick(Real32 deltaTime);
+	void Update(engn::FrameContext& frame);
+	void UpdatePreRender(engn::FrameContext& frame);
 
 	void ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr::TextureView> output);
 
@@ -123,6 +124,9 @@ private:
 	lib::SharedPtr<rg::capture::RGCaptureSourceContext> m_captureSourceContext;
 
 	Bool resetAccumulationRenderFrame = false;
+
+	math::Vector3f m_cameraDeltaLocation[2];
+	math::Vector2f m_cameraDeltaRotation[2];
 };
 
 } // spt::ed

@@ -189,6 +189,8 @@ public:
 
 	void Update(rhi::RHIResolution resolution);
 
+	Bool HasHistory() const { return m_history != nullptr; }
+
 	const lib::SharedPtr<rdr::TextureView>& GetCurrent() const { return m_current; }
 	const lib::SharedPtr<rdr::TextureView>& GetHistory() const { return m_history; }
 	

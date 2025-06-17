@@ -26,12 +26,15 @@ struct CloudscapeRaymarchResult
 
     float cloudDepth;
 
+    bool wasTraced;
+
     static CloudscapeRaymarchResult Create()
     {
         CloudscapeRaymarchResult val;
         val.inScattering  = 0.f;
         val.transmittance = 1.f;
         val.cloudDepth    = 0.f;
+        val.wasTraced     = false;
 
         return val;
     }
@@ -285,6 +288,8 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
         return result;
     }
 
+    result.wasTraced = true;
+
     CloudsSampler cs = CreateCloudscapeSampler();
 
     float dt = (raymarchSegment.y - raymarchSegment.x) / params.samplesNum;
@@ -387,7 +392,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
     }
     else
     {
-        cloudDepth = 0.f;
+        cloudDepth = -1.f;
     }
 
     result.inScattering  = inScattering;
@@ -398,7 +403,7 @@ CloudscapeRaymarchResult RaymarchCloudscape(in CloudscapeRaymarchParams params)
 }
 
 
-#define MAX_CLOUDSCAPE_SAMPLES 64
+#define MAX_CLOUDSCAPE_SAMPLES 64 
 groupshared float gs_cachedSamplesT[MAX_CLOUDSCAPE_SAMPLES];
 groupshared half2 gs_cachedSamplesCloud[MAX_CLOUDSCAPE_SAMPLES];
 
@@ -419,6 +424,8 @@ CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams para
     {
         return result;
     }
+
+    result.wasTraced = true;
 
     CloudsSampler cs = CreateCloudscapeSampler();
 
@@ -478,7 +485,7 @@ CloudscapeRaymarchResult WaveRaymarchCloudscape(in CloudscapeRaymarchParams para
 
     AllMemoryBarrierWithGroupSync();
 
-    [unroll(2)]
+    [unroll(4)]
     for (uint sampleIdx = WaveGetLaneIndex(); sampleIdx < validSamplesNum; sampleIdx += WaveGetLaneCount())
     {
         const float sampleT = float(sampleIdx) + params.noise;

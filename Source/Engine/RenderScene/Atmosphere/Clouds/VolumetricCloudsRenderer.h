@@ -59,10 +59,13 @@ private:
 	lib::SharedPtr<rdr::TextureView> m_curlNoise;
 
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeProbes;
-	lib::SharedPtr<rdr::TextureView> m_cloudscapeSimpleProbes;
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeHighResProbe;
 
 	lib::SharedPtr<rdr::TextureView> m_cloudscapeTransmittance;
+
+	TextureWithHistory m_mainViewClouds;
+	TextureWithHistory m_mainViewCloudsDepth;
+	TextureWithHistory m_mainViewCloudsAge;
 
 	CloudscapeConstants m_cloudscapeConstants;
 

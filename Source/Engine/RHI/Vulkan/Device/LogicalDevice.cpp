@@ -117,6 +117,12 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(relaxedExtendedInstructionFeatures);
 
+	VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR computeShaderDerivativesFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR };
+	computeShaderDerivativesFeatures.computeDerivativeGroupLinear = VK_TRUE;
+	computeShaderDerivativesFeatures.computeDerivativeGroupQuads  = VK_TRUE;
+
+	deviceInfoLinkedData.Append(computeShaderDerivativesFeatures);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 
