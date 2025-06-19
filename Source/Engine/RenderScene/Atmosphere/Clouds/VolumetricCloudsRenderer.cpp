@@ -45,6 +45,7 @@ RendererBoolParameter enableVolumetricClouds("Enable Volumetric Clouds", { "Clou
 
 RendererBoolParameter forceTransmittanceMapFullUpdates("Force Transmittance Map Full Updates", { "Clouds" }, false);
 RendererBoolParameter forceHRCloudsProbeFullUpdates("Force High Res Clouds Probe Full Updates", { "Clouds" }, false);
+RendererBoolParameter forceLRCloudsProbeFullUpdates("Force Low Res Clouds Probe Full Updates", { "Clouds" }, false);
 RendererBoolParameter fullResClouds("Full Res Clouds", { "Clouds" }, false);
 
 } // renderer_params
@@ -386,7 +387,7 @@ static void RenderVolumetricCloudsMainView(rg::RenderGraphBuilder& graphBuilder,
 
 			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Accumulated Clouds Age"),
 									  params.accumulatedCloudsAge,
-									  rhi::ClearColor(0x1u, 0u, 0u, 0u));
+									  rhi::ClearColor(0u, 0u, 0u, 0u));
 		}
 
 		upsample::UpsampleCloudsParams upsampleParams;
@@ -503,6 +504,7 @@ struct ProbesUpdateParams
 	Uint32 tracesPerProbe = 1024u;
 
 	lib::StaticArray<math::Vector4u, maxProbesToUpdate> probeCoords;
+	Bool forceFullUpdate = false; // if true, will update all probes, otherwise will only update the probes that are in probeCoords
 };
 
 
@@ -523,9 +525,11 @@ DS_BEGIN(TraceCloudscapeProbesDS, rg::RGDescriptorSetState<TraceCloudscapeProbes
 DS_END();
 
 
-static rdr::PipelineStateID CompileTraceCloudscapeProbesPipeline()
+static rdr::PipelineStateID CompileTraceCloudscapeProbesPipeline(Bool fullUpdate)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/VolumetricClouds/TraceCloudscapeProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TraceCloudscapeProbesCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("FULL_UPDATE", fullUpdate ? "1" : "0"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/VolumetricClouds/TraceCloudscapeProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TraceCloudscapeProbesCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TraceCloudscapeProbesPipeline"), shader);
 }
 
@@ -534,11 +538,15 @@ rg::RGTextureViewHandle TraceCloudscapeProbes(rg::RenderGraphBuilder& graphBuild
 {
 	SPT_PROFILER_FUNCTION();
 
-	math::Vector2u traceResultRes = math::Vector2u(params.tracesPerProbe, maxProbesToUpdate);
+	const math::Vector2u probesNum = params.cloudscape->cloudscapeConstants.probesNum;
+
+	const Uint32 updatedProbesNum = params.forceFullUpdate ? (probesNum.x() * probesNum.y()) : static_cast<Uint32>(params.probeCoords.size());
+
+	const math::Vector2u traceResultRes = math::Vector2u(params.tracesPerProbe, updatedProbesNum);
 
 	const rg::RGTextureViewHandle traceResult = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Cloudscape Probes Trace"), rg::TextureDef(traceResultRes, rhi::EFragmentFormat::RGBA16_S_Float));
 
-	static const rdr::PipelineStateID pipeline = CompileTraceCloudscapeProbesPipeline();
+	const rdr::PipelineStateID pipeline = CompileTraceCloudscapeProbesPipeline(params.forceFullUpdate);
 
 	UpdateCloudscapeProbesConstants shaderConstants;
 	shaderConstants.raysPerProbe           = params.tracesPerProbe;
@@ -571,9 +579,11 @@ DS_BEGIN(CompressCloudscapeProbesDS, rg::RGDescriptorSetState<CompressCloudscape
 DS_END();
 
 
-static rdr::PipelineStateID CompileCompressCloudscapeProbesPipeline()
+static rdr::PipelineStateID CompileCompressCloudscapeProbesPipeline(Bool fullUpdate)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/VolumetricClouds/CompressCloudscapeProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CompressCloudscapeProbesCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("FULL_UPDATE", fullUpdate ? "1" : "0"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Atmosphere/VolumetricClouds/CompressCloudscapeProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CompressCloudscapeProbesCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("CompressCloudscapeProbesPipeline"), shader);
 }
 
@@ -582,7 +592,11 @@ void CompressCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const Probes
 {
 	SPT_PROFILER_FUNCTION();
 
-	static const rdr::PipelineStateID pipeline = CompileCompressCloudscapeProbesPipeline();
+	const math::Vector2u probesNum = params.cloudscape->cloudscapeConstants.probesNum;
+
+	const Uint32 updatedProbesNum = params.forceFullUpdate ? (probesNum.x() * probesNum.y()) : static_cast<Uint32>(params.probeCoords.size());
+
+	const rdr::PipelineStateID pipeline = CompileCompressCloudscapeProbesPipeline(params.forceFullUpdate);
 
 	UpdateCloudscapeProbesConstants shaderConstants;
 	shaderConstants.raysPerProbe           = params.tracesPerProbe;
@@ -596,7 +610,7 @@ void CompressCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const Probes
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Compress Cloudscape Probes"),
 						  pipeline,
-						  math::Vector2u(1u, maxProbesToUpdate),
+						  math::Vector2u(1u, updatedProbesNum),
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.cloudscape->cloudscapeDS));
 }
@@ -768,7 +782,7 @@ void VolumetricCloudsRenderer::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 
 	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::VolumetricClouds).AddRawMember(this, &VolumetricCloudsRenderer::RenderVolumetricClouds, cloudscapeContext);
 
-	if (m_enqueuedCloudscapeProbesGlobalUpdate || cloudscapeContext.resetAccumulation)
+	if (m_enqueuedCloudscapeProbesGlobalUpdate || cloudscapeContext.resetAccumulation || renderer_params::forceLRCloudsProbeFullUpdates)
 	{
 		UpdateAllCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext);
 		m_enqueuedCloudscapeProbesGlobalUpdate = false;
@@ -895,20 +909,7 @@ void VolumetricCloudsRenderer::UpdateAllCloudscapeProbes(rg::RenderGraphBuilder&
 {
 	SPT_PROFILER_FUNCTION();
 
-	const Uint32 probesNum = cloudscapeContext.cloudscapeConstants.probesNum.x() * cloudscapeContext.cloudscapeConstants.probesNum.y();
-	const Uint32 batchesNum = math::Utils::DivideCeil(probesNum, cloudscape_probe::maxProbesToUpdate);
-
-	for (Uint32 batchIdx = 0u; batchIdx < batchesNum; ++batchIdx)
-	{
-		lib::StaticArray<math::Vector2u, cloudscape_probe::maxProbesToUpdate> probeCoords;
-		for (Uint32 i = 0u; i < cloudscape_probe::maxProbesToUpdate; ++i)
-		{
-			const Uint32 probeIdx = batchIdx * cloudscape_probe::maxProbesToUpdate + i;
-			probeCoords[i] = math::Vector2u(probeIdx % cloudscapeContext.cloudscapeConstants.probesNum.x(), probeIdx / cloudscapeContext.cloudscapeConstants.probesNum.x());
-		}
-
-		UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, probeCoords);
-	}
+	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, 256u, lib::Span<const math::Vector2u>{});
 }
 
 void VolumetricCloudsRenderer::UpdateCloudscapeProbesPerFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext)
@@ -924,32 +925,40 @@ void VolumetricCloudsRenderer::UpdateCloudscapeProbesPerFrame(rg::RenderGraphBui
 		probeCoords[i] = math::Vector2u(xOffset + i, yOffset);
 	}
 
-	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, probeCoords);
+	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, 1024u, probeCoords);
 }
 
-void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, lib::Span<const math::Vector2u> probeCoords)
+void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, Uint32 raysNumPerProbe, lib::Span<const math::Vector2u> probeCoords)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(probeCoords.size() <= cloudscape_probe::maxProbesToUpdate);
 
-	const rg::RGTextureViewHandle cloudscapeProbes       = graphBuilder.AcquireExternalTextureView(m_cloudscapeProbes);
+	const rg::RGTextureViewHandle cloudscapeProbes = graphBuilder.AcquireExternalTextureView(m_cloudscapeProbes);
 
 	ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
 
 	cloudscape_probe::ProbesUpdateParams updateParams;
 	updateParams.cloudscape                    = &cloudscapeContext;
 	updateParams.cloduscapeProbesTexture       = cloudscapeProbes;
-	updateParams.tracesPerProbe                = 1024u;
+	updateParams.tracesPerProbe                = raysNumPerProbe;
 	updateParams.skyProbe                      = shadingViewContext.skyProbe;
 
-	for (Uint32 i = 0u; i < probeCoords.size(); ++i)
+	if (probeCoords.empty())
 	{
-		updateParams.probeCoords[i] = math::Vector4u(probeCoords[i].x(), probeCoords[i].y(), 0u, 0u);
+		updateParams.forceFullUpdate = true;
+	}
+	else
+	{
+		updateParams.forceFullUpdate = false;
+
+		for (Uint32 i = 0u; i < probeCoords.size(); ++i)
+		{
+			updateParams.probeCoords[i] = math::Vector4u(probeCoords[i].x(), probeCoords[i].y(), 0u, 0u);
+		}
 	}
 
 	cloudscape_probe::UpdateCloudscapeProbes(graphBuilder, updateParams);
-
 }
 
 void VolumetricCloudsRenderer::InitTextures()

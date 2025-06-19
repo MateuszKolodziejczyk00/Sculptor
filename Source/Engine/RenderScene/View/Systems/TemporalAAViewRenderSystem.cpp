@@ -209,7 +209,7 @@ void TemporalAAViewRenderSystem::OnRenderAntiAliasingStage(rg::RenderGraphBuilde
 	renderingParams.outputColor                    = outputColor;
 	renderingParams.jitter                         = renderView.GetJitter();
 	renderingParams.sharpness                      = 0.0f;
-	renderingParams.resetAccumulation              = false;
+	renderingParams.resetAccumulation              = context.rendererSettings.resetAccumulation;
 	renderingParams.exposure.exposureBuffer        = exposureBuffer;
 	renderingParams.exposure.exposureOffset        = exposureOffset;
 	renderingParams.exposure.historyExposureOffset = historyExposureOffset;

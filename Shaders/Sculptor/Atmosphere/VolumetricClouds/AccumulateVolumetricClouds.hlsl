@@ -21,6 +21,7 @@ void AccumulateVolumetricCloudsCS(CS_INPUT input)
 
     if(isnan(tracedCloudDepth))
     {
+        u_rwAccumulatedCloudsDepth[coords] = -1.f;
         u_rwCloudsAge[coords] = 0u;
         return;
     }

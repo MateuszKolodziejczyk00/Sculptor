@@ -12,9 +12,6 @@ struct CS_INPUT
 };
 
 
-#define RAYS_NUM 1024u
-
-
 [numthreads(1024, 1, 1)]
 void CompressCloudscapeProbesCS(CS_INPUT input)
 {
@@ -30,7 +27,7 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
     float4 traceResSumNoWeight = 0.f;
     float4 weightSum = 0.f;
 
-    for(uint rayIdxOffset = 0u; rayIdxOffset < RAYS_NUM; rayIdxOffset += WaveGetLaneCount())
+    for(uint rayIdxOffset = 0u; rayIdxOffset < u_constants.raysPerProbe; rayIdxOffset += WaveGetLaneCount())
     {
         const uint localRayIdx = rayIdxOffset + WaveGetLaneIndex();
 	    const float3 rayDir = ComputeCloudscapeProbeRayDirection(localRayIdx, u_constants.raysPerProbe);
@@ -51,7 +48,14 @@ void CompressCloudscapeProbesCS(CS_INPUT input)
 
     const float4 traceRes = traceResSum / weightSum;
 
+    const uint2 probesNum = u_cloudscapeConstants.probesNum;
+
+#if FULL_UPDATE
+    const uint2 probeCoords = uint2(updatedProbeIdx % probesNum.x, updatedProbeIdx / probesNum.x);
+#else
     const uint2 probeCoords = u_constants.probesToUpdate[updatedProbeIdx].xy;
+#endif // FULL_UPDATE
+
 
     const uint2 probeDataCoords = probeCoords * u_constants.compressedProbeDataRes;
 

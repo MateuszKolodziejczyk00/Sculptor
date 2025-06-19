@@ -143,15 +143,12 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 
 	if (sunMovement)
 	{
-		m_directionalLightEntity.patch<rsc::DirectionalLightData>([speed = sunMovementSpeed](rsc::DirectionalLightData& data)
-																  {
-																	  const Real32 angle = engn::Engine::Get().GetTime() * speed;
-																	  const Real32 sin = std::sin(angle);
-																	  const Real32 cos = std::cos(angle);
-																	  data.direction = math::Vector3f(sin, 0.1f, cos).normalized();
-																  });
+		sunAngleYaw   = pi<Real32> * 0.5f;
+		sunAnglePitch = std::fmodf(engn::Engine::Get().GetTime() * sunMovementSpeed, 2.f * pi<Real32>);
+		sunAngleDirty = true;
 }
-	else if (sunAngleDirty)
+
+	if (sunAngleDirty)
 	{
 		sunAngleDirty = false;
 

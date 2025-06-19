@@ -76,6 +76,16 @@ void SandboxUIView::DrawUI()
 		engn::FrameContext& frame = scui::ApplicationUI::GetCurrentContext().GetCurrentFrame();
 
 		js::Launch(SPT_GENERIC_JOB_NAME,
+				   [this, &frame]
+				   {
+					   m_renderer.Update(frame);
+				   },
+				   js::JobDef()
+				   .SetPriority(js::EJobPriority::High)
+				   .ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
+
+
+		js::Launch(SPT_GENERIC_JOB_NAME,
 				   [this, &frame, texture = m_viewportTexture]
 				   {
 					   m_renderer.ProcessView(frame, lib::Ref(texture));

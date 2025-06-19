@@ -20,7 +20,13 @@ void TraceCloudscapeProbesCS(CS_INPUT input)
 
 	const float3 direction = ComputeCloudscapeProbeRayDirection(rayIdx, u_constants.raysPerProbe);
 
+    const uint2 probesNum = u_cloudscapeConstants.probesNum;
+
+#if FULL_UPDATE
+    const uint2 probeCoords = uint2(probeIdx % probesNum.x, probeIdx / probesNum.x);
+#else
     const uint2 probeCoords = u_constants.probesToUpdate[probeIdx].xy;
+#endif // FULL_UPDATE
 
     const float3 probeLocation = GetCloudscapeProbeLocation(u_cloudscapeConstants, probeCoords);
 
