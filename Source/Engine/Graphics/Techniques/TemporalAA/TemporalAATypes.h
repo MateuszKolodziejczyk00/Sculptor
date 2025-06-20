@@ -66,6 +66,9 @@ struct TemporalAAExposureParams
 
 struct UnifiedDenoisingParams
 {
+	math::Matrix4f worldToView = math::Matrix4f::Identity();
+	math::Matrix4f viewToClip  = math::Matrix4f::Identity();
+
 	rg::RGTextureViewHandle diffuseAlbedo;
 	rg::RGTextureViewHandle specularAlbedo;
 	rg::RGTextureViewHandle normals;

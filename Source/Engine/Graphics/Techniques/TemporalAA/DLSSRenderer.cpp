@@ -146,6 +146,8 @@ void DLSSRenderer::Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAA
 		const UnifiedDenoisingParams& unifiedDenoisingParams = *renderingParams.unifiedDenoisingParams;
 
 		dlss::DLSSRayReconstructionRenderingParams rayReconstructionParams;
+		rayReconstructionParams.worldToView         = unifiedDenoisingParams.worldToView;
+		rayReconstructionParams.viewToClip         = unifiedDenoisingParams.viewToClip;
 		rayReconstructionParams.diffuseAlbedo       = unifiedDenoisingParams.diffuseAlbedo;
 		rayReconstructionParams.specularAlbedo      = unifiedDenoisingParams.specularAlbedo;
 		rayReconstructionParams.normals             = unifiedDenoisingParams.normals;

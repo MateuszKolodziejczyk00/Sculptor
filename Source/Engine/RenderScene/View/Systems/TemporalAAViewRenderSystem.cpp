@@ -18,12 +18,21 @@ RendererBoolParameter  enableTransformerModel("Enable Transformer Model", { "Tem
 namespace priv
 {
 
+BEGIN_SHADER_STRUCT(PrepareUnifiedDenoisingGuidingTexturesConstants)
+	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f, rcpResolution)
+END_SHADER_STRUCT();
+
+
 DS_BEGIN(PrepareUnifiedDenoisingGuidingTexturesDS, rg::RGDescriptorSetState<PrepareUnifiedDenoisingGuidingTexturesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_baseColorMetallic)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                           u_tangentFrame)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwDiffuseAlbedo)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwSpecularAlbedo)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                            u_rwNormals)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<PrepareUnifiedDenoisingGuidingTexturesConstants>), u_constants)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                            u_depth)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                            u_roughness)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                                    u_baseColorMetallic)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                                    u_tangentFrame)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                                     u_rwDiffuseAlbedo)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                                     u_rwSpecularAlbedo)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                                     u_rwNormals)
 DS_END();
 
 
@@ -41,13 +50,22 @@ gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graph
 
 	const math::Vector2u resolution = viewSpec.GetRenderingRes();
 
+	const RenderView& renderView = viewSpec.GetRenderView();
+
 	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
 	rg::RGTextureViewHandle diffuseAlbedo  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Diffuse Albedo"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA8_UN_Float));
 	rg::RGTextureViewHandle specularAlbedo = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Specular Albedo"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA8_UN_Float));
 	rg::RGTextureViewHandle normals        = graphBuilder.CreateTextureView(RG_DEBUG_NAME("UD Normals"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
 
+	PrepareUnifiedDenoisingGuidingTexturesConstants shaderConstants;
+	shaderConstants.resolution    = resolution;
+	shaderConstants.rcpResolution = resolution.cast<Real32>().cwiseInverse();
+
 	const lib::MTHandle<PrepareUnifiedDenoisingGuidingTexturesDS> prepareGuidingTexturesDS = graphBuilder.CreateDescriptorSet<PrepareUnifiedDenoisingGuidingTexturesDS>(RENDERER_RESOURCE_NAME("PrepareUnifiedDenoisingGuidingTexturesDS"));
+	prepareGuidingTexturesDS->u_constants         = shaderConstants;
+	prepareGuidingTexturesDS->u_depth             = viewContext.depth;
+	prepareGuidingTexturesDS->u_roughness         = viewContext.gBuffer[GBuffer::Texture::Roughness];
 	prepareGuidingTexturesDS->u_baseColorMetallic = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 	prepareGuidingTexturesDS->u_tangentFrame      = viewContext.gBuffer[GBuffer::Texture::TangentFrame];
 	prepareGuidingTexturesDS->u_rwDiffuseAlbedo   = diffuseAlbedo;
@@ -59,7 +77,7 @@ gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graph
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Prepare Unified Denoising Guiding Textures"),
 						  pipeline,
 						  math::Vector2u(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u)),
-						  rg::BindDescriptorSets(prepareGuidingTexturesDS));
+						  rg::BindDescriptorSets(prepareGuidingTexturesDS, renderView.GetRenderViewDS()));
 
 	const RTReflectionsViewData& reflectionsViewData = viewSpec.GetBlackboard().Get<RTReflectionsViewData>();
 
@@ -70,8 +88,15 @@ gfx::UnifiedDenoisingParams PrepareGuidingTextures(rg::RenderGraphBuilder& graph
 																							reflectionsViewData.finalSpecularGI->GetTexture(),
 																							specularHitDistViewDef);
 
+	const SceneViewData& sceneViewData = renderView.GetViewRenderingData();
+
+	const math::Matrix4f worldToView = sceneViewData.viewMatrix;
+	const math::Matrix4f viewToClip  = sceneViewData.projectionMatrix;
+
 	return gfx::UnifiedDenoisingParams
 	{
+		worldToView,
+		viewToClip,
 		diffuseAlbedo,
 		specularAlbedo,
 		normals,

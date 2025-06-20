@@ -217,6 +217,9 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 	const Real32 resolutionX = static_cast<Real32>(dlssParams.inputResolution.x());
 	const Real32 resolutionY = static_cast<Real32>(dlssParams.inputResolution.y());
 
+	math::Matrix4f worldToView = renderingParams.rayReconstructionParams->worldToView;
+	math::Matrix4f viewToClip = renderingParams.rayReconstructionParams->viewToClip;
+
 	NVSDK_NGX_VK_DLSSD_Eval_Params dlssEvalParams{};
 	dlssEvalParams.pInDepth                         = &depthResource;
 	dlssEvalParams.pInMotionVectors                 = &motionResource;
@@ -228,6 +231,9 @@ void EvaluateDLSSRR(rdr::CommandRecorder& commandRecorder, const DLSSRenderingPa
 	dlssEvalParams.pInExposureTexture               = &exposureResource;
 	dlssEvalParams.InRenderSubrectDimensions.Width  = dlssParams.inputResolution.x();
 	dlssEvalParams.InRenderSubrectDimensions.Height = dlssParams.inputResolution.y();
+
+	dlssEvalParams.pInWorldToViewMatrix = worldToView.data();
+	dlssEvalParams.pInViewToClipMatrix  = viewToClip.data();
 
     dlssEvalParams.pInDiffuseAlbedo       = &diffuseAlbedoResource;
     dlssEvalParams.pInSpecularAlbedo      = &specularAlbedoResource;
