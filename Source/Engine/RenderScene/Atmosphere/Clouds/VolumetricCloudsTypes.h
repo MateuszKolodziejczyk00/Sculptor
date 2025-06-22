@@ -42,6 +42,8 @@ BEGIN_SHADER_STRUCT(CloudscapeConstants)
 	SHADER_STRUCT_FIELD(Real32, globalDensity)
 	SHADER_STRUCT_FIELD(Real32, globalCoverageOffset)
 	SHADER_STRUCT_FIELD(Real32, globalCloudsHeightOffset)
+	SHADER_STRUCT_FIELD(Real32, globalCoverageMultiplier)
+	SHADER_STRUCT_FIELD(Real32, globalCloudsHeightMultiplier)
 
 	SHADER_STRUCT_FIELD(math::Vector2f, probesSpacing)
 	SHADER_STRUCT_FIELD(math::Vector2f, rcpProbesSpacing)

@@ -34,12 +34,17 @@ RendererFloatParameter detailShapeNoiseMeters0("Detail Shape Noise Meters (Octav
 RendererFloatParameter detailShapeNoiseStrength1("Detail Shape Noise Strength (Octave 1)", { "Clouds" }, 0.0f, 0.f, 2.f);
 RendererFloatParameter detailShapeNoiseMeters1("Detail Shape Noise Meters (Octave 1)", { "Clouds" }, 255.f, 0.f, 20000.f);
 
+RendererFloatParameter weatherMapMeters("Weather Map meters", { "Clouds" }, 16000.f, 0.f, 50000.f);
+
 RendererFloatParameter curlNoiseOffset("Curl Noise Offset", { "Clouds" }, 5.f, 0.f, 500.f);
 RendererFloatParameter curlNoiseMeters("Curl Noise Meters", { "Clouds" }, 2222.f, 0.f, 40000.f);
 
 RendererFloatParameter globalDensity("Global Density", { "Clouds" }, 1.f, 0.f, 5.f);
 RendererFloatParameter globalCoverageOffset("Global Coverage Offset", { "Clouds" }, 0.4f, -1.f, 1.f);
 RendererFloatParameter cloudsHeightOffset("Clouds Height Offset", { "Clouds" }, 0.0f, -1.f, 1.f);
+
+RendererFloatParameter globalCoverageMultiplier("Global Coverage Multiplier", { "Clouds" }, 1.f, -2.f, 2.f);
+RendererFloatParameter cloudsHeightMultiplier("Clouds Height Multiplier", { "Clouds" }, 1.0f, -2.f, 2.f);
 
 RendererBoolParameter enableVolumetricClouds("Enable Volumetric Clouds", { "Clouds" }, true);
 
@@ -871,20 +876,22 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	const math::Vector3f cloudsAtmosphereCenter = math::Vector3f(viewLocation.x(), viewLocation.y(), m_cloudscapeConstants.cloudsAtmosphereCenterZ);
 
-	m_cloudscapeConstants.baseShapeNoiseScale       = 1.f / renderer_params::baseShapeNoiseMeters;
-	m_cloudscapeConstants.detailShapeNoiseStrength0 = renderer_params::detailShapeNoiseStrength0;
-	m_cloudscapeConstants.detailShapeNoiseScale0    = 1.f / renderer_params::detailShapeNoiseMeters0;
-	m_cloudscapeConstants.detailShapeNoiseStrength1 = renderer_params::detailShapeNoiseStrength1;
-	m_cloudscapeConstants.detailShapeNoiseScale1    = 1.f / renderer_params::detailShapeNoiseMeters1;
-	m_cloudscapeConstants.curlNoiseScale            = 1.f / renderer_params::curlNoiseMeters;
-	m_cloudscapeConstants.curlMaxoffset             = renderer_params::curlNoiseOffset;
-	m_cloudscapeConstants.weatherMapScale           = 1.f / 16000.f;
-	m_cloudscapeConstants.cloudsAtmosphereCenter    = cloudsAtmosphereCenter;
-	m_cloudscapeConstants.globalDensity             = renderer_params::globalDensity;
-	m_cloudscapeConstants.globalCoverageOffset      = renderer_params::globalCoverageOffset;
-	m_cloudscapeConstants.globalCloudsHeightOffset = renderer_params::cloudsHeightOffset;
-	m_cloudscapeConstants.time                      = renderScene.GetCurrentFrameRef().GetTime();
-	m_cloudscapeConstants.mainDirectionalLight      = *atmosphere.mainDirectionalLight;
+	m_cloudscapeConstants.baseShapeNoiseScale          = 1.f / renderer_params::baseShapeNoiseMeters;
+	m_cloudscapeConstants.detailShapeNoiseStrength0    = renderer_params::detailShapeNoiseStrength0;
+	m_cloudscapeConstants.detailShapeNoiseScale0       = 1.f / renderer_params::detailShapeNoiseMeters0;
+	m_cloudscapeConstants.detailShapeNoiseStrength1    = renderer_params::detailShapeNoiseStrength1;
+	m_cloudscapeConstants.detailShapeNoiseScale1       = 1.f / renderer_params::detailShapeNoiseMeters1;
+	m_cloudscapeConstants.curlNoiseScale               = 1.f / renderer_params::curlNoiseMeters;
+	m_cloudscapeConstants.curlMaxoffset                = renderer_params::curlNoiseOffset;
+	m_cloudscapeConstants.weatherMapScale              = 1.f / renderer_params::weatherMapMeters;
+	m_cloudscapeConstants.cloudsAtmosphereCenter       = cloudsAtmosphereCenter;
+	m_cloudscapeConstants.globalDensity                = renderer_params::globalDensity;
+	m_cloudscapeConstants.globalCoverageOffset         = renderer_params::globalCoverageOffset;
+	m_cloudscapeConstants.globalCloudsHeightOffset     = renderer_params::cloudsHeightOffset;
+	m_cloudscapeConstants.globalCoverageMultiplier     = renderer_params::globalCoverageMultiplier;
+	m_cloudscapeConstants.globalCloudsHeightMultiplier = renderer_params::cloudsHeightMultiplier;
+	m_cloudscapeConstants.time                         = renderScene.GetCurrentFrameRef().GetTime();
+	m_cloudscapeConstants.mainDirectionalLight         = *atmosphere.mainDirectionalLight;
 
 	lib::MTHandle<CloudscapeDS> ds = graphBuilder.CreateDescriptorSet<CloudscapeDS>(RENDERER_RESOURCE_NAME("CloudscapeDS"));
 	ds->u_cloudscapeConstants = m_cloudscapeConstants;

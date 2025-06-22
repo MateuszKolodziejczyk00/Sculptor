@@ -446,7 +446,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 			const float3 accumulatedSpecular = AccumulateSpecular(specularHistory, specular.rgb, specularFrameWeight);
 
-			const float accumulatedHitDist   = isnan(historyHitDist) ? hitDistance : lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.05f));
+			const float accumulatedHitDist   = isnan(historyHitDist) ? hitDistance : lerp(historyHitDist, hitDistance, max(specularFrameWeight, 0.1f));
 
 			u_rwSpecularTexture[pixel] = float4(accumulatedSpecular, accumulatedHitDist);
 
