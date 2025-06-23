@@ -65,6 +65,8 @@ public:
 		Bool enableStableHistoryBlend            = true;
 		Bool enableDisocclusionFixFromLightCache = true;
 
+		Uint32 wideRadiusPassesNum = 0;
+
 		Bool resetAccumulation;
 	};
 

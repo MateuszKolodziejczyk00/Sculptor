@@ -35,9 +35,11 @@ DS_BEGIN(SRATrousFilterDS, rg::RGDescriptorSetState<SRATrousFilterDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CreateSRATrousFilterPipeline()
+static rdr::PipelineStateID CreateSRATrousFilterPipeline(Bool wideRadius)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/SRATrousFilter.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SRATrousFilterCS"));
+	sc::ShaderCompilationSettings compilationSettings;
+	compilationSettings.AddMacroDefinition(sc::MacroDefinition("WIDE_RADIUS", wideRadius ? "1" : "0"));
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/SRATrousFilter.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SRATrousFilterCS"), compilationSettings);
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("SR A-Trous Filter Pipeline"), shader);
 }
 
@@ -55,7 +57,7 @@ void ApplyATrousFilter(rg::RenderGraphBuilder& graphBuilder, const SRATrousFilte
 
 	const math::Vector2u resolution = passParams.inSpecularLuminance->GetResolution2D();
 
-	static const rdr::PipelineStateID pipeline = CreateSRATrousFilterPipeline();
+	const rdr::PipelineStateID pipeline = CreateSRATrousFilterPipeline(passParams.enableWideFilter);
 
 	SRATrousFilteringParams dispatchParams;
 	dispatchParams.samplesOffset            = 1u << passParams.iterationIdx;

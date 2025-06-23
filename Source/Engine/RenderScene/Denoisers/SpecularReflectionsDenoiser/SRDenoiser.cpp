@@ -267,13 +267,14 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	aTrousParams.roughnessTexture             = params.roughnessTexture;
 	aTrousParams.specularHistoryLengthTexture = spatialParams.specularHistoryLengthTexture;
 
-	const auto advanceIteration = [](SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
+	const auto advanceIteration = [&params](SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
 	{
 		std::swap(passParams.inSpecularLuminance, passParams.outSpecularLuminance);
 		std::swap(passParams.inDiffuseLuminance, passParams.outDiffuseLuminance);
 
-		passParams.inVariance  = inputVariance;
-		passParams.outVariance = outputVariance;
+		passParams.inVariance       = inputVariance;
+		passParams.outVariance      = outputVariance;
+		passParams.enableWideFilter = passParams.iterationIdx < params.wideRadiusPassesNum;
 
 		++passParams.iterationIdx;
 	};
@@ -285,6 +286,7 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	pass.outDiffuseLuminance  = spatialParams.outDiffuse;
 	pass.inVariance           = spatialParams.inVariance;
 	pass.outVariance          = spatialParams.outVarianceEstimation;
+	pass.enableWideFilter     = params.wideRadiusPassesNum > 0;
 
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 

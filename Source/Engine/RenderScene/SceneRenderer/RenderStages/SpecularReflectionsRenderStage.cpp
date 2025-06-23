@@ -54,6 +54,7 @@ RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflection
 RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
 RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, true);
 RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, false);
+RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 1, 0, 5);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -556,6 +557,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.blurVarianceEstimate                = renderer_params::blurVarianceEstimate;
 	denoiserParams.enableStableHistoryBlend            = renderer_params::enableStableHistoryBlend;
 	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
+	denoiserParams.wideRadiusPassesNum                 = renderer_params::wideRadiusSpatialPassesNum;
 	denoiserParams.resetAccumulation                   = params.resetAccumulation;
 
 	return denoiser.Denoise(graphBuilder, denoiserParams);

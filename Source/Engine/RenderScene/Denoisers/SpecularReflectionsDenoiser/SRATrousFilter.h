@@ -41,6 +41,8 @@ struct SRATrousPass
 	rg::RGTextureViewHandle inVariance;
 	rg::RGTextureViewHandle outVariance;
 
+	Bool enableWideFilter = true;
+
 	Uint32 iterationIdx = 0u;
 };
 

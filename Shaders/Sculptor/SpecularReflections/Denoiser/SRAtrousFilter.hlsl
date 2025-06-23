@@ -144,7 +144,11 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float4 centerDiffuse = u_inDiffuseLuminance.Load(uint3(pixel, 0));
 		const float diffuseLumCenter = Luminance(centerDiffuse.rgb);
 
+#if WIDE_RADIUS
+		const float kernel[3] = { 3.f / 8.f, 2.f / 8.f, 1.f / 8.f };
+#else
 		const float kernel[2] = { 3.f / 8.f, 1.f / 8.f };
+#endif // WIDE_RADIUS
 
 		float specularWeightSum = kernel[0];
 		float diffuseWeightSum = kernel[0];
@@ -168,7 +172,12 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float rcpDiffuseLumStdDev = 1.f / (centerDiffuseLumStdDev * lumStdDevMultiplier + 0.001f);
 		float diffuseVarianceSum = varianceData.neighboorhood.y * Pow2(diffuseWeightSum);
 
+
+#if WIDE_RADIUS
+		const int radius = 2;
+#else
 		const int radius = 1;
+#endif // WIDE_RADIUS
 
 		[unroll]
 		for (int y = -radius; y <= radius; ++y)
