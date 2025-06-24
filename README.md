@@ -6,16 +6,14 @@ Toy vulkan renderer made for learning purposes.
 - Run GenerateSolution.bat script
 - Open solution and set SculptorEd as startup project
 # Showcase
-![](Images/BistroInterior1.png)
-![](Images/SanMiguel1.png)
-![](Images/SanMiguel2.png)
-![](Images/SanMiguel3.png)
-![](Images/SunTemple1.png)
-![](Images/SunTemple2.png)
-![](Images/Bistro1.png)
-![](Images/Sponza1.png)
-![](Images/Sponza2.png)
-![](Images/NewSponza1.png)
+|  |  |  |
+|---|---|---|
+| ![](Images/GI2.gif) | ![](Images/GI1.gif) | ![](Images/Clouds.gif) |
+| ![](Images/BistroInterior1.png) | ![](Images/SanMiguel1.png) | ![](Images/SanMiguel2.png) |
+| ![](Images/SanMiguel3.png) | ![](Images/SanMiguel4.png) | ![](Images/SanMiguel5.png) |
+| ![](Images/SunTemple1.png) | ![](Images/SunTemple2.png) | ![](Images/NewSponza1.png) |
+| ![](Images/Sponza1.png) | ![](Images/Sponza2.png) | ![](Images/Bistro1.png) |
+| ![](Images/Battle1.png) | ![](Images/Battle2.png) | ![](Images/Battle3.png) |
 
 # Feature
 - Ray Traced Reflections with spatiotemporal resampling (ReSTIR), Variable Rate Tracing and custom denoiser based on Nvidia RELAX
@@ -29,6 +27,7 @@ Toy vulkan renderer made for learning purposes.
   In addition to this, 2-pass occlusion culling is used. During first pass previous frame Hi-Z is reprojected and used for occlusion tests and then second pass renders disoccluded geometry
 - visibility buffer rendering followed by materials depth pass and G-Buffer generation based on earily version of Unreal Engine's Nanite
 - Volumetric Fog (with indirect lighting scattering)
+- Volumetric Clouds, Aerial Perspective, Cloudscape Probes
 - Physically based atmosphere
 - Ray Traced ambient occlusion (same denoiser as shadows)
 - Localized tonemapping based on bilarteral grid
