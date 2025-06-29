@@ -491,18 +491,30 @@ Bool SculptorDLSSVulkan::PrepareForRendering(const rdr::CommandRecorder& cmdReco
 			ReleaseDLSSFeature();
 		}
 
+		if (params.enableRayReconstruction)
+		{
+			const NVSDK_NGX_RayReconstruction_Hint_Render_Preset newPreset = NVSDK_NGX_RayReconstruction_Hint_Render_Preset::NVSDK_NGX_RayReconstruction_Hint_Render_Preset_Default;
 
-		const NVSDK_NGX_DLSS_Hint_Render_Preset newPreset = params.enableTransformerModel 
-			                                              ? NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_J
-			                                              : NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_Default;
-		//NVSDK_NGX_Parameter_SetUI(m_ngxParams, priv::ToDLSSPerformancePresetName(params.quality), newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Performance, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraPerformance, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraQuality, newPreset);
+		}
+		else
+		{
+			const NVSDK_NGX_DLSS_Hint_Render_Preset newPreset = params.enableTransformerModel 
+				                                              ? NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_J
+				                                              : NVSDK_NGX_DLSS_Hint_Render_Preset::NVSDK_NGX_DLSS_Hint_Render_Preset_Default;
 
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, newPreset);
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, newPreset);
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, newPreset);
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, newPreset);
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, newPreset);
-		NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, newPreset);
+			NVSDK_NGX_Parameter_SetUI(m_ngxParams, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality, newPreset);
+		}
 
 		if (params.enableRayReconstruction)
 		{

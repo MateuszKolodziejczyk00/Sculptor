@@ -1,11 +1,15 @@
 # Sculptor
-Toy vulkan renderer made for learning purposes.
+Sculptor is a custom Vulkan renderer designed to explore and prototype cutting-edge real-time graphics techniques like ReSTIR GI and other ray tracing effects, denoisers, volumetric effects, GPU-driven rendering pipeline and post-processing.
+Built from scratch for learning, experimentation, and performance research.
 # Build
 - Download with submodules (You can use: git clone --recurse-submodules https://github.com/MateuszKolodziejczyk00/Sculptor)
 - Download and install newest Vulkan SDK
 - Run GenerateSolution.bat script
 - Open solution and set SculptorEd as startup project
 # Showcase
+## Video:
+[![Check out the video](https://img.youtube.com/vi/zHKeeSrpyC0/0.jpg)](https://www.youtube.com/watch?v=zHKeeSrpyC0)
+## Screenshots:
 |  |  |  |
 |---|---|---|
 | ![](Images/GI2.gif) | ![](Images/GI1.gif) | ![](Images/Clouds.gif) |
@@ -15,36 +19,37 @@ Toy vulkan renderer made for learning purposes.
 | ![](Images/Sponza1.png) | ![](Images/Sponza2.png) | ![](Images/Bistro1.png) |
 | ![](Images/Battle1.png) | ![](Images/Battle2.png) | ![](Images/Battle3.png) |
 
-# Feature
-- Ray Traced Reflections with spatiotemporal resampling (ReSTIR), Variable Rate Tracing and custom denoiser based on Nvidia RELAX
-- Ray traced directional lights shadows with custom denoiser based on AMD FidelityFX Denoiser
-- Render Graph
-- DDGI with 3 LODs around camera (currently used only as light cache)
-- Static mesh hierarchical culling using compute, task, and mesh shaders:V
-  - Instance - frustum culling, occlusion culling (compute shader)
-  - Meshlet - cone culling, frustum culling, occlusion culling (task shader)
-  - Triangle - backface culling, small primitive culling (mesh shader)
-  In addition to this, 2-pass occlusion culling is used. During first pass previous frame Hi-Z is reprojected and used for occlusion tests and then second pass renders disoccluded geometry
-- visibility buffer rendering followed by materials depth pass and G-Buffer generation based on earily version of Unreal Engine's Nanite
-- Volumetric Fog (with indirect lighting scattering)
-- Volumetric Clouds, Aerial Perspective, Cloudscape Probes
-- Physically based atmosphere
-- Ray Traced ambient occlusion (same denoiser as shadows)
-- Localized tonemapping based on bilarteral grid
-- Depth pyramid rendering
-- Bloom
-- DPCF point lights shadows based on “Shadows of Cold War” by Kevin Myers (Also implemented MSM, standard PCF and PCSS), and dynamically selecting which lights should cast shadows
-- Luminance histogram and automatic exposure
-- Custom tool to capture and display textures written by each render graph node
-- Assertions and print functions in shaders
-- Super Resolution (DLSS)
-- Temporal AA
-- Depth of field
-- Shaders hot reloading
-- Bindless resources
-- Physically based shading
-- Lens flares
-- Job system
+# Features
+- Lighting
+  - ReSTIR GI with Variable Rate Tracing
+  - Ray Traced shadows (with VRT) and AO
+  - Custom denoisers for diffuse and specular GI (based on Nvidia RELAX) and for shadows and AO (based on AMD FidelityFX Denoiser)
+  - cascaded DDGI used as irradiance cache for secondary bounces
+- Volumetrics & Atmosphere
+  - Physically based atmosphere
+  - Large scale volumetric fog based on froxels (up to 8km) affected by light sources, GI, clouds and atmosphere
+  - Volumetric clouds fully integrated with GI using cloudscape probes
+  - Aerial Perspective affecting and affected by clouds
+- Scene Rendering
+  - GPU-driven pipeline with 2-pass occlusion culling and visibility buffer
+  - Instance, meshlets and per-triangle culling
+  - Implemented in mesh shaders
+- Post Processing
+  - Localized tonemapping based on bilarteral grid
+  - Automatic exposure
+  - Bloom and Lens flares
+  - Depth of field
+  - Temporal AA
+  - DLSS, DLSS RR
+- General
+  - Render Graph
+  - Job System
+  - Bindless Materials
+  - Shaders hot-reloading
+- Debugging
+  - Custom in-engine capture tool that allows capturing all output textures from all passes and displaying them (very simple version of RenderDoc)
+  - Printf in Shaders
+  - Assertions in shaders
 # Third Party libraries
 - Eigen
 - Entt

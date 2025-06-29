@@ -41,7 +41,7 @@ RendererBoolParameter enableTemporalResampling("Enable Temporal Resampling", { "
 RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iterations Num", { "Specular Reflections" }, 1, 0, 2);
 
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
-RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, false);
+RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, true);
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);

@@ -18,7 +18,8 @@ struct CS_INPUT
 };
 
 
-#define USE_YCOCG 0
+#define USE_YCOCG 1
+#define USE_HISTORY_CLIPPING 1
 
 
 float3 RGBToWorkingCS(in float3 rgb)
@@ -37,6 +38,16 @@ float3 WorkingCSToRGB(in float3 workingCS)
 #else
 	return workingCS;
 #endif // USE_YCOCG
+}
+
+
+float3 ApplyHistoryFix(in float3 value, in float3 minValue, in float3 maxValue)
+{
+#if USE_HISTORY_CLIPPING
+	return ClipAABB(minValue, maxValue, value);
+#else
+	return clamp(value, minValue, maxValue);
+#endif // USE_HISTORY_CLIPPING
 }
 
 
@@ -149,12 +160,12 @@ void SRClampHistoryCS(CS_INPUT input)
 
 		const float4 specular                     = u_specularTexture.Load(pixel);
 		const float3 accumulatedSpecularWorkingCS = RGBToWorkingCS(specular.rgb);
-		const float3 clampedSpecularWorkingCS     = clamp(accumulatedSpecularWorkingCS, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
+		const float3 clampedSpecularWorkingCS     = ApplyHistoryFix(accumulatedSpecularWorkingCS, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
 		const float3 clampedSpecular              = WorkingCSToRGB(clampedSpecularWorkingCS);
 
 		const float4 diffuse                     = u_diffuseTexture.Load(pixel);
 		const float3 accumulatedDiffuseWorkingCS = RGBToWorkingCS(diffuse.rgb);
-		const float3 clampedDiffuseWorkingCS     = clamp(accumulatedDiffuseWorkingCS, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
+		const float3 clampedDiffuseWorkingCS     = ApplyHistoryFix(accumulatedDiffuseWorkingCS, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
 		const float3 clampedDiffuse              = WorkingCSToRGB(clampedDiffuseWorkingCS);
 
 		u_specularTexture[pixel] = float4(clampedSpecular, specular.w);

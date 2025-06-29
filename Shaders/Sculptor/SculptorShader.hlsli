@@ -255,3 +255,24 @@ bool HasAllBits(in uint value, in uint requiredBits)
 {
 	return (value & requiredBits) == requiredBits;
 }
+
+// Based on Playdead TAA:
+// https://gdcvault.com/play/1022970/Temporal-Reprojection-Anti-Aliasing-in
+float3 ClipAABB(in float3 aabb_min, in float3 aabb_max, in float3 value)
+{
+    const float3 p_clip = 0.5 * (aabb_max + aabb_min);
+    const float3 e_clip = 0.5 * (aabb_max - aabb_min);
+    const float3 v_clip = value - p_clip;
+    const float3 v_unit = v_clip.xyz / e_clip;
+    const float3 a_unit = abs(v_unit);
+    const float ma_unit = max(a_unit.x, max(a_unit.y, a_unit.z));
+
+    if (ma_unit > 1.0)
+    {
+        return p_clip + v_clip / ma_unit;
+    }
+    else
+    {
+        return value;
+    }
+}
