@@ -32,6 +32,8 @@ private:
 	static Bool IsDeviceSupportingExtensions(VkPhysicalDevice device, lib::Span<const rhi::Extension> extensions);
 
 	static Bool IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFlags requiredQueues, VkSurfaceKHR surface);
+
+	static Bool HasSupportedSubgroupSize(VkPhysicalDevice device);
 };
 
 }

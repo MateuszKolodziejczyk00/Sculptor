@@ -190,10 +190,11 @@ struct RTShadingParams
 
 
 BEGIN_SHADER_STRUCT(RTShadingConstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, invResolution)
-	SHADER_STRUCT_FIELD(math::Vector2u, reservoirsResolution)
-	SHADER_STRUCT_FIELD(Uint32,         rayCommandsBufferSize)
+	SHADER_STRUCT_FIELD(math::Vector2u,  resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,  invResolution)
+	SHADER_STRUCT_FIELD(math::Vector2u,  reservoirsResolution)
+	SHADER_STRUCT_FIELD(HeightFogParams, heightFog)
+	SHADER_STRUCT_FIELD(Uint32,          rayCommandsBufferSize)
 END_SHADER_STRUCT();
 
 
@@ -343,10 +344,13 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext          = atmosphereSubsystem.GetAtmosphereContext();
 
+	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderView().GetRenderSystem<ParticipatingMediaViewRenderSystem>();
+
 	RTShadingConstants rtShadingConstants;
 	rtShadingConstants.resolution            = srParams.resolution;
 	rtShadingConstants.invResolution         = srParams.resolution.cast<Real32>().cwiseInverse();
 	rtShadingConstants.reservoirsResolution  = shadingParams.reservoirsResolution;
+	rtShadingConstants.heightFog             = pmSystem.GetHeightFogParams();
 	rtShadingConstants.rayCommandsBufferSize = static_cast<Uint32>(shadingParams.sortedTraces->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
 
 	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));

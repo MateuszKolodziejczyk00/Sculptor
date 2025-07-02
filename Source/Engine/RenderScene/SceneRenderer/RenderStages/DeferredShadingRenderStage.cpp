@@ -9,6 +9,8 @@
 #include "Lights/ViewShadingInput.h"
 #include "GlobalResources/GlobalResources.h"
 #include "DDGI/DDGISceneSubsystem.h"
+#include "ParticipatingMedia/ParticipatingMediaTypes.h"
+#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 
 namespace spt::rsc
@@ -21,9 +23,9 @@ namespace deferred_shading
 {
 
 BEGIN_SHADER_STRUCT(DeferredShadingContstants)
-	SHADER_STRUCT_FIELD(math::Vector2u, resolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, pixelSize)
-	SHADER_STRUCT_FIELD(Bool, isAmbientOcclusionEnabled)
+	SHADER_STRUCT_FIELD(math::Vector2u,  resolution)
+	SHADER_STRUCT_FIELD(math::Vector2f,  pixelSize)
+	SHADER_STRUCT_FIELD(Bool,            isAmbientOcclusionEnabled)
 END_SHADER_STRUCT();
 
 
@@ -75,8 +77,8 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	viewContext.luminance = graphBuilder.CreateTextureView(RG_DEBUG_NAME("View Luminance Texture"), rg::TextureDef(resolution, SceneRendererStatics::hdrFormat));
 
 	DeferredShadingContstants shaderConstants;
-	shaderConstants.resolution = resolution;
-	shaderConstants.pixelSize  = math::Vector2f::Ones().cwiseQuotient(resolution.cast<Real32>());
+	shaderConstants.resolution                = resolution;
+	shaderConstants.pixelSize                 = math::Vector2f::Ones().cwiseQuotient(resolution.cast<Real32>());
 	shaderConstants.isAmbientOcclusionEnabled = viewContext.ambientOcclusion.IsValid();
 
 	lib::MTHandle<DeferredShadingDS> deferredShadingDS = graphBuilder.CreateDescriptorSet<DeferredShadingDS>(RENDERER_RESOURCE_NAME("DeferredShadingDS"));

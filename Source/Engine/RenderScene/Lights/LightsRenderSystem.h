@@ -7,6 +7,7 @@
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "LightTypes.h"
+#include "ParticipatingMedia/ParticipatingMediaTypes.h"
 
 
 namespace spt::rdr
@@ -22,10 +23,11 @@ class ShadowMapsDS;
 
 
 BEGIN_SHADER_STRUCT(GlobalLightsParams)
-	SHADER_STRUCT_FIELD(Uint32,         pointLightsNum)
-	SHADER_STRUCT_FIELD(Uint32,         directionalLightsNum)
-	SHADER_STRUCT_FIELD(Bool,           hasValidCloudsTransmittanceMap)
-	SHADER_STRUCT_FIELD(math::Matrix4f, cloudsTransmittanceViewProj)
+	SHADER_STRUCT_FIELD(Uint32,          pointLightsNum)
+	SHADER_STRUCT_FIELD(Uint32,          directionalLightsNum)
+	SHADER_STRUCT_FIELD(Bool,            hasValidCloudsTransmittanceMap)
+	SHADER_STRUCT_FIELD(math::Matrix4f,  cloudsTransmittanceViewProj)
+	SHADER_STRUCT_FIELD(HeightFogParams, heightFog)
 END_SHADER_STRUCT();
 
 

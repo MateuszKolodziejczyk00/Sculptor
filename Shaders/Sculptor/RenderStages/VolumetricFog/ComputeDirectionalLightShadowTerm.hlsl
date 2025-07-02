@@ -38,8 +38,10 @@ float ComputeShadowTerm(in float3 worldLocation, in float3 toView, in float3 fro
 		const float3 endSampleLocation   = worldLocation - toView * (froxelDepthRange * 0.5f);
 		const uint samplesNum = 2u;
 		visibility = EvaluateCascadedShadowsAtLine(beginSampleLocation, endSampleLocation, samplesNum, directionalLight.firstShadowCascadeIdx, directionalLight.shadowCascadesNum);
-
 	}
+
+	const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsData.heightFog, worldLocation, worldLocation - directionalLight.direction * 1500.f);
+	visibility *= fogTransmittance;
 
 	return visibility;
 }

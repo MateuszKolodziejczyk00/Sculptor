@@ -15,7 +15,7 @@ VkPhysicalDevice PhysicalDevice::SelectPhysicalDevice(VkInstance instance, VkSur
 	SPT_VK_CHECK(vkEnumeratePhysicalDevices(instance, &devicesNum, devices.data()));
 
 	const auto selecedDevice = std::find_if(devices.cbegin(), devices.cend(), [surface](VkPhysicalDevice device) { return IsDeviceSuitable(device, surface); });
-	SPT_CHECK(selecedDevice != devices.cend());
+	SPT_CHECK_MSG(selecedDevice != devices.cend(), "Couldn't find supported GPU\nProbably because you use GPU with wave64, which currently is not supported in few shaders");
 
 	return *selecedDevice;
 }
@@ -62,6 +62,7 @@ Bool PhysicalDevice::IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surf
 		&& deviceFeatures.features.geometryShader
 		&& deviceFeatures.features.samplerAnisotropy
 		&& deviceFeatures.features.fillModeNonSolid
+		&& HasSupportedSubgroupSize(device)
 		&& IsDeviceSupportingQueues(device, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, surface)
 		&& IsDeviceSupportingExtensions(device, deviceExtensions);
 }
@@ -113,6 +114,19 @@ Bool PhysicalDevice::IsDeviceSupportingQueues(VkPhysicalDevice device, VkQueueFl
 	}
 
 	return remainingRequiredQueues == 0 && hasValidSurfaceSupport;
+}
+
+Bool PhysicalDevice::HasSupportedSubgroupSize(VkPhysicalDevice device)
+{
+	VkPhysicalDeviceSubgroupProperties subgroupProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES };
+
+	VkPhysicalDeviceProperties2 deviceProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+	deviceProps.pNext = &subgroupProps;
+
+	vkGetPhysicalDeviceProperties2(device, &deviceProps);
+
+	// Currently only NVIDIA GPUs are supported because I don't have other GPU to test stuff (and currently some shaders for sure don't work due to some waveops)
+	return subgroupProps.subgroupSize == 32u;
 }
 
 }

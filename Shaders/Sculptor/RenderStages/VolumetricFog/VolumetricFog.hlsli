@@ -3,10 +3,12 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 
+[[shader_struct(HeightFogParams)]]
+
 
 float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinction, in float fogDensity)
 {
-    return float4(fogAlbedo * fogExtinction, fogExtinction) * fogDensity.xxxx;
+	return float4(fogAlbedo * fogExtinction, fogExtinction) * fogDensity.xxxx;
 }
 
 
@@ -15,7 +17,6 @@ float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location,
 {
 	if(location.z < 330.f)
 	{
-		//return max(globalDensity * exp(-heightFalloff * location.z), 0.082f * pow(1.1f, -0.0165f * location.z));
 		return globalDensity * exp(-heightFalloff * location.z);
 	}
 
@@ -23,22 +24,28 @@ float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location,
 }
 
 
+float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, in float3 start, in float3 end)
+{
+	return 1.f;
+}
+
+
 float ComputeFogFroxelLinearDepth(in float depth, in float fogNearPlane, in float fogFarPlane)
 {
-    return fogNearPlane * pow(fogFarPlane / fogNearPlane, depth);
+	return fogNearPlane * pow(fogFarPlane / fogNearPlane, depth);
 }
 
 
 float3 FogFroxelToNDC(in float2 fogFroxelUV, in float fogFroxelLinearDepth, in float projectionNear)
 {
-    return float3(fogFroxelUV * 2.f - 1.f, projectionNear / fogFroxelLinearDepth);
+	return float3(fogFroxelUV * 2.f - 1.f, projectionNear / fogFroxelLinearDepth);
 }
 
 
 float3 ComputeFogFroxelUVW(in float2 uv, in float linearDepth, in float fogNearPlane, in float fogFarPlane)
 {
-    const float w = log(linearDepth / fogNearPlane) / log(fogFarPlane / fogNearPlane);
-    return float3(uv, w);
+	const float w = log(linearDepth / fogNearPlane) / log(fogFarPlane / fogNearPlane);
+	return float3(uv, w);
 }
 
 #ifdef DS_RenderVolumetricFogDS

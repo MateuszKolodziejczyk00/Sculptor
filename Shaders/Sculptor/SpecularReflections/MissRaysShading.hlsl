@@ -10,6 +10,7 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -58,15 +59,19 @@ void MissRaysShadingCS(CS_INPUT input)
 			const uint encodedRayDirection = u_rayDirections[traceCommandIndex];
 			const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
+			const float3 reservoirHitLocation = worldLocation + rayDirection * 2000.f;
+
 			const float3 locationInAtmoshpere = GetLocationInAtmosphere(u_atmosphereParams, worldLocation);
 			float3 luminance = GetLuminanceFromSkyViewLUT(u_atmosphereParams, u_skyViewLUT, u_linearSampler, locationInAtmoshpere, rayDirection);
 
 			const CloudscapeSample cloudscapeSample = SampleHighResCloudscape(rayDirection);
 			luminance = cloudscapeSample.inScattering + luminance * cloudscapeSample.transmittance;
 
+			const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_constants.heightFog, worldLocation, reservoirHitLocation);
+			luminance *= fogTransmittance;
+
 			const GeneratedRayPDF rayPdf = LoadGeneratedRayPDF(u_rayPdfs, traceCommandIndex);
 
-			const float3 reservoirHitLocation = worldLocation + rayDirection * 2000.f;
 			SRReservoir reservoir = SRReservoir::Create(reservoirHitLocation, 0.f, luminance, rayPdf.pdf);
 
 			reservoir.AddFlag(SR_RESERVOIR_FLAGS_MISS);

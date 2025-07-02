@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ViewRenderSystem.h"
-#include "RGResources/RGResourceHandles.h"
 #include "SceneRenderer/SceneRenderingTypes.h"
+#include "ParticipatingMediaTypes.h"
 
 
 namespace spt::rdr
@@ -23,29 +23,6 @@ namespace spt::rsc
 struct RenderStageExecutionContext;
 
 
-struct VolumetricFogParams 
-{
-	VolumetricFogParams()
-		: volumetricFogResolution{}
-		, nearPlane(0.f)
-		, farPlane(0.f)
-	{ }
-
-	rg::RGTextureViewHandle participatingMediaTextureView;
-	rg::RGTextureViewHandle indirectInScatteringTextureView;
-	rg::RGTextureViewHandle inScatteringTextureView;
-	rg::RGTextureViewHandle integratedInScatteringTextureView;
-
-	rg::RGTextureViewHandle directionalLightShadowTerm;
-	rg::RGTextureViewHandle historyDirectionalLightShadowTerm;
-
-	math::Vector3u volumetricFogResolution;
-
-	Real32 nearPlane;
-	Real32 farPlane;
-};
-
-
 class RENDER_SCENE_API ParticipatingMediaViewRenderSystem : public ViewRenderSystem
 {
 protected:
@@ -61,6 +38,8 @@ public:
 	// End ViewRenderSystem interface
 
 	const VolumetricFogParams& GetVolumetricFogParams() const;
+
+	HeightFogParams GetHeightFogParams() const;
 
 private:
 

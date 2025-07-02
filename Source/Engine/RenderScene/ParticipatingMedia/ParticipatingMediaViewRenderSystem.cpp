@@ -28,7 +28,7 @@ namespace parameters
 {
 
 RendererFloatParameter constantFogDensity("Constant Fog Density", { "Volumetric Fog" }, 0.72f, 0.f, 1.f);
-RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.001f, 0.f, 1.f);
+RendererFloatParameter constantFogExtinction("Constant Fog Extinction", { "Volumetric Fog" }, 0.001f, 0.f, 10.f);
 RendererFloat3Parameter consantFogAlbedo("Constant Fox Albedo", { "Volumetric Fog" }, math::Vector3f::Constant(1.f), 0.f, 1.f);
 
 RendererFloatParameter fogHeightFalloff("Fog Height Falloff", { "Volumetric Fog" }, 0.012f, 0.f, 10.f);
@@ -454,6 +454,16 @@ void ParticipatingMediaViewRenderSystem::BeginFrame(rg::RenderGraphBuilder& grap
 const VolumetricFogParams& ParticipatingMediaViewRenderSystem::GetVolumetricFogParams() const
 {
 	return m_volumetricFogParams;
+}
+
+HeightFogParams ParticipatingMediaViewRenderSystem::GetHeightFogParams() const
+{
+	HeightFogParams heightFogParams;
+	heightFogParams.density       = parameters::constantFogDensity;
+	heightFogParams.extinction    = parameters::constantFogExtinction;
+	heightFogParams.albedo        = parameters::consantFogAlbedo;
+	heightFogParams.heightFalloff = parameters::fogHeightFalloff;
+	return heightFogParams;
 }
 
 void ParticipatingMediaViewRenderSystem::RenderParticipatingMedia(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context)

@@ -2,6 +2,7 @@
 #include "Lights/LightingUtils.hlsli"
 #include "Lights/Shadows.hlsli"
 #include "Atmosphere/Atmosphere.hlsli"
+#include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 
 #ifdef DS_DDGISceneDS
 #include "DDGI/DDGITypes.hlsli"
@@ -41,7 +42,9 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 
 			if(visibility > 0.f)
 			{
-				const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * visibility;
+				const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsData.heightFog, surface.location, surface.location - directionalLight.direction * 1500.f);
+
+				const LightingContribution shadingRes = CalcLighting(surface, -directionalLight.direction, viewDir, illuminance) * fogTransmittance * visibility;
 				accumulator.Accumulate(shadingRes);
 			}
 		}
@@ -235,6 +238,9 @@ float3 CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir
 		}
 
 		lightIlluminance *= cloudsTransmittance;
+
+		const float fogTransmittance = EvaluateHeightBasedTransmittanceForSegment(u_lightsParams.heightFog, surface.location, surface.location - directionalLight.direction * 1500.f);
+		lightIlluminance *= fogTransmittance;
 
 		if (any(lightIlluminance > 0.f) && dot(-directionalLight.direction, surface.shadingNormal) > 0.f)
 		{

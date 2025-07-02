@@ -12,6 +12,7 @@
 #include "Atmosphere/AtmosphereTypes.h"
 #include "RHICore/RHISamplerTypes.h"
 #include "Shadows/ShadowsRenderingTypes.h"
+#include "ParticipatingMedia/ParticipatingMediaTypes.h"
 
 
 namespace spt::rsc
@@ -20,14 +21,15 @@ namespace spt::rsc
 class ShadowMapsDS;
 
 BEGIN_SHADER_STRUCT(LightsRenderingData)
-	SHADER_STRUCT_FIELD(Uint32,			localLightsNum)
-	SHADER_STRUCT_FIELD(Uint32,			localLights32Num)
-	SHADER_STRUCT_FIELD(Uint32,			directionalLightsNum)
-	SHADER_STRUCT_FIELD(Real32,			zClusterLength)
-	SHADER_STRUCT_FIELD(math::Vector2u,	tilesNum)
-	SHADER_STRUCT_FIELD(math::Vector2f,	tileSize)
-	SHADER_STRUCT_FIELD(Uint32,			zClustersNum)
-	SHADER_STRUCT_FIELD(Real32,			ambientLightIntensity)
+	SHADER_STRUCT_FIELD(Uint32,				localLightsNum)
+	SHADER_STRUCT_FIELD(Uint32,				localLights32Num)
+	SHADER_STRUCT_FIELD(Uint32,				directionalLightsNum)
+	SHADER_STRUCT_FIELD(Real32,				zClusterLength)
+	SHADER_STRUCT_FIELD(math::Vector2u,		tilesNum)
+	SHADER_STRUCT_FIELD(math::Vector2f,		tileSize)
+	SHADER_STRUCT_FIELD(Uint32,				zClustersNum)
+	SHADER_STRUCT_FIELD(Real32,				ambientLightIntensity)
+	SHADER_STRUCT_FIELD(HeightFogParams,	heightFog)
 END_SHADER_STRUCT();
 
 

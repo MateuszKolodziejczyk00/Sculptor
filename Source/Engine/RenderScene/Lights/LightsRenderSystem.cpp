@@ -21,6 +21,7 @@
 #include "Shadows/CascadedShadowMapsViewRenderSystem.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "Atmosphere/AtmosphereRenderSystem.h"
+#include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
 
 namespace spt::rsc
 {
@@ -288,6 +289,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	lightsRenderingDataPerView.localLightsToRenderNum = pointLightsNum;
 
+	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderView().GetRenderSystem<ParticipatingMediaViewRenderSystem>();
+
 	const lib::MTHandle<ViewShadingInputDS> shadingInputDS = graphBuilder.CreateDescriptorSet<ViewShadingInputDS>(RENDERER_RESOURCE_NAME("ViewShadingInputDS"));
 
 	if (lightsRenderingDataPerView.HasAnyLocalLightsToRender())
@@ -296,13 +299,14 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		const math::Vector2u tilesNum = (renderingRes - math::Vector2u(1, 1)) / 8 + math::Vector2u(1, 1);
 		const math::Vector2f tileSize = math::Vector2f(1.f / static_cast<Real32>(tilesNum.x()), 1.f / static_cast<Real32>(tilesNum.y()));
 
-		lightsData.localLightsNum			= pointLightsNum;
-		lightsData.localLights32Num			= math::Utils::DivideCeil(pointLightsNum, 32u);
-		lightsData.zClusterLength			= params::localLightsZClustersLength;
-		lightsData.zClustersNum				= zClustersNum;
-		lightsData.tilesNum					= tilesNum;
-		lightsData.tileSize					= tileSize;
-		lightsData.ambientLightIntensity	= params::ambientLightIntensity;
+		lightsData.localLightsNum        = pointLightsNum;
+		lightsData.localLights32Num      = math::Utils::DivideCeil(pointLightsNum, 32u);
+		lightsData.zClusterLength        = params::localLightsZClustersLength;
+		lightsData.zClustersNum          = zClustersNum;
+		lightsData.tilesNum              = tilesNum;
+		lightsData.tileSize              = tileSize;
+		lightsData.ambientLightIntensity = params::ambientLightIntensity;
+		lightsData.heightFog             = pmSystem.GetHeightFogParams();
 
 		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLightsNum * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
@@ -562,6 +566,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 {
 	const RenderSceneRegistry& sceneRegistry = scene.GetRegistry();
 
+	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderView().GetRenderSystem<ParticipatingMediaViewRenderSystem>();
+
 	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
 	const SizeType pointLightsNum = pointLightsView.size();
 
@@ -616,6 +622,7 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	GlobalLightsParams lightsParams;
 	lightsParams.pointLightsNum       = static_cast<Uint32>(pointLightsNum);
 	lightsParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
+	lightsParams.heightFog            = pmSystem.GetHeightFogParams();
 
 	lib::SharedPtr<AtmosphereRenderSystem> atmosphere = scene.FindRenderSystem<AtmosphereRenderSystem>();
 	if (atmosphere && atmosphere->AreVolumetricCloudsEnabled())
