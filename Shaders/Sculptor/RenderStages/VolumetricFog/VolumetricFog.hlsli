@@ -12,10 +12,13 @@ float4 ComputeScatteringAndExtinction(in float3 fogAlbedo, in float fogExtinctio
 }
 
 
+static const float HEIGHT_FOG_MAX_HEIGHT = 330.f; // Maximum height for height-based fog, in meters
+
+
 // based on https://advances.realtimerendering.com/s2006/Chapter6-Real-time%20Atmospheric%20Effects%20in%20Games.pdf
 float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location, float heightFalloff)
 {
-	if(location.z < 330.f)
+	if(location.z < HEIGHT_FOG_MAX_HEIGHT)
 	{
 		return globalDensity * exp(-heightFalloff * location.z);
 	}
@@ -24,9 +27,70 @@ float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location,
 }
 
 
+float3 ClipVolumetricFogSegmentEndLocation(in float3 start, in float3 end, in float3 segment, in float segmentLength)
+{
+	if(end.z > HEIGHT_FOG_MAX_HEIGHT)
+	{
+		const float t = (HEIGHT_FOG_MAX_HEIGHT - start.z) / segment.z;
+		return start + segment * t;
+	}
+
+	return end;
+}
+
+
+// This function currently absorbs too much energy. It assumes that fog only absorbs lighting, without any scattering, which is clearly wrong but I guess better than nothing :)
 float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, in float3 start, in float3 end)
 {
-	return 1.f;
+	const float3 segment = end - start;
+	const float segmentLenth = length(segment);
+
+	if(start.z > end.z)
+	{
+		Swap(start, end);
+	}
+
+	if(start.z > HEIGHT_FOG_MAX_HEIGHT)
+	{
+		return 1.f; // full transmittance if both points are above the maximum height
+	}
+
+	ClipVolumetricFogSegmentEndLocation(start, end, segment, segmentLenth);
+
+	const float z0 = start.z;
+	const float z1 = end.z;
+	const float dz = z1 - z0;
+	
+	const float extinction = fogParams.extinction;
+	const float density    = fogParams.density;
+	const float falloff    = fogParams.heightFalloff;
+
+	float opticalDepth;
+
+	if(dz > 1e-5f)
+	{
+		// Integral of expt(-falloff * z) is:
+		// -1 / falloff * exp(-falloff * z) + C
+
+		// Definite integral of exp(-falloff * z) from z0 to z1
+		// = (-1 / falloff) * exp(-falloff * z1) - (-1 / falloff) * exp(-falloff * z0)
+		// = (1 / falloff) * (exp(-falloff * z0) - exp(-falloff * z1))
+
+		// We also divide by dz to get the average density over along vertical segment
+		// which will be then multiplied by the segment length to get final optical depth
+
+		const float integral = (exp(-falloff * z0) - exp(-falloff * z1)) * rcp(falloff * dz);
+
+		opticalDepth = integral * density * extinction * segmentLenth;
+
+	}
+	else
+	{
+		opticalDepth = exp(-falloff * z0) * density * extinction * segmentLenth;
+	}
+
+	const float transmittance = exp(-opticalDepth);
+	return transmittance;
 }
 
 
