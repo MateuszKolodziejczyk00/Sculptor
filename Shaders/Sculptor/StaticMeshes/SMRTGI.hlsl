@@ -1,6 +1,6 @@
 #include "SculptorShader.hlsli"
 
-#include "SpecularReflections/SpecularReflectionsTracingCommon.hlsli"
+#include "SpecularReflections/RTGITracingCommon.hlsli"
 #include "Utils/Packing.hlsli"
 
 #define SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL 2
@@ -10,7 +10,7 @@
 
 
 [shader("closesthit")]
-void SpecularReflections_RT_CHS(inout SpecularReflectionsRayPayload payload, in BuiltInTriangleIntersectionAttributes attrib)
+void RTGI_RT_CHS(inout RTGIRayPayload payload, in BuiltInTriangleIntersectionAttributes attrib)
 {
 #ifndef SPT_MATERIAL_DOUBLE_SIDED
     if (HitKind() == HIT_KIND_TRIANGLE_BACK_FACE)
@@ -87,7 +87,7 @@ void SpecularReflections_RT_CHS(inout SpecularReflectionsRayPayload payload, in 
 
 
 [shader("anyhit")]
-void SpecularReflections_RT_AHS(inout SpecularReflectionsRayPayload payload, in BuiltInTriangleIntersectionAttributes attrib)
+void RTGI_RT_AHS(inout RTGIRayPayload payload, in BuiltInTriangleIntersectionAttributes attrib)
 {
     const RTInstanceData instanceData = u_rtInstances[InstanceID()];
 

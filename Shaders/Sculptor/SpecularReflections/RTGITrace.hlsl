@@ -1,7 +1,7 @@
 #include "SculptorShader.hlsli"
 
 #include "SpecularReflections/SpecularReflectionsCommon.hlsli"
-#include "SpecularReflections/SpecularReflectionsTracingCommon.hlsli"
+#include "SpecularReflections/RTGITracingCommon.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 
 #include "Utils/SceneViewUtils.hlsli"
@@ -25,7 +25,7 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 	rayDesc.Origin    = biasedRayOrigin;
 	rayDesc.Direction = rayDirection;
 
-	SpecularReflectionsRayPayload payload;
+	RTGIRayPayload payload;
 
 	TraceRay(u_sceneTLAS,
 			 0,
@@ -67,7 +67,7 @@ RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
 
 
 [shader("raygeneration")]
-void GenerateSpecularReflectionsRaysRTG()
+void GenerateRTGIRaysRTG()
 {
 	const uint traceCommandIndex = DispatchRaysIndex().x;
 
@@ -140,7 +140,7 @@ void GenerateSpecularReflectionsRaysRTG()
 
 
 [shader("miss")]
-void SpecularReflectionsRTM(inout SpecularReflectionsRayPayload payload)
+void RTGIRTM(inout RTGIRayPayload payload)
 {
 	payload.distance = 999999.f;
 }

@@ -34,6 +34,13 @@ Techniques:
     UseMeshShadersPipeline: false
     UseTaskShader: false
     RayTracingWithClosestHit: true
+  ? Name: RTGI
+  : ShadersPath:
+      Name: Sculptor/StaticMeshes/SMRTGI.hlsl
+    AllowsNoMaterial: false
+    UseMeshShadersPipeline: false
+    UseTaskShader: false
+    RayTracingWithClosestHit: true
   ? Name: RTVisibility
   : ShadersPath:
       Name: Sculptor/StaticMeshes/SMRTVisibility.hlsl
@@ -41,10 +48,3 @@ Techniques:
     UseMeshShadersPipeline: false
     UseTaskShader: false
     RayTracingWithClosestHit: false
-  ? Name: SpecularReflections
-  : ShadersPath:
-      Name: Sculptor/StaticMeshes/SMSpecularReflections.hlsl
-    AllowsNoMaterial: false
-    UseMeshShadersPipeline: false
-    UseTaskShader: false
-    RayTracingWithClosestHit: true

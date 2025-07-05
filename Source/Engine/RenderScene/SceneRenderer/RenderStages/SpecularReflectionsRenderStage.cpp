@@ -423,10 +423,10 @@ DS_END();
 static rdr::PipelineStateID CreateSpecularReflectionsTracePipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
 {
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SpecularReflectionsTrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateSpecularReflectionsRaysRTG"));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SpecularReflectionsTrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "SpecularReflectionsRTM")));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTGITrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateRTGIRaysRTG"));
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTGITrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTGIRTM")));
 
-	const lib::HashedString materialTechnique = "SpecularReflections";
+	const lib::HashedString materialTechnique = "RTGI";
 	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;

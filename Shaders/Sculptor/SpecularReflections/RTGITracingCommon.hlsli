@@ -10,7 +10,7 @@
 [[descriptor_set(RenderViewDS, 5)]]
 
 
-struct SpecularReflectionsRayPayload
+struct RTGIRayPayload
 {
     half3 normal;
     half roughness;
