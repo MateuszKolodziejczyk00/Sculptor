@@ -360,3 +360,5 @@ FodyWeavers.xsd
 **.args.json
 
 Content/Private/**
+
+Shaders/Sharc/**

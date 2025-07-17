@@ -978,9 +978,17 @@ class JobWithResult : public Job
 {
 public:
 
+	JobWithResult() = default;
+
 	explicit JobWithResult(lib::MTHandle<JobInstance> inInstance)
 		: Job(std::move(inInstance))
 	{ }
+
+	JobWithResult(JobWithResult& rhs) = default;
+	JobWithResult(JobWithResult&& rhs) = default;
+
+	JobWithResult& operator=(JobWithResult& rhs) = default;
+	JobWithResult& operator=(JobWithResult&& rhs) = default;
 
 	const TResultType& GetResult() const
 	{

@@ -6,7 +6,7 @@
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Shading/Shading.hlsli"
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/SRResamplingCommon.hlsli"
 #include "Utils/Random.hlsli"
 #include "Utils/MortonCode.hlsli"

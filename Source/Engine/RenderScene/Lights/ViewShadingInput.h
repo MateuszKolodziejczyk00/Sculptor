@@ -21,6 +21,7 @@ namespace spt::rsc
 class ShadowMapsDS;
 
 BEGIN_SHADER_STRUCT(LightsRenderingData)
+	SHADER_STRUCT_FIELD(HeightFogParams,	heightFog)
 	SHADER_STRUCT_FIELD(Uint32,				localLightsNum)
 	SHADER_STRUCT_FIELD(Uint32,				localLights32Num)
 	SHADER_STRUCT_FIELD(Uint32,				directionalLightsNum)
@@ -29,7 +30,6 @@ BEGIN_SHADER_STRUCT(LightsRenderingData)
 	SHADER_STRUCT_FIELD(math::Vector2f,		tileSize)
 	SHADER_STRUCT_FIELD(Uint32,				zClustersNum)
 	SHADER_STRUCT_FIELD(Real32,				ambientLightIntensity)
-	SHADER_STRUCT_FIELD(HeightFogParams,	heightFog)
 END_SHADER_STRUCT();
 
 

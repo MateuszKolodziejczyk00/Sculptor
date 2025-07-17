@@ -32,6 +32,11 @@ class RendererParameter : public RendererParamBase
 {
 public:
 
+	void SetValue(TType value)
+	{
+		paramValue = value;
+	}
+
 	const TType& GetValue() const
 	{
 		return paramValue;

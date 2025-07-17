@@ -27,12 +27,15 @@ float EvaluateHeightBasedDensityAtLocation(float globalDensity, float3 location,
 }
 
 
-float3 ClipVolumetricFogSegmentEndLocation(in float3 start, in float3 end, in float3 segment, in float segmentLength)
+float3 ClipVolumetricFogSegmentEndLocation(in float3 start, inout float3 end, inout float3 segment, inout float segmentLength)
 {
 	if(end.z > HEIGHT_FOG_MAX_HEIGHT)
 	{
 		const float t = (HEIGHT_FOG_MAX_HEIGHT - start.z) / segment.z;
-		return start + segment * t;
+
+		end           = start + segment * t;
+		segmentLength = segmentLength * t;
+		segment       = end - start;
 	}
 
 	return end;
@@ -42,8 +45,8 @@ float3 ClipVolumetricFogSegmentEndLocation(in float3 start, in float3 end, in fl
 // This function currently absorbs too much energy. It assumes that fog only absorbs lighting, without any scattering, which is clearly wrong but I guess better than nothing :)
 float EvaluateHeightBasedTransmittanceForSegment(in HeightFogParams fogParams, in float3 start, in float3 end)
 {
-	const float3 segment = end - start;
-	const float segmentLenth = length(segment);
+	float3 segment = end - start;
+	float segmentLenth = length(segment);
 
 	if(start.z > end.z)
 	{

@@ -30,6 +30,9 @@
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 
 
+SPT_DEFINE_LOG_CATEGORY(RTGI, true);
+
+
 namespace spt::rsc
 {
 
@@ -55,6 +58,7 @@ RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular 
 RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, true);
 RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, false);
 RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 1, 0, 5);
+RendererBoolParameter useSharcAsRadianceCache("Use Sharc As Radiance Cache", { "Specular Reflections" }, true);
 } // renderer_params
 
 struct SpecularReflectionsParams
@@ -155,7 +159,7 @@ RayDirections GenerateRayDirections(rg::RenderGraphBuilder& graphBuilder, const 
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Generate Ray Directions"),
 								  generateRayDirectionsPipeline,
 								  tracesAllocation.dispatchIndirectArgs, 0,
-								  rg::BindDescriptorSets(std::move(generateRayDirectionsDS), renderView.GetRenderViewDS()));
+								  rg::BindDescriptorSets(std::move(generateRayDirectionsDS), renderView.GetRenderViewDS(), viewSpec.GetShadingViewContext().sharcCacheDS));
 
 	return RayDirections{ rayDirectionsBuffer, rayPdfsBuffer };
 }
@@ -283,18 +287,21 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 namespace hit_rays
 {
 
-static rdr::PipelineStateID CreateHitRaysShadingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+static rdr::PipelineStateID CreateHitRaysShadingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem, Bool useDDGI)
 {
+	sc::ShaderCompilationSettings settings;
+	settings.AddMacroDefinition(sc::MacroDefinition("USE_DDGI", useDDGI ? "1" : "0"));
+
 	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "HitRaysShadingRTG"));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM")));
+	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "HitRaysShadingRTG"), settings);
+	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), settings));
 
 	const lib::HashedString materialTechnique = "RTVisibility";
 	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
 
 	rhi::RayTracingPipelineDefinition pipelineDefinition;
 	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Trace Specular Reflections Rays Pipeline"), rtShaders, pipelineDefinition);
+	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Hit Rays Rays Shading Pipeline"), rtShaders, pipelineDefinition);
 }
 
 
@@ -304,6 +311,8 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 
+	const ShadingViewContext& shadingViewContext = viewSpec.GetShadingViewContext();
+
 	const LightsRenderSystem& lightsRenderSystem        = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ShadowMapsManagerSubsystem& shadowMapsManager = renderScene.GetSceneSubsystemChecked<ShadowMapsManagerSubsystem>();
 
@@ -312,10 +321,11 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
-	static rdr::PipelineStateID hitRaysShadingPipeline;
-	if (!hitRaysShadingPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
+	static rdr::PipelineStateID hitRaysShadingPipeline[2];
+	if (!hitRaysShadingPipeline[0].IsValid() || !hitRaysShadingPipeline[1].IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
 	{
-		hitRaysShadingPipeline = CreateHitRaysShadingPipeline(rayTracingSceneSubsystem);
+		hitRaysShadingPipeline[0] = CreateHitRaysShadingPipeline(rayTracingSceneSubsystem, true);
+		hitRaysShadingPipeline[1] = CreateHitRaysShadingPipeline(rayTracingSceneSubsystem, false);
 	}
 
 	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
@@ -324,12 +334,15 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 	visibilityDS->u_materialsDS             = mat::MaterialsUnifiedData::Get().GetMaterialsDS();
 	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
 
+	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
+
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
-								   hitRaysShadingPipeline,
+								   hitRaysShadingPipeline[useSharc],
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::BindDescriptorSets(std::move(shadingDS),
 														  renderView.GetRenderViewDS(),
 														  std::move(ddgiDS),
+														  shadingViewContext.sharcCacheDS,
 														  lightsRenderSystem.GetGlobalLightsDS(),
 														  shadowMapsManager.GetShadowMapsDS(),
 														  visibilityDS));
@@ -376,14 +389,6 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 namespace vrt_resolve
 {
 
-BEGIN_SHADER_STRUCT(RTHitMaterialInfo)
-	SHADER_STRUCT_FIELD(Uint32, normal)
-	SHADER_STRUCT_FIELD(Uint32, baseColorMetallic)
-	SHADER_STRUCT_FIELD(Uint16, roughness)
-	SHADER_STRUCT_FIELD(Real32, hitDistance)
-END_SHADER_STRUCT();
-
-
 DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_skyViewLUT)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                           u_transmittanceLUT)
@@ -392,7 +397,7 @@ DS_BEGIN(RTShadingDS, rg::RGDescriptorSetState<RTShadingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_rayDirectionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_rayPdfTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RTHitMaterialInfo>),                    u_hitMaterialInfos)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<shading::RTHitMaterialInfo>),           u_hitMaterialInfos)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<sr_restir::SRPackedReservoir>),         u_reservoirsBuffer)
 DS_END();
 
@@ -407,7 +412,6 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflectionsTraceDS>)
-	DS_BINDING(BINDING_TYPE(gfx::ChildDSBinding<SceneRayTracingDS>),                             rayTracingDS)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                   u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<Uint32>),                               u_rayDirections)
@@ -498,7 +502,6 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Rays Shading Counts"), raysShadingCountsBuffer, 0u);
 
 	lib::MTHandle<SpecularReflectionsTraceDS> traceRaysDS = graphBuilder.CreateDescriptorSet<SpecularReflectionsTraceDS>(RENDERER_RESOURCE_NAME("SpecularReflectionsTraceDS"));
-	traceRaysDS->rayTracingDS          = rayTracingSubsystem.GetSceneRayTracingDS();
 	traceRaysDS->u_depthTexture        = params.depthTexture;
 	traceRaysDS->u_rayDirections       = rayDirections;
 	traceRaysDS->u_traceCommands       = traceParams.tracesAllocation.rayTraceCommands;
@@ -512,6 +515,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 								   traceRaysPipeline,
 								   traceParams.tracesAllocation.tracingIndirectArgs, 0u,
 								   rg::BindDescriptorSets(std::move(traceRaysDS),
+														  rayTracingSubsystem.GetSceneRayTracingDS(),
 														  renderView.GetRenderViewDS(),
 														  mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
 														  GeometryManager::Get().GetGeometryDSState(),
@@ -545,9 +549,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 {
 	SPT_PROFILER_FUNCTION();
 
-	const RenderView& renderView = viewSpec.GetRenderView();
-
-	sr_denoiser::Denoiser::Params denoiserParams(renderView);
+	sr_denoiser::Denoiser::Params denoiserParams(viewSpec);
 	denoiserParams.currentDepthTexture                 = params.depthTexture;
 	denoiserParams.historyDepthTexture                 = params.depthHistoryTexture;
 	denoiserParams.linearDepthTexture                  = params.linearDepthTexture;
@@ -563,6 +565,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
 	denoiserParams.wideRadiusPassesNum                 = renderer_params::wideRadiusSpatialPassesNum;
 	denoiserParams.resetAccumulation                   = params.resetAccumulation;
+	denoiserParams.baseColorMetallicTexture            = params.baseColorTexture;
 
 	return denoiser.Denoise(graphBuilder, denoiserParams);
 }
@@ -686,6 +689,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 	if (rdr::Renderer::IsRayTracingEnabled())
 	{
 		SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Reflections");
+
+		UpdateSharcCache(graphBuilder, renderScene, viewSpec);
 
 		const RenderView& renderView = viewSpec.GetRenderView();
 
@@ -949,6 +954,31 @@ void SpecularReflectionsRenderStage::RenderVariableRateTexture(rg::RenderGraphBu
 	vrtDS->u_diffuseReflectionsTexture  = reflectionsViewData.finalDiffuseGI;
 	vrtDS->u_rtConstants                = shaderConstants;
 	m_variableRateRenderer.Render(graphBuilder, nullptr, vrtShader, rg::BindDescriptorSets(vrtDS));
+}
+
+void SpecularReflectionsRenderStage::UpdateSharcCache(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec)
+{
+	SPT_PROFILER_FUNCTION();
+
+	if (renderer_params::useSharcAsRadianceCache && !SharcGICache::IsSharcSupported())
+	{
+		SPT_LOG_WARN(RTGI, "Sharc is not supported. Falling back to DDGI.");
+		renderer_params::useSharcAsRadianceCache.SetValue(false);
+	}
+
+	if (renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported())
+	{
+		if (!m_sharcCache)
+		{
+			m_sharcCache = std::make_unique<SharcGICache>();
+		}
+
+		m_sharcCache->Update(graphBuilder, renderScene, viewSpec);
+	}
+	else
+	{
+		m_sharcCache.reset();
+	}
 }
 
 } // spt::rsc

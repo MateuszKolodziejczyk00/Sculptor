@@ -3,6 +3,8 @@
 
 #include "Utils/Packing.hlsli"
 
+[[shader_struct(RTHitMaterialInfo)]]
+
 #define RTGBUFFER_HIT_TYPE_INVALID   (0)
 #define RTGBUFFER_HIT_TYPE_VALID_HIT (1)
 #define RTGBUFFER_HIT_TYPE_BACKFACE  (2)

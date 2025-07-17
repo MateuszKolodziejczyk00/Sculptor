@@ -57,14 +57,17 @@ struct MaterialEvaluationOutput
 #if defined(SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
 
 #define SPT_MATERIAL_SAMPLE(sampler, uv) SampleLevel(sampler, uv, SPT_MATERIAL_SAMPLE_EXPLICIT_LEVEL)
+#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, uv, level) SampleLevel(sampler, uv, level)
 
 #elif defined(SPT_MATERIAL_SAMPLE_CUSTOM_DERIVATIVES)
 
 #define SPT_MATERIAL_SAMPLE(sampler, coord) SampleGrad(sampler, coord.uv, coord.duv_dx, coord.duv_dy)
+#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, coord, level) SampleLevel(sampler, coord.uv, level)
 
 #else
 
 #define SPT_MATERIAL_SAMPLE(sampler, uv) Sample(sampler, uv)
+#define SPT_MATERIAL_SAMPLE_LEVEL(sampler, uv, level) SampleLevel(sampler, uv, level)
 
 #endif
 

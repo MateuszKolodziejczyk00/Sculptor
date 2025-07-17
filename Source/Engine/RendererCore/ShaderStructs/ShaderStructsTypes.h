@@ -74,6 +74,12 @@ constexpr lib::String GetShaderTypeName<Real32>()
 }
 
 template<>
+constexpr lib::String GetShaderTypeName<Uint64>()
+{
+	return lib::String("uint64_t");
+}
+
+template<>
 constexpr lib::String GetShaderTypeName<math::Vector2f>()
 {
 	return lib::String("float2");

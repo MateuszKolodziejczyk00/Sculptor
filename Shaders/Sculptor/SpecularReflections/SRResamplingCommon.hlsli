@@ -1,7 +1,7 @@
 #ifndef SRRESAMPLING_COMMON_HLSLI
 #define SRRESAMPLING_COMMON_HLSLI
 
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "Utils/Shapes.hlsli"
 #include "Utils/Packing.hlsli"

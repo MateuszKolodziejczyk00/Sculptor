@@ -12,6 +12,7 @@
 #include "RenderScene.h"
 #include "EngineFrame.h"
 #include "DDGI/DDGISceneSubsystem.h"
+#include "SceneRenderer/RenderStages/Utils/SharcGICache.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -46,6 +47,7 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_diffuseHistoryTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwDiffuseFastHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_diffuseFastHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_baseColorMetallicTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>), u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),  u_linearSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRTemporalAccumulationConstants>),         u_constants)
@@ -98,6 +100,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_diffuseHistoryTemporalVarianceTexture  = params.historyTemporalVarianceDiffuseTexture;
 	ds->u_rwDiffuseFastHistoryTexture            = params.fastHistoryDiffuseTexture;
 	ds->u_diffuseFastHistoryTexture              = params.fastHistoryDiffuseOutputTexture;
+	ds->u_baseColorMetallicTexture               = params.baseColorMetallic;
 	ds->u_constants                              = shaderConstants;
 
 	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
@@ -109,7 +112,8 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.renderView.GetRenderViewDS(),
-												 ddgiSubsystem.GetDDGISceneDS()));
+												 ddgiSubsystem.GetDDGISceneDS(),
+												 params.sharcCacheDS));
 }
 
 } // spt::rsc::sr_denoiser

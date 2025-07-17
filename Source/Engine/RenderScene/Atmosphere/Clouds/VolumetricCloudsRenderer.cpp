@@ -932,7 +932,7 @@ void VolumetricCloudsRenderer::UpdateCloudscapeProbesPerFrame(rg::RenderGraphBui
 		probeCoords[i] = math::Vector2u(xOffset + i, yOffset);
 	}
 
-	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, 1024u, probeCoords);
+	UpdateCloudscapeProbes(graphBuilder, renderScene, viewSpec, cloudscapeContext, 256u, probeCoords);
 }
 
 void VolumetricCloudsRenderer::UpdateCloudscapeProbes(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const CloudscapeContext& cloudscapeContext, Uint32 raysNumPerProbe, lib::Span<const math::Vector2u> probeCoords)

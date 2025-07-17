@@ -1,69 +1,18 @@
 #include "SculptorShader.hlsli"
 
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
-#include "SpecularReflections/RTGITracingCommon.hlsli"
+#include "SpecularReflections/RTGITracingDescriptors.hlsli"
+
+[[descriptor_set(SpecularReflectionsTraceDS, 6)]]
+
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
+#include "SpecularReflections/RTGITracing.hlsli"
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Wave.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
-
-
-RayHitResult TraceReflectionRay(in float3 rayOrigin, in float3 rayDirection)
-{
-	const float maxHitDistance = 200.f;
-
-	const float bias = 0.05f;
-
-	const float3 biasedRayOrigin = rayOrigin;
-
-	RayDesc rayDesc;
-	rayDesc.TMin      = 0.01f;
-	rayDesc.TMax      = maxHitDistance;
-	rayDesc.Origin    = biasedRayOrigin;
-	rayDesc.Direction = rayDirection;
-
-	RTGIRayPayload payload;
-
-	TraceRay(u_sceneTLAS,
-			 0,
-			 0xFF,
-			 0,
-			 1,
-			 0,
-			 rayDesc,
-			 payload);
-
-	const bool isBackface = payload.distance < 0.f;
-	const bool isValidHit = !isBackface && payload.distance < maxHitDistance;
-
-	RayHitResult hitResult = RayHitResult::CreateEmpty();
-
-	if (isValidHit)
-	{
-		const float4 baseColorMetallic = UnpackFloat4x8(payload.baseColorMetallic);
-
-		hitResult.normal      = normalize(payload.normal);
-		hitResult.roughness   = payload.roughness;
-		hitResult.baseColor   = baseColorMetallic.rgb;
-		hitResult.metallic    = baseColorMetallic.w;
-		hitResult.hitType     = RTGBUFFER_HIT_TYPE_VALID_HIT;
-		hitResult.hitDistance = payload.distance;
-		hitResult.emissive    = payload.emissive;
-	}
-	else if (!isBackface)
-	{
-		hitResult.hitType = RTGBUFFER_HIT_TYPE_NO_HIT;
-	}
-	else
-	{
-		hitResult.hitType = RTGBUFFER_HIT_TYPE_BACKFACE;
-	}
-
-	return hitResult;
-}
 
 
 [shader("raygeneration")]
@@ -93,7 +42,7 @@ void GenerateRTGIRaysRTG()
 
 		const float3 rayDirection = OctahedronDecodeNormal(UnpackHalf2x16Norm(encodedRayDirection));
 
-		const RayHitResult hitResult = TraceReflectionRay(worldLocation, rayDirection);
+		const RayHitResult hitResult = RTGITraceRay(u_sceneTLAS, worldLocation, rayDirection);
 
 		uint hitResultIdx = IDX_NONE_32;
 

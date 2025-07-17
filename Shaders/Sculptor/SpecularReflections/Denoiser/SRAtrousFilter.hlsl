@@ -6,7 +6,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/Wave.hlsli"
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
 

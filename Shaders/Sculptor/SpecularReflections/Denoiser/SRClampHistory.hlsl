@@ -4,7 +4,7 @@
 [[descriptor_set(RenderViewDS, 1)]]
 
 #include "Utils/SceneViewUtils.hlsli"
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Packing.hlsli"

@@ -62,6 +62,7 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	features.features.independentBlend			= VK_TRUE;
 	features.features.fillModeNonSolid			= VK_TRUE;
 	features.features.shaderInt16				= VK_TRUE;
+	features.features.shaderInt64				= VK_TRUE;
 	features.features.pipelineStatisticsQuery	= VK_TRUE;
 	features.features.fragmentStoresAndAtomics	= VK_TRUE;
 	features.features.shaderStorageImageReadWithoutFormat	= VK_TRUE;
@@ -80,6 +81,8 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 	vulkan12Features.timelineSemaphore		= VK_TRUE;
 	vulkan12Features.drawIndirectCount		= VK_TRUE;
 	vulkan12Features.shaderFloat16			= VK_TRUE;
+	vulkan12Features.shaderBufferInt64Atomics = VK_TRUE;
+	vulkan12Features.shaderSharedInt64Atomics = VK_TRUE;
 	vulkan12Features.descriptorBindingSampledImageUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind	= VK_TRUE;
 	vulkan12Features.descriptorBindingStorageImageUpdateAfterBind	= VK_TRUE;

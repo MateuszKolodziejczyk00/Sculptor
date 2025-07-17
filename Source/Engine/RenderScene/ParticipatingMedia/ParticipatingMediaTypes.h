@@ -30,11 +30,13 @@ struct VolumetricFogParams
 };
 
 
-BEGIN_SHADER_STRUCT(HeightFogParams)
+BEGIN_ALIGNED_SHADER_STRUCT(16, HeightFogParams)
+	SHADER_STRUCT_FIELD(math::Vector3f, albedo)
 	SHADER_STRUCT_FIELD(Real32,         density)
 	SHADER_STRUCT_FIELD(Real32,         extinction)
-	SHADER_STRUCT_FIELD(math::Vector3f, albedo)
 	SHADER_STRUCT_FIELD(Real32,         heightFalloff)
+	SHADER_STRUCT_FIELD(Real32,         padding0)
+	SHADER_STRUCT_FIELD(Real32,         padding1)
 END_SHADER_STRUCT();
 
 } // spt::rsc

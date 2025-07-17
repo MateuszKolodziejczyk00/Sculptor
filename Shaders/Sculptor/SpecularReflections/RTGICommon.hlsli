@@ -1,5 +1,5 @@
-#ifndef SPECULAR_REFLECTIONS_COMMON_HLSLI
-#define SPECULAR_REFLECTIONS_COMMON_HLSLI
+#ifndef RTGI_COMMON_HLSLI
+#define RTGI_COMMON_HLSLI
 
 #include "Shading/Shading.hlsli"
 
@@ -27,4 +27,4 @@ float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness
 	return specular;
 }
 
-#endif // SPECULAR_REFLECTIONS_COMMON_HLSLI
+#endif // RTGI_COMMON_HLSLI

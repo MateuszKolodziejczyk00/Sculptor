@@ -293,6 +293,8 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 
 	const lib::MTHandle<ViewShadingInputDS> shadingInputDS = graphBuilder.CreateDescriptorSet<ViewShadingInputDS>(RENDERER_RESOURCE_NAME("ViewShadingInputDS"));
 
+	lightsData.heightFog = pmSystem.GetHeightFogParams();
+
 	if (lightsRenderingDataPerView.HasAnyLocalLightsToRender())
 	{
 		const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
@@ -306,7 +308,6 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsData.tilesNum              = tilesNum;
 		lightsData.tileSize              = tileSize;
 		lightsData.ambientLightIntensity = params::ambientLightIntensity;
-		lightsData.heightFog             = pmSystem.GetHeightFogParams();
 
 		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLightsNum * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);

@@ -3,21 +3,35 @@
 [[descriptor_set(RenderViewDS, 2)]]
 
 [[descriptor_set(RTShadingDS, 3)]]
-[[descriptor_set(DDGISceneDS, 4)]]
-[[descriptor_set(GlobalLightsDS, 5)]]
-[[descriptor_set(ShadowMapsDS, 6)]]
+[[descriptor_set(GlobalLightsDS, 4)]]
+[[descriptor_set(ShadowMapsDS, 5)]]
+
+#ifndef USE_DDGI
+#error "USE_DDGI must be defined"
+#endif // USE_DDGI
+
+#if USE_DDGI
+[[descriptor_set(DDGISceneDS, 6)]]
+#else
+[[descriptor_set(SharcCacheDS, 6)]]
+#endif // USE_DDGI
 
 
 #include "Utils/RTVisibilityCommon.hlsli"
 
 #define SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX 0
 
+
+#if !USE_DDGI
+#include "SpecularReflections/SculptorSharcQuery.hlsli"
+#endif // !USE_DDGI
+
 #include "Utils/SceneViewUtils.hlsli"
 #include "Lights/Lighting.hlsli"
 #include "SpecularReflections/SRReservoir.hlsli"
 #include "SpecularReflections/RTGBuffer.hlsli"
 #include "SpecularReflections/RTReflectionsShadingCommon.hlsli"
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 
 #include "Utils/VariableRate/Tracing/RayTraceCommand.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
@@ -71,7 +85,15 @@ void HitRaysShadingRTG()
 
 		const float3 primaryHitToView = normalize(u_sceneView.viewLocation - worldLocation);
 
-		float3 luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
+		float3 luminance;
+#if USE_DDGI
+		luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
+#else
+		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, hitLocation, hitResult.normal, OUT luminance))
+		{
+			luminance = 0.f;
+		}
+#endif // USE_DDGI
 
 		luminance += hitResult.emissive;
 

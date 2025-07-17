@@ -19,7 +19,7 @@ class RenderGraphBuilder;
 
 namespace spt::rsc
 {
-class RenderView;
+class ViewRenderingSpec;
 } // spt::rsc
 
 
@@ -38,11 +38,11 @@ public:
 
 	struct Params
 	{
-		explicit Params(const RenderView& inRenderView)
-			: renderView(inRenderView)
+		explicit Params(const ViewRenderingSpec& inViewSpec)
+			: viewSpec(inViewSpec)
 		{  }
 
-		const RenderView& renderView;
+		const ViewRenderingSpec& viewSpec;
 
 		rg::RGTextureViewHandle historyDepthTexture;
 		rg::RGTextureViewHandle currentDepthTexture;
@@ -59,6 +59,8 @@ public:
 
 		rg::RGTextureViewHandle specularTexture;
 		rg::RGTextureViewHandle diffuseTexture;
+
+		rg::RGTextureViewHandle baseColorMetallicTexture;
 
 		Bool blurVarianceEstimate = true;
 

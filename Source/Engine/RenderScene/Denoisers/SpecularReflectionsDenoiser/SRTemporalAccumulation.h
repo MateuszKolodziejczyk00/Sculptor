@@ -10,6 +10,12 @@ class RenderGraphBuilder;
 } // spt::rg
 
 
+namespace spt::rsc
+{
+class SharcCacheDS;
+} // spt::rsc
+
+
 namespace spt::rsc::ddgi
 {
 class DDGISceneDS;
@@ -52,6 +58,10 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle fastHistorySpecularOutputTexture;
 	rg::RGTextureViewHandle fastHistoryDiffuseTexture;
 	rg::RGTextureViewHandle fastHistoryDiffuseOutputTexture;
+
+	rg::RGTextureViewHandle baseColorMetallic;
+
+	lib::MTHandle<SharcCacheDS> sharcCacheDS;
 
 	Bool enableStableHistoryBlend            = true;
 	Bool enableDisocclusionFixFromLightCache = true;

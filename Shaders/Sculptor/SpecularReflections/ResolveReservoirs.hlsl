@@ -7,7 +7,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Shading/Shading.hlsli"
-#include "SpecularReflections/SpecularReflectionsCommon.hlsli"
+#include "SpecularReflections/RTGICommon.hlsli"
 #include "Utils/VariableRate/VariableRate.hlsli"
 
 struct CS_INPUT
