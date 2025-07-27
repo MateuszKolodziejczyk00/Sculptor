@@ -20,16 +20,6 @@ public:
 		: Super(name)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		if (IsValid())
-		{
-			context.AddBindingsOffset(GetBaseBindingIdx());
-			m_boundDS->UpdateDescriptors(context);
-			context.RemoveBindingsOffset(GetBaseBindingIdx());
-		}
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		if (IsValid())

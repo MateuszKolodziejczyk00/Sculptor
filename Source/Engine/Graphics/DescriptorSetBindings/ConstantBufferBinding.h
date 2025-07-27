@@ -76,14 +76,6 @@ public:
 		}
 	}
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		constexpr Uint64 structSize = GetStructSize();
-		const Uint64 offset         = GetStaticOffset();
-		const rdr::BufferView boundBufferView(lib::Ref(m_buffer), offset, structSize);
-		context.UpdateBuffer(GetBaseBindingIdx(), boundBufferView);
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		constexpr Uint64 structSize = GetStructSize();

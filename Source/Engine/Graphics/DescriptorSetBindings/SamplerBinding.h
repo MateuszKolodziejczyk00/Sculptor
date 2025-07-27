@@ -23,11 +23,6 @@ public:
 		, m_samplerInstance(rdr::ResourcesManager::CreateSampler(samplerDefinition))
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		// Do nothing
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		m_samplerInstance->GetRHI().CopyDescriptor(indexer[GetBaseBindingIdx()][0]);

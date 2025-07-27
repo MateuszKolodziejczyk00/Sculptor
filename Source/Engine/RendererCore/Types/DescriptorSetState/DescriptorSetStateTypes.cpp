@@ -1,7 +1,6 @@
 #include "DescriptorSetStateTypes.h"
 #include "ShaderMetaData.h"
 #include "Types/Buffer.h"
-#include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorSetLayout.h"
 #include "ResourcesManager.h"
 #include "Types/Sampler.h"
@@ -12,76 +11,6 @@
 
 namespace spt::rdr
 {
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// DescriptorSetUpdateContext ====================================================================
-
-DescriptorSetUpdateContext::DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const DescriptorSetLayout& dsLayout)
-	: m_descriptorSet(descriptorSet)
-	, m_writer(writer)
-	, m_dsLayout(dsLayout)
-	, m_baseBindingIdx(0)
-{ }
-
-void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer) const
-{
-	const Uint64 range = buffer.GetSize();
-	SPT_CHECK(range > 0);
-
-	m_writer.WriteBuffer(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx), buffer, range);
-}
-
-void DescriptorSetUpdateContext::UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer, const BufferView& countBuffer) const
-{
-	const Uint64 range = buffer.GetSize();
-	SPT_CHECK(range > 0);
-
-	m_writer.WriteBuffer(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx), buffer, range, countBuffer);
-}
-
-void DescriptorSetUpdateContext::UpdateTexture(Uint32 bindingIdx, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex /*= 0*/) const
-{
-	m_writer.WriteTexture(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx, arrayIndex), texture);
-}
-
-void DescriptorSetUpdateContext::UpdateAccelerationStructure(Uint32 bindingIdx, const lib::SharedRef<TopLevelAS>& tlas) const
-{
-	m_writer.WriteAccelerationStructure(m_descriptorSet, CreateWriteDescriptorDefinition(bindingIdx), tlas);
-}
-
-void DescriptorSetUpdateContext::AddBindingsOffset(Uint32 offset)
-{
-	m_baseBindingIdx += offset;
-}
-
-void DescriptorSetUpdateContext::RemoveBindingsOffset(Uint32 offset)
-{
-	SPT_CHECK(m_baseBindingIdx >= offset);
-	m_baseBindingIdx -= offset;
-}
-
-rhi::WriteDescriptorDefinition DescriptorSetUpdateContext::CreateWriteDescriptorDefinition(Uint32 bindingIdx, Uint32 arrayIdx /*= 0*/) const
-{
-	const Uint32 finalBindingIdx = ComputeFinalBindingIdx(bindingIdx);
-
-	const DescriptorBindingInfo bindingInfo = m_dsLayout.GetBindingInfo(finalBindingIdx);
-
-	rhi::WriteDescriptorDefinition writeDefinition;
-	writeDefinition.bindingIdx     = finalBindingIdx;
-	writeDefinition.arrayElement   = arrayIdx;
-	writeDefinition.descriptorType = bindingInfo.descriptorType;
-
-	SPT_CHECK(arrayIdx < bindingInfo.arraySize);
-	SPT_CHECK(writeDefinition.descriptorType != rhi::EDescriptorType::None);
-
-	return writeDefinition;
-}
-
-
-Uint32 DescriptorSetUpdateContext::ComputeFinalBindingIdx(Uint32 bindingIdx) const
-{
-	return m_baseBindingIdx + bindingIdx;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // DescriptorSetStateLayoutsRegistry =============================================================
@@ -154,7 +83,7 @@ void DescriptorSetStateLayoutsRegistry::CreateLayout(DSStateTypeID dsTypeID, con
 
 					   if (lib::HasAnyFlag(bindingMetaData.flags, smd::EBindingFlags::PartiallyBound))
 					   {
-						   lib::AddFlags(bindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
+						   lib::AddFlags(bindingDef.flags, rhi::EDescriptorSetBindingFlags::PartiallyBound);
 					   }
 
 					   if (bindingMetaData.immutableSamplerDef)

@@ -24,8 +24,6 @@ class RHIUIBackend;
 class RHIShaderModule;
 class RHIPipeline;
 class RHIProfiler;
-class RHIDescriptorSetManager;
-class RHIDescriptorSet;
 class RHIDescriptorHeap;
 class RHIDescriptorSetLayout;
 class RHISampler;
@@ -35,7 +33,6 @@ class RHIShaderBindingTable;
 class RHIQueryPool;
 class RHIGPUMemoryPool;
 class RHIDeviceQueue;
-class RHIDescriptorSetStackAllocator;
 
 } // namespace spt::vulkan
 

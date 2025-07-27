@@ -3,7 +3,6 @@
 #include "RHIMacros.h"
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
-#include "Vulkan/DescriptorSets/DescriptorPool.h"
 #include "UIContext.h"
 #include "UITypes.h"
 
@@ -40,11 +39,11 @@ public:
 
 private:
 
-	DescriptorPool		InitializeDescriptorPool();
+	VkDescriptorPool	InitializeDescriptorPool();
 
 	ui::UIContext m_context;
 
-	lib::DynamicArray<DescriptorPool> m_uiDescriptorPools;
+	lib::DynamicArray<VkDescriptorPool> m_uiDescriptorPools;
 	SizeType m_lastPoolIdx;
 };
 

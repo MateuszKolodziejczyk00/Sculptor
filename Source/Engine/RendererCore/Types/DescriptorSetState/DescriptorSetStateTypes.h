@@ -2,7 +2,6 @@
 
 #include "RendererCoreMacros.h"
 #include "SculptorCoreTypes.h"
-#include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "ShaderMetaDataTypes.h"
 #include "Utility/Templates/Callable.h"
 #include "Utility/NamedType.h"
@@ -86,34 +85,6 @@ public:
 private:
 
 	lib::DynamicArray<lib::HashedString>& m_macroDefinitions;
-};
-
-
-class RENDERER_CORE_API DescriptorSetUpdateContext
-{
-public:
-
-	DescriptorSetUpdateContext(rhi::RHIDescriptorSet descriptorSet, DescriptorSetWriter& writer, const DescriptorSetLayout& dsLayout);
-
-	void UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer) const;
-	void UpdateBuffer(Uint32 bindingIdx, const BufferView& buffer, const BufferView& countBuffer) const;
-	void UpdateTexture(Uint32 bindingIdx, const lib::SharedRef<TextureView>& texture, Uint32 arrayIndex = 0) const;
-	void UpdateAccelerationStructure(Uint32 bindingIdx, const lib::SharedRef<TopLevelAS>& tlas) const;
-
-	void AddBindingsOffset(Uint32 offset);
-	void RemoveBindingsOffset(Uint32 offset);
-
-private:
-
-	rhi::WriteDescriptorDefinition CreateWriteDescriptorDefinition(Uint32 bindingIdx, Uint32 arrayIdx = 0) const;
-
-	Uint32 ComputeFinalBindingIdx(Uint32 bindingIdx) const;
-
-	rhi::RHIDescriptorSet      m_descriptorSet;
-	DescriptorSetWriter&       m_writer;
-	const DescriptorSetLayout& m_dsLayout;
-
-	Uint32 m_baseBindingIdx;
 };
 
 

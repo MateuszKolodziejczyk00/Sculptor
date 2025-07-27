@@ -2,8 +2,6 @@
 #include "Renderer.h"
 #include "ShaderMetaData.h"
 #include "Types/DescriptorSetLayout.h"
-#include "DescriptorSetStackAllocator.h"
-#include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorHeap.h"
 
 namespace spt::rdr
@@ -74,11 +72,7 @@ DescriptorSetState::DescriptorSetState(const RendererResourceName& name, const D
 
 DescriptorSetState::~DescriptorSetState()
 {
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	SwapDescriptorRange(rhi::RHIDescriptorRange{});
-#else
-	SwapDescriptorSet(rhi::RHIDescriptorSet{});
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 }
 
 DSStateID DescriptorSetState::GetID() const
@@ -101,11 +95,10 @@ void DescriptorSetState::SetDirty()
 	m_dirty = true;
 }
 
-const rhi::RHIDescriptorSet& DescriptorSetState::Flush()
+void DescriptorSetState::Flush()
 {
 	if (m_dirty)
 	{
-#if SPT_USE_DESCRIPTOR_BUFFERS
 		rhi::RHIDescriptorRange descriptorRange = AllocateDescriptorRange();
 
 		DescriptorSetIndexer indexer(descriptorRange.data, *m_layout);
@@ -113,25 +106,9 @@ const rhi::RHIDescriptorSet& DescriptorSetState::Flush()
 		UpdateDescriptors(indexer);
 
 		SwapDescriptorRange(descriptorRange);
-#else
-		const rhi::RHIDescriptorSet newDS = AllocateDescriptorSet();
-		DescriptorSetWriter writer;
-		DescriptorSetUpdateContext context(newDS, writer, *m_layout);
-		UpdateDescriptors(context);
-		writer.Flush();
-
-		SwapDescriptorSet(newDS);
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 		m_dirty = false;
 	}
-
-	return GetDescriptorSet();
-}
-
-const rhi::RHIDescriptorSet& DescriptorSetState::GetDescriptorSet() const
-{
-	return m_descriptorSet;
 }
 
 Uint32 DescriptorSetState::GetDescriptorsHeapOffset() const
@@ -185,7 +162,6 @@ void DescriptorSetState::InitDynamicOffsetsArray(SizeType dynamicOffsetsNum)
 	m_dynamicOffsets.reserve(dynamicOffsetsNum);
 }
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 rhi::RHIDescriptorRange DescriptorSetState::AllocateDescriptorRange() const
 {
 	const Uint64 size = m_layout->GetRHI().GetDescriptorsDataSize();
@@ -218,43 +194,5 @@ void DescriptorSetState::SwapDescriptorRange(rhi::RHIDescriptorRange newDescript
 
 	m_descriptorRange = newDescriptorRange;
 }
-#else
-rhi::RHIDescriptorSet DescriptorSetState::AllocateDescriptorSet() const
-{
-	rhi::RHIDescriptorSet descriptorSet;
 
-	if (m_stackAllocator)
-	{
-		descriptorSet = m_stackAllocator->GetRHI().AllocateDescriptorSet(m_layout->GetRHI());
-	}
-	else
-	{
-		descriptorSet = rhi::RHI::AllocateDescriptorSet(m_layout->GetRHI());
-	}
-
-	descriptorSet.SetName(GetName());
-
-	return descriptorSet;
-}
-
-void DescriptorSetState::SwapDescriptorSet(rhi::RHIDescriptorSet newDescriptorSet)
-{
-	if (m_descriptorSet.IsValid())
-	{
-		m_descriptorSet.ResetName();
-
-		// We need to free descriptor set if it was allocated from global pool
-		if (!m_stackAllocator)
-		{
-			Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
-				[ds = m_descriptorSet]
-				{
-					rhi::RHI::FreeDescriptorSet(ds);
-				}));
-		}
-	}
-
-	m_descriptorSet = newDescriptorSet;
-}
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 } // spt::rdr

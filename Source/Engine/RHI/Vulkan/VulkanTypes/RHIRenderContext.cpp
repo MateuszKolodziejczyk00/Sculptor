@@ -1,5 +1,4 @@
 #include "RHIRenderContext.h"
-#include "Vulkan/DescriptorSets/RHIDescriptorSetManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/CommandPool/RHICommandPoolsManager.h"

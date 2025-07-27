@@ -41,7 +41,7 @@ void RHIUIBackend::InitializeRHI(ui::UIContext context, const RHIWindow& window)
     initInfo.QueueFamily = device.GetGfxQueueFamilyIdx();
     initInfo.Queue = device.GetGfxQueue().GetHandleChecked();
     initInfo.PipelineCache = VK_NULL_HANDLE;
-	initInfo.DescriptorPool = m_uiDescriptorPools[0].GetHandle();
+	initInfo.DescriptorPool = m_uiDescriptorPools[0];
     initInfo.MinImageCount = imagesNum;
     initInfo.ImageCount = imagesNum;
 	initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -67,9 +67,9 @@ void RHIUIBackend::ReleaseRHI()
 
 	ImGui_ImplVulkan_Shutdown();
 
-	for (DescriptorPool& pool : m_uiDescriptorPools)
+	for (VkDescriptorPool pool : m_uiDescriptorPools)
 	{
-		pool.Release();
+		vkDestroyDescriptorPool(VulkanRHI::GetDeviceHandle(), pool, VulkanRHI::GetAllocationCallbacks());
 	}
 
 	m_context.Reset();
@@ -116,8 +116,9 @@ void RHIUIBackend::BeginFrame()
 		descriptorPoolIdxThisFrame = 1; // 0 idx is reserved for im gui. We're looping from 1
 	}
 
-	m_uiDescriptorPools[descriptorPoolIdxThisFrame].ResetPool();
-	ImGui_ImplVulkan_SwapDescriptorPool(m_uiDescriptorPools[descriptorPoolIdxThisFrame].GetHandle());
+	vkResetDescriptorPool(VulkanRHI::GetDeviceHandle(), m_uiDescriptorPools[descriptorPoolIdxThisFrame], 0u);
+
+	ImGui_ImplVulkan_SwapDescriptorPool(m_uiDescriptorPools[descriptorPoolIdxThisFrame]);
 
 	m_lastPoolIdx = descriptorPoolIdxThisFrame;
 }
@@ -162,11 +163,9 @@ ui::TextureID RHIUIBackend::GetUITexture(const RHITextureView& textureView, cons
 	return uiTexture;
 }
 
-DescriptorPool RHIUIBackend::InitializeDescriptorPool()
+VkDescriptorPool RHIUIBackend::InitializeDescriptorPool()
 {
 	SPT_PROFILER_FUNCTION();
-
-	DescriptorPool uiDescriptorPool;
 
 	const VkDescriptorPoolCreateFlags flags = 0;
 
@@ -179,8 +178,18 @@ DescriptorPool RHIUIBackend::InitializeDescriptorPool()
 
 	constexpr Uint32 maxSetsNum = static_cast<Uint32>(poolSizes.size()) * poolSizeForDescriptorType;
 
-	uiDescriptorPool.Initialize(flags, maxSetsNum, poolSizes.data(), static_cast<Uint32>(poolSizes.size()));
-	return uiDescriptorPool;
+	VkDescriptorPool poolHandle = VK_NULL_HANDLE;
+
+	VkDescriptorPoolCreateInfo poolCreateInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	poolCreateInfo.flags         = flags;
+	poolCreateInfo.maxSets       = maxSetsNum;
+	poolCreateInfo.poolSizeCount = static_cast<Uint32>(poolSizes.size());
+	poolCreateInfo.pPoolSizes    = poolSizes.data();
+	SPT_VK_CHECK(vkCreateDescriptorPool(VulkanRHI::GetDeviceHandle(), &poolCreateInfo, VulkanRHI::GetAllocationCallbacks(), &poolHandle));
+
+	SPT_CHECK(poolHandle != VK_NULL_HANDLE);
+
+	return poolHandle;
 }
 
 } // spt::vulkan

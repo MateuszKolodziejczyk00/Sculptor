@@ -308,11 +308,7 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	lib::DynamicArray<VkFormat> colorRTFormats;
 	const VkPipelineRenderingCreateInfo pipelineRenderingInfo = BuildPipelineRenderingInfo(pipelineBuildDef, OUT colorRTFormats);
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-#else
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 	pipelineInfo.flags					= pipelineFlags;
@@ -373,11 +369,7 @@ static VkPipeline BuildComputePipeline(const ComputePipelineBuildDefinition& pip
 {
 	SPT_PROFILER_FUNCTION();
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-#else
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	VkComputePipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	pipelineInfo.flags				= pipelineFlags;
@@ -507,11 +499,7 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	// Miss shader groups
 	std::generate_n(std::back_inserter(shaderGroups), shadersDef.missModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-#else
-	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
 	pipelineInfo.flags							= pipelineFlags;

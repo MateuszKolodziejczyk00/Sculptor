@@ -23,22 +23,6 @@ public:
 		: Super(name)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		const Bool isValid = IsValid();
-		SPT_CHECK(isValid || isOptional);
-
-		if (isValid)
-		{
-			const lib::SharedRef<rdr::TextureView> textureView = GetTextureToBind();
-#if DO_CHECKS
-			ValidateTexture(textureView);
-#endif // DO_CHECKS
-
-			context.UpdateTexture(GetBaseBindingIdx(), textureView);
-		}
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		const Bool isValid = IsValid();

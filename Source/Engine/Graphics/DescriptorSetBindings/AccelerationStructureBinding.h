@@ -27,11 +27,6 @@ public:
 		: Super(name)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		context.UpdateAccelerationStructure(GetBaseBindingIdx(), lib::Ref(m_tlas));
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		const lib::SharedPtr<rdr::Buffer> tlasBuffer = m_tlas->GetTLASDataBuffer();

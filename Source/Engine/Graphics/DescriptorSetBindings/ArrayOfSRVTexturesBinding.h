@@ -28,15 +28,6 @@ public:
 		std::generate_n(std::back_inserter(m_availableArrayIndices), arraySize, [ i = static_cast<Uint32>(arraySize) ]() mutable { return AvailableIndex{ --i, rdr::GPUTimelineSection() }; });
 	}
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		for (const BoundTexture& boundTexture : m_boundTextures)
-		{
-			const lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance ? boundTexture.textureInstance : boundTexture.rgTexture->GetViewInstance();
-			context.UpdateTexture(GetBaseBindingIdx(), lib::Ref(textureView), boundTexture.arrayIndex);
-		}
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		for (const BoundTexture& boundTexture : m_boundTextures)

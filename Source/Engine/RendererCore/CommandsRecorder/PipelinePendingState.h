@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "RHIBridge/RHIDescriptorSetImpl.h"
 #include "Types/DescriptorSetState/DescriptorSetStateTypes.h"
 
 
@@ -59,27 +58,16 @@ private:
 
 	struct DSBindCommand
 	{
-		Uint32                idx;
-#if SPT_USE_DESCRIPTOR_BUFFERS
-		Uint32                heapOffset;
-#else
-		rhi::RHIDescriptorSet ds;
-		DynamicOffsetsArray   dynamicOffsets;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
+		Uint32 idx;
+		Uint32 heapOffset;
 	};
 
 	using DSBindCommands = lib::DynamicArray<DSBindCommand>;
 
 	struct BoundDescriptorSetState
 	{
-		DSStateTypeID         typeID;
-#if SPT_USE_DESCRIPTOR_BUFFERS
-		Uint32                heapOffset;
-#else
-		rhi::RHIDescriptorSet ds;
-		// snapshotted state of dynamic offsets during bound
-		DynamicOffsetsArray   dynamicOffsets;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
+		DSStateTypeID typeID;
+		Uint32        heapOffset;
 	};
 
 	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);

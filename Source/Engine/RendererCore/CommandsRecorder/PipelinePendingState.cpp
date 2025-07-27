@@ -51,11 +51,7 @@ void PipelinePendingState::FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-#if SPT_USE_DESCRIPTOR_BUFFERS
 		cmdBuffer.BindGfxDescriptors(m_boundGfxPipeline->GetRHI(), bindCommand.idx, bindCommand.heapOffset);
-#else
-		cmdBuffer.BindGfxDescriptorSet(m_boundGfxPipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	}
 }
 
@@ -92,11 +88,7 @@ void PipelinePendingState::FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer&
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-#if SPT_USE_DESCRIPTOR_BUFFERS
 		cmdBuffer.BindComputeDescriptors(m_boundComputePipeline->GetRHI(), bindCommand.idx, bindCommand.heapOffset);
-#else
-		cmdBuffer.BindComputeDescriptorSet(m_boundComputePipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	}
 }
 
@@ -133,22 +125,14 @@ void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuff
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
-#if SPT_USE_DESCRIPTOR_BUFFERS
 		cmdBuffer.BindRayTracingDescriptors(m_boundRayTracingPipeline->GetRHI(), bindCommand.idx, bindCommand.heapOffset);
-#else
-		cmdBuffer.BindRayTracingDescriptorSet(m_boundRayTracingPipeline->GetRHI(), bindCommand.ds, bindCommand.idx, bindCommand.dynamicOffsets.data(), static_cast<Uint32>(bindCommand.dynamicOffsets.size()));
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	}
 }
 
 void PipelinePendingState::BindDescriptorSetState(const lib::MTHandle<DescriptorSetState>& state)
 {
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	state->Flush();
 	m_boundDescriptorSetStates.emplace_back(BoundDescriptorSetState{ state->GetTypeID(), state->GetDescriptorsHeapOffset() });
-#else
-	m_boundDescriptorSetStates.emplace_back(BoundDescriptorSetState{ state->GetTypeID(), state->Flush(), DynamicOffsetsArray(state->GetDynamicOffsets()) });
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	TryMarkAsDirty(state);
 }
@@ -227,13 +211,8 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 			SPT_CHECK_MSG(!!foundState, "Cannot find descriptor state for pipeline {0} at descriptor set idx: {1}\nTry removing Saved/Shaders/Cache directory", pipeline->GetRHI().GetName().GetData(), dsIdx);
 
 			DSBindCommand bindCommand;
-			bindCommand.idx            = static_cast<Uint32>(dsIdx);
-#if SPT_USE_DESCRIPTOR_BUFFERS
-			bindCommand.heapOffset     = foundState->heapOffset;
-#else
-			bindCommand.ds             = foundState->ds;
-			bindCommand.dynamicOffsets = foundState->dynamicOffsets;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
+			bindCommand.idx        = static_cast<Uint32>(dsIdx);
+			bindCommand.heapOffset = foundState->heapOffset;
 
 			descriptorSetsToBind.emplace_back(std::move(bindCommand));
 		}

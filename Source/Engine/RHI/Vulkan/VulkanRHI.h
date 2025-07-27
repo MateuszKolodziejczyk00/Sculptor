@@ -7,7 +7,6 @@
 #include "RHICore/RHITypes.h"
 #include "RHICore/RHISettings.h"
 #include "RHICore/RHIDescriptorTypes.h"
-#include "VulkanTypes/RHIDescriptorSet.h"
 #include "VulkanTypes/RHIDeviceQueue.h"
 
 
@@ -53,11 +52,6 @@ public:
 	// Device Queues ==================================================================
 
 	static RHIDeviceQueue	GetDeviceQueue(rhi::EDeviceCommandQueueType queueType);	
-
-	// Descriptor Sets =================================================================
-
-	SPT_NODISCARD static RHIDescriptorSet AllocateDescriptorSet(const RHIDescriptorSetLayout& layout);
-	static void	FreeDescriptorSet(const RHIDescriptorSet& set);
 
 	// Debug ===========================================================================
 

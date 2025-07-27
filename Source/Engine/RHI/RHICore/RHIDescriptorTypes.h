@@ -29,7 +29,6 @@ enum class EDescriptorType
 enum class EDescriptorSetBindingFlags : Flags32
 {
 	None					= 0,
-	UpdateAfterBind			= BIT(0),
 	PartiallyBound			= BIT(1)
 };
 

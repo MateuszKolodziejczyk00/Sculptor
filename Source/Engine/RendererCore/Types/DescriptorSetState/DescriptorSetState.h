@@ -24,7 +24,6 @@ public:
 
 	const lib::HashedString& GetName() const;
 
-	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 	virtual void UpdateDescriptors(DescriptorSetIndexer& indexer) const = 0;
 
 	// These functions are not virtual, but can be reimplemented in child classes
@@ -71,13 +70,8 @@ private:
 
 struct DescriptorSetStateParams
 {
-#if SPT_USE_DESCRIPTOR_BUFFERS
-	DescriptorStackAllocator* stackAllocator;
-#else
-	lib::SharedPtr<DescriptorSetStackAllocator> stackAllocator;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
-
-	EDescriptorSetStateFlags flags = EDescriptorSetStateFlags::Default;
+	DescriptorStackAllocator* stackAllocator = nullptr;
+	EDescriptorSetStateFlags  flags = EDescriptorSetStateFlags::Default;
 };
 
 
@@ -91,7 +85,6 @@ public:
 	DescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params);
 	virtual ~DescriptorSetState();
 
-	virtual void UpdateDescriptors(DescriptorSetUpdateContext& context) const = 0;
 	virtual void UpdateDescriptors(DescriptorSetIndexer& indexer) const = 0;
 
 	DSStateID     GetID() const;
@@ -100,8 +93,7 @@ public:
 	Bool IsDirty() const;
 	void SetDirty();
 
-	const rhi::RHIDescriptorSet& Flush();
-	const rhi::RHIDescriptorSet& GetDescriptorSet() const;
+	void Flush();
 
 	Uint32 GetDescriptorsHeapOffset() const;
 
@@ -122,13 +114,8 @@ protected:
 
 private:
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	rhi::RHIDescriptorRange AllocateDescriptorRange() const;
 	void                    SwapDescriptorRange(rhi::RHIDescriptorRange newDescriptorRange);
-#else
-	rhi::RHIDescriptorSet AllocateDescriptorSet() const;
-	void                  SwapDescriptorSet(rhi::RHIDescriptorSet newDescriptorSet);
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	const DSStateID	m_id;
 
@@ -138,16 +125,11 @@ private:
 
 	EDescriptorSetStateFlags m_flags;
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	DescriptorStackAllocator* m_stackAllocator;
-#else
-	lib::SharedPtr<DescriptorSetStackAllocator> m_stackAllocator;
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	lib::DynamicArray<Uint32> m_dynamicOffsets;
 
 	lib::SharedPtr<DescriptorSetLayout> m_layout;
-	rhi::RHIDescriptorSet m_descriptorSet;
 
 	rhi::RHIDescriptorRange m_descriptorRange;
 
@@ -370,13 +352,6 @@ virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final		
 	rdr::bindings_refl::ForEachBinding(GetBindingsBegin(), [&indexer](const auto& binding)										\
 									   {																						\
 										   binding.UpdateDescriptors(indexer);													\
-									   });																						\
-}																																\
-virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final											\
-{																																\
-	rdr::bindings_refl::ForEachBinding(GetBindingsBegin(), [&context](const auto& binding)										\
-									   {																						\
-										   binding.UpdateDescriptors(context);													\
 									   });																						\
 }																																\
 private:																														\

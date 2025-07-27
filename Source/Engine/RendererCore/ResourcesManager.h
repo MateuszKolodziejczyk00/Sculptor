@@ -7,7 +7,6 @@
 #include "RHIBridge/RHIFwd.h"
 #include "RendererUtils.h"
 #include "UIContext.h"
-#include "Types/DescriptorSetWriter.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Shaders/ShaderTypes.h"
 #include "Pipelines/PipelineState.h"
@@ -113,7 +112,6 @@ public:
 	template<typename TDSState>
 	SPT_NODISCARD static lib::MTHandle<TDSState>                     CreateDescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params = DescriptorSetStateParams());
 	SPT_NODISCARD static lib::SharedRef<DescriptorSetLayout>         CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def);
-	SPT_NODISCARD static lib::SharedRef<DescriptorSetStackAllocator> CreateDescriptorSetAllocator(const RendererResourceName& name);
 
 	SPT_NODISCARD static lib::SharedRef<QueryPool> CreateQueryPool(const rhi::QueryPoolDefinition& def);
 

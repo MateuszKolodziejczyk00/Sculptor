@@ -29,12 +29,6 @@ public:
 		, m_writeIdx(false)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		SPT_CHECK(!IsDirty());
-		context.UpdateBuffer(GetBaseBindingIdx(), CreateBufferViewToBind());
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		SPT_CHECK(!IsDirty());

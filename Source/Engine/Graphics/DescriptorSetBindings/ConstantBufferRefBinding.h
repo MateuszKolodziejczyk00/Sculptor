@@ -26,19 +26,6 @@ public:
 		: Super(name)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		if constexpr (!isOptional)
-		{
-			SPT_CHECK(IsValid());
-		}
-
-		if (IsValid())
-		{
-			context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
-		}
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		if constexpr (!isOptional)

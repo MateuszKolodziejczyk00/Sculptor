@@ -277,10 +277,6 @@ VkDescriptorBindingFlags RHIToVulkan::GetBindingFlags(rhi::EDescriptorSetBinding
 {
 	VkDescriptorBindingFlags vulkanFlags = 0;
 
-	if (lib::HasAnyFlag(bindingFlags, rhi::EDescriptorSetBindingFlags::UpdateAfterBind))
-	{
-		lib::AddFlag(vulkanFlags, VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
-	}
 	if (lib::HasAnyFlag(bindingFlags, rhi::EDescriptorSetBindingFlags::PartiallyBound))
 	{
 		lib::AddFlag(vulkanFlags, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);

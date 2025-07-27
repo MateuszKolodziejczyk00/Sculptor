@@ -50,10 +50,6 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 	lib::DynamicArray<VkSampler> samplers;
 	samplers.reserve(samplersNum);
 
-#if !SPT_USE_DESCRIPTOR_BUFFERS
-	Bool hasUpdateAfterBindBindings = false;
-#endif // !SPT_USE_DESCRIPTOR_BUFFERS
-
 	for (const rhi::DescriptorSetBindingDefinition& bindingDef : def.bindings)
 	{
 		if (bindingDef.descriptorType == rhi::EDescriptorType::None)
@@ -74,12 +70,7 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 		bindingInfo.stageFlags         = RHIToVulkan::GetShaderStages(bindingDef.shaderStages);
 		bindingInfo.pImmutableSamplers = hasImmutableSampler ? &samplers.back() : VK_NULL_HANDLE;
 
-		VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
-#if SPT_USE_DESCRIPTOR_BUFFERS
-		bindingFlags &= ~VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-#else
-		hasUpdateAfterBindBindings |= lib::HasAnyFlag(bindingDef.flags, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
+		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
 
 		bindingsInfos.emplace_back(bindingInfo);
 		bindingsFlags.emplace_back(bindingFlags);
@@ -95,15 +86,7 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 	layoutInfo.bindingCount = static_cast<Uint32>(bindingsInfos.size());
 	layoutInfo.pBindings    = bindingsInfos.data();
 
-#if SPT_USE_DESCRIPTOR_BUFFERS
 	layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-	//layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_EMBEDDED_IMMUTABLE_SAMPLERS_BIT_EXT;
-#else
-	if (hasUpdateAfterBindBindings)
-	{
-		layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-	}
-#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	SPT_VK_CHECK(vkCreateDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), &layoutInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 }

@@ -174,28 +174,6 @@ const
 		m_boundTextures.resize(arraySize);
 	}
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		SPT_PROFILER_FUNCTION();
-
-		for (SizeType arrayIdx = 0; arrayIdx < m_boundTextures.size(); ++arrayIdx)
-		{
-			const BoundTexture& boundTexture = m_boundTextures[arrayIdx];
-
-			lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance;
-
-			if (!textureView && boundTexture.rgTexture.IsValid())
-			{
-				textureView = boundTexture.rgTexture->GetViewInstance();
-			} 
-
-			if (textureView)
-			{
-				context.UpdateTexture(GetBaseBindingIdx(), lib::Ref(textureView), static_cast<Uint32>(arrayIdx));
-			}
-		}
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		SPT_PROFILER_FUNCTION();

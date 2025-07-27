@@ -26,11 +26,6 @@ public:
 		: Super(name)
 	{ }
 
-	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
-	{
-		context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind(), m_boundCountBuffer.GetBufferToBind());
-	}
-
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		const rdr::BufferView bufferView      = m_boundBuffer.GetBufferToBind();

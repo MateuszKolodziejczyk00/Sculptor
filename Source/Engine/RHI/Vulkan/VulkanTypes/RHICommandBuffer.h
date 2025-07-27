@@ -69,15 +69,11 @@ public:
 
 	void	BindGfxPipeline(const RHIPipeline& pipeline);
 
-	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
-
 	void	BindGfxDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
 	// Compute rendering ====================================
 
 	void	BindComputePipeline(const RHIPipeline& pipeline);
-
-	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
 	void	BindComputeDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
@@ -92,8 +88,6 @@ public:
 	// Ray Tracing ==========================================
 
 	void	BindRayTracingPipeline(const RHIPipeline& pipeline);
-
-	void 	BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
 	void	BindRayTracingDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
@@ -146,8 +140,6 @@ public:
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
-
-	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
 	void BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
