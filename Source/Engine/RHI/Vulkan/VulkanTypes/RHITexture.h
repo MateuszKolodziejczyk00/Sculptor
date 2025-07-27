@@ -59,7 +59,6 @@ public:
 	Uint64							GetFragmentSize() const;
 	Uint64							GetMipSize(Uint32 mipIdx) const;
 
-
 	VkImage							GetHandle() const;
 
 	// Currently not threadsafe
@@ -137,6 +136,9 @@ public:
 	Bool								IsValid() const;
 	
 	VkImageView							GetHandle() const;
+
+	void								CopyUAVDescriptor(Byte* dst) const;
+	void								CopySRVDescriptor(Byte* dst) const;
 
 	const RHITexture*					GetTexture() const;
 

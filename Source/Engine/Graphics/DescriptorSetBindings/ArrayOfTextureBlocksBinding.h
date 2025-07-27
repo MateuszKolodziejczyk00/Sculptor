@@ -195,7 +195,29 @@ const
 			}
 		}
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		SPT_PROFILER_FUNCTION();
+
+		for (SizeType arrayIdx = 0; arrayIdx < m_boundTextures.size(); ++arrayIdx)
+		{
+			const BoundTexture& boundTexture = m_boundTextures[arrayIdx];
+
+			lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance;
+
+			if (!textureView && boundTexture.rgTexture.IsValid())
+			{
+				textureView = boundTexture.rgTexture->GetViewInstance();
+			} 
+
+			if (textureView)
+			{
+				textureView->GetRHI().CopySRVDescriptor(indexer[GetBaseBindingIdx()][static_cast<Uint32>(arrayIdx)]);
+			}
+		}
+	}
+
 	void BuildRGDependencies(class rg::RGDependenciesBuilder& builder) const
 	{
 		if constexpr (trackInRenderGraph)

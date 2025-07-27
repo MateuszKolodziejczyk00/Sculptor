@@ -34,7 +34,14 @@ public:
 		SPT_CHECK(!IsDirty());
 		context.UpdateBuffer(GetBaseBindingIdx(), CreateBufferViewToBind());
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		SPT_CHECK(!IsDirty());
+		const rdr::BufferView bufferView = CreateBufferViewToBind();
+		bufferView.GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), indexer[GetBaseBindingIdx()][0]);
+	}
+
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		SPT_CHECK(!IsDirty());

@@ -3,7 +3,8 @@
 #include "Vulkan/VulkanCore.h"
 #include "SculptorCoreTypes.h"
 #include "RHICore/RHICommandBufferTypes.h"
-#include "../VulkanTypes/RHIDeviceQueue.h"
+#include "Vulkan/VulkanTypes/RHIDeviceQueue.h"
+#include "RHICore/RHIDescriptorTypes.h"
 
 
 namespace spt::vulkan
@@ -34,11 +35,13 @@ public:
 	Uint32 GetTransferQueueFamilyIdx() const;
 	Uint32 GetQueueFamilyIdx(rhi::EDeviceCommandQueueType queueType) const;
 
+	const rhi::DescriptorProps& GetDescriptorProps() const { return m_descriptorProps; }
+
 private:
 
 	lib::DynamicArray<VkDeviceQueueCreateInfo> CreateQueueInfos(VkPhysicalDevice physicalDevice);
 
-	VkDevice	m_deviceHandle;
+	VkDevice m_deviceHandle;
 
 	Uint32 m_gfxFamilyIdx;
 	Uint32 m_asyncComputeFamilyIdx;
@@ -47,6 +50,8 @@ private:
 	RHIDeviceQueue m_gfxQueue;
 	RHIDeviceQueue m_asyncComputeQueue;
 	RHIDeviceQueue m_transferQueue;
+
+	rhi::DescriptorProps m_descriptorProps{};
 };
 
 } // spt::vulkan

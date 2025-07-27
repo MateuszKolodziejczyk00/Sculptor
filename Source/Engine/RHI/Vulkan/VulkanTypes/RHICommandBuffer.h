@@ -44,6 +44,10 @@ public:
 	void							SetName(const lib::HashedString& name);
 	const lib::HashedString&		GetName() const;
 
+	// General ==============================================
+
+	void BindDescriptorHeap(const RHIDescriptorHeap& descriptorHeap);
+
 	// Gfx rendering ========================================
 
 	void	BeginRendering(const rhi::RenderingDefinition& renderingDefinition);
@@ -67,11 +71,15 @@ public:
 
 	void	BindGfxDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
+	void	BindGfxDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
+
 	// Compute rendering ====================================
 
 	void	BindComputePipeline(const RHIPipeline& pipeline);
 
 	void	BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
+
+	void	BindComputeDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
 	void	Dispatch(const math::Vector3u& groupCount);
 	void	DispatchIndirect(const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
@@ -87,8 +95,10 @@ public:
 
 	void 	BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
 
-	void 	TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount);
-	void 	TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
+	void	BindRayTracingDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
+
+	void	TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount);
+	void	TraceRaysIndirect(const RHIShaderBindingTable& sbt, const RHIBuffer& indirectArgsBuffer, Uint64 indirectArgsOffset);
 
 	// Transfer =============================================
 
@@ -136,7 +146,10 @@ public:
 private:
 
 	void BindPipelineImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline);
+
 	void BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum);
+
+	void BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset);
 
 	void BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset);
 
@@ -144,6 +157,8 @@ private:
 
 	rhi::EDeviceCommandQueueType	m_queueType;
 	rhi::ECommandBufferType			m_cmdBufferType;
+
+	std::optional<Uint32>			m_boundDescriptorHeapSize;
 
 	DebugName						m_name;
 };

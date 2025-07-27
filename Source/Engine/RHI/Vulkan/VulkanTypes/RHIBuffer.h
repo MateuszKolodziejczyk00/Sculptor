@@ -104,6 +104,10 @@ public:
 
 	Bool						IsValid() const;
 
+	void						CopySRVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const;
+	void						CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const;
+	void						CopyTLASDescriptor(Byte* dst) const;
+
 	Uint64						GetSize() const;
 	rhi::EBufferUsage			GetUsage() const;
 
@@ -118,6 +122,7 @@ public:
 	Bool						AllowsSuballocations() const;
 	rhi::RHIVirtualAllocation	CreateSuballocation(const rhi::VirtualAllocationDefinition& definition);
 	void						DestroySuballocation(rhi::RHIVirtualAllocation suballocation);
+	void						DestroySuballocation(rhi::RHIVirtualAllocationHandle suballocation);
 
 	rhi::RHIMemoryRequirements	GetMemoryRequirements() const;
 
@@ -127,6 +132,7 @@ public:
 	// Vulkan =======================================================================
 
 	VkBuffer					GetHandle() const;
+	VkBufferUsageFlags			GetVulkanUsage() const;
 
 private:
 

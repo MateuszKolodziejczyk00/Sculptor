@@ -2,7 +2,8 @@
 
 #include "SculptorCoreTypes.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
-#include "RHICore/RHISamplerTypes.h"
+#include "Types/Sampler.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::gfx
@@ -19,11 +20,17 @@ public:
 
 	explicit ImmutableSamplerBinding(const lib::HashedString& name)
 		: Super(name)
+		, m_samplerInstance(rdr::ResourcesManager::CreateSampler(samplerDefinition))
 	{ }
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
 		// Do nothing
+	}
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		m_samplerInstance->GetRHI().CopyDescriptor(indexer[GetBaseBindingIdx()][0]);
 	}
 
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
@@ -49,6 +56,8 @@ private:
 			return lib::String("SamplerComparisonState");
 		}
 	}
+
+	lib::SharedRef<rdr::Sampler> m_samplerInstance;
 };
 
 } // spt::gfx

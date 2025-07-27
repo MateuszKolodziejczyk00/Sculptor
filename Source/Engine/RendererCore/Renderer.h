@@ -22,6 +22,7 @@ class DescriptorSetsManager;
 class SamplersCache;
 class Window;
 class RenderContext;
+class DescriptorHeap;
 
 
 using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
@@ -53,6 +54,8 @@ public:
 	static SamplersCache&						GetSamplersCache();
 	
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
+
+	static DescriptorHeap&						GetDescriptorHeap();
 
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
 	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);

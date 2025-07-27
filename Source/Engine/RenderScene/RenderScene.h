@@ -94,8 +94,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(RenderSceneDS, rg::RGDescriptorSetState<RenderSceneDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>),          u_renderEntitiesData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingDynamicOffset<GPUSceneFrameData>), u_gpuSceneFrameConstants)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<RenderEntityGPUData>),         u_renderEntitiesData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<GPUSceneFrameData>), u_gpuSceneFrameConstants)
 DS_END();
 
 

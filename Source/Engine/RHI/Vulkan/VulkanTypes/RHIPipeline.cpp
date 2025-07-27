@@ -308,24 +308,30 @@ static VkPipeline BuildGraphicsPipeline(const GraphicsPipelineBuildDefinition& p
 	lib::DynamicArray<VkFormat> colorRTFormats;
 	const VkPipelineRenderingCreateInfo pipelineRenderingInfo = BuildPipelineRenderingInfo(pipelineBuildDef, OUT colorRTFormats);
 
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+#else
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
+
 	VkGraphicsPipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-    pipelineInfo.flags					= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
-    pipelineInfo.stageCount				= static_cast<Uint32>(shaderStages.size());
-    pipelineInfo.pStages				= shaderStages.data();
-    pipelineInfo.pVertexInputState		= &vertexInputState;
-    pipelineInfo.pInputAssemblyState	= &inputAssemblyStateInfo;
-    pipelineInfo.pTessellationState		= VK_NULL_HANDLE;
-    pipelineInfo.pViewportState			= &viewportStateInfo;
-    pipelineInfo.pRasterizationState	= &rasterizationStateInfo;
-    pipelineInfo.pMultisampleState		= &multisampleStateInfo;
-    pipelineInfo.pDepthStencilState		= &depthStencilStateInfo;
-    pipelineInfo.pColorBlendState		= &colorBlendStateInfo;
-    pipelineInfo.pDynamicState			= &dynamicStateInfo;
-    pipelineInfo.layout					= pipelineBuildDef.layout.GetHandle();
-    pipelineInfo.renderPass				= VK_NULL_HANDLE; // we use dynamic rendering, so render pass doesn't have to be specified
+	pipelineInfo.flags					= pipelineFlags;
+	pipelineInfo.stageCount				= static_cast<Uint32>(shaderStages.size());
+	pipelineInfo.pStages				= shaderStages.data();
+	pipelineInfo.pVertexInputState		= &vertexInputState;
+	pipelineInfo.pInputAssemblyState	= &inputAssemblyStateInfo;
+	pipelineInfo.pTessellationState		= VK_NULL_HANDLE;
+	pipelineInfo.pViewportState			= &viewportStateInfo;
+	pipelineInfo.pRasterizationState	= &rasterizationStateInfo;
+	pipelineInfo.pMultisampleState		= &multisampleStateInfo;
+	pipelineInfo.pDepthStencilState		= &depthStencilStateInfo;
+	pipelineInfo.pColorBlendState		= &colorBlendStateInfo;
+	pipelineInfo.pDynamicState			= &dynamicStateInfo;
+	pipelineInfo.layout					= pipelineBuildDef.layout.GetHandle();
+	pipelineInfo.renderPass				= VK_NULL_HANDLE; // we use dynamic rendering, so render pass doesn't have to be specified
 	pipelineInfo.subpass				= 0;
-    pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;
-    pipelineInfo.basePipelineIndex		= 0;
+	pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex		= 0;
 
 	VulkanStructsLinkedList piplineInfoLinkedList(pipelineInfo);
 	piplineInfoLinkedList.Append(pipelineRenderingInfo);
@@ -367,12 +373,18 @@ static VkPipeline BuildComputePipeline(const ComputePipelineBuildDefinition& pip
 {
 	SPT_PROFILER_FUNCTION();
 
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+#else
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
+
 	VkComputePipelineCreateInfo pipelineInfo{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-	pipelineInfo.flags				= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+	pipelineInfo.flags				= pipelineFlags;
 	pipelineInfo.stage				= BuildPipelineShaderStageInfo(pipelineBuildDef.computeShaderModule);
 	pipelineInfo.layout				= pipelineBuildDef.layout.GetHandle();
-    pipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
-    pipelineInfo.basePipelineIndex	= 0;
+	pipelineInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex	= 0;
 
 	const VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 
@@ -495,8 +507,14 @@ static VkPipeline BuildRayTracingPipeline(const RayTracingPipelineBuildDefinitio
 	// Miss shader groups
 	std::generate_n(std::back_inserter(shaderGroups), shadersDef.missModules.size(), [ &shaderIdx ] { return CreateGeneralShaderGroup(shaderIdx++); });
 
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR | VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+#else
+	constexpr VkPipelineCreateFlags pipelineFlags = VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
+
 	VkRayTracingPipelineCreateInfoKHR pipelineInfo{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
-	pipelineInfo.flags							= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+	pipelineInfo.flags							= pipelineFlags;
 	pipelineInfo.stageCount						= static_cast<Uint32>(shaderStages.size());
 	pipelineInfo.pStages						= shaderStages.data();
 	pipelineInfo.groupCount						= static_cast<Uint32>(shaderGroups.size());

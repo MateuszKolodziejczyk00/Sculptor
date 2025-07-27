@@ -60,8 +60,12 @@ private:
 	struct DSBindCommand
 	{
 		Uint32                idx;
+#if SPT_USE_DESCRIPTOR_BUFFERS
+		Uint32                heapOffset;
+#else
 		rhi::RHIDescriptorSet ds;
 		DynamicOffsetsArray   dynamicOffsets;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	};
 
 	using DSBindCommands = lib::DynamicArray<DSBindCommand>;
@@ -69,9 +73,13 @@ private:
 	struct BoundDescriptorSetState
 	{
 		DSStateTypeID         typeID;
+#if SPT_USE_DESCRIPTOR_BUFFERS
+		Uint32                heapOffset;
+#else
 		rhi::RHIDescriptorSet ds;
 		// snapshotted state of dynamic offsets during bound
 		DynamicOffsetsArray   dynamicOffsets;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	};
 
 	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);

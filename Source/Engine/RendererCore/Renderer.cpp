@@ -15,6 +15,7 @@
 #include "RHIBridge/RHICommandBufferImpl.h"
 #include "EngineFrame.h"
 #include "JobSystem.h"
+#include "ResourcesManager.h"
 
 
 namespace spt::rdr
@@ -38,6 +39,8 @@ DeviceQueuesManager deviceQueuesManager;
 
 GPUReleaseQueue releasesQueue;
 
+lib::SharedPtr<DescriptorHeap> descriptorHeap;
+
 };
 
 static RendererData g_data;
@@ -50,6 +53,10 @@ void Renderer::Initialize()
 
 	rhi::RHI::Initialize(rhi::RHIInitializationInfo{});
 
+	const Uint64 descriptorsBufferSize = 1024u * 1024u * 32u;
+	priv::g_data.descriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("Renderer Descriptor Heap"),
+																		 rhi::DescriptorHeapDefinition{ .size = descriptorsBufferSize });
+
 	GetShadersManager().Initialize();
 
 	GetSamplersCache().Initialize();
@@ -61,6 +68,8 @@ void Renderer::Initialize()
 
 void Renderer::Uninitialize()
 {
+	SPT_PROFILER_FUNCTION();
+
 	WaitIdle();
 
 	DescriptorSetStateLayoutsRegistry::Get().ReleaseRegisteredLayouts();
@@ -76,6 +85,10 @@ void Renderer::Uninitialize()
 	GetPipelinesLibrary().ClearCachedPipelines();
 
 	GetShadersManager().Uninitialize();
+
+	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
+
+	priv::g_data.descriptorHeap.reset();
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
 
@@ -111,6 +124,11 @@ SamplersCache& Renderer::GetSamplersCache()
 DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
 {
 	return priv::g_data.deviceQueuesManager;
+}
+
+DescriptorHeap& Renderer::GetDescriptorHeap()
+{
+	return *priv::g_data.descriptorHeap;
 }
 
 void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)

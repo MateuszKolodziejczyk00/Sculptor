@@ -15,6 +15,7 @@ function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPrivateDependency("EngineCore")
     self:AddPrivateDependency("Tokenizer")
     self:AddPrivateDependency("Serialization")
+    self:AddPrivateDependency("RHI") -- this is currently necessary for some types in meta-data
 
     self:AddLinkOption("-IGNORE:4099")
 

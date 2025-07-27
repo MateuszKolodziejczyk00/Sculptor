@@ -179,13 +179,13 @@ float3 CompositeVolumetricClouds(in uint2 coords, in float2 uv, in float2 pixelS
 #endif // VOLUMETRIC_CLOUDS_ENABLED
 
 
-#if RT_REFLECTIONS_ENABLED
 struct RTReflections
 {
 	float3 specular;
 	float3 diffuse;
 };
 
+#if RT_REFLECTIONS_ENABLED
 RTReflections ComputeRTReflectionsLuminance(in uint2 pixel, in float2 uv)
 {
 	const float depth = u_depthTexture.Load(uint3(pixel, 0)).x;

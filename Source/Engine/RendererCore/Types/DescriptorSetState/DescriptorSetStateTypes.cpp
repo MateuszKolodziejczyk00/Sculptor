@@ -6,6 +6,8 @@
 #include "ResourcesManager.h"
 #include "Types/Sampler.h"
 #include "Renderer.h"
+#include "Types/DescriptorHeap.h"
+#include "RHIBridge/RHIImpl.h"
 
 
 namespace spt::rdr
@@ -82,7 +84,7 @@ Uint32 DescriptorSetUpdateContext::ComputeFinalBindingIdx(Uint32 bindingIdx) con
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// DescriptorSetUpdateContext ====================================================================
+// DescriptorSetStateLayoutsRegistry =============================================================
 
 DescriptorSetStateLayoutsRegistry& DescriptorSetStateLayoutsRegistry::Get()
 {
@@ -174,6 +176,42 @@ Bool DescriptorSetStateLayoutsRegistry::IsRayTracingLayout(DSStateTypeID dsTypeI
 					   {
 						   return binding.type == rhi::EDescriptorType::AccelerationStructure;
 					   });
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// DescriptorsStackAllocator =============================================================
+
+DescriptorStackAllocator::DescriptorStackAllocator(Uint32 stackSize)
+	: m_descriptorRange(Renderer::GetDescriptorHeap().GetRHI().AllocateRange(stackSize))
+{
+}
+
+DescriptorStackAllocator::~DescriptorStackAllocator()
+{
+	Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
+		[ds = m_descriptorRange]
+		{
+			rdr::DescriptorHeap& descriptorHeap = Renderer::GetDescriptorHeap();
+			descriptorHeap.GetRHI().DeallocateRange(ds);
+		}));
+
+	m_descriptorRange = rhi::RHIDescriptorRange{};
+}
+
+rhi::RHIDescriptorRange DescriptorStackAllocator::AllocateRange(Uint32 size)
+{
+	const Uint32 alignment = rhi::RHI::GetDescriptorProps().descriptorsAlignment;
+	const Uint32 alignedSize = math::Utils::RoundUp(size, alignment);
+	
+	const Uint32 offset = m_currentOffset.fetch_add(alignedSize);
+	SPT_CHECK(offset + alignedSize <= m_descriptorRange.data.size());
+
+	return rhi::RHIDescriptorRange
+	{
+		.data             = lib::Span<Byte>{m_descriptorRange.data.data() + offset, alignedSize},
+		.allocationHandle = {},
+		.heapOffset       = m_descriptorRange.heapOffset + offset,
+	};
 }
 
 } // spt::rdr

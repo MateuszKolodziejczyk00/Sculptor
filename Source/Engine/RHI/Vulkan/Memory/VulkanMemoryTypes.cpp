@@ -214,8 +214,10 @@ rhi::RHIVirtualAllocation VulkanVirtualAllocator::Allocate(const rhi::VirtualAll
 
 	const Uint64 aligndDataOffset = offset == 0 ? offset : math::Utils::RoundUp(offset, definition.alignment);
 
+	const rhi::RHIVirtualAllocationHandle allocationHandle = rhi::RHIVirtualAllocationHandle{ reinterpret_cast<Uint64>(virtualAllocation) };
+
 	SPT_STATIC_CHECK(sizeof(VmaVirtualAllocation) == sizeof(Uint64));
-	return allocationResult != VK_ERROR_OUT_OF_DEVICE_MEMORY ? rhi::RHIVirtualAllocation(reinterpret_cast<Uint64>(virtualAllocation), aligndDataOffset) : rhi::RHIVirtualAllocation();
+	return allocationResult != VK_ERROR_OUT_OF_DEVICE_MEMORY ? rhi::RHIVirtualAllocation(allocationHandle, aligndDataOffset) : rhi::RHIVirtualAllocation();
 }
 
 void VulkanVirtualAllocator::Free(const rhi::RHIVirtualAllocation& allocation)
@@ -223,7 +225,15 @@ void VulkanVirtualAllocator::Free(const rhi::RHIVirtualAllocation& allocation)
 	SPT_CHECK(IsValid());
 	SPT_CHECK(allocation.IsValid());
 
-	vmaVirtualFree(m_vitualBlock, reinterpret_cast<VmaVirtualAllocation>(allocation.GetHandle()));
+	vmaVirtualFree(m_vitualBlock, reinterpret_cast<VmaVirtualAllocation>(allocation.GetHandle().Get()));
+}
+
+void VulkanVirtualAllocator::Free(rhi::RHIVirtualAllocationHandle allocationHandle)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(allocationHandle != rhi::RHIVirtualAllocationHandle{0});
+
+	vmaVirtualFree(m_vitualBlock, reinterpret_cast<VmaVirtualAllocation>(allocationHandle.Get()));
 }
 
 } // spt::vulkan

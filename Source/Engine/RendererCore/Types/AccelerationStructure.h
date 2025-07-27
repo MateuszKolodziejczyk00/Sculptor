@@ -40,7 +40,8 @@ public:
 
 	TopLevelAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 
-	const lib::SharedPtr<Buffer>& GetInstancesBuildDataBuffer() const;
+	const lib::SharedPtr<Buffer>& GetTLASDataBuffer() const           { return m_accelerationStructureBuffer; }
+	const lib::SharedPtr<Buffer>& GetInstancesBuildDataBuffer() const { return m_instancesBuildDataBuffer; }
 
 	void ReleaseInstancesBuildData();
 

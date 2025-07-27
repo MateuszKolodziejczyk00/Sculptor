@@ -268,7 +268,11 @@ private:
 	RGProfilerRecorder m_profilerRecorder;
 #endif // RG_ENABLE_DIAGNOSTICS
 
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	rdr::DescriptorStackAllocator m_dsAllocator;
+#else
 	lib::SharedPtr<rdr::DescriptorSetStackAllocator> m_dsAllocator;
+#endif // // SPT_USE_DESCRIPTOR_BUFFERS
 
 	RGAllocator m_allocator;
 };
@@ -283,7 +287,11 @@ template<typename TDSType>
 lib::MTHandle<TDSType> RenderGraphBuilder::CreateDescriptorSet(const rdr::RendererResourceName& name)
 {
 	rdr::DescriptorSetStateParams params;
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	params.stackAllocator = &m_dsAllocator;
+#else 
 	params.stackAllocator = m_dsAllocator;
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
 	lib::MTHandle<TDSType> ds = m_allocator.AllocateUntracked<TDSType>(name, params);
 	ds->DisableDeleteOnZeroRefCount();
 #if SPT_RG_DEBUG_DESCRIPTOR_SETS_LIFETIME

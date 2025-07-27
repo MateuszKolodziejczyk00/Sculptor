@@ -291,6 +291,11 @@ Bool VulkanRHI::IsRayTracingEnabled()
 	return GetSettings().IsRayTracingEnabled();
 }
 
+rhi::DescriptorProps VulkanRHI::GetDescriptorProps()
+{
+	return priv::g_data.device.GetDescriptorProps();
+}
+
 RHIDeviceQueue VulkanRHI::GetDeviceQueue(rhi::EDeviceCommandQueueType queueType)
 {
 	return priv::g_data.device.GetQueue(queueType);

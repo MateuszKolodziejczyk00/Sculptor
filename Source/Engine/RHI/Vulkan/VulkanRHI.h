@@ -48,6 +48,8 @@ public:
 	static const rhi::RHISettings&	GetSettings();
 	static Bool						IsRayTracingEnabled();
 
+	static rhi::DescriptorProps		GetDescriptorProps();
+
 	// Device Queues ==================================================================
 
 	static RHIDeviceQueue	GetDeviceQueue(rhi::EDeviceCommandQueueType queueType);	

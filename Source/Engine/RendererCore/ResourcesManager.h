@@ -33,6 +33,7 @@ struct TLASDefinition;
 struct QueryPoolDefinition;
 struct RHIMemoryPoolDefinition;
 struct DescriptorSetDefinition;
+struct DescriptorHeapDefinition;
 } // spt::rhi
 
 
@@ -67,6 +68,7 @@ class QueryPool;
 class DescriptorSetLayout;
 class DescriptorSetStackAllocator;
 class Pipeline;
+class DescriptorHeap;
 
 
 class RENDERER_CORE_API ResourcesManager
@@ -105,6 +107,8 @@ public:
 	SPT_NODISCARD static lib::SharedRef<TopLevelAS>    CreateTLAS(const RendererResourceName& name, const rhi::TLASDefinition& definition);
 
 	SPT_NODISCARD static lib::SharedRef<Sampler> CreateSampler(const rhi::SamplerDefinition& def);
+
+	SPT_NODISCARD static lib::SharedRef<DescriptorHeap> CreateDescriptorHeap(const RendererResourceName& name, const rhi::DescriptorHeapDefinition& definition);
 
 	template<typename TDSState>
 	SPT_NODISCARD static lib::MTHandle<TDSState>                     CreateDescriptorSetState(const RendererResourceName& name, const DescriptorSetStateParams& params = DescriptorSetStateParams());

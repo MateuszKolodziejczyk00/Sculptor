@@ -165,30 +165,54 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 		deviceInfoLinkedData.Append(rayQueryFeatures);
 	}
 
+	VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
+	descriptorBufferFeatures.descriptorBuffer                   = VK_TRUE;
+	descriptorBufferFeatures.descriptorBufferImageLayoutIgnored = VK_TRUE;
+
+	deviceInfoLinkedData.Append(descriptorBufferFeatures);
+
 	SPT_VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, allocator, &m_deviceHandle));
 
 	VkQueue gfxQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 gfxQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
-    gfxQueueInfo.queueFamilyIndex = m_gfxFamilyIdx;
-    gfxQueueInfo.queueIndex = 0;
+	gfxQueueInfo.queueFamilyIndex = m_gfxFamilyIdx;
+	gfxQueueInfo.queueIndex = 0;
 	vkGetDeviceQueue2(m_deviceHandle, &gfxQueueInfo, &gfxQueueHandle);
 	m_gfxQueue.InitializeRHI(rhi::EDeviceCommandQueueType::Graphics, gfxQueueHandle);
 
 	VkQueue asyncComputeQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 asyncComputeQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
-    asyncComputeQueueInfo.queueFamilyIndex = m_asyncComputeFamilyIdx;
-    asyncComputeQueueInfo.queueIndex = 0;
+	asyncComputeQueueInfo.queueFamilyIndex = m_asyncComputeFamilyIdx;
+	asyncComputeQueueInfo.queueIndex = 0;
 	vkGetDeviceQueue2(m_deviceHandle, &asyncComputeQueueInfo, &asyncComputeQueueHandle);
 	m_asyncComputeQueue.InitializeRHI(rhi::EDeviceCommandQueueType::AsyncCompute, asyncComputeQueueHandle);
 
 	VkQueue transferQueueHandle{ VK_NULL_HANDLE };
 	VkDeviceQueueInfo2 transferQueueInfo{ VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2 };
-    transferQueueInfo.queueFamilyIndex = m_transferFamilyIdx;
-    transferQueueInfo.queueIndex = 0;
+	transferQueueInfo.queueFamilyIndex = m_transferFamilyIdx;
+	transferQueueInfo.queueIndex = 0;
 	vkGetDeviceQueue2(m_deviceHandle, &transferQueueInfo, &transferQueueHandle);
 	m_transferQueue.InitializeRHI(rhi::EDeviceCommandQueueType::Transfer, transferQueueHandle);
 
 	volkLoadDevice(m_deviceHandle);
+
+	VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT };
+	VkPhysicalDeviceProperties2 physicalDeviceProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+	physicalDeviceProps.pNext = &descriptorProps;
+
+	vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProps);
+
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::Sampler)]                = static_cast<Uint32>(descriptorProps.samplerDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::CombinedTextureSampler)] = static_cast<Uint32>(descriptorProps.combinedImageSamplerDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::SampledTexture)]         = static_cast<Uint32>(descriptorProps.sampledImageDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageTexture)]         = static_cast<Uint32>(descriptorProps.storageImageDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::UniformTexelBuffer)]     = static_cast<Uint32>(descriptorProps.uniformTexelBufferDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageTexelBuffer)]     = static_cast<Uint32>(descriptorProps.storageTexelBufferDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::UniformBuffer)]          = static_cast<Uint32>(descriptorProps.uniformBufferDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageBuffer)]          = static_cast<Uint32>(descriptorProps.storageBufferDescriptorSize);
+	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::AccelerationStructure)]  = static_cast<Uint32>(descriptorProps.accelerationStructureDescriptorSize);
+
+	m_descriptorProps.descriptorsAlignment = static_cast<Uint32>(descriptorProps.descriptorBufferOffsetAlignment);
 }
 
 void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)

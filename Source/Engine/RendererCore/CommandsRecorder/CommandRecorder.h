@@ -25,6 +25,7 @@ class TopLevelAS;
 class BottomLevelAS;
 class QueryPool;
 class GPUWorkload;
+class DescriptorHeap;
 
 
 class RENDERER_CORE_API CommandRecorder
@@ -41,6 +42,8 @@ public:
 
 	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
 	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
+
+	void									BindDescriptorHeap(const DescriptorHeap& descriptorHeap);
 
 	void									BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset);
 	void									BuildTLAS(const lib::SharedRef<TopLevelAS>& tlas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset, const lib::SharedRef<Buffer>& instancesBuildDataBuffer);

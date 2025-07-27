@@ -19,6 +19,7 @@
 #include "Types/GPUMemoryPool.h"
 #include "Types/DescriptorSetLayout.h"
 #include "Types/DescriptorSetState/DescriptorSetStackAllocator.h"
+#include "Types/DescriptorHeap.h"
 #include "CommandsRecorder/CommandRecorder.h"
 
 
@@ -131,6 +132,11 @@ PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourc
 lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)
 {
 	return Renderer::GetSamplersCache().GetOrCreateSampler(def);
+}
+
+lib::SharedRef<DescriptorHeap> ResourcesManager::CreateDescriptorHeap(const RendererResourceName& name, const rhi::DescriptorHeapDefinition& definition)
+{
+	return lib::MakeShared<DescriptorHeap>(name, definition);
 }
 
 lib::SharedRef<DescriptorSetLayout> ResourcesManager::CreateDescriptorSetLayout(const RendererResourceName& name, const rhi::DescriptorSetDefinition& def)

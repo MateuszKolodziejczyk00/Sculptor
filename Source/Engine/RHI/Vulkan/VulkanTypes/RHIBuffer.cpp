@@ -1,6 +1,7 @@
 #include "RHIBuffer.h"
 #include "Vulkan/VulkanRHI.h"
 #include "Vulkan/Memory/VulkanMemoryManager.h"
+#include "Vulkan/Device/LogicalDevice.h"
 #include "MathUtils.h"
 #include "Utility/Templates/Overload.h"
 #include "RHIGPUMemoryPool.h"
@@ -69,6 +70,14 @@ VkBufferUsageFlags GetVulkanBufferUsage(rhi::EBufferUsage bufferUsage)
 	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ShaderBindingTable))
 	{
 		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR);
+	}
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::SamplerDescriptorBuffer))
+	{
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT);
+	}
+	if (lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::ResourceDescriptorBuffer))
+	{
+		lib::AddFlag(vulkanFlags, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT);
 	}
 
 	SPT_CHECK(static_cast<Flags32>(bufferUsage) < (static_cast<Flags32>(rhi::EBufferUsage::LAST) - 1) << 1);
@@ -147,14 +156,14 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 	SPT_CHECK_MSG(definition.size > 0, "Buffer size must be greater than 0");
 
 	m_bufferSize = definition.size;
-	m_usageFlags = definition.usage;
+	m_usageFlags = lib::Flags(definition.usage, rhi::EBufferUsage::DeviceAddress);
 
-	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(definition.usage);
+	const VkBufferUsageFlags vulkanUsage = priv::GetVulkanBufferUsage(m_usageFlags);
 
 	VkBufferCreateInfo bufferInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bufferInfo.flags = 0;
-    bufferInfo.size = definition.size;
-    bufferInfo.usage = vulkanUsage;
+	bufferInfo.flags       = 0;
+	bufferInfo.size        = m_bufferSize;
+	bufferInfo.usage       = vulkanUsage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	SPT_VK_CHECK(vkCreateBuffer(VulkanRHI::GetDeviceHandle(), &bufferInfo, VulkanRHI::GetAllocationCallbacks(), OUT &m_bufferHandle));
@@ -164,7 +173,7 @@ void RHIBuffer::InitializeRHI(const rhi::BufferDefinition& definition, const rhi
 	// Allocator lifetime is always same as buffer - so create it even if memory is not bound yet
 	if (lib::HasAnyFlag(definition.flags, rhi::EBufferFlags::WithVirtualSuballocations))
 	{
-		m_virtualAllocator.InitializeRHI(definition.size, rhi::EVirtualAllocatorFlags::ClearOnRelease);
+		m_virtualAllocator.InitializeRHI(m_bufferSize, rhi::EVirtualAllocatorFlags::ClearOnRelease);
 	}
 }
 
@@ -228,6 +237,61 @@ RHIBufferReleaseTicket RHIBuffer::DeferredReleaseRHI()
 Bool RHIBuffer::IsValid() const
 {
 	return m_bufferHandle != VK_NULL_HANDLE;
+}
+
+void RHIBuffer::CopySRVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::Uniform));
+	SPT_CHECK(offset + range <= GetSize());
+
+	VkDescriptorAddressInfoEXT addressInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+	addressInfo.address = GetDeviceAddress() + offset;
+	addressInfo.range   = range;
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type                = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	info.data.pStorageBuffer = &addressInfo;
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::UniformBuffer), dst);
+}
+
+void RHIBuffer::CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::Storage));
+	SPT_CHECK(offset + range <= GetSize());
+
+	VkDescriptorAddressInfoEXT addressInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+	addressInfo.address = GetDeviceAddress() + offset;
+	addressInfo.range   = range;
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type                = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	info.data.pStorageBuffer = &addressInfo;
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::StorageBuffer), dst);
+}
+
+void RHIBuffer::CopyTLASDescriptor(Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::DeviceAddress));
+	SPT_CHECK(lib::HasAnyFlag(GetUsage(), rhi::EBufferUsage::AccelerationStructureStorage));
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type                       = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	info.data.accelerationStructure = GetDeviceAddress();
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::AccelerationStructure), dst);
 }
 
 Uint64 RHIBuffer::GetSize() const
@@ -305,6 +369,11 @@ rhi::RHIVirtualAllocation RHIBuffer::CreateSuballocation(const rhi::VirtualAlloc
 
 void RHIBuffer::DestroySuballocation(rhi::RHIVirtualAllocation suballocation)
 {
+	DestroySuballocation(suballocation.GetHandle());
+}
+
+void RHIBuffer::DestroySuballocation(rhi::RHIVirtualAllocationHandle suballocation)
+{
 	SPT_CHECK(AllowsSuballocations());
 
 	m_virtualAllocator.Free(suballocation);
@@ -346,6 +415,11 @@ const lib::HashedString& RHIBuffer::GetName() const
 VkBuffer RHIBuffer::GetHandle() const
 {
 	return m_bufferHandle;
+}
+
+VkBufferUsageFlags RHIBuffer::GetVulkanUsage() const
+{
+	return priv::GetVulkanBufferUsage(m_usageFlags);
 }
 
 Bool RHIBuffer::BindMemory(const rhi::RHIResourceAllocationDefinition& allocationDefinition)

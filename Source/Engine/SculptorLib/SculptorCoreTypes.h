@@ -36,3 +36,5 @@
 #include "Utility/Algorithms/Algorithms.h"
 #include "Utility/RefCounted.h"
 #include "Utility/TypeID.h"
+
+#define SPT_USE_DESCRIPTOR_BUFFERS 1

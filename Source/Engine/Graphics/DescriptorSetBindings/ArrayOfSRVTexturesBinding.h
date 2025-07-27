@@ -36,7 +36,16 @@ public:
 			context.UpdateTexture(GetBaseBindingIdx(), lib::Ref(textureView), boundTexture.arrayIndex);
 		}
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		for (const BoundTexture& boundTexture : m_boundTextures)
+		{
+			const lib::SharedPtr<rdr::TextureView> textureView = boundTexture.textureInstance ? boundTexture.textureInstance : boundTexture.rgTexture->GetViewInstance();
+			textureView->GetRHI().CopySRVDescriptor(indexer[GetBaseBindingIdx()][boundTexture.arrayIndex]);
+		}
+	}
+
 	void BuildRGDependencies(class rg::RGDependenciesBuilder& builder) const
 	{
 		if constexpr (trackInRenderGraph)

@@ -40,6 +40,9 @@ public:
 
 	SizeType GetHash() const;
 
+	Uint64 GetDescriptorsDataSize() const;
+	Uint64 GetDescriptorOffset(Uint32 bindingIdx) const;
+
 	VkDescriptorSetLayout GetHandle() const;
 
 private:

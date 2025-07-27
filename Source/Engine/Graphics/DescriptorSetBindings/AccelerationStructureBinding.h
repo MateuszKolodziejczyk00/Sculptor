@@ -3,6 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "Types/AccelerationStructure.h"
+#include "Types/Buffer.h"
 
 
 namespace spt::rdr
@@ -29,6 +30,12 @@ public:
 	virtual void UpdateDescriptors(rdr::DescriptorSetUpdateContext& context) const final
 	{
 		context.UpdateAccelerationStructure(GetBaseBindingIdx(), lib::Ref(m_tlas));
+	}
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		const lib::SharedPtr<rdr::Buffer> tlasBuffer = m_tlas->GetTLASDataBuffer();
+		tlasBuffer->GetRHI().CopyTLASDescriptor(indexer[GetBaseBindingIdx()][0]);
 	}
 
 	AccelerationStructureBinding& operator=(const lib::SharedRef<rdr::TopLevelAS>& tlas)

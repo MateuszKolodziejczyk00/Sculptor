@@ -11,6 +11,7 @@
 #include "RHIAccelerationStructure.h"
 #include "RHIShaderBindingTable.h"
 #include "RHIQueryPool.h"
+#include "RHIDescriptorHeap.h"
 #include "Vulkan/VulkanUtils.h"
 
 namespace spt::vulkan
@@ -134,6 +135,26 @@ void RHICommandBuffer::SetName(const lib::HashedString& name)
 const lib::HashedString& RHICommandBuffer::GetName() const
 {
 	return m_name.Get();
+}
+
+void RHICommandBuffer::BindDescriptorHeap(const RHIDescriptorHeap& descriptorHeap)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(descriptorHeap.IsValid());
+	SPT_CHECK(!m_boundDescriptorHeapSize);
+	
+
+	const RHIBuffer& buffer = descriptorHeap.GetBuffer();
+
+	SPT_CHECK(buffer.IsValid());
+
+	VkDescriptorBufferBindingInfoEXT bindingInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT };
+	bindingInfo.address = buffer.GetDeviceAddress();
+	bindingInfo.usage   = buffer.GetVulkanUsage();
+
+	vkCmdBindDescriptorBuffersEXT(m_cmdBufferHandle, 1, &bindingInfo);
+
+	m_boundDescriptorHeapSize = static_cast<Uint32>(buffer.GetSize());
 }
 
 void RHICommandBuffer::BeginRendering(const rhi::RenderingDefinition& renderingDefinition)
@@ -325,6 +346,11 @@ void RHICommandBuffer::BindGfxDescriptorSet(const RHIPipeline& pipeline, const R
 	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
 }
 
+void RHICommandBuffer::BindGfxDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
+{
+	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, dsIdx, heapOffset);
+}
+
 void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 {
 	BindPipelineImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -333,6 +359,11 @@ void RHICommandBuffer::BindComputePipeline(const RHIPipeline& pipeline)
 void RHICommandBuffer::BindComputeDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
 	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
+}
+
+void RHICommandBuffer::BindComputeDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
+{
+	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_COMPUTE, pipeline, dsIdx, heapOffset);
 }
 
 void RHICommandBuffer::Dispatch(const math::Vector3u& groupCount)
@@ -376,6 +407,11 @@ void RHICommandBuffer::BindRayTracingPipeline(const RHIPipeline& pipeline)
 void RHICommandBuffer::BindRayTracingDescriptorSet(const RHIPipeline& pipeline, const RHIDescriptorSet& ds, Uint32 dsIdx, const Uint32* dynamicOffsets, Uint32 dynamicOffsetsNum)
 {
 	BindDescriptorSetImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline, ds, dsIdx, dynamicOffsets, dynamicOffsetsNum);
+}
+
+void RHICommandBuffer::BindRayTracingDescriptors(const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
+{
+	BindDescriptorsImpl(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline, dsIdx, heapOffset);
 }
 
 void RHICommandBuffer::TraceRays(const RHIShaderBindingTable& sbt, const math::Vector3u& traceCount)
@@ -743,6 +779,21 @@ void RHICommandBuffer::BindDescriptorSetImpl(VkPipelineBindPoint bindPoint, cons
 	VkDescriptorSet dsHandle = ds.GetHandle();
 
 	vkCmdBindDescriptorSets(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1, &dsHandle, dynamicOffsetsNum, dynamicOffsets);
+}
+
+void RHICommandBuffer::BindDescriptorsImpl(VkPipelineBindPoint bindPoint, const RHIPipeline& pipeline, Uint32 dsIdx, Uint32 heapOffset)
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(!!m_boundDescriptorHeapSize);
+
+	const PipelineLayout& layout = pipeline.GetPipelineLayout();
+
+	SPT_CHECK(heapOffset + layout.GetDescriptorSetLayout(dsIdx).GetDescriptorsDataSize() <= *m_boundDescriptorHeapSize);
+
+	const Uint32 bufferIdx          = 0u;
+	const VkDeviceSize bufferOffset = heapOffset;
+
+	vkCmdSetDescriptorBufferOffsetsEXT(m_cmdBufferHandle, bindPoint, layout.GetHandle(), dsIdx, 1u, &bufferIdx, &bufferOffset);
 }
 
 void RHICommandBuffer::BuildASImpl(const RHIAccelerationStructure& as, VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const RHIBuffer& scratchBuffer, Uint64 scratchBufferOffset)

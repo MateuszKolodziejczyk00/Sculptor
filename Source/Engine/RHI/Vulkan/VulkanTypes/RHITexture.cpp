@@ -4,6 +4,7 @@
 #include "Vulkan/LayoutsManager.h"
 #include "Vulkan/VulkanRHIUtils.h"
 #include "Vulkan/Memory/VulkanMemoryTypes.h"
+#include "Vulkan/Device/LogicalDevice.h"
 #include "MathUtils.h"
 #include "RHIGPUMemoryPool.h"
 #include "Utility/Templates/Overload.h"
@@ -795,6 +796,40 @@ Bool RHITextureView::IsValid() const
 VkImageView RHITextureView::GetHandle() const
 {
 	return m_viewHandle;
+}
+
+void RHITextureView::CopyUAVDescriptor(Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetTexture()->GetDefinition().usage, rhi::ETextureUsage::StorageTexture));
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageView = GetHandle();
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type               = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	info.data.pStorageImage = &imageInfo;
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::StorageTexture), dst);
+}
+
+void RHITextureView::CopySRVDescriptor(Byte* dst) const
+{
+	SPT_CHECK(IsValid());
+	SPT_CHECK(lib::HasAnyFlag(GetTexture()->GetDefinition().usage, rhi::ETextureUsage::SampledTexture));
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageView = GetHandle();
+
+	VkDescriptorGetInfoEXT info{ VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+	info.type               = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	info.data.pStorageImage = &imageInfo;
+
+	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
+
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::SampledTexture), dst);
 }
 
 const RHITexture* RHITextureView::GetTexture() const

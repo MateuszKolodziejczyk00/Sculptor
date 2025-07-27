@@ -40,11 +40,6 @@ TopLevelAS::TopLevelAS(const RendererResourceName& name, const rhi::TLASDefiniti
 	m_instancesBuildDataBuffer		= ResourcesManager::CreateBuffer(name, instancesBuildDataBuffer);
 }
 
-const lib::SharedPtr<Buffer>& TopLevelAS::GetInstancesBuildDataBuffer() const
-{
-	return m_instancesBuildDataBuffer;
-}
-
 void TopLevelAS::ReleaseInstancesBuildData()
 {
 	m_instancesBuildDataBuffer.reset();

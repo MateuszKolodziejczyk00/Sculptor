@@ -84,6 +84,13 @@ public:
 		context.UpdateBuffer(GetBaseBindingIdx(), boundBufferView);
 	}
 
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		constexpr Uint64 structSize = GetStructSize();
+		const Uint64 offset         = GetStaticOffset();
+		m_buffer->GetRHI().CopySRVDescriptor(offset, structSize, indexer[GetBaseBindingIdx()][0]);
+	}
+
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		return rdr::shader_translator::DefineType<TStruct>() + '\n' +
@@ -301,9 +308,6 @@ private:
 
 } // priv
 
-
-template<typename TStruct>
-using ConstantBufferBindingDynamicOffset = priv::ConstantBufferBinding<TStruct, priv::EConstantBufferBindingType::DynamicOffset>;
 
 template<typename TStruct>
 using ConstantBufferBindingStaticOffset = priv::ConstantBufferBinding<TStruct, priv::EConstantBufferBindingType::StaticOffset>;

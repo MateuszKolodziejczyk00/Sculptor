@@ -41,7 +41,26 @@ public:
 			context.UpdateTexture(GetBaseBindingIdx(), textureView);
 		}
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		const Bool isBound = IsValid();
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK_MSG(isBound, "Unbound binding \"{}\" in Descriptor set \"{}\"", GetName().GetData(), GetDescriptorSetName().GetData());
+		}
+
+		if (isBound)
+		{
+			const lib::SharedRef<rdr::TextureView> textureView = GetTextureToBind();
+#if DO_CHECKS
+			ValidateTexture(textureView);
+#endif // DO_CHECKS
+
+			textureView->GetRHI().CopySRVDescriptor(indexer[GetBaseBindingIdx()][0]);
+		}
+	}
+
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		const Bool isBound = IsValid();

@@ -45,6 +45,7 @@ public:
 
 	rhi::RHIVirtualAllocation Allocate(const rhi::VirtualAllocationDefinition& definition);
 	void Free(const rhi::RHIVirtualAllocation& allocation);
+	void Free(rhi::RHIVirtualAllocationHandle allocationHandle);
 
 private:
 

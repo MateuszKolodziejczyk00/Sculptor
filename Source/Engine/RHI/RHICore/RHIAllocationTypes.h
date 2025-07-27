@@ -2,6 +2,7 @@
 
 #include <variant>
 #include "RHIBridge/RHIFwd.h"
+#include "Utility/NamedType.h"
 
 
 namespace spt::rhi
@@ -83,23 +84,26 @@ struct VirtualAllocationDefinition
 };
 
 
+using RHIVirtualAllocationHandle = lib::NamedType<Uint64, struct RHIVirtualAllocationHandleTag>;
+
+
 class RHIVirtualAllocation
 {
 public:
 
 	RHIVirtualAllocation()
-		: m_handle(0)
+		: m_handle(RHIVirtualAllocationHandle{ 0 })
 		, m_offset(0)
 	{ }
 	
-	RHIVirtualAllocation(Uint64 suballocationHandle, Uint64 offset)
+	RHIVirtualAllocation(RHIVirtualAllocationHandle suballocationHandle, Uint64 offset)
 		: m_handle(suballocationHandle)
 		, m_offset(offset)
 	{ }
 	
 	Bool IsValid() const
 	{
-		return m_handle != 0;
+		return m_handle != RHIVirtualAllocationHandle{ 0 };
 	}
 
 	Uint64 GetOffset() const
@@ -107,20 +111,20 @@ public:
 		return m_offset;
 	}
 
-	Uint64 GetHandle() const
+	RHIVirtualAllocationHandle GetHandle() const
 	{
 		return m_handle;
 	}
 
 	void Reset()
 	{
-		m_handle = 0;
+		m_handle = RHIVirtualAllocationHandle{ 0 };
 		m_offset = 0;
 	}
 
 private:
 
-	Uint64 m_handle;
+	RHIVirtualAllocationHandle m_handle;
 	Uint64 m_offset;
 };
 

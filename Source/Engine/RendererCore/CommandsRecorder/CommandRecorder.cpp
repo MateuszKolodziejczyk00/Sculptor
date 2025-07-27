@@ -11,7 +11,9 @@
 #include "Types/Buffer.h"
 #include "Types/AccelerationStructure.h"
 #include "Types/QueryPool.h"
+#include "Types/DescriptorHeap.h"
 #include "DeviceQueues/GPUWorkload.h"
+
 
 namespace spt::rdr
 {
@@ -20,6 +22,8 @@ CommandRecorder::CommandRecorder(const rdr::RendererResourceName& name, const li
 {
 	m_commandsBuffer = ResourcesManager::CreateCommandBuffer(name, context, cmdBufferDef);
 	m_commandsBuffer->StartRecording(commandBufferUsage);
+
+	BindDescriptorHeap(Renderer::GetDescriptorHeap());
 
 	m_canReuseCommandBuffer = !lib::HasAnyFlag(commandBufferUsage.beginFlags, rhi::ECommandBufferBeginFlags::OneTimeSubmit);
 }
@@ -51,6 +55,11 @@ void CommandRecorder::SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDepen
 void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency)
 {
 	dependency.WaitEvent(GetCommandBufferRHI(), event->GetRHI());
+}
+
+void CommandRecorder::BindDescriptorHeap(const DescriptorHeap& descriptorHeap)
+{
+	GetCommandBufferRHI().BindDescriptorHeap(descriptorHeap.GetRHI());
 }
 
 void CommandRecorder::BuildBLAS(const lib::SharedRef<BottomLevelAS>& blas, const lib::SharedRef<Buffer>& scratchBuffer, Uint64 scratchBufferOffset)

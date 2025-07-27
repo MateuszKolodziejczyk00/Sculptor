@@ -30,6 +30,8 @@ public:
 
 	Bool IsValid() const;
 
+	void CopyDescriptor(Byte* dst) const;
+
 	VkSampler GetHandle() const;
 
 private:

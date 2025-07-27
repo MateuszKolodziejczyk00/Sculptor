@@ -16,7 +16,7 @@ namespace spt::rg
 RenderGraphBuilder::RenderGraphBuilder(RenderGraphResourcesPool& resourcesPool)
 	: m_onGraphExecutionFinished(js::CreateEvent("Render Graph Execution Finished Event"))
 	, m_resourcesPool(resourcesPool)
-	, m_dsAllocator(rdr::ResourcesManager::CreateDescriptorSetAllocator(RENDERER_RESOURCE_NAME("RG Descriptor Set Allocator")))
+	, m_dsAllocator(1024u * 1024u)
 {
 	m_resourcesPool.Prepare();
 }
@@ -694,16 +694,16 @@ void RenderGraphBuilder::AssignDescriptorSetsToNode(RGNode& node, const lib::Sha
 	const smd::ShaderMetaData* metaData = pipeline ? &pipeline->GetMetaData() : nullptr;
 
 	const auto processDSStatesRange = [&metaData, &node, &dependenciesBuilder](const auto& range)
+	{
+		for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
 		{
-			for (const lib::MTHandle<RGDescriptorSetStateBase>& ds : range)
+			if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
 			{
-				if (ds.IsValid() && (!metaData || metaData->FindDescriptorSetOfType(ds->GetTypeID()) != idxNone<Uint32>))
-				{
-					node.AddDescriptorSetState(ds);
-					ds->BuildRGDependencies(dependenciesBuilder);
-				}
+				node.AddDescriptorSetState(ds);
+				ds->BuildRGDependencies(dependenciesBuilder);
 			}
-		};
+		}
+	};
 
 	processDSStatesRange(dsStatesRange);
 	processDSStatesRange(m_boundDSStates);

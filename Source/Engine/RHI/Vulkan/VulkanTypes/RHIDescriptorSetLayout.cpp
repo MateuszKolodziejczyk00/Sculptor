@@ -50,7 +50,9 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 	lib::DynamicArray<VkSampler> samplers;
 	samplers.reserve(samplersNum);
 
+#if !SPT_USE_DESCRIPTOR_BUFFERS
 	Bool hasUpdateAfterBindBindings = false;
+#endif // !SPT_USE_DESCRIPTOR_BUFFERS
 
 	for (const rhi::DescriptorSetBindingDefinition& bindingDef : def.bindings)
 	{
@@ -72,28 +74,36 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 		bindingInfo.stageFlags         = RHIToVulkan::GetShaderStages(bindingDef.shaderStages);
 		bindingInfo.pImmutableSamplers = hasImmutableSampler ? &samplers.back() : VK_NULL_HANDLE;
 
-		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
-
+		VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
+#if SPT_USE_DESCRIPTOR_BUFFERS
+		bindingFlags &= ~VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+#else
 		hasUpdateAfterBindBindings |= lib::HasAnyFlag(bindingDef.flags, rhi::EDescriptorSetBindingFlags::UpdateAfterBind);
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 		bindingsInfos.emplace_back(bindingInfo);
 		bindingsFlags.emplace_back(bindingFlags);
 	}
 
 	VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
-    bindingFlagsInfo.bindingCount  = static_cast<Uint32>(bindingsFlags.size());
-    bindingFlagsInfo.pBindingFlags = bindingsFlags.data();
+	bindingFlagsInfo.bindingCount  = static_cast<Uint32>(bindingsFlags.size());
+	bindingFlagsInfo.pBindingFlags = bindingsFlags.data();
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    layoutInfo.pNext        = &bindingFlagsInfo;
+	layoutInfo.pNext        = &bindingFlagsInfo;
 	layoutInfo.flags        = RHIToVulkan::GetDescriptorSetFlags(def.flags);
-    layoutInfo.bindingCount = static_cast<Uint32>(bindingsInfos.size());
-    layoutInfo.pBindings    = bindingsInfos.data();
+	layoutInfo.bindingCount = static_cast<Uint32>(bindingsInfos.size());
+	layoutInfo.pBindings    = bindingsInfos.data();
 
+#if SPT_USE_DESCRIPTOR_BUFFERS
+	layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+	//layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_EMBEDDED_IMMUTABLE_SAMPLERS_BIT_EXT;
+#else
 	if (hasUpdateAfterBindBindings)
 	{
 		layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
 	}
+#endif // SPT_USE_DESCRIPTOR_BUFFERS
 
 	SPT_VK_CHECK(vkCreateDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), &layoutInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 }
@@ -142,6 +152,26 @@ const lib::HashedString& RHIDescriptorSetLayout::GetName() const
 SizeType RHIDescriptorSetLayout::GetHash() const
 {
 	return reinterpret_cast<SizeType>(m_handle);
+}
+
+Uint64 RHIDescriptorSetLayout::GetDescriptorsDataSize() const
+{
+	SPT_CHECK(IsValid());
+
+	VkDeviceSize size = 0;
+	vkGetDescriptorSetLayoutSizeEXT(VulkanRHI::GetDeviceHandle(), GetHandle(), &size);
+
+	return static_cast<Uint64>(size);
+}
+
+Uint64 RHIDescriptorSetLayout::GetDescriptorOffset(Uint32 bindingIdx) const
+{
+	SPT_CHECK(IsValid());
+
+	VkDeviceSize offset = 0;
+	vkGetDescriptorSetLayoutBindingOffsetEXT(VulkanRHI::GetDeviceHandle(), GetHandle(), bindingIdx, &offset);
+
+	return static_cast<Uint64>(offset);
 }
 
 VkDescriptorSetLayout RHIDescriptorSetLayout::GetHandle() const

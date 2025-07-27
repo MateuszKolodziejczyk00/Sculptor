@@ -29,7 +29,17 @@ public:
 			context.RemoveBindingsOffset(GetBaseBindingIdx());
 		}
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		if (IsValid())
+		{
+			indexer.AddBindingsOffset(GetBaseBindingIdx());
+			m_boundDS->UpdateDescriptors(indexer);
+			indexer.RemoveBindingsOffset(GetBaseBindingIdx());
+		}
+	}
+
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		if (IsValid())

@@ -31,7 +31,16 @@ public:
 			context.UpdateBuffer(GetBaseBindingIdx(), m_boundBuffer.GetBufferToBind());
 		}
 	}
-	
+
+	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
+	{
+		if (IsValid())
+		{
+			const rdr::BufferView& bufferView = m_boundBuffer.GetBufferToBind();
+			bufferView.GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), indexer[GetBaseBindingIdx()][0]);
+		}
+	}
+
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		if (IsValid())

@@ -26,6 +26,7 @@ class RHIPipeline;
 class RHIProfiler;
 class RHIDescriptorSetManager;
 class RHIDescriptorSet;
+class RHIDescriptorHeap;
 class RHIDescriptorSetLayout;
 class RHISampler;
 class RHITopLevelAS;
