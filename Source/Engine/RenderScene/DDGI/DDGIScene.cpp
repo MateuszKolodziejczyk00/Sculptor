@@ -19,7 +19,7 @@ SPT_DEFINE_LOG_CATEGORY(DDGIScene, true);
 DDGILOD::DDGILOD()
 { }
 
-void DDGILOD::Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel)
+void DDGILOD::Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel, DDGILODDefinition& outLODDef)
 {
 	SPT_CHECK(m_lodLevel == idxNone<Uint32>);
 
@@ -42,11 +42,7 @@ void DDGILOD::Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodL
 
 	m_volume = scene.BuildVolume(params);
 
-	DDGILODDefinition lodDef;
-	lodDef.volumeIdx = m_volume->GetVolumeIdx();
-
-	DDGILODsDefinition& lodsDefinition = scene.GetDDGIDS()->u_ddgiLODs.GetMutable();
-	lodsDefinition.lods[lodLevel] = lodDef;
+	outLODDef.volumeIdx = m_volume->GetVolumeIdx();
 }
 
 void DDGILOD::Deinitialize(DDGIScene& scene)
@@ -108,6 +104,9 @@ void DDGIScene::Update(const SceneView& mainView)
 	UpdateLODs(mainView);
 
 	UpdatePriorities(mainView);
+
+	m_ddgiSceneDS->u_ddgiLODs   = m_ddgiLODsDef;
+	m_ddgiSceneDS->u_volumesDef = m_ddgiVolumesDef;
 }
 
 void DDGIScene::CollectZonesToRelit(DDGIZonesCollector& zonesCollector) const
@@ -174,11 +173,9 @@ RenderScene& DDGIScene::GetOwningScene() const
 
 Uint32 DDGIScene::FindAvailableVolumeIdx() const
 {
-	const DDGIVolumesDefinition& volumesDef = m_ddgiSceneDS->u_volumesDef.Get();
-
-	for (SizeType i = 0; i < volumesDef.volumes.size(); ++i)
+	for (SizeType i = 0; i < m_ddgiVolumesDef.volumes.size(); ++i)
 	{
-		if (volumesDef.volumes[i].isValid == false)
+		if (m_ddgiVolumesDef.volumes[i].isValid == false)
 		{
 			return static_cast<Uint32>(i);
 		}
@@ -200,7 +197,7 @@ DDGIGPUVolumeHandle DDGIScene::CreateGPUVolume(const DDGIVolumeParams& params)
 
 	const DDGIVolumeGPUDefinition volumeGPUDefinition = CreateGPUDefinition(params);
 
-	DDGIGPUVolumeHandle newVolumeHandle(m_ddgiSceneDS, volumeIdx, volumeGPUDefinition);
+	DDGIGPUVolumeHandle newVolumeHandle(m_ddgiSceneDS, volumeIdx, m_ddgiVolumesDef.volumes[volumeIdx], volumeGPUDefinition);
 
 	return newVolumeHandle;
 }
@@ -314,14 +311,13 @@ void DDGIScene::InitializeLODs(const DDGIConfig& config)
 		lodsNum = constants::maxLODLevels;
 	}
 
-	DDGILODsDefinition& lodsDef = GetDDGIDS()->u_ddgiLODs.GetMutable();
-	lodsDef.lodsNum = lodsNum;
+	m_ddgiLODsDef.lodsNum = lodsNum;
 
 	m_lods.resize(lodsNum);
 
 	for (Uint32 lod = 0u; lod < lodsNum; ++lod)
 	{
-		m_lods[lod].Initialize(*this, config, lod);
+		m_lods[lod].Initialize(*this, config, lod, m_ddgiLODsDef.lods[lod]);
 	}
 }
 

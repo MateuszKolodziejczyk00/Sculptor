@@ -185,9 +185,15 @@ static Uint32 CreatePointLightsData(rg::RenderGraphBuilder& graphBuilder, const 
 
 	if (!pointLights.empty())
 	{
-		const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(PointLightGPUData), rhi::EBufferUsage::Storage);
+		lib::DynamicArray<rdr::HLSLStorage<PointLightGPUData>> hlslPointLights(pointLights.size());
+		for (SizeType idx = 0; idx < pointLights.size(); ++idx)
+		{
+			hlslPointLights[idx] = pointLights[idx];
+		}
+
+		const rhi::BufferDefinition lightsBufferDefinition(pointLights.size() * sizeof(rdr::HLSLStorage<PointLightGPUData>), rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> localLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("SceneLocalLights"), lightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
-		gfx::UploadDataToBuffer(localLightsBuffer, 0, reinterpret_cast<const Byte*>(pointLights.data()), pointLights.size() * sizeof(PointLightGPUData));
+		gfx::UploadDataToBuffer(localLightsBuffer, 0, reinterpret_cast<const Byte*>(hlslPointLights.data()), hlslPointLights.size() * sizeof(rdr::HLSLStorage<PointLightGPUData>));
 		pointLightsRGBuffer = graphBuilder.AcquireExternalBufferView(localLightsBuffer->CreateFullView());
 
 		const rhi::BufferDefinition lightZRangesBufferDefinition(pointLightsZRanges.size() * sizeof(math::Vector2f), rhi::EBufferUsage::Storage);
@@ -214,12 +220,12 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 
 	if (directionalLightsNum > 0)
 	{
-		lib::DynamicArray<DirectionalLightGPUData> directionalLightsData;
+		lib::DynamicArray<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData;
 		directionalLightsData.reserve(directionalLightsNum);
 
 		const auto cascadedSMSystem = renderView.FindRenderSystem<CascadedShadowMapsViewRenderSystem>();
 
-		lib::DynamicArray<ShadowMapViewData> cascadeViewsData;
+		lib::DynamicArray<rdr::HLSLStorage<ShadowMapViewData>> cascadeViewsData;
 
 		for (const auto& [entity, directionalLight, illuminance] : directionalLightsView.each())
 		{
@@ -254,7 +260,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 
 		if (!cascadeViewsData.empty())
 		{
-			const Uint64 cascadeViewsBufferSize = cascadeViewsData.size() * sizeof(ShadowMapViewData);
+			const Uint64 cascadeViewsBufferSize = cascadeViewsData.size() * sizeof(rdr::HLSLStorage<ShadowMapViewData>);
 			const rhi::BufferDefinition cascadeViewsBufferDefinition(cascadeViewsBufferSize, rhi::EBufferUsage::Storage);
 			const lib::SharedRef<rdr::Buffer> shadowMapViewsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Cascade Views Data"), cascadeViewsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
 			gfx::UploadDataToBuffer(shadowMapViewsBuffer, 0, reinterpret_cast<const Byte*>(cascadeViewsData.data()), cascadeViewsBufferSize);
@@ -262,7 +268,7 @@ static Uint32 CreateDirectionalLightsData(rg::RenderGraphBuilder& graphBuilder, 
 			shadingInputDS->u_shadowMapCascadeViews = graphBuilder.AcquireExternalBufferView(shadowMapViewsBuffer->CreateFullView());
 		}
 
-		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(DirectionalLightGPUData);
+		const Uint64 directionalLightsBufferSize = directionalLightsData.size() * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 		const rhi::BufferDefinition directionalLightsBufferDefinition(directionalLightsBufferSize, rhi::EBufferUsage::Storage);
 		const lib::SharedRef<rdr::Buffer> directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Directional Lights Buffer"), directionalLightsBufferDefinition, rhi::EMemoryUsage::CPUToGPU);
 		gfx::UploadDataToBuffer(directionalLightsBuffer, 0, reinterpret_cast<const Byte*>(directionalLightsData.data()), directionalLightsBufferSize);
@@ -309,7 +315,7 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsData.tileSize              = tileSize;
 		lightsData.ambientLightIntensity = params::ambientLightIntensity;
 
-		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLightsNum * sizeof(LightIndirectDrawCommand), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+		const rhi::BufferDefinition lightDrawCommandsBufferDefinition(pointLightsNum * rdr::shader_translator::HLSLSizeOf<LightIndirectDrawCommand>(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 		const rg::RGBufferViewHandle lightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("LightDrawCommands"), lightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 
 		const rhi::BufferDefinition lightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
@@ -575,17 +581,16 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	lib::SharedPtr<rdr::Buffer> pointLightsBuffer;
 	if (pointLightsNum > 0)
 	{
-		const Uint64 pointLightsDataSize = pointLightsNum * sizeof(PointLightGPUData);
+		const Uint64 pointLightsDataSize = pointLightsNum * sizeof(rdr::HLSLStorage<PointLightGPUData>);
 		const rhi::BufferDefinition pointLightsDataBufferDef(pointLightsDataSize, rhi::EBufferUsage::Storage);
 		pointLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Point Lights Buffer"), pointLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<PointLightGPUData> pointLightsData(pointLightsBuffer->GetRHI());
+		rhi::RHIMappedBuffer<rdr::HLSLStorage<PointLightGPUData>> pointLightsData(pointLightsBuffer->GetRHI());
 
 		SizeType pointLightIdx = 0;
 
 		for (const auto& [entity, pointLight] : pointLightsView.each())
 		{
-			PointLightGPUData& gpuLightData = pointLightsData[pointLightIdx++];
-			gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
+			PointLightGPUData gpuLightData = GPUDataBuilder::CreatePointLightGPUData(pointLight);
 			gpuLightData.entityID = static_cast<Uint32>(entity);
 			gpuLightData.shadowMapFirstFaceIdx = idxNone<Uint32>;
 
@@ -594,6 +599,8 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 				gpuLightData.shadowMapFirstFaceIdx = shadowMapComp->shadowMapFirstFaceIdx;
 				SPT_CHECK(gpuLightData.shadowMapFirstFaceIdx != idxNone<Uint32>);
 			}
+
+			pointLightsData[pointLightIdx++] = gpuLightData;
 		}
 	}
 
@@ -603,10 +610,10 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 	lib::SharedPtr<rdr::Buffer> directionalLightsBuffer;
 	if (directionalLightsNum > 0)
 	{
-		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(DirectionalLightGPUData);
+		const Uint64 directionalLightsDataSize = directionalLightsNum * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 		const rhi::BufferDefinition directionalLightsDataBufferDef(directionalLightsDataSize, rhi::EBufferUsage::Storage);
 		directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Global Directional Lights Buffer"), directionalLightsDataBufferDef, rhi::EMemoryUsage::CPUToGPU);
-		rhi::RHIMappedBuffer<DirectionalLightGPUData> directionalLightsData(directionalLightsBuffer->GetRHI());
+		rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> directionalLightsData(directionalLightsBuffer->GetRHI());
 
 		SizeType directionalLightIdx = 0;
 
@@ -614,9 +621,10 @@ void LightsRenderSystem::CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilde
 		{
 			SPT_CHECK(directionalLightIdx < directionalLightsData.GetElementsNum());
 
-			DirectionalLightGPUData& lightGPUData = directionalLightsData[directionalLightIdx++];
-			lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
+			DirectionalLightGPUData lightGPUData = GPUDataBuilder::CreateDirectionalLightGPUData(directionalLight, illuminance);
 			lightGPUData.shadowMaskIdx = idxNone<Uint32>;
+
+			directionalLightsData[directionalLightIdx++] = lightGPUData;
 		}
 	}
 

@@ -17,16 +17,16 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_STATIC_CHECK(sizeof(SubmeshGPUData)		% 4 == 0);
-	SPT_STATIC_CHECK(sizeof(MeshletGPUData)		% 4 == 0);
+	SPT_STATIC_CHECK(sizeof(rdr::HLSLStorage<SubmeshGPUData>) % 4 == 0);
+	SPT_STATIC_CHECK(sizeof(rdr::HLSLStorage<MeshletGPUData>) % 4 == 0);
 
-	const Uint64 meshletsDataSize	= meshlets.size() * sizeof(MeshletGPUData);
-	const Uint64 submeshesDataSize	= submeshes.size() * sizeof(SubmeshGPUData);
+	const Uint64 meshletsDataSize	= meshlets.size() * sizeof(rdr::HLSLStorage<MeshletGPUData>);
+	const Uint64 submeshesDataSize	= submeshes.size() * sizeof(rdr::HLSLStorage<SubmeshGPUData>);
 
-	const rhi::VirtualAllocationDefinition meshletsSuballocationDef(meshletsDataSize, sizeof(MeshletGPUData), rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::VirtualAllocationDefinition meshletsSuballocationDef(meshletsDataSize, sizeof(rdr::HLSLStorage<MeshletGPUData>), rhi::EVirtualAllocationFlags::PreferMinMemory);
 	const rhi::RHIVirtualAllocation meshletsSuballocation = m_meshletsBuffer->GetRHI().CreateSuballocation(meshletsSuballocationDef);
 
-	const SizeType meshletsAllocationStartIdx = meshletsSuballocation.GetOffset() / sizeof(MeshletGPUData);
+	const SizeType meshletsAllocationStartIdx = meshletsSuballocation.GetOffset() / sizeof(rdr::HLSLStorage<MeshletGPUData>);
 
 	std::for_each(std::begin(submeshes), std::end(submeshes),
 				  [meshletsAllocationStartIdx, geometryDataSuballocation](SubmeshGPUData& submesh)
@@ -56,11 +56,24 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 					  }
 				  });
 
-	const rhi::VirtualAllocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(SubmeshGPUData), rhi::EVirtualAllocationFlags::PreferMinMemory);
+	const rhi::VirtualAllocationDefinition submeshesSuballocationDef(submeshesDataSize, sizeof(rdr::HLSLStorage<SubmeshGPUData>), rhi::EVirtualAllocationFlags::PreferMinMemory);
 	const rhi::RHIVirtualAllocation submeshesSuballocation = m_submeshesBuffer->GetRHI().CreateSuballocation(submeshesSuballocationDef);
 
-	gfx::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(meshlets.data()),		meshletsDataSize);
-	gfx::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(submeshes.data()),	submeshesDataSize);
+	lib::DynamicArray<rdr::HLSLStorage<MeshletGPUData>> hlslMeshlets(meshlets.size());
+	lib::DynamicArray<rdr::HLSLStorage<SubmeshGPUData>> hlslSubmeshes(submeshes.size());
+
+	for (SizeType meshletIdx = 0; meshletIdx < meshlets.size(); ++meshletIdx)
+	{
+		hlslMeshlets[meshletIdx] = meshlets[meshletIdx];
+	}
+
+	for (SizeType submeshIdx = 0; submeshIdx < submeshes.size(); ++submeshIdx)
+	{
+		hlslSubmeshes[submeshIdx] = submeshes[submeshIdx];
+	}
+
+	gfx::UploadDataToBuffer(lib::Ref(m_meshletsBuffer),		meshletsSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslMeshlets.data()),		meshletsDataSize);
+	gfx::UploadDataToBuffer(lib::Ref(m_submeshesBuffer),	submeshesSuballocation.GetOffset(),		reinterpret_cast<const Byte*>(hlslSubmeshes.data()),	submeshesDataSize);
 
 	StaticMeshGeometryData geometryData;
 	geometryData.submeshesSuballocation		= submeshesSuballocation;

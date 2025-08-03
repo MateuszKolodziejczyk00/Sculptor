@@ -7,7 +7,7 @@
 #include "MathUtils.h"
 #include "RendererSettings.h"
 #include "Renderer.h"
-#include "ShaderStructs/ShaderStructsTypes.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
 
 
 namespace spt::gfx
@@ -72,7 +72,7 @@ public:
 		if (m_bufferMappedPtr)
 		{
 			// construct default value
-			new (m_bufferMappedPtr + GetCurrentOffset()) TStruct();
+			new (m_bufferMappedPtr + GetCurrentOffset()) rdr::HLSLStorage<TStruct>();
 		}
 	}
 
@@ -116,24 +116,6 @@ public:
 		GetImpl() = std::forward<TAssignable>(value);
 	}
 
-	template<typename TSetter> requires requires (TSetter& setter) { setter(std::declval<TStruct&>()); }
-	void Set(TSetter&& setter)
-	{
-		SwitchBufferOffsetPreservingData();
-		setter(GetImpl());
-	}
-
-	TStruct& GetMutable()
-	{
-		SwitchBufferOffsetPreservingData();
-		return GetImpl();
-	}
-
-	const TStruct& Get() const
-	{
-		return GetImpl();
-	}
-
 private:
 
 	// Dynamic Offset value ptr
@@ -144,7 +126,7 @@ private:
 
 	static constexpr Uint64 GetStructSize()
 	{
-		return std::max<Uint64>(sizeof(TStruct), 4u);
+		return std::max<Uint64>(sizeof(rdr::HLSLStorage<TStruct>), 4u);
 	}
 
 	Bool ShouldSwitchBufferOffsetOnChange() const
@@ -185,23 +167,23 @@ private:
 
 	void SwitchBufferOffsetPreservingData()
 	{
-		const TStruct& oldValueAddress = GetImpl();
-		const TStruct oldValueCopy = oldValueAddress;
+		const rdr::HLSLStorage<TStruct>& oldValueAddress = GetImpl();
+		const rdr::HLSLStorage<TStruct> oldValueCopy = oldValueAddress;
 		SwitchBufferMemoryIfNecessary();
 		TStruct& newValue = GetImpl();
 		
 		// If struct offset was changed and we're using other copy, copy prev instance to new, so that changes to value will be incremental
 		if (&newValue != &oldValueAddress)
 		{
-			memcpy_s(&newValue, GetStructSize(), &oldValueCopy, GetStructSize());
+			newValue = oldValueCopy;
 		}
 	}
 	
-	TStruct& GetImpl() const
+	rdr::HLSLStorage<TStruct>& GetImpl() const
 	{
 		SPT_CHECK(!!m_bufferMappedPtr);
 		const Uint32 offset = GetCurrentOffset();
-		return *reinterpret_cast<TStruct*>(m_bufferMappedPtr + offset);
+		return *reinterpret_cast<rdr::HLSLStorage<TStruct>*>(m_bufferMappedPtr + offset);
 	}
 
 	Uint32 GetStaticOffset() const

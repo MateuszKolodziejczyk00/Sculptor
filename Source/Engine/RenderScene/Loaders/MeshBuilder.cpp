@@ -57,7 +57,7 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
-	const Uint32 submeshesBeginIdx = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(SubmeshGPUData));
+	const Uint32 submeshesBeginIdx = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(rdr::HLSLStorage<SubmeshGPUData>));
 
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
 	staticMeshRenderingDef.geometryDataOffset	= static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());

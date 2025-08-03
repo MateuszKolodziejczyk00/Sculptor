@@ -52,7 +52,7 @@ void RenderAerialPerspectiveCS(CS_INPUT input)
         const float3 atmosphereLocation = GetLocationInAtmosphere(atmosphere, worldLocation);
 
         const ScatteringValues scatteringValues = ComputeScatteringValues(atmosphere, atmosphereLocation);
-    
+
         const float3 sampleTransmittance = exp(-dt * scatteringValues.extinction);
 
         const float3 pmUVW = ComputeFogFroxelUVW(uv, linearDepth, u_renderAPConstants.participatingMediaNear, u_renderAPConstants.participatingMediaFar);

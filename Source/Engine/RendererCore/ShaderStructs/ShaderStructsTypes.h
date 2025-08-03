@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 
+
 namespace spt::rdr
 {
 
@@ -231,16 +232,177 @@ constexpr lib::String GetTypeName()
 	}
 }
 
-template<typename TType>
-constexpr Uint32 GetTypeAlignment()
+
+namespace priv
 {
-	return alignof(TType);
+
+template<typename TShaderStructMemberMetaData>
+consteval Bool IsHeadMember()
+{
+	using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+	return std::is_same_v<MemberType, void>;
+}
+
+template<typename TShaderStructMemberMetaData>
+consteval Bool IsTailMember()
+{
+	using PrevMemberMetaDataType = typename TShaderStructMemberMetaData::PrevMemberMetaDataType;
+	return std::is_same_v<PrevMemberMetaDataType, void>;
+}
+
+
+template<typename TShaderStructMemberMetaData>
+constexpr Uint32 GetMaxMemberAlignment()
+{
+	if constexpr (IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		return GetMaxMemberAlignment<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>();
+	}
+	else if constexpr (IsTailMember<TShaderStructMemberMetaData>())
+	{
+		return 16u; // 16 is a min alignment for HLSL structures
+	}
+	else
+	{
+
+		return std::max(
+			TShaderStructMemberMetaData::s_hlsl_memberAlignment,
+			GetMaxMemberAlignment<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>());
+	}
+}
+
+} // priv
+
+template<typename TType>
+constexpr Uint32 HLSLAlignOf()
+{
+	if constexpr (lib::CContainer<TType>)
+	{
+		using TArrayTraits = lib::StaticArrayTraits<TType>;
+		using TElemType = typename TArrayTraits::Type;
+
+		const Uint32 elementAlignment = HLSLAlignOf<TElemType>();
+		return elementAlignment < 16u ? 16u : elementAlignment; // HLSL requires array elements to be aligned to 16 bytes
+	}
+	else if constexpr (CShaderStruct<TType>)
+	{
+		return priv::GetMaxMemberAlignment<typename TType::HeadMemberMetaData>();
+	}
+	else
+	{
+		return alignof(TType);
+	}
 }
 
 template<>
-constexpr Uint32 GetTypeAlignment<Bool>() // bool is aligned to 4 bytes in HLSL
+constexpr Uint32 HLSLAlignOf<Bool>() // bool is aligned to 4 bytes in HLSL
 {
 	return 4;
+}
+
+template<typename TType>
+constexpr Uint32 HLSLSizeOf()
+{
+	if constexpr (lib::CContainer<TType>)
+	{
+		using TArrayTraits = lib::StaticArrayTraits<TType>;
+		using TElemType = typename TArrayTraits::Type;
+
+		constexpr Uint32 typeSize = HLSLSizeOf<TElemType>();
+		constexpr Uint32 elemSize = typeSize >= 16u ? typeSize : 16u; // HLSL requires array elements to be aligned to 16 bytes
+
+		return elemSize * TArrayTraits::Size;
+	}
+	else if constexpr (CShaderStruct<TType>)
+	{
+		constexpr Uint32 alignment = HLSLAlignOf<TType>();
+		using TLastMemberMetaData = typename TType::HeadMemberMetaData::PrevMemberMetaDataType;
+
+		SPT_STATIC_CHECK_MSG(alignment != 0u, "Ivalid alignment");
+		constexpr Uint32 missingAlignment = (alignment - (TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize) % alignment) % alignment;
+
+		return TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize + missingAlignment;
+	}
+	else
+	{
+		return sizeof(TType);
+	}
+}
+
+template<>
+constexpr Uint32 HLSLSizeOf<Bool>()
+{
+	return 4;
+}
+
+template<typename TType>
+void CopyCPPToHLSL(const TType& cppData, lib::Span<Byte> hlslData);
+
+namespace priv
+{
+
+template<typename TShaderStructMemberMetaData>
+void CopyCPPMembersToHLSL(lib::Span<const Byte> cppData, lib::Span<Byte> hlslData)
+{
+	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
+	{
+		CopyCPPMembersToHLSL<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(cppData, hlslData);
+	}
+
+	using TMemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		constexpr Uint32 hlslMemberOffset = TShaderStructMemberMetaData::s_hlsl_memberOffset;
+		constexpr Uint32 hlslMemberSize = TShaderStructMemberMetaData::s_hlsl_memberSize;
+
+		constexpr Uint32 cppMemberOffset = TShaderStructMemberMetaData::s_cpp_memberOffset;
+		constexpr Uint32 cppMemberSize = TShaderStructMemberMetaData::s_cpp_memberSize;
+
+		SPT_STATIC_CHECK(cppMemberSize == sizeof(TMemberType));
+
+		CopyCPPToHLSL(*reinterpret_cast<const TMemberType*>(&cppData[cppMemberOffset]),
+					  hlslData.subspan(hlslMemberOffset, hlslMemberSize));
+	}
+}
+
+} // priv
+
+template<typename TType>
+void CopyCPPToHLSL(const TType& cppData, lib::Span<Byte> hlslData)
+{
+	if constexpr (lib::CContainer<TType>)
+	{
+		using TArrayTraits = lib::StaticArrayTraits<TType>;
+		using TElemType = typename TArrayTraits::Type;
+
+		constexpr Uint32 hlslTypeSize    = HLSLSizeOf<TElemType>();
+		constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
+
+		for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
+		{
+			CopyCPPToHLSL(cppData[idx], hlslData.subspan(idx * hlslElementSize, hlslElementSize));
+		}
+	}
+	else if constexpr (CShaderStruct<TType>)
+	{
+		priv::CopyCPPMembersToHLSL<typename TType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&cppData), sizeof(TType)),
+																	   hlslData);
+	}
+	else
+	{
+		SPT_STATIC_CHECK_MSG(sizeof(TType) == HLSLSizeOf<TType>(), "Default implementation handles only types of the same size");
+		SPT_CHECK(HLSLSizeOf<TType>() == hlslData.size());
+
+		std::memcpy(hlslData.data(), &cppData, sizeof(TType));
+	}
+}
+
+template<>
+inline void CopyCPPToHLSL<Bool>(const Bool& cppData, lib::Span<Byte> hlslData)
+{
+	SPT_CHECK(hlslData.size() == sizeof(Uint32));
+	*reinterpret_cast<Uint32*>(hlslData.data()) = (cppData ? 1u : 0u);
 }
 
 } // shader_translator

@@ -8,6 +8,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "Common/ShaderCompilerTypes.h"
 #include "MaterialShadersCompiler.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
 
 #include <variant>
 
@@ -111,7 +112,8 @@ private:
 template<typename TMaterialData>
 inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefinition& materialDef, const TMaterialData& materialData, ecs::EntityHandle shaderEntity)
 {
-	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&materialData), sizeof(TMaterialData));
+	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
+	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>));
 }
 
 template<typename TMaterialData>
@@ -119,7 +121,8 @@ inline ecs::EntityHandle MaterialsSubsystem::CreateMaterial(const MaterialDefini
 {
 	const lib::HashedString dataStructName = TMaterialData::GetStructName();
 	const ecs::EntityHandle shaderEntity = GetOrCreateShaderEntity(dataStructName);
-	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&materialData), sizeof(TMaterialData), dataStructName);
+	const rdr::HLSLStorage<TMaterialData> shaderMaterialData = materialData;
+	return CreateMaterial(materialDef, shaderEntity, reinterpret_cast<const Byte*>(&shaderMaterialData), sizeof(rdr::HLSLStorage<TMaterialData>), dataStructName);
 }
 
 template<typename TMaterialShaders>

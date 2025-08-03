@@ -37,7 +37,7 @@ public:
 
 	DDGILOD();
 
-	void Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel);
+	void Initialize(DDGIScene& scene, const DDGIConfig& config, Uint32 lodLevel, DDGILODDefinition& outLODDef);
 	void Deinitialize(DDGIScene& scene);
 
 	void Update(DDGIScene& scene, const SceneView& mainView);
@@ -109,6 +109,9 @@ private:
 	void OnDirectionalLightUpdated(RenderSceneRegistry& registry, RenderSceneEntity entity);
 
 	RenderScene& m_owningScene;
+
+	DDGIVolumesDefinition m_ddgiVolumesDef;
+	DDGILODsDefinition    m_ddgiLODsDef;
 
 	lib::MTHandle<DDGISceneDS> m_ddgiSceneDS;
 

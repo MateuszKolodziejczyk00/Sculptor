@@ -22,7 +22,6 @@
 
 
 SPT_DEFINE_LOG_CATEGORY(ImageLoader, true);
-#pragma optimize("", off)
 
 
 namespace spt::gfx

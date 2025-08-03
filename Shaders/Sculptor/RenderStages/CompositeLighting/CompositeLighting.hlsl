@@ -315,9 +315,9 @@ void CompositeLightingCS(CS_INPUT input)
 	IntegratedAerialPerspective ap = SampleAerialPerspective(uv, linearDepth);
 	ap.inScattering = ap.inScattering * integratedFog.transmittance;
 #else
-	IntegratedAerialPerspective integratedFog;
-	integratedFog.inScattering  = float3(0.f, 0.f, 0.f);
-	integratedFog.transmittance = 1.f;
+	IntegratedAerialPerspective ap;
+	ap.inScattering  = float3(0.f, 0.f, 0.f);
+	ap.transmittance = 1.f;
 #endif
 
 	luminance = luminance * integratedFog.transmittance * ap.transmittance;

@@ -179,9 +179,9 @@ void SRATrousFilterCS(CS_INPUT input)
 		const int radius = 1;
 #endif // WIDE_RADIUS
 
-		[unroll]
 		for (int y = -radius; y <= radius; ++y)
 		{
+			[unroll]
 			for (int x = -radius; x <= radius; ++x)
 			{
 				if (x == 0 && y == 0)

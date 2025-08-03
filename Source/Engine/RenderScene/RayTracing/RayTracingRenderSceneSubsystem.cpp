@@ -184,12 +184,12 @@ lib::SharedPtr<rdr::Buffer> RayTracingRenderSceneSubsystem::BuildRTInstancesBuff
 	}
 
 	rhi::BufferDefinition bufferDef;
-	bufferDef.size	= instances.size() * sizeof(RTInstanceData);
+	bufferDef.size	= instances.size() * sizeof(rdr::HLSLStorage<RTInstanceData>);
 	bufferDef.usage	= rhi::EBufferUsage::Storage;
 
 	lib::SharedPtr<rdr::Buffer> instancesDataBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("RT Instances Data"), bufferDef, rhi::EMemoryUsage::CPUToGPU);
 
-	rhi::RHIMappedBuffer<RTInstanceData> mappedInstancesData(instancesDataBuffer->GetRHI());
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<RTInstanceData>> mappedInstancesData(instancesDataBuffer->GetRHI());
 
 	for (SizeType instanceIdx = 0; instanceIdx < instances.size(); ++instanceIdx)
 	{

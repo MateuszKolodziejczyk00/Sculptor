@@ -147,6 +147,8 @@ void ShadowMapsManagerSubsystem::UpdateVisibleLocalLights(const lib::SharedPtr<r
 	const rhi::RHIBuffer& rhiBuffer = visibleLightsBuffer->GetRHI();
 	const rhi::RHIMappedBuffer<RenderSceneEntity> visibleLightsData(rhiBuffer);
 
+	SPT_STATIC_CHECK(sizeof(RenderSceneEntity) == sizeof(rdr::HLSLStorage<RenderSceneEntity>));
+
 	const SizeType maxVisibleLights = visibleLightsData.GetElementsNum();
 	m_visibleLocalLightsSet.reserve(maxVisibleLights);
 

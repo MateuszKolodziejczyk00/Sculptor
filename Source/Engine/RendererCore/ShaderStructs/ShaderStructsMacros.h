@@ -4,6 +4,7 @@
 #include "Common/ShaderStructs/ShaderStructRegistration.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "MathUtils.h"
+#include "Utility/Templates/TypeStorage.h"
 
 
 namespace spt::rdr
@@ -51,9 +52,14 @@ public:
 	using UnderlyingType         = TType;
 	using PrevMemberMetaDataType = TPrev;
 
-	static constexpr Uint32 GetSize()
+	static constexpr Uint32 GetCPPSize()
 	{
 		return sizeof(UnderlyingType);
+	}
+
+	static constexpr Uint32 GetHLSLSize()
+	{
+		return shader_translator::HLSLSizeOf<UnderlyingType>();
 	}
 
 	static constexpr Uint32 GetElementsNum()
@@ -61,21 +67,20 @@ public:
 		return ShaderStructMemberElementsNum<UnderlyingType>::value;
 	}
 
-	static constexpr Uint32 GetAlignment()
+	static constexpr Uint32 GetHLSLAlignment()
 	{
 		if constexpr (std::is_same_v<TPrev, void>)
 		{
-			// no alignment for first variable
-			return 0;
+			return shader_translator::HLSLAlignOf<TType>();
 		}
 		else
 		{
 			if constexpr (GetElementsNum() == 1u)
 			{
-				constexpr Uint32 thisMemberSize = GetSize();
-				constexpr Uint32 prevMemberEnd = TPrev::s_memberOffset + TPrev::s_memberSize;
+				constexpr Uint32 thisMemberSize = GetHLSLSize();
+				constexpr Uint32 prevMemberEnd = TPrev::s_hlsl_memberOffset + TPrev::s_hlsl_memberSize;
 
-				constexpr Uint32 alignofUnderlyingType = shader_translator::GetTypeAlignment<TType>();
+				constexpr Uint32 alignofUnderlyingType = shader_translator::HLSLAlignOf<TType>();
 
 				return ((prevMemberEnd % 16) + thisMemberSize) > 16 ? 16 : alignofUnderlyingType;
 			}
@@ -84,13 +89,18 @@ public:
 				// handle HLSL arrays alignment
 				// In HLSL each element of array is aligned to 16 bytes
 				using ElementType = typename ShaderStructMemberElementType<UnderlyingType>::Type;
-				static_assert(shader_translator::GetTypeAlignment<TType>() == 16u, "Invalid alignment of array element in C++");
+				static_assert(shader_translator::HLSLAlignOf<TType>() == 16u, "Invalid alignment of array element in C++");
 				return 16u;
 			}
 		}
 	}
 
-	static constexpr Uint32 GetOffset()
+	static constexpr Uint32 GetCPPAlignment()
+	{
+		return alignof(UnderlyingType);
+	}
+
+	static constexpr Uint32 GetHLSLOffset()
 	{
 		if constexpr (std::is_same_v<TPrev, void>)
 		{
@@ -99,18 +109,39 @@ public:
 		}
 		else
 		{
-			constexpr Uint32 alignment = GetAlignment();
-			constexpr Uint32 prevMemberOffset = TPrev::s_memberOffset;
-			constexpr Uint32 prevMemberSize = TPrev::s_memberSize;
+			constexpr Uint32 alignment = GetHLSLAlignment();
+			constexpr Uint32 prevMemberOffset = TPrev::s_hlsl_memberOffset;
+			constexpr Uint32 prevMemberSize = TPrev::s_hlsl_memberSize;
 
 			constexpr Uint32 padding = (alignment - ((prevMemberOffset + prevMemberSize) % alignment)) % alignment;
 			return prevMemberOffset + prevMemberSize + padding;
 		}
 	}
 
-	static constexpr Uint32 s_memberSize      = GetSize();
-	static constexpr Uint32 s_memberAlignment = GetAlignment();
-	static constexpr Uint32 s_memberOffset    = GetOffset();
+	static constexpr Uint32 GetCPPOffset()
+	{
+		if constexpr (std::is_same_v<TPrev, void>)
+		{
+			// 0 offset for first variable
+			return 0;
+		}
+		else
+		{
+			constexpr Uint32 alignment = GetCPPAlignment();
+			constexpr Uint32 prevMemberOffset = TPrev::s_cpp_memberOffset;
+			constexpr Uint32 prevMemberSize = TPrev::s_cpp_memberSize;
+			constexpr Uint32 padding = (alignment - ((prevMemberOffset + prevMemberSize) % alignment)) % alignment;
+			return prevMemberOffset + prevMemberSize + padding;
+		}
+	}
+
+	static constexpr Uint32 s_hlsl_memberSize      = GetHLSLSize();
+	static constexpr Uint32 s_hlsl_memberAlignment = GetHLSLAlignment();
+	static constexpr Uint32 s_hlsl_memberOffset    = GetHLSLOffset();
+
+	static constexpr Uint32 s_cpp_memberSize      = GetCPPSize();
+	static constexpr Uint32 s_cpp_memberAlignment = GetCPPAlignment();
+	static constexpr Uint32 s_cpp_memberOffset    = GetCPPOffset();
 
 	static constexpr lib::String GetTypeName()
 	{
@@ -158,6 +189,7 @@ public:
 
 } // priv
 
+
 #define BEGIN_ALIGNED_SHADER_STRUCT(alignment, name) \
 struct alignas(alignment) name \
 { \
@@ -177,7 +209,7 @@ public: \
 
 #define SHADER_STRUCT_FIELD(type, name) \
 	type, #name> _MT_##name; \
-	alignas(_MT_##name::GetAlignment()) type name = type{}; \
+	type name = type{}; \
 	typedef rdr::priv::ShaderStructMemberMetaData<_MT_##name,
 
 
@@ -193,20 +225,6 @@ namespace shader_translator
 
 namespace priv
 {
-
-template<typename TShaderStructMemberMetaData>
-consteval Bool IsHeadMember()
-{
-	using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
-	return std::is_same_v<MemberType, void>;
-}
-
-template<typename TShaderStructMemberMetaData>
-consteval Bool IsTailMember()
-{
-	using PrevMemberMetaDataType = typename TShaderStructMemberMetaData::PrevMemberMetaDataType;
-	return std::is_same_v<PrevMemberMetaDataType, void>;
-}
 
 class ShaderStructReferencer
 {
@@ -297,15 +315,24 @@ constexpr void AppendMemberInfo(lib::String& inOutString)
 	
 	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
 	{
-		inOutString += "[ ";
 		inOutString += TShaderStructMemberMetaData::GetVariableName();
-		inOutString += " - size: ";
-		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberSize);
+		inOutString += " - [ ";
+		inOutString += "size: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_cpp_memberSize);
 		inOutString += ", offset: ";
-		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberOffset);
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_cpp_memberOffset);
 		inOutString += ", alignment: ";
-		inOutString += std::to_string(TShaderStructMemberMetaData::s_memberAlignment);
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_cpp_memberAlignment);
 		inOutString += " ]";
+		inOutString += "->";
+		inOutString += "[ ";
+		inOutString += "size: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_hlsl_memberSize);
+		inOutString += ", offset: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_hlsl_memberOffset);
+		inOutString += ", alignment: ";
+		inOutString += std::to_string(TShaderStructMemberMetaData::s_hlsl_memberAlignment);
+		inOutString += " ]\n";
 	}
 }
 
@@ -349,6 +376,39 @@ private:
 	{
 		const auto sourceCodeArray = shader_translator::BuildShaderStructCode<TStruct>();
 		return lib::String(std::cbegin(sourceCodeArray), std::cend(sourceCodeArray));
+	}
+};
+
+
+template<typename TStruct>
+class HLSLStorage : private lib::GenericStorage<shader_translator::HLSLAlignOf<TStruct>(), shader_translator::HLSLSizeOf<TStruct>()>
+{
+protected:
+
+	using Super = lib::GenericStorage<shader_translator::HLSLAlignOf<TStruct>(), shader_translator::HLSLSizeOf<TStruct>()>;
+
+public:
+
+	using Struct = TStruct;
+	constexpr static Uint32 s_size = shader_translator::HLSLSizeOf<TStruct>();
+	constexpr static Uint32 s_alignment = shader_translator::HLSLAlignOf<TStruct>();
+
+	HLSLStorage() = default;
+
+	HLSLStorage(const TStruct& value)
+	{
+		Set(value);
+	}
+
+	HLSLStorage& operator=(const TStruct& value)
+	{
+		Set(value);
+		return *this;
+	}
+
+	void Set(const TStruct& value)
+	{
+		shader_translator::CopyCPPToHLSL(value, lib::Span<Byte>(Super::GetAddress(), s_size));
 	}
 };
 

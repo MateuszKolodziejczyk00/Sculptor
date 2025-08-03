@@ -289,7 +289,7 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 			
 					if (visibility > 0.f)
 					{
-                        luminance += CalcLighting(surface, lightDir, viewDir, illuminance).sceneLuminance * visibility;
+						luminance += CalcLighting(surface, lightDir, viewDir, illuminance).sceneLuminance * visibility;
 					}
 				}
 			}

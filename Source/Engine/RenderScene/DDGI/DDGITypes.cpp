@@ -9,19 +9,18 @@ namespace spt::rsc::ddgi
 
 DDGIGPUVolumeHandle::DDGIGPUVolumeHandle() = default;
 
-DDGIGPUVolumeHandle::DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, const DDGIVolumeGPUDefinition& volumeGPUDefinition)
-	: m_ddgiSceneDS(std::move(sceneDS))
+DDGIGPUVolumeHandle::DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, DDGIVolumeGPUParams& volumeParams, const DDGIVolumeGPUDefinition& volumeGPUDefinition)
+	: m_volumeParams(&volumeParams)
 	, m_index(index)
+	, m_ddgiSceneDS(std::move(sceneDS))
 {
 	SPT_CHECK(m_ddgiSceneDS.IsValid());
 	SPT_CHECK(m_index != idxNone<Uint32>);
 
-	DDGIVolumeGPUParams& gpuParams = m_ddgiSceneDS->u_volumesDef.GetMutable().volumes[m_index];
+	*m_volumeParams = volumeGPUDefinition.gpuParams;
 
-	gpuParams = volumeGPUDefinition.gpuParams;
-
-	m_illuminanceTextureBindingsAllocation      = volumeGPUDefinition.illuminanceTexturesAllocation;
-	m_hitDistanceTextureBindingsAllocation      = volumeGPUDefinition.hitDistanceTexturesAllocation;
+	m_illuminanceTextureBindingsAllocation = volumeGPUDefinition.illuminanceTexturesAllocation;
+	m_hitDistanceTextureBindingsAllocation = volumeGPUDefinition.hitDistanceTexturesAllocation;
 }
 
 bool DDGIGPUVolumeHandle::IsValid() const
@@ -33,15 +32,14 @@ void DDGIGPUVolumeHandle::Destroy()
 {
 	if (IsValid())
 	{
-		DDGIVolumeGPUParams& gpuParams = m_ddgiSceneDS->u_volumesDef.GetMutable().volumes[m_index];
-
 		m_ddgiSceneDS->u_probesTextures2D.UnbindAndDeallocateTexturesBlock(m_illuminanceTextureBindingsAllocation);
 		m_ddgiSceneDS->u_probesTextures2D.UnbindAndDeallocateTexturesBlock(m_hitDistanceTextureBindingsAllocation);
 
-		m_ddgiSceneDS->u_probesTextures3D.UnbindTexture(gpuParams.averageLuminanceTextureIdx);
+		m_ddgiSceneDS->u_probesTextures3D.UnbindTexture(m_volumeParams->averageLuminanceTextureIdx);
 
-		gpuParams = DDGIVolumeGPUParams();
+		*m_volumeParams = DDGIVolumeGPUParams();
 		m_index = idxNone<Uint32>;
+		m_volumeParams = nullptr;
 
 		m_illuminanceTextureBindingsAllocation.Reset();
 		m_hitDistanceTextureBindingsAllocation.Reset();
@@ -56,15 +54,13 @@ Uint32 DDGIGPUVolumeHandle::GetVolumeIdx() const
 const DDGIVolumeGPUParams& DDGIGPUVolumeHandle::GetGPUParams() const
 {
 	SPT_CHECK(IsValid());
-	const DDGIVolumesDefinition& volumesDef = m_ddgiSceneDS->u_volumesDef.Get();
-	return volumesDef.volumes[m_index];
+	return *m_volumeParams;
 }
 
 DDGIVolumeGPUParams& DDGIGPUVolumeHandle::GetGPUParamsMutable()
 {
 	SPT_CHECK(IsValid());
-	DDGIVolumesDefinition& volumesDef = m_ddgiSceneDS->u_volumesDef.GetMutable();
-	return volumesDef.volumes[m_index];
+	return *m_volumeParams;
 }
 
 const Uint32 DDGIGPUVolumeHandle::GetProbesDataTexturesNum() const

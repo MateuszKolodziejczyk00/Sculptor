@@ -78,11 +78,11 @@ public:
 		{
 			if constexpr (std::is_same_v<TType, rdr::BufferView>)
 			{
-				SPT_CHECK(buffer.GetSize() == sizeof(TStruct));
+				SPT_CHECK(buffer.GetSize() == rdr::shader_translator::HLSLSizeOf<TStruct>());
 			}
 			else
 			{
-				SPT_CHECK(buffer->GetSize() == sizeof(TStruct));
+				SPT_CHECK(buffer->GetSize() == rdr::shader_translator::HLSLSizeOf<TStruct>());
 			}
 
 			m_boundBuffer.Set<TType>(buffer);

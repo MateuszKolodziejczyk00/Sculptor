@@ -550,7 +550,7 @@ void HDRResolveRenderStage::Initialize(RenderView& renderView)
 	Super::Initialize(renderView);
 
 	rhi::BufferDefinition bufferDef;
-	bufferDef.size  = sizeof(ViewExposureData);
+	bufferDef.size  = sizeof(rdr::HLSLStorage<ViewExposureData>);
 	bufferDef.usage = lib::Flags(rhi::EBufferUsage::Uniform, rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
 	m_viewExposureBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("View Exposure Buffer"), bufferDef, rhi::EMemoryUsage::GPUOnly);
 

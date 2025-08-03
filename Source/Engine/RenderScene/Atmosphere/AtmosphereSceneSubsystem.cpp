@@ -81,7 +81,7 @@ void AtmosphereSceneSubsystem::PostUpdateTransmittanceLUT()
 
 void AtmosphereSceneSubsystem::InitializeResources()
 {
-	m_atmosphereContext.atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(sizeof(AtmosphereParams), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
+	m_atmosphereContext.atmosphereParamsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Params Buffer"), rhi::BufferDefinition(rdr::shader_translator::HLSLSizeOf<AtmosphereParams>(), rhi::EBufferUsage::Uniform), rhi::EMemoryUsage::CPUToGPU);
 
 	const auto createLUT = [](const rdr::RendererResourceName& name, math::Vector2u resolution, rhi::EFragmentFormat format)
 	{
@@ -104,13 +104,13 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 	const auto directionalLightsView = registry.view<const DirectionalLightData, const DirectionalLightIlluminance>();
 	const SizeType directionalLightsNum = registry.view<const DirectionalLightData>().size();
 
-	const Uint64 requiredBufferSize = std::max<SizeType>(directionalLightsNum, 1) * sizeof(DirectionalLightGPUData);
+	const Uint64 requiredBufferSize = std::max<SizeType>(directionalLightsNum, 1) * sizeof(rdr::HLSLStorage<DirectionalLightGPUData>);
 	if (!m_atmosphereContext.directionalLightsBuffer || m_atmosphereContext.directionalLightsBuffer->GetSize() < requiredBufferSize)
 	{
 		m_atmosphereContext.directionalLightsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("Atmosphere Directional Lights Buffer"), rhi::BufferDefinition(requiredBufferSize, rhi::EBufferUsage::Storage), rhi::EMemoryUsage::CPUToGPU);
 	}
 
-	rhi::RHIMappedBuffer<DirectionalLightGPUData> lightsGPUData(m_atmosphereContext.directionalLightsBuffer->GetRHI());
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<DirectionalLightGPUData>> lightsGPUData(m_atmosphereContext.directionalLightsBuffer->GetRHI());
 
 	SizeType lightIndex = 0;
 	directionalLightsView.each([ & ](const DirectionalLightData& lightData, const DirectionalLightIlluminance& illuminance)
@@ -132,7 +132,7 @@ void AtmosphereSceneSubsystem::UpdateAtmosphereContext()
 
 	m_atmosphereParams.directionalLightsNum = static_cast<Uint32>(directionalLightsNum);
 
-	rhi::RHIMappedBuffer<AtmosphereParams> atmosphereParamsGPUData(m_atmosphereContext.atmosphereParamsBuffer->GetRHI());
+	rhi::RHIMappedBuffer<rdr::HLSLStorage<AtmosphereParams>> atmosphereParamsGPUData(m_atmosphereContext.atmosphereParamsBuffer->GetRHI());
 	atmosphereParamsGPUData[0] = m_atmosphereParams;
 }
 

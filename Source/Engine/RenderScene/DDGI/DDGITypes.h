@@ -153,7 +153,7 @@ public:
 
 	DDGIGPUVolumeHandle();
 
-	DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, const DDGIVolumeGPUDefinition& volumeGPUDefinition);
+	DDGIGPUVolumeHandle(lib::MTHandle<DDGISceneDS> sceneDS, Uint32 index, DDGIVolumeGPUParams& volumeParams, const DDGIVolumeGPUDefinition& volumeGPUDefinition);
 
 	bool IsValid() const;
 
@@ -171,6 +171,8 @@ public:
 	lib::SharedPtr<rdr::TextureView> GetProbesAverageLuminanceTexture() const;
 
 private:
+
+	DDGIVolumeGPUParams* m_volumeParams = nullptr;
 
 	Uint32 m_index = idxNone<Uint32>;
 

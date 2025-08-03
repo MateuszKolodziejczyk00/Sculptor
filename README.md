@@ -5,6 +5,7 @@ Built from scratch for learning, experimentation, and performance research.
 - Download with submodules (You can use: git clone --recurse-submodules https://github.com/MateuszKolodziejczyk00/Sculptor)
 - Download and install newest Vulkan SDK
 - Run GenerateSolution.bat script
+- (Optional) Run DownloadOptionalDependencies.bat to download NVidia Sharc. Without it, engine will fallback to DDGI
 - Open solution and set SculptorEd as startup project
 # Showcase
 ## Video:
@@ -24,7 +25,8 @@ Built from scratch for learning, experimentation, and performance research.
   - ReSTIR GI with Variable Rate Tracing
   - Ray Traced shadows (with VRT) and AO
   - Custom denoisers for diffuse and specular GI (based on Nvidia RELAX) and for shadows and AO (based on AMD FidelityFX Denoiser)
-  - cascaded DDGI used as irradiance cache for secondary bounces
+  - cascaded DDGI used as irradiance cache for volumetrics and secondary bounces
+  - NVidia Sharc integration
 - Volumetrics & Atmosphere
   - Physically based atmosphere
   - Large scale volumetric fog based on froxels (up to 8km) affected by light sources, GI, clouds and atmosphere

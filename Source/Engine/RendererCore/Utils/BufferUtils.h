@@ -20,12 +20,12 @@ lib::SharedRef<Buffer> CreateConstantBuffer(const RendererResourceName& name, co
 {
 	rhi::BufferDefinition bufferDef;
 	bufferDef.usage = rhi::EBufferUsage::Uniform;
-	bufferDef.size = sizeof(TStruct);
+	bufferDef.size  = sizeof(rdr::HLSLStorage<TStruct>);
 	const lib::SharedRef<Buffer> buffer = rdr::ResourcesManager::CreateBuffer(name, bufferDef, rhi::EMemoryUsage::CPUToGPU);
 
 	rhi::RHIMappedBuffer<TStruct> mappedBuffer(buffer->GetRHI());
 
-	new (mappedBuffer.Get()) TStruct(value);
+	new (mappedBuffer.Get()) rdr::HLSLStorage<TStruct>(value);
 
 	return buffer;
 }
