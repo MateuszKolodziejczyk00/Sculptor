@@ -1,7 +1,9 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(TonemappingDS, 0)]]
-[[descriptor_set(RenderViewDS, 1)]]
+[[bindless]]
+[[descriptor_set(TonemappingDS, 1)]]
+[[descriptor_set(RenderViewDS, 2)]]
+
 
 #include "Utils/Exposure.hlsli"
 #include "Utils/TonemappingOperators.hlsli"
@@ -24,7 +26,7 @@ float3 TonyMCMapface(float3 stimulus)
     const float LUT_DIMS = 48.0;
     const float3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
 
-    return u_tonemappingLUT.SampleLevel(u_linearSampler, uv, 0);
+    return u_tonemappingConstants.tonemappingLUT.SampleLevel(u_linearSampler, uv);
 }
 
 
@@ -41,9 +43,9 @@ float3 ApplyLocalExposure(in float3 linearColor, in int2 pixel)
 
 	const float2 bilateralGridUV = pixel * u_tonemappingConstants.bilateralGridUVPerPixel;
 
-	const float downsampledLocalLogLuminance = u_logLuminanceTexture.SampleLevel(u_linearSampler, bilateralGridUV, 0).x;
+	const float downsampledLocalLogLuminance = u_tonemappingConstants.logLuminance.SampleLevel(u_linearSampler, bilateralGridUV, 0).x;
 
-	const float2 bilateralGridValue = u_luminanceBilateralGridTexture.SampleLevel(u_linearSampler, float3(bilateralGridUV, bilateralGridDepth), 0.f);
+	const float2 bilateralGridValue = u_tonemappingConstants.luminanceBilateralGrid.SampleLevel(u_linearSampler, float3(bilateralGridUV, bilateralGridDepth), 0.f);
 	const float gridLocalLogLuminance = bilateralGridValue.x / (bilateralGridValue.y + 0.0001f);
 
 	const float localLogLuminance = lerp(downsampledLocalLogLuminance, gridLocalLogLuminance, u_tonemappingConstants.bilateralGridStrength);
@@ -65,14 +67,13 @@ void TonemappingCS(CS_INPUT input)
 {
 	const int2 pixel = input.globalID.xy;
 	
-	uint2 outputRes;
-	u_LDRTexture.GetDimensions(outputRes.x, outputRes.y);
+	const uint2 outputRes = u_tonemappingConstants.rwLDRTexture.GetResolution();
 
 	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
 	{
 		const float2 pixelSize = rcp(float2(outputRes));
 
-		float3 color = u_linearColorTexture.Load(int3(pixel, 0)).rgb;
+		float3 color = u_tonemappingConstants.linearColor.Load(pixel).rgb;
 		color = ApplyLocalExposure(color, pixel);
 
 		color = TonyMCMapface(color);
@@ -84,6 +85,6 @@ void TonemappingCS(CS_INPUT input)
 			color += Random(pixel) * rcp(255.f);
 		}
 
-		u_LDRTexture[pixel] = float4(color, 1.f);
+		u_tonemappingConstants.rwLDRTexture.Store(pixel, float4(color, 1.f));
 	}
 }

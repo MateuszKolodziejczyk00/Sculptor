@@ -14,7 +14,7 @@
 #include "Types/AccelerationStructure.h"
 #include "Types/Pipeline/GraphicsPipeline.h"
 #include "Types/Pipeline/ComputePipeline.h"
-#include "Types/Event.h"
+#include "Types/GPUEvent.h"
 #include "Types/QueryPool.h"
 #include "Types/GPUMemoryPool.h"
 #include "Types/DescriptorSetLayout.h"

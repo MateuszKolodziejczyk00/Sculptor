@@ -4,6 +4,8 @@
 #include "Types/Sampler.h"
 #include "Types/DescriptorSetLayout.h"
 #include "ResourcesManager.h"
+#include "Renderer.h"
+#include "Types/DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
 {
@@ -47,6 +49,22 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 			const lib::SharedPtr<DescriptorSetLayout>& layout = layoutsRegistry.GetLayoutChecked(dsTypeID);
 			rhiLayout = layout->GetRHI();
 		}
+	}
+
+	const Bool isBindless = m_metaData.IsBindless();
+	if (isBindless)
+	{
+		SPT_CHECK(m_metaData.GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>);
+
+		if (layoutDefinition.descriptorSetLayouts.empty())
+		{
+			layoutDefinition.descriptorSetLayouts.resize(1u);
+		}
+
+		SPT_CHECK(!layoutDefinition.descriptorSetLayouts[0].IsValid());
+
+		const lib::SharedPtr<DescriptorSetLayout>& bindlessLayout = Renderer::GetDescriptorManager().GetBindlessLayout();
+		layoutDefinition.descriptorSetLayouts[0] = bindlessLayout->GetRHI();
 	}
 	
 	return layoutDefinition;

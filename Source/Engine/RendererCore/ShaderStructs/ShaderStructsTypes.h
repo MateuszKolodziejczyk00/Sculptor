@@ -32,167 +32,248 @@ namespace shader_translator
 // Shader Type Names =============================================================================
 
 template<typename TType>
-constexpr lib::String GetShaderTypeName()
+struct StructTranslator
 {
-	SPT_CHECK_NO_ENTRY(); // type not supported
-	return lib::String();
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		SPT_CHECK_NO_ENTRY(); // type not supported
+		return lib::String();
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Bool>()
+struct StructTranslator<Bool>
 {
-	return lib::String("bool");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("bool");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Int16>()
+struct StructTranslator<Int16>
 {
-	return lib::String("int16_t");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("int16_t");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Int32>()
+struct StructTranslator<Int32>
 {
-	return lib::String("int");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("int");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Uint16>()
+struct StructTranslator<Uint16>
 {
-	return lib::String("uint16_t");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint16_t");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Uint32>()
+struct StructTranslator<Uint32>
 {
-	return lib::String("uint");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Real32>()
+struct StructTranslator<Real32>
 {
-	return lib::String("float");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Uint64>()
+struct StructTranslator<Uint64>
 {
-	return lib::String("uint64_t");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint64_t");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector2f>()
+struct StructTranslator<math::Vector2f>
 {
-	return lib::String("float2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector3f>()
+struct StructTranslator<math::Vector3f>
 {
-	return lib::String("float3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector4f>()
+struct StructTranslator<math::Vector4f>
 {
-	return lib::String("float4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float4");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Real16_1>()
+struct StructTranslator<Real16_1>
 {
-	return lib::String("half");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("half");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Real16_2>()
+struct StructTranslator<Real16_2>
 {
-	return lib::String("half2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("half2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Real16_3>()
+struct StructTranslator<Real16_3>
 {
-	return lib::String("half3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("half3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<Real16_4>()
+struct StructTranslator<Real16_4>
 {
-	return lib::String("half4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("half4");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Matrix2f>()
+struct StructTranslator<math::Matrix2f>
 {
-	return lib::String("float2x2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float2x2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Matrix3f>()
+struct StructTranslator<math::Matrix3f>
 {
-	return lib::String("float3x3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float3x3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Matrix4f>()
+struct StructTranslator<math::Matrix4f>
 {
-	return lib::String("float4x4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("float4x4");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector2i>()
+struct StructTranslator<math::Vector2i>
 {
-	return lib::String("int2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("int2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector3i>()
+struct StructTranslator<math::Vector3i>
 {
-	return lib::String("int3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("int3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector4i>()
+struct StructTranslator<math::Vector4i>
 {
-	return lib::String("int4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("int4");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector16_2u>()
+struct StructTranslator<math::Vector16_2u>
 {
-	return lib::String("uint16_t2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint16_t2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector16_3u>()
+struct StructTranslator<math::Vector16_3u>
 {
-	return lib::String("uint16_t3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint16_t3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector16_4u>()
+struct StructTranslator<math::Vector16_4u>
 {
-	return lib::String("uint16_t4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint16_t4");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector2u>()
+struct StructTranslator<math::Vector2u>
 {
-	return lib::String("uint2");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint2");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector3u>()
+struct StructTranslator<math::Vector3u>
 {
-	return lib::String("uint3");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint3");
+	}
+};
 
 template<>
-constexpr lib::String GetShaderTypeName<math::Vector4u>()
+struct StructTranslator<math::Vector4u>
 {
-	return lib::String("uint4");
-}
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return lib::String("uint4");
+	}
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utilities =====================================================================================
@@ -228,7 +309,7 @@ constexpr lib::String GetTypeName()
 	}
 	else
 	{
-		return GetShaderTypeName<TType>();
+		return StructTranslator<TType>::GetHLSLStructName();
 	}
 }
 
@@ -273,66 +354,75 @@ constexpr Uint32 GetMaxMemberAlignment()
 
 } // priv
 
+
+template<typename TType>
+struct StructHLSLAlignmentEvaluator
+{
+	static constexpr Uint32 Alignment()
+	{
+		if constexpr (lib::CContainer<TType>)
+		{
+			using TArrayTraits = lib::StaticArrayTraits<TType>;
+			using TElemType = typename TArrayTraits::Type;
+
+			const Uint32 elementAlignment = StructHLSLAlignmentEvaluator<TElemType>::Alignment();
+			return elementAlignment < 16u ? 16u : elementAlignment; // HLSL requires array elements to be aligned to 16 bytes
+		}
+		else if constexpr (CShaderStruct<TType>)
+		{
+			return priv::GetMaxMemberAlignment<typename TType::HeadMemberMetaData>();
+		}
+		else
+		{
+			return alignof(TType);
+		}
+	}
+};
+
+
 template<typename TType>
 constexpr Uint32 HLSLAlignOf()
 {
-	if constexpr (lib::CContainer<TType>)
-	{
-		using TArrayTraits = lib::StaticArrayTraits<TType>;
-		using TElemType = typename TArrayTraits::Type;
-
-		const Uint32 elementAlignment = HLSLAlignOf<TElemType>();
-		return elementAlignment < 16u ? 16u : elementAlignment; // HLSL requires array elements to be aligned to 16 bytes
-	}
-	else if constexpr (CShaderStruct<TType>)
-	{
-		return priv::GetMaxMemberAlignment<typename TType::HeadMemberMetaData>();
-	}
-	else
-	{
-		return alignof(TType);
-	}
+	return StructHLSLAlignmentEvaluator<TType>::Alignment();
 }
 
-template<>
-constexpr Uint32 HLSLAlignOf<Bool>() // bool is aligned to 4 bytes in HLSL
+
+template<typename TType>
+struct StructHLSLSizeEvaluator
 {
-	return 4;
-}
+	static constexpr Uint32 Size()
+	{
+		if constexpr (lib::CContainer<TType>)
+		{
+			using TArrayTraits = lib::StaticArrayTraits<TType>;
+			using TElemType = typename TArrayTraits::Type;
+
+			constexpr Uint32 typeSize = StructHLSLSizeEvaluator<TElemType>::Size();
+			constexpr Uint32 elemSize = typeSize >= 16u ? typeSize : 16u; // HLSL requires array elements to be aligned to 16 bytes
+
+			return elemSize * TArrayTraits::Size;
+		}
+		else if constexpr (CShaderStruct<TType>)
+		{
+			constexpr Uint32 alignment = HLSLAlignOf<TType>();
+			using TLastMemberMetaData = typename TType::HeadMemberMetaData::PrevMemberMetaDataType;
+
+			SPT_STATIC_CHECK_MSG(alignment != 0u, "Ivalid alignment");
+			constexpr Uint32 missingAlignment = (alignment - (TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize) % alignment) % alignment;
+
+			return TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize + missingAlignment;
+		}
+		else
+		{
+			return sizeof(TType);
+		}
+	}
+};
 
 template<typename TType>
 constexpr Uint32 HLSLSizeOf()
 {
-	if constexpr (lib::CContainer<TType>)
-	{
-		using TArrayTraits = lib::StaticArrayTraits<TType>;
-		using TElemType = typename TArrayTraits::Type;
-
-		constexpr Uint32 typeSize = HLSLSizeOf<TElemType>();
-		constexpr Uint32 elemSize = typeSize >= 16u ? typeSize : 16u; // HLSL requires array elements to be aligned to 16 bytes
-
-		return elemSize * TArrayTraits::Size;
-	}
-	else if constexpr (CShaderStruct<TType>)
-	{
-		constexpr Uint32 alignment = HLSLAlignOf<TType>();
-		using TLastMemberMetaData = typename TType::HeadMemberMetaData::PrevMemberMetaDataType;
-
-		SPT_STATIC_CHECK_MSG(alignment != 0u, "Ivalid alignment");
-		constexpr Uint32 missingAlignment = (alignment - (TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize) % alignment) % alignment;
-
-		return TLastMemberMetaData::s_hlsl_memberOffset + TLastMemberMetaData::s_hlsl_memberSize + missingAlignment;
-	}
-	else
-	{
-		return sizeof(TType);
-	}
-}
-
-template<>
-constexpr Uint32 HLSLSizeOf<Bool>()
-{
-	return 4;
+	return StructHLSLSizeEvaluator<TType>::Size();
 }
 
 template<typename TType>
@@ -369,41 +459,73 @@ void CopyCPPMembersToHLSL(lib::Span<const Byte> cppData, lib::Span<Byte> hlslDat
 } // priv
 
 template<typename TType>
-void CopyCPPToHLSL(const TType& cppData, lib::Span<Byte> hlslData)
+struct StructCPPToHLSLTranslator
 {
-	if constexpr (lib::CContainer<TType>)
+	static void Copy(const TType& cppData, lib::Span<Byte> hlslData)
 	{
-		using TArrayTraits = lib::StaticArrayTraits<TType>;
-		using TElemType = typename TArrayTraits::Type;
-
-		constexpr Uint32 hlslTypeSize    = HLSLSizeOf<TElemType>();
-		constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
-
-		for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
+		if constexpr (lib::CContainer<TType>)
 		{
-			CopyCPPToHLSL(cppData[idx], hlslData.subspan(idx * hlslElementSize, hlslElementSize));
+			using TArrayTraits = lib::StaticArrayTraits<TType>;
+			using TElemType = typename TArrayTraits::Type;
+
+			constexpr Uint32 hlslTypeSize    = HLSLSizeOf<TElemType>();
+			constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
+
+			for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
+			{
+				CopyCPPToHLSL(cppData[idx], hlslData.subspan(idx * hlslElementSize, hlslElementSize));
+			}
+		}
+		else if constexpr (CShaderStruct<TType>)
+		{
+			priv::CopyCPPMembersToHLSL<typename TType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&cppData), sizeof(TType)),
+																		   hlslData);
+		}
+		else
+		{
+			SPT_STATIC_CHECK_MSG(sizeof(TType) == HLSLSizeOf<TType>(), "Default implementation handles only types of the same size");
+			SPT_CHECK(HLSLSizeOf<TType>() == hlslData.size());
+
+			std::memcpy(hlslData.data(), &cppData, sizeof(TType));
 		}
 	}
-	else if constexpr (CShaderStruct<TType>)
-	{
-		priv::CopyCPPMembersToHLSL<typename TType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&cppData), sizeof(TType)),
-																	   hlslData);
-	}
-	else
-	{
-		SPT_STATIC_CHECK_MSG(sizeof(TType) == HLSLSizeOf<TType>(), "Default implementation handles only types of the same size");
-		SPT_CHECK(HLSLSizeOf<TType>() == hlslData.size());
+};
 
-		std::memcpy(hlslData.data(), &cppData, sizeof(TType));
-	}
+template<typename TType>
+void CopyCPPToHLSL(const TType& cppData, lib::Span<Byte> hlslData)
+{
+	StructCPPToHLSLTranslator<TType>::Copy(cppData, hlslData);
 }
+
+// Custom evaluators ===========================================================================
 
 template<>
-inline void CopyCPPToHLSL<Bool>(const Bool& cppData, lib::Span<Byte> hlslData)
+struct StructCPPToHLSLTranslator<Bool>
 {
-	SPT_CHECK(hlslData.size() == sizeof(Uint32));
-	*reinterpret_cast<Uint32*>(hlslData.data()) = (cppData ? 1u : 0u);
-}
+	static void Copy(const Bool& cppData, lib::Span<Byte> hlslData)
+	{
+		SPT_CHECK(hlslData.size() == sizeof(Uint32));
+		*reinterpret_cast<Uint32*>(hlslData.data()) = (cppData ? 1u : 0u);
+	}
+};
+
+template<>
+struct StructHLSLSizeEvaluator<Bool>
+{
+	static constexpr Uint32 Size()
+	{
+		return 4; // bool is 4 bytes in HLSL
+	}
+};
+
+template<>
+struct StructHLSLAlignmentEvaluator<Bool>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return 4; // bool is aligned to 4 bytes in HLSL
+	}
+};
 
 } // shader_translator
 

@@ -70,12 +70,18 @@ private:
 		Uint32        heapOffset;
 	};
 
+	struct PipelineDescriptorsState
+	{
+		lib::DynamicArray<Bool> dirtyDescriptorSets;
+		Bool isBindlessDirty = false;
+	};
+
 	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);
-	void TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
+	void TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState);
 
-	void UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
+	void UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, PipelineDescriptorsState& descriptorsState);
 
-	DSBindCommands FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets);
+	DSBindCommands FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState);
 
 	const BoundDescriptorSetState* GetBoundDescriptorSetState(DSStateTypeID dsTypeID) const;
 
@@ -85,9 +91,15 @@ private:
 
 	lib::DynamicArray<BoundDescriptorSetState> m_boundDescriptorSetStates;
 
-	lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
-	lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
-	lib::DynamicArray<Bool> m_dirtyRayTracingDescriptorSets;
+	//lib::DynamicArray<Bool> m_dirtyGfxDescriptorSets;
+	//lib::DynamicArray<Bool> m_dirtyComputeDescriptorSets;
+	//lib::DynamicArray<Bool> m_dirtyRayTracingDescriptorSets;
+
+	PipelineDescriptorsState m_gfxPipelineDescriptorsState;
+	PipelineDescriptorsState m_computePipelineDescriptorsState;
+	PipelineDescriptorsState m_rayTracingPipelineDescriptorsState;
+
+	Uint32 m_bindlessDescriptorsHeapOffset = 0u;
 };
 
 } // spt::rdr

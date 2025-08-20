@@ -5,6 +5,7 @@
 #include "RGResources/RGResourceHandles.h"
 #include "RGResources/RGResources.h"
 #include "RHICore/RHIShaderTypes.h"
+#include "ShaderStructs/ShaderStructsMacros.h"
 
 
 namespace spt::rg
@@ -96,6 +97,7 @@ public:
 	void AddTextureAccess(RGTextureViewHandle texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddTextureAccess(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddTextureAccessIfAcquired(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddTextureAccess(rdr::ResourceDescriptorIdx textureDescriptor, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
@@ -107,5 +109,70 @@ private:
 
 	rhi::EPipelineStage m_defaultStages;
 };
+
+
+template<typename TType>
+void CollectStructDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder);
+
+
+namespace priv
+{
+
+template<typename TShaderStructMemberMetaData>
+void CollectMembersDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
+{
+	if constexpr (!rdr::shader_translator::priv::IsTailMember<TShaderStructMemberMetaData>())
+	{
+		CollectMembersDependencies<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(hlsl, dependenciesBuilder);
+	}
+
+	using TMemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+
+	if constexpr (!rdr::shader_translator::priv::IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		constexpr Uint32 hlslMemberOffset = TShaderStructMemberMetaData::s_hlsl_memberOffset;
+		constexpr Uint32 hlslMemberSize = TShaderStructMemberMetaData::s_hlsl_memberSize;
+
+		CollectStructDependencies<TMemberType>(hlsl.subspan(hlslMemberOffset, hlslMemberSize), dependenciesBuilder);
+	}
+}
+
+} // priv
+
+
+template<typename TType>
+struct HLSLStructDependenciesBuider
+{
+	static void CollectDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
+	{
+		if constexpr (lib::CContainer<TType>)
+		{
+			using TArrayTraits = lib::StaticArrayTraits<TType>;
+			using TElemType = typename TArrayTraits::Type;
+
+			constexpr Uint32 hlslTypeSize    = rdr::shader_translator::HLSLSizeOf<TElemType>();
+			constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
+
+			for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
+			{
+				CollectStructDependencies<TElemType>(hlsl.subspan(idx * hlslElementSize, hlslTypeSize), dependenciesBuilder);
+			}
+		}
+		else if constexpr (rdr::shader_translator::IsShaderStruct<TType>())
+		{
+			priv::CollectMembersDependencies<typename TType::HeadMemberMetaData>(hlsl, dependenciesBuilder);
+		}
+
+		// for other types, we do nothing here.
+		// If there is some logic needed for some type, it should specialize this template
+	}
+};
+
+
+template<typename TType>
+void CollectStructDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
+{
+	HLSLStructDependenciesBuider<TType>::CollectDependencies(hlsl, dependenciesBuilder);
+}
 
 } // spt::rg

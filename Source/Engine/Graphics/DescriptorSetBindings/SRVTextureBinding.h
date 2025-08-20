@@ -59,7 +59,7 @@ public:
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
 		return BuildBindingVariableCode(lib::String("Texture") + priv::GetTextureDimSuffix<dimensions>()
-										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
+										+ '<' + rdr::shader_translator::StructTranslator<TPixelFormatType>::GetHLSLStructName() + "> " + name, bindingIdx);
 	}
 	
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()

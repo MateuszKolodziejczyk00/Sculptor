@@ -7,11 +7,13 @@
 #include "Types/CommandBuffer.h"
 #include "Types/RenderContext.h"
 #include "ShaderMetaData.h"
+#include "Types/DescriptorSetState/DescriptorManager.h"
 
 namespace spt::rdr
 {
 
 PipelinePendingState::PipelinePendingState()
+	: m_bindlessDescriptorsHeapOffset(Renderer::GetDescriptorManager().GetHeapOffset())
 {
 	m_boundDescriptorSetStates.reserve(16);
 }
@@ -29,13 +31,13 @@ void PipelinePendingState::BindGraphicsPipeline(const lib::SharedRef<GraphicsPip
 		
 	m_boundGfxPipeline = pipeline.ToSharedPtr();
 
-	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundGfxPipeline), m_gfxPipelineDescriptorsState);
 }
 
 void PipelinePendingState::UnbindGraphicsPipeline()
 {
 	m_boundGfxPipeline.reset();
-	m_dirtyGfxDescriptorSets.clear();
+	m_gfxPipelineDescriptorsState = PipelineDescriptorsState{};
 }
 
 const lib::SharedPtr<GraphicsPipeline>& PipelinePendingState::GetBoundGraphicsPipeline() const
@@ -47,7 +49,7 @@ void PipelinePendingState::FlushDirtyDSForGraphicsPipeline(rhi::RHICommandBuffer
 {
 	SPT_CHECK(!!m_boundGfxPipeline);
 
-	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_dirtyGfxDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundGfxPipeline), m_gfxPipelineDescriptorsState);
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
@@ -66,13 +68,13 @@ void PipelinePendingState::BindComputePipeline(const lib::SharedRef<ComputePipel
 		
 	m_boundComputePipeline = pipeline.ToSharedPtr();
 
-	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundComputePipeline), m_computePipelineDescriptorsState);
 }
 
 void PipelinePendingState::UnbindComputePipeline()
 {
 	m_boundComputePipeline.reset();
-	m_dirtyComputeDescriptorSets.clear();
+	m_computePipelineDescriptorsState = PipelineDescriptorsState{};
 }
 
 const lib::SharedPtr<ComputePipeline>& PipelinePendingState::GetBoundComputePipeline() const
@@ -84,7 +86,7 @@ void PipelinePendingState::FlushDirtyDSForComputePipeline(rhi::RHICommandBuffer&
 {
 	SPT_CHECK(!!m_boundComputePipeline);
 
-	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_dirtyComputeDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundComputePipeline), m_computePipelineDescriptorsState);
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
@@ -103,13 +105,13 @@ void PipelinePendingState::BindRayTracingPipeline(const lib::SharedRef<RayTracin
 		
 	m_boundRayTracingPipeline = pipeline.ToSharedPtr();
 
-	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
+	UpdateDescriptorSetsOnPipelineChange(prevPipeline, lib::Ref(m_boundRayTracingPipeline), m_rayTracingPipelineDescriptorsState);
 }
 
 void PipelinePendingState::UnbindRayTracingPipeline()
 {
 	m_boundRayTracingPipeline.reset();
-	m_dirtyRayTracingDescriptorSets.clear();
+	m_rayTracingPipelineDescriptorsState = PipelineDescriptorsState{};
 }
 
 const lib::SharedPtr<rdr::RayTracingPipeline>& PipelinePendingState::GetBoundRayTracingPipeline() const
@@ -121,7 +123,7 @@ void PipelinePendingState::FlushDirtyDSForRayTracingPipeline(rhi::RHICommandBuff
 {
 	SPT_CHECK(!!m_boundRayTracingPipeline);
 
-	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_dirtyRayTracingDescriptorSets);
+	const DSBindCommands descriptorSetsToBind = FlushPendingDescriptorSets(lib::Ref(m_boundRayTracingPipeline), m_rayTracingPipelineDescriptorsState);
 
 	for (const DSBindCommand& bindCommand : descriptorSetsToBind)
 	{
@@ -153,52 +155,61 @@ void PipelinePendingState::UnbindDescriptorSetState(const lib::MTHandle<Descript
 
 void PipelinePendingState::TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state)
 {
-	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_dirtyGfxDescriptorSets);
-	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_dirtyComputeDescriptorSets);
-	TryMarkAsDirtyImpl(state, m_boundRayTracingPipeline, m_dirtyRayTracingDescriptorSets);
+	TryMarkAsDirtyImpl(state, m_boundGfxPipeline, m_gfxPipelineDescriptorsState);
+	TryMarkAsDirtyImpl(state, m_boundComputePipeline, m_computePipelineDescriptorsState);
+	TryMarkAsDirtyImpl(state, m_boundRayTracingPipeline, m_rayTracingPipelineDescriptorsState);
 }
 
-void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+void PipelinePendingState::TryMarkAsDirtyImpl(const lib::MTHandle<DescriptorSetState>& state, const lib::SharedPtr<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState)
 {
 	if (pipeline)
 	{
 		const Uint32 boundIdx = pipeline->GetMetaData().FindDescriptorSetOfType(state->GetTypeID());
 		if (boundIdx != idxNone<Uint32>)
 		{
-			dirtyDescriptorSets[static_cast<SizeType>(boundIdx)] = true;
+			descriptorsState.dirtyDescriptorSets[static_cast<SizeType>(boundIdx)] = true;
 		}
 	}
 }
 
-void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::SharedPtr<Pipeline>& prevPipeline, const lib::SharedRef<Pipeline>& newPipeline, PipelineDescriptorsState& descriptorsState)
 {
 	const smd::ShaderMetaData& newMetaData = newPipeline->GetMetaData();
-	dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
+	descriptorsState.dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
+
+	Bool wasUsingBindless = false;
 
 	if (prevPipeline)
 	{
 		const smd::ShaderMetaData& prevMetaData = prevPipeline->GetMetaData();
+
+		wasUsingBindless = prevMetaData.IsBindless();
 
 		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData.GetDescriptorSetsNum(), newMetaData.GetDescriptorSetsNum());
 		for (Uint32 dsIdx = 0; dsIdx < commonDescriptorSetsNum; ++dsIdx)
 		{
 			if (prevMetaData.GetDescriptorSetStateTypeID(dsIdx) != newMetaData.GetDescriptorSetStateTypeID(dsIdx))
 			{
-				dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
+				descriptorsState.dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
 			}
 		}
 	}
+
+	if (wasUsingBindless != newMetaData.IsBindless())
+	{
+		descriptorsState.isBindlessDirty = true;
+	}
 }
 
-PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, lib::DynamicArray<Bool>& dirtyDescriptorSets)
+PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescriptorSets(const lib::SharedRef<Pipeline>& pipeline, PipelineDescriptorsState& descriptorsState)
 {
 	const smd::ShaderMetaData& metaData = pipeline->GetMetaData();
 
 	DSBindCommands descriptorSetsToBind;
 
-	for (SizeType dsIdx = 0; dsIdx < dirtyDescriptorSets.size(); ++dsIdx)
+	for (SizeType dsIdx = 0; dsIdx < descriptorsState.dirtyDescriptorSets.size(); ++dsIdx)
 	{
-		if (dirtyDescriptorSets[dsIdx])
+		if (descriptorsState.dirtyDescriptorSets[dsIdx])
 		{
 			const DSStateTypeID dsTypeID = DSStateTypeID(metaData.GetDescriptorSetStateTypeID(static_cast<Uint32>(dsIdx)));
 			if (dsTypeID == idxNone<SizeType>)
@@ -218,8 +229,18 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		}
 	}
 
+	if (descriptorsState.isBindlessDirty && metaData.IsBindless())
+	{
+		DSBindCommand bindlessDescriptorsCommand;
+		bindlessDescriptorsCommand.idx        = 0u;
+		bindlessDescriptorsCommand.heapOffset = m_bindlessDescriptorsHeapOffset;
+
+		descriptorSetsToBind.emplace_back(bindlessDescriptorsCommand);
+	}
+
 	// Clear all dirty flags
-	std::fill(std::begin(dirtyDescriptorSets), std::end(dirtyDescriptorSets), false);
+	std::fill(std::begin(descriptorsState.dirtyDescriptorSets), std::end(descriptorsState.dirtyDescriptorSets), false);
+	descriptorsState.isBindlessDirty = false;
 
 	return descriptorSetsToBind;
 }

@@ -5,6 +5,7 @@
 #include "RHICore/RHIAllocationTypes.h"
 #include "RendererResource.h"
 #include "RendererUtils.h"
+#include "DescriptorSetState/DescriptorTypes.h"
 
 
 namespace spt::rhi
@@ -18,6 +19,13 @@ namespace spt::rdr
 
 class TextureView;
 class GPUMemoryPool;
+
+
+struct TextureViewDescriptorsAllocation
+{
+	ResourceDescriptorHandle srvDescriptor;
+	ResourceDescriptorHandle uavDescriptor;
+};
 
 
 class RENDERER_CORE_API Texture : public RendererResource<rhi::RHITexture>, public lib::SharedFromThis<Texture>, private rhi::RHITextureMemoryOwner
@@ -41,7 +49,7 @@ public:
 	const math::Vector3u&			GetResolution() const;
 	math::Vector2u					GetResolution2D() const;
 
-	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition()) const;
+	lib::SharedRef<TextureView>		CreateView(const RendererResourceName& name, const rhi::TextureViewDefinition& viewDefinition = rhi::TextureViewDefinition(), TextureViewDescriptorsAllocation externalDescriptorsAllocation = TextureViewDescriptorsAllocation()) const;
 
 private:
 
@@ -49,7 +57,7 @@ private:
 };
 
 
-class RENDERER_CORE_API TextureView : public RendererResource<rhi::RHITextureView>
+class RENDERER_CORE_API TextureView : public RendererResource<rhi::RHITextureView>, public lib::SharedFromThis<TextureView>
 {
 protected:
 
@@ -57,7 +65,7 @@ protected:
 
 public:
 
-	TextureView(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition);
+	TextureView(const RendererResourceName& name, const lib::SharedRef<Texture>& texture, const rhi::TextureViewDefinition& viewDefinition, TextureViewDescriptorsAllocation externalDescriptorsAllocation);
 	~TextureView();
 
 	const lib::SharedRef<Texture>& GetTexture() const;
@@ -65,9 +73,19 @@ public:
 	math::Vector3u GetResolution() const;
 	math::Vector2u GetResolution2D() const;
 
+	ResourceDescriptorIdx GetSRVDescriptor() const { return m_srvDescriptor; }
+	ResourceDescriptorIdx GetUAVDescriptor() const { return m_uavDescriptor; }
+
+	lib::SharedPtr<TextureView> AsShared() { return shared_from_this(); }
+
 private:
 
+	void CreateDescriptors(TextureViewDescriptorsAllocation externalDescriptorsAllocation);
+
 	lib::SharedRef<Texture> m_texture;
+
+	ResourceDescriptorHandle m_srvDescriptor;
+	ResourceDescriptorHandle m_uavDescriptor;
 };
 
 } // spt::rdr

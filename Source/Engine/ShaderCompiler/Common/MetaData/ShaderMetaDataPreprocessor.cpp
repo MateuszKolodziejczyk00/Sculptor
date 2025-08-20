@@ -98,6 +98,12 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessMainShaderFile
 
 	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
 
+	static const std::regex bindlessRegex(R"~(\[\[bindless\]\])~");
+	if (std::regex_search(sourceCode, bindlessRegex))
+	{
+		metaData.macroDefinitions.emplace_back("SPT_BINDLESS");
+	}
+
 	return metaData;
 }
 
@@ -134,6 +140,13 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 #if SPT_SHADERS_DEBUG_FEATURES
 	PreprocessShaderLiterals(sourceCode, OUT metaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+	static const std::regex bindlessRegex(R"~(\[\[bindless\]\])~");
+	if (std::regex_search(sourceCode, bindlessRegex))
+	{
+		metaData.SetBindless();
+		sourceCode = std::regex_replace(sourceCode, bindlessRegex, "");
+	}
 
 	return metaData;
 }

@@ -149,7 +149,7 @@ void SharcUpdateRTG()
 	}
 
 	uint hitsNum = 0u;
-	for(uint it = 0u; it < 3u; ++it)
+	for(uint it = 0u; it < 4u; ++it)
 	{
 
 		hitsNum++;

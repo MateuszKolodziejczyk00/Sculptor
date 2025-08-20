@@ -404,7 +404,6 @@ void CompilerImpl::PreprocessAdditionalCompilerArgs(const lib::String& shaderPat
 		const ShaderPreprocessingMetaData preprocessingMetaData = ShaderMetaDataPrerpocessor::PreprocessMainShaderFile(sourceCode);
 		applyMetaData(preprocessingMetaData, args);
 
-
 		if (ShaderCompilationEnvironment::ShouldGenerateDebugInfo() || preprocessingMetaData.forceDebugMode)
 		{
 			args.Append(lib::WString(L"-Zi"));

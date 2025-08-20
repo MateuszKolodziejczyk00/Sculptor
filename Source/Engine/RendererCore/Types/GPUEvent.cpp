@@ -1,4 +1,4 @@
-#include "Types/Event.h"
+#include "Types/GPUEvent.h"
 
 namespace spt::rdr
 {

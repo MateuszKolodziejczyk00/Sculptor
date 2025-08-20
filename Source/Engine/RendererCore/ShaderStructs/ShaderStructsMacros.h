@@ -410,6 +410,11 @@ public:
 	{
 		shader_translator::CopyCPPToHLSL(value, lib::Span<Byte>(Super::GetAddress(), s_size));
 	}
+
+	lib::Span<const Byte> GetHLSLDataSpan() const
+	{
+		return lib::Span<const Byte>(Super::GetAddress(), s_size);
+	}
 };
 
 } // spt::rdr

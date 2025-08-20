@@ -47,6 +47,8 @@ public:
 
 	const rhi::TextureDefinition&	GetDefinition() const;
 
+	Bool							HasUsage(rhi::ETextureUsage usage) const;
+
 	const math::Vector3u&			GetResolution() const;
 	math::Vector3u					GetMipResolution(Uint32 mipLevel) const;
 
@@ -62,7 +64,7 @@ public:
 	VkImage							GetHandle() const;
 
 	// Currently not threadsafe
-	Byte*                           MapPtr() const;
+	Byte*							MapPtr() const;
 	void							Unmap() const;
 
 	void							SetName(const lib::HashedString& name);

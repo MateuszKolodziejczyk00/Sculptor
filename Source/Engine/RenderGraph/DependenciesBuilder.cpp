@@ -1,5 +1,7 @@
 #include "DependenciesBuilder.h"
 #include "RenderGraphBuilder.h"
+#include "Types/Texture.h"
+
 
 namespace spt::rg
 {
@@ -20,6 +22,33 @@ void RGDependenciesBuilder::AddTextureAccess(const lib::SharedRef<rdr::TextureVi
 {
 	const RGTextureViewHandle rgTextureView = m_graphBuilder.AcquireExternalTextureView(texture.ToSharedPtr());
 	AddTextureAccess(rgTextureView, access, dependencyStages.pipelineStages);
+}
+
+void RGDependenciesBuilder::AddTextureAccess(rdr::ResourceDescriptorIdx textureDescriptor, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+{
+	if (textureDescriptor != rdr::invalidResourceDescriptorIdx)
+	{
+		const rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+
+		// try getting RG texture view that is associated with the descriptor
+		RGTextureViewHandle rgTextureView = reinterpret_cast<RGTextureView*>(descriptorManager.GetCustomDescriptorInfo(textureDescriptor));
+
+		// if the RG resource is not associated with the descriptor, try finding external texture view
+		if (!rgTextureView.IsValid())
+		{
+			rdr::TextureView* boundTexture = descriptorManager.GetTextureView(textureDescriptor);
+			SPT_CHECK(!!boundTexture);
+
+			const lib::SharedPtr<rdr::TextureView> textureView = boundTexture->AsShared();
+			SPT_CHECK(!!textureView);
+
+			rgTextureView = m_graphBuilder.AcquireExternalTextureView(textureView);
+		}
+
+		SPT_CHECK(rgTextureView.IsValid());
+
+		AddTextureAccess(rgTextureView, access, dependencyStages);
+	}
 }
 
 void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)

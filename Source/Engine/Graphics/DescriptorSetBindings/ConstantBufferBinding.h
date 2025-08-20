@@ -8,6 +8,7 @@
 #include "RendererSettings.h"
 #include "Renderer.h"
 #include "ShaderStructs/ShaderStructsMacros.h"
+#include "DependenciesBuilder.h"
 
 
 namespace spt::gfx
@@ -100,6 +101,11 @@ public:
 		}
 
 		return { rdr::ShaderBindingMetaData(isDynamicOffset ? rhi::EDescriptorType::UniformBufferDynamicOffset : rhi::EDescriptorType::UniformBuffer, flags) };
+	}
+
+	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
+	{
+		rg::CollectStructDependencies<TStruct>(GetImpl().GetHLSLDataSpan(), builder);
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>

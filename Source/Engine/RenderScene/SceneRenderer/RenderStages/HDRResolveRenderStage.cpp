@@ -20,6 +20,7 @@
 #include "SceneRenderer/Utils/AutomaticExposure.h"
 #include "Loaders/TextureLoader.h"
 #include "Paths.h"
+#include "Bindless/BindlessTypes.h"
 
 namespace spt::rsc
 {
@@ -428,24 +429,24 @@ namespace tonemapping
 {
 
 BEGIN_SHADER_STRUCT(TonemappingPassConstants)
-	SHADER_STRUCT_FIELD(math::Vector2f, bilateralGridUVPerPixel)
-	SHADER_STRUCT_FIELD(Bool,           enableColorDithering)
-	SHADER_STRUCT_FIELD(Real32,         minLogLuminance)
-	SHADER_STRUCT_FIELD(Real32,         logLuminanceRange)
-	SHADER_STRUCT_FIELD(Real32,         inverseLogLuminanceRange)
-	SHADER_STRUCT_FIELD(Real32,         contrastStrength)
-	SHADER_STRUCT_FIELD(Real32,         detailStrength)
-	SHADER_STRUCT_FIELD(Real32,         bilateralGridStrength)
+	SHADER_STRUCT_FIELD(math::Vector2f,                       bilateralGridUVPerPixel)
+	SHADER_STRUCT_FIELD(Bool,                                 enableColorDithering)
+	SHADER_STRUCT_FIELD(Real32,                               minLogLuminance)
+	SHADER_STRUCT_FIELD(Real32,                               logLuminanceRange)
+	SHADER_STRUCT_FIELD(Real32,                               inverseLogLuminanceRange)
+	SHADER_STRUCT_FIELD(Real32,                               contrastStrength)
+	SHADER_STRUCT_FIELD(Real32,                               detailStrength)
+	SHADER_STRUCT_FIELD(Real32,                               bilateralGridStrength)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, linearColor)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector2f>, luminanceBilateralGrid)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         logLuminance)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector3f>, tonemappingLUT)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, rwLDRTexture)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),								u_linearColorTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),								u_LDRTexture)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector2f>),								u_luminanceBilateralGridTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),										u_logLuminanceTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture3DBinding<math::Vector3f>),								u_tonemappingLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingConstants)
 DS_END();
 
@@ -457,36 +458,14 @@ static rdr::PipelineStateID CompileTonemappingPipeline()
 }
 
 
-struct TonemappingParameters
-{
-	rg::RGTextureViewHandle linearColorTexture;
-	rg::RGTextureViewHandle ldrTexture;
-	rg::RGTextureViewHandle luminanceBilateralGridTexture;
-	rg::RGTextureViewHandle logLuminanceTexture;
-	rg::RGTextureViewHandle tonemappingLUT;
-	TonemappingPassConstants tonemappingConstants;
-};
-
-
-static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingParameters& tonemappingParameters)
+static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingPassConstants& tonemappingConstants)
 {
 	SPT_PROFILER_FUNCTION();
-
-	SPT_CHECK(tonemappingParameters.linearColorTexture.IsValid());
-	SPT_CHECK(tonemappingParameters.ldrTexture.IsValid());
-	SPT_CHECK(tonemappingParameters.luminanceBilateralGridTexture.IsValid());
-	SPT_CHECK(tonemappingParameters.logLuminanceTexture.IsValid());
-	SPT_CHECK(tonemappingParameters.tonemappingLUT.IsValid());
 
 	const RenderView& renderView = viewSpec.GetRenderView();
 	
 	const lib::MTHandle<TonemappingDS> tonemappingDS = graphBuilder.CreateDescriptorSet<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
-	tonemappingDS->u_linearColorTexture            = tonemappingParameters.linearColorTexture;
-	tonemappingDS->u_LDRTexture                    = tonemappingParameters.ldrTexture;
-	tonemappingDS->u_luminanceBilateralGridTexture = tonemappingParameters.luminanceBilateralGridTexture;
-	tonemappingDS->u_logLuminanceTexture           = tonemappingParameters.logLuminanceTexture;
-	tonemappingDS->u_tonemappingLUT                = tonemappingParameters.tonemappingLUT;
-	tonemappingDS->u_tonemappingConstants          = tonemappingParameters.tonemappingConstants;
+	tonemappingDS->u_tonemappingConstants = tonemappingConstants;
 
 	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
 
@@ -622,16 +601,13 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingSettings.detailStrength           = params::detailStrength;
 	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
 	tonemappingSettings.bilateralGridUVPerPixel  = gridSize2D.cast<Real32>().cwiseInverse();
+	tonemappingSettings.linearColor              = linearColorTexture;
+	tonemappingSettings.luminanceBilateralGrid   = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
+	tonemappingSettings.logLuminance             = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
+	tonemappingSettings.tonemappingLUT           = m_tonemappingLUT;
+	tonemappingSettings.rwLDRTexture             = tonemappedTexture;
 
-	tonemapping::TonemappingParameters tonemappingParameters;
-	tonemappingParameters.linearColorTexture            = linearColorTexture;
-	tonemappingParameters.ldrTexture                    = tonemappedTexture;
-	tonemappingParameters.luminanceBilateralGridTexture = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
-	tonemappingParameters.logLuminanceTexture           = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
-	tonemappingParameters.tonemappingLUT                = graphBuilder.AcquireExternalTextureView(m_tonemappingLUT);
-	tonemappingParameters.tonemappingConstants          = tonemappingSettings;
-
-	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingParameters);
+	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingSettings);
 
 	viewContext.output = tonemappedTexture;
 	

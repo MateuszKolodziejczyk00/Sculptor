@@ -60,7 +60,7 @@ public:
 		}
 
 		return BuildBindingVariableCode(formatAnnotation + "RWTexture" + priv::GetTextureDimSuffix<dimensions>()
-										+ '<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + "> " + name, bindingIdx);
+										+ '<' + rdr::shader_translator::StructTranslator<TPixelFormatType>::GetHLSLStructName() + "> " + name, bindingIdx);
 	}
 	
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()

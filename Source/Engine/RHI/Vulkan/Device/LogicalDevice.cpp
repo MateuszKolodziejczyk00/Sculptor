@@ -126,6 +126,11 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	deviceInfoLinkedData.Append(computeShaderDerivativesFeatures);
 
+	VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptorTypeFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT };
+	mutableDescriptorTypeFeatures.mutableDescriptorType = VK_TRUE;
+
+	deviceInfoLinkedData.Append(mutableDescriptorTypeFeatures);
+
 #if SPT_ENABLE_NSIGHT_AFTERMATH
 	VkDeviceDiagnosticsConfigCreateInfoNV aftermathInfo{ VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV };
 
@@ -202,17 +207,27 @@ void LogicalDevice::CreateDevice(VkPhysicalDevice physicalDevice, const VkAlloca
 
 	vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProps);
 
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::Sampler)]                = static_cast<Uint32>(descriptorProps.samplerDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::CombinedTextureSampler)] = static_cast<Uint32>(descriptorProps.combinedImageSamplerDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::SampledTexture)]         = static_cast<Uint32>(descriptorProps.sampledImageDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageTexture)]         = static_cast<Uint32>(descriptorProps.storageImageDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::UniformTexelBuffer)]     = static_cast<Uint32>(descriptorProps.uniformTexelBufferDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageTexelBuffer)]     = static_cast<Uint32>(descriptorProps.storageTexelBufferDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::UniformBuffer)]          = static_cast<Uint32>(descriptorProps.uniformBufferDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::StorageBuffer)]          = static_cast<Uint32>(descriptorProps.storageBufferDescriptorSize);
-	m_descriptorProps.strides[static_cast<Uint32>(rhi::EDescriptorType::AccelerationStructure)]  = static_cast<Uint32>(descriptorProps.accelerationStructureDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::Sampler)]                = static_cast<Uint32>(descriptorProps.samplerDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::CombinedTextureSampler)] = static_cast<Uint32>(descriptorProps.combinedImageSamplerDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::SampledTexture)]         = static_cast<Uint32>(descriptorProps.sampledImageDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::StorageTexture)]         = static_cast<Uint32>(descriptorProps.storageImageDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::UniformTexelBuffer)]     = static_cast<Uint32>(descriptorProps.uniformTexelBufferDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::StorageTexelBuffer)]     = static_cast<Uint32>(descriptorProps.storageTexelBufferDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::UniformBuffer)]          = static_cast<Uint32>(descriptorProps.uniformBufferDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::StorageBuffer)]          = static_cast<Uint32>(descriptorProps.storageBufferDescriptorSize);
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::AccelerationStructure)]  = static_cast<Uint32>(descriptorProps.accelerationStructureDescriptorSize);
 
 	m_descriptorProps.descriptorsAlignment = static_cast<Uint32>(descriptorProps.descriptorBufferOffsetAlignment);
+
+	Uint32 mutableDescriptorSize = 0u;
+	mutableDescriptorSize = std::max(mutableDescriptorSize, m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::UniformBuffer)]);
+	mutableDescriptorSize = std::max(mutableDescriptorSize, m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::StorageBuffer)]);
+	mutableDescriptorSize = std::max(mutableDescriptorSize, m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::SampledTexture)]);
+	mutableDescriptorSize = std::max(mutableDescriptorSize, m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::StorageTexture)]);
+
+	SPT_CHECK(mutableDescriptorSize > 0u);
+
+	m_descriptorProps.sizes[static_cast<Uint32>(rhi::EDescriptorType::CBV_SRV_UAV)] = mutableDescriptorSize;
 }
 
 void LogicalDevice::Destroy(const VkAllocationCallbacks* allocator)

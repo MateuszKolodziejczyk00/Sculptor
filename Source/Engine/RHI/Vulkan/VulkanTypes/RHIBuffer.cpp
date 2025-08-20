@@ -256,7 +256,7 @@ void RHIBuffer::CopySRVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::UniformBuffer), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::UniformBuffer), dst);
 }
 
 void RHIBuffer::CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
@@ -276,7 +276,7 @@ void RHIBuffer::CopyUAVDescriptor(Uint64 offset, Uint64 range, Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::StorageBuffer), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::StorageBuffer), dst);
 }
 
 void RHIBuffer::CopyTLASDescriptor(Byte* dst) const
@@ -291,7 +291,7 @@ void RHIBuffer::CopyTLASDescriptor(Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::AccelerationStructure), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::AccelerationStructure), dst);
 }
 
 Uint64 RHIBuffer::GetSize() const

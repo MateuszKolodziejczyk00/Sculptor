@@ -18,11 +18,11 @@ struct CommandsRecordingInfo;
 class CommandRecorder;
 class ShadersManager;
 class PipelinesLibrary;
-class DescriptorSetsManager;
 class SamplersCache;
 class Window;
 class RenderContext;
 class DescriptorHeap;
+class DescriptorManager;
 
 
 using OnRendererCleanupDelegate = lib::ThreadSafeMulticastDelegate<void()>;
@@ -56,6 +56,7 @@ public:
 	static DeviceQueuesManager&					GetDeviceQueuesManager();
 
 	static DescriptorHeap&						GetDescriptorHeap();
+	static DescriptorManager&					GetDescriptorManager();
 
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
 	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);

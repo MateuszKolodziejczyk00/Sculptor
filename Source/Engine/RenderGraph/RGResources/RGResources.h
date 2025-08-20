@@ -13,6 +13,8 @@
 #include "RHICore/RHIShaderTypes.h"
 #include "Utility/Templates/TypeStorage.h"
 #include "RGResourceTypes.h"
+#include "Renderer.h"
+#include "Types/DescriptorSetState/DescriptorManager.h"
 
 
 namespace spt::rg
@@ -374,7 +376,9 @@ public:
 		: RGResource(resourceDefinition)
 		, m_texture(texture)
 		, m_viewDef(viewDefinition)
-	{ }
+	{
+		AllocateDescriptors();
+	}
 
 	RGTextureView(const RGResourceDef& resourceDefinition, RGTextureHandle texture, const lib::SharedRef<rdr::TextureView>& textureView)
 		: RGResource(resourceDefinition)
@@ -382,6 +386,19 @@ public:
 		, m_textureView(textureView)
 	{
 		SPT_CHECK(IsExternal());
+	}
+
+	~RGTextureView()
+	{
+		rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+		if (m_textureViewDescriptors.uavDescriptor.IsValid())
+		{
+			descriptorManager.FreeResourceDescriptor(std::move(m_textureViewDescriptors.uavDescriptor));
+		}
+		if (m_textureViewDescriptors.srvDescriptor.IsValid())
+		{
+			descriptorManager.FreeResourceDescriptor(std::move(m_textureViewDescriptors.srvDescriptor));
+		}
 	}
 
 	RGTextureHandle GetTexture() const
@@ -448,7 +465,7 @@ public:
 		return GetTexture()->GetAllocationInfo();
 	}
 
-	const lib::SharedPtr<rdr::TextureView>& GetViewInstance() const
+	const lib::SharedPtr<rdr::TextureView>& GetViewInstance()
 	{
 		if (!m_textureView)
 		{
@@ -457,6 +474,22 @@ public:
 
 		SPT_CHECK(!!m_textureView);
 		return m_textureView;
+	}
+
+	// Descriptors =========================================================
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = IsExternal() ? m_textureView->GetUAVDescriptor() : m_textureViewDescriptors.uavDescriptor;
+		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
+		return descriptor;
+	}
+
+	rdr::ResourceDescriptorIdx GetSRVDescriptor() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = IsExternal() ? m_textureView->GetSRVDescriptor() : m_textureViewDescriptors.srvDescriptor;
+		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
+		return descriptor;
 	}
 
 	// Texture Resource ====================================================
@@ -487,7 +520,21 @@ public:
 
 private:
 
-	lib::SharedPtr<rdr::TextureView> CreateView() const
+	void AllocateDescriptors()
+	{
+		if (!IsExternal())
+		{
+			rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+
+			m_textureViewDescriptors.srvDescriptor = descriptorManager.AllocateResourceDescriptor();
+			descriptorManager.SetCustomDescriptorInfo(m_textureViewDescriptors.srvDescriptor, this);
+
+			m_textureViewDescriptors.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+			descriptorManager.SetCustomDescriptorInfo(m_textureViewDescriptors.uavDescriptor, this);
+		}
+	}
+
+	lib::SharedPtr<rdr::TextureView> CreateView()
 	{
 		SPT_CHECK(m_texture.IsValid());
 		SPT_CHECK(m_texture->IsAcquired());
@@ -495,7 +542,7 @@ private:
 		const lib::SharedPtr<rdr::Texture>& textureInstance = m_texture->GetResource();
 		SPT_CHECK(!!textureInstance);
 
-		return textureInstance->CreateView(RENDERER_RESOURCE_NAME(GetName()), GetViewDefinition());
+		return textureInstance->CreateView(RENDERER_RESOURCE_NAME(GetName()), GetViewDefinition(), std::move(m_textureViewDescriptors));
 	}
 
 	const rhi::TextureViewDefinition& GetViewDefinition() const
@@ -508,6 +555,8 @@ private:
 	rhi::TextureViewDefinition	m_viewDef;
 
 	mutable lib::SharedPtr<rdr::TextureView> m_textureView;
+
+	rdr::TextureViewDescriptorsAllocation m_textureViewDescriptors;
 };
 
 

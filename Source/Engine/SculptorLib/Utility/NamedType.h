@@ -10,23 +10,23 @@ public:
 
 	using DataType = TType;
 
-	NamedType()
+	constexpr NamedType()
 		: value{}
 	{}
 
-	NamedType(const NamedType& inValue)
+	constexpr NamedType(const NamedType& inValue)
 		: value(inValue.value)
 	{}
 
-	NamedType(NamedType&& inValue)
+	constexpr NamedType(NamedType&& inValue)
 		: value(std::move(inValue.value))
 	{}
 
-	explicit NamedType(const TType& inValue)
+	constexpr explicit NamedType(const TType& inValue)
 		: value(inValue)
 	{}
 
-	explicit NamedType(TType&& inValue)
+	constexpr explicit NamedType(TType&& inValue)
 		: value(std::move(inValue))
 	{}
 
@@ -40,6 +40,16 @@ public:
 	{
 		value = std::move(inValue.value);
 		return *this;
+	}
+
+	Bool operator==(const NamedType& inValue) const
+	{
+		return value == inValue.value;
+	}
+
+	Bool operator!=(const NamedType& inValue) const
+	{
+		return value != inValue.value;
 	}
 
 	TType& Get()
@@ -62,7 +72,7 @@ public:
 		return value;
 	}
 
-private:
+protected:
 
 	TType value;
 };

@@ -577,4 +577,37 @@ inline Bool IsIntegerFormat(EFragmentFormat format)
 	}
 }
 
+inline rhi::ETextureType GetSelectedTextureType(const rhi::TextureDefinition& definition)
+{
+	switch (definition.type)
+	{
+	case ETextureType::Texture1D:
+	case ETextureType::Texture2D:
+	case ETextureType::Texture3D:
+		return definition.type;
+
+	case ETextureType::Auto:
+		{
+			const math::Vector3u resolution = definition.resolution.AsVector();
+			if (resolution.z() > 1u)
+			{
+				return ETextureType::Texture3D;
+			}
+			else if (resolution.y() > 1u)
+			{
+				return ETextureType::Texture2D;
+			}
+			else
+			{
+				return ETextureType::Texture1D;
+			}
+		}
+		break;
+	default:
+
+		SPT_CHECK_NO_ENTRY();
+		return ETextureType::Auto;
+	}
+}
+
 } // spt::rhi

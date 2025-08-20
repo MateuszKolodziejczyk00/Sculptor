@@ -145,6 +145,14 @@ public:
 		return m_data + (index * m_stride);
 	}
 
+	Uint32 GetSize() const { return m_elementsNum; }
+
+	Uint32 GetDescriptorSize() const
+	{
+		SPT_CHECK(m_stride > 0);
+		return m_stride;
+	}
+
 private:
 
 	Byte*  m_data;
@@ -157,7 +165,7 @@ class DescriptorSetIndexer
 {
 public:
 
-	DescriptorSetIndexer(lib::Span<Byte> descriptorsData, DescriptorSetLayout& layout)
+	DescriptorSetIndexer(lib::Span<Byte> descriptorsData, const DescriptorSetLayout& layout)
 		: m_descriptorsData(descriptorsData)
 		, m_layout(layout)
 		, m_baseBindingIdx(0)
@@ -184,7 +192,7 @@ public:
 		const DescriptorBindingInfo bindingInfo = m_layout.GetBindingInfo(binding);
 
 		const Uint32 elementsNum = bindingInfo.arraySize;
-		const Uint32 stride      = descriptorProps.StrideFor(bindingInfo.descriptorType);
+		const Uint32 stride      = descriptorProps.SizeOf(bindingInfo.descriptorType);
 
 		SPT_CHECK(descriptorsOffset + (elementsNum * stride) <= m_descriptorsData.size());
 
@@ -197,9 +205,9 @@ public:
 
 private:
 
-	lib::Span<Byte>      m_descriptorsData;
-	DescriptorSetLayout& m_layout;
-	Uint32               m_baseBindingIdx = 0;
+	lib::Span<Byte>            m_descriptorsData;
+	const DescriptorSetLayout& m_layout;
+	Uint32                     m_baseBindingIdx = 0;
 };
 
 

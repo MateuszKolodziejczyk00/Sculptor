@@ -222,7 +222,7 @@ const
 		SPT_STATIC_CHECK(SPT_SINGLE_ARG(resourceType != priv::ETextureResourceType::RWTexture || std::is_same_v<TPixelFormatType, math::Vector4f>));
 
 		return BuildBindingVariableCode(GetTextureTypeString() + priv::GetTextureDimSuffix<dimensions>() + 
-										'<' + rdr::shader_translator::GetShaderTypeName<TPixelFormatType>() + '>'
+										'<' + rdr::shader_translator::StructTranslator<TPixelFormatType>::GetHLSLStructName() + '>'
 										+ ' ' + name + '[' + arraySizeNumber + ']', bindingIdx);
 	}
 

@@ -98,7 +98,7 @@ void RHISampler::CopyDescriptor(Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::Sampler), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::Sampler), dst);
 }
 
 VkSampler RHISampler::GetHandle() const

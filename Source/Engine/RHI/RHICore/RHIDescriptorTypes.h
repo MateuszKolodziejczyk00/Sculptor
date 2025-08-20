@@ -22,6 +22,7 @@ enum class EDescriptorType
 	UniformBufferDynamicOffset,
 	StorageBufferDynamicOffset,
 	AccelerationStructure,
+	CBV_SRV_UAV,
 	Num
 };
 
@@ -35,7 +36,7 @@ enum class EDescriptorSetBindingFlags : Flags32
 
 enum class EDescriptorSetFlags
 {
-	None						= 0
+	None = 0
 };
 
 
@@ -57,12 +58,12 @@ struct DescriptorProps
 {
 	static constexpr Uint32 s_descriptorTypesNum = static_cast<Uint32>(EDescriptorType::Num);
 
-	Uint32 StrideFor(EDescriptorType type) const
+	Uint32 SizeOf(EDescriptorType type) const
 	{
-		return strides[static_cast<Uint32>(type)];
+		return sizes[static_cast<Uint32>(type)];
 	}
 
-	lib::StaticArray<Uint32, s_descriptorTypesNum> strides = {};
+	lib::StaticArray<Uint32, s_descriptorTypesNum> sizes = {};
 
 	Uint32 descriptorsAlignment = 0u;
 };

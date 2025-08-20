@@ -48,7 +48,7 @@
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
 #endif // SPT_SHADERS_DEBUG_FEATURES
-
+#pragma optimize("", off)
 namespace spt::ed
 {
 
@@ -146,7 +146,7 @@ void SandboxRenderer::UpdatePreRender(engn::FrameContext& frame)
 		sunAngleYaw   = pi<Real32> * 0.5f;
 		sunAnglePitch = std::fmodf(engn::Engine::Get().GetTime() * sunMovementSpeed, 2.f * pi<Real32>);
 		sunAngleDirty = true;
-}
+	}
 
 	if (sunAngleDirty)
 	{
@@ -243,7 +243,6 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 	SPT_CHECK(sceneRenderingResultTextureView.IsValid());
 
 	const rg::RGTextureViewHandle sceneUItextureView = graphBuilder.AcquireExternalTextureView(output);
-
 
 	if (m_wantsToCreateScreenshot)
 	{
@@ -442,7 +441,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
+			pointLightData.luminousPower = 00.f;
 			pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -452,7 +451,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
+			pointLightData.luminousPower = 00.f;
 			pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -462,7 +461,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
+			pointLightData.luminousPower = 00.f;
 			pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -472,9 +471,10 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 3200.f;
-			pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
-			pointLightData.radius = 5.f;
+			pointLightData.luminousPower = 00.f;
+			//pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
+			pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
+			pointLightData.radius = 8.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
 		}
 
@@ -482,11 +482,16 @@ void SandboxRenderer::InitializeRenderScene()
 			m_directionalLightEntity = m_renderScene->CreateEntity();
 			rsc::DirectionalLightData directionalLightData;
 			directionalLightData.color                  = math::Vector3f(1.f, 0.956f, 0.839f);
+			//directionalLightData.color                  = math::Vector3f::Constant(1.f);
 			directionalLightData.zenithIlluminance      = 120000.f;
+			//directionalLightData.color                  = math::Vector3f(0.667f, 0.725f, 0.0784f);
+			//directionalLightData.color                  = math::Vector3f(0.3f, 0.3f, 0.35f);
+			//directionalLightData.zenithIlluminance      = 0.1f;
 			directionalLightData.direction              = math::Vector3f(-0.5f, -0.3f, -1.7f).normalized();
 			directionalLightData.lightConeAngle         = 0.0046f;
 			directionalLightData.sunDiskAngleMultiplier = 3.8f;
 			directionalLightData.sunDiskEC              = 10.f;
+			//directionalLightData.sunDiskEC              = 0.4f;
 			m_directionalLightEntity.emplace<rsc::DirectionalLightData>(directionalLightData);
 		}
 	}

@@ -16,6 +16,7 @@
 #include "EngineFrame.h"
 #include "JobSystem.h"
 #include "ResourcesManager.h"
+#include "Types/DescriptorSetState/DescriptorManager.h"
 
 
 namespace spt::rdr
@@ -41,6 +42,8 @@ GPUReleaseQueue releasesQueue;
 
 lib::SharedPtr<DescriptorHeap> descriptorHeap;
 
+lib::UniquePtr<DescriptorManager> descriptorsManager;
+
 };
 
 static RendererData g_data;
@@ -56,6 +59,8 @@ void Renderer::Initialize()
 	const Uint64 descriptorsBufferSize = 1024u * 1024u * 32u;
 	priv::g_data.descriptorHeap = ResourcesManager::CreateDescriptorHeap(RENDERER_RESOURCE_NAME("Renderer Descriptor Heap"),
 																		 rhi::DescriptorHeapDefinition{ .size = descriptorsBufferSize });
+
+	priv::g_data.descriptorsManager = std::make_unique<DescriptorManager>(*priv::g_data.descriptorHeap);
 
 	GetShadersManager().Initialize();
 
@@ -87,6 +92,8 @@ void Renderer::Uninitialize()
 	GetShadersManager().Uninitialize();
 
 	ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags::Immediate);
+
+	priv::g_data.descriptorsManager.reset();
 
 	priv::g_data.descriptorHeap.reset();
 
@@ -129,6 +136,13 @@ DeviceQueuesManager& Renderer::GetDeviceQueuesManager()
 DescriptorHeap& Renderer::GetDescriptorHeap()
 {
 	return *priv::g_data.descriptorHeap;
+}
+
+DescriptorManager& Renderer::GetDescriptorManager()
+{
+	SPT_CHECK(!!priv::g_data.descriptorsManager);
+
+	return *priv::g_data.descriptorsManager;
 }
 
 void Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry)

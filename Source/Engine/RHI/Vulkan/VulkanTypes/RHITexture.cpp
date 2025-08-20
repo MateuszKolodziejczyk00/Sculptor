@@ -19,40 +19,6 @@ namespace spt::vulkan
 namespace priv
 {
 
-static rhi::ETextureType SelectValidTextureType(const rhi::TextureDefinition& definition)
-{
-	switch (definition.type)
-	{
-	case rhi::ETextureType::Texture1D:
-	case rhi::ETextureType::Texture2D:
-	case rhi::ETextureType::Texture3D:
-		return definition.type;
-
-	case rhi::ETextureType::Auto:
-		{
-			const math::Vector3u resolution = definition.resolution.AsVector();
-			if (resolution.z() > 1u)
-			{
-				return rhi::ETextureType::Texture3D;
-			}
-			else if (resolution.y() > 1u)
-			{
-				return rhi::ETextureType::Texture2D;
-			}
-			else
-			{
-				return rhi::ETextureType::Texture1D;
-			}
-		}
-		break;
-	default:
-
-		SPT_CHECK_NO_ENTRY();
-	}
-
-	return rhi::ETextureType::Auto;
-}
-
 static VkImageType GetVulkanImageType(rhi::ETextureType type)
 {
 	switch (type)
@@ -343,7 +309,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, VkImage
 	m_definition       = definition;
 	m_allocationHandle = rhi::RHIExternalAllocation();
 
-	m_type = priv::SelectValidTextureType(definition);
+	m_type = rhi::GetSelectedTextureType(definition);
 	SPT_CHECK(m_type != rhi::ETextureType::Auto);
 
 	m_allocationInfo.memoryUsage = memoryUsage;
@@ -362,7 +328,7 @@ void RHITexture::InitializeRHI(const rhi::TextureDefinition& definition, const r
 	SPT_CHECK(resolution.y() > 0);
 	SPT_CHECK(resolution.z() > 0);
 
-	m_type = priv::SelectValidTextureType(definition);
+	m_type = rhi::GetSelectedTextureType(definition);
 	SPT_CHECK(m_type != rhi::ETextureType::Auto);
 
 	VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -468,6 +434,11 @@ rhi::RHIMemoryRequirements RHITexture::GetMemoryRequirements() const
 const rhi::TextureDefinition& RHITexture::GetDefinition() const
 {
 	return m_definition;
+}
+
+Bool RHITexture::HasUsage(rhi::ETextureUsage usage) const
+{
+	return lib::HasAllFlags(GetDefinition().usage, usage);
 }
 
 const math::Vector3u& RHITexture::GetResolution() const
@@ -812,7 +783,7 @@ void RHITextureView::CopyUAVDescriptor(Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::StorageTexture), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::StorageTexture), dst);
 }
 
 void RHITextureView::CopySRVDescriptor(Byte* dst) const
@@ -829,7 +800,7 @@ void RHITextureView::CopySRVDescriptor(Byte* dst) const
 
 	const LogicalDevice& device = VulkanRHI::GetLogicalDevice();
 
-	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().StrideFor(rhi::EDescriptorType::SampledTexture), dst);
+	vkGetDescriptorEXT(device.GetHandle(), &info, device.GetDescriptorProps().SizeOf(rhi::EDescriptorType::SampledTexture), dst);
 }
 
 const RHITexture* RHITextureView::GetTexture() const

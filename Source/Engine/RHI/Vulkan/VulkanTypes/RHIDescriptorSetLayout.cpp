@@ -1,6 +1,7 @@
 #include "RHIDescriptorSetLayout.h"
-#include "../VulkanRHIUtils.h"
-#include "../VulkanRHI.h"
+#include "Vulkan/VulkanRHIUtils.h"
+#include "Vulkan/VulkanRHI.h"
+#include "Vulkan/VulkanUtils.h"
 
 
 namespace spt::vulkan
@@ -29,9 +30,18 @@ RHIDescriptorSetLayout::RHIDescriptorSetLayout()
 void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& def)
 {
 	SPT_PROFILER_FUNCTION();
-	
+
+	const lib::StaticArray<VkDescriptorType, 4u> cbvSrvUavDescriptorTypes
+	{
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+	};
+
 	lib::DynamicArray<VkDescriptorSetLayoutBinding> bindingsInfos;
 	lib::DynamicArray<VkDescriptorBindingFlags> bindingsFlags;
+	lib::DynamicArray<VkMutableDescriptorTypeListEXT> bindingsMutableDescriptorTypes;
 	bindingsInfos.reserve(def.bindings.size());
 	bindingsFlags.reserve(def.bindings.size());
 
@@ -72,21 +82,39 @@ void RHIDescriptorSetLayout::InitializeRHI(const rhi::DescriptorSetDefinition& d
 
 		const VkDescriptorBindingFlags bindingFlags = RHIToVulkan::GetBindingFlags(bindingDef.flags);
 
+		if (bindingDef.descriptorType == rhi::EDescriptorType::CBV_SRV_UAV)
+		{
+			const Uint32 bindingInfoIdx = static_cast<Uint32>(bindingsInfos.size());
+
+			bindingsMutableDescriptorTypes.resize(bindingInfoIdx + 1u);
+
+			bindingsMutableDescriptorTypes[bindingInfoIdx].descriptorTypeCount = static_cast<Uint32>(cbvSrvUavDescriptorTypes.size());
+			bindingsMutableDescriptorTypes[bindingInfoIdx].pDescriptorTypes    = cbvSrvUavDescriptorTypes.data();
+		}
+
 		bindingsInfos.emplace_back(bindingInfo);
 		bindingsFlags.emplace_back(bindingFlags);
 	}
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	layoutInfo.flags        = RHIToVulkan::GetDescriptorSetFlags(def.flags);
+	layoutInfo.bindingCount = static_cast<Uint32>(bindingsInfos.size());
+	layoutInfo.pBindings    = bindingsInfos.data();
+	layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+	VulkanStructsLinkedList layoutLinkedData(layoutInfo);
 
 	VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
 	bindingFlagsInfo.bindingCount  = static_cast<Uint32>(bindingsFlags.size());
 	bindingFlagsInfo.pBindingFlags = bindingsFlags.data();
 
-	VkDescriptorSetLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	layoutInfo.pNext        = &bindingFlagsInfo;
-	layoutInfo.flags        = RHIToVulkan::GetDescriptorSetFlags(def.flags);
-	layoutInfo.bindingCount = static_cast<Uint32>(bindingsInfos.size());
-	layoutInfo.pBindings    = bindingsInfos.data();
+	layoutLinkedData.Append(bindingFlagsInfo);
 
-	layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+	VkMutableDescriptorTypeCreateInfoEXT mutableDescriptorTypeInfo{ VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT };
+	mutableDescriptorTypeInfo.mutableDescriptorTypeListCount = static_cast<Uint32>(bindingsMutableDescriptorTypes.size());
+	mutableDescriptorTypeInfo.pMutableDescriptorTypeLists    = bindingsMutableDescriptorTypes.data();
+
+	layoutLinkedData.Append(mutableDescriptorTypeInfo);
 
 	SPT_VK_CHECK(vkCreateDescriptorSetLayout(VulkanRHI::GetDeviceHandle(), &layoutInfo, VulkanRHI::GetAllocationCallbacks(), &m_handle));
 }
