@@ -176,13 +176,9 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 {
 	SPT_PROFILER_FUNCTION();
 
+	ImGuiIO& imGuiIO = ImGui::GetIO();
+
 	const rdr::SwapchainTextureHandle swapchainTexture = AcquireSwapchainTexture(frame);
-	if (!swapchainTexture.IsValid())
-	{
-		// skip frame
-		frame.BeginAdvancingStages();
-		return js::Event();
-	}
 
 	const js::Event uiFinishedEvent = js::CreateEvent("UI FinishedEvent", frame.GetStageFinishedEvent(engn::EFrameStage::UI));
 
@@ -203,27 +199,18 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 													   },
 													   js::JobDef().ExecuteBefore(frame.GetStageFinishedEvent(engn::EFrameStage::UpdatingEnd)));
 
-	ImGuiIO& imGuiIO = ImGui::GetIO();
 	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
 		recordUICommandsJob.Wait();
 
-		// Flush previous frames if we need to close any window
-		const ImGuiContext* context = ImGui::GetCurrentContext();
-		for (int i = 1; i < context->Viewports.Size; i++)
-		{
-			ImGuiViewportP* viewport = context->Viewports[i];
-			ImGuiWindow* window = viewport->Window;
-			if (window && (!window->Active || window->Hidden))
-			{
-				frame.FlushPreviousFrames();
-				rdr::Renderer::WaitIdle(true);
-				break;
-			}
-		}
-
 		// This has to be called from main thread
-		ImGui::UpdatePlatformWindows();
+		ImGui::UpdatePlatformWindows([](void* userData)
+									 {
+										 EditorFrameContext* frame = static_cast<EditorFrameContext*>(userData);
+										 frame->FlushPreviousFrames();
+										 rdr::Renderer::WaitIdle(true);
+									 },
+									 &frame);
 	}
 
 	js::Event readyForPresentEvent = js::CreateEvent("ReadyForPresentEvent", frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow));
@@ -320,10 +307,9 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 	rdr::Renderer::WaitIdle();
 #endif // WITH_NSIGHT_CRASH_FIX
 
-	if (!swapchainTextureHandle.IsValid() || m_window->IsSwapchainOutOfDate())
-	{
-		return;
-	}
+	// We want to submit cmd list even if we can't present anything, even if that cmd list is empty
+	// this allows signaling fence and it generally simplifies frame management
+	const Bool canPresent = swapchainTextureHandle.IsValid() && !m_window->IsSwapchainOutOfDate();
 
 	const lib::SharedPtr<rdr::Texture> swapchainTexture = m_window->GetSwapchainTexture(swapchainTextureHandle);
 
@@ -334,6 +320,7 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 																								 renderContext,
 																								 cmdBufferDef);
 
+	if (canPresent)
 	{
 		rhi::TextureViewDefinition viewDefinition;
 		viewDefinition.subresourceRange = rhi::TextureSubresourceRange(rhi::ETextureAspect::Color);
@@ -393,7 +380,10 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 	const lib::SharedRef<rdr::GPUWorkload> workload = recorder->FinishRecording();
 
-	workload->GetWaitSemaphores().AddBinarySemaphore(swapchainTextureHandle.GetAcquireSemaphore(), rhi::EPipelineStage::TopOfPipe);
+	if (canPresent)
+	{
+		workload->GetWaitSemaphores().AddBinarySemaphore(swapchainTextureHandle.GetAcquireSemaphore(), rhi::EPipelineStage::TopOfPipe);
+	}
 
 	const lib::SharedRef<rdr::Semaphore> uiFinishedSemaphore = workload->AddBinarySignalSemaphore(RENDERER_RESOURCE_NAME("UI Finished Semaphore"), rhi::EPipelineStage::ALL_COMMANDS);
 
@@ -401,7 +391,10 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 	frame.SetFrameFinishedOnGPUWaitable(lib::MakeShared<rdr::GPUWaitableEvent>(workload));
 
-	rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
+	if (canPresent)
+	{
+		rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
+	}
 }
 
 } // spt::ed
