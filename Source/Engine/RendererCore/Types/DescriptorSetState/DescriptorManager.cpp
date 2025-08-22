@@ -5,6 +5,7 @@
 #include "ResourcesManager.h"
 #include "DescriptorSetStateTypes.h"
 #include "Types/Texture.h"
+#include "Types/Buffer.h"
 
 
 namespace spt::rdr
@@ -168,6 +169,42 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	textureView.GetRHI().CopyUAVDescriptor(descriptorData.data());
 
 	m_resourceDescriptorInfos[idx].Encode(&textureView);
+}
+
+void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range)
+{
+	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
+
+	SPT_CHECK(lib::HasAnyFlag(buffer.GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
+
+#if SPT_DESCRIPTOR_MANAGER_DEBUG
+	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
+	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+#endif // SPT_DESCRIPTOR_MANAGER_DEBUG
+
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+
+	buffer.GetRHI().CopySRVDescriptor(offset, range, descriptorData.data());
+
+	m_resourceDescriptorInfos[idx].Encode(&buffer);
+}
+
+void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range)
+{
+	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
+
+	SPT_CHECK(lib::HasAnyFlag(buffer.GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
+
+#if SPT_DESCRIPTOR_MANAGER_DEBUG
+	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
+	m_resourceDescriptorInfos[idx].resourceName = textureView.GetRHI().GetName();
+#endif // SPT_DESCRIPTOR_MANAGER_DEBUG
+
+	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
+
+	buffer.GetRHI().CopyUAVDescriptor(offset, range, descriptorData.data());
+
+	m_resourceDescriptorInfos[idx].Encode(&buffer);
 }
 
 void DescriptorManager::SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr)

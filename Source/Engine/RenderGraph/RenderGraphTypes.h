@@ -59,8 +59,8 @@ private:
 
 #else
 
-#define RG_DEBUG_NAME(name)
-#define RG_DEBUG_NAME_FORMATTED(...)
+#define RG_DEBUG_NAME(name) spt::rg::RenderGraphDebugName()
+#define RG_DEBUG_NAME_FORMATTED(...) spt::rg::RenderGraphDebugName()
 
 #endif // DEBUG_RENDER_GRAPH
 

@@ -5,7 +5,9 @@ function RenderGraph:SetupConfiguration(configuration, platform)
 
 	self:AddPrivateDependency("EngineCore")
 
-    self:AddPublicDefine("DEBUG_RENDER_GRAPH=1")
+    if configuration ~= EConfiguration.Release then
+        self:AddPublicDefine("DEBUG_RENDER_GRAPH=1")
+    end
 end
 
 RenderGraph:SetupProject()

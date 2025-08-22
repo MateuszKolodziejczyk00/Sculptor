@@ -153,6 +153,9 @@ public:
 	void UploadSRVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 	void UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 
+	void UploadSRVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range);
+	void UploadUAVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range);
+
 	void SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr);
 
 	void ClearDescriptorInfo(ResourceDescriptorIdx idx);

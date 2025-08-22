@@ -60,6 +60,7 @@ ERenderGraphNodeType RGNode::GetType() const
 	return m_type;
 }
 
+#if DEBUG_RENDER_GRAPH
 void RGNode::SetDebugMetaData(RGNodeDebugMetaData metaData)
 {
 	m_debugMetaData = std::move(metaData);
@@ -69,6 +70,7 @@ const RGNodeDebugMetaData& RGNode::GetDebugMetaData() const
 {
 	return m_debugMetaData;
 }
+#endif // DEBUG_RENDER_GRAPH
 
 #if RG_ENABLE_DIAGNOSTICS
 void RGNode::SetDiagnosticsRecord(RGDiagnosticsRecord record)
