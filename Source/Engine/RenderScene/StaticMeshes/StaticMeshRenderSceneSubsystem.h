@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderSceneSubsystem.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RenderSceneRegistry.h"
 #include "ECSRegistry.h"
 #include "RGDescriptorSetState.h"

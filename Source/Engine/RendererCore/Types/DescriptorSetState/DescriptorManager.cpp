@@ -249,8 +249,7 @@ void* DescriptorManager::GetCustomDescriptorInfo(ResourceDescriptorIdx idx) cons
 
 lib::SharedPtr<DescriptorSetLayout> DescriptorManager::CreateBindlessLayout() const
 {
-	//constexpr Uint64 descriptorsNum = 1024u * 128u;
-	constexpr Uint64 descriptorsNum = 4096;
+	constexpr Uint64 descriptorsNum = 1024u * 128u;
 
 	rhi::DescriptorSetBindingDefinition resourcesBinding;
 	resourcesBinding.bindingIdx      = 0u;

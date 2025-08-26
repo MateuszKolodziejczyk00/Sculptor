@@ -6,6 +6,7 @@
 #include "RendererUtils.h"
 #include "Containers/Queue.h"
 #include "Job.h"
+#include "Types/Window.h"
 
 #include <semaphore>
 
@@ -109,6 +110,8 @@ public:
 
 	void SubmitGPUWorkload(WorkloadSubmitDefinition&& definition);
 
+	void Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+
 private:
 
 	const rhi::RHICommandBuffer& GetCommandBuffer(const GPUWorkload& workload) const;
@@ -171,6 +174,8 @@ public:
 	void Uninitialize();
 
 	void Submit(const lib::SharedRef<GPUWorkload>& workload, EGPUWorkloadSubmitFlags flags = EGPUWorkloadSubmitFlags::Default);
+
+	void Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	void FlushSubmittedWorkloads();
 

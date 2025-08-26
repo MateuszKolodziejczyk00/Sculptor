@@ -4,7 +4,7 @@
 #include "View/ViewRenderingSpec.h"
 #include "View/RenderView.h"
 #include "ResourcesManager.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "Transfers/UploadUtils.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"

@@ -5,6 +5,7 @@
 #include "UITypes.h"
 #include "ImGui/DockStack.h"
 #include "Utils/FilterText.h"
+#include "TextureInspector/TextureInspector.h"
 
 
 namespace spt::rdr
@@ -17,8 +18,9 @@ namespace spt::rg::capture
 {
 
 struct RGCapture;
-struct RGNodeCapture;
-struct RGTextureCapture;
+struct CapturedPass;
+struct CapturedTextureBinding;
+struct CapturedBufferBinding;
 struct RGCapturedComputeProperties;
 
 
@@ -30,7 +32,7 @@ protected:
 
 public:
 
-	RGNodeCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGNodeCapture& node);
+	RGNodeCaptureViewer(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const CapturedPass& node);
 
 	// Begin UIView overrides
 	virtual void             BuildDefaultLayout(ImGuiID dockspaceID) override;
@@ -38,21 +40,27 @@ public:
 	virtual ImGuiWindowFlags GetWindowFlags() const override;
 	// End UIView overrides
 
+	const RGCapture&    GetCapture() const      { return *m_capture; }
+	const CapturedPass& GetCapturedPass() const { return m_capturedPass; }
+
+	void OpenTextureCapture(const CapturedTextureBinding& textureBinding);
+	void OpenTextureCapture(const TextureInspectParams& inspectParams);
+	void OpenBufferCapture(const CapturedBufferBinding& bufferBinding);
+
 private:
 
-	void DrawNodeDetails(const RGNodeCapture& node);
+	void DrawNodeDetails(const CapturedPass& pass);
 
-	void DrawNodeProperties(const RGNodeCapture& node);
+	void DrawNodeProperties(const CapturedPass& node);
 	void DrawNodeComputeProperties(const RGCapturedComputeProperties& properties);
 
-	void OpenTextureCapture(const RGTextureCapture& textureCapture);
 
 	lib::HashedString m_nodeDetailsPanelName;
 	lib::HashedString m_nodePropertiesPanelName;
 
-	ui::DockStack m_textureInspectorsStack;
+	ui::DockStack m_inspectorsStack;
 
-	const RGNodeCapture& m_capturedNode;
+	const CapturedPass& m_capturedPass;
 
 	lib::SharedRef<RGCapture> m_capture;
 };

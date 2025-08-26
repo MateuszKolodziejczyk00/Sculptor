@@ -4,7 +4,7 @@
 #include "SculptorCoreTypes.h"
 #include "RGResources/RGResourceHandles.h"
 #include "VariableRateTexture.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 

@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RenderSceneRegistry.h"
 #include "RHICore/RHITextureTypes.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 
 namespace spt::rdr

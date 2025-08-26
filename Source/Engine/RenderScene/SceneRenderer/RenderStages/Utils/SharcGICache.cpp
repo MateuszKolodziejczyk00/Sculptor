@@ -1,7 +1,7 @@
 #include "SharcGICache.h"
 #include "ResourcesManager.h"
 #include "Types/Buffer.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"

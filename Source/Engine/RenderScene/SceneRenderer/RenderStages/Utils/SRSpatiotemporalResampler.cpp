@@ -1,7 +1,7 @@
 #include "SRSpatiotemporalResampler.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"

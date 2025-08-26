@@ -70,9 +70,15 @@ void SculptorEdApplication::OnRun()
 	IMGUI_CHECKVERSION();
 	uiContext = ImGui::CreateContext();
 
+	const Bool enableViewports = false;
+
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 	imGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	if (enableViewports)
+	{
+		imGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	}
+
 	imGuiIO.IniFilename = engn::Paths::GetImGuiConfigPath().data();
 
 	m_window->InitializeUI(uiContext);
@@ -178,8 +184,7 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 
 	ImGuiIO& imGuiIO = ImGui::GetIO();
 
-	const rdr::SwapchainTextureHandle swapchainTexture = AcquireSwapchainTexture(frame);
-
+	// Wrap this function in UI stage
 	const js::Event uiFinishedEvent = js::CreateEvent("UI FinishedEvent", frame.GetStageFinishedEvent(engn::EFrameStage::UI));
 
 	//const Bool isFocused = m_window->IsFocused();
@@ -216,8 +221,9 @@ js::Event SculptorEdApplication::ExecuteFrame(EditorFrameContext& frame)
 	js::Event readyForPresentEvent = js::CreateEvent("ReadyForPresentEvent", frame.GetStageFinishedEvent(engn::EFrameStage::RenderWindow));
 
 	js::Job renderWindowJob = js::Launch(SPT_GENERIC_JOB_NAME,
-										 [this, &frame, swapchainTexture, recordUICommandsJob]
+										 [this, &frame, recordUICommandsJob]
 										 {
+											 const rdr::SwapchainTextureHandle swapchainTexture = AcquireSwapchainTexture(frame);
 											 const auto [uiRenderContext, uiCommandsWorkload] = recordUICommandsJob.GetResult();
 											 RenderFrame(frame, swapchainTexture, uiCommandsWorkload);
 										 },
@@ -251,9 +257,10 @@ std::pair<lib::SharedRef<rdr::RenderContext>, lib::SharedRef<rdr::GPUWorkload>> 
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("UI Render Context"), rhi::ContextDefinition());
 
 	ImGui::Render();
+
+	const lib::SharedRef<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("UI Render Context"), rhi::ContextDefinition());
 
 	rhi::RenderingInheritanceDefinition renderingInheritanceDef;
 	renderingInheritanceDef.colorRTFormats.emplace_back(rtFormat);
@@ -393,7 +400,7 @@ void SculptorEdApplication::RenderFrame(EditorFrameContext& frame, rdr::Swapchai
 
 	if (canPresent)
 	{
-		rdr::Renderer::PresentTexture(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
+		rdr::Renderer::GetDeviceQueuesManager().Present(lib::ToSharedRef(m_window), swapchainTextureHandle, { uiFinishedSemaphore });
 	}
 }
 

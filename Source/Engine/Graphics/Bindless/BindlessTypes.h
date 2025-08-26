@@ -104,11 +104,11 @@ public:
 
 			if constexpr (metadata.isUAV)
 			{
-				return textureView->GetUAVDescriptor();
+				return textureView->GetUAVDescriptorChecked();
 			}
 			else
 			{
-				return textureView->GetSRVDescriptor();
+				return textureView->GetSRVDescriptorChecked();
 			}
 		}
 	}

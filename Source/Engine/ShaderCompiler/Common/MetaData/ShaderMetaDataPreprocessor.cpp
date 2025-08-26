@@ -3,7 +3,7 @@
 #include "Tokenizer.h"
 #include "ArgumentsTokenizer.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
-#include "Common/ShaderStructs/ShaderStructsRegistry.h"
+#include "ShaderStructsRegistry.h"
 
 #include <regex>
 
@@ -221,8 +221,8 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 		lib::String structSourceCode;
 		if (!m_definedStructs.contains(structName))
 		{
-			const ShaderStructDefinition& structDef = ShaderStructsRegistry::GetStructDefinition(structName);
-			structSourceCode = structDef.GetSourceCode();
+			const rdr::ShaderStructMetaData& structMetaData = rdr::ShaderStructsRegistry::GetStructMetaDataChecked(structName);
+			structSourceCode = structMetaData.GetHLSLSourceCode();
 
 			m_definedStructs.emplace(structName);
 		}

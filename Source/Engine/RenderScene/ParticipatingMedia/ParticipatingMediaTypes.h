@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RGResources/RGResourceHandles.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 
 namespace spt::rsc

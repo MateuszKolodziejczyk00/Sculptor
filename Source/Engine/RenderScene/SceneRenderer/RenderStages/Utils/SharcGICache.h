@@ -3,7 +3,7 @@
 #include "SculptorCoreTypes.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 

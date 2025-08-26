@@ -17,17 +17,18 @@ void TextureLiveCapturer::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 	{
 		for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 		{
-			if (textureAccess.textureView->GetName() == m_destTexture.textureName)
-			{
-				const RGTextureViewHandle rgTextureView = textureAccess.textureView;
-				const RGTextureHandle rgTexture = rgTextureView->GetTexture();
+			const RGTextureViewHandle rgTextureView = textureAccess.textureView;
+			const RGTextureHandle rgTexture = rgTextureView->GetTexture();
 
+			if (rgTexture->GetName() == m_destTexture.textureName)
+			{
 				rhi::TextureDefinition captureTextureDef;
 				lib::AddFlags(captureTextureDef.usage, lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture));
-				captureTextureDef.resolution	= rgTextureView->GetResolution();
-				captureTextureDef.format		= rgTextureView->GetFormat();
-				captureTextureDef.mipLevels		= 1u;
-				captureTextureDef.type			= rhi::ETextureType::Texture2D;
+				captureTextureDef.resolution  = rgTextureView->GetResolution();
+				captureTextureDef.format      = rgTextureView->GetFormat();
+				captureTextureDef.arrayLayers = rgTexture->GetTextureRHIDefinition().arrayLayers;
+				captureTextureDef.mipLevels   = rgTexture->GetTextureRHIDefinition().mipLevels;
+				captureTextureDef.type        = rgTexture->GetTextureRHIDefinition().type;
 				const lib::SharedRef<rdr::TextureView> capturedTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
 																												  captureTextureDef,
 																												  rhi::EMemoryUsage::GPUOnly);

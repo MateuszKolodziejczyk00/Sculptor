@@ -61,8 +61,6 @@ public:
 	static void									ReleaseDeferred(GPUReleaseQueue::ReleaseEntry entry);
 	static void									ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags = EDeferredReleasesFlushFlags::Default);
 
-	static void									PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
-
 	static void									FlushPendingEvents();
 
 	static void									WaitIdle(Bool releaseRuntimeResources = true);

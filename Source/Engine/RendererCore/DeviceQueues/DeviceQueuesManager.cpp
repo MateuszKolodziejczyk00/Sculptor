@@ -60,6 +60,17 @@ void DeviceQueue::SubmitGPUWorkload(WorkloadSubmitDefinition&& definition)
 	definition.workload->OnSubmitted(m_semaphore, m_lastSignaledSemaphoreValue, this);
 }
 
+void DeviceQueue::Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+{
+	SPT_PROFILER_FUNCTION();
+
+	{
+		const lib::LockGuard lock(m_lock);
+
+		window->PresentTexture(m_queue, swapchainTexture, waitSemaphores);
+	}
+}
+
 const rhi::RHICommandBuffer& DeviceQueue::GetCommandBuffer(const GPUWorkload& workload) const
 {
 	return workload.GetRecordedBuffer()->GetRHI();
@@ -271,6 +282,11 @@ void DeviceQueuesManager::Submit(const lib::SharedRef<GPUWorkload>& workload, EG
 	const lib::LockGuard lock(m_lock);
 
 	SubmitWorkloadInternal(workload, flags);
+}
+
+void DeviceQueuesManager::Present(const lib::SharedRef<Window>& window, SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+{
+	m_graphicsQueue.Present(window, swapchainTexture, waitSemaphores);
 }
 
 void DeviceQueuesManager::FlushSubmittedWorkloads()

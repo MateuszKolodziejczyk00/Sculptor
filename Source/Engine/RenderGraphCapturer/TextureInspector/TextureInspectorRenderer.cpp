@@ -2,7 +2,7 @@
 #include "RenderGraphBuilder.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"
 #include "RGDescriptorSetState.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"

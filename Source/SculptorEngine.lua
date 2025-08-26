@@ -34,6 +34,9 @@ IncludeProject("RHI")
 SetProjectsSubgroupName("Graphics/Platform")
 IncludeProject("PlatformWindow")
 
+SetProjectsSubgroupName("Graphics/Rendering")
+IncludeProject("ShaderStructs")
+
 SetProjectsSubgroupName("Graphics/Shaders")
 IncludeProject("ShaderMetaData")
 IncludeProject("ShaderCompiler")

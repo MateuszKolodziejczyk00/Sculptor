@@ -13,7 +13,7 @@
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/ConditionalBinding.h"
 #include "Common/ShaderCompilationInput.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "Utils/TextureMipsBuilder.h"
 
 namespace spt::rsc

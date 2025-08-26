@@ -438,6 +438,10 @@ public:
 		return m_texture->GetMipSize(GetSubresourceRange().baseMipLevel);
 	}
 
+	Uint32 GetBaseMipLevel() const
+	{
+		return GetSubresourceRange().baseMipLevel;
+	}
 
 	Uint32 GetMipLevelsNum() const
 	{
@@ -445,6 +449,11 @@ public:
 		return range.mipLevelsNum == rhi::constants::allRemainingMips
 			? m_texture->GetMipLevelsNum() - range.baseMipLevel
 			: range.mipLevelsNum;
+	}
+
+	Uint32 GetBaseArrayLayer() const
+	{
+		return GetSubresourceRange().baseArrayLayer;
 	}
 
 	Uint32 GetArrayLayersNum() const
@@ -480,14 +489,24 @@ public:
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
-		const rdr::ResourceDescriptorIdx descriptor = IsExternal() ? m_textureView->GetUAVDescriptor() : m_textureViewDescriptors.uavDescriptor;
-		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
-		return descriptor;
+		return IsExternal() ? m_textureView->GetUAVDescriptor() : m_textureViewDescriptors.uavDescriptor;
 	}
 
 	rdr::ResourceDescriptorIdx GetSRVDescriptor() const
 	{
-		const rdr::ResourceDescriptorIdx descriptor = IsExternal() ? m_textureView->GetSRVDescriptor() : m_textureViewDescriptors.srvDescriptor;
+		return IsExternal() ? m_textureView->GetSRVDescriptor() : m_textureViewDescriptors.srvDescriptor;
+	}
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = GetUAVDescriptor();
+		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
+		return descriptor;
+	}
+
+	rdr::ResourceDescriptorIdx GetSRVDescriptorChecked() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = GetSRVDescriptor();
 		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
 		return descriptor;
 	}
@@ -599,7 +618,12 @@ public:
 		return IsExternal() ? m_bufferInstance->GetRHI().GetUsage() : GetBufferDefinition().usage;
 	}
 
-	Bool AllowsHostWrites() const
+	Uint64 GetSize() const
+	{
+		return IsExternal() ? m_bufferInstance->GetSize() : GetBufferDefinition().size;
+	}
+
+	Bool AllowsHostAccess() const
 	{
 		if (IsExternal())
 		{
@@ -740,9 +764,9 @@ public:
 		return m_buffer;
 	}
 
-	Bool AllowsHostWrites() const
+	Bool AllowsHostAccess() const
 	{
-		return m_buffer->AllowsHostWrites();
+		return m_buffer->AllowsHostAccess();
 	}
 
 	const rhi::BufferDefinition& GetBufferDefinition() const

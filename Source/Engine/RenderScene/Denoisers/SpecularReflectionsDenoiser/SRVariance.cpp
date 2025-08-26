@@ -4,7 +4,7 @@
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "ResourcesManager.h"
 #include "View/RenderView.h"
 

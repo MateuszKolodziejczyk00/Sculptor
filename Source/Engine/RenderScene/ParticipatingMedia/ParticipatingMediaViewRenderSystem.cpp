@@ -9,7 +9,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "GlobalResources/GlobalResources.h"
 #include "RenderScene.h"
 #include "ResourcesManager.h"

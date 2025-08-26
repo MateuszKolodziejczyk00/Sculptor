@@ -65,26 +65,19 @@ float3 ApplyLocalExposure(in float3 linearColor, in int2 pixel)
 [numthreads(8, 8, 1)]
 void TonemappingCS(CS_INPUT input)
 {
-	const int2 pixel = input.globalID.xy;
-	
-	const uint2 outputRes = u_tonemappingConstants.rwLDRTexture.GetResolution();
+	const int2 coords = input.globalID.xy;
 
-	if(pixel.x < outputRes.x && pixel.y < outputRes.y)
+	float3 color = u_tonemappingConstants.linearColor.Load(coords).rgb;
+	color = ApplyLocalExposure(color, coords);
+
+	color = TonyMCMapface(color);
+
+	color = LinearTosRGB(color);
+
+	if(u_tonemappingConstants.enableColorDithering)
 	{
-		const float2 pixelSize = rcp(float2(outputRes));
-
-		float3 color = u_tonemappingConstants.linearColor.Load(pixel).rgb;
-		color = ApplyLocalExposure(color, pixel);
-
-		color = TonyMCMapface(color);
-
-		color = LinearTosRGB(color);
-
-		if(u_tonemappingConstants.enableColorDithering)
-		{
-			color += Random(pixel) * rcp(255.f);
-		}
-
-		u_tonemappingConstants.rwLDRTexture.Store(pixel, float4(color, 1.f));
+		color += Random(coords) * rcp(255.f);
 	}
+
+	u_tonemappingConstants.rwLDRTexture.Store(coords, float4(color, 1.f));
 }

@@ -7,7 +7,7 @@
 #include "MathUtils.h"
 #include "RendererSettings.h"
 #include "Renderer.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "DependenciesBuilder.h"
 
 
@@ -106,6 +106,13 @@ public:
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
 	{
 		rg::CollectStructDependencies<TStruct>(GetImpl().GetHLSLDataSpan(), builder);
+
+		rg::RGBufferAccessInfo access(rg::ERGBufferAccess::Read);
+#if DEBUG_RENDER_GRAPH
+		access.structTypeName = TStruct::GetStructName();
+		access.elementsNum    = 1u;
+#endif // DEBUG_RENDER_GRAPH
+		builder.AddBufferAccess(rdr::BufferView(lib::Ref(m_buffer), GetCurrentOffset(), GetStructSize()), access);
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>

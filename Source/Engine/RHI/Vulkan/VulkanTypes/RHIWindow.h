@@ -51,7 +51,7 @@ public:
 
 	Uint32						GetSwapchainImagesNum() const;
 
-	Bool						PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);
+	Bool						PresentSwapchainImage(const RHIDeviceQueue& queue, const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx);
 
 	Bool						IsSwapchainOutOfDate() const;
 	void						RebuildSwapchain(math::Vector2u framebufferSize, IntPtr surfaceHandle);

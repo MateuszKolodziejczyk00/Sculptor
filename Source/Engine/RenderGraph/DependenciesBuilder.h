@@ -5,7 +5,7 @@
 #include "RGResources/RGResourceHandles.h"
 #include "RGResources/RGResources.h"
 #include "RHICore/RHIShaderTypes.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 
 namespace spt::rg
@@ -16,17 +16,22 @@ class RenderGraphBuilder;
 
 struct RGTextureAccessDef
 {
-	RGTextureViewHandle		textureView;
-	ERGTextureAccess		access;
-	rhi::EPipelineStage		pipelineStages;
+	RGTextureViewHandle textureView;
+	ERGTextureAccess    access;
+	rhi::EPipelineStage pipelineStages;
 };
 
 
 struct RGBufferAccessDef
 {
-	RGBufferViewHandle		resource;
-	ERGBufferAccess			access;
-	rhi::EPipelineStage		pipelineStages;
+	RGBufferViewHandle  resource;
+	ERGBufferAccess     access;
+	rhi::EPipelineStage pipelineStages;
+
+#if DEBUG_RENDER_GRAPH
+	lib::HashedString structTypeName;
+	Uint32            elementsNum = 1u;
+#endif // DEBUG_RENDER_GRAPH
 };
 
 
@@ -88,6 +93,24 @@ struct RGDependencyStages
 };
 
 
+struct RGBufferAccessInfo
+{
+	RGBufferAccessInfo() = default;
+
+	RGBufferAccessInfo(ERGBufferAccess inAccess)
+		: access(inAccess)
+	{ }
+
+	ERGBufferAccess access = ERGBufferAccess::Unknown;
+
+
+#if DEBUG_RENDER_GRAPH
+	lib::HashedString structTypeName;
+	Uint32            elementsNum = 1u;
+#endif // DEBUG_RENDER_GRAPH
+};
+
+
 class RENDER_GRAPH_API RGDependenciesBuilder
 {
 public:
@@ -99,8 +122,8 @@ public:
 	void AddTextureAccessIfAcquired(const lib::SharedRef<rdr::TextureView>& texture, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddTextureAccess(rdr::ResourceDescriptorIdx textureDescriptor, ERGTextureAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
 
-	void AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
-	void AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddBufferAccess(const rdr::BufferView& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 private:
 

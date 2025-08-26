@@ -1,7 +1,7 @@
 #include "hiZRenderer.h"
 #include "View/ViewRenderingSpec.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/SamplerBinding.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RenderSceneRegistry.h"
 #include "GeometryTypes.h"
 

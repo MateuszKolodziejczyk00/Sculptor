@@ -6,7 +6,7 @@
 #include "ResourcesManager.h"
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 
 namespace spt::rsc::visibility_denoiser::temporal_accumulation

@@ -71,7 +71,7 @@ lib::SharedPtr<Texture> Window::GetSwapchainTexture(SwapchainTextureHandle handl
 	return texture;
 }
 
-void Window::PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
+void Window::PresentTexture(const rhi::RHIDeviceQueue& queue,  SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -83,7 +83,7 @@ void Window::PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArr
 		rhiWaitSemaphores[idx] = waitSemaphores[idx]->GetRHI();
 	}
 
-	GetRHI().PresentSwapchainImage(rhiWaitSemaphores, handle.GetImageIdx());
+	GetRHI().PresentSwapchainImage(queue, rhiWaitSemaphores, handle.GetImageIdx());
 
 	m_presentWaitSemaphores[handle.GetImageIdx()] = waitSemaphores;
 }

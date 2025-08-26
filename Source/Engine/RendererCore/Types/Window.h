@@ -73,7 +73,7 @@ public:
 
 	lib::SharedPtr<Texture>		GetSwapchainTexture(SwapchainTextureHandle handle) const;
 
-	void						PresentTexture(SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
+	void						PresentTexture(const rhi::RHIDeviceQueue& queue,  SwapchainTextureHandle handle, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores);
 
 	Bool						IsSwapchainOutOfDate() const;
 	Bool						RebuildSwapchain();

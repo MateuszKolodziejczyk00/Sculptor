@@ -131,7 +131,6 @@ RGTextureViewHandle RenderGraphBuilder::CreateTextureMipView(RGTextureHandle tex
 {
 	SPT_CHECK(texture.IsValid());
 	SPT_CHECK(mipLevel < texture->GetMipLevelsNum());
-	SPT_CHECK(texture->GetTextureDefinition().arrayLayers == 1u);
 	SPT_CHECK(arrayLayer < texture->GetTextureDefinition().arrayLayers);
 
 	const RenderGraphDebugName name = RG_DEBUG_NAME(texture->GetName().ToString() + "_Mip" + std::to_string(mipLevel));
@@ -264,7 +263,7 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	SPT_CHECK(bufferView.IsValid());
 	SPT_CHECK(offset + range <= bufferView->GetSize());
 
-	const Bool isHostAccessible = bufferView->AllowsHostWrites();
+	const Bool isHostAccessible = bufferView->AllowsHostAccess();
 	const Bool canFillOnHost = isHostAccessible && !bufferView->GetLastAccessNode().IsValid();
 
 	SPT_CHECK(canFillOnHost || lib::HasAnyFlag(bufferView->GetUsageFlags(), rhi::EBufferUsage::TransferDst));
@@ -984,7 +983,7 @@ Bool RenderGraphBuilder::RequiresSynchronization(RGBufferHandle buffer, rhi::EPi
 
 	// Assume that we don't need synchronization for buffers that were not used before in this render graph and host cannot write to them
 	// This type of buffers should be already properly synchronized using semaphores if wrote on GPU
-	if (!buffer->AllowsHostWrites() && prevAccess == ERGBufferAccess::Unknown && !isWriteAccess(nextAccess))
+	if (!buffer->AllowsHostAccess() && prevAccess == ERGBufferAccess::Unknown && !isWriteAccess(nextAccess))
 	{
 		return false;
 	}

@@ -21,15 +21,14 @@
 namespace spt::rg::capture
 {
 
-TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGTextureCapture& textureCapture)
+TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, TextureInspectParams params)
 	: Super(definition)
 	, m_textureDetailsPanelName(CreateUniqueName("TextureDetails"))
 	, m_textureViewPanelName(CreateUniqueName("TextureView"))
 	, m_textureViewSettingsPanelName(CreateUniqueName("TextureViewSettings"))
 	, m_textureAdditionalInfoPanelName(CreateUniqueName("TextureAdditionalInfo"))
-	, m_textureCapture(textureCapture)
+	, m_currentInspectParams(params)
 	, m_capture(std::move(capture))
-	, m_capturedTexture(textureCapture.textureView)
 	, m_readback(lib::MakeShared<TextureInspectorReadback>())
 	, m_histogramVisualizationChannel(3)
 	, m_viewportMin(math::Vector2f::Zero())
@@ -37,17 +36,20 @@ TextureInspector::TextureInspector(const scui::ViewDefinition& definition, lib::
 	, m_zoomSpeed(0.075f)
 	, m_liveCaptureEnabled(false)
 {
-	const Bool is3DTexture = m_capturedTexture->GetRHI().GetTextureType() == rhi::ETextureType::Texture3D;
+	const CapturedTexture::Version* version = m_currentInspectParams.texture->versions[m_currentInspectParams.versionIdx].get();
+	const Bool is3DTexture = version->owningTexture->definition.type == rhi::ETextureType::Texture3D;
 
 	m_viewParameters.minValue        = 0.0f;
 	m_viewParameters.maxValue        = 1.0f;
 	m_viewParameters.rChannelVisible = true;
 	m_viewParameters.gChannelVisible = true;
 	m_viewParameters.bChannelVisible = true;
-	m_viewParameters.isIntTexture    = rhi::IsIntegerFormat(m_capturedTexture->GetRHI().GetFormat());
+	m_viewParameters.isIntTexture    = rhi::IsIntegerFormat(m_currentInspectParams.texture->definition.format);
 	m_viewParameters.depthSlice3D    = is3DTexture ? 0u : idxNone<Uint32>;
 
-	CreateDisplayedTexture(textureCapture.textureView->GetResolution2D());
+	CreateDisplayedTexture(version->texture->GetRHI().GetMipResolution(m_currentInspectParams.mipIdx).head<2>());
+
+	UpdateInspectedTextureView();
 }
 
 TextureInspector::~TextureInspector()
@@ -96,18 +98,17 @@ void TextureInspector::DrawTextureDetails()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedPtr<rdr::TextureView>& textureView = m_capturedTexture;
-
-	const math::Vector2u resolution = textureView->GetResolution2D();
+	const CapturedTexture* texture = m_currentInspectParams.texture;
+	const math::Vector3u resolution = texture->definition.resolution.AsVector();
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_textureDetailsPanelName.GetData());
 
-	ImGui::Text("Texture: %s", textureView->GetRHI().GetName().GetData());
+	ImGui::Text("Texture: %s", texture->name.GetData());
 
 	ImGui::Separator();
 
-	ImGui::Text("Resolution: %u x %u", resolution.x(), resolution.y());
+	ImGui::Text("Resolution: %u x %u x %u", resolution.x(), resolution.y(), resolution.z());
 
 	ImGui::End();
 }
@@ -118,10 +119,6 @@ void TextureInspector::DrawTextureViewPanel()
 
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
 	ImGui::Begin(m_textureViewPanelName.GetData(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
-
-	const lib::SharedRef<rdr::TextureView>& inspectedTexture = GetInspectedTexture();
-
-	UpdateDisplayedTexture(inspectedTexture);
 
 	{
 		ImGui::Columns(5);
@@ -154,11 +151,45 @@ void TextureInspector::DrawTextureViewPanel()
 		}
 
 		ImGui::EndColumns();
+
+		Bool inspectParamsDirty = false;
+
+		ImGui::Columns(3);
+		int versionAsInt = static_cast<int>(m_currentInspectParams.versionIdx);
+		if (ImGui::SliderInt("Version", &versionAsInt, 0, static_cast<int>(m_currentInspectParams.texture->versions.size()) - 1))
+		{
+			m_currentInspectParams.versionIdx = static_cast<Uint32>(versionAsInt);
+			inspectParamsDirty = true;
+		}
+		ImGui::NextColumn();
+		int mipAsInt = static_cast<int>(m_currentInspectParams.mipIdx);
+		if (ImGui::SliderInt("Mip", &mipAsInt, 0, static_cast<int>(m_currentInspectParams.texture->definition.mipLevels) - 1))
+		{
+			m_currentInspectParams.mipIdx = static_cast<Uint32>(mipAsInt);
+			inspectParamsDirty = true;
+		}
+		ImGui::NextColumn();
+		int arrayLayerAsInt = static_cast<int>(m_currentInspectParams.arrayLayerIdx);
+		if (ImGui::SliderInt("Layer", &arrayLayerAsInt, 0, static_cast<int>(m_currentInspectParams.texture->definition.arrayLayers) - 1))
+		{
+			m_currentInspectParams.arrayLayerIdx = static_cast<Uint32>(arrayLayerAsInt);
+			inspectParamsDirty = true;
+		}
+		ImGui::EndColumns();
+
+		if (inspectParamsDirty)
+		{
+			UpdateInspectedTextureView();
+		}
 	}
+
+	const lib::SharedRef<rdr::TextureView>& inspectedTexture = GetInspectedTexture();
+
+	UpdateDisplayedTexture(inspectedTexture);
 
 	const math::Vector2f panelSize = ui::UIUtils::GetWindowContentSize();
 	
-	const math::Vector2f windowSize = panelSize - math::Vector2f(0.f, 50.f);
+	const math::Vector2f windowSize = panelSize - math::Vector2f(0.f, 65.f);
 
 	ImGui::BeginChild("TextureView", windowSize, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar);
 	const math::Vector2f textureResolution = inspectedTexture->GetResolution2D().cast<Real32>();
@@ -225,7 +256,6 @@ void TextureInspector::DrawTextureViewPanel()
 	ImGui::NextColumn();
 	ImGui::Text("Value: [R: %2.9f, G: %2.9f, B: %2.9f, A: %f]", hoveredPixelValue.x(), hoveredPixelValue.y(), hoveredPixelValue.z(), hoveredPixelValue.w());
 	ImGui::EndColumns();
-	
 
 	ImGui::End();
 }
@@ -248,14 +278,14 @@ void TextureInspector::DrawTextureViewSettingPanel()
 			m_viewParameters.depthSlice3D = std::max(0u, m_viewParameters.depthSlice3D - 1u);
 		}
 		ImGui::NextColumn();
-		if (ImGui::SliderInt("Depth Slice", &dragValue, 0, m_capturedTexture->GetResolution().z() - 1u))
+		if (ImGui::SliderInt("Depth Slice", &dragValue, 0, m_inspectedTextureView->GetResolution().z() - 1u))
 		{
 			m_viewParameters.depthSlice3D = static_cast<Uint32>(dragValue);
 		}
 		ImGui::NextColumn();
 		if (ImGui::ArrowButton("NextDepthSlice", ImGuiDir_Right))
 		{
-			m_viewParameters.depthSlice3D = std::min(m_capturedTexture->GetResolution().z() - 1u, m_viewParameters.depthSlice3D + 1u);
+			m_viewParameters.depthSlice3D = std::min(m_inspectedTextureView->GetResolution().z() - 1u, m_viewParameters.depthSlice3D + 1u);
 		}
 		ImGui::EndColumns();
 	}
@@ -390,6 +420,19 @@ ui::TextureID TextureInspector::RenderDisplayedTexture(const lib::SharedRef<rdr:
 	return rdr::UIBackend::GetUITextureID(lib::Ref(m_displayTexture), samplerFilter, rhi::EMipMapAddressingMode::Nearest, rhi::EAxisAddressingMode::ClampToBorder);
 }
 
+void TextureInspector::UpdateInspectedTextureView()
+{
+	rhi::TextureViewDefinition viewDef;
+	viewDef.subresourceRange.aspect         = rhi::GetFullAspectForFormat(m_currentInspectParams.texture->definition.format);
+	viewDef.subresourceRange.baseMipLevel   = m_currentInspectParams.mipIdx;
+	viewDef.subresourceRange.baseArrayLayer = m_currentInspectParams.arrayLayerIdx;
+	viewDef.subresourceRange.mipLevelsNum   = 1u;
+	viewDef.subresourceRange.arrayLayersNum = 1u;
+
+	const lib::SharedPtr<rdr::Texture> texture = m_currentInspectParams.texture->versions[m_currentInspectParams.versionIdx]->texture;
+	m_inspectedTextureView = texture->CreateView(RENDERER_RESOURCE_NAME("Inspected texture View"), viewDef);
+}
+
 void TextureInspector::CreateDisplayedTexture(const math::Vector2u& resolution)
 {
 	SPT_PROFILER_FUNCTION();
@@ -412,7 +455,6 @@ void TextureInspector::UpdateDisplayedTexture(const lib::SharedRef<rdr::TextureV
 	}
 }
 
-
 void TextureInspector::OnLiveCaptureEnabled()
 {
 	if (!m_liveCaptureTexture)
@@ -425,13 +467,13 @@ void TextureInspector::OnLiveCaptureEnabled()
 	if (sourceContext)
 	{
 		LiveCaptureDestTexture destTexture;
-		destTexture.textureName = m_textureCapture.textureView->GetRHI().GetName();
-		destTexture.passName    = m_textureCapture.passName;
+		destTexture.textureName = m_currentInspectParams.texture->name;
+		destTexture.passName    = m_currentInspectParams.texture->versions[m_currentInspectParams.versionIdx]->producingPass->name;
 		destTexture.output      = m_liveCaptureTexture;
 
 		RGCaptureSourceContext::OnSetupNewGraph::Delegate delegate;
 		delegate.BindLambda([dest = destTexture](RenderGraphBuilder& graphBuilder)
-							{
+		{
 			graphBuilder.AddDebugDecorator(lib::MakeShared<TextureLiveCapturer>(dest));
 		});
 
@@ -454,7 +496,7 @@ void TextureInspector::OnLiveCaptureDisabled()
 lib::SharedRef<rdr::TextureView> TextureInspector::GetInspectedTexture() const
 {
 	const lib::SharedPtr<rdr::TextureView> liveTexture = m_liveCaptureTexture ? m_liveCaptureTexture->GetTexture() : nullptr;
-	return liveTexture ? lib::Ref(liveTexture) : m_capturedTexture;
+	return liveTexture ? lib::Ref(liveTexture) : lib::Ref(m_inspectedTextureView);
 }
 
 } // spt::rg::capture

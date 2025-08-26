@@ -7,7 +7,7 @@
 #include "SceneRenderSystem.h"
 #include "RenderSceneSubsystem.h"
 #include "RenderSystemsRegistry.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 

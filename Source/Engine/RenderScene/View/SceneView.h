@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderSceneMacros.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 
 namespace spt::rsc

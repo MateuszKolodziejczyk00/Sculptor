@@ -3,7 +3,7 @@
 #include "RenderSceneMacros.h"
 #include "SculptorCoreTypes.h"
 #include "RenderSceneSubsystem.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "Material.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/AccelerationStructureBinding.h"

@@ -4,6 +4,8 @@ function RendererCore:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RHI")
     self:AddPublicDependency("PlatformWindow")
     self:AddPublicDependency("ShaderCompiler")
+	self:AddPublicDependency("ShaderStructs")
+
 	self:AddPrivateDependency("EngineCore")
 	self:AddPrivateDependency("JobSystem")
 

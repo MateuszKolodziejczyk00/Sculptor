@@ -1,6 +1,6 @@
 #include "SRFireflySuppression.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"

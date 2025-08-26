@@ -1,7 +1,7 @@
 #include "TracesAllocator.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "GlobalResources/GlobalResources.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"

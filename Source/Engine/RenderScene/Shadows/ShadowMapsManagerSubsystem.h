@@ -5,7 +5,7 @@
 #include "RenderSceneSubsystem.h"
 #include "RenderSceneRegistry.h"
 #include "View/RenderView.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "RHICore/RHISamplerTypes.h"

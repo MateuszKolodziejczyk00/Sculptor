@@ -5,7 +5,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "ResourcesManager.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 namespace spt::rsc
 {

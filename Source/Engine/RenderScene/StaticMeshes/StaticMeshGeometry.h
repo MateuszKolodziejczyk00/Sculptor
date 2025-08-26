@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "Types/Buffer.h"
 #include "RGDescriptorSetState.h"
 #include "Types/DescriptorSetState/DescriptorSetState.h"

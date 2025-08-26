@@ -1,5 +1,5 @@
 #include "RTShadowMaskRenderer.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RenderGraphBuilder.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"

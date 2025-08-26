@@ -1,9 +1,9 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "Common/ShaderStructs/ShaderStructRegistration.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "MathUtils.h"
+#include "ShaderStructsRegistry.h"
 #include "Utility/Templates/TypeStorage.h"
 
 
@@ -344,6 +344,42 @@ lib::String DumpStructInfo()
 	return dump;
 }
 
+#if SHADER_STRUCTS_RTTI
+template<typename TShaderStructMemberMetaData>
+void AppendMemberRTTI(ShaderStructRTTI& rtti)
+{
+	if constexpr (!IsTailMember<TShaderStructMemberMetaData>())
+	{
+		AppendMemberRTTI<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(rtti);
+	}
+	
+	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		const Uint32 structSize = shader_translator::HLSLSizeOf<typename TShaderStructMemberMetaData::UnderlyingType>();
+
+		ShaderStructMemberRTTI memberRTTI;
+		memberRTTI.memberName     = TShaderStructMemberMetaData::GetVariableName();
+		memberRTTI.memberTypeName = TShaderStructMemberMetaData::GetTypeName();
+		memberRTTI.offset         = TShaderStructMemberMetaData::s_hlsl_memberOffset;
+		memberRTTI.elementsNum    = TShaderStructMemberMetaData::GetElementsNum();
+		memberRTTI.stride         = structSize >= 16u ? structSize : 16u; // HLSL requires at least 16 bytes for each element of array
+
+		rtti.members.emplace_back(std::move(memberRTTI));
+	}
+}
+template<typename TStruct>
+ShaderStructRTTI BuildRTTI()
+{
+	ShaderStructRTTI rtti;
+	rtti.structName = TStruct::GetStructName();
+	rtti.size       = shader_translator::HLSLSizeOf<TStruct>();
+
+	AppendMemberRTTI<typename TStruct::HeadMemberMetaData>(rtti);
+
+	return rtti;
+}
+#endif // SHADER_STRUCTS_RTTI
+
 } // priv
 
 template<typename TStruct>
@@ -362,13 +398,21 @@ consteval auto BuildShaderStructCode()
 } // shader_translator
 
 template<typename TStruct>
-class ShaderStructRegistration : public sc::ShaderStructRegistration
+class ShaderStructRegistration
 {
 public:
 
 	explicit ShaderStructRegistration()
-		: sc::ShaderStructRegistration(TStruct::GetStructName(), GetShaderSourceCode())
-	{ }
+	{
+
+		ShaderStructMetaData structMetaData(GetShaderSourceCode());
+
+#if SHADER_STRUCTS_RTTI
+		structMetaData.SetRTTI(shader_translator::priv::BuildRTTI<TStruct>());
+#endif // SHADER_STRUCTS_RTTI
+
+		ShaderStructsRegistry::RegisterStructMetaData(TStruct::GetStructName(), std::move(structMetaData));
+	}
 
 private:
 

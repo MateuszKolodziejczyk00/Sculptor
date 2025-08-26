@@ -60,13 +60,20 @@ void RGDependenciesBuilder::AddTextureAccessIfAcquired(const lib::SharedRef<rdr:
 	}
 }
 
-void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const rhi::EPipelineStage accessStages = dependencyStages.shouldUseDefaultStages ? m_defaultStages : dependencyStages.pipelineStages;
-	m_dependeciesRef.bufferAccesses.emplace_back(RGBufferAccessDef{ buffer, access, accessStages });
+
+	RGBufferAccessDef accessDef{ buffer, access.access, accessStages };
+#if DEBUG_RENDER_GRAPH
+	accessDef.structTypeName = access.structTypeName;
+	accessDef.elementsNum    = access.elementsNum;
+#endif // DEBUG_RENDER_GRAPH
+
+	m_dependeciesRef.bufferAccesses.emplace_back(std::move(accessDef));
 }
 
-void RGDependenciesBuilder::AddBufferAccess(const rdr::BufferView& buffer, ERGBufferAccess access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+void RGDependenciesBuilder::AddBufferAccess(const rdr::BufferView& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer);
 	AddBufferAccess(rgBufferView, access, dependencyStages.pipelineStages);

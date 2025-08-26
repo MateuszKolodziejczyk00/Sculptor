@@ -2,7 +2,7 @@
 
 #include "SceneRenderSystem.h"
 #include "Pipelines/PipelineState.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"

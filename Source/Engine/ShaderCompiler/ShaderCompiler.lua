@@ -11,6 +11,7 @@ end
 function ShaderCompiler:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")
     self:AddPublicDependency("ShaderMetaData")
+	self:AddPublicDependency("ShaderStructs")
 
     self:AddPrivateDependency("EngineCore")
     self:AddPrivateDependency("Tokenizer")

@@ -173,13 +173,6 @@ void Renderer::ScheduleFlushDeferredReleases(EDeferredReleasesFlushFlags flags /
 	}
 }
 
-void Renderer::PresentTexture(const lib::SharedRef<Window>& window, rdr::SwapchainTextureHandle swapchainTexture, const lib::DynamicArray<lib::SharedPtr<Semaphore>>& waitSemaphores)
-{
-	SPT_PROFILER_FUNCTION();
-	
-	window->PresentTexture(swapchainTexture, waitSemaphores);
-}
-
 void Renderer::FlushPendingEvents()
 {
 	GetDeviceQueuesManager().FlushSubmittedWorkloads();

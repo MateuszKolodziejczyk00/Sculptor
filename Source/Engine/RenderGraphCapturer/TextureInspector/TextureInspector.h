@@ -15,10 +15,20 @@ class TextureView;
 namespace spt::rg::capture
 {
 
-struct RGTextureCapture;
+struct CapturedTexture;
 class TextureInspectorRenderer;
 class LiveTextureOutput;
 struct RGCapture;
+
+
+struct TextureInspectParams
+{
+	const CapturedTexture* texture = nullptr;
+
+	Uint32 versionIdx = 0;
+	Uint32 mipIdx = 0;
+	Uint32 arrayLayerIdx = 0;
+};
 
 
 class TextureInspector : public scui::UIView
@@ -29,7 +39,7 @@ protected:
 
 public:
 
-	TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, const RGTextureCapture& textureCapture);
+	TextureInspector(const scui::ViewDefinition& definition, lib::SharedRef<RGCapture> capture, TextureInspectParams params);
 	virtual ~TextureInspector();
 
 	// Begin UIView overrides
@@ -47,6 +57,7 @@ private:
 
 	ui::TextureID RenderDisplayedTexture(const lib::SharedRef<rdr::TextureView>& inputTexture, math::Vector2i hoveredPixel);
 
+	void UpdateInspectedTextureView();
 	void CreateDisplayedTexture(const math::Vector2u& resolution);
 
 	void UpdateDisplayedTexture(const lib::SharedRef<rdr::TextureView> capturedTexture);
@@ -62,11 +73,10 @@ private:
 	
 	lib::HashedString m_textureAdditionalInfoPanelName;
 
-	const RGTextureCapture& m_textureCapture;
+	TextureInspectParams m_currentInspectParams;
+	lib::SharedPtr<rdr::TextureView> m_inspectedTextureView;
 
 	lib::SharedRef<RGCapture> m_capture;
-
-	lib::SharedRef<rdr::TextureView> m_capturedTexture;
 
 	lib::SharedPtr<rdr::TextureView> m_displayTexture;
 	lib::SharedPtr<TextureInspectorRenderer> m_renderer;

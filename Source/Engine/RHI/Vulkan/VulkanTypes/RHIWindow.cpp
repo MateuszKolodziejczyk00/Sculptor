@@ -233,11 +233,12 @@ Uint32 RHIWindow::GetSwapchainImagesNum() const
 	return static_cast<Uint32>(m_swapchainImages.size());
 }
 
-Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
+Bool RHIWindow::PresentSwapchainImage(const RHIDeviceQueue& queue, const lib::DynamicArray<RHISemaphore>& waitSemaphores, Uint32 imageIdx)
 {
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(!IsSwapchainOutOfDate());
+	SPT_CHECK(queue.IsValid());
 
 	const lib::LockGuard lock(m_swapchainLock);
 
@@ -257,7 +258,7 @@ Bool RHIWindow::PresentSwapchainImage(const lib::DynamicArray<RHISemaphore>& wai
 	presentInfo.pImageIndices = &imageIdx;
 	presentInfo.pResults = &result;
 
-	vkQueuePresentKHR(VulkanRHI::GetLogicalDevice().GetGfxQueue().GetHandleChecked(), &presentInfo);
+	vkQueuePresentKHR(queue.GetHandleChecked(), &presentInfo);
 	
 	SPT_CHECK(result == VK_SUCCESS || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR);
 

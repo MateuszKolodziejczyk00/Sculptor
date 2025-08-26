@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SculptorCoreTypes.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "Utility/NamedType.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/StructuredCPUToGPUBufferBinding.h"

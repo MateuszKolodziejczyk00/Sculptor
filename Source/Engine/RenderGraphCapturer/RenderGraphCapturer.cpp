@@ -7,6 +7,7 @@
 #include "RenderGraphDebugDecorator.h"
 #include "Types/Pipeline/Pipeline.h"
 #include "FileSystem/File.h"
+#include "Types/Buffer.h"
 
 
 namespace spt::rg::capture
@@ -32,6 +33,9 @@ private:
 	lib::SharedRef<RGCapture> m_capture;
 
 	Bool m_isAddingCaptureCopyNode;
+
+	lib::HashMap<RGTexture*, CapturedTexture*> m_capturedTextures;
+	lib::HashMap<RGBuffer*, CapturedBuffer*>   m_capturedBuffers;
 };
 
 
@@ -50,8 +54,9 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 		return;
 	}
 
-	RGNodeCapture& nodeCapture = m_capture->nodes.emplace_back(RGNodeCapture());
-	nodeCapture.name = std::format("{}: {}", node.GetID(), node.GetName().AsString());
+	m_capture->passes.emplace_back(std::make_unique<CapturedPass>());
+	CapturedPass& pass = *m_capture->passes.back();
+	pass.name = node.GetName().AsString();
 
 	if (node.GetType() == ERenderGraphNodeType::Dispatch)
 	{
@@ -63,54 +68,141 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 		RGCapturedComputeProperties capturedProperties;
 		capturedProperties.pipelineStatistics = pipeline->GetRHI().GetPipelineStatistics();
 
-		nodeCapture.properties = capturedProperties;
+		pass.execProps = capturedProperties;
 #endif // DEBUG_RENDER_GRAPH
 	}
 
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{
-		const Bool isOutputTexture   = textureAccess.access == ERGTextureAccess::StorageWriteTexture
-									|| textureAccess.access == ERGTextureAccess::ColorRenderTarget
-									|| textureAccess.access == ERGTextureAccess::DepthRenderTarget
-									|| textureAccess.access == ERGTextureAccess::TransferDest;
+		const Bool isOutputTexture = textureAccess.access == ERGTextureAccess::StorageWriteTexture
+			|| textureAccess.access == ERGTextureAccess::ColorRenderTarget
+			|| textureAccess.access == ERGTextureAccess::DepthRenderTarget
+			|| textureAccess.access == ERGTextureAccess::TransferDest;
 
-		if (isOutputTexture)
+		const RGTextureViewHandle rgTextureView = textureAccess.textureView;
+		const RGTextureHandle rgTexture = rgTextureView->GetTexture();
+
+		CapturedTexture*& capturedTexture = m_capturedTextures[rgTexture.Get()];
+		if (!capturedTexture)
 		{
-			const RGTextureViewHandle rgTextureView = textureAccess.textureView;
-			const RGTextureHandle rgTexture = rgTextureView->GetTexture();
+			capturedTexture = m_capture->textures.emplace_back(std::make_unique<CapturedTexture>()).get();
+			capturedTexture->name            = rgTexture->GetName();
+			capturedTexture->definition      = rgTexture->GetTextureRHIDefinition();
+			capturedTexture->definition.type = rhi::GetSelectedTextureType(capturedTexture->definition);
+		}
 
-			const Bool canCapture = rgTexture->TryAppendUsage(rhi::ETextureUsage::TransferSource);
-			if (canCapture)
+		const Bool shouldCreateNewVersion = capturedTexture->versions.empty() || isOutputTexture;
+		if (shouldCreateNewVersion)
+		{
+			rhi::TextureDefinition captureTextureDef;
+			lib::AddFlags(captureTextureDef.usage, lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture));
+			captureTextureDef.resolution  = rgTexture->GetResolution();
+			captureTextureDef.format      = rgTexture->GetFormat();
+			captureTextureDef.arrayLayers = rgTexture->GetTextureDefinition().arrayLayers;
+			captureTextureDef.mipLevels   = rgTexture->GetMipLevelsNum();
+			const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
+																									 captureTextureDef,
+																									 rhi::EMemoryUsage::GPUOnly);
+
+			rhi::TextureViewDefinition captureTextureViewDef;
+			captureTextureViewDef.subresourceRange.aspect = rgTextureView->GetSubresourceRange().aspect;
+			const lib::SharedRef<rdr::TextureView> captureTextureView = captureTexture->CreateView(RENDERER_RESOURCE_NAME(rgTextureView->GetName()),
+																								   captureTextureViewDef);
+
+			const rg::RGTextureViewHandle rgTextureCapture = graphBuilder.AcquireExternalTextureView(captureTextureView.ToSharedPtr());
+
 			{
-				rhi::TextureDefinition captureTextureDef;
-				lib::AddFlags(captureTextureDef.usage, lib::Flags(rhi::ETextureUsage::TransferDest, rhi::ETextureUsage::SampledTexture));
-				captureTextureDef.resolution	= rgTextureView->GetResolution();
-				captureTextureDef.format		= rgTextureView->GetFormat();
-				captureTextureDef.mipLevels		= 1u;
-				const lib::SharedRef<rdr::Texture> captureTexture = rdr::ResourcesManager::CreateTexture(RENDERER_RESOURCE_NAME(rgTexture->GetName()),
-																										 captureTextureDef,
-																										 rhi::EMemoryUsage::GPUOnly);
+				lib::ValueGuard recursionGuard(m_isAddingCaptureCopyNode, true);
 
-				rhi::TextureViewDefinition captureTextureViewDef;
-				captureTextureViewDef.subresourceRange.aspect = rgTextureView->GetSubresourceRange().aspect;
-				const lib::SharedRef<rdr::TextureView> captureTextureView = captureTexture->CreateView(RENDERER_RESOURCE_NAME(rgTextureView->GetName()),
-																									   captureTextureViewDef);
-
-				RGTextureCapture& textureCapture = nodeCapture.outputTextures.emplace_back(RGTextureCapture());
-				textureCapture.textureView = captureTextureView.ToSharedPtr();
-				textureCapture.passName    = node.GetName().Get();
-
-				const RGTextureViewHandle rgTextureCapture = graphBuilder.AcquireExternalTextureView(captureTextureView.ToSharedPtr());
-
+				for (Uint32 arrayLayerIdx = 0u; arrayLayerIdx < captureTextureDef.arrayLayers; ++arrayLayerIdx)
 				{
-					lib::ValueGuard recursionGuard(m_isAddingCaptureCopyNode, true);
-
-					graphBuilder.CopyFullTexture(RG_DEBUG_NAME("RG Capture Copy"), rgTextureView, rgTextureCapture);
+					for (Uint32 mipLevelIdx = 0u; mipLevelIdx < captureTextureDef.mipLevels; ++mipLevelIdx)
+					{
+						const RGTextureViewHandle srcMipView = graphBuilder.CreateTextureMipView(rgTexture, mipLevelIdx, arrayLayerIdx);
+						const RGTextureViewHandle dstMipView = graphBuilder.CreateTextureMipView(rgTextureCapture, mipLevelIdx, arrayLayerIdx);
+						graphBuilder.CopyFullTexture(RG_DEBUG_NAME("RG Capture Mip Copy"), srcMipView, dstMipView);
+					}
 				}
+			}
 
-				graphBuilder.ReleaseTextureWithTransition(rgTextureCapture->GetTexture(), rhi::TextureTransition::ReadOnly);
+
+			CapturedTexture::Version& newVersion = *capturedTexture->versions.emplace_back(std::make_unique<CapturedTexture::Version>());
+			newVersion.owningTexture = capturedTexture;
+			newVersion.versionIdx    = static_cast<Uint32>(capturedTexture->versions.size()) - 1u;
+			newVersion.texture       = captureTexture;
+			newVersion.producingPass = &pass; // might be null in case of first version of external texture
+
+			graphBuilder.ReleaseTextureWithTransition(rgTextureCapture->GetTexture(), rhi::TextureTransition::ReadOnly);
+		}
+
+		const CapturedTexture::Version& lastVersion = *capturedTexture->versions.back();
+
+		rhi::TextureViewDefinition captureTextureMipViewDef;
+		captureTextureMipViewDef.subresourceRange = rgTextureView->GetSubresourceRange();
+
+		CapturedTextureBinding& textureBinding = pass.textures.emplace_back();
+		textureBinding.textureVersion = &lastVersion;
+		textureBinding.textureView    = lastVersion.texture->CreateView(RENDERER_RESOURCE_NAME(rgTextureView->GetName()), captureTextureMipViewDef);
+		textureBinding.baseMipLevel   = rgTextureView->GetBaseMipLevel();
+		textureBinding.mipLevelsNum   = rgTextureView->GetMipLevelsNum();
+		textureBinding.baseArrayLayer = rgTextureView->GetBaseArrayLayer();
+		textureBinding.arrayLayersNum = rgTextureView->GetArrayLayersNum();
+		textureBinding.writable       = isOutputTexture;
+
+		const rdr::ResourceDescriptorIdx srvDescriptorIdx = rgTextureView->GetSRVDescriptor();
+		const rdr::ResourceDescriptorIdx uavDescriptorIdx = rgTextureView->GetUAVDescriptor();
+
+		if (srvDescriptorIdx != rdr::invalidResourceDescriptorIdx)
+		{
+			m_capture->descriptorIdxToTexture[srvDescriptorIdx] = capturedTexture;
+		}
+		if (uavDescriptorIdx != rdr::invalidResourceDescriptorIdx)
+		{
+			m_capture->descriptorIdxToTexture[uavDescriptorIdx] = capturedTexture;
+		}
+	}
+
+	for (const RGBufferAccessDef& bufferAccess : dependencies.bufferAccesses)
+	{
+		const rg::RGBufferViewHandle boundBufferView = bufferAccess.resource;
+		const rg::RGBufferHandle boundBuffer         = boundBufferView->GetBuffer();
+
+		CapturedBuffer* capturedBuffer = m_capturedBuffers[boundBufferView->GetBuffer().Get()];
+		if (!capturedBuffer)
+		{
+			capturedBuffer = m_capture->buffers.emplace_back(std::make_unique<CapturedBuffer>()).get();
+			capturedBuffer->name = boundBufferView->GetBuffer()->GetName();
+		}
+
+		const Bool shouldCreatenewVersion = capturedBuffer->versions.empty() || bufferAccess.access == ERGBufferAccess::Write || bufferAccess.access == ERGBufferAccess::ReadWrite;
+		if (shouldCreatenewVersion)
+		{
+			CapturedBuffer::Version& newVersion = *capturedBuffer->versions.emplace_back(std::make_unique<CapturedBuffer::Version>());
+			newVersion.owningBuffer  = capturedBuffer;
+			newVersion.versionIdx    = static_cast<Uint32>(capturedBuffer->versions.size()) - 1u;
+			newVersion.producingPass = &pass;
+			if (boundBuffer && boundBuffer->AllowsHostAccess())
+			{
+				const lib::SharedPtr<rdr::Buffer>& buffer = boundBufferView->GetBuffer()->GetResource();
+				SPT_CHECK(!!buffer);
+
+				const rhi::RHIMappedByteBuffer mappedBuffer(buffer->GetRHI());
+				newVersion.bufferData.resize(boundBuffer->GetSize());
+
+				std::memcpy(newVersion.bufferData.data(), mappedBuffer.GetPtr() + boundBufferView->GetOffset(), boundBuffer->GetSize());
 			}
 		}
+
+		const CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();
+
+		CapturedBufferBinding& bufferBinding = pass.buffers.emplace_back();
+		bufferBinding.bufferVersion  = &bufferVersion;
+		bufferBinding.offset         = boundBufferView->GetOffset();
+		bufferBinding.size           = boundBufferView->GetSize();
+#if DEBUG_RENDER_GRAPH
+		bufferBinding.structTypeName = bufferAccess.structTypeName;
+		bufferBinding.elementsNum    = bufferAccess.elementsNum;
+#endif // DEBUG_RENDER_GRAPH
 	}
 }
 

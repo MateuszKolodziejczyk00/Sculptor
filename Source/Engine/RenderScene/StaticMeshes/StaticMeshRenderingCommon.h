@@ -5,7 +5,7 @@
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/SRVTextureBinding.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGNodeParametersStruct.h"
 #include "Types/Buffer.h"
 #include "Pipelines/PipelineState.h"

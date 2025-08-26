@@ -8,7 +8,7 @@
 #include "Shaders/ShaderTypes.h"
 #include "Common/ShaderCompilerTypes.h"
 #include "MaterialShadersCompiler.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 
 #include <variant>
 

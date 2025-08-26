@@ -1,6 +1,6 @@
 #include "AmbientOcclusionRenderStage.h"
 #include "RenderGraphBuilder.h"
-#include "ShaderStructs/ShaderStructsMacros.h"
+#include "ShaderStructs/ShaderStructs.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/SamplerBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
