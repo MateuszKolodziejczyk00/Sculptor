@@ -48,7 +48,8 @@
 #if SPT_SHADERS_DEBUG_FEATURES
 #include "Debug/ShaderDebugUtils.h"
 #endif // SPT_SHADERS_DEBUG_FEATURES
-#pragma optimize("", off)
+
+
 namespace spt::ed
 {
 

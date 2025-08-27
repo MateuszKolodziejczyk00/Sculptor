@@ -47,12 +47,12 @@ void CommandRecorder::ExecuteBarrier(rhi::RHIDependency& dependency)
 	dependency.ExecuteBarrier(GetCommandBufferRHI());
 }
 
-void CommandRecorder::SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency)
+void CommandRecorder::SetEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency)
 {
 	dependency.SetEvent(GetCommandBufferRHI(), event->GetRHI());
 }
 
-void CommandRecorder::WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency)
+void CommandRecorder::WaitEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency)
 {
 	dependency.WaitEvent(GetCommandBufferRHI(), event->GetRHI());
 }

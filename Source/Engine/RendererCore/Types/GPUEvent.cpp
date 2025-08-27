@@ -3,7 +3,7 @@
 namespace spt::rdr
 {
 
-Event::Event(const RendererResourceName& name, const rhi::EventDefinition& definition)
+GPUEvent::GPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition)
 {
 	SPT_PROFILER_FUNCTION();
 

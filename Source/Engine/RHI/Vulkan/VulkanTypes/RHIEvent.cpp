@@ -46,7 +46,7 @@ void RHIEvent::ReleaseRHI()
 
 RHIEventReleaseTicket RHIEvent::DeferredReleaseRHI()
 {
-	SPT_CHECK(!IsValid());
+	SPT_CHECK(IsValid());
 
 	RHIEventReleaseTicket releaseTicket;
 	releaseTicket.handle = m_handle;
@@ -58,7 +58,7 @@ RHIEventReleaseTicket RHIEvent::DeferredReleaseRHI()
 	m_name.Reset(reinterpret_cast<Uint64>(m_handle), VK_OBJECT_TYPE_EVENT);
 	m_handle = VK_NULL_HANDLE;
 
-	SPT_CHECK(IsValid());
+	SPT_CHECK(!IsValid());
 
 	return releaseTicket;
 }

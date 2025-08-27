@@ -9,6 +9,7 @@ namespace spt::rdr
 {
 
 class CommandRecorder;
+class Buffer;
 
 
 class RENDERER_CORE_API DebugRegion
@@ -21,6 +22,22 @@ public:
 private:
 
 	CommandRecorder& m_cachedRecorder;
+};
+
+
+class RENDERER_CORE_API GPUCheckpointValidator
+{
+public:
+
+	explicit GPUCheckpointValidator();
+
+	void AddCheckpoint(CommandRecorder& recorder, const lib::HashedString& marker);
+	void ValidateExecution();
+
+private:
+
+	lib::SharedRef<Buffer> m_checkpointsBuffer;
+	lib::DynamicArray<lib::HashedString> m_checkpointNames;
 };
 
 } // spt::rdr

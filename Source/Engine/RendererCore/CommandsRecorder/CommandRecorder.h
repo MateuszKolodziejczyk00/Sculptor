@@ -20,7 +20,7 @@ class DescriptorSetState;
 class Texture;
 class Buffer;
 class BufferView;
-class Event;
+class GPUEvent;
 class TopLevelAS;
 class BottomLevelAS;
 class QueryPool;
@@ -40,8 +40,8 @@ public:
 
 	void									ExecuteBarrier(rhi::RHIDependency& dependency);
 
-	void									SetEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
-	void									WaitEvent(const lib::SharedRef<Event>& event, rhi::RHIDependency& dependency);
+	void									SetEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency);
+	void									WaitEvent(const lib::SharedRef<GPUEvent>& event, rhi::RHIDependency& dependency);
 
 	void									BindDescriptorHeap(const DescriptorHeap& descriptorHeap);
 

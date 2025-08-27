@@ -9,6 +9,14 @@
 #include "DeviceQueues/GPUWorkload.h"
 #include "RenderGraphResourcesPool.h"
 #include "Types/Pipeline/Pipeline.h"
+#include "GPUDiagnose/Debug/GPUDebug.h"
+
+
+SPT_DEFINE_LOG_CATEGORY(RenderGraph, true);
+
+
+#define SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION 0
+
 
 namespace spt::rg
 {
@@ -1030,6 +1038,11 @@ void RenderGraphBuilder::ExecuteGraph()
 	RGDiagnosticsPlayback diagnosticsPlayback;
 #endif // RG_ENABLE_DIAGNOSTICS
 
+#if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+	rdr::GPUCheckpointValidator checkpointValidator;
+	checkpointValidator.AddCheckpoint(*commandRecorder, "RENDER GRAPH BEGIN");
+#endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+
 	for (const RGNodeHandle node : m_nodes)
 	{
 #if RG_ENABLE_DIAGNOSTICS
@@ -1037,17 +1050,30 @@ void RenderGraphBuilder::ExecuteGraph()
 #endif // RG_ENABLE_DIAGNOSTICS
 
 		node->Execute(renderContext, *commandRecorder, graphExecutionContext);
+
+#if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+		checkpointValidator.AddCheckpoint(*commandRecorder, node->GetName().Get());
+#endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 	}
 
 #if RG_ENABLE_DIAGNOSTICS
 	diagnosticsPlayback.PopRemainingScopes(*commandRecorder, m_statisticsCollector);
 #endif // RG_ENABLE_DIAGNOSTICS
 
+#if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+	checkpointValidator.AddCheckpoint(*commandRecorder, "RENDER GRAPH END");
+#endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+
 	lib::SharedRef<rdr::GPUWorkload> workload = commandRecorder->FinishRecording();
 
 	workload->BindEvent(m_onGraphExecutionFinished);
 
 	rdr::Renderer::GetDeviceQueuesManager().Submit(workload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::MemoryTransfersWait, rdr::EGPUWorkloadSubmitFlags::CorePipe));
+
+#if SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
+	rdr::Renderer::WaitIdle(false);
+	checkpointValidator.ValidateExecution();
+#endif // SPT_ENABLE_RENDER_GRAPH_CHECKPOINTS_VALIDATION
 }
 
 void RenderGraphBuilder::AddReleaseResourcesNode()

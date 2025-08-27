@@ -49,7 +49,7 @@ struct DescriptorSetStateParams;
 class RenderContext;
 class CommandRecorder;
 class Window;
-class Event;
+class GPUEvent;
 class AllocationDefinition;
 class Buffer;
 class Texture;
@@ -80,7 +80,7 @@ public:
 	
 	SPT_NODISCARD static lib::SharedRef<Window> CreateWindow(lib::StringView name, const rhi::RHIWindowInitializationInfo& windowInfo);
 
-	SPT_NODISCARD static lib::SharedRef<Event> CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
+	SPT_NODISCARD static lib::SharedRef<GPUEvent> CreateGPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	
 	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition);
 	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);

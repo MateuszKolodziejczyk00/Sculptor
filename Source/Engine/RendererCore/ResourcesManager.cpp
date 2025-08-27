@@ -40,9 +40,9 @@ lib::SharedRef<Window> ResourcesManager::CreateWindow(lib::StringView name, cons
 	return lib::MakeShared<Window>(name, windowInfo);
 }
 
-lib::SharedRef<Event> ResourcesManager::CreateEvent(const RendererResourceName& name, const rhi::EventDefinition& definition)
+lib::SharedRef<GPUEvent> ResourcesManager::CreateGPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition)
 {
-	return lib::MakeShared<Event>(name, definition);
+	return lib::MakeShared<GPUEvent>(name, definition);
 }
 
 lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition)
