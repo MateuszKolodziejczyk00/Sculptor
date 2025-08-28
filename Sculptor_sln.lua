@@ -22,7 +22,8 @@ workspace "Sculptor"
 
 	cppdialect "C++20"
 	
-	flags { "FatalWarnings", "MultiProcessorCompile" }
+	flags { "MultiProcessorCompile" }
+	fatalwarnings { "All" }
 	warnings "Extra"
 	
 	filter { "platforms:x64"}
