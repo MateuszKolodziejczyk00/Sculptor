@@ -189,7 +189,7 @@ struct TypeSerializer<as::DerivedDataKey>
 			SPT_CHECK(name.size() == sizeof(as::DerivedDataName) - 1u);
 
 			as::DerivedDataName derivedDataName;
-			std::memcpy(derivedDataName.data(), name.data(), std::min(name.size(), derivedDataName.size()));
+			std::memcpy(derivedDataName.data(), name.data(), std::min<SizeType>(name.size(), derivedDataName.size()));
 			derivedDataName[name.size()] = '\0';
 
 			data = derivedDataName;

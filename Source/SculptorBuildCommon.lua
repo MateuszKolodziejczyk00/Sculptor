@@ -236,6 +236,8 @@ function Project:BuildConfiguration(configuration, platform)
         editAndContinue "Off"
     end
 
+    enableunitybuild "On"
+
     -- setup function
     self:SetupConfiguration(configuration, platform)
 

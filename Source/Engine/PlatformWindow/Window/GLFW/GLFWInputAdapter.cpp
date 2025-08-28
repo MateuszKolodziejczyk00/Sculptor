@@ -2,7 +2,9 @@
 #include "GLFWInputAdapter.h"
 #include "SculptorCoreTypes.h"
 
+#include "RHIBridge/RHIImpl.h" // needed for unity builds
 #include "GLFW/glfw3.h"
+
 
 namespace spt::platf
 {
