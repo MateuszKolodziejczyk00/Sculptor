@@ -22,6 +22,7 @@ struct TextureDescriptorMetadata
 {
 	bool  isUAV      = false;
 	bool  isOptional = false;
+	bool  isConst    = false;
 	Int32 dimentions = 2;
 };
 
@@ -131,29 +132,48 @@ private:
 };
 
 
-template<typename TType>
-using SRVTexture2D = TextureDescriptor<TextureDescriptorMetadata{ false, true, 2 }, TType>;
+/**
+ * Nomenclature:
+ * SRV - Shader Resource View (read-only texture)
+ * UAV - Unordered Access View (read-write texture)
+ * Ref - must be valid (resource is guaranteed to be bound)
+ * Const - this means that resource is generally read-only across the frame and doesn't need to be tracked by frame graph
+ */
 
-template<typename TType>
-using SRVTexture3D = TextureDescriptor<TextureDescriptorMetadata{ false, true, 3 }, TType>;
 
-template<typename TType>
-using UAVTexture2D = TextureDescriptor<TextureDescriptorMetadata{ true, true, 2 }, TType>;
+template<Int32 Dims, typename TType>
+using SRVTexture         = TextureDescriptor<TextureDescriptorMetadata(false, true,  false, Dims), TType>;
 
-template<typename TType>
-using UAVTexture3D = TextureDescriptor<TextureDescriptorMetadata{ true, true, 3 }, TType>;
+template<Int32 Dims, typename TType>
+using SRVTextureRef      = TextureDescriptor<TextureDescriptorMetadata(false, false, false, Dims), TType>;
 
-template<typename TType>
-using SRVTexture2DRef = TextureDescriptor<TextureDescriptorMetadata{ false, false, 2 }, TType>;
+template<Int32 Dims, typename TType>
+using ConstSRVTexture    = TextureDescriptor<TextureDescriptorMetadata(false, true,  true,  Dims), TType>;
 
-template<typename TType>
-using SRVTexture3DRef = TextureDescriptor<TextureDescriptorMetadata{ false, false, 3 }, TType>;
+template<Int32 Dims, typename TType>
+using ConstSRVTextureRef = TextureDescriptor<TextureDescriptorMetadata(false, false, true,  Dims), TType>;
 
-template<typename TType>
-using UAVTexture2DRef = TextureDescriptor<TextureDescriptorMetadata{ true, false, 2 }, TType>;
+template<Int32 Dims, typename TType>
+using UAVTexture         = TextureDescriptor<TextureDescriptorMetadata(true,  true,  false, Dims), TType>;
 
-template<typename TType>
-using UAVTexture3DRef = TextureDescriptor<TextureDescriptorMetadata{ true, false, 3 }, TType>;
+template<Int32 Dims, typename TType>
+using UAVTextureRef      = TextureDescriptor<TextureDescriptorMetadata(true,  false, false, Dims), TType>;
+
+
+#define SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(texType) \
+template<typename TType> \
+using texType##2D  = texType<2, TType>; \
+template<typename TType> \
+using texType##3D  = texType<3, TType>; \
+template<typename TType> \
+using texType##2DRef = texType##Ref<2, TType>; \
+template<typename TType> \
+using texType##3DRef = texType##Ref<3, TType>; \
+
+
+SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(SRVTexture)
+SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(ConstSRVTexture)
+SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(UAVTexture)
 
 } // spt::gfx
 
@@ -237,17 +257,20 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 {
 	static void CollectDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
 	{
-		SPT_CHECK(hlsl.size() == 16u);
-
-		const Uint32* hlslData = reinterpret_cast<const Uint32*>(hlsl.data());
-
-		const rdr::ResourceDescriptorIdx descriptoridx = rdr::ResourceDescriptorIdx(hlslData[0]);
-
-		if (descriptoridx != rdr::invalidResourceDescriptorIdx)
+		if constexpr (!metadata.isConst)
 		{
-			constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::StorageWriteTexture : ERGTextureAccess::SampledTexture;
+			SPT_CHECK(hlsl.size() == 16u);
 
-			dependenciesBuilder.AddTextureAccess(descriptoridx, access);
+			const Uint32* hlslData = reinterpret_cast<const Uint32*>(hlsl.data());
+
+			const rdr::ResourceDescriptorIdx descriptoridx = rdr::ResourceDescriptorIdx(hlslData[0]);
+
+			if (descriptoridx != rdr::invalidResourceDescriptorIdx)
+			{
+				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::StorageWriteTexture : ERGTextureAccess::SampledTexture;
+
+				dependenciesBuilder.AddTextureAccess(descriptoridx, access);
+			}
 		}
 	}
 };
