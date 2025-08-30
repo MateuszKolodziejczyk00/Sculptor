@@ -46,6 +46,7 @@ RendererIntParameter spatialResamplingIterationsNum("Spatial Resampling Iteratio
 RendererBoolParameter halfResReflections("Half Res", { "Specular Reflections" }, false);
 RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing", { "Specular Reflections" }, true);
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
+RendererBoolParameter enableFireflyFilter("Enable Firefly Filter", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
 RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
 RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
@@ -825,6 +826,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.enableSecondTracingPass         = renderer_params::enableSecondTracingPass;
 		resamplingParams.variableRateTileSizeBitOffset   = vrt::GetTileSizeBitOffset(m_variableRateRenderer.GetVariableRateSettings());
 		resamplingParams.enableHitDistanceBasedMaxAge    = enableDistanceBasedMaxAge;
+		resamplingParams.enableFireflyFilter             = renderer_params::enableFireflyFilter && !viewSystemsInfo.useUnifiedDenoising;
 		resamplingParams.reservoirMaxAge                 = renderer_params::reservoirMaxAge;
 		resamplingParams.resamplingRangeStep             = renderer_params::resamplingRangeStep;
 

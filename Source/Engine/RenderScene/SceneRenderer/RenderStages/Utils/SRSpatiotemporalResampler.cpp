@@ -643,7 +643,10 @@ void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& gra
 		copy::CopyTracedReservoirs(graphBuilder, resamplingConstants, initialResamplingResult.additionalTracesAllocation, reservoirsState.ReadReservoirs(), params.initialReservoirBuffer);
 	}
 
-	firefly_filter::FireflyFilter(graphBuilder, params, resamplingConstants, reservoirsState);
+	if(params.enableFireflyFilter)
+	{
+		firefly_filter::FireflyFilter(graphBuilder, params, resamplingConstants, reservoirsState);
+	}
 
 	for (const SpatialResamplingPassParams& spatialPassParams : params.spatialResamplingPasses)
 	{

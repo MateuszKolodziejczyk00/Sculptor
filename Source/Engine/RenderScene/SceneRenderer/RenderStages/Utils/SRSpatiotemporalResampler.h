@@ -94,6 +94,8 @@ struct ResamplingParams
 
 	Bool enableHitDistanceBasedMaxAge = true;
 
+	Bool enableFireflyFilter = true;
+
 	Uint32 variableRateTileSizeBitOffset = 1u;
 
 	Uint32 reservoirMaxAge = 10u;
