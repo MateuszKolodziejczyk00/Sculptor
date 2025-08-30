@@ -1,0 +1,42 @@
+#pragma once
+
+#include "SculptorCoreTypes.h"
+#include "TemporalAATypes.h"
+#include "GraphicsMacros.h"
+
+
+namespace spt::rdr
+{
+class TextureView;
+} // spt::rdr
+
+
+namespace spt::gfx
+{
+
+class GRAPHICS_API TemporalAccumulationRenderer : public TemporalAARenderer
+{
+protected:
+
+	using Super = TemporalAARenderer;
+
+public:
+
+	TemporalAccumulationRenderer();
+
+	// Begin TemporalAARenderer overrides
+	virtual Bool Initialize(const TemporalAAInitSettings& initSettings) override;
+	virtual math::Vector2f ComputeJitter(Uint64 frameIdx, math::Vector2u renderingResolution, math::Vector2u outputResolution) const override;
+	virtual Bool PrepareForRendering(const TemporalAAParams& params) override;
+	virtual void Render(rg::RenderGraphBuilder& graphBuilder, const TemporalAARenderingParams& renderingParams) override;
+	// End TemporalAARenderer overrides
+
+private:
+
+	lib::SharedPtr<rdr::TextureView> m_accumulationTexture;
+	Uint32 m_historyLength = 0;
+
+	math::Matrix4f m_lastWorldToView;
+};
+
+} // spt::gfx

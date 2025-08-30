@@ -849,6 +849,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 
 		if (viewSystemsInfo.useUnifiedDenoising)
 		{
+			m_denoiser.InvalidateHistory();
+
 			if (isHalfRes)
 			{
 				SPT_CHECK_NO_ENTRY();

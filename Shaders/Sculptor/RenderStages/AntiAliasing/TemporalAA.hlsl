@@ -93,29 +93,6 @@ float SubsampleWeight(float distance)
 }
 
 
-// Based on TAA in Inside game
-float3 ClipAABB(float3 aabbMin, float3 aabbMax, float3 historySample)
-{
-	const float3 pClip = 0.5f * (aabbMax + aabbMin);
-	const float3 eClip = 0.5f * (aabbMax - aabbMin) + 0.000000001f;
-
-	const float3 vClip = historySample - pClip;
-	const float3 vUnit = vClip.xyz / eClip;
-	const float3 aUnit = abs(vUnit);
-	const float maUnit = max(aUnit.x, max(aUnit.y, aUnit.z));
-
-	if (maUnit > 1.0)
-	{
-		return (pClip) + vClip / maUnit;
-	}
-	else
-	{
-		// point inside aabb
-		return historySample;
-	}
-}
-
-
 [numthreads(GROUP_SIZE, GROUP_SIZE, 1)]
 void TemporalAACS(CS_INPUT input)
 {

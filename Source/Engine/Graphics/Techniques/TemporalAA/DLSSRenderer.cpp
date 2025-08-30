@@ -72,8 +72,8 @@ dlss::EDLSSFlags ComputeDLSSFlags(const TemporalAAParams& params)
 
 DLSSRenderer::DLSSRenderer()
 {
-	m_name				       = "DLSS";
-	m_supportsUpscaling	       = true;
+	m_name                     = "DLSS";
+	m_supportsUpscaling        = true;
 	m_executesUnifiedDenoising = false;
 }
 

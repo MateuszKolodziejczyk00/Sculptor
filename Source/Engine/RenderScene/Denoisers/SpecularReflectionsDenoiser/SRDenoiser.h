@@ -83,6 +83,8 @@ public:
 
 	Result Denoise(rg::RenderGraphBuilder& graphBuilder, const Params& params);
 
+	void InvalidateHistory() { m_hasValidHistory = false; }
+
 	rg::RGTextureViewHandle GetHistorySpecular(rg::RenderGraphBuilder& graphBuilder) const;
 
 private:

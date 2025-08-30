@@ -6,6 +6,7 @@
 #include "View/Systems/TemporalAAViewRenderSystem.h"
 #include "Techniques/TemporalAA//StandardTAARenderer.h"
 #include "Techniques/TemporalAA//DLSSRenderer.h"
+#include "Techniques/TemporalAA/TemporalAccumulationRenderer.h"
 
 namespace spt::rsc
 {
@@ -61,7 +62,7 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 
 	if (lib::SharedPtr<rsc::TemporalAAViewRenderSystem> taaSystem = view.FindRenderSystem<rsc::TemporalAAViewRenderSystem>())
 	{
-		const char* modes[] = { "None", "DLSS", "Standard TAA" };
+		const char* modes[] = { "None", "DLSS", "Standard TAA", "Temporal Accumulation"};
 		const lib::StringView currentMode = taaSystem->GetRendererName();
 		const auto foundMode = std::find(std::begin(modes), std::end(modes), currentMode);
 		SPT_CHECK(foundMode != std::end(modes));
@@ -78,6 +79,10 @@ void RenderViewSettingsUIView::DrawUIForView(RenderView& view)
 			else if (currentModeIdx == 2)
 			{
 				newRenderer = std::make_unique<gfx::StandardTAARenderer>();
+			}
+			else if (currentModeIdx == 3)
+			{
+				newRenderer = std::make_unique<gfx::TemporalAccumulationRenderer>();
 			}
 
 			if (newRenderer && !newRenderer->Initialize(gfx::TemporalAAInitSettings{}))
