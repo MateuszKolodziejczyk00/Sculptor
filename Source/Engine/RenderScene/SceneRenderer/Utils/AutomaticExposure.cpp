@@ -152,7 +152,7 @@ static rg::RGBufferViewHandle ComputeAdaptedLuminance(rg::RenderGraphBuilder& gr
 		gfx::FillBuffer(lib::Ref(viewLuminanceData.adaptedLuminance), 0, sizeof(Real32), *reinterpret_cast<const Uint32*>(&defaultAadptedLuminance));
 	}
 
-	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->CreateFullView());
+	const rg::RGBufferViewHandle adaptedLuminanceBuffer = graphBuilder.AcquireExternalBufferView(viewLuminanceData.adaptedLuminance->GetFullView());
 
 	const lib::MTHandle<ComputeAdaptedLuminanceDS> computeAdaptedLuminanceDS = graphBuilder.CreateDescriptorSet<ComputeAdaptedLuminanceDS>(RENDERER_RESOURCE_NAME("ComputeAdaptedLuminanceDS"));
 	computeAdaptedLuminanceDS->u_exposureSettings	= exposureSettings;

@@ -45,9 +45,9 @@ lib::SharedRef<GPUEvent> ResourcesManager::CreateGPUEvent(const RendererResource
 	return lib::MakeShared<GPUEvent>(name, definition);
 }
 
-lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition)
+lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation /*= BufferViewDescriptorsAllocation{}*/)
 {
-	return lib::MakeShared<Buffer>(name, definition, allocationDefinition);
+	return lib::MakeShared<Buffer>(name, definition, allocationDefinition, std::move(descriptorsAllocation));
 }
 
 lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance)

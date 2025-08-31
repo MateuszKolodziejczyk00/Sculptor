@@ -572,7 +572,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	const Real32 minLogLuminance = params::minLogLuminance;
 	const Real32 logLuminanceRange = params::maxLogLuminance - params::minLogLuminance;
 
-	const rg::RGBufferViewHandle viewExposureData = graphBuilder.AcquireExternalBufferView(m_viewExposureBuffer->CreateFullView());
+	const rg::RGBufferViewHandle viewExposureData = graphBuilder.AcquireExternalBufferView(m_viewExposureBuffer->GetFullView());
 
 	automatic_exposure::Inputs automaticExposureInputs;
 	automaticExposureInputs.linearColor      = linearColorTexture;

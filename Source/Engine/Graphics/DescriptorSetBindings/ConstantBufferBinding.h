@@ -112,7 +112,7 @@ public:
 		access.structTypeName = TStruct::GetStructName();
 		access.elementsNum    = 1u;
 #endif // DEBUG_RENDER_GRAPH
-		builder.AddBufferAccess(rdr::BufferView(lib::Ref(m_buffer), GetCurrentOffset(), GetStructSize()), access);
+		builder.AddBufferAccess(m_buffer->CreateView(GetCurrentOffset(), GetStructSize()), access);
 	}
 
 	template<typename TAssignable> requires std::is_assignable_v<TStruct, TAssignable>

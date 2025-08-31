@@ -490,7 +490,7 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 	const lib::MTHandle<DDGITraceRaysDS> traceRaysDS = graphBuilder.CreateDescriptorSet<DDGITraceRaysDS>(RENDERER_RESOURCE_NAME("DDGITraceRaysDS"));
 	traceRaysDS->u_skyViewLUT             = viewContext.skyViewLUT;
 	traceRaysDS->u_transmittanceLUT       = atmosphereContext.transmittanceLUT;
-	traceRaysDS->u_atmosphereParams       = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	traceRaysDS->u_atmosphereParams       = atmosphereContext.atmosphereParamsBuffer->GetFullView();
 	traceRaysDS->u_traceRaysResultTexture = probesTraceResultTexture;
 	traceRaysDS->u_relitParams            = relitParams.relitParamsBuffer;
 	traceRaysDS->u_volumeParams           = relitParams.ddgiVolumeParamsBuffer;

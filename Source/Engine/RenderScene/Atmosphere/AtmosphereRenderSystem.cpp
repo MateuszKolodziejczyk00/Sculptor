@@ -40,7 +40,7 @@ static void RenderTransmittanceLUT(rg::RenderGraphBuilder& graphBuilder, const R
 	
 	lib::MTHandle<RenderTransmittanceLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderTransmittanceLUTDS>(RENDERER_RESOURCE_NAME("Render Transmittance LUT DS"));
 	ds->u_transmittanceLUT = transmittanceLUT;
-	ds->u_atmosphereParams = context.atmosphereParamsBuffer->CreateFullView();
+	ds->u_atmosphereParams = context.atmosphereParamsBuffer->GetFullView();
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Render Atmosphere Transmittance LUT"),
 						  pipeline,
@@ -75,7 +75,7 @@ static void RenderMultiScatteringLUT(rg::RenderGraphBuilder& graphBuilder, const
 	static const rdr::PipelineStateID pipeline = CompileRenderMultiScatteringLUTPipeline();
 
 	lib::MTHandle<RenderMultiScatteringLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderMultiScatteringLUTDS>(RENDERER_RESOURCE_NAME("Render Multi Scattering LUT DS"));
-	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->CreateFullView();
+	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->GetFullView();
 	ds->u_transmittanceLUT		= transmittancleLUT;
 	ds->u_multiScatteringLUT	= multiScatteringLUT;
 
@@ -126,8 +126,8 @@ static rg::RGTextureViewHandle RenderSkyViewLUT(rg::RenderGraphBuilder& graphBui
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyViewLUTPipeline();
 
 	lib::MTHandle<RenderSkyViewLUTDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyViewLUTDS>(RENDERER_RESOURCE_NAME("Render Sky View LUT DS"));
-	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->CreateFullView();
-	ds->u_directionalLights		= context.directionalLightsBuffer->CreateFullView();
+	ds->u_atmosphereParams		= context.atmosphereParamsBuffer->GetFullView();
+	ds->u_directionalLights		= context.directionalLightsBuffer->GetFullView();
 	ds->u_transmittanceLUT		= skyViewParams.transmittanceLUT;
 	ds->u_multiScatteringLUT	= skyViewParams.multiScatteringLUT;
 	ds->u_skyViewLUT			= skyViewLUT;
@@ -173,7 +173,7 @@ static rg::RGTextureViewHandle RenderSkyProbe(rg::RenderGraphBuilder& graphBuild
 	static const rdr::PipelineStateID pipeline = CompileRenderSkyProbePipeline();
 
 	lib::MTHandle<RenderSkyProbeDS> ds = graphBuilder.CreateDescriptorSet<RenderSkyProbeDS>(RENDERER_RESOURCE_NAME("RenderSkyProbeDS"));
-	ds->u_atmosphereParams = atmosphere.atmosphereParamsBuffer->CreateFullView();
+	ds->u_atmosphereParams = atmosphere.atmosphereParamsBuffer->GetFullView();
 	ds->u_skyViewLUT       = skyViewLUT;
 	ds->u_rwProbe          = skyProbe;
 
@@ -237,9 +237,9 @@ static rg::RGTextureViewHandle RenderAerialPerspective(rg::RenderGraphBuilder& g
 	shaderConstants.participatingMediaFar  = apData.fogParams->farPlane;
 
 	lib::MTHandle<RenderAerialPerspectiveDS> ds = graphBuilder.CreateDescriptorSet<RenderAerialPerspectiveDS>(RENDERER_RESOURCE_NAME("RenderAerialPerspectiveDS"));
-	ds->u_atmosphereParams            = atmosphere.atmosphereParamsBuffer->CreateFullView();
+	ds->u_atmosphereParams            = atmosphere.atmosphereParamsBuffer->GetFullView();
 	ds->u_renderAPConstants           = shaderConstants;
-	ds->u_directionalLights           = atmosphere.directionalLightsBuffer->CreateFullView();
+	ds->u_directionalLights           = atmosphere.directionalLightsBuffer->GetFullView();
 	ds->u_transmittanceLUT            = atmosphere.transmittanceLUT;
 	ds->u_dirLightShadowTerm          = apData.fogParams->directionalLightShadowTerm;
 	ds->u_indirectInScatteringTexture = apData.fogParams->indirectInScatteringTextureView;

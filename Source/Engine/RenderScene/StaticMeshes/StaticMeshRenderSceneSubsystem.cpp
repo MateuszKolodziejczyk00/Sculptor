@@ -93,7 +93,7 @@ StaticMeshBatchDefinition SMBatchesBuilder::FinalizeBatchDefinition(const BatchB
 	gfx::UploadDataToBuffer(batchBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchDataSize);
 
 	const lib::MTHandle<StaticMeshBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshBatchDS>(RENDERER_RESOURCE_NAME("StaticMeshesBatchDS"));
-	batchDS->u_batchElements = batchBuffer->CreateFullView();
+	batchDS->u_batchElements = batchBuffer->GetFullView();
 	batchDS->u_batchData     = gpuBatchData;
 
 	batchDef.batchDS = batchDS;

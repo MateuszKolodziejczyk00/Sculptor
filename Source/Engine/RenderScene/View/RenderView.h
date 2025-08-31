@@ -138,9 +138,9 @@ public:
 
 	const lib::MTHandle<RenderViewDS>& GetRenderViewDS() const;
 
-	void            SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer);
-	void            ResetExposureDataBuffer();
-	rdr::BufferView GetExposureDataBuffer() const;
+	void                                    SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer);
+	void                                    ResetExposureDataBuffer();
+	lib::SharedPtr<rdr::BindableBufferView> GetExposureDataBuffer() const;
 
 	void BeginFrame(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 	void EndFrame(const RenderScene& renderScene);

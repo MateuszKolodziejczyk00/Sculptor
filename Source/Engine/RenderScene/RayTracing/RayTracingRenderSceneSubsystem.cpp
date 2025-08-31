@@ -170,7 +170,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 
 		m_sceneRayTracingDS = rdr::ResourcesManager::CreateDescriptorSetState<SceneRayTracingDS>(RENDERER_RESOURCE_NAME("Scene Ray Tracing DS"));
 		m_sceneRayTracingDS->u_sceneTLAS   = lib::Ref(m_tlas);
-		m_sceneRayTracingDS->u_rtInstances = m_rtInstancesDataBuffer->CreateFullView();
+		m_sceneRayTracingDS->u_rtInstances = m_rtInstancesDataBuffer->GetFullView();
 	}
 
 	m_isTLASDirty = true;

@@ -104,8 +104,8 @@ StaticMeshUnifiedData::StaticMeshUnifiedData()
 	m_meshletsBuffer		= createBufferImpl(RENDERER_RESOURCE_NAME("Static Meshes Meshlets Buffer"), 1024 * 512 * sizeof(MeshletGPUData));
 
 	m_unifiedDataDS = rdr::ResourcesManager::CreateDescriptorSetState<StaticMeshUnifiedDataDS>(RENDERER_RESOURCE_NAME("Static Mesh Unified Data DS"));
-	m_unifiedDataDS->u_submeshes	= m_submeshesBuffer->CreateFullView();
-	m_unifiedDataDS->u_meshlets		= m_meshletsBuffer->CreateFullView();
+	m_unifiedDataDS->u_submeshes	= m_submeshesBuffer->GetFullView();
+	m_unifiedDataDS->u_meshlets		= m_meshletsBuffer->GetFullView();
 
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{

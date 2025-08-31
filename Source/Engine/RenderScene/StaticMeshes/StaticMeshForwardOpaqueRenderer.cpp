@@ -144,7 +144,7 @@ void StaticMeshForwardOpaqueRenderer::RenderPerView(rg::RenderGraphBuilder& grap
 								{
 									recorder.BindGraphicsPipeline(pipeline);
 
-									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawsBufferView = *drawParams.batchDrawCommandsBuffer->GetResource();
 									recorder.DrawIndirect(drawsBufferView, 0, sizeof(SMIndirectDrawCallData), 1);
 								});
 	}

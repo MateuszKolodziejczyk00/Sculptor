@@ -589,7 +589,12 @@ public:
 		, m_allocationInfo(allocationInfo)
 		, m_isAcquired(false)
 		, m_extractionDest(nullptr)
-	{ }
+	{
+		if (lib::HasAnyFlag(definition.usage, rhi::EBufferUsage::Storage))
+		{
+			m_descriptorsAllocation.uavDescriptor = rdr::Renderer::GetDescriptorManager().AllocateResourceDescriptor();
+		}
+	}
 
 	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Buffer> bufferInstance)
 		: RGResource(resourceDefinition)
@@ -635,6 +640,21 @@ public:
 		}
 	}
 
+	// Descriptors =========================================================
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
+	{
+		SPT_CHECK(lib::HasAnyFlag(GetUsageFlags(), rhi::EBufferUsage::Storage));
+		return IsExternal() || IsAcquired() ? m_bufferInstance->GetFullView()->GetUAVDescriptor() : m_descriptorsAllocation.uavDescriptor;
+	}
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = GetUAVDescriptor();
+		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
+		return descriptor;
+	}
+
 	// Resource ============================================================
 
 	Bool IsAcquired() const
@@ -659,6 +679,11 @@ public:
 	{
 		SPT_CHECK(!onlyIfAcquired || IsAcquired());
 		return m_bufferInstance;
+	}
+
+	rdr::BufferViewDescriptorsAllocation AcquireDescriptorsAllocation()
+	{
+		return std::move(m_descriptorsAllocation);
 	}
 
 	// Extraction ==========================================================
@@ -696,9 +721,11 @@ private:
 	rhi::BufferDefinition	m_bufferDef;
 	rhi::RHIAllocationInfo	m_allocationInfo;
 
+	rdr::BufferViewDescriptorsAllocation m_descriptorsAllocation;
+
 	Bool m_isAcquired;
 
-	RGNodeHandle			m_lastAccessNode;
+	RGNodeHandle m_lastAccessNode;
 
 	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
 
@@ -717,20 +744,27 @@ public:
 		, m_size(size)
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
-		, m_hasValidInstance(false)
 	{
 		SPT_CHECK(m_buffer.IsValid());
+
+		if (!IsFullView())
+		{
+			if (lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
+			{
+				rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+				m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+			}
+		}
 	}
 
-	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, const rdr::BufferView& bufferView)
+	RGBufferView(const RGResourceDef& resourceDefinition, RGBufferHandle buffer, lib::SharedPtr<rdr::BindableBufferView> bufferView)
 		: RGResource(resourceDefinition)
 		, m_buffer(buffer)
-		, m_offset(bufferView.GetOffset())
-		, m_size(bufferView.GetSize())
+		, m_offset(bufferView->GetOffset())
+		, m_size(bufferView->GetSize())
 		, m_lastAccess(ERGBufferAccess::Unknown)
 		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
-		, m_bufferViewInstance(bufferView)
-		, m_hasValidInstance(true)
+		, m_bufferViewInstance(std::move(bufferView))
 	{
 		SPT_CHECK(m_buffer.IsValid());
 		SPT_CHECK(IsExternal());
@@ -738,9 +772,13 @@ public:
 
 	~RGBufferView()
 	{
-		if (m_hasValidInstance)
+		if (!m_bufferViewInstance)
 		{
-			m_bufferViewInstance.Destroy();
+			if (m_descriptorsAllocation.uavDescriptor.IsValid())
+			{
+				rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+				descriptorManager.FreeResourceDescriptor(std::move(m_descriptorsAllocation.uavDescriptor));
+			}
 		}
 	}
 
@@ -752,6 +790,11 @@ public:
 	Uint64 GetSize() const
 	{
 		return m_size;
+	}
+
+	Bool IsFullView() const
+	{
+		return m_offset == 0 && m_size == m_buffer->GetSize();
 	}
 
 	rhi::EBufferUsage GetUsageFlags() const
@@ -774,19 +817,53 @@ public:
 		return m_buffer->GetBufferDefinition();
 	}
 
-	const rdr::BufferView& GetResource(Bool onlyIfAcquired = true) const
+	const rdr::BindableBufferView& GetResourceRef(Bool onlyIfAcquired = true) const
+	{
+		return *GetResource(onlyIfAcquired);
+	}
+
+	const lib::SharedPtr<rdr::BindableBufferView>& GetResource(Bool onlyIfAcquired = true) const
 	{
 		SPT_CHECK(!onlyIfAcquired || m_buffer->IsAcquired());
-		if (!m_hasValidInstance)
+		if (!m_bufferViewInstance)
 		{
 			const lib::SharedPtr<rdr::Buffer> owningBufferInstance = m_buffer->GetResource(onlyIfAcquired);
 			SPT_CHECK(!!owningBufferInstance);
 
-			m_bufferViewInstance.Construct(lib::Ref(owningBufferInstance), m_offset, m_size);
-			m_hasValidInstance = true;
+			if (IsFullView())
+			{
+				m_bufferViewInstance = owningBufferInstance->GetFullView();
+			}
+			else
+			{
+				m_bufferViewInstance = owningBufferInstance->CreateView(m_offset, m_size, std::move(m_descriptorsAllocation));
+			}
 		}
 
-		return m_bufferViewInstance.Get();
+		return m_bufferViewInstance;
+	}
+
+	// Descriptors =========================================================
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
+	{
+		SPT_CHECK(lib::HasAnyFlag(GetUsageFlags(), rhi::EBufferUsage::Storage));
+		if (IsFullView())
+		{
+			return m_buffer->GetUAVDescriptor();
+		}
+		else
+		{
+			return IsExternal() ? m_bufferViewInstance->GetUAVDescriptor() : m_descriptorsAllocation.uavDescriptor;
+		}
+
+	}
+
+	rdr::ResourceDescriptorIdx GetUAVDescriptorChecked() const
+	{
+		const rdr::ResourceDescriptorIdx descriptor = GetUAVDescriptor();
+		SPT_CHECK(descriptor != rdr::invalidResourceDescriptorIdx);
+		return descriptor;
 	}
 
 	// Access Synchronization ==============================================
@@ -828,12 +905,13 @@ private:
 	Uint64 m_offset;
 	Uint64 m_size;
 
+	mutable rdr::BufferViewDescriptorsAllocation m_descriptorsAllocation;
+
 	RGNodeHandle			m_lastAccessNode;
 	ERGBufferAccess			m_lastAccess;
 	rhi::EPipelineStage		m_lastAccessPipelineStages;
 
-	mutable lib::TypeStorage<rdr::BufferView>	m_bufferViewInstance;
-	mutable Bool								m_hasValidInstance;
+	mutable lib::SharedPtr<rdr::BindableBufferView>	m_bufferViewInstance;
 };
 
 } // spt::rg

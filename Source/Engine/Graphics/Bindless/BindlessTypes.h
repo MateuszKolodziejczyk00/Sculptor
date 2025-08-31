@@ -5,6 +5,7 @@
 #include "Types/DescriptorSetState/DescriptorTypes.h"
 #include "ShaderStructs/ShaderStructsTypes.h"
 #include "Types/Texture.h"
+#include "Types/Buffer.h"
 #include "RGResources/RGResourceHandles.h"
 #include "DependenciesBuilder.h"
 
@@ -44,7 +45,6 @@ public:
 	TextureDescriptor& operator=(lib::SharedPtr<rdr::TextureView> texture)
 	{
 		m_textureView = std::move(texture);
-
 
 		return *this;
 	}
@@ -175,6 +175,141 @@ SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(SRVTexture)
 SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(ConstSRVTexture)
 SPT_CREATE_TEXTURE_DESCRIPTOR_TYPEDEFS(UAVTexture)
 
+
+struct BufferDescriptorMetadata
+{
+	bool isRW       = false;
+	bool isUAV      = false;
+	bool isOptional = false;
+	bool isConst    = false;
+};
+
+
+#if DO_CHECKS
+GRAPHICS_API void ValidateBufferBinding(const std::variant<lib::SharedPtr<rdr::BindableBufferView>, rg::RGBufferViewHandle>& boundView, BufferDescriptorMetadata metadata);
+#endif // DO_CHECKS
+
+
+template<BufferDescriptorMetadata metadata, typename TType>
+class BufferDescriptor
+{
+public:
+
+	static constexpr BufferDescriptorMetadata GetMetadata() { return metadata; }
+
+	BufferDescriptor() = default;
+
+	BufferDescriptor& operator=(lib::SharedPtr<rdr::BindableBufferView> buffer)
+	{
+		m_bufferView = std::move(buffer);
+		return *this;
+	}
+
+	BufferDescriptor& operator=(rg::RGBufferViewHandle buffer)
+	{
+		m_bufferView = std::move(buffer);
+		return *this;
+	}
+
+	Uint32 GetDescriptorIdx() const
+	{
+#if DO_CHECKS
+		ValidateBufferBinding(m_bufferView, metadata);
+#endif // DO_CHECKS
+
+		if (std::holds_alternative<lib::SharedPtr<rdr::BindableBufferView>>(m_bufferView))
+		{
+			const lib::SharedPtr<rdr::BindableBufferView>& bufferView = std::get<lib::SharedPtr<rdr::BindableBufferView>>(m_bufferView);
+
+			if constexpr (metadata.isOptional)
+			{
+				if (!bufferView)
+				{
+					return rdr::invalidResourceDescriptorIdx;
+				}
+			}
+			else
+			{
+				SPT_CHECK_MSG(bufferView, "Invalid buffer view in BufferDescriptor");
+			}
+
+			if constexpr (metadata.isUAV)
+			{
+				return bufferView->GetUAVDescriptor();
+			}
+			else
+			{
+				SPT_CHECK_NO_ENTRY_MSG("Not implemented");
+				return rdr::invalidResourceDescriptorIdx;
+			}
+		}
+		else
+		{
+			const rg::RGBufferViewHandle& bufferView = std::get<rg::RGBufferViewHandle>(m_bufferView);
+
+			if constexpr (metadata.isOptional)
+			{
+				if (!bufferView.IsValid())
+				{
+					return rdr::invalidResourceDescriptorIdx;
+				}
+			}
+			else
+			{
+				SPT_CHECK_MSG(bufferView, "Invalid buffer view in BufferDescriptor");
+			}
+
+			if constexpr (metadata.isUAV)
+			{
+				return bufferView->GetUAVDescriptorChecked();
+			}
+			else
+			{
+				SPT_CHECK_NO_ENTRY_MSG("Not implemented");
+				return rdr::invalidResourceDescriptorIdx;
+			}
+		}
+	}
+
+	Bool IsValid() const
+	{
+		if (std::holds_alternative<rg::RGBufferViewHandle>(m_bufferView))
+		{
+			return std::get<rg::RGBufferViewHandle>(m_bufferView).IsValid();
+		}
+		else
+		{
+			return !!std::get<lib::SharedPtr<rdr::BindableBufferView>>(m_bufferView);
+		}
+	}
+
+private:
+
+	std::variant<lib::SharedPtr<rdr::BindableBufferView>, rg::RGBufferViewHandle> m_bufferView;
+};
+
+
+using ByteBuffer         = BufferDescriptor<BufferDescriptorMetadata{ false, true, true, false },  Byte>;
+using RWByteBuffer       = BufferDescriptor<BufferDescriptorMetadata{ true, true, true, false },   Byte>;
+using ByteBufferRef      = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, false }, Byte>;
+using RWByteBufferRef    = BufferDescriptor<BufferDescriptorMetadata{ true, true, false, false },  Byte>;
+using ConstByteBuffer    = BufferDescriptor<BufferDescriptorMetadata{ false, true, true, true },   Byte>;
+using ConstByteBufferRef = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, true },  Byte>;
+
+
+template<typename TType>
+using TypedBuffer         = BufferDescriptor<BufferDescriptorMetadata{ false, true, true, false }, TType>;
+template<typename TType>
+using RWTypedBuffer       = BufferDescriptor<BufferDescriptorMetadata{ true, true, true, false }, TType>;
+template<typename TType>
+using TypedBufferRef      = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, false }, TType>;
+template<typename TType>
+using RWTypedBufferRef    = BufferDescriptor<BufferDescriptorMetadata{ true, true, false, false }, TType>;
+template<typename TType>
+using ConstTypedBuffer    = BufferDescriptor<BufferDescriptorMetadata{ false, true, true, true }, TType>;
+template<typename TType>
+using ConstTypedBufferRef = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, true }, TType>;
+
 } // spt::gfx
 
 namespace spt::rdr::shader_translator
@@ -240,6 +375,66 @@ struct StructHLSLSizeEvaluator<gfx::TextureDescriptor<metadata, TType>>
 
 template<gfx::TextureDescriptorMetadata metadata, typename TType>
 struct StructHLSLAlignmentEvaluator<gfx::TextureDescriptor<metadata, TType>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return 16u;
+	}
+};
+
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct StructTranslator<gfx::BufferDescriptor<metadata, TType>>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		if constexpr (metadata.isUAV)
+		{
+			const lib::String prefix = metadata.isRW ? "RW" : "";
+			if constexpr (std::is_same_v<TType, Byte>)
+			{
+				return prefix + "ByteBuffer";
+			}
+			else
+			{
+				return prefix + "TypedBuffer" + "<" + StructTranslator<TType>::GetHLSLStructName() + ">";
+			}
+		}
+		else
+		{
+			SPT_CHECK_MSG(false, "For now, only UAV buffers are supported")
+		}
+	}
+};
+
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct StructCPPToHLSLTranslator<gfx::BufferDescriptor<metadata, TType>>
+{
+	static void Copy(const gfx::BufferDescriptor<metadata, TType>& cppData, lib::Span<Byte> hlslData)
+	{
+		SPT_CHECK(hlslData.size() == 16u);
+		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
+		hlsl[0] = cppData.GetDescriptorIdx();
+		hlsl[1] = 2137;
+		hlsl[2] = 2136;
+		hlsl[3] = 2135;
+	}
+};
+
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct StructHLSLSizeEvaluator<gfx::BufferDescriptor<metadata, TType>>
+{
+	static constexpr Uint32 Size()
+	{
+		return 16u;
+	}
+};
+
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct StructHLSLAlignmentEvaluator<gfx::BufferDescriptor<metadata, TType>>
 {
 	static constexpr Uint32 Alignment()
 	{

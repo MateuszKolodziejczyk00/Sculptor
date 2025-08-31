@@ -101,8 +101,8 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 								{
 									recorder.BindGraphicsPipeline(pipelineID);
 
-									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
-									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
+									const rdr::BufferView& drawsBufferView     = *drawParams.batchDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawCountBufferView = *drawParams.batchDrawCommandsCountBuffer->GetResource();
 									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, 0, maxDrawCallsNum);
 								});
 	}

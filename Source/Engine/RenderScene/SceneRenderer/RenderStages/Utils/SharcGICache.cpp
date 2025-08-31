@@ -137,13 +137,13 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
-	const rg::RGBufferViewHandle hashEntriesView = graphBuilder.AcquireExternalBufferView(m_hashEntriesBuffer->CreateFullView());
+	const rg::RGBufferViewHandle hashEntriesView = graphBuilder.AcquireExternalBufferView(m_hashEntriesBuffer->GetFullView());
 
-	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc voxel data"), graphBuilder.AcquireExternalBufferView(m_voxelData->CreateFullView()), 0u);
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc voxel data"), graphBuilder.AcquireExternalBufferView(m_voxelData->GetFullView()), 0u);
 
 	if (m_requresReset)
 	{
-		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc prev voxel data"), graphBuilder.AcquireExternalBufferView(m_prevVoxelData->CreateFullView()), 0u);
+		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc prev voxel data"), graphBuilder.AcquireExternalBufferView(m_prevVoxelData->GetFullView()), 0u);
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Sharc entries"), hashEntriesView, 0u);
 
 		m_requresReset = false;
@@ -177,15 +177,15 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	lib::MTHandle<sharc_passes::SharcUpdateDS> updateDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcUpdateDS>(RENDERER_RESOURCE_NAME("Sharc Update DS"));
 	updateDS->u_skyViewLUT               = viewContext.skyViewLUT;
 	updateDS->u_transmittanceLUT         = atmosphereContext.transmittanceLUT;
-	updateDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	updateDS->u_atmosphereParams         = atmosphereContext.atmosphereParamsBuffer->GetFullView();
 	updateDS->u_normalsTexture           = viewContext.octahedronNormals;
 	updateDS->u_baseColorMetallicTexture = viewContext.gBuffer[GBuffer::Texture::BaseColorMetallic];
 	updateDS->u_depthTexture             = viewContext.depth;
 	updateDS->u_roughnessTexture         = viewContext.gBuffer[GBuffer::Texture::Roughness];
-	updateDS->u_hashEntries              = m_hashEntriesBuffer->CreateFullView();
+	updateDS->u_hashEntries              = m_hashEntriesBuffer->GetFullView();
 	updateDS->u_hashEntriesPrev          = hashEntriesPrev;
-	updateDS->u_voxelData                = m_voxelData->CreateFullView();
-	updateDS->u_voxelDataPrev            = m_prevVoxelData->CreateFullView();
+	updateDS->u_voxelData                = m_voxelData->GetFullView();
+	updateDS->u_voxelDataPrev            = m_prevVoxelData->GetFullView();
 	updateDS->u_constants                = shaderConstants;
 
 	static rdr::PipelineStateID sharcUpdatePipeline;
@@ -231,9 +231,9 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Copy Offset"), copyOffsetBuffer, 0u);
 
 	lib::MTHandle<sharc_passes::SharcResolveDS> resolveDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcResolveDS>(RENDERER_RESOURCE_NAME("Sharc Resolve DS"));
-	resolveDS->u_hashEntries   = m_hashEntriesBuffer->CreateFullView();
-	resolveDS->u_voxelData     = m_voxelData->CreateFullView();
-	resolveDS->u_voxelDataPrev = m_prevVoxelData->CreateFullView();
+	resolveDS->u_hashEntries   = m_hashEntriesBuffer->GetFullView();
+	resolveDS->u_voxelData     = m_voxelData->GetFullView();
+	resolveDS->u_voxelDataPrev = m_prevVoxelData->GetFullView();
 	resolveDS->u_copyOffset    = copyOffsetBuffer;
 	resolveDS->u_constants     = shaderConstants;
 
@@ -245,7 +245,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 						  rg::BindDescriptorSets(std::move(resolveDS), renderView.GetRenderViewDS()));
 
 	lib::MTHandle<sharc_passes::SharcCompactDS> compactDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcCompactDS>(RENDERER_RESOURCE_NAME("Sharc Compact DS"));
-	compactDS->u_hashEntries = m_hashEntriesBuffer->CreateFullView();
+	compactDS->u_hashEntries = m_hashEntriesBuffer->GetFullView();
 	compactDS->u_copyOffset = copyOffsetBuffer;
 	compactDS->u_constants = shaderConstants;
 
@@ -260,8 +260,8 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	sharcCacheConstants.entriesNum = m_entriesNum;
 
 	lib::MTHandle<SharcCacheDS> sharcCacheDS = graphBuilder.CreateDescriptorSet<SharcCacheDS>(RENDERER_RESOURCE_NAME("Sharc Cache DS"));
-	sharcCacheDS->u_hashEntries         = m_hashEntriesBuffer->CreateFullView();
-	sharcCacheDS->u_voxelData           = m_voxelData->CreateFullView();
+	sharcCacheDS->u_hashEntries         = m_hashEntriesBuffer->GetFullView();
+	sharcCacheDS->u_voxelData           = m_voxelData->GetFullView();
 	sharcCacheDS->u_sharcCacheConstants = sharcCacheConstants;
 
 	viewContext.sharcCacheDS = std::move(sharcCacheDS);

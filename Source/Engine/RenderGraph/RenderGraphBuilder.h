@@ -94,7 +94,7 @@ public:
 
 	RGBufferHandle AcquireExternalBuffer(const lib::SharedPtr<rdr::Buffer>& buffer);
 
-	RGBufferViewHandle AcquireExternalBufferView(const rdr::BufferView& bufferView);
+	RGBufferViewHandle AcquireExternalBufferView(lib::SharedPtr<rdr::BindableBufferView> bufferView);
 
 	RGBufferHandle CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags = ERGResourceFlags::Default);
 
@@ -334,7 +334,7 @@ void RenderGraphBuilder::DispatchIndirect(const RenderGraphDebugName& dispatchNa
 	const auto executeLambda = [computePipelineID, indirectArgsBuffer, indirectArgsOffset, dsStatesRange](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindComputePipeline(computePipelineID);
-		recorder.DispatchIndirect(indirectArgsBuffer->GetResource(), indirectArgsOffset);
+		recorder.DispatchIndirect(*indirectArgsBuffer->GetResource(), indirectArgsOffset);
 		recorder.UnbindComputePipeline();
 	};
 
@@ -449,7 +449,7 @@ void RenderGraphBuilder::TraceRaysIndirect(const RenderGraphDebugName& traceName
 	const auto executeLambda = [ rayTracingPipelineID, indirectArgsBuffer, indirectArgsOffset ](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
 	{
 		recorder.BindRayTracingPipeline(rayTracingPipelineID);
-		recorder.TraceRaysIndirect(indirectArgsBuffer->GetResource(), indirectArgsOffset);
+		recorder.TraceRaysIndirect(*indirectArgsBuffer->GetResource(), indirectArgsOffset);
 		recorder.UnbindRayTracingPipeline();
 	};
 

@@ -158,8 +158,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		const AtmosphereContext& atmosphereContext = atmosphereSubsystem->GetAtmosphereContext();
 
 		compositeAtmosphereDS = graphBuilder.CreateDescriptorSet<CompositeAtmosphereDS>(RENDERER_RESOURCE_NAME("CompositeAtmosphereDS"));
-		compositeAtmosphereDS->u_atmosphereParams      = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
-		compositeAtmosphereDS->u_directionalLights     = atmosphereContext.directionalLightsBuffer->CreateFullView();
+		compositeAtmosphereDS->u_atmosphereParams      = atmosphereContext.atmosphereParamsBuffer->GetFullView();
+		compositeAtmosphereDS->u_directionalLights     = atmosphereContext.directionalLightsBuffer->GetFullView();
 		compositeAtmosphereDS->u_transmittanceLUT      = atmosphereContext.transmittanceLUT;
 		compositeAtmosphereDS->u_skyViewLUT            = viewContext.skyViewLUT;
 		compositeAtmosphereDS->u_aerialPerspective     = viewContext.aerialPerspective;

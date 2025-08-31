@@ -28,8 +28,8 @@ public:
 	{
 		if (IsValid())
 		{
-			const rdr::BufferView& bufferView = m_boundBuffer.GetBufferToBind();
-			bufferView.GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), indexer[GetBaseBindingIdx()][0]);
+			const lib::SharedPtr<rdr::BindableBufferView>& bufferView = m_boundBuffer.GetBufferToBind();
+			bufferView->GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView->GetOffset(), bufferView->GetSize(), indexer[GetBaseBindingIdx()][0]);
 		}
 	}
 

@@ -93,7 +93,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 			filterDS->u_floatTexture = inputTextureView;
 		}
 	}
-	filterDS->u_readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->CreateFullView());
+	filterDS->u_readbackBuffer = graphBuilder.AcquireExternalBufferView(readbackBuffer->GetFullView());
 
 	const Bool wantsHistogram = m_parameters.shouldOutputHistogram;
 	lib::SharedPtr<rdr::Buffer> histogramReadbackBuffer;
@@ -123,7 +123,7 @@ void TextureInspectorRenderer::Render(const lib::SharedRef<rdr::TextureView>& in
 
 	if (wantsHistogram)
 	{
-		const rg::RGBufferViewHandle rgReadbackBuffer = graphBuilder.AcquireExternalBufferView(histogramReadbackBuffer->CreateFullView());
+		const rg::RGBufferViewHandle rgReadbackBuffer = graphBuilder.AcquireExternalBufferView(histogramReadbackBuffer->GetFullView());
 
 		graphBuilder.CopyBuffer(RG_DEBUG_NAME("Copy Histogram Readback"), rgHistogram, 0u, rgReadbackBuffer, 0u, rgReadbackBuffer->GetSize());
 	}

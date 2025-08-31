@@ -895,7 +895,7 @@ CloudscapeContext VolumetricCloudsRenderer::CreateFrameCloudscapeContext(rg::Ren
 
 	lib::MTHandle<CloudscapeDS> ds = graphBuilder.CreateDescriptorSet<CloudscapeDS>(RENDERER_RESOURCE_NAME("CloudscapeDS"));
 	ds->u_cloudscapeConstants = m_cloudscapeConstants;
-	ds->u_atmosphereConstants = atmosphere.atmosphereParamsBuffer->CreateFullView();
+	ds->u_atmosphereConstants = atmosphere.atmosphereParamsBuffer->GetFullView();
 	ds->u_transmittanceLUT    = atmosphere.transmittanceLUT;
 	ds->u_baseShapeNoise      = graphBuilder.AcquireExternalTextureView(m_baseShapeNoiseTexture);
 	ds->u_detailShapeNoise    = graphBuilder.AcquireExternalTextureView(m_detailShapeNoiseTexture);

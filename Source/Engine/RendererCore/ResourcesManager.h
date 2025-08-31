@@ -13,6 +13,7 @@
 #include "Common/ShaderCompilationInput.h"
 #include "RHICore/RHICommandBufferTypes.h"
 #include "RHICore/RHIRenderContextTypes.h"
+#include "Types/Buffer.h"
 
 
 namespace spt::rhi
@@ -82,7 +83,7 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<GPUEvent> CreateGPUEvent(const RendererResourceName& name, const rhi::EventDefinition& definition);
 	
-	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition);
+	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation = BufferViewDescriptorsAllocation{});
 	SPT_NODISCARD static lib::SharedRef<Buffer> CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance);
 
 	SPT_NODISCARD static lib::SharedRef<Texture>     CreateTexture(const RendererResourceName& name, const rhi::TextureDefinition& textureDefinition, const AllocationDefinition& allocationInfo);

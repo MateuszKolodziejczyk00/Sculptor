@@ -370,7 +370,7 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));
 	shadingDS->u_skyViewLUT       = srParams.skyViewLUT;
 	shadingDS->u_transmittanceLUT = atmosphereContext.transmittanceLUT;
-	shadingDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->CreateFullView();
+	shadingDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->GetFullView();
 	shadingDS->u_hitMaterialInfos = shadingParams.rtGBuffer.hitMaterialInfos;
 	shadingDS->u_rayDirections    = shadingParams.rtGBuffer.rayDirections;
 	shadingDS->u_rayPdfs          = shadingParams.rtGBuffer.rayPdfs;

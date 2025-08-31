@@ -194,15 +194,15 @@ RGBufferHandle RenderGraphBuilder::AcquireExternalBuffer(const lib::SharedPtr<rd
 	return bufferHandle;
 }
 
-RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(const rdr::BufferView& bufferView)
+RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(lib::SharedPtr<rdr::BindableBufferView> bufferView)
 {
-	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView.GetBuffer();
+	const lib::SharedPtr<rdr::Buffer> owningBuffer = bufferView->GetBuffer();
 	SPT_CHECK(!!owningBuffer);
 
 	const RGBufferHandle owningBufferHandle = AcquireExternalBuffer(owningBuffer);
 	SPT_CHECK(owningBufferHandle.IsValid());
 
-	const RenderGraphDebugName name = RG_DEBUG_NAME(owningBuffer->GetRHI().GetName().ToString() + "View");
+	const RenderGraphDebugName name = RG_DEBUG_NAME(owningBuffer->GetRHI().GetName().ToString() + " View");
 
 	RGResourceDef resourceDefinition;
 	resourceDefinition.name = name;
@@ -364,7 +364,7 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadBuffer(const RenderGraph
 	resultBufferDefinition.usage = rhi::EBufferUsage::TransferDst;
 	const lib::SharedRef<rdr::Buffer> result = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Buffer", commandName.AsString()), resultBufferDefinition, rhi::EMemoryUsage::GPUToCpu);
 
-	CopyBuffer(commandName, bufferView, offset, AcquireExternalBufferView(result->CreateFullView()), 0, range);
+	CopyBuffer(commandName, bufferView, offset, AcquireExternalBufferView(result->GetFullView()), 0, range);
 
 	return result;
 }
@@ -378,7 +378,7 @@ lib::SharedRef<rdr::Buffer> RenderGraphBuilder::DownloadTextureToBuffer(const Re
 	resultBufferDefinition.usage = rhi::EBufferUsage::TransferDst;
 	const lib::SharedRef<rdr::Buffer> result = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME_FORMATTED("{} Download Buffer", commandName.AsString()), resultBufferDefinition, rhi::EMemoryUsage::GPUToCpu);
 
-	CopyTextureToBuffer(commandName, textureView, AcquireExternalBufferView(result->CreateFullView()), 0u);
+	CopyTextureToBuffer(commandName, textureView, AcquireExternalBufferView(result->GetFullView()), 0u);
 
 	return result;
 }

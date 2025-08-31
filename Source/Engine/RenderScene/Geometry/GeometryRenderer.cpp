@@ -497,8 +497,8 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPas
 								{
 									recorder.BindGraphicsPipeline(pipeline);
 
-									const rdr::BufferView& drawCommandsView = indirectDrawParams.drawCommands->GetResource();
-									const rdr::BufferView& drawCommandsCountView = indirectDrawParams.drawCommandsCount->GetResource();
+									const rdr::BufferView& drawCommandsView      = *indirectDrawParams.drawCommands->GetResource();
+									const rdr::BufferView& drawCommandsCountView = *indirectDrawParams.drawCommandsCount->GetResource();
 
 									recorder.DrawMeshTasksIndirectCount(drawCommandsView.GetBuffer(),
 																		drawCommandsView.GetOffset(),
@@ -543,7 +543,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 								{
 									recorder.BindGraphicsPipeline(pipeline);
 
-									const rdr::BufferView& dispatchCommandView = indirectDrawParams.drawCommands->GetResource();
+									const rdr::BufferView& dispatchCommandView = indirectDrawParams.drawCommands->GetResourceRef();
 
 									recorder.DrawMeshTasksIndirect(dispatchCommandView.GetBuffer(),
 																   dispatchCommandView.GetOffset(),
@@ -637,8 +637,8 @@ GeometryPassResult GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& gr
 	SPT_CHECK(visPassParams.hiZ.IsValid());
 	SPT_CHECK(visPassParams.visibilityTexture.IsValid());
 
-	const rg::RGBufferViewHandle visibleMeshlets = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->CreateFullView());
-	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->CreateFullView());
+	const rg::RGBufferViewHandle visibleMeshlets = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
+	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
 
 	geometry_rendering::GeometryPassContext passContext(visibleMeshlets, visibleMeshletsCount);
 

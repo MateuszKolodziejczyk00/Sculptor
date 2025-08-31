@@ -101,7 +101,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 	gfx::UploadDataToBuffer(batchElementsBuffer, 0, reinterpret_cast<const Byte*>(batchBuildData.batchElements.data()), batchElementsBufferDef.size);
 
 	lib::MTHandle<GeometryBatchDS> batchDS = rdr::ResourcesManager::CreateDescriptorSetState<GeometryBatchDS>(RENDERER_RESOURCE_NAME("GeometryBatchDS"));
-	batchDS->u_batchElements = batchElementsBuffer->CreateFullView();
+	batchDS->u_batchElements = batchElementsBuffer->GetFullView();
 	batchDS->u_batchData     = gpuBatchData;
 
 	GeometryBatch newBatch;

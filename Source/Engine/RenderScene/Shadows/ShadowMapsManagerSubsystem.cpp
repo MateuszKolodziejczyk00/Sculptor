@@ -661,7 +661,7 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapsDSViewsData()
 	const lib::SharedPtr<rdr::Buffer>& buffer = m_shadowMapViewsBuffers[0];
 
 	gfx::UploadDataToBuffer(lib::Ref(buffer), 0, reinterpret_cast<const Byte*>(m_shadowMapViewsData.data()), m_shadowMapViewsData.size() * sizeof(ShadowMapViewData));
-	m_shadowMapsDS->u_shadowMapViews = buffer->CreateFullView();
+	m_shadowMapsDS->u_shadowMapViews = buffer->GetFullView();
 
 	m_shadowMapViewsBuffers.emplace_back(buffer);
 	m_shadowMapViewsBuffers.erase(std::cbegin(m_shadowMapViewsBuffers));

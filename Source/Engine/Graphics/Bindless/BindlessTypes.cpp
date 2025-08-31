@@ -75,4 +75,45 @@ void ValidateTextureBinding(const std::variant<lib::SharedPtr<rdr::TextureView>,
 	}
 }
 
+void ValidateBufferBinding(const std::variant<lib::SharedPtr<rdr::BindableBufferView>, rg::RGBufferViewHandle>& boundView, BufferDescriptorMetadata metadata)
+{
+	Bool isValid = false;
+	rhi::EBufferUsage bufferUsage = rhi::EBufferUsage::None;
+
+	lib::HashedString resourceName;
+	if (std::holds_alternative<lib::SharedPtr<rdr::BindableBufferView>>(boundView))
+	{
+		const lib::SharedPtr<rdr::BindableBufferView>& bufferView = std::get<lib::SharedPtr<rdr::BindableBufferView>>(boundView);
+		if (bufferView)
+		{
+			bufferUsage  = bufferView->GetBuffer()->GetRHI().GetUsage();
+			isValid      = true;
+			resourceName = bufferView->GetBuffer()->GetRHI().GetName();
+		}
+	}
+	else
+	{
+		const rg::RGBufferViewHandle& bufferView = std::get<rg::RGBufferViewHandle>(boundView);
+		if (bufferView.IsValid())
+		{
+			bufferUsage  = bufferView->GetUsageFlags();
+			isValid      = true;
+			resourceName = bufferView->GetName();
+		}
+	}
+	if (!metadata.isOptional)
+	{
+		SPT_CHECK_MSG(isValid, "BufferDescriptor is not valid");
+	}
+	if (!isValid)
+	{
+		return;
+	}
+
+	if (metadata.isUAV)
+	{
+		SPT_CHECK_MSG(lib::HasAnyFlag(bufferUsage, rhi::EBufferUsage::Storage), "BufferDescriptor ({}) is not valid for UAV buffer", resourceName.ToString());
+	}
+}
+
 } // spt::gfx

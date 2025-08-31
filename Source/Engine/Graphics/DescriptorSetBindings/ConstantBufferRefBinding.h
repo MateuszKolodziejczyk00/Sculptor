@@ -35,7 +35,7 @@ public:
 
 		if (IsValid())
 		{
-			const rdr::BufferView& bufferView = m_boundBuffer.GetBufferToBind();
+			const rdr::BufferView& bufferView = *m_boundBuffer.GetBufferToBind();
 			bufferView.GetBuffer()->GetRHI().CopySRVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), indexer[GetBaseBindingIdx()][0]);
 		}
 	}
@@ -108,7 +108,7 @@ public:
 		return m_boundBuffer.IsValid();
 	}
 
-	rdr::BufferView GetBoundBuffer() const
+	lib::SharedPtr<rdr::BindableBufferView> GetBoundBuffer() const
 	{
 		return m_boundBuffer.GetBoundBuffer();
 	}

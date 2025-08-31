@@ -586,8 +586,8 @@ InitialResamplingResult SpatiotemporalResampler::ExecuteInitialResampling(rg::Re
 
 	PrepareForResampling(graphBuilder, params);
 
-	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->CreateFullView());
-	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->CreateFullView());
+	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->GetFullView());
+	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->GetFullView());
 
 	const SRResamplingConstants resamplingConstants = CreateResamplingConstants(params);
 
@@ -619,8 +619,8 @@ void SpatiotemporalResampler::ExecuteFinalResampling(rg::RenderGraphBuilder& gra
 
 	const math::Vector2u resolution = params.GetResolution();
 
-	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->CreateFullView());
-	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->CreateFullView());
+	const rg::RGBufferViewHandle historyReservoirsBuffer = graphBuilder.AcquireExternalBufferView(m_inputTemporalReservoirBuffer->GetFullView());
+	const rg::RGBufferViewHandle outputReservoirsBuffer  = graphBuilder.AcquireExternalBufferView(m_outputTemporalReservoirBuffer->GetFullView());
 
 	const SRResamplingConstants resamplingConstants = CreateResamplingConstants(params);
 

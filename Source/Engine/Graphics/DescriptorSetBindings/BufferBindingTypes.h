@@ -15,7 +15,7 @@ namespace priv
 template<typename TType>
 concept CInstanceOrRGBufferView = requires
 {
-	requires std::is_same_v<TType, rdr::BufferView> || std::is_same_v<TType, rg::RGBufferViewHandle>;
+	requires std::is_same_v<TType, lib::SharedPtr<rdr::BindableBufferView>> || std::is_same_v<TType, rg::RGBufferViewHandle>;
 };
 
 
@@ -25,15 +25,15 @@ public:
 	
 	BoundBufferVariant() = default;
 	
-	const rdr::BufferView& GetBufferToBind() const
+	const lib::SharedPtr<rdr::BindableBufferView>& GetBufferToBind() const
 	{
 		return std::visit(lib::Overload
 						  {
-							  [](const rdr::BufferView& buffer) -> const rdr::BufferView&
+							  [](const lib::SharedPtr<rdr::BindableBufferView>& buffer) -> const lib::SharedPtr<rdr::BindableBufferView>&
 							  {
 							      return buffer;
 							  },
-							  [](const rg::RGBufferViewHandle buffer) -> const rdr::BufferView&
+							  [](const rg::RGBufferViewHandle buffer) -> const lib::SharedPtr<rdr::BindableBufferView>&
 							  {
 								  return buffer->GetResource(false);
 							  }
@@ -61,11 +61,11 @@ public:
 		m_buffer = rg::RGBufferViewHandle{};
 	}
 
-	Bool operator==(const rdr::BufferView& rhs) const
+	Bool operator==(const lib::SharedPtr<rdr::BindableBufferView>& rhs) const
 	{
 		return std::visit(lib::Overload
 						  {
-							  [rhs](const rdr::BufferView& buffer)
+							  [rhs](const lib::SharedPtr<rdr::BindableBufferView>& buffer)
 							  {
 								  return buffer == rhs;
 							  },
@@ -103,7 +103,7 @@ public:
 	{
 		return std::visit(lib::Overload
 						  {
-							  [](const rdr::BufferView& buffer)
+							  [](const lib::SharedPtr<rdr::BindableBufferView>& buffer)
 							  {
 								  return true;
 							  },
@@ -115,12 +115,12 @@ public:
 						  m_buffer);
 	}
 
-	rdr::BufferView GetBoundBuffer() const
+	lib::SharedPtr<rdr::BindableBufferView> GetBoundBuffer() const
 	{
 		SPT_CHECK(IsValid());
-		SPT_CHECK(std::holds_alternative<rdr::BufferView>(m_buffer));
+		SPT_CHECK(std::holds_alternative<lib::SharedPtr<rdr::BindableBufferView>>(m_buffer));
 
-		return std::get<rdr::BufferView>(m_buffer);
+		return std::get<lib::SharedPtr<rdr::BindableBufferView>>(m_buffer);
 	}
 
 	rg::RGBufferViewHandle GetBoundRGBuffer() const
@@ -134,7 +134,7 @@ public:
 private:
 
 	using VariantType = std::variant<rg::RGBufferViewHandle,
-									 rdr::BufferView>;
+									 lib::SharedPtr<rdr::BindableBufferView>>;
 
 	VariantType m_buffer;
 };

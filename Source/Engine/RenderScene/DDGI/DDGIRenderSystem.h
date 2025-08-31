@@ -25,8 +25,8 @@ struct DDGIVolumeRelitParameters
 	lib::DynamicArray<rg::RGTextureViewHandle> probesHitDistanceTextureViews;
 	rg::RGTextureViewHandle probesAverageLuminanceTextureView;
 
-	rdr::BufferView relitParamsBuffer;
-	rdr::BufferView ddgiVolumeParamsBuffer;
+	lib::SharedPtr<rdr::BindableBufferView> relitParamsBuffer;
+	lib::SharedPtr<rdr::BindableBufferView> ddgiVolumeParamsBuffer;
 
 	Uint32 probesNumToUpdate;
 	Uint32 raysNumPerProbe;

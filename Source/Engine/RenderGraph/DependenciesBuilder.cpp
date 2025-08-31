@@ -73,7 +73,7 @@ void RGDependenciesBuilder::AddBufferAccess(RGBufferViewHandle buffer, const RGB
 	m_dependeciesRef.bufferAccesses.emplace_back(std::move(accessDef));
 }
 
-void RGDependenciesBuilder::AddBufferAccess(const rdr::BufferView& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::BindableBufferView>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
 {
 	const RGBufferViewHandle rgBufferView = m_graphBuilder.AcquireExternalBufferView(buffer);
 	AddBufferAccess(rgBufferView, access, dependencyStages.pipelineStages);

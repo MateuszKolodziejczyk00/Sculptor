@@ -71,8 +71,8 @@ ShaderDebugUtils::ShaderDebugUtils()
 	ShaderDebugCommandBufferParams params;
 	params.bufferSize = bufferSize;
 
-	m_ds->u_debugCommandsBuffer       = m_debugCommandsBuffer->CreateFullView();
-	m_ds->u_debugCommandsBufferOffset = m_debugCommandsBufferOffset->CreateFullView();
+	m_ds->u_debugCommandsBuffer       = m_debugCommandsBuffer->GetFullView();
+	m_ds->u_debugCommandsBufferOffset = m_debugCommandsBufferOffset->GetFullView();
 	m_ds->u_debugCommandsBufferParams = params;
 
 	InitializeDefaultExecutors();
@@ -119,7 +119,7 @@ void ShaderDebugUtils::PrepareBuffers(rg::RenderGraphBuilder& graphBuilder)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGBufferViewHandle debugCommandsBufferView = graphBuilder.AcquireExternalBufferView(m_debugCommandsBufferOffset->CreateFullView());
+	const rg::RGBufferViewHandle debugCommandsBufferView = graphBuilder.AcquireExternalBufferView(m_debugCommandsBufferOffset->GetFullView());
 
 	graphBuilder.FillBuffer(RG_DEBUG_NAME("Zero Debug Commands Buffer Offset"), debugCommandsBufferView, 0, debugCommandsBufferView->GetSize(), 0);
 }
@@ -148,7 +148,7 @@ lib::SharedRef<rdr::Buffer> ShaderDebugUtils::ExtractData(rg::RenderGraphBuilder
 {
 	SPT_PROFILER_FUNCTION();
 
-	const rg::RGBufferViewHandle sourceBufferView = graphBuilder.AcquireExternalBufferView(sourceBuffer->CreateFullView());
+	const rg::RGBufferViewHandle sourceBufferView = graphBuilder.AcquireExternalBufferView(sourceBuffer->GetFullView());
 
 	return graphBuilder.DownloadBuffer(RG_DEBUG_NAME("ShaderDebugCommandBuffer::ExtractData"), sourceBufferView, 0, sourceBufferView->GetSize());
 }

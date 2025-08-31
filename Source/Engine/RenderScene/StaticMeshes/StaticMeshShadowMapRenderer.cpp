@@ -118,8 +118,8 @@ void StaticMeshShadowMapRenderer::RenderToShadowMap(rg::RenderGraphBuilder& grap
 								{
 									recorder.BindGraphicsPipeline(pipelineID);
 
-									const rdr::BufferView& drawsBufferView = drawParams.batchDrawCommandsBuffer->GetResource();
-									const rdr::BufferView& drawCountBufferView = drawParams.batchDrawCommandsCountBuffer->GetResource();
+									const rdr::BufferView& drawsBufferView     = *drawParams.batchDrawCommandsBuffer->GetResource();
+									const rdr::BufferView& drawCountBufferView = *drawParams.batchDrawCommandsCountBuffer->GetResource();
 									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, faceIdx * sizeof(Uint32), maxDrawCallsNum);
 								});
 	}
@@ -192,7 +192,7 @@ SMShadowMapBatch StaticMeshShadowMapRenderer::CreateBatch(rg::RenderGraphBuilder
 
 	const lib::MTHandle<SMShadowMapCullingDS> cullingDS = graphBuilder.CreateDescriptorSet<SMShadowMapCullingDS>(RENDERER_RESOURCE_NAME("SMShadowMapCullingDS"));
 	cullingDS->u_shadowMapsData = lightShadowMapsData;
-	cullingDS->u_viewsCullingData = viewsCullingDataBuffer->CreateFullView();
+	cullingDS->u_viewsCullingData = viewsCullingDataBuffer->GetFullView();
 	cullingDS->u_drawsCount = indirectDrawCountsBuffer;
 	cullingDS->u_drawCommandsFace0 = batch.perFaceData[0].drawCommandsBuffer;
 	if (facesNum > 1)

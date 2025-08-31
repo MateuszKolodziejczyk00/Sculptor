@@ -170,7 +170,7 @@ const lib::MTHandle<RenderViewDS>& RenderView::GetRenderViewDS() const
 void RenderView::SetExposureDataBuffer(lib::SharedPtr<rdr::Buffer> buffer)
 {
 	SPT_CHECK(m_renderViewDS.IsValid() && !m_renderViewDS->u_viewExposure.IsValid());
-	m_renderViewDS->u_viewExposure = buffer->CreateFullView();
+	m_renderViewDS->u_viewExposure = buffer->GetFullView();
 }
 
 void RenderView::ResetExposureDataBuffer()
@@ -179,7 +179,7 @@ void RenderView::ResetExposureDataBuffer()
 	m_renderViewDS->u_viewExposure.Reset();
 }
 
-rdr::BufferView RenderView::GetExposureDataBuffer() const
+lib::SharedPtr<rdr::BindableBufferView> RenderView::GetExposureDataBuffer() const
 {
 	return m_renderViewDS->u_viewExposure.GetBoundBuffer();
 }

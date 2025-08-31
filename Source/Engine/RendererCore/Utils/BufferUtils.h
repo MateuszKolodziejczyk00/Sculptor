@@ -31,9 +31,9 @@ lib::SharedRef<Buffer> CreateConstantBuffer(const RendererResourceName& name, co
 }
 
 template<typename TStruct, typename TValue> requires std::is_constructible_v<TStruct, const TValue&>
-BufferView CreateConstantBufferView(const RendererResourceName& name, const TValue& value)
+lib::SharedPtr<rdr::BindableBufferView> CreateConstantBufferView(const RendererResourceName& name, const TValue& value)
 {
-	return CreateConstantBuffer<TStruct>(name, value)->CreateFullView();
+	return CreateConstantBuffer<TStruct>(name, value)->GetFullView();
 }
 
 } // utils
