@@ -353,12 +353,10 @@ struct StructCPPToHLSLTranslator<gfx::TextureDescriptor<metadata, TType>>
 {
 	static void Copy(const gfx::TextureDescriptor<metadata, TType>& cppData, lib::Span<Byte> hlslData)
 	{
-		SPT_CHECK(hlslData.size() == 16u);
+		SPT_CHECK(hlslData.size() == 8u);
 		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
 		hlsl[0] = cppData.GetDescriptorIdx();
 		hlsl[1] = 2137;
-		hlsl[2] = 2138;
-		hlsl[3] = 2139;
 	}
 };
 
@@ -368,7 +366,7 @@ struct StructHLSLSizeEvaluator<gfx::TextureDescriptor<metadata, TType>>
 {
 	static constexpr Uint32 Size()
 	{
-		return 16u;
+		return 8u;
 	}
 };
 
@@ -378,7 +376,7 @@ struct StructHLSLAlignmentEvaluator<gfx::TextureDescriptor<metadata, TType>>
 {
 	static constexpr Uint32 Alignment()
 	{
-		return 16u;
+		return 4u;
 	}
 };
 
@@ -413,12 +411,10 @@ struct StructCPPToHLSLTranslator<gfx::BufferDescriptor<metadata, TType>>
 {
 	static void Copy(const gfx::BufferDescriptor<metadata, TType>& cppData, lib::Span<Byte> hlslData)
 	{
-		SPT_CHECK(hlslData.size() == 16u);
+		SPT_CHECK(hlslData.size() == 8u);
 		Uint32* hlsl = reinterpret_cast<Uint32*>(hlslData.data());
 		hlsl[0] = cppData.GetDescriptorIdx();
 		hlsl[1] = 2137;
-		hlsl[2] = 2136;
-		hlsl[3] = 2135;
 	}
 };
 
@@ -428,7 +424,7 @@ struct StructHLSLSizeEvaluator<gfx::BufferDescriptor<metadata, TType>>
 {
 	static constexpr Uint32 Size()
 	{
-		return 16u;
+		return 8u;
 	}
 };
 
@@ -438,7 +434,7 @@ struct StructHLSLAlignmentEvaluator<gfx::BufferDescriptor<metadata, TType>>
 {
 	static constexpr Uint32 Alignment()
 	{
-		return 16u;
+		return 4u;
 	}
 };
 
@@ -454,7 +450,7 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 	{
 		if constexpr (!metadata.isConst)
 		{
-			SPT_CHECK(hlsl.size() == 16u);
+			SPT_CHECK(hlsl.size() == 8u);
 
 			const Uint32* hlslData = reinterpret_cast<const Uint32*>(hlsl.data());
 
@@ -465,6 +461,36 @@ struct HLSLStructDependenciesBuider<gfx::TextureDescriptor<metadata, TType>>
 				constexpr rg::ERGTextureAccess access = metadata.isUAV ? ERGTextureAccess::StorageWriteTexture : ERGTextureAccess::SampledTexture;
 
 				dependenciesBuilder.AddTextureAccess(descriptoridx, access);
+			}
+		}
+	}
+};
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
+{
+	static void CollectDependencies(lib::Span<const Byte> hlsl, RGDependenciesBuilder& dependenciesBuilder)
+	{
+		if constexpr (!metadata.isConst)
+		{
+			SPT_CHECK(hlsl.size() == 8u);
+
+			const Uint32* hlslData = reinterpret_cast<const Uint32*>(hlsl.data());
+
+			const rdr::ResourceDescriptorIdx descriptoridx = rdr::ResourceDescriptorIdx(hlslData[0]);
+
+			if (descriptoridx != rdr::invalidResourceDescriptorIdx)
+			{
+				constexpr rg::ERGBufferAccess access = metadata.isRW ? rg::ERGBufferAccess::ReadWrite : rg::ERGBufferAccess::Read;
+				rg::RGBufferAccessInfo accessInfo;
+				accessInfo.access = access;
+
+#if DEBUG_RENDER_GRAPH
+				accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TType>();
+				accessInfo.elementsNum    = 1u;
+#endif // DEBUG_RENDER_GRAPH
+
+				dependenciesBuilder.AddBufferAccess(descriptoridx, access);
 			}
 		}
 	}

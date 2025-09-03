@@ -64,7 +64,6 @@ END_SHADER_STRUCT();
 DS_BEGIN(BuildLightZClustersDS, rg::RGDescriptorSetState<BuildLightZClustersDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector2f>),             u_localLightsZRanges)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),          u_lightsData)
-	//DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector2u>),           u_clustersRanges)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<BuildLightZClustersConstants>), u_constants)
 DS_END();
 

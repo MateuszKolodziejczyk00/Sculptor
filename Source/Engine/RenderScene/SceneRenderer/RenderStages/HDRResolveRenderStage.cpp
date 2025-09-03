@@ -463,7 +463,7 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	SPT_PROFILER_FUNCTION();
 
 	const RenderView& renderView = viewSpec.GetRenderView();
-	
+
 	const lib::MTHandle<TonemappingDS> tonemappingDS = graphBuilder.CreateDescriptorSet<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
 	tonemappingDS->u_tonemappingConstants = tonemappingConstants;
 

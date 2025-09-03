@@ -44,7 +44,7 @@ void BufferInspector::DrawUI()
 	{
 		ImGui::Columns(3);
 
-		DrawStruct("", m_capturedBufferBinding.structTypeName, bufferData.subspan(m_capturedBufferBinding.offset, m_capturedBufferBinding.size));
+		DrawStruct("", m_capturedBufferBinding.structTypeName, bufferData.subspan(m_capturedBufferBinding.offset, m_capturedBufferBinding.size), 0u);
 
 		ImGui::EndColumns();
 		ImGui::Separator();
@@ -101,7 +101,7 @@ void BufferInspector::DrawUI()
 	ImGui::End();
 }
 
-void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data)
+void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data, Uint32 currentOffset)
 {
 	const RGCapture& capture = m_parentNodeViewer.GetCapture();
 
@@ -113,7 +113,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 	ImGui::NextColumn();
 
-	ImGui::Text(typeName.GetView().data());
+	ImGui::Text("%s offset: %d", typeName.GetView().data(), currentOffset);
 
 	ImGui::NextColumn();
 
@@ -132,12 +132,13 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 				for(Uint32 i = 0; i < member.elementsNum; ++i)
 				{
 					const lib::String elemName = lib::String("[") + std::to_string(i) + "]";
-					DrawStruct(elemName.c_str(), member.memberTypeName, data.subspan(member.offset + i * member.stride, member.stride));
+					const Uint32 elemOffset = currentOffset + member.offset + i * member.stride;
+					DrawStruct(elemName.c_str(), member.memberTypeName, data.subspan(member.offset + i * member.stride, member.stride), elemOffset);
 				}
 			}
 			else
 			{
-				DrawStruct(member.memberName.GetView(), member.memberTypeName, data.subspan(member.offset));
+				DrawStruct(member.memberName.GetView(), member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
 			}
 		}
 	}

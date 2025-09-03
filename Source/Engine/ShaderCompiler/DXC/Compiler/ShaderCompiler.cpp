@@ -354,6 +354,7 @@ DxcArguments CompilerImpl::BuildArguments(const lib::String& shaderPath, const l
 	args.Append(L"-spirv");
 	args.Append(L"-WX"); // Warnings as errors
 	args.Append(L"-enable-16bit-types");
+	args.Append(L"-fvk-use-scalar-layout");
 	args.Append(priv::GetTargetEnvironment(targetEnv));
 	args.Append(lib::WString(L"-I"), absoluteShadersPath);
 	args.Append(lib::WString(L"-I"), absoluteShadersPath + L"/Sculptor");

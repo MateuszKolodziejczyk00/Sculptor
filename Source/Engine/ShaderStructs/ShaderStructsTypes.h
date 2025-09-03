@@ -341,7 +341,7 @@ constexpr Uint32 GetMaxMemberAlignment()
 	}
 	else if constexpr (IsTailMember<TShaderStructMemberMetaData>())
 	{
-		return 16u; // 16 is a min alignment for HLSL structures
+		return 1u;
 	}
 	else
 	{
@@ -365,8 +365,7 @@ struct StructHLSLAlignmentEvaluator
 			using TArrayTraits = lib::StaticArrayTraits<TType>;
 			using TElemType = typename TArrayTraits::Type;
 
-			const Uint32 elementAlignment = StructHLSLAlignmentEvaluator<TElemType>::Alignment();
-			return elementAlignment < 16u ? 16u : elementAlignment; // HLSL requires array elements to be aligned to 16 bytes
+			return StructHLSLAlignmentEvaluator<TElemType>::Alignment();
 		}
 		else if constexpr (CShaderStruct<TType>)
 		{
@@ -397,8 +396,7 @@ struct StructHLSLSizeEvaluator
 			using TArrayTraits = lib::StaticArrayTraits<TType>;
 			using TElemType = typename TArrayTraits::Type;
 
-			constexpr Uint32 typeSize = StructHLSLSizeEvaluator<TElemType>::Size();
-			constexpr Uint32 elemSize = typeSize >= 16u ? typeSize : 16u; // HLSL requires array elements to be aligned to 16 bytes
+			constexpr Uint32 elemSize = StructHLSLSizeEvaluator<TElemType>::Size();
 
 			return elemSize * TArrayTraits::Size;
 		}
@@ -468,8 +466,7 @@ struct StructCPPToHLSLTranslator
 			using TArrayTraits = lib::StaticArrayTraits<TType>;
 			using TElemType = typename TArrayTraits::Type;
 
-			constexpr Uint32 hlslTypeSize    = HLSLSizeOf<TElemType>();
-			constexpr Uint32 hlslElementSize = hlslTypeSize >= 16u ? hlslTypeSize : 16u; // HLSL requires at least 16 bytes for each element of array
+			constexpr Uint32 hlslElementSize = HLSLSizeOf<TElemType>();
 
 			for (SizeType idx = 0u; idx < TArrayTraits::Size; ++idx)
 			{
@@ -524,6 +521,15 @@ struct StructHLSLAlignmentEvaluator<Bool>
 	static constexpr Uint32 Alignment()
 	{
 		return 4; // bool is aligned to 4 bytes in HLSL
+	}
+};
+
+template<typename TType, Uint32 rows, Uint32 cols>
+struct StructHLSLAlignmentEvaluator<math::Matrix<TType, rows, cols>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return StructHLSLAlignmentEvaluator<TType>::Alignment();
 	}
 };
 

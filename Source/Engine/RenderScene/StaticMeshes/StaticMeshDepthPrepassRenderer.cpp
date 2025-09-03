@@ -103,7 +103,7 @@ void StaticMeshDepthPrepassRenderer::RenderPerView(rg::RenderGraphBuilder& graph
 
 									const rdr::BufferView& drawsBufferView     = *drawParams.batchDrawCommandsBuffer->GetResource();
 									const rdr::BufferView& drawCountBufferView = *drawParams.batchDrawCommandsCountBuffer->GetResource();
-									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(SMDepthOnlyDrawCallData), drawCountBufferView, 0, maxDrawCallsNum);
+									recorder.DrawIndirectCount(drawsBufferView, 0, sizeof(rdr::HLSLStorage<SMDepthOnlyDrawCallData>), drawCountBufferView, 0, maxDrawCallsNum);
 								});
 	}
 }
@@ -124,7 +124,7 @@ SMDepthPrepassBatch StaticMeshDepthPrepassRenderer::CreateBatch(rg::RenderGraphB
 
 	const rhi::RHIAllocationInfo batchBuffersAllocInfo(rhi::EMemoryUsage::GPUOnly);
 
-	const rhi::BufferDefinition commandsBufferDef(sizeof(SMDepthOnlyDrawCallData) * batch.batchedSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+	const rhi::BufferDefinition commandsBufferDef(sizeof(rdr::HLSLStorage<SMDepthOnlyDrawCallData>) * batch.batchedSubmeshesNum, lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
 	const rg::RGBufferViewHandle drawCommandsBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("SMDepthPrepassIndirectCommands"), commandsBufferDef, batchBuffersAllocInfo);
 
 	const Uint64 indirectDrawsCountSize = sizeof(Uint32);

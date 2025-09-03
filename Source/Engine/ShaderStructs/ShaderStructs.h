@@ -77,20 +77,11 @@ public:
 		{
 			if constexpr (GetElementsNum() == 1u)
 			{
-				constexpr Uint32 thisMemberSize = GetHLSLSize();
-				constexpr Uint32 prevMemberEnd = TPrev::s_hlsl_memberOffset + TPrev::s_hlsl_memberSize;
-
-				constexpr Uint32 alignofUnderlyingType = shader_translator::HLSLAlignOf<TType>();
-
-				return ((prevMemberEnd % 16) + thisMemberSize) > 16 ? 16 : alignofUnderlyingType;
+				return shader_translator::HLSLAlignOf<UnderlyingType>();
 			}
 			else
 			{
-				// handle HLSL arrays alignment
-				// In HLSL each element of array is aligned to 16 bytes
-				using ElementType = typename ShaderStructMemberElementType<UnderlyingType>::Type;
-				static_assert(shader_translator::HLSLAlignOf<TType>() == 16u, "Invalid alignment of array element in C++");
-				return 16u;
+				return shader_translator::HLSLAlignOf<ElementType>();
 			}
 		}
 	}
@@ -355,14 +346,14 @@ void AppendMemberRTTI(ShaderStructRTTI& rtti)
 	
 	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
 	{
-		const Uint32 structSize = shader_translator::HLSLSizeOf<typename TShaderStructMemberMetaData::UnderlyingType>();
+		const Uint32 structSize = shader_translator::HLSLSizeOf<typename TShaderStructMemberMetaData::ElementType>();
 
 		ShaderStructMemberRTTI memberRTTI;
 		memberRTTI.memberName     = TShaderStructMemberMetaData::GetVariableName();
 		memberRTTI.memberTypeName = TShaderStructMemberMetaData::GetTypeName();
 		memberRTTI.offset         = TShaderStructMemberMetaData::s_hlsl_memberOffset;
 		memberRTTI.elementsNum    = TShaderStructMemberMetaData::GetElementsNum();
-		memberRTTI.stride         = structSize >= 16u ? structSize : 16u; // HLSL requires at least 16 bytes for each element of array
+		memberRTTI.stride         = structSize;
 
 		rtti.members.emplace_back(std::move(memberRTTI));
 	}

@@ -37,7 +37,7 @@ public:
 
 private:
 
-	void DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data);
+	void DrawStruct(lib::StringView name, lib::HashedString typeName, lib::Span<const Byte> data, Uint32 currentOffset);
 
 	lib::HashedString m_boundDataPanelName;
 	lib::HashedString m_bufferDataPanelName;
