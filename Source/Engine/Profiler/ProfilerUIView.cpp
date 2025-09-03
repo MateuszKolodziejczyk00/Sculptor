@@ -63,7 +63,7 @@ void ProfilerUIView::DrawGPUProfilerUI()
 {
 	SPT_PROFILER_FUNCTION();
 
-	if (ImGui::CollapsingHeader("GPU Stats"))
+	if (ImGui::CollapsingHeader("GPU Stats", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		prf::Profiler::Get().FlushNewGPUFrameStatistics();
 
@@ -164,7 +164,7 @@ void ProfilerUIView::DrawGPUScopeStatistics(const rdr::GPUStatisticsScopeData& s
 			ImGui::Text("Average Time: %f ms", averageDurationMs);
 		}
 
-		if (!scopeStats.children.empty() && ImGui::CollapsingHeader("Children"))
+		if (!scopeStats.children.empty() && ImGui::CollapsingHeader("Children", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Indent(scopeIndentVal);
 			for (const rdr::GPUStatisticsScopeData& scope : scopeStats.children)

@@ -79,4 +79,31 @@ void RGDependenciesBuilder::AddBufferAccess(const lib::SharedPtr<rdr::BindableBu
 	AddBufferAccess(rgBufferView, access, dependencyStages.pipelineStages);
 }
 
+void RGDependenciesBuilder::AddBufferAccess(rdr::ResourceDescriptorIdx bufferDescriptor, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages /*= RGDependencyStages()*/)
+{
+	if (bufferDescriptor != rdr::invalidResourceDescriptorIdx)
+	{
+		const rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+
+		// try getting RG texture view that is associated with the descriptor
+		RGBufferViewHandle rgBufferView = reinterpret_cast<RGBufferView*>(descriptorManager.GetCustomDescriptorInfo(bufferDescriptor));
+
+		// if the RG resource is not associated with the descriptor, try finding external texture view
+		if (!rgBufferView.IsValid())
+		{
+			rdr::BindableBufferView* boundBufferViewPtr = descriptorManager.GetBufferView(bufferDescriptor);
+			SPT_CHECK(!!boundBufferViewPtr);
+
+			const lib::SharedPtr<rdr::BindableBufferView> bufferView = boundBufferViewPtr->AsSharedPtr();
+			SPT_CHECK(!!bufferView);
+
+			rgBufferView = m_graphBuilder.AcquireExternalBufferView(bufferView);
+		}
+
+		SPT_CHECK(rgBufferView.IsValid());
+
+		AddBufferAccess(rgBufferView, access, dependencyStages);
+	}
+}
+
 } // spt::rg

@@ -54,12 +54,24 @@ BindableBufferView::~BindableBufferView()
 {
 	if (m_uavDescriptor.IsValid())
 	{
+		Renderer::GetDescriptorManager().ClearDescriptorInfo(m_uavDescriptor.Get());
+
 		Renderer::ReleaseDeferred(GPUReleaseQueue::ReleaseEntry::CreateLambda(
 		[uavDescriptor = std::move(m_uavDescriptor)]() mutable
 		{
 			Renderer::GetDescriptorManager().FreeResourceDescriptor(std::move(uavDescriptor));
 		}));
 	}
+}
+
+lib::SharedPtr<BindableBufferView> BindableBufferView::AsSharedPtr()
+{
+	if (this == &GetBuffer()->GetFullViewRef())
+	{
+		return GetBuffer()->GetFullView();
+	}
+
+	return shared_from_this();
 }
 
 void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation externalDescriptorsAllocation)
@@ -71,7 +83,7 @@ void BindableBufferView::CreateDescriptors(BufferViewDescriptorsAllocation exter
 	if (lib::HasAnyFlag(rhiBuffer.GetUsage(), rhi::EBufferUsage::Storage))
 	{
 		m_uavDescriptor = externalDescriptorsAllocation.uavDescriptor.IsValid() ? std::move(externalDescriptorsAllocation.uavDescriptor) : descriptorManager.AllocateResourceDescriptor();
-		descriptorManager.UploadUAVDescriptor(m_uavDescriptor.Get(), *GetBuffer(), GetOffset(), GetSize());
+		descriptorManager.UploadUAVDescriptor(m_uavDescriptor.Get(), *this);
 	}
 }
 
@@ -149,6 +161,11 @@ lib::SharedPtr<BindableBufferView> Buffer::GetFullView() const
 {
 	// Pointer to view but uses control block of Buffer. That's because full view doesn't have strong ref to buffer to  create circular reference
 	return lib::SharedPtr<BindableBufferView>(shared_from_this(), const_cast<BindableBufferView*>(&m_fullView.Get()));
+}
+
+const BindableBufferView& Buffer::GetFullViewRef() const
+{
+	return m_fullView.Get();
 }
 
 lib::SharedPtr<BindableBufferView> Buffer::CreateView(Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation /*= BufferViewDescriptorsAllocation()*/) const

@@ -27,7 +27,7 @@ DebugRegion::~DebugRegion()
 // GPUCheckpointValidator ========================================================================
 
 GPUCheckpointValidator::GPUCheckpointValidator()
-	: m_checkpointsBuffer(rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("GPUCheckpointsBuffer"), rhi::BufferDefinition(sizeof(Uint32), rhi::EBufferUsage::Storage), rhi::EMemoryUsage::GPUToCpu))
+	: m_checkpointsBuffer(rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("GPUCheckpointsBuffer"), rhi::BufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst, rhi::EBufferUsage::Storage)), rhi::EMemoryUsage::GPUToCpu))
 {
 	const rhi::RHIMappedBuffer<Uint32> mappedBuffer(m_checkpointsBuffer->GetRHI());
 	mappedBuffer[0] = 0u;

@@ -165,14 +165,10 @@ RayHitResult RTGITraceRay(RaytracingAccelerationStructure tlas, in float3 rayOri
 {
 	const float maxHitDistance = 200.f;
 
-	const float bias = 0.05f;
-
-	const float3 biasedRayOrigin = rayOrigin;
-
 	RayDesc rayDesc;
 	rayDesc.TMin      = 0.01f;
 	rayDesc.TMax      = maxHitDistance;
-	rayDesc.Origin    = biasedRayOrigin;
+	rayDesc.Origin    = rayOrigin;
 	rayDesc.Direction = rayDirection;
 
 	RTGIRayPayload payload;

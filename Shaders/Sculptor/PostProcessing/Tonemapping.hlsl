@@ -26,7 +26,7 @@ float3 TonyMCMapface(float3 stimulus)
     const float LUT_DIMS = 48.0;
     const float3 uv = encoded * ((LUT_DIMS - 1.0) / LUT_DIMS) + 0.5 / LUT_DIMS;
 
-    return u_tonemappingConstants.tonemappingLUT.SampleLevel(u_linearSampler, uv);
+	return u_tonemappingConstants.tonemappingLUT.SampleLevel(u_linearSampler, uv);
 }
 
 

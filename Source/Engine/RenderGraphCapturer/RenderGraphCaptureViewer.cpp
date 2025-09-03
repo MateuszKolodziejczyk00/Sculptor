@@ -93,7 +93,7 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 
 	ImGui::Columns(2);
 
-	if (ImGui::CollapsingHeader("Input Textures"))
+	if (ImGui::CollapsingHeader("Input Textures", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (const CapturedTextureBinding& binding : pass.textures)
 		{
@@ -108,7 +108,7 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Output Textures"))
+	if (ImGui::CollapsingHeader("Output Textures", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (const CapturedTextureBinding& binding : pass.textures)
 		{
@@ -125,7 +125,7 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 
 	ImGui::NextColumn();
 	
-	if (ImGui::CollapsingHeader("Buffers"))
+	if (ImGui::CollapsingHeader("Buffers", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (const CapturedBufferBinding& binding : pass.buffers)
 		{
@@ -161,7 +161,7 @@ void RGNodeCaptureViewer::DrawNodeProperties(const CapturedPass& node)
 
 void RGNodeCaptureViewer::DrawNodeComputeProperties(const RGCapturedComputeProperties& properties)
 {
-	if (ImGui::CollapsingHeader("Pipeline State Statistics"))
+	if (ImGui::CollapsingHeader("Pipeline State Statistics", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		const auto displayStatisticValue = [](rhi::PipelineStatisticValue value)
 			{

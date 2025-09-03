@@ -171,11 +171,13 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureVi
 	m_resourceDescriptorInfos[idx].Encode(&textureView);
 }
 
-void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range)
+void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView)
 {
 	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
 
-	SPT_CHECK(lib::HasAnyFlag(buffer.GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
+	const lib::SharedRef<Buffer>& buffer = bufferView.GetBuffer();
+
+	SPT_CHECK(lib::HasAnyFlag(buffer->GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
@@ -184,16 +186,18 @@ void DescriptorManager::UploadSRVDescriptor(ResourceDescriptorIdx idx, Buffer& b
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
 
-	buffer.GetRHI().CopySRVDescriptor(offset, range, descriptorData.data());
+	buffer->GetRHI().CopySRVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData.data());
 
-	m_resourceDescriptorInfos[idx].Encode(&buffer);
+	m_resourceDescriptorInfos[idx].Encode(&bufferView);
 }
 
-void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range)
+void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView)
 {
 	SPT_CHECK(idx != rdr::invalidResourceDescriptorIdx);
 
-	SPT_CHECK(lib::HasAnyFlag(buffer.GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
+	const lib::SharedRef<Buffer>& buffer = bufferView.GetBuffer();
+
+	SPT_CHECK(lib::HasAnyFlag(buffer->GetRHI().GetUsage(), rhi::EBufferUsage::Storage));
 
 #if SPT_DESCRIPTOR_MANAGER_DEBUG
 	SPT_CHECK(m_resourceDescriptorAllocator.IsDescriptorOccupied(idx));
@@ -202,9 +206,9 @@ void DescriptorManager::UploadUAVDescriptor(ResourceDescriptorIdx idx, Buffer& b
 
 	const lib::Span<Byte> descriptorData = m_resourceDescriptorAllocator.GetDescriptorData(idx);
 
-	buffer.GetRHI().CopyUAVDescriptor(offset, range, descriptorData.data());
+	buffer->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), descriptorData.data());
 
-	m_resourceDescriptorInfos[idx].Encode(&buffer);
+	m_resourceDescriptorInfos[idx].Encode(&bufferView);
 }
 
 void DescriptorManager::SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr)
@@ -232,6 +236,19 @@ TextureView* DescriptorManager::GetTextureView(ResourceDescriptorIdx idx) const
 
 	const DescriptorInfo& info = m_resourceDescriptorInfos[idx];
 	return info.GetTextureView();
+}
+
+BindableBufferView* DescriptorManager::GetBufferView(ResourceDescriptorIdx idx) const
+{
+	if (idx == rdr::invalidResourceDescriptorIdx)
+	{
+		return nullptr;
+	}
+
+	SPT_CHECK(idx < m_resourceDescriptorInfos.size());
+
+	const DescriptorInfo& info = m_resourceDescriptorInfos[idx];
+	return info.GetBufferView();
 }
 
 void* DescriptorManager::GetCustomDescriptorInfo(ResourceDescriptorIdx idx) const

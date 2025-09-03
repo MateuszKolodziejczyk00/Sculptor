@@ -588,17 +588,17 @@ public:
 		, m_bufferDef(definition)
 		, m_allocationInfo(allocationInfo)
 		, m_isAcquired(false)
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 		, m_extractionDest(nullptr)
 	{
-		if (lib::HasAnyFlag(definition.usage, rhi::EBufferUsage::Storage))
-		{
-			m_descriptorsAllocation.uavDescriptor = rdr::Renderer::GetDescriptorManager().AllocateResourceDescriptor();
-		}
 	}
 
 	RGBuffer(const RGResourceDef& resourceDefinition, lib::SharedPtr<rdr::Buffer> bufferInstance)
 		: RGResource(resourceDefinition)
 		, m_isAcquired(true)
+		, m_lastAccess(ERGBufferAccess::Unknown)
+		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 		, m_bufferInstance(std::move(bufferInstance))
 		, m_extractionDest(nullptr)
 	{
@@ -641,6 +641,13 @@ public:
 	}
 
 	// Descriptors =========================================================
+
+	void SetFullViewDescriptorsAllocation(rdr::BufferViewDescriptorsAllocation descriptorsAllocation)
+	{
+		SPT_CHECK_MSG(!IsExternal(), "Cannot set descriptors for external buffer");
+		SPT_CHECK_MSG(!m_bufferInstance, "Cannot set descriptors for acquired buffer");
+		m_descriptorsAllocation = std::move(descriptorsAllocation);
+	}
 
 	rdr::ResourceDescriptorIdx GetUAVDescriptor() const
 	{
@@ -716,6 +723,26 @@ public:
 		m_lastAccessNode = node;
 	}
 
+	ERGBufferAccess GetLastAccessType() const
+	{
+		return m_lastAccess;
+	}
+
+	void SetLastAccessType(ERGBufferAccess access)
+	{
+		m_lastAccess = access;
+	}
+
+	rhi::EPipelineStage GetLastAccessPipelineStages() const
+	{
+		return m_lastAccessPipelineStages;
+	}
+
+	void SetLastAccessPipelineStages(rhi::EPipelineStage stages)
+	{
+		m_lastAccessPipelineStages = stages;
+	}
+
 private:
 
 	rhi::BufferDefinition	m_bufferDef;
@@ -725,7 +752,9 @@ private:
 
 	Bool m_isAcquired;
 
-	RGNodeHandle m_lastAccessNode;
+	RGNodeHandle        m_lastAccessNode;
+	ERGBufferAccess     m_lastAccess;
+	rhi::EPipelineStage m_lastAccessPipelineStages;
 
 	lib::SharedPtr<rdr::Buffer> m_bufferInstance;
 
@@ -742,17 +771,21 @@ public:
 		, m_buffer(buffer)
 		, m_offset(offset)
 		, m_size(size)
-		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 	{
 		SPT_CHECK(m_buffer.IsValid());
+		SPT_CHECK(!IsExternal());
 
-		if (!IsFullView())
+		const Bool requiresDescriptorsAllocation = !IsFullView() || !buffer->IsExternal();
+
+		if (requiresDescriptorsAllocation && lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
 		{
-			if (lib::HasAnyFlag(buffer->GetUsageFlags(), rhi::EBufferUsage::Storage))
+			rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
+			m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+			descriptorManager.SetCustomDescriptorInfo(m_descriptorsAllocation.uavDescriptor, this);
+
+			if (IsFullView())
 			{
-				rdr::DescriptorManager& descriptorManager = rdr::Renderer::GetDescriptorManager();
-				m_descriptorsAllocation.uavDescriptor = descriptorManager.AllocateResourceDescriptor();
+				buffer->SetFullViewDescriptorsAllocation(std::move(m_descriptorsAllocation));
 			}
 		}
 	}
@@ -762,8 +795,6 @@ public:
 		, m_buffer(buffer)
 		, m_offset(bufferView->GetOffset())
 		, m_size(bufferView->GetSize())
-		, m_lastAccess(ERGBufferAccess::Unknown)
-		, m_lastAccessPipelineStages(rhi::EPipelineStage::None)
 		, m_bufferViewInstance(std::move(bufferView))
 	{
 		SPT_CHECK(m_buffer.IsValid());
@@ -866,38 +897,6 @@ public:
 		return descriptor;
 	}
 
-	// Access Synchronization ==============================================
-
-	RGNodeHandle GetLastAccessNode() const
-	{
-		return m_lastAccessNode;
-	}
-
-	void SetLastAccessNode(RGNodeHandle node)
-	{
-		m_lastAccessNode = node;
-	}
-
-	ERGBufferAccess GetLastAccessType() const
-	{
-		return m_lastAccess;
-	}
-
-	void SetLastAccessType(ERGBufferAccess access)
-	{
-		m_lastAccess = access;
-	}
-
-	rhi::EPipelineStage GetLastAccessPipelineStages() const
-	{
-		return m_lastAccessPipelineStages;
-	}
-
-	void SetLastAccessPipelineStages(rhi::EPipelineStage stages)
-	{
-		m_lastAccessPipelineStages = stages;
-	}
-
 private:
 
 	RGBufferHandle m_buffer;
@@ -905,12 +904,7 @@ private:
 	Uint64 m_offset;
 	Uint64 m_size;
 
-	mutable rdr::BufferViewDescriptorsAllocation m_descriptorsAllocation;
-
-	RGNodeHandle			m_lastAccessNode;
-	ERGBufferAccess			m_lastAccess;
-	rhi::EPipelineStage		m_lastAccessPipelineStages;
-
+	mutable rdr::BufferViewDescriptorsAllocation    m_descriptorsAllocation;
 	mutable lib::SharedPtr<rdr::BindableBufferView>	m_bufferViewInstance;
 };
 

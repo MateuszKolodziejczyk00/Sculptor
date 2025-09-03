@@ -124,6 +124,7 @@ public:
 
 	void AddBufferAccess(RGBufferViewHandle buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 	void AddBufferAccess(const lib::SharedPtr<rdr::BindableBufferView>& buffer, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
+	void AddBufferAccess(rdr::ResourceDescriptorIdx bufferDescriptor, const RGBufferAccessInfo& access, RGDependencyStages dependencyStages = RGDependencyStages());
 
 private:
 

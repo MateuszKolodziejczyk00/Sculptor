@@ -32,8 +32,8 @@ public:
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
 		SPT_CHECK(!IsDirty());
-		const rdr::BufferView bufferView = CreateBufferViewToBind();
-		bufferView.GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView.GetOffset(), bufferView.GetSize(), indexer[GetBaseBindingIdx()][0]);
+		const lib::SharedPtr<rdr::BindableBufferView> bufferView = CreateBufferViewToBind();
+		bufferView->GetBuffer()->GetRHI().CopyUAVDescriptor(bufferView->GetOffset(), bufferView->GetSize(), indexer[GetBaseBindingIdx()][0]);
 	}
 
 	void BuildRGDependencies(rg::RGDependenciesBuilder& builder) const
@@ -101,9 +101,9 @@ private:
 		return m_writeIdx ? 0 : m_dataSize;
 	}
 
-	rdr::BufferView CreateBufferViewToBind() const
+	lib::SharedPtr<rdr::BindableBufferView> CreateBufferViewToBind() const
 	{
-		return rdr::BufferView(m_buffer, GetReadOffset(), m_dataSize);
+		return m_buffer->CreateView(GetReadOffset(), m_dataSize);
 	}
 
 	static constexpr rhi::EBufferUsage GetBufferUsageFlags()

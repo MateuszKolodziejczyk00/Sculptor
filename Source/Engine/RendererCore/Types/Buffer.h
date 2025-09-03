@@ -51,7 +51,7 @@ private:
 };
 
 
-class RENDERER_CORE_API BindableBufferView : public BufferView
+class RENDERER_CORE_API BindableBufferView : public BufferView, public lib::SharedFromThis<BindableBufferView>
 {
 public:
 
@@ -59,6 +59,8 @@ public:
 	~BindableBufferView();
 
 	ResourceDescriptorIdx GetUAVDescriptor() const { return m_uavDescriptor.Get(); }
+
+	lib::SharedPtr<BindableBufferView> AsSharedPtr();
 
 private:
 
@@ -86,6 +88,7 @@ public:
 
 	BufferView CreateFullView() const;
 	lib::SharedPtr<BindableBufferView> GetFullView() const;
+	const BindableBufferView&          GetFullViewRef() const;
 
 	lib::SharedPtr<BindableBufferView> CreateView(Uint64 offset, Uint64 size, BufferViewDescriptorsAllocation externalDescriptorsAllocation = BufferViewDescriptorsAllocation()) const;
 

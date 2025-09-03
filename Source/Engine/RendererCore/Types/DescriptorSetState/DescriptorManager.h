@@ -14,7 +14,7 @@ namespace spt::rdr
 
 class DescriptorHeap;
 class DescriptorSetLayout;
-class Buffer;
+class BindableBufferView;
 class TextureView;
 
 
@@ -81,7 +81,7 @@ class DescriptorInfo
 		Uint64       m_ptrValue;
 		void*        m_ptr;
 		TextureView* m_textureView;
-		Buffer*      m_buffer;
+		BindableBufferView*      m_buffer;
 	};
 
 public:
@@ -100,7 +100,7 @@ public:
 		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::TextureView);
 	}
 
-	void Encode(Buffer* inBuffer)
+	void Encode(BindableBufferView* inBuffer)
 	{
 		m_buffer = inBuffer;
 		m_ptrValue += static_cast<Uint64>(EDescriptorInfoType::Buffer);
@@ -128,9 +128,9 @@ public:
 		return Contains(EDescriptorInfoType::TextureView) ? reinterpret_cast<TextureView*>(m_ptrValue & ~0x3ull) : nullptr;
 	}
 
-	Buffer* GetBuffer() const
+	BindableBufferView* GetBufferView() const
 	{
-		return Contains(EDescriptorInfoType::Buffer) ? reinterpret_cast<Buffer*>(m_ptrValue & ~0x3ull) : nullptr;
+		return Contains(EDescriptorInfoType::Buffer) ? reinterpret_cast<BindableBufferView*>(m_ptrValue & ~0x3ull) : nullptr;
 	}
 
 	void* GetCustomPtr() const
@@ -153,15 +153,16 @@ public:
 	void UploadSRVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 	void UploadUAVDescriptor(ResourceDescriptorIdx idx, TextureView& textureView);
 
-	void UploadSRVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range);
-	void UploadUAVDescriptor(ResourceDescriptorIdx idx, Buffer& buffer, Uint64 offset, Uint64 range);
+	void UploadSRVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
+	void UploadUAVDescriptor(ResourceDescriptorIdx idx, BindableBufferView& bufferView);
 
 	void SetCustomDescriptorInfo(ResourceDescriptorIdx idx, void* customDataPtr);
 
 	void ClearDescriptorInfo(ResourceDescriptorIdx idx);
 
-	TextureView* GetTextureView(ResourceDescriptorIdx idx) const;
-	void*        GetCustomDescriptorInfo(ResourceDescriptorIdx idx) const;
+	TextureView*        GetTextureView(ResourceDescriptorIdx idx) const;
+	BindableBufferView* GetBufferView(ResourceDescriptorIdx idx) const;
+	void*               GetCustomDescriptorInfo(ResourceDescriptorIdx idx) const;
 
 	Uint32 GetHeapOffset() const { return m_descriptorRange.heapOffset; }
 

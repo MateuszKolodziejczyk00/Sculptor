@@ -272,7 +272,7 @@ void RenderGraphBuilder::FillBuffer(const RenderGraphDebugName& commandName, RGB
 	SPT_CHECK(offset + range <= bufferView->GetSize());
 
 	const Bool isHostAccessible = bufferView->AllowsHostAccess();
-	const Bool canFillOnHost = isHostAccessible && !bufferView->GetLastAccessNode().IsValid();
+	const Bool canFillOnHost = isHostAccessible && !bufferView->GetBuffer()->GetLastAccessNode().IsValid();
 
 	SPT_CHECK(canFillOnHost || lib::HasAnyFlag(bufferView->GetUsageFlags(), rhi::EBufferUsage::TransferDst));
 
@@ -845,8 +845,8 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 			continue;
 		}
 
-		const ERGBufferAccess prevAccess           = accessedBufferView->GetLastAccessType();
-		const rhi::EPipelineStage prevAccessStages = accessedBufferView->GetLastAccessPipelineStages();
+		const ERGBufferAccess prevAccess           = accessedBuffer->GetLastAccessType();
+		const rhi::EPipelineStage prevAccessStages = accessedBuffer->GetLastAccessPipelineStages();
 
 		if (RequiresSynchronization(accessedBuffer, prevAccessStages, prevAccess, nextAccess, nextAccessStages))
 		{
@@ -860,10 +860,8 @@ void RenderGraphBuilder::ResolveNodeBufferAccesses(RGNode& node, const RGDepende
 		}
 		
 		accessedBuffer->SetLastAccessNode(&node);
-
-		accessedBufferView->SetLastAccessNode(&node);
-		accessedBufferView->SetLastAccessType(nextAccess);
-		accessedBufferView->SetLastAccessPipelineStages(nextAccessStages);
+		accessedBuffer->SetLastAccessType(nextAccess);
+		accessedBuffer->SetLastAccessPipelineStages(nextAccessStages);
 	}
 }
 
