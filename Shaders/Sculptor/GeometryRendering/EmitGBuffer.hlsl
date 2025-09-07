@@ -190,9 +190,9 @@ InterpolatedVertexData Interpolate(in VertexData vertices[3], in Barycentrics ba
 
 InterpolatedVertexData ProcessTriangle(in const GPUVisibleMeshlet visibleMeshlet, in uint triangleIdx, float2 screenPositionClip)
 {
-	const SubmeshGPUData submesh         = u_submeshes[visibleMeshlet.submeshGlobalIdx];
-	const MeshletGPUData meshlet         = u_meshlets[visibleMeshlet.meshletGlobalIdx];
-	const RenderEntityGPUData entityData = u_renderEntitiesData[visibleMeshlet.entityIdx];
+	const SubmeshGPUData submesh         = visibleMeshlet.submeshPtr.Load();
+	const MeshletGPUData meshlet         = visibleMeshlet.meshletPtr.Load();
+	const RenderEntityGPUData entityData = visibleMeshlet.entityPtr.Load();
 
 	const uint primitiveIndicesOffset = submesh.meshletsPrimitivesDataOffset + meshlet.meshletPrimitivesOffset;
 

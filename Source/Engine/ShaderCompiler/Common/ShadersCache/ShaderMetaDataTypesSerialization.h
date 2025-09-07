@@ -17,7 +17,6 @@ struct TypeSerializer<smd::ShaderMetaData>
 	static void Serialize(SerializerWrapper<Serializer>& serializer, Param& data)
 	{
 		serializer.Serialize("DescriptorSetTypeIDs", data.m_dsStateTypeIDs);
-		serializer.Serialize("IsBindless", data.m_isBindless);
 	}
 };
 

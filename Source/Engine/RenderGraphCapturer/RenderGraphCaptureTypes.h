@@ -111,6 +111,7 @@ struct RGCapture
 	lib::DynamicArray<lib::UniquePtr<CapturedBuffer>>  buffers;
 
 	lib::HashMap<Uint32, CapturedTexture*> descriptorIdxToTexture;
+	lib::HashMap<Uint32, CapturedBuffer*>  descriptorIdxToBuffer;
 };
 
 } // spt::rg::capture

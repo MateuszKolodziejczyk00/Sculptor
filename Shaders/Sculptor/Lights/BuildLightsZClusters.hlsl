@@ -1,8 +1,7 @@
 #include "SculptorShader.hlsli"
 
 
-[[bindless]]
-[[descriptor_set(BuildLightZClustersDS, 1)]]
+[[descriptor_set(BuildLightZClustersDS, 0)]]
 
 
 struct CS_INPUT

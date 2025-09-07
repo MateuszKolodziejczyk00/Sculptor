@@ -29,9 +29,9 @@ SPT_REGISTER_COMPONENT_TYPE(StaticMeshInstanceRenderData, RenderSceneRegistry);
 
 
 BEGIN_SHADER_STRUCT(StaticMeshBatchElement)
-	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
-	SHADER_STRUCT_FIELD(Uint16, materialDataID)
+	SHADER_STRUCT_FIELD(RenderEntityGPUPtr, entityPtr)
+	SHADER_STRUCT_FIELD(SubmeshGPUPtr,      submeshPtr)
+	SHADER_STRUCT_FIELD(Uint16,             materialDataID)
 END_SHADER_STRUCT();
 
 
@@ -71,7 +71,7 @@ public:
 
 	SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches);
 
-	void AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots);
+	void AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots);
 
 	void FinalizeBatches();
 

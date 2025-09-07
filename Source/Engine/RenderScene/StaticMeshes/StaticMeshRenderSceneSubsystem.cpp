@@ -17,7 +17,7 @@ SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>&
 	: m_batches(inBatches)
 { }
 
-void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots)
+void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots)
 {
 	for (Uint32 idx = 0; idx < meshRenderingDef.submeshesDefs.size(); ++idx)
 	{
@@ -28,12 +28,12 @@ void SMBatchesBuilder::AppendMeshToBatch(Uint32 entityIdx, const StaticMeshInsta
 
 		BatchBuildData& batch = GetBatchBuildDataForMaterial(materialProxy.materialShadersHash);
 
-		const Uint32 globalSubmeshIdx = meshRenderingDef.submeshesBeginIdx + idx;
+		const SubmeshGPUPtr submeshPtr = meshRenderingDef.submeshesPtr + idx;
 
 		StaticMeshBatchElement batchElement;
-		batchElement.entityIdx        = entityIdx;
-		batchElement.submeshGlobalIdx = globalSubmeshIdx;
-		batchElement.materialDataID   = materialProxy.GetMaterialDataID();
+		batchElement.entityPtr      = entityPtr;
+		batchElement.submeshPtr     = submeshPtr;
+		batchElement.materialDataID = materialProxy.GetMaterialDataID();
 		batch.batchElements.emplace_back(batchElement);
 
 		batch.maxMeshletsNum	+= submeshDef.meshletsNum;
@@ -144,8 +144,7 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 
 		if ((boundingSphereCenterWS - pointLight.location).squaredNorm() < math::Utils::Square(pointLight.radius + boundingSphereRadius))
 		{
-			const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
-			batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
+			batchesBuilder.AppendMeshToBatch(entityGPUDataHandle.GetGPUDataPtr(), staticMeshRenderData, meshRenderingDef, materialsSlots);
 		}
 	}
 
@@ -176,8 +175,8 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 
 		const StaticMeshRenderingDefinition& meshRenderingDef = staticMeshDataHandle.get<const StaticMeshRenderingDefinition>();
 
-		const Uint32 entityIdx = entityGPUDataHandle.GetEntityIdx();
-		batchesBuilder.AppendMeshToBatch(entityIdx, staticMeshRenderData, meshRenderingDef, materialsSlots);
+		const RenderEntityGPUPtr entityPtr = entityGPUDataHandle.GetGPUDataPtr();
+		batchesBuilder.AppendMeshToBatch(entityPtr, staticMeshRenderData, meshRenderingDef, materialsSlots);
 	}
 
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
@@ -194,9 +193,9 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 			const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
 
 			GeometryDefinition geometryDef;
-			geometryDef.entityGPUIdx     = entityGPUDataHandle.GetEntityIdx();
-			geometryDef.submeshGlobalIdx = meshRenderingDef.submeshesBeginIdx + idx;
-			geometryDef.meshletsNum      = submeshDef.meshletsNum;
+			geometryDef.entityPtr   = entityGPUDataHandle.GetGPUDataPtr();
+			geometryDef.submeshPtr  = meshRenderingDef.submeshesPtr + idx;
+			geometryDef.meshletsNum = submeshDef.meshletsNum;
 
 			geometryDrawer.Draw(geometryDef, materialProxy);
 		}

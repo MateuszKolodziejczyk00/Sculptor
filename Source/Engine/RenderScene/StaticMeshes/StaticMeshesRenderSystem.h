@@ -1,9 +1,8 @@
 #pragma once
 
 #include "SceneRenderSystem.h"
-#include "StaticMeshDepthPrepassRenderer.h"
-#include "StaticMeshForwardOpaqueRenderer.h"
 #include "StaticMeshShadowMapRenderer.h"
+
 
 namespace spt::rsc
 {
@@ -28,10 +27,6 @@ private:
 	void RenderPerView(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec);
 
 	StaticMeshShadowMapRenderer m_shadowMapRenderer;
-
-	StaticMeshDepthPrepassRenderer m_depthPrepassRenderer;
-	
-	StaticMeshForwardOpaqueRenderer m_forwardOpaqueRenderer;
 };
 
 } // spt::rsc

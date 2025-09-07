@@ -48,13 +48,12 @@ VS_OUTPUT SMDepthOnly_VS(VS_INPUT input)
 
     const SMDepthOnlyDrawCallData drawCall = u_drawCommands[input.drawIndex];
 
-    const uint renderEntityIdx = u_batchElements[drawCall.batchElementIdx].entityIdx;
-    const uint submeshGlobalIdx = u_batchElements[drawCall.batchElementIdx].submeshGlobalIdx;
+	const StaticMeshBatchElement batchElem = u_batchElements[drawCall.batchElementIdx];
 
-    const RenderEntityGPUData entityData = u_renderEntitiesData[renderEntityIdx];
+	const RenderEntityGPUData entityData = batchElem.entityPtr.Load();
     const float4x4 instanceTransform = entityData.transform;
 
-    const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
+	const SubmeshGPUData submesh = batchElem.submeshPtr.Load();
     
     const uint vertexIdx = u_geometryData.Load<uint>(submesh.indicesOffset + input.index * 4);
 

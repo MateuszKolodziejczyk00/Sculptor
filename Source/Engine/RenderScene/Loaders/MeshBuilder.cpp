@@ -57,11 +57,12 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 
 	const StaticMeshGeometryData staticMeshGeometryData = StaticMeshUnifiedData::Get().BuildStaticMeshData(submeshesData, m_meshlets, geometrySuballocation);
 
-	const Uint32 submeshesBeginIdx = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset() / sizeof(rdr::HLSLStorage<SubmeshGPUData>));
+	const Uint32 submeshesOffset = static_cast<Uint32>(staticMeshGeometryData.submeshesSuballocation.GetOffset());
+	const Uint32 submeshesBeginIdx = submeshesOffset / sizeof(rdr::HLSLStorage<SubmeshGPUData>);
 
 	StaticMeshRenderingDefinition staticMeshRenderingDef;
-	staticMeshRenderingDef.geometryDataOffset	= static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
-	staticMeshRenderingDef.submeshesBeginIdx	= submeshesBeginIdx;
+	staticMeshRenderingDef.geometryDataOffset   = static_cast<Uint32>(staticMeshGeometryData.geometrySuballocation.GetOffset());
+	staticMeshRenderingDef.submeshesPtr         = SubmeshGPUPtr(submeshesOffset);
 	staticMeshRenderingDef.boundingSphereCenter = m_boundingSphereCenter;
 	staticMeshRenderingDef.boundingSphereRadius = m_boundingSphereRadius;
 	std::transform(std::cbegin(m_submeshes), std::cend(m_submeshes),
@@ -70,7 +71,7 @@ ecs::EntityHandle MeshBuilder::EmitMeshGeometry()
 				   {
 					   SubmeshRenderingDefinition submeshDef;
 					   submeshDef.trianglesNum = submeshBD.submesh.indicesNum / 3;;
-					   submeshDef.meshletsNum = submeshBD.submesh.meshletsNum;;
+					   submeshDef.meshletsNum  = submeshBD.submesh.meshlets.GetSize();
 					   return submeshDef;
 				   });
 
@@ -263,8 +264,7 @@ void MeshBuilder::BuildMeshlets(SubmeshBuildData& submeshBuildData)
 	submeshBuildData.submesh.meshletsPrimitivesDataOffset = static_cast<Uint32>(meshletPrimsOffset);
 
 	const SizeType submeshMeshletsBegin = m_meshlets.size();
-	submeshBuildData.submesh.meshletsBeginIdx = static_cast<Uint32>(submeshMeshletsBegin);
-	submeshBuildData.submesh.meshletsNum = static_cast<Uint32>(finalMeshletsNum);
+	submeshBuildData.submesh.meshlets = MeshletsGPUSpan(static_cast<Uint32>(submeshMeshletsBegin) * sizeof(rdr::HLSLStorage<MeshletGPUData>), static_cast<Uint32>(finalMeshletsNum));
 
 	m_meshlets.resize(m_meshlets.size() + finalMeshletsNum);
 	for (SizeType meshletIdx = 0; meshletIdx < finalMeshletsNum; ++meshletIdx)
@@ -286,8 +286,8 @@ void MeshBuilder::BuildMeshletsCullingData(SubmeshBuildData& submeshBuildData)
 	const Real32* vertexLocations = GetGeometryData<Real32>(submeshBuildData.submesh.locationsOffset);
 	const SizeType verticesNum = static_cast<SizeType>(submeshBuildData.vertexCount);
 
-	const Uint32 firstMeshletIdx = submeshBuildData.submesh.meshletsBeginIdx;
-	const Uint32 meshletsNum = submeshBuildData.submesh.meshletsNum;
+	const Uint32 firstMeshletIdx = submeshBuildData.submesh.meshlets.GetFirstElemIdx();
+	const Uint32 meshletsNum = submeshBuildData.submesh.meshlets.GetSize();
 	const Uint32 meshletsEndIdx = firstMeshletIdx + meshletsNum;
 
 	for (SizeType meshletIdx = firstMeshletIdx; meshletIdx < meshletsEndIdx; ++meshletIdx)

@@ -214,30 +214,21 @@ public: \
 namespace shader_translator
 {
 
-namespace priv
+template<typename TType>
+struct ShaderStructReferencer
 {
-
-class ShaderStructReferencer
-{
-public:
-
-	ShaderStructReferencer() = default;
-
-	void AddReferencedStruct(const lib::String& structName)
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
 	{
-		m_referencedStructs.emplace_back(structName);
+		if constexpr (IsShaderStruct<TType>())
+		{
+			references.emplace_back(GetTypeName<TType>());
+		}
 	}
-
-	const lib::DynamicArray<lib::String>& GetReferencedStructs() const
-	{
-		return m_referencedStructs;
-	}
-
-private:
-
-	lib::DynamicArray<lib::String> m_referencedStructs;
 };
 
+
+namespace priv
+{
 
 template<typename TShaderStructMemberMetaData>
 constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
@@ -250,10 +241,7 @@ constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& referenc
 	if constexpr (!IsHeadMember<TShaderStructMemberMetaData>())
 	{
 		using MemberElementType = typename TShaderStructMemberMetaData::ElementType;
-		if constexpr (IsShaderStruct<MemberElementType>())
-		{
-			references.emplace_back(GetTypeName<MemberElementType>());
-		}
+		ShaderStructReferencer<MemberElementType>::CollectReferencedStructs(references);
 	}
 }
 

@@ -12,19 +12,22 @@ class DescriptorSetCompilationDef
 public:
 
 	DescriptorSetCompilationDef();
-	explicit DescriptorSetCompilationDef(const lib::String& shaderCode, DescriptorSetCompilationMetaData metaData);
+	explicit DescriptorSetCompilationDef(lib::String shaderCode, lib::String accessorsCode, DescriptorSetCompilationMetaData metaData);
 
 	lib::String GetShaderCode(Uint32 dsIdx) const;
 
 	const DescriptorSetCompilationMetaData& GetMetaData() const;
 
-	void SetShaderCode(lib::StringView code);
+	void SetShaderCode(lib::String code);
+
+	const lib::String& GetAccessorsCode() const { return m_accessorsCode; }
 
 private:
 
 	void BuildDSIdxPositionsArray();
 
 	lib::String							m_shaderCode;
+	lib::String							m_accessorsCode;
 	lib::DynamicArray<SizeType>			m_dsIdxPositions;
 	DescriptorSetCompilationMetaData	m_compilationMetaData;
 };

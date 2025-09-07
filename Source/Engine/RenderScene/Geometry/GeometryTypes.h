@@ -6,25 +6,27 @@
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "RenderSceneTypes.h"
+#include "StaticMeshes/StaticMeshGeometry.h"
 
 
 namespace spt::rsc
 {
 
 BEGIN_SHADER_STRUCT(GeometryBatchElement)
-	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
-	SHADER_STRUCT_FIELD(Uint16, materialDataID)
-	SHADER_STRUCT_FIELD(Uint16, materialBatchIdx)
+	SHADER_STRUCT_FIELD(RenderEntityGPUPtr, entityPtr)
+	SHADER_STRUCT_FIELD(SubmeshGPUPtr,      submeshPtr)
+	SHADER_STRUCT_FIELD(Uint16,             materialDataID)
+	SHADER_STRUCT_FIELD(Uint16,             materialBatchIdx)
 END_SHADER_STRUCT();
 
 
 BEGIN_SHADER_STRUCT(GPUVisibleMeshlet)
-	SHADER_STRUCT_FIELD(Uint32, entityIdx)
-	SHADER_STRUCT_FIELD(Uint32, meshletGlobalIdx)
-	SHADER_STRUCT_FIELD(Uint32, submeshGlobalIdx)
-	SHADER_STRUCT_FIELD(Uint16, materialDataID)
-	SHADER_STRUCT_FIELD(Uint16, materialBatchIdx)
+	SHADER_STRUCT_FIELD(RenderEntityGPUPtr, entityPtr)
+	SHADER_STRUCT_FIELD(SubmeshGPUPtr,      submeshPtr)
+	SHADER_STRUCT_FIELD(MeshletGPUPtr,      meshletPtr)
+	SHADER_STRUCT_FIELD(Uint16,             materialDataID)
+	SHADER_STRUCT_FIELD(Uint16,             materialBatchIdx)
 END_SHADER_STRUCT();
 
 

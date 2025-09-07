@@ -1,8 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[bindless]]
-[[descriptor_set(TonemappingDS, 1)]]
-[[descriptor_set(RenderViewDS, 2)]]
+[[descriptor_set(TonemappingDS, 0)]]
+[[descriptor_set(RenderViewDS, 1)]]
 
 
 #include "Utils/Exposure.hlsli"
@@ -10,6 +9,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Random.hlsli"
+
 
 struct CS_INPUT
 {
@@ -78,6 +78,6 @@ void TonemappingCS(CS_INPUT input)
 	{
 		color += Random(coords) * rcp(255.f);
 	}
-
+	
 	u_tonemappingConstants.rwLDRTexture.Store(coords, float4(color, 1.f));
 }

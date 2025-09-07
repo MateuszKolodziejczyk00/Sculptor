@@ -10,9 +10,9 @@ namespace spt::rsc
 
 struct GeometryDefinition
 {
-	Uint32 entityGPUIdx      = idxNone<Uint32>;
-	Uint32 submeshGlobalIdx  = idxNone<Uint32>;
-	Uint32 meshletsNum       = 0;
+	rsc::RenderEntityGPUPtr entityPtr;
+	rsc::SubmeshGPUPtr      submeshPtr;
+	Uint32                  meshletsNum = 0;
 };
 
 

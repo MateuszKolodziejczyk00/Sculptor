@@ -177,13 +177,9 @@ void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::Share
 	const smd::ShaderMetaData& newMetaData = newPipeline->GetMetaData();
 	descriptorsState.dirtyDescriptorSets.resize(static_cast<SizeType>(newMetaData.GetDescriptorSetsNum()), true);
 
-	Bool wasUsingBindless = false;
-
 	if (prevPipeline)
 	{
 		const smd::ShaderMetaData& prevMetaData = prevPipeline->GetMetaData();
-
-		wasUsingBindless = prevMetaData.IsBindless();
 
 		const Uint32 commonDescriptorSetsNum = std::min(prevMetaData.GetDescriptorSetsNum(), newMetaData.GetDescriptorSetsNum());
 		for (Uint32 dsIdx = 0; dsIdx < commonDescriptorSetsNum; ++dsIdx)
@@ -193,11 +189,6 @@ void PipelinePendingState::UpdateDescriptorSetsOnPipelineChange(const lib::Share
 				descriptorsState.dirtyDescriptorSets[static_cast<SizeType>(dsIdx)] = true;
 			}
 		}
-	}
-
-	if (wasUsingBindless != newMetaData.IsBindless())
-	{
-		descriptorsState.isBindlessDirty = true;
 	}
 }
 
@@ -229,7 +220,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 		}
 	}
 
-	if (descriptorsState.isBindlessDirty && metaData.IsBindless())
+	if (!descriptorsState.isBindlessBound)
 	{
 		DSBindCommand bindlessDescriptorsCommand;
 		bindlessDescriptorsCommand.idx        = 0u;
@@ -240,7 +231,7 @@ PipelinePendingState::DSBindCommands PipelinePendingState::FlushPendingDescripto
 
 	// Clear all dirty flags
 	std::fill(std::begin(descriptorsState.dirtyDescriptorSets), std::end(descriptorsState.dirtyDescriptorSets), false);
-	descriptorsState.isBindlessDirty = false;
+	descriptorsState.isBindlessBound = true;
 
 	return descriptorSetsToBind;
 }

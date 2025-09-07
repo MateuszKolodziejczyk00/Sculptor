@@ -7,6 +7,8 @@
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "ECSRegistry.h"
 #include "ComponentsRegistry.h"
+#include "Bindless/BindlessTypes.h"
+#include "Bindless/NamedBuffers.h"
 
 
 namespace spt::rsc
@@ -28,42 +30,6 @@ struct SubmeshRenderingDefinition
 };
 
 
-struct StaticMeshRenderingDefinition
-{
-	StaticMeshRenderingDefinition()
-		: geometryDataOffset(0)
-		, submeshesBeginIdx(0)
-		, boundingSphereCenter(math::Vector3f::Zero())
-		, boundingSphereRadius(0.f)
-	{ }
-	
-	Uint32 geometryDataOffset;
-	Uint32 submeshesBeginIdx;
-	
-	math::Vector3f boundingSphereCenter;
-	Real32 boundingSphereRadius;
-
-	lib::DynamicArray<SubmeshRenderingDefinition> submeshesDefs;
-};
-SPT_REGISTER_COMPONENT_TYPE(StaticMeshRenderingDefinition, ecs::Registry);
-
-BEGIN_SHADER_STRUCT(SubmeshGPUData)
-	SHADER_STRUCT_FIELD(Uint32, indicesOffset)
-	SHADER_STRUCT_FIELD(Uint32, indicesNum)
-	SHADER_STRUCT_FIELD(Uint32, locationsOffset)
-	SHADER_STRUCT_FIELD(Uint32, normalsOffset)
-	SHADER_STRUCT_FIELD(Uint32, tangentsOffset)
-	SHADER_STRUCT_FIELD(Uint32, uvsOffset)
-	SHADER_STRUCT_FIELD(Uint32, meshletsPrimitivesDataOffset)
-	SHADER_STRUCT_FIELD(Uint32, meshletsVerticesDataOffset)
-	SHADER_STRUCT_FIELD(Uint32, meshletsBeginIdx)
-	SHADER_STRUCT_FIELD(Uint32, meshletsNum)
-	/* 8 empty bytes */
-	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
-	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
-END_SHADER_STRUCT();
-
-
 BEGIN_SHADER_STRUCT(MeshletGPUData)
 	SHADER_STRUCT_FIELD(Uint16, triangleCount)
 	SHADER_STRUCT_FIELD(Uint16, vertexCount)
@@ -72,6 +38,56 @@ BEGIN_SHADER_STRUCT(MeshletGPUData)
 	SHADER_STRUCT_FIELD(Uint32, packedConeAxisAndCutoff) /* {[uint8 cone cutoff][3 x uint8 cone axis]} */
 	SHADER_STRUCT_FIELD(math::Vector3f, boundingSphereCenter)
 	SHADER_STRUCT_FIELD(Real32, boundingSphereRadius)
+END_SHADER_STRUCT();
+
+
+CREATE_NAMED_BUFFER(MeshletsArray);
+using MeshletGPUPtr = gfx::GPUNamedElemPtr<MeshletsArray, MeshletGPUData>;
+using MeshletsGPUSpan = gfx::GPUNamedElemsSpan<MeshletsArray, MeshletGPUData>;
+
+
+BEGIN_SHADER_STRUCT(SubmeshGPUData)
+	SHADER_STRUCT_FIELD(Uint32,          indicesOffset)
+	SHADER_STRUCT_FIELD(Uint32,          indicesNum)
+	SHADER_STRUCT_FIELD(Uint32,          locationsOffset)
+	SHADER_STRUCT_FIELD(Uint32,          normalsOffset)
+	SHADER_STRUCT_FIELD(Uint32,          tangentsOffset)
+	SHADER_STRUCT_FIELD(Uint32,          uvsOffset)
+	SHADER_STRUCT_FIELD(Uint32,          meshletsPrimitivesDataOffset)
+	SHADER_STRUCT_FIELD(Uint32,          meshletsVerticesDataOffset)
+	SHADER_STRUCT_FIELD(MeshletsGPUSpan, meshlets)
+	SHADER_STRUCT_FIELD(math::Vector3f,  boundingSphereCenter)
+	SHADER_STRUCT_FIELD(Real32,          boundingSphereRadius)
+END_SHADER_STRUCT();
+
+
+CREATE_NAMED_BUFFER(SubmeshesArray);
+using SubmeshGPUPtr   = gfx::GPUNamedElemPtr<SubmeshesArray, SubmeshGPUData>;
+using SubmeshsGPUSpan = gfx::GPUNamedElemsSpan<SubmeshesArray, SubmeshGPUData>;
+
+
+struct StaticMeshRenderingDefinition
+{
+	StaticMeshRenderingDefinition()
+		: geometryDataOffset(0)
+		, boundingSphereCenter(math::Vector3f::Zero())
+		, boundingSphereRadius(0.f)
+	{ }
+	
+	Uint32 geometryDataOffset;
+	
+	math::Vector3f boundingSphereCenter;
+	Real32 boundingSphereRadius;
+
+	SubmeshGPUPtr submeshesPtr; // points to first submesh of this mesh in global submeshes array
+	lib::DynamicArray<SubmeshRenderingDefinition> submeshesDefs;
+};
+SPT_REGISTER_COMPONENT_TYPE(StaticMeshRenderingDefinition, ecs::Registry);
+
+
+BEGIN_SHADER_STRUCT(StaticMeshGeometryBuffers)
+	SHADER_STRUCT_FIELD(SubmeshesArray, submeshesArray)
+	SHADER_STRUCT_FIELD(MeshletsArray,  meshletsArray)
 END_SHADER_STRUCT();
 
 
@@ -90,6 +106,8 @@ public:
 	StaticMeshGeometryData BuildStaticMeshData(lib::DynamicArray<SubmeshGPUData>& submeshes, lib::DynamicArray<MeshletGPUData>& meshlets, rhi::RHIVirtualAllocation geometryDataSuballocation);
 
 	const lib::MTHandle<StaticMeshUnifiedDataDS>& GetUnifiedDataDS() const;
+
+	StaticMeshGeometryBuffers GetGeometryBuffers() const;
 
 private:
 

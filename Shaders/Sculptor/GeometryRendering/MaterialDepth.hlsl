@@ -1,6 +1,7 @@
 #include "SculptorShader.hlsli"
 
-[[descriptor_set(CreateMaterialDepthDS, 0)]]
+[[descriptor_set(RenderSceneDS, 0)]]
+[[descriptor_set(CreateMaterialDepthDS, 1)]]
 
 #include "GeometryRendering/GeometryCommon.hlsli"
 

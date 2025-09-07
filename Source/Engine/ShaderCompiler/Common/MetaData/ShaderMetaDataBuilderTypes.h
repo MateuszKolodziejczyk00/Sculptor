@@ -51,9 +51,6 @@ public:
 		return m_dsMetaData[properDSIdx].bindingToImmutableSampler.at(bindingIdx);
 	}
 
-	void SetBindless() { m_isBindless = true; }
-	Bool IsBindless() const { return m_isBindless; }
-
 #if SPT_SHADERS_DEBUG_FEATURES
 	void AddDebugLiteral(lib::HashedString literal)
 	{
@@ -69,8 +66,6 @@ public:
 private:
 
 	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
-
-	Bool m_isBindless = false;
 
 #if SPT_SHADERS_DEBUG_FEATURES
 	ShaderDebugMetaData debugMetaData;

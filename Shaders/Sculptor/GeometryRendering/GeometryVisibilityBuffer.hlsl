@@ -221,8 +221,8 @@ void GeometryVisibility_TS(in TSInput input)
 #endif	// GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS
 
 	const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
-	const SubmeshGPUData submesh            = u_submeshes[batchElement.submeshGlobalIdx];
-	const RenderEntityGPUData entityData    = u_renderEntitiesData[batchElement.entityIdx];
+	const SubmeshGPUData submesh            = batchElement.submeshPtr.Load();
+	const RenderEntityGPUData entityData    = batchElement.entityPtr.Load();
 
 #if MESHLETS_SHARE_ENTITY
 	s_payload.batchElementIdx = batchElementIdx;
@@ -232,11 +232,9 @@ void GeometryVisibility_TS(in TSInput input)
 
 	GroupMemoryBarrierWithGroupSync();
 
-	if(localMeshletIdx < submesh.meshletsNum)
+	if(localMeshletIdx < submesh.meshlets.GetSize())
 	{
-		const uint globalMeshletIdx = submesh.meshletsBeginIdx + localMeshletIdx;
-
-		const MeshletGPUData meshlet = u_meshlets[globalMeshletIdx];
+		const MeshletGPUData meshlet = submesh.meshlets[localMeshletIdx];
  
 		bool isMeshletVisible = true;
 
@@ -310,18 +308,18 @@ void GeometryVisibility_TS(in TSInput input)
 			visibleMeshletIdx = WaveReadLaneFirst(visibleMeshletIdx) + compactedVisibilityIdx;
 
 			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityIdx        = batchElement.entityIdx;
-			visibleMeshletInfo.meshletGlobalIdx = globalMeshletIdx;
-			visibleMeshletInfo.submeshGlobalIdx = batchElement.submeshGlobalIdx;
+			visibleMeshletInfo.entityPtr        = batchElement.entityPtr;
+			visibleMeshletInfo.submeshPtr       = batchElement.submeshPtr;
+			visibleMeshletInfo.meshletPtr       = submesh.meshlets.GetElemPtr(localMeshletIdx);
 			visibleMeshletInfo.materialDataID   = batchElement.materialDataID;
 			visibleMeshletInfo.materialBatchIdx = batchElement.materialBatchIdx;
 
 			u_visibleMeshlets[visibleMeshletIdx] = visibleMeshletInfo;
 #else
 			GPUVisibleMeshlet visibleMeshletInfo;
-			visibleMeshletInfo.entityIdx        = batchElement.entityIdx;
-			visibleMeshletInfo.meshletGlobalIdx = globalMeshletIdx;
-			visibleMeshletInfo.submeshGlobalIdx = batchElement.submeshGlobalIdx;
+			visibleMeshletInfo.entityPtr        = batchElement.entityPtr;
+			visibleMeshletInfo.submeshPtr       = batchElement.submeshPtr;
+			visibleMeshletInfo.meshletPtr       = submesh.meshlets.GetElemPtr(localMeshletIdx);
 			visibleMeshletInfo.materialDataID   = batchElement.materialDataID;
 			visibleMeshletInfo.materialBatchIdx = batchElement.materialBatchIdx;
 			AppendMeshletRenderCommand(visibleMeshletInfo, batchElementIdx, localMeshletIdx);
@@ -471,20 +469,13 @@ void GeometryVisibility_MS(
 
 #if MESHLETS_SHARE_ENTITY
 	const GeometryBatchElement batchElement = u_batchElements[payload.batchElementIdx];
-
-	const uint submeshGlobalIdx = batchElement.submeshGlobalIdx;
-	const uint entityIdx        = batchElement.entityIdx;
 #else
 	const GeometryBatchElement batchElement = u_batchElements[command.batchElementIdx];
-
-	const uint submeshGlobalIdx = batchElement.submeshGlobalIdx;
-	const uint entityIdx        = batchElement.entityIdx;
 #endif // MESHLETS_SHARE_ENTITY
 
-	const SubmeshGPUData submesh         = u_submeshes[submeshGlobalIdx];
-	const uint globalMeshletIdx          = submesh.meshletsBeginIdx + command.localMeshletIdx;
-	const MeshletGPUData meshlet         = u_meshlets[globalMeshletIdx];
-	const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
+	const RenderEntityGPUData entityData = batchElement.entityPtr.Load();
+	const SubmeshGPUData submesh         = batchElement.submeshPtr.Load();
+	const MeshletGPUData meshlet         = submesh.meshlets[command.localMeshletIdx];
 
 	SetMeshOutputCounts(meshlet.vertexCount, meshlet.triangleCount);
 
@@ -535,7 +526,9 @@ void GeometryVisibility_MS(
 		}
 
 		outPrims[meshletTriangleIdx].packedVisibilityInfo = PackVisibilityInfo(command.visibleMeshletIdx, meshletTriangleIdx);
+#if SPT_MESH_SHADER
 		outPrims[meshletTriangleIdx].culled = groupTriangleIdx + localID >= meshlet.triangleCount || !IsTriangleVisible(tri, cullingParams);
+#endif // SPT_MESH_SHADER
 #if MATERIAL_CAN_DISCARD
 		outPrims[meshletTriangleIdx].materialDataID = uint(batchElement.materialDataID);
 #endif // MATERIAL_CAN_DISCARD

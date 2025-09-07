@@ -23,8 +23,6 @@ public:
 
 	void Append(const ShaderMetaData& other);
 
-	void SetBindless(Bool isBindless) { m_isBindless = isBindless; }
-
 	// Queries ====================================================
 	
 	Uint32   GetDescriptorSetsNum() const;
@@ -34,15 +32,11 @@ public:
 	Uint32   FindDescriptorSetOfType(SizeType typeID) const;
 	
 	SizeType GetDescriptorSetStateTypeID(SizeType setIdx) const;
-
-	Bool     IsBindless() const { return m_isBindless; }
 	
 private:
 
 	/** Hash of descriptor set state types used to create ds in shader */
 	lib::DynamicArray<SizeType>	m_dsStateTypeIDs;
-
-	Bool m_isBindless = false;
 
 	friend srl::TypeSerializer<ShaderMetaData>;
 };
@@ -79,9 +73,7 @@ inline void ShaderMetaData::Append(const ShaderMetaData& other)
 		}
 	}
 
-	m_isBindless |= other.m_isBindless;
-
-	SPT_CHECK_MSG(!m_isBindless || GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>, "Bindless shaders cannot be used with explicit descriptor set at idx 0");
+	SPT_CHECK_MSG(GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>, "Bindless shaders cannot be used with explicit descriptor set at idx 0");
 }
 
 inline Uint32 ShaderMetaData::GetDescriptorSetsNum() const

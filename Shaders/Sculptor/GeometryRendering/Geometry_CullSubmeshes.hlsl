@@ -95,8 +95,8 @@ void CullSubmeshesCS(CS_INPUT input)
 	if(batchElementIdx < u_batchData.elementsNum)
 	{
 		const GeometryBatchElement batchElement = u_batchElements[batchElementIdx];
-		const SubmeshGPUData submesh            = u_submeshes[batchElement.submeshGlobalIdx];
-		const RenderEntityGPUData entityData    = u_renderEntitiesData[batchElement.entityIdx];
+		const SubmeshGPUData submesh            = batchElement.submeshPtr.Load();
+		const RenderEntityGPUData entityData    = batchElement.entityPtr.Load();
 
 		const float3 submeshBoundingSphereCenter = mul(entityData.transform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
 		const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;
@@ -137,7 +137,7 @@ void CullSubmeshesCS(CS_INPUT input)
 
 		if(isSubmeshVisible)
 		{
-			const uint taskGroupsNum = (submesh.meshletsNum + 31u) / 32u;
+			const uint taskGroupsNum = (submesh.meshlets.GetSize() + 31u) / 32u;
 
 			GeometryDrawMeshTaskCommand drawCommand;
 			drawCommand.dispatchGroupsX = taskGroupsNum;

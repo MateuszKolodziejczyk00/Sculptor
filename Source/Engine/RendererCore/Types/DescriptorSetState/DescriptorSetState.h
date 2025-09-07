@@ -29,6 +29,7 @@ public:
 	// These functions are not virtual, but can be reimplemented in child classes
 	void Initialize(DescriptorSetState& owningState) {}
 
+	static constexpr lib::String BuildAccessorsCode()                                  { return lib::String{}; };
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx) { SPT_CHECK_NO_ENTRY(); return lib::String{}; };
 
 	static void BuildAdditionalShaderCompilationArgs(ShaderCompilationAdditionalArgsBuilder& builder) {}
@@ -512,15 +513,15 @@ void InitializeBindings(TBindingHandle& bindingHandle, DescriptorSetState& ownin
 }
 
 template<typename TBindingHandle>
-constexpr lib::String BuildBindingsShaderCode(Uint32 bindingIdxshaderBindingIdx = 0)
+constexpr lib::String BuildBindingsShaderCode(Uint32 shaderBindingIdx = 0)
 {
 	lib::String result;
 
-	ForEachBinding<TBindingHandle>([&result, &bindingIdxshaderBindingIdx]<typename TCurrentBindingHandle>() mutable
+	ForEachBinding<TBindingHandle>([&result, &shaderBindingIdx]<typename TCurrentBindingHandle>() mutable
 	{
 		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
-		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), bindingIdxshaderBindingIdx);
-		bindingIdxshaderBindingIdx += GetShaderBindingsNumForBinding<CurrentBindingType>();
+		result += CurrentBindingType::BuildBindingCode(TCurrentBindingHandle::GetName(), shaderBindingIdx);
+		shaderBindingIdx += GetShaderBindingsNumForBinding<CurrentBindingType>();
 	});
 
 	return result;
@@ -542,6 +543,42 @@ consteval auto BuildDescriptorSetShaderCode()
 	lib::String code = BuildBindingsShaderCode<HeadBindingType>();
 
 	lib::StaticArray<char, GetDescriptorSetShaderCodeSize<TDSType>()> result;
+	SPT_CHECK(code.size() == result.size());
+	std::copy(std::cbegin(code), std::cend(code), std::begin(result));
+
+	return result;
+}
+
+template<typename TBindingHandle>
+constexpr lib::String BuildBindingsAccessorsCode()
+{
+	lib::String result;
+
+	ForEachBinding<TBindingHandle>([&result]<typename TCurrentBindingHandle>() mutable
+	{
+		using CurrentBindingType = typename TCurrentBindingHandle::BindingType;
+		result += CurrentBindingType::BuildAccessorsCode();
+	});
+
+	return result;
+}
+
+template<typename TDSType>
+consteval SizeType GetDescriptorSetAccessorsCodeSize()
+{
+	using HeadBindingType = typename TDSType::ReflHeadBindingType;
+	const lib::String code = BuildBindingsAccessorsCode<HeadBindingType>();
+	return code.size();
+}
+
+template<typename TDSType>
+consteval auto BuildDescriptorSetAccessorsCode()
+{
+	using HeadBindingType = typename TDSType::ReflHeadBindingType;
+
+	lib::String code = BuildBindingsAccessorsCode<HeadBindingType>();
+
+	lib::StaticArray<char, GetDescriptorSetAccessorsCodeSize<TDSType>()> result;
 	SPT_CHECK(code.size() == result.size());
 	std::copy(std::cbegin(code), std::cend(code), std::begin(result));
 
@@ -629,7 +666,7 @@ class DescriptorSetStateCompilationDefRegistration : public sc::DescriptorSetCom
 public:
 
 	DescriptorSetStateCompilationDefRegistration()
-		: sc::DescriptorSetCompilationDefRegistration(TDSStateType::GetDescriptorSetName(), BuildDSCode(), bindings_refl::BuildCompilationMetaData<TDSStateType>())
+		: sc::DescriptorSetCompilationDefRegistration(TDSStateType::GetDescriptorSetName(), BuildDSCode(), BuildDSAccessorsCode(), bindings_refl::BuildCompilationMetaData<TDSStateType>())
 	{ }
 
 private:
@@ -637,6 +674,12 @@ private:
 	static lib::String BuildDSCode()
 	{
 		constexpr auto codeArray = bindings_refl::BuildDescriptorSetShaderCode<TDSStateType>();
+		return lib::String(std::cbegin(codeArray), std::cend(codeArray));
+	}
+
+	static lib::String BuildDSAccessorsCode()
+	{
+		constexpr auto codeArray = bindings_refl::BuildDescriptorSetAccessorsCode<TDSStateType>();
 		return lib::String(std::cbegin(codeArray), std::cend(codeArray));
 	}
 };

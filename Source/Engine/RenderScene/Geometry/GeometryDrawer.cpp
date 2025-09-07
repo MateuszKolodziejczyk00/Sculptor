@@ -15,15 +15,15 @@ GeometryBatchesBuilder::GeometryBatchesBuilder(GeometryPassDataCollection& batch
 
 void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, const mat::MaterialProxyComponent& materialProxy)
 {
-	SPT_CHECK(geometry.entityGPUIdx != idxNone<Uint32>);
-	SPT_CHECK(geometry.submeshGlobalIdx != idxNone<Uint32>);
+	SPT_CHECK(geometry.entityPtr.IsValid());
+	SPT_CHECK(geometry.submeshPtr.IsValid());
 	SPT_CHECK(geometry.meshletsNum > 0u);
 
 	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialProxy.materialShadersHash);
 
 	GeometryBatchElement newBatchElement;
-	newBatchElement.entityIdx        = geometry.entityGPUIdx;
-	newBatchElement.submeshGlobalIdx = geometry.submeshGlobalIdx;
+	newBatchElement.entityPtr        = geometry.entityPtr;
+	newBatchElement.submeshPtr       = geometry.submeshPtr;
 	newBatchElement.materialDataID   = materialProxy.GetMaterialDataID();
 	newBatchElement.materialBatchIdx = materialBatchIdx;
 

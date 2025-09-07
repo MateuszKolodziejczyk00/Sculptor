@@ -310,6 +310,120 @@ using ConstTypedBuffer    = BufferDescriptor<BufferDescriptorMetadata{ false, tr
 template<typename TType>
 using ConstTypedBufferRef = BufferDescriptor<BufferDescriptorMetadata{ false, true, false, true }, TType>;
 
+
+template<typename TNamedBuffer, typename TDataType>
+class GPUNamedElemPtr
+{
+public:
+
+	GPUNamedElemPtr() = default;
+
+	explicit GPUNamedElemPtr(Uint32 offset)
+		: m_bufferElementIdx(OffsetToIndex(offset))
+	{
+	}
+
+	GPUNamedElemPtr(const GPUNamedElemPtr& rhs) = default;
+	GPUNamedElemPtr& operator=(const GPUNamedElemPtr& rhs) = default;
+
+	Bool IsValid() const
+	{
+		return m_bufferElementIdx != idxNone<Uint32>;
+	}
+
+	Uint32 GetOffset() const
+	{
+		SPT_CHECK(IsValid());
+		return m_bufferElementIdx * sizeof(rdr::HLSLStorage<TDataType>);
+	}
+
+	Uint32 GetBufferElementIdx() const
+	{
+		return m_bufferElementIdx;
+	}
+
+	GPUNamedElemPtr operator+(Uint32 delta) const
+	{
+		SPT_CHECK(IsValid());
+		return GPUNamedElemPtr((GetBufferElementIdx() + delta) * sizeof(rdr::HLSLStorage<TDataType>));
+	}
+
+	static constexpr lib::String GetTypeName()
+	{
+		return lib::String("GPUNamedElemPtr<Accessor_") + TNamedBuffer::GetName() + ", " + rdr::shader_translator::GetTypeName<TDataType>() + ">";
+	}
+
+private:
+
+	Uint32 OffsetToIndex(Uint32 offset) const
+	{
+		SPT_CHECK(offset % sizeof(rdr::HLSLStorage<TDataType>) == 0u);
+		return offset / sizeof(rdr::HLSLStorage<TDataType>);
+	}
+	
+	Uint32 m_bufferElementIdx = idxNone<Uint32>;
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+class GPUNamedElemsSpan
+{
+public:
+
+	GPUNamedElemsSpan() = default;
+
+	GPUNamedElemsSpan(Uint32 offset, Uint32 size)
+		: m_firstElemIdx(OffsetToIndex(offset))
+		, m_size(size)
+	{ }
+
+	GPUNamedElemsSpan(const GPUNamedElemsSpan& rhs) = default;
+	GPUNamedElemsSpan& operator=(const GPUNamedElemsSpan& rhs) = default;
+
+	Bool IsValid() const
+	{
+		return m_firstElemIdx != idxNone<Uint32> && m_size > 0;
+	}
+
+	Uint32 GetOffset() const
+	{
+		SPT_CHECK(IsValid());
+		return m_firstElemIdx * sizeof(rdr::HLSLStorage<TDataType>);
+	}
+
+	Uint32 GetFirstElemIdx() const
+	{
+		return m_firstElemIdx;
+	}
+
+	Uint32 GetSize() const
+	{
+		return m_size;
+	}
+
+	static constexpr lib::String GetTypeName()
+	{
+		return lib::String("GPUNamedElemsSpan<Accessor_") + TNamedBuffer::GetName() + ", " + rdr::shader_translator::GetTypeName<TDataType>() + ">";
+	}
+
+	GPUNamedElemPtr<TNamedBuffer, TDataType> GetElemPtr(Uint32 localIdx) const
+	{
+		SPT_CHECK(localIdx < m_size);
+		return GPUNamedElemPtr<TNamedBuffer, TDataType>(m_firstElemIdx + localIdx);
+	}
+
+private:
+
+	Uint32 OffsetToIndex(Uint32 offset) const
+	{
+		SPT_CHECK(offset % sizeof(rdr::HLSLStorage<TDataType>) == 0u);
+		return offset / sizeof(rdr::HLSLStorage<TDataType>);
+	}
+	
+	Uint32 m_firstElemIdx = idxNone<Uint32>;
+	Uint32 m_size         = 0u;
+};
+
 } // spt::gfx
 
 namespace spt::rdr::shader_translator
@@ -438,6 +552,107 @@ struct StructHLSLAlignmentEvaluator<gfx::BufferDescriptor<metadata, TType>>
 	}
 };
 
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructTranslator<gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>::GetTypeName();
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructCPPToHLSLTranslator<gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>>
+{
+	static void Copy(const gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>& cppData, lib::Span<Byte> hlslData)
+	{
+		StructCPPToHLSLTranslator<Uint32>::Copy(cppData.GetBufferElementIdx(), hlslData);
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructHLSLSizeEvaluator<gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>>
+{
+	static constexpr Uint32 Size()
+	{
+		return StructHLSLSizeEvaluator<Uint32>::Size();
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructHLSLAlignmentEvaluator<gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return StructHLSLAlignmentEvaluator<Uint32>::Alignment();
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct ShaderStructReferencer<gfx::GPUNamedElemPtr<TNamedBuffer, TDataType>>
+{
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+	{
+		ShaderStructReferencer<TDataType>::CollectReferencedStructs(references);
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructTranslator<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>::GetTypeName();
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructCPPToHLSLTranslator<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
+{
+	static void Copy(const gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>& cppData, lib::Span<Byte> hlslData)
+	{
+		StructCPPToHLSLTranslator<Uint32>::Copy(cppData.GetFirstElemIdx(), hlslData.subspan(0u, 4u));
+		StructCPPToHLSLTranslator<Uint32>::Copy(cppData.GetSize(), hlslData.subspan(4u, 4u));
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructHLSLSizeEvaluator<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
+{
+	static constexpr Uint32 Size()
+	{
+		return 8u;
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct StructHLSLAlignmentEvaluator<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return 4u;
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct ShaderStructReferencer<gfx::GPUNamedElemsSpan<TNamedBuffer, TDataType>>
+{
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+	{
+		ShaderStructReferencer<TDataType>::CollectReferencedStructs(references);
+	}
+};
+
 } // spt::rdr::shader_translator
 
 namespace spt::rg
@@ -490,7 +705,7 @@ struct HLSLStructDependenciesBuider<gfx::BufferDescriptor<metadata, TType>>
 				accessInfo.elementsNum    = 1u;
 #endif // DEBUG_RENDER_GRAPH
 
-				dependenciesBuilder.AddBufferAccess(descriptoridx, access);
+				dependenciesBuilder.AddBufferAccess(descriptoridx, accessInfo);
 			}
 		}
 	}

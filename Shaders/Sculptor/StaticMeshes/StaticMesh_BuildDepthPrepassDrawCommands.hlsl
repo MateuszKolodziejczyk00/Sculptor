@@ -24,12 +24,11 @@ void BuildDrawCommandsCS(CS_INPUT input)
 
     if(batchElementIdx < u_batchData.elementsNum)
     {
-        const uint entityIdx = u_batchElements[batchElementIdx].entityIdx;
-        const RenderEntityGPUData entityData = u_renderEntitiesData[entityIdx];
+		const StaticMeshBatchElement batchElem = u_batchElements[batchElementIdx];
+		const RenderEntityGPUData entityData = batchElem.entityPtr.Load();
         const float4x4 entityTransform = entityData.transform;
 
-        const uint submeshGlobalIdx = u_batchElements[batchElementIdx].submeshGlobalIdx;
-        const SubmeshGPUData submesh = u_submeshes[submeshGlobalIdx];
+		const SubmeshGPUData submesh = batchElem.submeshPtr.Load();
 
         const float3 submeshBoundingSphereCenter = mul(entityTransform, float4(submesh.boundingSphereCenter, 1.f)).xyz;
         const float submeshBoundingSphereRadius = submesh.boundingSphereRadius * entityData.uniformScale;

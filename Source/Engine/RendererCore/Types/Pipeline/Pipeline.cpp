@@ -51,7 +51,7 @@ rhi::PipelineLayoutDefinition Pipeline::CreateLayoutDefinition() const
 		}
 	}
 
-	const Bool isBindless = m_metaData.IsBindless();
+	const Bool isBindless = true;
 	if (isBindless)
 	{
 		SPT_CHECK(m_metaData.GetDescriptorSetStateTypeID(0u) == idxNone<Uint64>);

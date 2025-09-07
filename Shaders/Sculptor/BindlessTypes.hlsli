@@ -2,6 +2,12 @@
 #define BINDLESS_TYPES_HLSLI
 
 
+struct NamedBufferDescriptorIdx
+{
+	uint idx;
+};
+
+
 template<typename T>
 struct SRVTexture3D
 {
@@ -183,5 +189,71 @@ struct ByteBuffer
 	}
 };
 
+template<typename TDataType>
+struct GPUPtr
+{
+	uint descriptorIdx;
+	uint dataIdx;
+
+	TDataType Load()
+	{
+		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer[dataIdx];
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct GPUNamedElemPtr
+{
+	uint dataIdx;
+
+	TDataType Load(in uint offset = 0u)
+	{
+		const uint descriptorIdx = TNamedBuffer::Get();
+		StructuredBuffer<TDataType> buffer = ResourceDescriptorHeap[descriptorIdx];
+		return buffer[dataIdx + offset];
+	}
+
+	TDataType operator[](in uint idx)
+	{
+		return Load(idx);
+	}
+
+	GPUPtr<TDataType> AsGenericPtr()
+	{
+		const uint descriptorIdx = TNamedBuffer::Get();
+		GPUPtr<TDataType> ptr;
+		ptr.descriptorIdx = descriptorIdx;
+		ptr.dataIdx       = dataIdx;
+		return ptr;
+	}
+};
+
+
+template<typename TNamedBuffer, typename TDataType>
+struct GPUNamedElemsSpan
+{
+	GPUNamedElemPtr<TNamedBuffer, TDataType> begin;
+	uint size;
+
+	TDataType operator[](in uint idx)
+	{
+		return begin.Load(idx);
+	}
+
+	
+	GPUNamedElemPtr<TNamedBuffer, TDataType> GetElemPtr(in uint idx)
+	{
+		GPUNamedElemPtr<TNamedBuffer, TDataType> ptr = begin;
+		ptr.dataIdx += idx;
+		return ptr;
+	}
+
+	uint GetSize()
+	{
+		return size;
+	}
+};
 
 #endif // BINDLESS_TYPES_HLSLI

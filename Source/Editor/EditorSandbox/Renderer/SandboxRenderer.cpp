@@ -442,7 +442,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 00.f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(8.30f, 2.6f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -452,7 +452,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 00.f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(-8.30f, 3.9f, 4.45f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -462,7 +462,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 00.f;
+			pointLightData.luminousPower = 3200.f;
 			pointLightData.location = math::Vector3f(8.30f, -3.8f, 1.55f);
 			pointLightData.radius = 5.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
@@ -472,7 +472,7 @@ void SandboxRenderer::InitializeRenderScene()
 			const rsc::RenderSceneEntityHandle lightSceneEntity = m_renderScene->CreateEntity();
 			rsc::PointLightData pointLightData;
 			pointLightData.color = math::Vector3f(1.0f, 0.7333f, 0.451f);
-			pointLightData.luminousPower = 00.f;
+			pointLightData.luminousPower = 3200.f;
 			//pointLightData.location = math::Vector3f(-9.30f, 2.6f, 1.55f);
 			pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
 			pointLightData.radius = 8.f;

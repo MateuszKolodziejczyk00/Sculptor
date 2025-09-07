@@ -73,7 +73,7 @@ private:
 	struct PipelineDescriptorsState
 	{
 		lib::DynamicArray<Bool> dirtyDescriptorSets;
-		Bool isBindlessDirty = false;
+		Bool isBindlessBound = false;
 	};
 
 	void TryMarkAsDirty(const lib::MTHandle<DescriptorSetState>& state);

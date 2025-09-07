@@ -1,7 +1,6 @@
 #include "SculptorShader.hlsli"
 
-[[bindless]]
-[[descriptor_set(TemporalAccumulationDS, 1)]]
+[[descriptor_set(TemporalAccumulationDS, 0)]]
 
 #include "Utils/Sampling.hlsli"
 

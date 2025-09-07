@@ -32,9 +32,7 @@
 #define UP_VECTOR       (float3(0.f, 0.f, 1.f))
 
 
-#if SPT_BINDLESS
 #include "BindlessTypes.hlsli"
-#endif // SPT_BINDLESS
 
 
 #if defined(SPT_META_PARAM_DEBUG_FEATURES)

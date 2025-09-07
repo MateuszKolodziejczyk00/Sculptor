@@ -4,6 +4,7 @@
 #include "JobSystem/JobSystem.h"
 #include "EngineFrame.h"
 
+
 namespace spt::rsc
 {
 
@@ -55,9 +56,11 @@ void RenderScene::Update()
 	const engn::FrameContext& frame = GetCurrentFrameRef();
 
 	GPUSceneFrameData frameData;
-	frameData.deltaTime = frame.GetDeltaTime();
-	frameData.time      = frame.GetTime();
-	frameData.frameIdx  = static_cast<Uint32>(frame.GetFrameIdx());
+	frameData.deltaTime                 = frame.GetDeltaTime();
+	frameData.time                      = frame.GetTime();
+	frameData.frameIdx                  = static_cast<Uint32>(frame.GetFrameIdx());
+	frameData.renderEntitiesArray       = m_renderEntitiesBuffer->GetFullViewRef();
+	frameData.staticMeshGeometryBuffers = StaticMeshUnifiedData::Get().GetGeometryBuffers();
 	m_renderSceneDS->u_gpuSceneFrameConstants = frameData;
 }
 
@@ -102,14 +105,6 @@ void RenderScene::DestroyEntity(RenderSceneEntityHandle entity)
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK_NO_ENTRY_MSG("TODO");
-}
-
-Uint32 RenderScene::GetEntityIdx(RenderSceneEntityHandle entity) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const EntityGPUDataHandle& entityDataHandle = entity.get<EntityGPUDataHandle>();
-	return entityDataHandle.GetEntityIdx();
 }
 
 const lib::DynamicArray<lib::SharedRef<SceneRenderSystem>>& RenderScene::GetRenderSystems() const

@@ -14,15 +14,13 @@ static void BuildShaderMetaData(const ShaderCompilationMetaData& compilationMeta
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK_MSG(!compilationMetaData.IsBindless() || compilationMetaData.GetDSTypeID(0u) == idxNone<Uint64>, "Shaders using bindless cannot use descriptor set 0");
+	SPT_CHECK_MSG(compilationMetaData.GetDSTypeID(0u) == idxNone<Uint64>, "Shaders using bindless cannot use descriptor set 0");
 	
 	for (SizeType dsIdx = 0; dsIdx < compilationMetaData.GetDescriptorSetsNum(); ++dsIdx)
 	{
 		const SizeType dsTypeID = compilationMetaData.GetDSTypeID(dsIdx);
 		outShaderMetaData.SetDescriptorSetStateTypeID(dsIdx, dsTypeID);
 	}
-
-	outShaderMetaData.SetBindless(compilationMetaData.IsBindless());
 }
 
 } // priv

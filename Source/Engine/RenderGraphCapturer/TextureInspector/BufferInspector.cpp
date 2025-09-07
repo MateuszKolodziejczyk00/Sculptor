@@ -215,6 +215,25 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
 		ImGui::Text(typedData[0] > 0 ? "True" : "False");
 	}
+	else if (typeName == lib::HashedString("NamedBufferDescriptorIdx"))
+	{
+		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());
+		const Uint32 descriptorIdx = typedData[0];
+		const auto bufferIt = capture.descriptorIdxToBuffer.find(descriptorIdx);
+		const CapturedBuffer* capturedBuffer = bufferIt != capture.descriptorIdxToBuffer.cend() ? bufferIt->second : nullptr;
+		if (capturedBuffer)
+		{
+			if (ImGui::Button(capturedBuffer->name.GetData()))
+			{
+				// TODO
+			}
+		}
+		else
+		{
+			ImGui::Text("Unknown buffer");
+		}
+
+	}
 	else if (typeName.ToString().starts_with("UAVTexture") || typeName.ToString().starts_with("SRVTexture"))
 	{
 		const Uint32* typedData = reinterpret_cast<const Uint32*>(data.data());

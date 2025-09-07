@@ -50,45 +50,6 @@ void StaticMeshesRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilde
 		RenderStageEntries& shadowMapStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ShadowMap);
 		shadowMapStageEntries.GetOnRenderStage().AddRawMember(&m_shadowMapRenderer, &StaticMeshShadowMapRenderer::RenderToShadowMap);
 	}
-
-	const Bool supportsDepthPrepass		= viewSpec.SupportsStage(ERenderStage::DepthPrepass);
-	const Bool supportsForwardOpaque	= viewSpec.SupportsStage(ERenderStage::ForwardOpaque);
-
-	if (supportsDepthPrepass || supportsForwardOpaque)
-	{
-		const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-		const lib::DynamicArray<StaticMeshBatchDefinition>& batchDefinitions = staticMeshPrimsSystem.BuildBatchesForView(viewSpec.GetRenderView());
-		
-		if (!batchDefinitions.empty())
-		{
-			if (supportsDepthPrepass)
-			{
-				const Bool hasAnyBatches = m_depthPrepassRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinitions);
-
-				if (hasAnyBatches)
-				{
-					m_depthPrepassRenderer.CullPerView(graphBuilder, renderScene, viewSpec);
-
-					RenderStageEntries& depthPrepassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::DepthPrepass);
-					depthPrepassStageEntries.GetOnRenderStage().AddRawMember(&m_depthPrepassRenderer, &StaticMeshDepthPrepassRenderer::RenderPerView);
-				}
-			}
-
-			if (supportsForwardOpaque)
-			{
-				const Bool hasAnyBatches = m_forwardOpaqueRenderer.BuildBatchesPerView(graphBuilder, renderScene, viewSpec, batchDefinitions);
-
-				if (hasAnyBatches)
-				{
-					RenderStageEntries& motionAndDepthStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::MotionAndDepth);
-					motionAndDepthStageEntries.GetPostRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::CullPerView);
-
-					RenderStageEntries& basePassStageEntries = viewSpec.GetRenderStageEntries(ERenderStage::ForwardOpaque);
-					basePassStageEntries.GetOnRenderStage().AddRawMember(&m_forwardOpaqueRenderer, &StaticMeshForwardOpaqueRenderer::RenderPerView);
-				}
-			}
-		}
-	}
 }
 
 } // spt::rsc

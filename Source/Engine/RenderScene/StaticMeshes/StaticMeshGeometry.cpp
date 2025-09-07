@@ -26,12 +26,13 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 	const rhi::VirtualAllocationDefinition meshletsSuballocationDef(meshletsDataSize, sizeof(rdr::HLSLStorage<MeshletGPUData>), rhi::EVirtualAllocationFlags::PreferMinMemory);
 	const rhi::RHIVirtualAllocation meshletsSuballocation = m_meshletsBuffer->GetRHI().CreateSuballocation(meshletsSuballocationDef);
 
-	const SizeType meshletsAllocationStartIdx = meshletsSuballocation.GetOffset() / sizeof(rdr::HLSLStorage<MeshletGPUData>);
+	const Uint32 meshletsAllocationOffset = static_cast<Uint32>(meshletsSuballocation.GetOffset());
 
+	// Path offsets
 	std::for_each(std::begin(submeshes), std::end(submeshes),
-				  [meshletsAllocationStartIdx, geometryDataSuballocation](SubmeshGPUData& submesh)
+				  [meshletsAllocationOffset, geometryDataSuballocation](SubmeshGPUData& submesh)
 				  {
-					  submesh.meshletsBeginIdx	+= static_cast<Uint32>(meshletsAllocationStartIdx);
+					  submesh.meshlets			= MeshletsGPUSpan(submesh.meshlets.GetOffset() + meshletsAllocationOffset, submesh.meshlets.GetSize());
 					  submesh.indicesOffset		+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
 					  submesh.locationsOffset	+= static_cast<Uint32>(geometryDataSuballocation.GetOffset());
 					  if (submesh.normalsOffset != idxNone<Uint32>)
@@ -86,6 +87,14 @@ StaticMeshGeometryData StaticMeshUnifiedData::BuildStaticMeshData(lib::DynamicAr
 const lib::MTHandle<StaticMeshUnifiedDataDS>& StaticMeshUnifiedData::GetUnifiedDataDS() const
 {
 	return m_unifiedDataDS;
+}
+
+StaticMeshGeometryBuffers StaticMeshUnifiedData::GetGeometryBuffers() const
+{
+	StaticMeshGeometryBuffers buffers;
+	buffers.submeshesArray = m_submeshesBuffer->GetFullViewRef();
+	buffers.meshletsArray  = m_meshletsBuffer->GetFullViewRef();
+	return buffers;
 }
 
 StaticMeshUnifiedData::StaticMeshUnifiedData()

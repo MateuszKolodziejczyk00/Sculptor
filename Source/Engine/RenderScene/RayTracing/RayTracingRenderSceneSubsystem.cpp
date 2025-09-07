@@ -118,7 +118,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 			if(materialProxy.SupportsRayTracing())
 			{
 				RTInstanceData& rtInstance = rtInstances.emplace_back();
-				rtInstance.entityIdx      = gpuEntity.GetEntityIdx();
+				rtInstance.entityIdx      = gpuEntity.GetGPUDataPtr().GetBufferElementIdx();
 				rtInstance.materialDataID = materialProxy.GetMaterialDataID();
 				rtInstance.geometryDataID = rtGeometry.geometryDataID;
 

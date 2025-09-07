@@ -9,6 +9,7 @@
 
 SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
 
+
 namespace spt::sc
 {
 
@@ -59,7 +60,8 @@ static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode
 		SPT_CHECK(descriptorSetMatch.size() == 3); // should be whole match + dsNameMatch + dsIdxMatch
 		const lib::HashedString dsName = descriptorSetMatch[1].str();
 		const lib::String dsIdxStr = descriptorSetMatch[2].str();
-		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr));
+		const Uint32 bindlessOffset = 1u;
+		const Uint32 dsIdx = static_cast<Uint32>(std::stoi(dsIdxStr)) + bindlessOffset;
 
 		const SizeType dsTokenPosition = descriptorSetIt->prefix().length();
 		const SizeType dsTokenLength   = descriptorSetMatch.length();
@@ -98,12 +100,6 @@ ShaderPreprocessingMetaData ShaderMetaDataPrerpocessor::PreprocessMainShaderFile
 
 	PreprocessShaderMetaParameters(sourceCode, INOUT metaData);
 
-	static const std::regex bindlessRegex(R"~(\[\[bindless\]\])~");
-	if (std::regex_search(sourceCode, bindlessRegex))
-	{
-		metaData.macroDefinitions.emplace_back("SPT_BINDLESS");
-	}
-
 	return metaData;
 }
 
@@ -140,13 +136,6 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 #if SPT_SHADERS_DEBUG_FEATURES
 	PreprocessShaderLiterals(sourceCode, OUT metaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES
-
-	static const std::regex bindlessRegex(R"~(\[\[bindless\]\])~");
-	if (std::regex_search(sourceCode, bindlessRegex))
-	{
-		metaData.SetBindless();
-		sourceCode = std::regex_replace(sourceCode, bindlessRegex, "");
-	}
 
 	return metaData;
 }
@@ -237,19 +226,27 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
+
+	lib::String accessorsCode;
 	
-	helper::IterateDescriptorSets([&sourceCode, &outMetaData](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
 								  {
 									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 
 									  const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
 									  sourceCode.replace(dsTokenPosition, dsTokenLength, dsSourceCode);
+									  accessorsCode += dsCompilationDef.GetAccessorsCode();
 
 									  outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());
 									  
 									  return helper::EDSIteratorFuncResult::ContinueFromStart;
 								  },
 								  sourceCode);
+
+	if (!accessorsCode.empty())
+	{
+		sourceCode.insert(sourceCode.begin(), accessorsCode.cbegin(), accessorsCode.cend());
+	}
 }
 
 #if SPT_SHADERS_DEBUG_FEATURES

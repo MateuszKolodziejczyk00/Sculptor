@@ -9,6 +9,7 @@
 #include "Renderer.h"
 #include "ShaderStructs/ShaderStructs.h"
 #include "DependenciesBuilder.h"
+#include "Bindless/NamedBuffers.h"
 
 
 namespace spt::gfx
@@ -84,10 +85,20 @@ public:
 		m_buffer->GetRHI().CopySRVDescriptor(offset, structSize, indexer[GetBaseBindingIdx()][0]);
 	}
 
+	static constexpr lib::String BuildAccessorsCode()
+	{
+		lib::String code;
+		code += rdr::shader_translator::DeclareNamedBufferHLSLAccessors<TStruct>();
+		return code;
+	}
+
 	static constexpr lib::String BuildBindingCode(const char* name, Uint32 bindingIdx)
 	{
-		return rdr::shader_translator::DefineType<TStruct>() + '\n' +
-			BuildBindingVariableCode(lib::String("ConstantBuffer<") + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx);
+		lib::String code;
+		code += rdr::shader_translator::DefineType<TStruct>() + '\n';
+		code += BuildBindingVariableCode(lib::String("ConstantBuffer<") + rdr::shader_translator::GetTypeName<TStruct>() + "> " + name, bindingIdx) + "\n";
+		code += rdr::shader_translator::DefineNamedBufferHLSLAccessors<TStruct>(lib::String(name) + ".");
+		return code;
 	}
 
 	static constexpr std::array<rdr::ShaderBindingMetaData, 1> GetShaderBindingsMetaData()
