@@ -216,10 +216,15 @@ RGBufferViewHandle RenderGraphBuilder::AcquireExternalBufferView(lib::SharedPtr<
 RGBufferHandle RenderGraphBuilder::CreateBuffer(const RenderGraphDebugName& name, const rhi::BufferDefinition& bufferDefinition, const rhi::RHIAllocationInfo& allocationInfo, ERGResourceFlags flags /*= ERGResourceFlags::Default*/)
 {
 	RGResourceDef resourceDefinition;
-	resourceDefinition.name = name;
+	resourceDefinition.name  = name;
 	resourceDefinition.flags = flags;
 
-	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, bufferDefinition, allocationInfo);
+	rhi::BufferDefinition modifiedBufferDefinition = bufferDefinition;
+#if SPT_DEBUG || SPT_DEVELOPMENT
+	modifiedBufferDefinition.usage = lib::Flags(modifiedBufferDefinition.usage, rhi::EBufferUsage::TransferSrc);
+#endif // SPT_DEBUG || SPT_DEVELOPMENT
+
+	const RGBufferHandle bufferHandle = m_allocator.Allocate<RGBuffer>(resourceDefinition, modifiedBufferDefinition, allocationInfo);
 	m_buffers.emplace_back(bufferHandle);
 	
 	return bufferHandle;
@@ -739,6 +744,14 @@ void RenderGraphBuilder::PostNodeAdded(RGNode& node, const RGDependeciesContaine
 	for (const lib::SharedPtr<RenderGraphDebugDecorator>& decorator : m_debugDecorators)
 	{
 		decorator->PostNodeAdded(*this, node, dependencies);
+	}
+}
+
+void RenderGraphBuilder::PostSubpassAdded(RGNode& node, const RGDependeciesContainer& dependencies)
+{
+	for (const lib::SharedPtr<RenderGraphDebugDecorator>& decorator : m_debugDecorators)
+	{
+		decorator->PostSubpassAdded(*this, node, dependencies);
 	}
 }
 

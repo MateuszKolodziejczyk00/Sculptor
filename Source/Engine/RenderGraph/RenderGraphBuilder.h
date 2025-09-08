@@ -209,6 +209,7 @@ private:
 
 	void AddNodeInternal(RGNode& node, const RGDependeciesContainer& dependencies);
 	void PostNodeAdded(RGNode& node, const RGDependeciesContainer& dependencies);
+	void PostSubpassAdded(RGNode& node, const RGDependeciesContainer& dependencies);
 
 	void ResolveNodeDependecies(RGNode& node, const RGDependeciesContainer& dependencies);
 
@@ -418,6 +419,8 @@ void RenderGraphBuilder::AddSubpass(const RenderGraphDebugName& subpassName, TDe
 	AssignDescriptorSetsToNode(*m_lastRenderPassNode, nullptr, { dsStatesRange }, subpassDependenciesBuilder);
 
 	ResolveNodeDependecies(*m_lastRenderPassNode, subpassDependencies);
+
+	PostSubpassAdded(*m_lastRenderPassNode, subpassDependencies);
 }
 
 template<typename TDescriptorSetStatesRange>

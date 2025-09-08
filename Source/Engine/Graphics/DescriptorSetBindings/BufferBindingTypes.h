@@ -41,7 +41,7 @@ public:
 						  m_buffer);
 	}
 
-	void AddRGDependency(rg::RGDependenciesBuilder& builder, rg::ERGBufferAccess access) const
+	void AddRGDependency(rg::RGDependenciesBuilder& builder, const rg::RGBufferAccessInfo& access) const
 	{
 		std::visit([&builder, access](const auto& buffer)
 				   {
@@ -105,11 +105,27 @@ public:
 						  {
 							  [](const lib::SharedPtr<rdr::BindableBufferView>& buffer)
 							  {
-								  return true;
+								  return buffer.get() != nullptr;
 							  },
 							  [](const rg::RGBufferViewHandle buffer)
 							  {
 							  	return buffer.IsValid();
+							  }
+						  },
+						  m_buffer);
+	}
+
+	Uint64 GetBoundBufferSize() const
+	{
+		return std::visit(lib::Overload
+						  {
+							  [](const lib::SharedPtr<rdr::BindableBufferView>& buffer) -> Uint64
+							  {
+								  return buffer ? buffer->GetSize() : 0u;
+							  },
+							  [](const rg::RGBufferViewHandle buffer) -> Uint64
+							  {
+							  	return buffer.IsValid() ? buffer->GetSize() : 0u;
 							  }
 						  },
 						  m_buffer);

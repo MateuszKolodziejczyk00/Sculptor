@@ -9,6 +9,8 @@
 #include "FileSystem/File.h"
 #include "Types/Buffer.h"
 
+SPT_DEFINE_LOG_CATEGORY(RGCapturer, true);
+
 
 namespace spt::rg::capture
 {
@@ -24,18 +26,21 @@ public:
 
 	// Begin RenderGraphDebugDecorator interface
 	virtual void PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) override;
+	virtual void PostSubpassAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) override;
 	// End RenderGraphDebugDecorator interface
 
 	const lib::SharedRef<RGCapture>& GetCapture() const;
 
 private:
 
+	void AddDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies);
+
 	lib::SharedRef<RGCapture> m_capture;
 
 	Bool m_isAddingCaptureCopyNode;
 
-	lib::HashMap<RGTexture*, CapturedTexture*> m_capturedTextures;
-	lib::HashMap<RGBuffer*, CapturedBuffer*>   m_capturedBuffers;
+	lib::HashMap<void*, CapturedTexture*> m_capturedTextures;
+	lib::HashMap<void*, CapturedBuffer*>  m_capturedBuffers;
 };
 
 
@@ -72,6 +77,18 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 #endif // DEBUG_RENDER_GRAPH
 	}
 
+	AddDependenciesToPass(graphBuilder, pass, dependencies);
+}
+
+void RGCapturerDecorator::PostSubpassAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies)
+{
+	CapturedPass& pass = *m_capture->passes.back();
+
+	AddDependenciesToPass(graphBuilder, pass, dependencies);
+}
+
+void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder, CapturedPass& pass, const RGDependeciesContainer& dependencies)
+{
 	for (const RGTextureAccessDef& textureAccess : dependencies.textureAccesses)
 	{
 		const Bool isOutputTexture = textureAccess.access == ERGTextureAccess::StorageWriteTexture
@@ -89,6 +106,11 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 			capturedTexture->name            = rgTexture->GetName();
 			capturedTexture->definition      = rgTexture->GetTextureRHIDefinition();
 			capturedTexture->definition.type = rhi::GetSelectedTextureType(capturedTexture->definition);
+		}
+
+		if (pass.CapturedBinding(*capturedTexture))
+		{
+			continue;
 		}
 
 		const Bool shouldCreateNewVersion = capturedTexture->versions.empty() || isOutputTexture;
@@ -167,14 +189,20 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 		const rg::RGBufferViewHandle boundBufferView = bufferAccess.resource;
 		const rg::RGBufferHandle boundBuffer         = boundBufferView->GetBuffer();
 
-		CapturedBuffer* capturedBuffer = m_capturedBuffers[boundBufferView->GetBuffer().Get()];
+		CapturedBuffer*& capturedBuffer = m_capturedBuffers[boundBuffer->IsExternal() ? (void*)boundBuffer->GetResource().get() : (void*)boundBuffer.Get()];
 		if (!capturedBuffer)
 		{
 			capturedBuffer = m_capture->buffers.emplace_back(std::make_unique<CapturedBuffer>()).get();
 			capturedBuffer->name = boundBufferView->GetBuffer()->GetName();
 		}
 
-		const Bool shouldCreatenewVersion = capturedBuffer->versions.empty() || bufferAccess.access == ERGBufferAccess::Write || bufferAccess.access == ERGBufferAccess::ReadWrite;
+		if (pass.CapturedBinding(*capturedBuffer))
+		{
+			continue;
+		}
+
+		const Bool isWritable = bufferAccess.access == ERGBufferAccess::Write || bufferAccess.access == ERGBufferAccess::ReadWrite;
+		const Bool shouldCreatenewVersion = capturedBuffer->versions.empty() || isWritable;
 		if (shouldCreatenewVersion)
 		{
 			CapturedBuffer::Version& newVersion = *capturedBuffer->versions.emplace_back(std::make_unique<CapturedBuffer::Version>());
@@ -191,6 +219,21 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 
 				std::memcpy(newVersion.bufferData.data(), mappedBuffer.GetPtr() + boundBufferView->GetOffset(), boundBuffer->GetSize());
 			}
+			else if (lib::HasAnyFlag(boundBuffer->GetUsageFlags(), rhi::EBufferUsage::TransferSrc))
+			{
+				lib::ValueGuard recursionGuard(m_isAddingCaptureCopyNode, true);
+
+				rhi::BufferDefinition captureBufferDef;
+				captureBufferDef.size  = boundBuffer->GetSize();
+				captureBufferDef.usage = rhi::EBufferUsage::TransferDst;
+
+				lib::SharedRef<rdr::Buffer> captureBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(boundBuffer->GetName()), captureBufferDef, rhi::EMemoryUsage::CPUToGPU);
+				const rg::RGBufferViewHandle rgCaptureBuffer = graphBuilder.AcquireExternalBufferView(captureBuffer->GetFullView());
+
+				graphBuilder.CopyFullBuffer(RG_DEBUG_NAME("Download Buffer"), boundBufferView, rgCaptureBuffer);
+
+				newVersion.downloadedBuffer = captureBuffer;
+			}
 		}
 
 		const CapturedBuffer::Version& bufferVersion = *capturedBuffer->versions.back();
@@ -199,6 +242,8 @@ void RGCapturerDecorator::PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode
 		bufferBinding.bufferVersion  = &bufferVersion;
 		bufferBinding.offset         = boundBufferView->GetOffset();
 		bufferBinding.size           = boundBufferView->GetSize();
+		bufferBinding.writable       = isWritable;
+
 #if DEBUG_RENDER_GRAPH
 		bufferBinding.structTypeName = bufferAccess.structTypeName;
 		bufferBinding.elementsNum    = bufferAccess.elementsNum;

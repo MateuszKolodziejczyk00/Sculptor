@@ -9,6 +9,87 @@
 namespace spt::rg::capture
 {
 
+namespace priv
+{
+
+Uint32 GetTypeSize(lib::HashedString typeName)
+{
+	const rdr::ShaderStructMetaData* structMetaData = rdr::ShaderStructsRegistry::GetStructMetaData(typeName);
+	if (structMetaData)
+	{
+		return structMetaData->GetRTTI().size;
+	}
+	else if (typeName == lib::HashedString("uint"))
+	{
+		return sizeof(Uint32);
+	}
+	else if (typeName == lib::HashedString("uint2"))
+	{
+		return sizeof(Uint32) * 2;
+	}
+	else if (typeName == lib::HashedString("uint3"))
+	{
+		return sizeof(Uint32) * 3;
+	}
+	else if (typeName == lib::HashedString("uint4"))
+	{
+		return sizeof(Uint32) * 4;
+	}
+	else if (typeName == lib::HashedString("int"))
+	{
+		return sizeof(Int32);
+	}
+	else if (typeName == lib::HashedString("int2"))
+	{
+		return sizeof(Int32) * 2;
+	}
+	else if (typeName == lib::HashedString("int3"))
+	{
+		return sizeof(Int32) * 3;
+	}
+	else if (typeName == lib::HashedString("int4"))
+	{
+		return sizeof(Int32) * 4;
+	}
+	else if (typeName == lib::HashedString("float"))
+	{
+		return sizeof(Real32);
+	}
+	else if (typeName == lib::HashedString("float2"))
+	{
+		return sizeof(Real32) * 2;
+	}
+	else if (typeName == lib::HashedString("float3"))
+	{
+		return sizeof(Real32) * 3;
+	}
+	else if (typeName == lib::HashedString("float4"))
+	{
+		return sizeof(Real32) * 4;
+	}
+	else if (typeName == lib::HashedString("float4x4"))
+	{
+		return sizeof(Real32) * 16;
+	}
+	else if (typeName == lib::HashedString("bool"))
+	{
+		return sizeof(Uint32);
+	}
+	else if (typeName == lib::HashedString("NamedBufferDescriptorIdx"))
+	{
+		return sizeof(Uint32);
+	}
+	else if (typeName.ToString().starts_with("UAVTexture") || typeName.ToString().starts_with("SRVTexture"))
+	{
+		return 2 * sizeof(Uint32);
+	}
+	else
+	{
+		return 0u;
+	}
+}
+
+} // priv
 
 BufferInspector::BufferInspector(const scui::ViewDefinition& definition, RGNodeCaptureViewer& parentNodeViewer, const CapturedBufferBinding& buffer)
 	: Super(definition)
@@ -33,69 +114,94 @@ void BufferInspector::DrawUI()
 	SPT_PROFILER_FUNCTION();
 
 	Super::DrawUI();
-
-	const lib::Span<const Byte> bufferData = m_capturedBufferBinding.bufferVersion->bufferData;
 	
 	ImGui::SetNextWindowClass(&scui::CurrentViewBuildingContext::GetCurrentViewContentClass());
-	
+
 	ImGui::Begin(m_boundDataPanelName.GetData());
 
-	if (m_capturedBufferBinding.structTypeName.IsValid() && !m_capturedBufferBinding.bufferVersion->bufferData.empty())
+	if (m_capturedBufferBinding.bufferVersion->downloadedBuffer)
 	{
-		ImGui::Columns(3);
-
-		DrawStruct("", m_capturedBufferBinding.structTypeName, bufferData.subspan(m_capturedBufferBinding.offset, m_capturedBufferBinding.size), 0u);
-
-		ImGui::EndColumns();
-		ImGui::Separator();
+		ImGui::Text("Downloading buffer...");
 	}
-
-	ImGui::End();
-
-	ImGui::Begin(m_bufferDataPanelName.GetData());
-
-	ImGui::Columns(11);
-
-	// Display data in rows of 16 bytes
-	for (SizeType i = 0; i < bufferData.size(); i += 16)
+	else
 	{
-		ImGui::Text("%d: ", static_cast<Uint32>(i));
-		ImGui::NextColumn();
+		const lib::Span<const Byte> bufferData = m_capturedBufferBinding.bufferVersion->bufferData;
 
-		for (SizeType j = 0; j < 4; ++j)
+		if (m_capturedBufferBinding.structTypeName.IsValid() && !bufferData.empty())
 		{
-			if (i + j < bufferData.size())
+			ImGui::Columns(3);
+
+			const Uint32 typeSize = priv::GetTypeSize(m_capturedBufferBinding.structTypeName);
+			if(typeSize != 0u)
 			{
-				ImGui::Text("%u ", *reinterpret_cast<const Uint32*>(&bufferData[i + j * sizeof(Uint32)]));
-				ImGui::NextColumn();
+				ImGui::SliderInt("Begin Idx", &m_dataViewerBeginidx, 0, std::max<Int32>(m_capturedBufferBinding.elementsNum - 100, 0));
+				const Uint32 beginIdx = static_cast<Uint32>(m_dataViewerBeginidx);
+				const Uint32 endIdx = std::min(beginIdx + 100u, m_capturedBufferBinding.elementsNum);
+				for (Uint32 idx = beginIdx; idx < endIdx; ++idx)
+				{
+					const Uint32 elemOffset = idx * typeSize;
+					const lib::String elemName = lib::String("[") + std::to_string(idx) + "]";
+					DrawStruct(elemName, m_capturedBufferBinding.structTypeName, bufferData.subspan(m_capturedBufferBinding.offset + elemOffset, typeSize), elemOffset);
+				}
 			}
 			else
 			{
-				ImGui::Text("   ");
-				ImGui::NextColumn();
+				ImGui::Text("No size data for type: %s", m_capturedBufferBinding.structTypeName.GetData());
 			}
-		}
-		ImGui::NextColumn();
-		for (SizeType j = 0; j < 4; ++j)
-		{
-			if (i + j < bufferData.size())
-			{
-				ImGui::Text("%f ", *reinterpret_cast<const Real32*>(&bufferData[i + j * sizeof(Real32)]));
-				ImGui::NextColumn();
-			}
-			else
-			{
-				ImGui::Text(" ");
-				ImGui::NextColumn();
-			}
+
+			ImGui::EndColumns();
+			ImGui::Separator();
 		}
 
-		if (m_capturedBufferBinding.offset >= i && m_capturedBufferBinding.offset < i + 16)
+		ImGui::End();
+
+		ImGui::Begin(m_bufferDataPanelName.GetData());
+
+		ImGui::SliderInt("Byte Offset", &m_byteViewerOffset, 0, std::max(static_cast<Int32>(bufferData.size()) - 1024, 0));
+
+		ImGui::Columns(11);
+		// Display data in rows of 16 bytes
+		const SizeType end = std::min<SizeType>(bufferData.size(), m_byteViewerOffset + 1024); // limit to first 1KB for performance
+		for (SizeType i = m_byteViewerOffset; i < end; i += 16)
 		{
-			ImGui::SameLine();
-			ImGui::Text("<- Bound Data");
+			ImGui::Text("%d: ", static_cast<Uint32>(i));
+			ImGui::NextColumn();
+
+			for (SizeType j = 0; j < 4; ++j)
+			{
+				if (i + j < bufferData.size())
+				{
+					ImGui::Text("%u ", *reinterpret_cast<const Uint32*>(&bufferData[i + j * sizeof(Uint32)]));
+					ImGui::NextColumn();
+				}
+				else
+				{
+					ImGui::Text("   ");
+					ImGui::NextColumn();
+				}
+			}
+			ImGui::NextColumn();
+			for (SizeType j = 0; j < 4; ++j)
+			{
+				if (i + j < bufferData.size())
+				{
+					ImGui::Text("%f ", *reinterpret_cast<const Real32*>(&bufferData[i + j * sizeof(Real32)]));
+					ImGui::NextColumn();
+				}
+				else
+				{
+					ImGui::Text(" ");
+					ImGui::NextColumn();
+				}
+			}
+
+			if (m_capturedBufferBinding.offset >= i && m_capturedBufferBinding.offset < i + 16)
+			{
+				ImGui::SameLine();
+				ImGui::Text("<- Bound Data");
+			}
+			ImGui::NextColumn();
 		}
-		ImGui::NextColumn();
 	}
 
 	ImGui::End();
@@ -113,7 +219,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 
 	ImGui::NextColumn();
 
-	ImGui::Text("%s offset: %d", typeName.GetView().data(), currentOffset);
+	ImGui::Text("offset: %d\t\t%s", currentOffset, typeName.GetView().data());
 
 	ImGui::NextColumn();
 
@@ -141,6 +247,7 @@ void BufferInspector::DrawStruct(lib::StringView name, lib::HashedString typeNam
 				DrawStruct(member.memberName.GetView(), member.memberTypeName, data.subspan(member.offset), currentOffset + member.offset);
 			}
 		}
+		ImGui::Unindent();
 	}
 	else if (typeName == lib::HashedString("uint"))
 	{

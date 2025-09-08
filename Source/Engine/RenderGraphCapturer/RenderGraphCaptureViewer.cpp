@@ -7,7 +7,7 @@
 #include "TextureInspector/TextureInspector.h"
 #include "TextureInspector/BufferInspector.h"
 #include "Utility/Templates/Overload.h"
-
+#include "JobSystem.h"
 
 namespace spt::rg::capture
 {
@@ -125,14 +125,32 @@ void RGNodeCaptureViewer::DrawNodeDetails(const CapturedPass& pass)
 
 	ImGui::NextColumn();
 	
-	if (ImGui::CollapsingHeader("Buffers", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Input Buffers", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		for (const CapturedBufferBinding& binding : pass.buffers)
 		{
-			const lib::HashedString name = binding.bufferVersion->owningBuffer->name;
-			if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
+			if(!binding.writable)
 			{
-				OpenBufferCapture(binding);
+				const lib::HashedString name = binding.bufferVersion->owningBuffer->name;
+				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
+				{
+					OpenBufferCapture(binding);
+				}
+			}
+		}
+	}
+	
+	if (ImGui::CollapsingHeader("Output Buffers", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		for (const CapturedBufferBinding& binding : pass.buffers)
+		{
+			if(binding.writable)
+			{
+				const lib::HashedString name = binding.bufferVersion->owningBuffer->name;
+				if (ImGui::Button(name.GetData(), ImVec2(contentSize.x() * 0.5f, 26.f)))
+				{
+					OpenBufferCapture(binding);
+				}
 			}
 		}
 	}
@@ -207,6 +225,30 @@ RenderGraphCaptureViewer::RenderGraphCaptureViewer(const scui::ViewDefinition& d
 	, m_nodesListFilter(CreateUniqueName("Nodes Filter"))
 	, m_capture(std::move(capture))
 {
+	js::Launch(SPT_GENERIC_JOB_NAME, [capture = m_capture]()
+			   {
+				   for (const lib::UniquePtr<CapturedBuffer>& buffer : capture->buffers)
+				   {
+					   for (const lib::UniquePtr<CapturedBuffer::Version>& version : buffer->versions)
+					   {
+						   js::Launch(SPT_GENERIC_JOB_NAME, [capture, version = version.get()]()
+									  {
+										  SPT_PROFILER_SCOPE("Download Captured Buffer");
+
+										  if (version->downloadedBuffer)
+										  {
+											  {
+												  const rhi::RHIMappedByteBuffer mappedData(version->downloadedBuffer->GetRHI());
+												  version->bufferData.resize(mappedData.GetSize());
+												  std::memcpy(version->bufferData.data(), mappedData.GetPtr(), mappedData.GetSize());
+											  }
+											  version->downloadedBuffer.reset();
+										  }
+									  },
+									  js::JobDef().SetPriority(js::EJobPriority::Low));
+					   }
+				   }
+			   });
 }
 
 void RenderGraphCaptureViewer::BuildDefaultLayout(ImGuiID dockspaceID)

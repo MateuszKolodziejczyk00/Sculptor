@@ -42,6 +42,9 @@ private:
 	lib::HashedString m_boundDataPanelName;
 	lib::HashedString m_bufferDataPanelName;
 
+	Int32 m_byteViewerOffset   = 0;
+	Int32 m_dataViewerBeginidx = 0;
+
 	const CapturedBufferBinding& m_capturedBufferBinding;
 
 	RGNodeCaptureViewer& m_parentNodeViewer;

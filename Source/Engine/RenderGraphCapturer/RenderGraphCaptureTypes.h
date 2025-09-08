@@ -30,10 +30,11 @@ struct CapturedBuffer
 {
 	struct Version
 	{
-		CapturedBuffer*         owningBuffer = nullptr;
-		Uint32                  versionIdx = 0u;
-		lib::DynamicArray<Byte> bufferData;
-		CapturedPass*           producingPass; // might be null in case of first version of external buffer
+		CapturedBuffer*             owningBuffer = nullptr;
+		Uint32                      versionIdx = 0u;
+		lib::DynamicArray<Byte>     bufferData;
+		CapturedPass*               producingPass; // might be null in case of first version of external buffer
+		lib::SharedPtr<rdr::Buffer> downloadedBuffer;
 	};
 
 	lib::HashedString name;
@@ -58,6 +59,8 @@ struct CapturedBufferBinding
 	const CapturedBuffer::Version* bufferVersion = nullptr;
 	Uint64 offset = 0u;
 	Uint64 size   = 0u; // 0 means full buffer
+
+	Bool writable = false;
 
 	// type info
 	lib::HashedString structTypeName;
@@ -95,6 +98,24 @@ struct CapturedPass
 
 	lib::DynamicArray<CapturedTextureBinding> textures;
 	lib::DynamicArray<CapturedBufferBinding>  buffers;
+
+	Bool CapturedBinding(const CapturedTexture& texture) const
+	{
+		return std::any_of(textures.begin(), textures.end(),
+						   [&texture](const CapturedTextureBinding& binding)
+						   {
+							   return binding.textureVersion && binding.textureVersion->owningTexture == &texture;
+						   });
+	}
+
+	Bool CapturedBinding(const CapturedBuffer& buffer) const
+	{
+		return std::any_of(buffers.begin(), buffers.end(),
+						   [&buffer](const CapturedBufferBinding& binding)
+						   {
+							   return binding.bufferVersion && binding.bufferVersion->owningBuffer == &buffer;
+						   });
+	}
 };
 
 

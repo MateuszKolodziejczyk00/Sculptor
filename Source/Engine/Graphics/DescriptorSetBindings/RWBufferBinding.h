@@ -37,7 +37,17 @@ public:
 	{
 		if (IsValid())
 		{
-			m_boundBuffer.AddRGDependency(builder, accessType);
+			rg::RGBufferAccessInfo accessInfo;
+			accessInfo.access = accessType;
+			if constexpr (!std::is_same_v<TStruct, Byte>)
+			{
+				if (IsValid())
+				{
+					accessInfo.structTypeName = rdr::shader_translator::GetTypeName<TStruct>();
+					accessInfo.elementsNum    = m_boundBuffer.GetBoundBufferSize() / sizeof(rdr::HLSLStorage<TStruct>);
+				}
+			}
+			m_boundBuffer.AddRGDependency(builder, accessInfo);
 		}
 	}
 

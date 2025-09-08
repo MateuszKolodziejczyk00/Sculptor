@@ -24,6 +24,7 @@ public:
 	virtual ~RenderGraphDebugDecorator() = default;
 
 	virtual void PostNodeAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) {};
+	virtual void PostSubpassAdded(RenderGraphBuilder& graphBuilder, RGNode& node, const RGDependeciesContainer& dependencies) {};
 };
 
 } // spt::rg

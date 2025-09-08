@@ -47,7 +47,14 @@ lib::SharedRef<GPUEvent> ResourcesManager::CreateGPUEvent(const RendererResource
 
 lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::BufferDefinition& definition, const AllocationDefinition& allocationDefinition, BufferViewDescriptorsAllocation descriptorsAllocation /*= BufferViewDescriptorsAllocation{}*/)
 {
-	return lib::MakeShared<Buffer>(name, definition, allocationDefinition, std::move(descriptorsAllocation));
+	rhi::BufferDefinition newDefinition = definition;
+
+	// In some configurations we add additional flags for debugging purposes
+#if SPT_DEBUG || SPT_DEVELOPMENT
+	lib::AddFlag(newDefinition.usage, rhi::EBufferUsage::TransferSrc);
+#endif
+
+	return lib::MakeShared<Buffer>(name, newDefinition, allocationDefinition, std::move(descriptorsAllocation));
 }
 
 lib::SharedRef<Buffer> ResourcesManager::CreateBuffer(const RendererResourceName& name, const rhi::RHIBuffer& bufferInstance)
