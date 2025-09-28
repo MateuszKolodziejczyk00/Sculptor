@@ -32,5 +32,5 @@ void SharcResolveCS(CS_INPUT input)
     resolveParams.staleFrameNumMax        = 64u;
     resolveParams.enableAntiFireflyFilter = true;
     resolveParams.exposurePrev            = u_viewExposure.exposureLastFrame;
-    SharcResolveEntry(input.globalID.x,  sharcParams, resolveParams, u_copyOffset);
+    SharcResolveEntry(input.globalID.x, sharcParams, resolveParams);
 }

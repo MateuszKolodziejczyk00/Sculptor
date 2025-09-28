@@ -59,14 +59,6 @@ DS_BEGIN(SharcResolveDS, rg::RGDescriptorSetState<SharcResolveDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntries)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelData)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<math::Vector4u>),                     u_voxelDataPrev)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                             u_copyOffset)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SharcUpdateConstants>),                   u_constants)
-DS_END();
-
-
-DS_BEGIN(SharcCompactDS, rg::RGDescriptorSetState<SharcCompactDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint64>),                             u_hashEntries)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                             u_copyOffset)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SharcUpdateConstants>),                   u_constants)
 DS_END();
 
@@ -91,13 +83,6 @@ static rdr::PipelineStateID CreateSharcResolvePipeline()
 {
 	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcResolve.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SharcResolveCS"));
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("SharcResolvePipeline"), shader);
-}
-
-
-static rdr::PipelineStateID CompileSharcCompactPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcCompact.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "SharcCompactCS"));
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("SharcCompactPipeline"), shader);
 }
 
 } // sharc_passes
@@ -223,18 +208,10 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 												  viewContext.cloudscapeProbesDS,
 												  shadowMapsDS));
 
-	rhi::BufferDefinition copyBufferDef;
-	copyBufferDef.size = m_entriesNum * sizeof(Uint32);
-	copyBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
-	const rg::RGBufferViewHandle copyOffsetBuffer = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Sharc Copy Offset Buffer"), copyBufferDef, rhi::EMemoryUsage::GPUOnly);
-
-	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Copy Offset"), copyOffsetBuffer, 0u);
-
 	lib::MTHandle<sharc_passes::SharcResolveDS> resolveDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcResolveDS>(RENDERER_RESOURCE_NAME("Sharc Resolve DS"));
 	resolveDS->u_hashEntries   = m_hashEntriesBuffer->GetFullView();
 	resolveDS->u_voxelData     = m_voxelData->GetFullView();
 	resolveDS->u_voxelDataPrev = m_prevVoxelData->GetFullView();
-	resolveDS->u_copyOffset    = copyOffsetBuffer;
 	resolveDS->u_constants     = shaderConstants;
 
 	static rdr::PipelineStateID sharcResolvePipeline = sharc_passes::CreateSharcResolvePipeline();
@@ -243,18 +220,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 						  sharcResolvePipeline,
 						  math::Utils::DivideCeil(m_entriesNum, 64u),
 						  rg::BindDescriptorSets(std::move(resolveDS), renderView.GetRenderViewDS()));
-
-	lib::MTHandle<sharc_passes::SharcCompactDS> compactDS = graphBuilder.CreateDescriptorSet<sharc_passes::SharcCompactDS>(RENDERER_RESOURCE_NAME("Sharc Compact DS"));
-	compactDS->u_hashEntries = m_hashEntriesBuffer->GetFullView();
-	compactDS->u_copyOffset = copyOffsetBuffer;
-	compactDS->u_constants = shaderConstants;
-
-	static rdr::PipelineStateID sharcCompactPipeline = sharc_passes::CompileSharcCompactPipeline();
-
-	graphBuilder.Dispatch(RG_DEBUG_NAME("Compact Sharc GI Cache"),
-						  sharcCompactPipeline,
-						  math::Utils::DivideCeil(m_entriesNum, 64u),
-						  rg::BindDescriptorSets(std::move(compactDS)));
 
 	SharcCacheConstants sharcCacheConstants;
 	sharcCacheConstants.entriesNum = m_entriesNum;
