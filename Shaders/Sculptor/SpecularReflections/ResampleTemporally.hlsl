@@ -102,7 +102,7 @@ struct SRTemporalResampler
 		// Reduce max age for close hits to maintain close indirect shadows (needed only for higher roughness)
 		if(u_passConstants.enableHitDistanceBasedMaxAge && centerPixelSurface.roughness >= 0.15f)
 		{
-			const float hitDist = u_historySpecularHitDist.Load(uint3(historySamplePixel, 0u)).w;
+			const float hitDist = u_historySpecularHitDist.Load(uint3(historySamplePixel, 0u));
 			maxAge = Remap(hitDist, 0.8f, 4.0f, 4.f, float(u_passConstants.reservoirMaxAge));
 		}
 		else

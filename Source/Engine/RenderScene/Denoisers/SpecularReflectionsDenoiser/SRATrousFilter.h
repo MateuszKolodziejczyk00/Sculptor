@@ -32,11 +32,23 @@ struct SRATrousFilterParams : public denoising::DenoiserGeometryParams
 
 struct SRATrousPass
 {
-	rg::RGTextureViewHandle inSpecularLuminance;
-	rg::RGTextureViewHandle inDiffuseLuminance;
+	struct SHTextures
+	{
+		rg::RGTextureViewHandle diffuseY_SH2;
+		rg::RGTextureViewHandle specularY_SH2;
+		rg::RGTextureViewHandle diffSpecCoCg;
+	};
 
-	rg::RGTextureViewHandle outSpecularLuminance;
-	rg::RGTextureViewHandle outDiffuseLuminance;
+	struct Textures
+	{
+		rg::RGTextureViewHandle specular;
+		rg::RGTextureViewHandle diffuse;
+	};
+
+	const SHTextures* inSHTextures = nullptr;
+
+	const Textures*   outTextures   = nullptr;
+	const SHTextures* outSHTextures = nullptr;
 
 	rg::RGTextureViewHandle inVariance;
 	rg::RGTextureViewHandle outVariance;

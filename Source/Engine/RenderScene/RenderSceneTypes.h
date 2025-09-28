@@ -67,13 +67,13 @@ struct RenderInstanceData
 
 
 // we don't need 64 bytes for now, but we for sure will need more than 32, so 64 will be fine to properly align suballocations
-BEGIN_ALIGNED_SHADER_STRUCT(64, RenderEntityGPUData)
+BEGIN_SHADER_STRUCT(RenderEntityGPUData)
 	SHADER_STRUCT_FIELD(math::Matrix4f, transform)
 	SHADER_STRUCT_FIELD(Real32, uniformScale)
-	/* 12 empty bytes */
-	SHADER_STRUCT_FIELD(math::Vector4f, padding0)
+	SHADER_STRUCT_FIELD(math::Vector3f, padding0)
 	SHADER_STRUCT_FIELD(math::Vector4f, padding1)
 	SHADER_STRUCT_FIELD(math::Vector4f, padding2)
+	SHADER_STRUCT_FIELD(math::Vector4f, padding3)
 END_SHADER_STRUCT();
 
 

@@ -1,5 +1,6 @@
 #include "VulkanRHIUtils.h"
 
+
 namespace spt::vulkan
 {
 
@@ -53,6 +54,7 @@ VkPipelineStageFlags2 RHIToVulkan::GetStageFlags(rhi::EPipelineStage flags)
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::Transfer))
 	{
 		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+		lib::AddFlag(vulkanFlags, VK_PIPELINE_STAGE_2_CLEAR_BIT);
 	}
 	if (lib::HasAnyFlag(flags, rhi::EPipelineStage::BottomOfPipe))
 	{

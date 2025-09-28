@@ -437,8 +437,6 @@ struct PrimitiveOutput
 	// Fix for MeshShadingEXT capability not added to fragment shader
 #if SPT_MESH_SHADER
 	bool culled               : SV_CullPrimitive;
-#else
-	bool culled               : CULL_PRIMITIVE;
 #endif // SPT_MESH_SHADER
 };
 

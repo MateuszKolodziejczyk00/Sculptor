@@ -19,9 +19,9 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(SRComputeVarianceDS, rg::RGDescriptorSetState<SRComputeVarianceDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_specularMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),               u_specularTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_diffuseMomentsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),               u_diffuseTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_specularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_diffuseY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                u_rwVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_specularHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                       u_diffuseHistoryLengthTexture)
@@ -47,10 +47,10 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 	SPT_PROFILER_FUNCTION();
 
 	SPT_CHECK(params.specularMomentsTexture.IsValid());
-	SPT_CHECK(params.specularTexture.IsValid());
+	SPT_CHECK(params.specularY_SH2.IsValid());
 	
 	SPT_CHECK(params.diffuseMomentsTexture.IsValid());
-	SPT_CHECK(params.diffuseTexture.IsValid());
+	SPT_CHECK(params.diffuseY_SH2.IsValid());
 
 	SPT_CHECK(params.outVarianceTexture.IsValid());
 
@@ -61,9 +61,9 @@ void ComputeTemporalVariance(rg::RenderGraphBuilder& graphBuilder, const Tempora
 
 	lib::MTHandle<SRComputeVarianceDS> ds = graphBuilder.CreateDescriptorSet<SRComputeVarianceDS>(RENDERER_RESOURCE_NAME("SR Compute Std Dev DS"));
 	ds->u_specularMomentsTexture       = params.specularMomentsTexture;
-	ds->u_specularTexture              = params.specularTexture;
 	ds->u_diffuseMomentsTexture        = params.diffuseMomentsTexture;
-	ds->u_diffuseTexture               = params.diffuseTexture;
+	ds->u_specularY_SH2                = params.specularY_SH2;
+	ds->u_diffuseY_SH2                 = params.diffuseY_SH2;
 	ds->u_rwVarianceTexture            = params.outVarianceTexture;
 	ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
 	ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;

@@ -135,8 +135,8 @@ public:
 	AllocationDefinition(const PlacedAllocationDef& allocationDef);
 
 	Bool IsCommitted() const;
-	Bool IsPlaced()   const;
-	Bool IsNull()     const;
+	Bool IsPlaced()    const;
+	Bool IsNull()      const;
 
 	template<typename TAllocationDef>
 	void SetAllocationDef(TAllocationDef allocationDef)

@@ -156,7 +156,7 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Read))
 	{
-		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::None, rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)))
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)) || stage == rhi::EPipelineStage::None)
 		{
 			lib::AddFlag(result, VK_ACCESS_2_MEMORY_READ_BIT);
 		}
@@ -195,7 +195,7 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 	}
 	if (lib::HasAnyFlag(access, rhi::EAccessType::Write))
 	{
-		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::None, rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)))
+		if (lib::HasAnyFlag(stage, lib::Flags(rhi::EPipelineStage::TopOfPipe, rhi::EPipelineStage::BottomOfPipe)) || stage == rhi::EPipelineStage::None)
 		{
 			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
 		}
@@ -213,6 +213,7 @@ static VkAccessFlags2 GetVulkanBufferAccessFlags(rhi::EAccessType access, rhi::E
 		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::ASBuild))
 		{
 			lib::AddFlag(result, VK_ACCESS_2_MEMORY_WRITE_BIT);
+			lib::AddFlag(result, VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
 		}
 		
 		if (lib::HasAnyFlag(stage, rhi::EPipelineStage::RayTracingShader))

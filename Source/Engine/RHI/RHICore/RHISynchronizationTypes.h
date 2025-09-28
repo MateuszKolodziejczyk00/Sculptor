@@ -46,8 +46,8 @@ namespace TextureTransition
 	
 	static constexpr BarrierTextureTransitionDefinition PresentSource				= BarrierTextureTransitionDefinition(EAccessType::None, ETextureLayout::PresentSrc, EPipelineStage::TopOfPipe);
 	
-	static constexpr BarrierTextureTransitionDefinition ColorRenderTarget			= BarrierTextureTransitionDefinition(EAccessType::Write, ETextureLayout::ColorRTOptimal, EPipelineStage::ColorRTOutput);
-	static constexpr BarrierTextureTransitionDefinition DepthRenderTarget			= BarrierTextureTransitionDefinition(EAccessType::Write, ETextureLayout::DepthRTOptimal, lib::Flags(EPipelineStage::EarlyFragmentTest, EPipelineStage::LateFragmentTest));
+	static constexpr BarrierTextureTransitionDefinition ColorRenderTarget			= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Write, EAccessType::Read), ETextureLayout::ColorRTOptimal, EPipelineStage::ColorRTOutput);
+	static constexpr BarrierTextureTransitionDefinition DepthRenderTarget			= BarrierTextureTransitionDefinition(lib::Flags(EAccessType::Write, EAccessType::Read), ETextureLayout::DepthRTOptimal, lib::Flags(EPipelineStage::EarlyFragmentTest, EPipelineStage::LateFragmentTest));
 	static constexpr BarrierTextureTransitionDefinition DepthStencilRenderTarget	= BarrierTextureTransitionDefinition(EAccessType::Write, ETextureLayout::DepthStencilRTOptimal, lib::Flags(EPipelineStage::EarlyFragmentTest, EPipelineStage::LateFragmentTest));
 
 	static constexpr BarrierTextureTransitionDefinition TransferSource				= BarrierTextureTransitionDefinition(EAccessType::Read, ETextureLayout::TransferSrcOptimal, EPipelineStage::Transfer);

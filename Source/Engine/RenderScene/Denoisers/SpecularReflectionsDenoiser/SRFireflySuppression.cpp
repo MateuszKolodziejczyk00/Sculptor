@@ -17,10 +17,13 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRFireflySuppressionDS, rg::RGDescriptorSetState<SRFireflySuppressionDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outSpecularHitDistTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inSpecularHitDistTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffuseHitDistTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffuseHitDistTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffSpecCoCg)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffSpecCoCg)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normals)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRFireflySuppressionConstants>), u_constants)
 DS_END();
 
@@ -36,22 +39,28 @@ void SuppressFireflies(rg::RenderGraphBuilder& graphBuilder, const FireflySuppre
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(params.inSpecularHitDistTexture.IsValid());
-	SPT_CHECK(params.outSpecularHitDistTexture.IsValid());
-	SPT_CHECK(params.inDiffuseHitDistTexture.IsValid());
-	SPT_CHECK(params.outDiffuseHitDistTexture.IsValid());
+	SPT_CHECK(params.normal.IsValid());
+	SPT_CHECK(params.inSpecularY_SH2.IsValid());
+	SPT_CHECK(params.inDiffuseY_SH2.IsValid());
+	SPT_CHECK(params.inDiffSpecCoCg.IsValid());
+	SPT_CHECK(params.outSpecularY_SH2.IsValid());
+	SPT_CHECK(params.outDiffuseY_SH2.IsValid());
+	SPT_CHECK(params.outDiffSpecCoCg.IsValid());
 
-	const math::Vector2u resolution = params.inSpecularHitDistTexture->GetResolution2D();
+	const math::Vector2u resolution = params.inSpecularY_SH2->GetResolution2D();
 
 	SRFireflySuppressionConstants shaderConstants;
 	shaderConstants.resolution = resolution;
 
 	lib::MTHandle<SRFireflySuppressionDS> ds = graphBuilder.CreateDescriptorSet<SRFireflySuppressionDS>(RENDERER_RESOURCE_NAME("SR Firefly Suppression DS"));
-	ds->u_outSpecularHitDistTexture = params.outSpecularHitDistTexture;
-	ds->u_inSpecularHitDistTexture  = params.inSpecularHitDistTexture;
-	ds->u_outDiffuseHitDistTexture  = params.outDiffuseHitDistTexture;
-	ds->u_inDiffuseHitDistTexture   = params.inDiffuseHitDistTexture;
-	ds->u_constants                 = shaderConstants;
+	ds->u_outDiffuseY_SH2  = params.outDiffuseY_SH2;
+	ds->u_outSpecularY_SH2 = params.outSpecularY_SH2;
+	ds->u_outDiffSpecCoCg  = params.outDiffSpecCoCg;
+	ds->u_inDiffuseY_SH2   = params.inDiffuseY_SH2;
+	ds->u_inSpecularY_SH2  = params.inSpecularY_SH2;
+	ds->u_inDiffSpecCoCg   = params.inDiffSpecCoCg;
+	ds->u_normals          = params.normal;
+	ds->u_constants        = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateFireflySuppressionPipeline();
 

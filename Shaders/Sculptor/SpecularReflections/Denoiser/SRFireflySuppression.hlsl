@@ -3,6 +3,9 @@
 [[descriptor_set(SRFireflySuppressionDS, 0)]]
 
 #include "Utils/SceneViewUtils.hlsli"
+#include "Utils/Packing.hlsli"
+#include "Utils/SphericalHarmonics.hlsli"
+
 
 struct CS_INPUT
 {
@@ -18,8 +21,9 @@ struct CS_INPUT
 
 #define SHARED_SAMPLES_RES (GROUP_SIZE + 2 * BORDER_SIZE)
 
-groupshared half3 s_specularLuminance[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
-groupshared half3 s_diffuseLuminance[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared SH2<half> gs_specularY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared SH2<half> gs_diffuseY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared half4 gs_diffSpecCoCg[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
 
 
 void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
@@ -40,8 +44,9 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 		const int2 samplePixel = clamp(groupOffset + localPixel, 0, maxPixel);
 
-		s_specularLuminance[localPixel.x][localPixel.y] = half3(u_inSpecularHitDistTexture.Load(uint3(samplePixel, 0)).rgb);
-		s_diffuseLuminance[localPixel.x][localPixel.y]  = half3(u_inDiffuseHitDistTexture.Load(uint3(samplePixel, 0)).rgb);
+		gs_specularY_SH2[localPixel.x][localPixel.y] = Half4ToSH2(half4(u_inSpecularY_SH2.Load(uint3(samplePixel, 0))));
+		gs_diffuseY_SH2[localPixel.x][localPixel.y]  = Half4ToSH2(half4(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0))));
+		gs_diffSpecCoCg[localPixel.x][localPixel.y]  = half4(u_inDiffSpecCoCg.Load(uint3(samplePixel, 0)));
 	}
 }
 
@@ -57,14 +62,26 @@ void SRFireflySuppressionCS(CS_INPUT input)
 
 	if(all(pixel < u_constants.resolution))
 	{
-		float4 minSpecularLuminanceSample = 99999999.f;
-		float4 maxSpecularLuminanceSample = -99999999.f;
+		float minSpecY = 99999999.f;
+		SH2<half> minSpecSH;
+		half2 minSpecCoCg;
+		float maxSpecY = -99999999.f;
+		SH2<half> maxSpecSH;
+		half2 maxSpecCoCg;
 
-		float4 minDiffuseLuminanceSample = 99999999.f;
-		float4 maxDiffuseLuminanceSample = -99999999.f;
+		float minDiffY = 99999999.f;
+		SH2<half> minDiffSH;
+		half2 minDiffCoCg;
+		float maxDiffY = -99999999.f;
+		SH2<half> maxDiffSH;
+		half2 maxDiffCoCg;
 
-		float4 centerSpecular = u_inSpecularHitDistTexture.Load(uint3(pixel, 0));
-		float4 centerDiffuse  = u_inDiffuseHitDistTexture.Load(uint3(pixel, 0));
+
+		const float3 centerNormal = OctahedronDecodeNormal(u_normals.Load(uint3(pixel, 0)));
+
+		SH2<float> centerSpecular     = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
+		SH2<float> centerDiffuse      = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
+		float4     centerDiffSpecCoCg = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
 
 		[unroll]
 		for(int y = -1; y <= 1; ++y)
@@ -78,33 +95,43 @@ void SRFireflySuppressionCS(CS_INPUT input)
 				{
 					const int2 samplePixel = clamp(pixel + offset, 0, u_constants.resolution - 1);
 
+					const half4 sampleDiffSpecCoCg = gs_diffSpecCoCg[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
+
 					// Specular
 					{
-						const float3 sampleSpecular = s_specularLuminance[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
-						const float sampleSpecularLum = Luminance(sampleSpecular.rgb);
+						const SH2<half> sample = gs_specularY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
+						const float sampleSpecY = sample.Evaluate(centerNormal);
 
-						if(sampleSpecularLum > maxSpecularLuminanceSample.w)
+						if(sampleSpecY > maxSpecY)
 						{
-							maxSpecularLuminanceSample = float4(sampleSpecular, sampleSpecularLum);
+							maxSpecY = sampleSpecY;
+							maxSpecSH = sample;
+							maxSpecCoCg = sampleDiffSpecCoCg.zw;
 						}
-						if(sampleSpecularLum < minSpecularLuminanceSample.w)
+						if(sampleSpecY < minSpecY)
 						{
-							minSpecularLuminanceSample = float4(sampleSpecular, sampleSpecularLum);
+							minSpecY = sampleSpecY;
+							minSpecSH = sample;
+							minSpecCoCg = sampleDiffSpecCoCg.zw;
 						}
 					}
 
 					// Diffuse
 					{
-						const float3 sampleDiffuse  = s_diffuseLuminance[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
-						const float sampleDiffuseLum  = Luminance(sampleDiffuse.rgb);
+						const SH2<half> sample = gs_diffuseY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
+						const float sampleDiffY = sample.Evaluate(centerNormal);
 
-						if(sampleDiffuseLum > maxDiffuseLuminanceSample.w)
+						if(sampleDiffY > maxDiffY)
 						{
-							maxDiffuseLuminanceSample = float4(sampleDiffuse, sampleDiffuseLum);
+							maxDiffY = sampleDiffY;
+							maxDiffSH = sample;
+							maxDiffCoCg = sampleDiffSpecCoCg.xy;
 						}
-						if(sampleDiffuseLum < minDiffuseLuminanceSample.w)
+						if(sampleDiffY < minDiffY)
 						{
-							minDiffuseLuminanceSample = float4(sampleDiffuse, sampleDiffuseLum);
+							minDiffY = sampleDiffY;
+							minDiffSH = sample;
+							minDiffCoCg = sampleDiffSpecCoCg.xy;
 						}
 					}
 				}
@@ -113,32 +140,39 @@ void SRFireflySuppressionCS(CS_INPUT input)
 
 		// Specular
 		{
-			const float centerSpecularLum = Luminance(centerSpecular.rgb);
-			if(centerSpecularLum > maxSpecularLuminanceSample.w)
+			const float centerSpecY = centerSpecular.Evaluate(centerNormal);
+			if(centerSpecY > maxSpecY)
 			{
-				centerSpecular.rgb = maxSpecularLuminanceSample.rgb;
+				centerSpecular = SH2HalfToFloat(maxSpecSH);
+				centerDiffSpecCoCg.zw = maxSpecCoCg;
+
 			}
-			if(centerSpecularLum < minSpecularLuminanceSample.w)
+			if(centerSpecY < minSpecY)
 			{
-				centerSpecular.rgb = minSpecularLuminanceSample.rgb;
+				centerSpecular = SH2HalfToFloat(minSpecSH);
+				centerDiffSpecCoCg.zw = minSpecCoCg;
 			}
 
-			u_outSpecularHitDistTexture[pixel] = centerSpecular;
+			u_outSpecularY_SH2[pixel] = SH2ToFloat4(centerSpecular);
 		}
 
 		// Diffuse
 		{
-			const float centerDiffuseLum = Luminance(centerDiffuse.rgb);
-			if(centerDiffuseLum > maxDiffuseLuminanceSample.w)
+			const float centerDiffY = centerDiffuse.Evaluate(centerNormal);
+			if(centerDiffY > maxDiffY)
 			{
-				centerDiffuse.rgb = maxDiffuseLuminanceSample.rgb;
+				centerDiffuse = SH2HalfToFloat(maxDiffSH);
+				centerDiffSpecCoCg.xy = maxDiffCoCg;
 			}
-			if(centerDiffuseLum < minDiffuseLuminanceSample.w)
+			if(centerDiffY < minDiffY)
 			{
-				centerDiffuse.rgb = minDiffuseLuminanceSample.rgb;
+				centerDiffuse = SH2HalfToFloat(minDiffSH);
+				centerDiffSpecCoCg.xy = minDiffCoCg;
 			}
 
-			u_outDiffuseHitDistTexture[pixel] = centerDiffuse;
+			u_outDiffuseY_SH2[pixel] = SH2ToFloat4(centerDiffuse);
 		}
+
+		u_outDiffSpecCoCg[pixel] = centerDiffSpecCoCg;
 	}
 }

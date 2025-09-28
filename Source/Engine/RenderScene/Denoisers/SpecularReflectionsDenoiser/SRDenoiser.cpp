@@ -9,10 +9,71 @@
 #include "SRDisocclussionFix.h"
 #include "SRClampHistory.h"
 #include "SRFireflySuppression.h"
+#include "ShaderStructs.h"
+#include "Bindless/BindlessTypes.h"
+#include "RGDescriptorSetState.h"
+#include "DescriptorSetBindings/ConstantBufferBinding.h"
 
 
 namespace spt::rsc::sr_denoiser
 {
+
+struct SHTextures
+{
+	rg::RGTextureViewHandle specularY;
+	rg::RGTextureViewHandle diffuseY;
+	rg::RGTextureViewHandle diffSpecCoCg;
+};
+
+
+namespace utils
+{
+
+BEGIN_SHADER_STRUCT(RTPackToSHConstants)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normals)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, specular)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, diffuse)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffuseY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwSpecularY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffSpecCoCg)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(RTPackToSHDS, rg::RGDescriptorSetState<RTPackToSHDS>)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<RTPackToSHConstants>), u_constants)
+DS_END();
+
+
+static rdr::PipelineStateID CreateRTPackToSHPipeline()
+{
+	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/Denoiser/RTPackToSH.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RTPackToSHCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("RT Pack To SH Pipeline"), shader);
+}
+
+static void PackToSH(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle spec, rg::RGTextureViewHandle diff, rg::RGTextureViewHandle normals, const SHTextures& sh)
+{
+	SPT_PROFILER_FUNCTION();
+
+	RTPackToSHConstants shaderConstants;
+	shaderConstants.normals        = normals;
+	shaderConstants.specular       = spec;
+	shaderConstants.diffuse        = diff;
+	shaderConstants.rwDiffuseY     = sh.diffuseY;
+	shaderConstants.rwSpecularY    = sh.specularY;
+	shaderConstants.rwDiffSpecCoCg = sh.diffSpecCoCg;
+
+	lib::MTHandle<RTPackToSHDS> ds = graphBuilder.CreateDescriptorSet<RTPackToSHDS>(RENDERER_RESOURCE_NAME("RT Pack To SH DS"));
+	ds->u_constants = shaderConstants;
+
+	static const rdr::PipelineStateID pipeline = CreateRTPackToSHPipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("RT Pack To SH"),
+						  pipeline,
+						  math::Utils::DivideCeil(spec->GetResolution2D(), math::Vector2u(8u, 8u)),
+						  rg::BindDescriptorSets(std::move(ds)));
+}
+
+} // utils
 
 Denoiser::Denoiser(rg::RenderGraphDebugName debugName)
 	: m_debugName(debugName)
@@ -27,9 +88,9 @@ Denoiser::Result Denoiser::Denoise(rg::RenderGraphBuilder& graphBuilder, const P
 	return DenoiseImpl(graphBuilder, params);
 }
 
-rg::RGTextureViewHandle Denoiser::GetHistorySpecular(rg::RenderGraphBuilder& graphBuilder) const
+rg::RGTextureViewHandle Denoiser::GetHistorySpecularHitDist(rg::RenderGraphBuilder& graphBuilder) const
 {
-	return m_historySpecularTexture ? graphBuilder.AcquireExternalTextureView(m_historySpecularTexture) : rg::RGTextureViewHandle{};
+	return m_historySpecularHitDist ? graphBuilder.AcquireExternalTextureView(m_historySpecularHitDist) : rg::RGTextureViewHandle{};
 }
 
 void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params)
@@ -43,14 +104,21 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Param
 
 	const math::Vector2u resolution = params.specularTexture->GetResolution2D();
 
-	if (!m_historySpecularTexture || m_historySpecularTexture->GetResolution2D() != resolution)
+	if (!m_historySpecularY_SH2 || m_historySpecularY_SH2->GetResolution2D() != resolution)
 	{
 		rhi::TextureDefinition historyTexturesDefinition;
 		historyTexturesDefinition.resolution = resolution;
 		historyTexturesDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 		historyTexturesDefinition.format     = params.specularTexture->GetFormat();
-		m_historySpecularTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Specular History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
-		m_historyDiffuseTexture  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Diffuse History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
+		m_historySpecularY_SH2 = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Specular SH2"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
+		m_historyDiffuseY_SH2  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Diffuse SH2"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
+		m_historyDiffSpecCoCg  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History DiffSpec CoCg"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
+
+		rhi::TextureDefinition historyHitDistTextureDef;
+		historyHitDistTextureDef.resolution = resolution;
+		historyHitDistTextureDef.usage = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+		historyHitDistTextureDef.format = rhi::EFragmentFormat::R16_S_Float;
+		m_historySpecularHitDist = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Specular Hit Dist"), historyHitDistTextureDef, rhi::EMemoryUsage::GPUOnly);
 
 		m_fastHistorySpecularTexture       = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Specular Fast History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
 		m_fastHistorySpecularOutputTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Specular Fast History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
@@ -93,13 +161,20 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGTextureViewHandle specularTexture = params.specularTexture;
 	const rg::RGTextureViewHandle diffuseTexture  = params.diffuseTexture;
 
+	const rg::RGTextureViewHandle specularY_SH2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Y SH2"), rg::TextureDef(specularTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle diffuseY_SH2  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Y SH2"), rg::TextureDef(diffuseTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle diffSpecCoCg  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Specular CoCg"), rg::TextureDef(diffuseTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle specHitDist   = graphBuilder.AcquireExternalTextureView(m_historySpecularHitDist);
+
 	SPT_CHECK(specularTexture.IsValid());
 	SPT_CHECK(diffuseTexture.IsValid());
 
 	const math::Vector2u resolution = specularTexture->GetResolution2D();
 
-	const rg::RGTextureViewHandle historySpecularTexture                 = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularTexture));
-	const rg::RGTextureViewHandle historyDiffuseTexture                  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffuseTexture));
+	const rg::RGTextureViewHandle historySpecularY_SH2 = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularY_SH2));
+	const rg::RGTextureViewHandle historyDiffuseY_SH2  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffuseY_SH2));
+	const rg::RGTextureViewHandle historyDiffSpecCoCg  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffSpecCoCg));
+
 	const rg::RGTextureViewHandle specularHistoryLengthTexture           = graphBuilder.AcquireExternalTextureView(lib::Ref(m_specularHistoryLengthTexture));
 	const rg::RGTextureViewHandle historySpecularHistoryLengthTexture    = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularHistoryLengthTexture));
 	const rg::RGTextureViewHandle diffuseHistoryLengthTexture            = graphBuilder.AcquireExternalTextureView(lib::Ref(m_diffuseHistoryLengthTexture));
@@ -129,8 +204,13 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.historyNormalsTexture                  = params.historyNormalsTexture;
 		temporalAccumulationParameters.currentSpecularTexture                 = specularTexture;
 		temporalAccumulationParameters.currentDiffuseTexture                  = diffuseTexture;
-		temporalAccumulationParameters.historySpecularTexture                 = historySpecularTexture;
-		temporalAccumulationParameters.historyDiffuseTexture                  = historyDiffuseTexture;
+		temporalAccumulationParameters.specularY_SH2                          = specularY_SH2;
+		temporalAccumulationParameters.diffuseY_SH2                           = diffuseY_SH2;
+		temporalAccumulationParameters.diffSpecCoCg                           = diffSpecCoCg;
+		temporalAccumulationParameters.specHitDist                            = specHitDist;
+		temporalAccumulationParameters.historySpecularY_SH2                   = historySpecularY_SH2;
+		temporalAccumulationParameters.historyDiffuseY_SH2                    = historyDiffuseY_SH2;
+		temporalAccumulationParameters.historyDiffSpecCoCg                    = historyDiffSpecCoCg;
 		temporalAccumulationParameters.specularHistoryLengthTexture           = specularHistoryLengthTexture;
 		temporalAccumulationParameters.historySpecularHistoryLengthTexture    = historySpecularHistoryLengthTexture;
 		temporalAccumulationParameters.diffuseHistoryLengthTexture            = diffuseHistoryLengthTexture;
@@ -149,7 +229,6 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.baseColorMetallic                      = params.baseColorMetallicTexture;
 		temporalAccumulationParameters.sharcCacheDS                           = viewContext.sharcCacheDS;
 
-
 		ApplyTemporalAccumulation(graphBuilder, temporalAccumulationParameters);
 	}
 	else
@@ -158,6 +237,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		graphBuilder.CopyFullTexture(RG_DEBUG_NAME_FORMATTED("{}: Copy Diffuse Fast History", m_debugName.AsString()), diffuseTexture, fastHistoryDiffuseOutputTexture);
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Specular Moments", m_debugName.AsString()), temporalVarianceSpecularTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Diffuse Moments", m_debugName.AsString()), temporalVarianceDiffuseTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
+
+		utils::PackToSH(graphBuilder, specularTexture, diffuseTexture, params.normalsTexture, SHTextures{specularY_SH2, diffuseY_SH2, diffSpecCoCg});
 	}
 
 	const rg::RGTextureViewHandle outSpecularTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME_FORMATTED("{}: Output Specular Texture", m_debugName.AsString()), rg::TextureDef(resolution, specularTexture->GetFormat()));
@@ -170,10 +251,12 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	disocclusionFixParams.normalsTexture               = params.normalsTexture;
 	disocclusionFixParams.depthTexture                 = params.currentDepthTexture;
 	disocclusionFixParams.roughnessTexture             = params.roughnessTexture;
-	disocclusionFixParams.diffuseTexture               = diffuseTexture;
-	disocclusionFixParams.outputDiffuseTexture         = historyDiffuseTexture;
-	disocclusionFixParams.specularTexture              = specularTexture;
-	disocclusionFixParams.outputSpecularTexture        = historySpecularTexture;
+	disocclusionFixParams.inSpecularY_SH2              = specularY_SH2;
+	disocclusionFixParams.inDiffuseY_SH2               = diffuseY_SH2;
+	disocclusionFixParams.inDiffSpecCoCg               = diffSpecCoCg;
+	disocclusionFixParams.outSpecularY_SH2             = historySpecularY_SH2;
+	disocclusionFixParams.outDiffuseY_SH2              = historyDiffuseY_SH2;
+	disocclusionFixParams.outDiffSpecCoCg              = historyDiffSpecCoCg;
 	DisocclusionFix(graphBuilder, disocclusionFixParams);
 
 	ClampHistoryParams clampHistoryParams(renderView);
@@ -183,18 +266,22 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	clampHistoryParams.depthTexture                   = params.currentDepthTexture;
 	clampHistoryParams.normalsTexture                 = params.normalsTexture;
 	clampHistoryParams.roughnessTexture               = params.roughnessTexture;
-	clampHistoryParams.specularTexture                = historySpecularTexture;
 	clampHistoryParams.fastHistorySpecularTexture     = fastHistorySpecularTexture;
-	clampHistoryParams.diffuseTexture                 = historyDiffuseTexture;
 	clampHistoryParams.fastHistoryDiffuseTexture      =	fastHistoryDiffuseTexture;
+	clampHistoryParams.specularY_SH2                  = historySpecularY_SH2;
+	clampHistoryParams.diffuseY_SH2                   = historyDiffuseY_SH2;
+	clampHistoryParams.diffSpecCoCg                   = historyDiffSpecCoCg;
 	ClampHistory(graphBuilder, clampHistoryParams);
 
 	FireflySuppressionParams fireflySuppressionParams;
-	fireflySuppressionParams.debugName                 = m_debugName;
-	fireflySuppressionParams.inSpecularHitDistTexture  = historySpecularTexture;
-	fireflySuppressionParams.outSpecularHitDistTexture = specularTexture;
-	fireflySuppressionParams.inDiffuseHitDistTexture   = historyDiffuseTexture;
-	fireflySuppressionParams.outDiffuseHitDistTexture  = diffuseTexture;
+	fireflySuppressionParams.debugName        = m_debugName;
+	fireflySuppressionParams.normal           = params.normalsTexture;
+	fireflySuppressionParams.inSpecularY_SH2  = historySpecularY_SH2;
+	fireflySuppressionParams.inDiffuseY_SH2   = historyDiffuseY_SH2;
+	fireflySuppressionParams.inDiffSpecCoCg   = historyDiffSpecCoCg;
+	fireflySuppressionParams.outSpecularY_SH2 = specularY_SH2;
+	fireflySuppressionParams.outDiffuseY_SH2  = diffuseY_SH2;
+	fireflySuppressionParams.outDiffSpecCoCg  = diffSpecCoCg;
 	SuppressFireflies(graphBuilder, fireflySuppressionParams);
 
 	const rg::RGTextureViewHandle temporalVariance     = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Temporal Variance"), resolution);
@@ -207,18 +294,19 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	temporalVarianceParams.normalsTexture               = params.normalsTexture;
 	temporalVarianceParams.depthTexture                 = params.currentDepthTexture;
 	temporalVarianceParams.specularMomentsTexture       = temporalVarianceSpecularTexture;
-	temporalVarianceParams.specularTexture              = specularTexture;
 	temporalVarianceParams.diffuseMomentsTexture        = temporalVarianceDiffuseTexture;
-	temporalVarianceParams.diffuseTexture               = diffuseTexture;
+	temporalVarianceParams.specularY_SH2                = specularY_SH2;
+	temporalVarianceParams.diffuseY_SH2                 = diffuseY_SH2;
 	temporalVarianceParams.outVarianceTexture           = temporalVariance;
 	ComputeTemporalVariance(graphBuilder, temporalVarianceParams);
 
 	const rg::RGTextureViewHandle varianceEstimation = CreateVarianceTexture(graphBuilder, RG_DEBUG_NAME("Variance Estimation"), resolution);
 
 	SpatialFilterParams spatialParams;
-	spatialParams.inSpecular                   = specularTexture;
+	spatialParams.inSpecularY_SH2              = specularY_SH2;
+	spatialParams.inDiffuseY_SH2               = diffuseY_SH2;
+	spatialParams.inDiffSpecCoCg               = diffSpecCoCg;
 	spatialParams.outSpecular                  = outSpecularTexture;
-	spatialParams.inDiffuse                    = diffuseTexture;
 	spatialParams.outDiffuse                   = outDiffuseTexture;
 	spatialParams.inVariance                   = temporalVariance;
 	spatialParams.intermediateVariance         = intermediateVariance;
@@ -266,6 +354,12 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 
 	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "RT Denoiser: Spatial Filters");
 
+	const math::Vector2u resolution = spatialParams.inSpecularY_SH2->GetResolution2D();
+
+	const rg::RGTextureViewHandle intermediateDiffuseY_SH2  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Intermediate Diffuse Y SH2"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle intermediateSpecularY_SH2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Intermediate Specular Y SH2"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle intermediateDiffSpecCoCg  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Intermediate Diffuse CoCg"), rg::TextureDef(resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+
 	SRATrousFilterParams aTrousParams(params.viewSpec.GetRenderView());
 	aTrousParams.name                         = m_debugName;
 	aTrousParams.linearDepthTexture           = params.linearDepthTexture;
@@ -276,8 +370,7 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 
 	const auto advanceIteration = [&params](SRATrousPass& passParams, rg::RGTextureViewHandle inputVariance, rg::RGTextureViewHandle outputVariance)
 	{
-		std::swap(passParams.inSpecularLuminance, passParams.outSpecularLuminance);
-		std::swap(passParams.inDiffuseLuminance, passParams.outDiffuseLuminance);
+		std::swap(passParams.inSHTextures, passParams.outSHTextures);
 
 		passParams.inVariance       = inputVariance;
 		passParams.outVariance      = outputVariance;
@@ -286,14 +379,22 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 		++passParams.iterationIdx;
 	};
 
+	const SRATrousPass::SHTextures passSHTextures0{ spatialParams.inDiffuseY_SH2, spatialParams.inSpecularY_SH2, spatialParams.inDiffSpecCoCg };
+	const SRATrousPass::SHTextures passSHTextures1{ intermediateDiffuseY_SH2, intermediateSpecularY_SH2, intermediateDiffSpecCoCg };
+
+	const rg::RGTextureViewHandle historySpecularY_SH2 = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historySpecularY_SH2));
+	const rg::RGTextureViewHandle historyDiffuseY_SH2  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffuseY_SH2));
+	const rg::RGTextureViewHandle historyDiffSpecCoCg  = graphBuilder.AcquireExternalTextureView(lib::Ref(m_historyDiffSpecCoCg));
+
+	const SRATrousPass::SHTextures passSHTexturesHistory{ historyDiffuseY_SH2, historySpecularY_SH2, historyDiffSpecCoCg };
+
 	SRATrousPass pass;
-	pass.inSpecularLuminance  = spatialParams.inSpecular;
-	pass.inDiffuseLuminance   = spatialParams.inDiffuse;
-	pass.outSpecularLuminance = spatialParams.outSpecular;
-	pass.outDiffuseLuminance  = spatialParams.outDiffuse;
-	pass.inVariance           = spatialParams.inVariance;
-	pass.outVariance          = spatialParams.outVarianceEstimation;
-	pass.enableWideFilter     = params.wideRadiusPassesNum > 0;
+	pass.inSHTextures     = &passSHTextures0;
+	pass.outSHTextures    = &passSHTextures1;
+	//pass.outSHTextures    = &passSHTexturesHistory;
+	pass.inVariance       = spatialParams.inVariance;
+	pass.outVariance      = spatialParams.outVarianceEstimation;
+	pass.enableWideFilter = params.wideRadiusPassesNum > 0;
 
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 
@@ -301,13 +402,22 @@ void Denoiser::ApplySpatialFilter(rg::RenderGraphBuilder& graphBuilder, const Sp
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 
 	advanceIteration(pass, spatialParams.intermediateVariance, spatialParams.inVariance);
+	//pass.outSHTextures    = &passSHTextures1;
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 
 	advanceIteration(pass, spatialParams.inVariance, spatialParams.intermediateVariance);
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 
+	const SRATrousPass::Textures finalTextures
+	{
+         .specular = spatialParams.outSpecular,
+         .diffuse = spatialParams.outDiffuse
+	};
+
 	advanceIteration(pass, spatialParams.intermediateVariance, spatialParams.inVariance);
+	pass.outSHTextures = nullptr;
+	pass.outTextures   = &finalTextures;
 	ApplyATrousFilter(graphBuilder, aTrousParams, pass);
 }
 
-} // spt::rsc::sr_denoiser
+} // spt::rsc::sr_denoise

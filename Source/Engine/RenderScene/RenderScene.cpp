@@ -84,7 +84,7 @@ RenderSceneEntityHandle RenderScene::CreateEntity(const RenderInstanceData& inst
 
 	const TransformComponent& transformComp = entity.emplace<TransformComponent>(instanceData.transformComp);
 
-	const rhi::VirtualAllocationDefinition suballocationDef(sizeof(RenderEntityGPUData), sizeof(RenderEntityGPUData), rhi::EVirtualAllocationFlags::PreferFasterAllocation);
+	const rhi::VirtualAllocationDefinition suballocationDef(sizeof(rdr::HLSLStorage<RenderEntityGPUData>), sizeof(rdr::HLSLStorage<RenderEntityGPUData>), rhi::EVirtualAllocationFlags::PreferFasterAllocation);
 	const rhi::RHIVirtualAllocation entityGPUDataSuballocation = m_renderEntitiesBuffer->GetRHI().CreateSuballocation(suballocationDef);
 	SPT_CHECK_MSG(entityGPUDataSuballocation.IsValid(), "Failed to allocate data for instance!");
 

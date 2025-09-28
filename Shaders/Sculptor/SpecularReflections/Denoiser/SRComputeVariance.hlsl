@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
+#include "Utils/SphericalHarmonics.hlsli"
 
 
 struct CS_INPUT
@@ -28,8 +29,8 @@ struct SampleDataGeometryData
 #define SHARED_MEMORY_Y (4 + 2 * KERNEL_RADIUS)
 
 groupshared SampleDataGeometryData gs_samplesGeoData[SHARED_MEMORY_X][SHARED_MEMORY_Y];
-groupshared float gs_specularLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
-groupshared float gs_diffuseLum[SHARED_MEMORY_X][SHARED_MEMORY_Y];
+groupshared SH2<half> gs_specularY_SH2[SHARED_MEMORY_X][SHARED_MEMORY_Y];
+groupshared SH2<half> gs_diffuseY_SH2[SHARED_MEMORY_X][SHARED_MEMORY_Y];
 
 
 float ComputeWeight(in SampleDataGeometryData center, in SampleDataGeometryData sample, int2 offset)
@@ -85,12 +86,12 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 			if(useSpecularSpatialVarianceBallot > 0u)
 			{
-				gs_specularLum[x][y] = Luminance(u_specularTexture.Load(samplePixel).xyz);
+				gs_specularY_SH2[x][y] = Half4ToSH2(half4(u_specularY_SH2.Load(samplePixel)));
 			}
 
 			if(useDiffuseSpatialVarianceBallot > 0u)
 			{
-				gs_diffuseLum[x][y] = Luminance(u_diffuseTexture.Load(samplePixel).xyz);
+				gs_diffuseY_SH2[x][y] = Half4ToSH2(half4(u_diffuseY_SH2.Load(samplePixel)));
 			}
 		}
 
@@ -131,14 +132,18 @@ void SRComputeVarianceCS(CS_INPUT input)
 
 					if(useSpecularSpatialVariance)
 					{
-						const float specularLum = gs_specularLum[sampleID.x][sampleID.y];
+						const SH2<half> specularY = gs_specularY_SH2[sampleID.x][sampleID.y];
+						const float specularLum = specularY.Evaluate(centerSample.normal);
+
 						specularLumSum   += specularLum * weight;
 						specularLumSqSum += Pow2(specularLum) * weight;
 					}
 
 					if(useDiffuseSpatialVariance)
 					{
-						const float diffuseLum = gs_diffuseLum[sampleID.x][sampleID.y];
+						const SH2<half> diffuseY = gs_diffuseY_SH2[sampleID.x][sampleID.y];
+						const float diffuseLum = diffuseY.Evaluate(centerSample.normal);
+
 						diffuseLumSum   += diffuseLum * weight;
 						diffuseLumSqSum += Pow2(diffuseLum) * weight;
 					}

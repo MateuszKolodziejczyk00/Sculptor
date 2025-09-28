@@ -92,7 +92,7 @@ void BLASBuilder::Build(CommandRecorder& recorder) const
 
 		rhi::RHIDependency dependency;
 		const SizeType bufferDependencyIdx = dependency.AddBufferDependency(scratchBuffer->GetRHI(), 0, scratchBuffer->GetRHI().GetSize());
-		dependency.SetBufferDependencyStages(bufferDependencyIdx, rhi::EPipelineStage::ASBuild, rhi::EAccessType::Write);
+		dependency.SetBufferDependencyStages(bufferDependencyIdx, rhi::EPipelineStage::ASBuild, rhi::EAccessType::Write, rhi::EPipelineStage::ASBuild, rhi::EAccessType::Write);
 
 		recorder.ExecuteBarrier(dependency);
 	}

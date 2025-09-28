@@ -399,6 +399,11 @@ void SandboxRenderer::InitializeRenderScene()
 	else
 	{
 		auto standardTAArenderer = std::make_unique<gfx::StandardTAARenderer>();
+
+		SPT_MAYBE_UNUSED
+		const Bool initResult = standardTAArenderer->Initialize(aaInitSettings);
+		SPT_CHECK(initResult);
+
 		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
 	}
 

@@ -8,6 +8,7 @@
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Packing.hlsli"
+#include "Utils/SphericalHarmonics.hlsli"
 
 
 struct CS_INPUT
@@ -18,27 +19,7 @@ struct CS_INPUT
 };
 
 
-#define USE_YCOCG 1
 #define USE_HISTORY_CLIPPING 1
-
-
-float3 RGBToWorkingCS(in float3 rgb)
-{
-#if USE_YCOCG
-	return RGBToYCoCg(rgb);
-#else
-	return rgb;
-#endif // USE_YCOCG
-}
-
-float3 WorkingCSToRGB(in float3 workingCS)
-{
-#if USE_YCOCG
-	return YCoCgToRGB(workingCS);
-#else
-	return workingCS;
-#endif // USE_YCOCG
-}
 
 
 float3 ApplyHistoryFix(in float3 value, in float3 minValue, in float3 maxValue)
@@ -57,8 +38,8 @@ float3 ApplyHistoryFix(in float3 value, in float3 minValue, in float3 maxValue)
 
 #define SHARED_SAMPLES_RES (GROUP_SIZE + 2 * BORDER_SIZE)
 
-groupshared half3 s_specularFastHistoryWorkingCS[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
-groupshared half3 s_diffuseFastHistoryWorkingCS[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared half3 s_specularFastHistoryYCoCg[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared half3 s_diffuseFastHistoryYCoCg[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
 
 void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 {
@@ -78,8 +59,8 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 		const int2 samplePixel = clamp(groupOffset + localPixel, 0, maxPixel);
 
-		s_specularFastHistoryWorkingCS[localPixel.x][localPixel.y] = half3(RGBToWorkingCS(u_fastHistorySpecularTexture.Load(uint3(samplePixel, 0)).rgb));
-		s_diffuseFastHistoryWorkingCS[localPixel.x][localPixel.y]  = half3(RGBToWorkingCS(u_fastHistoryDiffuseTexture.Load(uint3(samplePixel, 0)).rgb));
+		s_specularFastHistoryYCoCg[localPixel.x][localPixel.y] = half3(u_fastHistorySpecularTexture.Load(uint3(samplePixel, 0)).rgb);
+		s_diffuseFastHistoryYCoCg[localPixel.x][localPixel.y]  = half3(u_fastHistoryDiffuseTexture.Load(uint3(samplePixel, 0)).rgb);
 	}
 }
 
@@ -126,15 +107,15 @@ void SRClampHistoryCS(CS_INPUT input)
 		{
 			for(int x = -2; x <= 2; ++x)
 			{
-				const float3 specularFastHistoryWorkingCS = s_specularFastHistoryWorkingCS[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
-				const float3 diffuseFastHistoryWorkingCS  = s_diffuseFastHistoryWorkingCS[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
+				const float3 specularFastHistoryYCoCg = s_specularFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
+				const float3 diffuseFastHistoryYCoCg  = s_diffuseFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
 
 				const float weight = 1.f;
-				specularM1Sum += specularFastHistoryWorkingCS * weight;
-				specularM2Sum += Pow2(specularFastHistoryWorkingCS) * weight;
+				specularM1Sum += specularFastHistoryYCoCg * weight;
+				specularM2Sum += Pow2(specularFastHistoryYCoCg) * weight;
 
-				diffuseM1Sum += diffuseFastHistoryWorkingCS * weight;
-				diffuseM2Sum += Pow2(diffuseFastHistoryWorkingCS) * weight;
+				diffuseM1Sum += diffuseFastHistoryYCoCg * weight;
+				diffuseM2Sum += Pow2(diffuseFastHistoryYCoCg) * weight;
 
 				weightSum += weight;
 			}
@@ -158,17 +139,28 @@ void SRClampHistoryCS(CS_INPUT input)
 		const float3 diffuseFastHistoryStdDev   = sqrt(diffuseFastHistoryVariance);
 		const float3 diffuseClampWindow         = 1.5f * diffuseFastHistoryStdDev;
 
-		const float4 specular                     = u_specularTexture.Load(pixel);
-		const float3 accumulatedSpecularWorkingCS = RGBToWorkingCS(specular.rgb);
-		const float3 clampedSpecularWorkingCS     = ApplyHistoryFix(accumulatedSpecularWorkingCS, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
-		const float3 clampedSpecular              = WorkingCSToRGB(clampedSpecularWorkingCS);
+		const SH2<float> specularY_SH2 = Float4ToSH2(u_specularY_SH2.Load(pixel));
+		const SH2<float> diffuseY_SH2  = Float4ToSH2(u_diffuseY_SH2.Load(pixel));
+		const float4 diffSpecCoCg      = u_diffSpecCoCg.Load(pixel);
 
-		const float4 diffuse                     = u_diffuseTexture.Load(pixel);
-		const float3 accumulatedDiffuseWorkingCS = RGBToWorkingCS(diffuse.rgb);
-		const float3 clampedDiffuseWorkingCS     = ApplyHistoryFix(accumulatedDiffuseWorkingCS, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
-		const float3 clampedDiffuse              = WorkingCSToRGB(clampedDiffuseWorkingCS);
+		const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
+		const float3 diffuseYCoCg  = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);
 
-		u_specularTexture[pixel] = float4(clampedSpecular, specular.w);
-		u_diffuseTexture[pixel]  = float4(clampedDiffuse, diffuse.w);
+		const float3 clampedSpecularYCoCg = ApplyHistoryFix(specularYCoCg, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
+		const float3 clampedDiffuseYCoCg  = ApplyHistoryFix(diffuseYCoCg, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
+
+		if(specularYCoCg.x != clampedSpecularYCoCg.x)
+		{
+			const float ratio = specularYCoCg.x > 0.f ? clampedSpecularYCoCg.x / specularYCoCg.x : 1.f;
+			u_specularY_SH2[pixel] = SH2ToFloat4(specularY_SH2) * ratio;
+		}
+
+		if (diffuseYCoCg.x != clampedDiffuseYCoCg.x)
+		{
+			const float ratio = diffuseYCoCg.x > 0.f ? clampedDiffuseYCoCg.x / diffuseYCoCg.x : 0.f;
+			u_diffuseY_SH2[pixel] = SH2ToFloat4(diffuseY_SH2) * ratio;
+		}
+
+		u_diffSpecCoCg[pixel] = float4(clampedDiffuseYCoCg.yz, clampedSpecularYCoCg.yz);
 	}
 }

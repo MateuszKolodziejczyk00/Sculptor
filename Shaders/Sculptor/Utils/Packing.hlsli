@@ -173,4 +173,15 @@ float UnpackFloatNorm(in uint16_t value)
 	return float(value) / 65535.f;
 }
 
+uint PackHalf(in half value)
+{
+	return asuint16(value);
+}
+
+half UnpackHalf(in uint16_t value)
+{
+	const uint packed = value;
+	return (half)f16tof32(packed);
+}
+
 #endif // PACKING_HLSLI

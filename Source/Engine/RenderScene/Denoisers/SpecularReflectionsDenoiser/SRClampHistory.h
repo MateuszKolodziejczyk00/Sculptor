@@ -36,11 +36,12 @@ struct ClampHistoryParams
 	rg::RGTextureViewHandle  normalsTexture;
 	rg::RGTextureViewHandle  roughnessTexture;
 
-	rg::RGTextureViewHandle  specularTexture;
 	rg::RGTextureViewHandle  fastHistorySpecularTexture;
-
-	rg::RGTextureViewHandle  diffuseTexture;
 	rg::RGTextureViewHandle  fastHistoryDiffuseTexture;
+
+	rg::RGTextureViewHandle  specularY_SH2;
+	rg::RGTextureViewHandle  diffuseY_SH2;
+	rg::RGTextureViewHandle  diffSpecCoCg;
 };
 
 

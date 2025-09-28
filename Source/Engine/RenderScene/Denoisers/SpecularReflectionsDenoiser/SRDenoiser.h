@@ -85,7 +85,7 @@ public:
 
 	void InvalidateHistory() { m_hasValidHistory = false; }
 
-	rg::RGTextureViewHandle GetHistorySpecular(rg::RenderGraphBuilder& graphBuilder) const;
+	rg::RGTextureViewHandle GetHistorySpecularHitDist(rg::RenderGraphBuilder& graphBuilder) const;
 
 private:
 
@@ -95,10 +95,11 @@ private:
 
 	struct SpatialFilterParams
 	{
-		rg::RGTextureViewHandle inSpecular;
-		rg::RGTextureViewHandle outSpecular;
+		rg::RGTextureViewHandle inSpecularY_SH2;
+		rg::RGTextureViewHandle inDiffuseY_SH2;
+		rg::RGTextureViewHandle inDiffSpecCoCg;
 
-		rg::RGTextureViewHandle inDiffuse;
+		rg::RGTextureViewHandle outSpecular;
 		rg::RGTextureViewHandle outDiffuse;
 
 		rg::RGTextureViewHandle specularHistoryLengthTexture;
@@ -112,8 +113,11 @@ private:
 
 	rg::RenderGraphDebugName m_debugName;
 	
-	lib::SharedPtr<rdr::TextureView> m_historySpecularTexture;
-	lib::SharedPtr<rdr::TextureView> m_historyDiffuseTexture;
+	lib::SharedPtr<rdr::TextureView> m_historySpecularY_SH2;
+	lib::SharedPtr<rdr::TextureView> m_historyDiffuseY_SH2;
+	lib::SharedPtr<rdr::TextureView> m_historyDiffSpecCoCg;
+
+	lib::SharedPtr<rdr::TextureView> m_historySpecularHitDist;
 
 	lib::SharedPtr<rdr::TextureView> m_specularHistoryLengthTexture;
 	lib::SharedPtr<rdr::TextureView> m_historySpecularHistoryLengthTexture;

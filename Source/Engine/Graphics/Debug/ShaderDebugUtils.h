@@ -44,7 +44,7 @@ struct ShaderDebugParameters
 };
 
 
-class ShaderDebugUtils
+class GRAPHICS_API ShaderDebugUtils
 {
 public:
 	

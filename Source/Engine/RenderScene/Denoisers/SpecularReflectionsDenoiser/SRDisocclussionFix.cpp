@@ -24,10 +24,12 @@ DS_BEGIN(SRDisocclusionFixDS, rg::RGDescriptorSetState<SRDisocclusionFixDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                       u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),               u_normalsTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_diffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                u_rwDiffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_specularTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                u_rwSpecularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_inSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_inDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),               u_inDiffSpecCoCg)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                u_outSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                u_outDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                u_outDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRDisocclusionFixConstants>), u_constants)
 DS_END();
 
@@ -43,12 +45,14 @@ void DisocclusionFix(rg::RenderGraphBuilder& graphBuilder, const DisocclusionFix
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(params.diffuseTexture.IsValid());
-	SPT_CHECK(params.outputDiffuseTexture.IsValid());
-	SPT_CHECK(params.specularTexture.IsValid());
-	SPT_CHECK(params.outputSpecularTexture.IsValid());
+	SPT_CHECK(params.inSpecularY_SH2.IsValid());
+	SPT_CHECK(params.inDiffuseY_SH2.IsValid());
+	SPT_CHECK(params.inDiffSpecCoCg.IsValid());
+	SPT_CHECK(params.outSpecularY_SH2.IsValid());
+	SPT_CHECK(params.outDiffuseY_SH2.IsValid());
+	SPT_CHECK(params.outDiffSpecCoCg.IsValid());
 
-	const math::Vector2u resolution = params.outputDiffuseTexture->GetResolution2D();
+	const math::Vector2u resolution = params.outDiffuseY_SH2->GetResolution2D();
 
 	SRDisocclusionFixConstants shaderConstants;
 	shaderConstants.resolution   = resolution;
@@ -61,10 +65,12 @@ void DisocclusionFix(rg::RenderGraphBuilder& graphBuilder, const DisocclusionFix
 	ds->u_depthTexture                 = params.depthTexture;
 	ds->u_roughnessTexture             = params.roughnessTexture;
 	ds->u_normalsTexture               = params.normalsTexture;
-	ds->u_diffuseTexture               = params.diffuseTexture;
-	ds->u_rwDiffuseTexture             = params.outputDiffuseTexture;
-	ds->u_specularTexture              = params.specularTexture;
-	ds->u_rwSpecularTexture            = params.outputSpecularTexture;
+	ds->u_inSpecularY_SH2              = params.inSpecularY_SH2;
+	ds->u_inDiffuseY_SH2               = params.inDiffuseY_SH2;
+	ds->u_inDiffSpecCoCg               = params.inDiffSpecCoCg;
+	ds->u_outSpecularY_SH2             = params.outSpecularY_SH2;
+	ds->u_outDiffuseY_SH2              = params.outDiffuseY_SH2;
+	ds->u_outDiffSpecCoCg              = params.outDiffSpecCoCg;
 	ds->u_constants                    = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateDisocclusionFixPipeline();

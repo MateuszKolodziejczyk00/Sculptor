@@ -5,6 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
+#include "Utils/SphericalHarmonics.hlsli"
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
@@ -40,8 +41,9 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 		if((!fixSpecular && !fixDiffuse) || roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
-			u_rwDiffuseTexture[pixel]  = u_diffuseTexture.Load(uint3(pixel, 0));
-			u_rwSpecularTexture[pixel] = u_specularTexture.Load(uint3(pixel, 0));
+			u_outSpecularY_SH2[pixel]  = u_inSpecularY_SH2.Load(uint3(pixel, 0));
+			u_outDiffuseY_SH2[pixel]   = u_inDiffuseY_SH2.Load(uint3(pixel, 0));
+			u_outDiffSpecCoCg[pixel]   = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
 			return;
 		}
 		
@@ -49,14 +51,13 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 		const float centerWeight = kernel[0];
 
-		float4 centerSpecular = u_specularTexture.Load(uint3(pixel, 0));
-		centerSpecular.rgb /= (Luminance(centerSpecular.rgb) + 1.f);
+		const SH2<float> centerSpecularY_SH2 = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
+		const SH2<float> centerDiffuseY_SH2  = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
+		const float4 centerDiffSpecCoCg      = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
 
-		float4 centerDiffuse  = u_diffuseTexture.Load(uint3(pixel, 0));
-		centerDiffuse.rgb /= (Luminance(centerDiffuse.rgb) + 1.f);
-
-		float3 specularSum = centerSpecular.rgb * centerWeight;
-		float3 diffuseSum  = centerDiffuse.rgb  * centerWeight;
+		SH2<float> specularY_SH2Sum = centerSpecularY_SH2 * centerWeight;
+		SH2<float> diffuseY_SH2Sum  = centerDiffuseY_SH2 * centerWeight;
+		float4 diffSpecCoCgSum      = centerDiffSpecCoCg * centerWeight;
 
 		float specularWeightSum = centerWeight;
 		float diffuseWeightSum  = centerWeight;
@@ -88,39 +89,49 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 				const float weight = dw * w;
 
+				const float4 sampleDiffSpecCoCg = u_inDiffSpecCoCg.Load(uint3(samplePixel, 0));
+
 				if(fixSpecular)
 				{
 					const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
-					const float specularWeight = weight * swn;
+					float specularWeight = weight * swn;
 
-					float3 specular = u_specularTexture.Load(uint3(samplePixel, 0)).rgb;
-					specular /= (Luminance(specular) + 1.f);
+					const SH2<float> sampleSpecularY_SH2 = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(samplePixel, 0)));
 
-					specularSum       += specular * specularWeight;
+					const float specularLum = sampleSpecularY_SH2.Evaluate(sampleNormal);
+					specularWeight /= specularLum + 1.f;
+
+					specularY_SH2Sum = specularY_SH2Sum + sampleSpecularY_SH2 * specularWeight;
+					diffSpecCoCgSum.zw += sampleDiffSpecCoCg.zw * specularWeight;
 					specularWeightSum += specularWeight;
 				}
 
 				if(fixDiffuse)
 				{
 					const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
-					const float diffuseWeight = weight * dwn;
+					float diffuseWeight = weight * dwn;
 
-					float3 diffuse = u_diffuseTexture.Load(uint3(samplePixel, 0)).rgb;
-					diffuse /= (Luminance(diffuse) + 1.f);
+					const SH2<float> sampleDiffuseY_SH2 = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0)));
 
-					diffuseSum       += diffuse *  diffuseWeight;
+					const float diffuseLum = sampleDiffuseY_SH2.Evaluate(sampleNormal);
+					diffuseWeight /= diffuseLum + 1.f;
+
+					diffuseY_SH2Sum = diffuseY_SH2Sum + sampleDiffuseY_SH2 * diffuseWeight;
+					diffSpecCoCgSum.xy += sampleDiffSpecCoCg.xy * diffuseWeight;
 					diffuseWeightSum += diffuseWeight;
 				}
 			}
 		}
 
-		float3 outSpecular = specularSum / specularWeightSum;
-		outSpecular /= (1.f - Luminance(outSpecular));
+		const float rcpSpecularWeightSum = 1.f / specularWeightSum;
+		const float rcpDiffuseWeightSum = 1.f / diffuseWeightSum;
 
-		float3 outDiffuse = diffuseSum / diffuseWeightSum;
-		outDiffuse /= (1.f - Luminance(outDiffuse));
+		const SH2<float> outSpecularY_SH2 = specularY_SH2Sum * rcpSpecularWeightSum;
+		const SH2<float> outDiffuseY_SH2 = diffuseY_SH2Sum * rcpDiffuseWeightSum;
+		const float4 outDiffSpecCoCg = diffSpecCoCgSum * float4(rcpDiffuseWeightSum, rcpDiffuseWeightSum, rcpSpecularWeightSum, rcpSpecularWeightSum);
 
-		u_rwSpecularTexture[pixel] = float4(outSpecular, centerSpecular.w);
-		u_rwDiffuseTexture[pixel]  = float4(outDiffuse, centerDiffuse.w);
+		u_outSpecularY_SH2[pixel]  = SH2ToFloat4(outSpecularY_SH2);
+		u_outDiffuseY_SH2[pixel]   = SH2ToFloat4(outDiffuseY_SH2);
+		u_outDiffSpecCoCg[pixel]   = outDiffSpecCoCg;
 	}
 }

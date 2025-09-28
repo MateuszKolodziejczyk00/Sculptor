@@ -48,7 +48,7 @@ RendererBoolParameter forceFullRateTracingReflections("Force Full Rate Tracing",
 RendererBoolParameter doFullFinalVisibilityCheck("Full Final Visibility Check", { "Specular Reflections" }, true);
 RendererBoolParameter enableFireflyFilter("Enable Firefly Filter", { "Specular Reflections" }, true);
 RendererBoolParameter enableSecondTracingPass("Enable SecondTracing Pass", { "Specular Reflections" }, false);
-RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, true);
+RendererBoolParameter blurVarianceEstimate("Blur Variance Estimate", { "Specular Reflections" }, false);
 RendererBoolParameter useDepthTestForVRTReprojection("Use Depth Test For VRT Reprojection", { "Specular Reflections" }, false);
 RendererBoolParameter enableSpatialResamplingSSVisibilityTest("Enable Spatial Resampling SS Visibility Test", { "Specular Reflections" }, false);
 RendererBoolParameter useLargeTileSize("Use Large Tile Size", { "Specular Reflections" }, false);
@@ -58,7 +58,7 @@ RendererIntParameter reservoirMaxAge("Reservoir Max Age", { "Specular Reflection
 RendererFloatParameter resamplingRangeStep("Resampling Range Step", { "Specular Reflections" }, 2.333f, 0.f, 10.f);
 RendererBoolParameter enableStableHistoryBlend("Enable Stable History Blend", { "Specular Reflections" }, true);
 RendererBoolParameter enableDisocclusionFixFromLightCache("Enable Disocclusion Fix From Light Cache", { "Specular Reflections" }, false);
-RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 1, 0, 5);
+RendererIntParameter wideRadiusSpatialPassesNum("Wide Radius Spatial Passes Num", { "Specular Reflections" }, 0, 0, 5);
 RendererBoolParameter useSharcAsRadianceCache("Use Sharc As Radiance Cache", { "Specular Reflections" }, true);
 } // renderer_params
 
@@ -561,7 +561,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.historyRoughnessTexture             = params.historyRoughnessTexture;
 	denoiserParams.specularTexture                     = specularReflections;
 	denoiserParams.diffuseTexture                      = diffuseReflections;
-	denoiserParams.blurVarianceEstimate                = renderer_params::blurVarianceEstimate;
+	denoiserParams.blurVarianceEstimate                = !renderer_params::forceFullRateTracingReflections && renderer_params::blurVarianceEstimate;
 	denoiserParams.enableStableHistoryBlend            = renderer_params::enableStableHistoryBlend;
 	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
 	denoiserParams.wideRadiusPassesNum                 = renderer_params::wideRadiusSpatialPassesNum;
@@ -817,7 +817,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.outSpecularLuminanceDistTexture = specularLuminanceHitDistanceTexture;
 		resamplingParams.outDiffuseLuminanceDistTexture  = diffuseLuminanceHitDistanceTexture;
 		resamplingParams.motionTexture                   = params.motionTexture;
-		resamplingParams.historySpecularHitDist          = !viewSystemsInfo.useUnifiedDenoising ? m_denoiser.GetHistorySpecular(graphBuilder) : nullptr;
+		resamplingParams.historySpecularHitDist          = !viewSystemsInfo.useUnifiedDenoising ? m_denoiser.GetHistorySpecularHitDist(graphBuilder) : nullptr;
 		resamplingParams.tracesAllocation                = tracesAllocation;
 		resamplingParams.vrReprojectionSuccessMask       = vrReprojectionSuccessMask;
 		resamplingParams.enableTemporalResampling        = hasValidHistory && renderer_params::enableTemporalResampling;

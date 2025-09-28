@@ -35,14 +35,19 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_historyNormalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_historyRoughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwSpecularTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularHistoryTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_diffuseTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffSpecCoCg)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_rwSpecHitDist)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historySpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwSpecularTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_specularHistoryTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwSpecularFastHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),                            u_specularFastHistoryTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_diffuseHistoryTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwDiffuseTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_diffuseHistoryTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector3f>),                             u_rwDiffuseFastHistoryTexture)
@@ -88,14 +93,19 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_historyNormalsTexture                  = params.historyNormalsTexture;
 	ds->u_historyRoughnessTexture                = params.historyRoughnessTexture;
 	ds->u_roughnessTexture                       = params.currentRoughnessTexture;
-	ds->u_rwSpecularTexture                      = params.currentSpecularTexture;
-	ds->u_specularHistoryTexture                 = params.historySpecularTexture;
+	ds->u_specularTexture                        = params.currentSpecularTexture;
+	ds->u_diffuseTexture                         = params.currentDiffuseTexture;
+	ds->u_rwSpecularY_SH2                        = params.specularY_SH2;
+	ds->u_rwDiffuseY_SH2                         = params.diffuseY_SH2;
+	ds->u_rwDiffSpecCoCg                         = params.diffSpecCoCg;
+	ds->u_rwSpecHitDist                          = params.specHitDist;
+	ds->u_historySpecularY_SH2                   = params.historySpecularY_SH2;
+	ds->u_historyDiffuseY_SH2                    = params.historyDiffuseY_SH2;
+	ds->u_historyDiffSpecCoCg                    = params.historyDiffSpecCoCg;
 	ds->u_rwSpecularTemporalVarianceTexture      = params.temporalVarianceSpecularTexture;
 	ds->u_specularHistoryTemporalVarianceTexture = params.historyTemporalVarianceSpecularTexture;
 	ds->u_rwSpecularFastHistoryTexture           = params.fastHistorySpecularTexture;
 	ds->u_specularFastHistoryTexture             = params.fastHistorySpecularOutputTexture;
-	ds->u_rwDiffuseTexture                       = params.currentDiffuseTexture;
-	ds->u_diffuseHistoryTexture                  = params.historyDiffuseTexture;
 	ds->u_rwDiffuseTemporalVarianceTexture       = params.temporalVarianceDiffuseTexture;
 	ds->u_diffuseHistoryTemporalVarianceTexture  = params.historyTemporalVarianceDiffuseTexture;
 	ds->u_rwDiffuseFastHistoryTexture            = params.fastHistoryDiffuseTexture;

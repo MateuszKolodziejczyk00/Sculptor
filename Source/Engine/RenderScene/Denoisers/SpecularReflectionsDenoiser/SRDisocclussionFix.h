@@ -37,11 +37,13 @@ struct DisocclusionFixParams
 
 	rg::RGTextureViewHandle  roughnessTexture;
 
-	rg::RGTextureViewHandle  diffuseTexture;
-	rg::RGTextureViewHandle  outputDiffuseTexture;
+	rg::RGTextureViewHandle inSpecularY_SH2;
+	rg::RGTextureViewHandle inDiffuseY_SH2;
+	rg::RGTextureViewHandle inDiffSpecCoCg;
 
-	rg::RGTextureViewHandle  specularTexture;
-	rg::RGTextureViewHandle  outputSpecularTexture;
+	rg::RGTextureViewHandle outSpecularY_SH2;
+	rg::RGTextureViewHandle outDiffuseY_SH2;
+	rg::RGTextureViewHandle outDiffSpecCoCg;
 };
 
 

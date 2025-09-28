@@ -26,11 +26,15 @@ struct FireflySuppressionParams
 
 	rg::RenderGraphDebugName debugName;
 
-	rg::RGTextureViewHandle  inSpecularHitDistTexture;
-	rg::RGTextureViewHandle  outSpecularHitDistTexture;
+	rg::RGTextureViewHandle  normal;
 
-	rg::RGTextureViewHandle  inDiffuseHitDistTexture;
-	rg::RGTextureViewHandle  outDiffuseHitDistTexture;
+	rg::RGTextureViewHandle  inSpecularY_SH2;
+	rg::RGTextureViewHandle  inDiffuseY_SH2;
+	rg::RGTextureViewHandle  inDiffSpecCoCg;
+
+	rg::RGTextureViewHandle  outSpecularY_SH2;
+	rg::RGTextureViewHandle  outDiffuseY_SH2;
+	rg::RGTextureViewHandle  outDiffSpecCoCg;
 };
 
 

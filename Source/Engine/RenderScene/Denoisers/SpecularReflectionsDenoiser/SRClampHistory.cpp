@@ -18,9 +18,10 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRClampHistoryDS, rg::RGDescriptorSetState<SRClampHistoryDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_specularTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_specularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistorySpecularTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffuseTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistoryDiffuseTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_specularHistoryLengthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Uint32>),                     u_diffuseHistoryLengthTexture)
@@ -42,28 +43,30 @@ void ClampHistory(rg::RenderGraphBuilder& graphBuilder, const ClampHistoryParams
 {
 	SPT_PROFILER_FUNCTION();
 
-	SPT_CHECK(params.specularTexture.IsValid());
 	SPT_CHECK(params.fastHistorySpecularTexture.IsValid());
-	SPT_CHECK(params.diffuseTexture.IsValid());
+	SPT_CHECK(params.specularY_SH2.IsValid());
+	SPT_CHECK(params.diffuseY_SH2.IsValid());
+	SPT_CHECK(params.diffSpecCoCg.IsValid());
 	SPT_CHECK(params.fastHistoryDiffuseTexture.IsValid());
 
-	const math::Vector2u resolution = params.specularTexture->GetResolution2D();
+	const math::Vector2u resolution = params.specularY_SH2->GetResolution2D();
 
 	SRClampHistoryConstants shaderConstants;
 	shaderConstants.resolution = resolution;
 	shaderConstants.pixelSize  = resolution.cast<Real32>().cwiseInverse();
 
 	lib::MTHandle<SRClampHistoryDS> ds = graphBuilder.CreateDescriptorSet<SRClampHistoryDS>(RENDERER_RESOURCE_NAME("SR Clamp History DS"));
-	ds->u_specularTexture                = params.specularTexture;
-	ds->u_fastHistorySpecularTexture     = params.fastHistorySpecularTexture;
-	ds->u_diffuseTexture                 = params.diffuseTexture;
-	ds->u_fastHistoryDiffuseTexture      = params.fastHistoryDiffuseTexture;
-	ds->u_specularHistoryLengthTexture   = params.specularHistoryLengthTexture;
-	ds->u_diffuseHistoryLengthTexture    = params.diffuseHistoryLengthTexture;
-	ds->u_depthTexture                   = params.depthTexture;
-	ds->u_normalsTexture                 = params.normalsTexture;
-	ds->u_roughnessTexture               = params.roughnessTexture;
-	ds->u_constants                      = shaderConstants;
+	ds->u_specularY_SH2                = params.specularY_SH2;
+	ds->u_diffuseY_SH2                 = params.diffuseY_SH2;
+	ds->u_diffSpecCoCg                 = params.diffSpecCoCg;
+	ds->u_fastHistorySpecularTexture   = params.fastHistorySpecularTexture;
+	ds->u_fastHistoryDiffuseTexture    = params.fastHistoryDiffuseTexture;
+	ds->u_specularHistoryLengthTexture = params.specularHistoryLengthTexture;
+	ds->u_diffuseHistoryLengthTexture  = params.diffuseHistoryLengthTexture;
+	ds->u_depthTexture                 = params.depthTexture;
+	ds->u_normalsTexture               = params.normalsTexture;
+	ds->u_roughnessTexture             = params.roughnessTexture;
+	ds->u_constants                    = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateClampHistoryPipeline();
 
