@@ -320,6 +320,8 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 		float3 motionBasedFastSpecular = 0.f;
 		float2 motionBasedSpecularMoments = 0.f;
 
+		const uint boostedAccumulationFramesNum = 3u;
+
 		if (motionBasedReprojectionConfidence > 0.05f)
 		{
 			const uint3 historyPixel = uint3(diffuseReprojectedUV * outputRes.xy, 0u);
@@ -327,7 +329,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			diffuseHistoryLength += u_historyDiffuseHistoryLengthTexture.Load(historyPixel);
 
 			diffuseHistoryLength = min(diffuseHistoryLength, uint(motionBasedReprojectionConfidence * MAX_ACCUMULATED_FRAMES_NUM));
-			float currentFrameWeight = rcp(float(diffuseHistoryLength + 1u));
+			float currentFrameWeight = diffuseHistoryLength <= boostedAccumulationFramesNum ? 0.5f : rcp(float(diffuseHistoryLength + 1u));
 
 			const float2 diffuseHistoryMoments = u_diffuseHistoryTemporalVarianceTexture.Load(historyPixel);
 			diffuseMoments = lerp(diffuseHistoryMoments, diffuseMoments, max(currentFrameWeight, 0.02f));
@@ -366,7 +368,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			diffuseWorldCache = LuminanceToExposedLuminance(diffuseWorldCache);
 
 			float3 initialDiffuse = diffuse.rgb;
-
+				
 			initialDiffuse = LuminanceStableBlend(diffuseWorldCache, diffuse.rgb, 0.5f, 3.f);
 
 			u_rwDiffuseFastHistoryTexture[pixel] = initialDiffuse;
@@ -383,7 +385,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 
 				const float3 lambertTerm = Diffuse_Lambert(diffuseColor);
 				const float3 luminanceLightCache = LuminanceToExposedLuminance(cachedLuminance / max(lambertTerm, 0.001f));
-
+				
 				initialDiffuse = LuminanceStableBlend(luminanceLightCache, diffuse.rgb, 0.5f, 1.f);
 			}
 
@@ -391,10 +393,10 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			u_rwDiffuseTexture[pixel]            = float4(initialDiffuse, diffuse.w);
 #endif // defined(DS_SharcCacheDS)
 #else
-			u_rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
 			outDiffuseY    = diffuseY;
 			outDiffuseCoCg = diffuseCoCg;
 #endif // DISOCCLUSION_FIX_FROM_LIGHT_CACHE
+			u_rwDiffuseFastHistoryTexture[pixel] = diffuse.rgb;
 		}
 
 		u_diffuseHistoryLengthTexture[pixel] = diffuseHistoryLength;
@@ -434,6 +436,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			virtualPointFastSpecular          = u_specularFastHistoryTexture.SampleLevel(u_nearestSampler, diffuseReprojectedUV, 0.f);
 			virtualPointSpecularMoments       = u_specularHistoryTemporalVarianceTexture.Load(historyPixel);
 		}
+
 		if(motionBasedReprojectionConfidence > 0.2f || specularReprojectionConfidence > 0.2f)
 		{
 			const float mbWeight = (1.f - specularReprojectionConfidence) * motionBasedReprojectionConfidence;
@@ -463,16 +466,16 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float maxHistoryLum = neighbourhoodInfo.specularM1.x + clampWindow.x;
 			const float minHistoryLum = neighbourhoodInfo.specularM1.x - clampWindow.x;
 			float ratio = 1.f;
-			if(specularHistoryLum > maxHistoryLum)
+			if (maxHistoryLum > 0.f && specularHistoryLum > maxHistoryLum)
 			{
-				ratio = specularHistoryLum / maxHistoryLum;
+				ratio = maxHistoryLum / specularHistoryLum ;
 			}
-			else if (specularHistoryLum < minHistoryLum)
+			else if (minHistoryLum > 0.f && specularHistoryLum < minHistoryLum)
 			{
-				ratio = specularHistoryLum / minHistoryLum;
+				ratio = minHistoryLum / specularHistoryLum;
 			}
 
-			if(ratio != 0.f && !isinf(ratio))
+			if (ratio > 0.f && !isinf(ratio))
 			{
 				specularYHistory = specularYHistory * ratio;
 				specularCoCgHistory *= ratio;
@@ -489,7 +492,7 @@ void SRTemporalAccumulationCS(CS_INPUT input)
 			const float roughnessMaxHistoryMultiplier = 1.f - 0.4f * (max(0.4f - roughness, 0.f) / 0.4f);
 
 			specularHistoryLength = min(historyLength + 1u, uint(roughnessMaxHistoryMultiplier * parallaxConfidence * (mbWeight + vpWeight) * MAX_ACCUMULATED_FRAMES_NUM));
-			float currentFrameWeight = rcp(float(specularHistoryLength + 1u));
+			const float currentFrameWeight = specularHistoryLength <= boostedAccumulationFramesNum ? 0.5f : rcp(float(specularHistoryLength + 1u));
 
 			const float specularFrameWeight = currentFrameWeight + min(1.f - currentFrameWeight, 0.3f) * (1.f - (vpWeight + mbWeight));
 

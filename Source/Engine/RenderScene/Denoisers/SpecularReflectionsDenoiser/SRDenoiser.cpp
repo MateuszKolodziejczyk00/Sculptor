@@ -93,6 +93,11 @@ rg::RGTextureViewHandle Denoiser::GetHistorySpecularHitDist(rg::RenderGraphBuild
 	return m_historySpecularHitDist ? graphBuilder.AcquireExternalTextureView(m_historySpecularHitDist) : rg::RGTextureViewHandle{};
 }
 
+rg::RGTextureViewHandle Denoiser::GetDiffuseHistoryLength(rg::RenderGraphBuilder& graphBuilder) const
+{
+	return m_diffuseHistoryLengthTexture ? graphBuilder.AcquireExternalTextureView(m_diffuseHistoryLengthTexture) : rg::RGTextureViewHandle{};
+}
+
 void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params)
 {
 	SPT_PROFILER_FUNCTION();
@@ -271,6 +276,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	clampHistoryParams.specularY_SH2                  = historySpecularY_SH2;
 	clampHistoryParams.diffuseY_SH2                   = historyDiffuseY_SH2;
 	clampHistoryParams.diffSpecCoCg                   = historyDiffSpecCoCg;
+	clampHistoryParams.diffuseHistoryLenght           = diffuseHistoryLengthTexture;
+	clampHistoryParams.specularHistoryLenght          = specularHistoryLengthTexture;
 	ClampHistory(graphBuilder, clampHistoryParams);
 
 	FireflySuppressionParams fireflySuppressionParams;

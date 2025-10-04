@@ -200,6 +200,7 @@ BEGIN_SHADER_STRUCT(RTShadingConstants)
 	SHADER_STRUCT_FIELD(math::Vector2u,  reservoirsResolution)
 	SHADER_STRUCT_FIELD(HeightFogParams, heightFog)
 	SHADER_STRUCT_FIELD(Uint32,          rayCommandsBufferSize)
+	SHADER_STRUCT_FIELD(Uint32,          frameIdx)
 END_SHADER_STRUCT();
 
 
@@ -355,10 +356,12 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 {
 	SPT_PROFILER_FUNCTION();
 
+	const RenderView& renderView = viewSpec.GetRenderView();
+
 	const AtmosphereSceneSubsystem& atmosphereSubsystem = renderScene.GetSceneSubsystemChecked<AtmosphereSceneSubsystem>();
 	const AtmosphereContext& atmosphereContext          = atmosphereSubsystem.GetAtmosphereContext();
 
-	const ParticipatingMediaViewRenderSystem& pmSystem = viewSpec.GetRenderView().GetRenderSystem<ParticipatingMediaViewRenderSystem>();
+	const ParticipatingMediaViewRenderSystem& pmSystem = renderView.GetRenderSystem<ParticipatingMediaViewRenderSystem>();
 
 	RTShadingConstants rtShadingConstants;
 	rtShadingConstants.resolution            = srParams.resolution;
@@ -366,20 +369,21 @@ static void ShadeRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& r
 	rtShadingConstants.reservoirsResolution  = shadingParams.reservoirsResolution;
 	rtShadingConstants.heightFog             = pmSystem.GetHeightFogParams();
 	rtShadingConstants.rayCommandsBufferSize = static_cast<Uint32>(shadingParams.sortedTraces->GetSize() / sizeof(vrt::EncodedRayTraceCommand));
+	rtShadingConstants.frameIdx              = renderView.GetRenderedFrameIdx();
 
 	const lib::MTHandle<RTShadingDS> shadingDS = graphBuilder.CreateDescriptorSet<RTShadingDS>(RENDERER_RESOURCE_NAME("RTShadingDS"));
-	shadingDS->u_skyViewLUT       = srParams.skyViewLUT;
-	shadingDS->u_transmittanceLUT = atmosphereContext.transmittanceLUT;
-	shadingDS->u_atmosphereParams = atmosphereContext.atmosphereParamsBuffer->GetFullView();
-	shadingDS->u_hitMaterialInfos = shadingParams.rtGBuffer.hitMaterialInfos;
-	shadingDS->u_rayDirections    = shadingParams.rtGBuffer.rayDirections;
-	shadingDS->u_rayPdfs          = shadingParams.rtGBuffer.rayPdfs;
-	shadingDS->u_depthTexture     = srParams.depthTexture;
-	shadingDS->u_reservoirsBuffer = shadingParams.reservoirsBuffer;
-	shadingDS->u_traceCommands    = shadingParams.tracesAllocation.rayTraceCommands;
-	shadingDS->u_sortedTraces     = shadingParams.sortedTraces;
-	shadingDS->u_tracesNum        = shadingParams.raysShadingCounts;
-	shadingDS->u_constants        = rtShadingConstants;
+	shadingDS->u_skyViewLUT         = srParams.skyViewLUT;
+	shadingDS->u_transmittanceLUT   = atmosphereContext.transmittanceLUT;
+	shadingDS->u_atmosphereParams   = atmosphereContext.atmosphereParamsBuffer->GetFullView();
+	shadingDS->u_hitMaterialInfos   = shadingParams.rtGBuffer.hitMaterialInfos;
+	shadingDS->u_rayDirections      = shadingParams.rtGBuffer.rayDirections;
+	shadingDS->u_rayPdfs            = shadingParams.rtGBuffer.rayPdfs;
+	shadingDS->u_depthTexture       = srParams.depthTexture;
+	shadingDS->u_reservoirsBuffer   = shadingParams.reservoirsBuffer;
+	shadingDS->u_traceCommands      = shadingParams.tracesAllocation.rayTraceCommands;
+	shadingDS->u_sortedTraces       = shadingParams.sortedTraces;
+	shadingDS->u_tracesNum          = shadingParams.raysShadingCounts;
+	shadingDS->u_constants          = rtShadingConstants;
 
 	miss_rays::ShadeMissRays(graphBuilder, renderScene, viewSpec, srParams, shadingParams, shadingDS);
 	hit_rays::ShadeHitRays(graphBuilder, renderScene, viewSpec, srParams, shadingParams, shadingDS);
@@ -787,7 +791,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		{
 			sr_restir::SpatialResamplingPassParams{
 				.resamplingRangeMultiplier        = 1.f,
-				.samplesNum                       = 3u,
+				.samplesNum                       = 4u,
 				.enableScreenSpaceVisibilityTrace = renderer_params::enableSpatialResamplingSSVisibilityTest,
 				.resampleOnlyFromTracedPixels     = renderer_params::resampleOnlyFromTracedPixels
 			},
@@ -915,8 +919,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		const rg::RGTextureViewHandle reflectionsInfluenceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Reflections Influence Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::RG16_S_Float));
 
 		RTReflectionsViewData reflectionsViewData;
-		reflectionsViewData.finalDiffuseGI  = diffuseReflectionsFullRes;
-		reflectionsViewData.finalSpecularGI = specularReflectionsFullRes;
+		reflectionsViewData.finalDiffuseGI       = diffuseReflectionsFullRes;
+		reflectionsViewData.finalSpecularGI      = specularReflectionsFullRes;
 
 		reflectionsViewData.reflectionsInfluenceTexture  = reflectionsInfluenceTexture;
 		reflectionsViewData.varianceEstimation           = varianceEstimation;

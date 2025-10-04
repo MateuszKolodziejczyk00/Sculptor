@@ -87,6 +87,8 @@ public:
 
 	rg::RGTextureViewHandle GetHistorySpecularHitDist(rg::RenderGraphBuilder& graphBuilder) const;
 
+	rg::RGTextureViewHandle GetDiffuseHistoryLength(rg::RenderGraphBuilder& graphBuilder) const;
+
 private:
 
 	void UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Params& params);

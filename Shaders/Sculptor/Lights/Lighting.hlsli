@@ -310,9 +310,8 @@ float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in float3 viewD
 {
 	float3 luminance = 0.f;
 
-#if defined(DS_DDGISceneDS) || defined(DS_SharcCacheDS)
+#if defined(DS_DDGISceneDS)
 	const float3 specularDominantDirection = GetSpecularDominantDirection(surface.geometryNormal, reflect(-viewDir, surface.geometryNormal), surface.roughness);
-#ifdef DS_DDGISceneDS
 	const float specularWeight = Luminance(surface.specularColor) / Luminance(surface.specularColor + surface.diffuseColor);
 	const float3 sampleDirection = normalize(lerp(surface.shadingNormal, specularDominantDirection, specularWeight));
 
@@ -321,13 +320,6 @@ float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in float3 viewD
 	diffuseSampleParams.sampleLocationBiasMultiplier = 1.0f;
 
 	const float3 indirectLuminance = DDGISampleLuminance(diffuseSampleParams, ddgiSampleContext);
-#endif // DS_DDGISceneDS
-#ifdef DS_SharcCacheDS
-	float3 indirectLuminance;
-	QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, surface.location, surface.geometryNormal, OUT indirectLuminance);
-	const float indirectMultiplier = 1.f;
-#endif // DS_SharcCacheDS
-
 	const float3 indirectIlluminance = indirectLuminance * 2.f * PI;
 	luminance += Diffuse_Lambert(indirectIlluminance) * surface.diffuseColor * indirectMultiplier;
 
@@ -335,7 +327,7 @@ float3 CalcReflectedLuminance_Indirect(in ShadedSurface surface, in float3 viewD
 	const float NdotV = saturate(dot(surface.shadingNormal, viewDir));
 	const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, surface.roughness), 0);
 	luminance += indirectLuminance * (surface.specularColor * integratedBRDF.x + integratedBRDF.y) * indirectMultiplier * NdotL;
-#endif // defined(DS_DDGISceneDS) && defined(DS_SharcCacheDS)
+#endif // defined(DS_DDGISceneDS)
 
 	return luminance;
 }

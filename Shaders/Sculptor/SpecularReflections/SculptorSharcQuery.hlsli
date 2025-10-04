@@ -5,7 +5,7 @@
 
 #ifdef DS_SharcCacheDS
 
-bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in float3 location, in float3 normal, out float3 luminance)
+SharcParameters CreateSharcParameters(in float3 viewLocation, in float exposure)
 {
     SharcDef sharcDef;
     sharcDef.cameraPosition = viewLocation;
@@ -14,14 +14,27 @@ bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in float3 l
     sharcDef.voxelData      = u_voxelData;
     sharcDef.exposure       = exposure;
 
-    const SharcParameters sharcParams = CreateSharcParameters(sharcDef);
+    return CreateSharcParameters(sharcDef);
+}
 
+
+bool QueryCachedLuminance(in SharcParameters sharcParams, in float3 materialDemodulation, in float3 location, in float3 normal, out float3 luminance)
+{
     SharcHitData hitData;
-    hitData.positionWorld = location;
-    hitData.normalWorld   = normal;
+    hitData.positionWorld        = location;
+    hitData.normalWorld          = normal;
+    hitData.materialDemodulation = materialDemodulation;
     const bool success = SharcGetCachedRadiance(sharcParams, hitData, OUT luminance, false);
 
     return success;
+}
+
+
+bool QueryCachedLuminance(in float3 viewLocation, in float exposure, in float3 materialDemodulation, in float3 location, in float3 normal, out float3 luminance)
+{
+    const SharcParameters sharcParams = CreateSharcParameters(viewLocation, exposure);
+
+    return QueryCachedLuminance(sharcParams, materialDemodulation, location, normal, OUT luminance);
 }
 
 #endif // DS_SharcCacheDS

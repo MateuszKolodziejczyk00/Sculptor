@@ -16,7 +16,8 @@ enum class EMaterialType : Flags32
 {
 	Invalid,
 	Opaque,
-	AlphaMasked
+	AlphaMasked,
+	Transparent
 };
 
 

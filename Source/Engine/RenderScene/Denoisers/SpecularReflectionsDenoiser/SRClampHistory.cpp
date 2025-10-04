@@ -28,6 +28,8 @@ DS_BEGIN(SRClampHistoryDS, rg::RGDescriptorSetState<SRClampHistoryDS>)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_depthTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),            u_normalsTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                    u_roughnessTexture)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_diffuseHistoryLength)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Uint32>),                    u_specularHistoryLength)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRClampHistoryConstants>), u_constants)
 DS_END();
 
@@ -66,6 +68,8 @@ void ClampHistory(rg::RenderGraphBuilder& graphBuilder, const ClampHistoryParams
 	ds->u_depthTexture                 = params.depthTexture;
 	ds->u_normalsTexture               = params.normalsTexture;
 	ds->u_roughnessTexture             = params.roughnessTexture;
+	ds->u_diffuseHistoryLength         = params.diffuseHistoryLenght;
+	ds->u_specularHistoryLength        = params.specularHistoryLenght;
 	ds->u_constants                    = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateClampHistoryPipeline();

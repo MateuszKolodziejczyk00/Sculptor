@@ -70,8 +70,8 @@ void ResolveReservoirsCS(CS_INPUT input)
 	
 			const float3 luminance = reservoir.luminance * reservoir.weightSum;
 	
-			const float3 specular = SR_GGX_Specular(sampleNormal, toView, lightDir, roughness, f0);
-			specularLo = specular * luminance * dot(sampleNormal, lightDir);
+			const RTBRDF brdf = RT_EvaluateBRDF(sampleNormal, toView, lightDir, roughness, f0, diffuseColor);
+			specularLo = brdf.specular * luminance * dot(sampleNormal, lightDir);
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
 			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);

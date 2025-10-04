@@ -342,10 +342,30 @@ void ResampleTemporallyCS(CS_INPUT input)
 			
 			const float2 motion = u_motionTexture.Load(uint3(pixel, 0u));
 
-			const float2 reprojectedUV = uv - motion;
+			float2 reprojectedUV = uv - motion;
 
-			if(all(reprojectedUV >= 0.f) && all(reprojectedUV <= 1.f))
+			if(all(reprojectedUV >= -0.1f) && all(reprojectedUV <= 1.1f))
 			{
+				// "jitter" the reprojected UV to break up any patterns (which are very undesirable in the denoiser) at the cost of noise
+				const float randomRange = 48.f;
+				if(reprojectedUV.x < 0.f)
+				{
+					reprojectedUV.x = rng.Next() * randomRange * u_resamplingConstants.pixelSize.x;
+				}
+				else if (reprojectedUV.x > 1.f)
+				{
+					reprojectedUV.x = 1.f - rng.Next() * randomRange * u_resamplingConstants.pixelSize.x;
+				}
+
+				if (reprojectedUV.y < 0.f)
+				{
+					reprojectedUV.y = rng.Next() * randomRange * u_resamplingConstants.pixelSize.y;
+				}
+				else if (reprojectedUV.y > 1.f)
+				{
+					reprojectedUV.y = 1.f - rng.Next() * randomRange * u_resamplingConstants.pixelSize.y;
+				}
+
 				for(uint sampleIdx = 0; sampleIdx < HISTORY_SAMPLE_COUNT; ++sampleIdx)
 				{
 					const float2 sampleUV = reprojectedUV - (u_sceneView.jitter - u_prevFrameSceneView.jitter) * sampleIdx;

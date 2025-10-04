@@ -82,7 +82,7 @@ float D_GGX(in float a2, in float dotNH)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // GGX Specular ==================================================================================
 
-float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0)
+float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0, out float3 fresnel)
 {
 	const float3 h = normalize(v + l);
 	const float dotNH = saturate(dot(n, h));
@@ -92,6 +92,7 @@ float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, i
 
 	if(dotNL <= 0.f || dotNV <= 0.f)
 	{
+		fresnel = 0.f; // keep diffuse?
 		return 0.0f;
 	}
 
@@ -101,6 +102,8 @@ float3 GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, i
 	const float3 f   = F_Schlick(f0, dotVH);
 	const float  d   = D_GGX(a2, dotNH);
 	const float  vis = V_SmithGGXCorrelated(a2, dotNL, dotNV);
+
+	fresnel = f;
 
 	return f * d * vis;
 }
@@ -140,9 +143,10 @@ LightingContribution DoShading(in ShadedSurface surface, in float3 lightDir, in 
 {
 	const float dotNL = clamp(dot(surface.shadingNormal, lightDir), 0.001f, 1.f);
 
-	const float3 specular = GGX_Specular(surface.shadingNormal, viewDir, lightDir, surface.roughness, surface.specularColor);
+	float3 fresnel;
+	const float3 specular = GGX_Specular(surface.shadingNormal, viewDir, lightDir, surface.roughness, surface.specularColor, OUT fresnel);
 
-	const float3 diffuse = Diffuse_Lambert(surface.diffuseColor);
+	const float3 diffuse = Diffuse_Lambert(surface.diffuseColor) * (1.f - fresnel);
 
 	const float3 sceneLuminance = (diffuse + specular) * dotNL * peakIlluminance;
 	const float3 eyeAdaptationLuminance = Diffuse_Lambert(1.f) * dotNL * peakIlluminance;

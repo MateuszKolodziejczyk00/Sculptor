@@ -6,14 +6,22 @@
 #define SPECULAR_TRACE_MAX_ROUGHNESS 0.01f
 
 
-float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0)
+struct RTBRDF
 {
-	float3 specular = 0.f;
+	float3 specular;
+	float3 diffuse;
+};
+
+
+RTBRDF RT_EvaluateBRDF(in float3 n, in float3 v, in float3 l, in float roughness, in float3 f0, in float3 albedo)
+{
+	RTBRDF brdf;
 
 	if(roughness >= SPECULAR_TRACE_MAX_ROUGHNESS)
 	{
-		const float minRoughness = 0.01f;
-		return GGX_Specular(n, v, l, max(roughness, minRoughness), f0);
+		float fresnel;
+		brdf.specular = GGX_Specular(n, v, l, roughness, f0, OUT fresnel);
+		brdf.diffuse = Diffuse_Lambert(albedo) * (1.f - fresnel);
 
 	}
 	else
@@ -21,10 +29,11 @@ float3 SR_GGX_Specular(in float3 n, in float3 v, in float3 l, in float roughness
 		const float3 h = normalize(v + l);
 		const float dotVH = max(dot(v, h), 0.001f);
 		const float3 f = F_Schlick(f0, dotVH);
-		specular = f;
+		brdf.specular = f;
+		brdf.diffuse = Diffuse_Lambert(albedo) * (1.f - f);
 	}
 
-	return specular;
+	return brdf;
 }
 
 #endif // RTGI_COMMON_HLSLI

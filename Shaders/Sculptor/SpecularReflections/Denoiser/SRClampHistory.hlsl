@@ -95,6 +95,17 @@ void SRClampHistoryCS(CS_INPUT input)
 			return;
 		}
 
+		const uint specularHistoryLength = u_specularHistoryLength.Load(uint3(pixel, 0));
+		const uint diffuseHistoryLength  = u_diffuseHistoryLength.Load(uint3(pixel, 0));
+
+		const bool clampSpecular = specularHistoryLength > 5u;
+		const bool clampDiffuse  = diffuseHistoryLength > 5u;
+
+		if(!clampSpecular && !clampDiffuse)
+		{
+			return;
+		}
+
 		float3 specularM1Sum = 0.f;
 		float3 specularM2Sum = 0.f;
 
@@ -107,60 +118,73 @@ void SRClampHistoryCS(CS_INPUT input)
 		{
 			for(int x = -2; x <= 2; ++x)
 			{
-				const float3 specularFastHistoryYCoCg = s_specularFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
-				const float3 diffuseFastHistoryYCoCg  = s_diffuseFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
+				if(clampSpecular)
+				{
+					const float3 specularFastHistoryYCoCg = s_specularFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
+					specularM1Sum += specularFastHistoryYCoCg;
+					specularM2Sum += Pow2(specularFastHistoryYCoCg);
+				}
 
-				const float weight = 1.f;
-				specularM1Sum += specularFastHistoryYCoCg * weight;
-				specularM2Sum += Pow2(specularFastHistoryYCoCg) * weight;
+				if(clampDiffuse)
+				{
+					const float3 diffuseFastHistoryYCoCg = s_diffuseFastHistoryYCoCg[input.localID.x + BORDER_SIZE + x][input.localID.y + BORDER_SIZE + y];
+					diffuseM1Sum += diffuseFastHistoryYCoCg;
+					diffuseM2Sum += Pow2(diffuseFastHistoryYCoCg);
+				}
 
-				diffuseM1Sum += diffuseFastHistoryYCoCg * weight;
-				diffuseM2Sum += Pow2(diffuseFastHistoryYCoCg) * weight;
-
-				weightSum += weight;
+				weightSum += 1.f;
 			}
 		}
 
 		const float weightSumRcp = rcp(weightSum);
 
-		const float3 specularM1 = specularM1Sum * weightSumRcp;
-		const float3 specularM2 = specularM2Sum * weightSumRcp;
+		float4 diffSpecCoCg = u_diffSpecCoCg.Load(pixel);
 
-		const float3 diffuseM1 = diffuseM1Sum * weightSumRcp;
-		const float3 diffuseM2 = diffuseM2Sum * weightSumRcp;
-
-		const float3 specularFastHistoryMean     = specularM1;
-		const float3 specularFastHistoryVariance = abs(specularM2 - Pow2(specularM1));
-		const float3 specularFastHistoryStdDev   = sqrt(specularFastHistoryVariance);
-		const float3 specularClampWindow         = 1.3f * specularFastHistoryStdDev;
-
-		const float3 diffuseFastHistoryMean     = diffuseM1;
-		const float3 diffuseFastHistoryVariance = abs(diffuseM2 - Pow2(diffuseM1));
-		const float3 diffuseFastHistoryStdDev   = sqrt(diffuseFastHistoryVariance);
-		const float3 diffuseClampWindow         = 1.5f * diffuseFastHistoryStdDev;
-
-		const SH2<float> specularY_SH2 = Float4ToSH2(u_specularY_SH2.Load(pixel));
-		const SH2<float> diffuseY_SH2  = Float4ToSH2(u_diffuseY_SH2.Load(pixel));
-		const float4 diffSpecCoCg      = u_diffSpecCoCg.Load(pixel);
-
-		const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
-		const float3 diffuseYCoCg  = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);
-
-		const float3 clampedSpecularYCoCg = ApplyHistoryFix(specularYCoCg, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
-		const float3 clampedDiffuseYCoCg  = ApplyHistoryFix(diffuseYCoCg, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
-
-		if(specularYCoCg.x != clampedSpecularYCoCg.x)
+		if(clampSpecular)
 		{
-			const float ratio = specularYCoCg.x > 0.f ? clampedSpecularYCoCg.x / specularYCoCg.x : 1.f;
-			u_specularY_SH2[pixel] = SH2ToFloat4(specularY_SH2) * ratio;
+			const float3 specularM1 = specularM1Sum * weightSumRcp;
+			const float3 specularM2 = specularM2Sum * weightSumRcp;
+
+			const float3 specularFastHistoryMean = specularM1;
+			const float3 specularFastHistoryVariance = abs(specularM2 - Pow2(specularM1));
+			const float3 specularFastHistoryStdDev = sqrt(specularFastHistoryVariance);
+			const float3 specularClampWindow = 2.5f * specularFastHistoryStdDev;
+
+			const SH2<float> specularY_SH2 = Float4ToSH2(u_specularY_SH2.Load(pixel));
+			const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
+			const float3 clampedSpecularYCoCg = ApplyHistoryFix(specularYCoCg, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
+
+			if (specularYCoCg.x != clampedSpecularYCoCg.x)
+			{
+				const float ratio = specularYCoCg.x > 0.f ? clampedSpecularYCoCg.x / specularYCoCg.x : 1.f;
+				u_specularY_SH2[pixel] = SH2ToFloat4(specularY_SH2) * ratio;
+			}
+			diffSpecCoCg.zw = clampedSpecularYCoCg.yz;
 		}
 
-		if (diffuseYCoCg.x != clampedDiffuseYCoCg.x)
+
+		if (clampDiffuse)
 		{
-			const float ratio = diffuseYCoCg.x > 0.f ? clampedDiffuseYCoCg.x / diffuseYCoCg.x : 0.f;
-			u_diffuseY_SH2[pixel] = SH2ToFloat4(diffuseY_SH2) * ratio;
+			const float3 diffuseM1 = diffuseM1Sum * weightSumRcp;
+			const float3 diffuseM2 = diffuseM2Sum * weightSumRcp;
+
+			const float3 diffuseFastHistoryMean = diffuseM1;
+			const float3 diffuseFastHistoryVariance = abs(diffuseM2 - Pow2(diffuseM1));
+			const float3 diffuseFastHistoryStdDev = sqrt(diffuseFastHistoryVariance);
+			const float3 diffuseClampWindow = 2.5f * diffuseFastHistoryStdDev;
+
+			const SH2<float> diffuseY_SH2 = Float4ToSH2(u_diffuseY_SH2.Load(pixel));
+			const float3 diffuseYCoCg = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);
+			const float3 clampedDiffuseYCoCg = ApplyHistoryFix(diffuseYCoCg, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
+
+			if (diffuseYCoCg.x != clampedDiffuseYCoCg.x)
+			{
+				const float ratio = diffuseYCoCg.x > 0.f ? clampedDiffuseYCoCg.x / diffuseYCoCg.x : 0.f;
+				u_diffuseY_SH2[pixel] = SH2ToFloat4(diffuseY_SH2) * ratio;
+			}
+			diffSpecCoCg.xy = clampedDiffuseYCoCg.yz;
 		}
 
-		u_diffSpecCoCg[pixel] = float4(clampedDiffuseYCoCg.yz, clampedSpecularYCoCg.yz);
+		u_diffSpecCoCg[pixel] = diffSpecCoCg;
 	}
 }

@@ -89,7 +89,23 @@ void HitRaysShadingRTG()
 #if USE_DDGI
 		luminance = CalcReflectedLuminance(surface, -rayDirection, DDGISecondaryBounceSampleContext::Create(worldLocation, primaryHitToView), 1.f);
 #else
-		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, hitLocation, hitResult.normal, OUT luminance))
+        const float3 tangent = abs(dot(hitResult.normal, UP_VECTOR)) > 0.9f ? cross(hitResult.normal, RIGHT_VECTOR) : cross(hitResult.normal, UP_VECTOR);
+        const float3 bitangent = cross(hitResult.normal, tangent);
+
+		const HashGridParameters gridParams = CreateHashGridParameters(u_sceneView.viewLocation);
+
+		const uint  gridLevel = HashGridGetLevel(hitLocation, gridParams);
+		const float voxelSize = HashGridGetVoxelSize(gridLevel, gridParams);
+
+		RngState rng = RngState::Create(pixel, u_constants.frameIdx);
+
+		const float2 normalizedOffset = float2(rng.Next(), rng.Next()) * 2.f - 1.f;
+
+		const float3 sampledLocation = hitLocation + voxelSize * normalizedOffset.x * tangent + voxelSize * normalizedOffset.y * bitangent;
+
+		const float NdotV = dot(-rayDirection, hitResult.normal);
+		const float3 materialDemodulation = ComputeMaterialDemodulation(u_brdfIntegrationLUT, u_brdfIntegrationLUTSampler, surface.diffuseColor, surface.specularColor, NdotV, surface.roughness);
+		if (!QueryCachedLuminance(u_sceneView.viewLocation, u_viewExposure.exposure, materialDemodulation, sampledLocation, hitResult.normal, OUT luminance))
 		{
 			luminance = 0.f;
 		}

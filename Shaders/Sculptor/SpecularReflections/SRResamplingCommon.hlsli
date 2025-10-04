@@ -61,13 +61,13 @@ float EvaluateTargetFunction(in MinimalSurfaceInfo surface, in float3 sampleLoca
 
 	const float dotNL = saturate(dot(surface.n, l));
 
-	const float3 specular = SR_GGX_Specular(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0);
-	if(any(isnan(specular)))
+	const RTBRDF brdf = RT_EvaluateBRDF(surface.n, surface.v, l, max(surface.roughness, 0.05f), surface.f0, surface.diffuseColor);
+	if(any(isnan(brdf.specular)))
 	{
 		return 0.f;
 	}
 
-	const float3 Lo = dotNL * sampleLuminance * (specular + Diffuse_Lambert(surface.diffuseColor));
+	const float3 Lo = dotNL * sampleLuminance * (brdf.specular + brdf.diffuse);
 
 	return Luminance(Lo);
 }

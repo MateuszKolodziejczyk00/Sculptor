@@ -14,6 +14,9 @@ struct MaterialDefinition
 	MaterialDefinition()
 		: materialType(EMaterialType::Invalid)
 		, customOpacity(false)
+		, doubleSided(false)
+		, emissive(false)
+		, transparent(false)
 	{ }
 
 	lib::HashedString	name;
@@ -22,6 +25,7 @@ struct MaterialDefinition
 	Uint8 customOpacity : 1;
 	Uint8 doubleSided   : 1;
 	Uint8 emissive      : 1;
+	Uint8 transparent   : 1;
 };
 
 
