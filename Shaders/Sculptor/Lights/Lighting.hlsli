@@ -245,9 +245,11 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 			rayDesc.Origin      = surface.location + surface.geometryNormal * 0.03f;
 			rayDesc.Direction   = -directionalLight.direction;
 
+			const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
+
 			TraceRay(u_sceneTLAS,
 					 RAY_FLAG_SKIP_CLOSEST_HIT_SHADER | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-					 0xFF,
+					 instanceMask,
 					 0,
 					 1,
 					 SPT_LIGHTING_SHADOW_RAY_MISS_SHADER_IDX,

@@ -173,9 +173,11 @@ RayHitResult RTGITraceRay(RaytracingAccelerationStructure tlas, in float3 rayOri
 
 	RTGIRayPayload payload;
 
+	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
+
 	TraceRay(tlas,
 			 0,
-			 0xFF,
+			 instanceMask,
 			 0,
 			 1,
 			 0,

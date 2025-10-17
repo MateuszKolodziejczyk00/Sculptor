@@ -125,7 +125,8 @@ public:
 	const lib::DynamicArray<StaticMeshBatchDefinition>& BuildBatchesForView(const RenderView& view) const;
 	lib::DynamicArray<StaticMeshBatchDefinition>        BuildBatchesForPointLight(const PointLightData& pointLight) const;
 
-	const GeometryPassDataCollection& GetCachedGeometryPassData() const;
+	const GeometryPassDataCollection& GetCachedOpaqueGeometryPassData() const;
+	const GeometryPassDataCollection& GetCachedTransparentGeometryPassData() const;
 
 private:
 
@@ -133,7 +134,8 @@ private:
 	{
 		lib::DynamicArray<StaticMeshBatchDefinition> batches;
 
-		GeometryPassDataCollection geometryPassData;
+		GeometryPassDataCollection opaqueGeometryPassData;
+		GeometryPassDataCollection transparentGeometryPassData;
 	};
 
 	CachedSMBatches CacheStaticMeshBatches() const;

@@ -32,9 +32,11 @@ void DDGIProbeRaysRTG()
 	rayDesc.Origin      = probeWorldLocation;
 	rayDesc.Direction   = rayDirection;
 
+	const uint instanceMask = RT_INSTANCE_FLAG_OPAQUE;
+
 	TraceRay(u_sceneTLAS,
 			 0,
-			 0xFF,
+			 instanceMask,
 			 0,
 			 1,
 			 0,

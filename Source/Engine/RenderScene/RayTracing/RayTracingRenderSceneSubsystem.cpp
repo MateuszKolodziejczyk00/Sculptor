@@ -9,7 +9,7 @@
 #include "MaterialShadersCompiler.h"
 #include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
-
+#pragma optimize("", off)
 namespace spt::rsc
 {
 
@@ -129,13 +129,20 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 					m_areSBTRecordsDirty = true;
 				}
 
-				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
-				tlasInstance.transform			= transformMatrix;
-				tlasInstance.blasAddress		= rtGeometry.blas->GetRHI().GetDeviceAddress();
-				tlasInstance.customIdx			= static_cast<Uint32>(rtInstances.size() - 1);
-				tlasInstance.sbtRecordOffset	= m_materialShaderToSBTRecordIdx.at(materialProxy.materialShadersHash);
+				ETLASGeometryMask mask = ETLASGeometryMask::Opaque;
+				if (materialProxy.params.transparent)
+				{
+					mask = ETLASGeometryMask::Transparent;
+				}
 
-				if (materialProxy.params.materialType == mat::EMaterialType::Opaque)
+				rhi::TLASInstanceDefinition& tlasInstance = tlasDefinition.instances.emplace_back();
+				tlasInstance.transform       = transformMatrix;
+				tlasInstance.blasAddress     = rtGeometry.blas->GetRHI().GetDeviceAddress();
+				tlasInstance.customIdx       = static_cast<Uint32>(rtInstances.size() - 1);
+				tlasInstance.sbtRecordOffset = m_materialShaderToSBTRecordIdx.at(materialProxy.materialShadersHash);
+				tlasInstance.mask            = static_cast<Uint32>(mask);
+
+				if (!materialProxy.params.customOpacity)
 				{
 					lib::AddFlag(tlasInstance.flags, rhi::ETLASInstanceFlags::ForceOpaque);
 				}

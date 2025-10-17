@@ -31,6 +31,11 @@
 #define RIGHT_VECTOR    (float3(0.f, 1.f, 0.f))
 #define UP_VECTOR       (float3(0.f, 0.f, 1.f))
 
+#define RT_INSTANCE_FLAG_NONE        0x0
+#define RT_INSTANCE_FLAG_OPAQUE      0x1
+#define RT_INSTANCE_FLAG_TRANSPARENT 0x2
+#define RT_INSTNACE_FLAG_ALL         0xFF
+
 
 #include "BindlessTypes.hlsli"
 

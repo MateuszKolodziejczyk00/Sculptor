@@ -12,15 +12,13 @@ namespace spt::mat
 struct MaterialDefinition
 {
 	MaterialDefinition()
-		: materialType(EMaterialType::Invalid)
-		, customOpacity(false)
+		: customOpacity(false)
 		, doubleSided(false)
 		, emissive(false)
 		, transparent(false)
 	{ }
 
-	lib::HashedString	name;
-	EMaterialType		materialType;
+	lib::HashedString name;
 
 	Uint8 customOpacity : 1;
 	Uint8 doubleSided   : 1;

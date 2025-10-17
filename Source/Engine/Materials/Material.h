@@ -12,15 +12,6 @@
 namespace spt::mat
 {
 
-enum class EMaterialType : Flags32
-{
-	Invalid,
-	Opaque,
-	AlphaMasked,
-	Transparent
-};
-
-
 enum class EMaterialFlags : Flags32
 {
 	None     = 0,
@@ -86,29 +77,26 @@ private:
 struct MaterialStaticParameters
 {
 	MaterialStaticParameters()
-		: materialType(EMaterialType::Invalid)
-		, customOpacity(false)
+		: customOpacity(false)
 	{ }
 
 	Bool IsValidMaterial() const
 	{
-		return materialType != EMaterialType::Invalid;
+		return materialDataStructName.IsValid() && !!materialShaderHandle;
 	}
 
 	MaterialShadersHash GenerateShaderID() const
 	{
 		const Uint64 hash = lib::HashCombine(static_cast<SizeType>(materialShaderHandle.entity()),
-											 static_cast<SizeType>(materialType),
 											 materialDataStructName,
 											 customOpacity);
 
 		return MaterialShadersHash(hash);
 	}
 
-	EMaterialType materialType;
-
 	Uint8 customOpacity : 1;
 	Uint8 doubleSided   : 1;
+	Uint8 transparent   : 1;
 
 	lib::HashedString materialDataStructName;
 

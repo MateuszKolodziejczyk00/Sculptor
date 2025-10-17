@@ -94,7 +94,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 	gpuBatchData.elementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
 
 	rhi::BufferDefinition batchElementsBufferDef;
-	batchElementsBufferDef.size  = sizeof(GeometryBatchElement) * batchBuildData.batchElements.size();
+	batchElementsBufferDef.size  = sizeof(rdr::HLSLStorage<GeometryBatchElement>) * batchBuildData.batchElements.size();
 	batchElementsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst);
 	lib::SharedRef<rdr::Buffer> batchElementsBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("GeometryBatchElements"), batchElementsBufferDef, rhi::EMemoryUsage::GPUOnly);
 

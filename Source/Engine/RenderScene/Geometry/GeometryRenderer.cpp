@@ -21,22 +21,6 @@ namespace spt::rsc
 namespace geometry_rendering
 {
 
-enum class EGeometryVisPass
-{
-	// Renders geometry that was visible in the previous frame
-	// Performs all culling operations + occlusion culling with last frame's HiZ
-	// Outputs occluded batch elements that are in frustum for DisoccludedGeometryPass pass
-	VisibleGeometryPass,
-	// Renders batch elements that were disoccluded in the current frame
-	// Performs occlusion culling with current frame's HiZ
-	DisoccludedGeometryPass,
-	// Renders meshlets that were disoccluded in the current frame
-	// Note that this is different from DisoccludedGeometryPass pass, because it doesn't process whole batch elements
-	DisoccludedMeshletsPass,
-	Num
-};
-
-
 struct GeometryPassContext
 {
 	GeometryPassContext(rg::RGBufferViewHandle visibleMeshlets, rg::RGBufferViewHandle visibleMeshletsCount)
@@ -47,9 +31,6 @@ struct GeometryPassContext
 	rg::RGBufferViewHandle visibleMeshlets;
 	rg::RGBufferViewHandle visibleMeshletsCount;
 };
-
-namespace priv
-{
 
 BEGIN_SHADER_STRUCT(DispatchOccludedBatchElementsCommand)
 	SHADER_STRUCT_FIELD(Uint32, dispatchGroupsX)
@@ -77,6 +58,21 @@ BEGIN_SHADER_STRUCT(GeometryDrawMeshTaskCommand)
 END_SHADER_STRUCT();
 
 
+BEGIN_SHADER_STRUCT(VisCullingParams)
+	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
+	SHADER_STRUCT_FIELD(math::Vector2f, historyHiZResolution)
+	SHADER_STRUCT_FIELD(Bool,           hasHistoryHiZ)
+END_SHADER_STRUCT();
+
+
+DS_BEGIN(VisCullingDS, rg::RGDescriptorSetState<VisCullingDS>)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_hiZTexture) // valid only for 2nd pass
+	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_historyHiZTexture)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VisCullingParams>),                          u_visCullingParams)
+DS_END();
+
+
 DS_BEGIN(GeometryCullSubmeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryCullSubmeshes_VisibleGeometryPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
@@ -96,26 +92,76 @@ DS_BEGIN(GeometryCullSubmeshes_DisoccludedGeometryPassDS, rg::RGDescriptorSetSta
 DS_END();
 
 
-BEGIN_SHADER_STRUCT(VisCullingParams)
-	SHADER_STRUCT_FIELD(math::Vector2f, hiZResolution)
-	SHADER_STRUCT_FIELD(math::Vector2f, historyHiZResolution)
-	SHADER_STRUCT_FIELD(Bool,           hasHistoryHiZ)
-END_SHADER_STRUCT();
-
-
-DS_BEGIN(VisCullingDS, rg::RGDescriptorSetState<VisCullingDS>)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_hiZTexture) // valid only for 2nd pass
-	DS_BINDING(BINDING_TYPE(gfx::OptionalSRVTexture2DBinding<Real32>),                              u_historyHiZTexture)
-	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearMinClampToEdge>), u_hiZSampler)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<VisCullingParams>),                          u_visCullingParams)
-DS_END();
-
-
 BEGIN_RG_NODE_PARAMETERS_STRUCT(IndirectGeometryBatchDrawParams)
-	RG_BUFFER_VIEW(drawCommands, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
+	RG_BUFFER_VIEW(drawCommands,      rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 	RG_BUFFER_VIEW(drawCommandsCount, rg::ERGBufferAccess::Read, rhi::EPipelineStage::DrawIndirect)
 END_RG_NODE_PARAMETERS_STRUCT();
 
+
+static lib::MTHandle<VisCullingDS> CreateCullingDS(rg::RGTextureViewHandle hiZ, rg::RGTextureViewHandle historyHiZ)
+{
+	const Bool hasHistoryHiZ = historyHiZ.IsValid();
+
+	VisCullingParams visCullingParams;
+	visCullingParams.hiZResolution        = hiZ->GetResolution2D().cast<Real32>();
+	visCullingParams.historyHiZResolution = hasHistoryHiZ ? historyHiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
+	visCullingParams.hasHistoryHiZ        = hasHistoryHiZ;
+
+	lib::MTHandle<VisCullingDS> visCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<VisCullingDS>(RENDERER_RESOURCE_NAME("VisCullingDS"));
+	visCullingDS->u_hiZTexture        = hiZ;
+	visCullingDS->u_historyHiZTexture = historyHiZ;
+	visCullingDS->u_visCullingParams  = visCullingParams;
+
+	return visCullingDS;
+}
+
+
+static mat::MaterialShadersHash GetMaterialShadersHash(const GeometryBatch& batch)
+{
+	const GeometryBatchShader shader = batch.psoInfo.shader;
+
+	if (shader.IsGenericShader())
+	{
+		switch (shader.GetGenericShader())
+		{
+		case GeometryBatchShader::EGenericType::Opaque:
+			return mat::MaterialShadersHash::NoMaterial();
+		default:
+			SPT_CHECK_MSG(false, "Unsupported generic shader");
+			return mat::MaterialShadersHash::NoMaterial();
+		}
+	}
+	else
+	{
+		return shader.GetCustomShader();
+	}
+}
+
+
+static mat::MaterialGraphicsShaders GetMaterialShaders(lib::HashedString techniqueName, const GeometryBatch& batch, const sc::MacroDefinition& passMacroDef)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
+
+	mat::MaterialShadersParameters shaderParams;
+	shaderParams.macroDefinitions.emplace_back(passMacroDef);
+
+	if (batch.psoInfo.shader.IsGenericShader())
+	{
+		if (psoInfo.isDoubleSided)
+		{
+			shaderParams.macroDefinitions.emplace_back("SPT_MATERIAL_DOUBLE_SIDED");
+		}
+	}
+
+	const mat::MaterialShadersHash materialShadersHash = GetMaterialShadersHash(batch);
+	return mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>(techniqueName, materialShadersHash, shaderParams);
+}
+
+
+namespace vis_buffer
+{
 
 DS_BEGIN(GeometryDrawMeshes_VisibleGeometryPassDS, rg::RGDescriptorSetState<GeometryDrawMeshes_VisibleGeometryPassDS>)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
@@ -144,13 +190,29 @@ DS_BEGIN(GeometryDrawMeshes_DisoccludedMeshletsPassDS, rg::RGDescriptorSetState<
 DS_END();
 
 
+enum class EGeometryVisPass
+{
+	// Renders geometry that was visible in the previous frame
+	// Performs all culling operations + occlusion culling with last frame's HiZ
+	// Outputs occluded batch elements that are in frustum for DisoccludedGeometryPass pass
+	VisibleGeometryPass,
+	// Renders batch elements that were disoccluded in the current frame
+	// Performs occlusion culling with current frame's HiZ
+	DisoccludedGeometryPass,
+	// Renders meshlets that were disoccluded in the current frame
+	// Note that this is different from DisoccludedGeometryPass pass, because it doesn't process whole batch elements
+	DisoccludedMeshletsPass,
+	Num
+};
+
+
 template<EGeometryVisPass passIdx>
-struct GeometryPassTraits
+struct GeometryVisPassTraits
 {
 };
 
 template<>
-struct GeometryPassTraits<EGeometryVisPass::VisibleGeometryPass>
+struct GeometryVisPassTraits<EGeometryVisPass::VisibleGeometryPass>
 {
 	using DrawMeshesDSType = GeometryDrawMeshes_VisibleGeometryPassDS;
 
@@ -158,7 +220,7 @@ struct GeometryPassTraits<EGeometryVisPass::VisibleGeometryPass>
 };
 
 template<>
-struct GeometryPassTraits<EGeometryVisPass::DisoccludedGeometryPass>
+struct GeometryVisPassTraits<EGeometryVisPass::DisoccludedGeometryPass>
 {
 	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedGeometryPassDS;
 
@@ -166,7 +228,7 @@ struct GeometryPassTraits<EGeometryVisPass::DisoccludedGeometryPass>
 };
 
 template<>
-struct GeometryPassTraits<EGeometryVisPass::DisoccludedMeshletsPass>
+struct GeometryVisPassTraits<EGeometryVisPass::DisoccludedMeshletsPass>
 {
 	using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedMeshletsPassDS;
 
@@ -174,7 +236,7 @@ struct GeometryPassTraits<EGeometryVisPass::DisoccludedMeshletsPass>
 };
 
 
-struct BatchGPUData
+struct VisBatchGPUData
 {
 	rg::RGBufferViewHandle drawCommands;
 	rg::RGBufferViewHandle drawCommandsCount;
@@ -189,11 +251,11 @@ struct BatchGPUData
 };
 
 
-static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const GeometryBatch& batch)
+static VisBatchGPUData CreateVisGPUBatch(rg::RenderGraphBuilder& graphBuilder, const GeometryBatch& batch)
 {
 	SPT_PROFILER_FUNCTION();
 
-	BatchGPUData batchGPUData;
+	VisBatchGPUData batchGPUData;
 
 	rhi::BufferDefinition drawCommandsBufferDef;
 	drawCommandsBufferDef.size  = sizeof(GeometryDrawMeshTaskCommand) * batch.batchElementsNum;
@@ -252,24 +314,6 @@ static BatchGPUData CreateGPUBatch(rg::RenderGraphBuilder& graphBuilder, const G
 }
 
 
-static lib::MTHandle<VisCullingDS> CreateCullingDS(const VisPassParams& visPassParams)
-{
-	const Bool hasHistoryHiZ = visPassParams.historyHiZ.IsValid();
-
-	VisCullingParams visCullingParams;
-	visCullingParams.hiZResolution        = visPassParams.hiZ->GetResolution2D().cast<Real32>();
-	visCullingParams.historyHiZResolution = hasHistoryHiZ ? visPassParams.historyHiZ->GetResolution2D().cast<Real32>() : math::Vector2f{};
-	visCullingParams.hasHistoryHiZ        = hasHistoryHiZ;
-
-	lib::MTHandle<VisCullingDS> visCullingDS = rdr::ResourcesManager::CreateDescriptorSetState<VisCullingDS>(RENDERER_RESOURCE_NAME("VisCullingDS"));
-	visCullingDS->u_hiZTexture        = visPassParams.hiZ;
-	visCullingDS->u_historyHiZTexture = visPassParams.historyHiZ;
-	visCullingDS->u_visCullingParams  = visCullingParams;
-
-	return visCullingDS;
-}
-
-
 template<EGeometryVisPass passIdx>
 static sc::MacroDefinition GetPassIdxMacroDef()
 {
@@ -278,48 +322,14 @@ static sc::MacroDefinition GetPassIdxMacroDef()
 }
 
 
-static mat::MaterialShadersHash GetMaterialShadersHash(const GeometryBatch& batch)
-{
-	const GeometryBatchShader shader = batch.psoInfo.shader;
-
-	if (shader.IsGenericShader())
-	{
-		switch (shader.GetGenericShader())
-		{
-		case GeometryBatchShader::EGenericType::Opaque:
-			return mat::MaterialShadersHash::NoMaterial();
-		default:
-			SPT_CHECK_MSG(false, "Unsupported generic shader");
-			return mat::MaterialShadersHash::NoMaterial();
-		}
-	}
-	else
-	{
-		return shader.GetCustomShader();
-	}
-}
-
-
 template<EGeometryVisPass passIdx>
-static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassParams, const GeometryPassContext& passContext, const GeometryBatch& batch)
+static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassParams, const GeometryBatch& batch)
 {
 	SPT_PROFILER_FUNCTION();
 
 	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
 
-	mat::MaterialShadersParameters shaderParams;
-	shaderParams.macroDefinitions.emplace_back(GetPassIdxMacroDef<passIdx>());
-
-	if (batch.psoInfo.shader.IsGenericShader())
-	{
-		if (psoInfo.isDoubleSided)
-		{
-			shaderParams.macroDefinitions.emplace_back("SPT_MATERIAL_DOUBLE_SIDED");
-		}
-	}
-
-	const mat::MaterialShadersHash materialShadersHash = GetMaterialShadersHash(batch);
-	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("GeometryVisibility", materialShadersHash, shaderParams);
+	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryVisibility", batch, GetPassIdxMacroDef<passIdx>());
 
 	rhi::GraphicsPipelineDefinition pipelineDef;
 	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
@@ -339,16 +349,16 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 }
 
 
-lib::DynamicArray<BatchGPUData> BuildGPUBatches(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
+lib::DynamicArray<VisBatchGPUData> BuildGPUBatches(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams)
 {
 	SPT_PROFILER_FUNCTION();
 
-	lib::DynamicArray<BatchGPUData> batchesGPUData;
+	lib::DynamicArray<VisBatchGPUData> batchesGPUData;
 	batchesGPUData.reserve(visPassParams.geometryPassData.geometryBatches.size());
 
 	for (const GeometryBatch& batch : visPassParams.geometryPassData.geometryBatches)
 	{
-		BatchGPUData batchGPUData = CreateGPUBatch(graphBuilder, batch);
+		VisBatchGPUData batchGPUData = CreateVisGPUBatch(graphBuilder, batch);
 		batchesGPUData.emplace_back(std::move(batchGPUData));
 	}
 
@@ -357,7 +367,7 @@ lib::DynamicArray<BatchGPUData> BuildGPUBatches(rg::RenderGraphBuilder& graphBui
 
 
 template<EGeometryVisPass passIdx>
-void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, lib::Span<const BatchGPUData> gpuBatches)
+void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, lib::Span<const VisBatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -375,8 +385,8 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 	
 	for(SizeType batchIdx = 0u; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
-		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
-		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
+		const GeometryBatch& batch          = visPassParams.geometryPassData.geometryBatches[batchIdx];
+		const VisBatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
 		graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Initialize Draw Commands Count"), batchGPUData.drawCommandsCount, 0u);
 
@@ -395,14 +405,14 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 			const Uint32 groupSize = 64u;
 			const Uint32 dispatchGroups = math::Utils::DivideCeil(batch.batchElementsNum, groupSize);
 
-			graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryPassTraits<passIdx>::GetPassName()),
+			graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
 								  cullSubmeshesPipeline,
 								  dispatchGroups,
 								  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
 		}
 		else if constexpr (passIdx == EGeometryVisPass::DisoccludedGeometryPass)
 		{
-			graphBuilder.DispatchIndirect(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryPassTraits<passIdx>::GetPassName()),
+			graphBuilder.DispatchIndirect(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
 										  cullSubmeshesPipeline,
 										  batchGPUData.dispatchOccludedBatchElementsCommand,
 										  0u,
@@ -442,7 +452,7 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 		renderPassDef.AddColorRenderTarget(visibilityRTDef);
 	}
 	
-	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Visibility Pass ({})", GeometryPassTraits<passIdx>::GetPassName()),
+	graphBuilder.RenderPass(RG_DEBUG_NAME_FORMATTED("Visibility Pass ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
 							renderPassDef,
 							rg::EmptyDescriptorSets(),
 							[resolution](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
@@ -454,20 +464,20 @@ static void CreateRenderPass(rg::RenderGraphBuilder& graphBuilder, const VisPass
 
 
 template<EGeometryVisPass passIdx>
-static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const VisBatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
 	static_assert(passIdx == EGeometryVisPass::VisibleGeometryPass || passIdx == EGeometryVisPass::DisoccludedGeometryPass);
 
-	using GeometryDrawMeshesDS = typename GeometryPassTraits<passIdx>::DrawMeshesDSType;
+	using GeometryDrawMeshesDS = typename GeometryVisPassTraits<passIdx>::DrawMeshesDSType;
 
 	CreateRenderPass<passIdx>(graphBuilder, visPassParams, passContext);
 
 	for (SizeType batchIdx = 0; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
 		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
-		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
+		const VisBatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
 		lib::MTHandle<GeometryDrawMeshesDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshesDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshesDS"));
 		drawMeshesDS->u_visibleMeshlets      = passContext.visibleMeshlets;
@@ -481,7 +491,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPas
 			drawMeshesDS->u_occludedMeshletsDispatchCommand = batchGPUData.dispatchOccludedMeshletsCommand;
 		}
 
-		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, passContext, batch);
+		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, batch);
 
 		const Uint32 maxDrawsCount = batch.batchElementsNum;
 
@@ -489,7 +499,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPas
 		indirectDrawParams.drawCommands      = batchGPUData.drawCommands;
 		indirectDrawParams.drawCommandsCount = batchGPUData.drawCommandsCount;
 
-		graphBuilder.AddSubpass(RG_DEBUG_NAME_FORMATTED("Batch Subpass ({})", GeometryPassTraits<passIdx>::GetPassName()),
+		graphBuilder.AddSubpass(RG_DEBUG_NAME_FORMATTED("Batch Subpass ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
 								rg::BindDescriptorSets(drawMeshesDS, batch.batchDS, GeometryManager::Get().GetGeometryDSState()),
 								std::tie(indirectDrawParams),
 								[indirectDrawParams, pipeline, maxDrawsCount]
@@ -511,7 +521,7 @@ static void DrawBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPas
 }
 
 
-static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const VisBatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -522,7 +532,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 	for (SizeType batchIdx = 0; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
 		const GeometryBatch& batch       = visPassParams.geometryPassData.geometryBatches[batchIdx];
-		const BatchGPUData& batchGPUData = gpuBatches[batchIdx];
+		const VisBatchGPUData& batchGPUData = gpuBatches[batchIdx];
 
 		lib::MTHandle<GeometryDrawMeshes_DisoccludedMeshletsPassDS> drawMeshesDS = graphBuilder.CreateDescriptorSet<GeometryDrawMeshes_DisoccludedMeshletsPassDS>(RENDERER_RESOURCE_NAME("GeometryDrawMeshes_DisoccludedMeshletsPassDS"));
 		drawMeshesDS->u_visibleMeshlets       = passContext.visibleMeshlets;
@@ -530,7 +540,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 		drawMeshesDS->u_occludedMeshlets      = batchGPUData.occludedMeshlets;
 		drawMeshesDS->u_occludedMeshletsCount = batchGPUData.occludedMeshletsCount;
 
-		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, passContext, batch);
+		const rdr::PipelineStateID pipeline = CreatePipelineForBatch<passIdx>(visPassParams, batch);
 
 		IndirectGeometryBatchDrawParams indirectDrawParams;
 		indirectDrawParams.drawCommands = batchGPUData.dispatchOccludedMeshletsCommand;
@@ -554,7 +564,7 @@ static void DrawDisoccludedMeshlets(rg::RenderGraphBuilder& graphBuilder, const 
 }
 
 
-static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const VisBatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -563,7 +573,7 @@ static void DrawGeometryVisibleLastFrame(rg::RenderGraphBuilder& graphBuilder, c
 }
 
 
-static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const BatchGPUData> gpuBatches)
+static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext, lib::Span<const VisBatchGPUData> gpuBatches)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -572,7 +582,6 @@ static void DrawDisoccludedGeometry(rg::RenderGraphBuilder& graphBuilder, const 
 	DrawDisoccludedMeshlets(graphBuilder, visPassParams, passContext, gpuBatches);
 }
 
-} // priv
 
 static void RenderGeometryPrologue(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, const GeometryPassContext& passContext)
 {
@@ -589,7 +598,7 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Vi
 	const ViewRenderingSpec& viewSpec = visPassParams.viewSpec;
 	const RenderView& renderView      = viewSpec.GetRenderView();
 
-	const lib::MTHandle<priv::VisCullingDS> cullingDS = priv::CreateCullingDS(visPassParams);
+	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(visPassParams.hiZ, visPassParams.historyHiZ);
 
 	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
 															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
@@ -597,16 +606,248 @@ static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const Vi
 																					renderView.GetRenderViewDS(),
 																					cullingDS));
 
-	const lib::DynamicArray<priv::BatchGPUData> gpuBatches = priv::BuildGPUBatches(graphBuilder, visPassParams);
+	const lib::DynamicArray<VisBatchGPUData> gpuBatches = BuildGPUBatches(graphBuilder, visPassParams);
 
-	priv::DrawGeometryVisibleLastFrame(graphBuilder, visPassParams, passContext, gpuBatches);
+	DrawGeometryVisibleLastFrame(graphBuilder, visPassParams, passContext, gpuBatches);
 
 	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.depth, visPassParams.hiZ->GetTexture());
 
-	priv::DrawDisoccludedGeometry(graphBuilder, visPassParams, passContext, gpuBatches);
+	DrawDisoccludedGeometry(graphBuilder, visPassParams, passContext, gpuBatches);
 
 	HiZ::CreateHierarchicalZ(graphBuilder, visPassParams.depth, visPassParams.hiZ->GetTexture());
 }
+
+} // vis_buffer
+
+namespace oit
+{
+
+enum class EOITPass
+{
+	HashPass,
+	ABufferPass,
+	Num
+};
+
+
+template<EOITPass passIdx>
+struct OITPassTraits
+{
+};
+
+template<>
+struct OITPassTraits<EOITPass::HashPass>
+{
+	//using DrawMeshesDSType = GeometryDrawMeshes_VisibleGeometryPassDS;
+
+	static constexpr const char* GetPassName() { return "Hash Pass"; }
+};
+
+template<>
+struct OITPassTraits<EOITPass::ABufferPass>
+{
+	//using DrawMeshesDSType = GeometryDrawMeshes_DisoccludedGeometryPassDS;
+
+	static constexpr const char* GetPassName() { return "A-Buffer Pass"; }
+};
+
+
+struct OITBatchGPUData
+{
+	const GeometryBatch& def;
+
+	rg::RGBufferViewHandle drawCommands;
+	rg::RGBufferViewHandle drawCommandsCount;
+};
+
+
+static OITBatchGPUData CreateOITGPUBatch(rg::RenderGraphBuilder& graphBuilder, const GeometryBatch& batch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	OITBatchGPUData batchGPUData{ batch };
+
+	rhi::BufferDefinition drawCommandsBufferDef;
+	drawCommandsBufferDef.size  = sizeof(GeometryDrawMeshTaskCommand) * batch.batchElementsNum;
+	drawCommandsBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect);
+	const rg::RGBufferViewHandle drawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands"), drawCommandsBufferDef, rhi::EMemoryUsage::GPUOnly);
+
+	rhi::BufferDefinition drawCommandsCountBufferDef;
+	drawCommandsCountBufferDef.size  = sizeof(Uint32);
+	drawCommandsCountBufferDef.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst);
+	const rg::RGBufferViewHandle drawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Draw Mesh Commands Count"), drawCommandsCountBufferDef, rhi::EMemoryUsage::GPUOnly);
+	batchGPUData.drawCommands                         = drawCommands;
+	batchGPUData.drawCommandsCount                    = drawCommandsCount;
+
+	return batchGPUData;
+}
+
+
+template<EOITPass passIdx>
+static sc::MacroDefinition GetPassIdxMacroDef()
+{
+	static constexpr const char* value[] = { "0", "1", "2" };
+	return sc::MacroDefinition("OIT_PASS_IDX", value[static_cast<Uint32>(passIdx)]);
+}
+
+
+template<EOITPass passIdx>
+static rdr::PipelineStateID CreatePipelineForBatch(const GeometryOITPassParams& oitPassParams, const GeometryBatch& batch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
+
+	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryOIT", batch, GetPassIdxMacroDef<passIdx>());
+
+	rhi::GraphicsPipelineDefinition pipelineDef;
+	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
+	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(oitPassParams.depth->GetFormat(), rhi::ECompareOp::Greater);
+
+	if (psoInfo.isDoubleSided)
+	{
+		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
+	}
+	
+	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry OIT Pipeline"),
+																				   shaders.GetGraphicsPipelineShaders(),
+																				   pipelineDef);
+
+	return pipeline;
+}
+
+
+DS_BEGIN(OITCullBatchElementsDS, rg::RGDescriptorSetState<OITCullBatchElementsDS>)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<GeometryDrawMeshTaskCommand>), u_drawCommands)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                      u_drawCommandsCount)
+DS_END();
+
+
+static rdr::PipelineStateID CreateCullBatchElementsPipeline()
+{
+	const rdr::ShaderID cullBatchElementsShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/OIT_CullBatchElements.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullBatchElementsCS"));
+	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("OIT_CullBatchElementsPipeline"), cullBatchElementsShader);
+}
+
+
+static void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams, const OITBatchGPUData& oitBatch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	graphBuilder.FillFullBuffer(RG_DEBUG_NAME("Clear Draw Commands Num"), oitBatch.drawCommandsCount, 0u);
+
+	lib::MTHandle<OITCullBatchElementsDS> cullBatchElementsDS = graphBuilder.CreateDescriptorSet<OITCullBatchElementsDS>(RENDERER_RESOURCE_NAME("OITCullBatchElementsDS"));
+	cullBatchElementsDS->u_drawCommands      = oitBatch.drawCommands;
+	cullBatchElementsDS->u_drawCommandsCount = oitBatch.drawCommandsCount;
+
+	static const rdr::PipelineStateID pipeline = CreateCullBatchElementsPipeline();
+
+	graphBuilder.Dispatch(RG_DEBUG_NAME("Cull Batch Elements"),
+						  pipeline,
+						  math::Utils::DivideCeil(oitBatch.def.batchElementsNum, 64u),
+						  rg::BindDescriptorSets(oitBatch.def.batchDS, cullBatchElementsDS));
+}
+
+
+rg::RGTextureViewHandle RenderHashPass(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams, const OITBatchGPUData& oitBatch)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const math::Vector2u resolution = oitPassParams.viewSpec.GetRenderView().GetRenderingHalfRes();
+
+	const rg::RGTextureViewHandle hashTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("OIT Hash Texture"), rg::TextureDef(resolution, rhi::EFragmentFormat::R32_U_Int), rhi::EMemoryUsage::GPUOnly);
+
+	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Hash Texture"), hashTexture, rhi::ClearColor(0u, 0u, 0u, 0u));
+
+	rg::RGRenderPassDefinition renderPassDef(math::Vector2i(0, 0), resolution);
+
+	rg::RGRenderTargetDef depthRTDef;
+	depthRTDef.textureView    = oitPassParams.depth;
+	depthRTDef.loadOperation  = rhi::ERTLoadOperation::Load;
+	depthRTDef.storeOperation = rhi::ERTStoreOperation::Store;
+	renderPassDef.SetDepthRenderTarget(depthRTDef);
+
+	IndirectGeometryBatchDrawParams indirectDrawParams;
+	indirectDrawParams.drawCommands      = oitBatch.drawCommands;
+	indirectDrawParams.drawCommandsCount = oitBatch.drawCommandsCount;
+
+	const rdr::PipelineStateID pipeline = CreatePipelineForBatch<EOITPass::HashPass>(oitPassParams, oitBatch.def);
+
+	const Uint32 maxDrawsCount = oitBatch.def.batchElementsNum;
+
+	graphBuilder.RenderPass(RG_DEBUG_NAME("OIT Hash Pass"),
+							renderPassDef,
+							rg::EmptyDescriptorSets(),
+							std::tie(indirectDrawParams),
+							[resolution, pipeline, indirectDrawParams, maxDrawsCount](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
+							{
+								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), resolution.cast<Real32>()), 0.f, 1.f);
+								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), resolution));
+
+								recorder.BindGraphicsPipeline(pipeline);
+
+								const rdr::BufferView& drawCommandsView      = *indirectDrawParams.drawCommands->GetResource();
+								const rdr::BufferView& drawCommandsCountView = *indirectDrawParams.drawCommandsCount->GetResource();
+
+								recorder.DrawMeshTasksIndirectCount(drawCommandsView.GetBuffer(),
+																	drawCommandsView.GetOffset(),
+																	sizeof(GeometryDrawMeshTaskCommand),
+																	drawCommandsCountView.GetBuffer(),
+																	drawCommandsCountView.GetOffset(),
+																	maxDrawsCount);
+
+							});
+
+	return hashTexture;
+}
+
+
+static void RenderGeometryPrologue(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams, const GeometryPassContext& passContext)
+{
+	SPT_PROFILER_FUNCTION();
+
+	graphBuilder.FillBuffer(RG_DEBUG_NAME("Reset Visible Meshlets Count"), passContext.visibleMeshletsCount, 0u, passContext.visibleMeshletsCount->GetSize(), 0u);
+}
+
+
+static void RenderGeometryVisPass(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams, const GeometryPassContext& passContext)
+{
+	SPT_PROFILER_FUNCTION();
+
+	const ViewRenderingSpec& viewSpec = oitPassParams.viewSpec;
+	const RenderView& renderView      = viewSpec.GetRenderView();
+
+	const lib::MTHandle<VisCullingDS> cullingDS = CreateCullingDS(oitPassParams.hiZ, nullptr);
+
+	const rg::BindDescriptorSetsScope geometryCullingDSScope(graphBuilder,
+															 rg::BindDescriptorSets(StaticMeshUnifiedData::Get().GetUnifiedDataDS(),
+																					mat::MaterialsUnifiedData::Get().GetMaterialsDS(),
+																					renderView.GetRenderViewDS(),
+																					cullingDS));
+
+	SPT_CHECK(oitPassParams.geometryPassData.geometryBatches.size() == 1u);
+
+	const OITBatchGPUData gpuBatch = CreateOITGPUBatch(graphBuilder, oitPassParams.geometryPassData.geometryBatches[0]);
+
+	CullBatchElements(graphBuilder, oitPassParams, gpuBatch);
+
+	SPT_MAYBE_UNUSED
+	const rg::RGTextureViewHandle hashTexture = RenderHashPass(graphBuilder, oitPassParams, gpuBatch);
+
+	// TODO: alloc A-Buffer draws
+
+	// TODO: Draw A-Buffer pass
+
+	// TODO: sort A-Buffer
+
+	// TODO: Shading + blending
+
+	// TODO: resolve
+
+
+}
+
+} // oit
 
 } // geometry_rendering
 
@@ -637,19 +878,41 @@ GeometryPassResult GeometryRenderer::RenderVisibility(rg::RenderGraphBuilder& gr
 	SPT_CHECK(visPassParams.hiZ.IsValid());
 	SPT_CHECK(visPassParams.visibilityTexture.IsValid());
 
-	const rg::RGBufferViewHandle visibleMeshlets = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
+	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
 	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
 
 	geometry_rendering::GeometryPassContext passContext(visibleMeshlets, visibleMeshletsCount);
 
-	geometry_rendering::RenderGeometryPrologue(graphBuilder, visPassParams, passContext);
+	geometry_rendering::vis_buffer::RenderGeometryPrologue(graphBuilder, visPassParams, passContext);
 
-	geometry_rendering::RenderGeometryVisPass(graphBuilder, visPassParams, passContext);
+	geometry_rendering::vis_buffer::RenderGeometryVisPass(graphBuilder, visPassParams, passContext);
 
 	GeometryPassResult result;
 	result.visibleMeshlets = visibleMeshlets;
 
 	return result;
+}
+
+GeometryOITResult GeometryRenderer::RenderTransparentGeometry(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams)
+{
+	SPT_PROFILER_FUNCTION();
+
+	SPT_RG_DIAGNOSTICS_SCOPE(graphBuilder, "Geometry OIT");
+
+	const rg::RGBufferViewHandle visibleMeshlets      = graphBuilder.AcquireExternalBufferView(m_visibleMeshlets->GetFullView());
+	const rg::RGBufferViewHandle visibleMeshletsCount = graphBuilder.AcquireExternalBufferView(m_visibleMeshletsCount->GetFullView());
+
+	geometry_rendering::GeometryPassContext passContext(visibleMeshlets, visibleMeshletsCount);
+
+	geometry_rendering::oit::RenderGeometryPrologue(graphBuilder, oitPassParams, passContext);
+
+	geometry_rendering::oit::RenderGeometryVisPass(graphBuilder, oitPassParams, passContext);
+
+	GeometryOITResult result;
+	// TODO
+
+	return result;
+
 }
 
 } // spt::rsc

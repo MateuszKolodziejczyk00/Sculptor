@@ -24,6 +24,11 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 		const ecs::EntityHandle material = materialsSlots.slots[idx];
 		const mat::MaterialProxyComponent& materialProxy = material.get<mat::MaterialProxyComponent>();
 
+		if (materialProxy.params.transparent)
+		{
+			continue;
+		}
+
 		const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
 
 		BatchBuildData& batch = GetBatchBuildDataForMaterial(materialProxy.materialShadersHash);
@@ -153,9 +158,14 @@ lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::Bui
 	return batches;
 }
 
-const GeometryPassDataCollection& StaticMeshRenderSceneSubsystem::GetCachedGeometryPassData() const
+const GeometryPassDataCollection& StaticMeshRenderSceneSubsystem::GetCachedOpaqueGeometryPassData() const
 {
-	return m_cachedSMBatches.geometryPassData;
+	return m_cachedSMBatches.opaqueGeometryPassData;
+}
+
+const GeometryPassDataCollection& StaticMeshRenderSceneSubsystem::GetCachedTransparentGeometryPassData() const
+{
+	return m_cachedSMBatches.transparentGeometryPassData;
 }
 
 StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::CacheStaticMeshBatches() const
@@ -166,9 +176,11 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 
 	SMBatchesBuilder batchesBuilder(cachedBatches.batches);
 
-	GeometryDrawer geometryDrawer(OUT cachedBatches.geometryPassData);
+	GeometryDrawer opaqueGeometryDrawer(OUT cachedBatches.opaqueGeometryPassData);
+	GeometryDrawer transparentGeometryDrawer(OUT cachedBatches.transparentGeometryPassData);
 
 	const auto meshesView = GetOwningScene().GetRegistry().view<const StaticMeshInstanceRenderData, const EntityGPUDataHandle, const rsc::MaterialSlotsComponent>();
+	// Legacy (currently, shadows only)
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
 		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
@@ -179,6 +191,7 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 		batchesBuilder.AppendMeshToBatch(entityPtr, staticMeshRenderData, meshRenderingDef, materialsSlots);
 	}
 
+	// New system
 	for (const auto& [entity, staticMeshRenderData, entityGPUDataHandle, materialsSlots] : meshesView.each())
 	{
 		const ecs::EntityHandle staticMeshDataHandle = staticMeshRenderData.staticMesh;
@@ -197,12 +210,21 @@ StaticMeshRenderSceneSubsystem::CachedSMBatches StaticMeshRenderSceneSubsystem::
 			geometryDef.submeshPtr  = meshRenderingDef.submeshesPtr + idx;
 			geometryDef.meshletsNum = submeshDef.meshletsNum;
 
-			geometryDrawer.Draw(geometryDef, materialProxy);
+			if (materialProxy.params.transparent)
+			{
+				transparentGeometryDrawer.Draw(geometryDef, materialProxy);
+			}
+			else
+			{
+				opaqueGeometryDrawer.Draw(geometryDef, materialProxy);
+			}
 		}
 	}
 
 	batchesBuilder.FinalizeBatches();
-	geometryDrawer.FinalizeDraws();
+
+	opaqueGeometryDrawer.FinalizeDraws();
+	transparentGeometryDrawer.FinalizeDraws();
 
 	return cachedBatches;
 

@@ -34,6 +34,14 @@ DS_BEGIN(SceneRayTracingDS, rg::RGDescriptorSetState<SceneRayTracingDS>)
 DS_END();
 
 
+enum class ETLASGeometryMask : Uint32
+{
+	None        = 0u,
+	Opaque      = BIT(0u),
+	Transparent = BIT(1u)
+};
+
+
 class RENDER_SCENE_API RayTracingRenderSceneSubsystem : public RenderSceneSubsystem
 {
 protected:

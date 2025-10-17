@@ -46,6 +46,23 @@ struct GeometryPassResult
 };
 
 
+struct GeometryOITPassParams
+{
+	ViewRenderingSpec& viewSpec;
+
+	const GeometryPassDataCollection& geometryPassData;
+
+	rg::RGTextureViewHandle depth;
+	rg::RGTextureViewHandle hiZ;
+};
+
+
+struct GeometryOITResult
+{
+	rg::RGBufferViewHandle visibleMeshlets;
+};
+
+
 class GeometryRenderer
 {
 public:
@@ -53,6 +70,7 @@ public:
 	GeometryRenderer();
 
 	GeometryPassResult RenderVisibility(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams);
+	GeometryOITResult  RenderTransparentGeometry(rg::RenderGraphBuilder& graphBuilder, const GeometryOITPassParams& oitPassParams);
 
 private:
 

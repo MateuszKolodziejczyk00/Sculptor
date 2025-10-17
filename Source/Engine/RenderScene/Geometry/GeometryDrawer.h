@@ -38,8 +38,8 @@ private:
 			return !batchElements.empty();
 		}
 
-		lib::DynamicArray<GeometryBatchElement> batchElements;
-		Uint32                                  meshletsNum = 0;
+		lib::DynamicArray<rdr::HLSLStorage<GeometryBatchElement>> batchElements;
+		Uint32                                                    meshletsNum = 0u;
 	};
 
 	Uint16 GetMaterialBatchIdx(mat::MaterialShadersHash materialShadersHash);

@@ -104,7 +104,7 @@ void VisibilityBufferRenderStage::ExecuteVisbilityBufferRendering(rg::RenderGrap
 	ShadingViewContext& shadingContext = viewSpec.GetShadingViewContext();
 
 	const StaticMeshRenderSceneSubsystem& staticMeshPrimsSystem = renderScene.GetSceneSubsystemChecked<StaticMeshRenderSceneSubsystem>();
-	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedGeometryPassData();
+	const GeometryPassDataCollection& cachedGeometryPassData    = staticMeshPrimsSystem.GetCachedOpaqueGeometryPassData();
 	
 	const rg::RGTextureViewHandle depth        = graphBuilder.AcquireExternalTextureView(m_currentDepthTexture);
 	const rg::RGTextureViewHandle hiZ          = graphBuilder.AcquireExternalTextureView(m_currentHiZTexture);

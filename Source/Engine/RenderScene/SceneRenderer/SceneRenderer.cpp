@@ -18,6 +18,7 @@
 #include "RenderStages/MotionAndDepthRenderStage.h"
 #include "RenderStages/AntiAliasingRenderStage.h"
 #include "RenderStages/CompositeLightingRenderStage.h"
+#include "RenderStages/TransparencyRenderStage.h"
 #include "RenderStages/PostProcessPreAARenderStage.h"
 #include "RenderGraphBuilder.h"
 #include "Parameters/SceneRendererParams.h"
@@ -117,6 +118,8 @@ rg::RGTextureViewHandle SceneRenderer::Render(rg::RenderGraphBuilder& graphBuild
 	renderer_utils::ProcessRenderStage<SpecularReflectionsRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 	
 	renderer_utils::ProcessRenderStage<CompositeLightingRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
+
+	renderer_utils::ProcessRenderStage<TransparencyRenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
 	renderer_utils::ProcessRenderStage<PostProcessPreAARenderStage>(graphBuilder, scene, renderViewsSpecs, settings);
 
