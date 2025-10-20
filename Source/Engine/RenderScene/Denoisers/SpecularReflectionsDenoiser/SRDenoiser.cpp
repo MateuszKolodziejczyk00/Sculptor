@@ -243,6 +243,9 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Specular Moments", m_debugName.AsString()), temporalVarianceSpecularTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Diffuse Moments", m_debugName.AsString()), temporalVarianceDiffuseTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
 
+		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Specular History Lenght", m_debugName.AsString()), specularHistoryLengthTexture, rhi::ClearColor(0u, 0u, 0u, 0u));
+		graphBuilder.ClearTexture(RG_DEBUG_NAME_FORMATTED("{}: Clear Diffuse History Lenght", m_debugName.AsString()), diffuseHistoryLengthTexture, rhi::ClearColor(0u, 0u, 0u, 0u));
+
 		utils::PackToSH(graphBuilder, specularTexture, diffuseTexture, params.normalsTexture, SHTextures{specularY_SH2, diffuseY_SH2, diffSpecCoCg});
 	}
 
