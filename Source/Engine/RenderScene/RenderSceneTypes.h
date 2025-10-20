@@ -7,6 +7,7 @@
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "Bindless/BindlessTypes.h"
 #include "StaticMeshes/StaticMeshGeometry.h"
+#include "RenderSceneRegistry.h"
 
 
 namespace spt::rsc

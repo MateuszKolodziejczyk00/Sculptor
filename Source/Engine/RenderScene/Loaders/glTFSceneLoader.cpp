@@ -426,22 +426,6 @@ static lib::DynamicArray<Uint32> LoadImages(const tinygltf::Model& model)
 	return textureIndicesInMaterialDS;
 }
 
-static mat::EMaterialType GetMaterialType(const tinygltf::Material& materialDef)
-{
-	mat::EMaterialType materialType = mat::EMaterialType::Opaque;
-
-	if (materialDef.alphaMode == "MASK")
-	{
-		materialType = mat::EMaterialType::AlphaMasked;
-	}
-	else if (materialDef.alphaMode == "BLEND")
-	{
-		materialType = mat::EMaterialType::AlphaMasked;
-	}
-
-	return materialType;
-}
-
 static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Model& model, const lib::DynamicArray<Uint32>& textureIndicesInMaterialDS)
 {
 	const auto getLoadedTextureIndex = [&model, &textureIndicesInMaterialDS](int modelTextureIdx)
@@ -479,10 +463,13 @@ static lib::DynamicArray<ecs::EntityHandle> CreateMaterials(const tinygltf::Mode
 		pbrData.emissiveFactor              = math::Map<const math::Vector3d>(materialSourceDef.emissiveFactor.data()).cast<Real32>() * emissiveStrength;
 		pbrData.emissiveTextureIdx          = getLoadedTextureIndex(materialSourceDef.emissiveTexture.index);
 
+		const Bool isTransparent = materialSourceDef.alphaMode == "BLEND";
+		const Bool isMasked      = materialSourceDef.alphaMode == "MASK";
+
 		mat::MaterialDefinition materialDefinition;
 		materialDefinition.name          = materialSourceDef.name;
-		materialDefinition.materialType  = GetMaterialType(materialSourceDef);
-		materialDefinition.customOpacity = materialDefinition.materialType == mat::EMaterialType::AlphaMasked;
+		materialDefinition.customOpacity = isMasked;
+		materialDefinition.transparent   = isTransparent;
 		materialDefinition.doubleSided   = materialSourceDef.doubleSided;
 		materialDefinition.emissive      = materialSourceDef.emissiveFactor[0] > 0.f || materialSourceDef.emissiveFactor[1] > 0.f || materialSourceDef.emissiveFactor[2] > 0.f;
 
