@@ -1,6 +1,6 @@
 Environment: 1
-GenerateDebugInfo: true
-CompileWithDebugs: true
+GenerateDebugInfo: false
+CompileWithDebugs: false
 UseCompiledShadersCache: true
 CacheSeparateSpvFile: false
 ShadersPath: Shaders
