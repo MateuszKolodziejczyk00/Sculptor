@@ -63,6 +63,21 @@ public:
 	}
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
+#if WITH_SHADERS_HOT_RELOAD
+	void AddFileDependencyUnique(lib::String filePath)
+	{
+		if (std::find(m_fileDependencies.cbegin(), m_fileDependencies.cend(), filePath) == m_fileDependencies.cend())
+		{
+			m_fileDependencies.emplace_back(std::move(filePath));
+		}
+	}
+
+	const lib::DynamicArray<lib::String>& GetFileDependencies() const
+	{
+		return m_fileDependencies;
+	}
+#endif // WITH_SHADERS_HOT_RELOAD
+
 private:
 
 	lib::DynamicArray<sc::DescriptorSetCompilationMetaData> m_dsMetaData;
@@ -70,6 +85,10 @@ private:
 #if SPT_SHADERS_DEBUG_FEATURES
 	ShaderDebugMetaData debugMetaData;
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+#if WITH_SHADERS_HOT_RELOAD
+	lib::DynamicArray<lib::String> m_fileDependencies;
+#endif // WITH_SHADERS_HOT_RELOAD
 };
 
 } // spt::sc

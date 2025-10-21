@@ -28,6 +28,10 @@ public:
 #if SPT_SHADERS_DEBUG_FEATURES
 	ShaderDebugMetaData debugMetaData;
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+#if WITH_SHADERS_HOT_RELOAD
+	lib::DynamicArray<lib::String> fileDependencies;
+#endif // WITH_SHADERS_HOT_RELOAD
 };
 
 } // spt::sc

@@ -4,6 +4,7 @@
 #include "ArgumentsTokenizer.h"
 #include "Common/DescriptorSetCompilation/DescriptorSetCompilationDefsRegistry.h"
 #include "ShaderStructsRegistry.h"
+#include "FileSystem/File.h"
 
 #include <regex>
 
@@ -133,6 +134,10 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 
 	RemoveMetaParameters(sourceCode);
 
+#if WITH_SHADERS_HOT_RELOAD
+	PreprocessFileDependencies(sourceCode, OUT metaData);
+#endif // WITH_SHADERS_HOT_RELOAD
+
 #if SPT_SHADERS_DEBUG_FEATURES
 	PreprocessShaderLiterals(sourceCode, OUT metaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES
@@ -248,6 +253,30 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sou
 		sourceCode.insert(sourceCode.begin(), accessorsCode.cbegin(), accessorsCode.cend());
 	}
 }
+
+#if WITH_SHADERS_HOT_RELOAD
+void ShaderMetaDataPrerpocessor::PreprocessFileDependencies(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+{
+	SPT_PROFILER_FUNCTION();
+
+	static const std::regex includeFileRegex(R"~(#line.*\"(.*)\")~");
+
+	for (std::sregex_iterator it(std::cbegin(sourceCode), std::cend(sourceCode), includeFileRegex);
+			it != std::sregex_iterator();
+			++it)
+	{
+		const std::smatch includeFileMatch = *it;
+		SPT_CHECK(includeFileMatch.size() == 2);
+
+		lib::String filePath = includeFileMatch[1].str();
+
+		if (lib::Path(filePath).is_absolute())
+		{
+			outMetaData.AddFileDependencyUnique(std::move(filePath));
+		}
+	}
+}
+#endif // WITH_SHADERS_HOT_RELOAD
 
 #if SPT_SHADERS_DEBUG_FEATURES
 void ShaderMetaDataPrerpocessor::PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)

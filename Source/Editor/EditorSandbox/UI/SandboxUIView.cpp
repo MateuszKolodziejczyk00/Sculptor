@@ -110,6 +110,10 @@ void SandboxUIView::DrawUI()
 	
 	ImGui::Text("Shaders");
 #if WITH_SHADERS_HOT_RELOAD
+	ui::UIContext uiContext = scui::ApplicationUI::GetCurrentContext().GetUIContext();
+
+	const ImGuiID hotReloadShadersID = ImGui::GetID("HotReload Shaders");
+	ui::UIUtils::SetShortcut(uiContext, hotReloadShadersID, ui::ShortcutBinding::Create(inp::EKey::LShift, inp::EKey::R));
 	if (ImGui::Button("HotReload Shaders"))
 	{
 		rdr::Renderer::HotReloadShaders();

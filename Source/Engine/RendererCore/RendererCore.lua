@@ -16,7 +16,6 @@ function RendererCore:SetupConfiguration(configuration, platform)
     end
 
     self:AddPublicDefine("PROFILE_GPU=0")
-    self:AddPublicDefine("WITH_SHADERS_HOT_RELOAD=1")
 
     self:AddPublicDefine("RENDERER_DEBUG=1")
     

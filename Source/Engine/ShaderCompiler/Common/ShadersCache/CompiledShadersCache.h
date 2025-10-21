@@ -40,6 +40,7 @@ private:
 	static lib::String			CreateShaderSourceCodeFilePath(lib::HashedString shaderRelativePath);
 
 	static Bool					IsCachedShaderUpToDateImpl(const lib::String& cachedShaderPath, const lib::String& shaderSourceCodePath);
+	static Bool					IsDeserializedShaderUpToDateImpl(const lib::String& cachedShaderPath, const CompiledShader& shader);
 };
 
 } // spt::sc

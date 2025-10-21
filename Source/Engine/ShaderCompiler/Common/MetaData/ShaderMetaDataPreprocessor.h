@@ -32,6 +32,8 @@ private:
 	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
 	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
 
+	static void PreprocessFileDependencies(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+
 #if SPT_SHADERS_DEBUG_FEATURES
 	static void PreprocessShaderLiterals(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES

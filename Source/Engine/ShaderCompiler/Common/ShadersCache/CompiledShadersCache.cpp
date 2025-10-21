@@ -62,6 +62,10 @@ struct TypeSerializer<sc::CompiledShader>
 #if SPT_SHADERS_DEBUG_FEATURES
 		serializer.Serialize("DebugMetaData", shader.debugMetaData);
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+#if WITH_SHADERS_HOT_RELOAD
+		serializer.Serialize("FileDependencies", shader.fileDependencies);
+#endif // WITH_SHADERS_HOT_RELOAD
 	}
 };
 
@@ -103,6 +107,11 @@ CompiledShader CompiledShadersCache::TryGetCachedShader(lib::HashedString shader
 		{
 			srl::SerializationHelper::LoadTextStructFromFile(compiledShader, cachedShaderPath);
 		}
+
+		if (compiledShader.IsValid() && !IsDeserializedShaderUpToDateImpl(cachedShaderPath, compiledShader))
+		{
+			compiledShader = CompiledShader{};
+		}
 	}
 
 	return compiledShader;
@@ -134,8 +143,23 @@ void CompiledShadersCache::CacheShader(lib::HashedString shaderRelativePath, con
 
 Bool CompiledShadersCache::IsCachedShaderUpToDate(lib::HashedString shaderRelativePath, const ShaderStageCompilationDef& shaderStageDef, const ShaderCompilationSettings& compilationSettings)
 {
-	return CanUseShadersCache()
-		&& IsCachedShaderUpToDateImpl(CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings), CreateShaderSourceCodeFilePath(shaderRelativePath));
+	if (!CanUseShadersCache())
+	{
+		return false;
+	}
+
+	const lib::String cachedShaderPath = CreateShaderFilePath(shaderRelativePath, shaderStageDef, compilationSettings);
+	const lib::String shaderSourcePath = CreateShaderSourceCodeFilePath(shaderRelativePath);
+
+	if (!IsCachedShaderUpToDateImpl(cachedShaderPath, shaderSourcePath))
+	{
+		return false;
+	}
+
+	CompiledShader compiledShader;
+	srl::SerializationHelper::LoadTextStructFromFile(compiledShader, cachedShaderPath);
+
+	return compiledShader.IsValid() && IsDeserializedShaderUpToDateImpl(cachedShaderPath, compiledShader);
 }
 
 Bool CompiledShadersCache::CanUseShadersCache()
@@ -188,6 +212,30 @@ Bool CompiledShadersCache::IsCachedShaderUpToDateImpl(const lib::String& cachedS
 	}
 
 	return isCachedShaderUpToDate;
+}
+
+Bool CompiledShadersCache::IsDeserializedShaderUpToDateImpl(const lib::String& cachedShaderPath, const CompiledShader& shader)
+{
+#if WITH_SHADERS_HOT_RELOAD
+	const auto cachedShaderWriteTime = std::filesystem::last_write_time(cachedShaderPath);
+
+	for (const lib::String& dependencyPath : shader.fileDependencies)
+	{
+		if (!lib::File::Exists(dependencyPath))
+		{
+			return false;
+		}
+
+		const auto dependencyWriteTime = std::filesystem::last_write_time(dependencyPath);
+
+		if (dependencyWriteTime > cachedShaderWriteTime)
+		{
+			return false;
+		}
+	}
+#endif // WITH_SHADERS_HOT_RELOAD
+
+	return true;
 }
 
 } // spt::sc

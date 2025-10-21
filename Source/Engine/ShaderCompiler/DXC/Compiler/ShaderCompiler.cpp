@@ -228,6 +228,8 @@ CompiledShader CompilerImpl::CompileShader(const lib::String& shaderPath, const 
 
 	DxcArguments compilerArgs = BuildArguments(shaderPath, sourceCode, stageCompilationDef, compilationSettings);
 	PreprocessAdditionalCompilerArgs(shaderPath, sourceCode, stageCompilationDef, compilationSettings, INOUT compilerArgs);
+	// Add absolute path as last argument. this will change main file in preprocessed code
+	compilerArgs.Append(lib::StringUtils::ToWideString(shaderPath));
 
 	lib::String preprocessedHLSL = PreprocessShader(shaderPath, sourceCode, stageCompilationDef, compilerArgs);
 	if (preprocessedHLSL.empty())

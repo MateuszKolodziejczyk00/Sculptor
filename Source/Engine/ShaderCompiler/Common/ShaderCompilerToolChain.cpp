@@ -61,6 +61,10 @@ CompiledShader ShaderCompilerToolChain::CompilePreprocessedShaders(const lib::St
 #if SPT_SHADERS_DEBUG_FEATURES
 		compiledShader.debugMetaData = compilationMetaData.GetDebugMetaData();
 #endif // SPT_SHADERS_DEBUG_FEATURES
+
+#if WITH_SHADERS_HOT_RELOAD
+		compiledShader.fileDependencies = compilationMetaData.GetFileDependencies();
+#endif // WITH_SHADERS_HOT_RELOAD
 	}
 
 	return compiledShader;
