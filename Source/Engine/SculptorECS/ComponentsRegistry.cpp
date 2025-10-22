@@ -13,14 +13,20 @@ struct RegistryInitializationData
 	lib::DynamicArray<ComponentInitializer> componentInitializers;
 };
 
-lib::HashMap<lib::RuntimeTypeInfo, RegistryInitializationData> registryInitializations;
+using InitializersRegistry = lib::HashMap<lib::RuntimeTypeInfo, RegistryInitializationData>;
+
+static InitializersRegistry& GetRegistry()
+{
+	static InitializersRegistry registry;
+	return registry;
+}
 
 } // Internal
 
 
 void RegisterComponentType(const lib::RuntimeTypeInfo& registryType, ComponentInitializerData componentInitializer)
 {
-	Internal::RegistryInitializationData& registryInitialization = Internal::registryInitializations[registryType];
+	Internal::RegistryInitializationData& registryInitialization = Internal::GetRegistry()[registryType];
 
 	if (registryInitialization.componentTypesWithInitializers.emplace(componentInitializer.componentType).second)
 	{
@@ -30,8 +36,8 @@ void RegisterComponentType(const lib::RuntimeTypeInfo& registryType, ComponentIn
 
 lib::Span<const ComponentInitializer> GetComponentInitializers(const lib::RuntimeTypeInfo& registryType)
 {
-	const auto it = Internal::registryInitializations.find(registryType);
-	return it != Internal::registryInitializations.end() ? lib::Span<const ComponentInitializer>(it->second.componentInitializers) : lib::Span<const ComponentInitializer>{};
+	const auto it = Internal::GetRegistry().find(registryType);
+	return it != Internal::GetRegistry().end() ? lib::Span<const ComponentInitializer>(it->second.componentInitializers) : lib::Span<const ComponentInitializer>{};
 }
 
 } // spt::ecs

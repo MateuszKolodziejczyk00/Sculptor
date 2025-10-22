@@ -80,6 +80,8 @@ Project =
 {
 }
 
+EngineLibrary = ETargetType.StaticLibrary
+
 OutputDirectory = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 
 projectToPublicIncludePaths = {}
@@ -541,6 +543,7 @@ end
 function Project:AddCommonDefines(configuration, platform)
     if self.targetType == ETargetType.SharedLibrary then
         self:AddDefineInternal(string.upper(self.name) .. "_BUILD_DLL")
+        self:AddPublicDefine(string.upper(self.name) .. "_AS_DLL")
     end
 
     if configuration == EConfiguration.Debug then

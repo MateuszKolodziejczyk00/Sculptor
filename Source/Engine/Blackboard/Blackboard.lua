@@ -1,4 +1,4 @@
-Blackboard = Project:CreateProject("Blackboard", ETargetType.SharedLibrary)
+Blackboard = Project:CreateProject("Blackboard", EngineLibrary)
 
 function Blackboard:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

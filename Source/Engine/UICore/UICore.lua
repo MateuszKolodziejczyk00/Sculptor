@@ -1,4 +1,4 @@
-UICore = Project:CreateProject("UICore", ETargetType.SharedLibrary)
+UICore = Project:CreateProject("UICore", EngineLibrary)
 
 function UICore:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

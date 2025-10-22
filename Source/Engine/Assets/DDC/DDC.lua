@@ -1,4 +1,4 @@
-DDC = Project:CreateProject("DDC", ETargetType.SharedLibrary)
+DDC = Project:CreateProject("DDC", EngineLibrary)
 
 function DDC:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

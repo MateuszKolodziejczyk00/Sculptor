@@ -1,4 +1,4 @@
-Materials = Project:CreateProject("Materials", ETargetType.SharedLibrary)
+Materials = Project:CreateProject("Materials", EngineLibrary)
 
 function Materials:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Graphics")

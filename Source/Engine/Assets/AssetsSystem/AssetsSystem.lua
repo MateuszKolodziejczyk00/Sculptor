@@ -1,4 +1,4 @@
-AssetsSystem = Project:CreateProject("AssetsSystem", ETargetType.SharedLibrary)
+AssetsSystem = Project:CreateProject("AssetsSystem", EngineLibrary)
 
 function AssetsSystem:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("DDC")

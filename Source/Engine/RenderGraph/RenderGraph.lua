@@ -1,4 +1,4 @@
-RenderGraph = Project:CreateProject("RenderGraph", ETargetType.SharedLibrary)
+RenderGraph = Project:CreateProject("RenderGraph", EngineLibrary)
 
 function RenderGraph:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RendererCore")

@@ -1,4 +1,4 @@
-RenderSceneTools = Project:CreateProject("RenderSceneTools", ETargetType.SharedLibrary)
+RenderSceneTools = Project:CreateProject("RenderSceneTools", EngineLibrary)
 
 function RenderSceneTools:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RenderScene")

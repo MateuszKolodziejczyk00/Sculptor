@@ -1,4 +1,4 @@
-ScUI = Project:CreateProject("ScUI", ETargetType.SharedLibrary)
+ScUI = Project:CreateProject("ScUI", EngineLibrary)
 
 function ScUI:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("UICore")

@@ -1,4 +1,4 @@
-ShaderCompiler= Project:CreateProject("ShaderCompiler", ETargetType.SharedLibrary)
+ShaderCompiler= Project:CreateProject("ShaderCompiler", EngineLibrary)
 
 if GetSelectedRHI() == ERHI.Vulkan then
     if GetSelectedShaderCompiler() == EShaderCompiler.Shaderc then

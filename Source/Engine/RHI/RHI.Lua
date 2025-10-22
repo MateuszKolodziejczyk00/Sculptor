@@ -1,4 +1,4 @@
-RHI = Project:CreateProject("RHI", ETargetType.SharedLibrary)
+RHI = Project:CreateProject("RHI", EngineLibrary)
 
 forceRHIValidation = false
 useNsightAftermath = true

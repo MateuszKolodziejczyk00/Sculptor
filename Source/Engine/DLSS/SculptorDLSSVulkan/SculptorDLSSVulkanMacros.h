@@ -3,11 +3,15 @@
 #include "SculptorCore.h"
 
 #ifdef SPT_PLATFORM_WINDOWS
-	#ifdef SCULPTORDLSSVULKAN_BUILD_DLL
-		#define SCULPTORDLSSVULKAN_API __declspec(dllexport)
+	#ifdef SCULPTORDLSSVULKAN_AS_DLL
+		#ifdef SCULPTORDLSSVULKAN_BUILD_DLL
+			#define SCULPTORDLSSVULKAN_API __declspec(dllexport)
+		#else
+			#define SCULPTORDLSSVULKAN_API __declspec(dllimport)
+		#endif
 	#else
-		#define SCULPTORDLSSVULKAN_API __declspec(dllimport)
-	#endif
+		#define SCULPTORDLSSVULKAN_API
+	#endif // SCULPTORDLSSVULKAN_AS_DLL
 #else
 	#error Sculptor only supports Windows
 #endif // SPT_PLATFORM_WINDOWS

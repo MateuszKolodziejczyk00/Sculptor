@@ -1,4 +1,4 @@
-SculptorLib = Project:CreateProject("SculptorLib", ETargetType.SharedLibrary)
+SculptorLib = Project:CreateProject("SculptorLib", EngineLibrary)
 
 function SculptorLib:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorCore")

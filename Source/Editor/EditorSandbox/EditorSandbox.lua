@@ -1,4 +1,4 @@
-EditorSandbox = Project:CreateProject("EditorSandbox", ETargetType.SharedLibrary)
+EditorSandbox = Project:CreateProject("EditorSandbox", EngineLibrary)
 
 function EditorSandbox:SetupConfiguration(configuration, platform)
 	self:AddPublicDependency("ScUI")

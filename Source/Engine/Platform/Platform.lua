@@ -1,4 +1,4 @@
-Platform = Project:CreateProject("Platform", ETargetType.SharedLibrary)
+Platform = Project:CreateProject("Platform", EngineLibrary)
 
 function Platform:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorCore")

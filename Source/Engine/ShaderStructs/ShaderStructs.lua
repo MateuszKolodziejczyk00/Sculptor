@@ -1,4 +1,4 @@
-ShaderStructs = Project:CreateProject("ShaderStructs", ETargetType.SharedLibrary)
+ShaderStructs = Project:CreateProject("ShaderStructs", EngineLibrary)
 
 function ShaderStructs:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

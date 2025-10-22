@@ -1,5 +1,5 @@
 
-TextureAsset = Project:CreateProject("TextureAsset", ETargetType.SharedLibrary)
+TextureAsset = Project:CreateProject("TextureAsset", EngineLibrary)
 
 function TextureAsset:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("AssetsSystem")

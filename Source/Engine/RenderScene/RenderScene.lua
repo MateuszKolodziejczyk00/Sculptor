@@ -1,4 +1,4 @@
-RenderScene = Project:CreateProject("RenderScene", ETargetType.SharedLibrary)
+RenderScene = Project:CreateProject("RenderScene", EngineLibrary)
 
 function RenderScene:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("Graphics")

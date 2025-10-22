@@ -1,4 +1,4 @@
-Input = Project:CreateProject("Input", ETargetType.SharedLibrary)
+Input = Project:CreateProject("Input", EngineLibrary)
 
 function Input:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

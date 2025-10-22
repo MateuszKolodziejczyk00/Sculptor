@@ -24,7 +24,11 @@ public:
 	HashMap<HashedStringDB::KeyType, String>	records;
 };
 
-static DataBase instance;
+static DataBase& GetInstance()
+{
+	static DataBase instance;
+	return instance;
+}
 
 } // db
 
@@ -96,10 +100,10 @@ StringView HashedStringDB::GetRecordStringChecked(KeyType key)
 
 Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 {
-	const ReadLockGuard readRecordsLock(db::instance.recordsMutex);
+	const ReadLockGuard readRecordsLock(db::GetInstance().recordsMutex);
 
-	const auto foundRecord = db::instance.records.find(key);
-	if (foundRecord != db::instance.records.cend())
+	const auto foundRecord = db::GetInstance().records.find(key);
+	if (foundRecord != db::GetInstance().records.cend())
 	{
 		outView = foundRecord->second;
 
@@ -111,9 +115,9 @@ Bool HashedStringDB::FindRecord(KeyType key, StringView& outView)
 
 void HashedStringDB::CreateRecord(KeyType key, String&& newRecord)
 {
-	const WriteLockGuard addRecordLock(db::instance.recordsMutex);
+	const WriteLockGuard addRecordLock(db::GetInstance().recordsMutex);
 
-	db::instance.records.emplace(key, std::forward<String>(newRecord));
+	db::GetInstance().records.emplace(key, std::forward<String>(newRecord));
 }
 
 }

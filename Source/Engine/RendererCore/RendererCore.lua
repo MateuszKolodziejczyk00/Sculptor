@@ -1,4 +1,4 @@
-RendererCore = Project:CreateProject("RendererCore", ETargetType.SharedLibrary)
+RendererCore = Project:CreateProject("RendererCore", EngineLibrary)
 
 function RendererCore:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RHI")

@@ -1,4 +1,4 @@
-RenderGraphCapturer = Project:CreateProject("RenderGraphCapturer", ETargetType.SharedLibrary)
+RenderGraphCapturer = Project:CreateProject("RenderGraphCapturer", EngineLibrary)
 
 function RenderGraphCapturer:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

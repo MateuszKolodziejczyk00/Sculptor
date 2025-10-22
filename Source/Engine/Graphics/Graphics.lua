@@ -1,4 +1,4 @@
-Graphics = Project:CreateProject("Graphics", ETargetType.SharedLibrary)
+Graphics = Project:CreateProject("Graphics", EngineLibrary)
 
 function Graphics:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RendererCore")

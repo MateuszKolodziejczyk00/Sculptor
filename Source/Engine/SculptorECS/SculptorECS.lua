@@ -1,4 +1,4 @@
-SculptorECS = Project:CreateProject("SculptorECS", ETargetType.SharedLibrary)
+SculptorECS = Project:CreateProject("SculptorECS", EngineLibrary)
 
 function SculptorECS:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorLib")

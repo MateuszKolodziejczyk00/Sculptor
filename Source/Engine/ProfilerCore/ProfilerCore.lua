@@ -1,4 +1,4 @@
-ProfilerCore = Project:CreateProject("ProfilerCore", ETargetType.SharedLibrary)
+ProfilerCore = Project:CreateProject("ProfilerCore", EngineLibrary)
 
 function ProfilerCore:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("SculptorCore")

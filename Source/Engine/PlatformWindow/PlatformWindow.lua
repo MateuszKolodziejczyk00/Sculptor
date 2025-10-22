@@ -1,4 +1,4 @@
-PlatformWindow = Project:CreateProject("PlatformWindow", ETargetType.SharedLibrary)
+PlatformWindow = Project:CreateProject("PlatformWindow", EngineLibrary)
 
 function PlatformWindow:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("RHI")

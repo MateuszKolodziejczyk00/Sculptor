@@ -1,4 +1,4 @@
-JobSystem = Project:CreateProject("JobSystem", ETargetType.SharedLibrary)
+JobSystem = Project:CreateProject("JobSystem", EngineLibrary)
 
 function JobSystem:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("ProfilerCore")
