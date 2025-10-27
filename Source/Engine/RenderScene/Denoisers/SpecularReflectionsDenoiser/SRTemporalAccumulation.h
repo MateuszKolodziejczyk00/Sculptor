@@ -50,6 +50,7 @@ struct TemporalAccumulationParameters : public denoising::DenoiserBaseParams
 	rg::RGTextureViewHandle diffuseY_SH2;
 	rg::RGTextureViewHandle diffSpecCoCg;
 	rg::RGTextureViewHandle specHitDist;
+	rg::RGTextureViewHandle lightDirection;
 
 	rg::RGTextureViewHandle historySpecularY_SH2;
 	rg::RGTextureViewHandle historyDiffuseY_SH2;

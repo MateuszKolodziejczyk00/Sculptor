@@ -485,6 +485,7 @@ DS_BEGIN(ResolveReservoirsDS, rg::RGDescriptorSetState<ResolveReservoirsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_specularLumHitDistanceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                            u_diffuseLumHitDistanceTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                            u_lightDirectionTexture)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),                    u_reservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<SRPackedReservoir>),                    u_initialReservoirsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRResamplingConstants>),                  u_resamplingConstants)
@@ -513,6 +514,7 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	ds->u_brdfIntegrationLUT            = BRDFIntegrationLUT::Get().GetLUT(graphBuilder);
 	ds->u_specularLumHitDistanceTexture = params.outSpecularLuminanceDistTexture;
 	ds->u_diffuseLumHitDistanceTexture  = params.outDiffuseLuminanceDistTexture;
+	ds->u_lightDirectionTexture         = params.outLightDirectionTexture;
 	ds->u_reservoirsBuffer              = reservoirsState.ReadReservoirs();
 	ds->u_initialReservoirsBuffer       = params.initialReservoirBuffer;
 	ds->u_resamplingConstants           = resamplingConstants;

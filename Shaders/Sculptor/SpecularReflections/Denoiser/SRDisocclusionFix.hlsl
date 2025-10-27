@@ -5,7 +5,7 @@
 
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
-#include "Utils/SphericalHarmonics.hlsli"
+#include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 
@@ -51,12 +51,12 @@ void SRDisocclusionFixCS(CS_INPUT input)
 
 		const float centerWeight = kernel[0];
 
-		const SH2<float> centerSpecularY_SH2 = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
-		const SH2<float> centerDiffuseY_SH2  = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
+		const RTSphericalBasis centerSpecularY_SH2 = RawToRTSphericalBasis(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
+		const RTSphericalBasis centerDiffuseY_SH2  = RawToRTSphericalBasis(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
 		const float4 centerDiffSpecCoCg      = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
 
-		SH2<float> specularY_SH2Sum = centerSpecularY_SH2 * centerWeight;
-		SH2<float> diffuseY_SH2Sum  = centerDiffuseY_SH2 * centerWeight;
+		RTSphericalBasis specularY_SH2Sum = centerSpecularY_SH2 * centerWeight;
+		RTSphericalBasis diffuseY_SH2Sum  = centerDiffuseY_SH2 * centerWeight;
 		float4 diffSpecCoCgSum      = centerDiffSpecCoCg * centerWeight;
 
 		float specularWeightSum = centerWeight;
@@ -96,7 +96,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 					const float swn = ComputeSpecularNormalWeight(normal, sampleNormal, roughness);
 					float specularWeight = weight * swn;
 
-					const SH2<float> sampleSpecularY_SH2 = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(samplePixel, 0)));
+					const RTSphericalBasis sampleSpecularY_SH2 = RawToRTSphericalBasis(u_inSpecularY_SH2.Load(uint3(samplePixel, 0)));
 
 					const float specularLum = sampleSpecularY_SH2.Evaluate(sampleNormal);
 					specularWeight /= specularLum + 1.f;
@@ -111,7 +111,7 @@ void SRDisocclusionFixCS(CS_INPUT input)
 					const float dwn = ComputeDiffuseNormalWeight(normal, sampleNormal);
 					float diffuseWeight = weight * dwn;
 
-					const SH2<float> sampleDiffuseY_SH2 = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0)));
+					const RTSphericalBasis sampleDiffuseY_SH2 = RawToRTSphericalBasis(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0)));
 
 					const float diffuseLum = sampleDiffuseY_SH2.Evaluate(sampleNormal);
 					diffuseWeight /= diffuseLum + 1.f;
@@ -126,12 +126,12 @@ void SRDisocclusionFixCS(CS_INPUT input)
 		const float rcpSpecularWeightSum = 1.f / specularWeightSum;
 		const float rcpDiffuseWeightSum = 1.f / diffuseWeightSum;
 
-		const SH2<float> outSpecularY_SH2 = specularY_SH2Sum * rcpSpecularWeightSum;
-		const SH2<float> outDiffuseY_SH2 = diffuseY_SH2Sum * rcpDiffuseWeightSum;
+		const RTSphericalBasis outSpecularY_SH2 = specularY_SH2Sum * rcpSpecularWeightSum;
+		const RTSphericalBasis outDiffuseY_SH2 = diffuseY_SH2Sum * rcpDiffuseWeightSum;
 		const float4 outDiffSpecCoCg = diffSpecCoCgSum * float4(rcpDiffuseWeightSum, rcpDiffuseWeightSum, rcpSpecularWeightSum, rcpSpecularWeightSum);
 
-		u_outSpecularY_SH2[pixel]  = SH2ToFloat4(outSpecularY_SH2);
-		u_outDiffuseY_SH2[pixel]   = SH2ToFloat4(outDiffuseY_SH2);
+		u_outSpecularY_SH2[pixel]  = RTSphericalBasisToRaw(outSpecularY_SH2);
+		u_outDiffuseY_SH2[pixel]   = RTSphericalBasisToRaw(outDiffuseY_SH2);
 		u_outDiffSpecCoCg[pixel]   = outDiffSpecCoCg;
 	}
 }

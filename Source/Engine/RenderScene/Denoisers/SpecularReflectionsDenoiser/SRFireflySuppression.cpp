@@ -17,11 +17,11 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRFireflySuppressionDS, rg::RGDescriptorSetState<SRFireflySuppressionDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffuseY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),             u_outDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),             u_outSpecularY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                   u_outDiffSpecCoCg)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffuseY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),            u_inDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),            u_inSpecularY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                  u_inDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                  u_normals)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SRFireflySuppressionConstants>), u_constants)

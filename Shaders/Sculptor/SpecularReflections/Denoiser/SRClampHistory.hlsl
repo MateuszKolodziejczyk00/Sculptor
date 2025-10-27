@@ -8,7 +8,7 @@
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
 #include "Utils/ColorSpaces.hlsli"
 #include "Utils/Packing.hlsli"
-#include "Utils/SphericalHarmonics.hlsli"
+#include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 
 
 struct CS_INPUT
@@ -150,14 +150,14 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 specularFastHistoryStdDev = sqrt(specularFastHistoryVariance);
 			const float3 specularClampWindow = 2.5f * specularFastHistoryStdDev;
 
-			const SH2<float> specularY_SH2 = Float4ToSH2(u_specularY_SH2.Load(pixel));
+			const RTSphericalBasis specularY_SH2 = RawToRTSphericalBasis(u_specularY_SH2.Load(pixel));
 			const float3 specularYCoCg = float3(specularY_SH2.Evaluate(normal), diffSpecCoCg.zw);
 			const float3 clampedSpecularYCoCg = ApplyHistoryFix(specularYCoCg, specularFastHistoryMean - specularClampWindow, specularFastHistoryMean + specularClampWindow);
 
 			if (specularYCoCg.x != clampedSpecularYCoCg.x)
 			{
 				const float ratio = specularYCoCg.x > 0.f ? clampedSpecularYCoCg.x / specularYCoCg.x : 1.f;
-				u_specularY_SH2[pixel] = SH2ToFloat4(specularY_SH2) * ratio;
+				u_specularY_SH2[pixel] = RTSphericalBasisToRaw(specularY_SH2) * ratio;
 			}
 			diffSpecCoCg.zw = clampedSpecularYCoCg.yz;
 		}
@@ -173,14 +173,14 @@ void SRClampHistoryCS(CS_INPUT input)
 			const float3 diffuseFastHistoryStdDev = sqrt(diffuseFastHistoryVariance);
 			const float3 diffuseClampWindow = 2.5f * diffuseFastHistoryStdDev;
 
-			const SH2<float> diffuseY_SH2 = Float4ToSH2(u_diffuseY_SH2.Load(pixel));
+			const RTSphericalBasis diffuseY_SH2 = RawToRTSphericalBasis(u_diffuseY_SH2.Load(pixel));
 			const float3 diffuseYCoCg = float3(diffuseY_SH2.Evaluate(normal), diffSpecCoCg.xy);
 			const float3 clampedDiffuseYCoCg = ApplyHistoryFix(diffuseYCoCg, diffuseFastHistoryMean - diffuseClampWindow, diffuseFastHistoryMean + diffuseClampWindow);
 
 			if (diffuseYCoCg.x != clampedDiffuseYCoCg.x)
 			{
 				const float ratio = diffuseYCoCg.x > 0.f ? clampedDiffuseYCoCg.x / diffuseYCoCg.x : 0.f;
-				u_diffuseY_SH2[pixel] = SH2ToFloat4(diffuseY_SH2) * ratio;
+				u_diffuseY_SH2[pixel] = RTSphericalBasisToRaw(diffuseY_SH2) * ratio;
 			}
 			diffSpecCoCg.xy = clampedDiffuseYCoCg.yz;
 		}

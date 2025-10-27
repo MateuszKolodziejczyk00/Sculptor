@@ -5,6 +5,7 @@
 #include "Utils/SceneViewUtils.hlsli"
 #include "Utils/Packing.hlsli"
 #include "Utils/SphericalHarmonics.hlsli"
+#include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 
 
 struct CS_INPUT
@@ -21,8 +22,8 @@ struct CS_INPUT
 
 #define SHARED_SAMPLES_RES (GROUP_SIZE + 2 * BORDER_SIZE)
 
-groupshared SH2<half> gs_specularY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
-groupshared SH2<half> gs_diffuseY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared RTSphericalBasisRaw gs_specularY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
+groupshared RTSphericalBasisRaw gs_diffuseY_SH2[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
 groupshared half4 gs_diffSpecCoCg[SHARED_SAMPLES_RES][SHARED_SAMPLES_RES];
 
 
@@ -44,8 +45,8 @@ void PreloadSharedSamples(in uint2 groupID, in uint2 localID)
 
 		const int2 samplePixel = clamp(groupOffset + localPixel, 0, maxPixel);
 
-		gs_specularY_SH2[localPixel.x][localPixel.y] = Half4ToSH2(half4(u_inSpecularY_SH2.Load(uint3(samplePixel, 0))));
-		gs_diffuseY_SH2[localPixel.x][localPixel.y]  = Half4ToSH2(half4(u_inDiffuseY_SH2.Load(uint3(samplePixel, 0))));
+		gs_specularY_SH2[localPixel.x][localPixel.y] = u_inSpecularY_SH2.Load(uint3(samplePixel, 0));
+		gs_diffuseY_SH2[localPixel.x][localPixel.y]  = u_inDiffuseY_SH2.Load(uint3(samplePixel, 0));
 		gs_diffSpecCoCg[localPixel.x][localPixel.y]  = half4(u_inDiffSpecCoCg.Load(uint3(samplePixel, 0)));
 	}
 }
@@ -63,24 +64,23 @@ void SRFireflySuppressionCS(CS_INPUT input)
 	if(all(pixel < u_constants.resolution))
 	{
 		float minSpecY = 99999999.f;
-		SH2<half> minSpecSH;
+		RTSphericalBasis minSpecSH;
 		half2 minSpecCoCg;
 		float maxSpecY = -99999999.f;
-		SH2<half> maxSpecSH;
+		RTSphericalBasis maxSpecSH;
 		half2 maxSpecCoCg;
 
 		float minDiffY = 99999999.f;
-		SH2<half> minDiffSH;
+		RTSphericalBasis minDiffSH;
 		half2 minDiffCoCg;
 		float maxDiffY = -99999999.f;
-		SH2<half> maxDiffSH;
+		RTSphericalBasis maxDiffSH;
 		half2 maxDiffCoCg;
-
 
 		const float3 centerNormal = OctahedronDecodeNormal(u_normals.Load(uint3(pixel, 0)));
 
-		SH2<float> centerSpecular     = Float4ToSH2(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
-		SH2<float> centerDiffuse      = Float4ToSH2(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
+		RTSphericalBasis centerSpecular     = RawToRTSphericalBasis(u_inSpecularY_SH2.Load(uint3(pixel, 0)));
+		RTSphericalBasis centerDiffuse      = RawToRTSphericalBasis(u_inDiffuseY_SH2.Load(uint3(pixel, 0)));
 		float4     centerDiffSpecCoCg = u_inDiffSpecCoCg.Load(uint3(pixel, 0));
 
 		[unroll]
@@ -99,7 +99,7 @@ void SRFireflySuppressionCS(CS_INPUT input)
 
 					// Specular
 					{
-						const SH2<half> sample = gs_specularY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
+						const RTSphericalBasis sample = RawToRTSphericalBasis(gs_specularY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE]);
 						const float sampleSpecY = sample.Evaluate(centerNormal);
 
 						if(sampleSpecY > maxSpecY)
@@ -118,7 +118,7 @@ void SRFireflySuppressionCS(CS_INPUT input)
 
 					// Diffuse
 					{
-						const SH2<half> sample = gs_diffuseY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE];
+						const RTSphericalBasis sample = RawToRTSphericalBasis(gs_diffuseY_SH2[input.localID.x + x + BORDER_SIZE][input.localID.y + y + BORDER_SIZE]);
 						const float sampleDiffY = sample.Evaluate(centerNormal);
 
 						if(sampleDiffY > maxDiffY)
@@ -143,17 +143,17 @@ void SRFireflySuppressionCS(CS_INPUT input)
 			const float centerSpecY = centerSpecular.Evaluate(centerNormal);
 			if(centerSpecY > maxSpecY)
 			{
-				centerSpecular = SH2HalfToFloat(maxSpecSH);
+				centerSpecular = maxSpecSH;
 				centerDiffSpecCoCg.zw = maxSpecCoCg;
 
 			}
 			if(centerSpecY < minSpecY)
 			{
-				centerSpecular = SH2HalfToFloat(minSpecSH);
+				centerSpecular = minSpecSH;
 				centerDiffSpecCoCg.zw = minSpecCoCg;
 			}
 
-			u_outSpecularY_SH2[pixel] = SH2ToFloat4(centerSpecular);
+			u_outSpecularY_SH2[pixel] = RTSphericalBasisToRaw(centerSpecular);
 		}
 
 		// Diffuse
@@ -161,16 +161,16 @@ void SRFireflySuppressionCS(CS_INPUT input)
 			const float centerDiffY = centerDiffuse.Evaluate(centerNormal);
 			if(centerDiffY > maxDiffY)
 			{
-				centerDiffuse = SH2HalfToFloat(maxDiffSH);
+				centerDiffuse = maxDiffSH;
 				centerDiffSpecCoCg.xy = maxDiffCoCg;
 			}
 			if(centerDiffY < minDiffY)
 			{
-				centerDiffuse = SH2HalfToFloat(minDiffSH);
+				centerDiffuse = minDiffSH;
 				centerDiffSpecCoCg.xy = minDiffCoCg;
 			}
 
-			u_outDiffuseY_SH2[pixel] = SH2ToFloat4(centerDiffuse);
+			u_outDiffuseY_SH2[pixel] = RTSphericalBasisToRaw(centerDiffuse);
 		}
 
 		u_outDiffSpecCoCg[pixel] = centerDiffSpecCoCg;

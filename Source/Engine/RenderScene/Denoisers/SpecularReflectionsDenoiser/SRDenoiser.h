@@ -59,6 +59,7 @@ public:
 
 		rg::RGTextureViewHandle specularTexture;
 		rg::RGTextureViewHandle diffuseTexture;
+		rg::RGTextureViewHandle lightDirection;
 
 		rg::RGTextureViewHandle baseColorMetallicTexture;
 

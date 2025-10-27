@@ -43,6 +43,7 @@ void ResolveReservoirsCS(CS_INPUT input)
 
 		float3 specularLo = 0.f;
 		float3 diffuseLo  = 0.f;
+		float3 lightDir  = 0.f;
 		float hitDistance = SPT_NAN;
 
 		if(reservoir.IsValid() && reservoir.HasValidResult())
@@ -66,12 +67,14 @@ void ResolveReservoirsCS(CS_INPUT input)
 			ComputeSurfaceColor(baseColorMetallic.rgb, baseColorMetallic.w, OUT diffuseColor, OUT f0);
 	
 			hitDistance = length(reservoir.hitLocation - sampleLocation);
-			const float3 lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
+			lightDir = (reservoir.hitLocation - sampleLocation) / hitDistance;
+
+			const float NdotL = saturate(dot(sampleNormal, lightDir));
 	
 			const float3 luminance = reservoir.luminance * reservoir.weightSum;
 	
 			const RTBRDF brdf = RT_EvaluateBRDF(sampleNormal, toView, lightDir, roughness, f0, diffuseColor);
-			specularLo = brdf.specular * luminance * dot(sampleNormal, lightDir);
+			specularLo = NdotL * brdf.specular * luminance;
 	
 			const float NdotV = saturate(dot(sampleNormal, toView));
 			const float2 integratedBRDF = u_brdfIntegrationLUT.SampleLevel(u_brdfIntegrationLUTSampler, float2(NdotV, roughness), 0);
@@ -84,11 +87,11 @@ void ResolveReservoirsCS(CS_INPUT input)
 			// demodulate specular
 			specularLo /= max((f0 * integratedBRDF.x + integratedBRDF.y), 0.01f);
 
-			const float NdotL = saturate(dot(sampleNormal, lightDir));
 			diffuseLo = luminance * NdotL; // demodulated without lambertian term for denoise
 		}
 
 		u_specularLumHitDistanceTexture[pixel] = float4(specularLo, hitDistance);
 		u_diffuseLumHitDistanceTexture[pixel]  = float4(diffuseLo, hitDistance);
+		u_lightDirectionTexture[pixel]         = OctahedronEncodeNormal(lightDir);
 	}
 }

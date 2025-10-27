@@ -550,7 +550,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 namespace denoise
 {
 
-static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, sr_denoiser::Denoiser& denoiser, const SpecularReflectionsParams& params, rg::RGTextureViewHandle specularReflections, rg::RGTextureViewHandle diffuseReflections)
+static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, sr_denoiser::Denoiser& denoiser, const SpecularReflectionsParams& params, rg::RGTextureViewHandle specularReflections, rg::RGTextureViewHandle diffuseReflections, rg::RGTextureViewHandle lightDirection)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -565,6 +565,7 @@ static sr_denoiser::Denoiser::Result Denoise(rg::RenderGraphBuilder& graphBuilde
 	denoiserParams.historyRoughnessTexture             = params.historyRoughnessTexture;
 	denoiserParams.specularTexture                     = specularReflections;
 	denoiserParams.diffuseTexture                      = diffuseReflections;
+	denoiserParams.lightDirection                      = lightDirection;
 	denoiserParams.blurVarianceEstimate                = !renderer_params::forceFullRateTracingReflections && renderer_params::blurVarianceEstimate;
 	denoiserParams.enableStableHistoryBlend            = renderer_params::enableStableHistoryBlend;
 	denoiserParams.enableDisocclusionFixFromLightCache = renderer_params::enableDisocclusionFixFromLightCache;
@@ -785,7 +786,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		trace::GenerateReservoirs(graphBuilder, RG_DEBUG_NAME("1st Pass"), renderScene, viewSpec, params, traceParams);
 
 		const rg::RGTextureViewHandle specularLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Luminance Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
-		const rg::RGTextureViewHandle diffuseLuminanceHitDistanceTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+		const rg::RGTextureViewHandle diffuseLuminanceHitDistanceTexture  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Hit Distance Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RGBA16_S_Float));
+		const rg::RGTextureViewHandle lightDirectionTexture               = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Light Direction Texture"), rg::TextureDef(params.resolution, rhi::EFragmentFormat::RG16_UN_Float));
 
 		const lib::StaticArray<sr_restir::SpatialResamplingPassParams, 2u> spatialResamplingPasses =
 		{
@@ -820,6 +822,7 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 		resamplingParams.historyBaseColorTexture         = isHalfRes ? viewContext.historyBaseColorHalfRes : viewContext.historyBaseColor;
 		resamplingParams.outSpecularLuminanceDistTexture = specularLuminanceHitDistanceTexture;
 		resamplingParams.outDiffuseLuminanceDistTexture  = diffuseLuminanceHitDistanceTexture;
+		resamplingParams.outLightDirectionTexture        = lightDirectionTexture;
 		resamplingParams.motionTexture                   = params.motionTexture;
 		resamplingParams.historySpecularHitDist          = !viewSystemsInfo.useUnifiedDenoising ? m_denoiser.GetHistorySpecularHitDist(graphBuilder) : nullptr;
 		resamplingParams.tracesAllocation                = tracesAllocation;
@@ -878,7 +881,8 @@ void SpecularReflectionsRenderStage::OnRender(rg::RenderGraphBuilder& graphBuild
 																				  m_denoiser,
 																				  params,
 																				  specularLuminanceHitDistanceTexture,
-																				  diffuseLuminanceHitDistanceTexture);
+																				  diffuseLuminanceHitDistanceTexture,
+																				  lightDirectionTexture);
 
 			if (isHalfRes)
 			{

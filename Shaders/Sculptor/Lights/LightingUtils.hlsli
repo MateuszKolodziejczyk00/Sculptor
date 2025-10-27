@@ -81,10 +81,14 @@ float PhaseFunction(in float3 toView, in float3 fromLight, float g)
 }
 
 
+// Clamped inverse-square falloff function from:
+// Real Shading in Unreal Engine 4 by Brian Karis
 float GetPointLightAttenuationAtLocation(PointLightGPUData pointLight, float3 location)
 {
-    const float distAlpha = saturate(1.f - length(pointLight.location - location) / pointLight.radius);
-    return distAlpha * distAlpha;
+    const float biasMeters = 0.01f;
+
+    const float dist2 = Dist2(pointLight.location, location);
+    return saturate(Pow2(1.f - Pow2(dist2) / Pow4(pointLight.radius))) / (dist2 + biasMeters);
 }
 
 
@@ -98,6 +102,5 @@ LightingContribution CalcLighting(ShadedSurface surface, float3 lightDir, float3
 {
     return DoShading(surface, lightDir, viewDir, peakIlluminance);
 }
-
 
 #endif // LIGHTING_UTILS_H

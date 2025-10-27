@@ -13,6 +13,7 @@
 #include "EngineFrame.h"
 #include "DDGI/DDGISceneSubsystem.h"
 #include "SceneRenderer/RenderStages/Utils/SharcGICache.h"
+#include "SRDenoiserTypes.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -37,12 +38,13 @@ DS_BEGIN(SRTemporalAccumulationDS, rg::RGDescriptorSetState<SRTemporalAccumulati
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<Real32>),                                    u_roughnessTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_specularTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_diffuseTexture)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwSpecularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),                       u_rwSpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),                       u_rwDiffuseY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),                             u_rwDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<Real32>),                                     u_rwSpecHitDist)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historySpecularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyDiffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_lightDirection)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),                      u_historySpecularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<RTSphericalBasisType>),                      u_historyDiffuseY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector4f>),                            u_historyDiffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector2f>),                             u_rwSpecularTemporalVarianceTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                            u_specularHistoryTemporalVarianceTexture)
@@ -99,6 +101,7 @@ void ApplyTemporalAccumulation(rg::RenderGraphBuilder& graphBuilder, const Tempo
 	ds->u_rwDiffuseY_SH2                         = params.diffuseY_SH2;
 	ds->u_rwDiffSpecCoCg                         = params.diffSpecCoCg;
 	ds->u_rwSpecHitDist                          = params.specHitDist;
+	ds->u_lightDirection                         = params.lightDirection;
 	ds->u_historySpecularY_SH2                   = params.historySpecularY_SH2;
 	ds->u_historyDiffuseY_SH2                    = params.historyDiffuseY_SH2;
 	ds->u_historyDiffSpecCoCg                    = params.historyDiffSpecCoCg;

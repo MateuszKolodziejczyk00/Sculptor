@@ -6,6 +6,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "ResourcesManager.h"
 #include "View/RenderView.h"
+#include "SRDenoiserTypes.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -18,8 +19,8 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(SRClampHistoryDS, rg::RGDescriptorSetState<SRClampHistoryDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_specularY_SH2)
-	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffuseY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),       u_specularY_SH2)
+	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<RTSphericalBasisType>),       u_diffuseY_SH2)
 	DS_BINDING(BINDING_TYPE(gfx::RWTexture2DBinding<math::Vector4f>),             u_diffSpecCoCg)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistorySpecularTexture)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector3f>),            u_fastHistoryDiffuseTexture)

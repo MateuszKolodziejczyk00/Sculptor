@@ -13,6 +13,7 @@
 #include "Bindless/BindlessTypes.h"
 #include "RGDescriptorSetState.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
+#include "SRDenoiserTypes.h"
 
 
 namespace spt::rsc::sr_denoiser
@@ -30,12 +31,12 @@ namespace utils
 {
 
 BEGIN_SHADER_STRUCT(RTPackToSHConstants)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>, normals)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, specular)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>, diffuse)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffuseY)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwSpecularY)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffSpecCoCg)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector2f>,       lightDirection)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,       specular)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector3f>,       diffuse)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwDiffuseY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwSpecularY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>,       rwDiffSpecCoCg)
 END_SHADER_STRUCT();
 
 
@@ -50,24 +51,24 @@ static rdr::PipelineStateID CreateRTPackToSHPipeline()
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("RT Pack To SH Pipeline"), shader);
 }
 
-static void PackToSH(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle spec, rg::RGTextureViewHandle diff, rg::RGTextureViewHandle normals, const SHTextures& sh)
+static void PackToSH(rg::RenderGraphBuilder& graphBuilder, rg::RGTextureViewHandle spec, rg::RGTextureViewHandle diff, rg::RGTextureViewHandle lightDirection, const SHTextures& sh)
 {
 	SPT_PROFILER_FUNCTION();
 
 	RTPackToSHConstants shaderConstants;
-	shaderConstants.normals        = normals;
+	shaderConstants.lightDirection = lightDirection;
 	shaderConstants.specular       = spec;
 	shaderConstants.diffuse        = diff;
 	shaderConstants.rwDiffuseY     = sh.diffuseY;
 	shaderConstants.rwSpecularY    = sh.specularY;
 	shaderConstants.rwDiffSpecCoCg = sh.diffSpecCoCg;
 
-	lib::MTHandle<RTPackToSHDS> ds = graphBuilder.CreateDescriptorSet<RTPackToSHDS>(RENDERER_RESOURCE_NAME("RT Pack To SH DS"));
+	lib::MTHandle<RTPackToSHDS> ds = graphBuilder.CreateDescriptorSet<RTPackToSHDS>(RENDERER_RESOURCE_NAME("RT Pack To Spherical Basis DS"));
 	ds->u_constants = shaderConstants;
 
 	static const rdr::PipelineStateID pipeline = CreateRTPackToSHPipeline();
 
-	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("RT Pack To SH"),
+	graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("RT Pack To Spherical Basis"),
 						  pipeline,
 						  math::Utils::DivideCeil(spec->GetResolution2D(), math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds)));
@@ -111,13 +112,17 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Param
 
 	if (!m_historySpecularY_SH2 || m_historySpecularY_SH2->GetResolution2D() != resolution)
 	{
-		rhi::TextureDefinition historyTexturesDefinition;
-		historyTexturesDefinition.resolution = resolution;
-		historyTexturesDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
-		historyTexturesDefinition.format     = params.specularTexture->GetFormat();
-		m_historySpecularY_SH2 = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Specular SH2"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
-		m_historyDiffuseY_SH2  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Diffuse SH2"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
-		m_historyDiffSpecCoCg  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History DiffSpec CoCg"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
+		rhi::TextureDefinition sphericalYDefinition;
+		sphericalYDefinition.resolution = resolution;
+		sphericalYDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+		sphericalYDefinition.format     = RTSphericalBasisFormat;
+		m_historySpecularY_SH2 = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Specular SH2"), sphericalYDefinition, rhi::EMemoryUsage::GPUOnly);
+		m_historyDiffuseY_SH2  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Diffuse SH2"), sphericalYDefinition, rhi::EMemoryUsage::GPUOnly);
+		rhi::TextureDefinition CoCgDefinition;
+		CoCgDefinition.resolution = resolution;
+		CoCgDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+		CoCgDefinition.format     = rhi::EFragmentFormat::RGBA16_S_Float;
+		m_historyDiffSpecCoCg  = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History DiffSpec CoCg"), CoCgDefinition, rhi::EMemoryUsage::GPUOnly);
 
 		rhi::TextureDefinition historyHitDistTextureDef;
 		historyHitDistTextureDef.resolution = resolution;
@@ -125,6 +130,10 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Param
 		historyHitDistTextureDef.format = rhi::EFragmentFormat::R16_S_Float;
 		m_historySpecularHitDist = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT History Specular Hit Dist"), historyHitDistTextureDef, rhi::EMemoryUsage::GPUOnly);
 
+		rhi::TextureDefinition historyTexturesDefinition;
+		historyTexturesDefinition.resolution = resolution;
+		historyTexturesDefinition.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
+		historyTexturesDefinition.format     = params.specularTexture->GetFormat();
 		m_fastHistorySpecularTexture       = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Specular Fast History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
 		m_fastHistorySpecularOutputTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Reflections Specular Fast History"), historyTexturesDefinition, rhi::EMemoryUsage::GPUOnly);
 
@@ -166,8 +175,8 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 	const rg::RGTextureViewHandle specularTexture = params.specularTexture;
 	const rg::RGTextureViewHandle diffuseTexture  = params.diffuseTexture;
 
-	const rg::RGTextureViewHandle specularY_SH2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Y SH2"), rg::TextureDef(specularTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
-	const rg::RGTextureViewHandle diffuseY_SH2  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Y SH2"), rg::TextureDef(diffuseTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
+	const rg::RGTextureViewHandle specularY_SH2 = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Specular Y SH2"), rg::TextureDef(specularTexture->GetResolution2D(), RTSphericalBasisFormat));
+	const rg::RGTextureViewHandle diffuseY_SH2  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Y SH2"), rg::TextureDef(diffuseTexture->GetResolution2D(), RTSphericalBasisFormat));
 	const rg::RGTextureViewHandle diffSpecCoCg  = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Diffuse Specular CoCg"), rg::TextureDef(diffuseTexture->GetResolution2D(), rhi::EFragmentFormat::RGBA16_S_Float));
 	const rg::RGTextureViewHandle specHitDist   = graphBuilder.AcquireExternalTextureView(m_historySpecularHitDist);
 
@@ -213,6 +222,7 @@ Denoiser::Result Denoiser::DenoiseImpl(rg::RenderGraphBuilder& graphBuilder, con
 		temporalAccumulationParameters.diffuseY_SH2                           = diffuseY_SH2;
 		temporalAccumulationParameters.diffSpecCoCg                           = diffSpecCoCg;
 		temporalAccumulationParameters.specHitDist                            = specHitDist;
+		temporalAccumulationParameters.lightDirection                         = params.lightDirection;
 		temporalAccumulationParameters.historySpecularY_SH2                   = historySpecularY_SH2;
 		temporalAccumulationParameters.historyDiffuseY_SH2                    = historyDiffuseY_SH2;
 		temporalAccumulationParameters.historyDiffSpecCoCg                    = historyDiffSpecCoCg;

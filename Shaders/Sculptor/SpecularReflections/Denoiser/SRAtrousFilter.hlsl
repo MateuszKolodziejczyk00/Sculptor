@@ -8,7 +8,7 @@
 #include "Utils/Wave.hlsli"
 #include "SpecularReflections/RTGICommon.hlsli"
 #include "SpecularReflections/Denoiser/SRDenoisingCommon.hlsli"
-#include "Utils/SphericalHarmonics.hlsli"
+#include "SpecularReflections/Denoiser/RTDenoising.hlsli"
 
 
 struct CS_INPUT
@@ -126,12 +126,12 @@ void SRATrousFilterCS(CS_INPUT input)
 
 		if(roughness <= SPECULAR_TRACE_MAX_ROUGHNESS)
 		{
-			const SH2<float> outSpecularY_SH = Float4ToSH2(u_constants.inSpecularY.Load(uint3(pixel, 0)));
-			const SH2<float> outDiffuseY_SH = Float4ToSH2(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
+			const RTSphericalBasis outSpecularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(pixel, 0)));
+			const RTSphericalBasis outDiffuseY_SH = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
 			const float4 outDiffSpecCoCg = u_constants.inDiffSpecCoCg.Load(uint3(pixel, 0));
 #if OUTPUT_SH
-			u_constants.rwSpecularY.Store(pixel, SH2ToFloat4(outSpecularY_SH));
-			u_constants.rwDiffuseY.Store(pixel, SH2ToFloat4(outDiffuseY_SH));
+			u_constants.rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
+			u_constants.rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
 			u_constants.rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
 #else
 			const float3 outSpecularYCoCg = float3(outSpecularY_SH.Evaluate(normal), outDiffSpecCoCg.zw);
@@ -153,8 +153,8 @@ void SRATrousFilterCS(CS_INPUT input)
 		const float specularHistoryLength = u_specularHistoryLengthTexture.Load(uint3(pixel, 0));
 		const float roughnessFilterStrength = ComputeRoughnessFilterStrength(roughness, specularHistoryLength);
 
-		const SH2<float> specularY_SH = Float4ToSH2(u_constants.inSpecularY.Load(uint3(pixel, 0)));
-		const SH2<float> diffuseY_SH  = Float4ToSH2(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
+		const RTSphericalBasis specularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(pixel, 0)));
+		const RTSphericalBasis diffuseY_SH  = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(pixel, 0)));
 
 		const float specularLumCenter = specularY_SH.Evaluate(normal);
 		const float diffuseLumCenter  = diffuseY_SH.Evaluate(normal);
@@ -168,8 +168,8 @@ void SRATrousFilterCS(CS_INPUT input)
 		float specularWeightSum = kernel[0];
 		float diffuseWeightSum  = kernel[0];
 
-		SH2<float> specularY_SH_Sum = specularY_SH * kernel[0];
-		SH2<float> diffuseY_SH_Sum  = diffuseY_SH * kernel[0];
+		RTSphericalBasis specularY_SH_Sum = specularY_SH * kernel[0];
+		RTSphericalBasis diffuseY_SH_Sum  = diffuseY_SH * kernel[0];
 		float4 diffSpecCoCg_Sum     = u_constants.inDiffSpecCoCg.Load(uint3(pixel, 0)) * kernel[0];
 
 		const ATrousVarianceData varianceData = LoadVariance3x3(u_inVariance, groupOffset, localID);
@@ -210,8 +210,8 @@ void SRATrousFilterCS(CS_INPUT input)
 				const float3 sampleNormal = OctahedronDecodeNormal(u_normalsTexture.Load(uint3(samplePixel, 0)));
 				SPT_CHECK_MSG(all(!isnan(sampleNormal)) && all(!isinf(sampleNormal)), L"Invalid sample normal");
 
-				SH2<float> sampleSpecularY_SH       = Float4ToSH2(u_constants.inSpecularY.Load(uint3(samplePixel, 0)));
-				SH2<float> sampleDiffuseY_SH        = Float4ToSH2(u_constants.inDiffuseY.Load(uint3(samplePixel, 0)));
+				RTSphericalBasis sampleSpecularY_SH = RawToRTSphericalBasis(u_constants.inSpecularY.Load(uint3(samplePixel, 0)));
+				RTSphericalBasis sampleDiffuseY_SH  = RawToRTSphericalBasis(u_constants.inDiffuseY.Load(uint3(samplePixel, 0)));
 				const float4 sampleDiffSpecCoCg     = u_constants.inDiffSpecCoCg.Load(uint3(samplePixel, 0));
 
 				if(isinf(sampleLinearDepth))
@@ -273,15 +273,15 @@ void SRATrousFilterCS(CS_INPUT input)
 			}
 		}
 
-		SH2<float> outSpecularY_SH = specularY_SH_Sum / specularWeightSum;
+		RTSphericalBasis outSpecularY_SH = specularY_SH_Sum / specularWeightSum;
 
-		SH2<float> outDiffuseY_SH = diffuseY_SH_Sum / diffuseWeightSum;
+		RTSphericalBasis outDiffuseY_SH = diffuseY_SH_Sum / diffuseWeightSum;
 
 		const float4 outDiffSpecCoCg = diffSpecCoCg_Sum / float4(diffuseWeightSum, diffuseWeightSum, specularWeightSum, specularWeightSum);
 
 #if OUTPUT_SH
-		u_constants.rwSpecularY.Store(pixel, SH2ToFloat4(outSpecularY_SH));
-		u_constants.rwDiffuseY.Store(pixel, SH2ToFloat4(outDiffuseY_SH));
+		u_constants.rwSpecularY.Store(pixel, RTSphericalBasisToRaw(outSpecularY_SH));
+		u_constants.rwDiffuseY.Store(pixel, RTSphericalBasisToRaw(outDiffuseY_SH));
 		u_constants.rwDiffSpecCoCg.Store(pixel, outDiffSpecCoCg);
 
 		const float outSpecularVariance = specularVarianceSum / Pow2(specularWeightSum);

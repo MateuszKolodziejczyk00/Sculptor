@@ -9,18 +9,19 @@
 #include "RenderGraphBuilder.h"
 #include "View/RenderView.h"
 #include "Bindless/BindlessTypes.h"
+#include "SRDenoiserTypes.h"
 
 
 namespace spt::rsc::sr_denoiser
 {
 
 BEGIN_SHADER_STRUCT(SRATrousFilteringParams)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, inSpecularY)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, inDiffuseY)
-	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>, inDiffSpecCoCg)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<RTSphericalBasisType>, inSpecularY)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<RTSphericalBasisType>, inDiffuseY)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<math::Vector4f>,       inDiffSpecCoCg)
 
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwSpecularY)
-	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffuseY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwSpecularY)
+	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<RTSphericalBasisType>, rwDiffuseY)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector4f>, rwDiffSpecCoCg)
 
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2D<math::Vector3f>, rwSpecularRGB)

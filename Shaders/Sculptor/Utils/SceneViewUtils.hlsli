@@ -235,6 +235,11 @@ float3 HistoryExposedLuminanceToLuminance(float3 exposedLuminance)
 	return exposedLuminance * u_viewExposure.rcpExposureLastFrame;
 }
 
+float HistoryToCurrentExposedLuminanceFactor()
+{
+	return u_viewExposure.exposure / u_viewExposure.exposureLastFrame;
+}
+
 float2 ExposedHistoryLuminanceToCurrentExposedLuminance(float2 exposedLuminance)
 {
 	return exposedLuminance * (u_viewExposure.exposure / u_viewExposure.exposureLastFrame);

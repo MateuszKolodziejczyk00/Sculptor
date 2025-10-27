@@ -117,6 +117,19 @@ TType Pow64(TType val)
 }
 
 template<typename TType>
+float Dist2(in TType a, in TType b)
+{
+    const TType d = b - a;
+    return dot(d, d);
+}
+
+template<typename TType>
+float Dist(in TType a, in TType b)
+{
+    return sqrt(Dist2<TType>(a, b));
+}
+
+template<typename TType>
 void Swap(inout TType a, inout TType b)
 {
 	TType temp = a;

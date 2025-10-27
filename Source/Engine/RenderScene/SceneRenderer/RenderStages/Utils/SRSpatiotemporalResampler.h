@@ -77,6 +77,7 @@ struct ResamplingParams
 
 	rg::RGTextureViewHandle outSpecularLuminanceDistTexture;
 	rg::RGTextureViewHandle outDiffuseLuminanceDistTexture;
+	rg::RGTextureViewHandle outLightDirectionTexture;
 	
 	rg::RGTextureViewHandle motionTexture;
 
