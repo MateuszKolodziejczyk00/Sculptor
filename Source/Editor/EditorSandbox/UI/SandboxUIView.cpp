@@ -181,6 +181,13 @@ void SandboxUIView::DrawRendererSettings()
 		m_renderer.resetAccumulation = true;
 	}
 
+	ImGui::Checkbox("One Frame Debug Mouse Pos", &m_renderer.oneFrameDebugMousePosition);
+
+	if (ImGui::Button("Reset Persistent Debug Geometry"))
+	{
+		m_renderer.resetPersistentDebugs = true;
+	}
+
 	if (ImGui::Button("Capture Render Graph"))
 	{
 		m_renderer.CreateRenderGraphCapture();

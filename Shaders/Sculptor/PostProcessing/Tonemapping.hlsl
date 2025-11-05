@@ -72,6 +72,13 @@ void TonemappingCS(CS_INPUT input)
 
 	color = TonyMCMapface(color);
 
+	if(u_tonemappingConstants.debugGeometry.IsValid())
+	{
+		const float2 uv = coords * u_tonemappingConstants.pixelSize;
+		const float4 debugGeometry = u_tonemappingConstants.debugGeometry.SampleLevel(u_linearSampler, uv);
+		color = lerp(color, debugGeometry.rgb, debugGeometry.a);
+	}
+
 	color = LinearTosRGB(color);
 
 	if(u_tonemappingConstants.enableColorDithering)

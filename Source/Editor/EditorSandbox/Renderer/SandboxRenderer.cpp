@@ -232,10 +232,22 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 
 	{
 #if SPT_SHADERS_DEBUG_FEATURES
+		const Bool shaderDebugMousePressed = inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift);
+
+		const Bool enableMouseDebugging = oneFrameDebugMousePosition ? (shaderDebugMousePressed && !m_shaderDebugMousePressedLastFrame) : shaderDebugMousePressed;
+
 		gfx::dbg::ShaderDebugParameters shaderDebugParameters;
-		shaderDebugParameters.mousePosition = inp::InputManager::Get().IsKeyPressed(inp::EKey::LShift) ? m_mousePositionOnViewport : math::Vector2i::Constant(-2);
-		shaderDebugParameters.viewportSize  = output->GetResolution2D();
+		shaderDebugParameters.mouseUV = enableMouseDebugging
+			? math::Vector2f((m_mousePositionOnViewport.cast<Real32>() + math::Vector2f::Constant(0.5f)).cwiseQuotient(output->GetResolution2D().cast<Real32>()))
+			: math::Vector2f::Constant(-2.f);
+		shaderDebugParameters.viewportSize = output->GetResolution2D();
+		shaderDebugParameters.resetPersistentDebugGeometry = resetPersistentDebugs;
 		const gfx::dbg::ShaderDebugScope shaderDebugCommandsCollectingScope(graphBuilder, shaderDebugParameters);
+		resetPersistentDebugs = false;
+		m_shaderDebugMousePressedLastFrame = shaderDebugMousePressed;
+
+		rendererSettings.dynamicDebugRenderer    = &shaderDebugCommandsCollectingScope.GetDynamicDebugRenderer();
+		rendererSettings.persistentDebugRenderer = &shaderDebugCommandsCollectingScope.GetPersistentDebugRenderer();
 #endif // SPT_SHADERS_DEBUG_FEATURES
 
 		sceneRenderingResultTextureView = m_sceneRenderer.Render(graphBuilder, *m_renderScene, *m_renderView, rendererSettings);

@@ -119,6 +119,14 @@ struct RWTypedBuffer
 		buffer[idx] = data;
 	}
 
+	T AtomicAdd(in uint idx, in T value)
+	{
+		RWStructuredBuffer<T> buffer = ResourceDescriptorHeap[descriptorIdx];
+		T original;
+		InterlockedAdd(buffer[idx], value, OUT original);
+		return original;
+	}
+
 	bool IsValid()
 	{
 		return descriptorIdx != IDX_NONE_32;

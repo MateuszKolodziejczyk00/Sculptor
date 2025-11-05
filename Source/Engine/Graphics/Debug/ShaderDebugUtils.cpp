@@ -24,6 +24,16 @@ void ShaderDebugUtils::Bind(rg::RenderGraphBuilder& graphBuilder, const ShaderDe
 
 	SPT_CHECK(m_ds.IsValid());
 
+	{
+		DebugRenderingFrameSettings dynamicDebugsSettings;
+		dynamicDebugsSettings.clearGeometry = true;
+		m_dynamicDebugRenderer->PrepareResourcesForRecording(graphBuilder, dynamicDebugsSettings);
+
+		DebugRenderingFrameSettings persistentDebugsSettings;
+		persistentDebugsSettings.clearGeometry = debugParameters.resetPersistentDebugGeometry;
+		m_persistentDebugRenderer->PrepareResourcesForRecording(graphBuilder, persistentDebugsSettings);
+	}
+
 	SetDebugParameters(debugParameters);
 
 	PrepareBuffers(graphBuilder);
@@ -69,14 +79,13 @@ ShaderDebugUtils::ShaderDebugUtils()
 	debugCommandsBufferOffsetDefinition.usage = lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferSrc, rhi::EBufferUsage::TransferDst);
 	m_debugCommandsBufferOffset = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME("ShaderDebugCommandBufferOffset"), debugCommandsBufferOffsetDefinition, rhi::EMemoryUsage::GPUOnly);
 
-	ShaderDebugCommandBufferParams params;
-	params.bufferSize = bufferSize;
-
 	m_ds->u_debugCommandsBuffer       = m_debugCommandsBuffer->GetFullView();
 	m_ds->u_debugCommandsBufferOffset = m_debugCommandsBufferOffset->GetFullView();
-	m_ds->u_debugCommandsBufferParams = params;
 
 	InitializeDefaultExecutors();
+
+	m_dynamicDebugRenderer = std::make_unique<DebugRenderer>("Dynamic");
+	m_persistentDebugRenderer = std::make_unique<DebugRenderer>("Persistent");
 
 	rdr::Renderer::GetOnRendererCleanupDelegate().AddLambda([this]
 															{
@@ -101,6 +110,9 @@ void ShaderDebugUtils::CleanupResources()
 
 	m_debugOutputTexture.reset();
 
+	m_dynamicDebugRenderer.reset();
+	m_persistentDebugRenderer.reset();
+
 	m_ds.Reset();
 }
 
@@ -109,9 +121,10 @@ void ShaderDebugUtils::SetDebugParameters(const ShaderDebugParameters& debugPara
 	SPT_CHECK(m_ds.IsValid());
 
 	ShaderDebugCommandBufferParams gpuParams;
-	gpuParams.mousePosition        = debugParameters.mousePosition;
-	gpuParams.mousePositionHalfRes = math::Vector2i(debugParameters.mousePosition.x() >> 1, debugParameters.mousePosition.y() >> 1);
-	gpuParams.bufferSize           = static_cast<Uint32>(m_debugCommandsBuffer->GetSize());
+	gpuParams.mouseUV                     = debugParameters.mouseUV;
+	gpuParams.bufferSize                  = static_cast<Uint32>(m_debugCommandsBuffer->GetSize());
+	gpuParams.dynamicDebugRendererData    = m_dynamicDebugRenderer->GetGPUDebugRendererData();
+	gpuParams.persistentDebugRendererData = m_persistentDebugRenderer->GetGPUDebugRendererData();
 
 	m_ds->u_debugCommandsBufferParams = gpuParams;
 }

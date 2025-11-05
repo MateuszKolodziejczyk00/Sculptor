@@ -14,6 +14,7 @@ namespace spt::rsc
 RendererFloatParameter renderingResolutionScale("Rendering Resolution Scale", { "Temporal AA" }, 0.7f, 0.1f, 1.f);
 RendererBoolParameter  enableUnifiedDenoising("Enable Unified Denoising", { "Temporal AA" }, false);
 RendererBoolParameter  enableTransformerModel("Enable Transformer Model", { "Temporal AA" }, false);
+RendererBoolParameter  debugDisableJitter("Debug Disable Jitter", { "Temporal AA" }, false);
 
 namespace priv
 {
@@ -164,8 +165,15 @@ void TemporalAAViewRenderSystem::PrepareRenderView(RenderView& renderView)
 
 	if (preparedAA)
 	{
-		const math::Vector2f jitter = m_temporalAARenderer->ComputeJitter(renderView.GetRenderedFrameIdx(), desiredRenderingResolution, outputResolution);
-		renderView.SetJitter(jitter);
+		if (!debugDisableJitter)
+		{
+			const math::Vector2f jitter = m_temporalAARenderer->ComputeJitter(renderView.GetRenderedFrameIdx(), desiredRenderingResolution, outputResolution);
+			renderView.SetJitter(jitter);
+		}
+		else
+		{
+			renderView.ResetJitter();
+		}
 		renderView.SetRenderingRes(desiredRenderingResolution);
 	}
 	else

@@ -16,11 +16,11 @@ struct StaticArrayTraits
 };
 
 
-template<typename T, SizeType Size>
-struct StaticArrayTraits<StaticArray<T, Size>>
+template<typename T, SizeType Num>
+struct StaticArrayTraits<StaticArray<T, Num>>
 {
 	using Type = T;
-	static constexpr SizeType Size = Size;
+	static constexpr SizeType Size = Num;
 };
 
 } // spt::lib

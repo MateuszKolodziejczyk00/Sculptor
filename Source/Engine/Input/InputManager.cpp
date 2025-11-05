@@ -1,5 +1,6 @@
 #include "InputManager.h"
 
+
 namespace spt::inp
 {
 

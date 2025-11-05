@@ -45,6 +45,7 @@
 #define SPT_ENABLE_CHECKS true
 
 #include "Debug/DebugMessage.hlsli"
+#include "Debug/GPUDebugRenderer.hlsli"
 
 #else
 

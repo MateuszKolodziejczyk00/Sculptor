@@ -7,6 +7,7 @@
 #include "DescriptorSetBindings/RWBufferBinding.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "DescriptorSetBindings/RWTextureBinding.h"
+#include "DebugRenderer.h"
 
 
 namespace spt::gfx::dbg
@@ -16,19 +17,20 @@ class ShaderDebugCommandsExecutor;
 
 
 BEGIN_SHADER_STRUCT(ShaderDebugCommandBufferParams)
-	SHADER_STRUCT_FIELD(math::Vector2i, mousePosition)
-	SHADER_STRUCT_FIELD(math::Vector2i, mousePositionHalfRes)
-	SHADER_STRUCT_FIELD(Uint32,         bufferSize)
+	SHADER_STRUCT_FIELD(math::Vector2f,       mouseUV)
+	SHADER_STRUCT_FIELD(math::Vector2i,       mousePositionHalfRes)
+	SHADER_STRUCT_FIELD(Uint32,               bufferSize)
+	SHADER_STRUCT_FIELD(GPUDebugRendererData, dynamicDebugRendererData)
+	SHADER_STRUCT_FIELD(GPUDebugRendererData, persistentDebugRendererData)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(ShaderDebugCommandBufferDS, rg::RGDescriptorSetState<ShaderDebugCommandBufferDS>)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBuffer)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                     u_debugCommandsBufferOffset)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),            u_debugOutputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBufferOffset)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOutputTexture)
 DS_END();
-
 
 
 namespace shader_command_op
@@ -39,8 +41,9 @@ static constexpr Uint32 None = 1;
 
 struct ShaderDebugParameters
 {
-	math::Vector2i mousePosition = {};
+	math::Vector2f mouseUV = {};
 	math::Vector2u viewportSize  = {};
+	Bool           resetPersistentDebugGeometry = false;
 };
 
 
@@ -54,6 +57,9 @@ public:
 	void Unbind(rg::RenderGraphBuilder& graphBuilder);
 
 	void BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsExecutor> commandsExecutor);
+
+	DebugRenderer& GetDynamicDebugRenderer() { return *m_dynamicDebugRenderer; }
+	DebugRenderer& GetPersistentDebugRenderer() { return *m_persistentDebugRenderer; }
 
 private:
 
@@ -77,6 +83,9 @@ private:
 
 	lib::SharedPtr<rdr::TextureView> m_debugOutputTexture;
 
+	lib::UniquePtr<DebugRenderer> m_dynamicDebugRenderer;
+	lib::UniquePtr<DebugRenderer> m_persistentDebugRenderer;
+
 	mutable lib::Lock                                              m_commandsExecutorsLock;
 	lib::DynamicArray<lib::SharedPtr<ShaderDebugCommandsExecutor>> m_commandsExecutors;
 };
@@ -87,8 +96,10 @@ class GRAPHICS_API ShaderDebugScope
 public:
 
 	ShaderDebugScope(rg::RenderGraphBuilder& graphBuilder, const ShaderDebugParameters& debugParameters);
-
 	~ShaderDebugScope();
+
+	DebugRenderer& GetDynamicDebugRenderer() const { return ShaderDebugUtils::Get().GetDynamicDebugRenderer(); }
+	DebugRenderer& GetPersistentDebugRenderer() const { return ShaderDebugUtils::Get().GetPersistentDebugRenderer(); }
 
 private:
 

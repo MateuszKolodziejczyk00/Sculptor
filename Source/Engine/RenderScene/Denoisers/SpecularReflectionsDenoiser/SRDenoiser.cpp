@@ -142,7 +142,7 @@ void Denoiser::UpdateResources(rg::RenderGraphBuilder& graphBuilder, const Param
 
 		rhi::TextureDefinition accumulatedSamplesNumTextureDef;
 		accumulatedSamplesNumTextureDef.resolution = resolution;
-		accumulatedSamplesNumTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture);
+		accumulatedSamplesNumTextureDef.usage      = lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::StorageTexture, rhi::ETextureUsage::TransferDest);
 		accumulatedSamplesNumTextureDef.format     = rhi::EFragmentFormat::R8_U_Int;
 		m_specularHistoryLengthTexture        = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Specular Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);
 		m_historySpecularHistoryLengthTexture = rdr::ResourcesManager::CreateTextureView(RENDERER_RESOURCE_NAME("RT Specular Reflections History Lenght"), accumulatedSamplesNumTextureDef, rhi::EMemoryUsage::GPUOnly);

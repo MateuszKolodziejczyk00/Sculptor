@@ -92,6 +92,9 @@ public:
 
 	Bool resetAccumulation = false;
 
+	Bool oneFrameDebugMousePosition = false;
+	Bool resetPersistentDebugs = false;
+
 private:
 
 	void InitializeRenderScene();
@@ -127,6 +130,8 @@ private:
 
 	math::Vector3f m_cameraDeltaLocation[2];
 	math::Vector2f m_cameraDeltaRotation[2];
+
+	Bool m_shaderDebugMousePressedLastFrame = false;
 };
 
 } // spt::ed

@@ -223,6 +223,10 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 			{
 				lib::ValueGuard recursionGuard(m_isAddingCaptureCopyNode, true);
 
+				const rg::RGBufferViewHandle fullBufferView = boundBufferView->IsFullView()
+					? boundBufferView
+					: graphBuilder.CreateBufferView(RG_DEBUG_NAME("TEMP Full View"), boundBuffer, 0u, boundBuffer->GetSize());
+
 				rhi::BufferDefinition captureBufferDef;
 				captureBufferDef.size  = boundBuffer->GetSize();
 				captureBufferDef.usage = rhi::EBufferUsage::TransferDst;
@@ -230,7 +234,7 @@ void RGCapturerDecorator::AddDependenciesToPass(RenderGraphBuilder& graphBuilder
 				lib::SharedRef<rdr::Buffer> captureBuffer = rdr::ResourcesManager::CreateBuffer(RENDERER_RESOURCE_NAME(boundBuffer->GetName()), captureBufferDef, rhi::EMemoryUsage::CPUToGPU);
 				const rg::RGBufferViewHandle rgCaptureBuffer = graphBuilder.AcquireExternalBufferView(captureBuffer->GetFullView());
 
-				graphBuilder.CopyFullBuffer(RG_DEBUG_NAME("Download Buffer"), boundBufferView, rgCaptureBuffer);
+				graphBuilder.CopyFullBuffer(RG_DEBUG_NAME("Download Buffer"), fullBufferView, rgCaptureBuffer);
 
 				newVersion.downloadedBuffer = captureBuffer;
 			}

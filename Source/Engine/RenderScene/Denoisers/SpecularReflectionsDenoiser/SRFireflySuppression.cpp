@@ -6,6 +6,7 @@
 #include "DescriptorSetBindings/SRVTextureBinding.h"
 #include "ResourcesManager.h"
 #include "View/RenderView.h"
+#include "SRDenoiserTypes.h"
 
 
 namespace spt::rsc::sr_denoiser

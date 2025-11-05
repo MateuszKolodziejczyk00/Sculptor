@@ -10,6 +10,11 @@
 #include "RGResources/RGResourceHandles.h"
 
 
+namespace spt::gfx
+{
+class DebugRenderer;
+} // spt::gfx
+
 namespace spt::rsc
 {
 
@@ -61,6 +66,8 @@ struct SceneRendererSettings
 {
 	rhi::EFragmentFormat outputFormat = rhi::EFragmentFormat::None;
 	Bool resetAccumulation            = false;
+	gfx::DebugRenderer* dynamicDebugRenderer = nullptr;
+	gfx::DebugRenderer* persistentDebugRenderer = nullptr;
 };
 
 

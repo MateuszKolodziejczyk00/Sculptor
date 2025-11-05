@@ -35,14 +35,9 @@ Literal CreateLiteral(uint2 val)
 namespace debug
 {
 
-bool IsPixelHovered(uint2 pixelPos)
+bool IsPixelHovered(uint2 coords, uint2 resolution)
 {
-	return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePosition);
-}
-
-bool IsPixelHoveredHalfRes(uint2 pixelPos)
-{
-	return all(int2(pixelPos) == u_debugCommandsBufferParams.mousePositionHalfRes);
+	return all(round(u_debugCommandsBufferParams.mouseUV * resolution) == coords);
 }
 
 void WriteDebugPixel(uint2 pixel, float4 value)

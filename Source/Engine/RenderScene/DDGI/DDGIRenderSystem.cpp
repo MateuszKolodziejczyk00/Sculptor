@@ -27,12 +27,6 @@
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
 
 
-#ifdef SPT_RELEASE
-#define DDGI_DEBUGGING 0
-#else
-#define DDGI_DEBUGGING 1
-#endif // SPT_RELEASE
-
 namespace spt::rsc::ddgi
 {
 
@@ -190,36 +184,6 @@ static rdr::PipelineStateID CreateDDGIInvalidateProbesPipeline(math::Vector2u gr
 	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DDGI Invalidate Probes Pipeline"), shader);
 }
 
-static rdr::PipelineStateID CreateDDGIDrawDebugProbesPipeline(rhi::EFragmentFormat colorRTFormat, rhi::EFragmentFormat depthFormat)
-{
-	rdr::GraphicsPipelineShaders shaders;
-	shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "DDGIDebugProbesVS"));
-	shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugProbes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "DDGIDebugProbesPS"));
-
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition.format = depthFormat;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
-	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(colorRTFormat));
-
-	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("DDGI Debug Probes Pipeline"), shaders, pipelineDef);
-}
-
-static rdr::PipelineStateID CreateDDGIDrawDebugRaysPipeline(rhi::EFragmentFormat colorRTFormat, rhi::EFragmentFormat depthFormat)
-{
-	rdr::GraphicsPipelineShaders shaders;
-	shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "DDGIDebugRaysVS"));
-	shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGIDebugRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "DDGIDebugRaysPS"));
-
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::LineList;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition.format = depthFormat;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition.depthCompareOp = spt::rhi::ECompareOp::GreaterOrEqual;
-	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(colorRTFormat));
-
-	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("DDGI Debug Rays Pipeline"), shaders, pipelineDef);
-}
-
 } // pipelines
 
 
@@ -303,15 +267,6 @@ void DDGIRenderSystem::RenderPerView(rg::RenderGraphBuilder& graphBuilder, const
 	{
 		viewSpec.GetRenderStageEntries(ERenderStage::GlobalIllumination).GetOnRenderStage().AddRawMember(this, &DDGIRenderSystem::RenderGlobalIllumination);
 	}
-
-#if DDGI_DEBUGGING
-	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-	const EDDGIDebugMode::Type probesDebug = ddgiSubsystem.GetDebugMode();
-	if (probesDebug != EDDGIDebugMode::None)
-	{
-		viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).AddRawMember(this, &DDGIRenderSystem::RenderDebug);
-	}
-#endif // DDGI_DEBUGGING
 }
 
 void DDGIRenderSystem::RelitScene(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const DDGISceneSubsystem& ddgiSubsystem, DDGIScene& scene, const RelitSettings& settings) const
@@ -547,103 +502,6 @@ void DDGIRenderSystem::RenderGlobalIllumination(rg::RenderGraphBuilder& graphBui
 		};
 
 		RelitScene(graphBuilder, renderScene, viewSpec, ddgiSubsystem, ddgiSubsystem.GetDDGIScene(), relitSettings);
-	}
-}
-
-void DDGIRenderSystem::RenderDebug(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const RenderViewEntryContext& context) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const RenderViewEntryDelegates::RenderSceneDebugLayerData& debugData = context.Get<RenderViewEntryDelegates::RenderSceneDebugLayerData>();
-
-	const RenderView& renderView = viewSpec.GetRenderView();
-
-	const DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<DDGISceneSubsystem>();
-	
-	const math::Vector2u renderingArea = renderView.GetOutputRes();
-
-	const ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
-
-	rg::RGRenderPassDefinition renderPassDef(math::Vector2i::Zero(), renderingArea);
-	rg::RGRenderTargetDef depthRTDef;
-	depthRTDef.textureView		= viewContext.depth;
-	depthRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
-	depthRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	depthRTDef.clearColor		= rhi::ClearColor(0.f);
-	renderPassDef.SetDepthRenderTarget(depthRTDef);
-
-	rg::RGRenderTargetDef luminanceRTDef;
-	luminanceRTDef.textureView		= debugData.texture;
-	luminanceRTDef.loadOperation	= rhi::ERTLoadOperation::Load;
-	luminanceRTDef.storeOperation	= rhi::ERTStoreOperation::Store;
-	luminanceRTDef.clearColor		= rhi::ClearColor(0.f, 0.f, 0.f, 1.f);
-	renderPassDef.AddColorRenderTarget(luminanceRTDef);
-
-	const rhi::EFragmentFormat colorFormat = debugData.texture->GetFormat();
-	const rhi::EFragmentFormat depthFormat = viewContext.depth->GetFormat();
-
-	graphBuilder.RenderPass(RG_DEBUG_NAME("DDGI Draw Debug Pass"),
-							renderPassDef,
-							rg::BindDescriptorSets(renderView.GetRenderViewDS(),
-												   ddgiSubsystem.GetDDGISceneDS()),
-							[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-							{
-								recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
-								recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
-							});
-
-	if (ddgiSubsystem.GetDebugMode() == EDDGIDebugMode::DebugRays)
-	{
-		const DDGIDebugRaysViewData& debugRaysViewData = viewSpec.GetBlackboard().Get<DDGIDebugRaysViewData>();
-
-		for (const DDGIDebugRaysViewData::DebugRaysBuffer& debugRaysInfo : debugRaysViewData.debugRaysBuffers)
-		{
-			const lib::MTHandle<DDGIDebugDrawRaysDS> debugRaysDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawRaysDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawRaysDS"));
-			debugRaysDS->u_debugRays = debugRaysInfo.debugRays;
-
-			const Uint32 raysNum = debugRaysInfo.raysNum;
-
-			graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Rays Subpass"),
-									rg::BindDescriptorSets(std::move(debugRaysDS)),
-									[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-									{
-										static const rdr::PipelineStateID drawDebugRaysPipeline = pipelines::CreateDDGIDrawDebugRaysPipeline(colorFormat, depthFormat);
-										recorder.BindGraphicsPipeline(drawDebugRaysPipeline);
-
-										recorder.DrawInstances(2u, raysNum);
-									});
-		}
-	}
-	else
-	{
-		DDGIProbesDebugParams debugParams;
-		debugParams.probeRadius	= 0.075f;
-		debugParams.debugMode	= ddgiSubsystem.GetDebugMode();
-
-		const DDGIScene& ddgiScene = ddgiSubsystem.GetDDGIScene();
-
-		const lib::DynamicArray<DDGIVolume*>& volumes = ddgiScene.GetVolumes();
-
-		for (const DDGIVolume* volume : volumes)
-		{
-			debugParams.volumeIdx = volume->GetVolumeIdx();
-
-			lib::MTHandle<DDGIDebugDrawProbesDS> debugDrawProbesDS = graphBuilder.CreateDescriptorSet<DDGIDebugDrawProbesDS>(RENDERER_RESOURCE_NAME("DDGIDebugDrawProbesDS"));
-			debugDrawProbesDS->u_ddgiProbesDebugParams = debugParams;
-
-			const Uint32 probesNum = volume->GetProbesNum();
-			const Uint32 probeVerticesNum = 3168u;
-
-			graphBuilder.AddSubpass(RG_DEBUG_NAME("Debug Probes Subpass"),
-									rg::BindDescriptorSets(std::move(debugDrawProbesDS)),
-									[=](const lib::SharedRef<rdr::RenderContext>& renderContext, rdr::CommandRecorder& recorder)
-									{
-										static const rdr::PipelineStateID drawDebugProbesPipeline = pipelines::CreateDDGIDrawDebugProbesPipeline(colorFormat, depthFormat);
-										recorder.BindGraphicsPipeline(drawDebugProbesPipeline);
-
-										recorder.DrawInstances(probeVerticesNum, probesNum);
-									});
-		}
 	}
 }
 

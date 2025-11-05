@@ -21,6 +21,7 @@
 #include "Loaders/TextureLoader.h"
 #include "Paths.h"
 #include "Bindless/BindlessTypes.h"
+#include "Debug/DebugRenderer.h"
 
 namespace spt::rsc
 {
@@ -430,6 +431,7 @@ namespace tonemapping
 
 BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       bilateralGridUVPerPixel)
+	SHADER_STRUCT_FIELD(math::Vector2f,                       pixelSize)
 	SHADER_STRUCT_FIELD(Bool,                                 enableColorDithering)
 	SHADER_STRUCT_FIELD(Real32,                               minLogLuminance)
 	SHADER_STRUCT_FIELD(Real32,                               logLuminanceRange)
@@ -442,11 +444,13 @@ BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture2DRef<Real32>,         logLuminance)
 	SHADER_STRUCT_FIELD(gfx::SRVTexture3DRef<math::Vector3f>, tonemappingLUT)
 	SHADER_STRUCT_FIELD(gfx::UAVTexture2DRef<math::Vector4f>, rwLDRTexture)
+	SHADER_STRUCT_FIELD(gfx::SRVTexture2D<math::Vector4f>,    debugGeometry)
 END_SHADER_STRUCT();
 
 
 DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>),	u_linearSampler)
+	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::NearestClampToEdge>),	u_nearestSampler)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<TonemappingPassConstants>),					u_tonemappingConstants)
 DS_END();
 
@@ -561,6 +565,7 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 
 	ShadingViewContext& viewContext = viewSpec.GetShadingViewContext();
 
+	const math::Vector2u renderingRes = viewSpec.GetRenderView().GetRenderingRes();
 	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 	const math::Vector3u textureRes(resolution.x(), resolution.y(), 1);
 	const math::Vector2f inputPixelSize = math::Vector2f(1.f / static_cast<Real32>(resolution.x()), 1.f / static_cast<Real32>(resolution.y()));
@@ -592,6 +597,22 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 
 	const math::Vector2u gridSize2D = gridTileSize.cwiseProduct(gridResolution2D);
 
+	const rg::RGTextureViewHandle debugColorTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Color Texture"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::RGBA8_UN_Float));
+	const rg::RGTextureViewHandle debugDepthTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Debug Depth Texture"), rg::TextureDef(renderingRes, rhi::EFragmentFormat::D32_S_Float));
+	if (stageContext.rendererSettings.dynamicDebugRenderer || stageContext.rendererSettings.persistentDebugRenderer)
+	{
+		graphBuilder.CopyFullTexture(RG_DEBUG_NAME("Copy Depth To Debug Depth"), viewContext.depth, debugDepthTexture);
+
+		graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Debug Color Texture"), debugColorTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
+
+		gfx::DebugRenderingSettings debugSettings;
+		debugSettings.outColor             = debugColorTexture;
+		debugSettings.outDepth             = debugDepthTexture;
+		debugSettings.viewProjectionMatrix = viewSpec.GetRenderView().GetViewRenderingData().viewProjectionMatrixNoJitter;
+		stageContext.rendererSettings.persistentDebugRenderer->RenderDebugGeometry(graphBuilder, debugSettings);
+		stageContext.rendererSettings.dynamicDebugRenderer->RenderDebugGeometry(graphBuilder, debugSettings);
+	}
+
 	tonemapping::TonemappingPassConstants tonemappingSettings;
 	tonemappingSettings.enableColorDithering     = params::enableColorDithering;
 	tonemappingSettings.minLogLuminance          = minLogLuminance;
@@ -601,21 +622,19 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	tonemappingSettings.detailStrength           = params::detailStrength;
 	tonemappingSettings.bilateralGridStrength    = params::bilateralGridStrength;
 	tonemappingSettings.bilateralGridUVPerPixel  = gridSize2D.cast<Real32>().cwiseInverse();
+	tonemappingSettings.pixelSize                = inputPixelSize;
 	tonemappingSettings.linearColor              = linearColorTexture;
 	tonemappingSettings.luminanceBilateralGrid   = automaticExposureOutputs.bilateralGridInfo.bilateralGrid;
 	tonemappingSettings.logLuminance             = automaticExposureOutputs.bilateralGridInfo.downsampledLogLuminance;
 	tonemappingSettings.tonemappingLUT           = m_tonemappingLUT;
 	tonemappingSettings.rwLDRTexture             = tonemappedTexture;
+	tonemappingSettings.debugGeometry            = debugColorTexture;
 
 	tonemapping::DoTonemappingAndGammaCorrection(graphBuilder, viewSpec, tonemappingSettings);
 
 	viewContext.output = tonemappedTexture;
 	
 	GetStageEntries(viewSpec).BroadcastOnRenderStage(graphBuilder, renderScene, viewSpec, stageContext);
-	
-	RenderViewEntryContext context;
-	context.Bind<RenderViewEntryDelegates::RenderSceneDebugLayerData>(RenderViewEntryDelegates::RenderSceneDebugLayerData{ tonemappedTexture });
-	viewSpec.GetRenderViewEntry(RenderViewEntryDelegates::RenderSceneDebugLayer).Broadcast(graphBuilder, renderScene, viewSpec, context);
 }
 
 } // spt::rsc

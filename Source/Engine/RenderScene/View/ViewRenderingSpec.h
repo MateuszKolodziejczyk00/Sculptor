@@ -151,8 +151,6 @@ struct FillShadingDSData
 
 inline static const lib::HashedString VolumetricClouds        = "VolumetricClouds";
 
-/** Delegate for rendering objects onto view final texture after applying all post processes */
-inline static const lib::HashedString RenderSceneDebugLayer   = "SceneDebugLayer";
 struct RenderSceneDebugLayerData
 {
 	rg::RGTextureViewHandle texture;

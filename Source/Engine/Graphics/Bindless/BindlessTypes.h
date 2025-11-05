@@ -509,7 +509,15 @@ struct StructTranslator<gfx::BufferDescriptor<metadata, TType>>
 			}
 			else
 			{
-				return prefix + "TypedBuffer" + "<" + StructTranslator<TType>::GetHLSLStructName() + ">";
+				if constexpr (CShaderStruct<TType>)
+				{
+					// Can't use StructTranslator here, as specialization might be not defined at this point for TType
+					return prefix + "TypedBuffer" + "<" + TType::GetStructName() + ">";
+				}
+				else
+				{
+					return prefix + "TypedBuffer" + "<" + StructTranslator<TType>::GetHLSLStructName() + ">";
+				}
 			}
 		}
 		else
@@ -549,6 +557,16 @@ struct StructHLSLAlignmentEvaluator<gfx::BufferDescriptor<metadata, TType>>
 	static constexpr Uint32 Alignment()
 	{
 		return 4u;
+	}
+};
+
+
+template<gfx::BufferDescriptorMetadata metadata, typename TType>
+struct ShaderStructReferencer<gfx::BufferDescriptor<metadata, TType>>
+{
+	static constexpr void CollectReferencedStructs(lib::DynamicArray<lib::String>& references)
+	{
+		ShaderStructReferencer<TType>::CollectReferencedStructs(references);
 	}
 };
 
