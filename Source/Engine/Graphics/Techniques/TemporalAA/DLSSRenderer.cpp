@@ -70,6 +70,11 @@ dlss::EDLSSFlags ComputeDLSSFlags(const TemporalAAParams& params)
 
 } // priv
 
+Bool DLSSRenderer::InitializeDLSS()
+{
+	return dlss::SculptorDLSSBackend::InitializeDLSS();
+}
+
 DLSSRenderer::DLSSRenderer()
 {
 	m_name                     = "DLSS";

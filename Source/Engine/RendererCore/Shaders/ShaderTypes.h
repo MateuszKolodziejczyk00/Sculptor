@@ -9,7 +9,7 @@ namespace spt::rdr
 
 enum class EShaderFlags : Flags32
 {
-	None			= 0
+	None = 0
 };
 
 

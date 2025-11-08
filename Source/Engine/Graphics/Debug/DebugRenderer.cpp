@@ -3,6 +3,7 @@
 #include "RenderGraphBuilder.h"
 #include "DescriptorSetBindings/ConstantBufferBinding.h"
 #include "RGDescriptorSetState.h"
+#include "Pipelines/PSOsLibraryTypes.h"
 
 
 namespace spt::gfx
@@ -35,22 +36,39 @@ DS_BEGIN(DebugGeometryPassDS, rg::RGDescriptorSetState<DebugGeometryPassDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CreateDebugLinesPSO()
+GRAPHICS_PSO(DebugGeometryPSO)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("DEBUG_GEOMETRY_TYPE", "0"));
+	VERTEX_SHADER("Sculptor/Debug/DebugGeometry.hlsl", "DebugGeometryVS");
+	FRAGMENT_SHADER("Sculptor/Debug/DebugGeometry.hlsl", "DebugGeometryPS");
 
-	rdr::GraphicsPipelineShaders shaders;
-	shaders.vertexShader   = rdr::ResourcesManager::CreateShader("Sculptor/Debug/DebugGeometry.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "DebugGeometryVS"), compilationSettings);
-	shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/Debug/DebugGeometry.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "DebugGeometryPS"), compilationSettings);
+	PRESET(lines);
 
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::LineList;
-	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(rhi::EFragmentFormat::RGBA8_UN_Float));
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D32_S_Float);
+	static void PrecachePSOs(rdr::PSOCompilerInterface & compiler, const rdr::PSOPrecacheParams & params)
+	{
+		const rhi::PipelineRenderTargetsDefinition rtsDef
+		{
+			.colorRTsDefinition =
+			{
+				rhi::ColorRenderTargetDefinition
+				{
+					.format = rhi::EFragmentFormat::RGBA8_UN_Float,
+				}
+			},
+			.depthRTDefinition =
+			{
+				.format = rhi::EFragmentFormat::D32_S_Float,
+			}
+		};
 
-	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Debug Lines Pipeline"), shaders, pipelineDef);
-}
+		lines = CompilePSO(compiler,
+						   rhi::GraphicsPipelineDefinition
+						   {
+							   .primitiveTopology = rhi::EPrimitiveTopology::LineList,
+							   .renderTargetsDefinition = rtsDef,
+						   },
+						   { "DEBUG_GEOMETRY_TYPE=0" });
+	}
+};
 
 
 DebugRenderer::DebugRenderer(lib::HashedString name)
@@ -133,8 +151,7 @@ void DebugRenderer::RenderDebugGeometry(rg::RenderGraphBuilder& graphBuilder, co
 
 								const rdr::BufferView& linesDrawCall = indirectParams.linesDrawCall->GetResourceRef();
 
-								static rdr::PipelineStateID debugLinesPSO = CreateDebugLinesPSO();
-								recorder.BindGraphicsPipeline(debugLinesPSO);
+								recorder.BindGraphicsPipeline(DebugGeometryPSO::lines);
 
 								recorder.DrawIndirect(linesDrawCall, 0u, sizeof(rdr::HLSLStorage<DebugDrawCallData>), 1u);
 							});

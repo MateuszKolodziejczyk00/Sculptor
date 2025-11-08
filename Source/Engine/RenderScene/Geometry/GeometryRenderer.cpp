@@ -331,15 +331,31 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 
 	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryVisibility", batch, GetPassIdxMacroDef<passIdx>());
 
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(visPassParams.depth->GetFormat(), rhi::ECompareOp::Greater);
-	pipelineDef.renderTargetsDefinition.colorRTsDefinition.emplace_back(rhi::ColorRenderTargetDefinition(visPassParams.visibilityTexture->GetFormat(), rhi::ERenderTargetBlendType::Disabled));
-
-	if (psoInfo.isDoubleSided)
+	const rhi::GraphicsPipelineDefinition pipelineDef
 	{
-		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-	}
+		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
+		.rasterizationDefinition =
+		{
+			.cullMode = psoInfo.isDoubleSided ? rhi::ECullMode::None : rhi::ECullMode::Back,
+		},
+		.renderTargetsDefinition =
+		{
+			.colorRTsDefinition =
+			{
+				rhi::ColorRenderTargetDefinition
+				{
+					.format         = visPassParams.visibilityTexture->GetFormat(),
+					.colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+					.alphaBlendType = rhi::ERenderTargetBlendType::Disabled,
+				}
+			},
+			.depthRTDefinition = rhi::DepthRenderTargetDefinition
+			{
+				.format = visPassParams.depth->GetFormat(),
+				.depthCompareOp = rhi::ECompareOp::Greater,
+			}
+		}
+	};
 	
 	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry Visibility Pipeline"),
 																				   shaders.GetGraphicsPipelineShaders(),
@@ -700,14 +716,22 @@ static rdr::PipelineStateID CreatePipelineForBatch(const GeometryOITPassParams& 
 
 	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryOIT", batch, GetPassIdxMacroDef<passIdx>());
 
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(oitPassParams.depth->GetFormat(), rhi::ECompareOp::Greater);
-
-	if (psoInfo.isDoubleSided)
+	rhi::GraphicsPipelineDefinition pipelineDef
 	{
-		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-	}
+		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
+		.rasterizationDefinition =
+		{
+			.cullMode = psoInfo.isDoubleSided ? rhi::ECullMode::None : rhi::ECullMode::Back,
+		},
+		.renderTargetsDefinition =
+		{
+			.depthRTDefinition = rhi::DepthRenderTargetDefinition
+			{
+				.format = oitPassParams.depth->GetFormat(),
+				.depthCompareOp = rhi::ECompareOp::Greater,
+			}
+		}
+	};
 	
 	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry OIT Pipeline"),
 																				   shaders.GetGraphicsPipelineShaders(),

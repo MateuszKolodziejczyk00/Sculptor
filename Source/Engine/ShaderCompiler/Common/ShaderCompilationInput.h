@@ -70,7 +70,11 @@ class SHADER_COMPILER_API ShaderCompilationSettings
 {
 public:
 
-	ShaderCompilationSettings();
+	ShaderCompilationSettings() = default;
+
+	ShaderCompilationSettings(std::initializer_list<lib::HashedString> macros)
+		: m_macros(macros)
+	{ }
 
 	void AddMacroDefinition(MacroDefinition macro);
 	const lib::DynamicArray<lib::HashedString>& GetMacros() const;
@@ -84,7 +88,7 @@ private:
 
 	lib::DynamicArray<lib::HashedString> m_macros;
 	
-	Bool m_generateDebugSource;
+	Bool m_generateDebugSource = true;
 };
 
 

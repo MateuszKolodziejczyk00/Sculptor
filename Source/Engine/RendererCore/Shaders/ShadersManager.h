@@ -22,6 +22,8 @@ public:
 
 	void		ClearCachedShaders();
 
+	SPT_NODISCARD ShaderID					GenerateShaderID(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) const;
+
 	SPT_NODISCARD ShaderID					CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD lib::SharedRef<Shader>	GetShader(ShaderID shader) const;
 
@@ -63,6 +65,7 @@ private:
 		ShaderHashType shaderHash;
 	};
 
+	mutable lib::ReadWriteLock m_hotReloadParamsLock;
 	lib::DynamicArray<ShaderHotReloadParameters> m_compiledShadersHotReloadParams;
 
 #endif // WITH_SHADERS_HOT_RELOAD

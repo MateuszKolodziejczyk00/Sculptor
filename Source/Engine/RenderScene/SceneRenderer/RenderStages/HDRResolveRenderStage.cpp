@@ -22,6 +22,7 @@
 #include "Paths.h"
 #include "Bindless/BindlessTypes.h"
 #include "Debug/DebugRenderer.h"
+#include "Pipelines/PSOsLibraryTypes.h"
 
 namespace spt::rsc
 {
@@ -233,30 +234,43 @@ BloomPassInfo CreateBloomPassInfo(math::Vector2u inputRes, math::Vector2u output
 }
 
 
-static rdr::PipelineStateID CompileBloomDownsamplePipeline()
+COMPUTE_PSO(BloomDownsamplePSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomDownsampleCS"));
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomDownsampleCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomDownsamplePipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { });
+	}
+};
 
 
-static rdr::PipelineStateID CompileBloomUpsamplePipeline()
+COMPUTE_PSO(BloomUpsamplePSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomUpsampleCS"));
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomUpsampleCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomUpsamplePipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { });
+	}
+};
 
 
-static rdr::PipelineStateID CompileBloomCompositePipeline()
+COMPUTE_PSO(BloomCompositePSO)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("BLOOM_COMPOSITE", "1"));
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Bloom.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "BloomCompositeCS"), compilationSettings);
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomCompositeCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("BloomUpsamplePipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { "BLOOM_COMPOSITE=1" });
+	}
+};
 
 
 static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const lib::DynamicArray<rg::RGTextureViewHandle>& bloomTextureMips, rg::RGTextureViewHandle inputTexture)
@@ -266,8 +280,6 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
-
-	static const rdr::PipelineStateID downsamplePipeline = CompileBloomDownsamplePipeline();
 
 	rg::RGTextureViewHandle inputTextureView = inputTexture;
 
@@ -291,7 +303,7 @@ static void BloomDownsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingS
 
 		const math::Vector3u groupCount(math::Utils::DivideCeil(outputRes.x(), 8u), math::Utils::DivideCeil(outputRes.y(), 8u), 1u);
 		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Bloom Downsample [{}, {}] -> [{}, {}]", inputRes.x(), inputRes.y(), outputRes.x(), outputRes.y())),
-							  downsamplePipeline, 
+							  BloomDownsamplePSO::pso, 
 							  groupCount,
 							  rg::BindDescriptorSets(bloomPassDS));
 
@@ -306,8 +318,6 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 	const math::Vector2u resolution = viewSpec.GetRenderView().GetOutputRes();
 
 	const Int32 bloomPassesNum = static_cast<Int32>(bloomTextureMips.size());
-
-	static const rdr::PipelineStateID upsamplePipeline = CompileBloomUpsamplePipeline();
 
 	rg::RGTextureViewHandle inputTextureView = bloomTextureMips.back();
 
@@ -328,7 +338,7 @@ static void BloomUpsample(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpe
 
 		const math::Vector3u groupCount(math::Utils::DivideCeil(outputRes.x(), 8u), math::Utils::DivideCeil(outputRes.y(), 8u), 1u);
 		graphBuilder.Dispatch(RG_DEBUG_NAME(std::format("Bloom Upsample [{}, {}] -> [{}, {}]", inputRes.x(), inputRes.y(), outputRes.x(), outputRes.y())),
-							  upsamplePipeline, 
+							  BloomUpsamplePSO::pso, 
 							  groupCount,
 							  rg::BindDescriptorSets(bloomPassDS));
 
@@ -343,8 +353,6 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 	const RenderView& renderView = viewSpec.GetRenderView();
 
 	const math::Vector2u resolution = renderView.GetOutputRes();
-
-	static const rdr::PipelineStateID combinePipeline = CompileBloomCompositePipeline();
 
 	const math::Vector2u inputRes = math::Vector2u(resolution.x() >> 1, resolution.y() >> 1);
 	const math::Vector2u outputRes = math::Vector2u(resolution.x(), resolution.y());
@@ -377,7 +385,7 @@ static void BloomComposite(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSp
 
 	const math::Vector3u groupCount(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Bloom Composite"),
-						  combinePipeline, 
+						  BloomCompositePSO::pso, 
 						  groupCount,
 						  rg::BindDescriptorSets(bloomPassDS, bloomCompositePassDS));
 }
@@ -429,6 +437,19 @@ static void ApplyBloom(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& 
 namespace tonemapping
 {
 
+COMPUTE_PSO(TonemappingPSO)
+{
+	COMPUTE_SHADER("Sculptor/PostProcessing/Tonemapping.hlsl", "TonemappingCS");
+
+	PRESET(ldr);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		ldr = CompilePSO(compiler, { });
+	}
+};
+
+
 BEGIN_SHADER_STRUCT(TonemappingPassConstants)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       bilateralGridUVPerPixel)
 	SHADER_STRUCT_FIELD(math::Vector2f,                       pixelSize)
@@ -455,13 +476,6 @@ DS_BEGIN(TonemappingDS, rg::RGDescriptorSetState<TonemappingDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileTonemappingPipeline()
-{
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/PostProcessing/Tonemapping.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "TonemappingCS"));
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("TonemappingPipeline"), shader);
-}
-
-
 static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder, ViewRenderingSpec& viewSpec, const TonemappingPassConstants& tonemappingConstants)
 {
 	SPT_PROFILER_FUNCTION();
@@ -471,14 +485,12 @@ static void DoTonemappingAndGammaCorrection(rg::RenderGraphBuilder& graphBuilder
 	const lib::MTHandle<TonemappingDS> tonemappingDS = graphBuilder.CreateDescriptorSet<TonemappingDS>(RENDERER_RESOURCE_NAME("TonemappingDS"));
 	tonemappingDS->u_tonemappingConstants = tonemappingConstants;
 
-	static const rdr::PipelineStateID pipelineState = CompileTonemappingPipeline();
-
 	const math::Vector2u resolution = renderView.GetOutputRes();
 
 	const math::Vector3u dispatchGroupsNum(math::Utils::DivideCeil(resolution.x(), 8u), math::Utils::DivideCeil(resolution.y(), 8u), 1u);
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Tonemapping And Gamma"),
-						  pipelineState,
+						  TonemappingPSO::ldr,
 						  dispatchGroupsNum,
 						  rg::BindDescriptorSets(tonemappingDS,
 												 renderView.GetRenderViewDS()));

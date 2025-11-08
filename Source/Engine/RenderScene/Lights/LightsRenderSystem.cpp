@@ -427,10 +427,15 @@ LightsRenderSystem::LightsRenderSystem()
 		shaders.vertexShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsTiles.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "BuildLightsTilesVS"));
 		shaders.fragmentShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/BuildLightsTiles.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "BuildLightsTilesPS"));
 
-		rhi::GraphicsPipelineDefinition pipelineDef;
-		pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-		pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::Front;
-		pipelineDef.rasterizationDefinition.rasterizationType = rhi::ERasterizationType::ConservativeOverestimate;
+		const rhi::GraphicsPipelineDefinition pipelineDef
+		{
+			.primitiveTopology       = rhi::EPrimitiveTopology::TriangleList,
+			.rasterizationDefinition =
+			{
+				.cullMode = rhi::ECullMode::None,
+				.rasterizationType = rhi::ERasterizationType::ConservativeOverestimate,
+			}
+		};
 
 		m_buildLightsTilesPipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("BuildLightsTilesPipeline"), shaders, pipelineDef);
 	}

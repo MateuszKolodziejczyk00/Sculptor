@@ -95,12 +95,18 @@ public:
 
 	SPT_NODISCARD static lib::SharedRef<CommandBuffer> CreateCommandBuffer(const RendererResourceName& name, const lib::SharedRef<RenderContext>& renderContext, const rhi::CommandBufferDefinition& definition); 
 
-	SPT_NODISCARD static ShaderID               CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
+	SPT_NODISCARD static ShaderID               GenerateShaderID(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
+	static ShaderID                             CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings = sc::ShaderCompilationSettings(), EShaderFlags flags = EShaderFlags::None);
 	SPT_NODISCARD static lib::SharedRef<Shader> GetShaderObject(ShaderID shaderID);
 
-	SPT_NODISCARD static PipelineStateID          CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
-	SPT_NODISCARD static PipelineStateID          CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
-	SPT_NODISCARD static PipelineStateID          CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
+
+	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const ShaderID& shader);
+	SPT_NODISCARD static PipelineStateID GeneratePipelineID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
+
+	static PipelineStateID          CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef);
+	static PipelineStateID          CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader);
+	static PipelineStateID          CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef);
 	SPT_NODISCARD static lib::SharedPtr<Pipeline> GetPipelineObject(PipelineStateID id);
 	
 	SPT_NODISCARD static lib::SharedRef<BottomLevelAS> CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition);

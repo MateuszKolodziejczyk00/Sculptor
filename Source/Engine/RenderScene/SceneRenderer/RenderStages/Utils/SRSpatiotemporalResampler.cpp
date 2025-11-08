@@ -15,6 +15,7 @@
 #include "SceneRenderer/Utils/RTVisibilityUtils.h"
 #include "MaterialsUnifiedData.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
+#include "Pipelines/PSOsLibraryTypes.h"
 
 
 namespace spt::rsc::sr_restir
@@ -109,12 +110,17 @@ DS_BEGIN(RTCopyTracedReservoirsDS, rg::RGDescriptorSetState<RTCopyTracedReservoi
 DS_END();
 
 
-static rdr::PipelineStateID CompileCopyTracedReservoirsPipeline()
+COMPUTE_PSO(CopyTracedReservoirsPSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTCopyTracedReservoirs.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RTCopyTracedReservoirsCS"));
+	COMPUTE_SHADER("Sculptor/SpecularReflections/RTCopyTracedReservoirs.hlsl", "RTCopyTracedReservoirsCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Copy Traced Reservoirs Pipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { });
+	}
+};
 
 
 static void CopyTracedReservoirs(rg::RenderGraphBuilder& graphBuilder, const SRResamplingConstants& resamplingConstants, const vrt::TracesAllocation& traces, rg::RGBufferViewHandle inputBuffer, rg::RGBufferViewHandle outputBuffer)
@@ -132,10 +138,8 @@ static void CopyTracedReservoirs(rg::RenderGraphBuilder& graphBuilder, const SRR
 	ds->u_tracesNum           = traces.tracesNum;
 	ds->u_resamplingConstants = resamplingConstants;
 
-	static const rdr::PipelineStateID pipeline = CompileCopyTracedReservoirsPipeline();
-
 	graphBuilder.DispatchIndirect(RG_DEBUG_NAME("Copy Traced Reservoirs"),
-								  pipeline,
+								  CopyTracedReservoirsPSO::pso,
 								  traces.dispatchIndirectArgs, 0u,
 								  rg::BindDescriptorSets(std::move(ds)));
 }
@@ -181,15 +185,19 @@ DS_BEGIN(SRAdditionalPassesAllocatorDS, rg::RGDescriptorSetState<SRAdditionalPas
 DS_END();
 
 
-static rdr::PipelineStateID CompileResampleTemporallyPipeline(Bool enableSecondTracingPass)
+COMPUTE_PSO(ResampleTemporallyPSO)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_SECOND_TRACING_PASS", enableSecondTracingPass ? "1" : "0"));
+	COMPUTE_SHADER("Sculptor/SpecularReflections/ResampleTemporally.hlsl", "ResampleTemporallyCS");
 
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResampleTemporally.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResampleTemporallyCS"), compilationSettings);
+	PRESET(withSecondTracingPass);
+	PRESET(noSecondTracingPass);
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Resample Temporally Pipeline"), shader);
-}
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		withSecondTracingPass = CompilePSO(compiler, { "ENABLE_SECOND_TRACING_PASS=1" });
+		noSecondTracingPass = CompilePSO(compiler, { "ENABLE_SECOND_TRACING_PASS=0" });
+	}
+};
 
 
 static vrt::TracesAllocation PrepareAdditionalTracesAllocationData(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params)
@@ -261,10 +269,8 @@ static vrt::TracesAllocation ResampleTemporally(rg::RenderGraphBuilder& graphBui
 
 	reservoirsState.RollBuffers();
 
-	const rdr::PipelineStateID pipeline = CompileResampleTemporallyPipeline(params.enableSecondTracingPass);
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resample Temporally"),
-						  pipeline,
+						  params.enableSecondTracingPass ? ResampleTemporallyPSO::withSecondTracingPass : ResampleTemporallyPSO::noSecondTracingPass,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds),
 												 params.renderView.GetRenderViewDS(),
@@ -284,12 +290,17 @@ DS_BEGIN(RTFireflyFilterDS, rg::RGDescriptorSetState<RTFireflyFilterDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileFireflyFilterPipeline()
+COMPUTE_PSO(RTFireflyFilterPSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTFireflyFilter.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "RTFireflyFilterCS"));
+	COMPUTE_SHADER("Sculptor/SpecularReflections/RTFireflyFilter.hlsl", "RTFireflyFilterCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("RT Firefly Filter Pipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { });
+	}
+};
 
 
 static void FireflyFilter(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
@@ -302,10 +313,8 @@ static void FireflyFilter(rg::RenderGraphBuilder& graphBuilder, const Resampling
 	ds->u_inOutReservoirsBuffer = reservoirsState.ReadReservoirs();
 	ds->u_resamplingConstants   = resamplingConstants;
 
-	static const rdr::PipelineStateID pipeline = CompileFireflyFilterPipeline();
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("RT Firefly Filter"),
-						  pipeline,
+						  RTFireflyFilterPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(16u, 16u)),
 						  rg::BindDescriptorSets(std::move(ds)));
 }
@@ -492,12 +501,18 @@ DS_BEGIN(ResolveReservoirsDS, rg::RGDescriptorSetState<ResolveReservoirsDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileResolveReservoirsPipeline()
+COMPUTE_PSO(ResolveReservoirsPSO)
 {
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResolveReservoirs.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "ResolveReservoirsCS"));
+	COMPUTE_SHADER("Sculptor/SpecularReflections/ResolveReservoirs.hlsl", "ResolveReservoirsCS");
 
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Resolve Reservoirs Pipeline"), shader);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		pso = CompilePSO(compiler, { });
+	}
+};
+
 
 static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
 {
@@ -519,10 +534,8 @@ static void ResolveReservoirs(rg::RenderGraphBuilder& graphBuilder, const Resamp
 	ds->u_initialReservoirsBuffer       = params.initialReservoirBuffer;
 	ds->u_resamplingConstants           = resamplingConstants;
 
-	static const rdr::PipelineStateID pipeline = CompileResolveReservoirsPipeline();
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Resolve Reservoirs"),
-						  pipeline,
+						  ResolveReservoirsPSO::pso,
 						  math::Utils::DivideCeil(resolution, math::Vector2u(8u, 8u)),
 						  rg::BindDescriptorSets(std::move(ds), params.renderView.GetRenderViewDS()));
 }

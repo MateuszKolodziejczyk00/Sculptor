@@ -5,7 +5,7 @@
 #include "Types/CommandBuffer.h"
 #include "Types/Window.h"
 #include "Shaders/ShadersManager.h"
-#include "Pipelines/PipelinesLibrary.h"
+#include "Pipelines/PipelinesCache.h"
 #include "Samplers/SamplersCache.h"
 #include "GPUDiagnose/Diagnose.h"
 #include "Window/PlatformWindowImpl.h"
@@ -30,7 +30,7 @@ struct RendererData
 
 ShadersManager shadersManager;
 
-PipelinesLibrary pipelinesLibrary;
+PipelinesCache pipelinesCache;
 
 SamplersCache samplersCache;
 
@@ -87,7 +87,7 @@ void Renderer::Uninitialize()
 
 	GetSamplersCache().Uninitialize();
 
-	GetPipelinesLibrary().ClearCachedPipelines();
+	GetPipelinesCache().ClearCachedPipelines();
 
 	GetShadersManager().Uninitialize();
 
@@ -110,7 +110,7 @@ void Renderer::FlushCaches()
 
 	GetSamplersCache().FlushPendingSamplers();
 	
-	GetPipelinesLibrary().FlushCreatedPipelines();
+	GetPipelinesCache().FlushCreatedPipelines();
 }
 
 ShadersManager& Renderer::GetShadersManager()
@@ -118,9 +118,9 @@ ShadersManager& Renderer::GetShadersManager()
 	return priv::g_data.shadersManager;
 }
 
-PipelinesLibrary& Renderer::GetPipelinesLibrary()
+PipelinesCache& Renderer::GetPipelinesCache()
 {
-	return priv::g_data.pipelinesLibrary;
+	return priv::g_data.pipelinesCache;
 }
 
 SamplersCache& Renderer::GetSamplersCache()

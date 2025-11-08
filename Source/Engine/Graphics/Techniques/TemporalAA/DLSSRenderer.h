@@ -18,6 +18,8 @@ protected:
 
 public:
 
+	static Bool InitializeDLSS();
+
 	DLSSRenderer();
 
 	// Begin TemporalAARenderer overrides

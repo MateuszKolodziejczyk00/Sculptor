@@ -255,7 +255,7 @@ void UploadsManager::FlushPendingUploads_AssumesLocked()
 
 	lib::SharedRef<rdr::RenderContext> context = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("FlushPendingUploadsContext"), rhi::ContextDefinition());
 
-	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Transfer, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
+	const rhi::CommandBufferDefinition cmdBufferDef(rhi::EDeviceCommandQueueType::Graphics, rhi::ECommandBufferType::Primary, rhi::ECommandBufferComplexityClass::Low);
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("TransfersCommandBuffer"), context, cmdBufferDef);
 
 	for (const CopyCommand& command : m_bufferCommands)

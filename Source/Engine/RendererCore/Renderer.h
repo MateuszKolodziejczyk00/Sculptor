@@ -17,7 +17,7 @@ namespace spt::rdr
 struct CommandsRecordingInfo;
 class CommandRecorder;
 class ShadersManager;
-class PipelinesLibrary;
+class PipelinesCache;
 class SamplersCache;
 class Window;
 class RenderContext;
@@ -49,7 +49,7 @@ public:
 
 	static ShadersManager&						GetShadersManager();
 
-	static PipelinesLibrary&					GetPipelinesLibrary();
+	static PipelinesCache&					GetPipelinesCache();
 
 	static SamplersCache&						GetSamplersCache();
 	

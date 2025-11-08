@@ -386,6 +386,14 @@ void SandboxRenderer::CreateScreenshot()
 
 void SandboxRenderer::InitializeRenderScene()
 {
+	SPT_PROFILER_FUNCTION();
+
+	const js::JobWithResult dlssInitJob = js::Launch(SPT_GENERIC_JOB_NAME,
+													 []()
+													 {
+														 return gfx::DLSSRenderer::InitializeDLSS();
+													 });
+
 	m_renderView = lib::MakeShared<rsc::RenderView>(*m_renderScene);
 	m_renderView->AddRenderStages(rsc::ERenderStage::DeferredRendererStages);
 	if (rdr::Renderer::IsRayTracingEnabled())
@@ -399,25 +407,6 @@ void SandboxRenderer::InitializeRenderScene()
 	cascadesParams.shadowsTechnique = rsc::EShadowMappingTechnique::DPCF;
 	m_renderView->AddRenderSystem<rsc::CascadedShadowMapsViewRenderSystem>(cascadesParams);
 	m_renderView->AddRenderSystem<rsc::ParticipatingMediaViewRenderSystem>();
-
-	auto dlssRenderer = std::make_unique<gfx::DLSSRenderer>();
-	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
-	SPT_CHECK(!!temporalAAViewSystem);
-	const gfx::TemporalAAInitSettings aaInitSettings{};
-	if (dlssRenderer->Initialize(aaInitSettings))
-	{
-		temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
-	}
-	else
-	{
-		auto standardTAArenderer = std::make_unique<gfx::StandardTAARenderer>();
-
-		SPT_MAYBE_UNUSED
-		const Bool initResult = standardTAArenderer->Initialize(aaInitSettings);
-		SPT_CHECK(initResult);
-
-		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
-	}
 
 	if (lib::SharedPtr<rdr::Texture> lensDirtTexture = gfx::TextureLoader::LoadTexture(engn::Paths::Combine(engn::Paths::GetContentPath(), "Camera/LensDirt.jpeg"), lib::Flags(rhi::ETextureUsage::SampledTexture, rhi::ETextureUsage::TransferDest)))
 	{
@@ -516,6 +505,27 @@ void SandboxRenderer::InitializeRenderScene()
 
 	dirLightTypeDirty = true;
 	sunAngleDirty = true;
+
+	const Bool dlssInitResult = dlssInitJob.Await();
+
+	auto dlssRenderer = dlssInitResult ? std::make_unique<gfx::DLSSRenderer>() : nullptr;
+	rsc::TemporalAAViewRenderSystem* temporalAAViewSystem = m_renderView->AddRenderSystem<rsc::TemporalAAViewRenderSystem>();
+	SPT_CHECK(!!temporalAAViewSystem);
+	const gfx::TemporalAAInitSettings aaInitSettings{};
+	if (dlssRenderer && dlssRenderer->Initialize(aaInitSettings))
+	{
+		temporalAAViewSystem->SetTemporalAARenderer(std::move(dlssRenderer));
+	}
+	else
+	{
+		auto standardTAArenderer = std::make_unique<gfx::StandardTAARenderer>();
+
+		SPT_MAYBE_UNUSED
+		const Bool initResult = standardTAArenderer->Initialize(aaInitSettings);
+		SPT_CHECK(initResult);
+
+		temporalAAViewSystem->SetTemporalAARenderer(std::move(standardTAArenderer));
+	}
 
 	SPT_LOG_INFO(Sandbox, "Render Scene Initialization Finished");
 }

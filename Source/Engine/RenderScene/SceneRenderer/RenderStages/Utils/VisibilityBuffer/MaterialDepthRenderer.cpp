@@ -41,8 +41,17 @@ static rdr::PipelineStateID CompileMaterialDepthPipeline()
 	shaders.vertexShader   = rdr::ResourcesManager::CreateShader(shadersPath, sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, "MaterialDepthVS"));
 	shaders.fragmentShader = rdr::ResourcesManager::CreateShader(shadersPath, sc::ShaderStageCompilationDef(rhi::EShaderStage::Fragment, "MaterialDepthFS"));
 
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(constants::materialDepthFormat, rhi::ECompareOp::Always);
+	const rhi::GraphicsPipelineDefinition pipelineDef
+	{
+		.renderTargetsDefinition
+		{
+			.depthRTDefinition = rhi::DepthRenderTargetDefinition
+			{
+				.format         = constants::materialDepthFormat,
+				.depthCompareOp = rhi::ECompareOp::Always,
+			}
+		}
+	};
 
 	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Create Material Depth Pipeline"), shaders, pipelineDef);
 }

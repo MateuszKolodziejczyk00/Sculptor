@@ -245,10 +245,22 @@ rdr::PipelineStateID StaticMeshShadowMapRenderer::GetPipelineStateForBatch(const
 	shaders.vertexShader	= materialShaders.vertexShader;
 	shaders.fragmentShader	= materialShaders.fragmentShader;
 
-	rhi::GraphicsPipelineDefinition depthOnlyPipelineDef;
-	depthOnlyPipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	depthOnlyPipelineDef.renderTargetsDefinition.depthRTDefinition.format = ShadowMapRenderStage::GetRenderedDepthFormat();
-	depthOnlyPipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
+	const rhi::GraphicsPipelineDefinition depthOnlyPipelineDef
+	{
+		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
+		.rasterizationDefinition =
+		{
+			.cullMode = rhi::ECullMode::None,
+		},
+		.renderTargetsDefinition =
+		{
+			.depthRTDefinition = rhi::DepthRenderTargetDefinition
+			{
+				.format = ShadowMapRenderStage::GetRenderedDepthFormat(),
+			}
+		}
+	};
+
 	return rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("StaticMesh_DepthOnlyPipeline"), shaders, depthOnlyPipelineDef);
 }
 

@@ -25,6 +25,7 @@
 #include "Utils/GPUWaitableEvent.h"
 #include "EditorFrame.h"
 #include "GlobalResources/GlobalResourcesRegistry.h"
+#include "Pipelines/PSOsLibrary.h"
 
 
 namespace spt::ed
@@ -66,6 +67,13 @@ void SculptorEdApplication::OnInit(int argc, char** argv)
 void SculptorEdApplication::OnRun()
 {
 	Super::OnRun();
+
+	js::Job psoPrecachingJob = js::Launch(SPT_GENERIC_JOB_NAME,
+										  []
+										  {
+											  const rdr::PSOPrecacheParams precacheParams{};
+											  rdr::PSOsLibrary::GetInstance().PrecachePSOs(precacheParams);
+										  });
 
 	IMGUI_CHECKVERSION();
 	uiContext = ImGui::CreateContext();
@@ -112,6 +120,8 @@ void SculptorEdApplication::OnRun()
 	sandboxViewDef.name = "SandboxView";
 	sandboxViewDef.minimumSize = m_window->GetSwapchainSize();
 	lib::SharedRef<SandboxUIView> view = scui::ApplicationUI::OpenView<SandboxUIView>(sandboxViewDef);
+
+	psoPrecachingJob.Wait();
 
 	lib::SharedPtr<EditorFrameContext> currentFrame;
 

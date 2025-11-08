@@ -51,16 +51,36 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 
 	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("EmitGBuffer", materialBatch.materialShadersHash);
 
-	rhi::GraphicsPipelineDefinition pipelineDef;
-	pipelineDef.primitiveTopology = rhi::EPrimitiveTopology::TriangleList;
-	pipelineDef.rasterizationDefinition.cullMode = rhi::ECullMode::None;
-	pipelineDef.renderTargetsDefinition.depthRTDefinition = rhi::DepthRenderTargetDefinition(rhi::EFragmentFormat::D16_UN_Float, rhi::ECompareOp::Equal, false);
+	rhi::GraphicsPipelineDefinition pipelineDef
+	{
+		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
+		.rasterizationDefinition =
+		{
+			.cullMode = rhi::ECullMode::None,
+		},
+		.renderTargetsDefinition =
+		{
+			.depthRTDefinition = rhi::DepthRenderTargetDefinition
+			{
+				.format         = passParams.depthTexture->GetFormat(),
+				.depthCompareOp = rhi::ECompareOp::Equal,
+				.enableDepthWrite = false
+			}
+		}
+	};
+
 	std::transform(shadingContet.gBuffer.begin(), shadingContet.gBuffer.end(),
 				   std::back_inserter(pipelineDef.renderTargetsDefinition.colorRTsDefinition),
 				   [](const rg::RGTextureViewHandle& textureView)
 				   {
-					   return rhi::ColorRenderTargetDefinition(textureView->GetFormat(), rhi::ERenderTargetBlendType::Disabled);
+				   	   return rhi::ColorRenderTargetDefinition
+				   	   {
+				   	      .format = textureView->GetFormat(),
+				   	      .colorBlendType = rhi::ERenderTargetBlendType::Disabled,
+				   	      .alphaBlendType = rhi::ERenderTargetBlendType::Disabled
+				   	   };
 				   });
+
 	
 	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Emit GBuffer Pipeline"),
 																				   shaders.GetGraphicsPipelineShaders(),

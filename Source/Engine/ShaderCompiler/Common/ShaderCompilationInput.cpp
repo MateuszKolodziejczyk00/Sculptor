@@ -65,10 +65,6 @@ SizeType ShaderSourceCode::Hash() const
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // ShaderCompilationSettings =====================================================================
 
-ShaderCompilationSettings::ShaderCompilationSettings()
-	: m_generateDebugSource(true)
-{ }
-
 void ShaderCompilationSettings::AddMacroDefinition(MacroDefinition macro)
 {
 	if (macro.IsValid())

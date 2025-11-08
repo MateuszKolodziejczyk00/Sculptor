@@ -56,25 +56,15 @@ enum class ERasterizationType : Uint8
 
 struct PipelineRasterizationDefinition
 {
-	explicit PipelineRasterizationDefinition(EPolygonMode inPolygonMode = EPolygonMode::Fill, ECullMode inCullMode = ECullMode::Back, ERasterizationType inRasterizationType = ERasterizationType::Default)
-		: polygonMode(inPolygonMode)
-		, cullMode(inCullMode)
-		, rasterizationType(inRasterizationType)
-	{ }
-
-	EPolygonMode		polygonMode;
-	ECullMode			cullMode;
-	ERasterizationType	rasterizationType;
+	EPolygonMode       polygonMode       = EPolygonMode::Fill;
+	ECullMode          cullMode          = ECullMode::Back;
+	ERasterizationType rasterizationType = ERasterizationType::Default;
 };
 
 
 struct MultisamplingDefinition
 {
-	explicit MultisamplingDefinition(Uint32 inSamplesNum = 1)
-		: samplesNum(inSamplesNum)
-	{ }
-
-	Uint32 samplesNum;
+	Uint32 samplesNum = 1;
 };
 
 
@@ -100,73 +90,46 @@ enum class ERenderTargetComponentFlags : Uint8
 
 struct ColorRenderTargetDefinition
 {
-	explicit ColorRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, ERenderTargetBlendType inBlendType = ERenderTargetBlendType::Copy, ERenderTargetComponentFlags inWriteMask = ERenderTargetComponentFlags::All)
-		: format(inFormat)
-		, colorBlendType(inBlendType)
-		, alphaBlendType(inBlendType)
-		, colorWriteMask(inWriteMask)
-	{ }
-
-	EFragmentFormat             format;
-	ERenderTargetBlendType      colorBlendType;
-	ERenderTargetBlendType      alphaBlendType;
-	ERenderTargetComponentFlags colorWriteMask;
+	EFragmentFormat             format         = EFragmentFormat::None;
+	ERenderTargetBlendType      colorBlendType = ERenderTargetBlendType::Copy;
+	ERenderTargetBlendType      alphaBlendType = ERenderTargetBlendType::Copy;
+	ERenderTargetComponentFlags colorWriteMask = ERenderTargetComponentFlags::All;
 };
 
 
 struct DepthRenderTargetDefinition
 {
-	explicit DepthRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None, ECompareOp inDepthCompareOp = ECompareOp::Greater, Bool inEnableDepthWrite = true)
-		: format(inFormat)
-		, depthCompareOp(inDepthCompareOp)
-		, enableDepthWrite(inEnableDepthWrite)
-	{ }
-
-	EFragmentFormat		format;
-	ECompareOp			depthCompareOp;
-	Bool				enableDepthWrite;
+	EFragmentFormat format           = EFragmentFormat::None;
+	ECompareOp      depthCompareOp   = ECompareOp::Greater;
+	Bool            enableDepthWrite = true;
 };
 
 
 struct StencilRenderTargetDefinition
 {
-	explicit StencilRenderTargetDefinition(EFragmentFormat inFormat = EFragmentFormat::None)
-		: format(inFormat)
-	{ }
-	
-	EFragmentFormat		format;
+	EFragmentFormat format = EFragmentFormat::None;
 };
 
 
 struct PipelineRenderTargetsDefinition
 {
-	PipelineRenderTargetsDefinition()
-	{ }
-
-	lib::DynamicArray<ColorRenderTargetDefinition>	colorRTsDefinition;
-	DepthRenderTargetDefinition						depthRTDefinition;
-	StencilRenderTargetDefinition					stencilRTDefinition;
+	lib::DynamicArray<ColorRenderTargetDefinition> colorRTsDefinition;
+	DepthRenderTargetDefinition                    depthRTDefinition;
+	StencilRenderTargetDefinition                  stencilRTDefinition;
 };
 
 
 struct GraphicsPipelineDefinition
 {
-	GraphicsPipelineDefinition()
-		: primitiveTopology(EPrimitiveTopology::TriangleList)
-	{ }
-
-	EPrimitiveTopology					primitiveTopology;
-	PipelineRasterizationDefinition		rasterizationDefinition;
-	MultisamplingDefinition				multisamplingDefinition;
-	PipelineRenderTargetsDefinition		renderTargetsDefinition;
+	EPrimitiveTopology              primitiveTopology = EPrimitiveTopology::TriangleList;
+	PipelineRasterizationDefinition rasterizationDefinition;
+	MultisamplingDefinition         multisamplingDefinition;
+	PipelineRenderTargetsDefinition renderTargetsDefinition;
 };
 
 
 struct RayTracingHitGroupDefinition
 {
-	RayTracingHitGroupDefinition()
-	{ }
-
 	SizeType GetValidShadersNum() const
 	{
 		return (closestHitModule.IsValid() ? 1 : 0)
@@ -182,9 +145,6 @@ struct RayTracingHitGroupDefinition
 
 struct RayTracingShadersDefinition
 {
-	RayTracingShadersDefinition()
-	{ }
-
 	SizeType GetHitShadersNum() const
 	{
 		return std::accumulate(std::cbegin(hitGroups), std::cend(hitGroups),
@@ -203,11 +163,7 @@ struct RayTracingShadersDefinition
 
 struct RayTracingPipelineDefinition
 {
-	RayTracingPipelineDefinition()
-		: maxRayRecursionDepth(1)
-	{ }
-
-	Uint32 maxRayRecursionDepth;
+	Uint32 maxRayRecursionDepth = 1u;
 };
 
 } //spt::rhi

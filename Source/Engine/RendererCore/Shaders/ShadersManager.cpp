@@ -6,10 +6,9 @@
 #include "ConfigUtils.h"
 #include "JobSystem/JobSystem.h"
 #include "Common/ShaderCompilationEnvironment.h"
-
+#include "Pipelines/PipelinesCache.h"
 #include "YAMLSerializerHelper.h"
 #include "Renderer.h"
-#include "Pipelines/PipelinesLibrary.h"
 
 namespace spt::srl
 {
@@ -89,6 +88,12 @@ void ShadersManager::ClearCachedShaders()
 	m_cachedShaders.clear();
 }
 
+ShaderID ShadersManager::GenerateShaderID(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) const
+{
+	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, shaderStageDef, compilationSettings);
+	return ShaderID(shaderHash, RENDERER_RESOURCE_NAME(shaderRelativePath));
+}
+
 ShaderID ShadersManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags /*= EShaderFlags::None*/)
 {
 	const ShaderHashType shaderHash = HashCompilationParams(shaderRelativePath, shaderStageDef, compilationSettings);
@@ -117,9 +122,22 @@ lib::SharedRef<Shader> ShadersManager::GetShader(ShaderID shader) const
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::ReadLockGuard lockGuard(m_lock);
+	while (true)
+	{
+		{
+			const lib::ReadLockGuard lockGuard(m_lock);
 
-	return lib::Ref(m_cachedShaders.at(shader.GetID()));
+			lib::SharedPtr<Shader> foundShader = m_cachedShaders.at(shader.GetID());
+
+			if(foundShader)
+			{
+				return lib::Ref(foundShader);
+			}
+		}
+
+		// If shader is not yet compiled, wait a bit and try again (this is super unlikely in practice)
+		js::Worker::TryActiveWait();
+	}
 }
 
 #if WITH_SHADERS_HOT_RELOAD
@@ -140,10 +158,9 @@ void ShadersManager::HotReloadShaders()
 								}
 								
 								const ShaderID shaderID(params.shaderHash, RENDERER_RESOURCE_NAME(params.shaderRelativePath));
-								Renderer::GetPipelinesLibrary().InvalidatePipelinesUsingShader(shaderID);
+								Renderer::GetPipelinesCache().InvalidatePipelinesUsingShader(shaderID);
 							}
 						},
-						js::JobDef().SetPriority(js::EJobPriority::Low),
 						js::JobDef().SetPriority(js::EJobPriority::Low));
 
 }
@@ -158,11 +175,16 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::WriteLockGuard lockGuard(m_lock);
+	bool thisThreadSHouldCompile = false;
 
-	// check once again if shader object is missing (it might have changed when we were waiting for acquiring lock)
-	auto shaderIt = m_cachedShaders.find(shaderHash);
-	if (shaderIt == std::cend(m_cachedShaders))
+	{
+		const lib::WriteLockGuard lockGard(m_lock);
+
+		auto [shaderIt, wasEmplaced] = m_cachedShaders.try_emplace(shaderHash);
+		thisThreadSHouldCompile = wasEmplaced;
+	}
+
+	if (thisThreadSHouldCompile)
 	{
 		lib::SharedPtr<Shader> shader;
 		while (!shader)
@@ -176,11 +198,13 @@ void ShadersManager::CompileAndCacheShader(const lib::String& shaderRelativePath
 			}
 		}
 
-		shaderIt = m_cachedShaders.emplace(shaderHash, shader).first;
 		OnShaderCompiled(shaderRelativePath, shaderStageDef, compilationSettings, flags, shaderHash);
-	}
 
-	SPT_CHECK_MSG(shaderIt != std::cend(m_cachedShaders), "Failed to compile shader! {0}", shaderRelativePath.data());
+		{
+			const lib::WriteLockGuard lockGard(m_lock);
+			m_cachedShaders[shaderHash] = shader;
+		}
+	}
 }
 
 lib::SharedPtr<Shader> ShadersManager::CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, sc::EShaderCompilationFlags compilationFlags, EShaderFlags flags)
@@ -211,6 +235,8 @@ void ShadersManager::OnShaderCompiled(const lib::String& shaderRelativePath, con
 void ShadersManager::CacheShaderHotReloadParams(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings, EShaderFlags flags, ShaderHashType shaderHash)
 {
 	SPT_PROFILER_FUNCTION();
+
+	const lib::LockGuard lock(m_hotReloadParamsLock);
 
 	ShaderHotReloadParameters& hotReloadParams = m_compiledShadersHotReloadParams.emplace_back(ShaderHotReloadParameters{});
 	hotReloadParams.shaderRelativePath	= shaderRelativePath;

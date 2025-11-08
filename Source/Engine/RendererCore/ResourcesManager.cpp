@@ -1,7 +1,7 @@
 #include "ResourcesManager.h"
 #include "Renderer.h"
 #include "Shaders/ShadersManager.h"
-#include "Pipelines/PipelinesLibrary.h"
+#include "Pipelines/PipelinesCache.h"
 #include "Samplers/SamplersCache.h"
 #include "Types/RenderContext.h"
 #include "Types/Buffer.h"
@@ -95,6 +95,11 @@ lib::SharedRef<CommandBuffer> ResourcesManager::CreateCommandBuffer(const Render
 	return lib::MakeShared<CommandBuffer>(name, renderContext, definition);
 }
 
+ShaderID ResourcesManager::GenerateShaderID(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings /*= sc::ShaderCompilationSettings()*/, EShaderFlags flags /*= EShaderFlags::None*/)
+{
+	return Renderer::GetShadersManager().GenerateShaderID(shaderRelativePath, shaderStageDef, compilationSettings);
+}
+
 ShaderID ResourcesManager::CreateShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings /*= sc::ShaderCompilationSettings()*/, EShaderFlags flags /*= EShaderFlags::None*/)
 {
 	return Renderer::GetShadersManager().CreateShader(shaderRelativePath, shaderStageDef, compilationSettings, flags);
@@ -107,7 +112,7 @@ lib::SharedRef<Shader> ResourcesManager::GetShaderObject(ShaderID shaderID)
 
 lib::SharedPtr<Pipeline> ResourcesManager::GetPipelineObject(PipelineStateID id)
 {
-	return Renderer::GetPipelinesLibrary().GetPipeline(id);
+	return Renderer::GetPipelinesCache().GetPipeline(id);
 }
 
 lib::SharedRef<BottomLevelAS> ResourcesManager::CreateBLAS(const RendererResourceName& name, const rhi::BLASDefinition& definition)
@@ -122,17 +127,32 @@ lib::SharedRef<TopLevelAS> ResourcesManager::CreateTLAS(const RendererResourceNa
 
 PipelineStateID ResourcesManager::CreateComputePipeline(const RendererResourceName& nameInNotCached, const ShaderID& shader)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateComputePipeline(nameInNotCached, shader);
+	return Renderer::GetPipelinesCache().GetOrCreateComputePipeline(nameInNotCached, shader);
+}
+
+PipelineStateID ResourcesManager::GeneratePipelineID(const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
+{
+	return Renderer::GetPipelinesCache().GeneratePipelineID(shaders, pipelineDef);
+}
+
+PipelineStateID ResourcesManager::GeneratePipelineID(const ShaderID& shader)
+{
+	return Renderer::GetPipelinesCache().GeneratePipelineID(shader);
+}
+
+PipelineStateID ResourcesManager::GeneratePipelineID(const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
+{
+	return Renderer::GetPipelinesCache().GeneratePipelineID(shaders, pipelineDef);
 }
 
 PipelineStateID ResourcesManager::CreateGfxPipeline(const RendererResourceName& nameInNotCached, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateGfxPipeline(nameInNotCached, shaders, pipelineDef);
+	return Renderer::GetPipelinesCache().GetOrCreateGfxPipeline(nameInNotCached, shaders, pipelineDef);
 }
 
 PipelineStateID ResourcesManager::CreateRayTracingPipeline(const RendererResourceName& nameInNotCached, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
 {
-	return Renderer::GetPipelinesLibrary().GetOrCreateRayTracingPipeline(nameInNotCached, shaders, pipelineDef);
+	return Renderer::GetPipelinesCache().GetOrCreateRayTracingPipeline(nameInNotCached, shaders, pipelineDef);
 }
 
 lib::SharedRef<Sampler> ResourcesManager::CreateSampler(const rhi::SamplerDefinition& def)

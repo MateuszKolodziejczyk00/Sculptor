@@ -112,6 +112,8 @@ class SCULPTORDLSSVULKAN_API SculptorDLSSVulkan
 {
 public:
 
+	static Bool InitializeDLSS();
+
 	SculptorDLSSVulkan();
 	~SculptorDLSSVulkan();
 

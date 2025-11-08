@@ -346,6 +346,11 @@ void NGXInstance::Uninitialize()
 } // ngx
 
 
+Bool SculptorDLSSVulkan::InitializeDLSS()
+{
+	return ngx::NGXInstance::GetInstance().TryInitialize();
+}
+
 SculptorDLSSVulkan::SculptorDLSSVulkan()
 	: m_isInitialized(false)
 {
