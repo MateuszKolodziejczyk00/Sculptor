@@ -18,7 +18,7 @@
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Utils/BRDFIntegrationLUT.h"
 #include "SceneRenderer/Parameters/SceneRendererParams.h"
-
+#include "Pipelines/PSOsLibraryTypes.h"
 
 namespace spt::rsc
 {
@@ -90,25 +90,31 @@ DS_BEGIN(CompositeRTReflectionsDS, rg::RGDescriptorSetState<CompositeRTReflectio
 DS_END();
 
 
-struct CompositeLightingPermutation
+BEGIN_SHADER_STRUCT(CompositeLightingPermutation)
+	SHADER_STRUCT_FIELD(Bool, VOLUMETRIC_FOG_ENABLED)
+	SHADER_STRUCT_FIELD(Bool, ATMOSPHERE_ENABLED)
+	SHADER_STRUCT_FIELD(Bool, VOLUMETRIC_CLOUDS_ENABLED)
+	SHADER_STRUCT_FIELD(Bool, RT_REFLECTIONS_ENABLED)
+END_SHADER_STRUCT();
+
+
+COMPUTE_PSO(CompositeLightingPSO)
 {
-	Bool volumetricFogEnabled    = false;
-	Bool atmosphereEnabled       = false;
-	Bool volumetricCloudsEnabled = false;
-	Bool rtReflectionsEnabled    = false;
+	COMPUTE_SHADER("Sculptor/RenderStages/CompositeLighting/CompositeLighting.hlsl", "CompositeLightingCS");
+
+	PERMUTATION_DOMAIN(CompositeLightingPermutation);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		CompositeLightingPermutation perm;
+		perm.VOLUMETRIC_CLOUDS_ENABLED = true;
+		perm.ATMOSPHERE_ENABLED        = true;
+		perm.VOLUMETRIC_FOG_ENABLED    = true;
+		perm.RT_REFLECTIONS_ENABLED    = rdr::Renderer::IsRayTracingEnabled();
+
+		CompilePermutation(compiler, perm);
+	}
 };
-
-
-static rdr::ShaderID CompileCompositeLightingShader(const CompositeLightingPermutation& permutation)
-{
-	sc::ShaderCompilationSettings shaderCompilationSettings;
-	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("VOLUMETRIC_FOG_ENABLED", permutation.volumetricFogEnabled ? "1" : "0"));
-	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("ATMOSPHERE_ENABLED", permutation.atmosphereEnabled ? "1" : "0"));
-	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("VOLUMETRIC_CLOUDS_ENABLED", permutation.volumetricCloudsEnabled ? "1" : "0"));
-	shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("RT_REFLECTIONS_ENABLED", permutation.rtReflectionsEnabled ? "1" : "0"));
-
-	return rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/CompositeLighting/CompositeLighting.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CompositeLightingCS"), shaderCompilationSettings);
-}
 
 
 static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const ViewRenderingSpec& viewSpec)
@@ -136,7 +142,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	lib::MTHandle<CompositeFogDS> compositeFogDS;
 	if (const lib::SharedPtr<ParticipatingMediaViewRenderSystem> participatingMediaSystem = renderView.FindRenderSystem<ParticipatingMediaViewRenderSystem>())
 	{
-		permutation.volumetricFogEnabled = true;
+		permutation.VOLUMETRIC_FOG_ENABLED = true;
 
 		const VolumetricFogParams& fogParams = participatingMediaSystem->GetVolumetricFogParams();
 
@@ -153,7 +159,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	lib::MTHandle<CompositeAtmosphereDS> compositeAtmosphereDS;
 	if (lib::SharedPtr<AtmosphereSceneSubsystem> atmosphereSubsystem = renderScene.GetSceneSubsystem<AtmosphereSceneSubsystem>())
 	{
-		permutation.atmosphereEnabled       = true;
+		permutation.ATMOSPHERE_ENABLED = true;
 
 		const AtmosphereContext& atmosphereContext = atmosphereSubsystem->GetAtmosphereContext();
 
@@ -166,7 +172,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 
 		if (viewContext.volumetricClouds.IsValid())
 		{
-			permutation.volumetricCloudsEnabled = true;
+			permutation.VOLUMETRIC_CLOUDS_ENABLED = true;
 
 			compositeAtmosphereDS->u_volumetricClouds      = viewContext.volumetricClouds;
 			compositeAtmosphereDS->u_volumetricCloudsDepth = viewContext.volumetricCloudsDepth;
@@ -176,7 +182,7 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 	lib::MTHandle<CompositeRTReflectionsDS> compositeRTReflectionsDS;
 	if (const RTReflectionsViewData* rtReflectionsData = viewSpec.GetBlackboard().Find<RTReflectionsViewData>())
 	{
-		permutation.rtReflectionsEnabled = true;
+		permutation.RT_REFLECTIONS_ENABLED = true;
 
 		CompositeRTReflectionsConstants rtReflectionsConstants;
 		rtReflectionsConstants.halfResInfluence = rtReflectionsData->halfResReflections;
@@ -193,10 +199,8 @@ static void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& rend
 		compositeRTReflectionsDS->u_rtReflectionsConstants      = rtReflectionsConstants;
 	}
 
-	const rdr::ShaderID compositeLightingShader = CompileCompositeLightingShader(permutation);
-
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Composite Lighting"),
-						  compositeLightingShader,
+						  CompositeLightingPSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(renderView.GetRenderingRes(), math::Vector2u(8u, 4u)),
 						  rg::BindDescriptorSets(std::move(compositeLightingDS),
 												 std::move(compositeFogDS),
