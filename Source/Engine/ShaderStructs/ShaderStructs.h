@@ -191,6 +191,8 @@ public: \
 	{ \
 		return #name; \
 	} \
+	Bool operator==(const name& other) const = default; \
+	Bool operator!=(const name& other) const = default; \
 	typedef rdr::priv::ShaderStructMemberMetaData<void, 
 
 
@@ -437,6 +439,66 @@ public:
 	lib::Span<const Byte> GetHLSLDataSpan() const
 	{
 		return lib::Span<const Byte>(Super::GetAddress(), s_size);
+	}
+};
+
+
+template<typename TShaderStructMemberMetaData>
+constexpr SizeType ComputeStructHashImpl(lib::Span<const Byte> domainData)
+{
+	if constexpr (rdr::shader_translator::priv::IsHeadMember<TShaderStructMemberMetaData>())
+	{
+		return ComputeStructHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData);
+	}
+	else
+	{
+		using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+
+		static_assert(lib::isHashable<MemberType> || shader_translator::CShaderStruct<MemberType>);
+
+		const MemberType& memberValue = *reinterpret_cast<const MemberType*>(domainData.data() + TShaderStructMemberMetaData::GetCPPOffset());
+
+		if constexpr (rdr::shader_translator::priv::IsTailMember<TShaderStructMemberMetaData>())
+		{
+			if constexpr (shader_translator::CShaderStruct<MemberType>)
+			{
+				return ComputeStructHashImpl<typename MemberType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&memberValue), sizeof(MemberType)));
+			}
+			else
+			{
+				return lib::GetHash(memberValue);
+			}
+		}
+		else
+		{
+			if constexpr (shader_translator::CShaderStruct<MemberType>)
+			{
+				return lib::HashCombine(ComputeStructHashImpl<typename MemberType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&memberValue), sizeof(MemberType))),
+										ComputeStructHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData));
+			}
+			else
+			{
+				return lib::HashCombine(memberValue, ComputeStructHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData));
+			}
+		}
+	}
+}
+
+
+template<typename TStruct>
+SizeType ComputeStructHash(const TStruct& permutation)
+{
+	const lib::Span<const Byte> domainData(reinterpret_cast<const Byte*>(&permutation), sizeof(TStruct));
+	return ComputeStructHashImpl<typename TStruct::HeadMemberMetaData>(domainData);
+}
+
+
+template<typename TStruct>
+struct ShaderStructHasher
+{
+	SizeType operator()(const TStruct& structData) const
+	{
+		return ComputeStructHash(structData);
 	}
 };
 

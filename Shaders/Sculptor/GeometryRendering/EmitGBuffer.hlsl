@@ -210,7 +210,7 @@ InterpolatedVertexData ProcessTriangle(in const GPUVisibleMeshlet visibleMeshlet
 
 	InterpolatedVertexData interpolatedData = Interpolate(vertexData, barycentrics, hasTangent);
 
-#ifdef SPT_MATERIAL_DOUBLE_SIDED
+#ifdef DOUBLE_SIDED
 	const float det = determinant(float3x3(vertexData[0].clipSpace.xyw, vertexData[1].clipSpace.xyw, vertexData[2].clipSpace.xyw));
 	const bool isBackface = det < 0.f;
 
@@ -220,7 +220,7 @@ InterpolatedVertexData ProcessTriangle(in const GPUVisibleMeshlet visibleMeshlet
 		interpolatedData.tangent   = -interpolatedData.tangent;
 		interpolatedData.bitangent = -interpolatedData.bitangent;
 	}
-#endif // SPT_MATERIAL_DOUBLE_SIDED
+#endif // DOUBLE_SIDED
 
 	return interpolatedData;
 }

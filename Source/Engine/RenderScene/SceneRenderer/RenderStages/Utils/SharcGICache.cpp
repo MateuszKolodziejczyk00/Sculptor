@@ -19,6 +19,7 @@
 #include "Atmosphere/AtmosphereSceneSubsystem.h"
 #include "FileSystem/File.h"
 #include "Common/ShaderCompilationEnvironment.h"
+#include "MaterialsSubsystem.h"
 
 
 namespace spt::rsc
@@ -63,20 +64,44 @@ DS_BEGIN(SharcResolveDS, rg::RGDescriptorSetState<SharcResolveDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileSharcUpdatePipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+RT_PSO(SharcUpdatePSO)
 {
-	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcUpdate.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "SharcUpdateRTG"));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcUpdate.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "SharcUpdateRTM")));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/SharcUpdate.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "SharcUpdateShadowRaysRTM")));
+	RAY_GEN_SHADER("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateRTG);
 
-	const lib::HashedString materialTechnique = "RTGI";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	MISS_SHADERS(
+		SHADER_ENTRY("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateRTM),
+		SHADER_ENTRY("Sculptor/SpecularReflections/SharcUpdate.hlsl", SharcUpdateShadowRaysRTM)
+	);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Sharc Update Pipeline"), rtShaders, pipelineDefinition);
-}
+	HIT_GROUP
+	{
+		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_CHS);
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl",     RTGI_RT_AHS);
+
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(pso);
+	
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
 
 
 static rdr::PipelineStateID CreateSharcResolvePipeline()
@@ -173,12 +198,6 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	updateDS->u_voxelDataPrev            = m_prevVoxelData->GetFullView();
 	updateDS->u_constants                = shaderConstants;
 
-	static rdr::PipelineStateID sharcUpdatePipeline;
-	if (!sharcUpdatePipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
-	{
-		sharcUpdatePipeline = sharc_passes::CompileSharcUpdatePipeline(rayTracingSubsystem);
-	}
-
 	LightsRenderSystem& lightsRenderSystem = renderScene.GetRenderSystemChecked<LightsRenderSystem>();
 	const ddgi::DDGISceneSubsystem& ddgiSubsystem = renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
 
@@ -195,7 +214,7 @@ void SharcGICache::Update(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 	}
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("Update Sharc GI Cache"),
-						   sharcUpdatePipeline,
+						   sharc_passes::SharcUpdatePSO::pso,
 						   tracesNum,
 						   rg::BindDescriptorSets(std::move(updateDS),
 												  rayTracingSubsystem.GetSceneRayTracingDS(),

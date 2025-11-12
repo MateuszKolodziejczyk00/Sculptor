@@ -6,25 +6,23 @@
 #include "Renderer.h"
 #include "CommandsRecorder/CommandRecorder.h"
 #include "Types/RenderContext.h"
-#include "MaterialShadersCompiler.h"
 #include "Materials/MaterialsRenderingCommon.h"
 #include "MaterialsSubsystem.h"
-#pragma optimize("", off)
+
+
 namespace spt::rsc
 {
 
 RayTracingRenderSceneSubsystem::RayTracingRenderSceneSubsystem(RenderScene& owningScene)
 	: Super(owningScene)
 	, m_isTLASDirty(false)
-	, m_areSBTRecordsDirty(false)
 { }
 
 void RayTracingRenderSceneSubsystem::Update()
 {
 	Super::Update();
 
-	m_isTLASDirty			= false;
-	m_areSBTRecordsDirty	= false;
+	m_isTLASDirty = false;
 
 	// We should update TLAS every frame if any of the objects has been moved or updated
 	// The problem is that Nsight Graphics is crashing if we capture frame with TLAS build, so for now we will update TLAS only once
@@ -45,45 +43,9 @@ const lib::MTHandle<SceneRayTracingDS>& RayTracingRenderSceneSubsystem::GetScene
 	return m_sceneRayTracingDS;
 }
 
-Uint32 RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const
-{
-	const auto foundRecordIdx = m_materialShaderToSBTRecordIdx.find(materialShadersHash);
-	return foundRecordIdx != std::cend(m_materialShaderToSBTRecordIdx) ? foundRecordIdx->second : idxNone<Uint32>;
-}
-
-const lib::DynamicArray<mat::MaterialShadersHash>& RayTracingRenderSceneSubsystem::GetMaterialShaderSBTRecords() const
-{
-	return m_materialShaderSBTRecords;
-}
-
-void RayTracingRenderSceneSubsystem::FillRayTracingGeometryHitGroups(lib::HashedString materialTechnique, INOUT lib::DynamicArray<rdr::RayTracingHitGroup>& hitGroups) const
-{
-	hitGroups.clear();
-
-	const lib::DynamicArray<mat::MaterialShadersHash>& sbtRecords = GetMaterialShaderSBTRecords();
-
-	hitGroups.reserve(sbtRecords.size());
-
-	for (SizeType recordIdx = 0; recordIdx < sbtRecords.size(); ++recordIdx)
-	{
-		const mat::MaterialRayTracingShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialRayTracingShaders>(materialTechnique, sbtRecords[recordIdx]);
-
-		rdr::RayTracingHitGroup hitGroup;
-		hitGroup.closestHitShader = shaders.closestHitShader;
-		hitGroup.anyHitShader     = shaders.anyHitShader;
-
-		hitGroups.emplace_back(hitGroup);
-	}
-}
-
 Bool RayTracingRenderSceneSubsystem::IsTLASDirty() const
 {
 	return m_isTLASDirty;
-}
-
-Bool RayTracingRenderSceneSubsystem::AreSBTRecordsDirty() const
-{
-	return m_areSBTRecordsDirty;
 }
 
 void RayTracingRenderSceneSubsystem::UpdateTLAS()
@@ -122,12 +84,9 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 				rtInstance.materialDataID = materialProxy.GetMaterialDataID();
 				rtInstance.geometryDataID = rtGeometry.geometryDataID;
 
-				if (!m_materialShaderToSBTRecordIdx.contains(materialProxy.materialShadersHash))
-				{
-					m_materialShaderToSBTRecordIdx[materialProxy.materialShadersHash] = static_cast<Uint32>(m_materialShaderSBTRecords.size());
-					m_materialShaderSBTRecords.emplace_back(materialProxy.materialShadersHash);
-					m_areSBTRecordsDirty = true;
-				}
+				mat::RTHitGroupPermutation hitGroupPermutation;
+				hitGroupPermutation.SHADER = materialProxy.params.shader;
+				const Uint32 hitGroupIdx = mat::MaterialsSubsystem::Get().GetRTHitGroupIdx(hitGroupPermutation);
 
 				ETLASGeometryMask mask = ETLASGeometryMask::Opaque;
 				if (materialProxy.params.transparent)
@@ -139,7 +98,7 @@ void RayTracingRenderSceneSubsystem::UpdateTLAS()
 				tlasInstance.transform       = transformMatrix;
 				tlasInstance.blasAddress     = rtGeometry.blas->GetRHI().GetDeviceAddress();
 				tlasInstance.customIdx       = static_cast<Uint32>(rtInstances.size() - 1);
-				tlasInstance.sbtRecordOffset = m_materialShaderToSBTRecordIdx.at(materialProxy.materialShadersHash);
+				tlasInstance.sbtRecordOffset = hitGroupIdx;
 				tlasInstance.mask            = static_cast<Uint32>(mask);
 
 				if (!materialProxy.params.customOpacity)

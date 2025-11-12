@@ -14,15 +14,15 @@
 #include "RenderStages/DepthPrepass/DepthPrepass.hlsli"
 
 
-#ifdef SPT_MATERIAL_CUSTOM_OPACITY
+#if CUSTOM_OPACITY
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 1
-#else
-#define FRAGMENT_SHADER_NEEDS_MATERIAL 0
-#endif // SPT_MATERIAL_CUSTOM_OPACITY
-
-
 #include "Materials/MaterialSystem.hlsli"
 #include SPT_MATERIAL_SHADER_PATH
+#else
+#define FRAGMENT_SHADER_NEEDS_MATERIAL 0
+#endif // CUSTOM_OPACITY
+
+
 
 
 struct VS_INPUT
@@ -81,7 +81,7 @@ DP_PS_OUTPUT SMDepthOnly_FS(VS_OUTPUT vertexInput)
 {
     DP_PS_OUTPUT output;
 
-#ifdef SPT_MATERIAL_CUSTOM_OPACITY
+#if CUSTOM_OPACITY
     MaterialEvaluationParameters materialEvalParams;
     materialEvalParams.uv = vertexInput.uv;
     
@@ -92,7 +92,7 @@ DP_PS_OUTPUT SMDepthOnly_FS(VS_OUTPUT vertexInput)
     {
         discard;
     }
-#endif // SPT_MATERIAL_CUSTOM_OPACITY
+#endif // CUSTOM_OPACITY
 
     return output;
 }

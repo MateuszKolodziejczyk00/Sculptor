@@ -62,14 +62,7 @@ public:
 
 	const lib::MTHandle<SceneRayTracingDS>& GetSceneRayTracingDS() const;
 
-	Uint32 GetMaterialShaderSBTRecordIdx(mat::MaterialShadersHash materialShadersHash) const;
-
-	const lib::DynamicArray<mat::MaterialShadersHash>& GetMaterialShaderSBTRecords() const;
-
-	void FillRayTracingGeometryHitGroups(lib::HashedString materialTechnique, INOUT lib::DynamicArray<rdr::RayTracingHitGroup>& hitGroups) const;
-
 	Bool IsTLASDirty() const;
-	Bool AreSBTRecordsDirty() const;
 
 private:
 
@@ -82,9 +75,6 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_rtInstancesDataBuffer;
 
 	lib::MTHandle<SceneRayTracingDS> m_sceneRayTracingDS;
-
-	lib::HashMap<mat::MaterialShadersHash, Uint32> m_materialShaderToSBTRecordIdx;
-	lib::DynamicArray<mat::MaterialShadersHash> m_materialShaderSBTRecords;
 
 	Bool m_isTLASDirty;
 	Bool m_areSBTRecordsDirty;

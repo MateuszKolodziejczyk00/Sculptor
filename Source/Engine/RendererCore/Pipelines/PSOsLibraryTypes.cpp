@@ -21,6 +21,11 @@ PipelineStateID PSOImmediateCompiler::CreateGraphicsPipeline(const RendererResou
 	return ResourcesManager::CreateGfxPipeline(name, shaders, pipelineDef);
 }
 
+PipelineStateID PSOImmediateCompiler::CreateRayTracingPipeline(const RendererResourceName& name, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef)
+{
+	return ResourcesManager::CreateRayTracingPipeline(name, shaders, pipelineDef);
+}
+
 void RegisterPSO(PSOPrecacheFunction callable)
 {
 	PSOsLibrary::GetInstance().RegisterPSO(callable);

@@ -58,20 +58,39 @@ DS_BEGIN(RTAOTraceRaysDS, rg::RGDescriptorSetState<RTAOTraceRaysDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CreateAORayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+RT_PSO(AOTraceRaysPSO)
 {
-	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateAmbientOcclusionRaysRTG"));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVisibilityRTM")));
+	RAY_GEN_SHADER("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", GenerateAmbientOcclusionRaysRTG);
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/RenderStages/AmbientOcclusion/RTAOTraceRays.hlsl", RTVisibilityRTM));
 
-	const lib::HashedString materialTechnique = "RTVisibility";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1u;
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
 
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("RTAO Trace Rays Pipeline"), rtShaders, pipelineDefinition);
-}
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
 
 
 static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder& graphBuilder, const AORenderingContext& context, const math::Vector2u traceRaysResolution)
@@ -80,12 +99,6 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = context.renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
-	static rdr::PipelineStateID traceRaysPipeline;
-	if (!traceRaysPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
-	{
-		traceRaysPipeline = CreateAORayTracingPipeline(rayTracingSceneSubsystem);
-	}
-	
 	const rg::RGTextureViewHandle traceRaysResultTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("AO Trace Rays Result"), rg::TextureDef(traceRaysResolution, rhi::EFragmentFormat::R8_UN_Float));
 
 	RTAOTraceRaysParams params;
@@ -107,7 +120,7 @@ static rg::RGTextureViewHandle TraceAmbientOcclusionRays(rg::RenderGraphBuilder&
 	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
 
 	graphBuilder.TraceRays(RG_DEBUG_NAME("RTAO Trace Rays"),
-						   traceRaysPipeline,
+						   AOTraceRaysPSO::pso,
 						   traceRaysResolution,
 						   rg::BindDescriptorSets(std::move(traceRaysDS),
 												  std::move(visibilityDS),

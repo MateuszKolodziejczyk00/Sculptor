@@ -46,20 +46,25 @@ DS_BEGIN(StaticMeshBatchDS, rg::RGDescriptorSetState<StaticMeshBatchDS>)
 DS_END();
 
 
-struct StaticMeshBatchDefinition
+BEGIN_SHADER_STRUCT(SMDepthOnlyPermutation)
+	SHADER_STRUCT_FIELD(mat::MaterialShader, SHADER)
+	SHADER_STRUCT_FIELD(Bool,                CUSTOM_OPACITY)
+END_SHADER_STRUCT();
+
+
+struct StaticMeshSMBatchDefinition
 {
-	StaticMeshBatchDefinition()
+	StaticMeshSMBatchDefinition()
 		: batchElementsNum(0)
 		, maxMeshletsNum(0)
 		, maxTrianglesNum(0)
-		, materialShadersHash(0)
 	{ }
 
 	Uint32 batchElementsNum;
 	Uint32 maxMeshletsNum;
 	Uint32 maxTrianglesNum;
 
-	mat::MaterialShadersHash materialShadersHash;
+	SMDepthOnlyPermutation permutation;
 
 	lib::MTHandle<StaticMeshBatchDS> batchDS;
 };
@@ -69,7 +74,7 @@ class SMBatchesBuilder
 {
 public:
 
-	SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches);
+	SMBatchesBuilder(lib::DynamicArray<StaticMeshSMBatchDefinition>& inBatches);
 
 	void AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const StaticMeshInstanceRenderData& instanceRenderData, const StaticMeshRenderingDefinition& meshRenderingDef, const rsc::MaterialSlotsComponent& materialsSlots);
 
@@ -93,18 +98,20 @@ private:
 		lib::DynamicArray<StaticMeshBatchElement> batchElements;
 		Uint32 maxMeshletsNum;
 		Uint32 maxTrianglesNum;
-		mat::MaterialShadersHash materialShadersHash;
+		SMDepthOnlyPermutation permutation;
 	};
 
 
-	BatchBuildData& GetBatchBuildDataForMaterial(mat::MaterialShadersHash materialShaderHash);
+	BatchBuildData& GetBatchBuildDataForMaterial(const SMDepthOnlyPermutation& permutation);
 
-	StaticMeshBatchDefinition FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const;
+	StaticMeshSMBatchDefinition FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const;
 
-	lib::HashMap<mat::MaterialShadersHash, Uint32> m_materialShaderHashToBatchIdx;
+	using PermutationsMap = lib::HashMap<SMDepthOnlyPermutation, Uint32, rdr::ShaderStructHasher<SMDepthOnlyPermutation>>;
+
+	PermutationsMap m_permutationToBatchIdx;
 
 	lib::DynamicArray<BatchBuildData>             m_batchBuildDatas;
-	lib::DynamicArray<StaticMeshBatchDefinition>& m_batches;
+	lib::DynamicArray<StaticMeshSMBatchDefinition>& m_batches;
 };
 
 
@@ -122,8 +129,8 @@ public:
 	virtual void Update() override;
 	// End RenderSceneSubsystem overrides
 
-	const lib::DynamicArray<StaticMeshBatchDefinition>& BuildBatchesForView(const RenderView& view) const;
-	lib::DynamicArray<StaticMeshBatchDefinition>        BuildBatchesForPointLight(const PointLightData& pointLight) const;
+	const lib::DynamicArray<StaticMeshSMBatchDefinition>& BuildBatchesForSMView(const RenderView& view) const;
+	lib::DynamicArray<StaticMeshSMBatchDefinition>        BuildBatchesForPointLightSM(const PointLightData& pointLight) const;
 
 	const GeometryPassDataCollection& GetCachedOpaqueGeometryPassData() const;
 	const GeometryPassDataCollection& GetCachedTransparentGeometryPassData() const;
@@ -132,7 +139,7 @@ private:
 
 	struct CachedSMBatches
 	{
-		lib::DynamicArray<StaticMeshBatchDefinition> batches;
+		lib::DynamicArray<StaticMeshSMBatchDefinition> batches;
 
 		GeometryPassDataCollection opaqueGeometryPassData;
 		GeometryPassDataCollection transparentGeometryPassData;

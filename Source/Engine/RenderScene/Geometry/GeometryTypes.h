@@ -41,100 +41,26 @@ DS_BEGIN(GeometryBatchDS, rg::RGDescriptorSetState<GeometryBatchDS>)
 DS_END();
 
 
-struct GeometryBatchShader
-{
-public:
-
-	enum class EGenericType : Uint16
-	{
-		Opaque,
-		Num
-	};
-
-	GeometryBatchShader()
-	{ }
-
-	GeometryBatchShader(EGenericType shader)
-		: m_shader(shader)
-	{ }
-
-	explicit GeometryBatchShader(mat::MaterialShadersHash shader)
-		: m_shader(shader)
-	{ }
-
-	void SetGenericShader(EGenericType shader)
-	{
-		m_shader = shader;
-	}
-
-	void SetCustomShader(mat::MaterialShadersHash shader)
-	{
-		m_shader = shader;
-	}
-
-	Bool IsGenericShader() const
-	{
-		return std::holds_alternative<EGenericType>(m_shader);
-	}
-
-	Bool IsCustomShader() const
-	{
-		return std::holds_alternative<mat::MaterialShadersHash>(m_shader);
-	}
-
-	EGenericType GetGenericShader() const
-	{
-		return std::get<EGenericType>(m_shader);
-	}
-
-	mat::MaterialShadersHash GetCustomShader() const
-	{
-		return std::get<mat::MaterialShadersHash>(m_shader);
-	}
-
-	Bool operator<=>(const GeometryBatchShader& other) const = default;
-
-private:
-
-	std::variant<EGenericType, mat::MaterialShadersHash> m_shader;
-};
+// Batch for visiblity buffer generation
+BEGIN_SHADER_STRUCT(GeometryBatchPermutation)
+	SHADER_STRUCT_FIELD(mat::MaterialShader, SHADER)
+	SHADER_STRUCT_FIELD(Bool,                DOUBLE_SIDED)
+	SHADER_STRUCT_FIELD(Bool,                CUSTOM_OPACITY)
+END_SHADER_STRUCT();
 
 
-struct GeometryBatchPSOInfo
-{
-	struct Hasher
-	{
-		SizeType operator()(const GeometryBatchPSOInfo& psoInfo) const
-		{
-			if (psoInfo.shader.IsCustomShader())
-			{
-				return lib::GetHash(psoInfo.shader.GetCustomShader());
-			}
-			else
-			{
-				return lib::HashCombine(static_cast<Uint64>(psoInfo.shader.GetGenericShader()), psoInfo.isDoubleSided);
-			}
-		}
-
-	};
-
-	GeometryBatchPSOInfo()
-		: isDoubleSided(false)
-	{
-	}
-
-	Bool operator<=>(const GeometryBatchPSOInfo& other) const = default;
-
-	GeometryBatchShader shader;
-	Bool isDoubleSided : 1;
-};
+// Batch for g-buffer buffer generation
+BEGIN_SHADER_STRUCT(MaterialBatchPermutation)
+	SHADER_STRUCT_FIELD(mat::MaterialShader, SHADER)
+	SHADER_STRUCT_FIELD(Bool,                DOUBLE_SIDED)
+END_SHADER_STRUCT();
 
 
 struct GeometryBatch
 {
 	Uint32 batchElementsNum = 0u;
 	Uint32 batchMeshletsNum = 0u;
-	GeometryBatchPSOInfo psoInfo;
+	GeometryBatchPermutation permutation;
 
 	lib::MTHandle<GeometryBatchDS> batchDS;
 };
@@ -142,7 +68,7 @@ struct GeometryBatch
 
 struct MaterialBatch
 {
-	mat::MaterialShadersHash materialShadersHash;
+	MaterialBatchPermutation permutation;
 };
 
 

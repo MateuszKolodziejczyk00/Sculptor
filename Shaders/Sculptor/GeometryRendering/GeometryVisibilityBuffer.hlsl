@@ -27,14 +27,14 @@
 #include "GeometryRendering/GeometryCommon.hlsli"
 
 
-#if SPT_MATERIAL_ENABLED && SPT_MATERIAL_CUSTOM_OPACITY
+#if SPT_MATERIAL_ENABLED && CUSTOM_OPACITY
 #define MATERIAL_CAN_DISCARD 1
 #include "Materials/MaterialSystem.hlsli"
 #include SPT_MATERIAL_SHADER_PATH
 #else 
 #define MATERIAL_CAN_DISCARD 0
 #define FRAGMENT_SHADER_NEEDS_MATERIAL 0
-#endif // SPT_MATERIAL_ENABLED && SPT_MATERIAL_CUSTOM_OPACITY
+#endif // SPT_MATERIAL_ENABLED && CUSTOM_OPACITY
 
 
 #define TS_GROUP_SIZE 32
@@ -244,7 +244,7 @@ void GeometryVisibility_TS(in TSInput input)
 #if GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 		isMeshletVisible = IsSphereInFrustum(u_cullingData.cullingPlanes, meshletBoundingSphereCenter, meshletBoundingSphereRadius);
 
-#ifndef SPT_MATERIAL_DOUBLE_SIDED
+#ifndef DOUBLE_SIDED
 		if(isMeshletVisible)
 		{
 			float3 coneAxis;
@@ -262,7 +262,7 @@ void GeometryVisibility_TS(in TSInput input)
 				isMeshletVisible = isMeshletVisible && IsConeVisible(meshletBoundingSphereCenter, meshletBoundingSphereRadius, coneAxis, coneCutoff, u_sceneView.viewLocation);
 			}
 		}
-#endif // SPT_MATERIAL_DOUBLE_SIDED
+#endif // DOUBLE_SIDED
 #endif // GEOMETRY_PASS_IDX == SPT_GEOMETRY_VISIBLE_GEOMETRY_PASS || GEOMETRY_PASS_IDX == SPT_GEOMETRY_DISOCCLUDED_GEOMETRY_PASS
 
 		if(isMeshletVisible)
@@ -397,13 +397,13 @@ bool IsTriangleVisible(in MeshletTriangle tri, in TriangleCullingParams cullingP
 		tri.verticesCS[2].xyz / tri.verticesCS[2].w
 	};
 
-#ifndef SPT_MATERIAL_DOUBLE_SIDED
+#ifndef DOUBLE_SIDED
 	if(isTriangleVisible)
 	{
 		const float det = determinant(float3x3(tri.verticesCS[0].xyw, tri.verticesCS[1].xyw, tri.verticesCS[2].xyw));
 		isTriangleVisible = det > 0.f;
 	}
-#endif // SPT_MATERIAL_DOUBLE_SIDED
+#endif // DOUBLE_SIDED
 
 	if(isTriangleVisible && isInFrontOfPerspectivePlane)
 	{

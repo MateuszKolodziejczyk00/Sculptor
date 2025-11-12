@@ -24,7 +24,7 @@ namespace spt::rsc
 
 class RenderScene;
 class ViewRenderingSpec;
-struct StaticMeshBatchDefinition;
+struct StaticMeshSMBatchDefinition;
 struct RenderStageExecutionContext;
 
 

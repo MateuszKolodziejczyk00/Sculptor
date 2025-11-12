@@ -42,19 +42,22 @@ private:
 		Uint32                                                    meshletsNum = 0u;
 	};
 
-	Uint16 GetMaterialBatchIdx(mat::MaterialShadersHash materialShadersHash);
+	Uint16 GetMaterialBatchIdx(const MaterialBatchPermutation& materialPermutation);
 
 	GeometryBatchBuildData& GetGeometryBatchBuildData(const mat::MaterialProxyComponent& materialProxy);
-	GeometryBatchBuildData& GetGeometryBatchBuildData(const GeometryBatchPSOInfo& psoInfo);
-	GeometryBatchPSOInfo    GetGeometryBatchPSOInfo(const mat::MaterialProxyComponent& materialProxy) const;
+	GeometryBatchBuildData& GetGeometryBatchBuildData(const GeometryBatchPermutation& permutation);
+	GeometryBatchPermutation GetGeometryBatchPermutation(const mat::MaterialProxyComponent& materialProxy) const;
 
-	GeometryBatch FinalizeBatchDefinition(const GeometryBatchPSOInfo& psoInfo, const GeometryBatchBuildData& batchBuildData) const;
+	GeometryBatch FinalizeBatchDefinition(const GeometryBatchPermutation& permutation, const GeometryBatchBuildData& batchBuildData) const;
 
 	GeometryPassDataCollection& m_batches;
 
-	lib::HashMap<mat::MaterialShadersHash, Uint16> m_materialBatchesMap;
+	using MaterialBatchPermutationsMap = lib::HashMap<MaterialBatchPermutation, Uint16, rdr::ShaderStructHasher<MaterialBatchPermutation>>;
+	using GeometryBatchPermutationsMap = lib::HashMap<GeometryBatchPermutation, GeometryBatchBuildData, rdr::ShaderStructHasher<GeometryBatchPermutation>>;
 
-	lib::HashMap<GeometryBatchPSOInfo, GeometryBatchBuildData, GeometryBatchPSOInfo::Hasher> m_geometryBatchesData;
+	MaterialBatchPermutationsMap m_materialBatchesMap;
+
+	GeometryBatchPermutationsMap m_geometryBatchesData;
 };
 
 

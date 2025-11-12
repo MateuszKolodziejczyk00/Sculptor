@@ -43,13 +43,25 @@ DS_BEGIN(EmitGBufferDS, rg::RGDescriptorSetState<EmitGBufferDS>)
 DS_END();
 
 
+BEGIN_SHADER_STRUCT(EmitGBufferPermutation)
+	SHADER_STRUCT_FIELD(MaterialBatchPermutation, MATERIAL_BATCH)
+END_SHADER_STRUCT();
+
+
+GRAPHICS_PSO(EmitGBufferPSO)
+{
+	MESH_SHADER("Sculptor/GeometryRendering/EmitGBuffer.hlsl", EmitGBuffer_MS);
+	FRAGMENT_SHADER("Sculptor/GeometryRendering/EmitGBuffer.hlsl", EmitGBuffer_FS);
+
+	PERMUTATION_DOMAIN(EmitGBufferPermutation);
+};
+
+
 rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParams, const MaterialBatch& materialBatch)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const ShadingViewContext& shadingContet = passParams.viewSpec.GetShadingViewContext();
-
-	const mat::MaterialGraphicsShaders shaders = mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>("EmitGBuffer", materialBatch.materialShadersHash);
+	const ShadingViewContext& shadingContext = passParams.viewSpec.GetShadingViewContext();
 
 	rhi::GraphicsPipelineDefinition pipelineDef
 	{
@@ -69,7 +81,7 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 		}
 	};
 
-	std::transform(shadingContet.gBuffer.begin(), shadingContet.gBuffer.end(),
+	std::transform(shadingContext.gBuffer.begin(), shadingContext.gBuffer.end(),
 				   std::back_inserter(pipelineDef.renderTargetsDefinition.colorRTsDefinition),
 				   [](const rg::RGTextureViewHandle& textureView)
 				   {
@@ -81,12 +93,10 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 				   	   };
 				   });
 
-	
-	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Emit GBuffer Pipeline"),
-																				   shaders.GetGraphicsPipelineShaders(),
-																				   pipelineDef);
+	EmitGBufferPermutation permutation;
+	permutation.MATERIAL_BATCH = materialBatch.permutation;
 
-	return pipeline;
+	return EmitGBufferPSO::GetPermutation(pipelineDef, permutation);
 }
 
 

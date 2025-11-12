@@ -38,8 +38,8 @@ DS_END();
 
 GRAPHICS_PSO(DebugGeometryPSO)
 {
-	VERTEX_SHADER("Sculptor/Debug/DebugGeometry.hlsl", "DebugGeometryVS");
-	FRAGMENT_SHADER("Sculptor/Debug/DebugGeometry.hlsl", "DebugGeometryPS");
+	VERTEX_SHADER("Sculptor/Debug/DebugGeometry.hlsl", DebugGeometryVS);
+	FRAGMENT_SHADER("Sculptor/Debug/DebugGeometry.hlsl", DebugGeometryPS);
 
 	PRESET(lines);
 

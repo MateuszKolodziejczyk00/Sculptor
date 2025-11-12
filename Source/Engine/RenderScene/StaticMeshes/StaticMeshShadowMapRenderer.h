@@ -54,7 +54,7 @@ struct SMShadowMapBatch
 
 	Uint32 batchedSubmeshesNum;
 
-	mat::MaterialShadersHash materialShadersHash;
+	SMDepthOnlyPermutation permutation;
 };
 
 
@@ -72,11 +72,9 @@ public:
 
 private:
 
-	SMShadowMapBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshBatchDefinition& batchDef) const;
+	SMShadowMapBatch CreateBatch(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, const lib::DynamicArray<RenderView*>& batchedViews, const StaticMeshSMBatchDefinition& batchDef) const;
 	
 	void BuildBatchDrawCommands(rg::RenderGraphBuilder& graphBuilder, const SMShadowMapBatch& batch);
-	
-	rdr::PipelineStateID GetPipelineStateForBatch(const SMShadowMapBatch& batch) const;
 
 	lib::HashMap<RenderSceneEntity, lib::DynamicArray<SMShadowMapBatch>> m_pointLightBatches;
 	lib::HashMap<const RenderView*, lib::DynamicArray<SMShadowMapBatch>> m_globalShadowViewBatches;

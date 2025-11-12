@@ -16,6 +16,7 @@
 #include "MaterialsUnifiedData.h"
 #include "SceneRenderer/RenderStages/Utils/TracesAllocator.h"
 #include "Pipelines/PSOsLibraryTypes.h"
+#include "MaterialsSubsystem.h"
 
 
 namespace spt::rsc::sr_restir
@@ -112,7 +113,7 @@ DS_END();
 
 COMPUTE_PSO(CopyTracedReservoirsPSO)
 {
-	COMPUTE_SHADER("Sculptor/SpecularReflections/RTCopyTracedReservoirs.hlsl", "RTCopyTracedReservoirsCS");
+	COMPUTE_SHADER("Sculptor/SpecularReflections/RTCopyTracedReservoirs.hlsl", RTCopyTracedReservoirsCS);
 
 	PRESET(pso);
 
@@ -187,7 +188,7 @@ DS_END();
 
 COMPUTE_PSO(ResampleTemporallyPSO)
 {
-	COMPUTE_SHADER("Sculptor/SpecularReflections/ResampleTemporally.hlsl", "ResampleTemporallyCS");
+	COMPUTE_SHADER("Sculptor/SpecularReflections/ResampleTemporally.hlsl", ResampleTemporallyCS);
 
 	PRESET(withSecondTracingPass);
 	PRESET(noSecondTracingPass);
@@ -292,7 +293,7 @@ DS_END();
 
 COMPUTE_PSO(RTFireflyFilterPSO)
 {
-	COMPUTE_SHADER("Sculptor/SpecularReflections/RTFireflyFilter.hlsl", "RTFireflyFilterCS");
+	COMPUTE_SHADER("Sculptor/SpecularReflections/RTFireflyFilter.hlsl", RTFireflyFilterCS);
 
 	PRESET(pso);
 
@@ -405,23 +406,41 @@ DS_BEGIN(SRResamplingFinalVisibilityTestDS, rg::RGDescriptorSetState<SRResamplin
 DS_END();
 
 
-static rdr::PipelineStateID CompileSRFinalVisibilityTestPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem, Bool forceFullRate)
+RT_PSO(SRFinalVisibilityTestPSO)
 {
-	rdr::RayTracingPipelineShaders rtShaders;
+	RAY_GEN_SHADER("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", ResamplingFinalVisibilityTestRTG);
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", RTVisibilityRTM));
 
-	sc::ShaderCompilationSettings rayGenSettings;
-	rayGenSettings.AddMacroDefinition(sc::MacroDefinition("FORCE_FULL_RATE", forceFullRate ? "1" : "0"));
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "ResamplingFinalVisibilityTestRTG"), rayGenSettings);
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
 
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/ResamplingFinalVisibility.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVisibilityRTM")));
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
 
-	const lib::HashedString materialTechnique = "RTVisibility";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	PRESET(fullRate);
+	PRESET(variableRate);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("SR Final Visibility Test Pipeline"), rtShaders, pipelineDefinition);
-}
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		fullRate     = CompilePSO(compiler, psoDefinition, hitGroups, { "FORCE_FULL_RATE=1" });
+		variableRate = CompilePSO(compiler, psoDefinition, hitGroups, { "FORCE_FULL_RATE=0" });
+	}
+};
 
 
 static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, const ResamplingParams& params, const SRResamplingConstants& resamplingConstants, utils::ReservoirsState& reservoirsState)
@@ -448,14 +467,8 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 
 	if (params.doFullFinalVisibilityCheck)
 	{
-		static rdr::PipelineStateID visibilityTestPipeline;
-		if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
-		{
-			visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem, true);
-		}
-
 		graphBuilder.TraceRays(RG_DEBUG_NAME("SR Final Visibility Test"),
-									   visibilityTestPipeline,
+									   SRFinalVisibilityTestPSO::fullRate,
 									   resolution,
 									   rg::BindDescriptorSets(std::move(ds),
 															  params.renderView.GetRenderViewDS(),
@@ -463,15 +476,8 @@ static void ExecuteFinalVisibilityTest(rg::RenderGraphBuilder& graphBuilder, con
 	}
 	else
 	{
-
-		static rdr::PipelineStateID visibilityTestPipeline;
-		if (!visibilityTestPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
-		{
-			visibilityTestPipeline = CompileSRFinalVisibilityTestPipeline(rayTracingSubsystem, false);
-		}
-
 		graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("SR Final Visibility Test"),
-									   visibilityTestPipeline,
+									   SRFinalVisibilityTestPSO::variableRate,
 									   params.tracesAllocation.tracingIndirectArgs, 0,
 									   rg::BindDescriptorSets(std::move(ds),
 															  params.renderView.GetRenderViewDS(),
@@ -503,7 +509,7 @@ DS_END();
 
 COMPUTE_PSO(ResolveReservoirsPSO)
 {
-	COMPUTE_SHADER("Sculptor/SpecularReflections/ResolveReservoirs.hlsl", "ResolveReservoirsCS");
+	COMPUTE_SHADER("Sculptor/SpecularReflections/ResolveReservoirs.hlsl", ResolveReservoirsCS);
 
 	PRESET(pso);
 

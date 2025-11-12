@@ -13,7 +13,7 @@ namespace spt::rsc
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // SMBatchesBuilder ==============================================================================
 
-SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshBatchDefinition>& inBatches)
+SMBatchesBuilder::SMBatchesBuilder(lib::DynamicArray<StaticMeshSMBatchDefinition>& inBatches)
 	: m_batches(inBatches)
 { }
 
@@ -31,7 +31,15 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 
 		const SubmeshRenderingDefinition& submeshDef = meshRenderingDef.submeshesDefs[idx];
 
-		BatchBuildData& batch = GetBatchBuildDataForMaterial(materialProxy.materialShadersHash);
+		SMDepthOnlyPermutation permutation;
+
+		if (materialProxy.params.customOpacity) // No material evaluation needed if custom opacity is not used
+		{
+			permutation.SHADER         = materialProxy.params.shader;
+			permutation.CUSTOM_OPACITY = materialProxy.params.customOpacity;
+		}
+
+		BatchBuildData& batch = GetBatchBuildDataForMaterial(permutation);
 
 		const SubmeshGPUPtr submeshPtr = meshRenderingDef.submeshesPtr + idx;
 
@@ -41,8 +49,8 @@ void SMBatchesBuilder::AppendMeshToBatch(RenderEntityGPUPtr entityPtr, const Sta
 		batchElement.materialDataID = materialProxy.GetMaterialDataID();
 		batch.batchElements.emplace_back(batchElement);
 
-		batch.maxMeshletsNum	+= submeshDef.meshletsNum;
-		batch.maxTrianglesNum	+= submeshDef.trianglesNum;
+		batch.maxMeshletsNum  += submeshDef.meshletsNum;
+		batch.maxTrianglesNum += submeshDef.trianglesNum;
 	}
 }
 
@@ -60,33 +68,33 @@ void SMBatchesBuilder::FinalizeBatches()
 	}
 }
 
-SMBatchesBuilder::BatchBuildData& SMBatchesBuilder::GetBatchBuildDataForMaterial(mat::MaterialShadersHash materialShaderHash)
+SMBatchesBuilder::BatchBuildData& SMBatchesBuilder::GetBatchBuildDataForMaterial(const SMDepthOnlyPermutation& permutation)
 {
-	const auto it = m_materialShaderHashToBatchIdx.find(materialShaderHash);
-	if (it != m_materialShaderHashToBatchIdx.end())
+	const auto it = m_permutationToBatchIdx.find(permutation);
+	if (it != m_permutationToBatchIdx.end())
 	{
 		return m_batchBuildDatas[it->second];
 	}
 	else
 	{
 		const Uint32 batchIdx = static_cast<Uint32>(m_batchBuildDatas.size());
-		m_materialShaderHashToBatchIdx[materialShaderHash] = batchIdx;
+		m_permutationToBatchIdx[permutation] = batchIdx;
 
 		BatchBuildData& batchData = m_batchBuildDatas.emplace_back();
-		batchData.materialShadersHash = materialShaderHash;
+		batchData.permutation = permutation;
 
 		return batchData;
 	}
 }
 
-StaticMeshBatchDefinition SMBatchesBuilder::FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const
+StaticMeshSMBatchDefinition SMBatchesBuilder::FinalizeBatchDefinition(const BatchBuildData& batchBuildData) const
 {
-	StaticMeshBatchDefinition batchDef;
+	StaticMeshSMBatchDefinition batchDef;
 
-	batchDef.batchElementsNum    = static_cast<Uint32>(batchBuildData.batchElements.size());
-	batchDef.maxMeshletsNum      = batchBuildData.maxMeshletsNum;
-	batchDef.maxTrianglesNum     = batchBuildData.maxTrianglesNum;
-	batchDef.materialShadersHash = batchBuildData.materialShadersHash;
+	batchDef.batchElementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
+	batchDef.maxMeshletsNum   = batchBuildData.maxMeshletsNum;
+	batchDef.maxTrianglesNum  = batchBuildData.maxTrianglesNum;
+	batchDef.permutation      = batchBuildData.permutation;
 
 	SMGPUBatchData gpuBatchData;
 	gpuBatchData.elementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
@@ -122,18 +130,18 @@ void StaticMeshRenderSceneSubsystem::Update()
 	m_cachedSMBatches = CacheStaticMeshBatches();
 }
 
-const lib::DynamicArray<StaticMeshBatchDefinition>& StaticMeshRenderSceneSubsystem::BuildBatchesForView(const RenderView& view) const
+const lib::DynamicArray<StaticMeshSMBatchDefinition>& StaticMeshRenderSceneSubsystem::BuildBatchesForSMView(const RenderView& view) const
 {
 	SPT_PROFILER_FUNCTION();
 
 	return m_cachedSMBatches.batches;
 }
 
-lib::DynamicArray<StaticMeshBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForPointLight(const PointLightData& pointLight) const
+lib::DynamicArray<StaticMeshSMBatchDefinition> StaticMeshRenderSceneSubsystem::BuildBatchesForPointLightSM(const PointLightData& pointLight) const
 {
 	SPT_PROFILER_FUNCTION();
 	
-	lib::DynamicArray<StaticMeshBatchDefinition> batches;
+	lib::DynamicArray<StaticMeshSMBatchDefinition> batches;
 
 	SMBatchesBuilder batchesBuilder(batches);
 

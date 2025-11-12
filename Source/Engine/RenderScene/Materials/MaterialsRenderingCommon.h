@@ -2,6 +2,7 @@
 
 #include "Material.h"
 #include "RenderSceneRegistry.h"
+#include "ShaderStructs.h"
 
 
 namespace spt::rsc

@@ -143,22 +143,40 @@ DS_BEGIN(DirectionalLightShadowMaskDS, rg::RGDescriptorSetState<DirectionalLight
 DS_END();
 
 
-static rdr::PipelineStateID CreateShadowsRayTracingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem, const vrt::VariableRatePermutationSettings& variableRatePermutation)
+RT_PSO(ShadowsRayTracingPSO)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	vrt::ApplyVariableRatePermutation(INOUT compilationSettings, variableRatePermutation);
+	RAY_GEN_SHADER("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", GenerateShadowRaysRTG);
 
-	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateShadowRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTVisibilityRTM"), compilationSettings));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/Lights/DirLightsRTShadowsTraceRays.hlsl", RTVisibilityRTM));
 
-	const lib::HashedString materialTechnique = "RTVisibility";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Directional Lights Shadows Ray Tracing Pipeline"), rtShaders, pipelineDefinition);
-}
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
 
 
 static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const ShadowTracingContext& tracingContext)
@@ -180,11 +198,6 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	traceShadowRaysDS->u_traceCommands   = tracesAllocation.rayTraceCommands;
 
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-	static rdr::PipelineStateID shadowsRayTracingPipeline;
-	if (!shadowsRayTracingPipeline.IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
-	{
-		shadowsRayTracingPipeline = CreateShadowsRayTracingPipeline(rayTracingSceneSubsystem, tracingContext.vrtPermutationSettings);
-	}
 
 	DirectionalLightShadowUpdateParams updateParams;
 	updateParams.lightDirection     = tracingContext.lightDirection;
@@ -208,7 +221,7 @@ static rg::RGTextureViewHandle TraceShadowRays(rg::RenderGraphBuilder& graphBuil
 	visibilityDS->u_sceneRayTracingDS       = rayTracingSceneSubsystem.GetSceneRayTracingDS();
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Directional Light Trace Shadow Rays"),
-								   shadowsRayTracingPipeline,
+								   ShadowsRayTracingPSO::pso,
 								   tracesAllocation.tracingIndirectArgs, 0,
 								   rg::BindDescriptorSets(traceShadowRaysDS,
 														  directionalLightShadowMaskDS,

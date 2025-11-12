@@ -275,6 +275,15 @@ struct StructTranslator<math::Vector4u>
 	}
 };
 
+template<>
+struct StructTranslator<lib::HashedString>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return StructTranslator<math::Vector2u>::GetHLSLStructName();
+	}
+};
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Utilities =====================================================================================
 
@@ -530,6 +539,39 @@ struct StructHLSLAlignmentEvaluator<math::Matrix<TType, rows, cols>>
 	static constexpr Uint32 Alignment()
 	{
 		return StructHLSLAlignmentEvaluator<TType>::Alignment();
+	}
+};
+
+template<>
+struct StructCPPToHLSLTranslator<lib::HashedString>
+{
+	static void Copy(const lib::HashedString& cppData, lib::Span<Byte> hlslData)
+	{
+		const Uint64 key = cppData.GetKey();
+
+		math::Vector2u hashData;
+		hashData.x() = static_cast<Uint32>(key & 0xFFFFFFFF);
+		hashData.y() = static_cast<Uint32>((key >> 32) & 0xFFFFFFFF);
+
+		StructCPPToHLSLTranslator<math::Vector2u>::Copy(hashData, hlslData);
+	}
+};
+
+template<>
+struct StructHLSLSizeEvaluator<lib::HashedString>
+{
+	static constexpr Uint32 Size()
+	{
+		return StructHLSLSizeEvaluator<math::Vector2u>::Size();
+	}
+};
+
+template<>
+struct StructHLSLAlignmentEvaluator<lib::HashedString>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return StructHLSLAlignmentEvaluator<math::Vector2u>::Alignment();
 	}
 };
 

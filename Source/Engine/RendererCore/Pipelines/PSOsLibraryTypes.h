@@ -4,7 +4,7 @@
 #include "PipelineState.h"
 #include "Common/ShaderCompilationInput.h"
 #include "Utility/Templates/Callable.h"
-#include "ShaderStructsTypes.h"
+#include "ShaderStructs.h"
 
 
 namespace spt::rdr
@@ -18,53 +18,41 @@ SPT_DEFINE_LOG_CATEGORY(PSOsLibrary, true);
 namespace permutations
 {
 
-template<typename TShaderStructMemberMetaData>
-constexpr SizeType ComputeHashImpl(lib::Span<const Byte> domainData)
+template<typename TType>
+struct ShaderCompilationSettingsBuilder
 {
-	if constexpr (rdr::shader_translator::priv::IsHeadMember<TShaderStructMemberMetaData>())
+	static void Build(lib::String variableName, const TType& value, sc::ShaderCompilationSettings& outSettings)
 	{
-		return ComputeHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData);
+		SPT_CHECK_NO_ENTRY(); // type not supported
 	}
-	else
-	{
-		using MemberType = typename TShaderStructMemberMetaData::UnderlyingType;
+};
 
-		static_assert(std::is_same_v<MemberType, Int32> || std::is_same_v<MemberType, Bool> || shader_translator::CShaderStruct<MemberType>);
-
-		const MemberType& memberValue = *reinterpret_cast<const MemberType*>(domainData.data() + TShaderStructMemberMetaData::GetCPPOffset());
-
-		if constexpr (rdr::shader_translator::priv::IsTailMember<TShaderStructMemberMetaData>())
-		{
-			if constexpr (shader_translator::CShaderStruct<MemberType>)
-			{
-				return ComputeHashImpl<typename MemberType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&memberValue), sizeof(MemberType)));
-			}
-			else
-			{
-				return lib::GetHash(memberValue);
-			}
-		}
-		else
-		{
-			if constexpr (shader_translator::CShaderStruct<MemberType>)
-			{
-				return lib::HashCombine(ComputeHashImpl<typename MemberType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&memberValue), sizeof(MemberType))),
-										ComputeHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData));
-			}
-			else
-			{
-				return lib::HashCombine(memberValue, ComputeHashImpl<typename TShaderStructMemberMetaData::PrevMemberMetaDataType>(domainData));
-			}
-		}
-	}
-}
-
-template<typename TDomain>
-SizeType ComputePermutationHash(const TDomain& permutation)
+template<>
+struct ShaderCompilationSettingsBuilder<Int32>
 {
-	const lib::Span<const Byte> domainData(reinterpret_cast<const Byte*>(&permutation), sizeof(TDomain));
-	return ComputeHashImpl<typename TDomain::HeadMemberMetaData>(domainData);
-}
+	static void Build(const lib::String& variableName, const Int32& value, sc::ShaderCompilationSettings& outSettings)
+	{
+		outSettings.AddMacroDefinition(sc::MacroDefinition(variableName + "=" + std::to_string(value)));
+	}
+};
+
+template<>
+struct ShaderCompilationSettingsBuilder<Bool>
+{
+	static void Build(const lib::String& variableName, const Bool& value, sc::ShaderCompilationSettings& outSettings)
+	{
+		outSettings.AddMacroDefinition(sc::MacroDefinition(std::move(variableName), value));
+	}
+};
+
+template<>
+struct ShaderCompilationSettingsBuilder<lib::HashedString>
+{
+	static void Build(const lib::String& variableName, const lib::HashedString& value, sc::ShaderCompilationSettings& outSettings)
+	{
+		outSettings.AddMacroDefinition(sc::MacroDefinition(variableName + "=" + value.ToString()));
+	}
+};
 
 
 template<typename TShaderStructMemberMetaData>
@@ -83,28 +71,22 @@ constexpr void BuildPermutationCompilationSettingsImpl(lib::Span<const Byte> dom
 
 		const lib::HashedString macroName = lib::HashedString(TShaderStructMemberMetaData::GetVariableName());
 
-		if constexpr (std::is_same_v<MemberType, Bool>)
+		if constexpr (shader_translator::CShaderStruct<MemberType>)
 		{
-			if (memberValue)
-			{
-				outSettings.AddMacroDefinition(sc::MacroDefinition(macroName, memberValue));
-			}
+			BuildPermutationCompilationSettingsImpl<typename MemberType::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&memberValue), sizeof(MemberType)), outSettings);
 		}
-		else if constexpr (std::is_same_v<MemberType, Int32>)
+		else
 		{
-			outSettings.AddMacroDefinition(macroName.ToString() + "=" + std::to_string(memberValue));
+			ShaderCompilationSettingsBuilder<MemberType>::Build(macroName.ToString(), memberValue, INOUT outSettings);
 		}
 	}
 }
 
+
 template<typename TDomain>
-sc::ShaderCompilationSettings BuildPermutationShaderCompilationSettings(const TDomain& permutation)
+void BuildPermutationShaderCompilationSettings(const TDomain& permutation, sc::ShaderCompilationSettings& inOutSettings)
 {
-	sc::ShaderCompilationSettings settings;
-
-	BuildPermutationCompilationSettingsImpl<typename TDomain::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&permutation), sizeof(TDomain)), settings);
-
-	return settings;
+	BuildPermutationCompilationSettingsImpl<typename TDomain::HeadMemberMetaData>(lib::Span<const Byte>(reinterpret_cast<const Byte*>(&permutation), sizeof(TDomain)), inOutSettings);
 }
 
 } // permutations
@@ -123,7 +105,17 @@ public:
 		const lib::LockGuard lock(m_lock); // Lock needed only in runtime. Precaching is thread-safe by design
 #endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
 
-		const SizeType permutationHash = permutations::ComputePermutationHash<TDomain>(permutation);
+		const SizeType permutationHash = ComputeStructHash<TDomain>(permutation);
+		m_permutations.emplace(permutationHash, psoID);
+	}
+
+	void AddPermutation(const rhi::GraphicsPipelineDefinition& pipelineDef, const TDomain& permutation, PipelineStateID psoID)
+	{
+#if SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+		const lib::LockGuard lock(m_lock); // Lock needed only in runtime. Precaching is thread-safe by design
+#endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+
+		const SizeType permutationHash = lib::HashCombine(pipelineDef, ComputeStructHash<TDomain>(permutation));
 		m_permutations.emplace(permutationHash, psoID);
 	}
 
@@ -133,7 +125,23 @@ public:
 		const lib::LockGuard lock(m_lock); // Lock needed only in runtime. Precaching is thread-safe by design
 #endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
 
-		const SizeType permutationHash = permutations::ComputePermutationHash<TDomain>(permutation);
+		const SizeType permutationHash = ComputeStructHash<TDomain>(permutation);
+		const auto foundIt = m_permutations.find(permutationHash);
+		if (foundIt != std::cend(m_permutations))
+		{
+			return foundIt->second;
+		}
+		return PipelineStateID{};
+	}
+
+
+	PipelineStateID GetPermutation(const rhi::GraphicsPipelineDefinition& pipelineDef, const TDomain& permutation) const
+	{
+#if SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+		const lib::LockGuard lock(m_lock); // Lock needed only in runtime. Precaching is thread-safe by design
+#endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+
+		const SizeType permutationHash = lib::HashCombine(pipelineDef, ComputeStructHash<TDomain>(permutation));
 		const auto foundIt = m_permutations.find(permutationHash);
 		if (foundIt != std::cend(m_permutations))
 		{
@@ -158,14 +166,14 @@ struct PSOPrecacheParams
 
 
 class RENDERER_CORE_API PSOCompilerInterface
-
 {
 public:
 
-	virtual rdr::ShaderID CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) = 0;
+	virtual ShaderID CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) = 0;
 
-	virtual rdr::PipelineStateID CreateComputePipeline(const RendererResourceName& name, const rdr::ShaderID& shader) = 0;
-	virtual rdr::PipelineStateID CreateGraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) = 0;
+	virtual PipelineStateID CreateComputePipeline(const RendererResourceName& name, const rdr::ShaderID& shader) = 0;
+	virtual PipelineStateID CreateGraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) = 0;
+	virtual PipelineStateID CreateRayTracingPipeline(const RendererResourceName& name, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) = 0;
 };
 
 
@@ -173,10 +181,11 @@ class PSOImmediateCompiler : public PSOCompilerInterface
 {
 public:
 
-	virtual rdr::ShaderID CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) override;
+	virtual ShaderID CompileShader(const lib::String& shaderRelativePath, const sc::ShaderStageCompilationDef& shaderStageDef, const sc::ShaderCompilationSettings& compilationSettings) override;
 
-	virtual rdr::PipelineStateID CreateComputePipeline(const RendererResourceName& name, const rdr::ShaderID& shader) override;
-	virtual rdr::PipelineStateID CreateGraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) override;
+	virtual PipelineStateID CreateComputePipeline(const RendererResourceName& name, const rdr::ShaderID& shader) override;
+	virtual PipelineStateID CreateGraphicsPipeline(const RendererResourceName& name, const GraphicsPipelineShaders& shaders, const rhi::GraphicsPipelineDefinition& pipelineDef) override;
+	virtual PipelineStateID CreateRayTracingPipeline(const RendererResourceName& name, const RayTracingPipelineShaders& shaders, const rhi::RayTracingPipelineDefinition& pipelineDef) override;
 };
 
 
@@ -192,10 +201,17 @@ struct ShaderEntry
 
 
 template<typename TPSO>
-concept CPermutationsComputePSO = requires
+concept CPermutationsPSO = requires
 {
 	{ TPSO::s_permutations };
 	typename TPSO::PermutationDomainType;
+};
+
+
+template<typename TPSO>
+concept CPrecachingPSO = requires
+{
+	{ TPSO::PrecachePSOs };
 };
 
 
@@ -212,24 +228,27 @@ public:
 	}
 
 	template<typename TPermutationDomatin>
-	static rdr::PipelineStateID GetPermutation(const TPermutationDomatin& permutation)
+	static PipelineStateID GetPermutation(const TPermutationDomatin& permutation)
 	{
-		static_assert(CPermutationsComputePSO<TConcrete>, "This PSO does not support permutations!");
+		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
 
 		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
 
 #if SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
-		rdr::PipelineStateID pso = TConcrete::s_permutations.GetPermutation(permutation);
+		PipelineStateID pso = TConcrete::s_permutations.GetPermutation(permutation);
 		if(!pso.IsValid())
 		{
 			SPT_LOG_WARN(PSOsLibrary, "PSO '{}' permutation not found! Compiling at runtime...", name.Get());
 
+			sc::ShaderCompilationSettings compilationSettings;
+			rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
+
 			PSOImmediateCompiler compiler;
-			pso = TConcrete::CompilePSO(compiler, rdr::permutations::BuildPermutationShaderCompilationSettings(permutation));
-			TConcrete::AddPermutation(permutation, pso);
+			pso = TConcrete::CompilePSO(compiler, compilationSettings);
+			TConcrete::s_permutations.AddPermutation(permutation, pso);
 		}
 #else
-		const rdr::PipelineStateID pso = TConcrete::s_permutations.GetPermutation(permutation);
+		const PipelineStateID pso = TConcrete::s_permutations.GetPermutation(permutation);
 #endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
 
 		SPT_CHECK_MSG(pso.IsValid(), "Invalid permutation!");
@@ -237,23 +256,20 @@ public:
 	}
 
 	template<typename TPermutationDomatin>
-	static void AddPermutation(const TPermutationDomatin& permutation, spt::rdr::PipelineStateID psoID)
+	static PipelineStateID CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const TPermutationDomatin& permutation)
 	{
-		static_assert(CPermutationsComputePSO<TConcrete>, "This PSO does not support permutations!");
+		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
 
 		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
 
-		TConcrete::s_permutations.AddPermutation(permutation, psoID);
-	}
+		sc::ShaderCompilationSettings compilationSettings;
+		rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
 
-	template<typename TPermutationDomatin>
-	static void CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const TPermutationDomatin& permutation)
-	{
-		static_assert(CPermutationsComputePSO<TConcrete>, "This PSO does not support permutations!");
+		const PipelineStateID pso = TConcrete::CompilePSO(compiler, compilationSettings);
 
-		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+		TConcrete::s_permutations.AddPermutation(permutation, pso);
 
-		TConcrete::s_permutations.AddPermutation(permutation, TConcrete::CompilePSO(compiler, rdr::permutations::BuildPermutationShaderCompilationSettings(permutation)));
+		return pso;
 	}
 
 private:
@@ -262,8 +278,11 @@ private:
 	{
 		Registrar()
 		{
-			PSOPrecacheFunction func = TConcrete::PrecachePSOs;
-			RegisterPSO(func);
+			if constexpr (CPrecachingPSO<TConcrete>)
+			{
+				PSOPrecacheFunction func = TConcrete::PrecachePSOs;
+				RegisterPSO(func);
+			}
 		}
 	};
 
@@ -283,19 +302,19 @@ public:
 		if constexpr (requires { TConcrete::taskShader; })
 		{
 			const ShaderEntry taskShader = TConcrete::taskShader;
-			shaders.taskShader = compiler.CompileShader( taskShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Task, taskShader.entryPoint), settings);
+			shaders.taskShader = compiler.CompileShader(taskShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Task, taskShader.entryPoint), settings);
 		}
 
 		if constexpr (requires { TConcrete::meshShader; })
 		{
 			const ShaderEntry meshShader = TConcrete::meshShader;
-			shaders.meshShader = compiler.CompileShader( meshShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Mesh, meshShader.entryPoint), settings);
+			shaders.meshShader = compiler.CompileShader(meshShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Mesh, meshShader.entryPoint), settings);
 		}
 
 		if constexpr (requires { TConcrete::vertexShader; })
 		{
 			const ShaderEntry vertexShader = TConcrete::vertexShader;
-			shaders.vertexShader = compiler.CompileShader( vertexShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, vertexShader.entryPoint), settings);
+			shaders.vertexShader = compiler.CompileShader(vertexShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::Vertex, vertexShader.entryPoint), settings);
 		}
 
 		const ShaderEntry fragmentShader = TConcrete::fragmentShader;
@@ -304,14 +323,128 @@ public:
 		return compiler.CreateGraphicsPipeline(RENDERER_RESOURCE_NAME(name.Get()), shaders, pipelineDef);
 	}
 
+	template<typename TPermutationDomatin>
+	static rdr::PipelineStateID GetPermutation(const rhi::GraphicsPipelineDefinition& pipelineDef, const TPermutationDomatin& permutation)
+	{
+		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
+
+		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+
+#if SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+		rdr::PipelineStateID pso = TConcrete::s_permutations.GetPermutation(pipelineDef, permutation);
+		if (!pso.IsValid())
+		{
+			SPT_LOG_WARN(PSOsLibrary, "PSO '{}' permutation not found! Compiling at runtime...", name.Get());
+
+			sc::ShaderCompilationSettings compilationSettings;
+			rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
+
+			PSOImmediateCompiler compiler;
+			pso = TConcrete::CompilePSO(compiler, pipelineDef, compilationSettings);
+			TConcrete::s_permutations.AddPermutation(pipelineDef, permutation, pso);
+		}
+#else
+		const rdr::PipelineStateID pso = TConcrete::s_permutations.GetPermutation(pipelineDef, permutation);
+#endif // SPT_ALLOW_RUNTIME_PERMUTATION_COMPILATION
+
+		SPT_CHECK_MSG(pso.IsValid(), "Invalid permutation!");
+		return pso;
+	}
+
+	template<typename TPermutationDomatin>
+	static void CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const rhi::GraphicsPipelineDefinition& pipelineDef, const TPermutationDomatin& permutation)
+	{
+		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
+
+		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+
+		sc::ShaderCompilationSettings compilationSettings;
+		rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
+
+		TConcrete::s_permutations.AddPermutation(pipelineDef, permutation, TConcrete::CompilePSO(compiler, pipelineDef, compilationSettings));
+	}
+
 private:
 
 	struct Registrar
 	{
 		Registrar()
 		{
-			PSOPrecacheFunction func = TConcrete::PrecachePSOs;
-			RegisterPSO(func);
+			if constexpr (CPrecachingPSO<TConcrete>)
+			{
+				PSOPrecacheFunction func = TConcrete::PrecachePSOs;
+				RegisterPSO(func);
+			}
+		}
+	};
+
+	static inline Registrar registrar{};
+};
+
+
+template<typename TConcrete, lib::Literal name>
+class RayTracingPSO
+{
+public:
+
+	// Must be a template to defer compilation until concrete pso type is parsed. in parctice, THitGroup must be a TConcrete::HitGroup
+	template<typename THitGroup>
+	static PipelineStateID CompilePSO(PSOCompilerInterface& compiler, const rhi::RayTracingPipelineDefinition& pipelineDefinition, const lib::DynamicArray<THitGroup>& hitGroups, const sc::ShaderCompilationSettings& settings = {})
+	{
+		static_assert(std::is_same_v<typename TConcrete::HitGroup, THitGroup>, "Wrong type of hit group!");
+
+		rdr::RayTracingPipelineShaders shaders;
+
+		if constexpr (requires { TConcrete::rayGenShader; })
+		{
+			shaders.rayGenShader = compiler.CompileShader(TConcrete::rayGenShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, TConcrete::rayGenShader.entryPoint), settings);
+		}
+
+		if constexpr (requires { TConcrete::missShaders; })
+		{
+			shaders.missShaders.reserve(TConcrete::missShaders.size());
+
+			for (const ShaderEntry& missShaderEntry : TConcrete::missShaders)
+			{
+				shaders.missShaders.push_back(compiler.CompileShader(missShaderEntry.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, missShaderEntry.entryPoint), settings));
+			}
+		}
+
+		for (const typename TConcrete::HitGroup& hitGroupDef : hitGroups)
+		{
+			sc::ShaderCompilationSettings hitGroupSettings = settings;
+
+			if constexpr (requires { hitGroupDef.permutation; })
+			{
+				permutations::BuildPermutationShaderCompilationSettings(hitGroupDef.permutation, INOUT hitGroupSettings);
+			}
+
+			rdr::RayTracingHitGroup hitGroup;
+			if constexpr (requires { hitGroupDef.closestShader; })
+			{
+				hitGroup.closestHitShader = compiler.CompileShader(hitGroupDef.closestShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::RTClosestHit, hitGroupDef.closestShader.entryPoint), hitGroupSettings);
+			}
+			if constexpr (requires { hitGroupDef.anyHitShader; })
+			{
+				hitGroup.anyHitShader = compiler.CompileShader(hitGroupDef.anyHitShader.path, sc::ShaderStageCompilationDef(rhi::EShaderStage::RTAnyHit, hitGroupDef.anyHitShader.entryPoint), hitGroupSettings);
+			}
+			shaders.hitGroups.push_back(std::move(hitGroup));
+		}
+
+		return compiler.CreateRayTracingPipeline(RENDERER_RESOURCE_NAME(name.Get()), shaders, pipelineDefinition);
+	}
+
+private:
+
+	struct Registrar
+	{
+		Registrar()
+		{
+			if constexpr (CPrecachingPSO<TConcrete>)
+			{
+				PSOPrecacheFunction func = TConcrete::PrecachePSOs;
+				RegisterPSO(func);
+			}
 		}
 	};
 
@@ -347,18 +480,45 @@ private:
 };
 
 
+template<typename... TShaderEntries>
+constexpr auto CreateShaderEntriesArray(TShaderEntries&&... entries)
+{
+	constexpr SizeType size = lib::ParameterPackSize<TShaderEntries...>::Count;
+	return lib::StaticArray<ShaderEntry, size>{ std::forward<TShaderEntries>(entries)... };
+}
+
+
 #define COMPUTE_PSO(PSOName) struct PSOName : public spt::rdr::ComputePSO<PSOName, #PSOName>
 
 #define GRAPHICS_PSO(PSOName) struct PSOName : public spt::rdr::GraphicsPSO<PSOName, #PSOName>
 
-#define COMPUTE_SHADER(path, entryPoint)  static constexpr spt::rdr::ShaderEntry computeShader{ path, entryPoint };
-#define VERTEX_SHADER(path, entryPoint)   static constexpr spt::rdr::ShaderEntry vertexShader{ path, entryPoint };
-#define FRAGMENT_SHADER(path, entryPoint) static constexpr spt::rdr::ShaderEntry fragmentShader{ path, entryPoint };
-#define TASK_SHADER(path, entryPoint)     static constexpr spt::rdr::ShaderEntry taskShader{ path, entryPoint };
-#define MESH_SHADER(path, entryPoint)     static constexpr spt::rdr::ShaderEntry meshShader{ path, entryPoint };
+#define RT_PSO(PSOName) struct PSOName : public spt::rdr::RayTracingPSO<PSOName, #PSOName>
+
+#define SHADER_ENTRY(path, entryPoint) spt::rdr::ShaderEntry{path, #entryPoint}
+
+#define COMPUTE_SHADER(path, entryPoint)  static constexpr spt::rdr::ShaderEntry   computeShader{ path, #entryPoint };
+
+#define VERTEX_SHADER(path, entryPoint)   static constexpr spt::rdr::ShaderEntry   vertexShader{ path, #entryPoint };
+#define FRAGMENT_SHADER(path, entryPoint) static constexpr spt::rdr::ShaderEntry   fragmentShader{ path, #entryPoint };
+#define TASK_SHADER(path, entryPoint)     static constexpr spt::rdr::ShaderEntry   taskShader{ path, #entryPoint };
+#define MESH_SHADER(path, entryPoint)     static constexpr spt::rdr::ShaderEntry   meshShader{ path, #entryPoint };
+
+#define RAY_GEN_SHADER(path, entryPoint)  static constexpr spt::rdr::ShaderEntry   rayGenShader{ path, #entryPoint };
+#define MISS_SHADERS(...)                 static constexpr auto                    missShaders = spt::rdr::CreateShaderEntriesArray(__VA_ARGS__);
+#define HIT_GROUP                         struct HitGroup
+
+#define CLOSEST_HIT_SHADER(path, entryPoint)  static constexpr spt::rdr::ShaderEntry   closestShader{ path, #entryPoint };
+#define ANY_HIT_SHADER(path, entryPoint) \
+static constexpr spt::rdr::ShaderEntry   anyHitShader{ path, #entryPoint }; \
+Bool hasAnyHitShader = true;
 
 
-#define PRESET(name) static inline spt::rdr::PSOPreset name;
+#define HIT_PERMUTATION_DOMAIN(domain) \
+domain permutation; \
+using PermutationDomainType = domain;
+
+
+#define PRESET(name) static inline spt::rdr::PSOPreset name
 
 #define PERMUTATION_DOMAIN(domain) \
 static inline spt::rdr::PSOPermutationsContainer<domain> s_permutations; \

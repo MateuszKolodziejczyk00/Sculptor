@@ -28,6 +28,7 @@
 #include "SceneRenderer/RenderStages/Utils/RTReflectionsTypes.h"
 #include "SceneRenderer/Debug/Stats/RTReflectionsStatsView.h"
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
+#include "MaterialsSubsystem.h"
 
 
 SPT_DEFINE_LOG_CATEGORY(RTGI, true);
@@ -289,22 +290,42 @@ static void ShadeMissRays(rg::RenderGraphBuilder& graphBuilder, const RenderScen
 namespace hit_rays
 {
 
-static rdr::PipelineStateID CreateHitRaysShadingPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem, Bool useDDGI)
+RT_PSO(HitRayShadingPSO)
 {
-	sc::ShaderCompilationSettings settings;
-	settings.AddMacroDefinition(sc::MacroDefinition("USE_DDGI", useDDGI ? "1" : "0"));
+	RAY_GEN_SHADER("Sculptor/SpecularReflections/HitRaysShading.hlsl", HitRaysShadingRTG);
 
-	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "HitRaysShadingRTG"), settings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/HitRaysShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "ShadowRayRTM"), settings));
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/HitRaysShading.hlsl", ShadowRayRTM));
 
-	const lib::HashedString materialTechnique = "RTVisibility";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	HIT_GROUP
+	{
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTVisibility.hlsl", RTVisibility_RT_AHS);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Hit Rays Rays Shading Pipeline"), rtShaders, pipelineDefinition);
-}
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(ddgi);
+	PRESET(sharc);
+	
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		ddgi  = CompilePSO(compiler, psoDefinition, hitGroups, { "USE_DDGI=1" });
+		sharc = CompilePSO(compiler, psoDefinition, hitGroups, { "USE_DDGI=0" });
+	}
+};
 
 
 static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene, ViewRenderingSpec& viewSpec, const SpecularReflectionsParams& srParams, const RTShadingParams& shadingParams, lib::MTHandle<RTShadingDS> shadingDS)
@@ -323,13 +344,6 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 
 	const RayTracingRenderSceneSubsystem& rayTracingSceneSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
 
-	static rdr::PipelineStateID hitRaysShadingPipeline[2];
-	if (!hitRaysShadingPipeline[0].IsValid() || !hitRaysShadingPipeline[1].IsValid() || rayTracingSceneSubsystem.AreSBTRecordsDirty())
-	{
-		hitRaysShadingPipeline[0] = CreateHitRaysShadingPipeline(rayTracingSceneSubsystem, true);
-		hitRaysShadingPipeline[1] = CreateHitRaysShadingPipeline(rayTracingSceneSubsystem, false);
-	}
-
 	lib::MTHandle<RTVisibilityDS> visibilityDS = graphBuilder.CreateDescriptorSet<RTVisibilityDS>(RENDERER_RESOURCE_NAME("RT Visibility DS"));
 	visibilityDS->u_geometryDS              = GeometryManager::Get().GetGeometryDSState();
 	visibilityDS->u_staticMeshUnifiedDataDS = StaticMeshUnifiedData::Get().GetUnifiedDataDS();
@@ -339,7 +353,7 @@ static void ShadeHitRays(rg::RenderGraphBuilder& graphBuilder, const RenderScene
 	const Bool useSharc = renderer_params::useSharcAsRadianceCache && SharcGICache::IsSharcSupported();
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Hit Rays Shading"),
-								   hitRaysShadingPipeline[useSharc],
+								   useSharc ? HitRayShadingPSO::sharc : HitRayShadingPSO::ddgi,
 								   shadingParams.shadingIndirectArgs, ComputeHitShadingIndirectArgsOffset(),
 								   rg::BindDescriptorSets(std::move(shadingDS),
 														  renderView.GetRenderViewDS(),
@@ -429,19 +443,40 @@ DS_BEGIN(SpecularReflectionsTraceDS, rg::RGDescriptorSetState<SpecularReflection
 DS_END();
 
 
-static rdr::PipelineStateID CreateSpecularReflectionsTracePipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+RT_PSO(SpecularReflectionsTracePSO)
 {
-	rdr::RayTracingPipelineShaders rtShaders;
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTGITrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "GenerateRTGIRaysRTG"));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/SpecularReflections/RTGITrace.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "RTGIRTM")));
+	RAY_GEN_SHADER("Sculptor/SpecularReflections/RTGITrace.hlsl", GenerateRTGIRaysRTG);
+	MISS_SHADERS(SHADER_ENTRY("Sculptor/SpecularReflections/RTGITrace.hlsl", RTGIRTM));
 
-	const lib::HashedString materialTechnique = "RTGI";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	HIT_GROUP
+	{
+		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_CHS);
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMRTGI.hlsl", RTGI_RT_AHS);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("Trace Specular Reflections Rays Pipeline"), rtShaders, pipelineDefinition);
-}
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
+
+	PRESET(pso);
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
 
 
 struct TraceParams
@@ -468,12 +503,6 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 	// Phase (2) Trace Rays
 
 	RayTracingRenderSceneSubsystem& rayTracingSubsystem = renderScene.GetSceneSubsystemChecked<RayTracingRenderSceneSubsystem>();
-
-	static rdr::PipelineStateID traceRaysPipeline;
-	if (!traceRaysPipeline.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
-	{
-		traceRaysPipeline = CreateSpecularReflectionsTracePipeline(rayTracingSubsystem);
-	}
 
 	const Uint32 maxTracesNum = params.resolution.x() * params.resolution.y();
 	const Uint64 hitMaterialInfosBufferSize = maxTracesNum * sizeof(shading::RTHitMaterialInfo);
@@ -517,7 +546,7 @@ static void GenerateReservoirs(rg::RenderGraphBuilder& graphBuilder, rg::RenderG
 	traceRaysDS->u_constants           = shaderConstants;
 
 	graphBuilder.TraceRaysIndirect(RG_DEBUG_NAME("Specular Reflections Trace Rays"),
-								   traceRaysPipeline,
+								   SpecularReflectionsTracePSO::pso,
 								   traceParams.tracesAllocation.tracingIndirectArgs, 0u,
 								   rg::BindDescriptorSets(std::move(traceRaysDS),
 														  rayTracingSubsystem.GetSceneRayTracingDS(),

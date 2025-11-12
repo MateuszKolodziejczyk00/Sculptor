@@ -25,6 +25,7 @@
 #include "DescriptorSetBindings/ChildDSBinding.h"
 #include "DDGIVolume.h"
 #include "Atmosphere/Clouds/VolumetricCloudsTypes.h"
+#include "Pipelines/PSOsLibraryTypes.h"
 
 
 namespace spt::rsc::ddgi
@@ -122,24 +123,43 @@ DS_END();
 namespace pipelines
 {
 
-static rdr::PipelineStateID CreateDDGITraceRaysPipeline(const RayTracingRenderSceneSubsystem& rayTracingSubsystem)
+RT_PSO(DDGITraceRaysPSO)
 {
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.DisableGeneratingDebugSource();
+	RAY_GEN_SHADER("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIProbeRaysRTG);
+	MISS_SHADERS(
+		SHADER_ENTRY("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIProbeRaysRTM),
+		SHADER_ENTRY("Sculptor/DDGI/DDGITraceRays.hlsl", DDGIShadowRaysRTM)
+	);
 
-	rdr::RayTracingPipelineShaders rtShaders;
+	HIT_GROUP
+	{
+		CLOSEST_HIT_SHADER("Sculptor/StaticMeshes/SMDDGI.hlsl", DDGI_RT_CHS);
+		ANY_HIT_SHADER("Sculptor/StaticMeshes/SMDDGI.hlsl", DDGI_RT_AHS);
 
-	rtShaders.rayGenShader = rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTGeneration, "DDGIProbeRaysRTG"), compilationSettings);
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIProbeRaysRTM"), compilationSettings));
-	rtShaders.missShaders.emplace_back(rdr::ResourcesManager::CreateShader("Sculptor/DDGI/DDGITraceRays.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::RTMiss, "DDGIShadowRaysRTM"), compilationSettings));
+		HIT_PERMUTATION_DOMAIN(mat::RTHitGroupPermutation);
+	};
 
-	const lib::HashedString materialTechnique = "DDGI";
-	rayTracingSubsystem.FillRayTracingGeometryHitGroups(materialTechnique, INOUT rtShaders.hitGroups);
+	PRESET(pso);
 
-	rhi::RayTracingPipelineDefinition pipelineDefinition;
-	pipelineDefinition.maxRayRecursionDepth = 1;
-	return rdr::ResourcesManager::CreateRayTracingPipeline(RENDERER_RESOURCE_NAME("DDGI Trace Rays Pipeline"), rtShaders, pipelineDefinition);
-}
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		const lib::DynamicArray<mat::RTHitGroupPermutation> materialPermutations = mat::MaterialsSubsystem::Get().GetRTHitGroups();
+
+		lib::DynamicArray<HitGroup> hitGroups;
+		hitGroups.reserve(materialPermutations.size());
+
+		for (const mat::RTHitGroupPermutation& permutation : materialPermutations)
+		{
+			HitGroup hitGroup;
+			hitGroup.permutation = permutation;
+			hitGroups.push_back(std::move(hitGroup));
+		}
+
+		const rhi::RayTracingPipelineDefinition psoDefinition{ .maxRayRecursionDepth = 1u };
+
+		pso = CompilePSO(compiler, psoDefinition, hitGroups);
+	}
+};
 
 static rdr::PipelineStateID CreateDDGIBlendProbesIlluminancePipeline(math::Vector2u groupSize, Uint32 raysNumPerProbe)
 {
@@ -465,14 +485,8 @@ rg::RGTextureViewHandle DDGIRenderSystem::TraceRays(rg::RenderGraphBuilder& grap
 		shadowMapsDS = graphBuilder.CreateDescriptorSet<ShadowMapsDS>(RENDERER_RESOURCE_NAME("DDGI Shadow Maps DS"));
 	}
 
-	static rdr::PipelineStateID traceRaysPipelineID;
-	if (!traceRaysPipelineID.IsValid() || rayTracingSubsystem.AreSBTRecordsDirty())
-	{
-		traceRaysPipelineID = pipelines::CreateDDGITraceRaysPipeline(rayTracingSubsystem);
-	}
-
 	graphBuilder.TraceRays(RG_DEBUG_NAME("DDGI Trace Rays"),
-						   traceRaysPipelineID,
+						   pipelines::DDGITraceRaysPSO::pso,
 						   math::Vector3u(probesToUpdateNum, relitParams.raysNumPerProbe, 1u),
 						   rg::BindDescriptorSets(traceRaysDS,
 												  relitParams.ddgiSceneDS,

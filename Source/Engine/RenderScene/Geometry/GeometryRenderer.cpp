@@ -116,50 +116,6 @@ static lib::MTHandle<VisCullingDS> CreateCullingDS(rg::RGTextureViewHandle hiZ, 
 }
 
 
-static mat::MaterialShadersHash GetMaterialShadersHash(const GeometryBatch& batch)
-{
-	const GeometryBatchShader shader = batch.psoInfo.shader;
-
-	if (shader.IsGenericShader())
-	{
-		switch (shader.GetGenericShader())
-		{
-		case GeometryBatchShader::EGenericType::Opaque:
-			return mat::MaterialShadersHash::NoMaterial();
-		default:
-			SPT_CHECK_MSG(false, "Unsupported generic shader");
-			return mat::MaterialShadersHash::NoMaterial();
-		}
-	}
-	else
-	{
-		return shader.GetCustomShader();
-	}
-}
-
-
-static mat::MaterialGraphicsShaders GetMaterialShaders(lib::HashedString techniqueName, const GeometryBatch& batch, const sc::MacroDefinition& passMacroDef)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
-
-	mat::MaterialShadersParameters shaderParams;
-	shaderParams.macroDefinitions.emplace_back(passMacroDef);
-
-	if (batch.psoInfo.shader.IsGenericShader())
-	{
-		if (psoInfo.isDoubleSided)
-		{
-			shaderParams.macroDefinitions.emplace_back("SPT_MATERIAL_DOUBLE_SIDED");
-		}
-	}
-
-	const mat::MaterialShadersHash materialShadersHash = GetMaterialShadersHash(batch);
-	return mat::MaterialsSubsystem::Get().GetMaterialShaders<mat::MaterialGraphicsShaders>(techniqueName, materialShadersHash, shaderParams);
-}
-
-
 namespace vis_buffer
 {
 
@@ -314,12 +270,20 @@ static VisBatchGPUData CreateVisGPUBatch(rg::RenderGraphBuilder& graphBuilder, c
 }
 
 
-template<EGeometryVisPass passIdx>
-static sc::MacroDefinition GetPassIdxMacroDef()
+BEGIN_SHADER_STRUCT(GeometryVisibilityBufferPermutation)
+	SHADER_STRUCT_FIELD(GeometryBatchPermutation, BATCH)
+	SHADER_STRUCT_FIELD(Int32,                    GEOMETRY_PASS_IDX)
+END_SHADER_STRUCT();
+
+
+GRAPHICS_PSO(GeometryVisibilityBufferPSO)
 {
-	static constexpr const char* value[] = { "0", "1", "2" };
-	return sc::MacroDefinition("GEOMETRY_PASS_IDX", value[static_cast<Uint32>(passIdx)]);
-}
+	TASK_SHADER("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", GeometryVisibility_TS);
+	MESH_SHADER("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", GeometryVisibility_MS);
+	FRAGMENT_SHADER("Sculptor/GeometryRendering/GeometryVisibilityBuffer.hlsl", GeometryVisibility_FS);
+
+	PERMUTATION_DOMAIN(GeometryVisibilityBufferPermutation);
+};
 
 
 template<EGeometryVisPass passIdx>
@@ -327,16 +291,12 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 {
 	SPT_PROFILER_FUNCTION();
 
-	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
-
-	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryVisibility", batch, GetPassIdxMacroDef<passIdx>());
-
 	const rhi::GraphicsPipelineDefinition pipelineDef
 	{
 		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
 		.rasterizationDefinition =
 		{
-			.cullMode = psoInfo.isDoubleSided ? rhi::ECullMode::None : rhi::ECullMode::Back,
+			.cullMode = batch.permutation.DOUBLE_SIDED ? rhi::ECullMode::None : rhi::ECullMode::Back,
 		},
 		.renderTargetsDefinition =
 		{
@@ -356,12 +316,12 @@ static rdr::PipelineStateID CreatePipelineForBatch(const VisPassParams& visPassP
 			}
 		}
 	};
-	
-	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry Visibility Pipeline"),
-																				   shaders.GetGraphicsPipelineShaders(),
-																				   pipelineDef);
 
-	return pipeline;
+	GeometryVisibilityBufferPermutation permutation;
+	permutation.BATCH             = batch.permutation;
+	permutation.GEOMETRY_PASS_IDX = static_cast<Int32>(passIdx);
+
+	return GeometryVisibilityBufferPSO::GetPermutation(pipelineDef, permutation);
 }
 
 
@@ -382,6 +342,31 @@ lib::DynamicArray<VisBatchGPUData> BuildGPUBatches(rg::RenderGraphBuilder& graph
 }
 
 
+BEGIN_SHADER_STRUCT(CullBatchElementsPermutation)
+	SHADER_STRUCT_FIELD(Int32, GEOMETRY_PASS_IDX)
+END_SHADER_STRUCT();
+
+
+COMPUTE_PSO(CullBatchElementsPSO)
+{
+	COMPUTE_SHADER("Sculptor/GeometryRendering/Geometry_CullSubmeshes.hlsl", CullSubmeshesCS);
+
+	PERMUTATION_DOMAIN(CullBatchElementsPermutation);
+
+	PRESET(passes)[2];
+
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
+	{
+		for (Int32 passIdx = 0; passIdx < 2; ++passIdx)
+		{
+			CullBatchElementsPermutation permutation;
+			permutation.GEOMETRY_PASS_IDX = passIdx;
+			passes[passIdx] = CompilePermutation(compiler, permutation);
+		}
+	}
+};
+
+
 template<EGeometryVisPass passIdx>
 void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams& visPassParams, lib::Span<const VisBatchGPUData> gpuBatches)
 {
@@ -393,12 +378,6 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 
 	using CullSubmeshesDS = std::conditional_t<passIdx == EGeometryVisPass::VisibleGeometryPass, GeometryCullSubmeshes_VisibleGeometryPassDS, GeometryCullSubmeshes_DisoccludedGeometryPassDS>;
 
-	sc::ShaderCompilationSettings compilationSettings;
-	compilationSettings.AddMacroDefinition(GetPassIdxMacroDef<passIdx>());
-
-	const rdr::ShaderID cullSubmeshesShader = rdr::ResourcesManager::CreateShader("Sculptor/GeometryRendering/Geometry_CullSubmeshes.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "CullSubmeshesCS"), compilationSettings);
-	static const rdr::PipelineStateID cullSubmeshesPipeline = rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("Geometry_CullSubmeshesPipeline"), cullSubmeshesShader);
-	
 	for(SizeType batchIdx = 0u; batchIdx < visPassParams.geometryPassData.geometryBatches.size(); ++batchIdx)
 	{
 		const GeometryBatch& batch          = visPassParams.geometryPassData.geometryBatches[batchIdx];
@@ -422,14 +401,14 @@ void CullBatchElements(rg::RenderGraphBuilder& graphBuilder, const VisPassParams
 			const Uint32 dispatchGroups = math::Utils::DivideCeil(batch.batchElementsNum, groupSize);
 
 			graphBuilder.Dispatch(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
-								  cullSubmeshesPipeline,
+								  CullBatchElementsPSO::passes[static_cast<Int32>(passIdx)],
 								  dispatchGroups,
 								  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
 		}
 		else if constexpr (passIdx == EGeometryVisPass::DisoccludedGeometryPass)
 		{
 			graphBuilder.DispatchIndirect(RG_DEBUG_NAME_FORMATTED("Cull Submeshes ({})", GeometryVisPassTraits<passIdx>::GetPassName()),
-										  cullSubmeshesPipeline,
+										  CullBatchElementsPSO::passes[static_cast<Int32>(passIdx)],
 										  batchGPUData.dispatchOccludedBatchElementsCommand,
 										  0u,
 										  rg::BindDescriptorSets(batch.batchDS, cullSubmeshesDS));
@@ -700,44 +679,11 @@ static OITBatchGPUData CreateOITGPUBatch(rg::RenderGraphBuilder& graphBuilder, c
 
 
 template<EOITPass passIdx>
-static sc::MacroDefinition GetPassIdxMacroDef()
-{
-	static constexpr const char* value[] = { "0", "1", "2" };
-	return sc::MacroDefinition("OIT_PASS_IDX", value[static_cast<Uint32>(passIdx)]);
-}
-
-
-template<EOITPass passIdx>
 static rdr::PipelineStateID CreatePipelineForBatch(const GeometryOITPassParams& oitPassParams, const GeometryBatch& batch)
 {
 	SPT_PROFILER_FUNCTION();
 
-	const GeometryBatchPSOInfo& psoInfo = batch.psoInfo;
-
-	const mat::MaterialGraphicsShaders shaders = GetMaterialShaders("GeometryOIT", batch, GetPassIdxMacroDef<passIdx>());
-
-	rhi::GraphicsPipelineDefinition pipelineDef
-	{
-		.primitiveTopology = rhi::EPrimitiveTopology::TriangleList,
-		.rasterizationDefinition =
-		{
-			.cullMode = psoInfo.isDoubleSided ? rhi::ECullMode::None : rhi::ECullMode::Back,
-		},
-		.renderTargetsDefinition =
-		{
-			.depthRTDefinition = rhi::DepthRenderTargetDefinition
-			{
-				.format = oitPassParams.depth->GetFormat(),
-				.depthCompareOp = rhi::ECompareOp::Greater,
-			}
-		}
-	};
-	
-	const rdr::PipelineStateID pipeline = rdr::ResourcesManager::CreateGfxPipeline(RENDERER_RESOURCE_NAME("Geometry OIT Pipeline"),
-																				   shaders.GetGraphicsPipelineShaders(),
-																				   pipelineDef);
-
-	return pipeline;
+	return rdr::PipelineStateID{};
 }
 
 

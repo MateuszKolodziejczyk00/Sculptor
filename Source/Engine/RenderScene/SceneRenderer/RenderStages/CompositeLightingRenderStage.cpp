@@ -100,7 +100,7 @@ END_SHADER_STRUCT();
 
 COMPUTE_PSO(CompositeLightingPSO)
 {
-	COMPUTE_SHADER("Sculptor/RenderStages/CompositeLighting/CompositeLighting.hlsl", "CompositeLightingCS");
+	COMPUTE_SHADER("Sculptor/RenderStages/CompositeLighting/CompositeLighting.hlsl", CompositeLightingCS);
 
 	PERMUTATION_DOMAIN(CompositeLightingPermutation);
 

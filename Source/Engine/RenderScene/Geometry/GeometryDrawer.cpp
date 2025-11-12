@@ -19,7 +19,11 @@ void GeometryBatchesBuilder::AppendGeometry(const GeometryDefinition& geometry, 
 	SPT_CHECK(geometry.submeshPtr.IsValid());
 	SPT_CHECK(geometry.meshletsNum > 0u);
 
-	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialProxy.materialShadersHash);
+	MaterialBatchPermutation materialBatchPermutation;
+	materialBatchPermutation.SHADER       = materialProxy.params.shader;
+	materialBatchPermutation.DOUBLE_SIDED = materialProxy.params.doubleSided;
+
+	const Uint16 materialBatchIdx = GetMaterialBatchIdx(materialBatchPermutation);
 
 	GeometryBatchElement newBatchElement;
 	newBatchElement.entityPtr        = geometry.entityPtr;
@@ -44,15 +48,15 @@ void GeometryBatchesBuilder::FinalizeBatches()
 	}
 }
 
-Uint16 GeometryBatchesBuilder::GetMaterialBatchIdx(mat::MaterialShadersHash materialShadersHash)
+Uint16 GeometryBatchesBuilder::GetMaterialBatchIdx(const MaterialBatchPermutation& materialPermutation)
 {
 	SPT_CHECK(m_batches.materialBatches.size() <= maxValue<Uint16>);
 
-	const auto [materialIt, wasEmplaced] = m_materialBatchesMap.try_emplace(materialShadersHash, static_cast<Uint16>(m_batches.materialBatches.size()));
+	const auto [materialIt, wasEmplaced] = m_materialBatchesMap.try_emplace(materialPermutation, static_cast<Uint16>(m_batches.materialBatches.size()));
 
 	if (wasEmplaced)
 	{
-		m_batches.materialBatches.emplace_back(materialShadersHash);
+		m_batches.materialBatches.emplace_back(materialPermutation);
 	}
 
 	return materialIt->second;
@@ -60,33 +64,30 @@ Uint16 GeometryBatchesBuilder::GetMaterialBatchIdx(mat::MaterialShadersHash mate
 
 GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(const mat::MaterialProxyComponent& materialProxy)
 {
-	return GetGeometryBatchBuildData(GetGeometryBatchPSOInfo(materialProxy));
+	return GetGeometryBatchBuildData(GetGeometryBatchPermutation(materialProxy));
 }
 
-GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(const GeometryBatchPSOInfo& psoInfo)
+GeometryBatchesBuilder::GeometryBatchBuildData& GeometryBatchesBuilder::GetGeometryBatchBuildData(const GeometryBatchPermutation& permutation)
 {
-	return m_geometryBatchesData[psoInfo];
+	return m_geometryBatchesData[permutation];
 }
 
-GeometryBatchPSOInfo GeometryBatchesBuilder::GetGeometryBatchPSOInfo(const mat::MaterialProxyComponent& materialProxy) const
+GeometryBatchPermutation GeometryBatchesBuilder::GetGeometryBatchPermutation(const mat::MaterialProxyComponent& materialProxy) const
 {
-	GeometryBatchPSOInfo psoInfo;
+	GeometryBatchPermutation permutation;
 
-	if (!materialProxy.params.customOpacity)
+	if(materialProxy.params.customOpacity)
 	{
-		psoInfo.shader = GeometryBatchShader::EGenericType::Opaque;
-	}
-	else
-	{
-		psoInfo.shader = GeometryBatchShader(materialProxy.materialShadersHash);
-	}
+		permutation.SHADER         = materialProxy.params.shader;
+		permutation.CUSTOM_OPACITY = true;
 
-	psoInfo.isDoubleSided = materialProxy.params.doubleSided;
+	}
+	permutation.DOUBLE_SIDED = materialProxy.params.doubleSided;
 
-	return psoInfo;
+	return permutation;
 }
 
-GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatchPSOInfo& psoInfo, const GeometryBatchBuildData& batchBuildData) const
+GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatchPermutation& permutation, const GeometryBatchBuildData& batchBuildData) const
 {
 	SPT_CHECK(!batchBuildData.batchElements.empty());
 
@@ -107,7 +108,7 @@ GeometryBatch GeometryBatchesBuilder::FinalizeBatchDefinition(const GeometryBatc
 	GeometryBatch newBatch;
 	newBatch.batchElementsNum = static_cast<Uint32>(batchBuildData.batchElements.size());
 	newBatch.batchMeshletsNum = batchBuildData.meshletsNum;
-	newBatch.psoInfo          = psoInfo;
+	newBatch.permutation      = permutation;
 	newBatch.batchDS          = batchDS;
 
 	return newBatch;

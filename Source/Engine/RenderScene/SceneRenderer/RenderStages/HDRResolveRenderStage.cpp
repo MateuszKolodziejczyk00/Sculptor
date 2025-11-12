@@ -236,7 +236,7 @@ BloomPassInfo CreateBloomPassInfo(math::Vector2u inputRes, math::Vector2u output
 
 COMPUTE_PSO(BloomDownsamplePSO)
 {
-	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomDownsampleCS");
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", BloomDownsampleCS);
 
 	PRESET(pso);
 
@@ -249,7 +249,7 @@ COMPUTE_PSO(BloomDownsamplePSO)
 
 COMPUTE_PSO(BloomUpsamplePSO)
 {
-	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomUpsampleCS");
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", BloomUpsampleCS);
 
 	PRESET(pso);
 
@@ -262,7 +262,7 @@ COMPUTE_PSO(BloomUpsamplePSO)
 
 COMPUTE_PSO(BloomCompositePSO)
 {
-	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", "BloomCompositeCS");
+	COMPUTE_SHADER("Sculptor/PostProcessing/Bloom.hlsl", BloomCompositeCS);
 
 	PRESET(pso);
 
@@ -439,7 +439,7 @@ namespace tonemapping
 
 COMPUTE_PSO(TonemappingPSO)
 {
-	COMPUTE_SHADER("Sculptor/PostProcessing/Tonemapping.hlsl", "TonemappingCS");
+	COMPUTE_SHADER("Sculptor/PostProcessing/Tonemapping.hlsl", TonemappingCS);
 
 	PRESET(ldr);
 
