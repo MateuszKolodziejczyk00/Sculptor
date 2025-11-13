@@ -35,6 +35,11 @@ Literal CreateLiteral(uint2 val)
 namespace debug
 {
 
+bool HasValidCursorPos()
+{
+	return all(u_debugCommandsBufferParams.mouseUV > 0.f);
+}
+
 bool IsPixelHovered(uint2 coords, uint2 resolution)
 {
 	return all(round(u_debugCommandsBufferParams.mouseUV * resolution) == coords);

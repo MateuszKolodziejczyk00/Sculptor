@@ -74,7 +74,7 @@ rdr::PipelineStateID CreateMaterialPipeline(const MaterialsPassParams& passParam
 		{
 			.depthRTDefinition = rhi::DepthRenderTargetDefinition
 			{
-				.format         = passParams.depthTexture->GetFormat(),
+				.format         = passParams.materialDepthTexture->GetFormat(),
 				.depthCompareOp = rhi::ECompareOp::Equal,
 				.enableDepthWrite = false
 			}

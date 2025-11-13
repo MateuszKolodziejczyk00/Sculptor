@@ -69,44 +69,6 @@ void PSOsPrecachingCompiler::ExecutePrecaching()
 								  ResourcesManager::CreateShader(std::get<0>(request), std::get<1>(request), std::get<2>(request));
 							  });
 
-//	js::LaunchInline(SPT_GENERIC_JOB_NAME,
-//					[this]
-//					{
-//
-//						js::InlineParallelForEach(SPT_GENERIC_JOB_NAME, m_computePSOsRequests,
-//												  [](const std::tuple<RendererResourceName, ShaderID>& request)
-//												  {
-//#if RENDERER_VALIDATION
-//													  SPT_PROFILER_SCOPE(std::get<0>(request).Get().ToString().c_str());
-//#else
-//													  SPT_PROFILER_SCOPE("Create Compute PSO");
-//#endif // RENDERER_VALIDATION
-//													  ResourcesManager::CreateComputePipeline(std::get<0>(request), std::get<1>(request));
-//												  });
-//		
-//						js::InlineParallelForEach(SPT_GENERIC_JOB_NAME, m_graphicsPSOsRequests,
-//												  [](const std::tuple<RendererResourceName, GraphicsPipelineShaders, rhi::GraphicsPipelineDefinition>& request)
-//												  {
-//#if RENDERER_VALIDATION
-//													  SPT_PROFILER_SCOPE(std::get<0>(request).Get().ToString().c_str());
-//#else
-//													  SPT_PROFILER_SCOPE("Create Graphics PSO");
-//#endif // RENDERER_VALIDATION
-//													  ResourcesManager::CreateGfxPipeline(std::get<0>(request), std::get<1>(request), std::get<2>(request));
-//												  });
-//
-//						js::InlineParallelForEach(SPT_GENERIC_JOB_NAME, m_rayTracingPSOsRequests,
-//												  [](const std::tuple<RendererResourceName, RayTracingPipelineShaders, rhi::RayTracingPipelineDefinition>& request)
-//												  {
-//#if RENDERER_VALIDATION
-//													  SPT_PROFILER_SCOPE(std::get<0>(request).Get().ToString().c_str());
-//#else
-//													  SPT_PROFILER_SCOPE("Create Ray Tracing PSO");
-//#endif // RENDERER_VALIDATION
-//													  ResourcesManager::CreateRayTracingPipeline(std::get<0>(request), std::get<1>(request), std::get<2>(request));
-//												  });
-//					});
-
 	js::LaunchInline("Precaching Scope",
 					 [=, this]()
 	{
