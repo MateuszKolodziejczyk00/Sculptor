@@ -11,12 +11,20 @@
 #include "DDGI/DDGISceneSubsystem.h"
 #include "ParticipatingMedia/ParticipatingMediaTypes.h"
 #include "ParticipatingMedia/ParticipatingMediaViewRenderSystem.h"
+#include "Pipelines/PSOsLibraryTypes.h"
+#include "SceneRenderer/Parameters/SceneRendererParams.h"
 
 
 namespace spt::rsc
 {
 
 REGISTER_RENDER_STAGE(ERenderStage::DeferredShading, DeferredShadingRenderStage);
+
+namespace renderer_params
+{
+RendererBoolParameter enableTiledShadingDebug("Enable Tiled Shading Debug", { "Deferred Shading" }, false);
+} // renderer_params
+
 
 
 namespace deferred_shading
@@ -42,18 +50,31 @@ DS_BEGIN(DeferredShadingDS, rg::RGDescriptorSetState<DeferredShadingDS>)
 DS_END();
 
 
-static rdr::PipelineStateID CompileDeferredShadingPipeline(Bool isDDGIEnabled)
+BEGIN_SHADER_STRUCT(DeferredShadingPermutation)
+	SHADER_STRUCT_FIELD(Bool,              ENABLE_DDGI)
+	SHADER_STRUCT_FIELD(rdr::DebugFeature, TILED_SHADING_DEBUG)
+END_SHADER_STRUCT();
+
+
+COMPUTE_PSO(DeferredShadingPSO)
 {
-	sc::ShaderCompilationSettings shaderCompilationSettings;
-	if(isDDGIEnabled)
+	COMPUTE_SHADER("Sculptor/Shading/DeferredShading.hlsl", DeferredShadingCS);
+
+	PERMUTATION_DOMAIN(DeferredShadingPermutation);
+	
+	static void PrecachePSOs(rdr::PSOCompilerInterface& compiler, const rdr::PSOPrecacheParams& params)
 	{
-		shaderCompilationSettings.AddMacroDefinition(sc::MacroDefinition("ENABLE_DDGI", "1"));
+		CompilePermutation(compiler, DeferredShadingPermutation
+						   {
+								.ENABLE_DDGI = false
+						   });
+
+		CompilePermutation(compiler, DeferredShadingPermutation
+						   {
+								.ENABLE_DDGI = true
+						   });
 	}
-
-	const rdr::ShaderID shader = rdr::ResourcesManager::CreateShader("Sculptor/Shading/DeferredShading.hlsl", sc::ShaderStageCompilationDef(rhi::EShaderStage::Compute, "DeferredShadingCS"), shaderCompilationSettings);
-
-	return rdr::ResourcesManager::CreateComputePipeline(RENDERER_RESOURCE_NAME("DeferredShadingPipeline"), shader);
-}
+};
 
 
 struct DeferredShadingParams
@@ -92,18 +113,19 @@ void ExecuteDeferredShading(rg::RenderGraphBuilder& graphBuilder, const Deferred
 	deferredShadingDS->u_luminanceTexture         = viewContext.luminance;
 	deferredShadingDS->u_deferredShadingConstants = shaderConstants;
 
-	const Bool isDDGIEnabled = false;
-	const rdr::PipelineStateID pipeline = CompileDeferredShadingPipeline(isDDGIEnabled);
+	DeferredShadingPermutation permutation;
+	permutation.ENABLE_DDGI         = false;
+	permutation.TILED_SHADING_DEBUG = renderer_params::enableTiledShadingDebug;
 
 	lib::MTHandle<ddgi::DDGISceneDS> ddgiDS;
-	if (isDDGIEnabled)
+	if (permutation.ENABLE_DDGI)
 	{
 		const ddgi::DDGISceneSubsystem& ddgiSceneSubsystem = shadingParams.renderScene.GetSceneSubsystemChecked<ddgi::DDGISceneSubsystem>();
 		ddgiDS = ddgiSceneSubsystem.GetDDGISceneDS();
 	}
 
 	graphBuilder.Dispatch(RG_DEBUG_NAME("Deferred Shading"),
-						  pipeline,
+						  DeferredShadingPSO::GetPermutation(permutation),
 						  math::Utils::DivideCeil(resolution, math::Vector2u{ 8u, 8u }),
 						  rg::BindDescriptorSets(std::move(deferredShadingDS),
 												 viewSpec.GetRenderView().GetRenderViewDS(),

@@ -92,8 +92,6 @@ public:
 	void SetShadowMappingTechnique(EShadowMappingTechnique newTechnique);
 	EShadowMappingTechnique GetShadowMappingTechnique() const;
 
-	void UpdateVisibleLocalLights(const lib::SharedPtr<rdr::Buffer>& visibleLightsBuffer);
-
 	/** Returns true only for view that is detemining which lights should cast shadows */
 	Bool IsMainView(const RenderView& renderView) const;
 
@@ -164,9 +162,6 @@ private:
 	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
 
 	lib::WeakPtr<RenderView> m_mainView;
-
-	mutable lib::Lock               m_visibleLocalLightsLock;
-	lib::HashSet<RenderSceneEntity> m_visibleLocalLightsSet;
 
 	EShadowMappingTechnique m_shadowMapTechnique;
 };

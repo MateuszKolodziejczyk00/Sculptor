@@ -258,16 +258,17 @@ public:
 	template<typename TPermutationDomatin>
 	static PipelineStateID CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const TPermutationDomatin& permutation)
 	{
-		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
-
-		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
-
 		sc::ShaderCompilationSettings compilationSettings;
 		rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
 
 		const PipelineStateID pso = TConcrete::CompilePSO(compiler, compilationSettings);
 
-		TConcrete::s_permutations.AddPermutation(permutation, pso);
+		if constexpr (CPermutationsPSO<TConcrete>)
+		{
+			static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+
+			TConcrete::s_permutations.AddPermutation(permutation, pso);
+		}
 
 		return pso;
 	}
@@ -352,16 +353,20 @@ public:
 	}
 
 	template<typename TPermutationDomatin>
-	static void CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const rhi::GraphicsPipelineDefinition& pipelineDef, const TPermutationDomatin& permutation)
+	static PipelineStateID CompilePermutation(spt::rdr::PSOCompilerInterface& compiler, const rhi::GraphicsPipelineDefinition& pipelineDef, const TPermutationDomatin& permutation)
 	{
-		static_assert(CPermutationsPSO<TConcrete>, "This PSO does not support permutations!");
-
-		static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
-
 		sc::ShaderCompilationSettings compilationSettings;
 		rdr::permutations::BuildPermutationShaderCompilationSettings(permutation, INOUT compilationSettings);
 
-		TConcrete::s_permutations.AddPermutation(pipelineDef, permutation, TConcrete::CompilePSO(compiler, pipelineDef, compilationSettings));
+		const PipelineStateID pso = TConcrete::CompilePSO(compiler, pipelineDef, compilationSettings);
+
+		if constexpr (CPermutationsPSO<TConcrete>)
+		{
+			static_assert(std::is_same_v<typename TConcrete::PermutationDomainType, TPermutationDomatin>, "Wrong type of permutation domain!");
+			TConcrete::s_permutations.AddPermutation(pipelineDef, permutation, pso);
+		}
+
+		return pso;
 	}
 
 private:
@@ -520,8 +525,108 @@ using PermutationDomainType = domain;
 
 #define PRESET(name) static inline spt::rdr::PSOPreset name
 
+
 #define PERMUTATION_DOMAIN(domain) \
 static inline spt::rdr::PSOPermutationsContainer<domain> s_permutations; \
 using PermutationDomainType = domain;
 
+
+class DebugFeature
+{
+public:
+
+	DebugFeature& operator=(Bool enabled)
+	{
+		m_enabled = enabled;
+		return *this;
+	}
+
+	operator Bool() const
+	{
+		return m_enabled;
+	}
+
+private:
+
+	Bool m_enabled = false;
+};
+
+
+namespace shader_translator
+{
+
+template<>
+struct StructTranslator<DebugFeature>
+{
+	static constexpr lib::String GetHLSLStructName()
+	{
+		return StructTranslator<Bool>::GetHLSLStructName();
+	}
+};
+
+template<>
+struct StructCPPToHLSLTranslator<DebugFeature>
+{
+	static void Copy(const DebugFeature& cppData, lib::Span<Byte> hlslData)
+	{
+		// Doesn't matter, Materials Hash is used only for permutations identification, not as shaders input
+		StructCPPToHLSLTranslator<Bool>::Copy(Bool(cppData), hlslData);
+	}
+};
+
+template<>
+struct StructHLSLSizeEvaluator<DebugFeature>
+{
+	static constexpr Uint32 Size()
+	{
+		return StructHLSLSizeEvaluator<Bool>::Size();
+	}
+};
+
+template<>
+struct StructHLSLAlignmentEvaluator<DebugFeature>
+{
+	static constexpr Uint32 Alignment()
+	{
+		return StructHLSLAlignmentEvaluator<Bool>::Alignment();
+	}
+};
+
+
+} // shader_translator
+
+namespace permutations
+{
+
+template<>
+struct ShaderCompilationSettingsBuilder<DebugFeature>
+{
+	static void Build(const lib::String& variableName, const DebugFeature& value, sc::ShaderCompilationSettings& outSettings)
+	{
+		ShaderCompilationSettingsBuilder<Bool>::Build(variableName, Bool(value), outSettings);
+
+		if (value)
+		{
+			outSettings.AddMacroDefinition(sc::MacroDefinition("SPT_META_PARAM_DEBUG_FEATURES", true));
+		}
+	}
+};
+
+} // permutations
+
 } // spt::rdr
+
+
+namespace std
+{
+
+template<>
+struct hash<spt::rdr::DebugFeature>
+{
+	size_t operator()(const spt::rdr::DebugFeature& feature) const
+	{
+		return spt::lib::GetHash(spt::Bool(feature));
+	}
+};
+
+} // std

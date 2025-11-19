@@ -51,6 +51,7 @@
 
 #define SPT_DEBUG_PRINTF(...)
 #define SPT_CHECK_MSG(...)
+#define SPT_CHECK(...)
 #define SPT_ENABLE_CHECKS false
 
 #endif // defined(SPT_META_PARAM_DEBUG_FEATURES)

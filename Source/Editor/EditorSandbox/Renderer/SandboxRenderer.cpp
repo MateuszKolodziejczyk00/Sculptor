@@ -246,6 +246,7 @@ void SandboxRenderer::ProcessView(engn::FrameContext& frame, lib::SharedRef<rdr:
 		resetPersistentDebugs = false;
 		m_shaderDebugMousePressedLastFrame = shaderDebugMousePressed;
 
+		rendererSettings.debugUAVTexture         = shaderDebugCommandsCollectingScope.GetDebugOutputTexture();
 		rendererSettings.dynamicDebugRenderer    = &shaderDebugCommandsCollectingScope.GetDynamicDebugRenderer();
 		rendererSettings.persistentDebugRenderer = &shaderDebugCommandsCollectingScope.GetPersistentDebugRenderer();
 #endif // SPT_SHADERS_DEBUG_FEATURES
@@ -483,6 +484,19 @@ void SandboxRenderer::InitializeRenderScene()
 			pointLightData.location = math::Vector3f(-4.24f, -14.85f, 2.05f);
 			pointLightData.radius = 8.f;
 			lightSceneEntity.emplace<rsc::PointLightData>(pointLightData);
+		}
+
+		{
+			m_renderScene->CreateEntity().emplace<rsc::SpotLightData>(rsc::SpotLightData
+			{
+				.color = math::Vector3f(1.0f, 0.7333f, 0.451f),
+				.luminousPower = 800.f,
+				.location       = math::Vector3f(0.f, 0.f, 3.f),
+				.direction      = -math::Vector3f::UnitZ(),
+				.range          = 8.f,
+				.innerHalfAngle = 2.5f,
+				.outerHalfAngle = 22.f
+			});
 		}
 
 		{

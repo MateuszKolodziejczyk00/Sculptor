@@ -615,7 +615,15 @@ void HDRResolveRenderStage::OnRender(rg::RenderGraphBuilder& graphBuilder, const
 	{
 		graphBuilder.CopyFullTexture(RG_DEBUG_NAME("Copy Depth To Debug Depth"), viewContext.depth, debugDepthTexture);
 
-		graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Debug Color Texture"), debugColorTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
+		if(stageContext.rendererSettings.debugUAVTexture)
+		{
+			const rg::RGTextureViewHandle debugUAVTexture = graphBuilder.AcquireExternalTextureView(stageContext.rendererSettings.debugUAVTexture);
+			graphBuilder.CopyTexture(RG_DEBUG_NAME("Clear Debug Color Texture"), debugUAVTexture, math::Vector3i::Zero(), debugColorTexture, math::Vector3i::Zero(), debugColorTexture->GetResolution());
+		}
+		else
+		{
+			graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Debug Color Texture"), debugColorTexture, rhi::ClearColor(0.f, 0.f, 0.f, 0.f));
+		}
 
 		gfx::DebugRenderingSettings debugSettings;
 		debugSettings.outColor             = debugColorTexture;

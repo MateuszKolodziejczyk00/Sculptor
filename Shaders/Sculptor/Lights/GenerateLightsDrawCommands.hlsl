@@ -6,64 +6,83 @@
 
 #include "Utils/Wave.hlsli"
 #include "Utils/Culling.hlsli"
-#include "Lights/LightProxyVerticesInfo.hlsli"
+#include "Lights/LightingUtils.hlsli"
 
 
 struct CS_INPUT
 {
-    uint3 globalID : SV_DispatchThreadID;
+	uint3 globalID : SV_DispatchThreadID;
 };
 
 
 [numthreads(64, 1, 1)]
 void GenerateLightsDrawCommandsCS(CS_INPUT input)
 {
-    const uint lightIdx = input.globalID.x;
-    
-    if(lightIdx < u_lightsData.localLightsNum)
-    {
-        const PointLightGPUData pointLight = u_localLights[lightIdx];
+	const uint lightIdx = input.globalID.x;
 
-        bool isLightVisible = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, pointLight.location, pointLight.radius);
+	if(lightIdx < u_lightsData.localLightsNum)
+	{
+		const LocalLightGPUData localLight = u_localLights[lightIdx];
 
-        if(isLightVisible)
-        {
-            const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(pointLight.location, 1.f)).xyz;
+		float3 boundingSphereCenter;
+		float boundingSphereRadius;
+		CreateLightBoundingSphere(localLight, OUT boundingSphereCenter, OUT boundingSphereRadius);
 
-            const float near = GetNearPlane(u_sceneView);
-            const float p01 = u_sceneView.projectionMatrix[0][1];
-            const float p12 = u_sceneView.projectionMatrix[1][2];
+		bool isLightVisible = IsSphereInFrustum(u_sceneViewCullingData.cullingPlanes, boundingSphereCenter, boundingSphereRadius);
 
-            const float2 hiZRes = u_depthCullingParams.hiZResolution;
+		if(isLightVisible)
+		{
+			const float near = GetNearPlane(u_sceneView);
+			const float p01 = u_sceneView.projectionMatrix[0][1];
+			const float p12 = u_sceneView.projectionMatrix[1][2];
 
-            float4 aabbOnScreen = 0.f;
-            isLightVisible = !IsSphereCenterBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, pointLightCenterVS, pointLight.radius, near, p01, p12, aabbOnScreen);
-        }
-        
-        if(isLightVisible)
-        {
-            const uint2 visibleLightsBallot = WaveActiveBallot(isLightVisible).xy;
-        
-            const uint visibleLightsNum = countbits(visibleLightsBallot.x) + countbits(visibleLightsBallot.y);
+			const float2 hiZRes = u_depthCullingParams.hiZResolution;
 
-            uint outputBufferIdx = 0;
-            if (WaveIsFirstLane())
-            {
-                InterlockedAdd(u_lightDrawsCount[0], visibleLightsNum, outputBufferIdx);
-            }
+			const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(localLight.location, 1.f)).xyz;
 
-            outputBufferIdx = WaveReadLaneFirst(outputBufferIdx) + GetCompactedIndex(visibleLightsBallot, WaveGetLaneIndex());
+			float4 aabbOnScreen = 0.f;
+			isLightVisible = !IsSphereCenterBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, boundingSphereCenter, boundingSphereRadius, near, p01, p12, aabbOnScreen);
+		}
 
-            LightIndirectDrawCommand lightDrawCommand;
-            lightDrawCommand.vertexCount    = POINT_LIGHT_PROXY_VERTICES_NUM;
-	        lightDrawCommand.instanceCount  = 1;
-            lightDrawCommand.firstVertex    = 0;
-            lightDrawCommand.firstInstance  = 0;
-            lightDrawCommand.localLightIdx  = lightIdx;
+		if(isLightVisible)
+		{
+			LightIndirectDrawCommand lightDrawCommand;
+			lightDrawCommand.vertexCount    = localLight.type == LIGHT_TYPE_POINT ? u_constants.pointLightProxyVerticesNum : u_constants.spotLightProxyVerticesNum;
+			lightDrawCommand.instanceCount  = 1;
+			lightDrawCommand.firstVertex    = 0;
+			lightDrawCommand.firstInstance  = 0;
+			lightDrawCommand.localLightIdx  = lightIdx;
 
-            u_lightDraws[outputBufferIdx] = lightDrawCommand;
+			if (localLight.type == LIGHT_TYPE_POINT)
+			{
+				const uint2 visiblePointLightsBallot = WaveActiveBallot(isLightVisible).xy;
+				const uint visiblePointLightsNum = countbits(visiblePointLightsBallot.x) + countbits(visiblePointLightsBallot.y);
 
-            u_visibleLightsReadbackBuffer[outputBufferIdx] = pointLight.entityID;
-        }
-    }
+				uint outputPointLightIdx = 0;
+				if (WaveIsFirstLane())
+				{
+					InterlockedAdd(u_pointLightDrawsCount[0], visiblePointLightsNum, outputPointLightIdx);
+				}
+
+				outputPointLightIdx = WaveReadLaneFirst(outputPointLightIdx) + GetCompactedIndex(visiblePointLightsBallot, WaveGetLaneIndex());
+
+				u_pointLightDraws[outputPointLightIdx] = lightDrawCommand;
+			}
+			else if (localLight.type == LIGHT_TYPE_SPOT)
+			{
+				const uint2 visibleSpotLightsBallot = WaveActiveBallot(isLightVisible).xy;
+				const uint visibleSpotLightsNum = countbits(visibleSpotLightsBallot.x) + countbits(visibleSpotLightsBallot.y);
+
+				uint outputSpotLightIdx = 0;
+				if (WaveIsFirstLane())
+				{
+					InterlockedAdd(u_spotLightDrawsCount[0], visibleSpotLightsNum, outputSpotLightIdx);
+				}
+
+				outputSpotLightIdx = WaveReadLaneFirst(outputSpotLightIdx) + GetCompactedIndex(visibleSpotLightsBallot, WaveGetLaneIndex());
+
+				u_spotLightDraws[outputSpotLightIdx] = lightDrawCommand;
+			}
+		}
+	}
 }

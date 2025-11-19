@@ -8,6 +8,9 @@
 [[descriptor_set(ComputeInScatteringDS, 5)]]
 
 
+#define VOLUMETRIC_FOG_LIGHTING 1
+
+
 #include "RenderStages/VolumetricFog/VolumetricFog.hlsli"
 #include "Utils/SceneViewUtils.hlsli"
 #include "Lights/Lighting.hlsli"
@@ -40,17 +43,41 @@ void ComputeInScatteringCS(CS_INPUT input)
 		const float froxelWDelta = u_fogConstants.fogGridInvRes.z;
 		const float prevFogFroxelLinearDepth = ComputeFogFroxelLinearDepth(max(fogFroxelUVW.z - froxelWDelta, 0.f), fogNearPlane, fogFarPlane);
 
-		InScatteringParams params;
-		params.uv                         = fogFroxelUVW.xy;
-		params.linearDepth                = fogFroxelLinearDepth;
-		params.worldLocation              = fogFroxelWorldLocation;
-		params.toViewNormal               = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
-		params.phaseFunctionAnisotrophy   = u_inScatteringParams.paseFunctionAnisotrophy;
-		params.inScatteringColor          = scatteringExtinction.rgb;
-		params.froxelDepthRange           = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
-		params.directionalLightShadowTerm = u_directionalLightShadowTerm.Load(uint4(input.globalID, 0u)).r;
+		InScatteringParams inScatteringParams;
+		inScatteringParams.uv                         = fogFroxelUVW.xy;
+		inScatteringParams.linearDepth                = fogFroxelLinearDepth;
+		inScatteringParams.worldLocation              = fogFroxelWorldLocation;
+		inScatteringParams.toViewNormal               = normalize(u_sceneView.viewLocation - fogFroxelWorldLocation);
+		inScatteringParams.phaseFunctionAnisotrophy   = u_inScatteringParams.paseFunctionAnisotrophy;
+		inScatteringParams.inScatteringColor          = scatteringExtinction.rgb;
+		inScatteringParams.froxelDepthRange           = fogFroxelLinearDepth - prevFogFroxelLinearDepth;
+		inScatteringParams.directionalLightShadowTerm = u_directionalLightShadowTerm.Load(uint4(input.globalID, 0u)).r;
+
+		float3 localLightsInScattering = 0.f;
+
+		const bool isWithinLocalLightsScatteringRange = input.globalID.z < u_fogConstants.localLightsScatteringMaxDepth;
+
+		if (isWithinLocalLightsScatteringRange)
+		{
+			localLightsInScattering = ComputeLocalLightsInScattering(inScatteringParams);
+
+			if(u_inScatteringParams.hasValidHistory)
+			{
+				const float3 historyNDC = WorldSpaceToNDCNoJitter(fogFroxelWorldLocation, u_prevFrameSceneView);
+				const float historyLinearDepth = ComputeLinearDepth(historyNDC.z, u_prevFrameSceneView);
+				float3 historyUVW = ComputeFogFroxelUVW(historyNDC.xy * 0.5f + 0.5f, historyLinearDepth, fogNearPlane, fogFarPlane);
+				historyUVW.z *= u_fogConstants.localLightsScatteringWNormalization;
+
+				if(all(abs(historyNDC.xy) < 1.f) && historyNDC.z > 0.f && historyNDC.z < 1.f)
+				{
+					const float3 localLightsInScatteringHistory = u_historyLocalLightsInScatteringTexture.SampleLevel(u_linearSampler, historyUVW, 0.f).xyz;
+
+					localLightsInScattering = lerp(localLightsInScatteringHistory, localLightsInScattering, 0.25f);
+				}
+			}
+		}
 		
-		float3 inScattering = ComputeLocalLightsInScattering(params);
+		float3 inScattering = ComputeDirectionalLightsInScattering(inScatteringParams) + localLightsInScattering;
 
 		if(u_inScatteringParams.enableIndirectInScattering)
 		{
@@ -63,6 +90,11 @@ void ComputeInScatteringCS(CS_INPUT input)
 
 		inScatteringExtinction.rgb = LuminanceToExposedLuminance(inScatteringExtinction.rgb);
 
-		u_inScatteringTexture[input.globalID] = inScatteringExtinction;
+		u_inScatteringTexture[input.globalID]            = inScatteringExtinction;
+
+		if (isWithinLocalLightsScatteringRange)
+		{
+			u_localLightsInScatteringTexture[input.globalID] = float4(localLightsInScattering, 0.f);
+		}
 	}
 }

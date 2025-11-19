@@ -8,7 +8,7 @@
 [[descriptor_set(ViewShadingInputDS, 3)]]
 [[descriptor_set(ShadowMapsDS, 4)]]
 
-#ifdef ENABLE_DDGI
+#if ENABLE_DDGI
 
 [[descriptor_set(DDGISceneDS, 5)]]
 
@@ -75,9 +75,14 @@ void DeferredShadingCS(CS_INPUT input)
 			ViewLightingAccumulator lightingAccumulator = ViewLightingAccumulator::Create();
 			CalcReflectedLuminance(surface, toView, INOUT lightingAccumulator);
 
+
+#if TILED_SHADING_DEBUG
+			TiledShadingDebug(pixel.xy, surface);
+#endif // TILED_SHADING_DEBUG
+
 			float3 indirectIlluminance = 0.f;
 
-#ifdef ENABLE_DDGI
+#if ENABLE_DDGI
 			float ambientOcclusion = 1.f;
 
 			if (u_deferredShadingConstants.isAmbientOcclusionEnabled)
@@ -105,3 +110,4 @@ void DeferredShadingCS(CS_INPUT input)
 
 	u_luminanceTexture[pixel.xy] = float4(luminance, 1.f);
 }
+[[meta(debug_features)]]

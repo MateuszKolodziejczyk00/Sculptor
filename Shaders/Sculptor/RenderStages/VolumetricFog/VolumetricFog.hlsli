@@ -128,7 +128,7 @@ float ComputeFogDepthJitter(in VolumetricFogConstants fogConstants, in uint2 pix
 {
 	const uint2 blueNoiseTexturePixel = pixel & fogConstants.blueNoiseResMask;
 	const float blueNoise = u_blueNoiseTexture.Load(uint3(blueNoiseTexturePixel, 0)).x;
-	const float goldenRationSequence = (fogConstants.frameIdx & 31u) * SPT_GOLDEN_RATIO;
+	const float goldenRationSequence = (fogConstants.frameIdx & 7u) * SPT_GOLDEN_RATIO;
 	return (frac(blueNoise + goldenRationSequence) - 0.5f);
 }
 
@@ -140,7 +140,7 @@ float3 ComputeFogGridSampleUVW(in VolumetricFogConstants fogConstants, in SceneV
 	const float depthJitter = ComputeFogDepthJitter(fogConstants, froxel.xy);
 
 	// jitter 2d is premultiplied by inv resolution
-	const float3 jitter = float3(fogConstants.jitter2D, depthJitter * rcpResolution.z);
+	const float3 jitter = float3(0.f, 0.f, depthJitter * rcpResolution.z);
 
 	float3 fogFroxelUVW = (float3(froxel) + 0.5f) * rcpResolution + jitter;
 

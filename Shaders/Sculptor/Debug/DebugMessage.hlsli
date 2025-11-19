@@ -33,6 +33,8 @@ writer.Flush(); \
 } \
 }
 
+#define SPT_CHECK(...) SPT_CHECK_MSG(__VA_ARGS__, L"")
+
 #define SPT_CHECK_NO_ENTRY_MSG(message, ...) SPT_CHECK_MSG(false, message, __VA_ARGS__)
 
 #endif // SPT_META_PARAM_DEBUG_FEATURES

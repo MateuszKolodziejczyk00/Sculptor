@@ -134,36 +134,6 @@ EShadowMappingTechnique ShadowMapsManagerSubsystem::GetShadowMappingTechnique() 
 	return m_shadowMapTechnique;
 }
 
-void ShadowMapsManagerSubsystem::UpdateVisibleLocalLights(const lib::SharedPtr<rdr::Buffer>& visibleLightsBuffer)
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::LockGuard lock(m_visibleLocalLightsLock);
-
-	SPT_CHECK(!!visibleLightsBuffer);
-
-	m_visibleLocalLightsSet.clear();
-	
-	const rhi::RHIBuffer& rhiBuffer = visibleLightsBuffer->GetRHI();
-	const rhi::RHIMappedBuffer<RenderSceneEntity> visibleLightsData(rhiBuffer);
-
-	SPT_STATIC_CHECK(sizeof(RenderSceneEntity) == sizeof(rdr::HLSLStorage<RenderSceneEntity>));
-
-	const SizeType maxVisibleLights = visibleLightsData.GetElementsNum();
-	m_visibleLocalLightsSet.reserve(maxVisibleLights);
-
-	for (SizeType idx = 0; idx < maxVisibleLights; ++idx)
-	{
-		const RenderSceneEntity lightEntityID = visibleLightsData[idx];
-		if (lightEntityID == idxNone<RenderSceneEntity>)
-		{
-			break;
-		}
-
-		m_visibleLocalLightsSet.emplace(lightEntityID);
-	}
-}
-
 Bool ShadowMapsManagerSubsystem::IsMainView(const RenderView& renderView) const
 {
 	return m_mainView.lock().get() == &renderView;
@@ -667,15 +637,6 @@ void ShadowMapsManagerSubsystem::UpdateShadowMapsDSViewsData()
 	m_shadowMapViewsBuffers.erase(std::cbegin(m_shadowMapViewsBuffers));
 }
 
-Bool ShadowMapsManagerSubsystem::IsLocalLightVisible(RenderSceneEntity light) const
-{
-	SPT_PROFILER_FUNCTION();
-
-	const lib::LockGuard lock(m_visibleLocalLightsLock);
-
-	return m_visibleLocalLightsSet.contains(light);
-}
-
 Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const SceneView& view, RenderSceneEntity light) const
 {
 	const auto getLightCurrentQualityPriority = [](EShadowMapQuality currentQuality)
@@ -715,7 +676,6 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	const Real32 zDifferenceMutliplier		= 0.7f;
 	const Real32 intensityMultiplier		= 0.7f;
 	const Real32 inRadiusPriority			= 10.f;
-	const Real32 visibilityPriority			= 20.f;
 
 	const EShadowMapQuality currentQuality = GetShadowMapQuality(light);
 
@@ -732,7 +692,6 @@ Real32 ShadowMapsManagerSubsystem::ComputeLocalLightShadowMapPriority(const Scen
 	priority += getLightCurrentQualityPriority(currentQuality) * currentQualityMutliplier;
 	priority += std::clamp(pointLightData.radius / maxRadius, 0.f, 1.f) * radiusMutliplier;
 	priority += std::clamp(pointLightData.luminousPower / maxLuminousPower, 0.f, 1.f) * intensityMultiplier;
-	priority += IsLocalLightVisible(light) ? visibilityPriority : 0.f;
 
 	return priority;
 }

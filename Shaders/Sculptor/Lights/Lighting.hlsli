@@ -67,25 +67,25 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
 			const uint lightIdx = i * 32 + maskBitIdx;
-			const PointLightGPUData pointLight = u_localLights[lightIdx];
+			const LocalLightGPUData localLight = u_localLights[lightIdx];
 		  
-			const float3 toLight = pointLight.location - surface.location;
+			const float3 toLight = localLight.location - surface.location;
 
 			if (dot(toLight, surface.shadingNormal) > 0.f)
 			{
 				const float distToLight = length(toLight);
 
-				if (distToLight < pointLight.radius)
+				if (distToLight < localLight.range)
 				{
 					const float3 lightDir = toLight / distToLight;
-					const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, surface.location);
+					const float3 illuminance = GetLightIlluminanceAtLocation(localLight, surface.location);
 
 					if(any(illuminance > 0.f))
 					{
 						float visibility = 1.f;
-						if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+						if (localLight.shadowMapFirstFaceIdx != IDX_NONE_32)
 						{
-							visibility = EvaluatePointLightShadows(surface, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+							visibility = EvaluatePointLightShadows(surface, localLight.location, localLight.range, localLight.shadowMapFirstFaceIdx);
 						}
 				
 						if (visibility > 0.f)
@@ -101,6 +101,43 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 		}
 	}
 }
+
+
+#if SPT_META_PARAM_DEBUG_FEATURES
+void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface)
+{
+	const uint2 lightsTileCoords = GetLightsTile(surface.uv, u_lightsData.tileSize);
+	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
+	
+	const uint clusterIdx = surface.linearDepth / u_lightsData.zClusterLength;
+	const uint2 clusterRange = clusterIdx < u_lightsData.zClustersNum ? u_clustersRanges[clusterIdx] : uint2(0u, 0u);
+
+	uint lightsNum = 0u;
+
+	for(uint i = 0; i < u_lightsData.localLights32Num; ++i)
+	{
+		uint lightsMask = u_tilesLightsMask[tileLightsDataOffset + i];
+		lightsMask = ClusterMaskRange(lightsMask, clusterRange, i << 5u);
+
+		while(lightsMask)
+		{
+			const uint maskBitIdx = firstbitlow(lightsMask);
+
+			const uint lightIdx = i * 32 + maskBitIdx;
+			const LocalLightGPUData localLight = u_localLights[lightIdx];
+
+			++lightsNum;
+
+			lightsMask &= ~(1u << maskBitIdx);
+		}
+	}
+
+	if(lightsNum > 0u)
+	{
+		debug::WriteDebugPixelOnScreen(pixelCoords, float4(lerp(float3(0.f, 1.f, 1.f), float3(1.f, 0.f, 0.f), saturate(lightsNum / 10u)), 0.5f));
+	}
+}
+#endif // SPT_META_PARAM_DEBUG_FEATURES
 
 
 struct InScatteringParams
@@ -122,11 +159,9 @@ struct InScatteringParams
 };
 
 
-float3 ComputeLocalLightsInScattering(in InScatteringParams params)
+float3 ComputeDirectionalLightsInScattering(in InScatteringParams params)
 {
 	float3 inScattering = 0.f;
-
-	// Directional Lights
 
 	for (uint i = 0; i < u_lightsData.directionalLightsNum; ++i)
 	{
@@ -139,8 +174,15 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			inScattering += params.directionalLightShadowTerm * illuminance * PhaseFunction(params.toViewNormal, directionalLight.direction, params.phaseFunctionAnisotrophy);
 		}
 	}
+
+	return inScattering * params.inScatteringColor;
+}
+
+
+float3 ComputeLocalLightsInScattering(in InScatteringParams params)
+{
+	float3 inScattering = 0.f;
 	
-	// Point lights
 	const uint2 lightsTileCoords = GetLightsTile(params.uv, u_lightsData.tileSize);
 	const uint tileLightsDataOffset = GetLightsTileDataOffset(lightsTileCoords, u_lightsData.tilesNum, u_lightsData.localLights32Num);
 	
@@ -157,23 +199,23 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
 			const uint lightIdx = i * 32 + maskBitIdx;
-			const PointLightGPUData pointLight = u_localLights[lightIdx];
+			const LocalLightGPUData localLight = u_localLights[lightIdx];
 		  
-			const float3 toLight = pointLight.location - params.worldLocation;
+			const float3 toLight = localLight.location - params.worldLocation;
 
 			const float distToLight = length(toLight);
 
-			if(distToLight < pointLight.radius)
+			if(distToLight < localLight.range)
 			{
 				const float3 lightDir = toLight / distToLight;
-				const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, params.worldLocation);
+				const float3 illuminance = GetLightIlluminanceAtLocation(localLight, params.worldLocation);
 
 				if (any(illuminance > 0.f))
 				{
 					float visibility = 1.f;
-					if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+					if (localLight.shadowMapFirstFaceIdx != IDX_NONE_32)
 					{
-						visibility = EvaluatePointLightShadowsAtLocation(params.worldLocation, pointLight.location, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+						visibility = EvaluatePointLightShadowsAtLocation(params.worldLocation, localLight.location, localLight.range, localLight.shadowMapFirstFaceIdx);
 					}
 			
 					if (visibility > 0.f)
@@ -263,30 +305,30 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 		}
 	}
 
-	// Point Lights
+	// Local Lights
 
-	for(uint lightIdx = 0; lightIdx < u_lightsParams.pointLightsNum; ++lightIdx)
+	for(uint lightIdx = 0; lightIdx < u_lightsParams.localLightsNum; ++lightIdx)
 	{
-		const PointLightGPUData pointLight = u_pointLights[lightIdx];
+		const LocalLightGPUData localLight = u_localLights[lightIdx];
 		
-		const float3 toLight = pointLight.location - surface.location;
+		const float3 toLight = localLight.location - surface.location;
 
 		if (dot(toLight, surface.shadingNormal) > 0.f)
 		{
 			const float distToLight = length(toLight);
 
-			if (distToLight < pointLight.radius)
+			if (distToLight < localLight.range)
 			{
 				const float3 lightDir = toLight / distToLight;
-				const float3 illuminance = GetPointLightIlluminanceAtLocation(pointLight, surface.location);
+				const float3 illuminance = GetLightIlluminanceAtLocation(localLight, surface.location);
 
 				if(any(illuminance > 0.f))
 				{
 					float visibility = 1.f;
-					if (pointLight.shadowMapFirstFaceIdx != IDX_NONE_32)
+					if (localLight.shadowMapFirstFaceIdx != IDX_NONE_32)
 					{
 						const float3 biasedLocation  = surface.location + surface.shadingNormal * 0.02f;
-						visibility = EvaluatePointLightShadowsAtLocation(surface.location, biasedLocation, pointLight.radius, pointLight.shadowMapFirstFaceIdx);
+						visibility = EvaluatePointLightShadowsAtLocation(surface.location, biasedLocation, localLight.range, localLight.shadowMapFirstFaceIdx);
 					}
 			
 					if (visibility > 0.f)

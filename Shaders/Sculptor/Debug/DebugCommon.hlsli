@@ -65,6 +65,11 @@ void WriteDebugPixel(uint2 pixel, float value)
 	WriteDebugPixel(pixel, float4(value, 0.f, 0.f, 0.f));
 }
 
+void WriteDebugPixelOnScreen(uint2 pixel, float4 value)
+{
+	u_debugOnScreenOutputTexture[pixel] = value;
+}
+
 } // debug
 
 #endif // SPT_META_PARAM_DEBUG_FEATURES

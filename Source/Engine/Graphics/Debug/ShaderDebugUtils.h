@@ -29,7 +29,8 @@ DS_BEGIN(ShaderDebugCommandBufferDS, rg::RGDescriptorSetState<ShaderDebugCommand
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBuffer)
 	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                                 u_debugCommandsBufferOffset)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBindingStaticOffset<ShaderDebugCommandBufferParams>), u_debugCommandsBufferParams)
-	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOutputTexture)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOutputTexture) // HDR
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWTexture2DBinding<math::Vector4f>),                        u_debugOnScreenOutputTexture) // LDR
 DS_END();
 
 
@@ -58,6 +59,8 @@ public:
 
 	void BindCommandsExecutor(lib::SharedPtr<ShaderDebugCommandsExecutor> commandsExecutor);
 
+	const lib::SharedPtr<rdr::TextureView>& GetDebugOutputTexture() const { return m_debugOnScreenOutputTexture; }
+
 	DebugRenderer& GetDynamicDebugRenderer() { return *m_dynamicDebugRenderer; }
 	DebugRenderer& GetPersistentDebugRenderer() { return *m_persistentDebugRenderer; }
 
@@ -82,6 +85,7 @@ private:
 	lib::SharedPtr<rdr::Buffer> m_debugCommandsBufferOffset;
 
 	lib::SharedPtr<rdr::TextureView> m_debugOutputTexture;
+	lib::SharedPtr<rdr::TextureView> m_debugOnScreenOutputTexture;
 
 	lib::UniquePtr<DebugRenderer> m_dynamicDebugRenderer;
 	lib::UniquePtr<DebugRenderer> m_persistentDebugRenderer;
@@ -100,6 +104,8 @@ public:
 
 	DebugRenderer& GetDynamicDebugRenderer() const { return ShaderDebugUtils::Get().GetDynamicDebugRenderer(); }
 	DebugRenderer& GetPersistentDebugRenderer() const { return ShaderDebugUtils::Get().GetPersistentDebugRenderer(); }
+
+	const lib::SharedPtr<rdr::TextureView>& GetDebugOutputTexture() const { return ShaderDebugUtils::Get().GetDebugOutputTexture(); }
 
 private:
 

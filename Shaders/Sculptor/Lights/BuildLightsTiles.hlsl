@@ -4,8 +4,8 @@
 [[descriptor_set(RenderViewDS, 0)]]
 [[descriptor_set(BuildLightTilesDS, 1)]]
 
-#include "Lights/PointLightSphereVertices.hlsli"
 #include "Lights/LightsTiles.hlsli"
+#include "Lights/LightingUtils.hlsli"
 
 
 struct VS_INPUT
@@ -18,9 +18,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4  clipSpace           : SV_POSITION;
-    
     float4  fragmentClipSpace   : CLIP_SPACE;
-    
     uint    lightIdx            : LIGHT_IDX;
 };
 
@@ -29,12 +27,34 @@ VS_OUTPUT BuildLightsTilesVS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    const uint lightIdx = u_lightDraws[input.drawIndex].localLightIdx;
+#if LIGHT_TYPE == LIGHT_TYPE_POINT
+    const uint lightIdx = u_pointLightDraws[input.drawIndex].localLightIdx;
+#elif LIGHT_TYPE == LIGHT_TYPE_SPOT
+    const uint lightIdx = u_spotLightDraws[input.drawIndex].localLightIdx;
+#endif // LIGHT_TYPE
+
     const uint vertexIdx = input.index;
 
-    const PointLightGPUData pointLight = u_localLights[lightIdx];
+    const LocalLightGPUData localLight = u_localLights[lightIdx];
 
-    const float3 lightProxyVertLocation = pointLight.location + pointLightSphereLocations[vertexIdx] * pointLight.radius;
+#if LIGHT_TYPE == LIGHT_TYPE_POINT
+    const float3 lightProxyVertLocation = localLight.location + u_pointLightProxyVertices[vertexIdx] * localLight.range;
+#elif LIGHT_TYPE == LIGHT_TYPE_SPOT
+	const float3 forward = localLight.direction;
+	const float3 right = abs(localLight.direction.z) < 1.f - SMALL_NUMBER ? normalize(cross(forward, UP_VECTOR)) : RIGHT_VECTOR;
+	const float3 up = cross(right, forward);
+
+	const float forwardScaling = localLight.range;
+	const float sideScaling = forwardScaling * localLight.halfAngleTan;
+	const float3x3 lightToWorldMatrix = float3x3(
+		forward * forwardScaling,
+		right * sideScaling,
+		up * sideScaling
+	);
+	const float3 localVertexPos = u_spotLightProxyVertices[vertexIdx];
+
+	const float3 lightProxyVertLocation = localLight.location + mul(localVertexPos, lightToWorldMatrix);
+#endif // LIGHT_TYPE
 
     output.clipSpace = mul(u_sceneView.viewProjectionMatrix, float4(lightProxyVertLocation, 1.f));
     output.fragmentClipSpace = output.clipSpace;

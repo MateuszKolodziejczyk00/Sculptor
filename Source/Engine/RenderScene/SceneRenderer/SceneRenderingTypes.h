@@ -66,6 +66,8 @@ struct SceneRendererSettings
 {
 	rhi::EFragmentFormat outputFormat = rhi::EFragmentFormat::None;
 	Bool resetAccumulation            = false;
+
+	lib::SharedPtr<rdr::TextureView> debugUAVTexture;
 	gfx::DebugRenderer* dynamicDebugRenderer = nullptr;
 	gfx::DebugRenderer* persistentDebugRenderer = nullptr;
 };

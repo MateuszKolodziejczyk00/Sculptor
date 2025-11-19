@@ -24,7 +24,7 @@ class ShadowMapsDS;
 
 BEGIN_SHADER_STRUCT(GlobalLightsParams)
 	SHADER_STRUCT_FIELD(HeightFogParams, heightFog)
-	SHADER_STRUCT_FIELD(Uint32,          pointLightsNum)
+	SHADER_STRUCT_FIELD(Uint32,          localLightsNum)
 	SHADER_STRUCT_FIELD(Uint32,          directionalLightsNum)
 	SHADER_STRUCT_FIELD(Bool,            hasValidCloudsTransmittanceMap)
 	SHADER_STRUCT_FIELD(math::Matrix4f,  cloudsTransmittanceViewProj)
@@ -33,7 +33,7 @@ END_SHADER_STRUCT();
 
 DS_BEGIN(GlobalLightsDS, rg::RGDescriptorSetState<GlobalLightsDS>)
 	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GlobalLightsParams>),                     u_lightsParams)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<PointLightGPUData>),                    u_pointLights)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                    u_localLights)
 	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<DirectionalLightGPUData>),              u_directionalLights)
 	DS_BINDING(BINDING_TYPE(gfx::SRVTexture2DBinding<math::Vector2f>),                           u_brdfIntegrationLUT)
 	DS_BINDING(BINDING_TYPE(gfx::ImmutableSamplerBinding<rhi::SamplerState::LinearClampToEdge>), u_brdfIntegrationLUTSampler)
@@ -68,10 +68,10 @@ private:
 	void CacheGlobalLightsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& scene, ViewRenderingSpec& viewSpec, const RenderStageExecutionContext& context);
 	void CacheShadowMapsDS(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene);
 
-	rdr::PipelineStateID m_buildLightsZClustersPipeline;
-	rdr::PipelineStateID m_generateLightsDrawCommandsPipeline;
-	
-	rdr::PipelineStateID m_buildLightsTilesPipeline;
+	lib::SharedPtr<rdr::Buffer> m_spotLightProxyVertices;
+	lib::SharedPtr<rdr::Buffer> m_pointLightProxyVertices;
+
+	lib::SharedPtr<rdr::Buffer> m_lightsDrawCommandsBuffer;
 
 	lib::MTHandle<ShadowMapsDS> m_shadowMapsDS;
 

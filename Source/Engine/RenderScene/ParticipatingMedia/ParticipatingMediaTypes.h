@@ -23,6 +23,9 @@ struct VolumetricFogParams
 	rg::RGTextureViewHandle directionalLightShadowTerm;
 	rg::RGTextureViewHandle historyDirectionalLightShadowTerm;
 
+	rg::RGTextureViewHandle localLightsInScattering;
+	rg::RGTextureViewHandle historyLocalLightsInScattering;
+
 	math::Vector3u volumetricFogResolution;
 
 	Real32 nearPlane;
