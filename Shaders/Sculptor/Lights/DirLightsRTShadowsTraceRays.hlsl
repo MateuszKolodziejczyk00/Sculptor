@@ -78,9 +78,8 @@ void GenerateShadowRaysRTG()
 	const EncodedRayTraceCommand encodedTraceCommand = u_traceCommands[DispatchRaysIndex().x];
 	const RayTraceCommand traceCommand = DecodeTraceCommand(encodedTraceCommand);
 
-	const uint2 pixel = traceCommand.blockCoords + traceCommand.localOffset;
+	const uint2 coords = traceCommand.blockCoords + traceCommand.localOffset;
 
-	const float shadowMaskValue = TraceShadowRay(pixel);
-
+	const float shadowMaskValue = TraceShadowRay(coords);
 	OutputShadowMask(traceCommand, shadowMaskValue);
 }

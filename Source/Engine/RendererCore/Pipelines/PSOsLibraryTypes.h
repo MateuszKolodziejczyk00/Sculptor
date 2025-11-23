@@ -535,6 +535,12 @@ class DebugFeature
 {
 public:
 
+	DebugFeature() = default;
+
+	DebugFeature(Bool enabled)
+		: m_enabled(enabled)
+	{ }
+
 	DebugFeature& operator=(Bool enabled)
 	{
 		m_enabled = enabled;

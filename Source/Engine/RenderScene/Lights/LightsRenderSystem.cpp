@@ -77,26 +77,25 @@ END_SHADER_STRUCT();
 
 
 DS_BEGIN(GenerateLightsDrawCommnadsDS, rg::RGDescriptorSetState<GenerateLightsDrawCommnadsDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),               u_sceneViewCullingData)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GenerateLightDrawCommandsConstants>), u_constants)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<LightIndirectDrawCommand>),       u_pointLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                         u_pointLightDrawsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<LightIndirectDrawCommand>),       u_spotLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                         u_spotLightDrawsCount)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                         u_visibleLightsReadbackBuffer)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                  u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                  u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<SceneViewCullingData>),                 u_sceneViewCullingData)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<GenerateLightDrawCommandsConstants>),   u_constants)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<LightIndirectDrawCommand>), u_pointLightDraws)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),                   u_pointLightDrawsCount)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<LightIndirectDrawCommand>), u_spotLightDraws)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalRWStructuredBufferBinding<Uint32>),                   u_spotLightDrawsCount)
 DS_END();
 
 
 DS_BEGIN(BuildLightTilesDS, rg::RGDescriptorSetState<BuildLightTilesDS>)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),			u_localLights)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LightIndirectDrawCommand>),	u_pointLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LightIndirectDrawCommand>),	u_spotLightDraws)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),				u_pointLightProxyVertices)
-	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),				u_spotLightProxyVertices)
-	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),			u_lightsData)
-	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),					u_tilesLightsMask)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<LocalLightGPUData>),                u_localLights)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<LightIndirectDrawCommand>), u_pointLightDraws)
+	DS_BINDING(BINDING_TYPE(gfx::OptionalStructuredBufferBinding<LightIndirectDrawCommand>), u_spotLightDraws)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),                   u_pointLightProxyVertices)
+	DS_BINDING(BINDING_TYPE(gfx::StructuredBufferBinding<math::Vector3f>),                   u_spotLightProxyVertices)
+	DS_BINDING(BINDING_TYPE(gfx::ConstantBufferBinding<LightsRenderingData>),                u_lightsData)
+	DS_BINDING(BINDING_TYPE(gfx::RWStructuredBufferBinding<Uint32>),                         u_tilesLightsMask)
 DS_END();
 
 
@@ -312,11 +311,13 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 	const auto pointLightsView = sceneRegistry.view<const PointLightData>();
 	const auto spotLightsView  = sceneRegistry.view<const SpotLightData>();
 
-	const SizeType localLightsNum = pointLightsView.size() + spotLightsView.size();
+	const SizeType maxLocalLightsNum = pointLightsView.size() + spotLightsView.size();
 
 	lib::DynamicArray<Real32> localLightsViewSpaceZ;
-	localLights.reserve(localLightsNum);
-	localLightsViewSpaceZ.reserve(localLightsNum);
+	localLights.reserve(maxLocalLightsNum);
+	localLightsViewSpaceZ.reserve(maxLocalLightsNum);
+
+	Uint32 pointLightsNum = 0u;
 
 	for (const auto& [entity, pointLight] : pointLightsView.each())
 	{
@@ -338,8 +339,12 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 			localLightsViewSpaceZ.emplace(emplaceIt, lightViewSpaceZ);
 			localLights.emplace(std::cbegin(localLights) + emplaceIdx, gpuLightData);
+
+			++pointLightsNum;
 		}
 	}
+
+	Uint32 spotLightsNum = 0u;
 
 	for (const auto& [entity, spotLight] : spotLightsView.each())
 	{
@@ -360,6 +365,8 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 			const SizeType emplaceIdx = std::distance(std::cbegin(localLightsViewSpaceZ), emplaceIt);
 			localLightsViewSpaceZ.emplace(emplaceIt, lightViewSpaceZ);
 			localLights.emplace(std::cbegin(localLights) + emplaceIdx, gpuLightData);
+
+			++spotLightsNum;
 		}
 	}
 
@@ -389,8 +396,8 @@ static LightsInfo CreateLocalLightsData(rg::RenderGraphBuilder& graphBuilder, co
 
 	return LightsInfo
 	{
-		.pointLightsNum = static_cast<Uint32>(pointLightsView.size()),
-		.spotLightsNum  = static_cast<Uint32>(spotLightsView.size())
+		.pointLightsNum = pointLightsNum,
+		.spotLightsNum  = spotLightsNum
 	};
 }
 
@@ -517,19 +524,31 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		lightsData.tileSize              = tileSize;
 		lightsData.ambientLightIntensity = params::ambientLightIntensity;
 
-		const rhi::BufferDefinition pointLightDrawCommandsBufferDefinition(lightsInfo.pointLightsNum * rdr::shader_translator::HLSLSizeOf<LightIndirectDrawCommand>(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-		const rg::RGBufferViewHandle pointLightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Point Light Draw Commands"), pointLightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+		rg::RGBufferViewHandle pointLightDrawCommands;
+		rg::RGBufferViewHandle pointLightDrawCommandsCount;
 
-		const rhi::BufferDefinition pointLightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
-		const rg::RGBufferViewHandle pointLightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Point Light Draw Commands Count"), pointLightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
-		graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Point Light Draw Commands Count"), pointLightDrawCommandsCount, 0, sizeof(Uint32), 0);
+		rg::RGBufferViewHandle spotLightDrawCommands;
+		rg::RGBufferViewHandle spotLightDrawCommandsCount;
 
-		const rhi::BufferDefinition spotLightDrawCommandsBufferDefinition(lightsInfo.spotLightsNum * rdr::shader_translator::HLSLSizeOf<LightIndirectDrawCommand>(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
-		const rg::RGBufferViewHandle spotLightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Spot Light Draw Commands"), spotLightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+		if (lightsInfo.pointLightsNum > 0u)
+		{
+			const rhi::BufferDefinition pointLightDrawCommandsBufferDefinition(lightsInfo.pointLightsNum * rdr::shader_translator::HLSLSizeOf<LightIndirectDrawCommand>(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+			pointLightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Point Light Draw Commands"), pointLightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
 
-		const rhi::BufferDefinition spotLightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
-		const rg::RGBufferViewHandle spotLightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Spot Light Draw Commands Count"), spotLightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
-		graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Spot Light Draw Commands Count"), spotLightDrawCommandsCount, 0, sizeof(Uint32), 0);
+			const rhi::BufferDefinition pointLightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+			pointLightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Point Light Draw Commands Count"), pointLightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+			graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Point Light Draw Commands Count"), pointLightDrawCommandsCount, 0, sizeof(Uint32), 0);
+		}
+
+		if (lightsInfo.spotLightsNum > 0u)
+		{
+			const rhi::BufferDefinition spotLightDrawCommandsBufferDefinition(lightsInfo.spotLightsNum * rdr::shader_translator::HLSLSizeOf<LightIndirectDrawCommand>(), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect));
+			spotLightDrawCommands = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Spot Light Draw Commands"), spotLightDrawCommandsBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+
+			const rhi::BufferDefinition spotLightDrawCommandsCountBufferDefinition(sizeof(Uint32), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::Indirect, rhi::EBufferUsage::TransferDst));
+			spotLightDrawCommandsCount = graphBuilder.CreateBufferView(RG_DEBUG_NAME("Spot Light Draw Commands Count"), spotLightDrawCommandsCountBufferDefinition, rhi::EMemoryUsage::GPUOnly);
+			graphBuilder.FillBuffer(RG_DEBUG_NAME("Initialize Spot Light Draw Commands Count"), spotLightDrawCommandsCount, 0, sizeof(Uint32), 0);
+		}
 
 		const rhi::BufferDefinition clustersRangesBufferDefinition(zClustersNum * sizeof(math::Vector2u), lib::Flags(rhi::EBufferUsage::Storage, rhi::EBufferUsage::TransferDst));
 		const rg::RGBufferViewHandle clustersRanges = graphBuilder.CreateBufferView(RG_DEBUG_NAME("ClustersRanges"), clustersRangesBufferDefinition, rhi::EMemoryUsage::GPUOnly);
@@ -572,9 +591,9 @@ static LightsRenderingDataPerView CreateLightsRenderingData(rg::RenderGraphBuild
 		buildLightTilesDS->u_lightsData               = lightsData;
 		buildLightTilesDS->u_tilesLightsMask          = tilesLightsMask;
 
-		shadingInputDS->u_localLights		= localLightsBuffer;
-		shadingInputDS->u_tilesLightsMask	= tilesLightsMask;
-		shadingInputDS->u_clustersRanges	= clustersRanges;
+		shadingInputDS->u_localLights     = localLightsBuffer;
+		shadingInputDS->u_tilesLightsMask = tilesLightsMask;
+		shadingInputDS->u_clustersRanges  = clustersRanges;
 
 		lightsRenderingDataPerView.buildZClustersDS             = buildZClusters;
 		lightsRenderingDataPerView.generateLightsDrawCommnadsDS = generateLightsDrawCommnadsDS;
@@ -743,17 +762,23 @@ void LightsRenderSystem::BuildLightsTiles(rg::RenderGraphBuilder& graphBuilder, 
 									recorder.SetViewport(math::AlignedBox2f(math::Vector2f(0.f, 0.f), renderingArea.cast<Real32>()), 0.f, 1.f);
 									recorder.SetScissor(math::AlignedBox2u(math::Vector2u(0, 0), renderingArea));
 
-									const rdr::BufferView& pointLightsDawsBufferView      = *passIndirectParams.pointLightDrawCommandsBuffer->GetResource();
-									const rdr::BufferView& pointLightsDrawCountBufferView = *passIndirectParams.pointLightDrawCommandsCountBuffer->GetResource();
+									if (maxPointLightDrawsCount > 0u)
+									{
+										const rdr::BufferView& pointLightsDawsBufferView      = *passIndirectParams.pointLightDrawCommandsBuffer->GetResource();
+										const rdr::BufferView& pointLightsDrawCountBufferView = *passIndirectParams.pointLightDrawCommandsCountBuffer->GetResource();
 
-									recorder.BindGraphicsPipeline(BuildLightTilesPSO::pointLights);
-									recorder.DrawIndirectCount(pointLightsDawsBufferView, 0u, sizeof(rdr::HLSLStorage<LightIndirectDrawCommand>), pointLightsDrawCountBufferView, 0, maxPointLightDrawsCount);
+										recorder.BindGraphicsPipeline(BuildLightTilesPSO::pointLights);
+										recorder.DrawIndirectCount(pointLightsDawsBufferView, 0u, sizeof(rdr::HLSLStorage<LightIndirectDrawCommand>), pointLightsDrawCountBufferView, 0, maxPointLightDrawsCount);
+									}
 
-									const rdr::BufferView& spotLightsDawsBufferView      = *passIndirectParams.spotLightDrawCommandsBuffer->GetResource();
-									const rdr::BufferView& spotLightsDrawCountBufferView = *passIndirectParams.spotLightDrawCommandsCountBuffer->GetResource();
+									if (maxSpotLightDrawsCount > 0u)
+									{
+										const rdr::BufferView& spotLightsDawsBufferView      = *passIndirectParams.spotLightDrawCommandsBuffer->GetResource();
+										const rdr::BufferView& spotLightsDrawCountBufferView = *passIndirectParams.spotLightDrawCommandsCountBuffer->GetResource();
 
-									recorder.BindGraphicsPipeline(BuildLightTilesPSO::spotLights);
-									recorder.DrawIndirectCount(spotLightsDawsBufferView, 0u, sizeof(rdr::HLSLStorage<LightIndirectDrawCommand>), spotLightsDrawCountBufferView, 0, maxSpotLightDrawsCount);
+										recorder.BindGraphicsPipeline(BuildLightTilesPSO::spotLights);
+										recorder.DrawIndirectCount(spotLightsDawsBufferView, 0u, sizeof(rdr::HLSLStorage<LightIndirectDrawCommand>), spotLightsDrawCountBufferView, 0, maxSpotLightDrawsCount);
+									}
 								});
 	}
 

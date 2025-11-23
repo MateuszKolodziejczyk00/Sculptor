@@ -211,7 +211,7 @@ struct TracesAllocator
 #if OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 				uint tracesNum = 0;
 				InterlockedAdd(m_tracesNum[0], tracesToAllocateNum, OUT tracesNum);
-				InterlockedMax(m_tracesDispatchGroupsNum[0], (tracesNum + tracesToAllocateNum + 31) / 32);
+				InterlockedMax(m_tracesDispatchGroupsNum[0], (tracesNum + tracesToAllocateNum + 63) / 64);
 #endif // OUTPUT_TRACES_AND_DISPATCH_GROUPS_NUM
 			}
 

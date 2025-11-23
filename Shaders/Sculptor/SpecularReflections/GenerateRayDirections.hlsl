@@ -17,7 +17,7 @@ struct CS_INPUT
 };
 
 
-[numthreads(32, 1, 1)]
+[numthreads(64, 1, 1)]
 void GenerateRayDirectionsCS(CS_INPUT input)
 {
 	const uint traceCommandIndex = input.globalID.x;

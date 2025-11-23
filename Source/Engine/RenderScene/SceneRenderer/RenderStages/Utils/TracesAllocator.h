@@ -64,7 +64,7 @@ struct TracesAllocation
 
 	rg::RGTextureViewHandle variableRateBlocksTexture;
 
-	// Assumes 32 threads per group
+	// Assumes 64 threads per group
 	rg::RGBufferViewHandle dispatchIndirectArgs;
 	rg::RGBufferViewHandle tracesNum;
 };

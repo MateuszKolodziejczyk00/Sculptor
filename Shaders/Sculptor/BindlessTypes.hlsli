@@ -14,6 +14,11 @@ struct SRVTexture3D
 	uint descriptorIdx;
 	uint metaData;
 
+	Texture3D<T> GetResource()
+	{
+		return ResourceDescriptorHeap[descriptorIdx];
+	}
+
 	T Load(in int3 coords)
 	{
 		return Load(int4(coords, 0));
@@ -21,13 +26,13 @@ struct SRVTexture3D
 
 	T Load(in int4 coords)
 	{
-		const Texture3D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		const Texture3D<T> texture = GetResource();
 		return texture.Load(coords);
 	}
 
 	T SampleLevel(in SamplerState s, in float3 uvw, in float level = 0.f)
 	{
-		const Texture3D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		const Texture3D<T> texture = GetResource();
 		return texture.Sample(s, uvw, level);
 	}
 
@@ -44,6 +49,11 @@ struct SRVTexture2D
 	uint descriptorIdx;
 	uint metaData;
 
+	Texture2D<T> GetResource()
+	{
+		return ResourceDescriptorHeap[descriptorIdx];
+	}
+
 	T Load(in int2 coords)
 	{
 		return Load(int3(coords, 0));
@@ -51,13 +61,13 @@ struct SRVTexture2D
 
 	T Load(in int3 coords)
 	{
-		const Texture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		const Texture2D<T> texture = GetResource();
 		return texture.Load(coords);
 	}
 
 	T SampleLevel(in SamplerState s, in float2 uv, in float level = 0.f)
 	{
-		const Texture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		const Texture2D<T> texture = GetResource();
 		return texture.Sample(s, uv, level);
 	}
 
@@ -74,15 +84,20 @@ struct UAVTexture2D
 	uint descriptorIdx;
 	uint metaData;
 
+	RWTexture2D<T> GetResource()
+	{
+		return ResourceDescriptorHeap[descriptorIdx];
+	}
+
 	T Load(in int2 coords)
 	{
-		RWTexture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		RWTexture2D<T> texture = GetResource();
 		return texture[coords];
 	}
 
 	void Store(in int2 coords, in T value)
 	{
-		RWTexture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		RWTexture2D<T> texture = GetResource();
 		texture[coords] = value;
 	}
 
@@ -93,7 +108,7 @@ struct UAVTexture2D
 
 	uint2 GetResolution()
 	{
-		RWTexture2D<T> texture = ResourceDescriptorHeap[descriptorIdx];
+		RWTexture2D<T> texture = GetResource();
 		uint2 resolution;
 		texture.GetDimensions(resolution.x, resolution.y);
 		return resolution;

@@ -258,7 +258,7 @@ void AppendAdditionalTraceCommand(in uint2 traceCoords)
 
 		uint tracesNum = 0;
 		InterlockedAdd(u_tracesNum[0], commandsNum, OUT tracesNum);
-		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + commandsNum + 31) / 32);
+		InterlockedMax(u_tracesDispatchGroupsNum[0], (tracesNum + commandsNum + 63) / 64);
 	}
 
 	const uint2 ballot = WaveActiveBallot(true).xy;

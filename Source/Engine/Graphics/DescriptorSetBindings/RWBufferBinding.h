@@ -26,6 +26,11 @@ public:
 
 	virtual void UpdateDescriptors(rdr::DescriptorSetIndexer& indexer) const final
 	{
+		if constexpr (!isOptional)
+		{
+			SPT_CHECK_MSG(IsValid(), "Descriptor {} is not set", GetName().GetData());
+		}
+
 		if (IsValid())
 		{
 			const lib::SharedPtr<rdr::BindableBufferView>& bufferView = m_boundBuffer.GetBufferToBind();

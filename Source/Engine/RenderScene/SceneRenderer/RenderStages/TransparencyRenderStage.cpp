@@ -30,9 +30,9 @@ void Render(rg::RenderGraphBuilder& graphBuilder, const RenderScene& renderScene
 
 	SPT_CHECK(cachedGeometryPassData.materialBatches.size() == 1u);
 
-	const rg::RGTextureViewHandle layersTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Transparency Layers Num"), rg::TextureDef(transparencyRes, rhi::EFragmentFormat::R32_U_Int));
+	//const rg::RGTextureViewHandle layersTexture = graphBuilder.CreateTextureView(RG_DEBUG_NAME("Transparency Layers Num"), rg::TextureDef(transparencyRes, rhi::EFragmentFormat::R32_U_Int));
 
-	graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Transparency Layers Texture"), layersTexture, rhi::ClearColor(0u, 0u, 0u, 0u));
+	//graphBuilder.ClearTexture(RG_DEBUG_NAME("Clear Transparency Layers Texture"), layersTexture, rhi::ClearColor(0u, 0u, 0u, 0u));
 
 
 }
