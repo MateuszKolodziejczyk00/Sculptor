@@ -55,11 +55,11 @@ bool IsSphereCenterBehindHiZ(Texture2D<float> hiZ, SamplerState hiZSampler, floa
         const float2 uv = float2((aabb.x + aabb.z) * 0.5f, (aabb.y + aabb.w) * 0.5f);
         const float sceneMinDepth = hiZ.SampleLevel(hiZSampler, uv, level).x;
 
-        const float sphereCenterDepth = near / (sphereCenterVS.x);
+        const float sphereFrontDepth = near / (sphereCenterVS.x - sphereRadius);
         // Use "<" because we use inverse depth
         // if max depth of sphere center is smaller than min depth of scene (furthest point)
-        // it means that sphere center must behind furthest point in scene
-        return sphereCenterDepth < sceneMinDepth;
+        // it means that sphere front must behind furthest point in scene
+        return sphereFrontDepth < sceneMinDepth;
     }
     else
     {

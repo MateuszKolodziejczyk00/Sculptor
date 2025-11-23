@@ -38,10 +38,10 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 
 			const float2 hiZRes = u_depthCullingParams.hiZResolution;
 
-			const float3 pointLightCenterVS = mul(u_sceneView.viewMatrix, float4(localLight.location, 1.f)).xyz;
+			const float3 boundingSphereCenterVS = mul(u_sceneView.viewMatrix, float4(boundingSphereCenter, 1.f)).xyz;
 
 			float4 aabbOnScreen = 0.f;
-			isLightVisible = !IsSphereCenterBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, boundingSphereCenter, boundingSphereRadius, near, p01, p12, aabbOnScreen);
+			isLightVisible = !IsSphereCenterBehindHiZ(u_hiZTexture, u_hiZSampler, hiZRes, boundingSphereCenterVS, boundingSphereRadius, near, p01, p12, OUT aabbOnScreen);
 		}
 
 		if(isLightVisible)
