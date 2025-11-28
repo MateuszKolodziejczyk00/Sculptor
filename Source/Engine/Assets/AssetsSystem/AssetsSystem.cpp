@@ -245,6 +245,7 @@ AssetInstanceData AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 
 	if (!stream.is_open())
 	{
+		stream.close();
 		return {};
 	}
 
@@ -253,6 +254,8 @@ AssetInstanceData AssetsSystem::ReadAssetData(const lib::Path& fullPath) const
 
 	AssetInstanceData assetData;
 	srl::SerializationHelper::DeserializeStruct(assetData, stringStream.str());
+
+	stream.close();
 
 	return assetData;
 }

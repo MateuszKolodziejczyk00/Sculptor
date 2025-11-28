@@ -4,12 +4,18 @@
 namespace spt::lib
 {
 
-lib::HashMap<lib::RuntimeTypeInfo, DataTypeSerializationMetaData> typeToSerializationMetaData;
+using BlacboardTypeSerializersRegistry = lib::HashMap<lib::RuntimeTypeInfo, DataTypeSerializationMetaData>;
+
+static BlacboardTypeSerializersRegistry& GetSerializersRegistry()
+{
+	static BlacboardTypeSerializersRegistry registry;
+	return registry;
+}
 
 
 void BlackboardSerializer::RegisterDataTypeImpl(const lib::RuntimeTypeInfo& type, const DataTypeSerializationMetaData& metaData)
 {
-	typeToSerializationMetaData[type] = metaData;
+	GetSerializersRegistry()[type] = metaData;
 }
 
 void BlackboardSerializer::EmitBlackboardImpl(srl::SerializerWrapper<srl::YAMLEmitter>& emitter, const lib::Blackboard& blackboard)
@@ -17,8 +23,10 @@ void BlackboardSerializer::EmitBlackboardImpl(srl::SerializerWrapper<srl::YAMLEm
 	blackboard.ForEachType(
 		[&emitter, &blackboard](const lib::RuntimeTypeInfo& type)
 		{
-			const auto foundMetaData = typeToSerializationMetaData.find(type);
-			if (foundMetaData != typeToSerializationMetaData.cend())
+			const auto& serializers = GetSerializersRegistry();
+
+			const auto foundMetaData = serializers.find(type);
+			if (foundMetaData != serializers.cend())
 			{
 				foundMetaData->second.emitter(emitter, blackboard);
 			}
@@ -30,8 +38,10 @@ void BlackboardSerializer::SerializeBlackboardImpl(srl::SerializerWrapper<srl::Y
 	blackboard.ForEachType(
 		[&writer, &blackboard](const lib::RuntimeTypeInfo& type)
 		{
-			const auto foundMetaData = typeToSerializationMetaData.find(type);
-			if (foundMetaData != typeToSerializationMetaData.cend())
+			const auto& serializers = GetSerializersRegistry();
+
+			const auto foundMetaData = serializers.find(type);
+			if (foundMetaData != serializers.cend())
 			{
 				foundMetaData->second.serializer(writer, blackboard);
 			}
@@ -49,8 +59,10 @@ void BlackboardSerializer::DeserializeBlackboardImpl(srl::SerializerWrapper<srl:
 		const lib::String key = it->first.as<lib::String>();
 		const lib::RuntimeTypeInfo type = lib::RuntimeTypeInfo::CreateFromName(key);
 
-		const auto foundMetaData = typeToSerializationMetaData.find(type);
-		SPT_CHECK(foundMetaData != typeToSerializationMetaData.cend());
+		const auto& serializers = GetSerializersRegistry();
+
+		const auto foundMetaData = serializers.find(type);
+		SPT_CHECK(foundMetaData != serializers.cend());
 
 		foundMetaData->second.deserializer(loader, blackboard);
 	}

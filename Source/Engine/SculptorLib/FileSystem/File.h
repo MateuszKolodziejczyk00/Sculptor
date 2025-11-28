@@ -25,17 +25,22 @@ class SCULPTOR_LIB_API File
 {
 public:
 
-	static std::ifstream	OpenInputStream(const lib::String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
-	static std::ofstream	OpenOutputStream(const lib::String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+	static std::ifstream OpenInputStream(const String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+	static std::ifstream OpenInputStream(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
-	static Bool				Exists(const lib::StringView& path);
+	static std::ofstream OpenOutputStream(const String& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+	static std::ofstream OpenOutputStream(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
 
-	static lib::String		DiscardExtension(const lib::String& file);
-	static lib::StringView	GetExtension(const lib::StringView& file);
+	static String ReadDocument(const Path& path, EFileOpenFlags openFlags = EFileOpenFlags::None);
+
+	static Bool Exists(const StringView& path);
+
+	static String     DiscardExtension(const String& file);
+	static StringView GetExtension(const StringView& file);
 
 	struct SCULPTOR_LIB_API Utils
 	{
-		static lib::String CreateFileNameFromTime(lib::StringView extension = {});
+		static String CreateFileNameFromTime(StringView extension = {});
 	};
 };
 

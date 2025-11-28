@@ -1,6 +1,6 @@
-TextureAsset = Project:CreateProject("TextureAsset", EngineLibrary)
+IESProfileAsset = Project:CreateProject("IESProfileAsset", EngineLibrary)
 
-function TextureAsset:SetupConfiguration(configuration, platform)
+function IESProfileAsset:SetupConfiguration(configuration, platform)
     self:AddPublicDependency("AssetsSystem")
     self:AddPublicDependency("RendererCore")
 
@@ -8,4 +8,4 @@ function TextureAsset:SetupConfiguration(configuration, platform)
     self:AddPrivateDependency("RenderGraph")
 end
 
-TextureAsset:SetupProject()
+IESProfileAsset:SetupProject()

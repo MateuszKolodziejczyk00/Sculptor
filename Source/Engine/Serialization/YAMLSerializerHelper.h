@@ -2,6 +2,7 @@
 
 #include "SculptorCoreTypes.h"
 #include "YAML.h"
+#include "FileSystem/File.h"
 
 
 namespace spt::srl
@@ -254,6 +255,21 @@ public:
 	void Serialize<Uint8>(lib::StringView key, const Uint8& data)
 	{
 		Uint32 val = static_cast<Uint32>(data);
+		m_serializer.Serialize(key, val);
+	}
+
+	template<>
+	void Serialize<lib::Path>(lib::StringView key, lib::Path& data)
+	{
+		lib::String val;
+		m_serializer.Serialize(key, val);
+		data = lib::Path(val);
+	}
+
+	template<>
+	void Serialize<lib::Path>(lib::StringView key, const lib::Path& data)
+	{
+		lib::String val = data.generic_string();
 		m_serializer.Serialize(key, val);
 	}
 
