@@ -50,13 +50,13 @@ public:
 	template<typename TType>
 	void Unload()
 	{
-		Unload(lib::TypeInfo<TType>().type);
+		Unload(lib::TypeInfo<TType>());
 	}
 
 	template<typename TType>
 	void Remove()
 	{
-		Remove(lib::TypeInfo<TType>().type);
+		Remove(lib::TypeInfo<TType>());
 	}
 
 	void Unload(lib::RuntimeTypeInfo type)
