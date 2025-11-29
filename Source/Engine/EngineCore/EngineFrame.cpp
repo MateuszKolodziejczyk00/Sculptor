@@ -229,9 +229,9 @@ void EngineFramesManager::BeginFrame(lib::SharedPtr<FrameContext> context)
 
 	context->BeginFrame(def, std::move(m_lastFrame));
 
-	m_lastFrame = std::move(context);
-
 	PluginsManager::GetInstance().BeginFrame(*context);
+
+	m_lastFrame = std::move(context);
 }
 
 } // spt::engn

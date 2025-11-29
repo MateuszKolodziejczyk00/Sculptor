@@ -6,9 +6,9 @@
 #include "AssetsSystem.h"
 #include "Transfers/UploadsManager.h"
 #include "RHIBridge/RHIDependencyImpl.h"
-#include "TextureStreamer.h"
 #include "Transfers/UploadUtils.h"
 #include "ResourcesManager.h"
+#include "Transfers/GPUDeferredUploadsQueue.h"
 
 
 namespace spt::as
@@ -37,12 +37,6 @@ void PBRTextureSetAsset::PostInitialize()
 	Super::PostInitialize();
 
 	CreateTextureInstances();
-
-	TextureStreamer::Get().RequestTextureUploadToGPU(StreamRequest
-													 {
-														 .assetHandle       = this,
-														 .streamableTexture = this
-													 });
 }
 
 void PBRTextureSetAsset::CompileTextureSet()
@@ -86,72 +80,33 @@ void PBRTextureSetAsset::OnAssetDeleted(AssetsSystem& assetSystem, const Resourc
 	}
 }
 
-void PBRTextureSetAsset::PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency)
+void PBRTextureSetAsset::RequestTextureGPUUploads()
 {
-	const lib::SharedPtr<rdr::TextureView>& baseColorTextureView         = GetBaseColorTextureView();
-	const lib::SharedPtr<rdr::TextureView>& metallicRoughnessTextureView = GetMetallicRoughnessTextureView();
-	const lib::SharedPtr<rdr::TextureView>& normalsTextureView           = GetNormalsTextureView();
 
-	const SizeType baseColorDependencyIdx         = preUploadDependency.AddTextureDependency(baseColorTextureView->GetTexture()->GetRHI(), baseColorTextureView->GetRHI().GetSubresourceRange());
-	const SizeType metallicRoughnessDependencyIdx = preUploadDependency.AddTextureDependency(metallicRoughnessTextureView->GetTexture()->GetRHI(), metallicRoughnessTextureView->GetRHI().GetSubresourceRange());
-	const SizeType normalsDependencyIdx           = preUploadDependency.AddTextureDependency(normalsTextureView->GetTexture()->GetRHI(), normalsTextureView->GetRHI().GetSubresourceRange());
+	const PBRCompiledTextureSetData& compiledData = GetBlackboard().Get<PBRCompiledTextureSetData>();
 
-	preUploadDependency.SetLayoutTransition(baseColorDependencyIdx,         rhi::TextureTransition::TransferDest);
-	preUploadDependency.SetLayoutTransition(metallicRoughnessDependencyIdx, rhi::TextureTransition::TransferDest);
-	preUploadDependency.SetLayoutTransition(normalsDependencyIdx,           rhi::TextureTransition::TransferDest);
-}
+	gfx::GPUDeferredUploadsQueue& queue = gfx::GPUDeferredUploadsQueue::Get();
 
-void PBRTextureSetAsset::ScheduleUploads()
-{
-	const auto scheduleTextureUpload = [](const lib::SharedPtr<rdr::TextureView>& textureView, const CompiledTexture& compiledTexture, lib::Span<const Byte> derivedData)
+	AssetsSystem& assetsSystem = GetOwningSystem();
+
+	const auto createUploadRequest = [&](const lib::SharedPtr<rdr::TextureView>& dstTextureView, const CompiledTexture& compiledTexture)
 	{
-		const lib::SharedRef<rdr::Texture>& textureInstance = textureView->GetTexture();
-
-		const Uint32 mipLevelsNum = textureInstance->GetRHI().GetDefinition().mipLevels;
-		
-		SPT_CHECK_MSG(mipLevelsNum == compiledTexture.mips.size(), "Mismatch between texture definition and data");
-
-		const rhi::ETextureAspect textureAspect = textureView->GetRHI().GetAspect();
-
-		for (Uint32 mipLevelIdx = 0u; mipLevelIdx < mipLevelsNum; ++mipLevelIdx)
-		{
-			const CompiledMip& mip = compiledTexture.mips[mipLevelIdx];
-
-			SPT_CHECK(mip.offset + mip.size <= derivedData.size());
-
-			gfx::UploadDataToTexture(derivedData.data() + mip.offset, mip.size, textureInstance, textureAspect, textureInstance->GetRHI().GetMipResolution(mipLevelIdx), math::Vector3u::Zero(), mipLevelIdx, 0u);
-		}
+		lib::UniquePtr<TextureUploadRequest> uploadRequest = lib::MakeUnique<TextureUploadRequest>();
+		uploadRequest->dstTextureView  = dstTextureView;
+		uploadRequest->compiledTexture = &compiledTexture;
+		uploadRequest->ddcKey          = compiledData.derivedDataKey;
+		uploadRequest->assetsSystem    = &assetsSystem;
+		return uploadRequest;
 	};
 
-	const PBRCompiledTextureSetData& compiledTextureSet = GetBlackboard().Get<PBRCompiledTextureSetData>();
+	queue.RequestUpload(createUploadRequest(m_cachedRuntimeTexture->baseColor, compiledData.baseColor));
+	queue.RequestUpload(createUploadRequest(m_cachedRuntimeTexture->metallicRoughness, compiledData.metallicRoughness));
+	queue.RequestUpload(createUploadRequest(m_cachedRuntimeTexture->normals, compiledData.normals));
 
-	const DDCResourceHandle derivedDataHandle = GetOwningSystem().GetDDC().GetResourceHandle(compiledTextureSet.derivedDataKey);
-	const lib::Span<const Byte> derivedData = derivedDataHandle.GetImmutableSpan();
-
-	const lib::SharedPtr<rdr::TextureView>& baseColorTextureView         = GetBaseColorTextureView();
-	const lib::SharedPtr<rdr::TextureView>& metallicRoughnessTextureView = GetMetallicRoughnessTextureView();
-	const lib::SharedPtr<rdr::TextureView>& normalsTextureView           = GetNormalsTextureView();
-
-	scheduleTextureUpload(baseColorTextureView, compiledTextureSet.baseColor, derivedData);
-	scheduleTextureUpload(metallicRoughnessTextureView, compiledTextureSet.metallicRoughness, derivedData);
-	scheduleTextureUpload(normalsTextureView, compiledTextureSet.normals, derivedData);
-}
-
-void PBRTextureSetAsset::FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency)
-{
-	const lib::SharedPtr<rdr::TextureView>& baseColorTextureView         = GetBaseColorTextureView();
-	const lib::SharedPtr<rdr::TextureView>& metallicRoughnessTextureView = GetMetallicRoughnessTextureView();
-	const lib::SharedPtr<rdr::TextureView>& normalsTextureView           = GetNormalsTextureView();
-
-	const SizeType baseColorDependencyIdx         = postUploadDependency.AddTextureDependency(baseColorTextureView->GetTexture()->GetRHI(), baseColorTextureView->GetRHI().GetSubresourceRange());
-	const SizeType metallicRoughnessDependencyIdx = postUploadDependency.AddTextureDependency(metallicRoughnessTextureView->GetTexture()->GetRHI(), metallicRoughnessTextureView->GetRHI().GetSubresourceRange());
-	const SizeType normalsDependencyIdx           = postUploadDependency.AddTextureDependency(normalsTextureView->GetTexture()->GetRHI(), normalsTextureView->GetRHI().GetSubresourceRange());
-
-	postUploadDependency.SetLayoutTransition(baseColorDependencyIdx,         rhi::TextureTransition::ReadOnly);
-	postUploadDependency.SetLayoutTransition(metallicRoughnessDependencyIdx, rhi::TextureTransition::ReadOnly);
-	postUploadDependency.SetLayoutTransition(normalsDependencyIdx,           rhi::TextureTransition::ReadOnly);
-
-	GetBlackboard().Unload(lib::TypeInfo<PBRCompiledTextureSetData>());
+	queue.AddPostDeferredUploadsDelegate(gfx::PostDeferredUploadsMulticastDelegate::Delegate::CreateLambda([self = AssetHandle(this)] // Hard reference is important here
+	{
+		self->GetBlackboard().Unload<PBRCompiledTextureSetData>();
+	}));
 }
 
 void PBRTextureSetAsset::CreateTextureInstances()

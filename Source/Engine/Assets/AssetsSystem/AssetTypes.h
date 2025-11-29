@@ -47,6 +47,18 @@ public:
 
 	using Super = lib::Blackboard;
 
+	template<typename TType>
+	void Unload()
+	{
+		Unload(lib::TypeInfo<TType>().type);
+	}
+
+	template<typename TType>
+	void Remove()
+	{
+		Remove(lib::TypeInfo<TType>().type);
+	}
+
 	void Unload(lib::RuntimeTypeInfo type)
 	{
 		m_unloadedTypes.emplace(type);

@@ -1,4 +1,4 @@
-#include "TextureStreamer.h"
+#include "GPUDeferredUploadsQueue.h"
 #include "EngineFrame.h"
 #include "JobSystem.h"
 #include "ResourcesManager.h"
@@ -7,27 +7,28 @@
 #include "Renderer.h"
 #include "DeviceQueues/DeviceQueuesManager.h"
 #include "Transfers/UploadUtils.h"
+#include "GPUDeferredUploadsQueueTypes.h"
 
 
-namespace spt::as
+namespace spt::gfx
 {
 
-SPT_DEFINE_PLUGIN(TextureStreamer);
+SPT_DEFINE_PLUGIN(GPUDeferredUploadsQueue);
 
 
-void TextureStreamer::RequestTextureUploadToGPU(StreamRequest request)
+void GPUDeferredUploadsQueue::RequestUpload(lib::UniquePtr<GPUDeferredUploadRequest> request)
 {
 	m_requests.emplace_back(std::move(request));
 }
 
-void TextureStreamer::ForceFlushUploads()
+void GPUDeferredUploadsQueue::ForceFlushUploads()
 {
 	SPT_PROFILER_FUNCTION();
 
 	ExecuteUploads();
 }
 
-void TextureStreamer::OnPostEngineInit()
+void GPUDeferredUploadsQueue::OnPostEngineInit()
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -42,11 +43,11 @@ void TextureStreamer::OnPostEngineInit()
 }
 
 
-void TextureStreamer::OnBeginFrame(engn::FrameContext& frameContext)
+void GPUDeferredUploadsQueue::OnBeginFrame(engn::FrameContext& frameContext)
 {
 	SPT_PROFILER_FUNCTION();
 
-	Super::BeginFrame(frameContext);
+	Super::OnBeginFrame(frameContext);
 
 	js::Launch(SPT_GENERIC_JOB_NAME,
 			   [this]
@@ -57,27 +58,32 @@ void TextureStreamer::OnBeginFrame(engn::FrameContext& frameContext)
 			   js::JobDef().ExecuteBefore(frameContext.GetStageBeginEvent(engn::EFrameStage::RenderingBegin)));
 }
 
-void TextureStreamer::ExecuteUploads()
+void GPUDeferredUploadsQueue::ExecuteUploads()
 {
 	SPT_PROFILER_FUNCTION();
 
-	const lib::SharedPtr<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("TextureStreamer"), rhi::ContextDefinition());
-
-	ExecutePreUploadBarriers(renderContext);
-
-	for (const StreamRequest& request : m_requests)
+	if (!m_requests.empty())
 	{
-		request.streamableTexture->ScheduleUploads();
+		const lib::SharedPtr<rdr::RenderContext> renderContext = rdr::ResourcesManager::CreateContext(RENDERER_RESOURCE_NAME("TextureStreamer"), rhi::ContextDefinition());
+
+		ExecutePreUploadBarriers(renderContext);
+
+		for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
+		{
+			request->EnqueueUploads();
+		}
+
+		gfx::FlushPendingUploads();
+
+		ExecutePostUploadBarriers(renderContext);
+
+		m_requests.clear();
 	}
 
-	gfx::FlushPendingUploads();
-
-	ExecutePostUploadBarriers(renderContext);
-
-	m_requests.clear();
+	m_postDeferredUploadsDelegate.Broadcast();
 }
 
-void TextureStreamer::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
+void GPUDeferredUploadsQueue::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
 {
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("Pre Upload Barriers Cmd Buffer"),
 																								 lib::Ref(renderContext),
@@ -86,9 +92,9 @@ void TextureStreamer::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderC
 
 	rhi::RHIDependency dependency;
 
-	for (const StreamRequest& request : m_requests)
+	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
 	{
-		request.streamableTexture->PrepareForUpload(*recorder, dependency);
+		request->PrepareForUpload(*recorder, dependency);
 	}
 
 	recorder->ExecuteBarrier(dependency);
@@ -100,7 +106,7 @@ void TextureStreamer::ExecutePreUploadBarriers(const lib::SharedPtr<rdr::RenderC
 	rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 }
 
-void TextureStreamer::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
+void GPUDeferredUploadsQueue::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::RenderContext>& renderContext)
 {
 	lib::UniquePtr<rdr::CommandRecorder> recorder = rdr::ResourcesManager::CreateCommandRecorder(RENDERER_RESOURCE_NAME("Post Upload Barriers Cmd Buffer"),
 																								 lib::Ref(renderContext),
@@ -110,9 +116,9 @@ void TextureStreamer::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::Render
 
 	rhi::RHIDependency dependency;
 
-	for (const StreamRequest& request : m_requests)
+	for (const lib::UniquePtr<GPUDeferredUploadRequest>& request : m_requests)
 	{
-		request.streamableTexture->FinishStreaming(*recorder, dependency);
+		request->FinishStreaming(*recorder, dependency);
 	}
 
 	recorder->ExecuteBarrier(dependency);
@@ -124,4 +130,4 @@ void TextureStreamer::ExecutePostUploadBarriers(const lib::SharedPtr<rdr::Render
 	rdr::Renderer::GetDeviceQueuesManager().Submit(gpuWorkload, lib::Flags(rdr::EGPUWorkloadSubmitFlags::CorePipe, rdr::EGPUWorkloadSubmitFlags::MemoryTransfers));
 }
 
-} // spt::as
+} // spt::gfx

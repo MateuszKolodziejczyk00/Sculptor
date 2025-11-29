@@ -85,7 +85,7 @@ static TypeOverrideMap ParseTypeOverrides(lib::String& sourceCode)
 
 		if (currentPos != lib::String::npos)
 		{
-			sourceCode.replace(currentPos, overrideToken.length(), ""); // Remove [[override]] token to simplify parsing
+			sourceCode.replace(currentPos, overrideToken.length(), ""); // Remove [[override]] token for dxc compatibility
 
 			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
 			{

@@ -126,4 +126,10 @@ SharedRef<TType> Ref(lib::SharedPtr<TType> ptr)
 	return SharedRef<TType>(ptr);
 }
 
+template<typename TType, typename... TArgs>
+UniquePtr<TType> MakeUnique(TArgs&&... args)
+{
+	return std::make_unique<TType>(std::forward<TArgs>(args)...);
+}
+
 } // spt::lib

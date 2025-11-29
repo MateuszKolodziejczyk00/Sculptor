@@ -4,7 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "AssetTypes.h"
 #include "TextureAssetTypes.h"
-#include "StreamableTextureInterface.h"
 #include "DDC.h"
 
 
@@ -78,7 +77,7 @@ private:
 };
 
 
-class TEXTURE_ASSET_API PBRTextureSetAsset : public TextureSetAsset, public StreamableTextureInterface
+class TEXTURE_ASSET_API PBRTextureSetAsset : public TextureSetAsset
 {
 protected:
 
@@ -99,17 +98,13 @@ public:
 	virtual void CompileTextureSet() override;
 	// End TextureSetAsset overrides
 
-	// Begin StreamableTextureInterface overrides
-	virtual void PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency) override;
-	virtual void ScheduleUploads() override;
-	virtual void FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency) override;
-	// End StreamableTextureInterface overrides
-
 	const lib::SharedPtr<rdr::TextureView>& GetBaseColorTextureView()         const { return m_cachedRuntimeTexture->baseColor; }
 	const lib::SharedPtr<rdr::TextureView>& GetMetallicRoughnessTextureView() const { return m_cachedRuntimeTexture->metallicRoughness; }
 	const lib::SharedPtr<rdr::TextureView>& GetNormalsTextureView()           const { return m_cachedRuntimeTexture->normals; }
 
 private:
+
+	void RequestTextureGPUUploads();
 
 	void CreateTextureInstances();
 

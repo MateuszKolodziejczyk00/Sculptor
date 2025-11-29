@@ -57,7 +57,7 @@ enum Type : Int32
 	First = Begin,
 
 	UpdatingBegin = First,
-	UpdatingEnd   = ProcessViewsUpdate,
+	UpdatingEnd   = TransferDataForRendering,
 
 	RenderingBegin = ProcessViewsRendering,
 	RenderingEnd   = RenderWindow

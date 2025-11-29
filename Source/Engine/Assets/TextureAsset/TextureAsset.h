@@ -4,7 +4,6 @@
 #include "SculptorCoreTypes.h"
 #include "AssetTypes.h"
 #include "TextureAssetTypes.h"
-#include "StreamableTextureInterface.h"
 #include "DDC.h"
 
 
@@ -49,7 +48,7 @@ private:
 };
 
 
-class TEXTURE_ASSET_API TextureAsset : public AssetInstance, public StreamableTextureInterface
+class TEXTURE_ASSET_API TextureAsset : public AssetInstance
 {
 protected:
 
@@ -65,12 +64,6 @@ public:
 
 	static void  OnAssetDeleted(AssetsSystem& assetSystem, const ResourcePath& path, const AssetInstanceData& data);
 	// End AssetInstance overrides
-
-	// Begin StreamableTextureInterface overrides
-	virtual void PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency) override;
-	virtual void ScheduleUploads() override;
-	virtual void FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency) override;
-	// End StreamableTextureInterface overrides
 
 	const lib::SharedPtr<rdr::TextureView>& GetTextureView() const
 	{

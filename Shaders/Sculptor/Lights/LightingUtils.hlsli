@@ -169,7 +169,7 @@ LightingContribution CalcLighting(ShadedSurface surface, float3 lightDir, float3
 
 void CreateLightBoundingSphere(const LocalLightInterface light, out float3 center, out float radius)
 {
-	if (light.IsSpotLight())
+	if (light.IsPointLight())
 	{
 		center = light.location;
 		radius = light.range;

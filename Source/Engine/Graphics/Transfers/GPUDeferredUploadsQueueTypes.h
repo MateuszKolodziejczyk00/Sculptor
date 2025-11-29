@@ -10,16 +10,18 @@ class CommandRecorder;
 } // spt::rdr
 
 
-namespace spt::as
+namespace spt::gfx
 {
 
-class StreamableTextureInterface
+class GPUDeferredUploadRequest
 {
 public:
 
+	virtual ~GPUDeferredUploadRequest() = default;
+
 	virtual void PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency) = 0;
-	virtual void ScheduleUploads() = 0;
+	virtual void EnqueueUploads() = 0;
 	virtual void FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency) = 0;
 };
 
-} // spt::as
+} // spt::gfx

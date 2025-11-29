@@ -3,6 +3,8 @@
 #include "SculptorCoreTypes.h"
 #include "AssetTypes.h"
 #include "RHI/RHICore/RHITextureTypes.h"
+#include "DDC.h"
+#include "Transfers/GPUDeferredUploadsQueueTypes.h"
 
 
 namespace spt::rdr
@@ -53,6 +55,25 @@ struct CompiledTexture
 {
 	TextureDefinition definition;
 	lib::DynamicArray<CompiledMip> mips;
+};
+
+
+class TextureUploadRequest : public gfx::GPUDeferredUploadRequest
+{
+public:
+
+	TextureUploadRequest() = default;
+
+	// Begin GPUDeferredUploadRequest overrides
+	virtual void PrepareForUpload(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& preUploadDependency) override;
+	virtual void EnqueueUploads() override;
+	virtual void FinishStreaming(rdr::CommandRecorder& cmdRecorder, rhi::RHIDependency& postUploadDependency) override;
+	// End GPUDeferredUploadRequest overrides
+	
+	lib::SharedPtr<rdr::TextureView> dstTextureView;
+	const CompiledTexture*           compiledTexture = nullptr;
+	DerivedDataKey                   ddcKey;
+	const AssetsSystem*              assetsSystem = nullptr;
 };
 
 } // spt::as

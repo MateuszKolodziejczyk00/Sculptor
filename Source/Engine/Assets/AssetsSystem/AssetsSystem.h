@@ -73,7 +73,7 @@ public:
 
 	lib::Path GetContentPath() const { return m_contentPath; }
 
-	const DDC& GetDDC() { return m_ddc; }
+	const DDC& GetDDC() const { return m_ddc; }
 
 private:
 
