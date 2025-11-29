@@ -15,6 +15,22 @@ struct ShaderPreprocessingMetaData
 };
 
 
+struct OverrideTypeInfo
+{
+	lib::HashedString typeName;
+	lib::String       typeStr;
+};
+
+
+using TypeOverrideMap = lib::HashMap<lib::HashedString, OverrideTypeInfo>;
+
+
+struct ShaderPreprocessingState
+{
+	TypeOverrideMap overrides;
+};
+
+
 class ShaderMetaDataPrerpocessor
 {
 public:
@@ -29,8 +45,8 @@ private:
 
 	static void RemoveMetaParameters(lib::String& sourceCode);
 
-	static void PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
-	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
+	static void PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData);
+	static void PreprocessShaderDescriptorSets(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData);
 
 	static void PreprocessFileDependencies(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData);
 

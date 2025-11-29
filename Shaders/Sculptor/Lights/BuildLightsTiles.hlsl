@@ -35,7 +35,7 @@ VS_OUTPUT BuildLightsTilesVS(VS_INPUT input)
 
     const uint vertexIdx = input.index;
 
-    const LocalLightGPUData localLight = u_localLights[lightIdx];
+    const LocalLightInterface localLight = u_localLights[lightIdx];
 
 #if LIGHT_TYPE == LIGHT_TYPE_POINT
     const float3 lightProxyVertLocation = localLight.location + u_pointLightProxyVertices[vertexIdx] * localLight.range;

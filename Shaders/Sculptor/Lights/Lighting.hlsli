@@ -67,7 +67,7 @@ void CalcReflectedLuminance(in ShadedSurface surface, in float3 viewDir, inout T
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
 			const uint lightIdx = i * 32 + maskBitIdx;
-			const LocalLightGPUData localLight = u_localLights[lightIdx];
+			const LocalLightInterface localLight = u_localLights[lightIdx];
 		  
 			const float3 toLight = localLight.location - surface.location;
 
@@ -124,7 +124,7 @@ void TiledShadingDebug(in uint2 pixelCoords, in ShadedSurface surface)
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
 			const uint lightIdx = i * 32 + maskBitIdx;
-			const LocalLightGPUData localLight = u_localLights[lightIdx];
+			const LocalLightInterface localLight = u_localLights[lightIdx];
 
 			++lightsNum;
 
@@ -199,7 +199,7 @@ float3 ComputeLocalLightsInScattering(in InScatteringParams params)
 			const uint maskBitIdx = firstbitlow(lightsMask);
 
 			const uint lightIdx = i * 32 + maskBitIdx;
-			const LocalLightGPUData localLight = u_localLights[lightIdx];
+			const LocalLightInterface localLight = u_localLights[lightIdx];
 		  
 			const float3 toLight = localLight.location - params.worldLocation;
 
@@ -309,7 +309,7 @@ float3 CalcReflectedLuminance_Direct(in ShadedSurface surface, in float3 viewDir
 
 	for(uint lightIdx = 0; lightIdx < u_lightsParams.localLightsNum; ++lightIdx)
 	{
-		const LocalLightGPUData localLight = u_localLights[lightIdx];
+		const LocalLightInterface localLight = u_localLights[lightIdx];
 		
 		const float3 toLight = localLight.location - surface.location;
 

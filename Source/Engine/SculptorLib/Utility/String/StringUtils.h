@@ -41,6 +41,8 @@ public:
 
 	static String		ToLower(lib::StringView view);
 
+	static Bool IsWhiteChar(const char c);
+
     template<Uint32 number>
 	static constexpr String ToString();
 };

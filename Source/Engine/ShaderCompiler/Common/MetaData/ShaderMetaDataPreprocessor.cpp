@@ -7,32 +7,13 @@
 #include "FileSystem/File.h"
 
 #include <regex>
+#include "Utility/String/StringUtils.h"
 
 SPT_DEFINE_LOG_CATEGORY(ShaderMetaDataPrerpocessor, true)
 
-
+#pragma optimize("", off)
 namespace spt::sc
 {
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Token =========================================================================================
-
-namespace EMetaDataProcessorToken
-{
-
-enum Type : Uint32
-{
-	BeginMetaData,
-
-	NUM
-};
-
-} // EMetaDataProcessorToken
-
-static const lib::StaticArray<tkn::Token, EMetaDataProcessorToken::NUM> g_metaDataProcessorTokens
-{
-	tkn::Token("META(")
-};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Helpers =======================================================================================
@@ -88,6 +69,146 @@ static void IterateDescriptorSets(TFunctor&& func, const lib::String& sourceCode
 	}
 }
 
+
+static TypeOverrideMap ParseTypeOverrides(lib::String& sourceCode)
+{
+	SPT_PROFILER_FUNCTION();
+
+	TypeOverrideMap overrides;
+
+	const lib::StringView overrideToken = "[[override]]";
+
+	SizeType currentPos = 0u;
+	while (true)
+	{
+		currentPos = sourceCode.find(overrideToken, currentPos);
+
+		if (currentPos != lib::String::npos)
+		{
+			sourceCode.replace(currentPos, overrideToken.length(), ""); // Remove [[override]] token to simplify parsing
+
+			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
+			{
+				++currentPos;
+			}
+
+			const SizeType structTokenPos = currentPos;
+
+			const lib::StringView structTokenView = "struct";
+			SPT_CHECK(sourceCode.compare(currentPos, structTokenView.length(), structTokenView) == 0);
+			currentPos += structTokenView.length();
+
+			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
+			{
+				++currentPos;
+			}
+
+			SizeType structNameStartPos = currentPos;
+
+			while(currentPos < sourceCode.length() && !lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) && sourceCode[currentPos] != '{' && sourceCode[currentPos] != ':')
+			{
+				++currentPos;
+			}
+
+			const lib::StringView overrideStructName = lib::StringView(&sourceCode[structNameStartPos], currentPos - structNameStartPos);
+
+			while (currentPos < sourceCode.length() && lib::StringUtils::IsWhiteChar(sourceCode[currentPos]))
+			{
+				++currentPos;
+			}
+
+			SPT_CHECK(sourceCode[currentPos] == ':');
+
+			while (currentPos < sourceCode.length() && (lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) || sourceCode[currentPos] == ':'))
+			{
+				++currentPos;
+			}
+
+			SizeType originalStructNameStartPos = currentPos;
+
+			while (currentPos < sourceCode.length() && !lib::StringUtils::IsWhiteChar(sourceCode[currentPos]) && sourceCode[currentPos] != '{')
+			{
+				++currentPos;
+			}
+
+			const lib::StringView originalStructName = lib::StringView(&sourceCode[originalStructNameStartPos], currentPos - originalStructNameStartPos);
+
+			SizeType structEndPos = sourceCode.find('}', currentPos);
+			Uint32 braceDepth = 1u;
+			while (structEndPos != lib::String::npos && braceDepth > 0u)
+			{
+				++structEndPos;
+				if (sourceCode[structEndPos] == '{')
+				{
+					++braceDepth;
+				}
+				else if (sourceCode[structEndPos] == '}')
+				{
+					if (--braceDepth == 0u)
+					{
+						while (sourceCode[++structEndPos] != ';' && structEndPos < sourceCode.length());
+					}
+				}
+			}
+
+			SPT_CHECK(sourceCode[structEndPos] == ';');
+			++structEndPos;
+
+			lib::String structCode = sourceCode.substr(structTokenPos, structEndPos - structTokenPos);
+
+			overrides[originalStructName] = { overrideStructName, std::move(structCode) };
+
+			sourceCode.replace(structTokenPos, structEndPos - structTokenPos, ""); // Remove entire struct override definition from source code
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return overrides;
+}
+
+
+static void ApplyTypeOverrides(lib::String& structCode, SizeType startPos, const TypeOverrideMap& overrides)
+{
+	SPT_PROFILER_FUNCTION();
+
+	for (const auto& [originalType, overrideInfo] : overrides)
+	{
+		SizeType currentPos = startPos;
+
+		while (true)
+		{
+			SizeType typePos = structCode.find(originalType.GetView(), currentPos);
+			if (typePos != lib::String::npos)
+			{
+				const char charBefore = (typePos > 0u) ? structCode[typePos - 1u] : ' ';
+				const char charAfter = (typePos + originalType.GetView().length() < structCode.length()) ? structCode[typePos + originalType.GetView().length()] : ' ';
+
+				const auto isValidChar = [](char c) -> bool
+				{
+					return lib::StringUtils::IsWhiteChar(c) || c == ';' || c == '{' || c == '}' || c == '<' || c == '>';
+				};
+
+				if (isValidChar(charBefore) && isValidChar(charAfter))
+				{
+					structCode.replace(typePos, originalType.GetView().length(), overrideInfo.typeName.GetView());
+					currentPos = typePos + overrideInfo.typeName.GetView().length();
+				}
+				else
+				{
+					currentPos = typePos + originalType.GetView().length();
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+}
+
 } // helper
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,8 +250,11 @@ ShaderCompilationMetaData ShaderMetaDataPrerpocessor::PreprocessShader(lib::Stri
 
 	ShaderCompilationMetaData metaData;
 
-	PreprocessShaderDescriptorSets(sourceCode, OUT metaData);
-	PreprocessShaderStructs(sourceCode, OUT metaData);
+	ShaderPreprocessingState preprocessingState;
+	preprocessingState.overrides = helper::ParseTypeOverrides(sourceCode);
+
+	PreprocessShaderDescriptorSets(sourceCode, preprocessingState, OUT metaData);
+	PreprocessShaderStructs(sourceCode, preprocessingState, OUT metaData);
 
 	RemoveMetaParameters(sourceCode);
 
@@ -196,7 +320,7 @@ void ShaderMetaDataPrerpocessor::RemoveMetaParameters(lib::String& sourceCode)
 	sourceCode = std::regex_replace(sourceCode, metaDataRegex, "");
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
@@ -218,6 +342,15 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 			const rdr::ShaderStructMetaData& structMetaData = rdr::ShaderStructsRegistry::GetStructMetaDataChecked(structName);
 			structSourceCode = structMetaData.GetHLSLSourceCode();
 
+			const SizeType overridesStartPos = structSourceCode.find('{');
+			helper::ApplyTypeOverrides(INOUT structSourceCode, overridesStartPos, preprocessingState.overrides);
+
+			if (preprocessingState.overrides.contains(structName))
+			{
+				const OverrideTypeInfo& overrideInfo = preprocessingState.overrides.at(structName);
+				structSourceCode += '\n' + overrideInfo.typeStr;
+			}
+
 			m_definedStructs.emplace(structName);
 		}
 
@@ -228,18 +361,21 @@ void ShaderMetaDataPrerpocessor::PreprocessShaderStructs(lib::String& sourceCode
 	}
 }
 
-void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, ShaderCompilationMetaData& outMetaData)
+void ShaderMetaDataPrerpocessor::PreprocessShaderDescriptorSets(lib::String& sourceCode, const ShaderPreprocessingState& preprocessingState, ShaderCompilationMetaData& outMetaData)
 {
 	SPT_PROFILER_FUNCTION();
 
 	lib::String accessorsCode;
 	
-	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
+	helper::IterateDescriptorSets([&sourceCode, &outMetaData, &accessorsCode, &preprocessingState](const lib::HashedString& dsName, Uint32 dsIdx, SizeType dsTokenPosition, SizeType dsTokenLength)
 								  {
 									  const DescriptorSetCompilationDef& dsCompilationDef = DescriptorSetCompilationDefsRegistry::GetDescriptorSetCompilationDef(dsName);
 
-									  const lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
+									  lib::String dsSourceCode = dsCompilationDef.GetShaderCode(dsIdx);
+									  helper::ApplyTypeOverrides(INOUT dsSourceCode, 0u, preprocessingState.overrides);
+
 									  sourceCode.replace(dsTokenPosition, dsTokenLength, dsSourceCode);
+
 									  accessorsCode += dsCompilationDef.GetAccessorsCode();
 
 									  outMetaData.AddDescriptorSetMetaData(dsIdx, dsCompilationDef.GetMetaData());

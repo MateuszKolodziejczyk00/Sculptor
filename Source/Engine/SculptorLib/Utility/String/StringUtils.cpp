@@ -107,4 +107,9 @@ lib::String StringUtils::ToLower(lib::StringView view)
 	return result;
 }
 
+Bool StringUtils::IsWhiteChar(const char c)
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f';
+}
+
 } // spt::lib

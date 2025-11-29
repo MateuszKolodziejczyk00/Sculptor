@@ -69,25 +69,39 @@ class ViewLightingAccumulator
 
 float HenyeyGreensteinPhaseFunction(in float g, in float cosTheta)
 {
-    const float numerator = 1.f - g * g;
-    const float denominator = 4.f * PI * pow(1.f + g * g - 2.f * g * cosTheta, 1.5f);
-    return numerator / denominator;
+	const float numerator = 1.f - g * g;
+	const float denominator = 4.f * PI * pow(1.f + g * g - 2.f * g * cosTheta, 1.5f);
+	return numerator / denominator;
 }
 
 
 float PhaseFunction(in float3 toView, in float3 fromLight, float g)
 {
-    const float cosTheta = dot(toView, fromLight);
-    return HenyeyGreensteinPhaseFunction(g, cosTheta);
+	const float cosTheta = dot(toView, fromLight);
+	return HenyeyGreensteinPhaseFunction(g, cosTheta);
 }
 
 
 [[shader_struct(LocalLightGPUData)]]
 
+[[override]]
+struct LocalLightInterface : LocalLightGPUData
+{
+	bool IsPointLight()
+	{
+		return type == LIGHT_TYPE_POINT;
+	}
+
+	bool IsSpotLight()
+	{
+		return type == LIGHT_TYPE_SPOT;
+	}
+};
+
 
 // Clamped inverse-square falloff function from:
 // Real Shading in Unreal Engine 4 by Brian Karis
-float ComputeLightDistanceAttenuationAtLocation(LocalLightGPUData localLight, float3 location)
+float ComputeLightDistanceAttenuationAtLocation(LocalLightInterface localLight, float3 location)
 {
 #if VOLUMETRIC_FOG_LIGHTING
 	// Increase bias for spot lights because they can cause some aliasing in volumetric fog
@@ -101,7 +115,7 @@ float ComputeLightDistanceAttenuationAtLocation(LocalLightGPUData localLight, fl
 }
 
 
-float ComputeLightAngularAttenuationAtLocation(LocalLightGPUData localLight, float3 location)
+float ComputeLightAngularAttenuationAtLocation(LocalLightInterface localLight, float3 location)
 {
 	SPT_CHECK(localLight.type == LIGHT_TYPE_SPOT);
 
@@ -114,13 +128,13 @@ float ComputeLightAngularAttenuationAtLocation(LocalLightGPUData localLight, flo
 }
 
 
-float ComputeLightLuminousIntensity(LocalLightGPUData localLight)
+float ComputeLightLuminousIntensity(LocalLightInterface localLight)
 {
-	if (localLight.type == LIGHT_TYPE_POINT)
+	if (localLight.IsPointLight())
 	{
 		return localLight.luminousPower / (4.f * PI);
 	}
-	else if (localLight.type == LIGHT_TYPE_SPOT)
+	else if (localLight.IsSpotLight())
 	{
 		// In theory this should be based on cone angle, but this could be confusing to setup
 		// Because of that, we use the same formula as proposed by Sebastian Lagarde in "Moving Frostbite to PBR" equation 17
@@ -133,12 +147,12 @@ float ComputeLightLuminousIntensity(LocalLightGPUData localLight)
 }
 
 
-float3 GetLightIlluminanceAtLocation(LocalLightGPUData localLight, float3 location)
+float3 GetLightIlluminanceAtLocation(LocalLightInterface localLight, float3 location)
 {
 	const float luminousIntensity = ComputeLightLuminousIntensity(localLight);
 	float attenuation = ComputeLightDistanceAttenuationAtLocation(localLight, location);
 
-	if (localLight.type == LIGHT_TYPE_SPOT)
+	if (localLight.IsSpotLight())
 	{
 		attenuation *= ComputeLightAngularAttenuationAtLocation(localLight, location);
 	}
@@ -153,14 +167,14 @@ LightingContribution CalcLighting(ShadedSurface surface, float3 lightDir, float3
 }
 
 
-void CreateLightBoundingSphere(const LocalLightGPUData light, out float3 center, out float radius)
+void CreateLightBoundingSphere(const LocalLightInterface light, out float3 center, out float radius)
 {
-	if (light.type == LIGHT_TYPE_POINT)
+	if (light.IsSpotLight())
 	{
 		center = light.location;
 		radius = light.range;
 	}
-	else if (light.type == LIGHT_TYPE_SPOT)
+	else if (light.IsSpotLight())
 	{
 		if (light.halfAngleCos > 0.f)
 		{

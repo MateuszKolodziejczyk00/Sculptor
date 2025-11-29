@@ -22,7 +22,7 @@ void GenerateLightsDrawCommandsCS(CS_INPUT input)
 
 	if(lightIdx < u_lightsData.localLightsNum)
 	{
-		const LocalLightGPUData localLight = u_localLights[lightIdx];
+		const LocalLightInterface localLight = u_localLights[lightIdx];
 
 		float3 boundingSphereCenter;
 		float boundingSphereRadius;
